@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Combat v9</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0a14;touch-action:none;-webkit-user-select:none;user-select:none}
+body{font-family:system-ui,sans-serif}
+canvas{display:block;width:100vw;height:100vh}
+</style>
+</head>
+<body>
+<canvas id="C"></canvas>
+<script>
+// ============ CANVAS SETUP ============
+var canvas = document.getElementById('C');
+var ctx = canvas.getContext('2d');
+var DPR = Math.min(window.devicePixelRatio || 1, 2);
+var W, H;
+
+function resize() {
+  W = Math.round(window.innerWidth * DPR);
+  H = Math.round(window.innerHeight * DPR);
+  canvas.width = W;
+  canvas.height = H;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ============ SETTINGS ============
+var CFG = {
+  shortFlick: 50,
+  longFlick: 120,
+  flickSpeed: 0.5,
+  trailWindow: 150,
+  aimLockMs: 2500,
+  projSpeed: 8,
+  autoAtkMs: 400,
+  rangedType: 0, // 0=staff, 1=bow
+  weaponMode: 1  // 0=sword, 1=ranged
+};
+
+// ============ GAME STATE ============
+var player = { x: 0, y: 0 };
+var aimAngle = 0; // radians
+var aimLockActive = false;
+var aimLockTimer = 0;
+var shieldOn = false;
+var moveDir = { x: 0, y: 0 };
+var moveAngle = 0;
+var autoAtkTimer = 0;
+var enemies = [];
+var projectiles = [];
+var floatTexts = [];
+var swipeTrails = [];
+var hitEffects = [];
+var frameTime = 0;
+
+// ============ TOUCH STATE ============
+// Simple: track up to 10 touches by identifier
+var touches = {};
+var leftTouch = null;  // identifier of touch controlling left stick
+var rightTouch = null; // identifier of touch controlling right stick
+
+// Joystick positions (set after resize)
+var LJ = { x: 0, y: 0 }; // left joystick center
+var RJ = { x: 0, y: 0 }; // right joystick center
+var JR = 0; // joystick radius
+var SB = { x: 0, y: 0, r: 0 }; // shield button
+
+// Left stick state
+var leftStick = { x: 0, y: 0, trail: [] };
+// Right stick state
+var rightStick = { x: 0, y: 0, trail: [], startPos: null, startTime: 0 };
+
+function layoutUI() {
+  JR = H * 0.24;
+  LJ.x = W * 0.13;
+  LJ.y = H * 0.55;
+  RJ.x = W * 0.78;
+  RJ.y = H * 0.55;
+  SB.x = LJ.x + JR * 1.5;
+  SB.y = LJ.y + JR * 0.5;
+  SB.r = JR * 0.25;
+}
+
+function initGame() {
+  layoutUI();
+  player.x = W * 0.35;
+  player.y = H * 0.5;
+  enemies = [];
+  for (var i = 0; i < 6; i++) {
+    enemies.push({
+      x: W * (0.4 + Math.random() * 0.5),
+      y: H * (0.15 + Math.random() * 0.7),
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2,
+      hp: 3, maxHp: 3,
+      r: H * 0.022,
+      flashTimer: 0
+    });
+  }
+}
+initGame();
+
+function addFloat(msg, color) {
+  floatTexts.push({ msg: msg, color: color, life: 60, y: 0 });
+}
+
+// ============ WEAPON NAMES ============
+function rangedName() { return CFG.rangedType ? 'Bow' : 'Staff'; }
+function weaponName() { return CFG.weaponMode ? rangedName() : 'Sword'; }
+
+// ============ COMBAT ACTIONS ============
+function fireAutoAttack() {
+  var a = aimAngle;
+  if (CFG.weaponMode === 0) {
+    // Sword: melee arc hit
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      if (e.hp <= 0) continue;
+      var d = Math.hypot(e.x - player.x, e.y - player.y);
+      if (d < H * 0.14) {
+        var ea = Math.atan2(e.y - player.y, e.x - player.x);
+        var diff = Math.abs(ea - a);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff < 0.7) {
+          e.hp--;
+          e.flashTimer = 10;
+          hitEffects.push({ x: e.x, y: e.y, life: 15 });
+          if (e.hp <= 0) addFloat('Kill!', 'rgba(255,100,80,.9)');
+        }
+      }
+    }
+  } else {
+    // Ranged: fire projectile
+    var col = CFG.rangedType ? '100,220,180' : '160,100,255';
+    projectiles.push({
+      x: player.x, y: player.y,
+      dx: Math.cos(a), dy: Math.sin(a),
+      r: H * 0.011, color: col, life: 150
+    });
+  }
+}
+
+function fireSkill(type) {
+  var a = aimAngle;
+  var name = weaponName();
+  if (type === 0) {
+    addFloat(name + ' light!', 'rgba(100,180,255,.95)');
+    projectiles.push({ x: player.x, y: player.y, dx: Math.cos(a), dy: Math.sin(a), r: H * 0.02, color: '100,180,255', life: 160 });
+  } else {
+    addFloat(name + ' heavy!', 'rgba(255,180,80,.95)');
+    for (var j = -1; j <= 1; j++) {
+      var aa = a + j * 0.2;
+      projectiles.push({ x: player.x, y: player.y, dx: Math.cos(aa), dy: Math.sin(aa), r: H * 0.024, color: '255,180,80', life: 130 });
+    }
+  }
+}
+
+function cycleWeapon() {
+  CFG.weaponMode = CFG.weaponMode ? 0 : 1;
+  addFloat(weaponName(), 'rgba(200,160,255,.9)');
+  aimLockActive = true;
+  aimLockTimer = CFG.aimLockMs;
+}
+
+function classifyFlick(trail) {
+  var now = performance.now();
+  var recent = [];
+  for (var i = 0; i < trail.length; i++) {
+    if (now - trail[i].t < CFG.trailWindow) recent.push(trail[i]);
+  }
+  if (recent.length < 2) return 'none';
+  var f = recent[0], l = recent[recent.length - 1];
+  var dx = l.x - f.x, dy = l.y - f.y;
+  var dist = Math.sqrt(dx * dx + dy * dy);
+  var dt = l.t - f.t;
+  var speed = dt > 0 ? dist / dt : 0;
+  if (speed < CFG.flickSpeed) return 'none';
+  if (dist >= CFG.longFlick) return 'long';
+  if (dist >= CFG.shortFlick) return 'short';
+  return 'none';
+}
+
+// ============ TOUCH HANDLING ============
+// Convert touch/mouse coords to canvas coords
+function toCanvas(clientX, clientY) {
+  var rect = canvas.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left) * DPR,
+    y: (clientY - rect.top) * DPR
+  };
+}
+
+function handleStart(id, cx, cy) {
+  var p = toCanvas(cx, cy);
+
+  // Shield button check
+  if (Math.hypot(p.x - SB.x, p.y - SB.y) < SB.r * 1.5) {
+    shieldOn = !shieldOn;
+    addFloat(shieldOn ? 'Shield up' : 'Shield down', shieldOn ? 'rgba(80,200,120,.9)' : 'rgba(180,180,180,.6)');
+    return;
+  }
+
+  // Left half = left stick
+  if (p.x < W * 0.5 && leftTouch === null) {
+    leftTouch = id;
+    leftStick.x = p.x - LJ.x;
+    leftStick.y = p.y - LJ.y;
+    leftStick.trail = [{ x: leftStick.x, y: leftStick.y, t: performance.now() }];
+  }
+  // Right half = right stick
+  else if (p.x >= W * 0.5 && rightTouch === null) {
+    rightTouch = id;
+    rightStick.x = p.x - RJ.x;
+    rightStick.y = p.y - RJ.y;
+    rightStick.startPos = { x: rightStick.x, y: rightStick.y };
+    rightStick.startTime = performance.now();
+    rightStick.trail = [{ x: rightStick.x, y: rightStick.y, t: performance.now() }];
+    aimLockActive = false;
+    aimLockTimer = 0;
+    autoAtkTimer = 0;
+  }
+}
+
+function handleMove(id, cx, cy) {
+  var p = toCanvas(cx, cy);
+
+  if (id === leftTouch) {
+    var dx = p.x - LJ.x, dy = p.y - LJ.y;
+    var d = Math.hypot(dx, dy);
+    var clamp = Math.min(d, JR * 0.7);
+    var a = Math.atan2(dy, dx);
+    leftStick.x = Math.cos(a) * clamp;
+    leftStick.y = Math.sin(a) * clamp;
+    moveDir.x = Math.cos(a) * (clamp / (JR * 0.7));
+    moveDir.y = Math.sin(a) * (clamp / (JR * 0.7));
+    moveAngle = a;
+    leftStick.trail.push({ x: dx, y: dy, t: performance.now() });
+    if (leftStick.trail.length > 60) leftStick.trail.shift();
+  }
+
+  if (id === rightTouch) {
+    var dx = p.x - RJ.x, dy = p.y - RJ.y;
+    var d = Math.hypot(dx, dy);
+    var clamp = Math.min(d, JR * 0.85);
+    var a = Math.atan2(dy, dx);
+    rightStick.x = Math.cos(a) * clamp;
+    rightStick.y = Math.sin(a) * clamp;
+    aimAngle = a;
+    rightStick.trail.push({ x: dx, y: dy, t: performance.now() });
+    if (rightStick.trail.length > 60) rightStick.trail.shift();
+  }
+}
+
+function handleEnd(id, cx, cy) {
+  var p = toCanvas(cx, cy);
+
+  if (id === leftTouch) {
+    leftStick.trail.push({ x: p.x - LJ.x, y: p.y - LJ.y, t: performance.now() });
+    var flick = classifyFlick(leftStick.trail);
+    if (flick !== 'none') addFloat('Dodge!', 'rgba(180,140,255,.9)');
+    leftTouch = null;
+    leftStick.x = 0;
+    leftStick.y = 0;
+    moveDir.x = 0;
+    moveDir.y = 0;
+  }
+
+  if (id === rightTouch) {
+    var dx = p.x - RJ.x, dy = p.y - RJ.y;
+    rightStick.trail.push({ x: dx, y: dy, t: performance.now() });
+
+    // Check tap (weapon swap)
+    var totalDist = Math.hypot(dx - rightStick.startPos.x, dy - rightStick.startPos.y);
+    var totalDur = performance.now() - rightStick.startTime;
+
+    if (totalDist < JR * 0.15 && totalDur < 350) {
+      cycleWeapon();
+    } else {
+      var flick = classifyFlick(rightStick.trail);
+      if (flick === 'short') {
+        fireSkill(0);
+        // Add swipe trail
+        var pts = rightStick.trail.map(function(t) { return { x: t.x + RJ.x, y: t.y + RJ.y }; });
+        swipeTrails.push({ pts: pts, color: '100,180,255', life: 35, maxLife: 35 });
+      } else if (flick === 'long') {
+        fireSkill(1);
+        var pts = rightStick.trail.map(function(t) { return { x: t.x + RJ.x, y: t.y + RJ.y }; });
+        swipeTrails.push({ pts: pts, color: '255,180,80', life: 35, maxLife: 35 });
+      } else {
+        // Normal release: activate aim lock
+        aimLockActive = true;
+        aimLockTimer = CFG.aimLockMs;
+      }
+    }
+
+    rightTouch = null;
+    rightStick.x = 0;
+    rightStick.y = 0;
+  }
+}
+
+// ============ EVENT LISTENERS ============
+// Use touchstart/touchmove/touchend as primary (most reliable on mobile)
+canvas.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  for (var i = 0; i < e.changedTouches.length; i++) {
+    var t = e.changedTouches[i];
+    handleStart(t.identifier, t.clientX, t.clientY);
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', function(e) {
+  e.preventDefault();
+  for (var i = 0; i < e.changedTouches.length; i++) {
+    var t = e.changedTouches[i];
+    handleMove(t.identifier, t.clientX, t.clientY);
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', function(e) {
+  e.preventDefault();
+  for (var i = 0; i < e.changedTouches.length; i++) {
+    var t = e.changedTouches[i];
+    handleEnd(t.identifier, t.clientX, t.clientY);
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchcancel', function(e) {
+  e.preventDefault();
+  for (var i = 0; i < e.changedTouches.length; i++) {
+    var t = e.changedTouches[i];
+    handleEnd(t.identifier, t.clientX, t.clientY);
+  }
+}, { passive: false });
+
+// Mouse fallback for desktop testing
+var mouseDown = false;
+canvas.addEventListener('mousedown', function(e) {
+  e.preventDefault();
+  mouseDown = true;
+  handleStart(-999, e.clientX, e.clientY);
+});
+canvas.addEventListener('mousemove', function(e) {
+  e.preventDefault();
+  if (mouseDown) handleMove(-999, e.clientX, e.clientY);
+});
+canvas.addEventListener('mouseup', function(e) {
+  e.preventDefault();
+  mouseDown = false;
+  handleEnd(-999, e.clientX, e.clientY);
+});
+
+// Prevent all scrolling/zooming
+document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+
+// ============ HELPER DRAW FUNCTIONS ============
+function drawCarat(cx2, cy2, angle, size, color) {
+  ctx.beginPath();
+  var tx = cx2 + Math.cos(angle) * size;
+  var ty = cy2 + Math.sin(angle) * size;
+  ctx.moveTo(tx, ty);
+  ctx.lineTo(cx2 + Math.cos(angle + 2.5) * size * 0.6, cy2 + Math.sin(angle + 2.5) * size * 0.6);
+  ctx.lineTo(cx2 + Math.cos(angle - 2.5) * size * 0.6, cy2 + Math.sin(angle - 2.5) * size * 0.6);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+// ============ MAIN LOOP ============
+function update() {
+  layoutUI();
+  var rightHeld = rightTouch !== null;
+  var aiming = rightHeld || (aimLockActive && aimLockTimer > 0);
+
+  // Aim lock countdown
+  if (aimLockTimer > 0) aimLockTimer -= 16;
+  if (aimLockTimer <= 0 && aimLockActive) {
+    aimLockActive = false;
+    // Default aim to movement direction
+    if (leftTouch !== null) aimAngle = moveAngle;
+  }
+
+  // Move player
+  if (!shieldOn) {
+    player.x += moveDir.x * W * 0.005;
+    player.y += moveDir.y * H * 0.008;
+    player.x = Math.max(W * 0.03, Math.min(W * 0.97, player.x));
+    player.y = Math.max(H * 0.06, Math.min(H * 0.94, player.y));
+  }
+
+  // Auto-attack while right stick held
+  if (rightHeld && !shieldOn) {
+    autoAtkTimer += 16;
+    if (autoAtkTimer >= CFG.autoAtkMs) {
+      autoAtkTimer = 0;
+      fireAutoAttack();
+    }
+  }
+
+  // Move enemies
+  for (var i = 0; i < enemies.length; i++) {
+    var e = enemies[i];
+    e.x += e.vx;
+    e.y += e.vy;
+    if (e.x < W * 0.04 || e.x > W * 0.96) e.vx *= -1;
+    if (e.y < H * 0.06 || e.y > H * 0.94) e.vy *= -1;
+    if (e.flashTimer > 0) e.flashTimer--;
+    if (e.hp <= 0) {
+      e.hp = e.maxHp;
+      e.x = W * (0.35 + Math.random() * 0.5);
+      e.y = H * (0.15 + Math.random() * 0.7);
+      e.vx = (Math.random() - 0.5) * 2;
+      e.vy = (Math.random() - 0.5) * 2;
+    }
+  }
+
+  // Move projectiles and check hits
+  for (var i = projectiles.length - 1; i >= 0; i--) {
+    var p = projectiles[i];
+    p.x += p.dx * CFG.projSpeed * (W / 800);
+    p.y += p.dy * CFG.projSpeed * (H / 450);
+    p.life--;
+    if (p.life <= 0 || p.x < -50 || p.x > W + 50 || p.y < -50 || p.y > H + 50) {
+      projectiles.splice(i, 1);
+      continue;
+    }
+    // Hit check
+    var hit = false;
+    for (var j = 0; j < enemies.length; j++) {
+      var e = enemies[j];
+      if (e.hp > 0 && Math.hypot(p.x - e.x, p.y - e.y) < e.r + p.r) {
+        e.hp--;
+        e.flashTimer = 10;
+        hitEffects.push({ x: e.x, y: e.y, life: 15 });
+        if (e.hp <= 0) addFloat('Kill!', 'rgba(255,100,80,.9)');
+        projectiles.splice(i, 1);
+        hit = true;
+        break;
+      }
+    }
+    if (hit) continue;
+  }
+
+  // Decay effects
+  for (var i = hitEffects.length - 1; i >= 0; i--) {
+    hitEffects[i].life--;
+    if (hitEffects[i].life <= 0) hitEffects.splice(i, 1);
+  }
+  for (var i = swipeTrails.length - 1; i >= 0; i--) {
+    swipeTrails[i].life--;
+    if (swipeTrails[i].life <= 0) swipeTrails.splice(i, 1);
+  }
+  for (var i = floatTexts.length - 1; i >= 0; i--) {
+    floatTexts[i].life--;
+    floatTexts[i].y += 0.8;
+    if (floatTexts[i].life <= 0) floatTexts.splice(i, 1);
+  }
+
+  frameTime += 0.005;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // Fill background
+  ctx.fillStyle = '#12121f';
+  ctx.fillRect(0, 0, W, H);
+
+  var rightHeld = rightTouch !== null;
+  var aiming = rightHeld || (aimLockActive && aimLockTimer > 0);
+  var aimAlpha = aimLockActive ? Math.max(aimLockTimer / CFG.aimLockMs, 0.05) * 0.5 : 0.5;
+  var fs = Math.max(H * 0.03, 12);
+
+  // ---- ENEMIES ----
+  for (var i = 0; i < enemies.length; i++) {
+    var e = enemies[i];
+    var flash = e.flashTimer > 0 ? 0.6 : 0;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+    ctx.fillStyle = flash ? 'rgba(255,255,100,' + (0.3 + flash * 0.3) + ')' : 'rgba(255,60,60,.25)';
+    ctx.fill();
+    ctx.strokeStyle = flash ? 'rgba(255,255,150,.7)' : 'rgba(255,80,80,.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // HP bar
+    var hbW = e.r * 2.5;
+    ctx.fillStyle = 'rgba(255,255,255,.08)';
+    ctx.fillRect(e.x - hbW / 2, e.y - e.r - H * 0.015, hbW, H * 0.007);
+    ctx.fillStyle = 'rgba(255,80,80,.6)';
+    ctx.fillRect(e.x - hbW / 2, e.y - e.r - H * 0.015, hbW * (e.hp / e.maxHp), H * 0.007);
+  }
+
+  // ---- HIT EFFECTS ----
+  for (var i = 0; i < hitEffects.length; i++) {
+    var h = hitEffects[i];
+    var a = h.life / 15;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, H * 0.03 * (1 - a + 0.4), 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,220,100,' + (a * 0.5) + ')';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // ---- LOS LINE (ranged, while aiming) ----
+  if (aiming && CFG.weaponMode === 1) {
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    ctx.lineTo(player.x + Math.cos(aimAngle) * W * 1.5, player.y + Math.sin(aimAngle) * W * 1.5);
+    ctx.strokeStyle = 'rgba(255,255,255,' + (aimAlpha * 0.35) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([10, 10]);
+    ctx.lineDashOffset = -frameTime * 2000;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+
+    // Wider glow line
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    ctx.lineTo(player.x + Math.cos(aimAngle) * W * 1.5, player.y + Math.sin(aimAngle) * W * 1.5);
+    ctx.strokeStyle = 'rgba(255,255,255,' + (aimAlpha * 0.08) + ')';
+    ctx.lineWidth = 5;
+    ctx.setLineDash([18, 14]);
+    ctx.lineDashOffset = -frameTime * 1400;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+  }
+
+  // ---- AIM DIRECTION ARROW ----
+  if (aiming) {
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    ctx.lineTo(player.x + Math.cos(aimAngle) * H * 0.14, player.y + Math.sin(aimAngle) * H * 0.14);
+    ctx.strokeStyle = 'rgba(255,255,255,' + (aimAlpha * 0.45) + ')';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([5, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    drawCarat(player.x, player.y + 0, aimAngle, H * 0.16, 'rgba(255,255,255,' + (aimAlpha * 0.4) + ')');
+  }
+
+  // ---- SWORD ARC (visual, while auto-attacking with sword) ----
+  if (rightHeld && CFG.weaponMode === 0) {
+    var slR = H * 0.1;
+    ctx.beginPath();
+    ctx.arc(player.x + Math.cos(aimAngle) * slR * 0.5, player.y + Math.sin(aimAngle) * slR * 0.5, slR, aimAngle - 0.5, aimAngle + 0.5);
+    ctx.strokeStyle = 'rgba(255,200,150,.3)';
+    ctx.lineWidth = H * 0.018;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // ---- SHIELD ARC ----
+  if (shieldOn) {
+    var sa = leftTouch !== null ? moveAngle : aimAngle;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, H * 0.07, sa - 0.7, sa + 0.7);
+    ctx.strokeStyle = 'rgba(80,200,120,.5)';
+    ctx.lineWidth = H * 0.015;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // ---- PROJECTILES ----
+  for (var i = 0; i < projectiles.length; i++) {
+    var p = projectiles[i];
+    var a = Math.min(1, p.life / 30);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(' + p.color + ',' + a + ')';
+    ctx.fill();
+    if (p.life > 30) {
+      ctx.strokeStyle = 'rgba(' + p.color + ',' + (a * 0.4) + ')';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  // ---- PLAYER ----
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, H * 0.028, 0, Math.PI * 2);
+  ctx.fillStyle = shieldOn ? 'rgba(80,200,160,.5)' : 'rgba(100,200,255,.5)';
+  ctx.fill();
+  ctx.strokeStyle = shieldOn ? 'rgba(80,200,160,.7)' : 'rgba(100,200,255,.7)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Aim lock ring on player
+  if (aimLockActive && aimLockTimer > 0) {
+    var pct = aimLockTimer / CFG.aimLockMs;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, H * 0.05, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct, false);
+    ctx.strokeStyle = 'rgba(255,160,80,' + (0.5 * pct) + ')';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // ---- HUD ----
+  var hW = W * 0.18, hX = (W - hW) / 2, hY = H * 0.03;
+  ctx.fillStyle = 'rgba(255,255,255,.05)';
+  ctx.fillRect(hX, hY, hW, H * 0.016);
+  ctx.fillStyle = 'rgba(80,200,120,.55)';
+  ctx.fillRect(hX, hY, hW * 0.85, H * 0.016);
+
+  // Skill pips
+  var pS = H * 0.07;
+  for (var i = 0; i < 2; i++) {
+    var bx = W * 0.02 + i * (pS + H * 0.01);
+    ctx.fillStyle = i ? 'rgba(255,180,80,.1)' : 'rgba(100,180,255,.1)';
+    ctx.strokeStyle = i ? 'rgba(255,180,80,.35)' : 'rgba(100,180,255,.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(bx, hY, pS, pS, H * 0.01);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.font = '500 ' + fs + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(i ? 'HV' : 'LT', bx + pS / 2, hY + pS / 2);
+  }
+
+  // Weapon name
+  var wc = CFG.weaponMode ? (CFG.rangedType ? 'rgba(160,230,210,.6)' : 'rgba(200,160,255,.6)') : 'rgba(255,150,120,.6)';
+  ctx.fillStyle = wc;
+  ctx.font = '500 ' + fs + 'px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(weaponName(), W * 0.98, hY + fs * 0.8);
+
+  // ---- FLOAT TEXTS ----
+  for (var i = 0; i < floatTexts.length; i++) {
+    var ft = floatTexts[i];
+    ctx.globalAlpha = Math.min(1, ft.life / 20);
+    ctx.fillStyle = ft.color;
+    ctx.font = '600 ' + (fs * 1.2) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(ft.msg, player.x, player.y - H * 0.12 - ft.y);
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- SWIPE TRAILS ----
+  for (var i = 0; i < swipeTrails.length; i++) {
+    var st = swipeTrails[i];
+    var a = st.life / st.maxLife;
+    if (st.pts.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(st.pts[0].x, st.pts[0].y);
+      for (var j = 1; j < st.pts.length; j++) ctx.lineTo(st.pts[j].x, st.pts[j].y);
+      ctx.strokeStyle = 'rgba(' + st.color + ',' + (a * 0.6) + ')';
+      ctx.lineWidth = H * 0.018 * a;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(' + st.color + ',' + (a * 0.1) + ')';
+      ctx.lineWidth = H * 0.05 * a;
+      ctx.stroke();
+    }
+  }
+
+  // ---- LEFT JOYSTICK ----
+  ctx.save();
+  ctx.translate(LJ.x, LJ.y);
+  ctx.beginPath();
+  ctx.arc(0, 0, JR, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,.01)';
+  ctx.fill();
+  ctx.strokeStyle = shieldOn ? 'rgba(80,200,120,.12)' : 'rgba(255,255,255,.07)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Carat
+  if (leftTouch !== null && Math.hypot(leftStick.x, leftStick.y) > JR * 0.12) {
+    var la = Math.atan2(leftStick.y, leftStick.x);
+    drawCarat(0, 0, la, JR * 0.88, shieldOn ? 'rgba(80,200,120,.3)' : 'rgba(255,255,255,.22)');
+  }
+  // Thumb
+  ctx.beginPath();
+  ctx.arc(leftStick.x, leftStick.y, JR * 0.2, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,.03)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.1)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+
+  // ---- SHIELD BUTTON ----
+  ctx.beginPath();
+  ctx.arc(SB.x, SB.y, SB.r, 0, Math.PI * 2);
+  ctx.fillStyle = shieldOn ? 'rgba(80,200,120,.14)' : 'rgba(80,200,120,.03)';
+  ctx.fill();
+  ctx.strokeStyle = shieldOn ? 'rgba(80,200,120,.5)' : 'rgba(80,200,120,.15)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Shield icon
+  var si = SB.r * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(SB.x, SB.y - si);
+  ctx.quadraticCurveTo(SB.x + si, SB.y - si * 0.5, SB.x + si, SB.y + si * 0.2);
+  ctx.quadraticCurveTo(SB.x + si * 0.5, SB.y + si * 0.9, SB.x, SB.y + si * 1.1);
+  ctx.quadraticCurveTo(SB.x - si * 0.5, SB.y + si * 0.9, SB.x - si, SB.y + si * 0.2);
+  ctx.quadraticCurveTo(SB.x - si, SB.y - si * 0.5, SB.x, SB.y - si);
+  ctx.closePath();
+  ctx.fillStyle = shieldOn ? 'rgba(80,200,120,.28)' : 'rgba(80,200,120,.06)';
+  ctx.fill();
+  ctx.strokeStyle = shieldOn ? 'rgba(80,200,120,.55)' : 'rgba(80,200,120,.2)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // ---- RIGHT JOYSTICK ----
+  ctx.save();
+  ctx.translate(RJ.x, RJ.y);
+  ctx.beginPath();
+  ctx.arc(0, 0, JR, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,.01)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,160,80,.13)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Flick zone rings
+  var sRC = Math.min(CFG.shortFlick * 0.9, JR * 0.85);
+  var lRC = Math.min(CFG.longFlick * 0.9, JR * 1.1);
+  ctx.beginPath();
+  ctx.arc(0, 0, sRC, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(100,180,255,.05)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.arc(0, 0, lRC, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,180,80,.05)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Aim lock arc on joystick
+  if (aimLockActive && aimLockTimer > 0) {
+    var pct = aimLockTimer / CFG.aimLockMs;
+    ctx.beginPath();
+    ctx.arc(0, 0, JR * 1.08, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct, false);
+    ctx.strokeStyle = 'rgba(255,160,80,' + (0.3 * pct) + ')';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // Mini LOS line inside joystick
+  if (aiming) {
+    var miniAlpha = aimLockActive ? Math.max(aimLockTimer / CFG.aimLockMs, 0.1) : 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(aimAngle) * JR * 0.92, Math.sin(aimAngle) * JR * 0.92);
+    ctx.strokeStyle = 'rgba(255,255,255,' + (miniAlpha * 0.25) + ')';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.lineDashOffset = -frameTime * 1500;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+  }
+
+  // Right carat
+  if (rightHeld && Math.hypot(rightStick.x, rightStick.y) > JR * 0.12) {
+    drawCarat(0, 0, aimAngle, JR * 0.88, 'rgba(255,160,80,.3)');
+  } else if (aimLockActive && aimLockTimer > 0) {
+    drawCarat(0, 0, aimAngle, JR * 0.88, 'rgba(255,160,80,' + (aimLockTimer / CFG.aimLockMs * 0.22) + ')');
+  }
+
+  // WPN center button
+  ctx.beginPath();
+  ctx.arc(0, 0, JR * 0.15, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(200,160,255,.03)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(200,160,255,.12)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.font = '500 ' + (JR * 0.1) + 'px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(200,160,255,.18)';
+  var nextWpn = CFG.weaponMode ? 'SWD' : (CFG.rangedType ? 'BOW' : 'STF');
+  ctx.fillText(nextWpn, 0, 1);
+
+  // Live flick trail preview
+  if (rightHeld && rightStick.trail.length > 1) {
+    var now = performance.now();
+    var recent = rightStick.trail.filter(function(p) { return now - p.t < CFG.trailWindow; });
+    if (recent.length >= 2) {
+      var f = recent[0], l = recent[recent.length - 1];
+      var d = Math.hypot(l.x - f.x, l.y - f.y);
+      var spd = d / Math.max(l.t - f.t, 1);
+      if (spd >= CFG.flickSpeed && d >= CFG.shortFlick) {
+        var isLong = d >= CFG.longFlick;
+        var col = isLong ? 'rgba(255,180,80,.3)' : 'rgba(100,180,255,.2)';
+        var lbl = isLong ? 'HV' : 'LT';
+        var ag = Math.atan2(l.y - f.y, l.x - f.x);
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        ctx.lineTo(l.x, l.y);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = JR * 0.08;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        ctx.font = '600 ' + (JR * 0.15) + 'px sans-serif';
+        ctx.fillStyle = isLong ? 'rgba(255,200,120,.55)' : 'rgba(160,210,255,.55)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(lbl, l.x + Math.cos(ag) * JR * 0.2, l.y + Math.sin(ag) * JR * 0.2);
+      }
+    }
+  }
+
+  // Right thumb
+  ctx.beginPath();
+  ctx.arc(rightStick.x, rightStick.y, JR * 0.2, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,160,80,.05)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,160,80,.22)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // ---- DEBUG ----
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.font = '12px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('R:' + (rightTouch !== null ? 'HELD' : 'up') + ' wpn:' + weaponName() + ' aim:' + (aiming ? 'Y' : 'N'), 10, H * 0.2);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
