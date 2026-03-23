@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Combat v9</title>
+<style>*{margin:0;padding:0;box-sizing:border-box;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}html,body{width:100%;height:100%;overflow:hidden;background:#0e0e1a}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="C"></canvas>
+<script>
+var cv = document.getElementById('C');
+var cx = cv.getContext('2d');
+var CW, CH;
+
+function rez() {
+  var d = window.devicePixelRatio || 1;
+  CW = Math.round(window.innerWidth * d);
+  CH = Math.round(window.innerHeight * d);
+  cv.width = CW; cv.height = CH;
+  cv.style.width = window.innerWidth + 'px';
+  cv.style.height = window.innerHeight + 'px';
+}
+rez();
+window.addEventListener('resize', rez);
+
+// CONFIG (tweakable)
+var FS = 120;  // short flick threshold
+var FL = 250;  // long flick threshold
+var FV = 1.2;  // min flick speed
+var AM = 2500; // aim lock ms
+var TW = 200;  // trail window ms
+var PS = 10;   // projectile speed
+var AI = 400;  // auto attack interval ms
+
+// STATE
+var pl = {x: 0, y: 0};
+var aimRad = 0;       // aim angle in RADIANS (single source of truth)
+var aimLocked = false;
+var aimLockT = 0;
+var wpnRanged = 1;    // 1=ranged, 0=sword
+var ranType = 0;       // 0=staff, 1=bow
+var shieldOn = false;
+var moveAng = 0;
+var moveX = 0, moveY = 0;
+var autoAtkT = 0;
+var animT = 0;
+var pj = [], en = [], fb = [], sw = [], hf = [];
+var settingsOpen = false;
+
+// Touch state
+var lt = {id: null, x: 0, y: 0, tr: []};
+var rt = {id: null, x: 0, y: 0, sx: 0, sy: 0, st: 0, tr: [], aimHistory: [], preFlickAim: 0};
+
+// Layout
+var JR, LX, LY, RX, RY, SBX, SBY, SBR;
+function layout() {
+  JR = CH * 0.26;
+  LX = CW * 0.12; LY = CH * 0.55;
+  RX = CW * 0.78; RY = CH * 0.55;
+  SBR = JR * 0.28;
+  SBX = LX + JR + SBR * 1.4;
+  SBY = LY + JR * 0.5;
+}
+
+function init() {
+  layout();
+  pl.x = CW * 0.32; pl.y = CH * 0.5;
+  en = [];
+  for (var i = 0; i < 6; i++) {
+    en.push({x: CW * (0.4 + Math.random() * 0.5), y: CH * (0.15 + Math.random() * 0.7),
+      vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
+      hp: 3, mhp: 3, r: CH * 0.025, fl: 0});
+  }
+}
+
+function wpnName() { return wpnRanged ? (ranType ? 'Bow' : 'Staff') : 'Sword'; }
+function afb(m, c) { fb.push({m: m, c: c, l: 60, y: 0}); }
+
+function classifyFlick(trail) {
+  var now = performance.now(), rc = [];
+  for (var i = 0; i < trail.length; i++) if (now - trail[i].t < TW) rc.push(trail[i]);
+  if (rc.length < 2) return 'none';
+  var f = rc[0], l = rc[rc.length - 1];
+  var dx = l.x - f.x, dy = l.y - f.y;
+  var dist = Math.sqrt(dx * dx + dy * dy);
+  var speed = dist / Math.max(l.t - f.t, 1);
+  if (speed < FV) return 'none';
+  if (dist >= FL) return 'heavy';
+  if (dist >= FS) return 'light';
+  return 'none';
+}
+
+// Projectiles travel along the active LOS
+function spawnProj(a, r, c, life, dmg, angOffset) {
+  pj.push({
+    ang: a,
+    angOffset: angOffset || 0,  // fixed offset from aimRad for spread shots
+    dist: CH * 0.05,
+    x: pl.x + Math.cos(a) * CH * 0.05,
+    y: pl.y + Math.sin(a) * CH * 0.05,
+    r: r, c: c, life: life, maxLife: life, dmg: dmg
+  });
+}
+function fireSkill(type) {
+  var a = aimRad;
+  var nm = wpnName();
+  if (type === 'light') {
+    afb(nm + ' light!', 'rgba(100,180,255,.95)');
+    spawnProj(a, CH * 0.02, '100,180,255', 160, 1, 0);
+  } else {
+    afb(nm + ' heavy!', 'rgba(255,180,80,.95)');
+    for (var j = -1; j <= 1; j++) spawnProj(a + j * 0.2, CH * 0.025, '255,180,80', 130, 1, j * 0.2);
+  }
+}
+
+function fireAutoAttack() {
+  var a = aimRad;
+  if (wpnRanged) {
+    var cl = ranType ? '100,220,180' : '160,100,255';
+    spawnProj(a, CH * 0.012, cl, 150, 1);
+  } else {
+    // sword melee
+    for (var i = 0; i < en.length; i++) {
+      var e = en[i];
+      if (e.hp <= 0) continue;
+      var d = Math.hypot(e.x - pl.x, e.y - pl.y);
+      if (d < CH * 0.15) {
+        var ea = Math.atan2(e.y - pl.y, e.x - pl.x);
+        var diff = Math.abs(ea - a);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff < 0.8) {
+          e.hp--; e.fl = 12;
+          hf.push({x: e.x, y: e.y, l: 15, k: e.hp <= 0});
+          if (e.hp <= 0) afb('Kill!', 'rgba(255,100,80,.9)');
+        }
+      }
+    }
+  }
+}
+
+function cycleWeapon() {
+  wpnRanged = wpnRanged ? 0 : 1;
+  afb(wpnName(), 'rgba(200,160,255,.9)');
+  aimLocked = true; aimLockT = AM;
+}
+
+function addSwipeTrail(trail, color) {
+  var pts = [];
+  for (var i = 0; i < trail.length; i++) pts.push({x: trail[i].x + RX, y: trail[i].y + RY});
+  sw.push({p: pts, c: color, l: 35, m: 35});
+}
+
+// TOUCH COORDS
+function tc(clientX, clientY) {
+  var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  return {x: (clientX - r.left) * d, y: (clientY - r.top) * d};
+}
+
+// SETTINGS button hit test (top right)
+var settBtnX, settBtnY, settBtnW, settBtnH;
+function settingsHit(px, py) {
+  settBtnX = CW * 0.85; settBtnY = CH * 0.01; settBtnW = CW * 0.14; settBtnH = CH * 0.08;
+  return px > settBtnX && px < settBtnX + settBtnW && py > settBtnY && py < settBtnY + settBtnH;
+}
+
+// Settings sliders state (drawn on canvas)
+var sliders = [
+  {label: 'Short flick', key: 'FS', min: 10, max: 400, val: function() { return FS; }, set: function(v) { FS = v; }},
+  {label: 'Long flick', key: 'FL', min: 40, max: 600, val: function() { return FL; }, set: function(v) { FL = v; }},
+  {label: 'Flick speed', key: 'FV', min: 5, max: 400, val: function() { return FV * 100; }, set: function(v) { FV = v / 100; }, fmt: function(v) { return (v / 100).toFixed(2); }},
+  {label: 'Aim lock ms', key: 'AM', min: 200, max: 6000, val: function() { return AM; }, set: function(v) { AM = v; }, fmt: function(v) { return (v / 1000).toFixed(1) + 's'; }},
+  {label: 'Trail window', key: 'TW', min: 20, max: 500, val: function() { return TW; }, set: function(v) { TW = v; }},
+  {label: 'Proj speed', key: 'PS', min: 1, max: 25, val: function() { return PS; }, set: function(v) { PS = v; }},
+  {label: 'Auto atk ms', key: 'AI', min: 50, max: 1500, val: function() { return AI; }, set: function(v) { AI = v; }}
+];
+var dragSlider = -1;
+
+function sliderLayout(idx) {
+  var x = CW * 0.58, w = CW * 0.35;
+  var y = CH * 0.1 + idx * CH * 0.065;
+  var h = CH * 0.04;
+  return {x: x, y: y, w: w, h: h, trackY: y + h * 0.5};
+}
+
+function sliderHitTest(px, py) {
+  if (!settingsOpen) return -1;
+  for (var i = 0; i < sliders.length; i++) {
+    var sl = sliderLayout(i);
+    if (px > sl.x - CW * 0.15 && px < sl.x + sl.w + 20 && py > sl.y - 10 && py < sl.y + sl.h + 10) return i;
+  }
+  return -1;
+}
+
+function updateSliderFromTouch(idx, px) {
+  var sl = sliderLayout(idx);
+  var pct = Math.max(0, Math.min(1, (px - sl.x) / sl.w));
+  var s = sliders[idx];
+  var val = Math.round(s.min + pct * (s.max - s.min));
+  s.set(val);
+}
+
+// INPUT HANDLING
+function handleDown(id, cx2, cy2) {
+  var p = tc(cx2, cy2);
+
+  // settings button (top right corner) - check FIRST
+  if (settingsHit(p.x, p.y)) { settingsOpen = !settingsOpen; return; }
+
+  // slider drag
+  if (settingsOpen) {
+    var si = sliderHitTest(p.x, p.y);
+    if (si >= 0) { dragSlider = si; updateSliderFromTouch(si, p.x); return; }
+  }
+
+  // shield button - check BEFORE left/right split
+  if (Math.hypot(p.x - SBX, p.y - SBY) < SBR * 1.5) {
+    shieldOn = !shieldOn;
+    afb(shieldOn ? 'Shield up' : 'Shield down', shieldOn ? 'rgba(80,200,120,.9)' : 'rgba(200,200,200,.6)');
+    return;
+  }
+
+  // left half
+  if (p.x < CW * 0.5 && lt.id === null) {
+    lt.id = id; lt.x = p.x - LX; lt.y = p.y - LY;
+    lt.tr = [{x: lt.x, y: lt.y, t: performance.now()}];
+  }
+  // right half
+  else if (p.x >= CW * 0.5 && rt.id === null) {
+    rt.id = id;
+    var dx = p.x - RX, dy = p.y - RY;
+    var cl = Math.min(Math.hypot(dx, dy), JR * 0.85);
+    var a = Math.atan2(dy, dx);
+    rt.x = Math.cos(a) * cl; rt.y = Math.sin(a) * cl;
+    rt.sx = rt.x; rt.sy = rt.y; rt.st = performance.now();
+    rt.tr = [{x: rt.x, y: rt.y, t: performance.now()}];
+    rt.aimHistory = [{a: a, t: performance.now()}];
+    rt.preFlickAim = a;
+    aimRad = a;
+    aimLocked = false; aimLockT = 0; autoAtkT = 0;
+  }
+}
+
+function handleMove(id, cx2, cy2) {
+  var p = tc(cx2, cy2);
+
+  if (dragSlider >= 0) { updateSliderFromTouch(dragSlider, p.x); return; }
+
+  if (lt.id !== null && lt.id === id) {
+    var dx = p.x - LX, dy = p.y - LY;
+    var d = Math.hypot(dx, dy), cl = Math.min(d, JR * 0.7);
+    var a = Math.atan2(dy, dx);
+    lt.x = Math.cos(a) * cl; lt.y = Math.sin(a) * cl;
+    moveX = Math.cos(a) * (cl / (JR * 0.7));
+    moveY = Math.sin(a) * (cl / (JR * 0.7));
+    moveAng = a;
+    lt.tr.push({x: dx, y: dy, t: performance.now()});
+    if (lt.tr.length > 80) lt.tr.shift();
+  }
+
+  if (rt.id !== null && rt.id === id) {
+    var dx = p.x - RX, dy = p.y - RY;
+    var d = Math.hypot(dx, dy);
+    var cl = Math.min(d, JR * 0.85);
+    var a = Math.atan2(dy, dx);
+    rt.x = Math.cos(a) * cl; rt.y = Math.sin(a) * cl;
+    aimRad = a;
+    var now = performance.now();
+    // Store every aim sample with timestamp
+    rt.aimHistory.push({a: a, t: now});
+    // Keep last 2 seconds of history
+    while (rt.aimHistory.length > 0 && now - rt.aimHistory[0].t > 2000) rt.aimHistory.shift();
+    // preFlickAim = where you were aiming TW ms ago (before flick started)
+    var target = now - TW - 50; // look back past the trail window
+    rt.preFlickAim = rt.aimHistory[0].a; // default to oldest
+    for (var i = rt.aimHistory.length - 1; i >= 0; i--) {
+      if (rt.aimHistory[i].t <= target) { rt.preFlickAim = rt.aimHistory[i].a; break; }
+    }
+    rt.tr.push({x: dx, y: dy, t: now});
+    if (rt.tr.length > 80) rt.tr.shift();
+  }
+}
+
+function handleUp(id, cx2, cy2) {
+  var p = tc(cx2, cy2);
+
+  if (dragSlider >= 0) { dragSlider = -1; return; }
+
+  if (lt.id !== null && lt.id === id) {
+    lt.tr.push({x: p.x - LX, y: p.y - LY, t: performance.now()});
+    if (classifyFlick(lt.tr) !== 'none') afb('Dodge!', 'rgba(180,140,255,.9)');
+    lt.id = null; lt.x = lt.y = moveX = moveY = 0;
+  }
+
+  if (rt.id !== null && rt.id === id) {
+    var dx = p.x - RX, dy = p.y - RY;
+    rt.tr.push({x: dx, y: dy, t: performance.now()});
+    var totalDist = Math.hypot(dx - rt.sx, dy - rt.sy);
+    var totalDur = performance.now() - rt.st;
+
+    if (totalDist < JR * 0.15 && totalDur < 350) {
+      cycleWeapon();
+    } else {
+      var flick = classifyFlick(rt.tr);
+      if (flick === 'light' || flick === 'heavy') {
+        // RESTORE aim to pre-flick angle so projectile fires along LOS not along swipe
+        aimRad = rt.preFlickAim;
+        if (flick === 'light') { fireSkill('light'); addSwipeTrail(rt.tr, '100,180,255'); }
+        else { fireSkill('heavy'); addSwipeTrail(rt.tr, '255,180,80'); }
+        // KEEP aim lock active so LOS persists after skill
+        aimLocked = true; aimLockT = AM;
+      }
+      else { aimLocked = true; aimLockT = AM; }
+    }
+    rt.id = null; rt.x = rt.y = 0;
+  }
+}
+
+// EVENT LISTENERS - touch only for mobile, mouse for desktop
+if ('ontouchstart' in window) {
+  cv.addEventListener('touchstart', function(e) { e.preventDefault(); for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; handleDown(t.identifier, t.clientX, t.clientY); }}, {passive: false});
+  cv.addEventListener('touchmove', function(e) { e.preventDefault(); for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; handleMove(t.identifier, t.clientX, t.clientY); }}, {passive: false});
+  cv.addEventListener('touchend', function(e) { e.preventDefault(); for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; handleUp(t.identifier, t.clientX, t.clientY); }}, {passive: false});
+  cv.addEventListener('touchcancel', function(e) { e.preventDefault(); for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; handleUp(t.identifier, t.clientX, t.clientY); }}, {passive: false});
+} else {
+  var md = false;
+  cv.onmousedown = function(e) { md = true; handleDown(1, e.clientX, e.clientY); };
+  cv.onmousemove = function(e) { if (md) handleMove(1, e.clientX, e.clientY); };
+  cv.onmouseup = function(e) { md = false; handleUp(1, e.clientX, e.clientY); };
+}
+document.addEventListener('touchmove', function(e) { e.preventDefault(); }, {passive: false});
+
+// DRAW HELPERS
+function drawCarat(a, b, ang, rad, col, sz) {
+  var tx = a + Math.cos(ang) * rad, ty = b + Math.sin(ang) * rad;
+  cx.beginPath();
+  cx.moveTo(tx + Math.cos(ang) * sz, ty + Math.sin(ang) * sz);
+  cx.lineTo(tx + Math.cos(ang + 2.5) * sz * 0.6, ty + Math.sin(ang + 2.5) * sz * 0.6);
+  cx.lineTo(tx + Math.cos(ang - 2.5) * sz * 0.6, ty + Math.sin(ang - 2.5) * sz * 0.6);
+  cx.closePath(); cx.fillStyle = col; cx.fill();
+}
+
+// MAIN LOOP
+init();
+
+function frame() {
+  requestAnimationFrame(frame);
+  layout();
+  animT += 0.005;
+  var fs = Math.max(CH * 0.03, 12);
+  var rActive = rt.id !== null;
+  var aiming = rActive || (aimLocked && aimLockT > 0);
+
+  // aim lock countdown
+  if (aimLockT > 0) aimLockT -= 16;
+  if (aimLockT <= 0 && aimLocked) {
+    aimLocked = false;
+    if (lt.id !== null) aimRad = moveAng;
+  }
+
+  // movement - shield allows 40% speed
+  var spd = shieldOn ? 0.4 : 1.0;
+  pl.x = Math.max(CW * 0.03, Math.min(CW * 0.97, pl.x + moveX * CW * 0.005 * spd));
+  pl.y = Math.max(CH * 0.06, Math.min(CH * 0.94, pl.y + moveY * CH * 0.008 * spd));
+
+  // auto attack - fires whenever right stick is held
+  if (rActive) {
+    autoAtkT += 16;
+    if (autoAtkT >= AI) { autoAtkT = 0; fireAutoAttack(); }
+  }
+
+  // DRAW
+  cx.clearRect(0, 0, CW, CH);
+  cx.fillStyle = '#12121f';
+  cx.fillRect(0, 0, CW, CH);
+
+  // enemies
+  for (var i = 0; i < en.length; i++) {
+    var e = en[i];
+    e.x += e.vx; e.y += e.vy;
+    if (e.x < CW * 0.04 || e.x > CW * 0.96) e.vx *= -1;
+    if (e.y < CH * 0.06 || e.y > CH * 0.94) e.vy *= -1;
+    if (e.fl > 0) e.fl--;
+    if (e.hp <= 0) { e.hp = e.mhp; e.x = CW * (0.35 + Math.random() * 0.5); e.y = CH * (0.15 + Math.random() * 0.7); e.vx = (Math.random() - 0.5) * 2; e.vy = (Math.random() - 0.5) * 2; }
+    var fg = e.fl > 0;
+    cx.beginPath(); cx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+    cx.fillStyle = fg ? 'rgba(255,200,100,.5)' : 'rgba(255,60,60,.25)'; cx.fill();
+    cx.strokeStyle = fg ? 'rgba(255,220,150,.7)' : 'rgba(255,80,80,.5)'; cx.lineWidth = 2; cx.stroke();
+    var hw = e.r * 2.5;
+    cx.fillStyle = 'rgba(255,255,255,.08)'; cx.fillRect(e.x - hw / 2, e.y - e.r - CH * 0.015, hw, CH * 0.008);
+    cx.fillStyle = 'rgba(255,80,80,.6)'; cx.fillRect(e.x - hw / 2, e.y - e.r - CH * 0.015, hw * (e.hp / e.mhp), CH * 0.008);
+  }
+
+  // LOS + aim indicator
+  if (aiming) {
+    var lockAlpha = aimLocked ? Math.max(aimLockT / AM, 0.1) : 1;
+    var al = lockAlpha * 0.5;
+
+    // ranged LOS
+    if (wpnRanged) {
+      cx.save();
+      cx.beginPath(); cx.moveTo(pl.x, pl.y);
+      cx.lineTo(pl.x + Math.cos(aimRad) * CW * 1.5, pl.y + Math.sin(aimRad) * CW * 1.5);
+      cx.strokeStyle = 'rgba(255,255,255,' + (al * 0.4) + ')';
+      cx.lineWidth = 2; cx.setLineDash([12, 12]); cx.lineDashOffset = -animT * 2500;
+      cx.stroke(); cx.setLineDash([]); cx.restore();
+    }
+
+    // aim arrow
+    cx.save();
+    cx.beginPath(); cx.moveTo(pl.x, pl.y);
+    cx.lineTo(pl.x + Math.cos(aimRad) * CH * 0.14, pl.y + Math.sin(aimRad) * CH * 0.14);
+    cx.strokeStyle = 'rgba(255,255,255,' + al + ')'; cx.lineWidth = 2.5;
+    cx.setLineDash([5, 5]); cx.stroke(); cx.setLineDash([]); cx.restore();
+    drawCarat(pl.x, pl.y, aimRad, CH * 0.16, 'rgba(255,255,255,' + al + ')', CH * 0.028);
+  }
+
+  // sword melee arc visual
+  if (!wpnRanged && rActive && autoAtkT < 100) {
+    var sr = CH * 0.1;
+    cx.beginPath(); cx.arc(pl.x + Math.cos(aimRad) * sr * 0.5, pl.y + Math.sin(aimRad) * sr * 0.5, sr, aimRad - 0.5, aimRad + 0.5);
+    cx.strokeStyle = 'rgba(255,200,150,.35)'; cx.lineWidth = CH * 0.02; cx.lineCap = 'round'; cx.stroke();
+  }
+
+  // shield arc
+  if (shieldOn) {
+    var sa = lt.id !== null ? moveAng : aimRad;
+    cx.beginPath(); cx.arc(pl.x, pl.y, CH * 0.07, sa - 0.7, sa + 0.7);
+    cx.strokeStyle = 'rgba(80,200,120,.5)'; cx.lineWidth = CH * 0.015; cx.lineCap = 'round'; cx.stroke();
+  }
+
+  // projectiles - travel along active LOS
+  for (var i = pj.length - 1; i >= 0; i--) {
+    var p = pj[i];
+    p.dist += PS * Math.max(CW / 800, CH / 450);
+    p.life--;
+    // update angle to current aim + this projectile's fixed offset
+    if (aiming) p.ang = aimRad + p.angOffset;
+    // position = player pos + angle * distance
+    p.x = pl.x + Math.cos(p.ang) * p.dist;
+    p.y = pl.y + Math.sin(p.ang) * p.dist;
+    if (p.life <= 0 || p.x < -50 || p.x > CW + 50 || p.y < -50 || p.y > CH + 50) { pj.splice(i, 1); continue; }
+    var hit = false;
+    for (var j = 0; j < en.length; j++) {
+      var e = en[j];
+      if (e.hp > 0 && Math.hypot(p.x - e.x, p.y - e.y) < e.r + p.r) {
+        e.hp -= p.dmg; e.fl = 12; hf.push({x: e.x, y: e.y, l: 20, k: e.hp <= 0});
+        if (e.hp <= 0) afb('Kill!', 'rgba(255,100,80,.9)');
+        pj.splice(i, 1); hit = true; break;
+      }
+    }
+    if (hit) continue;
+    var a2 = Math.min(1, p.life / 30);
+    cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    cx.fillStyle = 'rgba(' + p.c + ',' + a2 + ')'; cx.fill();
+    if (p.life > 30) { cx.strokeStyle = 'rgba(' + p.c + ',' + (a2 * 0.4) + ')'; cx.lineWidth = 1.5; cx.stroke(); }
+  }
+
+  // hit effects
+  for (var i = hf.length - 1; i >= 0; i--) {
+    var h = hf[i]; h.l--;
+    if (h.l <= 0) { hf.splice(i, 1); continue; }
+    var ha = h.l / 20;
+    cx.beginPath(); cx.arc(h.x, h.y, CH * 0.03 * (1 - ha + 0.4), 0, Math.PI * 2);
+    cx.strokeStyle = 'rgba(255,220,150,' + (ha * 0.5) + ')'; cx.lineWidth = 2; cx.stroke();
+  }
+
+  // player
+  cx.beginPath(); cx.arc(pl.x, pl.y, CH * 0.028, 0, Math.PI * 2);
+  cx.fillStyle = shieldOn ? 'rgba(80,200,160,.5)' : 'rgba(100,200,255,.5)'; cx.fill();
+  cx.strokeStyle = shieldOn ? 'rgba(80,200,160,.7)' : 'rgba(100,200,255,.7)'; cx.lineWidth = 2; cx.stroke();
+
+  // aim lock ring on player
+  if (aimLocked && aimLockT > 0) {
+    var pc = aimLockT / AM;
+    cx.beginPath(); cx.arc(pl.x, pl.y, CH * 0.05, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pc);
+    cx.strokeStyle = 'rgba(255,160,80,' + (0.5 * pc) + ')'; cx.lineWidth = 3; cx.lineCap = 'round'; cx.stroke();
+  }
+
+  // HUD
+  var hudW = CW * 0.18, hudX = (CW - hudW) / 2, hudY = CH * 0.035;
+  cx.fillStyle = 'rgba(255,255,255,.05)'; cx.fillRect(hudX, hudY, hudW, CH * 0.018);
+  cx.fillStyle = 'rgba(80,200,120,.55)'; cx.fillRect(hudX, hudY, hudW * 0.85, CH * 0.018);
+
+  var pipS = CH * 0.075;
+  for (var i = 0; i < 2; i++) {
+    var bx = CW * 0.02 + i * (pipS + CH * 0.01);
+    cx.fillStyle = i ? 'rgba(255,180,80,.1)' : 'rgba(100,180,255,.1)';
+    cx.strokeStyle = i ? 'rgba(255,180,80,.35)' : 'rgba(100,180,255,.35)';
+    cx.lineWidth = 1.5; cx.beginPath(); cx.roundRect(bx, hudY, pipS, pipS, CH * 0.012); cx.fill(); cx.stroke();
+    cx.fillStyle = 'rgba(255,255,255,.6)'; cx.font = '500 ' + fs + 'px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(i ? 'HV' : 'LT', bx + pipS / 2, hudY + pipS / 2);
+  }
+
+  var wc = wpnRanged ? (ranType ? 'rgba(160,230,210,.6)' : 'rgba(200,160,255,.6)') : 'rgba(255,150,120,.6)';
+  cx.fillStyle = wc; cx.textAlign = 'right'; cx.fillText(wpnName(), CW * 0.98, hudY + fs * 0.7);
+
+  // feedback
+  for (var i = fb.length - 1; i >= 0; i--) {
+    var f = fb[i]; f.l--; f.y += 0.8;
+    if (f.l <= 0) { fb.splice(i, 1); continue; }
+    cx.globalAlpha = Math.min(1, f.l / 20); cx.fillStyle = f.c;
+    cx.font = '600 ' + (fs * 1.2) + 'px sans-serif'; cx.textAlign = 'center';
+    cx.fillText(f.m, pl.x, pl.y - CH * 0.12 - f.y); cx.globalAlpha = 1;
+  }
+
+  // swipe trails
+  for (var i = sw.length - 1; i >= 0; i--) {
+    var s = sw[i]; s.l--;
+    if (s.l <= 0) { sw.splice(i, 1); continue; }
+    var sa2 = s.l / s.m;
+    if (s.p.length > 1) {
+      cx.beginPath(); cx.moveTo(s.p[0].x, s.p[0].y);
+      for (var j = 1; j < s.p.length; j++) cx.lineTo(s.p[j].x, s.p[j].y);
+      cx.strokeStyle = 'rgba(' + s.c + ',' + (sa2 * 0.6) + ')';
+      cx.lineWidth = CH * 0.018 * sa2; cx.lineCap = 'round'; cx.lineJoin = 'round'; cx.stroke();
+    }
+  }
+
+  // LEFT JOYSTICK
+  cx.save(); cx.translate(LX, LY);
+  cx.beginPath(); cx.arc(0, 0, JR, 0, Math.PI * 2);
+  cx.fillStyle = 'rgba(255,255,255,.01)'; cx.fill();
+  cx.strokeStyle = shieldOn ? 'rgba(80,200,120,.12)' : 'rgba(255,255,255,.07)'; cx.lineWidth = 2; cx.stroke();
+  if (lt.id !== null && Math.hypot(lt.x, lt.y) > JR * 0.12) drawCarat(0, 0, Math.atan2(lt.y, lt.x), JR * 0.88, shieldOn ? 'rgba(80,200,120,.3)' : 'rgba(255,255,255,.22)', JR * 0.14);
+  cx.beginPath(); cx.arc(lt.x, lt.y, JR * 0.2, 0, Math.PI * 2);
+  cx.fillStyle = 'rgba(255,255,255,.03)'; cx.fill(); cx.strokeStyle = 'rgba(255,255,255,.1)'; cx.lineWidth = 2; cx.stroke();
+  cx.restore();
+
+  // SHIELD BUTTON
+  cx.beginPath(); cx.arc(SBX, SBY, SBR, 0, Math.PI * 2);
+  cx.fillStyle = shieldOn ? 'rgba(80,200,120,.14)' : 'rgba(80,200,120,.03)'; cx.fill();
+  cx.strokeStyle = shieldOn ? 'rgba(80,200,120,.5)' : 'rgba(80,200,120,.15)'; cx.lineWidth = 2; cx.stroke();
+  var si = SBR * 0.5;
+  cx.beginPath(); cx.moveTo(SBX, SBY - si);
+  cx.quadraticCurveTo(SBX + si, SBY - si * 0.5, SBX + si, SBY + si * 0.2);
+  cx.quadraticCurveTo(SBX + si * 0.5, SBY + si * 0.9, SBX, SBY + si * 1.1);
+  cx.quadraticCurveTo(SBX - si * 0.5, SBY + si * 0.9, SBX - si, SBY + si * 0.2);
+  cx.quadraticCurveTo(SBX - si, SBY - si * 0.5, SBX, SBY - si);
+  cx.closePath();
+  cx.fillStyle = shieldOn ? 'rgba(80,200,120,.28)' : 'rgba(80,200,120,.07)'; cx.fill();
+
+  // RIGHT JOYSTICK
+  cx.save(); cx.translate(RX, RY);
+  cx.beginPath(); cx.arc(0, 0, JR, 0, Math.PI * 2);
+  cx.fillStyle = 'rgba(255,255,255,.01)'; cx.fill();
+  cx.strokeStyle = 'rgba(255,160,80,.13)'; cx.lineWidth = 2; cx.stroke();
+
+  // flick rings
+  cx.beginPath(); cx.arc(0, 0, Math.min(FS * 0.5, JR * 0.85), 0, Math.PI * 2);
+  cx.strokeStyle = 'rgba(100,180,255,.05)'; cx.lineWidth = 1; cx.setLineDash([3, 5]); cx.stroke(); cx.setLineDash([]);
+  cx.beginPath(); cx.arc(0, 0, Math.min(FL * 0.5, JR * 1.1), 0, Math.PI * 2);
+  cx.strokeStyle = 'rgba(255,180,80,.05)'; cx.lineWidth = 1; cx.setLineDash([3, 5]); cx.stroke(); cx.setLineDash([]);
+
+  // aim lock arc
+  if (aimLocked && aimLockT > 0) {
+    var pc2 = aimLockT / AM;
+    cx.beginPath(); cx.arc(0, 0, JR * 1.08, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pc2);
+    cx.strokeStyle = 'rgba(255,160,80,' + (0.3 * pc2) + ')'; cx.lineWidth = 4; cx.lineCap = 'round'; cx.stroke();
+  }
+
+  // mini LOS inside joystick
+  if (aiming) {
+    var ml = aimLocked ? Math.max(aimLockT / AM, 0.15) : 0.5;
+    cx.save();
+    cx.beginPath(); cx.moveTo(0, 0);
+    cx.lineTo(Math.cos(aimRad) * JR * 0.92, Math.sin(aimRad) * JR * 0.92);
+    cx.strokeStyle = 'rgba(255,255,255,' + (ml * 0.28) + ')';
+    cx.lineWidth = 1.5; cx.setLineDash([4, 4]); cx.lineDashOffset = -animT * 1500;
+    cx.stroke(); cx.setLineDash([]); cx.restore();
+  }
+
+  // carat
+  if (rActive && Math.hypot(rt.x, rt.y) > JR * 0.12) drawCarat(0, 0, aimRad, JR * 0.88, 'rgba(255,160,80,.3)', JR * 0.14);
+  else if (aimLocked && aimLockT > 0) drawCarat(0, 0, aimRad, JR * 0.88, 'rgba(255,160,80,' + (aimLockT / AM * 0.22) + ')', JR * 0.14);
+
+  // WPN center
+  cx.beginPath(); cx.arc(0, 0, JR * 0.15, 0, Math.PI * 2);
+  cx.fillStyle = 'rgba(200,160,255,.03)'; cx.fill();
+  cx.strokeStyle = 'rgba(200,160,255,.12)'; cx.lineWidth = 1.5; cx.stroke();
+  cx.font = '500 ' + (JR * 0.1) + 'px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillStyle = 'rgba(200,160,255,.18)';
+  cx.fillText(wpnRanged ? 'SWD' : (ranType ? 'BOW' : 'STF'), 0, 1);
+
+  // live flick preview
+  if (rActive && rt.tr.length > 1) {
+    var now = performance.now(), rc2 = rt.tr.filter(function(p) { return now - p.t < TW; });
+    if (rc2.length >= 2) {
+      var f2 = rc2[0], l2 = rc2[rc2.length - 1];
+      var d2 = Math.hypot(l2.x - f2.x, l2.y - f2.y);
+      var sp = d2 / Math.max(l2.t - f2.t, 1);
+      if (sp >= FV && d2 >= FS) {
+        var isL = d2 >= FL;
+        var col = isL ? 'rgba(255,180,80,.3)' : 'rgba(100,180,255,.2)';
+        var lbl = isL ? 'HV' : 'LT';
+        var ag = Math.atan2(l2.y - f2.y, l2.x - f2.x);
+        cx.beginPath(); cx.moveTo(f2.x, f2.y); cx.lineTo(l2.x, l2.y);
+        cx.strokeStyle = col; cx.lineWidth = JR * 0.08; cx.lineCap = 'round'; cx.stroke();
+        cx.font = '600 ' + (JR * 0.15) + 'px sans-serif';
+        cx.fillStyle = isL ? 'rgba(255,200,120,.55)' : 'rgba(160,210,255,.55)';
+        cx.textAlign = 'center'; cx.textBaseline = 'middle';
+        cx.fillText(lbl, l2.x + Math.cos(ag) * JR * 0.2, l2.y + Math.sin(ag) * JR * 0.2);
+      }
+    }
+  }
+
+  // thumb
+  cx.beginPath(); cx.arc(rt.x, rt.y, JR * 0.2, 0, Math.PI * 2);
+  cx.fillStyle = 'rgba(255,160,80,.06)'; cx.fill();
+  cx.strokeStyle = 'rgba(255,160,80,.24)'; cx.lineWidth = 2.5; cx.stroke();
+  cx.restore();
+
+  // SETTINGS BUTTON
+  cx.fillStyle = settingsOpen ? 'rgba(255,255,255,.15)' : 'rgba(255,255,255,.06)';
+  cx.fillRect(CW * 0.85, CH * 0.01, CW * 0.14, CH * 0.08);
+  cx.strokeStyle = 'rgba(255,255,255,.2)'; cx.lineWidth = 1;
+  cx.strokeRect(CW * 0.85, CH * 0.01, CW * 0.14, CH * 0.08);
+  cx.fillStyle = 'rgba(255,255,255,.55)'; cx.font = '500 ' + (fs * 0.85) + 'px sans-serif';
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText('Settings', CW * 0.92, CH * 0.05);
+
+  // SETTINGS PANEL
+  if (settingsOpen) {
+    cx.fillStyle = 'rgba(0,0,0,.7)';
+    cx.fillRect(CW * 0.42, CH * 0.06, CW * 0.54, sliders.length * CH * 0.065 + CH * 0.04);
+    cx.strokeStyle = 'rgba(255,255,255,.1)'; cx.lineWidth = 1;
+    cx.strokeRect(CW * 0.42, CH * 0.06, CW * 0.54, sliders.length * CH * 0.065 + CH * 0.04);
+
+    for (var i = 0; i < sliders.length; i++) {
+      var s = sliders[i];
+      var sl2 = sliderLayout(i);
+      var pct = (s.val() - s.min) / (s.max - s.min);
+      var thumbX = sl2.x + pct * sl2.w;
+
+      // label
+      cx.fillStyle = 'rgba(255,255,255,.35)'; cx.font = '500 ' + (fs * 0.7) + 'px sans-serif';
+      cx.textAlign = 'right'; cx.textBaseline = 'middle';
+      cx.fillText(s.label, sl2.x - 12, sl2.trackY);
+
+      // track
+      cx.fillStyle = 'rgba(255,255,255,.08)';
+      cx.fillRect(sl2.x, sl2.trackY - 2, sl2.w, 4);
+      cx.fillStyle = 'rgba(255,200,100,.2)';
+      cx.fillRect(sl2.x, sl2.trackY - 2, pct * sl2.w, 4);
+
+      // thumb
+      cx.beginPath(); cx.arc(thumbX, sl2.trackY, CH * 0.015, 0, Math.PI * 2);
+      cx.fillStyle = 'rgba(255,200,100,.6)'; cx.fill();
+
+      // value
+      var valStr = s.fmt ? s.fmt(s.val()) : '' + Math.round(s.val());
+      cx.fillStyle = 'rgba(255,200,100,.5)'; cx.font = '500 ' + (fs * 0.65) + 'px sans-serif';
+      cx.textAlign = 'left';
+      cx.fillText(valStr, sl2.x + sl2.w + 10, sl2.trackY);
+    }
+  }
+
+  // DEBUG
+  cx.fillStyle = 'rgba(255,255,255,.5)'; cx.font = '12px monospace'; cx.textAlign = 'left';
+  cx.fillText('RT:' + (rt.id !== null) + ' aim:' + aimRad.toFixed(2) + ' preFlick:' + (rt.preFlickAim||0).toFixed(2) + ' wpn:' + wpnName(), 10, CH * 0.17);
+}
+
+frame();
+</script>
+</body>
+</html>
