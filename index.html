@@ -10395,6 +10395,33 @@ var BroTown = function BroTown(_ref0) {
                   _processGameEvent(_evt.type, payload, S);
                 }
               }
+              // Server monster position/HP updates
+              if (msg.monsters && S._serverMonsters && S.monsters) {
+                var myZone = S.currentZone || 'town';
+                var zoneData = msg.monsters[myZone];
+                if (zoneData) {
+                  for (var mi = 0; mi < zoneData.length; mi++) {
+                    var md = zoneData[mi];
+                    var localM = S.monsters.find(function(m) { return m.id === md.id; });
+                    if (localM) {
+                      localM.x = md.x;
+                      localM.y = md.y;
+                      localM.hp = md.hp;
+                      localM.curHp = md.hp;
+                      if (md.alive && !localM.alive) {
+                        /* Monster respawned */
+                        localM.alive = true;
+                        localM.renderX = md.x;
+                        localM.renderY = md.y;
+                      }
+                      if (!md.alive && localM.alive) {
+                        /* Monster died (from another player's kill) */
+                        localM.alive = false;
+                      }
+                    }
+                  }
+                }
+              }
               break;
             }
           case 'state_sync':
@@ -10427,6 +10454,34 @@ var BroTown = function BroTown(_ref0) {
               }
               S.others = others;
               setPlayerCount(msg.playerCount || Object.keys(others).length + 1);
+              /* Load server monsters if provided */
+              if (msg.monsters && msg.monsters.length > 0) {
+                S._serverMonsters = true;
+                S.monsters = msg.monsters.map(function(m) {
+                  return _objectSpread(_objectSpread({}, m), {}, {
+                    curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
+                    alive: m.alive, type: m.arch, statuses: {}, _hitThisSwing: false,
+                    _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
+                    _stuckArrows: [],
+                  });
+                });
+              }
+              break;
+            }
+          case 'zone_monsters':
+            {
+              /* Server sent full monster list for a zone */
+              if (msg.monsters) {
+                S._serverMonsters = true;
+                S.monsters = msg.monsters.map(function(m) {
+                  return _objectSpread(_objectSpread({}, m), {}, {
+                    curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
+                    alive: m.alive, type: m.arch, statuses: {}, _hitThisSwing: false,
+                    _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
+                    _stuckArrows: [],
+                  });
+                });
+              }
               break;
             }
           case 'player_join':
@@ -10543,6 +10598,125 @@ var BroTown = function BroTown(_ref0) {
               setTimeout(function () {
                 return BT_AUDIO.beep(1000, 0.04, 0.06, 'sine');
               }, 60);
+              break;
+            }
+          case 'player_swing':
+            {
+              if (payload.id && S.others[payload.id]) {
+                S.others[payload.id]._swingTs = Date.now();
+              }
+              break;
+            }
+          case 'monster_hit':
+            {
+              /* Another player hit a monster — show damage number */
+              if (payload.attackerId === S.myId) break; /* we already show our own */
+              if (S.monsters) {
+                var hitM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
+                if (hitM) {
+                  hitM.hp = Math.round(payload.hpPct * hitM.maxHp);
+                  hitM.curHp = hitM.hp;
+                  S.dmgNumbers.push({
+                    x: hitM.x || hitM.renderX, y: (hitM.y || hitM.renderY) - 20,
+                    text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888',
+                    ts: Date.now()
+                  });
+                }
+              }
+              break;
+            }
+          case 'monster_kill':
+            {
+              /* A monster was killed — show death effects, award XP/gold if we're a recipient */
+              if (S.monsters) {
+                var deadM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
+                if (deadM) {
+                  deadM.alive = false;
+                  deadM.curHp = 0;
+                  deadM.hp = 0;
+                  /* Death particles */
+                  for (var dp = 0; dp < 8; dp++) {
+                    S.hitParticles.push({
+                      x: deadM.x || deadM.renderX, y: deadM.y || deadM.renderY,
+                      vx: (Math.random() - 0.5) * 4, vy: -1 - Math.random() * 3,
+                      life: 1.0, color: deadM.color || '#ff5e6c', size: 3
+                    });
+                  }
+                }
+              }
+              /* Award XP and gold if we are a recipient */
+              if (payload.recipients && payload.recipients.includes(S.myId)) {
+                var R = S.rpg;
+                if (R) {
+                  var killXp = payload.xp || 0;
+                  var killGold = payload.gold || 0;
+                  R.xp = (R.xp || 0) + killXp;
+                  R.coins = (R.coins || 0) + killGold;
+                  if (R._compStats) {
+                    R._compStats.monstersKilled = (R._compStats.monstersKilled || 0) + 1;
+                    R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + killGold;
+                  }
+                  S.dmgNumbers.push({
+                    x: S.player.x, y: S.player.y - 30,
+                    text: '+' + killXp + 'XP +' + killGold + 'G',
+                    color: '#f5c542', ts: Date.now()
+                  });
+                  /* Check level up */
+                  while (R.xp >= xpRequired(R.level)) {
+                    R.xp -= xpRequired(R.level);
+                    R.level++;
+                    R.unspentT1 = (R.unspentT1 || 0) + 5;
+                    R.unspentT2 = (R.unspentT2 || 0) + 5;
+                    R.unspentPts = R.unspentT1 + R.unspentT2;
+                    recalcDerived(R);
+                    R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
+                    setLevelUpMsg({ level: R.level, ts: Date.now() });
+                    BT_AUDIO.levelUp();
+                  }
+                  setRpgState(_objectSpread({}, R));
+                  try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch(e) {}
+                }
+              }
+              break;
+            }
+          case 'monster_attack':
+            {
+              /* Server monster attacked us */
+              if (payload.targetId !== S.myId) break;
+              var R2 = S.rpg;
+              if (!R2 || R2.hp <= 0) break;
+              var mDmg = payload.dmg || 5;
+              /* Apply player defense */
+              var pDef2 = (R2.endurance || 0) * 0.5 + ((R2.armor ? R2.armor.tierMult : 1) || 1) * 3;
+              var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);
+              /* Check blocking */
+              if (S._shieldUp) {
+                var blockRed = calcBlockReduction ? calcBlockReduction(R2.fortification || 0, R2.shield) : 0.25;
+                dmgTaken2 *= (1 - blockRed);
+                R2.stamina = Math.max(0, (R2.stamina || 0) - 15);
+              }
+              /* Check dodge */
+              if (S._dodgeRoll) break; /* in i-frames */
+              R2.hp = Math.max(0, R2.hp - Math.ceil(dmgTaken2));
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 20,
+                text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c', ts: Date.now()
+              });
+              for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
+                x: S.player.x, y: S.player.y,
+                vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
+                life: 0.6, color: '#ff5e6c', size: 2
+              });
+              S.screenShake = 3;
+              BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
+              if (R2.hp <= 0) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: 'YOU DIED', color: '#ff5e6c', ts: Date.now()
+                });
+                BT_AUDIO.deathBoom();
+              }
+              setRpgState(_objectSpread({}, R2));
               break;
             }
           /* mkt_order removed — marketplace uses server API now */
@@ -11120,6 +11294,11 @@ var BroTown = function BroTown(_ref0) {
     var channelShim = {
       send: function send(msg) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        /* Direct message types — sent immediately to server, not as broadcast events */
+        if (msg.type === 'monster_damage') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'broadcast' && msg.event) {
           if (msg.event === 'move') {
             // Movement: overwrite pending (only latest position matters)
@@ -11214,7 +11393,7 @@ var BroTown = function BroTown(_ref0) {
       BT_AUDIO.startZoneAmbient(S.currentZone);
       /* Spawn monsters for current zone */
       var zone = ZONES[S.currentZone];
-      S.monsters = spawnMonstersForZone(zone);
+      if(!S._serverMonsters) S.monsters = spawnMonstersForZone(zone);
       /* Spawn gathering nodes */
       S.gatherNodes = spawnGatherNodes(S.currentZone, 'shallow');
       /* Initialize life skills if missing */
@@ -12051,7 +12230,7 @@ var BroTown = function BroTown(_ref0) {
               var newZone = ZONES[bestExit.zoneId];
               /* Monsters + nodes at shallow depth */
               var depthCfg = DEPTH_CONFIG[entryDepth];
-              S.monsters = spawnMonstersForZone(newZone, (depthCfg === null || depthCfg === void 0 ? void 0 : depthCfg.levelMod) || 0);
+              if(!S._serverMonsters) S.monsters = spawnMonstersForZone(newZone, (depthCfg === null || depthCfg === void 0 ? void 0 : depthCfg.levelMod) || 0);
               S.gatherNodes = spawnGatherNodes(bestExit.zoneId, entryDepth);
               var nW = newZone.w * TILE,
                 nH = newZone.h * TILE;
@@ -12108,7 +12287,7 @@ var BroTown = function BroTown(_ref0) {
             updateZoneDimensions('town');
             BT_AUDIO.startZoneAmbient('town');
             S.map = generateZoneMap('town');
-            S.monsters = spawnMonstersForZone(ZONES.town);
+            if(!S._serverMonsters) S.monsters = spawnMonstersForZone(ZONES.town);
             P.x = 20 * TILE;
             P.y = 20 * TILE;
             S.dmgNumbers.push({
@@ -12157,7 +12336,7 @@ var BroTown = function BroTown(_ref0) {
               var dc = DEPTH_CONFIG[nextDepth];
               var zn = ZONES[S.currentZone];
               S.map = generateZoneMap(S.currentZone);
-              S.monsters = spawnMonstersForZone(zn, (dc === null || dc === void 0 ? void 0 : dc.levelMod) || 0);
+              if(!S._serverMonsters) S.monsters = spawnMonstersForZone(zn, (dc === null || dc === void 0 ? void 0 : dc.levelMod) || 0);
               S.gatherNodes = spawnGatherNodes(S.currentZone, nextDepth);
               P.x = zn.w / 2 * TILE;
               P.y = (zn.h - 3) * TILE;
@@ -12292,7 +12471,7 @@ var BroTown = function BroTown(_ref0) {
             TOWN_H = _zn.h * TILE;
             COLS = _zn.w;
             ROWS = _zn.h;
-            S.monsters = spawnMonstersForZone(_zn, (_dc2 === null || _dc2 === void 0 ? void 0 : _dc2.levelMod) || 0);
+            if(!S._serverMonsters) S.monsters = spawnMonstersForZone(_zn, (_dc2 === null || _dc2 === void 0 ? void 0 : _dc2.levelMod) || 0);
             S.gatherNodes = spawnGatherNodes(S.currentZone, depth);
             S.groundLoot = [];
             S.hitParticles = [];
@@ -13426,6 +13605,8 @@ var BroTown = function BroTown(_ref0) {
           var invuln = Date.now() < S.respawnTimer;
           S.monsters.forEach(function (m) {
             if (!m.alive) {
+              /* Server handles respawns when _serverMonsters active */
+              if (S._serverMonsters) return;
               if (Date.now() > m.respawnAt) {
                 m.alive = true;
                 m.curHp = m.hp;
@@ -13467,6 +13648,11 @@ var BroTown = function BroTown(_ref0) {
             }
             /* Check if DoT killed */
             if (m.curHp <= 0 && m.alive) {
+              /* When server monsters: server handles kill, XP, gold via monster_kill event */
+              if (S._serverMonsters) {
+                m.alive = false;
+                return;
+              }
               m.alive = false;
               m.respawnAt = Date.now() + 30000;
               m.statuses = {};
@@ -13514,6 +13700,21 @@ var BroTown = function BroTown(_ref0) {
             if (m._stunUntil && Date.now() < m._stunUntil) return;
 
             /* Status-based movement modifiers */
+            /* When server monsters are active, skip ALL local AI — server handles movement, aggro, attacks, respawns */
+            if (S._serverMonsters) {
+              /* Only run render interpolation — smooth monster position toward server position */
+              if (m.renderX === undefined) { m.renderX = m.x; m.renderY = m.y; }
+              var mInterpDx = m.x - m.renderX;
+              var mInterpDy = m.y - m.renderY;
+              var mInterpDist = Math.sqrt(mInterpDx * mInterpDx + mInterpDy * mInterpDy);
+              if (mInterpDist > 80) { m.renderX = m.x; m.renderY = m.y; }
+              else if (mInterpDist > 0.5) {
+                var mStep = Math.min(mInterpDist, 3.0);
+                m.renderX += (mInterpDx / mInterpDist) * mStep;
+                m.renderY += (mInterpDy / mInterpDist) * mStep;
+              }
+              return; /* skip all local AI below */
+            }
             var moveMult = 1.0;
             if (m.statuses.freeze) moveMult = 0; /* frozen = can't move */
             if (m.statuses.root) moveMult = 0; /* rooted = can't move */
@@ -14168,7 +14369,7 @@ var BroTown = function BroTown(_ref0) {
                     updateZoneDimensions('town');
                     BT_AUDIO.startZoneAmbient('town');
                     S.map = generateZoneMap('town');
-                    S.monsters = spawnMonstersForZone(ZONES.town);
+                    if(!S._serverMonsters) S.monsters = spawnMonstersForZone(ZONES.town);
                     P.x = 20 * TILE;
                     P.y = 20 * TILE;
                     S.respawnTimer = Date.now() + respawnMs;
@@ -14309,6 +14510,8 @@ var BroTown = function BroTown(_ref0) {
                 S.swingTimer = Date.now();
                 S.isSwinging = true;
                 S._specialAttack = false;
+                /* Broadcast swing to other players */
+                if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: Date.now() } });
               }
             }
           }
@@ -14426,6 +14629,15 @@ var BroTown = function BroTown(_ref0) {
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
                 m.curHp -= dmg;
+
+                /* Report damage to server for authoritative resolution */
+                if (S._serverMonsters && S.channel) {
+                  var totalDmg = dmg;
+                  if (collisionResult) totalDmg += collisionResult.damage;
+                  S.channel.send({ type: 'monster_damage', payload: {
+                    monsterId: m.id, zone: S.currentZone, dmg: totalDmg, isCrit: isCrit, element: activeWpn.element1
+                  }});
+                }
 
                 /* Collision damage + feedback */
                 if (collisionResult) {
@@ -15641,11 +15853,19 @@ var BroTown = function BroTown(_ref0) {
 
         /* Broadcast position — slim payload for speed */
         var now = performance.now();
-        if (now - S.lastBroadcast > 80 && (dx || dy)) {
+        var isMoving = dx || dy || S._dodgeRoll;
+        if (now - S.lastBroadcast > 80 && isMoving) {
           S.lastBroadcast = now;
           if (S.channel) {
             if (S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 80)) {
               S._lastMoveBroadcast = Date.now();
+              /* Calculate effective velocity — use dodge direction during roll */
+              var bcastVx = P.vx;
+              var bcastVy = P.vy;
+              if (S._dodgeRoll) {
+                bcastVx = Math.cos(S._dodgeRoll.angle) * 6;
+                bcastVy = Math.sin(S._dodgeRoll.angle) * 6;
+              }
               S.channel.send({
                 type: 'broadcast',
                 event: 'move',
@@ -15655,8 +15875,8 @@ var BroTown = function BroTown(_ref0) {
                   y: Math.round(P.y),
                   d: P.dir,
                   z: S.currentZone || 'town',
-                  vx: Math.round(P.vx * 100),
-                  vy: Math.round(P.vy * 100)
+                  vx: Math.round(bcastVx * 100),
+                  vy: Math.round(bcastVy * 100)
                 }
               });
             }
@@ -16982,31 +17202,43 @@ var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Draw other players — dead reckoning + smooth lerp + zone filter */
+        /* Draw other players — dead reckoning + linear interpolation + zone filter */
         var _now = Date.now();
         Object.values(S.others).forEach(function (o) {
           /* Only render players in the same zone */
           var oZone = o.zone || 'town';
           if (oZone !== S.currentZone) return;
           /* §16.9 Dead reckoning — predict position from last server update */
+          var targetX = o.x;
+          var targetY = o.y;
           if (o._vx !== undefined && o._lastUpdate) {
             var msSinceUpdate = _now - o._lastUpdate;
             if (msSinceUpdate < 200) {
               /* Predict where they SHOULD be now based on last known velocity */
-              var predictX = o._serverX + o._vx * (msSinceUpdate / 16.67);
-              var predictY = o._serverY + o._vy * (msSinceUpdate / 16.67);
-              /* Smooth lerp toward predicted position — 0.15 gives ~120ms smoothing */
-              o.renderX += (predictX - o.renderX) * 0.15;
-              o.renderY += (predictY - o.renderY) * 0.15;
-            } else {
-              /* Stale update — lerp toward last known position, no prediction */
-              o.renderX += (o.x - o.renderX) * 0.1;
-              o.renderY += (o.y - o.renderY) * 0.1;
+              targetX = o._serverX + o._vx * (msSinceUpdate / 16.67);
+              targetY = o._serverY + o._vy * (msSinceUpdate / 16.67);
             }
-          } else {
-            /* No velocity data — direct lerp */
-            o.renderX += (o.x - o.renderX) * 0.15;
-            o.renderY += (o.y - o.renderY) * 0.15;
+          }
+          /* Linear interpolation — move toward target at constant speed */
+          var interpDx = targetX - o.renderX;
+          var interpDy = targetY - o.renderY;
+          var interpDist = Math.sqrt(interpDx * interpDx + interpDy * interpDy);
+          if (interpDist > 0.1) {
+            /* Max interpolation speed — slightly faster than player move speed for catch-up */
+            var maxStep = 4.5;
+            if (interpDist <= maxStep) {
+              /* Close enough — snap to target */
+              o.renderX = targetX;
+              o.renderY = targetY;
+            } else if (interpDist > 80) {
+              /* Teleport — too far to interpolate (zone change, respawn) */
+              o.renderX = targetX;
+              o.renderY = targetY;
+            } else {
+              /* Move at constant speed toward target */
+              o.renderX += (interpDx / interpDist) * maxStep;
+              o.renderY += (interpDy / interpDist) * maxStep;
+            }
           }
           var oMoving = Math.abs(o.renderX - (o._prevRX || o.renderX)) > 0.05 || Math.abs(o.renderY - (o._prevRY || o.renderY)) > 0.05;
           o._prevRX = o.renderX;
@@ -17364,6 +17596,35 @@ var BroTown = function BroTown(_ref0) {
             }).join('');
             ctx.fillText(oBadgeStr, ox, oy - 30);
           }
+          /* Other player swing visual */
+          if (o._swingTs && _now - o._swingTs < 350) {
+            var swAge2 = (_now - o._swingTs) / 350;
+            var swAlpha = 1 - swAge2;
+            /* Determine facing angle for swing direction */
+            var swFaceA = oDir === 'right' ? 0 : oDir === 'up' ? -Math.PI / 2 : oDir === 'left' ? Math.PI : Math.PI / 2;
+            var swArc = 1.2;
+            var swRadius = 32;
+            var swStartA = swFaceA - swArc / 2 + swAge2 * swArc;
+            /* Weapon element color */
+            var swColor = o.wpnE1 && ELEMENTS[o.wpnE1] ? ELEMENTS[o.wpnE1].color : '#ccc';
+            /* Swing arc line */
+            ctx.save();
+            ctx.globalAlpha = swAlpha * 0.7;
+            ctx.strokeStyle = swColor;
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = swColor;
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(ox, oy + oAnimBob + 8);
+            ctx.lineTo(ox + Math.cos(swStartA) * swRadius, oy + oAnimBob + 8 + Math.sin(swStartA) * swRadius);
+            ctx.stroke();
+            /* Arc trail */
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(ox, oy + oAnimBob + 8, swRadius * 0.8, swFaceA - swArc / 2, swFaceA - swArc / 2 + swAge2 * swArc);
+            ctx.stroke();
+            ctx.restore();
+          }
         });
 
         /* ═══ ARROW PROJECTILES ═══ */
@@ -17429,6 +17690,15 @@ var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 m.curHp -= a.dmg;
+
+                /* Report arrow damage to server */
+                if (S._serverMonsters && S.channel) {
+                  var arrowTotalDmg = a.dmg;
+                  if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
+                  S.channel.send({ type: 'monster_damage', payload: {
+                    monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null
+                  }});
+                }
 
                 /* Collision damage + feedback on arrow hit */
                 if (arrowCollision) {
@@ -18446,8 +18716,8 @@ var BroTown = function BroTown(_ref0) {
           S.monsters.forEach(function (m) {
             var _ZONES$S$currentZone9, _ZONES$S$currentZone0, _m$statuses2;
             if (!m.alive) return;
-            var mx = m.x - cx,
-              my = m.y - cy;
+            var mx = (m.renderX !== undefined ? m.renderX : m.x) - cx,
+              my = (m.renderY !== undefined ? m.renderY : m.y) - cy;
             if (mx < -40 || mx > W + 40 || my < -40 || my > H + 40) return;
             var arch = m.archetype || 'fodder';
 
@@ -18955,8 +19225,8 @@ var BroTown = function BroTown(_ref0) {
               m._telegraphUntil = null;
               return;
             }
-            var mx = m.x - cx,
-              my = m.y - cy;
+            var mx = (m.renderX !== undefined ? m.renderX : m.x) - cx,
+              my = (m.renderY !== undefined ? m.renderY : m.y) - cy;
             if (mx < -60 || mx > W + 60 || my < -60 || my > H + 60) return;
             var progress = 1 - remaining / 400; /* 0→1 as telegraph completes */
             var ang = m._telegraphAngle || 0;
