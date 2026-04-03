@@ -14,6 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js" crossorigin></script>
 <!-- Babel removed — pre-transpiled -->
 <!-- Supabase removed — using Cloudflare Durable Objects for multiplayer -->
 
@@ -232,7 +233,7 @@ input{font-family:inherit}
       <div style="width:8px;height:8px;border-radius:50%;background:#5b52ff;animation:bt-pulse 1s ease-in-out .4s infinite;"></div>
     </div>
     <div style="font-size:11px;color:#8890b8;margin-top:16px;">Loading game...</div>
-    <div style="font-size:9px;color:#555;margin-top:8px;">v0.7.7</div>
+    <div style="font-size:9px;color:#555;margin-top:8px;">v0.8.0</div>
   </div>
   <style>@keyframes bt-pulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}</style>
 </div>
@@ -10784,6 +10785,7 @@ var BroTown = function BroTown(_ref0) {
                   R2.stamina = R2.maxStamina;
                   R2.mana = R2.maxMana;
                   S.currentZone = 'town';
+                    S._pixiNeedsRedraw = true;
                   updateZoneDimensions('town');
                   BT_AUDIO.startZoneAmbient('town');
                   S.map = generateZoneMap('town');
@@ -11465,6 +11467,82 @@ var BroTown = function BroTown(_ref0) {
       this.closePath();
     };
     var S = stateRef.current;
+
+    /* ═══ PIXI.JS SETUP — WebGL-accelerated tile renderer ═══ */
+    var pixiApp = null;
+    var pixiTileContainer = null;
+    var pixiTileGraphics = null;
+    var pixiCurrentZone = null;
+    if (typeof PIXI !== 'undefined') {
+      pixiApp = new PIXI.Application({
+        width: canvas.width,
+        height: canvas.height,
+        backgroundAlpha: 1,
+        antialias: false,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+      });
+      pixiApp.view.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:0;';
+      canvas.style.zIndex = '1';
+      canvas.style.position = 'absolute';
+      canvas.parentElement.style.position = 'relative';
+      canvas.parentElement.insertBefore(pixiApp.view, canvas);
+      pixiTileContainer = new PIXI.Container();
+      pixiApp.stage.addChild(pixiTileContainer);
+      S._pixiApp = pixiApp;
+      S._pixiTileContainer = pixiTileContainer;
+      S._pixiCurrentZone = null;
+      S._pixiNeedsRedraw = true;
+    }
+
+    /* Helper: draw all tiles for a zone into a PIXI Graphics object */
+    function pixiDrawZoneTiles(zoneId, map, cols, rows) {
+      if (!pixiApp) return;
+      if (pixiTileGraphics) {
+        pixiTileContainer.removeChild(pixiTileGraphics);
+        pixiTileGraphics.destroy();
+      }
+      pixiTileGraphics = new PIXI.Graphics();
+      var zoneElem = (ZONES[zoneId] || {}).element || null;
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          var tile = (map[r] || [])[c];
+          if (tile === undefined) continue;
+          var color = getTileColor(tile, zoneId);
+          /* Convert CSS color to hex number */
+          var hexColor = parseInt(color.replace('#', ''), 16);
+          if (isNaN(hexColor)) hexColor = 0x2d5a1e;
+          pixiTileGraphics.beginFill(hexColor);
+          pixiTileGraphics.drawRect(c * TILE, r * TILE, TILE + 1, TILE + 1);
+          pixiTileGraphics.endFill();
+
+          /* Grass texture variation */
+          if (tile === 0 || tile === 5) {
+            var shade = (c * 17 + r * 31) % 5;
+            pixiTileGraphics.beginFill(0x000000, 0.02 + shade * 0.01);
+            if (shade < 2) pixiTileGraphics.drawRect(c * TILE + 4 + shade * 3, r * TILE + 2 + shade * 5, 6, 5);
+            if (shade > 2) pixiTileGraphics.drawRect(c * TILE + 12 + shade * 2, r * TILE + 14 + shade * 3, 5, 4);
+            pixiTileGraphics.endFill();
+          }
+          /* Path tiles */
+          if (tile === 1) {
+            pixiTileGraphics.beginFill(0x000000, 0.05);
+            pixiTileGraphics.drawRect(c * TILE, r * TILE, TILE + 1, TILE + 1);
+            pixiTileGraphics.endFill();
+          }
+          /* Water tiles */
+          if (tile === 3) {
+            pixiTileGraphics.beginFill(0x3498db, 0.3);
+            pixiTileGraphics.drawRect(c * TILE, r * TILE, TILE + 1, TILE + 1);
+            pixiTileGraphics.endFill();
+          }
+        }
+      }
+      pixiTileContainer.addChild(pixiTileGraphics);
+      S._pixiCurrentZone = zoneId;
+      S._pixiNeedsRedraw = false;
+    }
+
     if (!S.map) {
       updateZoneDimensions(S.currentZone);
       S.map = generateZoneMap(S.currentZone);
@@ -12002,6 +12080,10 @@ var BroTown = function BroTown(_ref0) {
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
       ctx.setTransform(dpr * 0.8, 0, 0, dpr * 0.8, 0, 0);
+      /* Resize PixiJS renderer to match */
+      if (pixiApp) {
+        pixiApp.renderer.resize(w, h);
+      }
     };
     resize();
     window.addEventListener('resize', resize);
@@ -12282,6 +12364,7 @@ var BroTown = function BroTown(_ref0) {
             /* Zone exits — open to all players (quest gate removed) */
             {
               S.currentZone = bestExit.zoneId;
+                    S._pixiNeedsRedraw = true;
               updateZoneDimensions(bestExit.zoneId);
               BT_AUDIO.startZoneAmbient(bestExit.zoneId);
               discoverZone(bestExit.zoneId); /* §ENC — Encyclopedia zone discovery */
@@ -12363,6 +12446,7 @@ var BroTown = function BroTown(_ref0) {
           /* Check if player is at the south edge near the entrance gap */
           if (czPty >= czZone.h - 1 && Math.abs(czPtx - czMX) <= 2) {
             S.currentZone = 'town';
+                    S._pixiNeedsRedraw = true;
             updateZoneDimensions('town');
             BT_AUDIO.startZoneAmbient('town');
             S.map = generateZoneMap('town');
@@ -14450,6 +14534,7 @@ var BroTown = function BroTown(_ref0) {
                     _R6.stamina = _R6.maxStamina;
                     _R6.mana = _R6.maxMana;
                     S.currentZone = 'town';
+                    S._pixiNeedsRedraw = true;
                     updateZoneDimensions('town');
                     BT_AUDIO.startZoneAmbient('town');
                     S.map = generateZoneMap('town');
@@ -16069,7 +16154,34 @@ var BroTown = function BroTown(_ref0) {
         var cx = S.camera.x,
           cy = S.camera.y;
 
-        /* Tiles */
+        /* ═══ PIXI.JS TILE RENDERING — GPU-accelerated ═══ */
+        var _usePixiTiles = !!S._pixiApp;
+        if (_usePixiTiles) {
+          var _pa = S._pixiApp;
+          var _ptc = S._pixiTileContainer;
+          /* Resize PixiJS if needed */
+          var _dpr = window.devicePixelRatio || 1;
+          var _pw = canvas.parentElement ? canvas.parentElement.clientWidth : window.innerWidth;
+          var _ph = canvas.parentElement ? canvas.parentElement.clientHeight : window.innerHeight;
+          if (_pa.renderer.width !== _pw || _pa.renderer.height !== _ph) {
+            _pa.renderer.resize(_pw, _ph);
+          }
+          /* Redraw tiles on zone change */
+          if (S._pixiCurrentZone !== S.currentZone || S._pixiNeedsRedraw) {
+            var map = S.map;
+            if (map) pixiDrawZoneTiles(S.currentZone, map, COLS, ROWS);
+          }
+          /* Move tile container to match camera (with scale) */
+          var _scale = 0.8; /* matches ctx.setTransform scale */
+          _ptc.x = -cx * _scale;
+          _ptc.y = -cy * _scale;
+          _ptc.scale.set(_scale);
+          /* Apply screen shake to pixi */
+          _pa.stage.x = shakeX * _scale;
+          _pa.stage.y = shakeY * _scale;
+        }
+
+        /* Tiles — skip Canvas tile rendering if PixiJS is handling it */
         var startCol = Math.max(0, Math.floor(cx / TILE));
         var endCol = Math.min(COLS - 1, Math.floor((cx + W) / TILE));
         var startRow = Math.max(0, Math.floor(cy / TILE));
@@ -16081,6 +16193,7 @@ var BroTown = function BroTown(_ref0) {
         var isDusk = hours >= 18 && hours <= 20 || hours >= 5 && hours < 7;
         var nightAlpha = isNight ? 0.35 : isDusk ? 0.15 : 0;
         var zoneElem = ((_ZONES$S$currentZone8 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone8 === void 0 ? void 0 : _ZONES$S$currentZone8.element) || null;
+        if (!_usePixiTiles) {
         var _loop2 = function _loop2(r) {
           var _loop3 = function _loop3(cl) {
             var _map$r;
@@ -17025,6 +17138,7 @@ var BroTown = function BroTown(_ref0) {
         for (var r = startRow; r <= endRow; r++) {
           _loop2(r);
         }
+        } /* end !_usePixiTiles */
 
         /* Ambient particles — fireflies at night, leaves during day */
         if (!S._particles) S._particles = Array.from({
@@ -22232,6 +22346,12 @@ var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
+      /* Cleanup PixiJS */
+      if (pixiApp) {
+        try { pixiApp.destroy(true); } catch(e) {}
+        S._pixiApp = null;
+        S._pixiTileContainer = null;
+      }
     };
   }, [showNameModal, showLogin]);
 
@@ -35149,6 +35269,7 @@ var BroTown = function BroTown(_ref0) {
       var S = stateRef.current;
       /* Travel to wasteland */
       S.currentZone = 'wasteland';
+                    S._pixiNeedsRedraw = true;
       updateZoneDimensions('wasteland');
       S.map = generateZoneMap('wasteland');
       S.monsters = [];
@@ -36705,6 +36826,7 @@ var BroTown = function BroTown(_ref0) {
       R.coins -= 100;
       var S = stateRef.current;
       S.currentZone = 'wasteland';
+                    S._pixiNeedsRedraw = true;
       updateZoneDimensions('wasteland');
       S.map = generateZoneMap('wasteland');
       S.monsters = [];
@@ -42711,7 +42833,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(
   btn.style.cssText='position:fixed;top:8px;left:8px;z-index:999999;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font:bold 11px sans-serif;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.2);user-select:none';
   document.body.appendChild(btn);
   var verLabel=document.createElement('div');
-  verLabel.textContent='v0.7.7';
+  verLabel.textContent='v0.8.0';
   verLabel.style.cssText='position:fixed;top:14px;left:50px;z-index:999999;color:rgba(255,255,255,.25);font:9px sans-serif;pointer-events:none;user-select:none';
   document.body.appendChild(verLabel);
 
