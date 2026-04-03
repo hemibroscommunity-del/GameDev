@@ -1,0 +1,100 @@
+import { TILE, PLAYER_COLORS } from '@/data/constants.js';
+
+/**
+ * Creates the initial mutable game state object.
+ * This is stored in stateRef.current and mutated directly by the game loop.
+ * React state is synced periodically via setRpgState, setChatLog, etc.
+ */
+export function createInitialState() {
+  return {
+    player: { x: 20 * TILE, y: 20 * TILE, vx: 0, vy: 0, dir: 'down' },
+    others: {},
+    camera: { x: 0, y: 0 },
+    keys: {},
+    stickX: 0,
+    stickY: 0,
+    map: null,
+    currentZone: 'town',
+    chatLog: [],
+    chatBubbles: {},
+    myId: Math.random().toString(36).slice(2, 10),
+    myName: '',
+    myColor: PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)],
+    myAvatar: null,
+    myBroData: null,
+    channel: null,
+    lastBroadcast: 0,
+    emote: null,
+    nearBuilding: null,
+    bodyTorso: '#2563eb',
+    bodyLegs: '#1e3a5f',
+    bodySize: 'slim',
+    autoAttack: false,
+    weapon: 'sword',
+    arrows: [],
+    _dodgeRoll: null,
+    _aimAngle: null,
+    _aimActive: false,
+    trail: [],
+    collectibles: null,
+    collectedIds: new Set(),
+    score: 0,
+    npcs: null,
+    rpg: null,
+    monsters: null,
+    destroyedTrees: new Set(),
+    fishTimer: 0,
+    swingTimer: 0,
+    lockedTarget: null,
+    swingAngle: 0,
+    isSwinging: false,
+    dmgNumbers: [],
+    groundLoot: [],
+    hitParticles: [],
+    groundSplatter: [],
+    screenShake: 0,
+    deathExplosions: [],
+    _deathDrops: [],
+    _snowballs: [],
+    _snowmen: [],
+    _sled: null,
+    _torch: null,
+    _raft: false,
+    lastDamageTaken: 0,
+    respawnTimer: 0,
+    shieldActive: 0,
+    shieldEnd: 0,
+    stats: null,
+    badges: [],
+  };
+}
+
+/**
+ * Creates default persistent stats (tracked across sessions in localStorage).
+ */
+export function createDefaultStats() {
+  return {
+    steps: 0, msgsSent: 0, emotesUsed: 0,
+    buildingsVisited: 0, totalCollected: 0, dailyCollected: 0,
+    daysVisited: 1, timesInspected: 0,
+    lastDay: new Date().toDateString(),
+    badges: [],
+    visitedBuildings: new Set(),
+    kills: 0, deaths: 0, pvpKills: 0, pvpDeaths: 0,
+    lawlessKills: 0, lawlessDeaths: 0,
+    duelsWon: 0, duelsLost: 0,
+    bossKills: 0, grandSlams: 0,
+    totalDmgDealt: 0, totalDmgTaken: 0, totalHealed: 0,
+    collisionsTriggered: 0, critsLanded: 0,
+    fishCaught: 0, oresMined: 0, treesChopped: 0, cropsHarvested: 0,
+    itemsCrafted: 0, itemsSalvaged: 0,
+    cookingSuccesses: 0, cookingBurns: 0,
+    reforgeAttempts: 0, hardenSuccesses: 0, hardenFailures: 0,
+    goldEarnedTotal: 0, goldLostTotal: 0,
+    goldGambled: 0, goldWonGambling: 0,
+    petsCaptured: 0, questsCompleted: 0,
+    highestMonsterKill: 0, deepestZone: 'shallow',
+    rareFounds: 0, achievementPoints: 0,
+    playTimeSeconds: 0, _sessionStart: Date.now(),
+  };
+}

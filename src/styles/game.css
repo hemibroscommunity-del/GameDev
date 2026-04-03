@@ -1,0 +1,192 @@
+/* ═══════════════════════════════════════════
+   GAME — Base
+═══════════════════════════════════════════ */
+:root {
+  --ink:      #0b0c14;
+  --ink2:     #12141f;
+  --ink3:     #1a1d2e;
+  --ink4:     #222639;
+  --line:     #2d3251;
+  --line2:    #3d4470;
+  --pop:      #5b52ff;
+  --pop-soft: rgba(91,82,255,.14);
+  --pop-glow: rgba(91,82,255,.35);
+  --teal:     #00d4b8;
+  --txt:      #e8eaf8;
+  --txt2:     #8890b8;
+  --txt3:     #4d5580;
+  --red:      #ff5e6c;
+  --gold:     #f5c542;
+  --green:    #3ddc97;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0d0b18;touch-action:none;position:fixed;width:100%;top:0;left:0}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--txt);font-size:14px;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+img{display:block}
+button{cursor:pointer;font-family:inherit}
+input{font-family:inherit}
+
+/* Back to site link */
+.back-to-site {
+  position: fixed; top: 8px; right: 8px; z-index: 100;
+  padding: 6px 14px; border-radius: 8px;
+  background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.6); font-size: 11px; font-weight: 600;
+  text-decoration: none; backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.back-to-site:active { background: rgba(91,82,255,.4); }
+
+/* ═══════════════════════════════════════════
+   GAME — BroTown styles
+═══════════════════════════════════════════ */
+.brotown-wrap:fullscreen,.brotown-wrap:-webkit-full-screen{width:100vw!important;height:100vh!important}
+.brotown-wrap{position:relative;width:100%;height:100%;overflow:hidden;background:#0d0b18;-webkit-touch-callout:none;display:flex;flex-direction:column}
+.brotown-canvas{display:block;image-rendering:pixelated;-webkit-touch-callout:none;touch-action:none}
+.brotown-hud{position:absolute;top:46px;right:12px;pointer-events:none;z-index:10;display:flex;align-items:flex-start}
+.brotown-hud>*{pointer-events:auto}
+.bt-player-count{display:flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(0,0,0,.65);border-radius:8px;font-size:11px;font-weight:700;color:#3dd497;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.bt-player-dot{width:6px;height:6px;border-radius:50%;background:#3dd497;animation:pulse-dot 2s ease-in-out infinite}
+.bt-chat-bar{flex-shrink:0;display:flex;gap:6px;padding:6px 10px;
+  background:#0d0b18;border-bottom:1px solid rgba(255,255,255,.12);
+  align-items:center;z-index:25;
+  padding-top:max(6px,env(safe-area-inset-top));
+  touch-action:auto;-webkit-touch-callout:default;-webkit-user-select:text;user-select:text}
+.bt-emote-bar{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);z-index:20;
+  display:flex;gap:6px;padding:5px 10px;background:rgba(0,0,0,.55);border-radius:12px;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  -webkit-touch-callout:none;touch-action:manipulation;border:1px solid rgba(255,255,255,.1)}
+.bt-emote-btn{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.08);border:none;
+  font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.bt-emote-btn:active{background:rgba(91,82,255,.4);transform:scale(.9)}
+.bt-interact-prompt{position:absolute;left:50%;bottom:140px;transform:translateX(-50%);z-index:18;
+  padding:8px 18px;background:rgba(0,0,0,.7);border:1.5px solid var(--pop);border-radius:10px;
+  color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  animation:promptPulse 1.5s ease-in-out infinite;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+@keyframes promptPulse{0%,100%{opacity:.9;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.04)}}
+.bt-players-btn{position:absolute;top:8px;left:52px;z-index:20;height:30px;padding:0 10px;
+  border-radius:8px;background:rgba(0,0,0,.45);border:1.5px solid rgba(255,255,255,.15);
+  display:flex;align-items:center;gap:5px;cursor:pointer;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:rgba(255,255,255,.8);
+  font-size:10px;font-weight:700;-webkit-tap-highlight-color:transparent}
+.bt-players-btn:active{background:rgba(91,82,255,.4)}
+.bt-chatlog{position:absolute;bottom:70px;right:16px;z-index:25;width:220px;max-height:200px;
+  background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.12);border-radius:10px;
+  overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:flex;flex-direction:column}
+.bt-chatlog-msg{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.05);font-size:10px;line-height:1.3}
+.bt-chatlog-msg:last-child{border-bottom:none}
+.bt-chatlog-name{font-weight:700;margin-right:4px}
+.bt-chatlog-text{color:rgba(255,255,255,.7)}
+.bt-chatlog-sys{color:rgba(255,255,255,.35);font-style:italic;font-size:9px;padding:3px 8px}
+.bt-chatlog-btn{width:36px;height:36px;border-radius:50%;border:none;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  background:rgba(0,0,0,.4);border:1.5px solid rgba(255,255,255,.15);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;position:relative}
+.bt-chatlog-btn:active{background:rgba(91,82,255,.4)}
+.bt-chatlog-badge{position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;
+  background:#ff5e6c;border:1px solid rgba(0,0,0,.3)}
+.bt-plist{position:absolute;top:46px;left:8px;z-index:25;width:200px;max-height:260px;
+  background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.15);border-radius:10px;
+  overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.bt-plist-item{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;
+  border-bottom:1px solid rgba(255,255,255,.06);transition:background .1s}
+.bt-plist-item:active{background:rgba(91,82,255,.25)}
+.bt-plist-item:last-child{border-bottom:none}
+.bt-plist-av{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,.2);flex-shrink:0}
+.bt-plist-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;flex-shrink:0}
+.bt-plist-name{font-size:11px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-plist-sub{font-size:8px;color:rgba(255,255,255,.4)}
+.bt-inspect{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.6);-webkit-tap-highlight-color:transparent}
+.bt-inspect-card{background:#1a1428;border:1px solid rgba(255,255,255,.15);border-radius:14px;
+  width:240px;padding:20px;text-align:center;position:relative}
+.bt-inspect-close{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;
+  background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.6);font-size:14px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.bt-inspect-close:active{background:rgba(255,94,108,.4)}
+.bt-inspect-av{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 8px;
+  display:block;border:2.5px solid var(--pop)}
+.bt-inspect-name{font-size:16px;font-weight:800;color:#fff;margin-bottom:2px}
+.bt-inspect-stat{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.bt-inspect-pill{padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7)}
+.bt-inspect-tp{margin-top:12px;padding:8px 20px;background:var(--pop);color:#fff;border:none;
+  border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;width:100%}
+.bt-inspect-tp:active{opacity:.8}
+.bt-exit-fab{position:absolute;top:8px;left:8px;z-index:20;width:36px;height:36px;
+  border-radius:50%;background:rgba(0,0,0,.45);border:1.5px solid rgba(255,255,255,.15);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:rgba(255,255,255,.8);
+  -webkit-tap-highlight-color:transparent}
+.bt-exit-fab:active{background:rgba(255,94,108,.5)}
+.bt-fab-group{position:absolute;bottom:16px;right:16px;z-index:20;display:flex;flex-direction:column;gap:10px}
+.bt-combat-bar{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:20;
+  display:flex;gap:8px;padding:6px 10px;background:rgba(0,0,0,.5);border-radius:14px;
+  border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.bt-combat-btn{width:44px;height:44px;border-radius:10px;border:none;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative}
+.bt-combat-btn:active{transform:scale(.92)}
+.bt-chat-fab{width:48px;height:48px;border-radius:50%;border:none;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.bt-chat-fab.send{background:rgba(61,212,151,.7);border:1.5px solid rgba(61,212,151,.4)}
+.bt-chat-fab.send:active{background:rgba(61,212,151,1)}
+.bt-chat-fab.close{background:rgba(255,94,108,.5);border:1.5px solid rgba(255,94,108,.3)}
+.bt-chat-fab.close:active{background:rgba(255,94,108,.8)}
+@media(min-width:769px){.bt-fab-group{display:none}}
+.bt-chat-input{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  border-radius:8px;padding:8px 12px;color:#fff;font-size:16px;outline:none;font-family:inherit;
+  -webkit-touch-callout:default;-webkit-user-select:text;user-select:text;touch-action:auto}
+.bt-chat-input::placeholder{color:rgba(255,255,255,.3)}
+.bt-chat-input:focus{border-color:var(--pop)}
+.bt-joystick-zone{z-index:30;display:block;
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
+
+.bt-joystick-base{width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);
+  border:2px solid rgba(255,255,255,.15);position:relative;touch-action:none}
+.bt-joystick-knob{width:48px;height:48px;border-radius:50%;background:rgba(91,82,255,.55);
+  border:2px solid rgba(255,255,255,.3);position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);pointer-events:none}
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.bt-name-box{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:320px;width:100%;text-align:center;margin:auto 0}
+.bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
+.bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
+.bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}
+.bt-avatar-opt img{width:100%;height:100%;object-fit:cover}
+
+/* ═══ DESKTOP CONTROLS — hide touch UI on desktop ═══ */
+@media (pointer:fine) {
+  .bt-joystick-zone { display:none !important; }
+  .bt-desktop-hide { display:none !important; }
+}
+.bt-kb-hints{position:fixed;bottom:140px;left:12px;z-index:20;display:flex;gap:4px;flex-wrap:wrap;max-width:280px;
+  pointer-events:none;opacity:.4;transition:opacity .3s}
+.bt-kb-hints:hover{opacity:1;pointer-events:auto}
+.bt-kb-key{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(0,0,0,.6);
+  border:1px solid rgba(255,255,255,.15);border-radius:4px;font-size:9px;font-weight:700;color:rgba(255,255,255,.7);
+  font-family:'Space Mono',monospace;white-space:nowrap;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.bt-kb-key kbd{display:inline-block;padding:1px 4px;background:rgba(255,255,255,.12);border-radius:2px;
+  font-size:8px;font-weight:800;color:#fff;min-width:14px;text-align:center}
+.bt-crosshair-cursor{cursor:crosshair !important}
+
+/* ═══ DESKTOP STAT HUD — replaces joystick donuts on pointer:fine ═══ */
+.bt-desktop-stats{display:none}
+@media (pointer:fine) {
+  .bt-desktop-stats{display:flex !important;flex-direction:column;gap:4px;position:fixed;bottom:42px;left:12px;z-index:21;
+    pointer-events:none;min-width:140px}
+  .bt-ds-row{display:flex;align-items:center;gap:5px;height:14px}
+  .bt-ds-icon{width:14px;text-align:center;font-size:10px;flex-shrink:0}
+  .bt-ds-track{flex:1;height:6px;border-radius:3px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.08);overflow:hidden;position:relative}
+  .bt-ds-fill{height:100%;border-radius:3px;transition:width .15s ease}
+  .bt-ds-val{font-size:8px;font-weight:800;color:rgba(255,255,255,.7);min-width:28px;text-align:right;font-family:'Space Mono',monospace}
+}

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=overlays-content"/>
+<title>Hemi Bros ARPG v2.1</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0d0b18"/>
+<meta name="screen-orientation" content="landscape"/>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="root">
+  <div id="bt-loading" style="position:fixed;inset:0;z-index:99999;background:#0b0c14;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'VT323',monospace;">
+    <div style="font-size:48px;margin-bottom:8px;">⚔️</div>
+    <div style="font-size:28px;font-weight:800;color:#e8eaf8;letter-spacing:.06em;">HEMI BROS</div>
+    <div style="font-size:14px;color:#5b52ff;font-weight:700;margin-bottom:24px;">Action RPG</div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <div style="width:8px;height:8px;border-radius:50%;background:#5b52ff;animation:bt-pulse 1s ease-in-out infinite;"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:#5b52ff;animation:bt-pulse 1s ease-in-out .2s infinite;"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:#5b52ff;animation:bt-pulse 1s ease-in-out .4s infinite;"></div>
+    </div>
+    <div style="font-size:11px;color:#8890b8;margin-top:16px;">Loading game...</div>
+    <div style="font-size:9px;color:#555;margin-top:8px;">v2.1.0</div>
+  </div>
+  <style>@keyframes bt-pulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}</style>
+</div>
+<script type="module" src="./main.jsx"></script>
+</body>
+</html>
