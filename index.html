@@ -10383,6 +10383,10 @@ var BroTown = function BroTown(_ref0) {
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
                     S.others[pid]._lastUpdate = Date.now();
+                    /* Snapshot interpolation — buffer positions with timestamps */
+                    if (!S.others[pid]._posBuffer) S.others[pid]._posBuffer = [];
+                    S.others[pid]._posBuffer.push({ x: data.x, y: data.y, t: performance.now() });
+                    if (S.others[pid]._posBuffer.length > 10) S.others[pid]._posBuffer.shift();
                   }
                 }
               }
@@ -17282,25 +17286,55 @@ var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Draw other players — smooth exponential lerp + zone filter */
+        /* Draw other players — snapshot interpolation (time buffering) + zone filter */
         var _now = Date.now();
+        var BUFFER_DELAY = 100; /* 100ms = ~3 server ticks of jitter absorption */
+        var renderTime = performance.now() - BUFFER_DELAY;
         Object.values(S.others).forEach(function (o) {
           /* Only render players in the same zone */
           var oZone = o.zone || 'town';
           if (oZone !== S.currentZone) return;
-          /* Smooth interpolation — lerp toward server position each frame */
-          var dx2 = o.x - o.renderX;
-          var dy2 = o.y - o.renderY;
-          var dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-          if (dist2 > 100) {
-            /* Teleport — zone change, respawn, or massive desync */
+
+          /* Snapshot interpolation — interpolate between two buffered server positions */
+          if (o._posBuffer && o._posBuffer.length > 0) {
+            var p0 = null;
+            var p1 = null;
+            for (var bi = o._posBuffer.length - 1; bi >= 0; bi--) {
+              if (o._posBuffer[bi].t <= renderTime) {
+                p0 = o._posBuffer[bi];
+                if (bi + 1 < o._posBuffer.length) {
+                  p1 = o._posBuffer[bi + 1];
+                }
+                break;
+              }
+            }
+            if (p0 && p1) {
+              var timeDiff = p1.t - p0.t;
+              var tRatio = timeDiff > 0 ? (renderTime - p0.t) / timeDiff : 1;
+              var sdx = p1.x - p0.x;
+              var sdy = p1.y - p0.y;
+              var sDist = Math.sqrt(sdx * sdx + sdy * sdy);
+              if (sDist > 100) {
+                o.renderX = p0.x;
+                o.renderY = p0.y;
+                o._posBuffer = [];
+              } else {
+                o.renderX = p0.x + sdx * tRatio;
+                o.renderY = p0.y + sdy * tRatio;
+              }
+            } else if (p0 && !p1) {
+              o.renderX = p0.x;
+              o.renderY = p0.y;
+            } else if (!p0 && o._posBuffer.length > 0) {
+              o.renderX = o._posBuffer[0].x;
+              o.renderY = o._posBuffer[0].y;
+            }
+          } else {
+            /* No buffer yet — snap to server position */
             o.renderX = o.x;
             o.renderY = o.y;
-          } else if (dist2 > 0.3) {
-            /* Smooth lerp — 0.2 gives ~5 frame smoothing at 60fps */
-            o.renderX += dx2 * 0.2;
-            o.renderY += dy2 * 0.2;
           }
+
           var oMoving = Math.abs(o.renderX - (o._prevRX || o.renderX)) > 0.05 || Math.abs(o.renderY - (o._prevRY || o.renderY)) > 0.05;
           o._prevRX = o.renderX;
           o._prevRY = o.renderY;
