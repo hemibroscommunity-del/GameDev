@@ -10383,12 +10383,21 @@ var BroTown = function BroTown(_ref0) {
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
                     S.others[pid]._lastUpdate = Date.now();
-                    /* Snapshot interpolation — buffer positions + velocity with timestamps */
+                    /* Snapshot interpolation — buffer positions + velocity with de-jittered timestamps */
                     if (!S.others[pid]._posBuffer) S.others[pid]._posBuffer = [];
+                    var _bufNow = performance.now();
+                    var _packetTime = _bufNow;
+                    /* De-jitter: force perfect 33ms rhythm to eliminate speed wobbles */
+                    if (S.others[pid]._posBuffer.length > 0) {
+                      var _lastT = S.others[pid]._posBuffer[S.others[pid]._posBuffer.length - 1].t;
+                      if (_bufNow - _lastT < 100) {
+                        _packetTime = _lastT + 33;
+                      }
+                    }
                     S.others[pid]._posBuffer.push({
                       x: data.x, y: data.y,
                       vx: (data.vx || 0) / 100, vy: (data.vy || 0) / 100,
-                      t: performance.now()
+                      t: _packetTime
                     });
                     if (S.others[pid]._posBuffer.length > 20) S.others[pid]._posBuffer.shift();
                   }
@@ -17290,12 +17299,11 @@ var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Draw other players — cubic Hermite snapshot interpolation */
+        /* Draw other players — de-jittered linear snapshot interpolation */
         var _now = Date.now();
-        var BUFFER_DELAY = 132;
+        var BUFFER_DELAY = 80;
         var renderTime = performance.now() - BUFFER_DELAY;
         var MS_PER_FRAME = 1000 / 60;
-        var PX_PER_MS = 60 / 1000;
         Object.values(S.others).forEach(function (o) {
           /* Only render players in the same zone */
           var oZone = o.zone || 'town';
@@ -17314,9 +17322,10 @@ var BroTown = function BroTown(_ref0) {
               }
             }
             if (p0 && p1) {
-              /* Normal case: cubic Hermite interpolation between confirmed snapshots */
+              /* Linear interpolation with de-jittered timestamps — constant speed, crisp turns */
               var timeDiff = p1.t - p0.t;
               var t = timeDiff > 0 ? (renderTime - p0.t) / timeDiff : 1;
+              t = Math.max(0, Math.min(1, t));
               var sdx = p1.x - p0.x;
               var sdy = p1.y - p0.y;
               var sDist = Math.sqrt(sdx * sdx + sdy * sdy);
@@ -17325,20 +17334,8 @@ var BroTown = function BroTown(_ref0) {
                 o.renderY = p1.y;
                 o._posBuffer = [];
               } else {
-                /* Hermite basis functions */
-                var t2 = t * t;
-                var t3 = t2 * t;
-                var h00 = 2 * t3 - 3 * t2 + 1;
-                var h10 = t3 - 2 * t2 + t;
-                var h01 = -2 * t3 + 3 * t2;
-                var h11 = t3 - t2;
-                /* Tangents scaled by time interval */
-                var v0x = p0.vx * PX_PER_MS * timeDiff;
-                var v0y = p0.vy * PX_PER_MS * timeDiff;
-                var v1x = p1.vx * PX_PER_MS * timeDiff;
-                var v1y = p1.vy * PX_PER_MS * timeDiff;
-                o.renderX = h00 * p0.x + h10 * v0x + h01 * p1.x + h11 * v1x;
-                o.renderY = h00 * p0.y + h10 * v0y + h01 * p1.y + h11 * v1y;
+                o.renderX = p0.x + sdx * t;
+                o.renderY = p0.y + sdy * t;
               }
             } else if (p0 && !p1) {
               /* Jitter gap: safe velocity extrapolation */
