@@ -232,6 +232,7 @@ input{font-family:inherit}
       <div style="width:8px;height:8px;border-radius:50%;background:#5b52ff;animation:bt-pulse 1s ease-in-out .4s infinite;"></div>
     </div>
     <div style="font-size:11px;color:#8890b8;margin-top:16px;">Loading game...</div>
+    <div style="font-size:9px;color:#555;margin-top:8px;">v0.7.2</div>
   </div>
   <style>@keyframes bt-pulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}</style>
 </div>
@@ -10383,21 +10384,12 @@ var BroTown = function BroTown(_ref0) {
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
                     S.others[pid]._lastUpdate = Date.now();
-                    /* Snapshot interpolation — buffer positions + velocity with de-jittered timestamps */
+                    /* Snapshot interpolation — buffer positions + velocity */
                     if (!S.others[pid]._posBuffer) S.others[pid]._posBuffer = [];
-                    var _bufNow = performance.now();
-                    var _packetTime = _bufNow;
-                    /* De-jitter: force perfect 33ms rhythm to eliminate speed wobbles */
-                    if (S.others[pid]._posBuffer.length > 0) {
-                      var _lastT = S.others[pid]._posBuffer[S.others[pid]._posBuffer.length - 1].t;
-                      if (_bufNow - _lastT < 100) {
-                        _packetTime = _lastT + 33;
-                      }
-                    }
                     S.others[pid]._posBuffer.push({
                       x: data.x, y: data.y,
                       vx: (data.vx || 0) / 100, vy: (data.vy || 0) / 100,
-                      t: _packetTime
+                      t: performance.now()
                     });
                     if (S.others[pid]._posBuffer.length > 20) S.others[pid]._posBuffer.shift();
                   }
@@ -11349,7 +11341,7 @@ var BroTown = function BroTown(_ref0) {
      * Track calls pass through unchanged (already throttled to 2s).
      */
     var PRIORITY_EVENTS = new Set(['pvp_confirmed', 'stunned', 'duel_accept', 'duel_decline', 'duel_wager_request', 'pvp_threat', 'threat_response', 'trade_offer', 'trade_accept', 'trade_reject', 'clan_war_kill', 'clan_war_end', 'clan_war_declare', 'clan_invite']);
-    var INPUT_BATCH_WINDOW = 100; // ms
+    var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
     var _inputBuffer = [];
     var _pendingMove = null;
     var _batchTimer = null;
@@ -15950,10 +15942,10 @@ var BroTown = function BroTown(_ref0) {
         /* Broadcast position — slim payload for speed */
         var now = performance.now();
         var isMoving = dx || dy || S._dodgeRoll;
-        if (now - S.lastBroadcast > 80 && isMoving) {
+        if (now - S.lastBroadcast > 33 && isMoving) {
           S.lastBroadcast = now;
           if (S.channel) {
-            if (S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 80)) {
+            if (S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 33)) {
               S._lastMoveBroadcast = Date.now();
               /* Calculate effective velocity — use dodge direction during roll */
               var bcastVx = P.vx;
@@ -42733,6 +42725,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(
   btn.textContent='🐛0';
   btn.style.cssText='position:fixed;top:8px;left:8px;z-index:999999;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font:bold 11px sans-serif;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.2);user-select:none';
   document.body.appendChild(btn);
+  var verLabel=document.createElement('div');
+  verLabel.textContent='v0.7.2';
+  verLabel.style.cssText='position:fixed;top:14px;left:50px;z-index:999999;color:rgba(255,255,255,.25);font:9px sans-serif;pointer-events:none;user-select:none';
+  document.body.appendChild(verLabel);
 
   btn.onclick=function(){
     if(open&&panel){panel.remove();panel=null;open=false;return;}
