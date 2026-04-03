@@ -232,7 +232,7 @@ input{font-family:inherit}
       <div style="width:8px;height:8px;border-radius:50%;background:#5b52ff;animation:bt-pulse 1s ease-in-out .4s infinite;"></div>
     </div>
     <div style="font-size:11px;color:#8890b8;margin-top:16px;">Loading game...</div>
-    <div style="font-size:9px;color:#555;margin-top:8px;">v0.7.4</div>
+    <div style="font-size:9px;color:#555;margin-top:8px;">v0.7.5</div>
   </div>
   <style>@keyframes bt-pulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}</style>
 </div>
@@ -17291,62 +17291,38 @@ var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Draw other players — smooth linear snapshot interpolation (smoothness over precision) */
+        /* Draw other players — exponential moving average (maximum smoothness) */
         var _now = Date.now();
-        var BUFFER_DELAY = 132;
-        var renderTime = performance.now() - BUFFER_DELAY;
-        var MS_PER_FRAME = 1000 / 60;
         Object.values(S.others).forEach(function (o) {
           /* Only render players in the same zone */
           var oZone = o.zone || 'town';
           if (oZone !== S.currentZone) return;
 
-          if (o._posBuffer && o._posBuffer.length > 0) {
-            var p0 = null;
-            var p1 = null;
-            for (var bi = o._posBuffer.length - 1; bi >= 0; bi--) {
-              if (o._posBuffer[bi].t <= renderTime) {
-                p0 = o._posBuffer[bi];
-                if (bi + 1 < o._posBuffer.length) {
-                  p1 = o._posBuffer[bi + 1];
-                }
-                break;
-              }
-            }
-            if (p0 && p1) {
-              /* Linear interpolation — clean constant speed between confirmed positions */
-              var timeDiff = p1.t - p0.t;
-              var t = timeDiff > 0 ? (renderTime - p0.t) / timeDiff : 1;
-              t = Math.max(0, Math.min(1, t));
-              var sdx = p1.x - p0.x;
-              var sdy = p1.y - p0.y;
-              var sDist = Math.sqrt(sdx * sdx + sdy * sdy);
-              if (sDist > 100) {
-                o.renderX = p1.x;
-                o.renderY = p1.y;
-                o._posBuffer = [];
-              } else {
-                o.renderX = p0.x + sdx * t;
-                o.renderY = p0.y + sdy * t;
-              }
-            } else if (p0 && !p1) {
-              /* No future packet yet — velocity extrapolation for up to 100ms */
-              var timeSince = renderTime - p0.t;
-              if (timeSince > 100) {
-                o.renderX = p0.x;
-                o.renderY = p0.y;
-              } else {
-                var deltaFrames = timeSince / MS_PER_FRAME;
-                o.renderX = p0.x + p0.vx * deltaFrames;
-                o.renderY = p0.y + p0.vy * deltaFrames;
-              }
-            } else if (!p0 && o._posBuffer.length > 0) {
-              o.renderX = o._posBuffer[0].x;
-              o.renderY = o._posBuffer[0].y;
-            }
-          } else {
+          /* EMA smoothing — renderX/Y chases o.x/o.y with velocity-aware blending */
+          if (o.renderX === undefined) { o.renderX = o.x; o.renderY = o.y; }
+          var dx2 = o.x - o.renderX;
+          var dy2 = o.y - o.renderY;
+          var dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+          if (dist2 > 100) {
+            /* Teleport */
             o.renderX = o.x;
             o.renderY = o.y;
+          } else if (dist2 > 0.1) {
+            /* Velocity-weighted smoothing:
+             * If we have velocity data and the player is moving, use velocity to
+             * move at constant speed toward the target. Mix in a small lerp correction
+             * to prevent drift. This gives constant-speed movement with no pulsing. */
+            var hasVel = o._vx !== undefined && (Math.abs(o._vx) > 0.01 || Math.abs(o._vy) > 0.01);
+            if (hasVel && dist2 < 50) {
+              /* Move at server velocity + small correction toward actual position */
+              o.renderX += o._vx + dx2 * 0.06;
+              o.renderY += o._vy + dy2 * 0.06;
+            } else {
+              /* No velocity or too far behind — smooth catch-up */
+              o.renderX += dx2 * 0.12;
+              o.renderY += dy2 * 0.12;
+            }
           }
 
           var oMoving = Math.abs(o.renderX - (o._prevRX || o.renderX)) > 0.05 || Math.abs(o.renderY - (o._prevRY || o.renderY)) > 0.05;
@@ -42726,7 +42702,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(
   btn.style.cssText='position:fixed;top:8px;left:8px;z-index:999999;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font:bold 11px sans-serif;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.2);user-select:none';
   document.body.appendChild(btn);
   var verLabel=document.createElement('div');
-  verLabel.textContent='v0.7.4';
+  verLabel.textContent='v0.7.5';
   verLabel.style.cssText='position:fixed;top:14px;left:50px;z-index:999999;color:rgba(255,255,255,.25);font:9px sans-serif;pointer-events:none;user-select:none';
   document.body.appendChild(verLabel);
 
