@@ -4396,7 +4396,7 @@ const BroTown = ({nfts, onExit}) => {
     const S = stateRef.current;
     
     /* ═══ DURABLE OBJECTS WEBSOCKET CLIENT ═══ */
-    const WS_URL = (window.BROTOWN_WS_URL || 'wss://brotown-server.YOUR_SUBDOMAIN.workers.dev') + '/ws?room=brotown';
+    const WS_URL = (window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev') + '/ws?room=brotown';
     let ws = null;
     let reconnectTimer = null;
     let reconnectDelay = 1000;
