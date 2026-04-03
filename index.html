@@ -232,7 +232,7 @@ input{font-family:inherit}
       <div style="width:8px;height:8px;border-radius:50%;background:#5b52ff;animation:bt-pulse 1s ease-in-out .4s infinite;"></div>
     </div>
     <div style="font-size:11px;color:#8890b8;margin-top:16px;">Loading game...</div>
-    <div style="font-size:9px;color:#555;margin-top:8px;">v0.7.5</div>
+    <div style="font-size:9px;color:#555;margin-top:8px;">v0.7.6</div>
   </div>
   <style>@keyframes bt-pulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}</style>
 </div>
@@ -17291,14 +17291,13 @@ var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Draw other players — exponential moving average (maximum smoothness) */
+        /* Draw other players — pure velocity-driven movement (zero correction while moving) */
         var _now = Date.now();
         Object.values(S.others).forEach(function (o) {
           /* Only render players in the same zone */
           var oZone = o.zone || 'town';
           if (oZone !== S.currentZone) return;
 
-          /* EMA smoothing — renderX/Y chases o.x/o.y with velocity-aware blending */
           if (o.renderX === undefined) { o.renderX = o.x; o.renderY = o.y; }
           var dx2 = o.x - o.renderX;
           var dy2 = o.y - o.renderY;
@@ -17308,20 +17307,26 @@ var BroTown = function BroTown(_ref0) {
             /* Teleport */
             o.renderX = o.x;
             o.renderY = o.y;
-          } else if (dist2 > 0.1) {
-            /* Velocity-weighted smoothing:
-             * If we have velocity data and the player is moving, use velocity to
-             * move at constant speed toward the target. Mix in a small lerp correction
-             * to prevent drift. This gives constant-speed movement with no pulsing. */
+          } else {
             var hasVel = o._vx !== undefined && (Math.abs(o._vx) > 0.01 || Math.abs(o._vy) > 0.01);
-            if (hasVel && dist2 < 50) {
-              /* Move at server velocity + small correction toward actual position */
-              o.renderX += o._vx + dx2 * 0.06;
-              o.renderY += o._vy + dy2 * 0.06;
+            if (hasVel) {
+              /* Player is moving — drive purely from velocity, no correction */
+              o.renderX += o._vx;
+              o.renderY += o._vy;
+              /* Only correct if drifted too far (>30px) — gentle 3% pull */
+              if (dist2 > 30) {
+                o.renderX += dx2 * 0.03;
+                o.renderY += dy2 * 0.03;
+              }
             } else {
-              /* No velocity or too far behind — smooth catch-up */
-              o.renderX += dx2 * 0.12;
-              o.renderY += dy2 * 0.12;
+              /* Player stopped — settle to final server position */
+              if (dist2 > 0.5) {
+                o.renderX += dx2 * 0.15;
+                o.renderY += dy2 * 0.15;
+              } else {
+                o.renderX = o.x;
+                o.renderY = o.y;
+              }
             }
           }
 
@@ -42702,7 +42707,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(
   btn.style.cssText='position:fixed;top:8px;left:8px;z-index:999999;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;font:bold 11px sans-serif;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.2);user-select:none';
   document.body.appendChild(btn);
   var verLabel=document.createElement('div');
-  verLabel.textContent='v0.7.5';
+  verLabel.textContent='v0.7.6';
   verLabel.style.cssText='position:fixed;top:14px;left:50px;z-index:999999;color:rgba(255,255,255,.25);font:9px sans-serif;pointer-events:none;user-select:none';
   document.body.appendChild(verLabel);
 
