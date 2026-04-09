@@ -29,22 +29,33 @@ function getTileHexColor(tile, zoneId) {
 export class TileRenderer {
   constructor(layer) {
     this.layer = layer;
+    // Background fill (covers area outside map)
+    this.bgGfx = new Graphics();
+    this.layer.addChild(this.bgGfx);
+    // Tile graphics
     this.gfx = new Graphics();
     this.layer.addChild(this.gfx);
     this.currentZone = null;
     this.currentMap = null;
+    this._bgColor = 0x2d5a1e;
+    this._mapW = 0;
+    this._mapH = 0;
   }
 
   rebuild(app, map, zoneId) {
     this.currentZone = zoneId;
     this.currentMap = map;
     this.gfx.clear();
+    this.bgGfx.clear();
 
     if (!map) return;
 
     const zone = ZONES[zoneId];
     const rows = map.length;
     const cols = map[0]?.length || 0;
+    this._mapW = cols * TILE;
+    this._mapH = rows * TILE;
+    this._bgColor = zone?.palette?.ground ? cssToHex(zone.palette.ground) : 0x2d5a1e;
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -94,7 +105,16 @@ export class TileRenderer {
   }
 
   update(cx, cy, viewW, viewH) {
-    // Graphics is static — nothing to update per frame for now
+    // Draw background fill extending beyond map edges so no dark areas show
+    this.bgGfx.clear();
+    const pad = Math.max(viewW, viewH);
+    this.bgGfx.rect(-pad, -pad, this._mapW + pad * 2, this._mapH + pad * 2);
+    this.bgGfx.fill({ color: this._bgColor });
+    // Darken edges beyond map
+    if (cx < 0) {
+      this.bgGfx.rect(-pad, -pad, pad + 0, this._mapH + pad * 2);
+      this.bgGfx.fill({ color: 0x000000, alpha: 0.3 });
+    }
   }
 
   destroy() {

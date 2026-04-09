@@ -88,7 +88,7 @@ export var BroTown = function BroTown(_ref0) {
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
   var pixiRef = useRef(null);
-  var usePixi = useRef(true); /* true = PixiJS (WebGL), false = Canvas 2D fallback */
+  var usePixi = useRef(false); /* true = PixiJS (WebGL), false = Canvas 2D — PixiJS viewport needs debugging */
   var stateRef = useRef({
     player: {
       x: 20 * TILE,
@@ -2285,7 +2285,9 @@ export var BroTown = function BroTown(_ref0) {
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
 
-    /* Initialize PixiJS renderer (async) */
+    /* Initialize PixiJS renderer (async) — only if enabled */
+    /* NOTE: PixiJS creates a WebGL context which destroys Canvas 2D ctx,
+       so this must NOT run when usePixi is false */
     if (usePixi.current && !pixiRef.current) {
       initPixiRenderer(canvas).then(function(renderer) {
         pixiRef.current = renderer;
@@ -2293,6 +2295,10 @@ export var BroTown = function BroTown(_ref0) {
         console.warn('PixiJS init failed, falling back to Canvas 2D:', err);
         usePixi.current = false;
       });
+    }
+    if (!usePixi.current) {
+      /* Canvas 2D mode — ensure we have a valid 2d context */
+      ctx = canvas.getContext('2d');
     }
     /* Polyfill roundRect */
     if (!ctx.roundRect) ctx.roundRect = function (x, y, w, h, r) {

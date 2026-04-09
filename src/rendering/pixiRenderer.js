@@ -2,31 +2,19 @@
  * PixiJS Renderer — replaces canvasRenderer.js.
  * Manages the PixiJS application and orchestrates all render systems.
  */
-import { Graphics } from 'pixi.js';
-import { createPixiApp, updateCamera } from './pixiApp.js';
+import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer } from './systems/entityRenderer.js';
 import { EffectsRenderer } from './systems/effectsRenderer.js';
 
 /**
- * @typedef {Object} PixiRendererInstance
- * @property {import('pixi.js').Application} app
- * @property {Function} update - Call each frame
- * @property {Function} onZoneChange - Call when zone changes
- * @property {Function} destroy - Cleanup
- */
-
-/**
  * Initializes the PixiJS renderer.
  * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
- * @returns {Promise<PixiRendererInstance>}
+ * @returns {Promise<{update: Function, onZoneChange: Function, destroy: Function}>}
  */
 export async function initPixiRenderer(canvas) {
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
 
-  let _frameCount = 0;
-
-  // Create render systems
   const tileRenderer = new TileRenderer(layers.tiles);
   const entityRenderer = new EntityRenderer(layers.entities, layers.player);
   const effectsRenderer = new EffectsRenderer(layers);
@@ -34,9 +22,6 @@ export async function initPixiRenderer(canvas) {
   let currentZone = null;
   let currentMap = null;
 
-  /**
-   * Called when the zone changes — rebuilds tile map and resets entities.
-   */
   function onZoneChange(map, zoneId) {
     if (zoneId === currentZone && map === currentMap) return;
     currentZone = zoneId;
@@ -48,17 +33,24 @@ export async function initPixiRenderer(canvas) {
 
   /**
    * Updates all render systems for one frame.
-   * This replaces the old renderFrame() function.
-   *
    * @param {Object} S - Game state (stateRef.current)
-   * @param {number} viewW - Viewport width (logical pixels)
-   * @param {number} viewH - Viewport height (logical pixels)
+   * @param {number} viewW - Logical viewport width (already includes 1.25x zoom factor)
+   * @param {number} viewH - Logical viewport height
    * @param {Array} nfts - NFT catalogue
    */
   function update(S, viewW, viewH, nfts) {
     const now = Date.now();
     const cx = S.camera.x;
     const cy = S.camera.y;
+
+    // Resize PixiJS to match the current canvas dimensions each frame
+    // The game's own resize handler sets canvas.width/height, we sync PixiJS to it
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.width / dpr;
+    const cssH = canvas.height / dpr;
+    if (Math.abs(app.renderer.width / dpr - cssW) > 1 || Math.abs(app.renderer.height / dpr - cssH) > 1) {
+      app.renderer.resize(cssW, cssH);
+    }
 
     // Detect zone changes
     if (S.currentZone !== currentZone || S.map !== currentMap) {
@@ -72,38 +64,40 @@ export async function initPixiRenderer(canvas) {
       shakeY = (Math.random() - 0.5) * S.screenShake * 2;
     }
 
-    // Update camera
-    updateCamera(worldContainer, cx, cy, shakeX, shakeY);
+    // The Canvas 2D code uses ctx.setTransform(dpr * 0.8, ...) which means
+    // the viewport shows 1/0.8 = 1.25x more world than CSS pixels.
+    // viewW/viewH already include this factor (W = canvas.width/dpr * 1.25).
+    // To show the same amount of world, we scale worldContainer by
+    // cssW / viewW = CSS pixels / logical viewport = 0.8
+    const scaleX = cssW / viewW;
+    const scaleY = cssH / viewH;
+    worldContainer.scale.set(scaleX, scaleY);
 
-    // Tile culling
+    // Camera offset: cx/cy are top-left of viewport in world coords.
+    // With scale applied, world position X maps to screen position X*scale.
+    // We need worldX=cx to map to screen X=0, so: cx*scale + offsetX = 0 → offsetX = -cx*scale
+    worldContainer.x = -cx * scaleX + shakeX;
+    worldContainer.y = -cy * scaleY + shakeY;
+
+    // Tile background fill
     tileRenderer.update(cx, cy, viewW, viewH);
 
     // Entity updates
     entityRenderer.update(S, now);
 
-    // Effects updates
-    effectsRenderer.update(S, viewW, viewH, now);
+    // Effects updates (screen-space overlays use CSS dimensions)
+    effectsRenderer.update(S, cssW, cssH, now);
 
-    // Manual render — we control when PixiJS draws
+    // Manual render
     app.render();
   }
 
-  /**
-   * Cleanup — destroy PixiJS app and all systems.
-   */
   function destroy() {
     tileRenderer.destroy();
     entityRenderer.clear();
     effectsRenderer.clear();
-    // Don't remove the canvas from DOM — React owns it
     app.destroy(false, { children: true });
   }
 
-  return {
-    app,
-    canvas: app.canvas,
-    update,
-    onZoneChange,
-    destroy,
-  };
+  return { app, canvas: app.canvas, update, onZoneChange, destroy };
 }
