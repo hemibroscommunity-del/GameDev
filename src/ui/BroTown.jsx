@@ -7332,10 +7332,11 @@ export var BroTown = function BroTown(_ref0) {
           var _dnHours = new Date().getHours() + new Date().getMinutes() / 60;
           var _dnIsNight = _dnHours < 6 || _dnHours > 20;
           var _dnIsDusk = _dnHours >= 18 && _dnHours <= 20 || _dnHours >= 5 && _dnHours < 7;
-          S._dayNightCache = { nightAlpha: _dnIsNight ? 0.35 : _dnIsDusk ? 0.15 : 0, isNight: _dnIsNight, ts: now };
+          S._dayNightCache = { nightAlpha: _dnIsNight ? 0.35 : _dnIsDusk ? 0.15 : 0, isNight: _dnIsNight, isDusk: _dnIsDusk, ts: now };
         }
         var nightAlpha = S._dayNightCache.nightAlpha;
         var isNight = S._dayNightCache.isNight || false;
+        var isDusk = S._dayNightCache.isDusk || false;
         var zoneElem = ((_ZONES$S$currentZone8 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone8 === void 0 ? void 0 : _ZONES$S$currentZone8.element) || null;
         var _loop2 = function _loop2(r) {
           var _loop3 = function _loop3(cl) {
