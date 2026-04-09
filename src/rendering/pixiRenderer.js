@@ -65,14 +65,11 @@ export async function initPixiRenderer(canvas) {
       onZoneChange(S.map, S.currentZone);
     }
 
-    // Screen shake
+    // Screen shake (decay handled in pre-render simulation phase)
     let shakeX = 0, shakeY = 0;
     if (S.screenShake > 0.1) {
       shakeX = (Math.random() - 0.5) * S.screenShake * 2;
       shakeY = (Math.random() - 0.5) * S.screenShake * 2;
-      S.screenShake *= 0.85;
-    } else {
-      S.screenShake = 0;
     }
 
     // Update camera

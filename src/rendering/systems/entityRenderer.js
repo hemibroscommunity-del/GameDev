@@ -4,6 +4,7 @@
  */
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
+import { ELEMENTS } from '@/data/elements.js';
 
 const NAME_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
@@ -16,45 +17,6 @@ const NAME_STYLE = new TextStyle({
 
 const HP_BAR_W = 24;
 const HP_BAR_H = 3;
-
-/**
- * Creates a monster display object (container with body + HP bar + name).
- */
-function createMonsterDisplay(monster) {
-  const container = new Container();
-  container.label = `monster_${monster.id}`;
-
-  // Body circle
-  const body = new Graphics();
-  const size = getMonsterSize(monster.archetype);
-  container.addChild(body);
-
-  // HP bar background
-  const hpBg = new Graphics();
-  hpBg.rect(-HP_BAR_W / 2, -size - 10, HP_BAR_W, HP_BAR_H);
-  hpBg.fill({ color: 0x000000, alpha: 0.5 });
-  container.addChild(hpBg);
-
-  // HP bar fill
-  const hpFill = new Graphics();
-  container.addChild(hpFill);
-
-  // Level text
-  const lvlText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 8 } });
-  lvlText.anchor.set(0.5, 1);
-  lvlText.y = -size - 12;
-  container.addChild(lvlText);
-
-  // Store refs for updates
-  container._body = body;
-  container._hpFill = hpFill;
-  container._hpBg = hpBg;
-  container._lvlText = lvlText;
-  container._size = size;
-  container._monster = monster;
-
-  return container;
-}
 
 function getMonsterSize(archetype) {
   const sizes = {
@@ -73,37 +35,78 @@ function getMonsterColor(archetype) {
   return colors[archetype] || 0x3dd497;
 }
 
-/**
- * Creates the local player display object.
- */
+function cssColorToHex(css) {
+  if (typeof css !== 'string') return 0x000000;
+  return parseInt(css.replace('#', ''), 16) || 0x000000;
+}
+
+function createMonsterDisplay(monster) {
+  const container = new Container();
+  container.label = `monster_${monster.id}`;
+
+  const body = new Graphics();
+  const size = getMonsterSize(monster.archetype);
+  container.addChild(body);
+
+  const hpBg = new Graphics();
+  hpBg.rect(-HP_BAR_W / 2, -size - 10, HP_BAR_W, HP_BAR_H);
+  hpBg.fill({ color: 0x000000, alpha: 0.5 });
+  container.addChild(hpBg);
+
+  const hpFill = new Graphics();
+  container.addChild(hpFill);
+
+  const lvlText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 8 } });
+  lvlText.anchor.set(0.5, 1);
+  lvlText.y = -size - 12;
+  container.addChild(lvlText);
+
+  // Status effect indicator
+  const statusGfx = new Graphics();
+  container.addChild(statusGfx);
+
+  container._body = body;
+  container._hpFill = hpFill;
+  container._hpBg = hpBg;
+  container._lvlText = lvlText;
+  container._statusGfx = statusGfx;
+  container._size = size;
+  container._monster = monster;
+
+  return container;
+}
+
 function createPlayerDisplay() {
   const container = new Container();
   container.label = 'localPlayer';
 
-  // Body
   const body = new Graphics();
   container.addChild(body);
 
-  // Name
+  // Weapon visual
+  const weaponGfx = new Graphics();
+  container.addChild(weaponGfx);
+
   const nameText = new Text({ text: '', style: NAME_STYLE });
   nameText.anchor.set(0.5, 1);
   nameText.y = -28;
   container.addChild(nameText);
 
   container._body = body;
+  container._weaponGfx = weaponGfx;
   container._nameText = nameText;
 
   return container;
 }
 
-/**
- * Creates an "other player" display object.
- */
 function createOtherPlayerDisplay() {
   const container = new Container();
 
   const body = new Graphics();
   container.addChild(body);
+
+  const weaponGfx = new Graphics();
+  container.addChild(weaponGfx);
 
   const nameText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
   nameText.anchor.set(0.5, 1);
@@ -111,6 +114,7 @@ function createOtherPlayerDisplay() {
   container.addChild(nameText);
 
   container._body = body;
+  container._weaponGfx = weaponGfx;
   container._nameText = nameText;
 
   return container;
@@ -123,20 +127,19 @@ export class EntityRenderer {
   constructor(entityLayer, playerLayer) {
     this.entityLayer = entityLayer;
     this.playerLayer = playerLayer;
-    this.monsterDisplays = new Map(); // id -> Container
-    this.otherPlayerDisplays = new Map(); // id -> Container
+    this.monsterDisplays = new Map();
+    this.otherPlayerDisplays = new Map();
     this.playerDisplay = null;
     this.npcDisplays = new Map();
+    this.petDisplay = null;
   }
 
-  /**
-   * Updates all entities for the current frame.
-   */
   update(S, now) {
     this._updateMonsters(S, now);
     this._updateOtherPlayers(S, now);
     this._updatePlayer(S, now);
     this._updateNPCs(S, now);
+    this._updatePet(S, now);
   }
 
   _updateMonsters(S, now) {
@@ -154,7 +157,6 @@ export class EntityRenderer {
         this.monsterDisplays.set(m.id, display);
       }
 
-      // Position
       display.x = m.x;
       display.y = m.y;
       display.visible = m.alive;
@@ -164,17 +166,17 @@ export class EntityRenderer {
       const size = display._size;
       body.clear();
 
-      const color = getMonsterColor(m.archetype || m.type);
+      // Zone element tint blended with archetype color
+      let color = getMonsterColor(m.archetype || m.type);
       body.circle(0, 0, size);
       body.fill({ color });
 
-      // Boss ring
       if (m.isBoss) {
         body.circle(0, 0, size + 3);
         body.stroke({ color: 0xff5e6c, width: 2 });
       }
 
-      // Emoji in center
+      // Emoji
       if (!display._emoji) {
         const emojiText = new Text({
           text: m.emoji || '🟢',
@@ -198,11 +200,47 @@ export class EntityRenderer {
         display._hpBg.visible = false;
       }
 
-      // Level text
       display._lvlText.text = `Lv${m.level}`;
+
+      // Status effects
+      const statusGfx = display._statusGfx;
+      statusGfx.clear();
+      const statuses = m.statuses || {};
+      let sx = -size;
+      for (const [statusId, statusData] of Object.entries(statuses)) {
+        if (!statusData) continue;
+        const elemForStatus = Object.values(ELEMENTS || {}).find(e => e?.status === statusId);
+        const sColor = elemForStatus ? cssColorToHex(elemForStatus.color) : 0xffffff;
+        statusGfx.circle(sx, -size - 16, 3);
+        statusGfx.fill({ color: sColor, alpha: 0.8 });
+        sx += 8;
+      }
+
+      // Aggro alert
+      if (m._aggroTs && now - m._aggroTs < 600) {
+        const age = (now - m._aggroTs) / 600;
+        body.circle(0, -size - 20, 4);
+        body.fill({ color: 0xff5e6c, alpha: 1 - age });
+      }
+
+      // Stun indicator
+      if (m._stunUntil && now < m._stunUntil) {
+        body.circle(0, -size - 18, 5);
+        body.fill({ color: 0xf5c542, alpha: 0.5 + Math.sin(now / 100) * 0.3 });
+      }
+
+      // Stuck arrows
+      if (m._stuckArrows) {
+        for (const sa of m._stuckArrows) {
+          const ax = Math.cos(sa.ang) * (size * 0.5) + sa.ox;
+          const ay = Math.sin(sa.ang) * (size * 0.5) + sa.oy;
+          body.moveTo(ax - Math.cos(sa.ang) * 5, ay - Math.sin(sa.ang) * 5);
+          body.lineTo(ax + Math.cos(sa.ang) * 5, ay + Math.sin(sa.ang) * 5);
+          body.stroke({ color: cssColorToHex(sa.color || '#8B6914'), width: 1.5, alpha: 0.8 });
+        }
+      }
     }
 
-    // Remove stale displays
     for (const [id, display] of this.monsterDisplays) {
       if (!activeIds.has(id)) {
         display.destroy({ children: true });
@@ -216,7 +254,7 @@ export class EntityRenderer {
     const activeIds = new Set();
 
     for (const [id, other] of Object.entries(others)) {
-      if (!other || other.z !== S.currentZone) continue;
+      if (!other || (other.zone || other.z || 'town') !== S.currentZone) continue;
       activeIds.add(id);
 
       let display = this.otherPlayerDisplays.get(id);
@@ -227,39 +265,42 @@ export class EntityRenderer {
         this.otherPlayerDisplays.set(id, display);
       }
 
-      // Lerp position
-      const targetX = other.x || 0;
-      const targetY = other.y || 0;
-      display.x += (targetX - display.x) * 0.3;
-      display.y += (targetY - display.y) * 0.3;
+      // Use pre-computed interpolated position
+      display.x = other.renderX || other.x || 0;
+      display.y = other.renderY || other.y || 0;
 
-      // Body
       const body = display._body;
       body.clear();
       const torso = other.bt || '#2563eb';
       const legs = other.bl || '#1e3a5f';
       const bodyW = 14;
       const bodyH = 22;
+      const isMoving = Math.abs(other._smoothVx || 0) > 0.01 || Math.abs(other._smoothVy || 0) > 0.01;
+      const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
-      // Legs
-      body.rect(-bodyW / 2, 2, bodyW / 2 - 1, bodyH / 2);
+      // Shadow
+      body.ellipse(0, 20, 9, 3.5);
+      body.fill({ color: 0x000000, alpha: 0.15 });
+
+      // Legs with walk animation
+      const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
+      body.rect(-bodyW / 2, 2 + bobY + legSwing, bodyW / 2 - 1, bodyH / 2);
       body.fill({ color: cssColorToHex(legs) });
-      body.rect(1, 2, bodyW / 2 - 1, bodyH / 2);
+      body.rect(1, 2 + bobY - legSwing, bodyW / 2 - 1, bodyH / 2);
       body.fill({ color: cssColorToHex(legs) });
 
       // Torso
-      body.roundRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH / 2 + 4, 3);
+      body.roundRect(-bodyW / 2, -bodyH / 2 + bobY, bodyW, bodyH / 2 + 4, 3);
       body.fill({ color: cssColorToHex(torso) });
 
       // Head
-      body.circle(0, -bodyH / 2 - 4, 6);
+      body.circle(0, -bodyH / 2 - 4 + bobY, 6);
       body.fill({ color: cssColorToHex(other.color || '#5b52ff') });
 
-      // Name
       display._nameText.text = other.name || 'Anon';
+      display._nameText.y = -24 + bobY;
     }
 
-    // Remove stale
     for (const [id, display] of this.otherPlayerDisplays) {
       if (!activeIds.has(id)) {
         display.destroy({ children: true });
@@ -279,7 +320,6 @@ export class EntityRenderer {
     display.x = P.x;
     display.y = P.y;
 
-    // Body
     const body = display._body;
     body.clear();
 
@@ -288,26 +328,150 @@ export class EntityRenderer {
     const slim = S.bodySize === 'slim';
     const bw = slim ? 12 : 16;
     const bh = slim ? 22 : 24;
+    const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
+    const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
-    // Legs
-    body.rect(-bw / 2, 2, bw / 2 - 1, bh / 2);
+    // Shadow
+    body.ellipse(0, 20, 10, 4);
+    body.fill({ color: 0x000000, alpha: 0.15 });
+
+    // Legs with walk animation
+    const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
+    body.rect(-bw / 2, 2 + bobY + legSwing, bw / 2 - 1, bh / 2);
     body.fill({ color: cssColorToHex(legs) });
-    body.rect(1, 2, bw / 2 - 1, bh / 2);
+    body.rect(1, 2 + bobY - legSwing, bw / 2 - 1, bh / 2);
     body.fill({ color: cssColorToHex(legs) });
 
     // Torso
-    body.roundRect(-bw / 2, -bh / 2, bw, bh / 2 + 4, 3);
+    body.roundRect(-bw / 2, -bh / 2 + bobY, bw, bh / 2 + 4, 3);
     body.fill({ color: cssColorToHex(torso) });
 
     // Head
-    body.circle(0, -bh / 2 - 4, 7);
+    body.circle(0, -bh / 2 - 4 + bobY, 7);
     body.fill({ color: cssColorToHex(S.myColor || '#5b52ff') });
+
+    // Weapon visual
+    const weaponGfx = display._weaponGfx;
+    weaponGfx.clear();
+    if (S.rpg) {
+      const facing = S._facing || 'down';
+      const facingX = facing === 'right' ? 1 : facing === 'left' ? -1 : 0;
+      const facingY = facing === 'down' ? 1 : facing === 'up' ? -1 : 0;
+      const wpnX = facingX * 10 || (facing === 'down' ? 6 : -6);
+      const wpnY = facingY * 5 + bobY;
+
+      const activeSlot = S.rpg.activeSlot || 'melee';
+      const wpn = activeSlot === 'melee' ? S.rpg.weapon : S.rpg.rangedWeapon;
+      if (wpn) {
+        const elem = wpn.element1;
+        const wpnColor = elem && ELEMENTS[elem] ? cssColorToHex(ELEMENTS[elem].color) : 0xaaaaaa;
+
+        if (wpn.type === 'bow') {
+          // Bow arc
+          weaponGfx.arc(wpnX, wpnY, 8, -0.8, 0.8);
+          weaponGfx.stroke({ color: 0x8B6914, width: 2 });
+          // String
+          weaponGfx.moveTo(wpnX + Math.cos(-0.8) * 8, wpnY + Math.sin(-0.8) * 8);
+          weaponGfx.lineTo(wpnX + Math.cos(0.8) * 8, wpnY + Math.sin(0.8) * 8);
+          weaponGfx.stroke({ color: 0xaaaaaa, width: 1, alpha: 0.6 });
+        } else if (wpn.type === 'staff') {
+          // Staff line with orb
+          weaponGfx.moveTo(wpnX, wpnY + 10);
+          weaponGfx.lineTo(wpnX, wpnY - 10);
+          weaponGfx.stroke({ color: 0x8B6914, width: 2 });
+          weaponGfx.circle(wpnX, wpnY - 12, 3);
+          weaponGfx.fill({ color: wpnColor, alpha: 0.8 });
+        } else {
+          // Sword/greatsword
+          const len = wpn.type === 'greatsword' ? 14 : 10;
+          weaponGfx.moveTo(wpnX, wpnY + 2);
+          weaponGfx.lineTo(wpnX + facingX * len || len * 0.7, wpnY - len * 0.3);
+          weaponGfx.stroke({ color: 0xcccccc, width: wpn.type === 'greatsword' ? 3 : 2 });
+          // Element glow at tip
+          if (elem) {
+            weaponGfx.circle(wpnX + (facingX * len || len * 0.7), wpnY - len * 0.3, 2);
+            weaponGfx.fill({ color: wpnColor, alpha: 0.6 });
+          }
+        }
+      }
+
+      // Shield visual
+      if (S.rpg.shield && S.isBlocking) {
+        const shieldX = -facingX * 8 || 8;
+        weaponGfx.roundRect(shieldX - 5, -4 + bobY, 10, 14, 2);
+        weaponGfx.fill({ color: 0x3498db, alpha: 0.6 });
+        weaponGfx.roundRect(shieldX - 5, -4 + bobY, 10, 14, 2);
+        weaponGfx.stroke({ color: 0x5dade2, width: 1 });
+      }
+    }
+
+    // Swing animation
+    if (S.isSwinging && S.swingTimer) {
+      const swAge = (now - S.swingTimer) / 400;
+      if (swAge < 1) {
+        const swArc = (1 - swAge) * Math.PI * 1.5;
+        const swDir = S._facingAngle || 0;
+        const swR = 20;
+        weaponGfx.arc(0, bobY, swR, swDir - swArc / 2, swDir + swArc / 2);
+        weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: (1 - swAge) * 0.5 });
+      }
+    }
 
     // Name
     display._nameText.text = S.myName || 'You';
+    display._nameText.y = -28 + bobY;
 
-    // Death state
-    display.alpha = S.rpg && S.rpg.hp <= 0 ? 0.4 : 1;
+    // Death / invuln
+    if (S.rpg && S.rpg.hp <= 0) {
+      display.alpha = 0.4;
+    } else if (S._respawnInvuln && now < S._respawnInvuln) {
+      display.alpha = 0.6 + Math.sin(now / 100) * 0.2;
+    } else {
+      display.alpha = 1;
+    }
+
+    // Stun
+    if (S._stunUntil && now < S._stunUntil) {
+      body.circle(0, -bh / 2 - 14 + bobY, 6);
+      body.fill({ color: 0x000000, alpha: 0.5 });
+    }
+  }
+
+  _updatePet(S, now) {
+    const pet = S._activePet;
+    if (!pet) {
+      if (this.petDisplay) { this.petDisplay.visible = false; }
+      return;
+    }
+
+    if (!this.petDisplay) {
+      this.petDisplay = new Container();
+      this.petDisplay.label = 'pet';
+      const petBody = new Graphics();
+      this.petDisplay.addChild(petBody);
+      this.petDisplay._body = petBody;
+      const petName = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 7 } });
+      petName.anchor.set(0.5, 1);
+      petName.y = -12;
+      this.petDisplay.addChild(petName);
+      this.petDisplay._nameText = petName;
+      this.entityLayer.addChild(this.petDisplay);
+    }
+
+    this.petDisplay.visible = true;
+    this.petDisplay.x = pet.x || S.player.x + 20;
+    this.petDisplay.y = pet.y || S.player.y + 15;
+
+    const petBody = this.petDisplay._body;
+    petBody.clear();
+    const bounce = Math.sin(now / 300) * 2;
+    petBody.circle(0, bounce, 6);
+    petBody.fill({ color: cssColorToHex(pet.color || '#f5c542') });
+    petBody.circle(0, bounce, 6);
+    petBody.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+
+    this.petDisplay._nameText.text = pet.name || '🐾';
+    this.petDisplay._nameText.y = -10 + bounce;
   }
 
   _updateNPCs(S, now) {
@@ -350,16 +514,20 @@ export class EntityRenderer {
       display.x = npc.x;
       display.y = npc.y;
 
-      // Body circle
       const body = display._body;
       body.clear();
       body.circle(0, 0, 14);
       body.fill({ color: cssColorToHex(npc.color || '#5b52ff'), alpha: 0.7 });
       body.circle(0, 0, 14);
       body.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+
+      // Quest marker
+      if (npc._hasQuest) {
+        body.circle(0, -22, 5);
+        body.fill({ color: 0xf5c542 });
+      }
     }
 
-    // Remove stale
     for (const [id, display] of this.npcDisplays) {
       if (!activeIds.has(id)) {
         display.destroy({ children: true });
@@ -379,10 +547,9 @@ export class EntityRenderer {
       this.playerDisplay.destroy({ children: true });
       this.playerDisplay = null;
     }
+    if (this.petDisplay) {
+      this.petDisplay.destroy({ children: true });
+      this.petDisplay = null;
+    }
   }
-}
-
-function cssColorToHex(css) {
-  if (typeof css !== 'string') return 0x000000;
-  return parseInt(css.replace('#', ''), 16) || 0x000000;
 }

@@ -2,3 +2,11 @@ node_modules/
 dist/
 .vite/
 *.local
+
+# Design docs — kept local, not published to public repo
+gdd-*.md
+creative-reference-*.md
+architecture.md
+development-playbook-*.md
+CLAUDE.md
+.claude/

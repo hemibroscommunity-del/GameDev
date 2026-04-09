@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-/* Canvas 2D rendering is inlined in the game loop (same scope as simulation for Babel compat) */
-/* PixiJS renderer preserved in src/rendering/pixi*.js for future incremental swap */
+/* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
+import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 
@@ -87,6 +87,8 @@ export var BroTown = function BroTown(_ref0) {
   var nfts = _ref0.nfts,
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
+  var pixiRef = useRef(null);
+  var usePixi = useRef(true); /* true = PixiJS (WebGL), false = Canvas 2D fallback */
   var stateRef = useRef({
     player: {
       x: 20 * TILE,
@@ -2276,13 +2278,22 @@ export var BroTown = function BroTown(_ref0) {
   }, [showNameModal, showLogin]);
 
 
-  /* ═══ GAME LOOP — Full original simulation + Canvas 2D rendering ═══ */
-  /* PixiJS renderer code is preserved in src/rendering/pixi*.js for future use */
+  /* ═══ GAME LOOP — Full simulation + PixiJS/Canvas 2D rendering ═══ */
   useEffect(function () {
     if (showNameModal || showLogin) return;
     var canvas = canvasRef.current;
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
+
+    /* Initialize PixiJS renderer (async) */
+    if (usePixi.current && !pixiRef.current) {
+      initPixiRenderer(canvas).then(function(renderer) {
+        pixiRef.current = renderer;
+      }).catch(function(err) {
+        console.warn('PixiJS init failed, falling back to Canvas 2D:', err);
+        usePixi.current = false;
+      });
+    }
     /* Polyfill roundRect */
     if (!ctx.roundRect) ctx.roundRect = function (x, y, w, h, r) {
       var radii = typeof r === 'number' ? [r, r, r, r] : Array.isArray(r) ? r.concat([0, 0, 0, 0]).slice(0, 4) : [0, 0, 0, 0];
@@ -5871,11 +5882,7 @@ export var BroTown = function BroTown(_ref0) {
                     }, 160);
                   }
 
-                  /* ═══ KILL SLOWMO — brief time dilation on significant kills ═══ */
-                  if (isGrandSlam || isBigEnemy) {
-                    S._killSlowmo = Date.now();
-                    S._killSlowmoDuration = isGrandSlam && isBigEnemy ? 300 : isGrandSlam ? 200 : 150;
-                  }
+                  /* ═══ KILL SLOWMO — disabled, felt like lag ═══ */
 
                   /* Sound — proportional to significance */
                   if (isGrandSlam) {
@@ -7005,19 +7012,295 @@ export var BroTown = function BroTown(_ref0) {
         }
 
 
-        /* ── RENDER via Canvas 2D (original 26+ render systems) ── */
+        /* ══════════════════════════════════════════════════════════
+           ── VISUAL SYSTEM UPDATES (pre-render simulation) ──
+           Game logic extracted from the render section so that
+           rendering becomes pure "read state, draw pixels."
+           ══════════════════════════════════════════════════════════ */
 
-        /* ── RENDER — original Canvas 2D (inlined from index.html 16058-22078) ── */
-        /* ── RENDER ── */
-        /* Screen shake */
+        /* ── Screen shake decay ── */
+        if (S.screenShake > 0.1) {
+          S.screenShake *= 0.85;
+        } else {
+          S.screenShake = 0;
+        }
+
+        /* ── Player facing direction (discrete + continuous angle) ── */
+        var _fDx = S.player.vx || 0, _fDy = S.player.vy || 0;
+        var _fAbsDx = Math.abs(_fDx), _fAbsDy = Math.abs(_fDy);
+        var _fIsMoving = _fAbsDx > 0.01 || _fAbsDy > 0.01;
+        if (_fAbsDx > 0.03 || _fAbsDy > 0.03) {
+          var _vertBias = (S._facing === 'up' || S._facing === 'down') ? 0.7 : 1.3;
+          var _wasUpDown = S._facing === 'up' || S._facing === 'down';
+          if (_fAbsDy > _fAbsDx * _vertBias) S._facing = _fDy > 0 ? 'down' : 'up';
+          else if (_fAbsDx > _fAbsDy * (_wasUpDown ? 0.7 : 1.3)) S._facing = _fDx > 0 ? 'right' : 'left';
+        }
+        if (_fAbsDx > 0.02 || _fAbsDy > 0.02) {
+          S._targetFacingAngle = Math.atan2(_fDy, _fDx);
+        }
+        if (S._facingAngle === undefined) S._facingAngle = Math.PI / 2;
+        if (S._targetFacingAngle !== undefined) {
+          var _fDiff = S._targetFacingAngle - S._facingAngle;
+          while (_fDiff > Math.PI) _fDiff -= Math.PI * 2;
+          while (_fDiff < -Math.PI) _fDiff += Math.PI * 2;
+          S._facingAngle += _fDiff * (_fIsMoving ? 0.18 : 0.08);
+          while (S._facingAngle > Math.PI) S._facingAngle -= Math.PI * 2;
+          while (S._facingAngle < -Math.PI) S._facingAngle += Math.PI * 2;
+        }
+
+        /* ── Footstep timer + stats (frame-rate coupled, matches original) ── */
+        if (_fIsMoving) {
+          if (!S._footstepTimer) S._footstepTimer = 0;
+          S._footstepTimer++;
+          if (S._footstepTimer % 12 === 0) BT_AUDIO.footstep();
+          if (S.stats && S._footstepTimer % 6 === 0) S.stats.steps++;
+        }
+
+        /* ── Other player interpolation ── */
+        Object.values(S.others).forEach(function (o) {
+          if (o.renderX === undefined) { o.renderX = o.x; o.renderY = o.y; }
+          var rawVx = o._vx || 0, rawVy = o._vy || 0;
+          if (o._smoothVx === undefined) { o._smoothVx = rawVx; o._smoothVy = rawVy; }
+          o._smoothVx += (rawVx - o._smoothVx) * 0.15;
+          o._smoothVy += (rawVy - o._smoothVy) * 0.15;
+          var oDx = o.x - o.renderX, oDy = o.y - o.renderY;
+          var oDist = Math.sqrt(oDx * oDx + oDy * oDy);
+          if (oDist > 100) {
+            o.renderX = o.x; o.renderY = o.y;
+          } else {
+            var oMoving = Math.abs(o._smoothVx) > 0.005 || Math.abs(o._smoothVy) > 0.005;
+            if (oMoving) {
+              o.renderX += o._smoothVx; o.renderY += o._smoothVy;
+              if (oDist > 30) { o.renderX += oDx * 0.03; o.renderY += oDy * 0.03; }
+            } else {
+              if (oDist > 0.5) { o.renderX += oDx * 0.15; o.renderY += oDy * 0.15; }
+              else { o.renderX = o.x; o.renderY = o.y; }
+            }
+          }
+          /* Facing angle interpolation */
+          var oAdx = Math.abs(oDx), oAdy = Math.abs(oDy);
+          if (oAdx > 0.02 || oAdy > 0.02) o._targetAngle = Math.atan2(oDy, oDx);
+          if (o._fAngle === undefined) o._fAngle = Math.PI / 2;
+          if (o._targetAngle !== undefined) {
+            var aDiff = o._targetAngle - o._fAngle;
+            while (aDiff > Math.PI) aDiff -= Math.PI * 2;
+            while (aDiff < -Math.PI) aDiff += Math.PI * 2;
+            var oIsMoving = Math.abs(o._smoothVx) > 0.005 || Math.abs(o._smoothVy) > 0.005;
+            o._fAngle += aDiff * (oIsMoving ? 0.18 : 0.08);
+            while (o._fAngle > Math.PI) o._fAngle -= Math.PI * 2;
+            while (o._fAngle < -Math.PI) o._fAngle += Math.PI * 2;
+          }
+          /* Discrete facing */
+          if (oAdx > 0.03 || oAdy > 0.03) {
+            if (oAdy > oAdx) o._facing = oDy > 0 ? 'down' : 'up';
+            else o._facing = oDx > 0 ? 'right' : 'left';
+          }
+        });
+
+        /* ── Remote projectile simulation ── */
+        if (S._remoteProjectiles && S._remoteProjectiles.length > 0) {
+          S._remoteProjectiles = S._remoteProjectiles.filter(function(rp) {
+            rp.dist += rp.isStaff ? 5 : 8;
+            rp.life--;
+            if (rp.life <= 0) return false;
+            var owner = S.others[rp.ownerId];
+            var originX = owner ? (owner.renderX || owner.x) : rp.x;
+            var originY = owner ? (owner.renderY || owner.y) : rp.y;
+            rp._renderX = originX + Math.cos(rp.ang) * rp.dist;
+            rp._renderY = originY + Math.sin(rp.ang) * rp.dist;
+            return true;
+          });
+        }
+
+        /* ── Arrow projectile simulation + hit detection + kills ── */
+        if (S.arrows && S.arrows.length > 0) {
+          var curAim;
+          if (S.lockedTarget && S.lockedTarget.ref) {
+            var lt2 = S.lockedTarget.ref;
+            curAim = Math.atan2((lt2.y || 0) - P.y, (lt2.x || 0) - P.x);
+          } else if (S._aiming) {
+            curAim = S._aimAngle || 0;
+          } else {
+            var fd2 = S._facing || 'down';
+            curAim = fd2 === 'right' ? 0 : fd2 === 'up' ? -Math.PI / 2 : fd2 === 'left' ? Math.PI : Math.PI / 2;
+          }
+          S.arrows = S.arrows.filter(function (a) {
+            var _S$rpg15;
+            var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : { element1: null, element2: null };
+            var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg.power || 0, activeWpn.tierMult || 1) : 10;
+            /* Derive element/type early so kill logic can use them */
+            var projElem = a.element || (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1);
+            var isStaffProj = (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) === 'staff' || a.isSpecial && ((_S$rpg15 = S.rpg) === null || _S$rpg15 === void 0 ? void 0 : _S$rpg15.activeSlot) === 'staff';
+            a.dist += a.isStaff ? 5 : 8;
+            a.life--;
+            if (S._aiming || S.lockedTarget && S.lockedTarget.ref) a.ang = curAim;
+            a._renderX = P.x + Math.cos(a.ang) * a.dist;
+            a._renderY = P.y + Math.sin(a.ang) * a.dist;
+            if (a.life <= 0) return false;
+            var hit = false;
+            if (S.monsters) S.monsters.forEach(function (m) {
+              if (!m.alive || a.hitIds.has(m.id) || hit) return;
+              if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(m.y - a._renderY, 2)) < (a.isStaff ? 30 : 18)) {
+                a.hitIds.add(m.id);
+                var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
+                if (arrowElem) {
+                  var _ELEMENTS$arrowElem;
+                  var statusId = (_ELEMENTS$arrowElem = ELEMENTS[arrowElem]) === null || _ELEMENTS$arrowElem === void 0 ? void 0 : _ELEMENTS$arrowElem.status;
+                  if (statusId) applyStatus(m, statusId, S.player, Date.now());
+                }
+                var arrowCollision = null;
+                if (arrowElem && S.rpg) {
+                  arrowCollision = resolveCollision(m, arrowElem, S.player, S.rpg, Date.now());
+                }
+                if (m._invulnerable) {
+                  S.dmgNumbers.push({ x: m.x, y: m.y - 20, text: 'IMMUNE', color: '#888', ts: Date.now() });
+                  a.hit = true;
+                  return;
+                }
+                m.curHp -= a.dmg;
+                if (S._serverMonsters && S.channel) {
+                  var arrowTotalDmg = a.dmg;
+                  if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
+                  S.channel.send({ type: 'monster_damage', payload: {
+                    monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null
+                  }});
+                }
+                if (arrowCollision) {
+                  var _ELEMENTS$arrowCollis;
+                  m.curHp -= arrowCollision.damage;
+                  var coll = arrowCollision.collision;
+                  var elemCol = ((_ELEMENTS$arrowCollis = ELEMENTS[arrowCollision.triggerElement]) === null || _ELEMENTS$arrowCollis === void 0 ? void 0 : _ELEMENTS$arrowCollis.color) || '#fff';
+                  S.dmgNumbers.push({ x: m.x + 8, y: m.y - 30, text: '💥' + arrowCollision.damage + ' ' + coll.name, color: elemCol, ts: Date.now() });
+                  if (arrowCollision.manaRestored > 0) {
+                    S.dmgNumbers.push({ x: P.x, y: P.y - 45, text: '+' + arrowCollision.manaRestored + ' MP', color: '#3b82f6', ts: Date.now() });
+                  }
+                  BT_AUDIO.collisionSound(arrowCollision.setupElement, arrowCollision.triggerElement, arrowCollision.manaRestored);
+                  for (var cp = 0; cp < 12; cp++) {
+                    S.hitParticles.push({ x: m.x + (Math.random() - 0.5) * 6, y: m.y + (Math.random() - 0.5) * 6, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5 - 2, life: 0.7, color: elemCol, size: 2 + Math.random() * 2 });
+                  }
+                  S.screenShake = Math.max(S.screenShake, 4);
+                  BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
+                  var isNew = discoverCollision(coll.id);
+                  if (isNew) {
+                    S.dmgNumbers.push({ x: P.x, y: P.y - 60, text: '📖 NEW: ' + coll.name + '!', color: '#f5c542', ts: Date.now() });
+                    BT_AUDIO.collect();
+                  }
+                }
+                BT_AUDIO.thwack();
+                var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
+                m.x += Math.cos(kba) * 5;
+                m.y += Math.sin(kba) * 5;
+                var rangedWpnType = a.isStaff ? 'staff' : 'bow';
+                var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, rangedWpnType, false);
+                rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
+                if (!m._stuckArrows) m._stuckArrows = [];
+                if (m._stuckArrows.length < 6) {
+                  m._stuckArrows.push({ ang: a.ang, ox: (Math.random() - 0.5) * 8, oy: (Math.random() - 0.5) * 8, isStaff: a.isStaff || false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
+                }
+                if (!S.dmgNumbers) S.dmgNumbers = [];
+                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: a.dmg + '', color: '#ff9', ts: Date.now() });
+                if (m.curHp <= 0) {
+                  m.alive = false;
+                  m.respawnAt = Date.now() + 30000;
+                  m.statuses = {};
+                  if (S.rpg) {
+                    var _R9 = S.rpg;
+                    if (!_R9._questKills) _R9._questKills = {};
+                    Object.keys(QUEST_CHAINS).forEach(function (qid) {
+                      var _R9$_quests;
+                      if (((_R9$_quests = _R9._quests) === null || _R9$_quests === void 0 ? void 0 : _R9$_quests[qid]) === QUEST_STATUS.active) _R9._questKills[qid] = (_R9._questKills[qid] || 0) + 1;
+                    });
+                    var isCrit = a.dmg > pDmg;
+                    BT_AUDIO.deathBoom();
+                    S.screenShake = isCrit ? 6 : 3;
+                    var killAngle = a.ang;
+                    var arrowDeathParts = [];
+                    var _arrowKillElem = arrowElem || projElem || null;
+                    var _arrowKillColl = arrowCollision ? arrowCollision.collision : null;
+                    if (_arrowKillColl) {
+                      var collFx = getCollisionDeathFX(m.x, m.y, _arrowKillColl.id, killAngle, { fodder: 8, brute: 15, swarm: 6, sentinel: 12, volatile: 9, stalker: 10, hexer: 10 }[m.archetype || 'fodder'] || 10, isCrit ? 2 : 1);
+                      collFx.forEach(function (p) { return arrowDeathParts.push(p); });
+                    } else if (_arrowKillElem) {
+                      var elemFx = getElementDeathFX(m.x, m.y, _arrowKillElem, killAngle, m.color, { fodder: 8, brute: 15, swarm: 6, sentinel: 12, volatile: 9, stalker: 10, hexer: 10 }[m.archetype || 'fodder'] || 10, isCrit ? 2 : 1);
+                      elemFx.particles.forEach(function (p) { return arrowDeathParts.push(p); });
+                    } else {
+                      for (var dp = 0; dp < 15; dp++) {
+                        arrowDeathParts.push({ x: m.x, y: m.y, vx: Math.cos(killAngle + (Math.random() - 0.5) * 1.5) * (2 + Math.random() * 4), vy: Math.sin(killAngle + (Math.random() - 0.5) * 1.5) * (2 + Math.random() * 4) - 2, life: 1, color: m.color, size: 1.5 + Math.random() * 2 });
+                      }
+                    }
+                    arrowDeathParts.forEach(function (dp) { return S.hitParticles.push(dp); });
+                    var _arrowBodySize = { fodder: 8, brute: 15, swarm: 6, sentinel: 12, volatile: 9, stalker: 10, hexer: 10 }[m.archetype || 'fodder'] || 10;
+                    S.deathExplosions.push({ x: m.x, y: m.y, ts: Date.now(), emoji: m.emoji, particles: arrowDeathParts, isGrandSlam: isCrit, killScale: isCrit ? 2 : 1, killType: isStaffProj ? 'magic' : 'ranged', killElement: _arrowKillElem, killCollision: (_arrowKillColl === null || _arrowKillColl === void 0 ? void 0 : _arrowKillColl.id) || null, weaponType: isStaffProj ? 'staff' : 'bow', killAngle: killAngle, bodyColor: m.color, bodySize: _arrowBodySize, archetype: m.archetype || 'fodder', stuckArrows: m._stuckArrows || [] });
+                    S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 15, y: m.y + (Math.random() - 0.5) * 15, coins: m.gold || m.coins || 2, xp: 0, skull: m.type, skullEmoji: '🦴', ts: Date.now() });
+                    var dropChance = Math.min(0.15, 0.03 + (m.level || 1) * 0.001);
+                    if (Math.random() < dropChance) {
+                      var _zone7 = ZONES[S.currentZone];
+                      var _zoneElem2 = _zone7 === null || _zone7 === void 0 ? void 0 : _zone7.element;
+                      var dropRoll = Math.random();
+                      var dropTier, dropE1 = null, dropE2 = null, dropName = '', dropVolatile = false;
+                      if (dropRoll < 0.60) { dropTier = 'common'; }
+                      else if (dropRoll < 0.85) { dropTier = 'elemental'; dropE1 = _zoneElem2 || 'flame'; }
+                      else if (dropRoll < 0.97) {
+                        dropTier = 'fusion'; dropE1 = _zoneElem2 || 'flame';
+                        var palette = ['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind'].filter(function (e) { return e !== dropE1; });
+                        dropE2 = palette[Math.floor(Math.random() * palette.length)];
+                        var volPairs = [['flame', 'water'], ['water', 'venom'], ['venom', 'wind'], ['wind', 'stone'], ['stone', 'storm'], ['storm', 'frost'], ['frost', 'flame']];
+                        dropVolatile = volPairs.some(function (_ref19) { var _ref20 = _slicedToArray(_ref19, 2), a2 = _ref20[0], b = _ref20[1]; return dropE1 === a2 && dropE2 === b || dropE1 === b && dropE2 === a2; });
+                      } else { dropTier = 'shift'; dropE1 = _zoneElem2 || 'flame'; dropE2 = 'adaptive'; }
+                      var dropTypes = ['greatsword', 'sword', 'bow', 'staff'];
+                      var dropType = dropTypes[Math.floor(Math.random() * dropTypes.length)];
+                      var tierMult = RARITY_TIERS[dropTier].mult;
+                      if (dropTier === 'common') dropName = WEAPON_TYPES[dropType].label; else if (dropTier === 'elemental') dropName = dropE1.charAt(0).toUpperCase() + dropE1.slice(1) + ' ' + WEAPON_TYPES[dropType].label; else if (dropTier === 'fusion') dropName = dropE1.charAt(0).toUpperCase() + dropE1.slice(1) + (dropE2.charAt(0).toUpperCase() + dropE2.slice(1)) + ' ' + WEAPON_TYPES[dropType].label; else dropName = 'Prismatic ' + WEAPON_TYPES[dropType].label;
+                      S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 20, y: m.y + (Math.random() - 0.5) * 20, ts: Date.now(), isWeapon: true, weapon: { type: dropType, tier: dropTier, tierMult: tierMult, element1: dropE1, element2: dropE2, name: dropName, isVolatile: dropVolatile }, tierColor: RARITY_TIERS[dropTier].color });
+                      S.dmgNumbers.push({ x: m.x, y: m.y - 40, text: '🗡️ ' + dropName + '!', color: RARITY_TIERS[dropTier].color, ts: Date.now() });
+                    }
+                    setRpgState(_objectSpread({}, _R9));
+                    try { localStorage.setItem('bt_rpg', JSON.stringify(_R9)); } catch (e) {}
+                  }
+                  S.dmgNumbers.push({ x: m.x, y: m.y - 20, text: '☠️', color: '#ff5e6c', ts: Date.now() });
+                }
+                hit = true;
+              }
+            });
+            if (hit) return false;
+            /* Store render-ready element info */
+            a._projElem = projElem;
+            a._isStaffProj = isStaffProj;
+            return true;
+          });
+        }
+
+        /* ── State cleanup flags ── */
+        var _now = Date.now();
+        if (S._blockFlash && _now - S._blockFlash > 200) S._blockFlash = null;
+        if (S._levelUpFlash && _now - S._levelUpFlash > 800) S._levelUpFlash = null;
+        if (S._deathFlash && _now - S._deathFlash > 500) S._deathFlash = null;
+        if (S._zoneWipe && _now - S._zoneWipe.ts > 800) S._zoneWipe = null;
+        if (S.monsters) S.monsters.forEach(function(m) { if (m._telegraphUntil && _now > m._telegraphUntil) m._telegraphUntil = null; });
+        Object.keys(S.chatBubbles || {}).forEach(function(pid) {
+          if (_now - (S.chatBubbles[pid] || {}).ts > 5000) delete S.chatBubbles[pid];
+        });
+        if (S.groundSplatter) S.groundSplatter = S.groundSplatter.filter(function(sp) { return _now - sp.ts < 30000; });
+        if (S._impactRings) S._impactRings = S._impactRings.filter(function(r) { return _now - r.ts < 400; });
+        if (S.groundLoot) S.groundLoot.forEach(function(loot) { if (loot.expiry && _now > loot.expiry) loot._expired = true; });
+
+        /* ══════════════════════════════════════════════════════════
+           ── RENDER ──
+           PixiJS (WebGL) or Canvas 2D fallback.
+           ══════════════════════════════════════════════════════════ */
+        if (pixiRef.current && usePixi.current) {
+          /* ── PixiJS RENDER PATH ── */
+          var W = canvas.width / (window.devicePixelRatio || 1) * 1.25;
+          var H = canvas.height / (window.devicePixelRatio || 1) * 1.25;
+          pixiRef.current.update(S, W, H, nfts);
+        } else {
+        /* ── Canvas 2D RENDER PATH (fallback) ── */
+        /* Screen shake (read pre-computed value) */
         var shakeX = 0,
           shakeY = 0;
         if (S.screenShake > 0.1) {
           shakeX = (Math.random() - 0.5) * S.screenShake * 2;
           shakeY = (Math.random() - 0.5) * S.screenShake * 2;
-          S.screenShake *= 0.85; /* decay */
-        } else {
-          S.screenShake = 0;
         }
         ctx.save();
         ctx.translate(shakeX, shakeY);
@@ -7040,12 +7323,13 @@ export var BroTown = function BroTown(_ref0) {
 
         /* Day/night cycle — cached, recalculated every ~1 second */
         if (!S._dayNightCache || now - S._dayNightCache.ts > 1000) {
-          var hours = new Date().getHours() + new Date().getMinutes() / 60;
-          var isNight = hours < 6 || hours > 20;
-          var isDusk = hours >= 18 && hours <= 20 || hours >= 5 && hours < 7;
-          S._dayNightCache = { nightAlpha: isNight ? 0.35 : isDusk ? 0.15 : 0, ts: now };
+          var _dnHours = new Date().getHours() + new Date().getMinutes() / 60;
+          var _dnIsNight = _dnHours < 6 || _dnHours > 20;
+          var _dnIsDusk = _dnHours >= 18 && _dnHours <= 20 || _dnHours >= 5 && _dnHours < 7;
+          S._dayNightCache = { nightAlpha: _dnIsNight ? 0.35 : _dnIsDusk ? 0.15 : 0, isNight: _dnIsNight, ts: now };
         }
         var nightAlpha = S._dayNightCache.nightAlpha;
+        var isNight = S._dayNightCache.isNight || false;
         var zoneElem = ((_ZONES$S$currentZone8 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone8 === void 0 ? void 0 : _ZONES$S$currentZone8.element) || null;
         var _loop2 = function _loop2(r) {
           var _loop3 = function _loop3(cl) {
@@ -8261,54 +8545,17 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Draw other players — pure velocity-driven movement with smoothed velocity */
-        var _now = Date.now();
+        /* Draw other players — interpolation computed in pre-render phase */
         Object.values(S.others).forEach(function (o) {
-          /* Only render players in the same zone */
           var oZone = o.zone || 'town';
           if (oZone !== S.currentZone) return;
 
-          if (o.renderX === undefined) { o.renderX = o.x; o.renderY = o.y; }
-
-          /* Smooth velocity — EMA prevents micro-jumps between ticks */
-          var rawVx = o._vx || 0;
-          var rawVy = o._vy || 0;
-          if (o._smoothVx === undefined) { o._smoothVx = rawVx; o._smoothVy = rawVy; }
-          o._smoothVx += (rawVx - o._smoothVx) * 0.15;
-          o._smoothVy += (rawVy - o._smoothVy) * 0.15;
-
-          var dx2 = o.x - o.renderX;
-          var dy2 = o.y - o.renderY;
-          var dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-
-          if (dist2 > 100) {
-            o.renderX = o.x;
-            o.renderY = o.y;
-          } else {
-            var isMoving2 = Math.abs(o._smoothVx) > 0.005 || Math.abs(o._smoothVy) > 0.005;
-            if (isMoving2) {
-              o.renderX += o._smoothVx;
-              o.renderY += o._smoothVy;
-              if (dist2 > 30) {
-                o.renderX += dx2 * 0.03;
-                o.renderY += dy2 * 0.03;
-              }
-            } else {
-              if (dist2 > 0.5) {
-                o.renderX += dx2 * 0.15;
-                o.renderY += dy2 * 0.15;
-              } else {
-                o.renderX = o.x;
-                o.renderY = o.y;
-              }
-            }
-          }
-
+          /* Read pre-computed interpolated position */
           var oMoving = Math.abs(o.renderX - (o._prevRX || o.renderX)) > 0.05 || Math.abs(o.renderY - (o._prevRY || o.renderY)) > 0.05;
           o._prevRX = o.renderX;
           o._prevRY = o.renderY;
-          var ox = o.renderX - cx,
-            oy = o.renderY - cy;
+          var ox = (o.renderX || o.x) - cx,
+            oy = (o.renderY || o.y) - cy;
           if (ox < -40 || ox > W + 40 || oy < -40 || oy > H + 40) return;
 
           /* Other player shadow */
@@ -8317,35 +8564,10 @@ export var BroTown = function BroTown(_ref0) {
           ctx.ellipse(ox, oy + 20, 9, 3.5, 0, 0, Math.PI * 2);
           ctx.fill();
 
-          /* Facing direction — discrete (for rectangle fallback) */
-          var oDx = o.renderX - (o._facePrevX || o.renderX);
-          var oDy = o.renderY - (o._facePrevY || o.renderY);
-          o._facePrevX = o.renderX;
-          o._facePrevY = o.renderY;
-          var oAdx = Math.abs(oDx),
-            oAdy = Math.abs(oDy);
-          var oWasUD = o._facing === 'up' || o._facing === 'down';
-          var oVB = oWasUD ? 1.3 : 0.7;
-          if (oAdx > 0.03 || oAdy > 0.03) {
-            if (oAdy > oAdx * oVB) o._facing = oDy > 0 ? 'down' : 'up';else if (oAdx > oAdy * (oWasUD ? 0.7 : 1.3)) o._facing = oDx > 0 ? 'right' : 'left';
-          }
+          /* Read pre-computed facing direction */
           var oDir = o._facing || 'down';
           var oFlip = oDir === 'right';
           var oSide = oDir === 'left' || oDir === 'right';
-
-          /* Continuous facing angle — smooth 360° for NFT */
-          if (oAdx > 0.02 || oAdy > 0.02) {
-            o._targetAngle = Math.atan2(oDy, oDx);
-          }
-          if (o._fAngle === undefined) o._fAngle = Math.PI / 2;
-          if (o._targetAngle !== undefined) {
-            var aDiff = o._targetAngle - o._fAngle;
-            while (aDiff > Math.PI) aDiff -= Math.PI * 2;
-            while (aDiff < -Math.PI) aDiff += Math.PI * 2;
-            o._fAngle += aDiff * (oMoving ? 0.18 : 0.08);
-            while (o._fAngle > Math.PI) o._fAngle -= Math.PI * 2;
-            while (o._fAngle < -Math.PI) o._fAngle += Math.PI * 2;
-          }
 
           /* Animation vars (were missing — fix) */
           var oFp = now / 80;
@@ -8723,22 +8945,14 @@ export var BroTown = function BroTown(_ref0) {
         });
 
         /* ═══ REMOTE PROJECTILES — arrows and staff bolts from other players ═══ */
+        /* Simulation (movement, lifetime) handled in pre-render phase above */
         if (S._remoteProjectiles && S._remoteProjectiles.length > 0) {
-          S._remoteProjectiles = S._remoteProjectiles.filter(function(rp) {
-            rp.dist += rp.isStaff ? 5 : 8;
-            rp.life--;
-            if (rp.life <= 0) return false;
-            /* Find the owner's current position for origin */
-            var owner = S.others[rp.ownerId];
-            var originX = owner ? (owner.renderX || owner.x) : rp.x;
-            var originY = owner ? (owner.renderY || owner.y) : rp.y;
-            var px2 = originX + Math.cos(rp.ang) * rp.dist;
-            var py2 = originY + Math.sin(rp.ang) * rp.dist;
-            var sx2 = px2 - cx, sy2 = py2 - cy;
-            if (sx2 < -40 || sx2 > W + 40 || sy2 < -40 || sy2 > H + 40) return false;
+          S._remoteProjectiles.forEach(function(rp) {
+            if (!rp._renderX) return;
+            var sx2 = rp._renderX - cx, sy2 = rp._renderY - cy;
+            if (sx2 < -40 || sx2 > W + 40 || sy2 < -40 || sy2 > H + 40) return;
             ctx.save();
             if (rp.isStaff) {
-              /* Staff bolt — glowing orb */
               ctx.globalAlpha = 0.8;
               ctx.fillStyle = '#a855f7';
               ctx.shadowColor = '#a855f7';
@@ -8746,13 +8960,11 @@ export var BroTown = function BroTown(_ref0) {
               ctx.beginPath();
               ctx.arc(sx2, sy2, 4, 0, Math.PI * 2);
               ctx.fill();
-              /* Trail */
               ctx.globalAlpha = 0.3;
               ctx.beginPath();
               ctx.arc(sx2 - Math.cos(rp.ang) * 6, sy2 - Math.sin(rp.ang) * 6, 3, 0, Math.PI * 2);
               ctx.fill();
             } else {
-              /* Arrow — line with head */
               ctx.globalAlpha = 0.9;
               ctx.strokeStyle = '#d4a574';
               ctx.lineWidth = 1.5;
@@ -8760,7 +8972,6 @@ export var BroTown = function BroTown(_ref0) {
               ctx.moveTo(sx2 - Math.cos(rp.ang) * 10, sy2 - Math.sin(rp.ang) * 10);
               ctx.lineTo(sx2, sy2);
               ctx.stroke();
-              /* Arrowhead */
               ctx.fillStyle = '#aaa';
               ctx.beginPath();
               ctx.moveTo(sx2, sy2);
@@ -8769,368 +8980,28 @@ export var BroTown = function BroTown(_ref0) {
               ctx.fill();
             }
             ctx.restore();
-            return true;
           });
         }
 
-        /* ═══ ARROW PROJECTILES ═══ */
-        /* ═══ ARROWS — travel along LOS, follow aim direction ═══ */
+        /* ═══ ARROW PROJECTILES (render only — simulation in pre-render phase) ═══ */
         if (S.arrows && S.arrows.length > 0) {
-          /* Determine current aim angle for LOS tracking */
-          var curAim;
-          if (S.lockedTarget && S.lockedTarget.ref) {
-            var lt2 = S.lockedTarget.ref;
-            curAim = Math.atan2((lt2.y || 0) - P.y, (lt2.x || 0) - P.x);
-          } else if (S._aiming) {
-            curAim = S._aimAngle || 0;
-          } else {
-            var fd2 = S._facing || 'down';
-            curAim = fd2 === 'right' ? 0 : fd2 === 'up' ? -Math.PI / 2 : fd2 === 'left' ? Math.PI : Math.PI / 2;
-          }
-          S.arrows = S.arrows.filter(function (a) {
-            var _S$rpg15;
-            var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : {
-              element1: null,
-              element2: null
-            };
-            var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg.power || 0, activeWpn.tierMult || 1) : 10;
-            a.dist += a.isStaff ? 5 : 8;
-            a.life--;
-            /* Projectiles follow the active LOS while aiming */
-            if (S._aiming || S.lockedTarget && S.lockedTarget.ref) a.ang = curAim;
-            /* Position = player + angle × distance */
-            var ax2 = P.x + Math.cos(a.ang) * a.dist;
-            var ay2 = P.y + Math.sin(a.ang) * a.dist;
-            if (a.life <= 0) return false;
-            /* Hit detection */
-            var hit = false;
-            if (S.monsters) S.monsters.forEach(function (m) {
-              if (!m.alive || a.hitIds.has(m.id) || hit) return;
-              if (Math.sqrt(Math.pow(m.x - ax2, 2) + Math.pow(m.y - ay2, 2)) < (a.isStaff ? 30 : 18)) {
-                a.hitIds.add(m.id);
-
-                /* §9 — Apply element status on arrow hit */
-                var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
-                if (arrowElem) {
-                  var _ELEMENTS$arrowElem;
-                  var statusId = (_ELEMENTS$arrowElem = ELEMENTS[arrowElem]) === null || _ELEMENTS$arrowElem === void 0 ? void 0 : _ELEMENTS$arrowElem.status;
-                  if (statusId) applyStatus(m, statusId, S.player, Date.now());
-                }
-
-                /* §10.3 — Check for collision */
-                var arrowCollision = null;
-                if (arrowElem && S.rpg) {
-                  arrowCollision = resolveCollision(m, arrowElem, S.player, S.rpg, Date.now());
-                }
-
-                /* Boss invulnerability check */
-                if (m._invulnerable) {
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 20,
-                    text: 'IMMUNE',
-                    color: '#888',
-                    ts: Date.now()
-                  });
-                  a.hit = true;
-                  return;
-                }
-                m.curHp -= a.dmg;
-
-                /* Report arrow damage to server */
-                if (S._serverMonsters && S.channel) {
-                  var arrowTotalDmg = a.dmg;
-                  if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
-                  S.channel.send({ type: 'monster_damage', payload: {
-                    monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null
-                  }});
-                }
-
-                /* Collision damage + feedback on arrow hit */
-                if (arrowCollision) {
-                  var _ELEMENTS$arrowCollis;
-                  m.curHp -= arrowCollision.damage;
-                  var coll = arrowCollision.collision;
-                  var elemCol = ((_ELEMENTS$arrowCollis = ELEMENTS[arrowCollision.triggerElement]) === null || _ELEMENTS$arrowCollis === void 0 ? void 0 : _ELEMENTS$arrowCollis.color) || '#fff';
-                  S.dmgNumbers.push({
-                    x: m.x + 8,
-                    y: m.y - 30,
-                    text: '💥' + arrowCollision.damage + ' ' + coll.name,
-                    color: elemCol,
-                    ts: Date.now()
-                  });
-                  if (arrowCollision.manaRestored > 0) {
-                    S.dmgNumbers.push({
-                      x: P.x,
-                      y: P.y - 45,
-                      text: '+' + arrowCollision.manaRestored + ' MP',
-                      color: '#3b82f6',
-                      ts: Date.now()
-                    });
-                  }
-                  BT_AUDIO.collisionSound(arrowCollision.setupElement, arrowCollision.triggerElement, arrowCollision.manaRestored);
-                  for (var cp = 0; cp < 12; cp++) {
-                    S.hitParticles.push({
-                      x: m.x + (Math.random() - 0.5) * 6,
-                      y: m.y + (Math.random() - 0.5) * 6,
-                      vx: (Math.random() - 0.5) * 5,
-                      vy: (Math.random() - 0.5) * 5 - 2,
-                      life: 0.7,
-                      color: elemCol,
-                      size: 2 + Math.random() * 2
-                    });
-                  }
-                  S.screenShake = Math.max(S.screenShake, 4);
-                  BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
-                  var isNew = discoverCollision(coll.id);
-                  if (isNew) {
-                    S.dmgNumbers.push({
-                      x: P.x,
-                      y: P.y - 60,
-                      text: '📖 NEW: ' + coll.name + '!',
-                      color: '#f5c542',
-                      ts: Date.now()
-                    });
-                    BT_AUDIO.collect();
-                  }
-                }
-                BT_AUDIO.thwack();
-                var kba = Math.atan2(m.y - ay2, m.x - ax2);
-                m.x += Math.cos(kba) * 5;
-                m.y += Math.sin(kba) * 5;
-                /* ═══ Weapon-specific hit FX for ranged ═══ */
-                var rangedWpnType = a.isStaff ? 'staff' : 'bow';
-                var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, rangedWpnType, false);
-                rangedHitFX.forEach(function (p) {
-                  return S.hitParticles.push(p);
-                });
-                /* ═══ STUCK ARROW — embed in monster ═══ */
-                if (!m._stuckArrows) m._stuckArrows = [];
-                if (m._stuckArrows.length < 6) {
-                  m._stuckArrows.push({
-                    ang: a.ang,
-                    ox: (Math.random() - 0.5) * 8,
-                    oy: (Math.random() - 0.5) * 8,
-                    isStaff: a.isStaff || false,
-                    color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914'
-                  });
-                }
-                if (!S.dmgNumbers) S.dmgNumbers = [];
-                S.dmgNumbers.push({
-                  x: m.x,
-                  y: m.y - 10,
-                  text: a.dmg + '',
-                  color: '#ff9',
-                  ts: Date.now()
-                });
-                /* Kill check — use same reward path as melee kills */
-                if (m.curHp <= 0) {
-                  m.alive = false;
-                  m.respawnAt = Date.now() + 30000;
-                  m.statuses = {};
-
-                  /* Quest kill tracking */
-                  if (S.rpg) {
-                    var _R9 = S.rpg;
-                    if (!_R9._questKills) _R9._questKills = {};
-                    Object.keys(QUEST_CHAINS).forEach(function (qid) {
-                      var _R9$_quests;
-                      if (((_R9$_quests = _R9._quests) === null || _R9$_quests === void 0 ? void 0 : _R9$_quests[qid]) === QUEST_STATUS.active) _R9._questKills[qid] = (_R9._questKills[qid] || 0) + 1;
-                    });
-
-                    /* Death feedback — simplified Grand Slam for arrows */
-                    var isCrit = a.dmg > pDmg; /* special arrows count as crit */
-                    BT_AUDIO.deathBoom();
-                    S.screenShake = isCrit ? 6 : 3;
-
-                    /* Death particles — element-specific for arrow kills */
-                    var killAngle = a.ang;
-                    var arrowDeathParts = [];
-                    var _arrowKillElem = arrowElem || projElem || null;
-                    var _arrowKillColl = arrowCollision ? arrowCollision.collision : null;
-                    if (_arrowKillColl) {
-                      var collFx = getCollisionDeathFX(m.x, m.y, _arrowKillColl.id, killAngle, {
-                        fodder: 8,
-                        brute: 15,
-                        swarm: 6,
-                        sentinel: 12,
-                        volatile: 9,
-                        stalker: 10,
-                        hexer: 10
-                      }[m.archetype || 'fodder'] || 10, isCrit ? 2 : 1);
-                      collFx.forEach(function (p) {
-                        return arrowDeathParts.push(p);
-                      });
-                    } else if (_arrowKillElem) {
-                      var elemFx = getElementDeathFX(m.x, m.y, _arrowKillElem, killAngle, m.color, {
-                        fodder: 8,
-                        brute: 15,
-                        swarm: 6,
-                        sentinel: 12,
-                        volatile: 9,
-                        stalker: 10,
-                        hexer: 10
-                      }[m.archetype || 'fodder'] || 10, isCrit ? 2 : 1);
-                      elemFx.particles.forEach(function (p) {
-                        return arrowDeathParts.push(p);
-                      });
-                    } else {
-                      for (var dp = 0; dp < 15; dp++) {
-                        arrowDeathParts.push({
-                          x: m.x,
-                          y: m.y,
-                          vx: Math.cos(killAngle + (Math.random() - 0.5) * 1.5) * (2 + Math.random() * 4),
-                          vy: Math.sin(killAngle + (Math.random() - 0.5) * 1.5) * (2 + Math.random() * 4) - 2,
-                          life: 1,
-                          color: m.color,
-                          size: 1.5 + Math.random() * 2
-                        });
-                      }
-                    }
-                    arrowDeathParts.forEach(function (dp) {
-                      return S.hitParticles.push(dp);
-                    });
-                    /* Death explosion with kill type */
-                    var _arrowBodySize = {
-                      fodder: 8,
-                      brute: 15,
-                      swarm: 6,
-                      sentinel: 12,
-                      volatile: 9,
-                      stalker: 10,
-                      hexer: 10
-                    }[m.archetype || 'fodder'] || 10;
-                    S.deathExplosions.push({
-                      x: m.x,
-                      y: m.y,
-                      ts: Date.now(),
-                      emoji: m.emoji,
-                      particles: arrowDeathParts,
-                      isGrandSlam: isCrit,
-                      killScale: isCrit ? 2 : 1,
-                      killType: isStaffProj ? 'magic' : 'ranged',
-                      killElement: _arrowKillElem,
-                      killCollision: (_arrowKillColl === null || _arrowKillColl === void 0 ? void 0 : _arrowKillColl.id) || null,
-                      weaponType: isStaffProj ? 'staff' : 'bow',
-                      killAngle: killAngle,
-                      bodyColor: m.color,
-                      bodySize: _arrowBodySize,
-                      archetype: m.archetype || 'fodder',
-                      stuckArrows: m._stuckArrows || []
-                    });
-
-                    /* Drop loot on ground */
-                    S.groundLoot.push({
-                      x: m.x + (Math.random() - 0.5) * 15,
-                      y: m.y + (Math.random() - 0.5) * 15,
-                      coins: m.gold || m.coins || 2,
-                      xp: 0,
-                      skull: m.type,
-                      skullEmoji: '🦴',
-                      ts: Date.now()
-                    });
-
-                    /* Weapon drop chance */
-                    var dropChance = Math.min(0.15, 0.03 + (m.level || 1) * 0.001);
-                    if (Math.random() < dropChance) {
-                      var _zone7 = ZONES[S.currentZone];
-                      var _zoneElem2 = _zone7 === null || _zone7 === void 0 ? void 0 : _zone7.element;
-                      var dropRoll = Math.random();
-                      var dropTier,
-                        dropE1 = null,
-                        dropE2 = null,
-                        dropName = '',
-                        dropVolatile = false;
-                      if (dropRoll < 0.60) {
-                        dropTier = 'common';
-                      } else if (dropRoll < 0.85) {
-                        dropTier = 'elemental';
-                        dropE1 = _zoneElem2 || 'flame';
-                      } else if (dropRoll < 0.97) {
-                        dropTier = 'fusion';
-                        dropE1 = _zoneElem2 || 'flame';
-                        var palette = ['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind'].filter(function (e) {
-                          return e !== dropE1;
-                        });
-                        dropE2 = palette[Math.floor(Math.random() * palette.length)];
-                        var volPairs = [['flame', 'water'], ['water', 'venom'], ['venom', 'wind'], ['wind', 'stone'], ['stone', 'storm'], ['storm', 'frost'], ['frost', 'flame']];
-                        dropVolatile = volPairs.some(function (_ref19) {
-                          var _ref20 = _slicedToArray(_ref19, 2),
-                            a2 = _ref20[0],
-                            b = _ref20[1];
-                          return dropE1 === a2 && dropE2 === b || dropE1 === b && dropE2 === a2;
-                        });
-                      } else {
-                        dropTier = 'shift';
-                        dropE1 = _zoneElem2 || 'flame';
-                        dropE2 = 'adaptive';
-                      }
-                      var dropTypes = ['greatsword', 'sword', 'bow', 'staff'];
-                      var dropType = dropTypes[Math.floor(Math.random() * dropTypes.length)];
-                      var tierMult = RARITY_TIERS[dropTier].mult;
-                      if (dropTier === 'common') dropName = WEAPON_TYPES[dropType].label;else if (dropTier === 'elemental') dropName = dropE1.charAt(0).toUpperCase() + dropE1.slice(1) + ' ' + WEAPON_TYPES[dropType].label;else if (dropTier === 'fusion') dropName = dropE1.charAt(0).toUpperCase() + dropE1.slice(1) + (dropE2.charAt(0).toUpperCase() + dropE2.slice(1)) + ' ' + WEAPON_TYPES[dropType].label;else dropName = 'Prismatic ' + WEAPON_TYPES[dropType].label;
-                      S.groundLoot.push({
-                        x: m.x + (Math.random() - 0.5) * 20,
-                        y: m.y + (Math.random() - 0.5) * 20,
-                        ts: Date.now(),
-                        isWeapon: true,
-                        weapon: {
-                          type: dropType,
-                          tier: dropTier,
-                          tierMult: tierMult,
-                          element1: dropE1,
-                          element2: dropE2,
-                          name: dropName,
-                          isVolatile: dropVolatile
-                        },
-                        tierColor: RARITY_TIERS[dropTier].color
-                      });
-                      S.dmgNumbers.push({
-                        x: m.x,
-                        y: m.y - 40,
-                        text: '🗡️ ' + dropName + '!',
-                        color: RARITY_TIERS[dropTier].color,
-                        ts: Date.now()
-                      });
-                    }
-                    setRpgState(_objectSpread({}, _R9));
-                    try {
-                      localStorage.setItem('bt_rpg', JSON.stringify(_R9));
-                    } catch (e) {}
-                  }
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 20,
-                    text: '☠️',
-                    color: '#ff5e6c',
-                    ts: Date.now()
-                  });
-                }
-                hit = true;
-              }
-            });
-            if (hit) return false;
-            /* Render arrow */
-            var sx = ax2 - cx,
-              sy = ay2 - cy;
+          S.arrows.forEach(function (a) {
+            if (!a._renderX) return;
+            var sx = a._renderX - cx, sy = a._renderY - cy;
             var fadeA = Math.min(1, a.life / 20);
             ctx.save();
             ctx.translate(sx, sy);
             ctx.rotate(a.ang);
             ctx.globalAlpha = fadeA;
-
-            /* Get element color for this projectile */
-            var projElem = a.element || (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1);
+            var projElem = a._projElem;
             var projColor = projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#c8c8d0';
-            var isStaffProj = (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) === 'staff' || a.isSpecial && ((_S$rpg15 = S.rpg) === null || _S$rpg15 === void 0 ? void 0 : _S$rpg15.activeSlot) === 'staff';
+            var isStaffProj = a._isStaffProj;
             if (a.isSpecial || a.ice) {
-              /* Special/heavy projectile — large, glowing, element-colored */
               var _size = isStaffProj ? 1.5 : 1.0;
               ctx.shadowColor = projColor + 'cc';
               ctx.shadowBlur = 18 * _size;
               ctx.fillStyle = projColor + 'dd';
               ctx.fillRect(-16 * _size, -5 * _size, 32 * _size, 10 * _size);
-              /* Arrowhead */
               ctx.fillStyle = projColor;
               ctx.beginPath();
               ctx.moveTo(16 * _size, 0);
@@ -9138,13 +9009,11 @@ export var BroTown = function BroTown(_ref0) {
               ctx.lineTo(10 * _size, 6 * _size);
               ctx.closePath();
               ctx.fill();
-              /* Inner glow */
               ctx.shadowBlur = 10 * _size;
               ctx.fillStyle = projColor + '44';
               ctx.beginPath();
               ctx.arc(0, 0, 8 * _size, 0, Math.PI * 2);
               ctx.fill();
-              /* Sparkle particles */
               for (var sp = 0; sp < 3; sp++) {
                 var spx = -8 + Math.sin(Date.now() / 100 + sp * 2) * 10;
                 var spy = Math.cos(Date.now() / 80 + sp * 3) * 4 * _size;
@@ -9153,7 +9022,6 @@ export var BroTown = function BroTown(_ref0) {
               }
               ctx.shadowBlur = 0;
             } else if (isStaffProj) {
-              /* Staff auto-attack — larger, slower energy orb */
               ctx.shadowColor = projColor + 'aa';
               ctx.shadowBlur = 12;
               ctx.fillStyle = projColor + 'bb';
@@ -9166,7 +9034,6 @@ export var BroTown = function BroTown(_ref0) {
               ctx.fill();
               ctx.shadowBlur = 0;
             } else {
-              /* Normal bow arrow — element-tinted */
               ctx.fillStyle = '#8B6914';
               ctx.fillRect(-8, -1.5, 16, 3);
               ctx.fillStyle = projColor;
@@ -9182,7 +9049,6 @@ export var BroTown = function BroTown(_ref0) {
             }
             ctx.globalAlpha = 1;
             ctx.restore();
-            return true;
           });
         }
 
@@ -10339,9 +10205,7 @@ export var BroTown = function BroTown(_ref0) {
         /* ═══ RENDER GROUND SPLATTER — persistent kill marks ═══ */
         if (S.groundSplatter) {
           var splatNow = Date.now();
-          S.groundSplatter = S.groundSplatter.filter(function (sp) {
-            return splatNow - sp.ts < 30000;
-          }); /* fade after 30s */
+          /* Filtering handled in pre-render phase */
           S.groundSplatter.forEach(function (sp) {
             var sx = sp.x - cx,
               sy = sp.y - cy;
@@ -10367,10 +10231,7 @@ export var BroTown = function BroTown(_ref0) {
           S.monsters.forEach(function (m) {
             if (!m.alive || !m._telegraphUntil) return;
             var remaining = m._telegraphUntil - Date.now();
-            if (remaining <= 0) {
-              m._telegraphUntil = null;
-              return;
-            }
+            if (remaining <= 0) return;
             var mx = (m.renderX !== undefined ? m.renderX : m.x) - cx,
               my = (m.renderY !== undefined ? m.renderY : m.y) - cy;
             if (mx < -60 || mx > W + 60 || my < -60 || my > H + 60) return;
@@ -10557,9 +10418,10 @@ export var BroTown = function BroTown(_ref0) {
 
         /* ═══ IMPACT RINGS — expanding flash at point of contact ═══ */
         if (S._impactRings) {
-          S._impactRings = S._impactRings.filter(function (ring) {
+          /* Lifecycle filtering handled in pre-render phase */
+          S._impactRings.forEach(function (ring) {
             var rAge = (Date.now() - ring.ts) / ring.duration;
-            if (rAge >= 1) return false;
+            if (rAge >= 1) return;
             var rx = ring.x - cx,
               ry = ring.y - cy;
             var rr = ring.maxR * rAge;
@@ -10578,7 +10440,6 @@ export var BroTown = function BroTown(_ref0) {
               ctx.fill();
             }
             ctx.globalAlpha = 1;
-            return true;
           });
         }
 
@@ -11140,15 +11001,8 @@ export var BroTown = function BroTown(_ref0) {
         var bobScale = isMoving ? 1 + Math.sin(now / 120 + Math.PI / 2) * 0.03 : 1;
         var px = P.x - cx,
           py = P.y - cy + bobY;
-        /* Footstep sound — throttled */
-        if (isMoving) {
-          if (!S._footstepTimer) S._footstepTimer = 0;
-          S._footstepTimer++;
-          if (S._footstepTimer % 12 === 0) BT_AUDIO.footstep();
-          /* Track steps for stats */
-          if (S.stats && S._footstepTimer % 6 === 0) S.stats.steps++;
-        }
-        /* Footstep dust puffs — zone-tinted */
+        /* Footstep sound + stats — handled in pre-render simulation phase */
+        /* Footstep dust puffs — zone-tinted (visual-only, stays in render) */
         if (isMoving) {
           if (!S._dustPuffs) S._dustPuffs = [];
           if (Math.random() < 0.3) {
@@ -11384,37 +11238,10 @@ export var BroTown = function BroTown(_ref0) {
         ctx.ellipse(px, py + (_slim ? 24 : 42), _slim ? 10 : 18, _slim ? 4 : 6, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        /* Facing direction — discrete (for rectangle body fallback + weapon) */
-        var absDx = Math.abs(dx),
-          absDy = Math.abs(dy);
-        var wasUpDown = S._facing === 'up' || S._facing === 'down';
-        var vertBias = wasUpDown ? 1.3 : 0.7;
-        if (absDx > 0.03 || absDy > 0.03) {
-          if (absDy > absDx * vertBias) S._facing = dy > 0 ? 'down' : 'up';else if (absDx > absDy * (wasUpDown ? 0.7 : 1.3)) S._facing = dx > 0 ? 'right' : 'left';
-        }
+        /* Facing direction — read pre-computed values from simulation phase */
         var dir = S._facing || 'down';
         var flipAvatar = dir === 'right';
         var isSide = dir === 'left' || dir === 'right';
-
-        /* Continuous facing angle — smooth 360° rotation for NFT sprites
-           Uses atan2 of movement delta, smoothly interpolated toward target.
-           Convention: 0=right, π/2=down(toward camera), π/-π=left, -π/2=up(away) */
-        if (absDx > 0.02 || absDy > 0.02) {
-          S._targetFacingAngle = Math.atan2(dy, dx);
-        }
-        if (S._facingAngle === undefined) S._facingAngle = Math.PI / 2; /* default: facing camera */
-        if (S._targetFacingAngle !== undefined) {
-          /* Smooth angular interpolation (lerp on shortest arc) */
-          var diff = S._targetFacingAngle - S._facingAngle;
-          /* Normalize to [-π, π] */
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          var lerpSpeed = isMoving ? 0.18 : 0.08; /* faster when moving */
-          S._facingAngle += diff * lerpSpeed;
-          /* Keep in [-π, π] range */
-          while (S._facingAngle > Math.PI) S._facingAngle -= Math.PI * 2;
-          while (S._facingAngle < -Math.PI) S._facingAngle += Math.PI * 2;
-        }
 
         /* Animation */
         var fp = now / 80;
@@ -12853,8 +12680,6 @@ export var BroTown = function BroTown(_ref0) {
           if (bfAge < 1) {
             ctx.fillStyle = "rgba(96,165,250,".concat((1 - bfAge) * 0.12, ")");
             ctx.fillRect(0, 0, W, H);
-          } else {
-            S._blockFlash = null;
           }
         }
 
@@ -12881,8 +12706,6 @@ export var BroTown = function BroTown(_ref0) {
             ctx.beginPath();
             ctx.arc(W / 2, H / 2, luAge * Math.max(W, H) * 0.4, 0, Math.PI * 2);
             ctx.stroke();
-          } else {
-            S._levelUpFlash = null;
           }
         }
 
@@ -12959,8 +12782,6 @@ export var BroTown = function BroTown(_ref0) {
               }
               ctx.globalAlpha = 1;
             }
-          } else {
-            S._zoneWipe = null;
           }
         }
 
@@ -12982,8 +12803,6 @@ export var BroTown = function BroTown(_ref0) {
               ctx.fillText('YOU DIED', W / 2, H / 2 + 35);
               ctx.globalAlpha = 1;
             }
-          } else {
-            S._deathFlash = null;
           }
         }
         ctx.restore(); /* end screen shake */
@@ -13053,6 +12872,7 @@ export var BroTown = function BroTown(_ref0) {
         }
 
         /* Minimap removed — resources shown on joystick rings */
+        } /* end Canvas 2D fallback else block */
       } catch (gameLoopErr) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
       }
@@ -13236,6 +13056,7 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
+      if (pixiRef.current) { pixiRef.current.destroy(); pixiRef.current = null; }
     };
     return function () {
       cancelAnimationFrame(frameRef.current);
