@@ -2300,6 +2300,9 @@ export var BroTown = function BroTown(_ref0) {
     if (!usePixi.current) {
       /* Canvas 2D mode — ensure we have a valid 2d context */
       ctx = canvas.getContext('2d');
+      /* Pixel art: disable bilinear filtering so tile blits stay crisp
+         (default true smears sprites into a blurry mess every frame) */
+      ctx.imageSmoothingEnabled = false;
       /* Start loading tileset assets for Canvas 2D sprite rendering */
       startLoadingTileAssets();
     }
@@ -2329,7 +2332,7 @@ export var BroTown = function BroTown(_ref0) {
       canvas.height = vh * dpr;
       canvas.style.width = vw + 'px';
       canvas.style.height = vh + 'px';
-      ctx.setTransform(dpr * 0.8, 0, 0, dpr * 0.8, 0, 0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     resize();
     window.addEventListener('resize', resize);
@@ -2877,7 +2880,7 @@ export var BroTown = function BroTown(_ref0) {
       canvas.height = h * dpr;
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
-      ctx.setTransform(dpr * 0.8, 0, 0, dpr * 0.8, 0, 0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener('resize', resize);
@@ -2919,7 +2922,7 @@ export var BroTown = function BroTown(_ref0) {
         if (false) {
           return;
         }
-        var W = canvas.width / (window.devicePixelRatio || 1) * 1.25;
+        var W = canvas.width / (window.devicePixelRatio || 1);
         var H = canvas.height / (window.devicePixelRatio || 1) * 1.25;
         var P = S.player;
         var K = S.keys;
@@ -7304,7 +7307,7 @@ export var BroTown = function BroTown(_ref0) {
            ══════════════════════════════════════════════════════════ */
         if (pixiRef.current && usePixi.current) {
           /* ── PixiJS RENDER PATH ── */
-          var W = canvas.width / (window.devicePixelRatio || 1) * 1.25;
+          var W = canvas.width / (window.devicePixelRatio || 1);
           var H = canvas.height / (window.devicePixelRatio || 1) * 1.25;
           pixiRef.current.update(S, W, H, nfts);
         } else {
@@ -12902,22 +12905,27 @@ export var BroTown = function BroTown(_ref0) {
 
         /* Minimap removed — resources shown on joystick rings */
 
-        /* ── FPS counter ── */
-        if (!S._fps) S._fps = { frames: 0, lastT: performance.now(), value: 0 };
-        S._fps.frames++;
+        /* ── FPS counter with stutter detection ── */
         var _fpsNow = performance.now();
+        if (!S._fps) S._fps = { frames: 0, lastT: _fpsNow, prevT: _fpsNow, value: 0, worstMs: 0, worstShown: 0 };
+        var _frameDelta = _fpsNow - S._fps.prevT;
+        S._fps.prevT = _fpsNow;
+        if (_frameDelta > S._fps.worstMs) S._fps.worstMs = _frameDelta;
+        S._fps.frames++;
         if (_fpsNow - S._fps.lastT >= 500) {
           S._fps.value = Math.round((S._fps.frames * 1000) / (_fpsNow - S._fps.lastT));
+          S._fps.worstShown = Math.round(S._fps.worstMs);
           S._fps.frames = 0;
+          S._fps.worstMs = 0;
           S._fps.lastT = _fpsNow;
         }
         ctx.save();
         ctx.font = 'bold 12px "Space Mono", monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        var _fpsText = 'FPS ' + S._fps.value;
+        var _fpsText = 'FPS ' + S._fps.value + ' (' + S._fps.worstShown + 'ms)';
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.fillRect(90, 6, 62, 18);
+        ctx.fillRect(90, 6, 120, 18);
         ctx.fillStyle = S._fps.value >= 55 ? '#3dd497' : S._fps.value >= 30 ? '#e8c547' : '#ff5e6c';
         ctx.fillText(_fpsText, 94, 9);
         ctx.restore();
