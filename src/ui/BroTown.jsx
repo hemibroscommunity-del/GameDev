@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
+import { startLoadingTileAssets, useSpriteTiles, drawTileLayer, drawBuildingSprites } from '@/rendering/canvasTileAssets.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 
@@ -88,7 +89,7 @@ export var BroTown = function BroTown(_ref0) {
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
   var pixiRef = useRef(null);
-  var usePixi = useRef(false); /* true = PixiJS (WebGL), false = Canvas 2D — PixiJS viewport needs debugging */
+  var usePixi = useRef(false); /* true = PixiJS (WebGL), false = Canvas 2D */
   var stateRef = useRef({
     player: {
       x: 20 * TILE,
@@ -2299,6 +2300,8 @@ export var BroTown = function BroTown(_ref0) {
     if (!usePixi.current) {
       /* Canvas 2D mode — ensure we have a valid 2d context */
       ctx = canvas.getContext('2d');
+      /* Start loading tileset assets for Canvas 2D sprite rendering */
+      startLoadingTileAssets();
     }
     /* Polyfill roundRect */
     if (!ctx.roundRect) ctx.roundRect = function (x, y, w, h, r) {
@@ -2596,6 +2599,7 @@ export var BroTown = function BroTown(_ref0) {
             processedAvatars[url] = offCanvas;
           } catch (e) {
             /* CORS or other error — use raw image */
+            console.warn('[NFT] Background removal failed:', e.message, url);
             processedAvatars[url] = img;
           }
         };
@@ -3027,6 +3031,10 @@ export var BroTown = function BroTown(_ref0) {
 
         var nx = P.x + dx * finalSpd;
         var ny = P.y + dy * finalSpd;
+
+        /* Store velocity for facing/mirroring code */
+        P.vx = dx * finalSpd;
+        P.vy = dy * finalSpd;
 
         /* Ice slide momentum */
         if (terrainSlide > 0 && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
@@ -7310,22 +7318,29 @@ export var BroTown = function BroTown(_ref0) {
         }
         ctx.save();
         ctx.translate(shakeX, shakeY);
-        /* Fill edges with zone ground color + subtle darkening to blend with map */
-        var _bgColor = _zone.palette ? _zone.palette.ground : '#2d5a1e';
-        ctx.fillStyle = _bgColor;
-        ctx.fillRect(-10, -10, W + 20, H + 20);
-        /* Draw a darker overlay on the border area to make it look like map fade-out */
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.fillRect(-10, -10, W + 20, H + 20);
         var now = Date.now(); /* cached once per frame — was called 64 times */
         var cx = S.camera.x,
           cy = S.camera.y;
+
+        /* Clear canvas each frame */
+        var _bgColor = _zone.palette ? _zone.palette.ground : '#2d5a1e';
+        ctx.fillStyle = _bgColor;
+        ctx.fillRect(-10, -10, W + 20, H + 20);
 
         /* Tiles */
         var startCol = Math.max(0, Math.floor(cx / TILE));
         var endCol = Math.min(COLS - 1, Math.floor((cx + W) / TILE));
         var startRow = Math.max(0, Math.floor(cy / TILE));
         var endRow = Math.min(ROWS - 1, Math.floor((cy + H) / TILE));
+
+        /* ── Tileset sprite path: draws tiles directly, skips old procedural loop ── */
+        var _usedSpriteLayer = useSpriteTiles(S.currentZone) && drawTileLayer(ctx, map, S.currentZone, cx, cy, W, H, now);
+
+        if (!_usedSpriteLayer) {
+          /* Darker overlay for procedural zones */
+          ctx.fillStyle = 'rgba(0,0,0,0.35)';
+          ctx.fillRect(-10, -10, W + 20, H + 20);
+        }
 
         /* Day/night cycle — cached, recalculated every ~1 second */
         if (!S._dayNightCache || now - S._dayNightCache.ts > 1000) {
@@ -7338,6 +7353,7 @@ export var BroTown = function BroTown(_ref0) {
         var isNight = S._dayNightCache.isNight || false;
         var isDusk = S._dayNightCache.isDusk || false;
         var zoneElem = ((_ZONES$S$currentZone8 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone8 === void 0 ? void 0 : _ZONES$S$currentZone8.element) || null;
+        if (!_usedSpriteLayer) {
         var _loop2 = function _loop2(r) {
           var _loop3 = function _loop3(cl) {
             var _map$r;
@@ -8282,6 +8298,12 @@ export var BroTown = function BroTown(_ref0) {
         };
         for (var r = startRow; r <= endRow; r++) {
           _loop2(r);
+        }
+        } /* end if (!_usedSpriteLayer) */
+
+        /* Draw building sprites on top of tile layer (town/meadow/farm only) */
+        if (_usedSpriteLayer && S.currentZone === 'town') {
+          drawBuildingSprites(ctx, BUILDINGS, cx, cy, W, H);
         }
 
         /* Ambient particles — fireflies at night, leaves during day */
@@ -12879,6 +12901,26 @@ export var BroTown = function BroTown(_ref0) {
         }
 
         /* Minimap removed — resources shown on joystick rings */
+
+        /* ── FPS counter ── */
+        if (!S._fps) S._fps = { frames: 0, lastT: performance.now(), value: 0 };
+        S._fps.frames++;
+        var _fpsNow = performance.now();
+        if (_fpsNow - S._fps.lastT >= 500) {
+          S._fps.value = Math.round((S._fps.frames * 1000) / (_fpsNow - S._fps.lastT));
+          S._fps.frames = 0;
+          S._fps.lastT = _fpsNow;
+        }
+        ctx.save();
+        ctx.font = 'bold 12px "Space Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        var _fpsText = 'FPS ' + S._fps.value;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(90, 6, 62, 18);
+        ctx.fillStyle = S._fps.value >= 55 ? '#3dd497' : S._fps.value >= 30 ? '#e8c547' : '#ff5e6c';
+        ctx.fillText(_fpsText, 94, 9);
+        ctx.restore();
         } /* end Canvas 2D fallback else block */
       } catch (gameLoopErr) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);

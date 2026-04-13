@@ -14,41 +14,18 @@ export const LAYER_NAMES = [
   'atmosphere', 'screenFX', 'hud',
 ];
 
-/**
- * Creates and initializes the PixiJS application.
- * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
- * @returns {Promise<{app: Application, layers: Object, worldContainer: Container, screenContainer: Container}>}
- */
-export async function createPixiApp(canvas) {
-  const app = new Application();
-
-  const dpr = window.devicePixelRatio || 1;
-
-  await app.init({
-    canvas: canvas,
-    width: canvas.clientWidth || (canvas.width / dpr),
-    height: canvas.clientHeight || (canvas.height / dpr),
-    background: 0x0d0b18,
-    antialias: false,
-    resolution: dpr,
-    autoDensity: true,
-    powerPreference: 'high-performance',
-    autoStart: false,
-  });
-
+/** Build the scene graph (containers + layers) on a successfully initialized app. */
+function buildScene(app) {
   app.ticker.stop();
 
-  // World container — moves with camera
   const worldContainer = new Container();
   worldContainer.label = 'world';
   app.stage.addChild(worldContainer);
 
-  // Screen container — fixed to viewport (HUD, flashes)
   const screenContainer = new Container();
   screenContainer.label = 'screen';
   app.stage.addChild(screenContainer);
 
-  // Create layer containers
   const layers = {};
   const worldLayers = [
     'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
@@ -72,4 +49,42 @@ export async function createPixiApp(canvas) {
   }
 
   return { app, layers, worldContainer, screenContainer };
+}
+
+/**
+ * Creates and initializes the PixiJS application.
+ * Tries WebGL first; if it fails (e.g. blocked by browser extensions),
+ * falls back to the PixiJS Canvas renderer.
+ * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
+ */
+export async function createPixiApp(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+
+  const initOpts = {
+    canvas: canvas,
+    width: canvas.clientWidth || (canvas.width / dpr),
+    height: canvas.clientHeight || (canvas.height / dpr),
+    background: 0x0d0b18,
+    antialias: false,
+    resolution: dpr,
+    autoDensity: true,
+    powerPreference: 'high-performance',
+    autoStart: false,
+  };
+
+  // Try WebGL first
+  try {
+    const app = new Application();
+    await app.init({ ...initOpts, preference: 'webgl' });
+    console.log('PixiJS using WebGL renderer');
+    return buildScene(app);
+  } catch (e) {
+    console.warn('WebGL init failed, retrying with Canvas renderer:', e.message);
+  }
+
+  // Fallback to PixiJS Canvas renderer
+  const app = new Application();
+  await app.init({ ...initOpts, preference: 'canvas' });
+  console.log('PixiJS using Canvas renderer');
+  return buildScene(app);
 }

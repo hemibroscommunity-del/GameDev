@@ -6,6 +6,7 @@ import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer } from './systems/entityRenderer.js';
 import { EffectsRenderer } from './systems/effectsRenderer.js';
+import { loadTileAssets } from './tileAssets.js';
 
 /**
  * Initializes the PixiJS renderer.
@@ -18,6 +19,17 @@ export async function initPixiRenderer(canvas) {
   const tileRenderer = new TileRenderer(layers.tiles);
   const entityRenderer = new EntityRenderer(layers.entities, layers.player);
   const effectsRenderer = new EffectsRenderer(layers);
+
+  // Load tile sprite assets (non-blocking — tiles render procedurally until loaded)
+  loadTileAssets()
+    .then((assets) => {
+      tileRenderer.setAssets(assets);
+      // Force rebuild if a zone is already active
+      if (currentZone && currentMap) {
+        tileRenderer.rebuild(app, currentMap, currentZone);
+      }
+    })
+    .catch((err) => console.warn('Tile assets failed to load, using procedural fallback:', err));
 
   let currentZone = null;
   let currentMap = null;

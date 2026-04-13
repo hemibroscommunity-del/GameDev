@@ -4,7 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   root: 'src',
-  publicDir: 'public',
+  publicDir: '../public',
   plugins: [react()],
   resolve: {
     alias: {

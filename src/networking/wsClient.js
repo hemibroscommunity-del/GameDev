@@ -1139,7 +1139,15 @@ export function setupWebSocket(ctx) {
     };
     S.channel = channelShim;
     connect();
+
+    /* Close WS on page refresh/close so server drops the connection immediately */
+    function _onBeforeUnload() {
+      if (ws) try { ws.close(); } catch (e) {}
+    }
+    window.addEventListener('beforeunload', _onBeforeUnload);
+
     return function () {
+      window.removeEventListener('beforeunload', _onBeforeUnload);
       stopBatchTimer();
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) {
