@@ -13398,6 +13398,22 @@ export var BroTown = function BroTown(_ref0) {
       if ((_window$screen2 = window.screen) !== null && _window$screen2 !== void 0 && _window$screen2.orientation) window.screen.orientation.removeEventListener('change', onResize);
     };
   }, []);
+  /* Expose legacy panel toggles for the utility wheel (replaces toolbar). */
+  useEffect(function () {
+    window.__broLegacyUI = {
+      stats:        function () { setShowStatScreen(function (v) { return !v; }); },
+      inventory:    function () { setShowInventory(function (v) { return !v; }); },
+      skills:       function () { setShowSkills(function (v) { return !v; }); },
+      encyclopedia: function () { setShowEncyclopedia(function (v) { return !v; }); },
+      guild:        function () { setShowGuildPanel(function (v) { return !v; }); },
+      leaderboard:  function () { setShowLeaderboard(function (v) { return !v; }); },
+      feedback:     function () { setShowFeedback(function (v) { return !v; }); },
+      clan:         function () { setShowClanPanel(function (v) { return !v; }); },
+      social:       function () { setShowSocialPanel(function (v) { return !v; }); },
+      chat:         function () { setChatOpen(function (v) { return !v; }); },
+    };
+    return function () { delete window.__broLegacyUI; };
+  }, []);
   var goFullscreen = function goFullscreen() {
     var el = document.documentElement;
     try {
@@ -32461,9 +32477,12 @@ export var BroTown = function BroTown(_ref0) {
     }, '☀️ Enter Radiant Heights'));
   }()), /*#__PURE__*/React.createElement("div", {
     style: {
+      // Legacy bottom toolbar — replaced by the utility wheel (§1.7d).
+      // Hidden in v14.x; kept in tree to avoid surgery on a 33k-line file
+      // and because some buttons drive functions not yet relocated.
+      display: 'none',
       background: 'rgba(10,8,20,.95)',
       borderTop: '1px solid rgba(255,255,255,.08)',
-      display: 'flex',
       alignItems: 'center',
       gap: 3,
       padding: '3px 6px',

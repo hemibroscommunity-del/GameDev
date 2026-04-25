@@ -11,6 +11,7 @@ import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
 import { BlockRing } from './mobile/BlockRing.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
+import { MoreOverlay, moreOverlay } from './mobile/MoreOverlay.jsx';
 import { debugBus } from '../debug/debugBus.js';
 
 const NFT_CSV_URL = 'https://raw.githubusercontent.com/hemibroscommunity-del/Hemi-Bros-catalogue/main/Hemi%20Bro%20spreadsheet-CleanDataWithImages.csv';
@@ -103,15 +104,26 @@ export const GameApp = () => {
     // Default wheel slot handlers — placeholder until each surface is built.
     const tools = ['inventory','journey','map','more','social','selfInspect','bank','clan','market','arena','quests','settings'];
     const offs = tools.map(t => wheelBus.onActivate(t, () => console.log(`[wheel] activate: ${t}`)));
-    // Wire wheel → inventory surface.
+    // Wire wheel → inventory surface (uses new spec'd surface).
     offs.push(wheelBus.onActivate('inventory', () => inventoryBus.setOpen(true)));
-    // Wire wheel → self-inspect card. Until live state binding lands, this
-    // pulls a best-effort profile from the live game state with mock fallback.
+    // Wire wheel → self-inspect card.
     offs.push(wheelBus.onActivate('selfInspect', () => {
       const s = window._gameState?.current;
       const profile = (s && s.player) ? buildSelfProfile(s) : generateMockProfile({ name: 'You' });
       inspectCardBus.open(profile);
     }));
+    // Wire wheel → "More" overlay (legacy panels not yet relocated).
+    offs.push(wheelBus.onActivate('more', () => moreOverlay.open()));
+    // Wire wheel slots that map directly to a legacy panel.
+    const legacyPanel = (key) => () => {
+      const fn = window.__broLegacyUI?.[key];
+      if (fn) fn(); else console.log(`[wheel] legacy panel '${key}' not ready`);
+    };
+    offs.push(wheelBus.onActivate('social', legacyPanel('social')));
+    offs.push(wheelBus.onActivate('clan',   legacyPanel('clan')));
+    offs.push(wheelBus.onActivate('quests', legacyPanel('encyclopedia'))); // closest match
+    offs.push(wheelBus.onActivate('journey', legacyPanel('encyclopedia'))); // until journey surface lands
+    offs.push(wheelBus.onActivate('map',    legacyPanel('encyclopedia'))); // until map surface lands
 
     // Debug commands for the wheel.
     debugBus.cmd('wheel', (args) => {
@@ -220,6 +232,7 @@ export const GameApp = () => {
       <InventorySurface />
       <InspectCard />
       <BlockRing />
+      <MoreOverlay />
       <DebugOverlay />
     </>
   );

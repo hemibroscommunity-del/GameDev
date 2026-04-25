@@ -3,7 +3,7 @@ import { blockRingBus } from './blockRingBus.js';
 
 // Color canon — spec §"Color and Typography Canon".
 const C = {
-  ringFill:    'rgba(244, 199, 117,',     // append `<opacity>)`
+  ringFill:    'rgba(244, 199, 117,',
   ringDashed:  'rgba(244, 199, 117, 0.25)',
   litFill:     '#F4C775',
   litGlow:     '#F4C775',
@@ -14,24 +14,19 @@ const C = {
   parryFlash:  '#F4E0A8',
 };
 
-// Geometry — spec §Part 2: ring band 12px, inner radius = joystick outer + 6-8px.
 const RING_BAND = 12;
 const RING_GAP  = 7;
 const SHIELD_ICON_W = 28;
 const SHIELD_ICON_H = 30;
 const LIT_ARC_DEG = 70;
-
-// Activation discipline — spec §"Commitment cost — joystick release window".
 const COMMITMENT_GAP_MS = 75;
+// Slight inflation on the band hit-target so a finger near the band still grabs it.
+const HIT_PAD = 6;
 
 const useRaf = (cb) => {
   useEffect(() => {
-    let raf, last = performance.now();
-    const tick = (now) => {
-      cb(now, now - last);
-      last = now;
-      raf = requestAnimationFrame(tick);
-    };
+    let raf;
+    const tick = (now) => { cb(now); raf = requestAnimationFrame(tick); };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [cb]);
@@ -78,51 +73,94 @@ const LitArc = ({ ringInner, ringOuter, centerAngle, opacity = 1 }) => {
 };
 
 export const BlockRing = () => {
-  // Geometry derived from the right-joystick element each frame.
   const [geo, setGeo] = useState(null);
-  // Force re-render at frame rate so opacity transitions and parry flash redraw.
   const [, setTick] = useState(0);
 
-  // Track right-joystick last-released time for the activation gap.
   const rJoyReleasedAt = useRef(0);
   const lastRJoyDownRef = useRef(false);
   const dragActive = useRef(false);
   const touchId = useRef(null);
-
-  // Mirror of last applied shield angle, for smoothed aim tracking.
   const shieldAngleRef = useRef(0);
+  const geoRef = useRef(null);
 
   useRaf(() => {
     const el = document.querySelector('.bt-rjoy-base');
-    if (!el) { setGeo(null); return; }
+    if (!el) { setGeo(null); geoRef.current = null; return; }
     const r = el.getBoundingClientRect();
-    if (!r.width) { setGeo(null); return; }
+    if (!r.width) { setGeo(null); geoRef.current = null; return; }
     const cx = r.left + r.width / 2;
     const cy = r.top  + r.height / 2;
     const joyOuter = r.width / 2;
     const ringInner = joyOuter + RING_GAP;
     const ringOuter = ringInner + RING_BAND;
+    const next = { cx, cy, joyOuter, ringInner, ringOuter };
+    geoRef.current = next;
 
-    // Aim tracking when not blocking: shield icon follows aim direction.
+    // Aim tracking when not blocking: shield icon follows aim (50ms smoothing).
     const S = window._gameState?.current;
     const aim = S?._aimAngle ?? 0;
     if (!blockRingBus.state.blocking) {
-      // 50ms smoothing per spec.
       shieldAngleRef.current = lerpAngle(shieldAngleRef.current, aim, 0.2);
     }
     if (S) S._shieldAngle = shieldAngleRef.current;
 
-    // Track right-joystick release time using existing _aiming flag.
     const rjoyDown = !!S?._aiming;
     if (lastRJoyDownRef.current && !rjoyDown) rJoyReleasedAt.current = performance.now();
     lastRJoyDownRef.current = rjoyDown;
 
-    setGeo({ cx, cy, joyOuter, ringInner, ringOuter });
+    setGeo(next);
     setTick(t => t + 1);
   });
 
-  if (!geo) return null;
+  // ── Window-level drag tracking ────────────────────────────────────────────
+  // Once a block is active we listen at the window level so the finger can
+  // slide off our hit-targets without losing the gesture.
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragActive.current || !geoRef.current) return;
+      const t = e.touches
+        ? Array.from(e.touches).find(t => t.identifier === touchId.current)
+        : e;
+      if (!t) return;
+      const { cx, cy } = geoRef.current;
+      const ang = angleOf(cx, cy, t.clientX, t.clientY);
+      shieldAngleRef.current = ang;
+      const S = window._gameState?.current;
+      if (S) S._shieldAngle = ang;
+      e.preventDefault?.();
+    };
+    const onEnd = (e) => {
+      if (!dragActive.current) return;
+      if (e.changedTouches) {
+        const found = Array.from(e.changedTouches).find(t => t.identifier === touchId.current);
+        if (!found) return;
+      }
+      dragActive.current = false;
+      touchId.current = null;
+      const S = window._gameState?.current;
+      if (S) {
+        S._shieldUp = false;
+        if (S.channel) {
+          try { S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: false } }); } catch {}
+        }
+      }
+      blockRingBus.endBlock();
+    };
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+    window.addEventListener('touchcancel', onEnd);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    return () => {
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+      window.removeEventListener('touchcancel', onEnd);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+    };
+  }, []);
 
+  if (!geo) return null;
   const { cx, cy, ringInner, ringOuter } = geo;
   const size = ringOuter * 2;
   const blocking = blockRingBus.state.blocking;
@@ -132,24 +170,15 @@ export const BlockRing = () => {
   const sx = ringOuter + Math.cos(shieldAng) * ((ringInner + ringOuter) / 2);
   const sy = ringOuter + Math.sin(shieldAng) * ((ringInner + ringOuter) / 2);
 
-  // ── Input handling ────────────────────────────────────────────────────────
-  const tryActivate = (clientX, clientY) => {
-    const dist = Math.hypot(clientX - cx, clientY - cy);
-    const onIcon = Math.hypot(clientX - (cx + Math.cos(shieldAng) * (ringInner + ringOuter) / 2),
-                              clientY - (cy + Math.sin(shieldAng) * (ringInner + ringOuter) / 2))
-                   <= Math.max(SHIELD_ICON_W, SHIELD_ICON_H) / 2 + 4;
-    const onRing = dist >= ringInner - 4 && dist <= ringOuter + 6;
-    if (!onIcon && !onRing) return false;
-    // Commitment gap: must be released for at least COMMITMENT_GAP_MS.
+  // ── Activation (touchstart on hit-target circle or shield icon) ───────────
+  const tryActivate = (clientX, clientY, identifier) => {
     const sinceRelease = performance.now() - rJoyReleasedAt.current;
     if (rJoyReleasedAt.current && sinceRelease < COMMITMENT_GAP_MS) return false;
-
     const S = window._gameState?.current;
     if (S) {
       S._shieldUp = true;
-      // Snap shield angle to the touch's angle relative to the joystick center.
-      const ang = angleOf(cx, cy, clientX, clientY);
-      shieldAngleRef.current = onIcon ? shieldAng : ang;
+      const dx = clientX - cx, dy = clientY - cy;
+      shieldAngleRef.current = Math.atan2(dy, dx);
       S._shieldAngle = shieldAngleRef.current;
       if (S.channel) {
         try { S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: true } }); } catch {}
@@ -157,119 +186,89 @@ export const BlockRing = () => {
     }
     blockRingBus.beginBlock();
     dragActive.current = true;
+    touchId.current = identifier ?? null;
     return true;
   };
 
-  const updateDrag = (clientX, clientY) => {
-    if (!dragActive.current) return;
-    const ang = angleOf(cx, cy, clientX, clientY);
-    shieldAngleRef.current = ang;
-    const S = window._gameState?.current;
-    if (S) S._shieldAngle = ang;
+  const onBandTouchStart = (e) => {
+    const t = e.touches?.[0];
+    if (!t) { tryActivate(e.clientX, e.clientY, null); e.stopPropagation(); return; }
+    if (tryActivate(t.clientX, t.clientY, t.identifier)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  const onBandMouseDown = (e) => {
+    if (tryActivate(e.clientX, e.clientY, null)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
-  const release = () => {
-    if (!dragActive.current) return;
-    dragActive.current = false;
-    touchId.current = null;
-    const S = window._gameState?.current;
-    if (S) {
-      S._shieldUp = false;
-      if (S.channel) {
-        try { S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: false } }); } catch {}
-      }
-    }
-    blockRingBus.endBlock();
-  };
-
-  const onTouchStart = (e) => {
-    for (const t of e.touches) {
-      if (touchId.current == null && tryActivate(t.clientX, t.clientY)) {
-        touchId.current = t.identifier;
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-    }
-  };
-  const onTouchMove = (e) => {
-    if (!dragActive.current) return;
-    for (const t of e.touches) {
-      if (t.identifier === touchId.current) {
-        updateDrag(t.clientX, t.clientY);
-        e.preventDefault();
-        return;
-      }
-    }
-  };
-  const onTouchEnd = (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === touchId.current) { release(); return; }
-    }
-  };
-  const onMouseDown = (e) => { if (tryActivate(e.clientX, e.clientY)) { e.preventDefault(); e.stopPropagation(); } };
-  const onMouseMove = (e) => { if (dragActive.current) updateDrag(e.clientX, e.clientY); };
-  const onMouseUp   = () => release();
-
-  // Parry flash overlay
   const flashAge = performance.now() - blockRingBus.state.parryFlashAt;
   const flashing = flashAge >= 0 && flashAge < 300;
   const flashAlpha = flashing ? 1 - flashAge / 300 : 0;
 
+  // Outer wrapper: pointer-events: none — touches inside the joystick fall
+  // through to the underlying joystick and continue to drive auto-attack.
   return (
-    <div
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchEnd}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
-      style={{
-        position: 'fixed',
-        left: cx - ringOuter, top: cy - ringOuter,
-        width: size, height: size,
-        zIndex: 31,                    // just above right joystick
-        touchAction: 'none',
-        pointerEvents: 'auto',
-      }}
-    >
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block' }}>
-        {/* Ring band fill */}
+    <div style={{
+      position: 'fixed',
+      left: cx - ringOuter, top: cy - ringOuter,
+      width: size, height: size,
+      zIndex: 31,
+      pointerEvents: 'none',
+    }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
+        style={{ display: 'block', pointerEvents: 'none' }}>
+        {/* Visible ring band */}
         <circle cx={ringOuter} cy={ringOuter} r={(ringInner + ringOuter) / 2}
           fill="none"
           stroke={`${C.ringFill}${opacity})`}
           strokeWidth={RING_BAND}
           style={{ transition: 'stroke 400ms ease-in-out' }} />
-        {/* Dashed inner edge */}
         <circle cx={ringOuter} cy={ringOuter} r={ringInner}
           fill="none" stroke={C.ringDashed} strokeWidth={1} strokeDasharray="3 3"
           style={{ opacity: blocking ? 1 : (opacity * 4) }} />
-        {/* Dashed outer edge */}
         <circle cx={ringOuter} cy={ringOuter} r={ringOuter}
           fill="none" stroke={C.ringDashed} strokeWidth={1} strokeDasharray="3 3"
           style={{ opacity: blocking ? 1 : (opacity * 4) }} />
-        {/* Lit segment when blocking */}
         {blocking && (
           <LitArc ringInner={ringInner} ringOuter={ringOuter} centerAngle={shieldAng} />
         )}
-        {/* Parry flash burst */}
         {flashAlpha > 0 && (
           <circle cx={sx} cy={sy} r={ringOuter * (1 - flashAlpha) + 8}
             fill="none" stroke={C.parryFlash} strokeWidth={3}
             style={{ opacity: flashAlpha }} />
         )}
+        {/* Invisible hit target — only the band area receives touches.
+            Stroke must be a non-transparent color (even with low alpha) for
+            pointer-events to fire reliably on touch devices. Width is
+            inflated by HIT_PAD so a finger near the band still grabs it. */}
+        <circle cx={ringOuter} cy={ringOuter} r={(ringInner + ringOuter) / 2}
+          fill="none"
+          stroke="rgba(0,0,0,0.001)"
+          strokeWidth={RING_BAND + HIT_PAD * 2}
+          pointerEvents="stroke"
+          style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+          onTouchStart={onBandTouchStart}
+          onMouseDown={onBandMouseDown}
+        />
       </svg>
-      {/* Shield icon positioned over the ring band at shieldAng */}
-      <div style={{
-        position: 'absolute',
-        left: sx - SHIELD_ICON_W / 2,
-        top:  sy - SHIELD_ICON_H / 2,
-        width: SHIELD_ICON_W, height: SHIELD_ICON_H,
-        pointerEvents: 'none',
-        filter: blocking ? 'drop-shadow(0 0 4px rgba(244,199,117,.7))' : 'none',
-      }}>
+      {/* Shield icon — its own hit target, separate from the band. */}
+      <div
+        onTouchStart={onBandTouchStart}
+        onMouseDown={onBandMouseDown}
+        style={{
+          position: 'absolute',
+          left: sx - SHIELD_ICON_W / 2,
+          top:  sy - SHIELD_ICON_H / 2,
+          width: SHIELD_ICON_W, height: SHIELD_ICON_H,
+          pointerEvents: 'auto',
+          touchAction: 'none',
+          cursor: 'pointer',
+          filter: blocking ? 'drop-shadow(0 0 4px rgba(244,199,117,.7))' : 'none',
+        }}>
         <ShieldGlyph active={blocking} />
       </div>
     </div>
