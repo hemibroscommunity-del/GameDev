@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BroTown } from './BroTown.jsx';
+import { DebugOverlay } from '../debug/DebugOverlay.jsx';
 
 const NFT_CSV_URL = 'https://raw.githubusercontent.com/hemibroscommunity-del/Hemi-Bros-catalogue/main/Hemi%20Bro%20spreadsheet-CleanDataWithImages.csv';
 
@@ -43,9 +44,12 @@ export const GameApp = () => {
   }, []);
 
   return (
-    <BroTown
-      nfts={nfts}
-      onExit={() => { window.location.href = '/'; }}
-    />
+    <>
+      <BroTown
+        nfts={nfts}
+        onExit={() => { window.location.href = '/'; }}
+      />
+      <DebugOverlay />
+    </>
   );
 };
