@@ -35,26 +35,25 @@ const norm = (a) => {
 };
 const lerpAngle = (a, b, t) => a + norm(b - a) * t;
 
-// Angular diamond with a sharp top point. The icon container is rotated to
-// the shield angle, so the tip doubles as a directional indicator pointing
-// in whichever direction the block is currently aimed.
+// Heater-shield silhouette: twin peaks at the top with a small V-notch,
+// sides curving inward to a sharp point at the bottom. Drawn in its natural
+// orientation; the icon container rotates so the bottom tip indicates the
+// current block direction.
 const ShieldGlyph = ({ active }) => {
   const stroke = active ? C.iconActiveStroke : C.iconDimStroke;
   const fill   = active ? C.iconActiveFill   : C.iconDimFill;
   return (
     <svg width={SHIELD_ICON_W} height={SHIELD_ICON_H} viewBox="0 0 28 30">
-      {/* Diamond: sharp top point (14,1), wide middle (3,14)/(25,14),
-          flatter bottom point (14,27) so the tip is unambiguously the up edge. */}
-      <path d="M14 1 L25 14 L14 27 L3 14 Z"
+      {/* Outer heater-shield outline. */}
+      <path
+        d="M2 4 L9 2 L14 5 L19 2 L26 4 C26 16 21 23 14 28 C7 23 2 16 2 4 Z"
         fill={fill} stroke={stroke}
-        strokeWidth={1.6} strokeLinejoin="miter" strokeMiterlimit={3} />
-      {/* Inner ridge — emphasises the top point as the indicator. */}
-      <path d="M14 5 L21 14 L14 23 L7 14 Z"
-        fill="none" stroke={stroke} strokeWidth={1} strokeLinejoin="miter"
-        strokeMiterlimit={3} opacity={0.6} />
-      {/* Tip highlight — small wedge at the top. */}
-      <path d="M14 1 L17 7 L11 7 Z"
-        fill={stroke} opacity={0.85} />
+        strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" />
+      {/* Inner border — gives the double-line look from the reference. */}
+      <path
+        d="M4.5 6 L10 4.5 L14 7 L18 4.5 L23.5 6 C23.5 15 19.5 21 14 25 C8.5 21 4.5 15 4.5 6 Z"
+        fill="none" stroke={stroke} strokeWidth={0.9}
+        strokeLinejoin="round" opacity={0.65} />
     </svg>
   );
 };
@@ -251,10 +250,10 @@ export const BlockRing = () => {
         )}
       </svg>
       {/* Shield icon — sole visible/touchable element. Rotated so the
-          diamond's tip points along the current shield angle (i.e. outward
-          from the joystick), doubling as a directional indicator. SVG tip
-          is at the top of the viewBox (-y direction), so we offset by π/2
-          to align with shieldAng's atan2 convention. */}
+          heater-shield's sharp bottom tip points along the current shield
+          angle (i.e. outward from the joystick), doubling as a directional
+          indicator. SVG tip is at the bottom of the viewBox (+y direction),
+          so we offset by -π/2 to align with shieldAng's atan2 convention. */}
       <div
         onTouchStart={onBandTouchStart}
         onMouseDown={onBandMouseDown}
@@ -264,7 +263,7 @@ export const BlockRing = () => {
           left: sx - SHIELD_ICON_W / 2,
           top:  sy - SHIELD_ICON_H / 2,
           width: SHIELD_ICON_W, height: SHIELD_ICON_H,
-          transform: `rotate(${shieldAng + Math.PI / 2}rad)`,
+          transform: `rotate(${shieldAng - Math.PI / 2}rad)`,
           transformOrigin: '50% 50%',
           pointerEvents: 'auto',
           touchAction: 'none',
