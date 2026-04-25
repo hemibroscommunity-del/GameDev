@@ -33061,7 +33061,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'fixed',
       bottom: 88,
-      left: isLandscape ? 90 : 50,
+      left: isLandscape ? 16 : 12,
       zIndex: 30,
       width: isLandscape ? 130 : 110,
       height: isLandscape ? 130 : 110
@@ -33151,7 +33151,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'fixed',
       bottom: 88,
-      right: isLandscape ? 140 : 90,
+      right: isLandscape ? 16 : 12,
       zIndex: 30,
       width: isLandscape ? 130 : 110,
       height: isLandscape ? 130 : 110

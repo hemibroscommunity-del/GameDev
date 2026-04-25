@@ -17,11 +17,12 @@ const COL = {
 };
 
 const TRIG_DIAM   = 58;
-const TRIG_BOTTOM = 75;     // px above bottom edge
+const TRIG_BOTTOM = 16;     // px above bottom edge — small buffer
 const WHEEL_RADIUS = 115;   // outer radius from center
 const SLOT_DIAM    = 60;
 const ICON_PX      = 32;
 const WHEEL_BOTTOM_OFFSET = 40; // px above bottom; wheel center sits ~140 above bottom
+const TRIG_COLLAPSED_OPACITY = 0.75;
 
 const toRad = (deg) => (deg * Math.PI) / 180;
 
@@ -220,10 +221,19 @@ export const UtilityWheel = () => {
   const summary = wheelBus.trigSummary();
   const open = wheelBus.state.open;
 
-  // Trigger (collapsed)
+  // Trigger (collapsed). onTouchStart fires immediately on the new touch even
+  // while the left joystick is already held, so the wheel can be opened
+  // mid-movement. onClick remains as the desktop/fallback path.
+  const onTriggerTouchStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    wheelBus.toggle();
+  };
   const trigger = (
     <div
       onClick={() => wheelBus.toggle()}
+      onTouchStart={onTriggerTouchStart}
+      onContextMenu={(e) => e.preventDefault()}
       style={{
         position: 'fixed',
         left: '50%', bottom: TRIG_BOTTOM,
@@ -233,8 +243,11 @@ export const UtilityWheel = () => {
         border: `1px solid ${COL.muted}`,
         boxShadow: '0 2px 6px rgba(0,0,0,.18)',
         zIndex: 9000,
-        cursor: 'pointer', touchAction: 'manipulation',
-        opacity: open ? 0 : 1,
+        cursor: 'pointer', touchAction: 'none',
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+        opacity: open ? 0 : TRIG_COLLAPSED_OPACITY,
         pointerEvents: open ? 'none' : 'auto',
         transition: 'opacity 200ms',
       }}

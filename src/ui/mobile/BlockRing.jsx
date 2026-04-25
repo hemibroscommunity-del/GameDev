@@ -14,16 +14,16 @@ const C = {
   parryFlash:  '#F4E0A8',
 };
 
-const RING_BAND = 12;
+// Visible band is sized to match the activation hit area exactly — the lit
+// arc that appears during a block now covers the same region the player can
+// tap to activate. Band extends outward from ringInner only so the joystick's
+// mana fill area is never overlapped.
+const RING_BAND = 48;
 const RING_GAP  = 7;
 const SHIELD_ICON_W = 28;
 const SHIELD_ICON_H = 30;
 const LIT_ARC_DEG = 70;
 const COMMITMENT_GAP_MS = 75;
-// Hit-target extends outward from ringInner only — never inward, so the
-// joystick's mana fill stays unobstructed. Total hit-zone width:
-// RING_BAND + HIT_OUTER_PAD = 12 + 36 = 48 (2× the previous 24-px target).
-const HIT_OUTER_PAD = 36;
 
 const useRaf = (cb) => {
   useEffect(() => {
@@ -156,14 +156,13 @@ export const BlockRing = () => {
 
   if (!geo) return null;
   const { cx, cy, ringInner, ringOuter } = geo;
-  const hitOuter = ringOuter + HIT_OUTER_PAD;
-  const size = hitOuter * 2;
+  const size = ringOuter * 2;
   const blocking = blockRingBus.state.blocking;
   const opacity = blocking ? 1 : blockRingBus.ringOpacity();
   const shieldAng = shieldAngleRef.current;
 
-  const sx = hitOuter + Math.cos(shieldAng) * ((ringInner + ringOuter) / 2);
-  const sy = hitOuter + Math.sin(shieldAng) * ((ringInner + ringOuter) / 2);
+  const sx = ringOuter + Math.cos(shieldAng) * ((ringInner + ringOuter) / 2);
+  const sy = ringOuter + Math.sin(shieldAng) * ((ringInner + ringOuter) / 2);
 
   // ── Activation (touchstart on hit-target circle or shield icon) ───────────
   const tryActivate = (clientX, clientY, identifier) => {
@@ -211,41 +210,41 @@ export const BlockRing = () => {
   return (
     <div style={{
       position: 'fixed',
-      left: cx - hitOuter, top: cy - hitOuter,
+      left: cx - ringOuter, top: cy - ringOuter,
       width: size, height: size,
       zIndex: 31,
       pointerEvents: 'none',
     }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
         style={{ display: 'block', pointerEvents: 'none' }}>
-        {/* Visible ring band */}
-        <circle cx={hitOuter} cy={hitOuter} r={(ringInner + ringOuter) / 2}
+        {/* Visible ring band — also serves as the activation hit area. */}
+        <circle cx={ringOuter} cy={ringOuter} r={(ringInner + ringOuter) / 2}
           fill="none"
           stroke={`${C.ringFill}${opacity})`}
           strokeWidth={RING_BAND}
           style={{ transition: 'stroke 400ms ease-in-out' }} />
-        <circle cx={hitOuter} cy={hitOuter} r={ringInner}
+        <circle cx={ringOuter} cy={ringOuter} r={ringInner}
           fill="none" stroke={C.ringDashed} strokeWidth={1} strokeDasharray="3 3"
           style={{ opacity: blocking ? 1 : (opacity * 4) }} />
-        <circle cx={hitOuter} cy={hitOuter} r={ringOuter}
+        <circle cx={ringOuter} cy={ringOuter} r={ringOuter}
           fill="none" stroke={C.ringDashed} strokeWidth={1} strokeDasharray="3 3"
           style={{ opacity: blocking ? 1 : (opacity * 4) }} />
         {blocking && (
           <LitArc ringInner={ringInner} ringOuter={ringOuter}
-            center={hitOuter} centerAngle={shieldAng} />
+            center={ringOuter} centerAngle={shieldAng} />
         )}
         {flashAlpha > 0 && (
           <circle cx={sx} cy={sy} r={ringOuter * (1 - flashAlpha) + 8}
             fill="none" stroke={C.parryFlash} strokeWidth={3}
             style={{ opacity: flashAlpha }} />
         )}
-        {/* Invisible hit target — extends outward from ringInner only, never
-            inward, so the joystick's mana fill area stays untouched. */}
-        <circle cx={hitOuter} cy={hitOuter}
-          r={ringInner + (RING_BAND + HIT_OUTER_PAD) / 2}
+        {/* Hit target — overlays the visible band exactly. Stroke must be a
+            non-transparent color (even with low alpha) for pointer-events to
+            fire reliably on touch devices. */}
+        <circle cx={ringOuter} cy={ringOuter} r={(ringInner + ringOuter) / 2}
           fill="none"
           stroke="rgba(0,0,0,0.001)"
-          strokeWidth={RING_BAND + HIT_OUTER_PAD}
+          strokeWidth={RING_BAND}
           pointerEvents="stroke"
           style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
           onTouchStart={onBandTouchStart}
@@ -256,6 +255,7 @@ export const BlockRing = () => {
       <div
         onTouchStart={onBandTouchStart}
         onMouseDown={onBandMouseDown}
+        onContextMenu={(e) => e.preventDefault()}
         style={{
           position: 'absolute',
           left: sx - SHIELD_ICON_W / 2,
@@ -264,6 +264,10 @@ export const BlockRing = () => {
           pointerEvents: 'auto',
           touchAction: 'none',
           cursor: 'pointer',
+          // Suppress the iOS long-press callout / share menu and selection.
+          WebkitTouchCallout: 'none',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
           filter: blocking ? 'drop-shadow(0 0 4px rgba(244,199,117,.7))' : 'none',
         }}>
         <ShieldGlyph active={blocking} />
