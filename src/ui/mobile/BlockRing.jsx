@@ -116,7 +116,16 @@ export const BlockRing = () => {
     if (!dragActive.current && autoAtkAng != null) {
       shieldAngleRef.current = lerpAngle(shieldAngleRef.current, autoAtkAng, 0.2);
     }
-    if (S) S._shieldAngle = shieldAngleRef.current;
+    if (S) {
+      S._shieldAngle = shieldAngleRef.current;
+      // While the player is dragging the shield, keep the auto-attack
+      // pinned to the shield direction every frame — guards against the
+      // right-joystick handler racing in and clearing _aiming.
+      if (dragActive.current) {
+        S._aimAngle = shieldAngleRef.current;
+        S._aiming = true;
+      }
+    }
 
     const rjoyDown = !!S?._aiming;
     if (lastRJoyDownRef.current && !rjoyDown) rJoyReleasedAt.current = performance.now();
@@ -139,8 +148,14 @@ export const BlockRing = () => {
       const { cx, cy } = geoRef.current;
       const ang = angleOf(cx, cy, t.clientX, t.clientY);
       shieldAngleRef.current = ang;
+      // Drive auto-attack to match the shield direction so what the player
+      // is blocking and what they're attacking always line up.
       const S = window._gameState?.current;
-      if (S) S._shieldAngle = ang;
+      if (S) {
+        S._shieldAngle = ang;
+        S._aimAngle = ang;
+        S._aiming = true;
+      }
       e.preventDefault?.();
     };
     const onEnd = (e) => {
@@ -194,6 +209,10 @@ export const BlockRing = () => {
       const dx = clientX - cx, dy = clientY - cy;
       shieldAngleRef.current = Math.atan2(dy, dx);
       S._shieldAngle = shieldAngleRef.current;
+      // Touching the ring also sets the auto-attack direction — shield and
+      // attack always point the same way.
+      S._aimAngle = shieldAngleRef.current;
+      S._aiming = true;
       if (S.channel) {
         try { S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: true } }); } catch {}
       }
