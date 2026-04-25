@@ -191,7 +191,9 @@ export const BlockRing = () => {
   };
 
   const onBandTouchStart = (e) => {
-    const t = e.touches?.[0];
+    // Use changedTouches[0] — the touch that just started — so we don't grab
+    // the left-joystick's existing touch when the player is already moving.
+    const t = e.changedTouches?.[0] ?? e.touches?.[0];
     if (!t) { tryActivate(e.clientX, e.clientY, null); e.stopPropagation(); return; }
     if (tryActivate(t.clientX, t.clientY, t.identifier)) {
       e.preventDefault();
