@@ -1927,7 +1927,7 @@ export function renderFrame(ctx, canvas, S, W, H, P, K, map, nfts) {
                     BT_AUDIO.collect();
                   }
                 }
-                BT_AUDIO.play(a.isStaff ? 'magic-hit' : 'arrow-hit', { vol: 0.6 });
+                BT_AUDIO.play(a.isStaff ? 'magic-hit' : 'arrow-hit', { vol: a.isStaff ? 0.3 : 0.6 });
                 var kba = Math.atan2(m.y - ay2, m.x - ax2);
                 m.x += Math.cos(kba) * 5;
                 m.y += Math.sin(kba) * 5;

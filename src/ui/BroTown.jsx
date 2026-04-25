@@ -7209,7 +7209,7 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.collect();
                   }
                 }
-                BT_AUDIO.play(a.isStaff ? 'magic-hit' : 'arrow-hit', { vol: 0.6 });
+                BT_AUDIO.play(a.isStaff ? 'magic-hit' : 'arrow-hit', { vol: a.isStaff ? 0.3 : 0.6 });
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
                 m.x += Math.cos(kba) * 5;
                 m.y += Math.sin(kba) * 5;
