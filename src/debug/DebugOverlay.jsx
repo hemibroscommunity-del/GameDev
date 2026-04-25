@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { debugBus } from './debugBus.js';
+import { BUILD_INFO } from '../ui/BuildBadge.jsx';
 
 const PANELS = ['Console', 'State', 'WS', 'Perf'];
 
@@ -218,6 +219,7 @@ const PerfPanel = () => {
     ['Renderer', p.renderer],
     ['Tick count', p.ticks],
     ['WS state', p.wsState],
+    ['Build', `v${BUILD_INFO.version} · ${BUILD_INFO.sha} · ${BUILD_INFO.time}`],
     ['UA', navigator.userAgent.slice(0, 80)],
     ['Viewport', `${window.innerWidth}×${window.innerHeight} dpr ${window.devicePixelRatio}`],
     ['Game keys', s ? Object.keys(s).length : '-'],

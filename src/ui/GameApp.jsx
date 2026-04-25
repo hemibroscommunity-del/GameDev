@@ -13,6 +13,7 @@ import { BlockRing } from './mobile/BlockRing.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { MoreOverlay, moreOverlay } from './mobile/MoreOverlay.jsx';
 import { debugBus } from '../debug/debugBus.js';
+import { BuildBadge } from './BuildBadge.jsx';
 
 const NFT_CSV_URL = 'https://raw.githubusercontent.com/hemibroscommunity-del/Hemi-Bros-catalogue/main/Hemi%20Bro%20spreadsheet-CleanDataWithImages.csv';
 
@@ -234,6 +235,7 @@ export const GameApp = () => {
       <BlockRing />
       <MoreOverlay />
       <DebugOverlay />
+      <BuildBadge />
     </>
   );
 };
