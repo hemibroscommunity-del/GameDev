@@ -33,12 +33,6 @@ const useRaf = (cb) => {
 };
 
 const angleOf = (cx, cy, x, y) => Math.atan2(y - cy, x - cx);
-const norm = (a) => {
-  while (a < -Math.PI) a += Math.PI * 2;
-  while (a >  Math.PI) a -= Math.PI * 2;
-  return a;
-};
-const lerpAngle = (a, b, t) => a + norm(b - a) * t;
 
 const ShieldGlyph = ({ active }) => (
   <svg width={SHIELD_ICON_W} height={SHIELD_ICON_H} viewBox="0 0 28 30">
@@ -96,12 +90,10 @@ export const BlockRing = () => {
     const next = { cx, cy, joyOuter, ringInner, ringOuter };
     geoRef.current = next;
 
-    // Aim tracking when not blocking: shield icon follows aim (50ms smoothing).
+    // Shield icon persists at the last position the player set, so a rotate-
+    // and-release leaves the icon where the finger left it instead of snapping
+    // back to the aim direction.
     const S = window._gameState?.current;
-    const aim = S?._aimAngle ?? 0;
-    if (!blockRingBus.state.blocking) {
-      shieldAngleRef.current = lerpAngle(shieldAngleRef.current, aim, 0.2);
-    }
     if (S) S._shieldAngle = shieldAngleRef.current;
 
     const rjoyDown = !!S?._aiming;
