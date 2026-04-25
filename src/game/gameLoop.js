@@ -3440,8 +3440,7 @@ export function setupGameLoop(ctx) {
                     BT_AUDIO.collect();
                   }
                 }
-                /* §Creative Vision — material-varied hit sound + real WAV layer */
-                BT_AUDIO.hitMaterial(m.archetype || m.type);
+                /* Real WAV — replaces the old synth material thump. */
                 BT_AUDIO.play('sword-hit', { vol: 0.55 });
 
                 /* §19.1 Quest tracking — combat flags */
@@ -3991,7 +3990,7 @@ export function setupGameLoop(ctx) {
                   npc._hitThisSwing = true;
                   var npcDmg = pDmg;
                   npc.hp -= npcDmg;
-                  BT_AUDIO.thwack();
+                  BT_AUDIO.play('sword-hit', { vol: 0.55 });
                   var nkbA2 = Math.atan2(npc.y - P.y, npc.x - P.x);
                   npc.x += Math.cos(nkbA2) * 8;
                   npc.y += Math.sin(nkbA2) * 8;
@@ -4113,7 +4112,7 @@ export function setupGameLoop(ctx) {
               while (aDiff < -Math.PI) aDiff += Math.PI * 2;
               if (Math.abs(aDiff) < SWING_ARC / 2) {
                 o._hitThisSwing = true;
-                BT_AUDIO.thwack();
+                BT_AUDIO.play('sword-hit', { vol: 0.55 });
                 var pvpKbA = Math.atan2(o.y - P.y, o.x - P.x);
                 for (var _pp = 0; _pp < 12; _pp++) S.hitParticles.push({
                   x: o.x + (Math.random() - .5) * 6,

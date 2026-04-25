@@ -5554,11 +5554,17 @@ export var BroTown = function BroTown(_ref0) {
                   id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: Date.now()
                 }});
                 S.swingTimer = Date.now() + (isStaff ? 300 : 0); /* Staff fires slower */
-                BT_AUDIO.beep(isStaff ? 400 : 600, 0.04, 0.06, isStaff ? 'sine' : 'triangle');
+                if (isStaff) {
+                  BT_AUDIO.play('magic-cast', { vol: 0.55 });
+                } else {
+                  BT_AUDIO.play('bow-pullback', { vol: 0.6 });
+                  BT_AUDIO.play('arrow-fly', { vol: 0.45 });
+                }
               } else if (!S.isSwinging) {
                 S.swingTimer = Date.now();
                 S.isSwinging = true;
                 S._specialAttack = false;
+                BT_AUDIO.play('sword-swing', { vol: 0.55 });
                 /* Broadcast swing to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: Date.now() } });
               }
@@ -5738,8 +5744,8 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.collect();
                   }
                 }
-                /* §Creative Vision — material-varied hit sound */
-                BT_AUDIO.hitMaterial(m.archetype || m.type);
+                /* Real WAV — replaces the old synth material thump. */
+                BT_AUDIO.play('sword-hit', { vol: 0.55 });
 
                 /* §19.1 Quest tracking — combat flags */
                 if (!_R6._questFlags) _R6._questFlags = {};
@@ -6293,7 +6299,7 @@ export var BroTown = function BroTown(_ref0) {
                   npc._hitThisSwing = true;
                   var npcDmg = pDmg;
                   npc.hp -= npcDmg;
-                  BT_AUDIO.thwack();
+                  BT_AUDIO.play('sword-hit', { vol: 0.55 });
                   var nkbA2 = Math.atan2(npc.y - P.y, npc.x - P.x);
                   npc.x += Math.cos(nkbA2) * 8;
                   npc.y += Math.sin(nkbA2) * 8;
@@ -6415,7 +6421,7 @@ export var BroTown = function BroTown(_ref0) {
               while (aDiff < -Math.PI) aDiff += Math.PI * 2;
               if (Math.abs(aDiff) < SWING_ARC / 2) {
                 o._hitThisSwing = true;
-                BT_AUDIO.thwack();
+                BT_AUDIO.play('sword-hit', { vol: 0.55 });
                 var pvpKbA = Math.atan2(o.y - P.y, o.x - P.x);
                 for (var _pp = 0; _pp < 12; _pp++) S.hitParticles.push({
                   x: o.x + (Math.random() - .5) * 6,
@@ -7203,7 +7209,6 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.collect();
                   }
                 }
-                BT_AUDIO.thwack();
                 BT_AUDIO.play(a.isStaff ? 'magic-hit' : 'arrow-hit', { vol: 0.6 });
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
                 m.x += Math.cos(kba) * 5;
