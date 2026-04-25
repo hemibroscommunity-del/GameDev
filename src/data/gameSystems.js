@@ -5199,6 +5199,81 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     if (this._ambientGain2) this._ambientGain2.gain.setTargetAtTime(inCombat ? 0.008 : 0.004, this.ctx.currentTime, 0.5);
   } catch (e) {}
 });
+
+/* ─── Sample-based SFX (real WAV files) ────────────────────────────────────
+   Loaded on demand from /sfx/<group>/<name>.wav. Playback is gated by the
+   audio context unlocking (mobile/Safari require a user gesture before any
+   audio plays). BT_AUDIO.unlock() should be called from the first touch /
+   click and is idempotent. */
+BT_AUDIO._samples = {};
+BT_AUDIO._sampleLoading = {};
+BT_AUDIO._unlocked = false;
+BT_AUDIO._loadedManifest = false;
+BT_AUDIO.SFX_MANIFEST = {
+  'sword-swing':  '/sfx/sword/sword-swing.wav',
+  'sword-hit':    '/sfx/sword/sword-hit.wav',
+  'bow-pullback': '/sfx/bow/bow-pullback.wav',
+  'arrow-fly':    '/sfx/bow/arrow-fly.wav',
+  'arrow-hit':    '/sfx/bow/arrow-hit.wav',
+  'magic-cast':   '/sfx/magic/magic-cast.wav',
+  'magic-hit':    '/sfx/magic/magic-hit.wav',
+};
+BT_AUDIO.loadSample = function (key, url) {
+  if (!this.ctx || this._samples[key] || this._sampleLoading[key]) return;
+  this._sampleLoading[key] = true;
+  fetch(url)
+    .then(function (r) { return r.arrayBuffer(); })
+    .then(function (buf) {
+      return new Promise(function (resolve, reject) {
+        BT_AUDIO.ctx.decodeAudioData(buf, resolve, reject);
+      });
+    })
+    .then(function (audioBuf) {
+      BT_AUDIO._samples[key] = audioBuf;
+      delete BT_AUDIO._sampleLoading[key];
+    })
+    .catch(function () {
+      delete BT_AUDIO._sampleLoading[key];
+    });
+};
+BT_AUDIO.loadSfxManifest = function () {
+  if (this._loadedManifest || !this.ctx) return;
+  this._loadedManifest = true;
+  var m = this.SFX_MANIFEST;
+  for (var k in m) this.loadSample(k, m[k]);
+};
+BT_AUDIO.unlock = function () {
+  if (!this.ctx) this.init();
+  if (!this.ctx) return;
+  if (this.ctx.state === 'suspended' && this.ctx.resume) {
+    try { this.ctx.resume(); } catch (e) {}
+  }
+  this._unlocked = true;
+  this.loadSfxManifest();
+};
+BT_AUDIO.play = function (key, opts) {
+  if (this.muted || !this.ctx) return;
+  var buf = this._samples[key];
+  if (!buf) {
+    // Lazily load on first miss so a sound is at least cached for next time.
+    var url = this.SFX_MANIFEST[key];
+    if (url) this.loadSample(key, url);
+    return;
+  }
+  try {
+    var src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    var rate = (opts && opts.rate) ||
+      (1 + (Math.random() - 0.5) * (opts && opts.pitchVar != null ? opts.pitchVar : 0.06));
+    src.playbackRate.value = rate;
+    var g = this.ctx.createGain();
+    g.gain.value = (opts && opts.vol != null) ? opts.vol : 0.6;
+    src.connect(g);
+    g.connect(this.ctx.destination);
+    src.start(0);
+  } catch (e) {}
+};
+
 export const BT_ACHIEVEMENTS = [{
   id: 'first_steps',
   name: 'First Steps',

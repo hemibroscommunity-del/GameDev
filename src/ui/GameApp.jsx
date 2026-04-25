@@ -14,6 +14,7 @@ import { blockRingBus } from './mobile/blockRingBus.js';
 import { MoreOverlay, moreOverlay } from './mobile/MoreOverlay.jsx';
 import { debugBus } from '../debug/debugBus.js';
 import { BuildBadge } from './BuildBadge.jsx';
+import { BT_AUDIO } from '../data/gameSystems.js';
 
 const NFT_CSV_URL = 'https://raw.githubusercontent.com/hemibroscommunity-del/Hemi-Bros-catalogue/main/Hemi%20Bro%20spreadsheet-CleanDataWithImages.csv';
 
@@ -66,6 +67,29 @@ const buildSelfProfile = (s) => {
 
 export const GameApp = () => {
   const [nfts, setNfts] = useState([]);
+
+  // Unlock the audio context on the first user gesture. Mobile/Safari refuse
+  // to play any sound until an AudioContext is created (or resumed) inside a
+  // user-initiated handler. Once unlocked we also kick off SFX preload.
+  useEffect(() => {
+    let done = false;
+    const unlock = () => {
+      if (done) return;
+      done = true;
+      try { BT_AUDIO.init(); BT_AUDIO.unlock(); } catch (e) {}
+      window.removeEventListener('touchstart', unlock, true);
+      window.removeEventListener('mousedown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+    window.addEventListener('touchstart', unlock, true);
+    window.addEventListener('mousedown', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    return () => {
+      window.removeEventListener('touchstart', unlock, true);
+      window.removeEventListener('mousedown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+  }, []);
 
   useEffect(() => {
     fetch(NFT_CSV_URL)

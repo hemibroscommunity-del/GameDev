@@ -3250,11 +3250,17 @@ export function setupGameLoop(ctx) {
                   id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: Date.now()
                 }});
                 S.swingTimer = Date.now() + (isStaff ? 300 : 0); /* Staff fires slower */
-                BT_AUDIO.beep(isStaff ? 400 : 600, 0.04, 0.06, isStaff ? 'sine' : 'triangle');
+                if (isStaff) {
+                  BT_AUDIO.play('magic-cast', { vol: 0.55 });
+                } else {
+                  BT_AUDIO.play('bow-pullback', { vol: 0.6 });
+                  BT_AUDIO.play('arrow-fly', { vol: 0.45 });
+                }
               } else if (!S.isSwinging) {
                 S.swingTimer = Date.now();
                 S.isSwinging = true;
                 S._specialAttack = false;
+                BT_AUDIO.play('sword-swing', { vol: 0.55 });
                 /* Broadcast swing to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: Date.now() } });
               }
@@ -3434,8 +3440,9 @@ export function setupGameLoop(ctx) {
                     BT_AUDIO.collect();
                   }
                 }
-                /* §Creative Vision — material-varied hit sound */
+                /* §Creative Vision — material-varied hit sound + real WAV layer */
                 BT_AUDIO.hitMaterial(m.archetype || m.type);
+                BT_AUDIO.play('sword-hit', { vol: 0.55 });
 
                 /* §19.1 Quest tracking — combat flags */
                 if (!_R6._questFlags) _R6._questFlags = {};
