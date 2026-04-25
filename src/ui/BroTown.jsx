@@ -11709,6 +11709,31 @@ export var BroTown = function BroTown(_ref0) {
             ctx.restore();
           }
         } /* end !_hasNftBody head */
+
+        /* ═══ HP / ENERGY / MANA BARS — only outside town ═══ */
+        if (S.currentZone && S.currentZone !== 'town' && S.rpg) {
+          var _Rb = S.rpg;
+          var _bbW = 24, _bbH = 2, _bbGap = 1;
+          var _bbBaseY = py + (_slim ? -36 : -44);
+          var _drawBar = function (yOff, pct, fill) {
+            var y = _bbBaseY + yOff;
+            ctx.fillStyle = 'rgba(0,0,0,.55)';
+            ctx.fillRect(px - _bbW / 2, y, _bbW, _bbH);
+            if (pct > 0) {
+              ctx.fillStyle = fill;
+              ctx.fillRect(px - _bbW / 2, y, _bbW * Math.min(1, pct), _bbH);
+            }
+            ctx.strokeStyle = 'rgba(255,255,255,.25)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(px - _bbW / 2, y, _bbW, _bbH);
+          };
+          var _hpPct = (_Rb.hp || 0) / (_Rb.maxHp || 1);
+          var _hpCol = _hpPct > 0.5 ? '#3dd497' : _hpPct > 0.25 ? '#f5c542' : '#ff5e6c';
+          _drawBar(0, _hpPct, _hpCol);
+          _drawBar(_bbH + _bbGap, (_Rb.stamina || 0) / (_Rb.maxStamina || 100), '#f2b441');
+          _drawBar((_bbH + _bbGap) * 2, (_Rb.mana || 0) / (_Rb.maxMana || 1), '#5b9bd5');
+        }
+
         /* Own name */
         var _nameY = _slim ? -28 : -36;
         ctx.font = 'bold 10px sans-serif';

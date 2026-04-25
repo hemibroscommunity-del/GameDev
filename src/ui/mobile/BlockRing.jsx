@@ -35,6 +35,12 @@ const useRaf = (cb) => {
 };
 
 const angleOf = (cx, cy, x, y) => Math.atan2(y - cy, x - cx);
+const norm = (a) => {
+  while (a < -Math.PI) a += Math.PI * 2;
+  while (a >  Math.PI) a -= Math.PI * 2;
+  return a;
+};
+const lerpAngle = (a, b, t) => a + norm(b - a) * t;
 
 const ShieldGlyph = ({ active }) => (
   <svg width={SHIELD_ICON_W} height={SHIELD_ICON_H} viewBox="0 0 28 30">
@@ -92,10 +98,13 @@ export const BlockRing = () => {
     const next = { cx, cy, joyOuter, ringInner, ringOuter };
     geoRef.current = next;
 
-    // Shield icon persists at the last position the player set, so a rotate-
-    // and-release leaves the icon where the finger left it instead of snapping
-    // back to the aim direction.
+    // Shield icon follows the player's auto-attack rotation (S._facingAngle)
+    // when not actively being dragged, so the protected direction matches
+    // wherever the auto-attack is currently aiming.
     const S = window._gameState?.current;
+    if (!dragActive.current && S && typeof S._facingAngle === 'number') {
+      shieldAngleRef.current = lerpAngle(shieldAngleRef.current, S._facingAngle, 0.2);
+    }
     if (S) S._shieldAngle = shieldAngleRef.current;
 
     const rjoyDown = !!S?._aiming;
