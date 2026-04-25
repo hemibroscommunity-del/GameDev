@@ -9,6 +9,8 @@ import { generateMockInventory, generateMockEquipped } from './mobile/mockItems.
 import { InspectCard } from './mobile/InspectCard.jsx';
 import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
+import { BlockRing } from './mobile/BlockRing.jsx';
+import { blockRingBus } from './mobile/blockRingBus.js';
 import { debugBus } from '../debug/debugBus.js';
 
 const NFT_CSV_URL = 'https://raw.githubusercontent.com/hemibroscommunity-del/Hemi-Bros-catalogue/main/Hemi%20Bro%20spreadsheet-CleanDataWithImages.csv';
@@ -171,7 +173,41 @@ export const GameApp = () => {
       return 'card <self|mock|close|expand <section>>';
     }, 'card — control inspect card');
 
-    return () => { offs.forEach(f => f()); };
+    // Block-ring debug commands.
+    debugBus.cmd('block', (args) => {
+      const sub = args[0];
+      if (sub === 'hostile') { blockRingBus.setHostileNear(args[1] !== 'off'); return `hostileNear=${blockRingBus.state.hostileNear}`; }
+      if (sub === 'relaxed') { blockRingBus.setRelaxedParry(args[1] !== 'off'); return `relaxedParry=${blockRingBus.state.relaxedParry}`; }
+      if (sub === 'count') {
+        const n = Number(args[1]);
+        if (!Number.isNaN(n)) { blockRingBus.state.blockCount = n; try { localStorage.setItem('brotown_block_count', String(n)); } catch {} }
+        return `blockCount=${blockRingBus.state.blockCount}`;
+      }
+      if (sub === 'parry') { blockRingBus.state.parryFlashAt = performance.now(); return 'parry flash'; }
+      return 'block <hostile [off]|relaxed [off]|count <n>|parry>';
+    }, 'block — control block ring (hostile proximity, relaxed parry, simulate parry)');
+
+    // Hostile proximity poll: sets ring opacity gate based on nearby hostiles.
+    // Cheap heuristic — refine when combat layer exposes a real hostile-near flag.
+    const hostilePoll = setInterval(() => {
+      const s = window._gameState?.current;
+      if (!s) return;
+      const others = s.others || {};
+      const me = s.player;
+      let near = false;
+      if (me) {
+        for (const id in others) {
+          const o = others[id];
+          if (!o || !o.hostile) continue;
+          const dx = (o.x ?? 0) - (me.x ?? 0);
+          const dy = (o.y ?? 0) - (me.y ?? 0);
+          if (dx * dx + dy * dy < 800 * 800) { near = true; break; }
+        }
+      }
+      if (near !== blockRingBus.state.hostileNear) blockRingBus.setHostileNear(near);
+    }, 500);
+
+    return () => { offs.forEach(f => f()); clearInterval(hostilePoll); };
   }, []);
 
   return (
@@ -183,6 +219,7 @@ export const GameApp = () => {
       <UtilityWheel />
       <InventorySurface />
       <InspectCard />
+      <BlockRing />
       <DebugOverlay />
     </>
   );

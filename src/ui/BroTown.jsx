@@ -33139,6 +33139,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     ref: rJoyRef,
+    className: "bt-rjoy-base",
     style: {
       width: isLandscape ? 120 : 100,
       height: isLandscape ? 120 : 100,
@@ -33270,8 +33271,12 @@ export var BroTown = function BroTown(_ref0) {
     return slot === 'ranged' ? '🏹' : slot === 'staff' ? '🪄' : '⚔️';
   }()))), /*#__PURE__*/React.createElement("div", {
     ref: shieldJoyRef,
-    className: "bt-desktop-hide",
+    className: "bt-desktop-hide bt-legacy-shield-removed",
     style: {
+      // Legacy standalone shield button — removed v14.x in favor of BlockRing.
+      // Element kept in tree (display:none) because BroTown still references
+      // shieldJoyRef from non-render code paths; visible UI is now BlockRing.jsx.
+      display: 'none',
       position: 'fixed',
       bottom: isLandscape ? 102 : 96,
       right: isLandscape ? 20 : 10,
