@@ -3,10 +3,6 @@ import { blockRingBus } from './blockRingBus.js';
 
 // Color canon — spec §"Color and Typography Canon".
 const C = {
-  ringFill:    'rgba(244, 199, 117,',
-  ringDashed:  'rgba(244, 199, 117, 0.25)',
-  litFill:     '#F4C775',
-  litGlow:     '#F4C775',
   iconDimFill:    'rgba(244, 199, 117, 0.4)',
   iconDimStroke:  'rgba(244, 199, 117, 0.6)',
   iconActiveFill:    '#F4E0A8',
@@ -14,15 +10,12 @@ const C = {
   parryFlash:  '#F4E0A8',
 };
 
-// Visible band is sized to match the activation hit area exactly — the lit
-// arc that appears during a block now covers the same region the player can
-// tap to activate. Band extends outward from ringInner only so the joystick's
-// mana fill area is never overlapped.
+// Ring track is invisible — only the shield icon is shown. RING_BAND still
+// determines how far out the icon orbits from the joystick edge.
 const RING_BAND = 36;
 const RING_GAP  = 7;
 const SHIELD_ICON_W = 28;
 const SHIELD_ICON_H = 30;
-const LIT_ARC_DEG = 70;
 const COMMITMENT_GAP_MS = 75;
 
 const useRaf = (cb) => {
@@ -52,27 +45,6 @@ const ShieldGlyph = ({ active }) => (
     <line x1="6"  y1="13" x2="22" y2="13" stroke={active ? C.iconActiveStroke : C.iconDimStroke} strokeWidth={1.4} />
   </svg>
 );
-
-const LitArc = ({ ringInner, ringOuter, center, centerAngle, opacity = 1 }) => {
-  const r = (ringInner + ringOuter) / 2;
-  const w = ringOuter - ringInner;
-  const half = (LIT_ARC_DEG * Math.PI) / 360;
-  const a0 = centerAngle - half;
-  const a1 = centerAngle + half;
-  const x0 = center + Math.cos(a0) * r;
-  const y0 = center + Math.sin(a0) * r;
-  const x1 = center + Math.cos(a1) * r;
-  const y1 = center + Math.sin(a1) * r;
-  const large = LIT_ARC_DEG > 180 ? 1 : 0;
-  const d = `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
-  return (
-    <g style={{ opacity }}>
-      <path d={d} stroke={C.litFill} strokeWidth={w} fill="none" strokeLinecap="butt" />
-      <path d={d} stroke={C.litGlow} strokeWidth={w + 4} fill="none" strokeLinecap="butt"
-        style={{ filter: 'blur(3px)', opacity: 0.5 }} />
-    </g>
-  );
-};
 
 export const BlockRing = () => {
   const [geo, setGeo] = useState(null);
@@ -193,7 +165,6 @@ export const BlockRing = () => {
   const { cx, cy, ringInner, ringOuter } = geo;
   const size = ringOuter * 2;
   const blocking = blockRingBus.state.blocking;
-  const opacity = blocking ? 1 : blockRingBus.ringOpacity();
   const shieldAng = shieldAngleRef.current;
 
   const sx = ringOuter + Math.cos(shieldAng) * ((ringInner + ringOuter) / 2);
@@ -256,39 +227,15 @@ export const BlockRing = () => {
     }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
         style={{ display: 'block', pointerEvents: 'none' }}>
-        {/* Visible ring band — also serves as the activation hit area. */}
-        <circle cx={ringOuter} cy={ringOuter} r={(ringInner + ringOuter) / 2}
-          fill="none"
-          stroke={`${C.ringFill}${opacity})`}
-          strokeWidth={RING_BAND}
-          style={{ transition: 'stroke 400ms ease-in-out' }} />
-        <circle cx={ringOuter} cy={ringOuter} r={ringInner}
-          fill="none" stroke={C.ringDashed} strokeWidth={1} strokeDasharray="3 3"
-          style={{ opacity: blocking ? 1 : (opacity * 4) }} />
-        <circle cx={ringOuter} cy={ringOuter} r={ringOuter}
-          fill="none" stroke={C.ringDashed} strokeWidth={1} strokeDasharray="3 3"
-          style={{ opacity: blocking ? 1 : (opacity * 4) }} />
-        {blocking && (
-          <LitArc ringInner={ringInner} ringOuter={ringOuter}
-            center={ringOuter} centerAngle={shieldAng} />
-        )}
+        {/* Ring band, dashed guides, lit arc, and 360° hit target are all
+            removed — the shield icon is the only visible / touchable element.
+            The track around the joystick is invisible; the player must grab
+            the icon and slide it around to reposition the block. */}
         {flashAlpha > 0 && (
           <circle cx={sx} cy={sy} r={ringOuter * (1 - flashAlpha) + 8}
             fill="none" stroke={C.parryFlash} strokeWidth={3}
             style={{ opacity: flashAlpha }} />
         )}
-        {/* Hit target — overlays the visible band exactly. Stroke must be a
-            non-transparent color (even with low alpha) for pointer-events to
-            fire reliably on touch devices. */}
-        <circle cx={ringOuter} cy={ringOuter} r={(ringInner + ringOuter) / 2}
-          fill="none"
-          stroke="rgba(0,0,0,0.001)"
-          strokeWidth={RING_BAND}
-          pointerEvents="stroke"
-          style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
-          onTouchStart={onBandTouchStart}
-          onMouseDown={onBandMouseDown}
-        />
       </svg>
       {/* Shield icon — its own hit target, separate from the band. */}
       <div
