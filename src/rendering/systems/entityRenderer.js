@@ -87,6 +87,10 @@ function createPlayerDisplay() {
   const weaponGfx = new Graphics();
   container.addChild(weaponGfx);
 
+  // HP / Energy / Mana bars — drawn above the head when in a combat zone.
+  const barsGfx = new Graphics();
+  container.addChild(barsGfx);
+
   const nameText = new Text({ text: '', style: NAME_STYLE });
   nameText.anchor.set(0.5, 1);
   nameText.y = -28;
@@ -94,6 +98,7 @@ function createPlayerDisplay() {
 
   container._body = body;
   container._weaponGfx = weaponGfx;
+  container._barsGfx = barsGfx;
   container._nameText = nameText;
 
   return container;
@@ -417,9 +422,43 @@ export class EntityRenderer {
       }
     }
 
+    // HP / Energy / Mana bars — only outside town. Stacked above the head.
+    const barsGfx = display._barsGfx;
+    barsGfx.clear();
+    const inCombatZone = S.currentZone && S.currentZone !== 'town';
+    if (inCombatZone && S.rpg) {
+      const R = S.rpg;
+      const barW = 24;
+      const barH = 2;
+      const barX = -barW / 2;
+      const gap = 1;
+      const baseY = -bh / 2 - 16 + bobY;
+      const drawBar = (yOffset, pct, fillColor) => {
+        const y = baseY + yOffset;
+        barsGfx.rect(barX, y, barW, barH);
+        barsGfx.fill({ color: 0x000000, alpha: 0.55 });
+        if (pct > 0) {
+          barsGfx.rect(barX, y, barW * Math.min(1, pct), barH);
+          barsGfx.fill({ color: fillColor, alpha: 0.95 });
+        }
+        barsGfx.rect(barX, y, barW, barH);
+        barsGfx.stroke({ color: 0xffffff, width: 0.5, alpha: 0.25 });
+      };
+      const hpPct = (R.hp || 0) / (R.maxHp || 1);
+      const hpColor = hpPct > 0.5 ? 0x3dd497 : hpPct > 0.25 ? 0xf5c542 : 0xff5e6c;
+      drawBar(0, hpPct, hpColor);
+      const stPct = (R.stamina || 0) / (R.maxStamina || 100);
+      drawBar(barH + gap, stPct, 0xf2b441);
+      const mnPct = (R.mana || 0) / (R.maxMana || 1);
+      drawBar((barH + gap) * 2, mnPct, 0x5b9bd5);
+      // Push the name up so the bars don't overlap it.
+      display._nameText.y = baseY - 4;
+    } else {
+      display._nameText.y = -28 + bobY;
+    }
+
     // Name
     display._nameText.text = S.myName || 'You';
-    display._nameText.y = -28 + bobY;
 
     // Death / invuln
     if (S.rpg && S.rpg.hp <= 0) {

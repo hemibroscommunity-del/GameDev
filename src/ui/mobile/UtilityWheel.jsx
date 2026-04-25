@@ -261,9 +261,18 @@ export const UtilityWheel = () => {
 
   // Open wheel
   const wheelCenterFromBottom = WHEEL_BOTTOM_OFFSET + WHEEL_RADIUS;
+  const onDimTouchStart = (e) => {
+    // Only close when the touch lands on the dim layer itself (not on a slot
+    // / the X / the picker child) — otherwise we'd swallow slot taps.
+    if (e.target !== e.currentTarget) return;
+    e.preventDefault();
+    e.stopPropagation();
+    wheelBus.setOpen(false);
+  };
   const wheelOpen = open && (
     <div
       onClick={() => wheelBus.setOpen(false)}
+      onTouchStart={onDimTouchStart}
       style={{
         position: 'fixed', inset: 0, zIndex: 9100,
         background: COL.dimOverlay,
@@ -294,13 +303,24 @@ export const UtilityWheel = () => {
               onLongPress={() => p.customizable && setPicker({ slotId: p.id })}
             />
           ))}
-          {/* Center X — dismiss */}
-          <div onClick={() => wheelBus.setOpen(false)} style={{
-            position: 'absolute', left: -12, top: -12, width: 24, height: 24,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: COL.muted, fontSize: 18, fontFamily: 'system-ui, sans-serif',
-            cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation',
-          }}>×</div>
+          {/* Center X — dismiss. onTouchStart fires immediately even while
+              the left joystick is held, so the wheel can be closed mid-move. */}
+          <div
+            onClick={() => wheelBus.setOpen(false)}
+            onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); wheelBus.setOpen(false); }}
+            onContextMenu={(e) => e.preventDefault()}
+            style={{
+              position: 'absolute', left: -28, top: -28, width: 56, height: 56,
+              borderRadius: 28,
+              background: 'rgba(241, 239, 232, 0.9)',
+              border: `1px solid ${COL.muted}`,
+              boxShadow: '0 2px 6px rgba(0,0,0,.15)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: COL.text, fontSize: 32, fontWeight: 300, lineHeight: 1,
+              fontFamily: 'system-ui, sans-serif',
+              cursor: 'pointer', userSelect: 'none', touchAction: 'none',
+              WebkitTouchCallout: 'none', WebkitUserSelect: 'none',
+            }}>×</div>
         </div>
       </div>
     </div>

@@ -18,7 +18,7 @@ const C = {
 // arc that appears during a block now covers the same region the player can
 // tap to activate. Band extends outward from ringInner only so the joystick's
 // mana fill area is never overlapped.
-const RING_BAND = 48;
+const RING_BAND = 36;
 const RING_GAP  = 7;
 const SHIELD_ICON_W = 28;
 const SHIELD_ICON_H = 30;

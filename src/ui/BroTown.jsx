@@ -33075,72 +33075,9 @@ export var BroTown = function BroTown(_ref0) {
       position: 'relative',
       overflow: 'hidden'
     }
-  }, function (_stateRef$current62) {
-    var R = (_stateRef$current62 = stateRef.current) === null || _stateRef$current62 === void 0 ? void 0 : _stateRef$current62.rpg;
-    if (!R) return null;
-    var hp = R.hp,
-      maxHp = R.maxHp,
-      deficit = maxHp - hp;
-    var hpPct = Math.max(0, hp / maxHp);
-    var sz = isLandscape ? 120 : 100;
-    var filledColor = hpPct > 0.5 ? 'rgba(50,180,100,.45)' : hpPct > 0.25 ? 'rgba(200,160,40,.45)' : 'rgba(220,50,50,.45)';
-    var emptyColor = 'rgba(0,0,0,.35)';
-    /* Conic gradient: filled portion then empty portion, starting from top */
-    var deg = Math.round(hpPct * 360);
-    var bg = "conic-gradient(from 0deg at 50% 50%, ".concat(filledColor, " 0deg, ").concat(filledColor, " ").concat(deg, "deg, ").concat(emptyColor, " ").concat(deg, "deg, ").concat(emptyColor, " 360deg)");
-    return React.createElement('div', {
-      style: {
-        position: 'absolute',
-        inset: 0,
-        borderRadius: '50%',
-        background: bg,
-        mask: 'radial-gradient(circle,transparent 38%,black 39%)',
-        WebkitMask: 'radial-gradient(circle,transparent 38%,black 39%)',
-        pointerEvents: 'none',
-        zIndex: 0,
-        transform: 'rotate(-90deg)' /* start from 12 o'clock */
-      }
-    });
-  }(), function (_stateRef$current63) {
-    var R = (_stateRef$current63 = stateRef.current) === null || _stateRef$current63 === void 0 ? void 0 : _stateRef$current63.rpg;
-    if (!R) return null;
-    var hp = R.hp,
-      maxHp = R.maxHp,
-      deficit = maxHp - hp;
-    return React.createElement('div', {
-      style: {
-        position: 'absolute',
-        top: 6,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        pointerEvents: 'none',
-        textAlign: 'center',
-        lineHeight: 1,
-        zIndex: 2
-      }
-    }, React.createElement('div', {
-      style: {
-        fontSize: 7,
-        fontWeight: 700,
-        color: 'rgba(255,255,255,.6)',
-        letterSpacing: '.5px'
-      }
-    }, 'HP'), React.createElement('div', {
-      style: {
-        fontSize: 12,
-        fontWeight: 900,
-        color: '#fff',
-        textShadow: '0 1px 3px rgba(0,0,0,.8)'
-      }
-    }, hp), deficit > 0 && React.createElement('div', {
-      style: {
-        fontSize: 8,
-        fontWeight: 700,
-        color: 'rgba(255,200,200,.7)',
-        textShadow: '0 1px 2px rgba(0,0,0,.8)'
-      }
-    }, '-' + deficit));
-  }(), /*#__PURE__*/React.createElement("div", {
+  }, /* HP ring + HP text removed — covered by thumb on mobile; HP shown
+        contextually above the player in combat zones (entityRenderer). */
+  null, null, /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
     ref: knobRef,
     style: {
@@ -33151,7 +33088,10 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'fixed',
       bottom: 88,
-      right: isLandscape ? 16 : 12,
+      // Pulled inward so the shield ring (joyOuter + RING_GAP + RING_BAND
+      // = 50 + 7 + 36 = 93px from joystick center) clears the screen edge
+      // with a small buffer.
+      right: isLandscape ? 50 : 50,
       zIndex: 30,
       width: isLandscape ? 130 : 110,
       height: isLandscape ? 130 : 110
@@ -33173,29 +33113,9 @@ export var BroTown = function BroTown(_ref0) {
       touchAction: 'none',
       overflow: 'hidden'
     }
-  }, function (_stateRef$current64) {
-    var R = (_stateRef$current64 = stateRef.current) === null || _stateRef$current64 === void 0 ? void 0 : _stateRef$current64.rpg;
-    if (!R) return null;
-    var mana = R.mana || 0,
-      maxMana = R.maxMana || 80;
-    var pct = Math.max(0, mana / maxMana);
-    var filledColor = pct > 0.5 ? 'rgba(40,100,220,.4)' : pct > 0.25 ? 'rgba(180,120,40,.4)' : 'rgba(220,50,50,.4)';
-    var emptyColor = 'rgba(0,0,0,.3)';
-    var deg = Math.round(pct * 360);
-    return React.createElement('div', {
-      style: {
-        position: 'absolute',
-        inset: 0,
-        borderRadius: '50%',
-        background: "conic-gradient(from 0deg at 50% 50%, ".concat(filledColor, " 0deg, ").concat(filledColor, " ").concat(deg, "deg, ").concat(emptyColor, " ").concat(deg, "deg, ").concat(emptyColor, " 360deg)"),
-        mask: 'radial-gradient(circle,transparent 30%,black 31%)',
-        WebkitMask: 'radial-gradient(circle,transparent 30%,black 31%)',
-        pointerEvents: 'none',
-        zIndex: 0,
-        transform: 'rotate(-90deg)'
-      }
-    });
-  }(), /*#__PURE__*/React.createElement("svg", {
+  }, /* Mana ring removed — covered by thumb on mobile; mana shown
+        contextually above the player in combat zones. */
+  null, /*#__PURE__*/React.createElement("svg", {
     style: {
       position: 'absolute',
       inset: 0,
@@ -33221,46 +33141,8 @@ export var BroTown = function BroTown(_ref0) {
       strokeDasharray: "".concat(Math.PI * 2 * 28 / 100 * pct * 100, " 999")
     });
     return null;
-  }()), function (_stateRef$current66) {
-    var R = (_stateRef$current66 = stateRef.current) === null || _stateRef$current66 === void 0 ? void 0 : _stateRef$current66.rpg;
-    if (!R) return null;
-    var mana = Math.floor(R.mana || 0),
-      maxMana = R.maxMana || 80,
-      deficit = maxMana - mana;
-    return React.createElement('div', {
-      style: {
-        position: 'absolute',
-        top: 4,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        pointerEvents: 'none',
-        textAlign: 'center',
-        lineHeight: 1,
-        zIndex: 2
-      }
-    }, React.createElement('div', {
-      style: {
-        fontSize: 6,
-        fontWeight: 700,
-        color: 'rgba(255,255,255,.55)',
-        letterSpacing: '.5px'
-      }
-    }, 'MANA'), React.createElement('div', {
-      style: {
-        fontSize: 11,
-        fontWeight: 900,
-        color: '#fff',
-        textShadow: '0 1px 3px rgba(0,0,0,.8)'
-      }
-    }, mana), deficit > 0 && React.createElement('div', {
-      style: {
-        fontSize: 7,
-        fontWeight: 700,
-        color: 'rgba(180,200,255,.6)',
-        textShadow: '0 1px 2px rgba(0,0,0,.8)'
-      }
-    }, '-' + Math.ceil(deficit)));
-  }(), /*#__PURE__*/React.createElement("div", {
+  }()), /* Mana text removed — shown contextually above the player. */
+  null, /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
     style: {
       position: 'absolute',
