@@ -20,8 +20,10 @@ const SHIELD_ICON_W = 28;
 const SHIELD_ICON_H = 30;
 const LIT_ARC_DEG = 70;
 const COMMITMENT_GAP_MS = 75;
-// Slight inflation on the band hit-target so a finger near the band still grabs it.
-const HIT_PAD = 6;
+// Hit-target extends outward from ringInner only — never inward, so the
+// joystick's mana fill stays unobstructed. Total hit-zone width:
+// RING_BAND + HIT_OUTER_PAD = 12 + 36 = 48 (2× the previous 24-px target).
+const HIT_OUTER_PAD = 36;
 
 const useRaf = (cb) => {
   useEffect(() => {
@@ -45,16 +47,16 @@ const ShieldGlyph = ({ active }) => (
   </svg>
 );
 
-const LitArc = ({ ringInner, ringOuter, centerAngle, opacity = 1 }) => {
+const LitArc = ({ ringInner, ringOuter, center, centerAngle, opacity = 1 }) => {
   const r = (ringInner + ringOuter) / 2;
   const w = ringOuter - ringInner;
   const half = (LIT_ARC_DEG * Math.PI) / 360;
   const a0 = centerAngle - half;
   const a1 = centerAngle + half;
-  const x0 = ringOuter + Math.cos(a0) * r;
-  const y0 = ringOuter + Math.sin(a0) * r;
-  const x1 = ringOuter + Math.cos(a1) * r;
-  const y1 = ringOuter + Math.sin(a1) * r;
+  const x0 = center + Math.cos(a0) * r;
+  const y0 = center + Math.sin(a0) * r;
+  const x1 = center + Math.cos(a1) * r;
+  const y1 = center + Math.sin(a1) * r;
   const large = LIT_ARC_DEG > 180 ? 1 : 0;
   const d = `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
   return (
@@ -154,13 +156,14 @@ export const BlockRing = () => {
 
   if (!geo) return null;
   const { cx, cy, ringInner, ringOuter } = geo;
-  const size = ringOuter * 2;
+  const hitOuter = ringOuter + HIT_OUTER_PAD;
+  const size = hitOuter * 2;
   const blocking = blockRingBus.state.blocking;
   const opacity = blocking ? 1 : blockRingBus.ringOpacity();
   const shieldAng = shieldAngleRef.current;
 
-  const sx = ringOuter + Math.cos(shieldAng) * ((ringInner + ringOuter) / 2);
-  const sy = ringOuter + Math.sin(shieldAng) * ((ringInner + ringOuter) / 2);
+  const sx = hitOuter + Math.cos(shieldAng) * ((ringInner + ringOuter) / 2);
+  const sy = hitOuter + Math.sin(shieldAng) * ((ringInner + ringOuter) / 2);
 
   // ── Activation (touchstart on hit-target circle or shield icon) ───────────
   const tryActivate = (clientX, clientY, identifier) => {
@@ -208,7 +211,7 @@ export const BlockRing = () => {
   return (
     <div style={{
       position: 'fixed',
-      left: cx - ringOuter, top: cy - ringOuter,
+      left: cx - hitOuter, top: cy - hitOuter,
       width: size, height: size,
       zIndex: 31,
       pointerEvents: 'none',
@@ -216,33 +219,33 @@ export const BlockRing = () => {
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
         style={{ display: 'block', pointerEvents: 'none' }}>
         {/* Visible ring band */}
-        <circle cx={ringOuter} cy={ringOuter} r={(ringInner + ringOuter) / 2}
+        <circle cx={hitOuter} cy={hitOuter} r={(ringInner + ringOuter) / 2}
           fill="none"
           stroke={`${C.ringFill}${opacity})`}
           strokeWidth={RING_BAND}
           style={{ transition: 'stroke 400ms ease-in-out' }} />
-        <circle cx={ringOuter} cy={ringOuter} r={ringInner}
+        <circle cx={hitOuter} cy={hitOuter} r={ringInner}
           fill="none" stroke={C.ringDashed} strokeWidth={1} strokeDasharray="3 3"
           style={{ opacity: blocking ? 1 : (opacity * 4) }} />
-        <circle cx={ringOuter} cy={ringOuter} r={ringOuter}
+        <circle cx={hitOuter} cy={hitOuter} r={ringOuter}
           fill="none" stroke={C.ringDashed} strokeWidth={1} strokeDasharray="3 3"
           style={{ opacity: blocking ? 1 : (opacity * 4) }} />
         {blocking && (
-          <LitArc ringInner={ringInner} ringOuter={ringOuter} centerAngle={shieldAng} />
+          <LitArc ringInner={ringInner} ringOuter={ringOuter}
+            center={hitOuter} centerAngle={shieldAng} />
         )}
         {flashAlpha > 0 && (
           <circle cx={sx} cy={sy} r={ringOuter * (1 - flashAlpha) + 8}
             fill="none" stroke={C.parryFlash} strokeWidth={3}
             style={{ opacity: flashAlpha }} />
         )}
-        {/* Invisible hit target — only the band area receives touches.
-            Stroke must be a non-transparent color (even with low alpha) for
-            pointer-events to fire reliably on touch devices. Width is
-            inflated by HIT_PAD so a finger near the band still grabs it. */}
-        <circle cx={ringOuter} cy={ringOuter} r={(ringInner + ringOuter) / 2}
+        {/* Invisible hit target — extends outward from ringInner only, never
+            inward, so the joystick's mana fill area stays untouched. */}
+        <circle cx={hitOuter} cy={hitOuter}
+          r={ringInner + (RING_BAND + HIT_OUTER_PAD) / 2}
           fill="none"
           stroke="rgba(0,0,0,0.001)"
-          strokeWidth={RING_BAND + HIT_PAD * 2}
+          strokeWidth={RING_BAND + HIT_OUTER_PAD}
           pointerEvents="stroke"
           style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
           onTouchStart={onBandTouchStart}
