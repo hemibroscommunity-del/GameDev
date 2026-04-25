@@ -6,9 +6,59 @@ import { wheelBus } from './mobile/wheelBus.js';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
 import { generateMockInventory, generateMockEquipped } from './mobile/mockItems.js';
+import { InspectCard } from './mobile/InspectCard.jsx';
+import { inspectCardBus } from './mobile/inspectCardBus.js';
+import { generateMockProfile } from './mobile/mockProfile.js';
 import { debugBus } from '../debug/debugBus.js';
 
 const NFT_CSV_URL = 'https://raw.githubusercontent.com/hemibroscommunity-del/Hemi-Bros-catalogue/main/Hemi%20Bro%20spreadsheet-CleanDataWithImages.csv';
+
+// Best-effort mapping from live game state into the inspect-card profile shape.
+// Falls back to mock fields where the live state doesn't yet expose them.
+const buildSelfProfile = (s) => {
+  const p = s.player || {};
+  const rpg = s.rpgState || {};
+  const ls = rpg.lifeSkills || {};
+  const lvl = (k) => (ls[k]?.level) ?? 0;
+  const fallback = generateMockProfile({ name: p.name || 'You' });
+  return {
+    name: p.name || fallback.name,
+    level: rpg.level || p.level || fallback.level,
+    archetype: p.archetype || fallback.archetype,
+    pole: p.pole || rpg.pole || fallback.pole,
+    clanTag: s._clanData?.tag || null,
+    questLine: s.activeQuest?.text || fallback.questLine,
+    recentJourneyLine: s.journey?.recent || fallback.recentJourneyLine,
+    logo: p.logo || null,
+    stats: {
+      power:     rpg.power     ?? fallback.stats.power,
+      vitality:  rpg.vitality  ?? fallback.stats.vitality,
+      endurance: rpg.endurance ?? fallback.stats.endurance,
+      agility:   rpg.agility   ?? fallback.stats.agility,
+      mind:      rpg.mind      ?? fallback.stats.mind,
+    },
+    tier2: fallback.tier2,
+    vows: rpg.vows || [],
+    weapon: rpg.weapon || fallback.weapon,
+    armor:  rpg.armor  || fallback.armor,
+    pet:    rpg.pet    || fallback.pet,
+    skills: {
+      cooking: lvl('cooking'), fishing: lvl('fishing'), farming: lvl('farming'),
+      blacksmithing: lvl('blacksmithing'), gemCutting: lvl('gemCutting'),
+      alchemy: lvl('alchemy'), woodworking: lvl('woodworking'),
+      tailoring: lvl('tailoring'), taming: lvl('taming'), scribing: lvl('scribing'),
+    },
+    history: {
+      displayedTitle: p.displayedTitle || null,
+      titles: p.titles || [],
+      capstones: p.capstones || [],
+      zonesCleared: p.zonesCleared || 0,
+      apexKills: p.apexKills || 0,
+      ascendant: !!p.ascendant,
+    },
+    journey: s.journey || fallback.journey,
+  };
+};
 
 export const GameApp = () => {
   const [nfts, setNfts] = useState([]);
@@ -53,6 +103,13 @@ export const GameApp = () => {
     const offs = tools.map(t => wheelBus.onActivate(t, () => console.log(`[wheel] activate: ${t}`)));
     // Wire wheel → inventory surface.
     offs.push(wheelBus.onActivate('inventory', () => inventoryBus.setOpen(true)));
+    // Wire wheel → self-inspect card. Until live state binding lands, this
+    // pulls a best-effort profile from the live game state with mock fallback.
+    offs.push(wheelBus.onActivate('selfInspect', () => {
+      const s = window._gameState?.current;
+      const profile = (s && s.player) ? buildSelfProfile(s) : generateMockProfile({ name: 'You' });
+      inspectCardBus.open(profile);
+    }));
 
     // Debug commands for the wheel.
     debugBus.cmd('wheel', (args) => {
@@ -94,6 +151,26 @@ export const GameApp = () => {
       return 'inv <open|close|mock [n]|clear|tab <inventory|equipped>|damage [amt]|hp [frac]|layer <1|2|3>>';
     }, 'inv — control inventory surface');
 
+    // Inspect card debug commands.
+    debugBus.cmd('card', (args) => {
+      const sub = args[0];
+      if (sub === 'self') {
+        const s = window._gameState?.current;
+        const profile = (s && s.player) ? buildSelfProfile(s) : generateMockProfile({ name: 'You' });
+        inspectCardBus.open(profile);
+        return 'opened self card';
+      }
+      if (sub === 'mock') { inspectCardBus.open(generateMockProfile()); return 'opened mock card'; }
+      if (sub === 'close') { inspectCardBus.close(); return 'closed'; }
+      if (sub === 'expand') {
+        const id = args[1];
+        if (!id) return 'usage: card expand <combat|carrying|skills|history|journey>';
+        inspectCardBus.toggleExpanded(id);
+        return `toggled ${id}`;
+      }
+      return 'card <self|mock|close|expand <section>>';
+    }, 'card — control inspect card');
+
     return () => { offs.forEach(f => f()); };
   }, []);
 
@@ -105,6 +182,7 @@ export const GameApp = () => {
       />
       <UtilityWheel />
       <InventorySurface />
+      <InspectCard />
       <DebugOverlay />
     </>
   );
