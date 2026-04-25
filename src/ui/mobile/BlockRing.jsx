@@ -98,12 +98,23 @@ export const BlockRing = () => {
     const next = { cx, cy, joyOuter, ringInner, ringOuter };
     geoRef.current = next;
 
-    // Shield icon follows the player's auto-attack rotation (S._facingAngle)
-    // when not actively being dragged, so the protected direction matches
-    // wherever the auto-attack is currently aiming.
+    // Shield icon follows the right-joystick auto-attack direction. Priority:
+    //   1. Locked target — angle from player to target.
+    //   2. S._aimAngle — last right-joystick aim (persists after release).
+    // Movement (left joystick / S._facingAngle) is intentionally ignored:
+    // the shield protects whatever direction the player is attacking.
     const S = window._gameState?.current;
-    if (!dragActive.current && S && typeof S._facingAngle === 'number') {
-      shieldAngleRef.current = lerpAngle(shieldAngleRef.current, S._facingAngle, 0.2);
+    let autoAtkAng = null;
+    if (S) {
+      const lt = S.lockedTarget && S.lockedTarget.ref;
+      if (lt && S.player) {
+        autoAtkAng = Math.atan2((lt.y || 0) - S.player.y, (lt.x || 0) - S.player.x);
+      } else if (typeof S._aimAngle === 'number') {
+        autoAtkAng = S._aimAngle;
+      }
+    }
+    if (!dragActive.current && autoAtkAng != null) {
+      shieldAngleRef.current = lerpAngle(shieldAngleRef.current, autoAtkAng, 0.2);
     }
     if (S) S._shieldAngle = shieldAngleRef.current;
 
