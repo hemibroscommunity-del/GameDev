@@ -2889,23 +2889,37 @@ export var BroTown = function BroTown(_ref0) {
       var pose = isMoving ? 'jog' : 'stand';
       var sheet = sheets[pose + '-' + info.name];
       if (!sheet) return false;
-      /* Clamp the effective frame count by what the image actually loaded
-         (stale-cache safety net). */
+      /* Stale-cache clamp on frame count. */
       var maxFrames = sheet.img && sheet.img.naturalWidth
         ? Math.max(1, Math.floor(sheet.img.naturalWidth / sheet.w))
         : sheet.frames;
       var effFrames = Math.min(sheet.frames, maxFrames);
-      /* Per-sheet frame interval — east is ~1 s native, north/south ~2 s,
-         stored on the sheet at load time so each direction plays at its
-         source speed and the cycle doesn't stutter at the loop point. */
       var ivl = sheet.intervalMs || 90;
       var frame = effFrames > 1 ? Math.floor(now / ivl) % effFrames : 0;
       var srcX = frame * sheet.w;
-      /* East source video framed the character smaller than the others.
-         Scale up east-sourced sprites (E and mirrored W) by 18% so the
-         on-screen character size matches the other directions. */
-      var sizeMul = info.name === 'east' ? 1.18 : 1.0;
+      /* East source video framed the character slightly smaller. Bump 6%
+         (was 18% — user fed back that 18% was too large). */
+      var sizeMul = info.name === 'east' ? 1.06 : 1.0;
       var w = drawSize * sizeMul, h = drawSize * sizeMul;
+
+      /* === WEAPON DRAW (BEHIND character) ===
+         Positioned on the character's right (screen-right of body) at hand
+         height, blade pointing up regardless of facing. Drawn before the
+         character so the body covers the part of the weapon that overlaps
+         the torso (keeps the sword from appearing painted onto the back
+         when facing north). */
+      var wsheets = weaponSpritesRef.current;
+      var wImg = wsheets && weaponType ? wsheets[weaponType] : null;
+      if (wImg) {
+        var wSize = Math.round(drawSize * 0.45);
+        var handleX = screenX + drawSize * 0.18;
+        var handleY = footY - drawSize * 0.65;
+        /* Source weapon images have handle at bottom and blade extending up.
+           Pin handle bottom-center at (handleX, handleY); image grows up. */
+        ctx.drawImage(wImg, handleX - wSize / 2, handleY - wSize, wSize, wSize);
+      }
+
+      /* === CHARACTER DRAW (on top) === */
       ctx.save();
       if (info.mirror) {
         ctx.translate(screenX, 0);
@@ -2915,26 +2929,6 @@ export var BroTown = function BroTown(_ref0) {
         ctx.drawImage(sheet.img, srcX, 0, sheet.w, sheet.w, screenX - w / 2, footY - h, w, h);
       }
       ctx.restore();
-      /* Weapon icon — drawn after the character so it sits on top.
-         Positioned to the character's "front" hand, mirroring with facing. */
-      var wsheets = weaponSpritesRef.current;
-      var wImg = wsheets && weaponType ? wsheets[weaponType] : null;
-      if (wImg) {
-        var wSize = Math.round(drawSize * 0.45);
-        /* Offset relative to the sprite's center: forward of the body,
-           roughly hand-height (about 60% up from foot). */
-        var wxOff = drawSize * 0.22;
-        var wyFromFoot = drawSize * 0.6;
-        ctx.save();
-        if (info.mirror) {
-          ctx.translate(screenX, 0);
-          ctx.scale(-1, 1);
-          ctx.drawImage(wImg, wxOff - wSize / 2, footY - wyFromFoot - wSize / 2, wSize, wSize);
-        } else {
-          ctx.drawImage(wImg, screenX + wxOff - wSize / 2, footY - wyFromFoot - wSize / 2, wSize, wSize);
-        }
-        ctx.restore();
-      }
       return true;
     }
 
@@ -11859,10 +11853,10 @@ export var BroTown = function BroTown(_ref0) {
         }
 
         /* §4 Visual Identity — Weapon visual on player.
-           Skipped under sprite mode — drawSpriteCharacter now blits a
-           dedicated weapon icon (sword/bow/staff) from public/sprites/weapons.
-           Falls through to the procedural draw only when sprite mode is off. */
-        if (S.rpg && !_spriteDrawn) {
+           DISABLED — drawSpriteCharacter blits the weapon-icon sprite
+           instead. Block kept for fallback if sprite mode is ever turned
+           off, but always-false guard ensures it cannot draw at runtime. */
+        if (false && S.rpg && !_spriteDrawn) {
           var wpn = getActiveWeapon(S.rpg);
           var wpnDef = WEAPON_TYPES[wpn.type];
           var wpnAngle = S._aimAngle != null ? S._aimAngle : dir === 'right' ? 0 : dir === 'up' ? -Math.PI / 2 : dir === 'left' ? Math.PI : Math.PI / 2;
