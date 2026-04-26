@@ -2903,17 +2903,22 @@ export var BroTown = function BroTown(_ref0) {
       var w = drawSize * sizeMul, h = drawSize * sizeMul;
 
       /* === WEAPON DRAW (BEHIND character) ===
-         Positioned on the character's right (screen-right of body) at hand
-         height, blade pointing up regardless of facing. Drawn before the
-         character so the body covers the part of the weapon that overlaps
-         the torso (keeps the sword from appearing painted onto the back
-         when facing north). */
+         Handle anchored at the character's right hand — which sits 90° CCW
+         from the facing direction in atan2 convention. Blade always points
+         screen-up. Y-component of the offset is dampened to keep the hand
+         near shoulder height for all facings (full vertical offset would
+         put the handle above the head when facing east, or below the feet
+         when facing west). Drawn before the character body so the sprite
+         covers any torso overlap. */
       var wsheets = weaponSpritesRef.current;
       var wImg = wsheets && weaponType ? wsheets[weaponType] : null;
       if (wImg) {
         var wSize = Math.round(drawSize * 0.45);
-        var handleX = screenX + drawSize * 0.18;
-        var handleY = footY - drawSize * 0.65;
+        var handAng = facingAngle - Math.PI / 2;
+        var armLen = drawSize * 0.22;
+        var bodyCenterY = footY - drawSize * 0.55;
+        var handleX = screenX + Math.cos(handAng) * armLen;
+        var handleY = bodyCenterY + Math.sin(handAng) * armLen * 0.4;
         /* Source weapon images have handle at bottom and blade extending up.
            Pin handle bottom-center at (handleX, handleY); image grows up. */
         ctx.drawImage(wImg, handleX - wSize / 2, handleY - wSize, wSize, wSize);
@@ -12208,8 +12213,12 @@ export var BroTown = function BroTown(_ref0) {
           ctx.restore();
         }
 
-        /* ═══ SWORD — longsword held by character + swing ═══ */
-        if (((_S$rpg21 = S.rpg) === null || _S$rpg21 === void 0 ? void 0 : _S$rpg21.activeSlot) === 'melee') {
+        /* ═══ SWORD — longsword held by character + swing ═══
+           Skipped under sprite mode — drawSpriteCharacter blits the weapon
+           icon and the source sprite already includes the held sword.
+           Without this gate the procedural longsword renders as a second
+           sword diagonal across the body (the user's reported bug). */
+        if (!_spriteDrawn && ((_S$rpg21 = S.rpg) === null || _S$rpg21 === void 0 ? void 0 : _S$rpg21.activeSlot) === 'melee') {
           var baseA;
           if (S.lockedTarget && S.lockedTarget.ref) {
             var _lt4 = S.lockedTarget.ref;
