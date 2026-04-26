@@ -69,6 +69,9 @@ const {
   COMBO_BURST_BONUS, COMBO_SPREAD_RADIUS, COMBO_SPREAD_DURATION_MULT,
   COMBO_NEXT_DURATION_BONUS, COMBO_NEXT_WINDOW_MS, COMBO_GRACE_MULT,
   RESONANCE_WINDOW_RATIO, RESONANCE_STREAK_WINDOW_MS,
+  LUNGE_DIRECTION_THRESHOLD, LUNGE_STAMINA_FRACTION, LUNGE_DAMAGE_MULT,
+  LUNGE_DASH_FRAMES, LUNGE_DASH_PX_PER_FRAME, LUNGE_IFRAMES_MS,
+  RETREAT_SHOT_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_STAFF_CONE_RAD,
   spawnWeaponHitFX, spawnElementStatusFX, getElementDeathFX, getCollisionDeathFX,
   MKT_TIERS, MKT_WOOD_TIERS, createMktOrder, matchMktOrders, estimateMktPrice,
   hasDungeonClear, getMaxDepth,
@@ -13147,42 +13150,25 @@ export var BroTown = function BroTown(_ref0) {
       S.keys[e.key] = true;
       S._isDesktop = true; /* any keyboard input confirms desktop */
 
-      /* Space — dodge roll in movement or facing direction */
+      /* Space — dodge roll in movement or facing direction (§5.8 contextual). */
       if (e.code === 'Space') {
         e.preventDefault();
         var _R1 = S.rpg;
-        if (!_R1) return;
-        var dodgeCost = Math.ceil((_R1.maxStamina || 100) * 0.2);
-        if ((_R1.stamina || 0) < dodgeCost || S._dodgeRoll) return;
-        /* Direction: use WASD if held, else facing, else mouse aim */
-        var ddx = 0,
-          ddy = 0;
+        if (!_R1 || S._dodgeRoll) return;
+        /* Direction: WASD if held, else mouse aim, else facing. */
+        var ddx = 0, ddy = 0;
         if (S.keys['w'] || S.keys['W'] || S.keys['ArrowUp']) ddy = -1;
         if (S.keys['s'] || S.keys['S'] || S.keys['ArrowDown']) ddy = 1;
         if (S.keys['a'] || S.keys['A'] || S.keys['ArrowLeft']) ddx = -1;
         if (S.keys['d'] || S.keys['D'] || S.keys['ArrowRight']) ddx = 1;
         var ang;
-        if (ddx || ddy) {
-          ang = Math.atan2(ddy, ddx);
-        } else if (S._mouseAimAngle != null) {
-          ang = S._mouseAimAngle;
-        } else {
-          var dirs = {
-            down: Math.PI / 2,
-            up: -Math.PI / 2,
-            left: Math.PI,
-            right: 0
-          };
+        if (ddx || ddy) ang = Math.atan2(ddy, ddx);
+        else if (S._mouseAimAngle != null) ang = S._mouseAimAngle;
+        else {
+          var dirs = { down: Math.PI / 2, up: -Math.PI / 2, left: Math.PI, right: 0 };
           ang = dirs[S.player.dir] || 0;
         }
-        _R1.stamina -= dodgeCost;
-        S._dodgeRoll = {
-          angle: ang,
-          startTime: Date.now()
-        };
-        S._hasDodged = true;
-        S._dodgeFlash = Date.now();
-        if (!S.respawnTimer || Date.now() > S.respawnTimer) S.respawnTimer = Date.now() + 400;
+        triggerContextualDodge(S, _R1, ang);
         return;
       }
 
@@ -13543,19 +13529,120 @@ export var BroTown = function BroTown(_ref0) {
     var ang = Math.atan2(dy, dx);
     var S = stateRef.current;
     var R = S.rpg;
-    /* §5.6 Dodge costs 20% of max stamina */
-    var dodgeCost = Math.ceil((R.maxStamina || 100) * 0.2);
-    if (!R || (R.stamina || 0) < dodgeCost) return;
+    if (!R || S._dodgeRoll) return;
+    /* §5.8 Contextual dodge — same input picks dodge / lunge / retreat-shot
+       based on lock-on state, swipe direction, and active weapon type. */
+    triggerContextualDodge(S, R, ang);
+  }, []);
+  /* §5.8 — contextual dodge resolver shared between mobile swipe + keyboard. */
+  var triggerContextualDodge = function (S, R, ang) {
     if (S._dodgeRoll) return;
+    var ctx = resolveDodgeContext(S, ang);
+    if (ctx === 'lunge') return doLunge(S, R, ang);
+    if (ctx === 'retreat_shot') return doRetreatShot(S, R, ang);
+    return doStandardDodge(S, R, ang);
+  };
+  var resolveDodgeContext = function (S, swipeAng) {
+    var lt = S.lockedTarget && S.lockedTarget.ref;
+    if (!lt) return 'dodge';
+    var P = S.player;
+    var tx = lt.x - P.x, ty = lt.y - P.y;
+    var tlen = Math.sqrt(tx * tx + ty * ty);
+    if (tlen < 0.001) return 'dodge';
+    var tdx = tx / tlen, tdy = ty / tlen;
+    var sdx = Math.cos(swipeAng), sdy = Math.sin(swipeAng);
+    var dot = sdx * tdx + sdy * tdy;
+    var thresh = LUNGE_DIRECTION_THRESHOLD || 0.707;
+    var slot = (S.rpg && S.rpg.activeSlot) || 'melee';
+    var isRanged = slot === 'ranged' || slot === 'staff';
+    if (dot > thresh && !isRanged) return 'lunge';
+    if (dot < -thresh && isRanged) return 'retreat_shot';
+    return 'dodge';
+  };
+  var doStandardDodge = function (S, R, ang) {
+    var dodgeCost = Math.ceil((R.maxStamina || 100) * 0.2);
+    if ((R.stamina || 0) < dodgeCost) return;
     R.stamina -= dodgeCost;
-    S._dodgeRoll = {
-      angle: ang,
-      startTime: Date.now()
-    };
-    S._hasDodged = true; /* persistent flag for tutorial */
+    S._dodgeRoll = { angle: ang, startTime: Date.now() };
+    S._hasDodged = true;
     S._dodgeFlash = Date.now();
     if (!S.respawnTimer || Date.now() > S.respawnTimer) S.respawnTimer = Date.now() + 400;
-  }, []);
+  };
+  var doLunge = function (S, R, ang) {
+    var lungeCost = Math.ceil((R.maxStamina || 100) * (LUNGE_STAMINA_FRACTION || 0.25));
+    if ((R.stamina || 0) < lungeCost) return doStandardDodge(S, R, ang);
+    var lt = S.lockedTarget && S.lockedTarget.ref;
+    if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
+    R.stamina -= lungeCost;
+    var P = S.player;
+    var tdx = lt.x - P.x, tdy = lt.y - P.y;
+    var tlen = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+    var dirAng = Math.atan2(tdy, tdx);
+    /* Reuse the dodge-roll state for visual + i-frames; mark as a lunge so
+       the post-dash hit fires on landing. */
+    S._dodgeRoll = { angle: dirAng, startTime: Date.now(), kind: 'lunge', targetId: lt.id || null };
+    S._lungeIFramesUntil = Date.now() + (LUNGE_IFRAMES_MS || 150);
+    S._dodgeFlash = Date.now();
+    S._hasDodged = true;
+    /* Hit on arrival — reduced damage, applies element_1 status (setup). */
+    var activeWpn = getActiveWeapon(R);
+    var pDmg = calcWeaponDmg(activeWpn.type || 'sword', R.power || 0, activeWpn.tierMult || 1);
+    var lDmg = Math.max(1, Math.round(pDmg * (LUNGE_DAMAGE_MULT || 0.6)));
+    setTimeout(function () {
+      if (!lt.alive) return;
+      var hitEl = activeWpn.element1;
+      lt.curHp = (lt.curHp || lt.hp) - lDmg;
+      if (hitEl) {
+        var sid = (ELEMENTS[hitEl] || {}).status;
+        if (sid) applyStatus(lt, sid, S.player, Date.now());
+      }
+      S.dmgNumbers.push({ x: lt.x, y: lt.y - 18, text: '↯ ' + lDmg, color: '#fffbb0', ts: Date.now() });
+      BT_AUDIO.play('sword-hit', { vol: 0.5 });
+      /* Combo treats a lunge hit as an auto-attack hit on the lock-on target. */
+      if (!S.combo) S.combo = { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 };
+      if (S.combo.targetId !== lt.id) { S.combo.targetId = lt.id; S.combo.count = 1; }
+      else S.combo.count = Math.min(S.combo.count + 1, 3);
+      S.combo.lastHitTs = Date.now();
+    }, 160);
+  };
+  var doRetreatShot = function (S, R, ang) {
+    var retCost = Math.ceil((R.maxStamina || 100) * (RETREAT_SHOT_STAMINA_FRACTION || 0.20));
+    if ((R.stamina || 0) < retCost) return doStandardDodge(S, R, ang);
+    var lt = S.lockedTarget && S.lockedTarget.ref;
+    if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
+    R.stamina -= retCost;
+    /* Standard dodge movement — but no i-frames per §5.8.3 (the shot is
+       the tradeoff for safety). We mark this on _dodgeRoll so the damage
+       interceptor can skip i-frames when checked. */
+    S._dodgeRoll = { angle: ang, startTime: Date.now(), kind: 'retreat_shot', noIFrames: true };
+    S._dodgeFlash = Date.now();
+    S._hasDodged = true;
+    /* Fire a setup shot at the locked target. */
+    var P = S.player;
+    var aimAng = Math.atan2(lt.y - P.y, lt.x - P.x);
+    var activeWpn = getActiveWeapon(R);
+    var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R.power || 0, activeWpn.tierMult || 1);
+    var shotDmg = Math.max(1, Math.round(pDmg * (RETREAT_SHOT_DAMAGE_MULT || 0.5)));
+    var slot = R.activeSlot || 'ranged';
+    var isStaff = slot === 'staff';
+    if (!S.arrows) S.arrows = [];
+    var pushArrow = function (a) {
+      S.arrows.push({
+        ang: a, dist: 14, dmg: shotDmg, life: isStaff ? 90 : 120,
+        maxLife: isStaff ? 90 : 120, hitIds: new Set(), isStaff: isStaff,
+        element: activeWpn.element1 || null, retreatShot: true
+      });
+    };
+    if (isStaff) {
+      var c = RETREAT_STAFF_CONE_RAD || (25 * Math.PI / 180);
+      pushArrow(aimAng - c / 2);
+      pushArrow(aimAng);
+      pushArrow(aimAng + c / 2);
+    } else {
+      pushArrow(aimAng);
+    }
+    BT_AUDIO.play('arrow-fly', { vol: 0.7 });
+  };
   var doSwing = useCallback(function () {
     var S = stateRef.current;
     if (!S.rpg || Date.now() - S.swingTimer < SWING_COOLDOWN) return;

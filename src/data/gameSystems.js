@@ -4636,6 +4636,18 @@ export const RESONANCE_PULSE_ACCEL_HZ     = 3.5;
 export const RESONANCE_STREAK_WINDOW_MS   = 10000;
 export const RESONANCE_STREAK_MANA_BONUS  = 0.10; /* per step */
 export const RESONANCE_STREAK_CAP         = 0.50; /* 5 steps × 0.10 */
+
+/* §5.8 Contextual Dodge — same input (swipe / Spacebar), three actions
+   based on lock-on + direction + active weapon type. */
+export const LUNGE_DIRECTION_THRESHOLD    = 0.707; /* cos(45°) */
+export const LUNGE_STAMINA_FRACTION       = 0.25;  /* fraction of maxStamina */
+export const LUNGE_DAMAGE_MULT            = 0.6;   /* fraction of weapon dmg */
+export const LUNGE_DASH_FRAMES            = 8;     /* frames of dash motion */
+export const LUNGE_DASH_PX_PER_FRAME      = 6;     /* total ≈ 48 px ≈ dodge dist */
+export const LUNGE_IFRAMES_MS             = 150;
+export const RETREAT_SHOT_STAMINA_FRACTION = 0.20;
+export const RETREAT_SHOT_DAMAGE_MULT     = 0.5;
+export const RETREAT_STAFF_CONE_RAD       = (25 * Math.PI) / 180;
 /* RESPAWN_INVULN defined in zone system above */
 
 /* Old BUILDINGS removed — now uses TOWN_BUILDINGS + legacy BUILDINGS compat from zone system */
