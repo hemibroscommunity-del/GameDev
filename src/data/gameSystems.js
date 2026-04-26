@@ -4567,6 +4567,14 @@ export function getActiveWeapon(rpg) {
 export const SWING_COOLDOWN = 600;
 export const SWING_RANGE = 50;
 export const SWING_ARC = Math.PI * 0.85;
+
+/* §5.9 Combo Chain — auto-attacks build per-target combo (0–3); the next
+   swipe (special attack) consumes the count for a burst-damage bonus. The
+   spread/extended branches are spec'd at §5.9.4/§5.9.6 but not yet wired. */
+export const COMBO_BURST_BONUS         = 0.15; /* dmg ×(1+x) at count 1+ */
+export const COMBO_NEXT_DURATION_BONUS = 0.20; /* status ×(1+x) at count 3 */
+export const COMBO_NEXT_WINDOW_MS      = 4000;
+export const COMBO_GRACE_MULT          = 1.5;  /* grace = swing_cooldown × x */
 /* RESPAWN_INVULN defined in zone system above */
 
 /* Old BUILDINGS removed — now uses TOWN_BUILDINGS + legacy BUILDINGS compat from zone system */

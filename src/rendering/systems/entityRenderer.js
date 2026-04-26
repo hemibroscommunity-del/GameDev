@@ -91,6 +91,11 @@ function createPlayerDisplay() {
   const barsGfx = new Graphics();
   container.addChild(barsGfx);
 
+  // §5.9.5 Combo Chain count badge — sits above the bars.
+  const comboText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 10 } });
+  comboText.anchor.set(0.5, 1);
+  container.addChild(comboText);
+
   const nameText = new Text({ text: '', style: NAME_STYLE });
   nameText.anchor.set(0.5, 1);
   nameText.y = -28;
@@ -99,6 +104,7 @@ function createPlayerDisplay() {
   container._body = body;
   container._weaponGfx = weaponGfx;
   container._barsGfx = barsGfx;
+  container._comboText = comboText;
   container._nameText = nameText;
 
   return container;
@@ -455,6 +461,20 @@ export class EntityRenderer {
       display._nameText.y = baseY - 4;
     } else {
       display._nameText.y = -28 + bobY;
+    }
+
+    // §5.9.5 Combo Chain count — small badge above the bars.
+    const comboText = display._comboText;
+    const combo = S.combo;
+    if (combo && combo.count > 0) {
+      const c = combo.count;
+      const col = c >= 3 ? '#f5c542' : c === 2 ? '#f2b441' : '#ffffff';
+      comboText.text = 'x' + c;
+      comboText.style.fill = col;
+      comboText.alpha = 1;
+      comboText.y = display._nameText.y - 12;
+    } else {
+      comboText.alpha = 0;
     }
 
     // Name

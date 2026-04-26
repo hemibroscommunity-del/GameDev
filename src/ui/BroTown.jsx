@@ -65,6 +65,8 @@ const {
   DEATH_SCATTER_RECOVERY, DEATH_GOLD_PENALTY, WEAPON_STASH_MAX,
   FARM_PLOT_MAX, WELL_RESTED_DURATION, WELL_RESTED_XP_MULT, HOUSE_SLEEP_MS,
   STATUS_DEFS, ARCHETYPES, COLLISION_TABLE,
+  SWING_COOLDOWN, SWING_RANGE, SWING_ARC, SPECIAL_ATK_MULT,
+  COMBO_BURST_BONUS, COMBO_NEXT_DURATION_BONUS, COMBO_NEXT_WINDOW_MS, COMBO_GRACE_MULT,
   spawnWeaponHitFX, spawnElementStatusFX, getElementDeathFX, getCollisionDeathFX,
   MKT_TIERS, MKT_WOOD_TIERS, createMktOrder, matchMktOrders, estimateMktPrice,
   hasDungeonClear, getMaxDepth,
@@ -5582,6 +5584,12 @@ export var BroTown = function BroTown(_ref0) {
               var swDir = S._facing || 'down';
               baseAngle = swDir === 'right' ? 0 : swDir === 'up' ? -Math.PI / 2 : swDir === 'left' ? Math.PI : Math.PI / 2;
             }
+            /* §5.9 Combo Chain — capture pre-swing state. Burst bonus is
+               applied to all hits in this swipe (uniform across the cone);
+               post-loop logic then increments / resets the combo count. */
+            if (!S.combo) S.combo = { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 };
+            var _comboBurst = (S._specialAttack && S.combo.count > 0) ? (1 + (COMBO_BURST_BONUS || 0.15)) : 1;
+            var _swingHitTarget = null;
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
@@ -5594,6 +5602,7 @@ export var BroTown = function BroTown(_ref0) {
               if (Math.abs(angleDiff) < SWING_ARC / 2) {
                 var _ELEMENTS$collisionRe2;
                 m._hitThisSwing = true;
+                if (!_swingHitTarget) _swingHitTarget = m;
                 var isCrit = Math.random() < critChance;
                 var specialMult = S._specialAttack ? SPECIAL_ATK_MULT : 1;
 
@@ -5666,7 +5675,7 @@ export var BroTown = function BroTown(_ref0) {
                 if (hitElement) {
                   collisionResult = resolveCollision(m, hitElement, S.player, _R6, Date.now());
                 }
-                var dmg = Math.round((isCrit ? pDmg * critMult : pDmg) * specialMult);
+                var dmg = Math.round((isCrit ? pDmg * critMult : pDmg) * specialMult * _comboBurst);
                 /* Boss invulnerability — can only be damaged during recovery phase */
                 if (m._invulnerable) {
                   S.dmgNumbers.push({
@@ -5696,6 +5705,8 @@ export var BroTown = function BroTown(_ref0) {
                 /* Collision damage + feedback */
                 if (collisionResult) {
                   var _ELEMENTS$collisionRe;
+                  /* §5.9.6 — combo burst applies to collision damage too. */
+                  collisionResult.damage = Math.round(collisionResult.damage * _comboBurst);
                   m.curHp -= collisionResult.damage;
                   var coll = collisionResult.collision;
                   var elemColor = ((_ELEMENTS$collisionRe = ELEMENTS[collisionResult.triggerElement]) === null || _ELEMENTS$collisionRe === void 0 ? void 0 : _ELEMENTS$collisionRe.color) || '#fff';
@@ -6283,6 +6294,21 @@ export var BroTown = function BroTown(_ref0) {
                 }
               }
             });
+            /* §5.9 Combo Chain — post-swing update.
+               Special-attack swipe consumes the count; auto-attack
+               increments / resets to 1 on a new target. */
+            if (S._specialAttack) {
+              S.combo.count = 0;
+              S.combo.targetId = null;
+            } else if (_swingHitTarget) {
+              if (S.combo.targetId !== _swingHitTarget.id) {
+                S.combo.targetId = _swingHitTarget.id;
+                S.combo.count = 1;
+              } else {
+                S.combo.count = Math.min(S.combo.count + 1, 3);
+              }
+              S.combo.lastHitTs = Date.now();
+            }
             /* §18 Gathering nodes — now use action button, not swing */
             /* Hit NPCs */
             if (S.npcs) {
@@ -7296,6 +7322,19 @@ export var BroTown = function BroTown(_ref0) {
         var _now = Date.now();
         if (S._blockFlash && _now - S._blockFlash > 200) S._blockFlash = null;
         if (S._levelUpFlash && _now - S._levelUpFlash > 800) S._levelUpFlash = null;
+        /* §5.9.3 Combo grace window — auto-attack chain decays after a
+           pause. Grace = swing cooldown × COMBO_GRACE_MULT. */
+        if (S.combo && S.combo.count > 0) {
+          var _comboGrace = (SWING_COOLDOWN || 600) * (COMBO_GRACE_MULT || 1.5);
+          if (_now - (S.combo.lastHitTs || 0) > _comboGrace) {
+            S.combo.count = 0;
+            S.combo.targetId = null;
+          }
+        }
+        /* §5.9.6 Combo "Next" extended-status flag also expires. */
+        if (S.combo && S.combo.nextExtended && _now > (S.combo.nextExtendedTs || 0)) {
+          S.combo.nextExtended = false;
+        }
         if (S._deathFlash && _now - S._deathFlash > 500) S._deathFlash = null;
         if (S._zoneWipe && _now - S._zoneWipe.ts > 800) S._zoneWipe = null;
         if (S.monsters) S.monsters.forEach(function(m) { if (m._telegraphUntil && _now > m._telegraphUntil) m._telegraphUntil = null; });
@@ -11737,6 +11776,26 @@ export var BroTown = function BroTown(_ref0) {
           _drawBar(0, _hpPct, _hpCol);
           _drawBar(_bbH + _bbGap, (_Rb.stamina || 0) / (_Rb.maxStamina || 100), '#f2b441');
           _drawBar((_bbH + _bbGap) * 2, (_Rb.mana || 0) / (_Rb.maxMana || 1), '#5b9bd5');
+        }
+
+        /* §5.9.5 Combo count badge — small "x1/x2/x3" above the bars when
+           the player has an active combo against a tracked target. */
+        if (S.combo && S.combo.count > 0) {
+          var _cbCount = S.combo.count;
+          var _cbCol = _cbCount >= 3 ? '#f5c542' : _cbCount === 2 ? '#f2b441' : 'rgba(255,255,255,.7)';
+          var _cbY = py + (_slim ? -50 : -58);
+          ctx.save();
+          ctx.font = 'bold 10px "VT323", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = 'rgba(0,0,0,.6)';
+          ctx.fillRect(px - 14, _cbY - 8, 28, 11);
+          ctx.fillStyle = _cbCol;
+          if (_cbCount >= 3) {
+            ctx.shadowColor = _cbCol;
+            ctx.shadowBlur = 6;
+          }
+          ctx.fillText('x' + _cbCount, px, _cbY);
+          ctx.restore();
         }
 
         /* Own name */

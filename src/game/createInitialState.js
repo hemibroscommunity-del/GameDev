@@ -48,6 +48,8 @@ export function createInitialState() {
     lockedTarget: null,
     swingAngle: 0,
     isSwinging: false,
+    /* §5.9 Combo Chain — per-target chain state (0–3). */
+    combo: { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 },
     dmgNumbers: [],
     groundLoot: [],
     hitParticles: [],
