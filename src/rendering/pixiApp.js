@@ -18,6 +18,16 @@ export const LAYER_NAMES = [
 function buildScene(app) {
   app.ticker.stop();
 
+  // The React canvas owns input — onTouchStart / onTouchEnd / onClick on the
+  // <canvas> element drive lock-on, swing, swipe, etc. PixiJS v8's EventSystem
+  // attaches its own touch/pointer listeners with autoPreventDefault=true,
+  // which suppresses the synthesized click that React's onClick relies on.
+  // Disable PixiJS's event interception so React handlers fire cleanly.
+  if (app.renderer && app.renderer.events) {
+    app.renderer.events.autoPreventDefault = false;
+  }
+  app.stage.eventMode = 'none';
+
   const worldContainer = new Container();
   worldContainer.label = 'world';
   app.stage.addChild(worldContainer);
