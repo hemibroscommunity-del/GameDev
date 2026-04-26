@@ -83,6 +83,11 @@ function createPlayerDisplay() {
   const body = new Graphics();
   container.addChild(body);
 
+  // §5.9.5 Combo Chain weapon-glow underlay — drawn behind weaponGfx so the
+  // weapon silhouette sits on top of the element-color halo.
+  const weaponGlowGfx = new Graphics();
+  container.addChild(weaponGlowGfx);
+
   // Weapon visual
   const weaponGfx = new Graphics();
   container.addChild(weaponGfx);
@@ -102,6 +107,7 @@ function createPlayerDisplay() {
   container.addChild(nameText);
 
   container._body = body;
+  container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
   container._barsGfx = barsGfx;
   container._comboText = comboText;
@@ -363,7 +369,9 @@ export class EntityRenderer {
 
     // Weapon visual
     const weaponGfx = display._weaponGfx;
+    const weaponGlowGfx = display._weaponGlowGfx;
     weaponGfx.clear();
+    weaponGlowGfx.clear();
     if (S.rpg) {
       const facing = S._facing || 'down';
       const facingX = facing === 'right' ? 1 : facing === 'left' ? -1 : 0;
@@ -376,6 +384,34 @@ export class EntityRenderer {
       if (wpn) {
         const elem = wpn.element1;
         const wpnColor = elem && ELEMENTS[elem] ? cssColorToHex(ELEMENTS[elem].color) : 0xaaaaaa;
+
+        // §5.9.5 Combo glow tier — None/Faint/Medium/Bright by combo count.
+        // Bright tier adds a subtle pulse. Glow only renders when an element
+        // is present on the weapon (no element = no element-color halo).
+        const comboTier = (S.combo && S.combo.count) || 0;
+        if (comboTier > 0 && elem) {
+          const pulse = comboTier >= 3 ? 0.85 + Math.sin(now / 220) * 0.15 : 1;
+          const glowAlpha = (comboTier === 1 ? 0.22 : comboTier === 2 ? 0.45 : 0.65) * pulse;
+          const glowExtra = 2 + comboTier * 1.5;
+
+          if (wpn.type === 'bow') {
+            weaponGlowGfx.arc(wpnX, wpnY, 8, -0.8, 0.8);
+            weaponGlowGfx.stroke({ color: wpnColor, width: 2 + glowExtra, alpha: glowAlpha });
+          } else if (wpn.type === 'staff') {
+            // Glow orb expands slightly with tier; halo around the staff tip.
+            weaponGlowGfx.circle(wpnX, wpnY - 12, 3 + comboTier * 1.2);
+            weaponGlowGfx.fill({ color: wpnColor, alpha: glowAlpha });
+            weaponGlowGfx.moveTo(wpnX, wpnY + 10);
+            weaponGlowGfx.lineTo(wpnX, wpnY - 10);
+            weaponGlowGfx.stroke({ color: wpnColor, width: 2 + glowExtra, alpha: glowAlpha * 0.6 });
+          } else {
+            const len = wpn.type === 'greatsword' ? 14 : 10;
+            weaponGlowGfx.moveTo(wpnX, wpnY + 2);
+            weaponGlowGfx.lineTo(wpnX + facingX * len || len * 0.7, wpnY - len * 0.3);
+            const baseW = wpn.type === 'greatsword' ? 3 : 2;
+            weaponGlowGfx.stroke({ color: wpnColor, width: baseW + glowExtra, alpha: glowAlpha });
+          }
+        }
 
         if (wpn.type === 'bow') {
           // Bow arc
