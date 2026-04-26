@@ -9013,8 +9013,8 @@ export var BroTown = function BroTown(_ref0) {
             ctx.restore();
           } /* end else (original rectangle body for other player) */
 
-          /* Other player head — skip if NFT 360° body drawn */
-          if (!_oHasNft) {
+          /* Other player head — skip if NFT 360° body or sprite-sheet body already drew the head. */
+          if (!_oHasNft && !_oSpriteDrawn) {
             var oHeadY = oBS === 'slim' ? -6 : -12;
             ctx.fillStyle = '#f0c68a';
             ctx.beginPath();
@@ -11867,8 +11867,8 @@ export var BroTown = function BroTown(_ref0) {
           ctx.restore();
         }
 
-        /* Head — skip if NFT body already drawn (it includes the head) */
-        if (!_hasNftBody) {
+        /* Head — skip if NFT body or sprite-sheet body already drew the head. */
+        if (!_hasNftBody && !_spriteDrawn) {
           var _S$rpg18;
           var _headY = _slim ? -6 : -12;
           ctx.fillStyle = '#f0c68a';
