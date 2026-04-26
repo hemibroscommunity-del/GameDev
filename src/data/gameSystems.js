@@ -4201,6 +4201,11 @@ export function resolveCollision(target, triggerElement, source, rpg, now) {
   /* Effectiveness — §10.2 */
   if (target.element) dmg *= getEffectiveness(triggerElement, target.element);
 
+  /* Capture the consumed status's remaining duration before deletion — the
+     §5.9.4 combo spread mechanic propagates the consumed status with a
+     fraction of its remaining duration. */
+  var consumedRemaining = setupStatus.remaining || 0;
+
   /* Consume setup status */
   delete target.statuses[setupStatus.id];
 
@@ -4219,7 +4224,8 @@ export function resolveCollision(target, triggerElement, source, rpg, now) {
     setupElement: setupElement,
     triggerElement: triggerElement,
     manaRestored: manaRestored,
-    consumed: setupStatus.id
+    consumed: setupStatus.id,
+    consumedRemaining: consumedRemaining
   };
 }
 
@@ -4569,12 +4575,13 @@ export const SWING_RANGE = 50;
 export const SWING_ARC = Math.PI * 0.85;
 
 /* §5.9 Combo Chain — auto-attacks build per-target combo (0–3); the next
-   swipe (special attack) consumes the count for a burst-damage bonus. The
-   spread/extended branches are spec'd at §5.9.4/§5.9.6 but not yet wired. */
-export const COMBO_BURST_BONUS         = 0.15; /* dmg ×(1+x) at count 1+ */
-export const COMBO_NEXT_DURATION_BONUS = 0.20; /* status ×(1+x) at count 3 */
-export const COMBO_NEXT_WINDOW_MS      = 4000;
-export const COMBO_GRACE_MULT          = 1.5;  /* grace = swing_cooldown × x */
+   swipe (special attack) consumes the count for cumulative bonuses. */
+export const COMBO_BURST_BONUS          = 0.15; /* dmg ×(1+x) at count 1+ */
+export const COMBO_SPREAD_RADIUS        = 80;   /* px — 20u × ~4px/u */
+export const COMBO_SPREAD_DURATION_MULT = 0.60; /* spread dur as fraction of consumed */
+export const COMBO_NEXT_DURATION_BONUS  = 0.20; /* status ×(1+x) at count 3 */
+export const COMBO_NEXT_WINDOW_MS       = 4000;
+export const COMBO_GRACE_MULT           = 1.5;  /* grace = swing_cooldown × x */
 /* RESPAWN_INVULN defined in zone system above */
 
 /* Old BUILDINGS removed — now uses TOWN_BUILDINGS + legacy BUILDINGS compat from zone system */

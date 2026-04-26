@@ -66,7 +66,8 @@ const {
   FARM_PLOT_MAX, WELL_RESTED_DURATION, WELL_RESTED_XP_MULT, HOUSE_SLEEP_MS,
   STATUS_DEFS, ARCHETYPES, COLLISION_TABLE,
   SWING_COOLDOWN, SWING_RANGE, SWING_ARC, SPECIAL_ATK_MULT,
-  COMBO_BURST_BONUS, COMBO_NEXT_DURATION_BONUS, COMBO_NEXT_WINDOW_MS, COMBO_GRACE_MULT,
+  COMBO_BURST_BONUS, COMBO_SPREAD_RADIUS, COMBO_SPREAD_DURATION_MULT,
+  COMBO_NEXT_DURATION_BONUS, COMBO_NEXT_WINDOW_MS, COMBO_GRACE_MULT,
   spawnWeaponHitFX, spawnElementStatusFX, getElementDeathFX, getCollisionDeathFX,
   MKT_TIERS, MKT_WOOD_TIERS, createMktOrder, matchMktOrders, estimateMktPrice,
   hasDungeonClear, getMaxDepth,
@@ -5586,9 +5587,11 @@ export var BroTown = function BroTown(_ref0) {
             }
             /* §5.9 Combo Chain — capture pre-swing state. Burst bonus is
                applied to all hits in this swipe (uniform across the cone);
-               post-loop logic then increments / resets the combo count. */
+               spread (count 2+) and extended-status flag (count 3) read the
+               pre-swing count too; post-loop logic increments/resets. */
             if (!S.combo) S.combo = { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 };
-            var _comboBurst = (S._specialAttack && S.combo.count > 0) ? (1 + (COMBO_BURST_BONUS || 0.15)) : 1;
+            var _comboPreCount = S.combo.count;
+            var _comboBurst = (S._specialAttack && _comboPreCount > 0) ? (1 + (COMBO_BURST_BONUS || 0.15)) : 1;
             var _swingHitTarget = null;
             /* Hit monsters */
             S.monsters.forEach(function (m) {
@@ -5615,6 +5618,15 @@ export var BroTown = function BroTown(_ref0) {
                     var _m$statuses;
                     var wasNew = !((_m$statuses = m.statuses) !== null && _m$statuses !== void 0 && _m$statuses[statusId]);
                     applyStatus(m, statusId, S.player, Date.now());
+                    /* §5.9.6 Combo "Next" — extend the just-applied status
+                       and clear the flag (one-shot). */
+                    if (S.combo && S.combo.nextExtended && m.statuses && m.statuses[statusId]) {
+                      var _extMul = 1 + (COMBO_NEXT_DURATION_BONUS || 0.2);
+                      m.statuses[statusId].remaining *= _extMul;
+                      m.statuses[statusId].maxDur = Math.max(m.statuses[statusId].maxDur || 0, m.statuses[statusId].remaining);
+                      S.combo.nextExtended = false;
+                      S.dmgNumbers.push({ x: m.x, y: m.y - 28, text: '✚ ext', color: '#f5c542', ts: Date.now() });
+                    }
                     var elemDef = ELEMENTS[hitElement];
                     /* §Stage 2: "Brief bright pop on first application. Then ambient." */
                     if (wasNew) {
@@ -5708,6 +5720,38 @@ export var BroTown = function BroTown(_ref0) {
                   /* §5.9.6 — combo burst applies to collision damage too. */
                   collisionResult.damage = Math.round(collisionResult.damage * _comboBurst);
                   m.curHp -= collisionResult.damage;
+                  /* §5.9.4 Combo spread (count 2+) — propagate the consumed
+                     status to the nearest enemy that doesn't already have it.
+                     Sword swipe with multiple hits only spreads from the
+                     primary collision target's hit (one spread per swipe). */
+                  if (S._specialAttack && _comboPreCount >= 2 && collisionResult.consumed && m === _swingHitTarget) {
+                    var _spStatusId = collisionResult.consumed;
+                    var _spRad = COMBO_SPREAD_RADIUS || 80;
+                    var _spTarget = null;
+                    var _spBest = Infinity;
+                    S.monsters.forEach(function (om) {
+                      if (!om.alive || om === m) return;
+                      if (om.statuses && om.statuses[_spStatusId]) return;
+                      var _spDx = om.x - m.x, _spDy = om.y - m.y;
+                      var _spD = Math.sqrt(_spDx * _spDx + _spDy * _spDy);
+                      if (_spD <= _spRad && _spD < _spBest) { _spBest = _spD; _spTarget = om; }
+                    });
+                    if (_spTarget) {
+                      var _spRem = (collisionResult.consumedRemaining || 3) * (COMBO_SPREAD_DURATION_MULT || 0.6);
+                      applyStatus(_spTarget, _spStatusId, S.player, Date.now());
+                      if (_spTarget.statuses && _spTarget.statuses[_spStatusId]) {
+                        _spTarget.statuses[_spStatusId].remaining = _spRem;
+                      }
+                      var _spElCol = (ELEMENTS[collisionResult.setupElement] || {}).color || '#fff';
+                      S.dmgNumbers.push({ x: _spTarget.x, y: _spTarget.y - 18, text: '↻ spread', color: _spElCol, ts: Date.now() });
+                    }
+                  }
+                  /* §5.9.6 Combo "Next" (count 3) — flag the player so the
+                     next status application gets +20% duration. */
+                  if (S._specialAttack && _comboPreCount >= 3 && m === _swingHitTarget) {
+                    S.combo.nextExtended = true;
+                    S.combo.nextExtendedTs = Date.now() + (COMBO_NEXT_WINDOW_MS || 4000);
+                  }
                   var coll = collisionResult.collision;
                   var elemColor = ((_ELEMENTS$collisionRe = ELEMENTS[collisionResult.triggerElement]) === null || _ELEMENTS$collisionRe === void 0 ? void 0 : _ELEMENTS$collisionRe.color) || '#fff';
                   /* Collision burst damage number */
@@ -7194,7 +7238,17 @@ export var BroTown = function BroTown(_ref0) {
                 if (arrowElem) {
                   var _ELEMENTS$arrowElem;
                   var statusId = (_ELEMENTS$arrowElem = ELEMENTS[arrowElem]) === null || _ELEMENTS$arrowElem === void 0 ? void 0 : _ELEMENTS$arrowElem.status;
-                  if (statusId) applyStatus(m, statusId, S.player, Date.now());
+                  if (statusId) {
+                    applyStatus(m, statusId, S.player, Date.now());
+                    /* §5.9.6 Combo "Next" — extend on ranged status apply too. */
+                    if (S.combo && S.combo.nextExtended && m.statuses && m.statuses[statusId]) {
+                      var _extMulR = 1 + (COMBO_NEXT_DURATION_BONUS || 0.2);
+                      m.statuses[statusId].remaining *= _extMulR;
+                      m.statuses[statusId].maxDur = Math.max(m.statuses[statusId].maxDur || 0, m.statuses[statusId].remaining);
+                      S.combo.nextExtended = false;
+                      S.dmgNumbers.push({ x: m.x, y: m.y - 28, text: '✚ ext', color: '#f5c542', ts: Date.now() });
+                    }
+                  }
                 }
                 var arrowCollision = null;
                 if (arrowElem && S.rpg) {
