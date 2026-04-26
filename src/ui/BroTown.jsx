@@ -102,6 +102,9 @@ export var BroTown = function BroTown(_ref0) {
      southwest) × 2 modes (jog 8-frame, stand 1-frame). West/NW/SE are rendered
      by horizontal mirror at draw time. Map<key, {img, frames, w}> when loaded. */
   var playerSpritesRef = useRef(null);
+  /* Weapon sprite icons — sword / bow / staff. Drawn next to the character
+     scaled down from the 64×64 source. Map<weapon-type, HTMLImageElement>. */
+  var weaponSpritesRef = useRef(null);
   var stateRef = useRef({
     player: {
       x: 20 * TILE,
@@ -1118,8 +1121,29 @@ export var BroTown = function BroTown(_ref0) {
         };
         img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
         /* Cache-buster: bump v= each time sheet content or frame count changes. */
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=6';
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=7';
       });
+    });
+
+    /* Weapon icons. Map weapon.type → image. Greatsword shares the sword
+       icon. */
+    var wsheets = {};
+    var wMap = {
+      sword:      '/sprites/weapons/swords/Sword1.png',
+      greatsword: '/sprites/weapons/swords/Sword1.png',
+      bow:        '/sprites/weapons/bows/Bow2.png',
+      staff:      '/sprites/weapons/staffs/Wizard%20Staff2.png',
+    };
+    var wTotal = Object.keys(wMap).length, wLoaded = 0;
+    Object.keys(wMap).forEach(function (type) {
+      var wImg = new Image();
+      wImg.onload = function () {
+        wsheets[type] = wImg;
+        wLoaded++;
+        if (wLoaded === wTotal) weaponSpritesRef.current = wsheets;
+      };
+      wImg.onerror = function () { wLoaded++; if (wLoaded === wTotal) weaponSpritesRef.current = wsheets; };
+      wImg.src = wMap[type] + '?v=1';
     });
   }, []);
 
@@ -2854,7 +2878,7 @@ export var BroTown = function BroTown(_ref0) {
       { name: 'north',     mirror: false }, /* 6 = N   */
       { name: 'northeast', mirror: false }, /* 7 = NE  */
     ];
-    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize) {
+    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize, weaponType) {
       if (window.__broUseSprites === false) return false;
       var sheets = playerSpritesRef.current;
       if (!sheets) return false;
@@ -2877,7 +2901,11 @@ export var BroTown = function BroTown(_ref0) {
       var ivl = sheet.intervalMs || 90;
       var frame = effFrames > 1 ? Math.floor(now / ivl) % effFrames : 0;
       var srcX = frame * sheet.w;
-      var w = drawSize, h = drawSize;
+      /* East source video framed the character smaller than the others.
+         Scale up east-sourced sprites (E and mirrored W) by 18% so the
+         on-screen character size matches the other directions. */
+      var sizeMul = info.name === 'east' ? 1.18 : 1.0;
+      var w = drawSize * sizeMul, h = drawSize * sizeMul;
       ctx.save();
       if (info.mirror) {
         ctx.translate(screenX, 0);
@@ -2887,6 +2915,26 @@ export var BroTown = function BroTown(_ref0) {
         ctx.drawImage(sheet.img, srcX, 0, sheet.w, sheet.w, screenX - w / 2, footY - h, w, h);
       }
       ctx.restore();
+      /* Weapon icon — drawn after the character so it sits on top.
+         Positioned to the character's "front" hand, mirroring with facing. */
+      var wsheets = weaponSpritesRef.current;
+      var wImg = wsheets && weaponType ? wsheets[weaponType] : null;
+      if (wImg) {
+        var wSize = Math.round(drawSize * 0.45);
+        /* Offset relative to the sprite's center: forward of the body,
+           roughly hand-height (about 60% up from foot). */
+        var wxOff = drawSize * 0.22;
+        var wyFromFoot = drawSize * 0.6;
+        ctx.save();
+        if (info.mirror) {
+          ctx.translate(screenX, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(wImg, wxOff - wSize / 2, footY - wyFromFoot - wSize / 2, wSize, wSize);
+        } else {
+          ctx.drawImage(wImg, screenX + wxOff - wSize / 2, footY - wyFromFoot - wSize / 2, wSize, wSize);
+        }
+        ctx.restore();
+      }
       return true;
     }
 
@@ -8900,7 +8948,8 @@ export var BroTown = function BroTown(_ref0) {
           var _oSpriteFA = o._fAngle !== undefined ? o._fAngle : Math.PI / 2;
           var _oSpriteFootY = oy + oAnimBob + (_oSlim ? 36 : 54);
           var _oSpriteSize = _oSlim ? 56 : 72;
-          var _oSpriteDrawn = drawSpriteCharacter(ctx, ox, _oSpriteFootY, _oSpriteFA, oMoving, now, _oSpriteSize);
+          var _oWpnType = o.wpnType || null;
+          var _oSpriteDrawn = drawSpriteCharacter(ctx, ox, _oSpriteFootY, _oSpriteFA, oMoving, now, _oSpriteSize, _oWpnType);
 
           /* Check if other player has a processed NFT avatar */
           var _oHasNft = false;
@@ -11592,7 +11641,8 @@ export var BroTown = function BroTown(_ref0) {
            down to align visible feet with the existing shadow. */
         var _spriteFootY = py + animBob + (_slim ? 36 : 54);
         var _spriteSize = _slim ? 56 : 72;
-        var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize);
+        var _wpnTypeForSprite = (S.rpg && getActiveWeapon(S.rpg) || {}).type || null;
+        var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize, _wpnTypeForSprite);
 
         /* ═══ NFT CHECK — does this player have a processed avatar? ═══ */
         var _hasNftBody = false;
@@ -11808,10 +11858,11 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* §4 Visual Identity — Weapon visual on player. Drawn over both
-           sprite-sheet and procedural bodies (user prefers the procedural
-           sword appearance over the in-sprite painted one). */
-        if (S.rpg) {
+        /* §4 Visual Identity — Weapon visual on player.
+           Skipped under sprite mode — drawSpriteCharacter now blits a
+           dedicated weapon icon (sword/bow/staff) from public/sprites/weapons.
+           Falls through to the procedural draw only when sprite mode is off. */
+        if (S.rpg && !_spriteDrawn) {
           var wpn = getActiveWeapon(S.rpg);
           var wpnDef = WEAPON_TYPES[wpn.type];
           var wpnAngle = S._aimAngle != null ? S._aimAngle : dir === 'right' ? 0 : dir === 'up' ? -Math.PI / 2 : dir === 'left' ? Math.PI : Math.PI / 2;
