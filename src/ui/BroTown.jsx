@@ -1107,7 +1107,11 @@ export var BroTown = function BroTown(_ref0) {
           if (loaded === total) playerSpritesRef.current = sheets;
         };
         img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png';
+        /* Cache-buster: bump v= when the sheet contents or frame count change
+           so browsers don't serve stale 8-frame copies on top of new 16-frame
+           code (causing invisibility on frames 8-15 — out-of-bounds reads
+           return transparent pixels). */
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=3';
       });
     });
   }, []);
@@ -2854,7 +2858,16 @@ export var BroTown = function BroTown(_ref0) {
       var pose = isMoving ? 'jog' : 'stand';
       var sheet = sheets[pose + '-' + info.name];
       if (!sheet) return false;
-      var frame = sheet.frames > 1 ? Math.floor(now / 90) % sheet.frames : 0;
+      /* Clamp the effective frame count by what the image actually loaded.
+         If a stale browser cache returns a sheet with fewer frames than
+         sheet.frames advertises, reading past the image edge would return
+         transparent pixels — the bug we hit when 8-frame sheets got cached
+         under 16-frame code. */
+      var maxFrames = sheet.img && sheet.img.naturalWidth
+        ? Math.max(1, Math.floor(sheet.img.naturalWidth / sheet.w))
+        : sheet.frames;
+      var effFrames = Math.min(sheet.frames, maxFrames);
+      var frame = effFrames > 1 ? Math.floor(now / 90) % effFrames : 0;
       var srcX = frame * sheet.w;
       var w = drawSize, h = drawSize;
       ctx.save();
