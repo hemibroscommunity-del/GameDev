@@ -12,6 +12,8 @@ import { generateMockProfile } from './mobile/mockProfile.js';
 import { BlockRing } from './mobile/BlockRing.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { MoreOverlay, moreOverlay } from './mobile/MoreOverlay.jsx';
+import { MasteryNotification } from './mobile/MasteryNotification.jsx';
+import { advanceMastery, earnCertification } from '../game/mastery.js';
 import { debugBus } from '../debug/debugBus.js';
 import { BuildBadge } from './BuildBadge.jsx';
 import { BT_AUDIO } from '../data/gameSystems.js';
@@ -224,6 +226,31 @@ export const GameApp = () => {
       return 'block <hostile [off]|relaxed [off]|count <n>|parry>';
     }, 'block — control block ring (hostile proximity, relaxed parry, simulate parry)');
 
+    // Mastery debug commands.
+    debugBus.cmd('mastery', (args) => {
+      const sub = args[0];
+      if (sub === 'tier') {
+        const t = Number(args[1]);
+        if (Number.isNaN(t)) return 'usage: mastery tier <0|0.5|1|1.5|2|2.5|3|4>';
+        advanceMastery(t); return `advanced to ${t}`;
+      }
+      if (sub === 'cert') {
+        const id = args[1]; if (!id) return 'usage: mastery cert <cert-id>';
+        return earnCertification(id) ? `earned ${id}` : `already earned (or unknown): ${id}`;
+      }
+      if (sub === 'reset') {
+        try {
+          localStorage.removeItem('bt_mastery_level');
+          localStorage.removeItem('bt_mastery_certs');
+          localStorage.removeItem('bt_mastery_timestamps');
+        } catch {}
+        return 'mastery state cleared (reload to rehydrate)';
+      }
+      if (sub === 'off') { try { localStorage.setItem('bt_mastery_notif_off', '1'); } catch {} return 'notifications disabled'; }
+      if (sub === 'on')  { try { localStorage.removeItem('bt_mastery_notif_off'); } catch {} return 'notifications enabled'; }
+      return 'mastery <tier <n>|cert <id>|reset|on|off>';
+    }, 'mastery — fire tier/cert notifications, reset state');
+
     // Hostile proximity poll: sets ring opacity gate based on nearby hostiles.
     // Cheap heuristic — refine when combat layer exposes a real hostile-near flag.
     const hostilePoll = setInterval(() => {
@@ -258,6 +285,7 @@ export const GameApp = () => {
       <InspectCard />
       <BlockRing />
       <MoreOverlay />
+      <MasteryNotification />
       <DebugOverlay />
       <BuildBadge />
     </>

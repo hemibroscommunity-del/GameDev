@@ -4,6 +4,7 @@ import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { startLoadingTileAssets, useSpriteTiles, drawTileLayer, drawBuildingSprites } from '@/rendering/canvasTileAssets.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
@@ -5622,6 +5623,8 @@ export var BroTown = function BroTown(_ref0) {
                     var _m$statuses;
                     var wasNew = !((_m$statuses = m.statuses) !== null && _m$statuses !== void 0 && _m$statuses[statusId]);
                     applyStatus(m, statusId, S.player, Date.now());
+                    /* §12.2 cert — first elemental status applied. */
+                    masteryEarnCert('first-status');
                     /* §5.9.6 Combo "Next" — extend the just-applied status
                        and clear the flag (one-shot). */
                     if (S.combo && S.combo.nextExtended && m.statuses && m.statuses[statusId]) {
@@ -5692,6 +5695,8 @@ export var BroTown = function BroTown(_ref0) {
                   collisionResult = resolveCollision(m, hitElement, S.player, _R6, Date.now());
                 }
                 var dmg = Math.round((isCrit ? pDmg * critMult : pDmg) * specialMult * _comboBurst);
+                /* §12.2 cert — first time the combo-burst multiplier (>1) actually lands. */
+                if (_comboBurst > 1) masteryEarnCert('first-combo-burst');
                 /* Boss invulnerability — can only be damaged during recovery phase */
                 if (m._invulnerable) {
                   S.dmgNumbers.push({
@@ -5721,6 +5726,11 @@ export var BroTown = function BroTown(_ref0) {
                 /* Collision damage + feedback */
                 if (collisionResult) {
                   var _ELEMENTS$collisionRe;
+                  /* §12.2 certs — collision-driven advancements. */
+                  masteryEarnCert('first-collision');
+                  if (_activeWpn && _activeWpn.isVolatile) masteryEarnCert('first-volatile');
+                  if (collisionResult.resonating) masteryEarnCert('first-resonance-hit');
+                  if (collisionResult.collision && collisionResult.collision.type === 'capstone') masteryEarnCert('first-capstone');
                   /* §5.9.6 — combo burst applies to collision damage too. */
                   collisionResult.damage = Math.round(collisionResult.damage * _comboBurst);
                   m.curHp -= collisionResult.damage;
@@ -5741,6 +5751,8 @@ export var BroTown = function BroTown(_ref0) {
                       if (_spD <= _spRad && _spD < _spBest) { _spBest = _spD; _spTarget = om; }
                     });
                     if (_spTarget) {
+                      /* §12.2 cert — first combo spread. */
+                      masteryEarnCert('first-combo-spread');
                       var _spRem = (collisionResult.consumedRemaining || 3) * (COMBO_SPREAD_DURATION_MULT || 0.6);
                       applyStatus(_spTarget, _spStatusId, S.player, Date.now());
                       if (_spTarget.statuses && _spTarget.statuses[_spStatusId]) {
@@ -5946,6 +5958,8 @@ export var BroTown = function BroTown(_ref0) {
 
                   /* ═══ THE GRAND SLAM — §Creative Vision: scaled cinematic micro-event ═══ */
                   var isGrandSlam = isCrit;
+                  /* §12.2 cert — first grand-slam swipe kill. */
+                  if (isGrandSlam) masteryEarnCert('first-grand-slam');
                   var isBigEnemy = m.archetype === 'brute' || m.archetype === 'sentinel' || m.archetype === 'hexer';
                   var killScale = isGrandSlam ? isBigEnemy ? 3 : 2 : isBigEnemy ? 1.5 : 1;
 
@@ -5955,6 +5969,10 @@ export var BroTown = function BroTown(_ref0) {
                   if (isGrandSlam) _R6._compStats.grandSlams++;
                   if (m.level > (_R6._compStats.highestMonsterKill || 0)) _R6._compStats.highestMonsterKill = m.level;
                   if (m.isBoss) _R6._compStats.bossesKilled++;
+                  /* §12.2 cert — first apex (boss) defeat. Treats any boss-flagged
+                     kill as the apex trigger; the dedicated Apex archetype is
+                     not yet broken out from generic bosses in code. */
+                  if (m.isBoss || m._isBoss) masteryEarnCert('first-apex-defeat');
 
                   /* §ENC — Bestiary discovery */
                   if (discoverMonster(m.archetype, S.currentZone)) {
@@ -6382,6 +6400,9 @@ export var BroTown = function BroTown(_ref0) {
                 S.combo.count = Math.min(S.combo.count + 1, 3);
               }
               S.combo.lastHitTs = Date.now();
+              /* §12.2 cert — combo chain reached 3. (First Combo Burst fires
+                 inside the swing block when the burst multiplier > 1.) */
+              if (S.combo.count >= 3) masteryEarnCert('first-combo-chain-3');
             }
             /* §18 Gathering nodes — now use action button, not swing */
             /* Hit NPCs */
@@ -7270,6 +7291,8 @@ export var BroTown = function BroTown(_ref0) {
                   var statusId = (_ELEMENTS$arrowElem = ELEMENTS[arrowElem]) === null || _ELEMENTS$arrowElem === void 0 ? void 0 : _ELEMENTS$arrowElem.status;
                   if (statusId) {
                     applyStatus(m, statusId, S.player, Date.now());
+                    /* §12.2 cert — first elemental status applied (ranged). */
+                    masteryEarnCert('first-status');
                     /* §5.9.6 Combo "Next" — extend on ranged status apply too. */
                     if (S.combo && S.combo.nextExtended && m.statuses && m.statuses[statusId]) {
                       var _extMulR = 1 + (COMBO_NEXT_DURATION_BONUS || 0.2);
@@ -7299,6 +7322,11 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 if (arrowCollision) {
                   var _ELEMENTS$arrowCollis;
+                  /* §12.2 certs — collision-driven advancements (ranged). */
+                  masteryEarnCert('first-collision');
+                  if (activeWpn && activeWpn.isVolatile) masteryEarnCert('first-volatile');
+                  if (arrowCollision.resonating) masteryEarnCert('first-resonance-hit');
+                  if (arrowCollision.collision && arrowCollision.collision.type === 'capstone') masteryEarnCert('first-capstone');
                   m.curHp -= arrowCollision.damage;
                   var coll = arrowCollision.collision;
                   var elemCol = ((_ELEMENTS$arrowCollis = ELEMENTS[arrowCollision.triggerElement]) === null || _ELEMENTS$arrowCollis === void 0 ? void 0 : _ELEMENTS$arrowCollis.color) || '#fff';
@@ -13574,6 +13602,8 @@ export var BroTown = function BroTown(_ref0) {
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
     R.stamina -= lungeCost;
+    /* §12.2 cert — first lunge executed. */
+    masteryEarnCert('first-lunge');
     var P = S.player;
     var tdx = lt.x - P.x, tdy = lt.y - P.y;
     var tlen = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
@@ -13611,6 +13641,8 @@ export var BroTown = function BroTown(_ref0) {
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
     R.stamina -= retCost;
+    /* §12.2 cert — first retreat shot executed. */
+    masteryEarnCert('first-retreat-shot');
     /* Standard dodge movement — but no i-frames per §5.8.3 (the shot is
        the tradeoff for safety). We mark this on _dodgeRoll so the damage
        interceptor can skip i-frames when checked. */

@@ -3,6 +3,8 @@
 // loop keeps working. Parry detection is exposed as a hook so combat code
 // can ask "did this hit land within a parry window?".
 
+import { earnCertification as masteryEarnCert } from '../../game/mastery.js';
+
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
 
@@ -63,6 +65,8 @@ export const blockRingBus = {
     const parried = sinceStart <= window;
     if (parried) {
       state.parryFlashAt = performance.now();
+      // §12.2 cert — first perfect block.
+      masteryEarnCert('first-perfect-block');
       emit();
     }
     return { blocked: true, parried, arcCovered: true };
