@@ -1102,7 +1102,7 @@ export var BroTown = function BroTown(_ref0) {
       dirs.forEach(function (dir) {
         var img = new Image();
         img.onload = function () {
-          sheets[pose + '-' + dir] = { img: img, frames: pose === 'jog' ? 8 : 1, w: 64 };
+          sheets[pose + '-' + dir] = { img: img, frames: pose === 'jog' ? 16 : 1, w: 64 };
           loaded++;
           if (loaded === total) playerSpritesRef.current = sheets;
         };
@@ -8877,7 +8877,7 @@ export var BroTown = function BroTown(_ref0) {
           /* Sprite-sheet draw for other players — same path as local player. */
           var _oSlim = o.bodySize !== 'armored';
           var _oSpriteFA = o._fAngle !== undefined ? o._fAngle : Math.PI / 2;
-          var _oSpriteFootY = oy + oAnimBob + (_oSlim ? 24 : 42);
+          var _oSpriteFootY = oy + oAnimBob + (_oSlim ? 36 : 54);
           var _oSpriteSize = _oSlim ? 56 : 72;
           var _oSpriteDrawn = drawSpriteCharacter(ctx, ox, _oSpriteFootY, _oSpriteFA, oMoving, now, _oSpriteSize);
 
@@ -11565,7 +11565,11 @@ export var BroTown = function BroTown(_ref0) {
               var d = S._facing || 'down';
               return d === 'right' ? 0 : d === 'up' ? -Math.PI / 2 : d === 'left' ? Math.PI : Math.PI / 2;
             })();
-        var _spriteFootY = py + animBob + (_slim ? 24 : 42);
+        /* Sprite has padding above and below the character within its 64×64
+           frame — bottom-anchoring exactly at the procedural foot position
+           leaves the visible feet hovering 10-14 px above the shadow. Shift
+           down to align visible feet with the existing shadow. */
+        var _spriteFootY = py + animBob + (_slim ? 36 : 54);
         var _spriteSize = _slim ? 56 : 72;
         var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize);
 
@@ -11783,8 +11787,10 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* §4 Visual Identity — Weapon visual on player */
-        if (S.rpg) {
+        /* §4 Visual Identity — Weapon visual on player. Skipped when the
+           sprite-sheet body is active, since the sprite already shows the
+           character holding a weapon in the correct pose. */
+        if (S.rpg && !_spriteDrawn) {
           var wpn = getActiveWeapon(S.rpg);
           var wpnDef = WEAPON_TYPES[wpn.type];
           var wpnAngle = S._aimAngle != null ? S._aimAngle : dir === 'right' ? 0 : dir === 'up' ? -Math.PI / 2 : dir === 'left' ? Math.PI : Math.PI / 2;
@@ -12040,8 +12046,9 @@ export var BroTown = function BroTown(_ref0) {
           ctx.restore();
         }
 
-        /* Own name */
-        var _nameY = _slim ? -28 : -36;
+        /* Own name. Pushed higher when sprite-sheet body is active — the
+           sprite's head sits higher on the canvas than the procedural head. */
+        var _nameY = _spriteDrawn ? (_slim ? -42 : -56) : (_slim ? -28 : -36);
         ctx.font = 'bold 10px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(0,0,0,.65)';
