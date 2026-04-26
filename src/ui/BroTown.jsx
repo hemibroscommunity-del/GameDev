@@ -15112,33 +15112,45 @@ export var BroTown = function BroTown(_ref0) {
     },
     onClick: function onClick(e) {
       var rect = e.currentTarget.getBoundingClientRect();
-      var tapX = (e.clientX - rect.left) * 1.25;
-      var tapY = (e.clientY - rect.top) * 1.25;
+      /* CSS-pixel tap coords. Compare against monster screen positions in
+         the same CSS-pixel space — the renderer applies scaleY 0.8 (world
+         Y is compressed by 20% in render, see pixiRenderer + BroTown's
+         W/H = canvas.width/dpr / canvas.height/dpr*1.25), so we forward-
+         transform monster world coords to CSS pixels rather than reverse-
+         transforming the tap. Hit radius is in CSS pixels. */
+      var cssX = e.clientX - rect.left;
+      var cssY = e.clientY - rect.top;
       var S = stateRef.current;
       var cx = S.camera.x,
         cy = S.camera.y;
+      var SCALE_X = 1.0;
+      var SCALE_Y = 0.8; /* must match pixiRenderer worldContainer.scale */
       /* TEMP DIAGNOSTIC — remove once tap-to-lock is confirmed working. */
       if (window.__broTapLog) {
         var monstersAlive = (S.monsters || []).filter(function (m) { return m.alive; });
         console.log('[tap-to-lock] click fired', {
-          tapX: tapX.toFixed(1), tapY: tapY.toFixed(1),
+          cssX: cssX.toFixed(1), cssY: cssY.toFixed(1),
           camera: { x: cx.toFixed(1), y: cy.toFixed(1) },
           aliveMonsters: monstersAlive.length,
           nearest: monstersAlive.map(function (m) {
-            var d = Math.sqrt(Math.pow(tapX - (m.x - cx), 2) + Math.pow(tapY - (m.y - cy), 2));
-            return { id: m.id, screenX: (m.x - cx).toFixed(1), screenY: (m.y - cy).toFixed(1), d: d.toFixed(1) };
+            var sx = (m.x - cx) * SCALE_X;
+            var sy = (m.y - cy) * SCALE_Y;
+            var d = Math.sqrt(Math.pow(cssX - sx, 2) + Math.pow(cssY - sy, 2));
+            return { id: m.id, screenX: sx.toFixed(1), screenY: sy.toFixed(1), d: d.toFixed(1) };
           }).sort(function (a, b) { return Number(a.d) - Number(b.d); }).slice(0, 3),
         });
       }
-      /* Check monsters for lock-on */
+      /* Check monsters for lock-on. Hit radius bumped to 40 CSS px — the
+         old 30 was already tight, and the previous bug masked the radius
+         issue by happening to over-shoot in the wrong axis. */
       if (S.monsters) {
         var closest = null,
-          closestDist = 30;
+          closestDist = 40;
         S.monsters.forEach(function (m) {
           if (!m.alive) return;
-          var msx = m.x - cx,
-            msy = m.y - cy;
-          var d = Math.sqrt(Math.pow(tapX - msx, 2) + Math.pow(tapY - msy, 2));
+          var msx = (m.x - cx) * SCALE_X;
+          var msy = (m.y - cy) * SCALE_Y;
+          var d = Math.sqrt(Math.pow(cssX - msx, 2) + Math.pow(cssY - msy, 2));
           if (d < closestDist) {
             closestDist = d;
             closest = m;
@@ -15166,9 +15178,9 @@ export var BroTown = function BroTown(_ref0) {
           for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
             var npc = _step2.value;
             if (!npc.alive) continue;
-            var nsx = npc.x - cx,
-              nsy = npc.y - cy;
-            if (Math.sqrt(Math.pow(tapX - nsx, 2) + Math.pow(tapY - nsy, 2)) < 25) {
+            var nsx = (npc.x - cx) * SCALE_X,
+              nsy = (npc.y - cy) * SCALE_Y;
+            if (Math.sqrt(Math.pow(cssX - nsx, 2) + Math.pow(cssY - nsy, 2)) < 30) {
               /* The Ferryman — special travel dialog */
               if (npc.isFerryman) {
                 setFerrymanPanel(true);
@@ -15205,9 +15217,9 @@ export var BroTown = function BroTown(_ref0) {
         var _Object$entries7$_i = _slicedToArray(_Object$entries7[_i43], 2),
           id = _Object$entries7$_i[0],
           o = _Object$entries7$_i[1];
-        var osx = o.renderX - cx,
-          osy = o.renderY - cy;
-        if (Math.sqrt(Math.pow(tapX - osx, 2) + Math.pow(tapY - osy, 2)) < 20) {
+        var osx = (o.renderX - cx) * SCALE_X,
+          osy = (o.renderY - cy) * SCALE_Y;
+        if (Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2)) < 25) {
           if (S.lockedTarget && S.lockedTarget.id === id) {
             S.lockedTarget = null;
           } else {
