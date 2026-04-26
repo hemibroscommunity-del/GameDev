@@ -268,6 +268,34 @@ export class EntityRenderer {
         body.fill({ color: 0xff5e6c, alpha: 1 - age });
       }
 
+      // §11.1 Threat direction arrow — small triangular pointer above the
+      // monster, aimed at the player it's currently aggroed on (the local
+      // player for solo / local-AI; multiplayer aggro targeting will need
+      // m._targetId once server-side per-target threat lands).
+      if (m._aggroed && S.player) {
+        const tx = S.player.x - m.x;
+        const ty = S.player.y - m.y;
+        const tlen = Math.sqrt(tx * tx + ty * ty);
+        if (tlen > 0.001) {
+          const ang = Math.atan2(ty, tx);
+          // Arrow base centred at (0, -size - 12) above the monster, pointing
+          // outward in `ang` direction. Triangle is 10 px long, 6 px wide.
+          const baseY = -size - 12;
+          const cx = Math.cos(ang), cy = Math.sin(ang);
+          // Rotate the triangle vertices around (0, baseY).
+          const tipL = 10, halfW = 3;
+          const px1 = cx * tipL,           py1 = cy * tipL;
+          const px2 = -cy * halfW,         py2 = cx * halfW;
+          const px3 = cy * halfW,          py3 = -cx * halfW;
+          body.poly([
+            px1, baseY + py1,
+            px2, baseY + py2,
+            px3, baseY + py3,
+          ]);
+          body.fill({ color: 0xD68A3C, alpha: 0.7 });
+        }
+      }
+
       // Stun indicator
       if (m._stunUntil && now < m._stunUntil) {
         body.circle(0, -size - 18, 5);
