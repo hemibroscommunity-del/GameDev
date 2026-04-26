@@ -5558,7 +5558,7 @@ export var BroTown = function BroTown(_ref0) {
                   BT_AUDIO.play('magic-cast', { vol: 0.55 });
                 } else {
                   BT_AUDIO.play('bow-pullback', { vol: 0.6 });
-                  BT_AUDIO.play('arrow-fly', { vol: 0.45 });
+                  setTimeout(function () { BT_AUDIO.play('arrow-fly', { vol: 0.85 }); }, 180);
                 }
               } else if (!S.isSwinging) {
                 S.swingTimer = Date.now();
@@ -13391,14 +13391,10 @@ export var BroTown = function BroTown(_ref0) {
     S.swingTimer = Date.now();
     S.isSwinging = true;
     S._specialAttack = false;
-    /* Sword swish — high-to-low sweep */
-    BT_AUDIO.beep(800, 0.06, 0.08, 'sawtooth');
-    setTimeout(function () {
-      return BT_AUDIO.beep(400, 0.08, 0.1, 'triangle');
-    }, 20);
-    setTimeout(function () {
-      return BT_AUDIO.beep(150, 0.1, 0.06, 'sine');
-    }, 50);
+    var slot = S.rpg.activeSlot || 'melee';
+    if (slot !== 'ranged' && slot !== 'staff') {
+      BT_AUDIO.play('sword-swing', { vol: 0.55 });
+    }
   }, []);
 
   /* Special attack — 4x damage, 10s cooldown */

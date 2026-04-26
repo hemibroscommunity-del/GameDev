@@ -3254,7 +3254,9 @@ export function setupGameLoop(ctx) {
                   BT_AUDIO.play('magic-cast', { vol: 0.55 });
                 } else {
                   BT_AUDIO.play('bow-pullback', { vol: 0.6 });
-                  BT_AUDIO.play('arrow-fly', { vol: 0.45 });
+                  // Arrow whoosh trails the pullback so they don't mask each
+                  // other. Bumped to 0.85 — was getting drowned out at 0.45.
+                  setTimeout(function () { BT_AUDIO.play('arrow-fly', { vol: 0.85 }); }, 180);
                 }
               } else if (!S.isSwinging) {
                 S.swingTimer = Date.now();
