@@ -15123,8 +15123,14 @@ export var BroTown = function BroTown(_ref0) {
       var S = stateRef.current;
       var cx = S.camera.x,
         cy = S.camera.y;
+      /* Canvas 2D render path uses ctx.setTransform(dpr, 0, 0, dpr) — uniform
+         dpr scaling, no axial compression. World coords map 1:1 to CSS pixels
+         after camera offset. (PixiJS path uses scale (1.0, 0.8), but PixiJS
+         is currently disabled — see commit de6d1a1; usePixi is initialised
+         to false and never flipped. If PixiJS is ever re-enabled, switch
+         SCALE_Y to 0.8 only when usePixi.current is true.) */
       var SCALE_X = 1.0;
-      var SCALE_Y = 0.8; /* must match pixiRenderer worldContainer.scale */
+      var SCALE_Y = 1.0;
       /* TEMP DIAGNOSTIC — remove once tap-to-lock is confirmed working. */
       if (window.__broTapLog) {
         var monstersAlive = (S.monsters || []).filter(function (m) { return m.alive; });
@@ -15140,13 +15146,13 @@ export var BroTown = function BroTown(_ref0) {
           }).sort(function (a, b) { return Number(a.d) - Number(b.d); }).slice(0, 3),
         });
       }
-      /* Check monsters for lock-on. Hit radius is in CSS pixels and is
-         intentionally generous — monster sprites are 12-28 CSS px wide
-         (size 6-14 × 2, vertically compressed to ~80%), well below mobile
-         tap-target minimums. 60 px gives a forgiving but unambiguous zone. */
+      /* Check monsters for lock-on. Hit radius is in CSS pixels — monster
+         bodies are 12-28 px wide (size 6-14, no vertical compression in
+         Canvas 2D path), under iOS's 44 px tap-target minimum. 40 px is
+         forgiving without making empty-space taps accidentally lock on. */
       if (S.monsters) {
         var closest = null,
-          closestDist = 60;
+          closestDist = 40;
         S.monsters.forEach(function (m) {
           if (!m.alive) return;
           var msx = (m.x - cx) * SCALE_X;
