@@ -1092,8 +1092,16 @@ export var BroTown = function BroTown(_ref0) {
       return clearInterval(interval);
     };
   }, [showNameModal, showLogin]);
-  /* Load player sprite sheets once, on mount. */
+  /* Load player sprite sheets once, on mount. Per-direction frame counts
+     and cycle durations differ — east source video is ~1 s, north/south
+     ~2 s. Storing intervalMs per sheet lets each direction animate at its
+     native speed instead of forcing a uniform tick. */
   useEffect(function () {
+    /* Source clip durations (ms), used to compute per-direction frame interval. */
+    var JOG_DURATION_MS = {
+      east: 1006, north: 2008, northeast: 1503, south: 2000, southwest: 1998,
+    };
+    var JOG_FRAMES = 24;
     var sheets = {};
     var dirs = ['east', 'north', 'northeast', 'south', 'southwest'];
     var poses = ['stand', 'jog'];
@@ -1102,16 +1110,15 @@ export var BroTown = function BroTown(_ref0) {
       dirs.forEach(function (dir) {
         var img = new Image();
         img.onload = function () {
-          sheets[pose + '-' + dir] = { img: img, frames: pose === 'jog' ? 16 : 1, w: 64 };
+          var frames = pose === 'jog' ? JOG_FRAMES : 1;
+          var intervalMs = pose === 'jog' ? JOG_DURATION_MS[dir] / JOG_FRAMES : 1000;
+          sheets[pose + '-' + dir] = { img: img, frames: frames, w: 64, intervalMs: intervalMs };
           loaded++;
           if (loaded === total) playerSpritesRef.current = sheets;
         };
         img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
-        /* Cache-buster: bump v= when the sheet contents or frame count change
-           so browsers don't serve stale 8-frame copies on top of new 16-frame
-           code (causing invisibility on frames 8-15 — out-of-bounds reads
-           return transparent pixels). */
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=3';
+        /* Cache-buster: bump v= each time sheet content or frame count changes. */
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=4';
       });
     });
   }, []);
@@ -2858,16 +2865,17 @@ export var BroTown = function BroTown(_ref0) {
       var pose = isMoving ? 'jog' : 'stand';
       var sheet = sheets[pose + '-' + info.name];
       if (!sheet) return false;
-      /* Clamp the effective frame count by what the image actually loaded.
-         If a stale browser cache returns a sheet with fewer frames than
-         sheet.frames advertises, reading past the image edge would return
-         transparent pixels — the bug we hit when 8-frame sheets got cached
-         under 16-frame code. */
+      /* Clamp the effective frame count by what the image actually loaded
+         (stale-cache safety net). */
       var maxFrames = sheet.img && sheet.img.naturalWidth
         ? Math.max(1, Math.floor(sheet.img.naturalWidth / sheet.w))
         : sheet.frames;
       var effFrames = Math.min(sheet.frames, maxFrames);
-      var frame = effFrames > 1 ? Math.floor(now / 90) % effFrames : 0;
+      /* Per-sheet frame interval — east is ~1 s native, north/south ~2 s,
+         stored on the sheet at load time so each direction plays at its
+         source speed and the cycle doesn't stutter at the loop point. */
+      var ivl = sheet.intervalMs || 90;
+      var frame = effFrames > 1 ? Math.floor(now / ivl) % effFrames : 0;
       var srcX = frame * sheet.w;
       var w = drawSize, h = drawSize;
       ctx.save();
@@ -11800,10 +11808,10 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* §4 Visual Identity — Weapon visual on player. Skipped when the
-           sprite-sheet body is active, since the sprite already shows the
-           character holding a weapon in the correct pose. */
-        if (S.rpg && !_spriteDrawn) {
+        /* §4 Visual Identity — Weapon visual on player. Drawn over both
+           sprite-sheet and procedural bodies (user prefers the procedural
+           sword appearance over the in-sprite painted one). */
+        if (S.rpg) {
           var wpn = getActiveWeapon(S.rpg);
           var wpnDef = WEAPON_TYPES[wpn.type];
           var wpnAngle = S._aimAngle != null ? S._aimAngle : dir === 'right' ? 0 : dir === 'up' ? -Math.PI / 2 : dir === 'left' ? Math.PI : Math.PI / 2;
