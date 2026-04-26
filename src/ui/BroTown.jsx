@@ -1118,7 +1118,7 @@ export var BroTown = function BroTown(_ref0) {
         };
         img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
         /* Cache-buster: bump v= each time sheet content or frame count changes. */
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=4';
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=5';
       });
     });
   }, []);
