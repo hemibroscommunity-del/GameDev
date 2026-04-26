@@ -15048,6 +15048,16 @@ export var BroTown = function BroTown(_ref0) {
       for (var i = 0; i < e.changedTouches.length; i++) {
         var t = e.changedTouches[i];
         if (t.identifier === ct.id) {
+          /* TEMP DIAGNOSTIC */
+          if (window.__broTapLog) {
+            var dx = t.clientX - ct.x, dy = t.clientY - ct.y;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            var dur = Date.now() - ct.t;
+            console.log('[tap-to-lock] touchEnd', {
+              dist: dist.toFixed(1), durationMs: dur,
+              treatedAsSwipe: dist >= 30 && dur < 300 && (dist / Math.max(dur, 1)) >= 0.8,
+            });
+          }
           handleCanvasSwipe(ct.x, ct.y, t.clientX, t.clientY, Date.now() - ct.t);
           ct.id = null;
           break;
@@ -15107,6 +15117,19 @@ export var BroTown = function BroTown(_ref0) {
       var S = stateRef.current;
       var cx = S.camera.x,
         cy = S.camera.y;
+      /* TEMP DIAGNOSTIC — remove once tap-to-lock is confirmed working. */
+      if (window.__broTapLog) {
+        var monstersAlive = (S.monsters || []).filter(function (m) { return m.alive; });
+        console.log('[tap-to-lock] click fired', {
+          tapX: tapX.toFixed(1), tapY: tapY.toFixed(1),
+          camera: { x: cx.toFixed(1), y: cy.toFixed(1) },
+          aliveMonsters: monstersAlive.length,
+          nearest: monstersAlive.map(function (m) {
+            var d = Math.sqrt(Math.pow(tapX - (m.x - cx), 2) + Math.pow(tapY - (m.y - cy), 2));
+            return { id: m.id, screenX: (m.x - cx).toFixed(1), screenY: (m.y - cy).toFixed(1), d: d.toFixed(1) };
+          }).sort(function (a, b) { return Number(a.d) - Number(b.d); }).slice(0, 3),
+        });
+      }
       /* Check monsters for lock-on */
       if (S.monsters) {
         var closest = null,

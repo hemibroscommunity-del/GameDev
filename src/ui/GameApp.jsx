@@ -226,6 +226,14 @@ export const GameApp = () => {
       return 'block <hostile [off]|relaxed [off]|count <n>|parry>';
     }, 'block — control block ring (hostile proximity, relaxed parry, simulate parry)');
 
+    // Tap-to-lock diagnostics — flip on, tap a monster, read the console.
+    debugBus.cmd('tap', (args) => {
+      const sub = args[0];
+      if (sub === 'on')  { window.__broTapLog = true;  return 'tap logging ON — tap a monster, watch console'; }
+      if (sub === 'off') { window.__broTapLog = false; return 'tap logging OFF'; }
+      return 'tap <on|off>';
+    }, 'tap — toggle tap-to-lock diagnostic logging');
+
     // Mastery debug commands.
     debugBus.cmd('mastery', (args) => {
       const sub = args[0];
