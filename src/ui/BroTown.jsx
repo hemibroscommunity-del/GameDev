@@ -5557,8 +5557,7 @@ export var BroTown = function BroTown(_ref0) {
                 if (isStaff) {
                   BT_AUDIO.play('magic-cast', { vol: 0.55 });
                 } else {
-                  BT_AUDIO.play('bow-pullback', { vol: 0.6 });
-                  setTimeout(function () { BT_AUDIO.play('arrow-fly', { vol: 0.85 }); }, 180);
+                  BT_AUDIO.play('arrow-fly', { vol: 0.85 });
                 }
               } else if (!S.isSwinging) {
                 S.swingTimer = Date.now();
