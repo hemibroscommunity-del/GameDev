@@ -4191,6 +4191,23 @@ export function resolveCollision(target, triggerElement, source, rpg, now) {
   var statValue = rpg[collision.stat] || 0;
   var dmg = collision.base + statValue * collision.coeff;
 
+  /* §5.7 Resonance — bonus damage if the consumed status was inside its
+     final RESONANCE_WINDOW_RATIO of duration. Linear from
+     RESONANCE_BONUS_BASE at window entry to RESONANCE_BONUS_PEAK at expiry. */
+  var resonanceDepth = 0;
+  var resonanceMult = 1;
+  if (setupStatus && setupStatus.maxDur > 0) {
+    var windowSize = setupStatus.maxDur * RESONANCE_WINDOW_RATIO;
+    if (setupStatus.remaining <= windowSize) {
+      var elapsedInWindow = windowSize - setupStatus.remaining;
+      resonanceDepth = Math.max(0, Math.min(1, elapsedInWindow / windowSize));
+      var bonus = RESONANCE_BONUS_BASE + resonanceDepth * (RESONANCE_BONUS_PEAK - RESONANCE_BONUS_BASE);
+      resonanceMult = 1 + bonus;
+      dmg *= resonanceMult;
+    }
+  }
+  var resonating = resonanceMult > 1;
+
   /* Elemental Mastery multiplier — §2.2 */
   dmg *= 1 + (rpg.elementalMastery || 0) * 0.0015;
 
@@ -4209,13 +4226,31 @@ export function resolveCollision(target, triggerElement, source, rpg, now) {
   /* Consume setup status */
   delete target.statuses[setupStatus.id];
 
+  /* §5.7.7 Resonance streak — increment on resonance-timed collisions
+     within RESONANCE_STREAK_WINDOW_MS, otherwise reset. Mana restore
+     scales with the streak count up to RESONANCE_STREAK_CAP. */
+  if (!source._resonanceStreak) source._resonanceStreak = { count: 0, lastTs: 0 };
+  var rs = source._resonanceStreak;
+  var streakMult = 1;
+  if (resonating) {
+    if (now - rs.lastTs <= RESONANCE_STREAK_WINDOW_MS) {
+      rs.count = Math.min(rs.count + 1, 5);
+    } else {
+      rs.count = 1;
+    }
+    rs.lastTs = now;
+    streakMult = 1 + Math.min(rs.count * RESONANCE_STREAK_MANA_BONUS, RESONANCE_STREAK_CAP);
+  } else {
+    rs.count = 0;
+  }
+
   /* §3.5 Mana restore */
   var manaRestored = 0;
   if (rpg && now - (source._lastCollisionMana || 0) >= 3000) {
     source._lastCollisionMana = now;
     var baseRestore = 0.04 * rpg.maxMana;
     var restMult = 1 + (rpg.restoration || 0) * 0.0012;
-    manaRestored = Math.round(baseRestore * restMult);
+    manaRestored = Math.round(baseRestore * restMult * streakMult);
     rpg.mana = Math.min(rpg.maxMana, (rpg.mana || 0) + manaRestored);
   }
   return {
@@ -4225,7 +4260,12 @@ export function resolveCollision(target, triggerElement, source, rpg, now) {
     triggerElement: triggerElement,
     manaRestored: manaRestored,
     consumed: setupStatus.id,
-    consumedRemaining: consumedRemaining
+    consumedRemaining: consumedRemaining,
+    resonating: resonating,
+    resonanceDepth: resonanceDepth,
+    resonanceMult: resonanceMult,
+    streakCount: rs.count,
+    streakMult: streakMult
   };
 }
 
@@ -4582,6 +4622,20 @@ export const COMBO_SPREAD_DURATION_MULT = 0.60; /* spread dur as fraction of con
 export const COMBO_NEXT_DURATION_BONUS  = 0.20; /* status ×(1+x) at count 3 */
 export const COMBO_NEXT_WINDOW_MS       = 4000;
 export const COMBO_GRACE_MULT           = 1.5;  /* grace = swing_cooldown × x */
+
+/* §5.7 Resonance Window — final 25% of a status duration is a "resonance
+   window"; consuming the status during that window grants bonus collision
+   damage (linear 1.10× → 1.30× across the window) and pulses the status
+   icon. §5.7.7 streak adds a mana-restore bonus to consecutive resonance-
+   timed collisions within RESONANCE_STREAK_WINDOW. */
+export const RESONANCE_WINDOW_RATIO       = 0.25;
+export const RESONANCE_BONUS_BASE         = 0.10; /* +10% at window entry */
+export const RESONANCE_BONUS_PEAK         = 0.30; /* +30% at expiry */
+export const RESONANCE_PULSE_BASE_HZ      = 1.5;
+export const RESONANCE_PULSE_ACCEL_HZ     = 3.5;
+export const RESONANCE_STREAK_WINDOW_MS   = 10000;
+export const RESONANCE_STREAK_MANA_BONUS  = 0.10; /* per step */
+export const RESONANCE_STREAK_CAP         = 0.50; /* 5 steps × 0.10 */
 /* RESPAWN_INVULN defined in zone system above */
 
 /* Old BUILDINGS removed — now uses TOWN_BUILDINGS + legacy BUILDINGS compat from zone system */

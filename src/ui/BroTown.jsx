@@ -68,6 +68,7 @@ const {
   SWING_COOLDOWN, SWING_RANGE, SWING_ARC, SPECIAL_ATK_MULT,
   COMBO_BURST_BONUS, COMBO_SPREAD_RADIUS, COMBO_SPREAD_DURATION_MULT,
   COMBO_NEXT_DURATION_BONUS, COMBO_NEXT_WINDOW_MS, COMBO_GRACE_MULT,
+  RESONANCE_WINDOW_RATIO, RESONANCE_STREAK_WINDOW_MS,
   spawnWeaponHitFX, spawnElementStatusFX, getElementDeathFX, getCollisionDeathFX,
   MKT_TIERS, MKT_WOOD_TIERS, createMktOrder, matchMktOrders, estimateMktPrice,
   hasDungeonClear, getMaxDepth,
@@ -5754,14 +5755,40 @@ export var BroTown = function BroTown(_ref0) {
                   }
                   var coll = collisionResult.collision;
                   var elemColor = ((_ELEMENTS$collisionRe = ELEMENTS[collisionResult.triggerElement]) === null || _ELEMENTS$collisionRe === void 0 ? void 0 : _ELEMENTS$collisionRe.color) || '#fff';
+                  /* §5.7 Resonance — brighten color and prefix the burst
+                     with a 🎯 marker when the consumed status was inside
+                     its resonance window. Tag a +N% burst readout at peak. */
+                  var _bColor = elemColor;
+                  var _bPrefix = '💥';
+                  if (collisionResult.resonating) {
+                    _bPrefix = '🎯💥';
+                    _bColor = '#fffbb0'; /* near-white shimmer per §5.7.3 */
+                  }
                   /* Collision burst damage number */
                   S.dmgNumbers.push({
                     x: m.x + 8,
                     y: m.y - 35,
-                    text: '💥' + collisionResult.damage + ' ' + coll.name,
-                    color: elemColor,
+                    text: _bPrefix + collisionResult.damage + ' ' + coll.name,
+                    color: _bColor,
                     ts: Date.now()
                   });
+                  /* §5.7.3 Resonance ring — brighter ground burst when the
+                     consumed status was timed inside its resonance window. */
+                  if (collisionResult.resonating) {
+                    var _ringR = 28 + collisionResult.resonanceDepth * 14;
+                    for (var _rp = 0; _rp < 24; _rp++) {
+                      var _rpA = (_rp / 24) * Math.PI * 2;
+                      S.hitParticles.push({
+                        x: m.x + Math.cos(_rpA) * _ringR,
+                        y: m.y + Math.sin(_rpA) * _ringR,
+                        vx: Math.cos(_rpA) * 0.6,
+                        vy: Math.sin(_rpA) * 0.6,
+                        life: 0.45,
+                        color: '#ffffff',
+                        size: 1.5 + Math.random() * 1.5
+                      });
+                    }
+                  }
                   /* Mana restore feedback */
                   if (collisionResult.manaRestored > 0) {
                     S.dmgNumbers.push({
@@ -7272,7 +7299,25 @@ export var BroTown = function BroTown(_ref0) {
                   m.curHp -= arrowCollision.damage;
                   var coll = arrowCollision.collision;
                   var elemCol = ((_ELEMENTS$arrowCollis = ELEMENTS[arrowCollision.triggerElement]) === null || _ELEMENTS$arrowCollis === void 0 ? void 0 : _ELEMENTS$arrowCollis.color) || '#fff';
-                  S.dmgNumbers.push({ x: m.x + 8, y: m.y - 30, text: '💥' + arrowCollision.damage + ' ' + coll.name, color: elemCol, ts: Date.now() });
+                  /* §5.7 Resonance — bright readout + ring on resonance-timed projectile collisions. */
+                  var _arPrefix = arrowCollision.resonating ? '🎯💥' : '💥';
+                  var _arColor = arrowCollision.resonating ? '#fffbb0' : elemCol;
+                  S.dmgNumbers.push({ x: m.x + 8, y: m.y - 30, text: _arPrefix + arrowCollision.damage + ' ' + coll.name, color: _arColor, ts: Date.now() });
+                  if (arrowCollision.resonating) {
+                    var _arRingR = 28 + arrowCollision.resonanceDepth * 14;
+                    for (var _arrp = 0; _arrp < 24; _arrp++) {
+                      var _arrpA = (_arrp / 24) * Math.PI * 2;
+                      S.hitParticles.push({
+                        x: m.x + Math.cos(_arrpA) * _arRingR,
+                        y: m.y + Math.sin(_arrpA) * _arRingR,
+                        vx: Math.cos(_arrpA) * 0.6,
+                        vy: Math.sin(_arrpA) * 0.6,
+                        life: 0.45,
+                        color: '#ffffff',
+                        size: 1.5 + Math.random() * 1.5
+                      });
+                    }
+                  }
                   if (arrowCollision.manaRestored > 0) {
                     S.dmgNumbers.push({ x: P.x, y: P.y - 45, text: '+' + arrowCollision.manaRestored + ' MP', color: '#3b82f6', ts: Date.now() });
                   }
@@ -11832,23 +11877,38 @@ export var BroTown = function BroTown(_ref0) {
           _drawBar((_bbH + _bbGap) * 2, (_Rb.mana || 0) / (_Rb.maxMana || 1), '#5b9bd5');
         }
 
-        /* §5.9.5 Combo count badge — small "x1/x2/x3" above the bars when
-           the player has an active combo against a tracked target. */
-        if (S.combo && S.combo.count > 0) {
-          var _cbCount = S.combo.count;
-          var _cbCol = _cbCount >= 3 ? '#f5c542' : _cbCount === 2 ? '#f2b441' : 'rgba(255,255,255,.7)';
+        /* §5.9.5 Combo count badge + §5.7.7 Resonance streak badge.
+           Combined into one row above the bars; either visible alone or
+           both side-by-side. Streak badge fades as its 10s window decays. */
+        var _rsObj = S.player && S.player._resonanceStreak;
+        var _rsActive = _rsObj && _rsObj.count > 0 &&
+          (Date.now() - (_rsObj.lastTs || 0) < (RESONANCE_STREAK_WINDOW_MS || 10000));
+        if ((S.combo && S.combo.count > 0) || _rsActive) {
+          var _cbCount = (S.combo && S.combo.count) || 0;
+          var _cbCol = _cbCount >= 3 ? '#f5c542' : _cbCount === 2 ? '#f2b441' : 'rgba(255,255,255,.85)';
           var _cbY = py + (_slim ? -50 : -58);
+          var _cbStr = _cbCount > 0 ? 'x' + _cbCount : '';
+          var _rsStr = _rsActive ? '↯' + _rsObj.count : '';
+          var _combined = _cbStr + (_cbStr && _rsStr ? ' ' : '') + _rsStr;
+          var _bw = Math.max(28, _combined.length * 7);
           ctx.save();
           ctx.font = 'bold 10px "VT323", monospace';
           ctx.textAlign = 'center';
           ctx.fillStyle = 'rgba(0,0,0,.6)';
-          ctx.fillRect(px - 14, _cbY - 8, 28, 11);
+          ctx.fillRect(px - _bw / 2, _cbY - 8, _bw, 11);
+          /* Streak badge fades as the 10s window decays. */
+          var _rsFade = _rsActive
+            ? Math.max(0.4, 1 - (Date.now() - _rsObj.lastTs) / (RESONANCE_STREAK_WINDOW_MS || 10000))
+            : 1;
           ctx.fillStyle = _cbCol;
-          if (_cbCount >= 3) {
-            ctx.shadowColor = _cbCol;
-            ctx.shadowBlur = 6;
+          if (_cbCount >= 3) { ctx.shadowColor = _cbCol; ctx.shadowBlur = 6; }
+          /* Render combo and streak separately so streak gets its own alpha. */
+          if (_cbStr) ctx.fillText(_cbStr, px - (_rsStr ? _bw / 4 : 0), _cbY);
+          if (_rsStr) {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(150,200,255,' + _rsFade + ')';
+            ctx.fillText(_rsStr, px + (_cbStr ? _bw / 4 : 0), _cbY);
           }
-          ctx.fillText('x' + _cbCount, px, _cbY);
           ctx.restore();
         }
 

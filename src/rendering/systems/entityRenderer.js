@@ -499,14 +499,17 @@ export class EntityRenderer {
       display._nameText.y = -28 + bobY;
     }
 
-    // §5.9.5 Combo Chain count — small badge above the bars.
+    // §5.9.5 Combo Chain count + §5.7.7 Resonance streak — combined badge.
     const comboText = display._comboText;
     const combo = S.combo;
-    if (combo && combo.count > 0) {
-      const c = combo.count;
-      const col = c >= 3 ? '#f5c542' : c === 2 ? '#f2b441' : '#ffffff';
-      comboText.text = 'x' + c;
-      comboText.style.fill = col;
+    const rs = S.player && S.player._resonanceStreak;
+    const rsActive = rs && rs.count > 0 && (now - (rs.lastTs || 0) < 10000);
+    if ((combo && combo.count > 0) || rsActive) {
+      const c = (combo && combo.count) || 0;
+      const cStr = c > 0 ? 'x' + c : '';
+      const rStr = rsActive ? '↯' + rs.count : '';
+      comboText.text = cStr + (cStr && rStr ? ' ' : '') + rStr;
+      comboText.style.fill = c >= 3 ? '#f5c542' : c === 2 ? '#f2b441' : (rsActive ? '#a0c8ff' : '#ffffff');
       comboText.alpha = 1;
       comboText.y = display._nameText.y - 12;
     } else {
