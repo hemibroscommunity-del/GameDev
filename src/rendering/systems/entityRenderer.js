@@ -5,6 +5,10 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
+import { lookupCollision } from '@/data/gameSystems.js';
+
+/* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
+const COLLISION_GLOW_RANGE_PX = 80;
 
 const NAME_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
@@ -434,6 +438,54 @@ export class EntityRenderer {
             weaponGlowGfx.lineTo(wpnX + facingX * len || len * 0.7, wpnY - len * 0.3);
             const baseW = wpn.type === 'greatsword' ? 3 : 2;
             weaponGlowGfx.stroke({ color: wpnColor, width: baseW + glowExtra, alpha: glowAlpha });
+          }
+        }
+
+        // §9.2.1 Collision-opportunity weapon edge glow.
+        // Scan monsters within COLLISION_GLOW_RANGE_PX; pick the most-urgent
+        // (lowest remaining duration) status the player's swipe element would
+        // collide against. Render an outer halo in the setup element's colour
+        // with intensity 0.15 → 0.6 as the status nears expiry.
+        if (elem && S.monsters && S.player) {
+          const px = S.player.x, py = S.player.y;
+          let bestRatio = Infinity;          // lower = more urgent
+          let bestSetupColor = null;
+          let bestSetupKey = null;
+          const range2 = COLLISION_GLOW_RANGE_PX * COLLISION_GLOW_RANGE_PX;
+          for (let mi = 0; mi < S.monsters.length; mi++) {
+            const mm = S.monsters[mi];
+            if (!mm || !mm.alive || !mm.statuses) continue;
+            const ddx = mm.x - px, ddy = mm.y - py;
+            if (ddx * ddx + ddy * ddy > range2) continue;
+            for (const sid in mm.statuses) {
+              const sd = mm.statuses[sid];
+              if (!sd || !sd.element || sd.element === elem) continue;
+              if (!lookupCollision(sd.element, elem)) continue;
+              const r = (sd.maxDur > 0) ? (sd.remaining / sd.maxDur) : 1;
+              if (r < bestRatio) {
+                bestRatio = r;
+                bestSetupColor = (ELEMENTS[sd.element] || {}).color || '#ffffff';
+                bestSetupKey = sd.element;
+              }
+            }
+          }
+          if (bestSetupColor && bestRatio < Infinity) {
+            // 0.15 base → 0.60 at expiry. ratio=1 (just applied) → 0.15;
+            // ratio=0 (expiring) → 0.60.
+            const oppAlpha = 0.15 + (1 - Math.max(0, Math.min(1, bestRatio))) * 0.45;
+            const oppColor = cssColorToHex(bestSetupColor);
+            if (wpn.type === 'bow') {
+              weaponGlowGfx.arc(wpnX, wpnY, 8, -0.8, 0.8);
+              weaponGlowGfx.stroke({ color: oppColor, width: 6, alpha: oppAlpha });
+            } else if (wpn.type === 'staff') {
+              weaponGlowGfx.circle(wpnX, wpnY - 12, 5);
+              weaponGlowGfx.stroke({ color: oppColor, width: 2, alpha: oppAlpha });
+            } else {
+              const len = wpn.type === 'greatsword' ? 14 : 10;
+              weaponGlowGfx.moveTo(wpnX, wpnY + 2);
+              weaponGlowGfx.lineTo(wpnX + facingX * len || len * 0.7, wpnY - len * 0.3);
+              weaponGlowGfx.stroke({ color: oppColor, width: (wpn.type === 'greatsword' ? 6 : 5), alpha: oppAlpha });
+            }
           }
         }
 
