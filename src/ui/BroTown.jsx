@@ -98,6 +98,10 @@ export var BroTown = function BroTown(_ref0) {
   var canvasRef = useRef(null);
   var pixiRef = useRef(null);
   var usePixi = useRef(false); /* true = PixiJS (WebGL), false = Canvas 2D */
+  /* Player sprite sheets — 5 directional poses (east/north/northeast/south/
+     southwest) × 2 modes (jog 8-frame, stand 1-frame). West/NW/SE are rendered
+     by horizontal mirror at draw time. Map<key, {img, frames, w}> when loaded. */
+  var playerSpritesRef = useRef(null);
   var stateRef = useRef({
     player: {
       x: 20 * TILE,
@@ -1088,6 +1092,26 @@ export var BroTown = function BroTown(_ref0) {
       return clearInterval(interval);
     };
   }, [showNameModal, showLogin]);
+  /* Load player sprite sheets once, on mount. */
+  useEffect(function () {
+    var sheets = {};
+    var dirs = ['east', 'north', 'northeast', 'south', 'southwest'];
+    var poses = ['stand', 'jog'];
+    var total = dirs.length * poses.length, loaded = 0;
+    poses.forEach(function (pose) {
+      dirs.forEach(function (dir) {
+        var img = new Image();
+        img.onload = function () {
+          sheets[pose + '-' + dir] = { img: img, frames: pose === 'jog' ? 8 : 1, w: 64 };
+          loaded++;
+          if (loaded === total) playerSpritesRef.current = sheets;
+        };
+        img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png';
+      });
+    });
+  }, []);
+
   /* Prevent iOS page scroll + track keyboard height */
   var wrapRef = useRef(null);
   useEffect(function () {
@@ -2805,6 +2829,46 @@ export var BroTown = function BroTown(_ref0) {
     }
 
     /* ── V2 Render: Single-matrix transform with cross-fade and ghost depth ── */
+    /* Sprite-sheet player draw — replaces the procedural body when sheets
+       are loaded and window.__broUseSprites !== false. Returns true when it
+       drew, so the caller can skip the legacy body code. footY = where the
+       feet should land in CSS pixels; sprite is bottom-anchored there. */
+    var SPRITE_DIR_MAP = [
+      { name: 'east',      mirror: false }, /* 0 = E   */
+      { name: 'southwest', mirror: true  }, /* 1 = SE  → mirror SW */
+      { name: 'south',     mirror: false }, /* 2 = S   */
+      { name: 'southwest', mirror: false }, /* 3 = SW  */
+      { name: 'east',      mirror: true  }, /* 4 = W   → mirror E  */
+      { name: 'northeast', mirror: true  }, /* 5 = NW  → mirror NE */
+      { name: 'north',     mirror: false }, /* 6 = N   */
+      { name: 'northeast', mirror: false }, /* 7 = NE  */
+    ];
+    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize) {
+      if (window.__broUseSprites === false) return false;
+      var sheets = playerSpritesRef.current;
+      if (!sheets) return false;
+      var tau = Math.PI * 2;
+      var a = ((facingAngle % tau) + tau) % tau;
+      var idx = Math.round(a / (Math.PI / 4)) % 8;
+      var info = SPRITE_DIR_MAP[idx];
+      var pose = isMoving ? 'jog' : 'stand';
+      var sheet = sheets[pose + '-' + info.name];
+      if (!sheet) return false;
+      var frame = sheet.frames > 1 ? Math.floor(now / 90) % sheet.frames : 0;
+      var srcX = frame * sheet.w;
+      var w = drawSize, h = drawSize;
+      ctx.save();
+      if (info.mirror) {
+        ctx.translate(screenX, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(sheet.img, srcX, 0, sheet.w, sheet.w, -w / 2, footY - h, w, h);
+      } else {
+        ctx.drawImage(sheet.img, srcX, 0, sheet.w, sheet.w, screenX - w / 2, footY - h, w, h);
+      }
+      ctx.restore();
+      return true;
+    }
+
     function drawNft360(ctx, nftDir, cx, cy, facingAngle, nftSize) {
       /* turnFromCam: 0=facing camera, π=facing away */
       var rawTurn = facingAngle - Math.PI / 2;
@@ -8810,13 +8874,22 @@ export var BroTown = function BroTown(_ref0) {
           var oArmY = oBS === 'slim' ? 8 : 10,
             oLegY = oBS === 'slim' ? 18 : 26;
 
+          /* Sprite-sheet draw for other players — same path as local player. */
+          var _oSlim = o.bodySize !== 'armored';
+          var _oSpriteFA = o._fAngle !== undefined ? o._fAngle : Math.PI / 2;
+          var _oSpriteFootY = oy + oAnimBob + (_oSlim ? 24 : 42);
+          var _oSpriteSize = _oSlim ? 56 : 72;
+          var _oSpriteDrawn = drawSpriteCharacter(ctx, ox, _oSpriteFootY, _oSpriteFA, oMoving, now, _oSpriteSize);
+
           /* Check if other player has a processed NFT avatar */
           var _oHasNft = false;
-          if (o.avatar) {
+          if (!_oSpriteDrawn && o.avatar) {
             var oNftImg = loadAvatarImg(o.avatar);
             _oHasNft = oNftImg instanceof HTMLCanvasElement ? oNftImg.width > 0 : oNftImg && oNftImg.complete && oNftImg.naturalWidth;
           }
-          if (_oHasNft) {
+          if (_oSpriteDrawn) {
+            /* Sprite handled the body draw. */
+          } else if (_oHasNft) {
             /* ═══ OTHER PLAYER — NFT 360° BODY ═══ */
             var _oNftImg = loadAvatarImg(o.avatar);
             var oNftDir = getNftDirectional(_oNftImg, o.avatar);
@@ -11485,13 +11558,26 @@ export var BroTown = function BroTown(_ref0) {
           sh2 = _slim ? 4 : 5;
         var hR = (_slim ? 12 : 14) + _bulkTorso * 0.3;
 
+        /* ═══ SPRITE-SHEET DRAW (preferred when sheets are loaded) ═══ */
+        var _spriteFA = S._facingAngle !== undefined
+          ? S._facingAngle
+          : (function () {
+              var d = S._facing || 'down';
+              return d === 'right' ? 0 : d === 'up' ? -Math.PI / 2 : d === 'left' ? Math.PI : Math.PI / 2;
+            })();
+        var _spriteFootY = py + animBob + (_slim ? 24 : 42);
+        var _spriteSize = _slim ? 56 : 72;
+        var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize);
+
         /* ═══ NFT CHECK — does this player have a processed avatar? ═══ */
         var _hasNftBody = false;
-        if (S.myAvatar) {
+        if (!_spriteDrawn && S.myAvatar) {
           var _nftImg = loadAvatarImg(S.myAvatar);
           _hasNftBody = _nftImg instanceof HTMLCanvasElement ? _nftImg.width > 0 : _nftImg && _nftImg.complete && _nftImg.naturalWidth;
         }
-        if (_hasNftBody) {
+        if (_spriteDrawn) {
+          /* Sprite handled the body draw — nothing else to do here. */
+        } else if (_hasNftBody) {
           /* ═══ NFT 360° BODY — continuous rotation rendering ═══ */
           var nftImg = loadAvatarImg(S.myAvatar);
           var nftDir = getNftDirectional(nftImg, S.myAvatar);

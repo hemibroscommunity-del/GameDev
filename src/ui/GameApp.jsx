@@ -226,6 +226,14 @@ export const GameApp = () => {
       return 'block <hostile [off]|relaxed [off]|count <n>|parry>';
     }, 'block — control block ring (hostile proximity, relaxed parry, simulate parry)');
 
+    // Toggle player sprite-sheet rendering (vs procedural body drawing).
+    debugBus.cmd('sprite', (args) => {
+      const sub = args[0];
+      if (sub === 'on')  { window.__broUseSprites = true;  return 'sprite mode ON'; }
+      if (sub === 'off') { window.__broUseSprites = false; return 'sprite mode OFF (procedural body)'; }
+      return 'sprite <on|off>';
+    }, 'sprite — toggle sprite-sheet vs procedural player rendering');
+
     // Tap-to-lock diagnostics — flip on, tap a monster, read the console.
     debugBus.cmd('tap', (args) => {
       const sub = args[0];
