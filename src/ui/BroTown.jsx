@@ -15140,12 +15140,13 @@ export var BroTown = function BroTown(_ref0) {
           }).sort(function (a, b) { return Number(a.d) - Number(b.d); }).slice(0, 3),
         });
       }
-      /* Check monsters for lock-on. Hit radius bumped to 40 CSS px — the
-         old 30 was already tight, and the previous bug masked the radius
-         issue by happening to over-shoot in the wrong axis. */
+      /* Check monsters for lock-on. Hit radius is in CSS pixels and is
+         intentionally generous — monster sprites are 12-28 CSS px wide
+         (size 6-14 × 2, vertically compressed to ~80%), well below mobile
+         tap-target minimums. 60 px gives a forgiving but unambiguous zone. */
       if (S.monsters) {
         var closest = null,
-          closestDist = 40;
+          closestDist = 60;
         S.monsters.forEach(function (m) {
           if (!m.alive) return;
           var msx = (m.x - cx) * SCALE_X;
