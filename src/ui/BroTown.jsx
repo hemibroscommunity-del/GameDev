@@ -4649,6 +4649,11 @@ export var BroTown = function BroTown(_ref0) {
           /* §2.1 Crit from Ferocity */
           var critChance = calcCritChance(_R6.ferocity);
           var critMult = calcCritMult(_R6.ferocity);
+          /* Baseline floor: at zero ferocity, calcCritChance returns 0%, which
+             meant a brand-new player could never grand-slam. Floor at 8% so a
+             grand slam is reachable from the first swing. Applied before the
+             staff multiplier so staff still scales as designed (~2.8% floor). */
+          critChance = Math.max(critChance, 0.08);
           /* Staff has halved crit chance — lower DPS, higher AoE + variance */
           var isStaffEquipped = (_R6.activeSlot === 'staff');
           if (isStaffEquipped) {
@@ -5164,6 +5169,7 @@ export var BroTown = function BroTown(_ref0) {
                     m.curHp = 0;
                     m.alive = false;
                     m.respawnAt = Date.now() + 30000;
+                    BT_AUDIO.monsterDeath();
                     var explodeDmg = Math.round(m.dmg * 2);
                     _R6.hp -= shielded ? Math.max(1, Math.floor(explodeDmg * (1 - blockReduc))) : explodeDmg;
                     S.screenShake = 8;
@@ -5840,8 +5846,10 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.collect();
                   }
                 }
-                /* Real WAV — replaces the old synth material thump. */
-                BT_AUDIO.play('sword-hit', { vol: 0.55 });
+                /* Real WAV — replaces the old synth material thump.
+                   Alternates between sword-hit2 / sword-hit3; the original
+                   sword-hit sample is reserved for grand-slam hits. */
+                BT_AUDIO.swordHit({ vol: 0.55 });
 
                 /* §19.1 Quest tracking — combat flags */
                 if (!_R6._questFlags) _R6._questFlags = {};
@@ -5948,6 +5956,7 @@ export var BroTown = function BroTown(_ref0) {
                   m.alive = false;
                   m.respawnAt = Date.now() + 30000;
                   m.statuses = {};
+                  BT_AUDIO.monsterDeath();
 
                   /* §19.1 Quest kill tracking */
                   if (_R6._questKills === undefined) _R6._questKills = {};
@@ -6419,7 +6428,7 @@ export var BroTown = function BroTown(_ref0) {
                   npc._hitThisSwing = true;
                   var npcDmg = pDmg;
                   npc.hp -= npcDmg;
-                  BT_AUDIO.play('sword-hit', { vol: 0.55 });
+                  BT_AUDIO.swordHit({ vol: 0.55 });
                   var nkbA2 = Math.atan2(npc.y - P.y, npc.x - P.x);
                   npc.x += Math.cos(nkbA2) * 8;
                   npc.y += Math.sin(nkbA2) * 8;
@@ -6541,7 +6550,7 @@ export var BroTown = function BroTown(_ref0) {
               while (aDiff < -Math.PI) aDiff += Math.PI * 2;
               if (Math.abs(aDiff) < SWING_ARC / 2) {
                 o._hitThisSwing = true;
-                BT_AUDIO.play('sword-hit', { vol: 0.55 });
+                BT_AUDIO.swordHit({ vol: 0.55 });
                 var pvpKbA = Math.atan2(o.y - P.y, o.x - P.x);
                 for (var _pp = 0; _pp < 12; _pp++) S.hitParticles.push({
                   x: o.x + (Math.random() - .5) * 6,
@@ -7364,7 +7373,8 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.collect();
                   }
                 }
-                BT_AUDIO.play(a.isStaff ? 'magic-hit' : 'arrow-hit', { vol: a.isStaff ? 0.3 : 0.6 });
+                if (a.isStaff) BT_AUDIO.magicHit({ vol: 0.3 });
+                else BT_AUDIO.play('arrow-hit', { vol: 0.6 });
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
                 m.x += Math.cos(kba) * 5;
                 m.y += Math.sin(kba) * 5;
@@ -7381,6 +7391,7 @@ export var BroTown = function BroTown(_ref0) {
                   m.alive = false;
                   m.respawnAt = Date.now() + 30000;
                   m.statuses = {};
+                  BT_AUDIO.monsterDeath();
                   if (S.rpg) {
                     var _R9 = S.rpg;
                     if (!_R9._questKills) _R9._questKills = {};
@@ -13627,7 +13638,7 @@ export var BroTown = function BroTown(_ref0) {
         if (sid) applyStatus(lt, sid, S.player, Date.now());
       }
       S.dmgNumbers.push({ x: lt.x, y: lt.y - 18, text: '↯ ' + lDmg, color: '#fffbb0', ts: Date.now() });
-      BT_AUDIO.play('sword-hit', { vol: 0.5 });
+      BT_AUDIO.swordHit({ vol: 0.5 });
       /* Combo treats a lunge hit as an auto-attack hit on the lock-on target. */
       if (!S.combo) S.combo = { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 };
       if (S.combo.targetId !== lt.id) { S.combo.targetId = lt.id; S.combo.count = 1; }

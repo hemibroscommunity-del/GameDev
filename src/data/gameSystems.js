@@ -4918,9 +4918,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     };
     this.hitSound(mats[archetype] || 'flesh');
   },
-  /* §6 Grand Slam — 6-note celebratory arpeggio */grandSlam: function grandSlam() {
+  /* §6 Grand Slam — original sword-hit sample (shared across sword/magic/ranged
+     grand slams) layered with the celebratory 6-note arpeggio. */grandSlam: function grandSlam() {
     var _this5 = this;
     if (!this.ctx || this.muted) return;
+    this.play('sword-hit', { vol: 0.7 });
     var notes = [523, 659, 784, 1047, 1319, 1568];
     notes.forEach(function (f, i) {
       return setTimeout(function () {
@@ -5291,13 +5293,36 @@ BT_AUDIO._sampleLoading = {};
 BT_AUDIO._unlocked = false;
 BT_AUDIO._loadedManifest = false;
 BT_AUDIO.SFX_MANIFEST = {
-  'sword-swing':  '/sfx/sword/sword-swing.wav',
-  'sword-hit':    '/sfx/sword/sword-hit.wav',
-  'bow-pullback': '/sfx/bow/bow-pullback.wav',
-  'arrow-fly':    '/sfx/bow/arrow-fly.wav',
-  'arrow-hit':    '/sfx/bow/arrow-hit.wav',
-  'magic-cast':   '/sfx/magic/magic-cast.wav',
-  'magic-hit':    '/sfx/magic/magic-hit.wav',
+  'sword-swing':   '/sfx/sword/sword-swing.wav',
+  'sword-hit':     '/sfx/sword/sword-hit.wav',   /* reserved for grand-slam hits only */
+  'sword-hit2':    '/sfx/sword/sword-hit2.flac', /* regular hit alternation */
+  'sword-hit3':    '/sfx/sword/sword-hit3.wav',  /* regular hit alternation */
+  'bow-pullback':  '/sfx/bow/bow-pullback.wav',
+  'arrow-fly':     '/sfx/bow/arrow-fly.wav',
+  'arrow-hit':     '/sfx/bow/arrow-hit.wav',
+  'magic-cast':    '/sfx/magic/magic-cast.wav',
+  'magic-hit':     '/sfx/magic/magic-hit.wav',
+  'magic-hit2':    '/sfx/magic/magic-hit2.wav',
+  'monster-death': '/sfx/monster/Monster death-bony.wav',
+};
+
+/* Regular sword-hit alternation. The two samples cycle so a flurry of hits
+   doesn't hammer the same waveform. The original `sword-hit` sample is
+   reserved for grand-slam hits per BT_AUDIO.grandSlam(). */
+BT_AUDIO._swordHitToggle = 0;
+BT_AUDIO.swordHit = function (opts) {
+  var key = (this._swordHitToggle++ & 1) ? 'sword-hit3' : 'sword-hit2';
+  this.play(key, opts);
+};
+/* Magic-hit alternation — same pattern as sword. Cycles magic-hit and
+   magic-hit2 so staff-projectile hits don't repeat the same waveform. */
+BT_AUDIO._magicHitToggle = 0;
+BT_AUDIO.magicHit = function (opts) {
+  var key = (this._magicHitToggle++ & 1) ? 'magic-hit2' : 'magic-hit';
+  this.play(key, opts);
+};
+BT_AUDIO.monsterDeath = function (opts) {
+  this.play('monster-death', opts || { vol: 0.5 });
 };
 BT_AUDIO.loadSample = function (key, url) {
   if (!this.ctx || this._samples[key] || this._sampleLoading[key]) return;
