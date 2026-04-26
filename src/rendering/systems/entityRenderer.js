@@ -219,7 +219,9 @@ export class EntityRenderer {
 
       display._lvlText.text = `Lv${m.level}`;
 
-      // Status effects
+      // Status effects — §5.7.3 resonance pulse: when a status enters its
+      // final 25% of duration the icon pulses (1.5–5 Hz, scaling with depth)
+      // and brightens toward white as it nears expiry.
       const statusGfx = display._statusGfx;
       statusGfx.clear();
       const statuses = m.statuses || {};
@@ -228,8 +230,30 @@ export class EntityRenderer {
         if (!statusData) continue;
         const elemForStatus = Object.values(ELEMENTS || {}).find(e => e?.status === statusId);
         const sColor = elemForStatus ? cssColorToHex(elemForStatus.color) : 0xffffff;
-        statusGfx.circle(sx, -size - 16, 3);
-        statusGfx.fill({ color: sColor, alpha: 0.8 });
+        // Compute resonance depth from status remaining/maxDur.
+        const ratio = 0.25; // RESONANCE_WINDOW_RATIO
+        const winSize = (statusData.maxDur || 0) * ratio;
+        let depth = 0;
+        if (winSize > 0 && statusData.remaining <= winSize) {
+          depth = Math.max(0, Math.min(1, (winSize - statusData.remaining) / winSize));
+        }
+        // Pulse: 1.5 Hz at entry → 5 Hz at expiry.
+        const pulseHz = depth > 0 ? (1.5 + depth * 3.5) : 0;
+        const pulse = depth > 0 ? (1 + Math.sin(now / 1000 * pulseHz * 2 * Math.PI) * 0.2) : 1;
+        const r = 3 * pulse;
+        // Brighten toward white as depth approaches 1.
+        let color = sColor;
+        if (depth > 0) {
+          // Lerp sColor → white by depth.
+          const w = 0xffffff;
+          const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+          const sr = (sColor >> 16) & 0xff;
+          const sg = (sColor >> 8) & 0xff;
+          const sb = sColor & 0xff;
+          color = (lerp(sr, 255, depth * 0.7) << 16) | (lerp(sg, 255, depth * 0.7) << 8) | lerp(sb, 255, depth * 0.7);
+        }
+        statusGfx.circle(sx, -size - 16, r);
+        statusGfx.fill({ color: color, alpha: 0.85 });
         sx += 8;
       }
 
