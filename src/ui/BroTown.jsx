@@ -2959,13 +2959,11 @@ export var BroTown = function BroTown(_ref0) {
         var srcW = wImg.naturalWidth || 64;
         var srcH = wImg.naturalHeight || 64;
         var hpx = (whandles && whandles[weaponType]) || [srcW / 2, srcH];
-        var dx = handleX - (hpx[0] / srcW) * wSize;
-        var dy = handleY - (hpx[1] / srcH) * wSize;
         /* Per-weapon pixel nudge — fine-tunes the grip-against-hand fit.
-           Defaults baked from live in-game tuning; debug command
-           `nudge <weapon> <x> <y>` overrides at runtime. The math aligns
-           clicked edges, but visually the hand should wrap the grip, so
-           a small (+5, +5) push tucks the grip into the hand. */
+           Applied to handleX/handleY (the mirror pivot) BEFORE computing
+           dx/dy, so the screen-space offset is consistent for both
+           mirrored and unmirrored facings. Tuning the nudge while looking
+           at any one facing now produces the same offset on every facing. */
         var DEFAULT_WEAPON_NUDGE = {
           sword: { x:   5, y:  5 },
           bow:   { x: -10, y: 20 },
@@ -2973,8 +2971,10 @@ export var BroTown = function BroTown(_ref0) {
         var nudges = (typeof window !== 'undefined' && window.__broWeaponNudge) || {};
         var nudge = nudges[weaponType] || nudges._default
           || DEFAULT_WEAPON_NUDGE[weaponType] || { x: 0, y: 0 };
-        dx += nudge.x;
-        dy += nudge.y;
+        handleX += nudge.x;
+        handleY += nudge.y;
+        var dx = handleX - (hpx[0] / srcW) * wSize;
+        var dy = handleY - (hpx[1] / srcH) * wSize;
         /* idx: 0=E, 1=SE, 2=S, 3=SW, 4=W, 5=NW, 6=N, 7=NE.
            Mirror weapon on S, SW, W, NW, N (idx 2..6). */
         var weaponMirror = idx >= 2 && idx <= 6;
