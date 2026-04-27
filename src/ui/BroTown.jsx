@@ -3072,20 +3072,22 @@ export var BroTown = function BroTown(_ref0) {
           ctx.rotate(swingAng);
           ctx.drawImage(wImg, dxLocal, dyLocal, wSize, wSize);
           ctx.restore();
-          /* DEBUG PIVOT DOT — toggle with `pivot on/off` debug command.
-             If the yellow dot stays on the character's hand throughout
-             the swing, the math is correct and any apparent grip drift
-             is the sword's silhouette rotating around a stationary pivot.
-             If the dot itself moves off the hand, handleX/handleY is
-             being recomputed wrong per frame. */
+          /* DEBUG PIVOT DOT — yellow dot rendered at (handleX, handleY).
+             This is also the canvas position of the sword's grip pixel
+             (verified mathematically — drawImage with the offset I use
+             puts the user-clicked grip pixel exactly at this point).
+             If the dot isn't on the visible hand even when standing
+             still, the nudge values are off — the user's calibration
+             aligned the sword grip with the dot, but the dot itself
+             isn't where the visible hand is rendered. */
           if (typeof window !== 'undefined' && window.__broShowPivot) {
             ctx.save();
             ctx.fillStyle = '#ffd700';
             ctx.beginPath();
-            ctx.arc(handleX, handleY, 3, 0, Math.PI * 2);
+            ctx.arc(handleX, handleY, 4, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1.5;
             ctx.stroke();
             ctx.restore();
           }
