@@ -226,32 +226,56 @@ export const GameApp = () => {
       return 'block <hostile [off]|relaxed [off]|count <n>|parry>';
     }, 'block — control block ring (hostile proximity, relaxed parry, simulate parry)');
 
-    // Live-nudge the weapon position relative to the hand. Useful when the
-    // body and weapon annotations were each precise but the visual fit needs
-    // a small offset (e.g. user clicked grip-edge and hand-edge instead of
-    // their centers). Once you find values that look right, tell Claude and
-    // they'll be baked into a permanent default.
+    // Per-weapon, per-direction weapon-nudge tuning.
+    //   nudge X Y                    — applies to current weapon + current facing
+    //   nudge <weapon> <dir> X Y     — explicit, e.g. `nudge sword NE 6 4`
+    //   nudge <weapon> default X Y   — default for that weapon's unset facings
+    //   nudge show                   — print current overrides
+    //   nudge reset                  — clear all overrides
     debugBus.cmd('nudge', (args) => {
-      const sub = args[0];
-      if (sub === 'show') {
-        return JSON.stringify(window.__broWeaponNudge || {});
+      const DIR_NAMES = ['E','SE','S','SW','W','NW','N','NE'];
+      if (args[0] === 'show') return JSON.stringify(window.__broWeaponNudge || {}, null, 2);
+      if (args[0] === 'reset') { window.__broWeaponNudge = {}; return 'cleared'; }
+      const wTypeFromState = () => {
+        const S = window._gameState?.current;
+        const slot = S?.rpg?.activeSlot;
+        const w = slot === 'ranged' ? S?.rpg?.rangedWeapon : slot === 'staff' ? S?.rpg?.weapon : S?.rpg?.weapon;
+        return (w && w.type) || 'sword';
+      };
+      const dirFromState = () => {
+        const S = window._gameState?.current;
+        const fa = S?._facingAngle ?? Math.PI / 2;
+        const tau = Math.PI * 2;
+        const a = ((fa % tau) + tau) % tau;
+        const idx = Math.round(a / (Math.PI / 4)) % 8;
+        return DIR_NAMES[idx];
+      };
+      let type, dir, x, y;
+      if (args.length === 2) {
+        // nudge X Y — current weapon, current facing
+        type = wTypeFromState();
+        dir  = dirFromState();
+        x = Number(args[0]); y = Number(args[1]);
+      } else if (args.length === 4) {
+        // nudge <weapon> <dir|default> X Y
+        type = args[0];
+        dir  = args[1];
+        x = Number(args[2]); y = Number(args[3]);
+      } else if (args.length === 3) {
+        // nudge <weapon> X Y — sets that weapon's default
+        type = args[0];
+        dir  = 'default';
+        x = Number(args[1]); y = Number(args[2]);
+      } else {
+        return 'usage: nudge X Y  |  nudge <weapon> <dir|default> X Y  |  nudge show  |  nudge reset';
       }
-      if (sub === 'reset') {
-        window.__broWeaponNudge = {};
-        return 'nudge cleared';
-      }
-      // Usage: nudge sword 0 -3   |   nudge bow -1 2   |   nudge all 0 -2
-      const type = sub;
-      const x = Number(args[1]);
-      const y = Number(args[2]);
-      if (!type || Number.isNaN(x) || Number.isNaN(y)) {
-        return 'usage: nudge <sword|bow|staff|all> <dx> <dy>  |  nudge show  |  nudge reset';
-      }
+      if (Number.isNaN(x) || Number.isNaN(y)) return 'X / Y must be numbers';
       if (!window.__broWeaponNudge) window.__broWeaponNudge = {};
-      const key = type === 'all' ? '_default' : type;
-      window.__broWeaponNudge[key] = { x, y };
-      return `${key} → (${x}, ${y})`;
-    }, 'nudge — fine-tune weapon offset relative to hand (in pixels)');
+      if (!window.__broWeaponNudge[type]) window.__broWeaponNudge[type] = {};
+      const key = dir === 'default' ? '_default' : dir;
+      window.__broWeaponNudge[type][key] = { x, y };
+      return `${type}.${key} → (${x}, ${y})`;
+    }, 'nudge — per-direction weapon offset; `nudge X Y` uses current weapon+facing');
 
     // Toggle player sprite-sheet rendering (vs procedural body drawing).
     debugBus.cmd('sprite', (args) => {

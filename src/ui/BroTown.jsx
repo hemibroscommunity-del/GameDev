@@ -2959,18 +2959,28 @@ export var BroTown = function BroTown(_ref0) {
         var srcW = wImg.naturalWidth || 64;
         var srcH = wImg.naturalHeight || 64;
         var hpx = (whandles && whandles[weaponType]) || [srcW / 2, srcH];
-        /* Per-weapon pixel nudge — fine-tunes the grip-against-hand fit.
-           Applied to handleX/handleY (the mirror pivot) BEFORE computing
-           dx/dy, so the screen-space offset is consistent for both
-           mirrored and unmirrored facings. Tuning the nudge while looking
-           at any one facing now produces the same offset on every facing. */
+        /* Per-weapon, per-direction pixel nudge.
+           Mirror flipping handedness across facings means a single nudge
+           value can't fit all 8 directions, so each weapon stores 8
+           overrides (one per facing index 0..7 = E, SE, S, SW, W, NW, N,
+           NE) plus a `_default` fallback. Applied to handleX/handleY
+           (the mirror pivot) so the offset is screen-space-consistent
+           regardless of mirror flag.
+           Tune live with `nudge X Y` (applies to current facing + current
+           weapon) — see GameApp.jsx debugBus.cmd('nudge', ...). Bake the
+           values you find into DEFAULT_WEAPON_NUDGE below. */
+        var DIR_NAMES = ['E','SE','S','SW','W','NW','N','NE'];
         var DEFAULT_WEAPON_NUDGE = {
-          sword: { x:   5, y:  5 },
-          bow:   { x: -10, y: 20 },
+          sword: { _default: { x:   5, y:  5 } },
+          bow:   { _default: { x: -10, y: 20 } },
         };
-        var nudges = (typeof window !== 'undefined' && window.__broWeaponNudge) || {};
-        var nudge = nudges[weaponType] || nudges._default
-          || DEFAULT_WEAPON_NUDGE[weaponType] || { x: 0, y: 0 };
+        var dirName = DIR_NAMES[idx];
+        var allNudges = (typeof window !== 'undefined' && window.__broWeaponNudge) || {};
+        var rtBucket = allNudges[weaponType] || {};
+        var dfBucket = DEFAULT_WEAPON_NUDGE[weaponType] || {};
+        var nudge = rtBucket[dirName] || rtBucket._default
+          || dfBucket[dirName] || dfBucket._default
+          || allNudges._default || { x: 0, y: 0 };
         handleX += nudge.x;
         handleY += nudge.y;
         var dx = handleX - (hpx[0] / srcW) * wSize;
