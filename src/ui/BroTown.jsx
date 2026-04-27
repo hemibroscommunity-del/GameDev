@@ -2975,7 +2975,7 @@ export var BroTown = function BroTown(_ref0) {
             E:  { x:  5, y: 6 },
             SE: { x: -5, y: 6 },
             S:  { x:  5, y: 6 },
-            SW: { x: -5, y: 6 },
+            SW: { x:  5, y: 6 },
             W:  { x: -5, y: 6 },
             NW: { x: -5, y: 6 },
             N:  { x: -5, y: 6 },
