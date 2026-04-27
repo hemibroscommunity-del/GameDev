@@ -2981,7 +2981,17 @@ export var BroTown = function BroTown(_ref0) {
             N:  { x: -5, y: 6 },
             NE: { x:  5, y: 6 },
           },
-          bow:   { _default: { x: -10, y: 20 } },
+          bow: { _default: { x: -2, y: 7 } },
+          staff: {
+            E:  { x:  5, y: 8 },
+            SE: { x:  5, y: 8 },
+            S:  { x:  5, y: 8 },
+            SW: { x: -5, y: 8 },
+            W:  { x: -5, y: 8 },
+            NW: { x: -5, y: 8 },
+            N:  { x: -5, y: 8 },
+            NE: { x:  5, y: 8 },
+          },
         };
         var dirName = DIR_NAMES[idx];
         var allNudges = (typeof window !== 'undefined' && window.__broWeaponNudge) || {};
