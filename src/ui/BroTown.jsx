@@ -2976,8 +2976,9 @@ export var BroTown = function BroTown(_ref0) {
         var dx = handleX - (hpx[0] / srcW) * wSize;
         var dy = handleY - (hpx[1] / srcH) * wSize;
         /* idx: 0=E, 1=SE, 2=S, 3=SW, 4=W, 5=NW, 6=N, 7=NE.
-           Mirror weapon on S, SW, W, NW, N (idx 2..6). */
-        var weaponMirror = idx >= 2 && idx <= 6;
+           Mirror weapon on SW, W, NW, N (idx 3..6). E / SE / S / NE keep
+           the source NE blade direction. */
+        var weaponMirror = idx >= 3 && idx <= 6;
         doWeaponDraw = function () {
           if (weaponMirror) {
             ctx.save();
