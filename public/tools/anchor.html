@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Sprite Hand-Anchor Annotator</title>
+<style>
+  body {
+    margin: 0;
+    background: #1a1a1a;
+    color: #ddd;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  h1 { font-size: 16px; margin: 0 0 8px; font-weight: 500; }
+  .label {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 12px;
+    font-feature-settings: 'tnum';
+  }
+  .label b { color: #ddd; }
+  #stage {
+    position: relative;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    border: 1px solid #333;
+    cursor: crosshair;
+    background: #2a2a2a;
+  }
+  #stage canvas { display: block; }
+  #marker {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #f5c542;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    box-shadow: 0 0 0 1px #000;
+  }
+  .controls {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ddd;
+    padding: 8px 14px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  button:hover { background: #353535; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .primary { background: #1e5128; border-color: #2a7a3a; }
+  .primary:hover { background: #2a7a3a; }
+  .danger { background: #5a2a2a; border-color: #7a3a3a; }
+  textarea {
+    margin-top: 14px;
+    width: 600px;
+    max-width: 100%;
+    height: 160px;
+    background: #0e0e0e;
+    color: #cfd8dc;
+    border: 1px solid #333;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    padding: 8px;
+    box-sizing: border-box;
+  }
+  .help {
+    font-size: 11px;
+    color: #777;
+    max-width: 580px;
+    text-align: center;
+    line-height: 1.5;
+    margin-top: 10px;
+  }
+  .progress {
+    height: 4px;
+    background: #2a2a2a;
+    width: 100%;
+    max-width: 600px;
+    margin: 8px 0;
+    overflow: hidden;
+    border-radius: 2px;
+  }
+  .progress > div {
+    height: 100%;
+    background: #f5c542;
+    transition: width 200ms ease-out;
+  }
+</style>
+</head>
+<body>
+
+<h1>Sprite Hand-Anchor Annotator</h1>
+<div class="label">
+  <b id="frameLabel">Loading…</b>
+  · <span id="counter">0 / 125</span>
+</div>
+<div class="progress"><div id="progressBar" style="width:0%"></div></div>
+
+<div id="stage"></div>
+
+<div class="controls">
+  <button id="prevBtn">← Prev</button>
+  <button id="skipBtn">Skip (use prev anchor)</button>
+  <button id="nextBtn">Next (no save) →</button>
+  <button id="resetBtn" class="danger">Reset all</button>
+  <button id="saveBtn" class="primary">Download JSON</button>
+</div>
+
+<div class="help">
+  Click on the character's <b>right hand</b> in each frame.
+  The marker shows your last click. Auto-advances after each click.
+  Stand sheets are 1 frame each; jog sheets are 24 frames each.
+  When you finish (or anytime), hit <b>Download JSON</b> and save it as
+  <code>public/sprites/player/anchors.json</code>.
+</div>
+
+<textarea id="output" readonly placeholder="JSON will appear here as you click."></textarea>
+
+<script>
+const SCALE = 6;                 // 64 → 384 px display
+const FRAME_W = 64;
+const SHEET_VER = 7;             // matches BroTown.jsx ?v=
+const DIRS = ['east','north','northeast','south','southwest'];
+const POSES = [
+  { pose: 'jog',   frames: 24 },
+  { pose: 'stand', frames: 1  },
+];
+
+// Build the queue of all frames to annotate.
+const QUEUE = [];
+for (const { pose, frames } of POSES) {
+  for (const dir of DIRS) {
+    const key = pose + '-' + dir;
+    for (let f = 0; f < frames; f++) QUEUE.push({ key, frame: f, pose, dir });
+  }
+}
+
+// Load all sheets up front.
+const sheets = {};
+let loaded = 0;
+const total = DIRS.length * POSES.length;
+function load(key) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => { sheets[key] = img; loaded++; res(); };
+    img.onerror = () => { console.warn('failed', key); loaded++; res(); };
+    img.src = '/sprites/player/' + key + '.png?v=' + SHEET_VER;
+  });
+}
+const pending = [];
+for (const { pose } of POSES) for (const dir of DIRS) pending.push(load(pose + '-' + dir));
+
+// State.
+const anchors = {};   // { 'jog-east': [[x,y], ...], 'stand-east': [[x,y]], ... }
+let cursor = 0;       // index into QUEUE
+
+const stage = document.getElementById('stage');
+const canvas = document.createElement('canvas');
+canvas.width  = FRAME_W * SCALE;
+canvas.height = FRAME_W * SCALE;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+stage.appendChild(canvas);
+
+const marker = document.createElement('div');
+marker.id = 'marker';
+marker.style.display = 'none';
+stage.appendChild(marker);
+
+stage.style.width  = (FRAME_W * SCALE) + 'px';
+stage.style.height = (FRAME_W * SCALE) + 'px';
+
+// Render the current queue item.
+function render() {
+  const item = QUEUE[cursor];
+  if (!item) return finish();
+  const { key, frame } = item;
+  document.getElementById('frameLabel').textContent = key + '  · frame ' + frame;
+  document.getElementById('counter').textContent = (cursor + 1) + ' / ' + QUEUE.length;
+  document.getElementById('progressBar').style.width = ((cursor + 1) / QUEUE.length * 100).toFixed(1) + '%';
+
+  const img = sheets[key];
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (img) {
+    ctx.drawImage(
+      img,
+      frame * FRAME_W, 0, FRAME_W, FRAME_W,
+      0, 0, FRAME_W * SCALE, FRAME_W * SCALE
+    );
+  }
+
+  // Show existing anchor as marker if present.
+  const existing = anchors[key] && anchors[key][frame];
+  if (existing) {
+    marker.style.display = 'block';
+    marker.style.left = (existing[0] * SCALE) + 'px';
+    marker.style.top  = (existing[1] * SCALE) + 'px';
+  } else {
+    marker.style.display = 'none';
+  }
+
+  document.getElementById('output').value = JSON.stringify(anchors, null, 2);
+  document.getElementById('prevBtn').disabled = cursor === 0;
+}
+
+// Click → record anchor and auto-advance.
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.round((e.clientX - rect.left) / SCALE);
+  const y = Math.round((e.clientY - rect.top)  / SCALE);
+  const item = QUEUE[cursor];
+  if (!item) return;
+  if (!anchors[item.key]) anchors[item.key] = [];
+  anchors[item.key][item.frame] = [x, y];
+  cursor++;
+  render();
+});
+
+document.getElementById('prevBtn').onclick = () => { if (cursor > 0) { cursor--; render(); } };
+
+document.getElementById('skipBtn').onclick = () => {
+  // Use previous frame's anchor (or last anchor for this key) as default.
+  const item = QUEUE[cursor];
+  if (!item) return;
+  let prev = null;
+  if (anchors[item.key] && item.frame > 0) prev = anchors[item.key][item.frame - 1];
+  if (!prev) {
+    // Fall back to last entry of any direction we've already done.
+    for (let i = cursor - 1; i >= 0; i--) {
+      const q = QUEUE[i];
+      const v = anchors[q.key] && anchors[q.key][q.frame];
+      if (v) { prev = v; break; }
+    }
+  }
+  if (prev) {
+    if (!anchors[item.key]) anchors[item.key] = [];
+    anchors[item.key][item.frame] = [prev[0], prev[1]];
+  }
+  cursor++;
+  render();
+};
+
+document.getElementById('nextBtn').onclick = () => { cursor = Math.min(QUEUE.length - 1, cursor + 1); render(); };
+
+document.getElementById('resetBtn').onclick = () => {
+  if (!confirm('Clear all anchors?')) return;
+  for (const k of Object.keys(anchors)) delete anchors[k];
+  cursor = 0;
+  render();
+};
+
+document.getElementById('saveBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(anchors, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'anchors.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+function finish() {
+  document.getElementById('frameLabel').textContent = 'All frames annotated.';
+  document.getElementById('counter').textContent = QUEUE.length + ' / ' + QUEUE.length;
+  document.getElementById('progressBar').style.width = '100%';
+  document.getElementById('output').value = JSON.stringify(anchors, null, 2);
+  marker.style.display = 'none';
+}
+
+// Boot.
+Promise.all(pending).then(() => {
+  render();
+});
+</script>
+
+</body>
+</html>
