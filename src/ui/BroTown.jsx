@@ -3051,7 +3051,7 @@ export var BroTown = function BroTown(_ref0) {
             ctx.save();
             ctx.translate(handleX, handleY);
             if (weaponMirror) ctx.scale(-1, 1);
-            var trailReach = wSize * 1.05;
+            var trailReach = wSize * 2.10;
             /* Canvas-frame angles: blade-up = -π/2; the rotated blade
                points at canvas angle (-π/2 + swingAng). */
             var startCanvas = -SWING_FULL_ARC / 2 - Math.PI / 2;
@@ -3357,16 +3357,16 @@ export var BroTown = function BroTown(_ref0) {
         var swimMult = S._swimming ? SWIM_SPEED_MULT : 1.0;
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult; /* sled overrides movement */
 
-        /* Backpedal: auto-attacking forward while the joystick / keyboard
-           moves the character in the opposite direction. Halve speed and
-           tag a flag so the renderer can reverse the jog cycle to read as
-           backpedaling rather than forward jogging. */
+        /* Auto-attack movement: 50% speed across the board while
+           S.autoAttack is on. Backpedal flag still tracks "moving
+           against aim direction" so the renderer can reverse the jog
+           cycle and face the aim direction in that specific case. */
         S._backpedaling = false;
-        if (S.autoAttack && S._aimAngle != null && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
-          var moveDotAim = dx * Math.cos(S._aimAngle) + dy * Math.sin(S._aimAngle);
-          if (moveDotAim < 0) {
-            S._backpedaling = true;
-            finalSpd *= 0.5;
+        if (S.autoAttack) {
+          finalSpd *= 0.5;
+          if (S._aimAngle != null && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
+            var moveDotAim = dx * Math.cos(S._aimAngle) + dy * Math.sin(S._aimAngle);
+            if (moveDotAim < 0) S._backpedaling = true;
           }
         }
 
