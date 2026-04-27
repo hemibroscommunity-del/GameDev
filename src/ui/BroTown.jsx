@@ -2971,7 +2971,16 @@ export var BroTown = function BroTown(_ref0) {
            values you find into DEFAULT_WEAPON_NUDGE below. */
         var DIR_NAMES = ['E','SE','S','SW','W','NW','N','NE'];
         var DEFAULT_WEAPON_NUDGE = {
-          sword: { _default: { x:   5, y:  5 } },
+          sword: {
+            E:  { x:  5, y: 6 },
+            SE: { x: -5, y: 6 },
+            S:  { x:  5, y: 6 },
+            SW: { x: -5, y: 6 },
+            W:  { x: -5, y: 6 },
+            NW: { x: -5, y: 6 },
+            N:  { x: -5, y: 6 },
+            NE: { x:  5, y: 6 },
+          },
           bow:   { _default: { x: -10, y: 20 } },
         };
         var dirName = DIR_NAMES[idx];
