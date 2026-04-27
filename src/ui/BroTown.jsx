@@ -3018,38 +3018,45 @@ export var BroTown = function BroTown(_ref0) {
            swing window. Rotation pivots around the grip pixel (handleX,
            handleY) so the hand stays glued to the weapon throughout the
            sweep. For mirrored facings the canvas is already flipped, so
-           ctx.rotate(+θ) visually appears as -θ — natural mirrored swing. */
+           ctx.rotate(+θ) visually appears as -θ — natural mirrored swing.
+
+           Curve: sin(p·π) ramps 0 → peak → 0 over the window so the sword
+           swings forward and returns to rest smoothly, no snap-back at
+           swingProgress=1. Peak amplitude kept modest (~75°) to avoid the
+           "handle flying through space" perception that a wider arc
+           creates — the grip stays mathematically pinned to the hand
+           either way, but a tighter visual arc reads as "wrist swing"
+           rather than "the sword detached." */
         var swingAng = 0;
-        var swingArcRad = (typeof SWING_ARC === 'number' && SWING_ARC) ? SWING_ARC : Math.PI * 0.5;
+        var SWING_PEAK_RAD = Math.PI * 0.42; /* ~75° peak forward swing */
         if (swingProgress != null && swingProgress < 1) {
-          /* Ease-out: fast at start, slow at end (downstroke feel). */
-          var eased = 1 - Math.pow(1 - swingProgress, 2);
-          swingAng = -swingArcRad * 0.30 + eased * swingArcRad;
+          swingAng = Math.sin(swingProgress * Math.PI) * SWING_PEAK_RAD;
         }
         /* Local image-space offsets — relative to the grip pixel pivot. */
         var dxLocal = -(hpx[0] / srcW) * wSize;
         var dyLocal = -(hpx[1] / srcH) * wSize;
         doWeaponDraw = function () {
           /* Phase B: arc trail behind the swing — fading translucent fan
-             from the swing start through the current angle. Drawn before
-             the sword image so the blade reads as the leading edge. */
+             from rest (blade-up) through the current angle. Drawn before
+             the sword image so the blade reads as the leading edge.
+             Alpha peaks mid-swing then fades. */
           if (swingProgress != null && swingProgress < 1) {
             ctx.save();
             ctx.translate(handleX, handleY);
             if (weaponMirror) ctx.scale(-1, 1);
-            /* Convert swing angles (where 0 = blade-up = -π/2 canvas) into
-               canvas angles for ctx.arc start/end. */
             var trailReach = wSize * 1.05;
-            var startCanvas = -swingArcRad * 0.30 - Math.PI / 2;
+            /* Canvas-frame angles: blade-up = -π/2; the rotated blade
+               points at canvas angle (-π/2 + swingAng). */
+            var startCanvas = -Math.PI / 2;
             var nowCanvas   = swingAng - Math.PI / 2;
-            var trailAlpha = (1 - swingProgress) * 0.35;
+            /* Peak alpha at swing midpoint; fade in / fade out. */
+            var trailAlpha = Math.sin(swingProgress * Math.PI) * 0.30;
             ctx.beginPath();
             ctx.moveTo(0, 0);
             ctx.arc(0, 0, trailReach, Math.min(startCanvas, nowCanvas), Math.max(startCanvas, nowCanvas));
             ctx.closePath();
             ctx.fillStyle = 'rgba(255, 255, 255, ' + trailAlpha + ')';
             ctx.fill();
-            /* Outer rim glow for sparkle. */
             ctx.strokeStyle = 'rgba(255, 250, 200, ' + (trailAlpha * 1.2) + ')';
             ctx.lineWidth = 2;
             ctx.beginPath();
