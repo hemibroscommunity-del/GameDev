@@ -226,6 +226,24 @@ export const GameApp = () => {
       return 'block <hostile [off]|relaxed [off]|count <n>|parry>';
     }, 'block — control block ring (hostile proximity, relaxed parry, simulate parry)');
 
+    // Live-override the source-pixel handle position for a weapon image.
+    // Useful when handles.json was clicked imprecisely — adjust until the
+    // pivot dot lands on the visible handle, then tell Claude the values
+    // and they'll be baked into handles.json.
+    debugBus.cmd('hpx', (args) => {
+      if (args[0] === 'show') return JSON.stringify(window.__broWeaponHpxOverride || {}, null, 2);
+      if (args[0] === 'reset') { window.__broWeaponHpxOverride = {}; return 'cleared'; }
+      const type = args[0];
+      const x = Number(args[1]);
+      const y = Number(args[2]);
+      if (!type || Number.isNaN(x) || Number.isNaN(y)) {
+        return 'usage: hpx <sword|bow|staff> X Y  (source-pixel coords 0..64)  |  hpx show  |  hpx reset';
+      }
+      if (!window.__broWeaponHpxOverride) window.__broWeaponHpxOverride = {};
+      window.__broWeaponHpxOverride[type] = [x, y];
+      return `${type} hpx → [${x}, ${y}]`;
+    }, 'hpx — override weapon handle source pixel; iterate until dot is on handle');
+
     // Show / hide a yellow dot at the sword's rotation pivot point. Useful
     // when the sword visually drifts during swing — if the dot stays on the
     // hand, the math is correct and the apparent drift is the sword's

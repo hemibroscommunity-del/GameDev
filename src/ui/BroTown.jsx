@@ -2964,7 +2964,11 @@ export var BroTown = function BroTown(_ref0) {
         var whandles = weaponHandlesRef.current;
         var srcW = wImg.naturalWidth || 64;
         var srcH = wImg.naturalHeight || 64;
-        var hpx = (whandles && whandles[weaponType]) || [srcW / 2, srcH];
+        /* Runtime override (debug command `hpx <weapon> X Y`) wins over the
+           handles.json file so the user can iterate the source-pixel handle
+           position live until the pivot dot lands on the visible handle. */
+        var rtHpxAll = (typeof window !== 'undefined' && window.__broWeaponHpxOverride) || {};
+        var hpx = rtHpxAll[weaponType] || (whandles && whandles[weaponType]) || [srcW / 2, srcH];
         /* Per-weapon, per-direction pixel nudge.
            Mirror flipping handedness across facings means a single nudge
            value can't fit all 8 directions, so each weapon stores 8
