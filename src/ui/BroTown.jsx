@@ -3037,7 +3037,10 @@ export var BroTown = function BroTown(_ref0) {
         var restAng = REST_BLADE_CANVAS[weaponType] != null
           ? REST_BLADE_CANVAS[weaponType]
           : -Math.PI / 4;
-        var SWING_FULL_ARC = (typeof SWING_ARC === 'number' && SWING_ARC) ? SWING_ARC : Math.PI * 0.85;
+        /* SWING_ARC is the hit-detection arc (~153°). Visual swing is
+           70% of that (~107°) per user feedback — slightly less wild
+           than the full hit arc while still reading as a strong slash. */
+        var SWING_FULL_ARC = ((typeof SWING_ARC === 'number' && SWING_ARC) ? SWING_ARC : Math.PI * 0.85) * 0.70;
         var swingAng = 0;
         var swingOffset = 0;
         var swingActive = swingProgress != null && swingProgress < 1;
@@ -3059,7 +3062,7 @@ export var BroTown = function BroTown(_ref0) {
           if (swingActive) {
             ctx.save();
             ctx.translate(handleX, handleY);
-            var trailReach = wSize * 2.10;
+            var trailReach = wSize * 1.47; /* 2.10 * 0.7 — shrunk 30% with the arc */
             var startCanvas = aimAngle - SWING_FULL_ARC / 2;
             var nowCanvas   = aimAngle + swingOffset;
             var trailAlpha = (1 - swingProgress) * 0.35;
@@ -11839,13 +11842,15 @@ export var BroTown = function BroTown(_ref0) {
         var hR = (_slim ? 12 : 14) + _bulkTorso * 0.3;
 
         /* ═══ SPRITE-SHEET DRAW (preferred when sheets are loaded) ═══
-           When backpedaling, force the character to face the aim
-           direction (i.e. toward the target they're attacking) instead
-           of the movement direction. Combined with the reversed jog
-           cycle, this reads as the character walking backward while
-           still facing the enemy. */
+           Force the sprite to face the aim direction in two cases:
+            (1) Backpedaling — character keeps eyes on the enemy while
+                walking backward.
+            (2) Standing still while auto-attacking — character pivots
+                toward the swing target instead of staying frozen on
+                the last movement direction.
+           Otherwise use the movement-tracking facing angle. */
         var _spriteFA;
-        if (S._backpedaling && S._aimAngle != null) {
+        if (S._aimAngle != null && (S._backpedaling || (!isMoving && S.autoAttack))) {
           _spriteFA = S._aimAngle;
         } else if (S._facingAngle !== undefined) {
           _spriteFA = S._facingAngle;
