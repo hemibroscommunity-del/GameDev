@@ -11830,13 +11830,21 @@ export var BroTown = function BroTown(_ref0) {
           sh2 = _slim ? 4 : 5;
         var hR = (_slim ? 12 : 14) + _bulkTorso * 0.3;
 
-        /* ═══ SPRITE-SHEET DRAW (preferred when sheets are loaded) ═══ */
-        var _spriteFA = S._facingAngle !== undefined
-          ? S._facingAngle
-          : (function () {
-              var d = S._facing || 'down';
-              return d === 'right' ? 0 : d === 'up' ? -Math.PI / 2 : d === 'left' ? Math.PI : Math.PI / 2;
-            })();
+        /* ═══ SPRITE-SHEET DRAW (preferred when sheets are loaded) ═══
+           When backpedaling, force the character to face the aim
+           direction (i.e. toward the target they're attacking) instead
+           of the movement direction. Combined with the reversed jog
+           cycle, this reads as the character walking backward while
+           still facing the enemy. */
+        var _spriteFA;
+        if (S._backpedaling && S._aimAngle != null) {
+          _spriteFA = S._aimAngle;
+        } else if (S._facingAngle !== undefined) {
+          _spriteFA = S._facingAngle;
+        } else {
+          var d = S._facing || 'down';
+          _spriteFA = d === 'right' ? 0 : d === 'up' ? -Math.PI / 2 : d === 'left' ? Math.PI : Math.PI / 2;
+        }
         /* Sprite has padding above and below the character within its 64×64
            frame — bottom-anchoring exactly at the procedural foot position
            leaves the visible feet hovering 10-14 px above the shadow. Shift
