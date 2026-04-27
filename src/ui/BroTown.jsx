@@ -105,6 +105,10 @@ export var BroTown = function BroTown(_ref0) {
   /* Weapon sprite icons — sword / bow / staff. Drawn next to the character
      scaled down from the 64×64 source. Map<weapon-type, HTMLImageElement>. */
   var weaponSpritesRef = useRef(null);
+  /* Per-frame right-hand anchor coords (0..64 in source-pixel space).
+     Annotated via public/tools/anchor.html. Lets the weapon track the hand
+     frame-by-frame instead of using a fixed facing-based offset. */
+  var handAnchorsRef = useRef(null);
   var stateRef = useRef({
     player: {
       x: 20 * TILE,
@@ -1145,6 +1149,13 @@ export var BroTown = function BroTown(_ref0) {
       wImg.onerror = function () { wLoaded++; if (wLoaded === wTotal) weaponSpritesRef.current = wsheets; };
       wImg.src = wMap[type] + '?v=1';
     });
+
+    /* Per-frame hand anchors (built by the public/tools/anchor.html annotator).
+       Bump ?v= when re-annotating so cached copies don't shadow the new file. */
+    fetch('/sprites/player/anchors.json?v=1')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { if (j) handAnchorsRef.current = j; })
+      .catch(function () { /* missing file — sprite falls back to facing-based offset */ });
   }, []);
 
   /* Prevent iOS page scroll + track keyboard height */
@@ -2903,28 +2914,37 @@ export var BroTown = function BroTown(_ref0) {
       var w = drawSize * sizeMul, h = drawSize * sizeMul;
 
       /* === WEAPON DRAW (BEHIND character) ===
-         Handle anchored at the character's right hand — for SE-facing
-         that lands the handle in the body's SW corner; with the blade
-         always pointing screen-up, the sword AS A WHOLE occupies the
-         NE region of the body (handle SW, tip N), matching the user's
-         "sword pointed NE for SE-facing" spec.
-         No rotation — blade is always vertical. The handle position
-         varies with facing to keep the sword on the correct side as
-         the character turns. */
+         Per-frame hand anchor from anchors.json pins the handle to the
+         actual hand pixel position in each source frame. For mirrored
+         facings (W / NW / SE) we mirror the X coord to match the
+         flipped sprite. Falls back to a facing-based estimate when the
+         JSON hasn't loaded or has no entry for the current frame. */
       var wsheets = weaponSpritesRef.current;
       var wImg = wsheets && weaponType ? wsheets[weaponType] : null;
       if (wImg) {
         var wSize = Math.round(drawSize * 0.45);
-        /* atan2 convention: 0=E, π/2=S (y+ down). Right hand of a
-           character is 90° CW from their facing direction. */
-        var handAng = facingAngle + Math.PI / 2;
-        var armLen = drawSize * 0.28;
-        var bodyCenterY = footY - drawSize * 0.40;
-        var handleX = screenX + Math.cos(handAng) * armLen;
-        /* Y-dampen prevents cardinal E/W from putting the hand directly
-           above the head or below the feet. Visible vertical variation
-           still reads as a position change between adjacent facings. */
-        var handleY = bodyCenterY + Math.sin(handAng) * armLen * 0.35;
+        var handleX, handleY;
+        var anchors = handAnchorsRef.current;
+        var anchorList = anchors && anchors[pose + '-' + info.name];
+        var anchor = anchorList && anchorList[Math.min(frame, anchorList.length - 1)];
+        if (anchor && anchor.length === 2) {
+          /* Map source-pixel anchor (0..64) onto the on-screen sprite
+             rect (screenX-w/2, footY-h, w, h). For mirrored facings
+             flip the X so the hand stays on the same body side. */
+          var ax = info.mirror ? (sheet.w - anchor[0]) : anchor[0];
+          var ay = anchor[1];
+          handleX = screenX - w / 2 + (ax / sheet.w) * w;
+          handleY = footY - h + (ay / sheet.w) * h;
+        } else {
+          /* Fallback when no anchor data — facing-based right-hand offset. */
+          var handAng = facingAngle + Math.PI / 2;
+          var armLen = drawSize * 0.28;
+          var bodyCenterY = footY - drawSize * 0.40;
+          handleX = screenX + Math.cos(handAng) * armLen;
+          handleY = bodyCenterY + Math.sin(handAng) * armLen * 0.35;
+        }
+        /* Source weapon image: handle at bottom-center, blade extending up.
+           No rotation — blade always points screen-up. */
         ctx.drawImage(wImg, handleX - wSize / 2, handleY - wSize, wSize, wSize);
       }
 
