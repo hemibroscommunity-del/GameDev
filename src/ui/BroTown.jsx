@@ -2966,7 +2966,10 @@ export var BroTown = function BroTown(_ref0) {
            `nudge <weapon> <x> <y>` overrides at runtime. The math aligns
            clicked edges, but visually the hand should wrap the grip, so
            a small (+5, +5) push tucks the grip into the hand. */
-        var DEFAULT_WEAPON_NUDGE = { sword: { x: 5, y: 5 } };
+        var DEFAULT_WEAPON_NUDGE = {
+          sword: { x:   5, y:  5 },
+          bow:   { x: -10, y: 20 },
+        };
         var nudges = (typeof window !== 'undefined' && window.__broWeaponNudge) || {};
         var nudge = nudges[weaponType] || nudges._default
           || DEFAULT_WEAPON_NUDGE[weaponType] || { x: 0, y: 0 };
