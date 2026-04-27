@@ -2902,7 +2902,13 @@ export var BroTown = function BroTown(_ref0) {
       { name: 'north',     mirror: false }, /* 6 = N   */
       { name: 'northeast', mirror: false }, /* 7 = NE  */
     ];
-    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize, weaponType) {
+    /* Swing animation tuning. SWING_ARC is imported from gameSystems.js
+       (the same arc used by hit-detection). Visual rotation runs over
+       SWING_ANIM_MS regardless of swing cooldown so combos still feel
+       responsive. The arc starts slightly cocked back (-30%) and sweeps
+       through to +70% of SWING_ARC, biasing the visual toward forward. */
+    var SWING_ANIM_MS = 250;
+    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize, weaponType, swingProgress) {
       if (window.__broUseSprites === false) return false;
       var sheets = playerSpritesRef.current;
       if (!sheets) return false;
@@ -3008,17 +3014,57 @@ export var BroTown = function BroTown(_ref0) {
            Mirror weapon on SW, W, NW, N (idx 3..6). E / SE / S / NE keep
            the source NE blade direction. */
         var weaponMirror = idx >= 3 && idx <= 6;
+        /* Swing rotation. swingProgress is null when idle, 0..1 during a
+           swing window. Rotation pivots around the grip pixel (handleX,
+           handleY) so the hand stays glued to the weapon throughout the
+           sweep. For mirrored facings the canvas is already flipped, so
+           ctx.rotate(+θ) visually appears as -θ — natural mirrored swing. */
+        var swingAng = 0;
+        var swingArcRad = (typeof SWING_ARC === 'number' && SWING_ARC) ? SWING_ARC : Math.PI * 0.5;
+        if (swingProgress != null && swingProgress < 1) {
+          /* Ease-out: fast at start, slow at end (downstroke feel). */
+          var eased = 1 - Math.pow(1 - swingProgress, 2);
+          swingAng = -swingArcRad * 0.30 + eased * swingArcRad;
+        }
+        /* Local image-space offsets — relative to the grip pixel pivot. */
+        var dxLocal = -(hpx[0] / srcW) * wSize;
+        var dyLocal = -(hpx[1] / srcH) * wSize;
         doWeaponDraw = function () {
-          if (weaponMirror) {
+          /* Phase B: arc trail behind the swing — fading translucent fan
+             from the swing start through the current angle. Drawn before
+             the sword image so the blade reads as the leading edge. */
+          if (swingProgress != null && swingProgress < 1) {
             ctx.save();
-            ctx.translate(handleX, 0);
-            ctx.scale(-1, 1);
-            ctx.translate(-handleX, 0);
-            ctx.drawImage(wImg, dx, dy, wSize, wSize);
+            ctx.translate(handleX, handleY);
+            if (weaponMirror) ctx.scale(-1, 1);
+            /* Convert swing angles (where 0 = blade-up = -π/2 canvas) into
+               canvas angles for ctx.arc start/end. */
+            var trailReach = wSize * 1.05;
+            var startCanvas = -swingArcRad * 0.30 - Math.PI / 2;
+            var nowCanvas   = swingAng - Math.PI / 2;
+            var trailAlpha = (1 - swingProgress) * 0.35;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, trailReach, Math.min(startCanvas, nowCanvas), Math.max(startCanvas, nowCanvas));
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(255, 255, 255, ' + trailAlpha + ')';
+            ctx.fill();
+            /* Outer rim glow for sparkle. */
+            ctx.strokeStyle = 'rgba(255, 250, 200, ' + (trailAlpha * 1.2) + ')';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, trailReach, Math.min(startCanvas, nowCanvas), Math.max(startCanvas, nowCanvas));
+            ctx.stroke();
             ctx.restore();
-          } else {
-            ctx.drawImage(wImg, dx, dy, wSize, wSize);
           }
+          /* Sword image draw — origin at the grip pixel; mirror first
+             (around grip), then rotate by swingAng (also around grip). */
+          ctx.save();
+          ctx.translate(handleX, handleY);
+          if (weaponMirror) ctx.scale(-1, 1);
+          ctx.rotate(swingAng);
+          ctx.drawImage(wImg, dxLocal, dyLocal, wSize, wSize);
+          ctx.restore();
         };
       }
 
@@ -9054,7 +9100,12 @@ export var BroTown = function BroTown(_ref0) {
           var _oSpriteFootY = oy + oAnimBob + (_oSlim ? 36 : 54);
           var _oSpriteSize = _oSlim ? 56 : 72;
           var _oWpnType = o.wpnType || null;
-          var _oSpriteDrawn = drawSpriteCharacter(ctx, ox, _oSpriteFootY, _oSpriteFA, oMoving, now, _oSpriteSize, _oWpnType);
+          var _oSwingProgress = null;
+          if (o._swingTs) {
+            var _oSwDt = _now - o._swingTs;
+            if (_oSwDt >= 0 && _oSwDt < SWING_ANIM_MS) _oSwingProgress = _oSwDt / SWING_ANIM_MS;
+          }
+          var _oSpriteDrawn = drawSpriteCharacter(ctx, ox, _oSpriteFootY, _oSpriteFA, oMoving, now, _oSpriteSize, _oWpnType, _oSwingProgress);
 
           /* Check if other player has a processed NFT avatar */
           var _oHasNft = false;
@@ -11747,7 +11798,12 @@ export var BroTown = function BroTown(_ref0) {
         var _spriteFootY = py + animBob + (_slim ? 36 : 54);
         var _spriteSize = _slim ? 56 : 72;
         var _wpnTypeForSprite = (S.rpg && getActiveWeapon(S.rpg) || {}).type || null;
-        var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize, _wpnTypeForSprite);
+        var _swingProgress = null;
+        if (S.isSwinging && S.swingTimer) {
+          var _swDt = Date.now() - S.swingTimer;
+          if (_swDt >= 0 && _swDt < SWING_ANIM_MS) _swingProgress = _swDt / SWING_ANIM_MS;
+        }
+        var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize, _wpnTypeForSprite, _swingProgress);
 
         /* ═══ NFT CHECK — does this player have a processed avatar? ═══ */
         var _hasNftBody = false;
