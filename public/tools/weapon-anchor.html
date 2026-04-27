@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Weapon Handle Annotator</title>
+<style>
+  body {
+    margin: 0;
+    background: #1a1a1a;
+    color: #ddd;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  h1 { font-size: 16px; margin: 0 0 4px; font-weight: 500; }
+  .label { font-size: 13px; color: #888; margin-bottom: 12px; }
+  .label b { color: #ddd; }
+  #stage {
+    position: relative;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    border: 1px solid #333;
+    cursor: crosshair;
+    background: #2a2a2a;
+  }
+  #stage canvas { display: block; }
+  #marker {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #f5c542;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    box-shadow: 0 0 0 1px #000;
+  }
+  .controls {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ddd;
+    padding: 8px 14px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  button:hover { background: #353535; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .primary { background: #1e5128; border-color: #2a7a3a; }
+  .primary:hover { background: #2a7a3a; }
+  textarea {
+    margin-top: 14px;
+    width: 600px; max-width: 100%; height: 120px;
+    background: #0e0e0e;
+    color: #cfd8dc;
+    border: 1px solid #333;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    padding: 8px; box-sizing: border-box;
+  }
+  .help {
+    font-size: 11px; color: #777; max-width: 580px;
+    text-align: center; line-height: 1.5; margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Weapon Handle Annotator</h1>
+<div class="label">
+  <b id="frameLabel">Loading…</b>
+  · <span id="counter">0 / 3</span>
+</div>
+
+<div id="stage"></div>
+
+<div class="controls">
+  <button id="prevBtn">← Prev</button>
+  <button id="nextBtn">Next →</button>
+  <button id="saveBtn" class="primary">Download JSON</button>
+</div>
+
+<div class="help">
+  Click the <b>handle / grip</b> of each weapon — the spot you'd want
+  to pin to the character's hand. Three weapons total.
+  Save as <code>public/sprites/weapons/handles.json</code>.
+</div>
+
+<textarea id="output" readonly></textarea>
+
+<script>
+const SCALE = 8;          // 64 → 512 px
+const FRAME_W = 64;
+
+const WEAPONS = [
+  { type: 'sword', src: '/sprites/weapons/swords/Sword1.png' },
+  { type: 'bow',   src: '/sprites/weapons/bows/Bow2.png' },
+  { type: 'staff', src: '/sprites/weapons/staffs/Wizard%20Staff2.png' },
+];
+
+const handles = {};   // { sword: [x, y], ... }
+const images = {};    // type → Image
+let cursor = 0;
+
+const stage = document.getElementById('stage');
+const canvas = document.createElement('canvas');
+canvas.width  = FRAME_W * SCALE;
+canvas.height = FRAME_W * SCALE;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+stage.appendChild(canvas);
+
+const marker = document.createElement('div');
+marker.id = 'marker';
+marker.style.display = 'none';
+stage.appendChild(marker);
+
+stage.style.width  = (FRAME_W * SCALE) + 'px';
+stage.style.height = (FRAME_W * SCALE) + 'px';
+
+function load(w) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload  = () => { images[w.type] = img; res(); };
+    img.onerror = () => { console.warn('failed', w.src); res(); };
+    img.src = w.src + '?v=1';
+  });
+}
+
+function render() {
+  const w = WEAPONS[cursor];
+  if (!w) return;
+  document.getElementById('frameLabel').textContent = w.type + '  · ' + w.src;
+  document.getElementById('counter').textContent = (cursor + 1) + ' / ' + WEAPONS.length;
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const img = images[w.type];
+  if (img) {
+    ctx.drawImage(img, 0, 0, FRAME_W, FRAME_W, 0, 0, FRAME_W * SCALE, FRAME_W * SCALE);
+  }
+  const existing = handles[w.type];
+  if (existing) {
+    marker.style.display = 'block';
+    marker.style.left = (existing[0] * SCALE) + 'px';
+    marker.style.top  = (existing[1] * SCALE) + 'px';
+  } else {
+    marker.style.display = 'none';
+  }
+  document.getElementById('output').value = JSON.stringify(handles, null, 2);
+  document.getElementById('prevBtn').disabled = cursor === 0;
+  document.getElementById('nextBtn').disabled = cursor >= WEAPONS.length - 1;
+}
+
+canvas.addEventListener('click', e => {
+  const w = WEAPONS[cursor];
+  if (!w) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.round((e.clientX - rect.left) / SCALE);
+  const y = Math.round((e.clientY - rect.top)  / SCALE);
+  handles[w.type] = [x, y];
+  if (cursor < WEAPONS.length - 1) cursor++;
+  render();
+});
+
+document.getElementById('prevBtn').onclick = () => { if (cursor > 0) { cursor--; render(); } };
+document.getElementById('nextBtn').onclick = () => { if (cursor < WEAPONS.length - 1) { cursor++; render(); } };
+document.getElementById('saveBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(handles, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'handles.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+Promise.all(WEAPONS.map(load)).then(render);
+</script>
+
+</body>
+</html>

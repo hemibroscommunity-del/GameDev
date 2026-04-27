@@ -109,6 +109,11 @@ export var BroTown = function BroTown(_ref0) {
      Annotated via public/tools/anchor.html. Lets the weapon track the hand
      frame-by-frame instead of using a fixed facing-based offset. */
   var handAnchorsRef = useRef(null);
+  /* Per-weapon handle pixel in the source weapon image (0..64).
+     Annotated via public/tools/weapon-anchor.html. Without this we'd
+     assume the handle is at bottom-center of the weapon image, which is
+     wrong for diagonally-drawn sources. */
+  var weaponHandlesRef = useRef(null);
   var stateRef = useRef({
     player: {
       x: 20 * TILE,
@@ -1156,6 +1161,14 @@ export var BroTown = function BroTown(_ref0) {
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) { if (j) handAnchorsRef.current = j; })
       .catch(function () { /* missing file — sprite falls back to facing-based offset */ });
+
+    /* Per-weapon handle pixel (built by public/tools/weapon-anchor.html).
+       Without this the renderer assumes the handle is at the bottom-center
+       of the weapon image — wrong for diagonally-drawn sources. */
+    fetch('/sprites/weapons/handles.json?v=1')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { if (j) weaponHandlesRef.current = j; })
+      .catch(function () { /* missing — fall back to bottom-center */ });
   }, []);
 
   /* Prevent iOS page scroll + track keyboard height */
@@ -2943,9 +2956,19 @@ export var BroTown = function BroTown(_ref0) {
           handleX = screenX + Math.cos(handAng) * armLen;
           handleY = bodyCenterY + Math.sin(handAng) * armLen * 0.35;
         }
-        /* Source weapon image: handle at bottom-center, blade extending up.
-           No rotation — blade always points screen-up. */
-        ctx.drawImage(wImg, handleX - wSize / 2, handleY - wSize, wSize, wSize);
+        /* Where in the source weapon image is the grip / handle? Per-
+           weapon JSON tells us (annotated via /tools/weapon-anchor.html).
+           Default to bottom-center if not specified. */
+        var whandles = weaponHandlesRef.current;
+        var srcW = wImg.naturalWidth || 64;
+        var srcH = wImg.naturalHeight || 64;
+        var hpx = (whandles && whandles[weaponType]) || [srcW / 2, srcH];
+        /* Place the source-pixel grip at (handleX, handleY). The drawn
+           image is wSize × wSize; map the source-pixel offset to drawn-
+           pixel offset by the same wSize/srcW ratio. */
+        var dx = handleX - (hpx[0] / srcW) * wSize;
+        var dy = handleY - (hpx[1] / srcH) * wSize;
+        ctx.drawImage(wImg, dx, dy, wSize, wSize);
       }
 
       /* === CHARACTER DRAW (on top) === */
