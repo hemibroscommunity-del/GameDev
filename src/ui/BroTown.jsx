@@ -5010,6 +5010,12 @@ export var BroTown = function BroTown(_ref0) {
                 m.alive = true;
                 m.curHp = m.hp;
                 m.statuses = {}; /* clear statuses on respawn */
+                /* Clear hit-marks accumulated in the previous life so a
+                   freshly respawned monster doesn't appear with old
+                   arrows / slashes / burns. */
+                m._stuckArrows = [];
+                m._slashMarks = [];
+                m._burnMarks = [];
                 m.x = m.spawnX + (Math.random() - 0.5) * 60;
                 m.y = m.spawnY + (Math.random() - 0.5) * 60;
               }
@@ -6060,6 +6066,18 @@ export var BroTown = function BroTown(_ref0) {
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
                 m.curHp -= dmg;
+                /* Slash mark — short diagonal cut at the impact point,
+                   oriented along the swing direction. Capped + cleared on
+                   respawn alongside stuck arrows / burn marks. */
+                if (!m._slashMarks) m._slashMarks = [];
+                if (m._slashMarks.length < 8) {
+                  m._slashMarks.push({
+                    ox: (Math.random() - 0.5) * 10,
+                    oy: (Math.random() - 0.5) * 10,
+                    ang: baseAngle,
+                    ts: Date.now(),
+                  });
+                }
 
                 /* Report damage to server for authoritative resolution */
                 if (S._serverMonsters && S.channel) {
@@ -7716,6 +7734,19 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 if (a.isStaff) BT_AUDIO.magicHit({ vol: 0.3 });
                 else BT_AUDIO.play('arrow-hit', { vol: 0.6 });
+                /* Burn mark — only on staff/magic hits. Element-tinted
+                   scorch on the body. Capped + cleared on respawn. */
+                if (a.isStaff) {
+                  if (!m._burnMarks) m._burnMarks = [];
+                  if (m._burnMarks.length < 10) {
+                    m._burnMarks.push({
+                      ox: (Math.random() - 0.5) * 10,
+                      oy: (Math.random() - 0.5) * 10,
+                      color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#222',
+                      ts: Date.now(),
+                    });
+                  }
+                }
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
                 m.x += Math.cos(kba) * 5;
                 m.y += Math.sin(kba) * 5;
@@ -10586,6 +10617,50 @@ export var BroTown = function BroTown(_ref0) {
                   ctx.closePath();
                   ctx.fill();
                 }
+                ctx.restore();
+              });
+            }
+
+            /* ═══ BURN MARKS — magic / staff hits ═══ */
+            if (m._burnMarks && m._burnMarks.length > 0) {
+              m._burnMarks.forEach(function (bm) {
+                var bmx = mx + bm.ox, bmy = my + bm.oy;
+                /* Outer scorch (dark) */
+                ctx.fillStyle = 'rgba(20, 10, 10, 0.55)';
+                ctx.beginPath();
+                ctx.arc(bmx, bmy, 4, 0, Math.PI * 2);
+                ctx.fill();
+                /* Inner element-tinted core */
+                ctx.fillStyle = bm.color + '80';
+                ctx.beginPath();
+                ctx.arc(bmx, bmy, 2, 0, Math.PI * 2);
+                ctx.fill();
+              });
+            }
+
+            /* ═══ SLASH MARKS — sword swing hits ═══ */
+            if (m._slashMarks && m._slashMarks.length > 0) {
+              m._slashMarks.forEach(function (sm) {
+                var smx = mx + sm.ox, smy = my + sm.oy;
+                ctx.save();
+                ctx.translate(smx, smy);
+                /* Slash visual is perpendicular to the swing direction —
+                   draw a short diagonal cut. */
+                ctx.rotate(sm.ang + Math.PI / 4);
+                ctx.strokeStyle = 'rgba(255, 250, 240, 0.85)';
+                ctx.lineWidth = 1.5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-7, 0);
+                ctx.lineTo(7, 0);
+                ctx.stroke();
+                /* Thin red bleed line behind the white edge for depth. */
+                ctx.strokeStyle = 'rgba(160, 40, 40, 0.55)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-6, 1);
+                ctx.lineTo(6, 1);
+                ctx.stroke();
                 ctx.restore();
               });
             }
