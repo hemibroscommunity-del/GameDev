@@ -3022,41 +3022,46 @@ export var BroTown = function BroTown(_ref0) {
            Mirror weapon on SW, W, NW, N (idx 3..6). E / SE / S / NE keep
            the source NE blade direction. */
         var weaponMirror = idx >= 3 && idx <= 6;
-        /* Swing rotation. swingProgress is null when idle, 0..1 during a
-           swing window. Rotation pivots around the grip pixel (handleX,
-           handleY) so the hand stays glued to the weapon throughout the
-           sweep. For mirrored facings the canvas is already flipped, so
-           ctx.rotate(+θ) visually appears as -θ — natural mirrored swing.
-
-           Sweep spans exactly SWING_ARC (matches the hit-detection arc)
-           from -SWING_ARC/2 to +SWING_ARC/2, ease-out curve so the
-           downstroke is fast and the follow-through slows. After the
-           swing window the sword snaps back to rest (swingAng=0). */
-        var swingAng = 0;
+        /* Swing rotation. Sweep is centered on the aim direction so the
+           blade slashes toward where the player is auto-attacking,
+           matching the hit-detection arc. Source weapon images have a
+           "rest blade direction" (sword's blade rests pointing NE in
+           its source); we rotate the image by (aimAngle - restBlade)
+           plus a swing-offset that sweeps -SWING_ARC/2 → +SWING_ARC/2. */
+        var REST_BLADE_CANVAS = {
+          sword:      -Math.PI / 4, /* NE — blade goes from grip (lower-left) to tip (upper-right) */
+          greatsword: -Math.PI / 4,
+          bow:         0,           /* east — bow sits horizontal */
+          staff:      -Math.PI / 2, /* north — staff stands vertical */
+        };
+        var restAng = REST_BLADE_CANVAS[weaponType] != null
+          ? REST_BLADE_CANVAS[weaponType]
+          : -Math.PI / 4;
         var SWING_FULL_ARC = (typeof SWING_ARC === 'number' && SWING_ARC) ? SWING_ARC : Math.PI * 0.85;
-        if (swingProgress != null && swingProgress < 1) {
+        var swingAng = 0;
+        var swingOffset = 0;
+        var swingActive = swingProgress != null && swingProgress < 1;
+        /* Pull live aim from window state — facingAngle tracks movement
+           direction in non-attack motion, but aim is what we want here. */
+        var liveS = (typeof window !== 'undefined' && window._gameState) ? window._gameState.current : null;
+        var aimAngle = (liveS && liveS._aimAngle != null) ? liveS._aimAngle : facingAngle;
+        if (swingActive) {
           var eased = 1 - Math.pow(1 - swingProgress, 2);
-          swingAng = -SWING_FULL_ARC / 2 + eased * SWING_FULL_ARC;
+          swingOffset = -SWING_FULL_ARC / 2 + eased * SWING_FULL_ARC;
+          swingAng = (aimAngle - restAng) + swingOffset;
         }
         /* Local image-space offsets — relative to the grip pixel pivot. */
         var dxLocal = -(hpx[0] / srcW) * wSize;
         var dyLocal = -(hpx[1] / srcH) * wSize;
         doWeaponDraw = function () {
-          /* Phase B: arc trail behind the swing — fading translucent fan
-             from the swing-start angle through the current angle.
-             Drawn before the sword image so the blade reads as the
-             leading edge. Trail spans up to SWING_FULL_ARC over the
-             course of the swing. */
-          if (swingProgress != null && swingProgress < 1) {
+          /* Phase B: arc trail centered on the aim direction. Spans
+             up to SWING_FULL_ARC across the course of the swing. */
+          if (swingActive) {
             ctx.save();
             ctx.translate(handleX, handleY);
-            if (weaponMirror) ctx.scale(-1, 1);
             var trailReach = wSize * 2.10;
-            /* Canvas-frame angles: blade-up = -π/2; the rotated blade
-               points at canvas angle (-π/2 + swingAng). */
-            var startCanvas = -SWING_FULL_ARC / 2 - Math.PI / 2;
-            var nowCanvas   = swingAng - Math.PI / 2;
-            /* Alpha fades as the swing progresses. */
+            var startCanvas = aimAngle - SWING_FULL_ARC / 2;
+            var nowCanvas   = aimAngle + swingOffset;
             var trailAlpha = (1 - swingProgress) * 0.35;
             ctx.beginPath();
             ctx.moveTo(0, 0);
@@ -3071,11 +3076,14 @@ export var BroTown = function BroTown(_ref0) {
             ctx.stroke();
             ctx.restore();
           }
-          /* Sword image draw — origin at the grip pixel; mirror first
-             (around grip), then rotate by swingAng (also around grip). */
+          /* Sword image draw. Idle: apply weaponMirror so the blade
+             flips to the body side that holds the grip. Active swing:
+             skip mirror — rotation alone aims the blade at the swing
+             target, and mirroring during rotation would invert the
+             sweep direction visually. */
           ctx.save();
           ctx.translate(handleX, handleY);
-          if (weaponMirror) ctx.scale(-1, 1);
+          if (weaponMirror && !swingActive) ctx.scale(-1, 1);
           ctx.rotate(swingAng);
           ctx.drawImage(wImg, dxLocal, dyLocal, wSize, wSize);
           ctx.restore();
@@ -7712,8 +7720,8 @@ export var BroTown = function BroTown(_ref0) {
                 var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, rangedWpnType, false);
                 rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
                 if (!m._stuckArrows) m._stuckArrows = [];
-                if (m._stuckArrows.length < 6) {
-                  m._stuckArrows.push({ ang: a.ang, ox: (Math.random() - 0.5) * 8, oy: (Math.random() - 0.5) * 8, isStaff: a.isStaff || false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
+                if (m._stuckArrows.length < 12) {
+                  m._stuckArrows.push({ ang: a.ang, ox: (Math.random() - 0.5) * 12, oy: (Math.random() - 0.5) * 12, isStaff: a.isStaff || false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
                 S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: a.dmg + '', color: '#ff9', ts: Date.now() });
