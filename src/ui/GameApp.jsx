@@ -381,6 +381,22 @@ export const GameApp = () => {
       <BlockRing />
       <MoreOverlay />
       <MasteryNotification />
+      <div style={{
+        position: 'fixed',
+        left: 8,
+        bottom: 8,
+        zIndex: 40,
+        padding: '4px 8px',
+        background: 'rgba(0, 0, 0, 0.45)',
+        color: 'rgba(255, 255, 255, 0.85)',
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: 11,
+        borderRadius: 4,
+        pointerEvents: 'none',
+        userSelect: 'none',
+      }}>
+        Double tap to change weapons
+      </div>
       <DebugOverlay />
       <BuildBadge />
     </>
