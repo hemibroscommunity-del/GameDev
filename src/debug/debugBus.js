@@ -158,12 +158,17 @@ cmd('set', (args) => {
 cmd('reload', () => { location.reload(); }, 'reload  — reload the page');
 
 const initFromUrl = () => {
+  /* Debug overlay always enabled — user has no desktop access for live tuning,
+     so the floating D/× button needs to be visible on every page load. URL
+     `?nodebug=1` opts out (or call debugBus.disable() then reload). */
   try {
     const params = new URLSearchParams(location.search);
-    if (params.get('debug') === '1' || localStorage.getItem('brotown_debug') === '1') {
-      enable();
+    if (params.get('nodebug') === '1') {
+      try { localStorage.removeItem('brotown_debug'); } catch {}
+      return;
     }
   } catch {}
+  enable();
 };
 
 export const debugBus = {

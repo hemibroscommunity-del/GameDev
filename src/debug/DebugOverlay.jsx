@@ -253,57 +253,67 @@ export const DebugOverlay = () => {
 
   if (!debugBus.state.enabled) return null;
 
-  // Floating toggle bug — always visible when debug enabled.
-  const bug = (
-    <div onClick={() => debugBus.toggle()}
-      style={{
-        position: 'fixed', bottom: 8, right: 8, zIndex: 100000,
-        width: 36, height: 36, borderRadius: 18, background: '#d32f2f',
-        color: '#fff', fontFamily: 'monospace', fontSize: 14, fontWeight: 700,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.5)',
-        userSelect: 'none', touchAction: 'manipulation',
-      }}>
-      {debugBus.state.visible ? '×' : 'D'}
-    </div>
-  );
+  // Floating "D" — only when console is hidden. Bottom-right is fine then
+  // because there's no run-button to overlap with.
+  if (!debugBus.state.visible) {
+    return (
+      <div onClick={() => debugBus.toggle()}
+        style={{
+          position: 'fixed', bottom: 8, right: 8, zIndex: 100000,
+          width: 36, height: 36, borderRadius: 18, background: '#d32f2f',
+          color: '#fff', fontFamily: 'monospace', fontSize: 14, fontWeight: 700,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.5)',
+          userSelect: 'none', touchAction: 'manipulation',
+        }}>
+        D
+      </div>
+    );
+  }
 
-  if (!debugBus.state.visible) return bug;
-
+  // Console open — close button lives inside the tab row so it can't sit on
+  // top of the run button at the bottom-right of the input area.
   return (
-    <>
-      {bug}
-      <div style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0,
-        height: '60vh', background: 'rgba(10,10,12,.96)',
-        borderTop: '2px solid #2196f3', zIndex: 99999,
-        display: 'flex', flexDirection: 'column',
-        color: '#cfd8dc',
-      }}>
-        <div style={{ display: 'flex', background: '#0a0a0a', borderBottom: '1px solid #333' }}>
-          {PANELS.map(p => (
-            <div key={p} onClick={() => setTab(p)}
-              style={{
-                padding: '8px 14px', cursor: 'pointer',
-                background: tab === p ? '#1e3a5f' : 'transparent',
-                color: tab === p ? '#fff' : '#90a4ae',
-                fontFamily: 'monospace', fontSize: 12, fontWeight: 600,
-                borderRight: '1px solid #222',
-              }}>{p}</div>
-          ))}
-          <div style={{ flex: 1 }} />
-          <div onClick={() => debugBus.disable()}
-            style={{ padding: '8px 14px', cursor: 'pointer', color: '#ef5350', fontFamily: 'monospace', fontSize: 11 }}>
-            disable
-          </div>
+    <div style={{
+      position: 'fixed', left: 0, right: 0, bottom: 0,
+      height: '50vh',  /* was 60vh — shrunk so the game viewport stays visible above */
+      background: 'rgba(10,10,12,.96)',
+      borderTop: '2px solid #2196f3', zIndex: 99999,
+      display: 'flex', flexDirection: 'column',
+      color: '#cfd8dc',
+    }}>
+      <div style={{ display: 'flex', background: '#0a0a0a', borderBottom: '1px solid #333' }}>
+        {PANELS.map(p => (
+          <div key={p} onClick={() => setTab(p)}
+            style={{
+              padding: '8px 12px', cursor: 'pointer',
+              background: tab === p ? '#1e3a5f' : 'transparent',
+              color: tab === p ? '#fff' : '#90a4ae',
+              fontFamily: 'monospace', fontSize: 12, fontWeight: 600,
+              borderRight: '1px solid #222',
+            }}>{p}</div>
+        ))}
+        <div style={{ flex: 1 }} />
+        <div onClick={() => debugBus.disable()}
+          style={{ padding: '8px 10px', cursor: 'pointer', color: '#ef5350', fontFamily: 'monospace', fontSize: 11 }}>
+          disable
         </div>
-        <div style={{ flex: 1, minHeight: 0 }}>
-          {tab === 'Console' && <ConsolePanel />}
-          {tab === 'State'   && <StatePanel />}
-          {tab === 'WS'      && <WSPanel />}
-          {tab === 'Perf'    && <PerfPanel />}
+        <div onClick={() => debugBus.toggle()}
+          style={{
+            padding: '8px 14px', cursor: 'pointer', color: '#fff',
+            background: '#d32f2f',
+            fontFamily: 'monospace', fontSize: 14, fontWeight: 700,
+            userSelect: 'none', touchAction: 'manipulation',
+          }}>
+          ×
         </div>
       </div>
-    </>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        {tab === 'Console' && <ConsolePanel />}
+        {tab === 'State'   && <StatePanel />}
+        {tab === 'WS'      && <WSPanel />}
+        {tab === 'Perf'    && <PerfPanel />}
+      </div>
+    </div>
   );
 };
