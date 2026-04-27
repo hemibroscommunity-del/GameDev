@@ -2903,35 +2903,29 @@ export var BroTown = function BroTown(_ref0) {
       var w = drawSize * sizeMul, h = drawSize * sizeMul;
 
       /* === WEAPON DRAW (BEHIND character) ===
-         Handle anchored at the character's right hand — 90° CCW from
-         facing in atan2 convention. Blade rotates with facing so the
-         sword's orientation visibly changes as the character turns:
-         tip extends in the same direction the handle is offset (i.e.,
-         held angled out from the body, away from the body center). For
-         SE-facing this puts the handle at the NE side of the body and
-         the tip further NE — matching the user's spec.
-         Y-component of the handle offset is dampened so cardinal facings
-         don't put the hand above the head / below the feet. */
+         Handle anchored at the character's right hand — for SE-facing
+         that lands the handle in the body's SW corner; with the blade
+         always pointing screen-up, the sword AS A WHOLE occupies the
+         NE region of the body (handle SW, tip N), matching the user's
+         "sword pointed NE for SE-facing" spec.
+         No rotation — blade is always vertical. The handle position
+         varies with facing to keep the sword on the correct side as
+         the character turns. */
       var wsheets = weaponSpritesRef.current;
       var wImg = wsheets && weaponType ? wsheets[weaponType] : null;
       if (wImg) {
         var wSize = Math.round(drawSize * 0.45);
-        var handAng = facingAngle - Math.PI / 2;
-        var armLen = drawSize * 0.26;
-        /* Hip-height anchor instead of shoulder — user reported "too high". */
+        /* atan2 convention: 0=E, π/2=S (y+ down). Right hand of a
+           character is 90° CW from their facing direction. */
+        var handAng = facingAngle + Math.PI / 2;
+        var armLen = drawSize * 0.28;
         var bodyCenterY = footY - drawSize * 0.40;
         var handleX = screenX + Math.cos(handAng) * armLen;
-        var handleY = bodyCenterY + Math.sin(handAng) * armLen * 0.4;
-        /* Source image: handle at bottom-center (32, 64) of 64×64, blade
-           extending up. Rotate so blade points in handAng direction.
-           Canvas rotation is CW; image's "up" (north) maps to handAng
-           when rotation = handAng + π/2. */
-        var rot = handAng + Math.PI / 2;
-        ctx.save();
-        ctx.translate(handleX, handleY);
-        ctx.rotate(rot);
-        ctx.drawImage(wImg, -wSize / 2, -wSize, wSize, wSize);
-        ctx.restore();
+        /* Y-dampen prevents cardinal E/W from putting the hand directly
+           above the head or below the feet. Visible vertical variation
+           still reads as a position change between adjacent facings. */
+        var handleY = bodyCenterY + Math.sin(handAng) * armLen * 0.35;
+        ctx.drawImage(wImg, handleX - wSize / 2, handleY - wSize, wSize, wSize);
       }
 
       /* === CHARACTER DRAW (on top) === */
