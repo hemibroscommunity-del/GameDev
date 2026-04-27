@@ -2968,7 +2968,22 @@ export var BroTown = function BroTown(_ref0) {
            pixel offset by the same wSize/srcW ratio. */
         var dx = handleX - (hpx[0] / srcW) * wSize;
         var dy = handleY - (hpx[1] / srcH) * wSize;
-        ctx.drawImage(wImg, dx, dy, wSize, wSize);
+        /* Mirror the weapon image for westward facings (W, NW, SW) so
+           the blade angles up-left instead of up-right when the
+           character faces away from the east half of the compass. The
+           horizontal flip pivots around handleX, so the grip pixel
+           stays pinned exactly to the hand regardless of mirroring. */
+        var weaponMirror = Math.cos(facingAngle) < -0.1;
+        if (weaponMirror) {
+          ctx.save();
+          ctx.translate(handleX, 0);
+          ctx.scale(-1, 1);
+          ctx.translate(-handleX, 0);
+          ctx.drawImage(wImg, dx, dy, wSize, wSize);
+          ctx.restore();
+        } else {
+          ctx.drawImage(wImg, dx, dy, wSize, wSize);
+        }
       }
 
       /* === CHARACTER DRAW (on top) === */
