@@ -226,6 +226,33 @@ export const GameApp = () => {
       return 'block <hostile [off]|relaxed [off]|count <n>|parry>';
     }, 'block — control block ring (hostile proximity, relaxed parry, simulate parry)');
 
+    // Live-nudge the weapon position relative to the hand. Useful when the
+    // body and weapon annotations were each precise but the visual fit needs
+    // a small offset (e.g. user clicked grip-edge and hand-edge instead of
+    // their centers). Once you find values that look right, tell Claude and
+    // they'll be baked into a permanent default.
+    debugBus.cmd('nudge', (args) => {
+      const sub = args[0];
+      if (sub === 'show') {
+        return JSON.stringify(window.__broWeaponNudge || {});
+      }
+      if (sub === 'reset') {
+        window.__broWeaponNudge = {};
+        return 'nudge cleared';
+      }
+      // Usage: nudge sword 0 -3   |   nudge bow -1 2   |   nudge all 0 -2
+      const type = sub;
+      const x = Number(args[1]);
+      const y = Number(args[2]);
+      if (!type || Number.isNaN(x) || Number.isNaN(y)) {
+        return 'usage: nudge <sword|bow|staff|all> <dx> <dy>  |  nudge show  |  nudge reset';
+      }
+      if (!window.__broWeaponNudge) window.__broWeaponNudge = {};
+      const key = type === 'all' ? '_default' : type;
+      window.__broWeaponNudge[key] = { x, y };
+      return `${key} → (${x}, ${y})`;
+    }, 'nudge — fine-tune weapon offset relative to hand (in pixels)');
+
     // Toggle player sprite-sheet rendering (vs procedural body drawing).
     debugBus.cmd('sprite', (args) => {
       const sub = args[0];

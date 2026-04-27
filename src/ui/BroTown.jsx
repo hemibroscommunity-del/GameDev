@@ -2961,6 +2961,14 @@ export var BroTown = function BroTown(_ref0) {
         var hpx = (whandles && whandles[weaponType]) || [srcW / 2, srcH];
         var dx = handleX - (hpx[0] / srcW) * wSize;
         var dy = handleY - (hpx[1] / srcH) * wSize;
+        /* Per-weapon pixel nudge — fine-tunes the grip-against-hand fit
+           after annotation. Defaults to 0 so without overrides the math
+           is unchanged. Tune live via the `nudge` debug command, then
+           bake the values in. */
+        var nudges = (typeof window !== 'undefined' && window.__broWeaponNudge) || {};
+        var nudge = nudges[weaponType] || nudges._default || { x: 0, y: 0 };
+        dx += nudge.x;
+        dy += nudge.y;
         /* idx: 0=E, 1=SE, 2=S, 3=SW, 4=W, 5=NW, 6=N, 7=NE.
            Mirror weapon on S, SW, W, NW, N (idx 2..6). */
         var weaponMirror = idx >= 2 && idx <= 6;
