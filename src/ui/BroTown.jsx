@@ -2908,7 +2908,7 @@ export var BroTown = function BroTown(_ref0) {
        responsive. The arc starts slightly cocked back (-30%) and sweeps
        through to +70% of SWING_ARC, biasing the visual toward forward. */
     var SWING_ANIM_MS = 250;
-    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize, weaponType, swingProgress) {
+    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize, weaponType, swingProgress, isBackpedaling) {
       if (window.__broUseSprites === false) return false;
       var sheets = playerSpritesRef.current;
       if (!sheets) return false;
@@ -2926,6 +2926,10 @@ export var BroTown = function BroTown(_ref0) {
       var effFrames = Math.min(sheet.frames, maxFrames);
       var ivl = sheet.intervalMs || 90;
       var frame = effFrames > 1 ? Math.floor(now / ivl) % effFrames : 0;
+      /* Reverse the cycle when backpedaling so legs appear to move in the
+         opposite direction of forward jogging — same frames played in
+         reverse, no separate sheet needed. */
+      if (isBackpedaling && effFrames > 1) frame = (effFrames - 1) - frame;
       var srcX = frame * sheet.w;
       /* East source video framed the character slightly smaller. Bump 6%
          (was 18% — user fed back that 18% was too large). */
@@ -3352,6 +3356,19 @@ export var BroTown = function BroTown(_ref0) {
         var amuletSpdMult = ((_S$rpg5 = S.rpg) === null || _S$rpg5 === void 0 || (_S$rpg5 = _S$rpg5._amuletBonus) === null || _S$rpg5 === void 0 ? void 0 : _S$rpg5.stat) === 'moveSpd' ? 1 + S.rpg._amuletBonus.value / 100 : 1.0;
         var swimMult = S._swimming ? SWIM_SPEED_MULT : 1.0;
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult; /* sled overrides movement */
+
+        /* Backpedal: auto-attacking forward while the joystick / keyboard
+           moves the character in the opposite direction. Halve speed and
+           tag a flag so the renderer can reverse the jog cycle to read as
+           backpedaling rather than forward jogging. */
+        S._backpedaling = false;
+        if (S.autoAttack && S._aimAngle != null && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
+          var moveDotAim = dx * Math.cos(S._aimAngle) + dy * Math.sin(S._aimAngle);
+          if (moveDotAim < 0) {
+            S._backpedaling = true;
+            finalSpd *= 0.5;
+          }
+        }
 
         var nx = P.x + dx * finalSpd;
         var ny = P.y + dy * finalSpd;
@@ -9134,7 +9151,7 @@ export var BroTown = function BroTown(_ref0) {
             var _oSwDt = _now - o._swingTs;
             if (_oSwDt >= 0 && _oSwDt < SWING_ANIM_MS) _oSwingProgress = _oSwDt / SWING_ANIM_MS;
           }
-          var _oSpriteDrawn = drawSpriteCharacter(ctx, ox, _oSpriteFootY, _oSpriteFA, oMoving, now, _oSpriteSize, _oWpnType, _oSwingProgress);
+          var _oSpriteDrawn = drawSpriteCharacter(ctx, ox, _oSpriteFootY, _oSpriteFA, oMoving, now, _oSpriteSize, _oWpnType, _oSwingProgress, !!o._backpedaling);
 
           /* Check if other player has a processed NFT avatar */
           var _oHasNft = false;
@@ -11832,7 +11849,7 @@ export var BroTown = function BroTown(_ref0) {
           var _swDt = Date.now() - S.swingTimer;
           if (_swDt >= 0 && _swDt < SWING_ANIM_MS) _swingProgress = _swDt / SWING_ANIM_MS;
         }
-        var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize, _wpnTypeForSprite, _swingProgress);
+        var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize, _wpnTypeForSprite, _swingProgress, !!S._backpedaling);
 
         /* ═══ NFT CHECK — does this player have a processed avatar? ═══ */
         var _hasNftBody = false;
