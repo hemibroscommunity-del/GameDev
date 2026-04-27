@@ -226,6 +226,16 @@ export const GameApp = () => {
       return 'block <hostile [off]|relaxed [off]|count <n>|parry>';
     }, 'block — control block ring (hostile proximity, relaxed parry, simulate parry)');
 
+    // Show / hide a yellow dot at the sword's rotation pivot point. Useful
+    // when the sword visually drifts during swing — if the dot stays on the
+    // hand, the math is correct and the apparent drift is the sword's
+    // silhouette rotating around a stationary pivot.
+    debugBus.cmd('pivot', (args) => {
+      if (args[0] === 'on')  { window.__broShowPivot = true;  return 'pivot dot ON'; }
+      if (args[0] === 'off') { window.__broShowPivot = false; return 'pivot dot OFF'; }
+      return 'pivot <on|off>';
+    }, 'pivot — show / hide rotation-pivot dot during sword swings');
+
     // Per-weapon, per-direction weapon-nudge tuning.
     //   nudge X Y                    — applies to current weapon + current facing
     //   nudge <weapon> <dir> X Y     — explicit, e.g. `nudge sword NE 6 4`

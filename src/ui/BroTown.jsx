@@ -3028,7 +3028,7 @@ export var BroTown = function BroTown(_ref0) {
            either way, but a tighter visual arc reads as "wrist swing"
            rather than "the sword detached." */
         var swingAng = 0;
-        var SWING_PEAK_RAD = Math.PI * 0.42; /* ~75° peak forward swing */
+        var SWING_PEAK_RAD = Math.PI * 0.22; /* ~40° peak — modest swing */
         if (swingProgress != null && swingProgress < 1) {
           swingAng = Math.sin(swingProgress * Math.PI) * SWING_PEAK_RAD;
         }
@@ -3072,6 +3072,23 @@ export var BroTown = function BroTown(_ref0) {
           ctx.rotate(swingAng);
           ctx.drawImage(wImg, dxLocal, dyLocal, wSize, wSize);
           ctx.restore();
+          /* DEBUG PIVOT DOT — toggle with `pivot on/off` debug command.
+             If the yellow dot stays on the character's hand throughout
+             the swing, the math is correct and any apparent grip drift
+             is the sword's silhouette rotating around a stationary pivot.
+             If the dot itself moves off the hand, handleX/handleY is
+             being recomputed wrong per frame. */
+          if (typeof window !== 'undefined' && window.__broShowPivot) {
+            ctx.save();
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(handleX, handleY, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+          }
         };
       }
 
