@@ -2926,12 +2926,15 @@ export var BroTown = function BroTown(_ref0) {
       var sizeMul = info.name === 'east' ? 1.06 : 1.0;
       var w = drawSize * sizeMul, h = drawSize * sizeMul;
 
-      /* === WEAPON DRAW (BEHIND character) ===
-         Per-frame hand anchor from anchors.json pins the handle to the
-         actual hand pixel position in each source frame. For mirrored
-         facings (W / NW / SE) we mirror the X coord to match the
-         flipped sprite. Falls back to a facing-based estimate when the
-         JSON hasn't loaded or has no entry for the current frame. */
+      /* === WEAPON SETUP ===
+         Per-frame hand anchor pins the handle to the actual hand pixel
+         in each source frame. Mirror weapon image for facings 2..6
+         (S, SW, W, NW, N) so the blade angles NW; E / SE / NE keep the
+         source NE direction. Z-order: weapon drawn IN FRONT for facings
+         0..3 (E, SE, S, SW), BEHIND for 4..7 (W, NW, N, NE) so the
+         sword sits in front of the body for forward/east poses and
+         behind for back-facing poses. */
+      var doWeaponDraw = null;
       var wsheets = weaponSpritesRef.current;
       var wImg = wsheets && weaponType ? wsheets[weaponType] : null;
       if (wImg) {
@@ -2941,52 +2944,47 @@ export var BroTown = function BroTown(_ref0) {
         var anchorList = anchors && anchors[pose + '-' + info.name];
         var anchor = anchorList && anchorList[Math.min(frame, anchorList.length - 1)];
         if (anchor && anchor.length === 2) {
-          /* Map source-pixel anchor (0..64) onto the on-screen sprite
-             rect (screenX-w/2, footY-h, w, h). For mirrored facings
-             flip the X so the hand stays on the same body side. */
           var ax = info.mirror ? (sheet.w - anchor[0]) : anchor[0];
           var ay = anchor[1];
           handleX = screenX - w / 2 + (ax / sheet.w) * w;
           handleY = footY - h + (ay / sheet.w) * h;
         } else {
-          /* Fallback when no anchor data — facing-based right-hand offset. */
           var handAng = facingAngle + Math.PI / 2;
           var armLen = drawSize * 0.28;
           var bodyCenterY = footY - drawSize * 0.40;
           handleX = screenX + Math.cos(handAng) * armLen;
           handleY = bodyCenterY + Math.sin(handAng) * armLen * 0.35;
         }
-        /* Where in the source weapon image is the grip / handle? Per-
-           weapon JSON tells us (annotated via /tools/weapon-anchor.html).
-           Default to bottom-center if not specified. */
         var whandles = weaponHandlesRef.current;
         var srcW = wImg.naturalWidth || 64;
         var srcH = wImg.naturalHeight || 64;
         var hpx = (whandles && whandles[weaponType]) || [srcW / 2, srcH];
-        /* Place the source-pixel grip at (handleX, handleY). The drawn
-           image is wSize × wSize; map the source-pixel offset to drawn-
-           pixel offset by the same wSize/srcW ratio. */
         var dx = handleX - (hpx[0] / srcW) * wSize;
         var dy = handleY - (hpx[1] / srcH) * wSize;
-        /* Mirror the weapon image for westward facings (W, NW, SW) so
-           the blade angles up-left instead of up-right when the
-           character faces away from the east half of the compass. The
-           horizontal flip pivots around handleX, so the grip pixel
-           stays pinned exactly to the hand regardless of mirroring. */
-        var weaponMirror = Math.cos(facingAngle) < -0.1;
-        if (weaponMirror) {
-          ctx.save();
-          ctx.translate(handleX, 0);
-          ctx.scale(-1, 1);
-          ctx.translate(-handleX, 0);
-          ctx.drawImage(wImg, dx, dy, wSize, wSize);
-          ctx.restore();
-        } else {
-          ctx.drawImage(wImg, dx, dy, wSize, wSize);
-        }
+        /* idx: 0=E, 1=SE, 2=S, 3=SW, 4=W, 5=NW, 6=N, 7=NE.
+           Mirror weapon on S, SW, W, NW, N (idx 2..6). */
+        var weaponMirror = idx >= 2 && idx <= 6;
+        doWeaponDraw = function () {
+          if (weaponMirror) {
+            ctx.save();
+            ctx.translate(handleX, 0);
+            ctx.scale(-1, 1);
+            ctx.translate(-handleX, 0);
+            ctx.drawImage(wImg, dx, dy, wSize, wSize);
+            ctx.restore();
+          } else {
+            ctx.drawImage(wImg, dx, dy, wSize, wSize);
+          }
+        };
       }
 
-      /* === CHARACTER DRAW (on top) === */
+      /* idx 0..3 = E / SE / S / SW → sword IN FRONT (drawn after body).
+         idx 4..7 = W / NW / N / NE → sword BEHIND (drawn before body). */
+      var swordInFront = idx <= 3;
+
+      if (doWeaponDraw && !swordInFront) doWeaponDraw();
+
+      /* === CHARACTER DRAW === */
       ctx.save();
       if (info.mirror) {
         ctx.translate(screenX, 0);
@@ -2996,6 +2994,8 @@ export var BroTown = function BroTown(_ref0) {
         ctx.drawImage(sheet.img, srcX, 0, sheet.w, sheet.w, screenX - w / 2, footY - h, w, h);
       }
       ctx.restore();
+
+      if (doWeaponDraw && swordInFront) doWeaponDraw();
       return true;
     }
 
