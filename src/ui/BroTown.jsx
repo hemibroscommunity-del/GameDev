@@ -2903,25 +2903,35 @@ export var BroTown = function BroTown(_ref0) {
       var w = drawSize * sizeMul, h = drawSize * sizeMul;
 
       /* === WEAPON DRAW (BEHIND character) ===
-         Handle anchored at the character's right hand — which sits 90° CCW
-         from the facing direction in atan2 convention. Blade always points
-         screen-up. Y-component of the offset is dampened to keep the hand
-         near shoulder height for all facings (full vertical offset would
-         put the handle above the head when facing east, or below the feet
-         when facing west). Drawn before the character body so the sprite
-         covers any torso overlap. */
+         Handle anchored at the character's right hand — 90° CCW from
+         facing in atan2 convention. Blade rotates with facing so the
+         sword's orientation visibly changes as the character turns:
+         tip extends in the same direction the handle is offset (i.e.,
+         held angled out from the body, away from the body center). For
+         SE-facing this puts the handle at the NE side of the body and
+         the tip further NE — matching the user's spec.
+         Y-component of the handle offset is dampened so cardinal facings
+         don't put the hand above the head / below the feet. */
       var wsheets = weaponSpritesRef.current;
       var wImg = wsheets && weaponType ? wsheets[weaponType] : null;
       if (wImg) {
         var wSize = Math.round(drawSize * 0.45);
         var handAng = facingAngle - Math.PI / 2;
-        var armLen = drawSize * 0.22;
-        var bodyCenterY = footY - drawSize * 0.55;
+        var armLen = drawSize * 0.26;
+        /* Hip-height anchor instead of shoulder — user reported "too high". */
+        var bodyCenterY = footY - drawSize * 0.40;
         var handleX = screenX + Math.cos(handAng) * armLen;
         var handleY = bodyCenterY + Math.sin(handAng) * armLen * 0.4;
-        /* Source weapon images have handle at bottom and blade extending up.
-           Pin handle bottom-center at (handleX, handleY); image grows up. */
-        ctx.drawImage(wImg, handleX - wSize / 2, handleY - wSize, wSize, wSize);
+        /* Source image: handle at bottom-center (32, 64) of 64×64, blade
+           extending up. Rotate so blade points in handAng direction.
+           Canvas rotation is CW; image's "up" (north) maps to handAng
+           when rotation = handAng + π/2. */
+        var rot = handAng + Math.PI / 2;
+        ctx.save();
+        ctx.translate(handleX, handleY);
+        ctx.rotate(rot);
+        ctx.drawImage(wImg, -wSize / 2, -wSize, wSize, wSize);
+        ctx.restore();
       }
 
       /* === CHARACTER DRAW (on top) === */
