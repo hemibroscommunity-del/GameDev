@@ -7724,7 +7724,15 @@ export var BroTown = function BroTown(_ref0) {
                 rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
                 if (!m._stuckArrows) m._stuckArrows = [];
                 if (m._stuckArrows.length < 12) {
-                  m._stuckArrows.push({ ang: a.ang, ox: (Math.random() - 0.5) * 12, oy: (Math.random() - 0.5) * 12, isStaff: a.isStaff || false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
+                  /* Place the impact on the side of the monster the
+                     arrow came from. -cos/-sin of flight angle = the
+                     opposite of velocity = direction to entry side. */
+                  var _saEntryDx = -Math.cos(a.ang);
+                  var _saEntryDy = -Math.sin(a.ang);
+                  var _saBodyRad = 6;
+                  var _saOx = _saEntryDx * _saBodyRad + (Math.random() - 0.5) * 4;
+                  var _saOy = _saEntryDy * _saBodyRad + (Math.random() - 0.5) * 4;
+                  m._stuckArrows.push({ ang: a.ang, ox: _saOx, oy: _saOy, isStaff: a.isStaff || false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
                 S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: a.dmg + '', color: '#ff9', ts: Date.now() });
@@ -10554,19 +10562,27 @@ export var BroTown = function BroTown(_ref0) {
                   ctx.arc(0, 0, 3, 0, Math.PI * 2);
                   ctx.fill();
                 } else {
-                  /* Arrow shaft sticking out */
+                  /* Long arrow — most of the shaft sticks out of the
+                     body in the direction the arrow came from (-x in
+                     local frame, since +x = flight direction). Shaft is
+                     22 px out + 4 px buried so the visible portion
+                     reads clearly even on small monsters. */
+                  /* Arrow shaft */
                   ctx.fillStyle = '#8B6914';
-                  ctx.fillRect(-6, -1, 10, 2);
-                  /* Arrow fletching */
+                  ctx.fillRect(-22, -1.2, 26, 2.4);
+                  /* Lighter highlight along top of shaft */
+                  ctx.fillStyle = '#b8893a';
+                  ctx.fillRect(-22, -1.2, 26, 0.8);
+                  /* Fletching at the far air end. */
                   ctx.fillStyle = sa.color + 'cc';
-                  ctx.fillRect(-6, -2, 3, 1);
-                  ctx.fillRect(-6, 1, 3, 1);
-                  /* Arrowhead (buried in body) */
+                  ctx.fillRect(-22, -3, 5, 1.5);
+                  ctx.fillRect(-22, 1.5, 5, 1.5);
+                  /* Arrowhead (mostly buried; the small triangle at +x). */
                   ctx.fillStyle = sa.color;
                   ctx.beginPath();
-                  ctx.moveTo(5, 0);
-                  ctx.lineTo(3, -2);
-                  ctx.lineTo(3, 2);
+                  ctx.moveTo(6, 0);
+                  ctx.lineTo(3, -2.5);
+                  ctx.lineTo(3, 2.5);
                   ctx.closePath();
                   ctx.fill();
                 }
