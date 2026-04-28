@@ -7945,15 +7945,14 @@ export var BroTown = function BroTown(_ref0) {
           pixiRef.current.update(S, W, H, nfts);
         } else {
         /* ── Canvas 2D RENDER PATH (fallback) ── */
-        /* Screen shake (read pre-computed value) */
+        /* Screen shake disabled — user feedback: no shake at all.
+           Force the values to 0 and skip the translate so the canvas-clear
+           rect always aligns with the viewport edges (a non-zero translate
+           was leaving a left/right sliver of un-cleared pixels). */
         var shakeX = 0,
           shakeY = 0;
-        if (S.screenShake > 0.1) {
-          shakeX = (Math.random() - 0.5) * S.screenShake * 2;
-          shakeY = (Math.random() - 0.5) * S.screenShake * 2;
-        }
+        S.screenShake = 0;
         ctx.save();
-        ctx.translate(shakeX, shakeY);
         var now = Date.now(); /* cached once per frame — was called 64 times */
         var cx = S.camera.x,
           cy = S.camera.y;

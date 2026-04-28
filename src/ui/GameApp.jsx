@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BroTown } from './BroTown.jsx';
 import { DebugOverlay } from '../debug/DebugOverlay.jsx';
-import { UtilityWheel } from './mobile/UtilityWheel.jsx';
 import { wheelBus } from './mobile/wheelBus.js';
+import { BottomDashboard } from './mobile/BottomDashboard.jsx';
+import { ChatBubble } from './mobile/ChatBubble.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
 import { generateMockInventory, generateMockEquipped } from './mobile/mockItems.js';
@@ -127,6 +128,10 @@ export const GameApp = () => {
       .catch(err => {
         console.warn('[NFT] Failed to fetch catalogue:', err);
       });
+
+    // Expose the self-profile builder so the bottom-dashboard "Self" icon
+    // can open the live inspect card without re-importing GameApp internals.
+    window.__broBuildSelfProfile = buildSelfProfile;
 
     // Default wheel slot handlers — placeholder until each surface is built.
     const tools = ['inventory','journey','map','more','social','selfInspect','bank','clan','market','arena','quests','settings'];
@@ -375,28 +380,13 @@ export const GameApp = () => {
         nfts={nfts}
         onExit={() => { window.location.href = '/'; }}
       />
-      <UtilityWheel />
+      <BottomDashboard />
+      <ChatBubble />
       <InventorySurface />
       <InspectCard />
       <BlockRing />
       <MoreOverlay />
       <MasteryNotification />
-      <div style={{
-        position: 'fixed',
-        left: 8,
-        bottom: 8,
-        zIndex: 40,
-        padding: '4px 8px',
-        background: 'rgba(0, 0, 0, 0.45)',
-        color: 'rgba(255, 255, 255, 0.85)',
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: 11,
-        borderRadius: 4,
-        pointerEvents: 'none',
-        userSelect: 'none',
-      }}>
-        Double tap to change weapons
-      </div>
       <DebugOverlay />
       <BuildBadge />
     </>
