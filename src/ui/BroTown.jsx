@@ -2413,12 +2413,17 @@ export var BroTown = function BroTown(_ref0) {
     };
     var S = stateRef.current;
 
-    /* Canvas resize */
+    /* Canvas resize.  Reserve 33vh at the bottom for the BottomDashboard
+       so the playfield doesn't draw underneath it.  The camera follows the
+       player, so a shorter canvas just means less peripheral world is
+       visible — the player stays centered. */
     var vv = window.visualViewport;
+    var DASH_FRAC = 0.33;
     function resize() {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;
-      var vh = vv ? vv.height : window.innerHeight;
+      var vhFull = vv ? vv.height : window.innerHeight;
+      var vh = Math.max(120, Math.round(vhFull * (1 - DASH_FRAC)));
       canvas.width = vw * dpr;
       canvas.height = vh * dpr;
       canvas.style.width = vw + 'px';
@@ -3210,7 +3215,11 @@ export var BroTown = function BroTown(_ref0) {
       };
       /* Fallback to window dimensions if parent has no size yet */
       var w = rect.width || window.innerWidth || 800;
-      var h = rect.height || window.innerHeight || 600;
+      var hRaw = rect.height || window.innerHeight || 600;
+      /* Reserve 33% of viewport height for the BottomDashboard.  Camera
+         keeps the player centered, so a shorter canvas just clips
+         peripheral world tiles — the avatar stays in the middle. */
+      var h = Math.max(120, Math.round(hRaw * 0.67));
       if (w < 10 || h < 10) return;
       canvas.width = w * dpr;
       canvas.height = h * dpr;
@@ -15238,10 +15247,15 @@ export var BroTown = function BroTown(_ref0) {
     ref: canvasRef,
     className: "brotown-canvas",
     style: {
+      /* Pin the canvas to the upper 67% of the wrapper.  The lower 33vh
+         is reserved for the BottomDashboard, which sits in its own fixed
+         layer.  Camera centres the player so cropping the periphery just
+         hides outer world tiles, not the avatar itself. */
       position: 'absolute',
-      inset: 0,
-      width: '100%',
-      height: '100%',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: '33vh',
       cursor: stateRef.current._isDesktop ? 'crosshair' : 'default'
     },
     onTouchStart: function onTouchStart(e) {
