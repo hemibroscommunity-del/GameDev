@@ -6402,11 +6402,12 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.deathBoom();
                   }
 
-                  /* Screen shake — proportional */
-                  S.screenShake = Math.round(4 * killScale);
-
-                  /* Death particles — simplified for performance */
-                  S.screenShake = Math.min(S.screenShake, 4);
+                  /* Screen shake — proportional. Magic kills get no shake;
+                     they read through orb-crash + flash ring already. */
+                  if (_activeWpn.type !== 'staff') {
+                    S.screenShake = Math.round(4 * killScale);
+                    S.screenShake = Math.min(S.screenShake, 4);
+                  }
                   var killAngle = Math.atan2(m.y - P.y, m.x - P.x);
                   var deathParts = [];
                   var _killElem = hitElement || _activeWpn.element1 || null;
@@ -12559,10 +12560,14 @@ export var BroTown = function BroTown(_ref0) {
           var isAiming = S._aiming || S.lockedTarget && S.lockedTarget.ref;
           var losAlpha = isAiming ? 0.5 : 0.2;
           ctx.save();
-          /* Long dashed LoS — straight line in the aim direction.
-             Length sized just past the on-screen viewport (W+H) so the
-             stroke doesn't extend wildly off-canvas. */
-          var _losLen = (W + H);
+          /* Clip to the visible viewport so the long dashed stroke can't
+             bleed into edge regions if any overlay reads beyond W×H. */
+          ctx.beginPath();
+          ctx.rect(0, 0, W, H);
+          ctx.clip();
+          /* Length = viewport diagonal — guarantees we cover the full
+             visible area in any direction without going further. */
+          var _losLen = Math.hypot(W, H);
           ctx.beginPath();
           ctx.moveTo(px, py + 14);
           ctx.lineTo(px + Math.cos(aimA) * _losLen, py + 14 + Math.sin(aimA) * _losLen);
