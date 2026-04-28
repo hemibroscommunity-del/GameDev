@@ -9646,7 +9646,8 @@ export var BroTown = function BroTown(_ref0) {
               ctx.fill();
               ctx.shadowBlur = 0;
             } else {
-              ctx.fillStyle = '#8B6914';
+              /* Arrow shaft — dark brown wood */
+              ctx.fillStyle = '#3a2210';
               ctx.fillRect(-8, -1.5, 16, 3);
               ctx.fillStyle = projColor;
               ctx.beginPath();
@@ -12498,22 +12499,49 @@ export var BroTown = function BroTown(_ref0) {
           }
           var isAiming = S._aiming || S.lockedTarget && S.lockedTarget.ref;
           var losAlpha = isAiming ? 0.5 : 0.2;
+          /* Track aim-rotation rate to bend the LoS line in the direction
+             the aim is sweeping. Smoothed via low-pass so quick stutters
+             don't whip the curve, but sustained rotation visibly bows it. */
+          var _losPrev = S._losPrevAim;
+          S._losPrevAim = aimA;
+          var _losDelta = 0;
+          if (_losPrev != null) {
+            _losDelta = aimA - _losPrev;
+            while (_losDelta > Math.PI) _losDelta -= Math.PI * 2;
+            while (_losDelta < -Math.PI) _losDelta += Math.PI * 2;
+          }
+          S._losBend = (S._losBend || 0) * 0.82 + _losDelta * 0.18;
+          /* Bend magnitude in pixels — perpendicular to aim direction. */
+          var _bendPx = S._losBend * 1400;
+          if (_bendPx > 60) _bendPx = 60;
+          else if (_bendPx < -60) _bendPx = -60;
+          var _losPerpX = -Math.sin(aimA);
+          var _losPerpY = Math.cos(aimA);
           ctx.save();
-          /* Long dashed LOS line */
+          /* Long dashed LOS — quadratic curve toward the rotated direction. */
+          var _losEndX = px + Math.cos(aimA) * W * 2;
+          var _losEndY = py + 10 + Math.sin(aimA) * W * 2;
+          var _losCtrlX = px + Math.cos(aimA) * W + _losPerpX * _bendPx;
+          var _losCtrlY = py + 10 + Math.sin(aimA) * W + _losPerpY * _bendPx;
           ctx.beginPath();
           ctx.moveTo(px, py + 14);
-          ctx.lineTo(px + Math.cos(aimA) * W * 2, py + 10 + Math.sin(aimA) * W * 2);
+          ctx.quadraticCurveTo(_losCtrlX, _losCtrlY, _losEndX, _losEndY);
           ctx.strokeStyle = 'rgba(255,255,255,' + losAlpha * 0.4 + ')';
           ctx.lineWidth = 2;
           ctx.setLineDash([12, 12]);
           ctx.lineDashOffset = -(Date.now() / 15) % 24;
           ctx.stroke();
           ctx.setLineDash([]);
-          /* Shorter solid aim arrow */
+          /* Shorter solid aim arrow — also bent, scaled by aimLen. */
           var aimLen = isAiming ? 50 : 30;
+          var _aimEndX = px + Math.cos(aimA) * aimLen;
+          var _aimEndY = py + 14 + Math.sin(aimA) * aimLen;
+          var _aimCtrlBend = _bendPx * (aimLen / (W * 2));
+          var _aimCtrlX = px + Math.cos(aimA) * (aimLen / 2) + _losPerpX * _aimCtrlBend;
+          var _aimCtrlY = py + 14 + Math.sin(aimA) * (aimLen / 2) + _losPerpY * _aimCtrlBend;
           ctx.beginPath();
           ctx.moveTo(px, py + 14);
-          ctx.lineTo(px + Math.cos(aimA) * aimLen, py + 14 + Math.sin(aimA) * aimLen);
+          ctx.quadraticCurveTo(_aimCtrlX, _aimCtrlY, _aimEndX, _aimEndY);
           ctx.strokeStyle = 'rgba(255,255,255,' + losAlpha + ')';
           ctx.lineWidth = 2.5;
           ctx.setLineDash([5, 5]);
@@ -15089,16 +15117,14 @@ export var BroTown = function BroTown(_ref0) {
       marginBottom: 16
     }
   }, "9 Elements \xB7 36 Collisions \xB7 Open World"), /*#__PURE__*/React.createElement("img", {
-    src: '/sprites/player/stand-south.png?v=7',
+    src: '/sprites/player/welcome-bro.png?v=1',
     alt: 'Hemi Bro',
     style: {
-      width: 96,
-      height: 96,
+      width: 128,
+      height: 128,
       imageRendering: 'pixelated',
       marginBottom: 12,
-      background: 'var(--ink3)',
       borderRadius: 8,
-      padding: 4,
       display: 'block',
       marginLeft: 'auto',
       marginRight: 'auto'
