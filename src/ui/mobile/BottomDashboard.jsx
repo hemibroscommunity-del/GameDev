@@ -17,10 +17,9 @@ import { SettingsPanel }     from './dash/SettingsPanel.jsx';
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
 // When idle it renders character stats + a 7-icon row.  When the user
-// taps any toolbar icon (except Chat), the dashboard swaps in a panel
-// component that occupies the full 25vh band and the icon row hides.
+// taps any toolbar icon, the dashboard swaps in a panel component that
+// occupies the full 25vh band and the icon row hides.
 
-const ICON_STROKE = '#E8EAF8';
 const COL = {
   bg:        'rgba(13, 14, 22, 0.92)',
   border:    'rgba(255, 255, 255, 0.10)',
@@ -34,70 +33,141 @@ const COL = {
   gold:      '#f5c542',
 };
 
-const ICONS = {
-  inventory:  'M4 7h16v12H4z M8 7V5a4 4 0 0 1 8 0v2',
-  stats:      'M4 20V10M10 20V4M16 20v-8M22 20h-22',
-  skills:     'M14 2l3 6 6 .9-4.5 4.4 1 6.7L14 17l-5.5 3 1-6.7L5 8.9l6-.9 3-6z',
-  codex:      'M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2V5z M8 7h8M8 11h8M8 15h6',
-  journey:    'M4 6h16M4 12h16M4 18h10',
-  map:        'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v16M15 6v16',
-  more:       'M5 12a1 1 0 1 0 .01 0M12 12a1 1 0 1 0 .01 0M19 12a1 1 0 1 0 .01 0',
+// Per-stat colour pairs for the chunky bars — top of the gradient is the
+// glossy highlight, bottom is the shadow.
+const BAR_COLORS = {
+  hp:   { top: '#ff8b94', mid: '#ff5e6c', bot: '#b8323d' },
+  mp:   { top: '#7aaff8', mid: '#3b82f6', bot: '#1d54b3' },
+  stam: { top: '#fad97a', mid: '#f5c542', bot: '#a98005' },
+  xp:   { top: '#7eedb8', mid: '#3ddc97', bot: '#1f8a5c' },
 };
 
-const Icon = ({ d, size = 22, color = ICON_STROKE }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} />
-  </svg>
-);
+// Toolbar icon source.  Single composite PNG — the dashboard mockup the
+// user supplied — sliced via CSS background-position into seven equal
+// columns.  If the file isn't there yet, buttons fall back to readable
+// labels alone (no broken-image glyph).
+const SPRITE_URL = '/icons/ui/dashboard-mockup.png';
 
-const Bar = ({ label, cur, max, color, showNumbers = true }) => {
+// Icon column index for each toolbar slot.
+const ICON_INDEX = {
+  inventory: 0,
+  stats:     1,
+  skills:    2,
+  codex:     3,
+  journey:   4,
+  map:       5,
+  more:      6,
+};
+
+// Sprite tuning constants. Source image is roughly 1500 × 700; the
+// toolbar strip occupies the bottom ~33 % of the image and is split
+// into 7 equal columns.  These percentages mask off the label captions
+// baked into the screenshot — adjust if the saved file's exact aspect
+// ratio differs.
+const SPRITE_BG_SIZE = '700% auto';
+const SPRITE_BG_Y    = '78%';
+
+const iconSpriteStyle = (idx) => ({
+  width: 36,
+  height: 36,
+  backgroundImage: `url(${SPRITE_URL})`,
+  backgroundRepeat: 'no-repeat',
+  backgroundSize: SPRITE_BG_SIZE,
+  // i out of 0..6 — pan through the 600 % overflow.
+  backgroundPosition: `${(idx / 6) * 100}% ${SPRITE_BG_Y}`,
+  // Smooth scaling — these are illustrations, not pixel art.
+  imageRendering: 'auto',
+});
+
+// Chunky stat bar (HP / MP / STA / XP) matching the user's mockup:
+// rounded ~24 px, glossy gradient, label embedded centred, current/max
+// floated above-right of the strip.
+const Bar = ({ label, cur, max, kind, showNumbers = true }) => {
   const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
+  const c = BAR_COLORS[kind];
   return (
-    <div style={{ marginBottom: 4 }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between',
-        fontSize: 10, color: COL.muted, marginBottom: 2,
-      }}>
-        <span style={{ fontWeight: 700, color: COL.text }}>{label}</span>
-        {showNumbers && <span>{Math.round(cur)} / {Math.round(max)}</span>}
-      </div>
-      <div style={{
-        height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3,
-        overflow: 'hidden',
-      }}>
+    <div style={{ marginBottom: 3 }}>
+      {showNumbers && (
         <div style={{
-          width: pct + '%', height: '100%', background: color,
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: 9,
+          color: COL.muted,
+          height: 11,
+          lineHeight: '11px',
+        }}>
+          <span>{label}</span>
+          <span>{Math.round(cur)} / {Math.round(max)}</span>
+        </div>
+      )}
+      <div style={{
+        position: 'relative',
+        height: 22,
+        background: 'rgba(0,0,0,.45)',
+        borderRadius: 11,
+        overflow: 'hidden',
+        border: '1px solid rgba(0,0,0,.5)',
+        boxShadow: 'inset 0 1px 1px rgba(255,255,255,.06)',
+      }}>
+        {/* Filled portion — glossy gradient. */}
+        <div style={{
+          position: 'absolute',
+          inset: '0 auto 0 0',
+          width: pct + '%',
+          background: `linear-gradient(180deg, ${c.top} 0%, ${c.mid} 50%, ${c.bot} 100%)`,
+          boxShadow: 'inset 0 2px 4px rgba(255,255,255,.35), inset 0 -2px 4px rgba(0,0,0,.35)',
           transition: 'width .15s linear',
         }} />
+        {/* Embedded centred label. */}
+        <span style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 12,
+          fontWeight: 700,
+          color: '#fff',
+          letterSpacing: '.06em',
+          textShadow: '0 1px 2px rgba(0,0,0,.7), 0 0 1px rgba(0,0,0,.9)',
+          pointerEvents: 'none',
+        }}>{label}</span>
       </div>
     </div>
   );
 };
 
-const IconButton = ({ glyph, label, active, onClick }) => (
-  <button
-    onClick={onClick}
-    style={{
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 2,
-      padding: '4px 0',
-      background: active ? 'rgba(91,82,255,0.18)' : 'transparent',
-      border: 'none',
-      borderRight: `1px solid ${COL.divider}`,
-      color: COL.text,
-      cursor: 'pointer',
-      fontFamily: 'VT323, monospace',
-    }}
-  >
-    <Icon d={ICONS[glyph]} size={22} color={active ? '#a8a4ff' : ICON_STROKE} />
-    <span style={{ fontSize: 10, color: active ? '#a8a4ff' : COL.muted, letterSpacing: '.04em' }}>{label}</span>
-  </button>
-);
+const IconButton = ({ glyph, label, active, onClick }) => {
+  const idx = ICON_INDEX[glyph];
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+        padding: '4px 0',
+        background: active ? 'rgba(91,82,255,0.18)' : 'transparent',
+        border: 'none',
+        borderRight: `1px solid ${COL.divider}`,
+        color: COL.text,
+        cursor: 'pointer',
+        fontFamily: 'VT323, monospace',
+        opacity: active ? 1 : 0.92,
+      }}
+    >
+      <div style={iconSpriteStyle(idx)} aria-label={label} />
+      <span style={{
+        fontSize: 10,
+        color: active ? '#a8a4ff' : COL.muted,
+        letterSpacing: '.04em',
+      }}>{label}</span>
+    </button>
+  );
+};
 
 // Map of panel id → { title, Component }.  Children pushed onto the stack
 // from MorePanel use the same registry, which is why MorePanel doesn't
@@ -204,18 +274,17 @@ export const BottomDashboard = () => {
           {/* Stats — top portion. */}
           <div style={{
             flex: 1,
-            padding: '10px 14px',
+            padding: '8px 14px 6px',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            gap: 4,
           }}>
             <div style={{
               display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
               marginBottom: 4,
             }}>
               <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '.04em' }}>
-                {S?.myName || 'You'}
+                {S?.myName || 'Anon'}
                 <span style={{ color: COL.muted, marginLeft: 8, fontSize: 12 }}>Lv {level}</span>
               </div>
               <div style={{ fontSize: 12, color: COL.gold }}>
@@ -223,10 +292,10 @@ export const BottomDashboard = () => {
               </div>
             </div>
 
-            <Bar label="HP"  cur={hp}   max={maxHp}   color={COL.hp} />
-            <Bar label="MP"  cur={mp}   max={maxMp}   color={COL.mp} />
-            <Bar label="STA" cur={stam} max={maxStam} color={COL.stam} />
-            <Bar label={`XP — Lv ${level}`} cur={xp} max={xpNeeded} color={COL.xp} />
+            <Bar label="HP"  cur={hp}   max={maxHp}   kind="hp"   showNumbers={false} />
+            <Bar label="MP"  cur={mp}   max={maxMp}   kind="mp" />
+            <Bar label="STA" cur={stam} max={maxStam} kind="stam" />
+            <Bar label={`XP — Lv ${level}`} cur={xp} max={xpNeeded} kind="xp" />
           </div>
 
           {/* Icon row — bottom 30% of dashboard. */}
