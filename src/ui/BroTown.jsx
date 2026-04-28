@@ -10599,11 +10599,11 @@ export var BroTown = function BroTown(_ref0) {
                      local frame, since +x = flight direction). Shaft is
                      22 px out + 4 px buried so the visible portion
                      reads clearly even on small monsters. */
-                  /* Arrow shaft */
-                  ctx.fillStyle = '#8B6914';
+                  /* Arrow shaft — dark brown wood */
+                  ctx.fillStyle = '#3a2210';
                   ctx.fillRect(-22, -1.2, 26, 2.4);
-                  /* Lighter highlight along top of shaft */
-                  ctx.fillStyle = '#b8893a';
+                  /* Slight highlight along the top of the shaft for relief */
+                  ctx.fillStyle = '#5a3820';
                   ctx.fillRect(-22, -1.2, 26, 0.8);
                   /* Fletching at the far air end. */
                   ctx.fillStyle = sa.color + 'cc';
@@ -12499,9 +12499,10 @@ export var BroTown = function BroTown(_ref0) {
           }
           var isAiming = S._aiming || S.lockedTarget && S.lockedTarget.ref;
           var losAlpha = isAiming ? 0.5 : 0.2;
-          /* Track aim-rotation rate to bend the LoS line in the direction
-             the aim is sweeping. Smoothed via low-pass so quick stutters
-             don't whip the curve, but sustained rotation visibly bows it. */
+          /* Track aim-rotation to bow the LoS in the direction the right
+             joystick is sweeping. Aggressive low-pass weights so the
+             curve actually shows — previous tuning produced a barely-
+             visible bend. */
           var _losPrev = S._losPrevAim;
           S._losPrevAim = aimA;
           var _losDelta = 0;
@@ -12510,41 +12511,28 @@ export var BroTown = function BroTown(_ref0) {
             while (_losDelta > Math.PI) _losDelta -= Math.PI * 2;
             while (_losDelta < -Math.PI) _losDelta += Math.PI * 2;
           }
-          S._losBend = (S._losBend || 0) * 0.82 + _losDelta * 0.18;
-          /* Bend magnitude in pixels — perpendicular to aim direction. */
-          var _bendPx = S._losBend * 1400;
-          if (_bendPx > 60) _bendPx = 60;
-          else if (_bendPx < -60) _bendPx = -60;
+          S._losBend = (S._losBend || 0) * 0.70 + _losDelta * 0.30;
+          var _bendPx = S._losBend * 5000;
+          if (_bendPx > 220) _bendPx = 220;
+          else if (_bendPx < -220) _bendPx = -220;
           var _losPerpX = -Math.sin(aimA);
           var _losPerpY = Math.cos(aimA);
           ctx.save();
-          /* Long dashed LOS — quadratic curve toward the rotated direction. */
+          /* Long dashed LoS — single line, quadratic curve toward the
+             rotation direction. Short solid aim arrow removed per user. */
           var _losEndX = px + Math.cos(aimA) * W * 2;
           var _losEndY = py + 10 + Math.sin(aimA) * W * 2;
-          var _losCtrlX = px + Math.cos(aimA) * W + _losPerpX * _bendPx;
-          var _losCtrlY = py + 10 + Math.sin(aimA) * W + _losPerpY * _bendPx;
+          /* Control point near 25% of the line so the bend feels rooted
+             at the player rather than ballooning the far end. */
+          var _losCtrlX = px + Math.cos(aimA) * (W * 0.5) + _losPerpX * _bendPx;
+          var _losCtrlY = py + 10 + Math.sin(aimA) * (W * 0.5) + _losPerpY * _bendPx;
           ctx.beginPath();
           ctx.moveTo(px, py + 14);
           ctx.quadraticCurveTo(_losCtrlX, _losCtrlY, _losEndX, _losEndY);
-          ctx.strokeStyle = 'rgba(255,255,255,' + losAlpha * 0.4 + ')';
+          ctx.strokeStyle = 'rgba(255,255,255,' + losAlpha + ')';
           ctx.lineWidth = 2;
           ctx.setLineDash([12, 12]);
           ctx.lineDashOffset = -(Date.now() / 15) % 24;
-          ctx.stroke();
-          ctx.setLineDash([]);
-          /* Shorter solid aim arrow — also bent, scaled by aimLen. */
-          var aimLen = isAiming ? 50 : 30;
-          var _aimEndX = px + Math.cos(aimA) * aimLen;
-          var _aimEndY = py + 14 + Math.sin(aimA) * aimLen;
-          var _aimCtrlBend = _bendPx * (aimLen / (W * 2));
-          var _aimCtrlX = px + Math.cos(aimA) * (aimLen / 2) + _losPerpX * _aimCtrlBend;
-          var _aimCtrlY = py + 14 + Math.sin(aimA) * (aimLen / 2) + _losPerpY * _aimCtrlBend;
-          ctx.beginPath();
-          ctx.moveTo(px, py + 14);
-          ctx.quadraticCurveTo(_aimCtrlX, _aimCtrlY, _aimEndX, _aimEndY);
-          ctx.strokeStyle = 'rgba(255,255,255,' + losAlpha + ')';
-          ctx.lineWidth = 2.5;
-          ctx.setLineDash([5, 5]);
           ctx.stroke();
           ctx.setLineDash([]);
           /* Carat/chevron at aim tip */
