@@ -2413,12 +2413,12 @@ export var BroTown = function BroTown(_ref0) {
     };
     var S = stateRef.current;
 
-    /* Canvas resize.  Reserve 33vh at the bottom for the BottomDashboard
+    /* Canvas resize.  Reserve 25vh at the bottom for the BottomDashboard
        so the playfield doesn't draw underneath it.  The camera follows the
        player, so a shorter canvas just means less peripheral world is
        visible — the player stays centered. */
     var vv = window.visualViewport;
-    var DASH_FRAC = 0.33;
+    var DASH_FRAC = 0.25;
     function resize() {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;
@@ -3216,10 +3216,10 @@ export var BroTown = function BroTown(_ref0) {
       /* Fallback to window dimensions if parent has no size yet */
       var w = rect.width || window.innerWidth || 800;
       var hRaw = rect.height || window.innerHeight || 600;
-      /* Reserve 33% of viewport height for the BottomDashboard.  Camera
+      /* Reserve 25% of viewport height for the BottomDashboard.  Camera
          keeps the player centered, so a shorter canvas just clips
          peripheral world tiles — the avatar stays in the middle. */
-      var h = Math.max(120, Math.round(hRaw * 0.67));
+      var h = Math.max(120, Math.round(hRaw * 0.75));
       if (w < 10 || h < 10) return;
       canvas.width = w * dpr;
       canvas.height = h * dpr;
@@ -15237,7 +15237,7 @@ export var BroTown = function BroTown(_ref0) {
     ref: canvasRef,
     className: "brotown-canvas",
     style: {
-      /* Pin the canvas to the upper 67% of the wrapper.  The lower 33vh
+      /* Pin the canvas to the upper 75% of the wrapper.  The lower 25vh
          is reserved for the BottomDashboard, which sits in its own fixed
          layer.  Camera centres the player so cropping the periphery just
          hides outer world tiles, not the avatar itself. */
@@ -15245,7 +15245,7 @@ export var BroTown = function BroTown(_ref0) {
       top: 0,
       left: 0,
       right: 0,
-      bottom: '33vh',
+      bottom: '25vh',
       cursor: stateRef.current._isDesktop ? 'crosshair' : 'default'
     },
     onTouchStart: function onTouchStart(e) {
@@ -32312,7 +32312,7 @@ export var BroTown = function BroTown(_ref0) {
   }(), "  ", (_stateRef$current$_ne2 = stateRef.current._nearNode) === null || _stateRef$current$_ne2 === void 0 ? void 0 : _stateRef$current$_ne2.spotName, " \u2014 ", (_stateRef$current$_ne3 = stateRef.current._nearNode) === null || _stateRef$current$_ne3 === void 0 ? void 0 : _stateRef$current$_ne3.name, " (Lv", (_stateRef$current$_ne4 = stateRef.current._nearNode) === null || _stateRef$current$_ne4 === void 0 ? void 0 : _stateRef$current$_ne4.gatherLvl, ")"), gatherMini && !gatherMini.result && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
-      bottom: 'calc(33vh + 60px)',
+      bottom: 'calc(25vh + 60px)',
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 50,
@@ -33489,7 +33489,7 @@ export var BroTown = function BroTown(_ref0) {
   }())), showInfo && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
-      bottom: 'calc(33vh + 16px)',
+      bottom: 'calc(25vh + 16px)',
       right: 10,
       zIndex: 40,
       padding: '10px 16px',
@@ -33645,7 +33645,7 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-joystick-zone",
     style: {
       position: 'fixed',
-      bottom: 'calc(33vh + 16px)',
+      bottom: 'calc(25vh + 16px)',
       left: isLandscape ? 16 : 12,
       zIndex: 30,
       width: isLandscape ? 130 : 110,
@@ -33672,7 +33672,7 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-desktop-hide",
     style: {
       position: 'fixed',
-      bottom: 'calc(33vh + 16px)',
+      bottom: 'calc(25vh + 16px)',
       // Pulled inward so the shield ring (joyOuter + RING_GAP + RING_BAND
       // = 50 + 7 + 36 = 93px from joystick center) clears the screen edge
       // with a small buffer.
