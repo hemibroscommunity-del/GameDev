@@ -10594,27 +10594,25 @@ export var BroTown = function BroTown(_ref0) {
                   ctx.arc(0, 0, 3, 0, Math.PI * 2);
                   ctx.fill();
                 } else {
-                  /* Long arrow — most of the shaft sticks out of the
-                     body in the direction the arrow came from (-x in
-                     local frame, since +x = flight direction). Shaft is
-                     22 px out + 4 px buried so the visible portion
-                     reads clearly even on small monsters. */
+                  /* Stuck arrow — half-length version. Shaft 11 px out
+                     + 2 px buried; fletching at the air end; arrowhead
+                     buried in the body. */
                   /* Arrow shaft — dark brown wood */
                   ctx.fillStyle = '#3a2210';
-                  ctx.fillRect(-22, -1.2, 26, 2.4);
+                  ctx.fillRect(-11, -1.2, 13, 2.4);
                   /* Slight highlight along the top of the shaft for relief */
                   ctx.fillStyle = '#5a3820';
-                  ctx.fillRect(-22, -1.2, 26, 0.8);
+                  ctx.fillRect(-11, -1.2, 13, 0.8);
                   /* Fletching at the far air end. */
                   ctx.fillStyle = sa.color + 'cc';
-                  ctx.fillRect(-22, -3, 5, 1.5);
-                  ctx.fillRect(-22, 1.5, 5, 1.5);
+                  ctx.fillRect(-11, -3, 3, 1.5);
+                  ctx.fillRect(-11, 1.5, 3, 1.5);
                   /* Arrowhead (mostly buried; the small triangle at +x). */
                   ctx.fillStyle = sa.color;
                   ctx.beginPath();
-                  ctx.moveTo(6, 0);
-                  ctx.lineTo(3, -2.5);
-                  ctx.lineTo(3, 2.5);
+                  ctx.moveTo(3, 0);
+                  ctx.lineTo(1.5, -2);
+                  ctx.lineTo(1.5, 2);
                   ctx.closePath();
                   ctx.fill();
                 }
@@ -12499,36 +12497,12 @@ export var BroTown = function BroTown(_ref0) {
           }
           var isAiming = S._aiming || S.lockedTarget && S.lockedTarget.ref;
           var losAlpha = isAiming ? 0.5 : 0.2;
-          /* Track aim-rotation to bow the LoS in the direction the right
-             joystick is sweeping. Aggressive low-pass weights so the
-             curve actually shows — previous tuning produced a barely-
-             visible bend. */
-          var _losPrev = S._losPrevAim;
-          S._losPrevAim = aimA;
-          var _losDelta = 0;
-          if (_losPrev != null) {
-            _losDelta = aimA - _losPrev;
-            while (_losDelta > Math.PI) _losDelta -= Math.PI * 2;
-            while (_losDelta < -Math.PI) _losDelta += Math.PI * 2;
-          }
-          S._losBend = (S._losBend || 0) * 0.70 + _losDelta * 0.30;
-          var _bendPx = S._losBend * 5000;
-          if (_bendPx > 220) _bendPx = 220;
-          else if (_bendPx < -220) _bendPx = -220;
-          var _losPerpX = -Math.sin(aimA);
-          var _losPerpY = Math.cos(aimA);
           ctx.save();
-          /* Long dashed LoS — single line, quadratic curve toward the
-             rotation direction. Short solid aim arrow removed per user. */
-          var _losEndX = px + Math.cos(aimA) * W * 2;
-          var _losEndY = py + 10 + Math.sin(aimA) * W * 2;
-          /* Control point near 25% of the line so the bend feels rooted
-             at the player rather than ballooning the far end. */
-          var _losCtrlX = px + Math.cos(aimA) * (W * 0.5) + _losPerpX * _bendPx;
-          var _losCtrlY = py + 10 + Math.sin(aimA) * (W * 0.5) + _losPerpY * _bendPx;
+          /* Long dashed LoS — straight line in the aim direction.
+             (Earlier rotation-bend experiment reverted per user.) */
           ctx.beginPath();
           ctx.moveTo(px, py + 14);
-          ctx.quadraticCurveTo(_losCtrlX, _losCtrlY, _losEndX, _losEndY);
+          ctx.lineTo(px + Math.cos(aimA) * W * 2, py + 10 + Math.sin(aimA) * W * 2);
           ctx.strokeStyle = 'rgba(255,255,255,' + losAlpha + ')';
           ctx.lineWidth = 2;
           ctx.setLineDash([12, 12]);
