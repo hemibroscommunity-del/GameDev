@@ -12461,40 +12461,9 @@ export var BroTown = function BroTown(_ref0) {
           _drawBar((_bbH + _bbGap) * 2, (_Rb.mana || 0) / (_Rb.maxMana || 1), '#5b9bd5');
         }
 
-        /* §5.9.5 Combo count badge + §5.7.7 Resonance streak badge.
-           Combined into one row above the bars; either visible alone or
-           both side-by-side. Streak badge fades as its 10s window decays. */
-        var _rsObj = S.player && S.player._resonanceStreak;
-        var _rsActive = _rsObj && _rsObj.count > 0 &&
-          (Date.now() - (_rsObj.lastTs || 0) < (RESONANCE_STREAK_WINDOW_MS || 10000));
-        if ((S.combo && S.combo.count > 0) || _rsActive) {
-          var _cbCount = (S.combo && S.combo.count) || 0;
-          var _cbCol = _cbCount >= 3 ? '#f5c542' : _cbCount === 2 ? '#f2b441' : 'rgba(255,255,255,.85)';
-          var _cbY = py + (_slim ? -50 : -58);
-          var _cbStr = _cbCount > 0 ? 'x' + _cbCount : '';
-          var _rsStr = _rsActive ? '↯' + _rsObj.count : '';
-          var _combined = _cbStr + (_cbStr && _rsStr ? ' ' : '') + _rsStr;
-          var _bw = Math.max(28, _combined.length * 7);
-          ctx.save();
-          ctx.font = 'bold 10px "VT323", monospace';
-          ctx.textAlign = 'center';
-          ctx.fillStyle = 'rgba(0,0,0,.6)';
-          ctx.fillRect(px - _bw / 2, _cbY - 8, _bw, 11);
-          /* Streak badge fades as the 10s window decays. */
-          var _rsFade = _rsActive
-            ? Math.max(0.4, 1 - (Date.now() - _rsObj.lastTs) / (RESONANCE_STREAK_WINDOW_MS || 10000))
-            : 1;
-          ctx.fillStyle = _cbCol;
-          if (_cbCount >= 3) { ctx.shadowColor = _cbCol; ctx.shadowBlur = 6; }
-          /* Render combo and streak separately so streak gets its own alpha. */
-          if (_cbStr) ctx.fillText(_cbStr, px - (_rsStr ? _bw / 4 : 0), _cbY);
-          if (_rsStr) {
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = 'rgba(150,200,255,' + _rsFade + ')';
-            ctx.fillText(_rsStr, px + (_cbStr ? _bw / 4 : 0), _cbY);
-          }
-          ctx.restore();
-        }
+        /* Combo / resonance badges removed per user request — no floating
+           icons above the player's head.  Combat feedback now comes from
+           dmgNumbers + the HP/MP/STA bars only. */
 
         /* Own name. Pushed higher when sprite-sheet body is active — the
            sprite's head sits higher on the canvas than the procedural head. */
@@ -12506,17 +12475,9 @@ export var BroTown = function BroTown(_ref0) {
         ctx.fillRect(px - myNtw / 2 - 4, py + _nameY, myNtw + 8, 14);
         ctx.fillStyle = '#fff';
         ctx.fillText(S.myName, px, py + _nameY + 11);
-        /* Own badges below name */
-        if (S.badges && S.badges.length > 0) {
-          ctx.font = '8px sans-serif';
-          var badgeStr = S.badges.map(function (bid) {
-            var a = BT_ACHIEVEMENTS.find(function (x) {
-              return x.id === bid;
-            });
-            return a ? a.icon : '';
-          }).join('');
-          ctx.fillText(badgeStr, px, py + _nameY - 5);
-        }
+        /* Achievement badges removed — were a row of emoji icons (well
+           rested, shoes, lightning, etc.) above the name; user wants the
+           area clean. */
 
         /* ═══ SHIELD ARC HUD ═══ */
         if (S._shieldUp) {

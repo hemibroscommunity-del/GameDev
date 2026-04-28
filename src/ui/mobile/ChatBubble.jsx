@@ -72,9 +72,10 @@ export const ChatBubble = () => {
         style={{
           position: 'fixed',
           left: '50%',
-          // Roughly above the player avatar — camera keeps the player
-          // around vertical center, so 38% from top sits over the head.
-          top: '38%',
+          // The player avatar sits at ~37% from the top of the viewport
+          // (canvas is upper 75 vh, camera-centered).  Anchor the bubble
+          // bottom at 25% so the tail sits well above the player's head.
+          top: '25%',
           transform: 'translate(-50%, -100%)',
           zIndex: 96,
           minWidth: 220,

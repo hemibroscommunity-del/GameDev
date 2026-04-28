@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { chatBubbleBus } from './chatBubbleBus.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { InventoryPanel }    from './dash/InventoryPanel.jsx';
 import { SelfPanel }         from './dash/SelfPanel.jsx';
@@ -36,12 +35,12 @@ const COL = {
 };
 
 const ICONS = {
-  chat:       'M21 12a8 8 0 0 1-12 6.93L4 20l1.07-5A8 8 0 1 1 21 12z',
   inventory:  'M4 7h16v12H4z M8 7V5a4 4 0 0 1 8 0v2',
-  self:       'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a8 8 0 0 1 16 0v1',
+  stats:      'M4 20V10M10 20V4M16 20v-8M22 20h-22',
+  skills:     'M14 2l3 6 6 .9-4.5 4.4 1 6.7L14 17l-5.5 3 1-6.7L5 8.9l6-.9 3-6z',
+  codex:      'M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2V5z M8 7h8M8 11h8M8 15h6',
   journey:    'M4 6h16M4 12h16M4 18h10',
   map:        'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v16M15 6v16',
-  social:     'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM1 21v-1a8 8 0 0 1 16 0v1M19 8v6M22 11h-6',
   more:       'M5 12a1 1 0 1 0 .01 0M12 12a1 1 0 1 0 .01 0M19 12a1 1 0 1 0 .01 0',
 };
 
@@ -238,18 +237,18 @@ export const BottomDashboard = () => {
             display: 'flex',
             alignItems: 'stretch',
           }}>
-            <IconButton glyph="chat"      label="Chat"
-              onClick={() => chatBubbleBus.toggle()} />
             <IconButton glyph="inventory" label="Bag"
               onClick={() => dashboardPanelBus.toggle('inventory')} />
-            <IconButton glyph="self"      label="Self"
-              onClick={() => dashboardPanelBus.toggle('self')} />
+            <IconButton glyph="stats"     label="Stats"
+              onClick={() => dashboardPanelBus.toggle('stats')} />
+            <IconButton glyph="skills"    label="Skills"
+              onClick={() => dashboardPanelBus.toggle('skills')} />
+            <IconButton glyph="codex"     label="Codex"
+              onClick={() => dashboardPanelBus.toggle('encyclopedia')} />
             <IconButton glyph="journey"   label="Journey"
               onClick={() => dashboardPanelBus.toggle('journey')} />
             <IconButton glyph="map"       label="Map"
               onClick={() => dashboardPanelBus.toggle('map')} />
-            <IconButton glyph="social"    label="Social"
-              onClick={() => dashboardPanelBus.toggle('social')} />
             <IconButton glyph="more"      label="More"
               onClick={() => dashboardPanelBus.toggle('more')} />
           </div>

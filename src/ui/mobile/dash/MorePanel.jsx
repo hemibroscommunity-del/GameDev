@@ -3,9 +3,8 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { COL, panelStyle } from './common.js';
 
 const TILES = [
-  { id: 'stats',        glyph: '📊', label: 'Stats' },
-  { id: 'skills',       glyph: '🛠',  label: 'Skills' },
-  { id: 'encyclopedia', glyph: '📖', label: 'Codex' },
+  { id: 'self',         glyph: '🪪', label: 'Self' },
+  { id: 'social',       glyph: '👥', label: 'Social' },
   { id: 'leaderboard',  glyph: '🏆', label: 'Ranks' },
   { id: 'clan',         glyph: '🛡',  label: 'Clan' },
   { id: 'guild',        glyph: '⚒',  label: 'Guild' },

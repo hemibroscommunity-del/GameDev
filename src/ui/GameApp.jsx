@@ -4,6 +4,7 @@ import { DebugOverlay } from '../debug/DebugOverlay.jsx';
 import { wheelBus } from './mobile/wheelBus.js';
 import { BottomDashboard } from './mobile/BottomDashboard.jsx';
 import { ChatBubble } from './mobile/ChatBubble.jsx';
+import { ChatLauncher } from './mobile/ChatLauncher.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
 import { generateMockInventory, generateMockEquipped } from './mobile/mockItems.js';
@@ -381,6 +382,7 @@ export const GameApp = () => {
         onExit={() => { window.location.href = '/'; }}
       />
       <BottomDashboard />
+      <ChatLauncher />
       <ChatBubble />
       {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}
       {/* the bottom dashboard nests their content inside the 25vh band.    */}
