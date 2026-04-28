@@ -3268,7 +3268,7 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         var W = canvas.width / (window.devicePixelRatio || 1);
-        var H = canvas.height / (window.devicePixelRatio || 1) * 1.25;
+        var H = canvas.height / (window.devicePixelRatio || 1);
         var P = S.player;
         var K = S.keys;
 
@@ -3657,9 +3657,9 @@ export var BroTown = function BroTown(_ref0) {
               }
               S._zoneWipe = Date.now(); /* trigger transition wipe */
               S._ambientParticles = []; /* clear old zone particles */
-              /* Snap camera to new player position immediately */
-              S.camera.x = Math.max(0, Math.min(nW - W, P.x - W / 2)) || 0;
-              S.camera.y = Math.max(0, Math.min(nH - H, P.y - H / 2)) || 0;
+              /* Snap camera to player — keep them centered, no edge clamp. */
+              S.camera.x = P.x - W / 2;
+              S.camera.y = P.y - H / 2;
             } /* end zone transition */
           }
         } else if (S.currentZone !== 'town' && !S._inDungeon) {
@@ -3698,10 +3698,9 @@ export var BroTown = function BroTown(_ref0) {
             S.arrows = [];
             S._zoneWipe = Date.now();
             S._ambientParticles = [];
-            /* Snap camera to new player position immediately */
-            var twn = ZONES.town;
-            S.camera.x = Math.max(0, Math.min(twn.w * TILE - W, P.x - W / 2)) || 0;
-            S.camera.y = Math.max(0, Math.min(twn.h * TILE - H, P.y - H / 2)) || 0;
+            /* Snap camera to player — keep them centered, no edge clamp. */
+            S.camera.x = P.x - W / 2;
+            S.camera.y = P.y - H / 2;
           }
         }
 
@@ -7424,18 +7423,9 @@ export var BroTown = function BroTown(_ref0) {
         var _camSpeed = S.isSwinging || S._dodgeRoll ? 0.18 : Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 ? 0.14 : 0.08;
         S.camera.x += (camTargetX - S.camera.x) * _camSpeed;
         S.camera.y += (camTargetY - S.camera.y) * _camSpeed;
-        var _zoneW = _zone.w * TILE, _zoneH = _zone.h * TILE;
-        /* If map is smaller than viewport, center it */
-        if (_zoneW <= W) {
-          S.camera.x = (_zoneW - W) / 2;
-        } else {
-          S.camera.x = Math.max(0, Math.min(_zoneW - W, S.camera.x));
-        }
-        if (_zoneH <= H) {
-          S.camera.y = (_zoneH - H) / 2;
-        } else {
-          S.camera.y = Math.max(0, Math.min(_zoneH - H, S.camera.y));
-        }
+        /* Camera no longer clamps to map bounds — the player stays
+           centered even at the edge of a zone.  Out-of-map area renders
+           as the zone's ground colour (or black) which is fine for now. */
 
         /* Broadcast position — slim payload for speed */
         var now = performance.now();
@@ -7950,7 +7940,7 @@ export var BroTown = function BroTown(_ref0) {
         if (pixiRef.current && usePixi.current) {
           /* ── PixiJS RENDER PATH ── */
           var W = canvas.width / (window.devicePixelRatio || 1);
-          var H = canvas.height / (window.devicePixelRatio || 1) * 1.25;
+          var H = canvas.height / (window.devicePixelRatio || 1);
           pixiRef.current.update(S, W, H, nfts);
         } else {
         /* ── Canvas 2D RENDER PATH (fallback) ── */
@@ -15292,8 +15282,8 @@ export var BroTown = function BroTown(_ref0) {
       if (!stateRef.current._isDesktop) return;
       var S = stateRef.current;
       var rect = e.currentTarget.getBoundingClientRect();
-      var screenX = (e.clientX - rect.left) * 1.25;
-      var screenY = (e.clientY - rect.top) * 1.25;
+      var screenX = e.clientX - rect.left;
+      var screenY = e.clientY - rect.top;
       /* Convert screen coords to world coords using camera */
       var worldX = screenX + S.camera.x;
       var worldY = screenY + S.camera.y;
@@ -32322,7 +32312,7 @@ export var BroTown = function BroTown(_ref0) {
   }(), "  ", (_stateRef$current$_ne2 = stateRef.current._nearNode) === null || _stateRef$current$_ne2 === void 0 ? void 0 : _stateRef$current$_ne2.spotName, " \u2014 ", (_stateRef$current$_ne3 = stateRef.current._nearNode) === null || _stateRef$current$_ne3 === void 0 ? void 0 : _stateRef$current$_ne3.name, " (Lv", (_stateRef$current$_ne4 = stateRef.current._nearNode) === null || _stateRef$current$_ne4 === void 0 ? void 0 : _stateRef$current$_ne4.gatherLvl, ")"), gatherMini && !gatherMini.result && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
-      bottom: 130,
+      bottom: 'calc(33vh + 60px)',
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 50,
@@ -33499,7 +33489,7 @@ export var BroTown = function BroTown(_ref0) {
   }())), showInfo && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
-      bottom: 80,
+      bottom: 'calc(33vh + 16px)',
       right: 10,
       zIndex: 40,
       padding: '10px 16px',
@@ -33655,7 +33645,7 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-joystick-zone",
     style: {
       position: 'fixed',
-      bottom: 88,
+      bottom: 'calc(33vh + 16px)',
       left: isLandscape ? 16 : 12,
       zIndex: 30,
       width: isLandscape ? 130 : 110,
@@ -33682,7 +33672,7 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-desktop-hide",
     style: {
       position: 'fixed',
-      bottom: 88,
+      bottom: 'calc(33vh + 16px)',
       // Pulled inward so the shield ring (joyOuter + RING_GAP + RING_BAND
       // = 50 + 7 + 36 = 93px from joystick center) clears the screen edge
       // with a small buffer.
