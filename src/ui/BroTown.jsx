@@ -7734,15 +7734,47 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 if (a.isStaff) BT_AUDIO.magicHit({ vol: 0.3 });
                 else BT_AUDIO.play('arrow-hit', { vol: 0.6 });
-                /* Burn mark — only on staff/magic hits. Element-tinted
-                   scorch on the body. Capped + cleared on respawn. */
+                /* Magic orb crash & dissipate — element-tinted impact ring
+                   plus radial particle burst when a staff bolt collides. */
                 if (a.isStaff) {
+                  var _orbColor = projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#a78bfa';
+                  if (!S._impactRings) S._impactRings = [];
+                  /* Outer expanding ring — the "crash" flash. */
+                  S._impactRings.push({
+                    x: m.x, y: m.y, ts: Date.now(),
+                    color: _orbColor, maxR: 26, duration: 320,
+                  });
+                  /* Inner brighter ring for double-pulse intensity. */
+                  S._impactRings.push({
+                    x: m.x, y: m.y, ts: Date.now() + 40,
+                    color: _orbColor, maxR: 14, duration: 220,
+                  });
+                  /* Dissipation — radial particle spray outward, with a
+                     small upward bias so embers drift like sparks. */
+                  if (!S.hitParticles) S.hitParticles = [];
+                  for (var _op = 0; _op < 22; _op++) {
+                    var _oa = (_op / 22) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+                    var _osp = 2 + Math.random() * 4;
+                    S.hitParticles.push({
+                      x: m.x + Math.cos(_oa) * 4,
+                      y: m.y + Math.sin(_oa) * 4,
+                      vx: Math.cos(_oa) * _osp,
+                      vy: Math.sin(_oa) * _osp - 0.7,
+                      life: 0.45 + Math.random() * 0.4,
+                      color: _orbColor,
+                      size: 1 + Math.random() * 2.2,
+                    });
+                  }
+                  /* Brief screen shake on impact for weight. */
+                  S.screenShake = Math.max(S.screenShake || 0, 2.5);
+
+                  /* Burn mark on the body — element-tinted scorch. */
                   if (!m._burnMarks) m._burnMarks = [];
                   if (m._burnMarks.length < 10) {
                     m._burnMarks.push({
                       ox: (Math.random() - 0.5) * 10,
                       oy: (Math.random() - 0.5) * 10,
-                      color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#222',
+                      color: _orbColor,
                       ts: Date.now(),
                     });
                   }
