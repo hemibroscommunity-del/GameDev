@@ -6727,7 +6727,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 40,
-                      text: 'GRAND SLAM!',
+                      text: 'Critical hit!',
                       color: '#fbbf24',
                       ts: Date.now()
                     });
@@ -7803,9 +7803,6 @@ export var BroTown = function BroTown(_ref0) {
                       size: 1 + Math.random() * 2.2,
                     });
                   }
-                  /* Brief screen shake on impact for weight. */
-                  S.screenShake = Math.max(S.screenShake || 0, 2.5);
-
                   /* Burn mark on the body — element-tinted scorch. */
                   if (!m._burnMarks) m._burnMarks = [];
                   if (m._burnMarks.length < 10) {
@@ -11225,10 +11222,13 @@ export var BroTown = function BroTown(_ref0) {
             var ex = exp.x - cx + shakeX,
               ey = exp.y - cy + shakeY;
 
-            /* Flash ring — element-colored, scaled for Grand Slam */
+            /* Flash ring — element-colored, scaled for Grand Slam.
+               Skipped for sword (melee) and bow (ranged) kills — those rely on
+               slash marks / stuck arrows / blood splats for kill feedback. */
             var flashDur = exp.isGrandSlam ? 0.5 : 0.3;
             var flashElemColor = exp.killElement ? (_ELEMENTS$exp$killEle = ELEMENTS[exp.killElement]) === null || _ELEMENTS$exp$killEle === void 0 ? void 0 : _ELEMENTS$exp$killEle.color : null;
-            if (age < flashDur) {
+            var _skipRing = exp.killType === 'melee' || exp.killType === 'ranged';
+            if (age < flashDur && !_skipRing) {
               var flashProg = age / flashDur;
               ctx.globalAlpha = 1 - flashProg;
               if (exp.killCollision === 'eclipse') {
@@ -11597,14 +11597,6 @@ export var BroTown = function BroTown(_ref0) {
               ctx.fillText(exp.emoji, ex, ey - age * 50 * scale);
             }
 
-            /* Grand Slam text — "GRAND SLAM!" rises dramatically */
-            if (exp.isGrandSlam && age < 1.5) {
-              ctx.globalAlpha = Math.max(0, 1 - age / 1.5);
-              ctx.font = "bold ".concat(14 + 4 * scale, "px \"VT323\", monospace");
-              ctx.fillStyle = '#fbbf24';
-              ctx.textAlign = 'center';
-              ctx.fillText('GRAND SLAM!', ex, ey - 40 - age * 30);
-            }
             ctx.globalAlpha = 1;
             return true;
           });
@@ -11629,7 +11621,7 @@ export var BroTown = function BroTown(_ref0) {
             /* Categorize for proportional rendering */
             var _dt = String(d.text || '');
             var isCollision = _dt.includes('💥');
-            var isGrandSlam = _dt.includes('GRAND');
+            var isGrandSlam = _dt.includes('Critical hit');
             var isKill = _dt.includes('☠️') || _dt.includes('KILL');
             var isXP = _dt.includes('XP');
             var isGold = _dt.includes('G') && _dt.includes('+');
@@ -11646,7 +11638,6 @@ export var BroTown = function BroTown(_ref0) {
             var fontSize = 22;
             var useGravity = false;
             if (isCollision) fontSize = 30;
-            if (isGrandSlam) fontSize = 40;
             if (isKill) fontSize = 32;
             if (isCritNum) fontSize = 28;
             if (isXP || isGold) {
