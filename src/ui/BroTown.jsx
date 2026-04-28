@@ -12569,27 +12569,18 @@ export var BroTown = function BroTown(_ref0) {
           var losAlpha = isAiming ? 0.5 : 0.2;
           ctx.save();
           /* Long dashed LoS — straight line in the aim direction.
-             (Earlier rotation-bend experiment reverted per user.) */
+             Length sized just past the on-screen viewport (W+H) so the
+             stroke doesn't extend wildly off-canvas. */
+          var _losLen = (W + H);
           ctx.beginPath();
           ctx.moveTo(px, py + 14);
-          ctx.lineTo(px + Math.cos(aimA) * W * 2, py + 10 + Math.sin(aimA) * W * 2);
+          ctx.lineTo(px + Math.cos(aimA) * _losLen, py + 14 + Math.sin(aimA) * _losLen);
           ctx.strokeStyle = 'rgba(255,255,255,' + losAlpha + ')';
           ctx.lineWidth = 2;
           ctx.setLineDash([12, 12]);
           ctx.lineDashOffset = -(Date.now() / 15) % 24;
           ctx.stroke();
           ctx.setLineDash([]);
-          /* Carat/chevron at aim tip */
-          var cTip = aimLen + 8;
-          var cX = px + Math.cos(aimA) * cTip,
-            cY = py + 10 + Math.sin(aimA) * cTip;
-          ctx.fillStyle = 'rgba(255,255,255,' + losAlpha + ')';
-          ctx.beginPath();
-          ctx.moveTo(cX + Math.cos(aimA) * 6, cY + Math.sin(aimA) * 6);
-          ctx.lineTo(cX + Math.cos(aimA + 2.5) * 8, cY + Math.sin(aimA + 2.5) * 8);
-          ctx.lineTo(cX + Math.cos(aimA - 2.5) * 8, cY + Math.sin(aimA - 2.5) * 8);
-          ctx.closePath();
-          ctx.fill();
           ctx.restore();
         }
 
