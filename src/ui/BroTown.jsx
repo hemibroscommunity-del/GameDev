@@ -6078,6 +6078,24 @@ export var BroTown = function BroTown(_ref0) {
                     ts: Date.now(),
                   });
                 }
+                /* Blood spray — particles fly along the swing direction
+                   (baseAngle) with a small angular spread and gravity-y
+                   bias for a realistic spurt. */
+                if (!S.hitParticles) S.hitParticles = [];
+                var _bloodPalette = ['#8a0a0a', '#a01010', '#6e0606', '#c01818'];
+                for (var _bp = 0; _bp < 8; _bp++) {
+                  var _bpAng = baseAngle + (Math.random() - 0.5) * 0.7;
+                  var _bpSpd = 1.5 + Math.random() * 3.5;
+                  S.hitParticles.push({
+                    x: m.x + (Math.random() - 0.5) * 4,
+                    y: m.y + (Math.random() - 0.5) * 4,
+                    vx: Math.cos(_bpAng) * _bpSpd,
+                    vy: Math.sin(_bpAng) * _bpSpd - 0.5,
+                    life: 0.4 + Math.random() * 0.3,
+                    color: _bloodPalette[Math.floor(Math.random() * _bloodPalette.length)],
+                    size: 0.8 + Math.random() * 1.2,
+                  });
+                }
 
                 /* Report damage to server for authoritative resolution */
                 if (S._serverMonsters && S.channel) {
@@ -7734,6 +7752,26 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 if (a.isStaff) BT_AUDIO.magicHit({ vol: 0.3 });
                 else BT_AUDIO.play('arrow-hit', { vol: 0.6 });
+                /* Blood spray on bow hits — particles fly along the
+                   arrow's flight direction (a.ang). Skipped for staff
+                   bolts since they have the dedicated magic-orb crash. */
+                if (!a.isStaff) {
+                  if (!S.hitParticles) S.hitParticles = [];
+                  var _bloodPaletteA = ['#8a0a0a', '#a01010', '#6e0606', '#c01818'];
+                  for (var _abp = 0; _abp < 7; _abp++) {
+                    var _abpAng = a.ang + (Math.random() - 0.5) * 0.6;
+                    var _abpSpd = 1.5 + Math.random() * 3;
+                    S.hitParticles.push({
+                      x: m.x + (Math.random() - 0.5) * 4,
+                      y: m.y + (Math.random() - 0.5) * 4,
+                      vx: Math.cos(_abpAng) * _abpSpd,
+                      vy: Math.sin(_abpAng) * _abpSpd - 0.4,
+                      life: 0.4 + Math.random() * 0.3,
+                      color: _bloodPaletteA[Math.floor(Math.random() * _bloodPaletteA.length)],
+                      size: 0.8 + Math.random() * 1.2,
+                    });
+                  }
+                }
                 /* Magic orb crash & dissipate — element-tinted impact ring
                    plus radial particle burst when a staff bolt collides. */
                 if (a.isStaff) {
