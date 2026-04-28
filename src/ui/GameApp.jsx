@@ -382,10 +382,10 @@ export const GameApp = () => {
       />
       <BottomDashboard />
       <ChatBubble />
-      <InventorySurface />
-      <InspectCard />
+      {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}
+      {/* the bottom dashboard nests their content inside the 25vh band.    */}
+      {/* Their buses still exist and are exercised by debug commands.      */}
       <BlockRing />
-      <MoreOverlay />
       <MasteryNotification />
       <DebugOverlay />
       <BuildBadge />
