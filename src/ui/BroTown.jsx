@@ -15131,7 +15131,7 @@ export var BroTown = function BroTown(_ref0) {
       marginBottom: 16
     }
   }, "9 Elements \xB7 36 Collisions \xB7 Open World"), /*#__PURE__*/React.createElement("img", {
-    src: 'https://ipfs.io/ipfs/bafkreigmi63zjttto6dewfrr6c6rgfdkyzql7ekdmv5qfnlh5pxgl4gaku',
+    src: '/sprites/player/welcome-bro.png?v=2',
     alt: 'Hemi Bro',
     style: {
       width: 128,
