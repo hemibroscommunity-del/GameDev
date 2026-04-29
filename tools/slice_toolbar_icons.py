@@ -37,12 +37,12 @@ BARS = [
 
 # After cropping each bar, this Pillow pass erases the baked-in text
 # (white "100 HP" / "100 MP" / etc. near the right end of the capsule)
-# by replacing white-ish pixels with the colour at the same y in a clean
-# column further left.  The bar's gradient is mostly vertical so a
-# horizontal copy preserves the gloss highlight + shadow.
-TEXT_ERASE_X_RANGE = (1240, 1414)  # in source-px coords inside the cropped bar
-TEXT_CLEAN_X       = 600           # source-px column known to be text-free
-TEXT_LIGHT_THRESH  = 200           # r,g,b all above this → text pixel
+# by replacing each pixel that's significantly brighter than the
+# capsule's own gloss highlight (sampled from a clean column at the
+# same y) with that clean-column colour.  The bar's gradient is mostly
+# vertical so a horizontal copy preserves highlight + shadow.
+TEXT_CLEAN_X     = 500             # source-px column known to be text-free
+TEXT_BRIGHT_DIFF = 22              # avg-brightness delta above clean → text
 
 def slice_icons(img, out_dir):
     w, _ = img.size
@@ -60,20 +60,21 @@ def slice_icons(img, out_dir):
         print(f'  {name:8s} -> {out.name}')
 
 def erase_baked_text(crop):
-    """Replace white-ish pixels in the text band with the capsule's
-    colour at the same y in a clean column."""
+    """Replace any pixel that's significantly brighter than the
+    capsule's natural gloss (sampled from a clean column at same y)
+    with that clean-column colour.  Catches anti-aliased text edges."""
     w, h = crop.size
     px = crop.load()
-    x0 = TEXT_ERASE_X_RANGE[0] - BAR_LEFT
-    x1 = min(w, TEXT_ERASE_X_RANGE[1] - BAR_LEFT)
     clean_x = TEXT_CLEAN_X - BAR_LEFT
     if clean_x < 0 or clean_x >= w: return
     for y in range(h):
         ref = px[clean_x, y]
-        for x in range(x0, x1):
+        ref_lum = (ref[0] + ref[1] + ref[2]) / 3
+        for x in range(w):
+            if x == clean_x: continue
             cur = px[x, y]
-            r, g, b = cur[:3]
-            if r > TEXT_LIGHT_THRESH and g > TEXT_LIGHT_THRESH and b > TEXT_LIGHT_THRESH:
+            cur_lum = (cur[0] + cur[1] + cur[2]) / 3
+            if cur_lum > ref_lum + TEXT_BRIGHT_DIFF:
                 if len(cur) == 4:
                     px[x, y] = (ref[0], ref[1], ref[2], cur[3])
                 else:
