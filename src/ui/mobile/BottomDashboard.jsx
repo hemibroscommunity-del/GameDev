@@ -42,42 +42,17 @@ const BAR_COLORS = {
   xp:   { top: '#7eedb8', mid: '#3ddc97', bot: '#1f8a5c' },
 };
 
-// Toolbar icon source.  Single composite PNG — the dashboard mockup the
-// user supplied — sliced via CSS background-position into seven equal
-// columns.  If the file isn't there yet, buttons fall back to readable
-// labels alone (no broken-image glyph).
-const SPRITE_URL = '/icons/ui/dashboard-mockup.png';
-
-// Icon column index for each toolbar slot.
-const ICON_INDEX = {
-  inventory: 0,
-  stats:     1,
-  skills:    2,
-  codex:     3,
-  journey:   4,
-  map:       5,
-  more:      6,
+// Toolbar icon source.  Each glyph is a separate PNG sliced from the
+// user-supplied mockup screenshot by tools/slice_toolbar_icons.py.
+const ICON_SRC = {
+  inventory: '/icons/ui/bag.png',
+  stats:     '/icons/ui/stats.png',
+  skills:    '/icons/ui/skills.png',
+  codex:     '/icons/ui/codex.png',
+  journey:   '/icons/ui/journey.png',
+  map:       '/icons/ui/map.png',
+  more:      '/icons/ui/more.png',
 };
-
-// Sprite tuning constants. Source image is 1504 × 688; the toolbar
-// strip occupies the bottom ~38 % of the image and is split into 7
-// equal columns.  These percentages mask off the label captions baked
-// into the screenshot — adjust if the saved file's exact aspect ratio
-// changes.
-const SPRITE_BG_SIZE = '700% auto';
-const SPRITE_BG_Y    = '88%';
-
-const iconSpriteStyle = (idx) => ({
-  width: 36,
-  height: 36,
-  backgroundImage: `url(${SPRITE_URL})`,
-  backgroundRepeat: 'no-repeat',
-  backgroundSize: SPRITE_BG_SIZE,
-  // i out of 0..6 — pan through the 600 % overflow.
-  backgroundPosition: `${(idx / 6) * 100}% ${SPRITE_BG_Y}`,
-  // Smooth scaling — these are illustrations, not pixel art.
-  imageRendering: 'auto',
-});
 
 // Chunky stat bar (HP / MP / STA / XP) matching the user's mockup:
 // rounded ~24 px, glossy gradient, label embedded centred, current/max
@@ -138,7 +113,7 @@ const Bar = ({ label, cur, max, kind, showNumbers = true }) => {
 };
 
 const IconButton = ({ glyph, label, active, onClick }) => {
-  const idx = ICON_INDEX[glyph];
+  const src = ICON_SRC[glyph];
   return (
     <button
       onClick={onClick}
@@ -156,10 +131,21 @@ const IconButton = ({ glyph, label, active, onClick }) => {
         color: COL.text,
         cursor: 'pointer',
         fontFamily: 'VT323, monospace',
-        opacity: active ? 1 : 0.92,
+        opacity: active ? 1 : 0.95,
       }}
     >
-      <div style={iconSpriteStyle(idx)} aria-label={label} />
+      <img
+        src={src}
+        alt={label}
+        draggable={false}
+        style={{
+          width: 38,
+          height: 38,
+          objectFit: 'contain',
+          // Smooth scaling — these are illustrations, not pixel art.
+          imageRendering: 'auto',
+        }}
+      />
       <span style={{
         fontSize: 10,
         color: active ? '#a8a4ff' : COL.muted,
