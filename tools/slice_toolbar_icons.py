@@ -30,19 +30,23 @@ BAR_LEFT  = 30
 BAR_RIGHT_MARGIN = 30
 BARS = [
     ('bar-hp',   88,  148),
-    ('bar-mp',   195, 244),
+    ('bar-mp',   180, 244),
     ('bar-stam', 287, 342),
-    ('bar-xp',   380, 435),
+    ('bar-xp',   378, 435),
 ]
 
-# After cropping each bar, this Pillow pass erases the baked-in text
-# (white "100 HP" / "100 MP" / etc. near the right end of the capsule)
-# by replacing each pixel that's significantly brighter than the
-# capsule's own gloss highlight (sampled from a clean column at the
-# same y) with that clean-column colour.  The bar's gradient is mostly
-# vertical so a horizontal copy preserves highlight + shadow.
-TEXT_CLEAN_X     = 500             # source-px column known to be text-free
-TEXT_BRIGHT_DIFF = 22              # avg-brightness delta above clean → text
+# Text-erasure pass left over from the previous (text-bearing) mockup.
+# The user's new clean mockup has no baked numbers, so erasing is a
+# no-op now — but we leave the constants in place at very-permissive
+# values so a future re-baked image still gets cleaned.
+TEXT_ERASE_ENABLED = False
+TEXT_CLEAN_X       = 500
+TEXT_BRIGHT_DIFF   = 22
+
+# The XP bar in the source mockup is shown almost fully depleted (just
+# a small green sliver on the left).  To get a usable FULL green
+# capsule for the dashboard, we take the HP bar's shape + gloss and
+# hue-shift it from red to green.  See build_xp_from_hp().
 
 def slice_icons(img, out_dir):
     w, _ = img.size
@@ -80,12 +84,46 @@ def erase_baked_text(crop):
                 else:
                     px[x, y] = (ref[0], ref[1], ref[2])
 
+def build_xp_from_hp(hp_crop):
+    """Hue-shift the HP capsule from red → green to synthesize a fully
+    filled XP bar.  We rotate hue by ~140° (red 0° → emerald green 140°)
+    and pull saturation down a touch so the result reads as 'XP green'
+    rather than 'fluorescent toxic'."""
+    from colorsys import rgb_to_hsv, hsv_to_rgb
+    out = hp_crop.copy()
+    px = out.load()
+    w, h = out.size
+    for y in range(h):
+        for x in range(w):
+            cur = px[x, y]
+            r, g, b = (c / 255 for c in cur[:3])
+            hh, ss, vv = rgb_to_hsv(r, g, b)
+            # Only shift saturated red pixels — leave nearly-grey
+            # pixels (background navy, gloss specular) alone.
+            if ss > 0.15 and (hh < 0.08 or hh > 0.92):
+                hh = 0.39          # ~140° emerald green
+                ss = max(0.55, ss * 0.95)
+            nr, ng, nb = hsv_to_rgb(hh, ss, vv)
+            new = (int(nr * 255), int(ng * 255), int(nb * 255))
+            if len(cur) == 4:
+                px[x, y] = (*new, cur[3])
+            else:
+                px[x, y] = new
+    return out
+
 def slice_bars(img, out_dir):
     w, _ = img.size
     right_x = w - BAR_RIGHT_MARGIN
+    hp_crop = None
     for name, top, bottom in BARS:
-        crop = img.crop((BAR_LEFT, top, right_x, bottom))
-        erase_baked_text(crop)
+        if name == 'bar-xp' and hp_crop is not None:
+            crop = build_xp_from_hp(hp_crop)
+        else:
+            crop = img.crop((BAR_LEFT, top, right_x, bottom))
+            if TEXT_ERASE_ENABLED:
+                erase_baked_text(crop)
+            if name == 'bar-hp':
+                hp_crop = crop
         out = out_dir / f'{name}.png'
         crop.save(out, 'PNG', optimize=True)
         print(f'  {name:8s} -> {out.name}  ({crop.width}x{crop.height})')
