@@ -17,24 +17,32 @@ from PIL import Image
 SRC = Path('public/icons/ui/dashboard-mockup.png')
 
 # Toolbar strip vertical bounds in source pixels.  Source is 1504x688;
-# the toolbar starts roughly halfway down the lower third and the icon
-# glyphs (not the captions) end about 80% of the way down.
+# the toolbar starts at ~y=460.  The icon-glyph band ends BEFORE the
+# baked-in text captions ("Bag", "Stats", …) begin around y=618.
 TOOLBAR_TOP    = 460
-TOOLBAR_BOTTOM = 660
+TOOLBAR_BOTTOM = 615
 
 ICON_NAMES = ['bag', 'stats', 'skills', 'codex', 'journey', 'map', 'more']
 
-# Bar bands.  Each (top, bottom) is the y-range of one bar in source px.
-# The bars in the mockup span almost the full width — we trim the gutter
-# so the image is just the rounded bar capsule with no surrounding navy.
+# Bar bands — measured by inspect_mockup.py via colour-segmentation.
+# Each (top, bottom) tightly brackets the colored capsule.
 BAR_LEFT  = 30
-BAR_RIGHT_MARGIN = 30   # subtracted from source width for the right edge
+BAR_RIGHT_MARGIN = 30
 BARS = [
-    ('bar-hp',   60,  120),
-    ('bar-mp',   165, 225),
-    ('bar-stam', 265, 325),
-    ('bar-xp',   365, 425),
+    ('bar-hp',   88,  148),
+    ('bar-mp',   195, 244),
+    ('bar-stam', 287, 342),
+    ('bar-xp',   380, 435),
 ]
+
+# After cropping each bar, this Pillow pass erases the baked-in text
+# (white "100 HP" / "100 MP" / etc. near the right end of the capsule)
+# by replacing white-ish pixels with the colour at the same y in a clean
+# column further left.  The bar's gradient is mostly vertical so a
+# horizontal copy preserves the gloss highlight + shadow.
+TEXT_ERASE_X_RANGE = (1240, 1414)  # in source-px coords inside the cropped bar
+TEXT_CLEAN_X       = 600           # source-px column known to be text-free
+TEXT_LIGHT_THRESH  = 200           # r,g,b all above this → text pixel
 
 def slice_icons(img, out_dir):
     w, _ = img.size
@@ -51,11 +59,32 @@ def slice_icons(img, out_dir):
         sq.save(out, 'PNG', optimize=True)
         print(f'  {name:8s} -> {out.name}')
 
+def erase_baked_text(crop):
+    """Replace white-ish pixels in the text band with the capsule's
+    colour at the same y in a clean column."""
+    w, h = crop.size
+    px = crop.load()
+    x0 = TEXT_ERASE_X_RANGE[0] - BAR_LEFT
+    x1 = min(w, TEXT_ERASE_X_RANGE[1] - BAR_LEFT)
+    clean_x = TEXT_CLEAN_X - BAR_LEFT
+    if clean_x < 0 or clean_x >= w: return
+    for y in range(h):
+        ref = px[clean_x, y]
+        for x in range(x0, x1):
+            cur = px[x, y]
+            r, g, b = cur[:3]
+            if r > TEXT_LIGHT_THRESH and g > TEXT_LIGHT_THRESH and b > TEXT_LIGHT_THRESH:
+                if len(cur) == 4:
+                    px[x, y] = (ref[0], ref[1], ref[2], cur[3])
+                else:
+                    px[x, y] = (ref[0], ref[1], ref[2])
+
 def slice_bars(img, out_dir):
     w, _ = img.size
     right_x = w - BAR_RIGHT_MARGIN
     for name, top, bottom in BARS:
         crop = img.crop((BAR_LEFT, top, right_x, bottom))
+        erase_baked_text(crop)
         out = out_dir / f'{name}.png'
         crop.save(out, 'PNG', optimize=True)
         print(f'  {name:8s} -> {out.name}  ({crop.width}x{crop.height})')
