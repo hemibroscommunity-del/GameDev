@@ -113,8 +113,38 @@ export const InventoryPanel = () => {
     ? visible
     : visible.filter(k => classify(k) === filter);
 
+  // Gold display — moved here from the dashboard's name strip.
+  const R = (S && S.rpg) || {};
+  const gold =
+    (R._compStats && (R._compStats.totalGoldEarned || R._compStats.goldEarnedTotal)) ||
+    R.goldEarned || R.coins || R.gold || 0;
+  const goldNuggets = R.goldNuggets || 0;
+  const goldBars = R.goldBars || 0;
+
   return (
     <div style={panelStyle}>
+      {/* Gold strip — current coin count + raw gold tallies. */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        padding: '0 2px 6px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        marginBottom: 6,
+        fontSize: 12,
+      }}>
+        <span style={{ color: '#f5c542', fontWeight: 700 }}>
+          🪙 {Number(gold).toLocaleString()}
+        </span>
+        {(goldNuggets > 0 || goldBars > 0) && (
+          <span style={{ color: COL.muted, fontSize: 11 }}>
+            {goldBars > 0 ? `▮${goldBars}` : ''}
+            {goldBars > 0 && goldNuggets > 0 ? ' · ' : ''}
+            {goldNuggets > 0 ? `◇${goldNuggets}` : ''}
+          </span>
+        )}
+      </div>
+
       {/* Filter strip — icon-only chips. */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
         {CATEGORIES.map(c => {

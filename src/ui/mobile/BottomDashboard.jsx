@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { xpRequired } from '../../data/gameSystems.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { InventoryPanel }    from './dash/InventoryPanel.jsx';
 import { SelfPanel }         from './dash/SelfPanel.jsx';
@@ -78,12 +79,28 @@ const LIFE_SKILLS = [
   { key: 'mining',        icon: '⛏' },
 ];
 
-// Stat bar — uses the mockup's rounded-capsule artwork directly.  The
-// PNG already has the gradient, gloss highlight, and the metric label
-// baked in.  We stretch it to full width, slide a translucent dark
-// overlay over the depleted right-hand portion, and overlay the live
-// current/max numbers centered on the bar.  No label row above — that
-// info was redundant with the baked-in capsule label.
+// Tiny column-header used at the top of each of the three dashboard
+// columns (Combat / Build / Life Skills).
+const ColHeader = ({ children }) => (
+  <div style={{
+    fontSize: 10,
+    color: '#8890b8',
+    letterSpacing: '.08em',
+    textTransform: 'uppercase',
+    padding: '0 2px 2px',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    marginBottom: 3,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  }}>{children}</div>
+);
+
+// Stat bar — uses the mockup's clean rounded-capsule artwork.  We
+// stretch the PNG to full width, slide a depletion overlay over the
+// right-hand portion (sharp left edge, rounded right cap), and lay
+// two text overlays on top: a metric label on the left and live
+// current/max on the right.
 const Bar = ({ label, cur, max, kind }) => {
   const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
   const src = BAR_IMG[kind];
@@ -121,14 +138,27 @@ const Bar = ({ label, cur, max, kind }) => {
           pointerEvents: 'none',
         }} />
       )}
-      {/* Live current / max overlay — bottom-right of the capsule so it
-          doesn't sit on top of the baked-in HP/MP/STA/XP label. */}
+      {/* Metric label (left side). */}
       <span style={{
         position: 'absolute',
-        right: 12,
+        left: 10,
         top: '50%',
         transform: 'translateY(-50%)',
-        fontSize: 12,
+        fontSize: 11,
+        fontWeight: 700,
+        color: '#fff',
+        letterSpacing: '.04em',
+        textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 1px rgba(0,0,0,.95)',
+        pointerEvents: 'none',
+        fontFamily: 'VT323, monospace',
+      }}>{label}</span>
+      {/* Live current / max (right side). */}
+      <span style={{
+        position: 'absolute',
+        right: 10,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        fontSize: 11,
         fontWeight: 700,
         color: '#fff',
         letterSpacing: '.04em',
@@ -223,11 +253,11 @@ export const BottomDashboard = () => {
   const stam = R.stamina ?? 0, maxStam = R.maxStamina || 1;
   const level = R.level || 1;
   const xp = R.xp || 0;
-  const xpReq = (typeof R._xpReq === 'function') ? R._xpReq(level) : null;
-  const xpNeeded = xpReq || (50 + level * level * 25);
-  const goldEarned =
-    (R._compStats && (R._compStats.totalGoldEarned || R._compStats.goldEarnedTotal)) ||
-    R.goldEarned || R.gold || 0;
+  // Use the canonical xpRequired curve so the dashboard's bar agrees
+  // with the game-loop level-up threshold.
+  const xpNeeded = xpRequired(level);
+  // Per-stat soft cap used to scale the build progression mini-bars.
+  const buildCap = Math.max(20, level * 5);
 
   const Active = active?.Component;
 
@@ -285,98 +315,114 @@ export const BottomDashboard = () => {
         </>
       ) : (
         <>
-          {/* Stats — top portion split into a name strip + 3-column body. */}
+          {/* 3-column body with section headers; gold moved to the Bag. */}
           <div style={{
             flex: 1,
-            padding: '6px 12px 6px',
+            padding: '4px 12px 6px',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0,
           }}>
-            <div style={{
-              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-              marginBottom: 4,
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '.04em' }}>
-                {S?.myName || 'Anon'}
-                <span style={{ color: COL.muted, marginLeft: 8, fontSize: 12 }}>Lv {level}</span>
-              </div>
-              <div style={{ fontSize: 12, color: COL.gold }}>
-                🪙 {goldEarned.toLocaleString()}
-              </div>
-            </div>
-
             <div style={{ flex: 1, display: 'flex', gap: 8, minHeight: 0 }}>
-              {/* Left column — 4 resource bars. */}
+              {/* Left column — combat resource bars. */}
               <div style={{
                 flex: 5,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 2,
                 minWidth: 0,
               }}>
-                <Bar label="HP"  cur={hp}   max={maxHp}    kind="hp"   />
-                <Bar label="MP"  cur={mp}   max={maxMp}    kind="mp"   />
-                <Bar label="STA" cur={stam} max={maxStam}  kind="stam" />
-                <Bar label="XP"  cur={xp}   max={xpNeeded} kind="xp"   />
+                <ColHeader>{S?.myName || 'Anon'} · Lv {level}</ColHeader>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'space-between' }}>
+                  <Bar label="HP"     cur={hp}   max={maxHp}    kind="hp"   />
+                  <Bar label="Mana"   cur={mp}   max={maxMp}    kind="mp"   />
+                  <Bar label="Energy" cur={stam} max={maxStam}  kind="stam" />
+                  <Bar label="XP"     cur={xp}   max={xpNeeded} kind="xp"   />
+                </div>
               </div>
 
-              {/* Middle column — 5 character stats. */}
+              {/* Middle column — build (5 character stats with progression). */}
               <div style={{
                 flex: 2,
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between',
                 minWidth: 0,
               }}>
-                {CHAR_STATS.map(s => (
-                  <div key={s.key} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: 11,
-                    padding: '0 4px',
-                    borderRadius: 3,
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    height: 18,
-                  }}>
-                    <span style={{ color: COL.muted, letterSpacing: '.04em' }}>{s.label}</span>
-                    <span style={{ color: COL.text, fontWeight: 700 }}>{R[s.key] ?? 0}</span>
-                  </div>
-                ))}
+                <ColHeader>Build</ColHeader>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 2 }}>
+                  {CHAR_STATS.map(s => {
+                    const val = R[s.key] ?? 0;
+                    const pct = Math.max(0, Math.min(100, (val / buildCap) * 100));
+                    return (
+                      <div key={s.key} style={{
+                        position: 'relative',
+                        height: 16,
+                        borderRadius: 3,
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: pct + '%',
+                          background: 'linear-gradient(90deg, rgba(91,82,255,0.50), rgba(123,113,255,0.40))',
+                          transition: 'width .15s linear',
+                        }} />
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0 5px',
+                          fontSize: 11,
+                        }}>
+                          <span style={{ color: COL.muted, letterSpacing: '.04em' }}>{s.label}</span>
+                          <span style={{ color: COL.text, fontWeight: 700 }}>{val}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Right column — 10 life skill icons in a 5×2 grid. */}
+              {/* Right column — 10 life skills with xp progression. */}
               <div style={{
                 flex: 3,
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gridTemplateRows: 'repeat(5, 1fr)',
-                gap: 2,
+                display: 'flex',
+                flexDirection: 'column',
                 minWidth: 0,
               }}>
-                {LIFE_SKILLS.map(sk => {
-                  const lvl = (R.lifeSkills && R.lifeSkills[sk.key] && R.lifeSkills[sk.key].level) || 0;
-                  return (
-                    <div key={sk.key} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 3,
-                      padding: '0 4px',
-                      borderRadius: 3,
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      fontSize: 11,
-                      minHeight: 0,
-                    }}>
-                      <span style={{ fontSize: 12, lineHeight: 1 }}>{sk.icon}</span>
-                      <span style={{ color: COL.muted, fontWeight: 700 }}>{lvl}</span>
-                    </div>
-                  );
-                })}
+                <ColHeader>Life Skills</ColHeader>
+                <div style={{
+                  flex: 1,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gridTemplateRows: 'repeat(5, 1fr)',
+                  gap: 2,
+                }}>
+                  {LIFE_SKILLS.map(sk => {
+                    const lvl = (R.lifeSkills && R.lifeSkills[sk.key] && R.lifeSkills[sk.key].level) || 0;
+                    return (
+                      <div key={sk.key} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 3,
+                        padding: '0 4px',
+                        borderRadius: 3,
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        fontSize: 11,
+                        minHeight: 0,
+                      }}>
+                        <span style={{ fontSize: 12, lineHeight: 1 }}>{sk.icon}</span>
+                        <span style={{ color: COL.muted, fontWeight: 700 }}>{lvl}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
