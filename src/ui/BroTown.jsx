@@ -14635,7 +14635,9 @@ export var BroTown = function BroTown(_ref0) {
     var rawDx = clientX - bcx;
     var rawDy = clientY - bcy;
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    var maxR = rect.width / 2 - 10;
+    /* Knob is allowed to drift ~16 px past the visible ring edge so the
+       artwork pokes out the way the user's mockup shows. */
+    var maxR = rect.width / 2 + 16;
     var clampDist = Math.min(dist, maxR);
     var angle = Math.atan2(rawDy, rawDx);
     var knobX = Math.cos(angle) * clampDist;
@@ -14682,7 +14684,8 @@ export var BroTown = function BroTown(_ref0) {
     var rawDx = clientX - bcx,
       rawDy = clientY - bcy;
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    var maxR = rect.width / 2 - 8;
+    /* Same past-edge drift as the left joystick. */
+    var maxR = rect.width / 2 + 16;
     var clampDist = Math.min(dist, maxR);
     var angle = Math.atan2(rawDy, rawDx);
     if (rKnobRef.current) {
@@ -33648,16 +33651,16 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       width: isLandscape ? 120 : 100,
       height: isLandscape ? 120 : 100,
-      borderRadius: '50%',
-      border: '3px solid ' + (autoAttack ? 'rgba(255,100,100,.6)' : 'rgba(180,40,40,.25)'),
-      background: autoAttack ? 'radial-gradient(circle,rgba(160,30,30,.5) 0%,rgba(80,15,15,.3) 100%)' : 'radial-gradient(circle,rgba(60,30,30,.35) 0%,rgba(30,15,15,.25) 100%)',
+      backgroundImage: 'url(/icons/ui/joy-base-right.png)',
+      backgroundSize: 'contain',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
       position: 'absolute',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      boxShadow: autoAttack ? '0 0 15px rgba(255,60,60,.3)' : 'none',
-      touchAction: 'none',
-      overflow: 'hidden'
+      filter: autoAttack ? 'drop-shadow(0 0 12px rgba(255,80,80,.45))' : 'none',
+      touchAction: 'none'
     }
   }, /* Mana ring removed — covered by thumb on mobile; mana shown
         contextually above the player in combat zones. */
@@ -33695,28 +33698,15 @@ export var BroTown = function BroTown(_ref0) {
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      width: isLandscape ? 38 : 32,
-      height: isLandscape ? 38 : 32,
-      borderRadius: '50%',
-      background: function (_stateRef$current67, _ELEMENTS$elem) {
-        var wpn = (_stateRef$current67 = stateRef.current) !== null && _stateRef$current67 !== void 0 && _stateRef$current67.rpg ? getActiveWeapon(stateRef.current.rpg) : null;
-        var elem = wpn === null || wpn === void 0 ? void 0 : wpn.element1;
-        var col = elem ? (_ELEMENTS$elem = ELEMENTS[elem]) === null || _ELEMENTS$elem === void 0 ? void 0 : _ELEMENTS$elem.color : 'rgba(200,60,60,1)';
-        return autoAttack ? "radial-gradient(circle,".concat(col, "cc 0%,").concat(col, "88 100%)") : "radial-gradient(circle,".concat(col, "66 0%,").concat(col, "44 100%)");
-      }(),
-      border: '2px solid rgba(255,255,255,.2)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'column',
-      fontSize: 14,
-      pointerEvents: 'none',
-      lineHeight: 1
+      width: isLandscape ? 64 : 56,
+      height: isLandscape ? 64 : 56,
+      backgroundImage: 'url(/icons/ui/joy-thumb-right.png)',
+      backgroundSize: 'contain',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+      pointerEvents: 'none'
     }
-  }, function (_stateRef$current68) {
-    var slot = ((_stateRef$current68 = stateRef.current) === null || _stateRef$current68 === void 0 || (_stateRef$current68 = _stateRef$current68.rpg) === null || _stateRef$current68 === void 0 ? void 0 : _stateRef$current68.activeSlot) || 'melee';
-    return slot === 'ranged' ? '🏹' : slot === 'staff' ? '🪄' : '⚔️';
-  }()))), /*#__PURE__*/React.createElement("div", {
+  }))), /*#__PURE__*/React.createElement("div", {
     ref: shieldJoyRef,
     className: "bt-desktop-hide bt-legacy-shield-removed",
     style: {

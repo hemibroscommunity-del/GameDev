@@ -38,12 +38,14 @@ def main():
     print(f'Found {len(images)} image(s) in session log.')
     if not images:
         sys.exit(1)
-    # The most recent (last) image is what the user just attached.
-    media, b64 = images[-1]
-    ext = '.png' if 'png' in media else '.jpg' if 'jp' in media else '.bin'
-    out = OUT_DIR / f'dashboard-mockup-new{ext}'
-    out.write_bytes(base64.b64decode(b64))
-    print(f'Wrote {out} ({out.stat().st_size} bytes, type={media})')
+    # If a count is given on the cli we extract that many recent images.
+    n = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    pick = images[-n:]
+    for i, (media, b64) in enumerate(pick):
+        ext = '.png' if 'png' in media else '.jpg' if 'jp' in media else '.bin'
+        out = OUT_DIR / f'dashboard-mockup-new{i}{ext}'
+        out.write_bytes(base64.b64decode(b64))
+        print(f'Wrote {out} ({out.stat().st_size} bytes, type={media})')
 
 if __name__ == '__main__':
     main()
