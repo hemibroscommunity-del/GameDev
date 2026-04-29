@@ -5579,6 +5579,9 @@ export var BroTown = function BroTown(_ref0) {
                   } else {
                     _R6.hp -= dmgTaken;
                     S.lastDamageTaken = Date.now();
+                    /* GDD §1.2 Vitality: trained by taking damage and
+                       surviving.  Skip if the hit dropped us to zero. */
+                    if (_R6.hp > 0) addBuildProg(_R6, 'vitality', dmgTaken);
 
                     /* ═══ ARCHETYPE-SPECIFIC ATTACK EFFECTS ═══ */
                     if (arch === 'hexer' && !shielded) {
@@ -14125,6 +14128,10 @@ export var BroTown = function BroTown(_ref0) {
     var dodgeCost = Math.ceil((R.maxStamina || 100) * 0.2);
     if ((R.stamina || 0) < dodgeCost) return;
     R.stamina -= dodgeCost;
+    /* GDD §1.2 Endurance: spending stamina on dodge / block / sprint.
+       GDD §1.2 Agility: successful dodges. */
+    addBuildProg(R, 'endurance', dodgeCost);
+    addBuildProg(R, 'agility', dodgeCost);
     S._dodgeRoll = { angle: ang, startTime: Date.now() };
     S._hasDodged = true;
     S._dodgeFlash = Date.now();
@@ -14136,6 +14143,8 @@ export var BroTown = function BroTown(_ref0) {
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
     R.stamina -= lungeCost;
+    addBuildProg(R, 'endurance', lungeCost);
+    addBuildProg(R, 'agility', lungeCost);
     /* §12.2 cert — first lunge executed. */
     masteryEarnCert('first-lunge');
     var P = S.player;
@@ -14175,6 +14184,8 @@ export var BroTown = function BroTown(_ref0) {
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
     R.stamina -= retCost;
+    addBuildProg(R, 'endurance', retCost);
+    addBuildProg(R, 'agility', retCost);
     /* §12.2 cert — first retreat shot executed. */
     masteryEarnCert('first-retreat-shot');
     /* Standard dodge movement — but no i-frames per §5.8.3 (the shot is
@@ -14343,7 +14354,11 @@ export var BroTown = function BroTown(_ref0) {
       });
       return;
     }
-    if (!isTutorialSwipe) R.mana -= manaCost;
+    if (!isTutorialSwipe) {
+      R.mana -= manaCost;
+      /* GDD §1.2 Mind: spending mana on swipe triggers. */
+      addBuildProg(R, 'mind', manaCost);
+    }
     S._lastSwipe = now;
     S._hasUsedSwipe = true;
     var hasElement = activeWpn.element2 || activeWpn.element1;
@@ -33636,7 +33651,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'fixed',
       bottom: 'calc(25vh + 70px)',
-      left: isLandscape ? 50 : 50,
+      left: isLandscape ? 16 : 12,
       zIndex: 30,
       width: isLandscape ? 130 : 110,
       height: isLandscape ? 130 : 110

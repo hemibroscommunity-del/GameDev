@@ -148,7 +148,7 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
   const src = BAR_IMG[kind];
   return (
     <div
-      onClick={tip && onTip ? () => onTip(tip) : undefined}
+      onPointerUp={tip && onTip ? (e) => { e.stopPropagation(); onTip(tip); } : undefined}
       title={tip}
       style={{
         position: 'relative',
@@ -219,9 +219,14 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
 
 const IconButton = ({ glyph, label, active, onClick }) => {
   const src = ICON_SRC[glyph];
+  // Use onPointerUp instead of onClick so iOS fires it even when
+  // another finger is mid-drag on a joystick.  stopPropagation
+  // prevents the event reaching the dashboard's outer pointerdown
+  // handler (which only stops further bubbling, not local).
+  const fire = (e) => { e.stopPropagation(); onClick && onClick(); };
   return (
     <button
-      onClick={onClick}
+      onPointerUp={fire}
       style={{
         flex: 1,
         display: 'flex',
@@ -344,7 +349,7 @@ export const BottomDashboard = () => {
           }}>
             {stack.length > 1 && (
               <button
-                onClick={() => dashboardPanelBus.pop()}
+                onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
                 style={chipStyle}
               >◂</button>
             )}
@@ -358,7 +363,7 @@ export const BottomDashboard = () => {
               textOverflow: 'ellipsis',
             }}>{active.title}</div>
             <button
-              onClick={() => dashboardPanelBus.clear()}
+              onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.clear(); }}
               style={chipStyle}
             >×</button>
           </div>
@@ -407,7 +412,7 @@ export const BottomDashboard = () => {
                     const pct = Math.max(0, Math.min(100, (prog / buildThresh) * 100));
                     return (
                       <div key={s.key}
-                        onClick={() => setTooltip(s.tip)}
+                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(s.tip); }}
                         title={s.tip}
                         style={{
                           position: 'relative',
@@ -463,7 +468,7 @@ export const BottomDashboard = () => {
                     const lvl = (R.lifeSkills && R.lifeSkills[sk.key] && R.lifeSkills[sk.key].level) || 0;
                     return (
                       <div key={sk.key}
-                        onClick={() => setTooltip(`${sk.label} · Lv ${lvl} — ${sk.tip.split('—').slice(1).join('—').trim()}`)}
+                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${sk.label} · Lv ${lvl} — ${sk.tip.split('—').slice(1).join('—').trim()}`); }}
                         title={sk.tip}
                         style={{
                           display: 'flex',

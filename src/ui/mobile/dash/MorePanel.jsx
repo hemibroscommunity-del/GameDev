@@ -24,7 +24,7 @@ export const MorePanel = () => (
       {TILES.map(t => (
         <button
           key={t.id}
-          onClick={() => dashboardPanelBus.push(t.id)}
+          onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.push(t.id); }}
           style={{
             background: COL.tile,
             border: `1px solid ${COL.tileBor}`,
