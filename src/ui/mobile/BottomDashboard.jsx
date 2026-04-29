@@ -47,23 +47,34 @@ const BAR_IMG = {
 
 // Toolbar icon source.  Each glyph is a separate PNG sliced from the
 // user-supplied mockup screenshot by tools/slice_toolbar_icons.py.
+// "social" reuses an inline SVG so we don't need a sliced asset for it.
 const ICON_SRC = {
   inventory: '/icons/ui/bag.png',
-  skills:    '/icons/ui/skills.png',
+  social:    null,  // rendered as SVG
   codex:     '/icons/ui/codex.png',
   journey:   '/icons/ui/journey.png',
   map:       '/icons/ui/map.png',
   more:      '/icons/ui/more.png',
 };
 
-// 5 character stats shown in the middle dashboard column.  Tip text
-// surfaces when the row is tapped.
+// Inline SVG for the friends/social icon — two figures, line-art so it
+// reads at 38 px regardless of scale.
+const SOCIAL_SVG = (
+  <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
+    stroke="#E8EAF8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M1 21v-1a8 8 0 0 1 16 0v1 M19 8v6 M22 11h-6" />
+  </svg>
+);
+
+// 5 Tier-1 character stats shown in the middle dashboard column.
+// Tooltip phrasing per GDD §1.2 — describes both the effect and the
+// specific training source so the player knows what to do.
 const CHAR_STATS = [
-  { key: 'power',     label: 'Power',     tip: 'Power — increases melee damage and physical attack output.' },
-  { key: 'vitality',  label: 'Vitality',  tip: 'Vitality — raises max HP and damage resistance.' },
-  { key: 'endurance', label: 'Endurance', tip: 'Endurance — raises max stamina and reduces fatigue from sprinting / blocking.' },
-  { key: 'agility',   label: 'Agility',   tip: 'Agility — increases movement speed, attack speed, and dodge window.' },
-  { key: 'mind',      label: 'Mind',      tip: 'Mind — raises max mana, magic damage, and resistance to magical effects.' },
+  { key: 'power',     label: 'Power',     tip: 'Power — base weapon damage scaling. Trains by landing damage with melee or ranged weapons.' },
+  { key: 'vitality',  label: 'Vitality',  tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'endurance', label: 'Endurance', tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'agility',   label: 'Agility',   tip: 'Agility — move speed, dodge distance, and attack speed. Trains by successful dodges and movement under threat.' },
+  { key: 'mind',      label: 'Mind',      tip: 'Mind — mana pool size and magic strength. Trains by spending mana on staff bolts and absorbing collision restores.' },
 ];
 
 // 10 life skills — names match the canonical labels in BroTown.jsx
@@ -153,6 +164,7 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
         width: '100%',
         height: 28,
         cursor: tip ? 'pointer' : 'default',
+        touchAction: 'manipulation',
       }}>
       <img
         src={src}
@@ -234,20 +246,26 @@ const IconButton = ({ glyph, label, active, onClick }) => {
         cursor: 'pointer',
         fontFamily: 'VT323, monospace',
         opacity: active ? 1 : 0.95,
+        touchAction: 'manipulation',
       }}
     >
-      <img
-        src={src}
-        alt={label}
-        draggable={false}
-        style={{
-          width: 38,
-          height: 38,
-          objectFit: 'contain',
-          // Smooth scaling — these are illustrations, not pixel art.
-          imageRendering: 'auto',
-        }}
-      />
+      {src ? (
+        <img
+          src={src}
+          alt={label}
+          draggable={false}
+          style={{
+            width: 38,
+            height: 38,
+            objectFit: 'contain',
+            imageRendering: 'auto',
+          }}
+        />
+      ) : (
+        <div style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {SOCIAL_SVG}
+        </div>
+      )}
       <span style={{
         fontSize: 10,
         color: active ? '#a8a4ff' : COL.muted,
@@ -301,8 +319,8 @@ export const BottomDashboard = () => {
   // Use the canonical xpRequired curve so the dashboard's bar agrees
   // with the game-loop level-up threshold.
   const xpNeeded = xpRequired(level);
-  // Per-stat soft cap used to scale the build progression mini-bars.
-  const buildCap = Math.max(20, level * 5);
+  // Use-trained build threshold per GDD §1.4 (5 T1 points per level).
+  const buildThresh = Math.max(50, Math.floor(xpNeeded / 5));
 
   const Active = active?.Component;
 
@@ -324,6 +342,7 @@ export const BottomDashboard = () => {
         flexDirection: 'column',
         boxSizing: 'border-box',
         paddingBottom: 'env(safe-area-inset-bottom)',
+        touchAction: 'manipulation',
       }}
     >
       {active ? (
@@ -399,7 +418,8 @@ export const BottomDashboard = () => {
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 2 }}>
                   {CHAR_STATS.map(s => {
                     const val = R[s.key] ?? 0;
-                    const pct = Math.max(0, Math.min(100, (val / buildCap) * 100));
+                    const prog = (R._buildProg && R._buildProg[s.key]) || 0;
+                    const pct = Math.max(0, Math.min(100, (prog / buildThresh) * 100));
                     return (
                       <div key={s.key}
                         onClick={() => setTooltip(s.tip)}
@@ -412,6 +432,7 @@ export const BottomDashboard = () => {
                           border: '1px solid rgba(255,255,255,0.06)',
                           overflow: 'hidden',
                           cursor: 'pointer',
+                          touchAction: 'manipulation',
                         }}>
                         <div style={{
                           position: 'absolute',
@@ -471,6 +492,7 @@ export const BottomDashboard = () => {
                           fontSize: 11,
                           minHeight: 0,
                           cursor: 'pointer',
+                          touchAction: 'manipulation',
                         }}>
                         <span style={{ fontSize: 12, lineHeight: 1 }}>{sk.icon}</span>
                         <span style={{ color: COL.muted, fontWeight: 700 }}>{lvl}</span>
@@ -492,8 +514,8 @@ export const BottomDashboard = () => {
           }}>
             <IconButton glyph="inventory" label="Bag"
               onClick={() => dashboardPanelBus.toggle('inventory')} />
-            <IconButton glyph="skills"    label="Skills"
-              onClick={() => dashboardPanelBus.toggle('skills')} />
+            <IconButton glyph="social"    label="Friends"
+              onClick={() => dashboardPanelBus.toggle('social')} />
             <IconButton glyph="codex"     label="Codex"
               onClick={() => dashboardPanelBus.toggle('encyclopedia')} />
             <IconButton glyph="journey"   label="Journey"

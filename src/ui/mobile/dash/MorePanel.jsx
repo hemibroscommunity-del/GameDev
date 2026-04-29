@@ -5,7 +5,6 @@ import { COL, panelStyle } from './common.js';
 const TILES = [
   { id: 'self',         glyph: '🪪', label: 'Self' },
   { id: 'stats',        glyph: '📊', label: 'Stats' },
-  { id: 'social',       glyph: '👥', label: 'Social' },
   { id: 'leaderboard',  glyph: '🏆', label: 'Ranks' },
   { id: 'clan',         glyph: '🛡',  label: 'Clan' },
   { id: 'guild',        glyph: '⚒',  label: 'Guild' },

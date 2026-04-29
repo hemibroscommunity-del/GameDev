@@ -16,8 +16,10 @@ export const ChatLauncher = () => {
       aria-label="Chat"
       style={{
         position: 'fixed',
-        left: '50%',
-        // Sits in the canvas region just above the 25vh dashboard.
+        // Shifted ~70 px left of centre so the contextual interact
+        // prompt (which sits at horizontal centre, just above the
+        // dashboard) doesn't overlap the chat icon.
+        left: 'calc(50% - 70px)',
         bottom: 'calc(25vh + 12px)',
         transform: 'translateX(-50%)',
         width: 40,

@@ -91,6 +91,24 @@ var SUPA_URL = ''; var SUPA_KEY = ''; var supa = null;
 Object.assign(globalThis, { BT_API_BASE, SUPA_URL, SUPA_KEY, supa });
 Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep });
 
+/* Use-trained Tier-1 stat progression (GDD §1.1, §1.2, §1.4).
+   Per-level budget = 5 T1 points; threshold per +1 stat = xpRequired/5.
+   Combat actions feed `amount` of stat XP into the relevant stat's
+   `_buildProg` accumulator; once it crosses threshold, the stat
+   increments by 1 and the remainder carries over to the next point.
+   Hard cap of 99 per stat per GDD §1.4. */
+function addBuildProg(R, stat, amount) {
+  if (!R || !amount) return;
+  if (!R._buildProg) R._buildProg = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
+  R._buildProg[stat] = (R._buildProg[stat] || 0) + amount;
+  var thresh = Math.max(50, Math.floor(xpRequired(R.level) / 5));
+  while (R._buildProg[stat] >= thresh && (R[stat] || 0) < 99) {
+    R._buildProg[stat] -= thresh;
+    R[stat] = (R[stat] || 0) + 1;
+    if (typeof recalcDerived === 'function') recalcDerived(R);
+  }
+}
+
 export var BroTown = function BroTown(_ref0) {
   var _stateRef$current, _stateRef$current2, _anniversaryDrop$rari, _minigameInstance$win, _minigameInstance$win2, _anniversaryDrop$colo, _anniversaryDrop$colo2, _anniversaryDrop$colo3, _anniversaryDrop$colo4, _anniversaryDrop$colo5, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
   var nfts = _ref0.nfts,
@@ -1627,13 +1645,12 @@ export var BroTown = function BroTown(_ref0) {
                     text: '+' + killXp + 'XP +' + killGold + 'G',
                     color: '#f5c542', ts: Date.now()
                   });
-                  /* Check level up */
+                  /* Check level up — use-trained per GDD §1.1, no T1/T2
+                     allocation budget awarded; build stats accumulate via
+                     addBuildProg() at combat callsites instead. */
                   while (R.xp >= xpRequired(R.level)) {
                     R.xp -= xpRequired(R.level);
                     R.level++;
-                    R.unspentT1 = (R.unspentT1 || 0) + 5;
-                    R.unspentT2 = (R.unspentT2 || 0) + 5;
-                    R.unspentPts = R.unspentT1 + R.unspentT2;
                     recalcDerived(R);
                     R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
                     setLevelUpMsg({ level: R.level, ts: Date.now() });
@@ -6744,13 +6761,19 @@ export var BroTown = function BroTown(_ref0) {
                     });
                   }
 
-                  /* Check level up — §6.2 tri-phase XP curve */
+                  /* Use-trained build progression (GDD §1.2 + §1.4).
+                     Staff (magic) kills feed Mind; melee/bow kills feed
+                     Power.  TODO: hook Vit (damage taken), End (stamina
+                     spend), Agi (successful dodge i-frames) at their own
+                     callsites in a follow-up ship. */
+                  var _bpStat = _activeWpn.type === 'staff' ? 'mind' : 'power';
+                  addBuildProg(_R6, _bpStat, killXp);
+
+                  /* Check level up — §6.2 tri-phase XP curve.  No
+                     unspent point budget awarded; T1/T2 are use-trained. */
                   while (_R6.xp >= xpRequired(_R6.level)) {
                     _R6.xp -= xpRequired(_R6.level);
                     _R6.level++;
-                    _R6.unspentT1 += 5;
-                    _R6.unspentT2 += 5;
-                    _R6.unspentPts = _R6.unspentT1 + _R6.unspentT2;
                     recalcDerived(_R6);
                     _R6.hp = _R6.maxHp;
                     _R6.stamina = _R6.maxStamina;
@@ -7138,13 +7161,12 @@ export var BroTown = function BroTown(_ref0) {
                   size: 1.5 + Math.random()
                 });
               }
-              /* Check level up — §6.2 tri-phase */
+              /* Check level up — §6.2 tri-phase.  Use-trained: no
+                 unspent points awarded; build stats train at combat
+                 callsites via addBuildProg(). */
               while (S.rpg.xp >= xpRequired(S.rpg.level)) {
                 S.rpg.xp -= xpRequired(S.rpg.level);
                 S.rpg.level++;
-                S.rpg.unspentT1 = (S.rpg.unspentT1 || 0) + 5;
-                S.rpg.unspentT2 = (S.rpg.unspentT2 || 0) + 5;
-                S.rpg.unspentPts = S.rpg.unspentT1 + S.rpg.unspentT2;
                 recalcDerived(S.rpg);
                 S.rpg.hp = S.rpg.maxHp;
                 S.rpg.stamina = S.rpg.maxStamina;
@@ -33614,7 +33636,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'fixed',
       bottom: 'calc(25vh + 70px)',
-      left: isLandscape ? 16 : 12,
+      left: isLandscape ? 50 : 50,
       zIndex: 30,
       width: isLandscape ? 130 : 110,
       height: isLandscape ? 130 : 110

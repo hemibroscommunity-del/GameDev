@@ -4500,20 +4500,23 @@ export function createDefaultRpg() {
     level: 1,
     xp: 0,
     coins: 50,
-    /* Tier 1 — allocated points */
+    /* Tier 1 — use-trained stats (GDD §1.1) */
     power: 0,
     vitality: 0,
     endurance: 0,
     agility: 0,
     mind: 0,
-    /* Tier 2 — allocated points */
+    /* Per-stat training XP accumulators.  Incremented by combat
+       actions via addBuildProg(); resolves +1 stat point per
+       xpRequired(level)/5 threshold crossing. */
+    _buildProg: { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 },
+    /* Tier 2 — still allocation-based until use-training is hooked
+       up for them in a follow-up ship. */
     ferocity: 0,
     elementalMastery: 0,
     fortification: 0,
     restoration: 0,
     influence: 0,
-    /* Unspent */
-    unspentT1: 5,
     unspentT2: 5,
     /* Derived (recalculated) */
     hp: 100,
