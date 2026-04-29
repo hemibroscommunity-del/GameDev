@@ -58,59 +58,59 @@ const ICON_SRC = {
 
 // Stat bar — uses the mockup's rounded-capsule artwork directly.  The
 // PNG already has the gradient, gloss highlight, and the metric label
-// baked in.  We just stretch it to full width and slide a translucent
-// dark overlay over the right-hand portion to represent depletion.
-const Bar = ({ label, cur, max, kind, showNumbers = true }) => {
+// baked in.  We stretch it to full width, slide a translucent dark
+// overlay over the depleted right-hand portion, and overlay the live
+// current/max numbers centered on the bar.  No label row above — that
+// info was redundant with the baked-in capsule label.
+const Bar = ({ label, cur, max, kind }) => {
   const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
   const src = BAR_IMG[kind];
   return (
-    <div style={{ marginBottom: 3 }}>
-      {showNumbers && (
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      height: 28,
+    }}>
+      <img
+        src={src}
+        alt={label}
+        draggable={false}
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          objectFit: 'fill',
+          borderRadius: 14,
+        }}
+      />
+      {pct < 100 && (
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: 9,
-          color: COL.muted,
-          height: 11,
-          lineHeight: '11px',
-        }}>
-          <span>{label}</span>
-          <span>{Math.round(cur)} / {Math.round(max)}</span>
-        </div>
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: pct + '%',
+          right: 0,
+          background: 'linear-gradient(90deg, rgba(0,0,0,0.55), rgba(0,0,0,0.72))',
+          borderRadius: 14,
+          transition: 'left .15s linear',
+          pointerEvents: 'none',
+        }} />
       )}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        height: 22,
-      }}>
-        {/* Bar artwork — rounded capsule, label baked in. */}
-        <img
-          src={src}
-          alt={label}
-          draggable={false}
-          style={{
-            display: 'block',
-            width: '100%',
-            height: '100%',
-            objectFit: 'fill',
-            borderRadius: 11,
-          }}
-        />
-        {/* Depletion overlay — covers the unfilled right-hand portion. */}
-        {pct < 100 && (
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: pct + '%',
-            right: 0,
-            background: 'linear-gradient(90deg, rgba(0,0,0,0.55), rgba(0,0,0,0.7))',
-            borderRadius: 11,
-            transition: 'left .15s linear',
-            pointerEvents: 'none',
-          }} />
-        )}
-      </div>
+      {/* Live current / max overlay — bottom-right of the capsule so it
+          doesn't sit on top of the baked-in HP/MP/STA/XP label. */}
+      <span style={{
+        position: 'absolute',
+        right: 12,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        fontSize: 12,
+        fontWeight: 700,
+        color: '#fff',
+        letterSpacing: '.04em',
+        textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 1px rgba(0,0,0,.95)',
+        pointerEvents: 'none',
+        fontFamily: 'VT323, monospace',
+      }}>{Math.round(cur)} / {Math.round(max)}</span>
     </div>
   );
 };
@@ -281,10 +281,10 @@ export const BottomDashboard = () => {
               </div>
             </div>
 
-            <Bar label="HP"  cur={hp}   max={maxHp}   kind="hp"   showNumbers={false} />
-            <Bar label="MP"  cur={mp}   max={maxMp}   kind="mp" />
+            <Bar label="HP"  cur={hp}   max={maxHp}   kind="hp"   />
+            <Bar label="MP"  cur={mp}   max={maxMp}   kind="mp"   />
             <Bar label="STA" cur={stam} max={maxStam} kind="stam" />
-            <Bar label={`XP — Lv ${level}`} cur={xp} max={xpNeeded} kind="xp" />
+            <Bar label="XP"  cur={xp}   max={xpNeeded} kind="xp"   />
           </div>
 
           {/* Icon row — bottom 30% of dashboard. */}
