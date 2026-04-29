@@ -48,13 +48,35 @@ const BAR_IMG = {
 // user-supplied mockup screenshot by tools/slice_toolbar_icons.py.
 const ICON_SRC = {
   inventory: '/icons/ui/bag.png',
-  stats:     '/icons/ui/stats.png',
   skills:    '/icons/ui/skills.png',
   codex:     '/icons/ui/codex.png',
   journey:   '/icons/ui/journey.png',
   map:       '/icons/ui/map.png',
   more:      '/icons/ui/more.png',
 };
+
+// 5 character stats shown in the middle dashboard column.
+const CHAR_STATS = [
+  { key: 'power',     label: 'POW' },
+  { key: 'vitality',  label: 'VIT' },
+  { key: 'endurance', label: 'END' },
+  { key: 'agility',   label: 'AGI' },
+  { key: 'mind',      label: 'MND' },
+];
+
+// 10 life skills shown in the right dashboard column.
+const LIFE_SKILLS = [
+  { key: 'cooking',       icon: '🍳' },
+  { key: 'fishing',       icon: '🎣' },
+  { key: 'farming',       icon: '🌾' },
+  { key: 'blacksmithing', icon: '🔨' },
+  { key: 'gemCutting',    icon: '💎' },
+  { key: 'alchemy',       icon: '⚗' },
+  { key: 'woodworking',   icon: '🪓' },
+  { key: 'tailoring',     icon: '🧵' },
+  { key: 'taming',        icon: '🐾' },
+  { key: 'mining',        icon: '⛏' },
+];
 
 // Stat bar — uses the mockup's rounded-capsule artwork directly.  The
 // PNG already has the gradient, gloss highlight, and the metric label
@@ -263,13 +285,14 @@ export const BottomDashboard = () => {
         </>
       ) : (
         <>
-          {/* Stats — top portion. */}
+          {/* Stats — top portion split into a name strip + 3-column body. */}
           <div style={{
             flex: 1,
-            padding: '8px 14px 6px',
+            padding: '6px 12px 6px',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
+            minHeight: 0,
           }}>
             <div style={{
               display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
@@ -284,10 +307,78 @@ export const BottomDashboard = () => {
               </div>
             </div>
 
-            <Bar label="HP"  cur={hp}   max={maxHp}   kind="hp"   />
-            <Bar label="MP"  cur={mp}   max={maxMp}   kind="mp"   />
-            <Bar label="STA" cur={stam} max={maxStam} kind="stam" />
-            <Bar label="XP"  cur={xp}   max={xpNeeded} kind="xp"   />
+            <div style={{ flex: 1, display: 'flex', gap: 8, minHeight: 0 }}>
+              {/* Left column — 4 resource bars. */}
+              <div style={{
+                flex: 5,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+                minWidth: 0,
+              }}>
+                <Bar label="HP"  cur={hp}   max={maxHp}    kind="hp"   />
+                <Bar label="MP"  cur={mp}   max={maxMp}    kind="mp"   />
+                <Bar label="STA" cur={stam} max={maxStam}  kind="stam" />
+                <Bar label="XP"  cur={xp}   max={xpNeeded} kind="xp"   />
+              </div>
+
+              {/* Middle column — 5 character stats. */}
+              <div style={{
+                flex: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                minWidth: 0,
+              }}>
+                {CHAR_STATS.map(s => (
+                  <div key={s.key} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: 11,
+                    padding: '0 4px',
+                    borderRadius: 3,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    height: 18,
+                  }}>
+                    <span style={{ color: COL.muted, letterSpacing: '.04em' }}>{s.label}</span>
+                    <span style={{ color: COL.text, fontWeight: 700 }}>{R[s.key] ?? 0}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Right column — 10 life skill icons in a 5×2 grid. */}
+              <div style={{
+                flex: 3,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gridTemplateRows: 'repeat(5, 1fr)',
+                gap: 2,
+                minWidth: 0,
+              }}>
+                {LIFE_SKILLS.map(sk => {
+                  const lvl = (R.lifeSkills && R.lifeSkills[sk.key] && R.lifeSkills[sk.key].level) || 0;
+                  return (
+                    <div key={sk.key} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 3,
+                      padding: '0 4px',
+                      borderRadius: 3,
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      fontSize: 11,
+                      minHeight: 0,
+                    }}>
+                      <span style={{ fontSize: 12, lineHeight: 1 }}>{sk.icon}</span>
+                      <span style={{ color: COL.muted, fontWeight: 700 }}>{lvl}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Icon row — bottom 30% of dashboard. */}
@@ -300,8 +391,6 @@ export const BottomDashboard = () => {
           }}>
             <IconButton glyph="inventory" label="Bag"
               onClick={() => dashboardPanelBus.toggle('inventory')} />
-            <IconButton glyph="stats"     label="Stats"
-              onClick={() => dashboardPanelBus.toggle('stats')} />
             <IconButton glyph="skills"    label="Skills"
               onClick={() => dashboardPanelBus.toggle('skills')} />
             <IconButton glyph="codex"     label="Codex"
