@@ -12000,7 +12000,12 @@ export var BroTown = function BroTown(_ref0) {
                 the last movement direction.
            Otherwise use the movement-tracking facing angle. */
         var _spriteFA;
-        if (S._aimAngle != null && (S._backpedaling || (!isMoving && S.autoAttack))) {
+        /* Shield up: highest-priority face source.  The character pivots
+           to point in the direction the shield is being held so the
+           sprite reads as "I'm guarding *this* way". */
+        if (S._shieldUp && S._shieldAngle != null) {
+          _spriteFA = S._shieldAngle;
+        } else if (S._aimAngle != null && (S._backpedaling || (!isMoving && S.autoAttack))) {
           _spriteFA = S._aimAngle;
         } else if (S._facingAngle !== undefined) {
           _spriteFA = S._facingAngle;

@@ -153,7 +153,7 @@ input{font-family:inherit}
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
 
 /* Translucent blue joystick — outer ring + concentric inner ring,
-   8-direction arrows on the left, beveled centre on the right. */
+   8-direction arrows on the left, beveled centre on both sides. */
 .bt-joystick-base{
   width:120px;height:120px;position:relative;touch-action:none;
   border-radius:50%;
@@ -163,7 +163,24 @@ input{font-family:inherit}
              inset 0 0 0 16px rgba(91,165,255,0.40),
              0 0 8px rgba(0,0,0,0.35);
 }
-.bt-joystick-knob{display:none}
+/* Left-joystick centre — beveled translucent-blue button matching the
+   right joystick, but without an icon.  Hints "this is interactable". */
+.bt-joystick-knob{
+  width:48px;height:48px;
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 35%,
+    rgba(170,210,255,0.55) 0%,
+    rgba(91,165,255,0.40) 55%,
+    rgba(40,90,170,0.55) 100%);
+  border:1.5px solid rgba(170,210,255,0.65);
+  box-shadow:
+    inset 0 2px 3px rgba(255,255,255,0.55),
+    inset 0 -3px 4px rgba(20,40,80,0.55),
+    inset 0 0 6px rgba(91,165,255,0.30),
+    0 1px 3px rgba(0,0,0,0.5);
+  pointer-events:none;
+}
 .bt-name-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .bt-name-box{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:320px;width:100%;text-align:center;margin:auto 0}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
