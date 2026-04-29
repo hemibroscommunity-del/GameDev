@@ -152,9 +152,17 @@ input{font-family:inherit}
 .bt-joystick-zone{z-index:30;display:block;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
 
-.bt-joystick-base{width:120px;height:120px;position:relative;touch-action:none}
-/* Knob hidden — the left joystick's base art has directional notches
-   baked into its rim, so a separate moving thumb isn't needed. */
+/* Translucent blue joystick — outer ring + concentric inner ring,
+   8-direction arrows on the left, beveled centre on the right. */
+.bt-joystick-base{
+  width:120px;height:120px;position:relative;touch-action:none;
+  border-radius:50%;
+  background:rgba(91,165,255,0.10);
+  border:2px solid rgba(91,165,255,0.55);
+  box-shadow:inset 0 0 0 14px rgba(91,165,255,0.04),
+             inset 0 0 0 16px rgba(91,165,255,0.40),
+             0 0 8px rgba(0,0,0,0.35);
+}
 .bt-joystick-knob{display:none}
 .bt-name-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .bt-name-box{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:320px;width:100%;text-align:center;margin:auto 0}

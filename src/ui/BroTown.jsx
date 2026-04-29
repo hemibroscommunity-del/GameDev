@@ -33621,20 +33621,31 @@ export var BroTown = function BroTown(_ref0) {
       position: 'relative',
       overflow: 'hidden'
     }
-  }, /*#__PURE__*/React.createElement("img", {
-    src: '/icons/ui/joy-base-left.png',
-    alt: '',
-    draggable: false,
+  }, /*#__PURE__*/React.createElement("svg", {
+    /* 8 directional arrows arranged around the inner ring.  viewBox is
+       100×100 so positions are easy to reason about — centre at (50,50),
+       arrowheads sit on a 38-px-radius circle pointing outward. */
+    viewBox: '0 0 100 100',
     style: {
       position: 'absolute',
       inset: 0,
       width: '100%',
       height: '100%',
-      objectFit: 'contain',
       pointerEvents: 'none',
-      userSelect: 'none',
     }
-  }), /*#__PURE__*/React.createElement("div", {
+  }, [0, 45, 90, 135, 180, 225, 270, 315].map(function (deg) {
+    return React.createElement('g', {
+      key: deg,
+      transform: 'rotate(' + deg + ' 50 50)',
+    }, React.createElement('path', {
+      /* Triangle tip pointing away from centre. */
+      d: 'M 50 12 L 46 20 L 54 20 Z',
+      fill: 'rgba(170,210,255,0.85)',
+      stroke: 'rgba(91,165,255,0.95)',
+      strokeWidth: 0.6,
+      strokeLinejoin: 'round',
+    }));
+  })), /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
     ref: knobRef,
     style: {
@@ -33663,24 +33674,14 @@ export var BroTown = function BroTown(_ref0) {
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      filter: autoAttack ? 'drop-shadow(0 0 12px rgba(255,80,80,.45))' : 'none',
+      borderRadius: '50%',
+      background: 'rgba(91,165,255,0.10)',
+      border: '2px solid ' + (autoAttack ? 'rgba(255,120,120,0.7)' : 'rgba(91,165,255,0.55)'),
+      boxShadow: 'inset 0 0 0 14px rgba(91,165,255,0.04), inset 0 0 0 16px rgba(91,165,255,0.40), 0 0 8px rgba(0,0,0,0.35)' + (autoAttack ? ', 0 0 12px rgba(255,80,80,0.45)' : ''),
       touchAction: 'none',
       overflow: 'hidden'
     }
-  }, /*#__PURE__*/React.createElement("img", {
-    src: '/icons/ui/joy-base-right.png',
-    alt: '',
-    draggable: false,
-    style: {
-      position: 'absolute',
-      inset: 0,
-      width: '100%',
-      height: '100%',
-      objectFit: 'contain',
-      pointerEvents: 'none',
-      userSelect: 'none',
-    }
-  }), /*#__PURE__*/React.createElement("svg", {
+  }, /*#__PURE__*/React.createElement("svg", {
     style: {
       position: 'absolute',
       inset: 0,
@@ -33710,10 +33711,9 @@ export var BroTown = function BroTown(_ref0) {
   null, /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
     style: {
-      // Dynamic weapon-type indicator centred on the base disc.  The
-      // active weapon glyph (sword / bow / staff) is rendered on a
-      // small bronze-tinted coin so it visually echoes the mockup's
-      // crossed-swords coin.
+      // Beveled translucent-blue disc — the bevel hints "this is a
+      // tappable button" (double-tap toggles auto-attack).  Highlight
+      // ring at the top, shadow ring at the bottom, faint inset glow.
       position: 'absolute',
       left: '50%',
       top: '50%',
@@ -33721,15 +33721,20 @@ export var BroTown = function BroTown(_ref0) {
       width: isLandscape ? 56 : 48,
       height: isLandscape ? 56 : 48,
       borderRadius: '50%',
-      background: 'radial-gradient(circle, rgba(180,140,72,0.92) 0%, rgba(120,86,40,0.88) 70%, rgba(70,46,18,0.85) 100%)',
-      border: '2px solid rgba(96,68,30,0.85)',
-      boxShadow: 'inset 0 2px 4px rgba(255,220,140,0.35), inset 0 -2px 4px rgba(0,0,0,0.4), 0 0 6px rgba(0,0,0,0.6)',
+      background: 'radial-gradient(circle at 50% 35%, rgba(170,210,255,0.55) 0%, rgba(91,165,255,0.40) 55%, rgba(40,90,170,0.55) 100%)',
+      border: '1.5px solid rgba(170,210,255,0.65)',
+      boxShadow:
+        'inset 0 2px 3px rgba(255,255,255,0.55),' +
+        'inset 0 -3px 4px rgba(20,40,80,0.55),' +
+        'inset 0 0 6px rgba(91,165,255,0.30),' +
+        '0 1px 3px rgba(0,0,0,0.5)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: isLandscape ? 26 : 22,
+      fontSize: isLandscape ? 24 : 20,
       lineHeight: 1,
       pointerEvents: 'none',
+      textShadow: '0 1px 2px rgba(0,0,0,0.7)',
     }
   }, function (_stateRef$rkb) {
     var slot = ((_stateRef$rkb = stateRef.current) === null || _stateRef$rkb === void 0 || (_stateRef$rkb = _stateRef$rkb.rpg) === null || _stateRef$rkb === void 0 ? void 0 : _stateRef$rkb.activeSlot) || 'melee';
