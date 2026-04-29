@@ -74,14 +74,12 @@ export function renderFrame(ctx, canvas, S, W, H, P, K, map, nfts) {
         var startRow = Math.max(0, Math.floor(cy / TILE));
         var endRow = Math.min(ROWS - 1, Math.floor((cy + H) / TILE));
 
-        /* Day/night cycle — cached, recalculated every ~1 second */
-        if (!S._dayNightCache || now - S._dayNightCache.ts > 1000) {
-          var hours = new Date().getHours() + new Date().getMinutes() / 60;
-          var isNight = hours < 6 || hours > 20;
-          var isDusk = hours >= 18 && hours <= 20 || hours >= 5 && hours < 7;
-          S._dayNightCache = { nightAlpha: isNight ? 0.35 : isDusk ? 0.15 : 0, ts: now };
+        /* Day/night cycle disabled per user request — perpetual daylight.
+           Stub the cache so any code reading it still works. */
+        if (!S._dayNightCache) {
+          S._dayNightCache = { nightAlpha: 0, ts: now };
         }
-        var nightAlpha = S._dayNightCache.nightAlpha;
+        var nightAlpha = 0;
         var zoneElem = ((_ZONES$S$currentZone8 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone8 === void 0 ? void 0 : _ZONES$S$currentZone8.element) || null;
         var _loop2 = function _loop2(r) {
           var _loop3 = function _loop3(cl) {

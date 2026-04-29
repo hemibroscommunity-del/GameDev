@@ -91,7 +91,10 @@ const Bar = ({ label, cur, max, kind }) => {
           left: pct + '%',
           right: 0,
           background: 'linear-gradient(90deg, rgba(0,0,0,0.55), rgba(0,0,0,0.72))',
-          borderRadius: 14,
+          // Round only the right corners — the left edge is the visible
+          // drain line and should be a sharp vertical cut, not a "U".
+          borderTopRightRadius: 14,
+          borderBottomRightRadius: 14,
           transition: 'left .15s linear',
           pointerEvents: 'none',
         }} />

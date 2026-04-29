@@ -7976,16 +7976,16 @@ export var BroTown = function BroTown(_ref0) {
           ctx.fillRect(-10, -10, W + 20, H + 20);
         }
 
-        /* Day/night cycle — cached, recalculated every ~1 second */
-        if (!S._dayNightCache || now - S._dayNightCache.ts > 1000) {
-          var _dnHours = new Date().getHours() + new Date().getMinutes() / 60;
-          var _dnIsNight = _dnHours < 6 || _dnHours > 20;
-          var _dnIsDusk = _dnHours >= 18 && _dnHours <= 20 || _dnHours >= 5 && _dnHours < 7;
-          S._dayNightCache = { nightAlpha: _dnIsNight ? 0.35 : _dnIsDusk ? 0.15 : 0, isNight: _dnIsNight, isDusk: _dnIsDusk, ts: now };
+        /* Day/night cycle disabled per user request — keep the world in
+           perpetual daylight.  The cache shape is preserved so any
+           dependent code reading nightAlpha / isNight / isDusk still
+           works without checks; values are stamped to the day state. */
+        if (!S._dayNightCache) {
+          S._dayNightCache = { nightAlpha: 0, isNight: false, isDusk: false, ts: now };
         }
-        var nightAlpha = S._dayNightCache.nightAlpha;
-        var isNight = S._dayNightCache.isNight || false;
-        var isDusk = S._dayNightCache.isDusk || false;
+        var nightAlpha = 0;
+        var isNight = false;
+        var isDusk = false;
         var zoneElem = ((_ZONES$S$currentZone8 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone8 === void 0 ? void 0 : _ZONES$S$currentZone8.element) || null;
         if (!_usedSpriteLayer) {
         var _loop2 = function _loop2(r) {
