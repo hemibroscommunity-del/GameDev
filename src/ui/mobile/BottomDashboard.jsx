@@ -56,31 +56,34 @@ const ICON_SRC = {
   more:      '/icons/ui/more.png',
 };
 
-// 5 character stats shown in the middle dashboard column.
+// 5 character stats shown in the middle dashboard column.  Tip text
+// surfaces when the row is tapped.
 const CHAR_STATS = [
-  { key: 'power',     label: 'POW' },
-  { key: 'vitality',  label: 'VIT' },
-  { key: 'endurance', label: 'END' },
-  { key: 'agility',   label: 'AGI' },
-  { key: 'mind',      label: 'MND' },
+  { key: 'power',     label: 'Power',     tip: 'Power — increases melee damage and physical attack output.' },
+  { key: 'vitality',  label: 'Vitality',  tip: 'Vitality — raises max HP and damage resistance.' },
+  { key: 'endurance', label: 'Endurance', tip: 'Endurance — raises max stamina and reduces fatigue from sprinting / blocking.' },
+  { key: 'agility',   label: 'Agility',   tip: 'Agility — increases movement speed, attack speed, and dodge window.' },
+  { key: 'mind',      label: 'Mind',      tip: 'Mind — raises max mana, magic damage, and resistance to magical effects.' },
 ];
 
-// 10 life skills shown in the right dashboard column.
+// 10 life skills — names match the canonical labels in BroTown.jsx
+// (Woodcutting, Fishing, Mining, Cooking, Blacksmithing, Woodworking,
+// Gem Cutting, Enchanting, Farming, Trapping).
 const LIFE_SKILLS = [
-  { key: 'cooking',       icon: '🍳' },
-  { key: 'fishing',       icon: '🎣' },
-  { key: 'farming',       icon: '🌾' },
-  { key: 'blacksmithing', icon: '🔨' },
-  { key: 'gemCutting',    icon: '💎' },
-  { key: 'alchemy',       icon: '⚗' },
-  { key: 'woodworking',   icon: '🪓' },
-  { key: 'tailoring',     icon: '🧵' },
-  { key: 'taming',        icon: '🐾' },
-  { key: 'mining',        icon: '⛏' },
+  { key: 'cooking',       icon: '🍳', label: 'Cooking',       tip: 'Cooking — turn raw ingredients into stat-boosting food.' },
+  { key: 'fishing',       icon: '🎣', label: 'Fishing',       tip: 'Fishing — catch fish from water tiles for cooking + alchemy.' },
+  { key: 'mining',        icon: '⛏',  label: 'Mining',        tip: 'Mining — break ore + zone gems with a pickaxe.' },
+  { key: 'woodcutting',   icon: '🪓', label: 'Woodcutting',   tip: 'Woodcutting — chop trees for logs and twigs.' },
+  { key: 'farming',       icon: '🌾', label: 'Farming',       tip: 'Farming — plant + harvest crops on owned plots.' },
+  { key: 'blacksmithing', icon: '🔨', label: 'Blacksmithing', tip: 'Blacksmithing — forge weapons, armour, tools.' },
+  { key: 'woodworking',   icon: '🛠',  label: 'Woodworking',   tip: 'Woodworking — craft bows, staves, furniture from logs.' },
+  { key: 'gemCutting',    icon: '💎', label: 'Gem Cutting',   tip: 'Gem Cutting — refine raw gems into polished sockets.' },
+  { key: 'enchanting',    icon: '✨', label: 'Enchanting',    tip: 'Enchanting — infuse equipment with elemental effects.' },
+  { key: 'trapping',      icon: '🪤', label: 'Trapping',      tip: 'Trapping — hunt animals + monsters with set traps.' },
 ];
 
 // Tiny column-header used at the top of each of the three dashboard
-// columns (Combat / Build / Life Skills).
+// columns.  Centered above its column.
 const ColHeader = ({ children }) => (
   <div style={{
     fontSize: 10,
@@ -88,6 +91,7 @@ const ColHeader = ({ children }) => (
     letterSpacing: '.08em',
     textTransform: 'uppercase',
     padding: '0 2px 2px',
+    textAlign: 'center',
     borderBottom: '1px solid rgba(255,255,255,0.06)',
     marginBottom: 3,
     whiteSpace: 'nowrap',
@@ -96,20 +100,60 @@ const ColHeader = ({ children }) => (
   }}>{children}</div>
 );
 
+// Tooltip popup module — taps on stat / skill rows show a short
+// description above the dashboard.  One active tooltip at a time;
+// auto-dismisses after 3s or on next tap.
+const Tooltip = ({ text, onClose }) => {
+  useEffect(() => {
+    if (!text) return;
+    const id = setTimeout(onClose, 3000);
+    return () => clearTimeout(id);
+  }, [text]);
+  if (!text) return null;
+  return (
+    <div
+      onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
+      style={{
+        position: 'fixed',
+        left: '50%',
+        bottom: 'calc(25vh + 12px)',
+        transform: 'translateX(-50%)',
+        maxWidth: '88vw',
+        padding: '8px 12px',
+        background: 'rgba(15, 17, 26, 0.96)',
+        border: '1px solid rgba(255,255,255,0.16)',
+        borderRadius: 8,
+        color: '#E8EAF8',
+        fontFamily: 'VT323, monospace',
+        fontSize: 13,
+        lineHeight: 1.3,
+        zIndex: 36,
+        boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
+      }}
+    >
+      {text}
+    </div>
+  );
+};
+
 // Stat bar — uses the mockup's clean rounded-capsule artwork.  We
 // stretch the PNG to full width, slide a depletion overlay over the
 // right-hand portion (sharp left edge, rounded right cap), and lay
 // two text overlays on top: a metric label on the left and live
 // current/max on the right.
-const Bar = ({ label, cur, max, kind }) => {
+const Bar = ({ label, cur, max, kind, tip, onTip }) => {
   const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
   const src = BAR_IMG[kind];
   return (
-    <div style={{
-      position: 'relative',
-      width: '100%',
-      height: 28,
-    }}>
+    <div
+      onClick={tip && onTip ? () => onTip(tip) : undefined}
+      title={tip}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: 28,
+        cursor: tip ? 'pointer' : 'default',
+      }}>
       <img
         src={src}
         alt={label}
@@ -235,6 +279,7 @@ const PANELS = {
 
 export const BottomDashboard = () => {
   const [, force] = useState(0);
+  const [tooltip, setTooltip] = useState('');
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 200);
     return () => clearInterval(id);
@@ -262,6 +307,8 @@ export const BottomDashboard = () => {
   const Active = active?.Component;
 
   return (
+    <>
+      <Tooltip text={tooltip} onClose={() => setTooltip('')} />
     <div
       onPointerDown={(e) => e.stopPropagation()}
       style={{
@@ -334,10 +381,10 @@ export const BottomDashboard = () => {
               }}>
                 <ColHeader>{S?.myName || 'Anon'} · Lv {level}</ColHeader>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'space-between' }}>
-                  <Bar label="HP"     cur={hp}   max={maxHp}    kind="hp"   />
-                  <Bar label="Mana"   cur={mp}   max={maxMp}    kind="mp"   />
-                  <Bar label="Energy" cur={stam} max={maxStam}  kind="stam" />
-                  <Bar label="XP"     cur={xp}   max={xpNeeded} kind="xp"   />
+                  <Bar label="HP"     cur={hp}   max={maxHp}    kind="hp"   tip="Hit Points — your health pool. Hits zero and you fall." onTip={setTooltip} />
+                  <Bar label="Mana"   cur={mp}   max={maxMp}    kind="mp"   tip="Mana — fuels staff (magic) attacks and special abilities." onTip={setTooltip} />
+                  <Bar label="Energy" cur={stam} max={maxStam}  kind="stam" tip="Energy — sprint, dodge-roll, and shield-block all draw from this. Regenerates while idle." onTip={setTooltip} />
+                  <Bar label="XP"     cur={xp}   max={xpNeeded} kind="xp"   tip={`XP — combat experience. Fill to ${xpNeeded.toLocaleString()} to reach level ${level + 1}.`} onTip={setTooltip} />
                 </div>
               </div>
 
@@ -354,14 +401,18 @@ export const BottomDashboard = () => {
                     const val = R[s.key] ?? 0;
                     const pct = Math.max(0, Math.min(100, (val / buildCap) * 100));
                     return (
-                      <div key={s.key} style={{
-                        position: 'relative',
-                        height: 16,
-                        borderRadius: 3,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.06)',
-                        overflow: 'hidden',
-                      }}>
+                      <div key={s.key}
+                        onClick={() => setTooltip(s.tip)}
+                        title={s.tip}
+                        style={{
+                          position: 'relative',
+                          height: 16,
+                          borderRadius: 3,
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                        }}>
                         <div style={{
                           position: 'absolute',
                           inset: 0,
@@ -376,9 +427,9 @@ export const BottomDashboard = () => {
                           justifyContent: 'space-between',
                           alignItems: 'center',
                           padding: '0 5px',
-                          fontSize: 11,
+                          fontSize: 10,
                         }}>
-                          <span style={{ color: COL.muted, letterSpacing: '.04em' }}>{s.label}</span>
+                          <span style={{ color: COL.text, letterSpacing: '.02em' }}>{s.label}</span>
                           <span style={{ color: COL.text, fontWeight: 700 }}>{val}</span>
                         </div>
                       </div>
@@ -405,18 +456,22 @@ export const BottomDashboard = () => {
                   {LIFE_SKILLS.map(sk => {
                     const lvl = (R.lifeSkills && R.lifeSkills[sk.key] && R.lifeSkills[sk.key].level) || 0;
                     return (
-                      <div key={sk.key} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 3,
-                        padding: '0 4px',
-                        borderRadius: 3,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.06)',
-                        fontSize: 11,
-                        minHeight: 0,
-                      }}>
+                      <div key={sk.key}
+                        onClick={() => setTooltip(`${sk.label} · Lv ${lvl} — ${sk.tip.split('—').slice(1).join('—').trim()}`)}
+                        title={sk.tip}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 3,
+                          padding: '0 4px',
+                          borderRadius: 3,
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          fontSize: 11,
+                          minHeight: 0,
+                          cursor: 'pointer',
+                        }}>
                         <span style={{ fontSize: 12, lineHeight: 1 }}>{sk.icon}</span>
                         <span style={{ color: COL.muted, fontWeight: 700 }}>{lvl}</span>
                       </div>
@@ -451,6 +506,7 @@ export const BottomDashboard = () => {
         </>
       )}
     </div>
+    </>
   );
 };
 

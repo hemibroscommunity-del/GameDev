@@ -3375,7 +3375,9 @@ export var BroTown = function BroTown(_ref0) {
         /* Amulet move speed bonus */
         var amuletSpdMult = ((_S$rpg5 = S.rpg) === null || _S$rpg5 === void 0 || (_S$rpg5 = _S$rpg5._amuletBonus) === null || _S$rpg5 === void 0 ? void 0 : _S$rpg5.stat) === 'moveSpd' ? 1 + S.rpg._amuletBonus.value / 100 : 1.0;
         var swimMult = S._swimming ? SWIM_SPEED_MULT : 1.0;
-        var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult; /* sled overrides movement */
+        /* Shield up: half speed.  Trades mobility for the guard. */
+        var shieldMult = S._shieldUp ? 0.5 : 1.0;
+        var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult; /* sled overrides movement */
 
         /* Auto-attack movement: 50% speed across the board while
            S.autoAttack is on. Backpedal flag still tracks "moving
