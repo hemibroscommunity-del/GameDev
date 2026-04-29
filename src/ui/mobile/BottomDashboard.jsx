@@ -33,13 +33,15 @@ const COL = {
   gold:      '#f5c542',
 };
 
-// Per-stat colour pairs for the chunky bars — top of the gradient is the
-// glossy highlight, bottom is the shadow.
-const BAR_COLORS = {
-  hp:   { top: '#ff8b94', mid: '#ff5e6c', bot: '#b8323d' },
-  mp:   { top: '#7aaff8', mid: '#3b82f6', bot: '#1d54b3' },
-  stam: { top: '#fad97a', mid: '#f5c542', bot: '#a98005' },
-  xp:   { top: '#7eedb8', mid: '#3ddc97', bot: '#1f8a5c' },
+// Bar artwork sliced from the user-supplied mockup screenshot.  Each
+// PNG is the full-width rounded capsule with the metric label baked in.
+// The image stretches to the dashboard's full width; an overlay handles
+// the empty / depleted portion to the right of the fill.
+const BAR_IMG = {
+  hp:   '/icons/ui/bar-hp.png',
+  mp:   '/icons/ui/bar-mp.png',
+  stam: '/icons/ui/bar-stam.png',
+  xp:   '/icons/ui/bar-xp.png',
 };
 
 // Toolbar icon source.  Each glyph is a separate PNG sliced from the
@@ -54,12 +56,13 @@ const ICON_SRC = {
   more:      '/icons/ui/more.png',
 };
 
-// Chunky stat bar (HP / MP / STA / XP) matching the user's mockup:
-// rounded ~24 px, glossy gradient, label embedded centred, current/max
-// floated above-right of the strip.
+// Stat bar — uses the mockup's rounded-capsule artwork directly.  The
+// PNG already has the gradient, gloss highlight, and the metric label
+// baked in.  We just stretch it to full width and slide a translucent
+// dark overlay over the right-hand portion to represent depletion.
 const Bar = ({ label, cur, max, kind, showNumbers = true }) => {
   const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
-  const c = BAR_COLORS[kind];
+  const src = BAR_IMG[kind];
   return (
     <div style={{ marginBottom: 3 }}>
       {showNumbers && (
@@ -77,36 +80,36 @@ const Bar = ({ label, cur, max, kind, showNumbers = true }) => {
       )}
       <div style={{
         position: 'relative',
+        width: '100%',
         height: 22,
-        background: 'rgba(0,0,0,.45)',
-        borderRadius: 11,
-        overflow: 'hidden',
-        border: '1px solid rgba(0,0,0,.5)',
-        boxShadow: 'inset 0 1px 1px rgba(255,255,255,.06)',
       }}>
-        {/* Filled portion — glossy gradient. */}
-        <div style={{
-          position: 'absolute',
-          inset: '0 auto 0 0',
-          width: pct + '%',
-          background: `linear-gradient(180deg, ${c.top} 0%, ${c.mid} 50%, ${c.bot} 100%)`,
-          boxShadow: 'inset 0 2px 4px rgba(255,255,255,.35), inset 0 -2px 4px rgba(0,0,0,.35)',
-          transition: 'width .15s linear',
-        }} />
-        {/* Embedded centred label. */}
-        <span style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#fff',
-          letterSpacing: '.06em',
-          textShadow: '0 1px 2px rgba(0,0,0,.7), 0 0 1px rgba(0,0,0,.9)',
-          pointerEvents: 'none',
-        }}>{label}</span>
+        {/* Bar artwork — rounded capsule, label baked in. */}
+        <img
+          src={src}
+          alt={label}
+          draggable={false}
+          style={{
+            display: 'block',
+            width: '100%',
+            height: '100%',
+            objectFit: 'fill',
+            borderRadius: 11,
+          }}
+        />
+        {/* Depletion overlay — covers the unfilled right-hand portion. */}
+        {pct < 100 && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: pct + '%',
+            right: 0,
+            background: 'linear-gradient(90deg, rgba(0,0,0,0.55), rgba(0,0,0,0.7))',
+            borderRadius: 11,
+            transition: 'left .15s linear',
+            pointerEvents: 'none',
+          }} />
+        )}
       </div>
     </div>
   );
