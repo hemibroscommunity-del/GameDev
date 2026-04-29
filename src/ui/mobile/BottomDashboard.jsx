@@ -46,25 +46,16 @@ const BAR_IMG = {
 };
 
 // Toolbar icon source.  Each glyph is a separate PNG sliced from the
-// user-supplied mockup screenshot by tools/slice_toolbar_icons.py.
-// "social" reuses an inline SVG so we don't need a sliced asset for it.
+// user-supplied mockup screenshots by tools/slice_toolbar_icons.py
+// (first batch) and tools/slice_more_icons.py (second batch).
 const ICON_SRC = {
   inventory: '/icons/ui/bag.png',
-  social:    null,  // rendered as SVG
+  friends:   '/icons/ui/friends.png',
   codex:     '/icons/ui/codex.png',
   journey:   '/icons/ui/journey.png',
   map:       '/icons/ui/map.png',
   more:      '/icons/ui/more.png',
 };
-
-// Inline SVG for the friends/social icon — two figures, line-art so it
-// reads at 38 px regardless of scale.
-const SOCIAL_SVG = (
-  <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
-    stroke="#E8EAF8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M1 21v-1a8 8 0 0 1 16 0v1 M19 8v6 M22 11h-6" />
-  </svg>
-);
 
 // 5 Tier-1 character stats shown in the middle dashboard column.
 // Tooltip phrasing per GDD §1.2 — describes both the effect and the
@@ -249,23 +240,17 @@ const IconButton = ({ glyph, label, active, onClick }) => {
         touchAction: 'manipulation',
       }}
     >
-      {src ? (
-        <img
-          src={src}
-          alt={label}
-          draggable={false}
-          style={{
-            width: 38,
-            height: 38,
-            objectFit: 'contain',
-            imageRendering: 'auto',
-          }}
-        />
-      ) : (
-        <div style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {SOCIAL_SVG}
-        </div>
-      )}
+      <img
+        src={src}
+        alt={label}
+        draggable={false}
+        style={{
+          width: 38,
+          height: 38,
+          objectFit: 'contain',
+          imageRendering: 'auto',
+        }}
+      />
       <span style={{
         fontSize: 10,
         color: active ? '#a8a4ff' : COL.muted,
@@ -514,7 +499,7 @@ export const BottomDashboard = () => {
           }}>
             <IconButton glyph="inventory" label="Bag"
               onClick={() => dashboardPanelBus.toggle('inventory')} />
-            <IconButton glyph="social"    label="Friends"
+            <IconButton glyph="friends"   label="Friends"
               onClick={() => dashboardPanelBus.toggle('social')} />
             <IconButton glyph="codex"     label="Codex"
               onClick={() => dashboardPanelBus.toggle('encyclopedia')} />
