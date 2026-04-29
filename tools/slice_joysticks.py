@@ -1,65 +1,51 @@
-"""Crop the four joystick assets out of the deflected mockup screenshot.
-
-The user uploaded two reference images: joysticks at rest (centered)
-and joysticks pushed (thumbs displaced).  The deflected image is
-useful because the BASE donut and the THUMB disc are spatially
-separated, so each can be cut out without painting over the other.
-
-Outputs four PNGs to public/icons/ui/ with black-background pixels
-turned transparent:
-  joy-base-left.png   joy-thumb-left.png
-  joy-base-right.png  joy-thumb-right.png
-"""
+"""Slice ONE composite per joystick from the still mockup.  We tried
+splitting base + displaceable thumb earlier but the deflected source's
+displaced thumb bled into the masked base.  Going with a single
+static composite per joystick instead — base ring + centred thumb
+together, circle-masked to its outer silhouette."""
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw
 
-DEFLECTED = Path('public/icons/ui/dashboard-mockup-new1.jpg')
-OUT_DIR   = Path('public/icons/ui')
+STILL   = Path('public/icons/ui/dashboard-mockup-new2.jpg')
+OUT_DIR = Path('public/icons/ui')
 
-# Hand-measured crop boxes in source-px coords.  Source is 688x1504.
-# Each is (left, top, right, bottom).  Left joystick spans roughly
-# x=25..327, right joystick x=368..655.  Within each, the deflected
-# image clearly shows base (donut) and thumb (small disc) at different
-# locations.  The boxes intentionally generous-pad so the rounded
-# silhouettes have a few px of black to fade into transparency.
-CROPS = {
-    'joy-base-left':   (110, 660, 330, 880),  # bottom-right portion of left bbox
-    'joy-thumb-left':  ( 25, 555, 200, 720),  # upper-left portion of left bbox
-    'joy-base-right':  (370, 590, 590, 800),  # upper-left portion of right bbox
-    'joy-thumb-right': (480, 770, 660, 930),  # bottom-right portion of right bbox
+# Centres measured by inspect_joysticks.py:
+#   left thumb (175, 766), right thumb (508, 729)  in the still source.
+LEFT_CENTER  = (175, 766)
+RIGHT_CENTER = (508, 729)
+OUTER_R      = 122          # full joystick silhouette
+OUT_SIZE     = 256
+
+PIECES = {
+    'joy-left':  LEFT_CENTER,
+    'joy-right': RIGHT_CENTER,
 }
 
-# Black-to-transparent threshold: any pixel with R+G+B below this gets
-# alpha=0; gentler fade above to avoid hard edges around the artwork.
-BLACK_THRESH = 24
-
-def make_transparent(crop):
-    crop = crop.convert('RGBA')
-    px = crop.load()
-    w, h = crop.size
-    for y in range(h):
-        for x in range(w):
-            r, g, b, _ = px[x, y]
-            tot = r + g + b
-            if tot < BLACK_THRESH * 3:
-                px[x, y] = (0, 0, 0, 0)
-            elif tot < BLACK_THRESH * 6:
-                # Soft falloff for anti-aliased rim pixels.
-                alpha = int((tot - BLACK_THRESH * 3) / (BLACK_THRESH * 3) * 255)
-                px[x, y] = (r, g, b, alpha)
-    return crop
+def cut(img, cx, cy, r):
+    pad = r + 8
+    raw = img.crop((cx - pad, cy - pad, cx + pad, cy + pad)).convert('RGBA')
+    rw, rh = raw.size
+    mask = Image.new('L', (rw, rh), 0)
+    ImageDraw.Draw(mask).ellipse(
+        (rw/2 - r, rh/2 - r, rw/2 + r, rh/2 + r), fill=255)
+    raw.putalpha(mask)
+    out = Image.new('RGBA', (OUT_SIZE, OUT_SIZE), (0, 0, 0, 0))
+    scale = OUT_SIZE / max(rw, rh)
+    nw, nh = int(rw * scale), int(rh * scale)
+    out.paste(raw.resize((nw, nh), Image.LANCZOS),
+              ((OUT_SIZE - nw) // 2, (OUT_SIZE - nh) // 2))
+    return out
 
 def main():
-    if not DEFLECTED.exists():
-        raise SystemExit(f'No source at {DEFLECTED}')
-    img = Image.open(DEFLECTED).convert('RGB')
+    if not STILL.exists():
+        raise SystemExit('Still mockup required at ' + str(STILL))
+    img = Image.open(STILL).convert('RGB')
     print(f'Source: {img.size}')
-    for name, box in CROPS.items():
-        crop = img.crop(box)
-        rgba = make_transparent(crop)
-        out = OUT_DIR / f'{name}.png'
-        rgba.save(out, 'PNG', optimize=True)
-        print(f'  {name:18s} -> {out.name}  ({rgba.width}x{rgba.height})')
+    for name, (cx, cy) in PIECES.items():
+        out = cut(img, cx, cy, OUTER_R)
+        path = OUT_DIR / f'{name}.png'
+        out.save(path, 'PNG', optimize=True)
+        print(f'  {name:10s} -> {path.name}  {OUT_SIZE}x{OUT_SIZE}')
 
 if __name__ == '__main__':
     main()

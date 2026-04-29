@@ -153,10 +153,10 @@ input{font-family:inherit}
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
 
 .bt-joystick-base{width:120px;height:120px;position:relative;touch-action:none;
-  background:url(/icons/ui/joy-base-left.png) no-repeat center / contain}
-.bt-joystick-knob{width:64px;height:64px;position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-50%);pointer-events:none;
-  background:url(/icons/ui/joy-thumb-left.png) no-repeat center / contain}
+  background:url(/icons/ui/joy-left.png) no-repeat center / contain}
+/* Knob still exists in the DOM for future displacement work but is
+   visually hidden — the still composite already shows the centred thumb. */
+.bt-joystick-knob{display:none}
 .bt-name-modal{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .bt-name-box{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:320px;width:100%;text-align:center;margin:auto 0}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}

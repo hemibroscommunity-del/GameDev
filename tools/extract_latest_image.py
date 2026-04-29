@@ -39,8 +39,16 @@ def main():
     if not images:
         sys.exit(1)
     # If a count is given on the cli we extract that many recent images.
-    n = int(sys.argv[1]) if len(sys.argv) > 1 else 1
-    pick = images[-n:]
+    # If a single arg is given, treat as count (most recent N).  If two
+    # args, treat as a slice "start end" (negative-indexed allowed).
+    if len(sys.argv) == 3:
+        s, e = int(sys.argv[1]), int(sys.argv[2])
+        pick = images[s:e] if e else images[s:]
+    elif len(sys.argv) == 2:
+        n = int(sys.argv[1])
+        pick = images[-n:]
+    else:
+        pick = images[-1:]
     for i, (media, b64) in enumerate(pick):
         ext = '.png' if 'png' in media else '.jpg' if 'jp' in media else '.bin'
         out = OUT_DIR / f'dashboard-mockup-new{i}{ext}'

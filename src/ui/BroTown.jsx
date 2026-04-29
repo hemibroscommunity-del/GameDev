@@ -14635,9 +14635,7 @@ export var BroTown = function BroTown(_ref0) {
     var rawDx = clientX - bcx;
     var rawDy = clientY - bcy;
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    /* Knob is allowed to drift ~16 px past the visible ring edge so the
-       artwork pokes out the way the user's mockup shows. */
-    var maxR = rect.width / 2 + 16;
+    var maxR = rect.width / 2 - 10;
     var clampDist = Math.min(dist, maxR);
     var angle = Math.atan2(rawDy, rawDx);
     var knobX = Math.cos(angle) * clampDist;
@@ -14684,8 +14682,7 @@ export var BroTown = function BroTown(_ref0) {
     var rawDx = clientX - bcx,
       rawDy = clientY - bcy;
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    /* Same past-edge drift as the left joystick. */
-    var maxR = rect.width / 2 + 16;
+    var maxR = rect.width / 2 - 8;
     var clampDist = Math.min(dist, maxR);
     var angle = Math.atan2(rawDy, rawDx);
     if (rKnobRef.current) {
@@ -33651,7 +33648,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       width: isLandscape ? 120 : 100,
       height: isLandscape ? 120 : 100,
-      backgroundImage: 'url(/icons/ui/joy-base-right.png)',
+      backgroundImage: 'url(/icons/ui/joy-right.png)',
       backgroundSize: 'contain',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -33694,17 +33691,13 @@ export var BroTown = function BroTown(_ref0) {
   null, /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
     style: {
+      // Knob kept in tree (rKnobRef is referenced by input handlers)
+      // but visually hidden — the joy-right.png composite already shows
+      // the centred thumb baked in.
+      display: 'none',
       position: 'absolute',
       left: '50%',
       top: '50%',
-      transform: 'translate(-50%,-50%)',
-      width: isLandscape ? 64 : 56,
-      height: isLandscape ? 64 : 56,
-      backgroundImage: 'url(/icons/ui/joy-thumb-right.png)',
-      backgroundSize: 'contain',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
-      pointerEvents: 'none'
     }
   }))), /*#__PURE__*/React.createElement("div", {
     ref: shieldJoyRef,
