@@ -59,13 +59,13 @@ const ICON_INDEX = {
   more:      6,
 };
 
-// Sprite tuning constants. Source image is roughly 1500 × 700; the
-// toolbar strip occupies the bottom ~33 % of the image and is split
-// into 7 equal columns.  These percentages mask off the label captions
-// baked into the screenshot — adjust if the saved file's exact aspect
-// ratio differs.
+// Sprite tuning constants. Source image is 1504 × 688; the toolbar
+// strip occupies the bottom ~38 % of the image and is split into 7
+// equal columns.  These percentages mask off the label captions baked
+// into the screenshot — adjust if the saved file's exact aspect ratio
+// changes.
 const SPRITE_BG_SIZE = '700% auto';
-const SPRITE_BG_Y    = '78%';
+const SPRITE_BG_Y    = '88%';
 
 const iconSpriteStyle = (idx) => ({
   width: 36,
