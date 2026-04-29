@@ -33648,7 +33648,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       width: isLandscape ? 120 : 100,
       height: isLandscape ? 120 : 100,
-      backgroundImage: 'url(/icons/ui/joy-right.png)',
+      backgroundImage: 'url(/icons/ui/joy-base-right.png)',
       backgroundSize: 'contain',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -33691,15 +33691,31 @@ export var BroTown = function BroTown(_ref0) {
   null, /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
     style: {
-      // Knob kept in tree (rKnobRef is referenced by input handlers)
-      // but visually hidden — the joy-right.png composite already shows
-      // the centred thumb baked in.
-      display: 'none',
+      // Dynamic weapon-type indicator centred on the base disc.  The
+      // active weapon glyph (sword / bow / staff) is rendered on a
+      // small bronze-tinted coin so it visually echoes the mockup's
+      // crossed-swords coin.
       position: 'absolute',
       left: '50%',
       top: '50%',
+      transform: 'translate(-50%,-50%)',
+      width: isLandscape ? 56 : 48,
+      height: isLandscape ? 56 : 48,
+      borderRadius: '50%',
+      background: 'radial-gradient(circle, rgba(180,140,72,0.92) 0%, rgba(120,86,40,0.88) 70%, rgba(70,46,18,0.85) 100%)',
+      border: '2px solid rgba(96,68,30,0.85)',
+      boxShadow: 'inset 0 2px 4px rgba(255,220,140,0.35), inset 0 -2px 4px rgba(0,0,0,0.4), 0 0 6px rgba(0,0,0,0.6)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: isLandscape ? 26 : 22,
+      lineHeight: 1,
+      pointerEvents: 'none',
     }
-  }))), /*#__PURE__*/React.createElement("div", {
+  }, function (_stateRef$rkb) {
+    var slot = ((_stateRef$rkb = stateRef.current) === null || _stateRef$rkb === void 0 || (_stateRef$rkb = _stateRef$rkb.rpg) === null || _stateRef$rkb === void 0 ? void 0 : _stateRef$rkb.activeSlot) || 'melee';
+    return slot === 'ranged' ? '🏹' : slot === 'staff' ? '🪄' : '⚔️';
+  }()))), /*#__PURE__*/React.createElement("div", {
     ref: shieldJoyRef,
     className: "bt-desktop-hide bt-legacy-shield-removed",
     style: {

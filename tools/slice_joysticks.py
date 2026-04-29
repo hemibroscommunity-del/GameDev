@@ -1,28 +1,25 @@
-"""Slice ONE composite per joystick from the still mockup.  We tried
-splitting base + displaceable thumb earlier but the deflected source's
-displaced thumb bled into the masked base.  Going with a single
-static composite per joystick instead — base ring + centred thumb
-together, circle-masked to its outer silhouette."""
+"""Slice the two clean joystick base discs from the user's latest mockup
+(both sides without any thumb overlay).  Outputs joy-base-left.png and
+joy-base-right.png — circle-masked at a 155-px outer radius."""
 from pathlib import Path
 from PIL import Image, ImageDraw
 
-STILL   = Path('public/icons/ui/dashboard-mockup-new2.jpg')
+SRC     = Path('public/icons/ui/dashboard-mockup-new0.jpg')
 OUT_DIR = Path('public/icons/ui')
 
-# Centres measured by inspect_joysticks.py:
-#   left thumb (175, 766), right thumb (508, 729)  in the still source.
-LEFT_CENTER  = (175, 766)
-RIGHT_CENTER = (508, 729)
-OUTER_R      = 122          # full joystick silhouette
+# Hand-measured centres + radius from the new clean source.
+LEFT_CENTER  = (177, 753)
+RIGHT_CENTER = (511, 752)
+OUTER_R      = 155
 OUT_SIZE     = 256
 
 PIECES = {
-    'joy-left':  LEFT_CENTER,
-    'joy-right': RIGHT_CENTER,
+    'joy-base-left':  LEFT_CENTER,
+    'joy-base-right': RIGHT_CENTER,
 }
 
 def cut(img, cx, cy, r):
-    pad = r + 8
+    pad = r + 6
     raw = img.crop((cx - pad, cy - pad, cx + pad, cy + pad)).convert('RGBA')
     rw, rh = raw.size
     mask = Image.new('L', (rw, rh), 0)
@@ -37,15 +34,15 @@ def cut(img, cx, cy, r):
     return out
 
 def main():
-    if not STILL.exists():
-        raise SystemExit('Still mockup required at ' + str(STILL))
-    img = Image.open(STILL).convert('RGB')
+    if not SRC.exists():
+        raise SystemExit(f'No source at {SRC}')
+    img = Image.open(SRC).convert('RGB')
     print(f'Source: {img.size}')
     for name, (cx, cy) in PIECES.items():
         out = cut(img, cx, cy, OUTER_R)
         path = OUT_DIR / f'{name}.png'
         out.save(path, 'PNG', optimize=True)
-        print(f'  {name:10s} -> {path.name}  {OUT_SIZE}x{OUT_SIZE}')
+        print(f'  {name:18s} -> {path.name}')
 
 if __name__ == '__main__':
     main()
