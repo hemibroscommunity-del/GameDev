@@ -33621,9 +33621,20 @@ export var BroTown = function BroTown(_ref0) {
       position: 'relative',
       overflow: 'hidden'
     }
-  }, /* HP ring + HP text removed — covered by thumb on mobile; HP shown
-        contextually above the player in combat zones (entityRenderer). */
-  null, null, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("img", {
+    src: '/icons/ui/joy-base-left.png',
+    alt: '',
+    draggable: false,
+    style: {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'contain',
+      pointerEvents: 'none',
+      userSelect: 'none',
+    }
+  }), /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
     ref: knobRef,
     style: {
@@ -33648,20 +33659,28 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       width: isLandscape ? 120 : 100,
       height: isLandscape ? 120 : 100,
-      backgroundImage: 'url(/icons/ui/joy-base-right.png)',
-      backgroundSize: 'contain',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
       position: 'absolute',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
       filter: autoAttack ? 'drop-shadow(0 0 12px rgba(255,80,80,.45))' : 'none',
-      touchAction: 'none'
+      touchAction: 'none',
+      overflow: 'hidden'
     }
-  }, /* Mana ring removed — covered by thumb on mobile; mana shown
-        contextually above the player in combat zones. */
-  null, /*#__PURE__*/React.createElement("svg", {
+  }, /*#__PURE__*/React.createElement("img", {
+    src: '/icons/ui/joy-base-right.png',
+    alt: '',
+    draggable: false,
+    style: {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'contain',
+      pointerEvents: 'none',
+      userSelect: 'none',
+    }
+  }), /*#__PURE__*/React.createElement("svg", {
     style: {
       position: 'absolute',
       inset: 0,

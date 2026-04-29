@@ -152,8 +152,7 @@ input{font-family:inherit}
 .bt-joystick-zone{z-index:30;display:block;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
 
-.bt-joystick-base{width:120px;height:120px;position:relative;touch-action:none;
-  background:url(/icons/ui/joy-base-left.png) no-repeat center / contain}
+.bt-joystick-base{width:120px;height:120px;position:relative;touch-action:none}
 /* Knob hidden — the left joystick's base art has directional notches
    baked into its rim, so a separate moving thumb isn't needed. */
 .bt-joystick-knob{display:none}
