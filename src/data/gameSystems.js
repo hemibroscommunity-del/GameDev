@@ -4500,12 +4500,13 @@ export function createDefaultRpg() {
     level: 1,
     xp: 0,
     coins: 50,
-    /* Tier 1 — use-trained stats (GDD §1.1) */
-    power: 0,
-    vitality: 0,
-    endurance: 0,
-    agility: 0,
-    mind: 0,
+    /* Tier 1 — use-trained stats (GDD §1.1).  Start at 1 so the
+       lifetime budget is 5 starting + 5×99 earned = 500 T1 points. */
+    power: 1,
+    vitality: 1,
+    endurance: 1,
+    agility: 1,
+    mind: 1,
     /* Per-stat XP accumulator.  Resolved +1 stat per
        xpRequired(level)/5 threshold crossing inside addBuildProg(). */
     _buildProg: { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 },
@@ -4513,6 +4514,9 @@ export function createDefaultRpg() {
        last kill).  distributeKillXpToBuild() reads this on kill, splits
        killXp proportionally, then resets. */
     _buildUse:  { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 },
+    /* GDD §1.5 stat locks.  Locked T1 stats freeze in place; their
+       share of per-level T1 budget is burned, not redistributed. */
+    _statLocks: { power: false, vitality: false, endurance: false, agility: false, mind: false },
     /* Tier 2 — still allocation-based until use-training is hooked
        up for them in a follow-up ship. */
     ferocity: 0,

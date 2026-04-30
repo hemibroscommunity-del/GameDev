@@ -93,7 +93,11 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
 
 /* Use-trained Tier-1 stat progression (GDD §1.1, §1.2, §1.4).
    Per-level budget = 5 T1 points; threshold per +1 stat = xpRequired/5.
-   Hard cap of 99 per stat per GDD §1.4.
+   No per-stat ceiling in this prototype — the lifetime cap is the total
+   T1 budget (5 starting + 5/level × 99 levels = 500 points), so a
+   locked-pure build can reach ~496 in one stat and clear the §4.1
+   tier-20 gate at stat 200.  Diverges from the GDD §1.4 99-per-stat
+   ceiling intentionally; reconciliation is a deferred follow-up.
 
    Two-phase model:
    1. Each combat action increments `_buildUse[stat]` by an action-
@@ -133,10 +137,12 @@ function pushStatIncreaseNotice(R, stat, beforeMax) {
 
 function addBuildProg(R, stat, amount) {
   if (!R || !amount || amount <= 0) return;
+  /* GDD §1.5 — locked stat: share is burned, not redistributed. */
+  if (R._statLocks && R._statLocks[stat]) return;
   if (!R._buildProg) R._buildProg = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
   R._buildProg[stat] = (R._buildProg[stat] || 0) + amount;
   var thresh = Math.max(50, Math.floor(xpRequired(R.level) / 5));
-  while (R._buildProg[stat] >= thresh && (R[stat] || 0) < 99) {
+  while (R._buildProg[stat] >= thresh) {
     R._buildProg[stat] -= thresh;
     R[stat] = (R[stat] || 0) + 1;
     var beforeMax = { hp: R.maxHp, mp: R.maxMana, stam: R.maxStamina };
@@ -2580,6 +2586,7 @@ export var BroTown = function BroTown(_ref0) {
       if (!S.rpg._quests) S.rpg._quests = {};
       if (!S.rpg._questFlags) S.rpg._questFlags = {};
       if (!S.rpg._questKills) S.rpg._questKills = {};
+      if (!S.rpg._statLocks) S.rpg._statLocks = { power: false, vitality: false, endurance: false, agility: false, mind: false };
       if (S.rpg.influence === undefined) S.rpg.influence = 0;
       if (S.rpg.power === undefined) S.rpg.power = 0;
       if (!S.rpg.weapon) S.rpg.weapon = {
@@ -20743,47 +20750,35 @@ export var BroTown = function BroTown(_ref0) {
         borderRadius: 3,
         transition: 'width .2s'
       }
-    })), rpgState.unspentT1 > 0 && /*#__PURE__*/React.createElement("button", {
+    })), /*#__PURE__*/React.createElement("button", {
+      title: (rpgState._statLocks && rpgState._statLocks[key]) ? 'Locked — XP that would train ' + label + ' is burned. Click to unlock.' : 'Lock ' + label + ' at ' + (rpgState[key] || 0) + ' to commit to a pure build. XP that would train it will be burned.',
       style: {
         width: 18,
         height: 18,
         borderRadius: 4,
-        background: col,
-        border: 'none',
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: 900,
+        background: (rpgState._statLocks && rpgState._statLocks[key]) ? col : 'rgba(255,255,255,.08)',
+        border: (rpgState._statLocks && rpgState._statLocks[key]) ? 'none' : '1px solid rgba(255,255,255,.18)',
+        color: (rpgState._statLocks && rpgState._statLocks[key]) ? '#fff' : 'rgba(255,255,255,.5)',
+        fontSize: 10,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        lineHeight: 1
+        lineHeight: 1,
+        padding: 0
       },
       onClick: function onClick() {
         var S = stateRef.current;
         var R = S.rpg;
-        if (!R.unspentT1 || R.unspentT1 <= 0) return;
-        if (!confirm('Spend 1 Tier 1 point on ' + label + '? (' + R.unspentT1 + ' remaining)')) return;
-        R[key] = (R[key] || 0) + 1;
-        R.unspentT1--;
-        R.unspentPts = (R.unspentT1 || 0) + (R.unspentT2 || 0);
-        /* Update legacy compat */
-        R.str = R.power;
-        R.def = R.fortification;
-        R.vit = R.vitality;
-        R.spd = R.agility;
-        R.lck = R.ferocity;
-        recalcDerived(R);
-        R.hp = R.maxHp;
-        R.stamina = R.maxStamina;
-        R.mana = R.maxMana;
+        if (!R._statLocks) R._statLocks = { power: false, vitality: false, endurance: false, agility: false, mind: false };
+        R._statLocks[key] = !R._statLocks[key];
         setRpgState(_objectSpread({}, R));
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
-        BT_AUDIO.beep(600, 0.06, 0.1, 'sine');
+        BT_AUDIO.beep(R._statLocks[key] ? 500 : 700, 0.05, 0.08, 'sine');
       }
-    }, "+"));
+    }, (rpgState._statLocks && rpgState._statLocks[key]) ? '🔒' : '🔓'));
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
