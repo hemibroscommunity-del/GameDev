@@ -1740,8 +1740,12 @@ export var BroTown = function BroTown(_ref0) {
               /* Check blocking */
               if (S._shieldUp) {
                 var blockRed = calcBlockReduction ? calcBlockReduction(R2.fortification || 0, R2.shield) : 0.25;
+                var preBlock = dmgTaken2;
                 dmgTaken2 *= (1 - blockRed);
                 R2.stamina = Math.max(0, (R2.stamina || 0) - 15);
+                /* GDD §1.2 Endurance: spending stamina on block.
+                   Weight by damage absorbed; resolved on next kill. */
+                addBuildUse(R2, 'endurance', Math.max(1, preBlock - dmgTaken2));
               }
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
@@ -5592,6 +5596,9 @@ export var BroTown = function BroTown(_ref0) {
                   if (shielded) {
                     if (!_R6._questFlags) _R6._questFlags = {};
                     _R6._questFlags.blocksLanded = (_R6._questFlags.blocksLanded || 0) + 1;
+                    /* GDD §1.2 Endurance: spending stamina on block.
+                       Weight by damage absorbed; resolved on next kill. */
+                    addBuildUse(_R6, 'endurance', Math.max(1, rawDmg - dmgTaken));
                     /* Shield gem: HP on block */
                     if (_R6.shield) {
                       var _ss$gemBonus;
