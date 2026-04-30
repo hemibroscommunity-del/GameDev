@@ -4506,10 +4506,13 @@ export function createDefaultRpg() {
     endurance: 0,
     agility: 0,
     mind: 0,
-    /* Per-stat training XP accumulators.  Incremented by combat
-       actions via addBuildProg(); resolves +1 stat point per
-       xpRequired(level)/5 threshold crossing. */
+    /* Per-stat XP accumulator.  Resolved +1 stat per
+       xpRequired(level)/5 threshold crossing inside addBuildProg(). */
     _buildProg: { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 },
+    /* Per-stat use-frequency tally for the current encounter (since the
+       last kill).  distributeKillXpToBuild() reads this on kill, splits
+       killXp proportionally, then resets. */
+    _buildUse:  { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 },
     /* Tier 2 — still allocation-based until use-training is hooked
        up for them in a follow-up ship. */
     ferocity: 0,

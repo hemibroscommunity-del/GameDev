@@ -93,12 +93,21 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
 
 /* Use-trained Tier-1 stat progression (GDD §1.1, §1.2, §1.4).
    Per-level budget = 5 T1 points; threshold per +1 stat = xpRequired/5.
-   Combat actions feed `amount` of stat XP into the relevant stat's
-   `_buildProg` accumulator; once it crosses threshold, the stat
-   increments by 1 and the remainder carries over to the next point.
-   Hard cap of 99 per stat per GDD §1.4. */
+   Hard cap of 99 per stat per GDD §1.4.
+
+   Two-phase model:
+   1. Each combat action increments `_buildUse[stat]` by an action-
+      magnitude weight (damage dealt, damage taken, stamina spent, mana
+      spent).  No stat XP is granted yet.
+   2. On monster kill, `distributeKillXpToBuild` divides `killXp`
+      proportionally across stats by their share of `_buildUse`, then
+      resets the tally so the next encounter starts clean.
+   Net result: total stat XP per kill = monster XP exactly, distributed
+   by relative usage frequency — matches the user's request and GDD
+   invariant. */
+
 function addBuildProg(R, stat, amount) {
-  if (!R || !amount) return;
+  if (!R || !amount || amount <= 0) return;
   if (!R._buildProg) R._buildProg = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
   R._buildProg[stat] = (R._buildProg[stat] || 0) + amount;
   var thresh = Math.max(50, Math.floor(xpRequired(R.level) / 5));
@@ -107,6 +116,34 @@ function addBuildProg(R, stat, amount) {
     R[stat] = (R[stat] || 0) + 1;
     if (typeof recalcDerived === 'function') recalcDerived(R);
   }
+}
+
+function addBuildUse(R, stat, weight) {
+  if (!R || !weight || weight <= 0) return;
+  if (!R._buildUse) R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
+  R._buildUse[stat] = (R._buildUse[stat] || 0) + weight;
+}
+
+function distributeKillXpToBuild(R, killXp) {
+  if (!R || !killXp || killXp <= 0) return;
+  if (!R._buildUse) R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
+  var keys = ['power', 'vitality', 'endurance', 'agility', 'mind'];
+  var total = 0;
+  keys.forEach(function (k) { total += R._buildUse[k] || 0; });
+  if (total <= 0) {
+    /* No tracked usage — fallback by weapon type so the bar at least
+       moves on a fresh character. */
+    var slot = R.activeSlot || 'melee';
+    addBuildProg(R, slot === 'staff' ? 'mind' : 'power', killXp);
+  } else {
+    keys.forEach(function (k) {
+      var share = (R._buildUse[k] || 0) / total;
+      if (share > 0) addBuildProg(R, k, killXp * share);
+    });
+  }
+  /* Reset usage tally for the next encounter — each kill's
+     distribution reflects activity since the last kill. */
+  R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
 }
 
 export var BroTown = function BroTown(_ref0) {
@@ -5579,9 +5616,9 @@ export var BroTown = function BroTown(_ref0) {
                   } else {
                     _R6.hp -= dmgTaken;
                     S.lastDamageTaken = Date.now();
-                    /* GDD §1.2 Vitality: trained by taking damage and
-                       surviving.  Skip if the hit dropped us to zero. */
-                    if (_R6.hp > 0) addBuildProg(_R6, 'vitality', dmgTaken);
+                    /* GDD §1.2 Vitality: taking damage AND surviving.
+                       Tracked as use-frequency; resolved on next kill. */
+                    if (_R6.hp > 0) addBuildUse(_R6, 'vitality', dmgTaken);
 
                     /* ═══ ARCHETYPE-SPECIFIC ATTACK EFFECTS ═══ */
                     if (arch === 'hexer' && !shielded) {
@@ -6096,6 +6133,8 @@ export var BroTown = function BroTown(_ref0) {
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
                 m.curHp -= dmg;
+                /* GDD §1.2 Power — landing damage with melee or ranged. */
+                addBuildUse(_R6, 'power', dmg);
                 /* Slash mark — short diagonal cut at the impact point,
                    oriented along the swing direction. Capped + cleared on
                    respawn alongside stuck arrows / burn marks. */
@@ -6764,13 +6803,12 @@ export var BroTown = function BroTown(_ref0) {
                     });
                   }
 
-                  /* Use-trained build progression (GDD §1.2 + §1.4).
-                     Staff (magic) kills feed Mind; melee/bow kills feed
-                     Power.  TODO: hook Vit (damage taken), End (stamina
-                     spend), Agi (successful dodge i-frames) at their own
-                     callsites in a follow-up ship. */
-                  var _bpStat = _activeWpn.type === 'staff' ? 'mind' : 'power';
-                  addBuildProg(_R6, _bpStat, killXp);
+                  /* Use-trained build progression (GDD §1.1, §1.2, §1.4).
+                     killXp = monster XP, distributed across the five T1
+                     stats by their relative use-frequency since the last
+                     kill (incremented at each combat action via
+                     addBuildUse).  Total stat XP per kill = monster XP. */
+                  distributeKillXpToBuild(_R6, killXp);
 
                   /* Check level up — §6.2 tri-phase XP curve.  No
                      unspent point budget awarded; T1/T2 are use-trained. */
@@ -7726,6 +7764,10 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 m.curHp -= a.dmg;
+                /* GDD §1.2 Power — bow/staff hits count as ranged
+                   damage.  Mind is trained separately at the swipe
+                   trigger (mana spend). */
+                if (S.rpg) addBuildUse(S.rpg, 'power', a.dmg);
                 if (S._serverMonsters && S.channel) {
                   var arrowTotalDmg = a.dmg;
                   if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
@@ -14128,10 +14170,10 @@ export var BroTown = function BroTown(_ref0) {
     var dodgeCost = Math.ceil((R.maxStamina || 100) * 0.2);
     if ((R.stamina || 0) < dodgeCost) return;
     R.stamina -= dodgeCost;
-    /* GDD §1.2 Endurance: spending stamina on dodge / block / sprint.
-       GDD §1.2 Agility: successful dodges. */
-    addBuildProg(R, 'endurance', dodgeCost);
-    addBuildProg(R, 'agility', dodgeCost);
+    /* GDD §1.2 Endurance + Agility — tracked as use-frequency and
+       resolved when the next monster dies. */
+    addBuildUse(R, 'endurance', dodgeCost);
+    addBuildUse(R, 'agility', dodgeCost);
     S._dodgeRoll = { angle: ang, startTime: Date.now() };
     S._hasDodged = true;
     S._dodgeFlash = Date.now();
@@ -14143,8 +14185,8 @@ export var BroTown = function BroTown(_ref0) {
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
     R.stamina -= lungeCost;
-    addBuildProg(R, 'endurance', lungeCost);
-    addBuildProg(R, 'agility', lungeCost);
+    addBuildUse(R, 'endurance', lungeCost);
+    addBuildUse(R, 'agility', lungeCost);
     /* §12.2 cert — first lunge executed. */
     masteryEarnCert('first-lunge');
     var P = S.player;
@@ -14184,8 +14226,8 @@ export var BroTown = function BroTown(_ref0) {
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
     R.stamina -= retCost;
-    addBuildProg(R, 'endurance', retCost);
-    addBuildProg(R, 'agility', retCost);
+    addBuildUse(R, 'endurance', retCost);
+    addBuildUse(R, 'agility', retCost);
     /* §12.2 cert — first retreat shot executed. */
     masteryEarnCert('first-retreat-shot');
     /* Standard dodge movement — but no i-frames per §5.8.3 (the shot is
@@ -14357,7 +14399,7 @@ export var BroTown = function BroTown(_ref0) {
     if (!isTutorialSwipe) {
       R.mana -= manaCost;
       /* GDD §1.2 Mind: spending mana on swipe triggers. */
-      addBuildProg(R, 'mind', manaCost);
+      addBuildUse(R, 'mind', manaCost);
     }
     S._lastSwipe = now;
     S._hasUsedSwipe = true;
