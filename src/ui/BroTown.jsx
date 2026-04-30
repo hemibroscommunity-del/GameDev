@@ -106,6 +106,31 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
    by relative usage frequency — matches the user's request and GDD
    invariant. */
 
+var BUILD_LABELS = {
+  power: 'Power', vitality: 'Vitality', endurance: 'Endurance',
+  agility: 'Agility', mind: 'Mind',
+};
+
+function pushStatIncreaseNotice(R, stat, beforeMax) {
+  var S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+  if (!S || !S.dmgNumbers || !S.player) return;
+  var reward = '';
+  if (stat === 'vitality')   reward = '+' + Math.max(0, (R.maxHp || 0) - (beforeMax.hp || 0)) + ' HP';
+  else if (stat === 'mind')      reward = '+' + Math.max(0, (R.maxMana || 0) - (beforeMax.mp || 0)) + ' Mana';
+  else if (stat === 'endurance') reward = '+' + Math.max(0, (R.maxStamina || 0) - (beforeMax.stam || 0)) + ' Energy';
+  else if (stat === 'power')     reward = 'Damage up';
+  else if (stat === 'agility')   reward = 'Faster';
+  var msg = '+1 ' + (BUILD_LABELS[stat] || stat) + (reward ? ' · ' + reward : '');
+  S.dmgNumbers.push({
+    x: S.player.x,
+    y: S.player.y - 60,
+    text: msg,
+    color: '#a8a4ff',
+    ts: Date.now(),
+  });
+  try { if (typeof BT_AUDIO !== 'undefined' && BT_AUDIO.beep) BT_AUDIO.beep(900, 0.06, 0.10, 'sine'); } catch (e) {}
+}
+
 function addBuildProg(R, stat, amount) {
   if (!R || !amount || amount <= 0) return;
   if (!R._buildProg) R._buildProg = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
@@ -114,7 +139,9 @@ function addBuildProg(R, stat, amount) {
   while (R._buildProg[stat] >= thresh && (R[stat] || 0) < 99) {
     R._buildProg[stat] -= thresh;
     R[stat] = (R[stat] || 0) + 1;
+    var beforeMax = { hp: R.maxHp, mp: R.maxMana, stam: R.maxStamina };
     if (typeof recalcDerived === 'function') recalcDerived(R);
+    pushStatIncreaseNotice(R, stat, beforeMax);
   }
 }
 
@@ -1682,12 +1709,13 @@ export var BroTown = function BroTown(_ref0) {
                     text: '+' + killXp + 'XP +' + killGold + 'G',
                     color: '#f5c542', ts: Date.now()
                   });
-                  /* Check level up — use-trained per GDD §1.1, no T1/T2
-                     allocation budget awarded; build stats accumulate via
-                     addBuildProg() at combat callsites instead. */
+                  /* Check level up — T1 is use-trained (no unspent points),
+                     T2 still allocated via the Stats menu (5 points per
+                     level per GDD §1.4). */
                   while (R.xp >= xpRequired(R.level)) {
                     R.xp -= xpRequired(R.level);
                     R.level++;
+                    R.unspentT2 = (R.unspentT2 || 0) + 5;
                     recalcDerived(R);
                     R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
                     setLevelUpMsg({ level: R.level, ts: Date.now() });
@@ -6810,11 +6838,12 @@ export var BroTown = function BroTown(_ref0) {
                      addBuildUse).  Total stat XP per kill = monster XP. */
                   distributeKillXpToBuild(_R6, killXp);
 
-                  /* Check level up — §6.2 tri-phase XP curve.  No
-                     unspent point budget awarded; T1/T2 are use-trained. */
+                  /* Check level up — §6.2 tri-phase XP curve.  T1 is
+                     use-trained; T2 still allocated, +5 unspent per level. */
                   while (_R6.xp >= xpRequired(_R6.level)) {
                     _R6.xp -= xpRequired(_R6.level);
                     _R6.level++;
+                    _R6.unspentT2 = (_R6.unspentT2 || 0) + 5;
                     recalcDerived(_R6);
                     _R6.hp = _R6.maxHp;
                     _R6.stamina = _R6.maxStamina;
@@ -7202,12 +7231,13 @@ export var BroTown = function BroTown(_ref0) {
                   size: 1.5 + Math.random()
                 });
               }
-              /* Check level up — §6.2 tri-phase.  Use-trained: no
-                 unspent points awarded; build stats train at combat
-                 callsites via addBuildProg(). */
+              /* Check level up — §6.2 tri-phase.  T1 is use-trained
+                 via addBuildProg() at combat callsites; T2 still
+                 allocated via the Stats menu (5 points per level). */
               while (S.rpg.xp >= xpRequired(S.rpg.level)) {
                 S.rpg.xp -= xpRequired(S.rpg.level);
                 S.rpg.level++;
+                S.rpg.unspentT2 = (S.rpg.unspentT2 || 0) + 5;
                 recalcDerived(S.rpg);
                 S.rpg.hp = S.rpg.maxHp;
                 S.rpg.stamina = S.rpg.maxStamina;
