@@ -157,6 +157,19 @@ function addBuildUse(R, stat, weight) {
   R._buildUse[stat] = (R._buildUse[stat] || 0) + weight;
 }
 
+/* 120° shield arc check per brotown_directional_block_spec Part 3.
+   Returns true if an attacker at (ax, ay) is within ±60° of the
+   player's current shield facing.  When _shieldAngle is unset
+   (non-directional fallback path), returns true to preserve old
+   behavior. */
+function isAttackInShieldArc(S, ax, ay) {
+  if (!S || !S.player) return true;
+  if (typeof S._shieldAngle !== 'number') return true;
+  var atkFromAng = Math.atan2(ay - S.player.y, ax - S.player.x);
+  var d = ((atkFromAng - S._shieldAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  return Math.abs(d) <= Math.PI / 3;
+}
+
 function distributeKillXpToBuild(R, killXp) {
   if (!R || !killXp || killXp <= 0) return;
   if (!R._buildUse) R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
@@ -1743,8 +1756,13 @@ export var BroTown = function BroTown(_ref0) {
               /* Apply player defense */
               var pDef2 = (R2.endurance || 0) * 0.5 + ((R2.armor ? R2.armor.tierMult : 1) || 1) * 3;
               var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);
-              /* Check blocking */
-              if (S._shieldUp) {
+              /* Check blocking — directional arc per spec.  If the
+                 server payload identifies the attacker, look it up so
+                 we can enforce the 120° arc; otherwise fall back to
+                 omnidirectional block. */
+              var atkSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
+              var inArc = atkSrc ? isAttackInShieldArc(S, atkSrc.x, atkSrc.y) : true;
+              if (S._shieldUp && inArc) {
                 var blockRed = calcBlockReduction ? calcBlockReduction(R2.fortification || 0, R2.shield) : 0.25;
                 var preBlock = dmgTaken2;
                 dmgTaken2 *= (1 - blockRed);
@@ -5410,7 +5428,7 @@ export var BroTown = function BroTown(_ref0) {
                     }
                     /* Dodging or shielding avoids damage */
                     var dodged = S._dodgeRoll;
-                    var blocked = Date.now() < S.shieldEnd;
+                    var blocked = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
                     if (distToP < slamRange && !invuln && !dodged) {
                       var slamDmg = Math.ceil(m.dmg * 1.5);
                       var finalDmg = blocked ? Math.max(1, Math.ceil(slamDmg * 0.3)) : slamDmg;
@@ -5552,7 +5570,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* Charge hit detection */
                 if (distToP < 20 && !invuln) {
                   var chargeDmg = Math.ceil(m.dmg * 1.5);
-                  var _blocked2 = Date.now() < S.shieldEnd;
+                  var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
                   var _finalDmg2 = _blocked2 ? Math.max(1, Math.ceil(chargeDmg * (1 - calcBlockReduction(_R6.fortification, _R6.shield)))) : chargeDmg;
                   _R6.hp -= _finalDmg2;
                   S.dmgNumbers.push({
@@ -5589,7 +5607,7 @@ export var BroTown = function BroTown(_ref0) {
                   /* Telegraph done — execute attack */
                   m._telegraphUntil = null;
                   m._atkCd = Date.now();
-                  var shielded = Date.now() < S.shieldEnd;
+                  var shielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
                   var rawDmg = Math.max(1, m.dmg);
                   /* §18.1 Food buff — resist reduces incoming damage */
                   if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.85));
@@ -7813,10 +7831,11 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 m.curHp -= a.dmg;
-                /* GDD §1.2 Power — bow/staff hits count as ranged
-                   damage.  Mind is trained separately at the swipe
-                   trigger (mana spend). */
-                if (S.rpg) addBuildUse(S.rpg, 'power', a.dmg);
+                /* Bow hits feed Agility, staff hits feed Mind — so
+                   ranged kills train Agility and magic kills train
+                   Mind via distributeKillXpToBuild's share split.
+                   Power is reserved for melee swing damage. */
+                if (S.rpg) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', a.dmg);
                 if (S._serverMonsters && S.channel) {
                   var arrowTotalDmg = a.dmg;
                   if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
