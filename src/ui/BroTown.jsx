@@ -1723,6 +1723,10 @@ export var BroTown = function BroTown(_ref0) {
                     R._compStats.monstersKilled = (R._compStats.monstersKilled || 0) + 1;
                     R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + killGold;
                   }
+                  /* Use-trained T1 split: divide killXp across stats by
+                     their relative _buildUse share since the last kill,
+                     then reset the tally. */
+                  distributeKillXpToBuild(R, killXp);
                   S.dmgNumbers.push({
                     x: S.player.x, y: S.player.y - 30,
                     text: '+' + killXp + 'XP +' + killGold + 'G',
@@ -1767,11 +1771,11 @@ export var BroTown = function BroTown(_ref0) {
                 var preBlock = dmgTaken2;
                 dmgTaken2 *= (1 - blockRed);
                 R2.stamina = Math.max(0, (R2.stamina || 0) - 15);
-                /* GDD §1.2 Endurance: spending stamina on block.
-                   Weight by full pre-block damage (the hit you would
-                   have taken un-blocked) so a block trains as much
-                   endurance as it would have trained vitality. */
-                addBuildUse(R2, 'endurance', Math.max(1, preBlock));
+                /* Count-based weight: 1 successful block = 3 hits worth
+                   of endurance share.  Pairs with hit weight = 1 to
+                   match the user's hits-vs-blocks ratio for the
+                   Endurance share of killXp. */
+                addBuildUse(R2, 'endurance', 3);
               }
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
@@ -5623,12 +5627,11 @@ export var BroTown = function BroTown(_ref0) {
                   if (shielded) {
                     if (!_R6._questFlags) _R6._questFlags = {};
                     _R6._questFlags.blocksLanded = (_R6._questFlags.blocksLanded || 0) + 1;
-                    /* GDD §1.2 Endurance: spending stamina on block.
-                       Weight by full pre-block damage (the hit you
-                       would have taken un-blocked) so a block trains
-                       as much endurance as it would have trained
-                       vitality. */
-                    addBuildUse(_R6, 'endurance', Math.max(1, rawDmg));
+                    /* Count-based weight: 1 successful block = 3 hits
+                       worth of endurance share.  Pairs with hit weight
+                       = 1 to match the user's hits-vs-blocks ratio for
+                       the Endurance share of killXp. */
+                    addBuildUse(_R6, 'endurance', 3);
                     /* Shield gem: HP on block */
                     if (_R6.shield) {
                       var _ss$gemBonus;
@@ -6198,8 +6201,10 @@ export var BroTown = function BroTown(_ref0) {
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
                 m.curHp -= dmg;
-                /* GDD §1.2 Power — landing damage with melee or ranged. */
-                addBuildUse(_R6, 'power', dmg);
+                /* Count-based weight: 1 per landed hit (Power for melee).
+                   Pairs with block = 3 to match the user's hits-vs-blocks
+                   ratio for Endurance share of killXp. */
+                addBuildUse(_R6, 'power', 1);
                 /* Slash mark — short diagonal cut at the impact point,
                    oriented along the swing direction. Capped + cleared on
                    respawn alongside stuck arrows / burn marks. */
@@ -7831,11 +7836,12 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 m.curHp -= a.dmg;
-                /* Bow hits feed Agility, staff hits feed Mind — so
-                   ranged kills train Agility and magic kills train
-                   Mind via distributeKillXpToBuild's share split.
-                   Power is reserved for melee swing damage. */
-                if (S.rpg) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', a.dmg);
+                /* Count-based weight: 1 per landed projectile.  Bow hits
+                   feed Agility, staff hits feed Mind — so ranged kills
+                   train Agility and magic kills train Mind via
+                   distributeKillXpToBuild's share split.  Power stays
+                   reserved for melee swing damage. */
+                if (S.rpg) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);
                 if (S._serverMonsters && S.channel) {
                   var arrowTotalDmg = a.dmg;
                   if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
@@ -7972,6 +7978,14 @@ export var BroTown = function BroTown(_ref0) {
                 if (!S.dmgNumbers) S.dmgNumbers = [];
                 S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: a.dmg + '', color: '#ff9', ts: Date.now() });
                 if (m.curHp <= 0) {
+                  /* In server-mode the network monster_killed event is
+                     authoritative for XP/T1 distribution — only clamp
+                     local HP for display and bail. */
+                  if (S._serverMonsters) {
+                    m.curHp = 0;
+                    hit = true;
+                    return;
+                  }
                   m.alive = false;
                   m.respawnAt = Date.now() + 30000;
                   m.statuses = {};
@@ -7983,6 +7997,32 @@ export var BroTown = function BroTown(_ref0) {
                       var _R9$_quests;
                       if (((_R9$_quests = _R9._quests) === null || _R9$_quests === void 0 ? void 0 : _R9$_quests[qid]) === QUEST_STATUS.active) _R9._questKills[qid] = (_R9._questKills[qid] || 0) + 1;
                     });
+                    /* XP / gold grant + T1 distribution (parity with
+                       melee kill block at ~6620). */
+                    var _wrMultR = _R9._wellRestedUntil && Date.now() < _R9._wellRestedUntil ? WELL_RESTED_XP_MULT : 1;
+                    var _isRareR = Math.random() < 0.002;
+                    var _killXpR = Math.ceil((_isRareR ? m.xp * 3 : m.xp) * _wrMultR);
+                    var _killGoldR = Math.ceil(_isRareR ? m.gold * 10 : m.gold);
+                    _R9.xp = (_R9.xp || 0) + _killXpR;
+                    _R9.coins = (_R9.coins || 0) + _killGoldR;
+                    if (_R9._compStats) {
+                      _R9._compStats.monstersKilled = (_R9._compStats.monstersKilled || 0) + 1;
+                      _R9._compStats.totalGoldEarned = (_R9._compStats.totalGoldEarned || 0) + _killGoldR;
+                    }
+                    S.dmgNumbers.push({ x: m.x, y: m.y - 25, text: '+' + _killXpR + 'XP', color: '#60a5fa', ts: Date.now() });
+                    S.dmgNumbers.push({ x: m.x, y: m.y - 15, text: '+' + _killGoldR + 'G', color: '#f5c542', ts: Date.now() });
+                    distributeKillXpToBuild(_R9, _killXpR);
+                    while (_R9.xp >= xpRequired(_R9.level)) {
+                      _R9.xp -= xpRequired(_R9.level);
+                      _R9.level++;
+                      _R9.unspentT2 = (_R9.unspentT2 || 0) + 5;
+                      recalcDerived(_R9);
+                      _R9.hp = _R9.maxHp;
+                      _R9.stamina = _R9.maxStamina;
+                      _R9.mana = _R9.maxMana;
+                      setLevelUpMsg({ level: _R9.level, ts: Date.now() });
+                      BT_AUDIO.levelUp();
+                    }
                     var isCrit = a.dmg > pDmg;
                     BT_AUDIO.deathBoom();
                     S.screenShake = isCrit ? 6 : 3;
