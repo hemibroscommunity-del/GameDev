@@ -6525,7 +6525,7 @@ export function renderBroTownUI(uiCtx) {
       gap: 4,
       marginBottom: 8
     }
-  }, [['HP', rpgState.hp, rpgState.maxHp, '#ff5e6c'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#f5c542'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 80, '#3b82f6']].map(function (_ref78) {
+  }, [['HP', rpgState.hp, rpgState.maxHp, '#ff5e6c'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#f5c542'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 100, '#3b82f6']].map(function (_ref78) {
     var _ref79 = _slicedToArray(_ref78, 4),
       l = _ref79[0],
       v = _ref79[1],
@@ -19731,7 +19731,7 @@ export function renderBroTownUI(uiCtx) {
     var R = (_stateRef$current64 = stateRef.current) === null || _stateRef$current64 === void 0 ? void 0 : _stateRef$current64.rpg;
     if (!R) return null;
     var mana = R.mana || 0,
-      maxMana = R.maxMana || 80;
+      maxMana = R.maxMana || 100;
     var pct = Math.max(0, mana / maxMana);
     var filledColor = pct > 0.5 ? 'rgba(40,100,220,.4)' : pct > 0.25 ? 'rgba(180,120,40,.4)' : 'rgba(220,50,50,.4)';
     var emptyColor = 'rgba(0,0,0,.3)';
@@ -19779,7 +19779,7 @@ export function renderBroTownUI(uiCtx) {
     var R = (_stateRef$current66 = stateRef.current) === null || _stateRef$current66 === void 0 ? void 0 : _stateRef$current66.rpg;
     if (!R) return null;
     var mana = Math.floor(R.mana || 0),
-      maxMana = R.maxMana || 80,
+      maxMana = R.maxMana || 100,
       deficit = maxMana - mana;
     return React.createElement('div', {
       style: {

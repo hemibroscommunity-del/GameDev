@@ -94,8 +94,8 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
 /* Use-trained Tier-1 stat progression (GDD §1.1, §1.2, §1.4).
    Per-level budget = 5 T1 points; threshold per +1 stat = xpRequired/5.
    No per-stat ceiling in this prototype — the lifetime cap is the total
-   T1 budget (5 starting + 5/level × 99 levels = 500 points), so a
-   locked-pure build can reach ~496 in one stat and clear the §4.1
+   T1 budget (5/level × 99 earned levels = 495 points, GDD §1.4), so a
+   locked-pure build can reach ~495 in one stat and clear the §4.1
    tier-20 gate at stat 200.  Diverges from the GDD §1.4 99-per-stat
    ceiling intentionally; reconciliation is a deferred follow-up.
 
@@ -118,20 +118,32 @@ var BUILD_LABELS = {
 function pushStatIncreaseNotice(R, stat, beforeMax) {
   var S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   if (!S || !S.dmgNumbers || !S.player) return;
-  var reward = '';
-  if (stat === 'vitality')   reward = '+' + Math.max(0, (R.maxHp || 0) - (beforeMax.hp || 0)) + ' HP';
-  else if (stat === 'mind')      reward = '+' + Math.max(0, (R.maxMana || 0) - (beforeMax.mp || 0)) + ' Mana';
-  else if (stat === 'endurance') reward = '+' + Math.max(0, (R.maxStamina || 0) - (beforeMax.stam || 0)) + ' Energy';
-  else if (stat === 'power')     reward = 'Damage up';
-  else if (stat === 'agility')   reward = 'Faster';
-  var msg = '+1 ' + (BUILD_LABELS[stat] || stat) + (reward ? ' · ' + reward : '');
+  var label = BUILD_LABELS[stat] || stat;
+  var newVal = R[stat] || 0;
+  var benefit = '';
+  if      (stat === 'vitality')  benefit = '+' + Math.max(0, (R.maxHp      || 0) - (beforeMax.hp   || 0)) + ' HP';
+  else if (stat === 'mind')      benefit = '+' + Math.max(0, (R.maxMana    || 0) - (beforeMax.mp   || 0)) + ' mana';
+  else if (stat === 'endurance') benefit = '+' + Math.max(0, (R.maxStamina || 0) - (beforeMax.stam || 0)) + ' stamina';
+  else if (stat === 'power')     benefit = '+0.8 base damage';
+  else if (stat === 'agility')   benefit = 'speed +0.12%';
+  /* Title (blue) — appears above the player. */
   S.dmgNumbers.push({
     x: S.player.x,
-    y: S.player.y - 60,
-    text: msg,
-    color: '#a8a4ff',
+    y: S.player.y - 70,
+    text: label + ' level ' + newVal + '!',
+    color: '#60a5fa',
     ts: Date.now(),
   });
+  /* Benefit (green) — sits just under the title. */
+  if (benefit) {
+    S.dmgNumbers.push({
+      x: S.player.x,
+      y: S.player.y - 55,
+      text: benefit,
+      color: '#3dd497',
+      ts: Date.now(),
+    });
+  }
   try { if (typeof BT_AUDIO !== 'undefined' && BT_AUDIO.beep) BT_AUDIO.beep(900, 0.06, 0.10, 'sine'); } catch (e) {}
 }
 
@@ -20725,7 +20737,7 @@ export var BroTown = function BroTown(_ref0) {
       gap: 4,
       marginBottom: 8
     }
-  }, [['HP', rpgState.hp, rpgState.maxHp, '#ff5e6c'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#f5c542'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 80, '#3b82f6']].map(function (_ref78) {
+  }, [['HP', rpgState.hp, rpgState.maxHp, '#ff5e6c'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#f5c542'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 100, '#3b82f6']].map(function (_ref78) {
     var _ref79 = _slicedToArray(_ref78, 4),
       l = _ref79[0],
       v = _ref79[1],

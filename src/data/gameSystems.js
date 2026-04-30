@@ -840,45 +840,45 @@ export function createDefaultLifeSkills() {
   return {
     /* Harvesting skills */
     woodcutting: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     fishing: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     mining: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     /* Processing skills */
     cooking: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     blacksmithing: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     woodworking: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     gemCutting: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     enchanting: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     /* Utility skills */
     farming: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     trapping: {
-      level: 1,
+      level: 0,
       xp: 0
     },
     /* Inventories */
@@ -907,29 +907,29 @@ export function migrateLifeSkills(sk) {
     };
     sk.gathering = null;
   }
-  /* Ensure all new skills exist */
+  /* Ensure all new skills exist (start at 0 to match createDefaultLifeSkills). */
   if (!sk.woodcutting) sk.woodcutting = {
-    level: 1,
+    level: 0,
     xp: 0
   };
   if (!sk.fishing) sk.fishing = {
-    level: 1,
+    level: 0,
     xp: 0
   };
   if (!sk.mining) sk.mining = {
-    level: 1,
+    level: 0,
     xp: 0
   };
   if (!sk.blacksmithing) sk.blacksmithing = {
-    level: 1,
+    level: 0,
     xp: 0
   };
   if (!sk.woodworking) sk.woodworking = {
-    level: 1,
+    level: 0,
     xp: 0
   };
   if (!sk.gemCutting) sk.gemCutting = {
-    level: 1,
+    level: 0,
     xp: 0
   };
   if (!sk.gems) sk.gems = {};
@@ -4441,7 +4441,7 @@ export function calcMaxStam(endurance) {
   return 100 + endurance * 3.0;
 }
 export function calcMaxMana(mind) {
-  return 80 + mind * 3.5;
+  return 100 + mind * 3.5;
 }
 
 /* §4.4 Weapon Damage */
@@ -4500,13 +4500,13 @@ export function createDefaultRpg() {
     level: 1,
     xp: 0,
     coins: 50,
-    /* Tier 1 — use-trained stats (GDD §1.1).  Start at 1 so the
-       lifetime budget is 5 starting + 5×99 earned = 500 T1 points. */
-    power: 1,
-    vitality: 1,
-    endurance: 1,
-    agility: 1,
-    mind: 1,
+    /* Tier 1 — use-trained stats (GDD §1.1).  Start at 0; lifetime
+       budget is 5/level × 99 earned levels = 495 T1 points (GDD §1.4). */
+    power: 0,
+    vitality: 0,
+    endurance: 0,
+    agility: 0,
+    mind: 0,
     /* Per-stat XP accumulator.  Resolved +1 stat per
        xpRequired(level)/5 threshold crossing inside addBuildProg(). */
     _buildProg: { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 },
@@ -4530,8 +4530,8 @@ export function createDefaultRpg() {
     maxHp: 100,
     stamina: 100,
     maxStamina: 100,
-    mana: 80,
-    maxMana: 80,
+    mana: 100,
+    maxMana: 100,
     /* Equipment */
     /* Equipment — start with basic wood-tier weapons */
     weapon: {
