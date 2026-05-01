@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, TIER_COLOR, panelStyle, getState } from './common.js';
+import { cookingBus } from '../cookingBus.js';
 
 // Category filter chips — icon-only.  "All" comes first so the player
 // always opens the bag with everything visible.
@@ -30,10 +31,14 @@ const classify = (key) => {
 // fish sprites are wired into the minigame.
 const FISH_THUMB = '/icons/fish/fish-minnow.png';
 const WOOD_THUMB = '/icons/wood/wood-log.png';
+const COOKED_FISH_THUMB = '/icons/cook/cooked-fish-minnow.png';
+const BURNT_DUST_THUMB = '/icons/cook/burnt-dust.png';
 const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
-  if (k.startsWith('fish_')) return FISH_THUMB;
-  if (k.startsWith('wood_')) return WOOD_THUMB;
+  if (k.startsWith('cooked_fish_')) return COOKED_FISH_THUMB;
+  if (k.startsWith('burnt_'))       return BURNT_DUST_THUMB;
+  if (k.startsWith('fish_'))        return FISH_THUMB;
+  if (k.startsWith('wood_'))        return WOOD_THUMB;
   return null;
 };
 
@@ -59,8 +64,17 @@ const iconFor = (key) => {
 const ItemTile = ({ ikey, count }) => {
   const cat = classify(ikey);
   const color = TIER_COLOR[cat === 'weapon' ? 'rare' : cat === 'armor' ? 'uncommon' : 'common'] || COL.muted;
+  // Tap on a raw fish_* tile launches the cooking minigame.  Cooked
+  // (cooked_fish_*) and burnt (burnt_*) tiles are not tappable for now —
+  // those are end states.
+  const isRawFish = /^fish_/.test(ikey || '') && (count || 0) > 0;
+  const handleTap = (e) => {
+    if (!isRawFish) return;
+    e.stopPropagation();
+    cookingBus.open(ikey);
+  };
   return (
-    <div style={{
+    <div onPointerUp={handleTap} style={{
       width: '100%', aspectRatio: '1 / 1',
       background: COL.tile,
       border: `1.5px solid ${color}`,
@@ -70,7 +84,9 @@ const ItemTile = ({ ikey, count }) => {
       justifyContent: 'center',
       fontSize: 18,
       position: 'relative',
-    }} title={ikey}>
+      cursor: isRawFish ? 'pointer' : 'default',
+      touchAction: isRawFish ? 'manipulation' : 'auto',
+    }} title={isRawFish ? 'Tap to cook' : ikey}>
       {(() => {
         const thumb = thumbFor(ikey);
         return thumb

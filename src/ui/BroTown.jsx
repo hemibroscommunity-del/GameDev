@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { FishingMinigame } from './FishingMinigame.jsx';
 import { WoodChopMinigame } from './WoodChopMinigame.jsx';
+import { CookingMinigame } from './CookingMinigame.jsx';
+import { cookingBus } from './mobile/cookingBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { startLoadingTileAssets, useSpriteTiles, drawTileLayer, drawBuildingSprites } from '@/rendering/canvasTileAssets.js';
@@ -882,6 +884,7 @@ export var BroTown = function BroTown(_ref0) {
     setGatherMini = _useState142[1]; /* {node, skill, started, result} — timing bar minigame */
   var [fishingMini, setFishingMini] = useState(null); /* {node, skill} — fishSpot swim/strike/reel minigame */
   var [woodChopMini, setWoodChopMini] = useState(null); /* {node, skill} — tree chop/fell/log-to-bag minigame */
+  var [cookingMini, setCookingMini] = useState(null);   /* {fishKey} — pan/slider/flip cooking minigame */
   var _useState143 = useState(0),
     _useState144 = _slicedToArray(_useState143, 2),
     gatherTick = _useState144[0],
@@ -14808,6 +14811,47 @@ export var BroTown = function BroTown(_ref0) {
     if (leveled) {
       S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: '🎣 Fishing Level ' + R.lifeSkills.fishing.level + '!', color: '#f5c542', ts: Date.now() });
       BT_AUDIO.collect();
+    }
+    setRpgState(_objectSpread({}, R));
+    try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
+  }, []);
+
+  /* Subscribe to cookingBus so a tap on a raw fish_* tile in the
+     InventoryPanel opens the cooking overlay here. */
+  useEffect(function () {
+    return cookingBus.subscribe(function () {
+      var key = cookingBus.consume();
+      if (!key) return;
+      setCookingMini({ fishKey: key });
+    });
+  }, []);
+
+  /* applyCookingResult — called when the cooking minigame completes.
+     Consumes 1 raw fish from inventory and writes either
+     cooked_<fishKey> (success) or burnt_dust (over-cooked).  Awards a
+     small Cooking life-skill XP bump on success. */
+  var _applyCookingResult = useCallback(function (fishKey, kind) {
+    var S = stateRef.current;
+    var R = S && S.rpg;
+    if (!R || !fishKey) return;
+    if (!R.inventory) R.inventory = {};
+    /* Always consume 1 raw fish — burnt or cooked, the fish is gone. */
+    if ((R.inventory[fishKey] || 0) > 0) R.inventory[fishKey] -= 1;
+    if (R.inventory[fishKey] <= 0) delete R.inventory[fishKey];
+    if (kind === 'cooked') {
+      var cookedKey = 'cooked_' + fishKey;
+      R.inventory[cookedKey] = (R.inventory[cookedKey] || 0) + 1;
+      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+      var leveled = addLifeSkillXp(R.lifeSkills, 'cooking', 8);
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '🍳 Cooked!', color: '#f5c542', ts: Date.now() });
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: '+8 Cooking XP', color: '#00d4b8', ts: Date.now() });
+      if (leveled) {
+        S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 62, text: '🍳 Cooking Level ' + R.lifeSkills.cooking.level + '!', color: '#f5c542', ts: Date.now() });
+        BT_AUDIO.collect();
+      }
+    } else {
+      R.inventory.burnt_dust = (R.inventory.burnt_dust || 0) + 1;
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '🔥 Burnt!', color: '#ff5e6c', ts: Date.now() });
     }
     setRpgState(_objectSpread({}, R));
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -32876,6 +32920,10 @@ export var BroTown = function BroTown(_ref0) {
     skill: woodChopMini.skill,
     onComplete: function (result) { _applyWoodReward(woodChopMini.node, result); setWoodChopMini(null); },
     onCancel: function () { setWoodChopMini(null); }
+  }), cookingMini && /*#__PURE__*/React.createElement(CookingMinigame, {
+    fishKey: cookingMini.fishKey,
+    onComplete: function (kind) { _applyCookingResult(cookingMini.fishKey, kind); setCookingMini(null); },
+    onCancel: function () { setCookingMini(null); }
   }), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {
     var S = stateRef.current;
     var R = S === null || S === void 0 ? void 0 : S.rpg;
