@@ -61,11 +61,11 @@ const ICON_SRC = {
 // Tooltip phrasing per GDD §1.2 — describes both the effect and the
 // specific training source so the player knows what to do.
 const CHAR_STATS = [
-  { key: 'power',     label: 'Power',     tip: 'Power — base weapon damage scaling. Trains by landing damage with melee or ranged weapons.' },
-  { key: 'vitality',  label: 'Vitality',  tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
-  { key: 'endurance', label: 'Endurance', tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
-  { key: 'agility',   label: 'Agility',   tip: 'Agility — move speed, dodge distance, and attack speed. Trains by successful dodges and movement under threat.' },
-  { key: 'mind',      label: 'Mind',      tip: 'Mind — mana pool size and magic strength. Trains by spending mana on staff bolts and absorbing collision restores.' },
+  { key: 'power',     label: 'Power',     short: 'POW', tip: 'Power — base weapon damage scaling. Trains by landing damage with melee or ranged weapons.' },
+  { key: 'vitality',  label: 'Vitality',  short: 'VIT', tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'agility',   label: 'Agility',   short: 'AGI', tip: 'Agility — move speed, dodge distance, and attack speed. Trains by successful dodges and movement under threat.' },
+  { key: 'mind',      label: 'Mind',      short: 'MIN', tip: 'Mind — mana pool size and magic strength. Trains by spending mana on staff bolts and absorbing collision restores.' },
 ];
 
 // 10 life skills — names match the canonical labels in BroTown.jsx
@@ -414,7 +414,7 @@ export const BottomDashboard = () => {
                         title={s.tip}
                         style={{
                           position: 'relative',
-                          height: 16,
+                          height: 22,
                           borderRadius: 3,
                           background: 'rgba(255,255,255,0.04)',
                           border: '1px solid rgba(255,255,255,0.06)',
@@ -435,11 +435,11 @@ export const BottomDashboard = () => {
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          padding: '0 5px',
-                          fontSize: 10,
+                          padding: '0 6px',
+                          fontSize: 15,
                         }}>
-                          <span style={{ color: COL.text, letterSpacing: '.02em' }}>{s.label}</span>
-                          <span style={{ color: COL.text, fontWeight: 700, fontSize: 13 }}>{val}</span>
+                          <span style={{ color: COL.text, letterSpacing: '.04em', fontWeight: 700 }}>{s.short}</span>
+                          <span style={{ color: COL.text, fontWeight: 700 }}>{val}</span>
                         </div>
                       </div>
                     );
