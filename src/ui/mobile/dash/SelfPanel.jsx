@@ -11,7 +11,7 @@ const StatTile = ({ label, value }) => (
     textAlign: 'center',
     minWidth: 0,
   }}>
-    <div style={{ fontSize: 9, color: COL.muted, letterSpacing: '.04em' }}>{label}</div>
+    <div style={{ fontSize: 15, color: COL.muted, letterSpacing: '.04em' }}>{label}</div>
     <div style={{ fontSize: 17, fontWeight: 700 }}>{value}</div>
   </div>
 );
@@ -49,11 +49,11 @@ export const SelfPanel = () => {
           flex: '0 0 48px',
         }}>{profile.archetype === 'mage' ? '🧙' : profile.archetype === 'archer' ? '🏹' : '⚔'}</div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {profile.name}
-            {profile.clanTag && <span style={{ color: COL.muted, marginLeft: 6, fontSize: 11 }}>[{profile.clanTag}]</span>}
+            {profile.clanTag && <span style={{ color: COL.muted, marginLeft: 6, fontSize: 15 }}>[{profile.clanTag}]</span>}
           </div>
-          <div style={{ fontSize: 11, color: COL.muted }}>
+          <div style={{ fontSize: 15, color: COL.muted }}>
             Lv {profile.level} · {profile.archetype || 'wanderer'}
             {profile.pole ? ` · ${profile.pole}` : ''}
           </div>
@@ -71,19 +71,19 @@ export const SelfPanel = () => {
 
       {/* Carrying */}
       {carry.length > 0 && (
-        <div style={{ fontSize: 11, color: COL.muted, marginBottom: 4 }}>
+        <div style={{ fontSize: 15, color: COL.muted, marginBottom: 4 }}>
           {carry.join(' · ')}
         </div>
       )}
 
       {/* Quest / journey footer */}
       {profile.questLine && (
-        <div style={{ fontSize: 11, color: COL.text, opacity: 0.85 }}>
+        <div style={{ fontSize: 15, color: COL.text, opacity: 0.85 }}>
           ✦ {profile.questLine}
         </div>
       )}
       {profile.history?.displayedTitle && (
-        <div style={{ fontSize: 11, color: COL.gold, marginTop: 2 }}>
+        <div style={{ fontSize: 15, color: COL.gold, marginTop: 2 }}>
           ★ {profile.history.displayedTitle}
         </div>
       )}

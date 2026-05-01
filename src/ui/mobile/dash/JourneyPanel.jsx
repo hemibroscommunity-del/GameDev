@@ -22,7 +22,7 @@ export const JourneyPanel = () => {
 
   if (!entries.length) {
     return <div style={panelStyle}>
-      <div style={{ color: COL.muted, fontSize: 12, textAlign: 'center', padding: '18px 0' }}>
+      <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '18px 0' }}>
         Your journey is just beginning.
       </div>
     </div>;
@@ -41,10 +41,10 @@ export const JourneyPanel = () => {
             padding: '3px 0',
             borderBottom: i < entries.length - 1 ? `1px solid ${COL.divider}` : 'none',
           }}>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {text}
             </span>
-            {ts && <span style={{ fontSize: 10, color: COL.muted, flex: '0 0 auto' }}>{fmtAge(ts)}</span>}
+            {ts && <span style={{ fontSize: 15, color: COL.muted, flex: '0 0 auto' }}>{fmtAge(ts)}</span>}
           </div>
         );
       })}

@@ -15,7 +15,7 @@ export const GuildPanel = () => {
   if (!guild) {
     return (
       <div style={panelStyle}>
-        <div style={{ color: COL.muted, fontSize: 12, textAlign: 'center', padding: '14px 0' }}>
+        <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
           You haven't joined a guild yet.
         </div>
       </div>
@@ -24,12 +24,12 @@ export const GuildPanel = () => {
 
   return (
     <div style={panelStyle}>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{guild.name || 'Guild'}</div>
-      <div style={{ fontSize: 11, color: COL.muted, marginBottom: 6 }}>
+      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{guild.name || 'Guild'}</div>
+      <div style={{ fontSize: 15, color: COL.muted, marginBottom: 6 }}>
         Rank {guild.rank ?? 1} · Members {guild.memberCount ?? 0}
       </div>
       {guild.skills && Object.entries(guild.skills).map(([k, v]) => (
-        <div key={k} style={{ fontSize: 11, color: COL.text, padding: '2px 0' }}>
+        <div key={k} style={{ fontSize: 15, color: COL.text, padding: '2px 0' }}>
           {k}: Lv {v.level || 0}
         </div>
       ))}

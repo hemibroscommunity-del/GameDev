@@ -36,7 +36,7 @@ export const SkillsPanel = () => {
           <div key={sd.key} style={{ marginBottom: 4 }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between',
-              fontSize: 11,
+              fontSize: 15,
             }}>
               <span style={{ color: COL.text }}>{sd.icon} {sd.name}</span>
               <span style={{ color: COL.muted }}>Lv {sk.level}</span>

@@ -36,7 +36,7 @@ export const LeaderboardPanel = () => {
                 border: `1px solid ${active ? COL.accent : COL.tileBor}`,
                 borderRadius: 4,
                 fontFamily: 'inherit',
-                fontSize: 11,
+                fontSize: 15,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
               }}
@@ -45,7 +45,7 @@ export const LeaderboardPanel = () => {
         })}
       </div>
       {board.length === 0 ? (
-        <div style={{ color: COL.muted, fontSize: 12, textAlign: 'center', padding: '14px 0' }}>
+        <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
           No leaderboard data yet.
         </div>
       ) : board.slice(0, 30).map((r, i) => (
@@ -53,7 +53,7 @@ export const LeaderboardPanel = () => {
           display: 'flex',
           gap: 8,
           padding: '3px 0',
-          fontSize: 12,
+          fontSize: 15,
           borderBottom: `1px solid ${COL.divider}`,
         }}>
           <span style={{ width: 24, color: COL.muted }}>#{i + 1}</span>

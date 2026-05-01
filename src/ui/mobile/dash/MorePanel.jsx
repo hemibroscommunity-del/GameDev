@@ -50,7 +50,7 @@ export const MorePanel = () => (
           ) : (
             <span style={{ fontSize: 20 }}>{t.glyph}</span>
           )}
-          <span style={{ fontSize: 11, color: COL.muted }}>{t.label}</span>
+          <span style={{ fontSize: 15, color: COL.muted }}>{t.label}</span>
         </button>
       ))}
     </div>

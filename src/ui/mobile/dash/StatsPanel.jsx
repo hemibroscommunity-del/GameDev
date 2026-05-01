@@ -7,7 +7,7 @@ const Row = ({ label, value }) => (
     justifyContent: 'space-between',
     padding: '3px 0',
     borderBottom: `1px solid ${COL.divider}`,
-    fontSize: 12,
+    fontSize: 15,
   }}>
     <span style={{ color: COL.muted }}>{label}</span>
     <span style={{ color: COL.text }}>{value}</span>
@@ -43,7 +43,7 @@ export const StatsPanel = () => {
           <Row label="Mind"      value={R.mind ?? 0} />
         </div>
       </div>
-      <div style={{ marginTop: 8, fontSize: 11, color: COL.muted }}>
+      <div style={{ marginTop: 8, fontSize: 15, color: COL.muted }}>
         Kills {cs.kills ?? 0} · Deaths {cs.deaths ?? 0} · Gold earned {(cs.totalGoldEarned ?? 0).toLocaleString()}
       </div>
     </div>

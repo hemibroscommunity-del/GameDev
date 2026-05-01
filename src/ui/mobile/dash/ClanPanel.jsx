@@ -14,10 +14,10 @@ export const ClanPanel = () => {
   if (!clan) {
     return (
       <div style={panelStyle}>
-        <div style={{ color: COL.muted, fontSize: 12, textAlign: 'center', padding: '10px 0' }}>
+        <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '10px 0' }}>
           You aren't in a clan.
         </div>
-        <div style={{ fontSize: 11, color: COL.muted, textAlign: 'center' }}>
+        <div style={{ fontSize: 15, color: COL.muted, textAlign: 'center' }}>
           Find a clan member in town to join, or use the legacy clan panel
           (`window.__broLegacyUI?.clan?.()`) to create one.
         </div>
@@ -28,10 +28,10 @@ export const ClanPanel = () => {
   const members = clan.members || [];
   return (
     <div style={panelStyle}>
-      <div style={{ fontSize: 14, fontWeight: 700 }}>
+      <div style={{ fontSize: 16, fontWeight: 700 }}>
         [{clan.tag}] {clan.name}
       </div>
-      <div style={{ fontSize: 11, color: COL.muted, marginBottom: 6 }}>
+      <div style={{ fontSize: 15, color: COL.muted, marginBottom: 6 }}>
         {members.length} member{members.length === 1 ? '' : 's'}
       </div>
       {members.slice(0, 10).map((m, i) => (
@@ -39,7 +39,7 @@ export const ClanPanel = () => {
           display: 'flex',
           justifyContent: 'space-between',
           padding: '3px 0',
-          fontSize: 12,
+          fontSize: 15,
           borderBottom: `1px solid ${COL.divider}`,
         }}>
           <span>{m.name || m.id}</span>

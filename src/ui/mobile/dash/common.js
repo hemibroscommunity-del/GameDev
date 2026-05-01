@@ -35,7 +35,7 @@ export const panelStyle = {
   padding: '8px 12px 10px',
   color: COL.text,
   fontFamily: 'VT323, monospace',
-  fontSize: 13,
+  fontSize: 15,
 };
 
 export const rowStyle = {
@@ -51,7 +51,7 @@ export const emptyMsg = (text) => ({
   style: {
     color: COL.muted,
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 15,
     paddingTop: 18,
   },
 });

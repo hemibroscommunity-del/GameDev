@@ -54,14 +54,14 @@ const ItemTile = ({ ikey, count }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: 16,
+      fontSize: 18,
       position: 'relative',
     }} title={ikey}>
       <span>{iconFor(ikey)}</span>
       {count > 1 && (
         <span style={{
           position: 'absolute', bottom: 1, right: 3,
-          fontSize: 10, color: COL.text,
+          fontSize: 15, color: COL.text,
           textShadow: '0 0 2px #000',
         }}>{count}</span>
       )}
@@ -113,37 +113,8 @@ export const InventoryPanel = () => {
     ? visible
     : visible.filter(k => classify(k) === filter);
 
-  // Gold display — moved here from the dashboard's name strip.
-  const R = (S && S.rpg) || {};
-  const gold =
-    (R._compStats && (R._compStats.totalGoldEarned || R._compStats.goldEarnedTotal)) ||
-    R.goldEarned || R.coins || R.gold || 0;
-  const goldNuggets = R.goldNuggets || 0;
-  const goldBars = R.goldBars || 0;
-
   return (
     <div style={panelStyle}>
-      {/* Gold strip — current coin count + raw gold tallies. */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'baseline',
-        padding: '0 2px 6px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        marginBottom: 6,
-        fontSize: 15,
-      }}>
-        <span style={{ color: '#f5c542', fontWeight: 700 }}>
-          🪙 {Number(gold).toLocaleString()}
-        </span>
-        {(goldNuggets > 0 || goldBars > 0) && (
-          <span style={{ color: COL.muted, fontSize: 13 }}>
-            {goldBars > 0 ? `▮${goldBars}` : ''}
-            {goldBars > 0 && goldNuggets > 0 ? ' · ' : ''}
-            {goldNuggets > 0 ? `◇${goldNuggets}` : ''}
-          </span>
-        )}
-      </div>
 
       {/* Filter strip — icon-only chips. */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
@@ -161,7 +132,7 @@ export const InventoryPanel = () => {
                 border: `1px solid ${active ? COL.accent : COL.tileBor}`,
                 borderRadius: 4,
                 fontFamily: 'inherit',
-                fontSize: 14,
+                fontSize: 16,
                 cursor: 'pointer',
               }}
             >{c.glyph}</button>
@@ -170,7 +141,7 @@ export const InventoryPanel = () => {
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ color: COL.muted, fontSize: 12, textAlign: 'center', padding: '14px 0' }}>
+        <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
           {filter === 'all' ? 'Bag is empty.' : 'No items in this category.'}
         </div>
       ) : (

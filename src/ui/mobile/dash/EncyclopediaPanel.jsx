@@ -50,7 +50,7 @@ export const EncyclopediaPanel = () => {
                 border: `1px solid ${active ? COL.accent : COL.tileBor}`,
                 borderRadius: 4,
                 fontFamily: 'inherit',
-                fontSize: 11,
+                fontSize: 15,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
               }}
@@ -59,7 +59,7 @@ export const EncyclopediaPanel = () => {
         })}
       </div>
       {rows.length === 0 ? (
-        <div style={{ color: COL.muted, fontSize: 12, textAlign: 'center', padding: '14px 0' }}>
+        <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
           Nothing discovered in this category yet.
         </div>
       ) : rows.map(r => (
@@ -67,7 +67,7 @@ export const EncyclopediaPanel = () => {
           display: 'flex',
           justifyContent: 'space-between',
           padding: '3px 0',
-          fontSize: 12,
+          fontSize: 15,
           borderBottom: `1px solid ${COL.divider}`,
         }}>
           <span>{r.label}</span>

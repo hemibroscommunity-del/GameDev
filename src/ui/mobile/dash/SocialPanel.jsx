@@ -22,20 +22,20 @@ export const SocialPanel = () => {
           background: !showBlocked ? COL.accent : 'transparent',
           color: !showBlocked ? '#fff' : COL.muted,
           border: `1px solid ${!showBlocked ? COL.accent : COL.tileBor}`,
-          borderRadius: 4, fontFamily: 'inherit', fontSize: 12, cursor: 'pointer',
+          borderRadius: 4, fontFamily: 'inherit', fontSize: 15, cursor: 'pointer',
         }}>Friends ({friends.length})</button>
         <button onClick={() => setShowBlocked(true)} style={{
           flex: 1, padding: '4px',
           background: showBlocked ? COL.accent : 'transparent',
           color: showBlocked ? '#fff' : COL.muted,
           border: `1px solid ${showBlocked ? COL.accent : COL.tileBor}`,
-          borderRadius: 4, fontFamily: 'inherit', fontSize: 12, cursor: 'pointer',
+          borderRadius: 4, fontFamily: 'inherit', fontSize: 15, cursor: 'pointer',
         }}>Blocked ({blocked.length})</button>
       </div>
 
       {!showBlocked ? (
         friends.length === 0 ? (
-          <div style={{ color: COL.muted, fontSize: 12, textAlign: 'center', padding: '14px 0' }}>
+          <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
             No friends added yet.
           </div>
         ) : friends.map((f, i) => {
@@ -52,19 +52,19 @@ export const SocialPanel = () => {
                 background: online ? '#3dd497' : '#4d5580',
                 flex: '0 0 auto',
               }} />
-              <span style={{ flex: 1, fontSize: 12 }}>{f.name || fid}</span>
-              <span style={{ fontSize: 10, color: COL.muted }}>{online ? 'online' : 'offline'}</span>
+              <span style={{ flex: 1, fontSize: 15 }}>{f.name || fid}</span>
+              <span style={{ fontSize: 15, color: COL.muted }}>{online ? 'online' : 'offline'}</span>
             </div>
           );
         })
       ) : (
         blocked.length === 0 ? (
-          <div style={{ color: COL.muted, fontSize: 12, textAlign: 'center', padding: '14px 0' }}>
+          <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
             Nobody blocked.
           </div>
         ) : blocked.map((b, i) => (
           <div key={b.id || b} style={{
-            fontSize: 12, padding: '4px 0',
+            fontSize: 15, padding: '4px 0',
             borderBottom: i < blocked.length - 1 ? `1px solid ${COL.divider}` : 'none',
           }}>{b.name || b}</div>
         ))

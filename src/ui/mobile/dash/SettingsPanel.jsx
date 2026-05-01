@@ -8,7 +8,7 @@ const Toggle = ({ label, value, onChange }) => (
     alignItems: 'center',
     padding: '5px 0',
     borderBottom: `1px solid ${COL.divider}`,
-    fontSize: 12,
+    fontSize: 15,
   }}>
     <span>{label}</span>
     <button
@@ -62,7 +62,7 @@ export const SettingsPanel = () => {
     <div style={panelStyle}>
       <Toggle label="Audio" value={audio} onChange={toggleAudio} />
       <Toggle label="Debug overlay (D)" value={debug} onChange={toggleDebug} />
-      <div style={{ marginTop: 8, fontSize: 11, color: COL.muted }}>
+      <div style={{ marginTop: 8, fontSize: 15, color: COL.muted }}>
         Tap the floating <b>D</b> button for the full devtools console.
       </div>
     </div>

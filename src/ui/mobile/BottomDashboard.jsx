@@ -88,7 +88,7 @@ const LIFE_SKILLS = [
 // columns.  Centered above its column.
 const ColHeader = ({ children }) => (
   <div style={{
-    fontSize: 10,
+    fontSize: 15,
     color: '#8890b8',
     letterSpacing: '.08em',
     textTransform: 'uppercase',
@@ -127,7 +127,7 @@ const Tooltip = ({ text, onClose }) => {
         borderRadius: 8,
         color: '#E8EAF8',
         fontFamily: 'VT323, monospace',
-        fontSize: 13,
+        fontSize: 15,
         lineHeight: 1.3,
         zIndex: 36,
         boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
@@ -189,7 +189,7 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
         left: 10,
         top: '50%',
         transform: 'translateY(-50%)',
-        fontSize: 13,
+        fontSize: 15,
         fontWeight: 700,
         color: '#fff',
         letterSpacing: '.04em',
@@ -255,7 +255,7 @@ const IconButton = ({ glyph, label, active, onClick }) => {
         }}
       />
       <span style={{
-        fontSize: 10,
+        fontSize: 15,
         color: active ? '#a8a4ff' : COL.muted,
         letterSpacing: '.04em',
       }}>{label}</span>
@@ -310,11 +310,42 @@ export const BottomDashboard = () => {
   // Use-trained build threshold per GDD §1.4 (5 T1 points per level).
   const buildThresh = Math.max(50, Math.floor(xpNeeded / 5));
 
+  // Gold readout — moved from the bag panel into the top-right HUD so
+  // the inventory grid has full vertical room.  Use the same fallback
+  // chain the bag was using so cached vs canonical fields both work.
+  const gold =
+    (R._compStats && (R._compStats.totalGoldEarned || R._compStats.goldEarnedTotal)) ||
+    R.goldEarned || R.coins || R.gold || 0;
+
   const Active = active?.Component;
 
   return (
     <>
       <Tooltip text={tooltip} onClose={() => setTooltip('')} />
+
+      {/* Gold HUD — pinned to upper-right.  Always visible, even when
+          a panel is open. */}
+      <div
+        onPointerDown={(e) => e.stopPropagation()}
+        style={{
+          position: 'fixed',
+          top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
+          right: 'calc(env(safe-area-inset-right, 0px) + 6px)',
+          zIndex: 30,
+          background: COL.bg,
+          border: `1px solid ${COL.border}`,
+          borderRadius: 8,
+          padding: '4px 10px',
+          color: '#f5c542',
+          fontFamily: 'VT323, monospace',
+          fontSize: 18,
+          fontWeight: 700,
+          letterSpacing: '.04em',
+          touchAction: 'manipulation',
+        }}>
+        🪙 {Number(gold).toLocaleString()}
+      </div>
+
     <div
       onPointerDown={(e) => e.stopPropagation()}
       style={{
@@ -353,7 +384,7 @@ export const BottomDashboard = () => {
             )}
             <div style={{
               flex: 1,
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: 700,
               letterSpacing: '.04em',
               whiteSpace: 'nowrap',
@@ -482,8 +513,8 @@ export const BottomDashboard = () => {
                           cursor: 'pointer',
                           touchAction: 'manipulation',
                         }}>
-                        <span style={{ fontSize: 14, lineHeight: 1 }}>{sk.icon}</span>
-                        <span style={{ color: COL.muted, fontWeight: 700, fontSize: 14 }}>{lvl}</span>
+                        <span style={{ fontSize: 15, lineHeight: 1 }}>{sk.icon}</span>
+                        <span style={{ color: COL.muted, fontWeight: 700, fontSize: 15 }}>{lvl}</span>
                       </div>
                     );
                   })}

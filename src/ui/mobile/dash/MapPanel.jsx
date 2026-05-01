@@ -73,17 +73,17 @@ export const MapPanel = () => {
           borderRadius: 4,
           imageRendering: 'pixelated',
         }} />
-        <div style={{ fontSize: 10, color: COL.muted, marginTop: 3, textAlign: 'center' }}>
+        <div style={{ fontSize: 15, color: COL.muted, marginTop: 3, textAlign: 'center' }}>
           {curZone || '–'}
         </div>
       </div>
       <div style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
-        <div style={{ fontSize: 11, color: COL.muted, marginBottom: 4 }}>Discovered</div>
+        <div style={{ fontSize: 15, color: COL.muted, marginBottom: 4 }}>Discovered</div>
         {visited.length === 0 ? (
-          <div style={{ fontSize: 11, color: COL.muted }}>Nothing yet.</div>
+          <div style={{ fontSize: 15, color: COL.muted }}>Nothing yet.</div>
         ) : visited.map((z, i) => (
           <div key={i} style={{
-            fontSize: 12,
+            fontSize: 15,
             padding: '2px 0',
             color: z === curZone ? COL.text : COL.muted,
           }}>

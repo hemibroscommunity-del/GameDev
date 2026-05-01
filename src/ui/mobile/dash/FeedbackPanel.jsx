@@ -47,13 +47,13 @@ export const FeedbackPanel = () => {
               borderRadius: 4,
               color: COL.text,
               fontFamily: 'inherit',
-              fontSize: 12,
+              fontSize: 15,
               resize: 'none',
               outline: 'none',
             }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, alignItems: 'center' }}>
-            <span style={{ fontSize: 10, color: COL.muted }}>{text.length}/500</span>
+            <span style={{ fontSize: 15, color: COL.muted }}>{text.length}/500</span>
             <button onClick={submit} style={{
               padding: '4px 12px',
               background: COL.accent,
@@ -61,13 +61,13 @@ export const FeedbackPanel = () => {
               borderRadius: 4,
               color: '#fff',
               fontFamily: 'inherit',
-              fontSize: 12,
+              fontSize: 15,
               cursor: 'pointer',
             }}>{sent ? 'Sent' : 'Send'}</button>
           </div>
         </>
       ) : (
-        <div style={{ color: COL.muted, fontSize: 12, textAlign: 'center', padding: '14px 0' }}>
+        <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
           Browse view coming soon — server feedback log isn't streamed to clients yet.
         </div>
       )}
@@ -83,6 +83,6 @@ const tabBtn = (active) => ({
   border: `1px solid ${active ? COL.accent : COL.tileBor}`,
   borderRadius: 4,
   fontFamily: 'inherit',
-  fontSize: 12,
+  fontSize: 15,
   cursor: 'pointer',
 });
