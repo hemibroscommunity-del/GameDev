@@ -34,15 +34,15 @@ const COL = {
   gold:      '#f5c542',
 };
 
-// Per-kind colored gradient fills.  The previous PNG artwork had dark
-// padding baked into both ends of each capsule, leaving a visible dead
-// zone inside the rounded shape; CSS gradients fill the container
-// edge-to-edge so the colored portion runs the full width.
-const BAR_FILL = {
-  hp:   'linear-gradient(180deg, #ff5a5f 0%, #c5202c 100%)',
-  mp:   'linear-gradient(180deg, #5b8cff 0%, #2541b0 100%)',
-  stam: 'linear-gradient(180deg, #5fd96b 0%, #1f8a3a 100%)',
-  xp:   'linear-gradient(180deg, #ffd24a 0%, #c98a08 100%)',
+// Bar artwork sliced from the user-supplied mockup screenshot.  Each
+// PNG has dark padding baked into both ends; the Bar component
+// over-stretches the image and clips the parent so the colored middle
+// fills edge-to-edge with flat corners (no rounded pill).
+const BAR_IMG = {
+  hp:   '/icons/ui/bar-hp.png',
+  mp:   '/icons/ui/bar-mp.png',
+  stam: '/icons/ui/bar-stam.png',
+  xp:   '/icons/ui/bar-xp.png',
 };
 
 // Toolbar icon source.  Each glyph is a separate PNG sliced from the
@@ -145,7 +145,7 @@ const Tooltip = ({ text, onClose }) => {
 // current/max on the right.
 const Bar = ({ label, cur, max, kind, tip, onTip }) => {
   const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
-  const fill = BAR_FILL[kind];
+  const src = BAR_IMG[kind];
   return (
     <div
       onPointerUp={tip && onTip ? (e) => { e.stopPropagation(); onTip(tip); } : undefined}
@@ -154,15 +154,23 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
         position: 'relative',
         width: '100%',
         height: 28,
+        overflow: 'hidden',
         cursor: tip ? 'pointer' : 'default',
         touchAction: 'manipulation',
       }}>
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: fill,
-        borderRadius: 14,
-      }} />
+      <img
+        src={src}
+        alt={label}
+        draggable={false}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '-7%',
+          width: '114%',
+          height: '100%',
+          objectFit: 'fill',
+        }}
+      />
       {pct < 100 && (
         <div style={{
           position: 'absolute',
@@ -171,10 +179,6 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
           left: pct + '%',
           right: 0,
           background: 'linear-gradient(90deg, rgba(0,0,0,0.55), rgba(0,0,0,0.72))',
-          // Round only the right corners — the left edge is the visible
-          // drain line and should be a sharp vertical cut, not a "U".
-          borderTopRightRadius: 14,
-          borderBottomRightRadius: 14,
           transition: 'left .15s linear',
           pointerEvents: 'none',
         }} />
