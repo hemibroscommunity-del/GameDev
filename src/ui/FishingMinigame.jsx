@@ -60,11 +60,39 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
   const dragStartY = useRef(null);
   const reelProgress = useRef(0);
 
-  // Load the sprite once.
+  // Load the sprite once.  After load, copy into an offscreen canvas
+  // and zero the alpha on any near-white pixel.  ffmpeg's colorkey/
+  // chromakey filters leave a faint halo around the fish (anti-aliased
+  // edge pixels with high RGB but partial alpha), so we strip those
+  // here at runtime — guaranteed clean transparency, no white box.
   useEffect(() => {
     const img = new Image();
     img.src = FISH_SHEET_SRC;
-    img.onload = () => { imgRef.current = img; setReady(true); };
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth || 1024;
+      c.height = img.naturalHeight || 72;
+      const cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0);
+      try {
+        const id = cx.getImageData(0, 0, c.width, c.height);
+        const px = id.data;
+        for (let i = 0; i < px.length; i += 4) {
+          // Zero alpha on any pixel where all three channels are bright.
+          // Threshold 220 catches the halo while preserving the yellow
+          // tang's bright body (which has yellow ~ R=240, G=210, B=40).
+          if (px[i] > 220 && px[i + 1] > 220 && px[i + 2] > 220) {
+            px[i + 3] = 0;
+          }
+        }
+        cx.putImageData(id, 0, 0);
+      } catch (e) {
+        // Cross-origin tainting would block getImageData; sprite is
+        // local so this shouldn't fire, but fall back to the raw img.
+      }
+      imgRef.current = c;
+      setReady(true);
+    };
     img.onerror = () => { console.warn('fish sprite failed to load:', FISH_SHEET_SRC); setReady(true); };
   }, []);
 
