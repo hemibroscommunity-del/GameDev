@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, TIER_COLOR, panelStyle, getState } from './common.js';
 import { cookingBus } from '../cookingBus.js';
+import { eatBus } from '../eatBus.js';
 
 // Category filter chips — icon-only.  "All" comes first so the player
 // always opens the bag with everything visible.
@@ -64,14 +65,17 @@ const iconFor = (key) => {
 const ItemTile = ({ ikey, count }) => {
   const cat = classify(ikey);
   const color = TIER_COLOR[cat === 'weapon' ? 'rare' : cat === 'armor' ? 'uncommon' : 'common'] || COL.muted;
-  // Tap on a raw fish_* tile launches the cooking minigame.  Cooked
-  // (cooked_fish_*) and burnt (burnt_*) tiles are not tappable for now —
-  // those are end states.
-  const isRawFish = /^fish_/.test(ikey || '') && (count || 0) > 0;
+  // Tap on a raw fish_* tile launches the cooking minigame; tap on a
+  // cooked_fish_* tile eats it for HP. Burnt tiles are inert.
+  const hasStock = (count || 0) > 0;
+  const isRawFish = hasStock && /^fish_/.test(ikey || '');
+  const isCookedFish = hasStock && /^cooked_fish_/.test(ikey || '');
+  const isInteractive = isRawFish || isCookedFish;
   const handleTap = (e) => {
-    if (!isRawFish) return;
+    if (!isInteractive) return;
     e.stopPropagation();
-    cookingBus.open(ikey);
+    if (isRawFish) cookingBus.open(ikey);
+    else if (isCookedFish) eatBus.open(ikey);
   };
   return (
     <div onPointerUp={handleTap} style={{
@@ -84,9 +88,9 @@ const ItemTile = ({ ikey, count }) => {
       justifyContent: 'center',
       fontSize: 18,
       position: 'relative',
-      cursor: isRawFish ? 'pointer' : 'default',
-      touchAction: isRawFish ? 'manipulation' : 'auto',
-    }} title={isRawFish ? 'Tap to cook' : ikey}>
+      cursor: isInteractive ? 'pointer' : 'default',
+      touchAction: isInteractive ? 'manipulation' : 'auto',
+    }} title={isRawFish ? 'Tap to cook' : isCookedFish ? 'Tap to eat (+30 HP)' : ikey}>
       {(() => {
         const thumb = thumbFor(ikey);
         return thumb

@@ -3,6 +3,7 @@ import { FishingMinigame } from './FishingMinigame.jsx';
 import { WoodChopMinigame } from './WoodChopMinigame.jsx';
 import { CookingMinigame } from './CookingMinigame.jsx';
 import { cookingBus } from './mobile/cookingBus.js';
+import { eatBus } from './mobile/eatBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { startLoadingTileAssets, useSpriteTiles, drawTileLayer, drawBuildingSprites } from '@/rendering/canvasTileAssets.js';
@@ -14823,6 +14824,37 @@ export var BroTown = function BroTown(_ref0) {
       var key = cookingBus.consume();
       if (!key) return;
       setCookingMini({ fishKey: key });
+    });
+  }, []);
+
+  /* Eat a cooked fish from the bag — consume 1 of the cooked_fish_* key
+     and heal +30 HP (clamped to maxHp).  No-op if HP is already full
+     (so the player doesn't burn food to no effect — reads as "you're
+     not hungry"). */
+  useEffect(function () {
+    return eatBus.subscribe(function () {
+      var key = eatBus.consume();
+      if (!key) return;
+      var S = stateRef.current;
+      var R = S && S.rpg;
+      if (!R || !R.inventory) return;
+      if ((R.inventory[key] || 0) <= 0) return;
+      var maxHp = R.maxHp || 100;
+      if ((R.hp || 0) >= maxHp) {
+        S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'HP full', color: '#8890b8', ts: Date.now() });
+        return;
+      }
+      var HEAL = 30;
+      var before = R.hp || 0;
+      R.hp = Math.min(maxHp, before + HEAL);
+      var actual = R.hp - before;
+      R.inventory[key] -= 1;
+      if (R.inventory[key] <= 0) delete R.inventory[key];
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '+' + actual + ' HP', color: '#3dd497', ts: Date.now() });
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: '🍽 Ate cooked fish', color: '#f5c542', ts: Date.now() });
+      try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
+      setRpgState(_objectSpread({}, R));
+      try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
     });
   }, []);
 
