@@ -311,47 +311,6 @@ export const BottomDashboard = () => {
   return (
     <>
       <Tooltip text={tooltip} onClose={() => setTooltip('')} />
-
-      {/* Combat resource HUD — pinned to upper-left.  Always visible
-          (even when a panel is open) so the player can read HP/Mana/
-          Stamina/XP at a glance.  Moved out of the dashboard so the
-          Build + Life Skills columns can use the full width below. */}
-      <div
-        onPointerDown={(e) => e.stopPropagation()}
-        style={{
-          position: 'fixed',
-          top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
-          left: 'calc(env(safe-area-inset-left, 0px) + 6px)',
-          width: 'min(280px, 42vw)',
-          zIndex: 30,
-          background: COL.bg,
-          border: `1px solid ${COL.border}`,
-          borderRadius: 8,
-          padding: 6,
-          color: COL.text,
-          fontFamily: 'VT323, monospace',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 3,
-          touchAction: 'manipulation',
-        }}>
-        <div style={{
-          fontSize: 11,
-          color: COL.muted,
-          letterSpacing: '.06em',
-          textTransform: 'uppercase',
-          padding: '0 2px 2px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}>{S?.myName || 'Anon'} · Lv {level}</div>
-        <Bar label="HP"     cur={hp}   max={maxHp}    kind="hp"   tip="Hit Points — your health pool. Hits zero and you fall." onTip={setTooltip} />
-        <Bar label="Mana"   cur={mp}   max={maxMp}    kind="mp"   tip="Mana — fuels staff (magic) attacks and special abilities." onTip={setTooltip} />
-        <Bar label="Energy" cur={stam} max={maxStam}  kind="stam" tip="Energy — sprint, dodge-roll, and shield-block all draw from this. Regenerates while idle." onTip={setTooltip} />
-        <Bar label="XP"     cur={xp}   max={xpNeeded} kind="xp"   tip={`XP — combat experience. Fill to ${xpNeeded.toLocaleString()} to reach level ${level + 1}.`} onTip={setTooltip} />
-      </div>
-
     <div
       onPointerDown={(e) => e.stopPropagation()}
       style={{
@@ -416,9 +375,23 @@ export const BottomDashboard = () => {
             minHeight: 0,
           }}>
             <div style={{ flex: 1, display: 'flex', gap: 8, minHeight: 0 }}>
-              {/* Build column — 5 character stats with progression.  HP/MP/Stam/XP
-                  bars moved to a fixed upper-left HUD so this row can give
-                  Build + Life Skills more horizontal real estate. */}
+              {/* Left column — combat resource bars. */}
+              <div style={{
+                flex: 5,
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 0,
+              }}>
+                <ColHeader>{S?.myName || 'Anon'} · Lv {level}</ColHeader>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'space-between' }}>
+                  <Bar label="HP"     cur={hp}   max={maxHp}    kind="hp"   tip="Hit Points — your health pool. Hits zero and you fall." onTip={setTooltip} />
+                  <Bar label="Mana"   cur={mp}   max={maxMp}    kind="mp"   tip="Mana — fuels staff (magic) attacks and special abilities." onTip={setTooltip} />
+                  <Bar label="Energy" cur={stam} max={maxStam}  kind="stam" tip="Energy — sprint, dodge-roll, and shield-block all draw from this. Regenerates while idle." onTip={setTooltip} />
+                  <Bar label="XP"     cur={xp}   max={xpNeeded} kind="xp"   tip={`XP — combat experience. Fill to ${xpNeeded.toLocaleString()} to reach level ${level + 1}.`} onTip={setTooltip} />
+                </div>
+              </div>
+
+              {/* Middle column — build (5 character stats with progression). */}
               <div style={{
                 flex: 2,
                 display: 'flex',
