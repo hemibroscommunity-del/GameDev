@@ -30,15 +30,27 @@ const classify = (key) => {
 // actually caught/crafted.  Currently only fish-08 is wired — map all
 // fish_* inventory keys to its frame-0 thumbnail; expand once additional
 // fish sprites are wired into the minigame.
-const FISH_THUMB = '/icons/fish/fish-minnow.png';
 const WOOD_THUMB = '/icons/wood/wood-log.png';
-const COOKED_FISH_THUMB = '/icons/cook/cooked-fish-minnow.png';
 const BURNT_DUST_THUMB = '/icons/cook/burnt-dust.png';
+/* Per-tier fish thumbnails (raw + cooked).  Order matters in thumbFor:
+   match longer prefixes first so e.g. fish_clownfish doesn't fall
+   through to the generic fish_ branch. Add an entry per tier; the
+   generic 'fish' / 'cooked_fish' fallbacks catch unmapped tiers. */
+const FISH_THUMBS = {
+  fish_clownfish: '/icons/fish/fish-clownfish.png',
+};
+const COOKED_FISH_THUMBS = {
+  cooked_fish_clownfish: '/icons/cook/cooked-fish-clownfish.png',
+};
+const FISH_THUMB_DEFAULT = '/icons/fish/fish-minnow.png';
+const COOKED_FISH_THUMB_DEFAULT = '/icons/cook/cooked-fish-minnow.png';
 const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
-  if (k.startsWith('cooked_fish_')) return COOKED_FISH_THUMB;
+  if (COOKED_FISH_THUMBS[k])        return COOKED_FISH_THUMBS[k];
+  if (k.startsWith('cooked_fish_')) return COOKED_FISH_THUMB_DEFAULT;
   if (k.startsWith('burnt_'))       return BURNT_DUST_THUMB;
-  if (k.startsWith('fish_'))        return FISH_THUMB;
+  if (FISH_THUMBS[k])               return FISH_THUMBS[k];
+  if (k.startsWith('fish_'))        return FISH_THUMB_DEFAULT;
   if (k.startsWith('wood_'))        return WOOD_THUMB;
   return null;
 };

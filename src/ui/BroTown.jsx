@@ -2,6 +2,13 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { FishingMinigame } from './FishingMinigame.jsx';
 import { WoodChopMinigame } from './WoodChopMinigame.jsx';
 import { CookingMinigame } from './CookingMinigame.jsx';
+
+/* Per-tier fish sprite map.  FishingMinigame defaults to fish-08
+   (yellow tang) when no fishSheetSrc is passed.  Add an entry here
+   when wiring a new fish tier with its own swim strip. */
+const FISH_SPRITE_BY_TIER = {
+  Clownfish: '/sprites/fish/fish-02.png',
+};
 import { cookingBus } from './mobile/cookingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
@@ -14756,7 +14763,7 @@ export var BroTown = function BroTown(_ref0) {
       return;
     }
     if (node.nodeType === 'fishSpot') {
-      setFishingMini({ node: node, skill: 'fishing' });
+      setFishingMini({ node: node, skill: 'fishing', fishSheetSrc: FISH_SPRITE_BY_TIER[node.baseName] || null });
       BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
       return;
     }
@@ -32623,7 +32630,7 @@ export var BroTown = function BroTown(_ref0) {
       }
       /* fishSpot / tree route to dedicated minigames instead of the timing bar */
       if (node.nodeType === 'fishSpot') {
-        setFishingMini({ node: node, skill: 'fishing' });
+        setFishingMini({ node: node, skill: 'fishing', fishSheetSrc: FISH_SPRITE_BY_TIER[node.baseName] || null });
         BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
         return;
       }
@@ -32667,7 +32674,7 @@ export var BroTown = function BroTown(_ref0) {
         return;
       }
       if (node.nodeType === 'fishSpot') {
-        setFishingMini({ node: node, skill: 'fishing' });
+        setFishingMini({ node: node, skill: 'fishing', fishSheetSrc: FISH_SPRITE_BY_TIER[node.baseName] || null });
         BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
         return;
       }
@@ -32945,6 +32952,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A1 STRIKE!")), fishingMini && /*#__PURE__*/React.createElement(FishingMinigame, {
     node: fishingMini.node,
     skill: fishingMini.skill,
+    fishSheetSrc: fishingMini.fishSheetSrc,
     onComplete: function (result) { _applyFishingReward(fishingMini.node, result); setFishingMini(null); },
     onCancel: function () { setFishingMini(null); }
   }), woodChopMini && /*#__PURE__*/React.createElement(WoodChopMinigame, {

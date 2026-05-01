@@ -20,7 +20,11 @@ import React, { useEffect, useRef, useState } from 'react';
    minigame without losing thumb position on either stick. */
 const W = 260;
 const H = 150;
-const FISH_SHEET_SRC = '/sprites/fish/fish-08.png';   // 1024×72, 16 frames @ 64×72 (yellow tang)
+/* Default fish sprite (yellow tang).  Overridable per-tier via the
+   fishSheetSrc prop — e.g. Clownfish (FISHING_TIERS lvl 6) passes
+   /sprites/fish/fish-02.png. All swim strips share the same shape:
+   1024×72, 16 frames @ 64×72, broadside left-facing. */
+const DEFAULT_FISH_SHEET_SRC = '/sprites/fish/fish-08.png';
 const FISH_FRAME_W = 64;
 const FISH_FRAME_H = 72;
 /* The source AI-generated frames sweep through a yaw rotation rather
@@ -43,7 +47,8 @@ const REEL_DISTANCE = 110;           // px of upward drag to complete the catch
 const HOOK_MISS_MS = 550;
 const HOOK_LIFT = 70;
 
-export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
+export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCancel }) => {
+  const sheetSrc = fishSheetSrc || DEFAULT_FISH_SHEET_SRC;
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
   const [ready, setReady] = useState(false);
@@ -81,7 +86,7 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
   // here at runtime — guaranteed clean transparency, no white box.
   useEffect(() => {
     const img = new Image();
-    img.src = FISH_SHEET_SRC;
+    img.src = sheetSrc;
     img.onload = () => {
       const c = document.createElement('canvas');
       c.width = img.naturalWidth || 1024;
@@ -107,7 +112,7 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
       imgRef.current = c;
       setReady(true);
     };
-    img.onerror = () => { console.warn('fish sprite failed to load:', FISH_SHEET_SRC); setReady(true); };
+    img.onerror = () => { console.warn('fish sprite failed to load:', sheetSrc); setReady(true); };
   }, []);
 
   // Animation + render loop.

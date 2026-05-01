@@ -32,8 +32,9 @@ export const RESOURCE_TIERS = {
 
 /* ═══ NODE TIER DEFINITIONS ═══ */
 export const FISHING_TIERS = [
-  { lvl: 1, name: 'Minnow', spot: 'Shallow Pool', size: 6, waterColor: 'rgba(52,152,219,.35)', hp: 2 },
-  { lvl: 8, name: 'Trout', spot: 'River Bend', size: 10, waterColor: 'rgba(52,152,219,.4)', hp: 3 },
+  { lvl: 1, name: 'Minnow',    spot: 'Shallow Pool', size: 6,  waterColor: 'rgba(52,152,219,.35)', hp: 2 },
+  { lvl: 6, name: 'Clownfish', spot: 'Coral Patch',  size: 8,  waterColor: 'rgba(255,140, 60,.35)', hp: 3 },
+  { lvl: 8, name: 'Trout',     spot: 'River Bend',   size: 10, waterColor: 'rgba(52,152,219,.4)',  hp: 3 },
 ];
 
 export const WOODCUTTING_TIERS = [
