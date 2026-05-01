@@ -10581,7 +10581,7 @@ export var BroTown = function BroTown(_ref0) {
               ctx.fillText(node.name + ' (Lv' + node.gatherLvl + ')', nx, ny + 26 + tier * 2);
               var skillLvl = ((_S$rpg16 = S.rpg) === null || _S$rpg16 === void 0 || (_S$rpg16 = _S$rpg16.lifeSkills) === null || _S$rpg16 === void 0 || (_S$rpg16 = _S$rpg16[node.skill]) === null || _S$rpg16 === void 0 ? void 0 : _S$rpg16.level) || 1;
               var skillLabel = (node.skill || 'mining').charAt(0).toUpperCase() + (node.skill || 'mining').slice(1);
-              if (skillLvl < node.gatherLvl) {
+              if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
                 ctx.fillStyle = '#ff5e6c';
                 ctx.fillText('Req: ' + skillLabel + ' Lv' + node.gatherLvl, nx, ny + 34 + tier * 2);
               } else {
@@ -11824,22 +11824,24 @@ export var BroTown = function BroTown(_ref0) {
             var isCritNum = _dt.includes('💥') && !_dt.includes('GRAND') && !isCollision;
             var isNumericDmg = /^\d+$/.test(_dt.trim());
 
-            /* Size scales with significance — 2× for mobile readability */
-            var fontSize = 22;
+            /* Size scales with significance — bumped across the board for
+               mobile readability after user feedback that in-game text
+               (e.g. gather requirements) was too small. */
+            var fontSize = 28;
             var useGravity = false;
-            if (isCollision) fontSize = 30;
-            if (isKill) fontSize = 32;
-            if (isCritNum) fontSize = 28;
+            if (isCollision) fontSize = 36;
+            if (isKill) fontSize = 40;
+            if (isCritNum) fontSize = 34;
             if (isXP || isGold) {
-              fontSize = 18;
+              fontSize = 24;
               useGravity = true;
             }
-            if (isMana) fontSize = 20;
-            if (isCodex) fontSize = 22;
-            if (isPlayerDmg) fontSize = 28;
-            if (isShield) fontSize = 20;
+            if (isMana) fontSize = 26;
+            if (isCodex) fontSize = 28;
+            if (isPlayerDmg) fontSize = 34;
+            if (isShield) fontSize = 26;
             if (isNumericDmg) {
-              fontSize = 20;
+              fontSize = 26;
               useGravity = true;
             }
 
@@ -14723,7 +14725,7 @@ export var BroTown = function BroTown(_ref0) {
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
     var skillName = node.skill || 'mining';
     var skillLvl = ((_R$lifeSkills = R.lifeSkills) === null || _R$lifeSkills === void 0 || (_R$lifeSkills = _R$lifeSkills[skillName]) === null || _R$lifeSkills === void 0 ? void 0 : _R$lifeSkills.level) || 1;
-    if (skillLvl < node.gatherLvl) {
+    if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
       S.dmgNumbers.push({
         x: node.x,
         y: node.y - 15,
@@ -32447,7 +32449,7 @@ export var BroTown = function BroTown(_ref0) {
       if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
       var skillName = node.skill || 'mining';
       var skillLvl = ((_R$lifeSkills3 = R.lifeSkills) === null || _R$lifeSkills3 === void 0 || (_R$lifeSkills3 = _R$lifeSkills3[skillName]) === null || _R$lifeSkills3 === void 0 ? void 0 : _R$lifeSkills3.level) || 1;
-      if (skillLvl < node.gatherLvl) {
+      if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
         S.dmgNumbers.push({
           x: node.x,
           y: node.y - 15,
@@ -32487,7 +32489,7 @@ export var BroTown = function BroTown(_ref0) {
       if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
       var skillName = node.skill || 'mining';
       var skillLvl = ((_R$lifeSkills4 = R.lifeSkills) === null || _R$lifeSkills4 === void 0 || (_R$lifeSkills4 = _R$lifeSkills4[skillName]) === null || _R$lifeSkills4 === void 0 ? void 0 : _R$lifeSkills4.level) || 1;
-      if (skillLvl < node.gatherLvl) {
+      if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
         S.dmgNumbers.push({
           x: node.x,
           y: node.y - 15,
