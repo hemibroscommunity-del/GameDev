@@ -46,7 +46,7 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
   // Phase is mirrored in both state (so the prompt text re-renders on
   // change) and ref (so the rAF loop and pointer handlers can read the
   // latest value without stale-closure).
-  const [phase, setPhase] = useState('strike');     // 'strike' | 'reeling' | 'done'
+  const [phase, setPhase] = useState('strike');     // 'strike' | 'reeling' | 'throwing' | 'done'
   const phaseRef = useRef('strike');
   const fishX = useRef(20);
   const fishDir = useRef(1);
@@ -55,10 +55,18 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
   const lastT = useRef(0);
   const flashUntil = useRef(0);          // miss flash timestamp
   const strikeResult = useRef(null);     // 'perfect' | 'good' | 'ok' once hooked
+  const throwStart = useRef(0);          // timestamp when throw-out animation begins
 
   // Reel state.
   const dragStartY = useRef(null);
   const reelProgress = useRef(0);
+
+  // Throw-to-bag state — when the in-canvas throw finishes, flip
+  // setFlying(true) and one rAF later setFlyTarget(true) so a fixed-
+  // position element CSS-transitions from above the rectangle to the
+  // bag icon's approximate location at the bottom-left of the dashboard.
+  const [flying, setFlying] = useState(false);
+  const [flyTarget, setFlyTarget] = useState(false);
 
   // Load the sprite once.  After load, copy into an offscreen canvas
   // and zero the alpha on any near-white pixel.  ffmpeg's colorkey/
@@ -140,7 +148,7 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
       const baselineY = 40;
       const topY = 4;
       const swimBob = phase === 'strike' ? Math.sin(now / 220) * 3 : 0;
-      const fy = (phase === 'reeling'
+      let fy = (phase === 'reeling'
         ? baselineY + (topY - baselineY) * reelProgress.current
         : baselineY) + swimBob;
 
@@ -148,9 +156,26 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
       // body undulation when the fish is swimming.
       const swimWiggle = phase === 'strike' ? Math.sin(now / 160) * 1.2 : 0;
 
-      // Hook line follows: tip stays at fish's mouth Y during reeling,
-      // otherwise hangs to HOOK_Y_BASE.
-      const hookTipY = phase === 'reeling' ? fy + 36 : HOOK_Y_BASE;
+      // Throw-out animation overrides Y/scale/alpha during the 250ms
+      // 'throwing' phase — the fish lifts above the canvas, shrinks,
+      // and fades, then we hand off to the external fly-to-bag element.
+      let throwScale = 1;
+      let throwAlpha = 1;
+      if (phase === 'throwing') {
+        const tThrow = Math.min(1, (now - throwStart.current) / 250);
+        fy = topY - tThrow * 90;          // rise from top of canvas to well above
+        throwScale = 1 - tThrow * 0.4;
+        throwAlpha = 1 - tThrow;
+        if (tThrow >= 1 && !flying) {
+          setFlying(true);
+        }
+      }
+
+      // Hook line follows: tip stays at fish's mouth Y during reeling
+      // and throwing, otherwise hangs to HOOK_Y_BASE.
+      const hookTipY = (phase === 'reeling' || phase === 'throwing')
+        ? fy + 36
+        : HOOK_Y_BASE;
 
       // ---- DRAW ----
       ctx.clearRect(0, 0, W, H);
@@ -183,16 +208,26 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
       // Fish.
       if (imgRef.current) {
         ctx.save();
+        ctx.globalAlpha = throwAlpha;
         const sx = animFrame.current * FISH_FRAME_W;
         const drawX = fishX.current + swimWiggle;
-        if (fishDir.current < 0) {
-          // Mirror horizontally — translate then scale(-1, 1).
-          ctx.translate(drawX + FISH_FRAME_W, fy);
+        // Source sprite already faces LEFT.  Mirror only when the fish
+        // is swimming RIGHT (inverse of the previous condition, which
+        // was backwards — fish appeared facing the wrong way).
+        const mirror = phase === 'strike' && fishDir.current > 0;
+        // While reeling or throwing, rotate 90° CW so the mouth (left
+        // edge of the left-facing sprite) points UP — visually consistent
+        // with the fish hanging from a hook in its mouth.
+        const rotateMouthUp = (phase === 'reeling' || phase === 'throwing');
+
+        ctx.translate(drawX + FISH_FRAME_W / 2, fy + FISH_FRAME_H / 2);
+        if (rotateMouthUp) {
+          ctx.rotate(Math.PI / 2);
+        } else if (mirror) {
           ctx.scale(-1, 1);
-          ctx.drawImage(imgRef.current, sx, 0, FISH_FRAME_W, FISH_FRAME_H, 0, 0, FISH_FRAME_W, FISH_FRAME_H);
-        } else {
-          ctx.drawImage(imgRef.current, sx, 0, FISH_FRAME_W, FISH_FRAME_H, drawX, fy, FISH_FRAME_W, FISH_FRAME_H);
         }
+        if (throwScale !== 1) ctx.scale(throwScale, throwScale);
+        ctx.drawImage(imgRef.current, sx, 0, FISH_FRAME_W, FISH_FRAME_H, -FISH_FRAME_W / 2, -FISH_FRAME_H / 2, FISH_FRAME_W, FISH_FRAME_H);
         ctx.restore();
       }
 
@@ -272,10 +307,13 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
     dragStartY.current = e.clientY;     // re-base so the delta is incremental, not absolute
 
     if (reelProgress.current >= 1 && phaseRef.current === 'reeling') {
-      phaseRef.current = 'done';
-      setPhase('done');
-      // Fire after a short delay so the player sees the meter top out.
-      setTimeout(() => onComplete && onComplete({ accuracy: strikeResult.current || 'good' }), 160);
+      // Hand off to the throw-out animation: fish lifts above the
+      // canvas (250ms), then setFlying(true) handoff to the external
+      // fixed-position element that flies to the bag icon.  onComplete
+      // (inventory + XP) fires when the external transition ends.
+      phaseRef.current = 'throwing';
+      setPhase('throwing');
+      throwStart.current = performance.now();
     }
   };
 
@@ -283,6 +321,31 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
     try { e.target.releasePointerCapture(e.pointerId); } catch {}
     dragStartY.current = null;
   };
+
+  // Once setFlying(true) trips, schedule the CSS transition by toggling
+  // setFlyTarget(true) in the next frame so the transition has both
+  // start and end states to animate between.
+  useEffect(() => {
+    if (!flying) return;
+    const id = requestAnimationFrame(() => setFlyTarget(true));
+    return () => cancelAnimationFrame(id);
+  }, [flying]);
+
+  // Generate a 64×72 first-frame data URL from the dehalo'd offscreen
+  // canvas so the fly-to-bag <img> renders the same clean (no-halo)
+  // sprite that's used inside the canvas.  Computed once after load.
+  const [flyDataUrl, setFlyDataUrl] = useState(null);
+  useEffect(() => {
+    if (!ready || !imgRef.current) return;
+    try {
+      const c = document.createElement('canvas');
+      c.width = FISH_FRAME_W;
+      c.height = FISH_FRAME_H;
+      const cx = c.getContext('2d');
+      cx.drawImage(imgRef.current, 0, 0, FISH_FRAME_W, FISH_FRAME_H, 0, 0, FISH_FRAME_W, FISH_FRAME_H);
+      setFlyDataUrl(c.toDataURL('image/png'));
+    } catch {}
+  }, [ready]);
 
   const overlayStyle = {
     position: 'fixed',
@@ -306,6 +369,7 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
   };
 
   return (
+    <>
     <div
       style={overlayStyle}
       onPointerDown={onPointerDown}
@@ -333,7 +397,7 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
         textShadow: '0 1px 2px rgba(0,0,0,.7)',
         pointerEvents: 'none',
       }}>
-        {phase === 'reeling' ? 'DRAG UP TO REEL!' : 'TAP WHEN FISH IS OVER THE HOOK'}
+        {phase === 'throwing' ? 'CAUGHT!' : phase === 'reeling' ? 'DRAG UP TO REEL!' : 'TAP WHEN FISH IS OVER THE HOOK'}
       </div>
 
       {/* Close × */}
@@ -362,5 +426,34 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
         style={{ display: 'block', width: '100%', height: '100%', pointerEvents: 'none' }}
       />
     </div>
+
+    {/* Fly-to-bag — sibling of the overlay so it can render outside the
+        overlay's overflow:hidden box. Starts above the rectangle's top
+        edge (where the in-canvas throw left off) and CSS-transitions
+        toward the Bag icon at the bottom-left of the dashboard.  The
+        Bag icon sits in the dashboard's icon row (bottom 30% of the
+        25vh dashboard); approx coords: bottom 4vh, left 100vw/12. */}
+    {flying && flyDataUrl && (
+      <img
+        src={flyDataUrl}
+        alt=""
+        onTransitionEnd={() => onComplete && onComplete({ accuracy: strikeResult.current || 'good' })}
+        style={{
+          position: 'fixed',
+          left: flyTarget ? 'calc(100vw / 12)' : '50%',
+          bottom: flyTarget ? '4vh' : 'calc(25vh + 50px + 90px)',
+          width: flyTarget ? 28 : 56,
+          height: flyTarget ? 32 : 64,
+          opacity: flyTarget ? 0 : 1,
+          transform: 'translate(-50%, 0) rotate(90deg)',
+          transformOrigin: 'center',
+          transition: 'left 380ms cubic-bezier(.4,0,.6,1), bottom 380ms cubic-bezier(.4,0,.6,1), width 380ms ease-out, height 380ms ease-out, opacity 380ms ease-in 80ms',
+          pointerEvents: 'none',
+          zIndex: 200,
+          imageRendering: 'auto',
+        }}
+      />
+    )}
+    </>
   );
 };
