@@ -31,10 +31,15 @@ export const RESOURCE_TIERS = {
 };
 
 /* ═══ NODE TIER DEFINITIONS ═══ */
+/* lvl drives which depth bucket each tier spawns in via getNodeTierForDepth.
+   Shallow range is [1, 10] so Minnow (1) and Clownfish (6) are both
+   eligible there; Trout was previously at 8 (also shallow), which let it
+   spawn in zone-1 areas — bumped to 11 so it now belongs to mid depth
+   and zone 1 only ever fishes up Minnow or Clownfish. */
 export const FISHING_TIERS = [
-  { lvl: 1, name: 'Minnow',    spot: 'Shallow Pool', size: 6,  waterColor: 'rgba(52,152,219,.35)', hp: 2 },
-  { lvl: 6, name: 'Clownfish', spot: 'Coral Patch',  size: 8,  waterColor: 'rgba(255,140, 60,.35)', hp: 3 },
-  { lvl: 8, name: 'Trout',     spot: 'River Bend',   size: 10, waterColor: 'rgba(52,152,219,.4)',  hp: 3 },
+  { lvl:  1, name: 'Minnow',    spot: 'Shallow Pool', size: 6,  waterColor: 'rgba(52,152,219,.35)',  hp: 2 },
+  { lvl:  6, name: 'Clownfish', spot: 'Coral Patch',  size: 8,  waterColor: 'rgba(255,140, 60,.35)', hp: 3 },
+  { lvl: 11, name: 'Trout',     spot: 'River Bend',   size: 10, waterColor: 'rgba(52,152,219,.4)',   hp: 3 },
 ];
 
 export const WOODCUTTING_TIERS = [

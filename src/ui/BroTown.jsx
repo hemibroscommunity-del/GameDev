@@ -16,6 +16,13 @@ const FISH_SPRITE_BY_TIER = {
 const COOK_PAN_BY_FISH = {
   fish_clownfish: '/sprites/cook/pan-clownfish.png',
 };
+
+/* Per-cooked-food heal amount when the player taps the tile to eat.
+   Default to COOKED_HEAL_DEFAULT for any cooked_fish_* not listed. */
+const COOKED_HEAL_DEFAULT = 30;
+const COOKED_HEAL_BY_KEY = {
+  cooked_fish_clownfish: 50,
+};
 import { cookingBus } from './mobile/cookingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
@@ -14858,7 +14865,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'HP full', color: '#8890b8', ts: Date.now() });
         return;
       }
-      var HEAL = 30;
+      var HEAL = COOKED_HEAL_BY_KEY[key] != null ? COOKED_HEAL_BY_KEY[key] : COOKED_HEAL_DEFAULT;
       var before = R.hp || 0;
       R.hp = Math.min(maxHp, before + HEAL);
       var actual = R.hp - before;

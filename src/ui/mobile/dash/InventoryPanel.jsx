@@ -102,7 +102,7 @@ const ItemTile = ({ ikey, count }) => {
       position: 'relative',
       cursor: isInteractive ? 'pointer' : 'default',
       touchAction: isInteractive ? 'manipulation' : 'auto',
-    }} title={isRawFish ? 'Tap to cook' : isCookedFish ? 'Tap to eat (+30 HP)' : ikey}>
+    }} title={isRawFish ? 'Tap to cook' : isCookedFish ? ('Tap to eat (+' + (ikey === 'cooked_fish_clownfish' ? 50 : 30) + ' HP)') : ikey}>
       {(() => {
         const thumb = thumbFor(ikey);
         return thumb
