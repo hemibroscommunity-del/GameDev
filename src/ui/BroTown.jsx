@@ -9,6 +9,13 @@ import { CookingMinigame } from './CookingMinigame.jsx';
 const FISH_SPRITE_BY_TIER = {
   Clownfish: '/sprites/fish/fish-02.png',
 };
+
+/* Per-fish cooking pan map.  CookingMinigame defaults to pan.png
+   (yellow tang) when no panSheetSrc is passed.  Keys are inventory
+   keys (fish_<species>) so this matches the fishKey prop directly. */
+const COOK_PAN_BY_FISH = {
+  fish_clownfish: '/sprites/cook/pan-clownfish.png',
+};
 import { cookingBus } from './mobile/cookingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
@@ -14830,7 +14837,7 @@ export var BroTown = function BroTown(_ref0) {
     return cookingBus.subscribe(function () {
       var key = cookingBus.consume();
       if (!key) return;
-      setCookingMini({ fishKey: key });
+      setCookingMini({ fishKey: key, panSheetSrc: COOK_PAN_BY_FISH[key] || null });
     });
   }, []);
 
@@ -32962,6 +32969,7 @@ export var BroTown = function BroTown(_ref0) {
     onCancel: function () { setWoodChopMini(null); }
   }), cookingMini && /*#__PURE__*/React.createElement(CookingMinigame, {
     fishKey: cookingMini.fishKey,
+    panSheetSrc: cookingMini.panSheetSrc,
     onComplete: function (kind) { _applyCookingResult(cookingMini.fishKey, kind); setCookingMini(null); },
     onCancel: function () { setCookingMini(null); }
   }), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {

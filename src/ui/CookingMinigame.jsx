@@ -28,7 +28,10 @@ const SLIDER_W = 36;
 const SLIDER_X = 18;
 const SLIDER_Y = 32;
 const SLIDER_H = H - SLIDER_Y - 36;
-const PAN_SHEET_SRC = '/sprites/cook/pan.png';   // 1000×200 = 5 × 200×200
+/* Default pan sprite (yellow tang).  Overridable per-fish via the
+   panSheetSrc prop — e.g. clownfish passes /sprites/cook/pan-clownfish.png.
+   All cook strips share the same shape: 1000×200 = 5 × 200×200. */
+const DEFAULT_PAN_SHEET_SRC = '/sprites/cook/pan.png';
 const PAN_FRAME_W = 200;
 const PAN_FRAME_H = 200;
 const PAN_FRAMES = 5;
@@ -37,7 +40,8 @@ const PAN_H_DRAW = 170;
 const PAN_X = W - PAN_W_DRAW - 14;
 const PAN_Y = 36;
 
-export const CookingMinigame = ({ fishKey, onComplete, onCancel }) => {
+export const CookingMinigame = ({ fishKey, panSheetSrc, onComplete, onCancel }) => {
+  const sheetSrc = panSheetSrc || DEFAULT_PAN_SHEET_SRC;
   const canvasRef = useRef(null);
   const panImgRef = useRef(null);
   const [ready, setReady] = useState(false);
@@ -49,9 +53,9 @@ export const CookingMinigame = ({ fishKey, onComplete, onCancel }) => {
   // Load pan sprite + dehalo isn't needed (bg is dark grey, not white).
   useEffect(() => {
     const img = new Image();
-    img.src = PAN_SHEET_SRC;
+    img.src = sheetSrc;
     img.onload = () => { panImgRef.current = img; setReady(true); };
-    img.onerror = () => { console.warn('cooking sprite failed to load:', PAN_SHEET_SRC); setReady(true); };
+    img.onerror = () => { console.warn('cooking sprite failed to load:', sheetSrc); setReady(true); };
   }, []);
 
   // rAF render + tick loop.

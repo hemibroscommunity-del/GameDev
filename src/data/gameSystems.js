@@ -844,7 +844,10 @@ export function createDefaultLifeSkills() {
       xp: 0
     },
     fishing: {
-      level: 0,
+      /* TEMP: starts at 6 so the Clownfish (lvl-6 fishSpot tier) is
+         immediately catchable for testing.  Reset to 0 once tier
+         progression is being playtested in earnest. */
+      level: 6,
       xp: 0
     },
     mining: {
@@ -913,9 +916,13 @@ export function migrateLifeSkills(sk) {
     xp: 0
   };
   if (!sk.fishing) sk.fishing = {
-    level: 0,
+    level: 6,
     xp: 0
   };
+  /* TEMP: bump existing saves' fishing level to at least 6 so the
+     Clownfish (lvl-6 fishSpot tier) is immediately catchable for
+     testing.  Remove this branch once playtesting moves past it. */
+  if (sk.fishing && (sk.fishing.level || 0) < 6) sk.fishing.level = 6;
   if (!sk.mining) sk.mining = {
     level: 0,
     xp: 0
