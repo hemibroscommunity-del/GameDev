@@ -353,7 +353,7 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
     /* Bottom-center, sitting in the same vertical band as the two
        joysticks so it reads as "between" them. zIndex high enough to
        sit above any other in-game overlay. */
-    bottom: 'calc(25vh + 50px)',
+    bottom: 'calc(var(--dash-h) + 50px)',
     transform: 'translateX(-50%)',
     width: W,
     height: H,
@@ -441,7 +441,7 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
         style={{
           position: 'fixed',
           left: flyTarget ? 'calc(100vw / 12)' : '50%',
-          bottom: flyTarget ? '4vh' : 'calc(25vh + 50px + 90px)',
+          bottom: flyTarget ? '4vh' : 'calc(var(--dash-h) + 50px + 90px)',
           width: flyTarget ? 28 : 56,
           height: flyTarget ? 32 : 64,
           opacity: flyTarget ? 0 : 1,

@@ -385,7 +385,7 @@ export const GameApp = () => {
       <ChatLauncher />
       <ChatBubble />
       {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}
-      {/* the bottom dashboard nests their content inside the 25vh band.    */}
+      {/* the bottom dashboard nests their content inside the --dash-h band. */}
       {/* Their buses still exist and are exercised by debug commands.      */}
       <BlockRing />
       <MasteryNotification />

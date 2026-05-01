@@ -2548,7 +2548,10 @@ export var BroTown = function BroTown(_ref0) {
        player, so a shorter canvas just means less peripheral world is
        visible — the player stays centered. */
     var vv = window.visualViewport;
-    var DASH_FRAC = 0.25;
+    /* DASH_FRAC must stay in sync with the --dash-h CSS variable in
+       src/styles/game.css.  Both express the bottom-dashboard fraction
+       of the viewport. */
+    var DASH_FRAC = 0.28;
     function resize() {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;
@@ -15461,7 +15464,7 @@ export var BroTown = function BroTown(_ref0) {
       top: 0,
       left: 0,
       right: 0,
-      bottom: '25vh',
+      bottom: 'var(--dash-h)',
       cursor: stateRef.current._isDesktop ? 'crosshair' : 'default'
     },
     onTouchStart: function onTouchStart(e) {
@@ -32441,7 +32444,7 @@ export var BroTown = function BroTown(_ref0) {
          instead (matches the class default ~ calc(25vh + 16px) but
          a bit higher so it clears the mobile dashboard's top border
          and stays below the joysticks at calc(25vh + 70px)). */
-      bottom: 'calc(25vh + 24px)',
+      bottom: 'calc(var(--dash-h) + 24px)',
       background: 'rgba(0,180,140,.85)'
     },
     onClick: function onClick(e) {
@@ -32540,7 +32543,7 @@ export var BroTown = function BroTown(_ref0) {
   }(), "  ", (_stateRef$current$_ne2 = stateRef.current._nearNode) === null || _stateRef$current$_ne2 === void 0 ? void 0 : _stateRef$current$_ne2.spotName, " \u2014 ", (_stateRef$current$_ne3 = stateRef.current._nearNode) === null || _stateRef$current$_ne3 === void 0 ? void 0 : _stateRef$current$_ne3.name, " (Lv", (_stateRef$current$_ne4 = stateRef.current._nearNode) === null || _stateRef$current$_ne4 === void 0 ? void 0 : _stateRef$current$_ne4.gatherLvl, ")"), gatherMini && !gatherMini.result && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
-      bottom: 'calc(25vh + 110px)',
+      bottom: 'calc(var(--dash-h) + 110px)',
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 50,
@@ -33722,7 +33725,7 @@ export var BroTown = function BroTown(_ref0) {
   }())), showInfo && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
-      bottom: 'calc(25vh + 70px)',
+      bottom: 'calc(var(--dash-h) + 70px)',
       right: 10,
       zIndex: 40,
       padding: '10px 16px',
@@ -33878,7 +33881,7 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-joystick-zone",
     style: {
       position: 'fixed',
-      bottom: 'calc(25vh + 70px)',
+      bottom: 'calc(var(--dash-h) + 70px)',
       left: isLandscape ? 16 : 12,
       zIndex: 30,
       width: isLandscape ? 130 : 110,
@@ -33927,7 +33930,7 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-desktop-hide",
     style: {
       position: 'fixed',
-      bottom: 'calc(25vh + 70px)',
+      bottom: 'calc(var(--dash-h) + 70px)',
       // Pulled inward so the shield ring (joyOuter + RING_GAP + RING_BAND
       // = 50 + 7 + 36 = 93px from joystick center) clears the screen edge
       // with a small buffer.

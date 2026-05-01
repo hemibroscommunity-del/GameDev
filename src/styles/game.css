@@ -2,6 +2,9 @@
    GAME — Base
 ═══════════════════════════════════════════ */
 :root {
+  /* Bottom dashboard band height.  Single source of truth — JS-side
+     code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */
+  --dash-h:   28vh;
   --ink:      #0b0c14;
   --ink2:     #12141f;
   --ink3:     #1a1d2e;
@@ -63,7 +66,7 @@ input{font-family:inherit}
   font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;
   -webkit-tap-highlight-color:transparent}
 .bt-emote-btn:active{background:rgba(91,82,255,.4);transform:scale(.9)}
-.bt-interact-prompt{position:fixed;left:50%;bottom:calc(25vh + 16px);transform:translateX(-50%);z-index:35;
+.bt-interact-prompt{position:fixed;left:50%;bottom:calc(var(--dash-h) + 16px);transform:translateX(-50%);z-index:35;
   padding:8px 18px;background:rgba(0,0,0,.7);border:1.5px solid var(--pop);border-radius:10px;
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);

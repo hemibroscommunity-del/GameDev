@@ -23,6 +23,18 @@ const classify = (key) => {
   return 'crafting';
 };
 
+// Per-key thumbnail asset overrides.  When present, ItemTile renders an
+// <img> instead of the emoji glyph so the bag reflects what the player
+// actually caught/crafted.  Currently only fish-08 is wired — map all
+// fish_* inventory keys to its frame-0 thumbnail; expand once additional
+// fish sprites are wired into the minigame.
+const FISH_THUMB = '/icons/fish/fish-minnow.png';
+const thumbFor = (key) => {
+  const k = (key || '').toLowerCase();
+  if (k.startsWith('fish_')) return FISH_THUMB;
+  return null;
+};
+
 // Friendly icon for a key — looks up by simple pattern.  Falls back to
 // a tier-coloured ◇.  We keep things lightweight: the bag is a dashboard
 // glance tool, not a crafting deep-dive.
@@ -57,7 +69,13 @@ const ItemTile = ({ ikey, count }) => {
       fontSize: 18,
       position: 'relative',
     }} title={ikey}>
-      <span>{iconFor(ikey)}</span>
+      {(() => {
+        const thumb = thumbFor(ikey);
+        return thumb
+          ? <img src={thumb} alt={ikey} draggable={false}
+              style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
+          : <span>{iconFor(ikey)}</span>;
+      })()}
       {count > 1 && (
         <span style={{
           position: 'absolute', bottom: 1, right: 3,

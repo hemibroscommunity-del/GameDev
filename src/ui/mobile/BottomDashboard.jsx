@@ -118,7 +118,7 @@ const Tooltip = ({ text, onClose }) => {
       style={{
         position: 'fixed',
         left: '50%',
-        bottom: 'calc(25vh + 12px)',
+        bottom: 'calc(var(--dash-h) + 12px)',
         transform: 'translateX(-50%)',
         maxWidth: '88vw',
         padding: '8px 12px',
@@ -351,7 +351,7 @@ export const BottomDashboard = () => {
       style={{
         position: 'fixed',
         left: 0, right: 0, bottom: 0,
-        height: '25vh',
+        height: 'var(--dash-h)',
         background: COL.bg,
         borderTop: `1px solid ${COL.border}`,
         color: COL.text,
