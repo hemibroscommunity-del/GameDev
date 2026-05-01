@@ -18,8 +18,10 @@ const H = 230;
 /* Tree sheet is 3 explicit damage-state frames (intact, partial, felled
    stump) supplied as IMG_7781/7782/7784 — built into a 600×302 strip
    via ffmpeg crop+colorkey+hstack. */
-const TREE_SHEET_SRC = '/sprites/wood/tree.png';   // 600×302 = 3 × 200×302
-const AXE_SHEET_SRC = '/sprites/wood/axe.png';     // 768×144 = 8 × 96×144
+/* Filenames suffixed -v2 to bust browser/Cloudflare cache when the
+   underlying art is updated — renaming forces a fresh fetch. */
+const TREE_SHEET_SRC = '/sprites/wood/tree-v2.png';   // 600×302 = 3 × 200×302
+const AXE_SHEET_SRC = '/sprites/wood/axe-v2.png';     // 768×144 = 8 × 96×144
 const TREE_FRAME_W = 200;
 const TREE_FRAME_H = 302;
 const TREE_FRAMES = 3;
@@ -46,11 +48,18 @@ const AXE_Y_MIN = 6;             // top extreme of the bob
 const AXE_Y_MAX = 130;           // bottom extreme — keeps the blade on the trunk
 const AXE_OSC_MS = 1200;         // full up-and-down cycle in ms
 
-// Horizontal target band on the trunk.
-const BAND_HEIGHT = 28;
+// Horizontal target band on the trunk.  Bumped to 40 px after user
+// feedback that strikes were registering as misses despite looking
+// like hits — a wider band makes timing more forgiving.
+const BAND_HEIGHT = 40;
 const BAND_Y_MIN = TREE_Y + 60;
 const BAND_Y_MAX = TREE_Y + TREE_H_DRAW * 0.78 - BAND_HEIGHT;
-const AXE_BLADE_FRAC = 0.35;     // blade Y as a fraction of the axe sprite's H
+/* Blade Y as a fraction of the axe sprite's drawn height.  The axe
+   art has the blade head at the TOP of the sprite (handle below); 0.20
+   puts the hit-test point right on the visible cutting edge.  The
+   previous 0.35 value placed the hit-test in the middle of the sprite
+   (effectively on the handle), making strikes feel mistimed. */
+const AXE_BLADE_FRAC = 0.20;
 
 const WOOD_THUMB = '/icons/wood/wood-log.png';
 
