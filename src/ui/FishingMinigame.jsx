@@ -437,7 +437,10 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
       <img
         src={flyDataUrl}
         alt=""
-        onTransitionEnd={() => onComplete && onComplete({ accuracy: strikeResult.current || 'good' })}
+        /* Gate to opacity — the fly element transitions 5 properties,
+           and without this guard onComplete (and the inventory + XP write
+           it triggers) ran 5× per catch. */
+        onTransitionEnd={(e) => { if (e.propertyName === 'opacity') onComplete && onComplete({ accuracy: strikeResult.current || 'good' }); }}
         style={{
           position: 'fixed',
           left: flyTarget ? 'calc(100vw / 12)' : '50%',

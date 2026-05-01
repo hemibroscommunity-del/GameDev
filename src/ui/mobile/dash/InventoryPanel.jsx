@@ -29,7 +29,7 @@ const classify = (key) => {
 // fish_* inventory keys to its frame-0 thumbnail; expand once additional
 // fish sprites are wired into the minigame.
 const FISH_THUMB = '/icons/fish/fish-minnow.png';
-const WOOD_THUMB = '/icons/wood/wood-pine.png';
+const WOOD_THUMB = '/icons/wood/wood-log.png';
 const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
   if (k.startsWith('fish_')) return FISH_THUMB;

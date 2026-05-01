@@ -13,13 +13,16 @@ import { BT_AUDIO } from '../data/gameSystems.js';
    - "flying":   wood log thumbnail flies from rect centre to the Bag
                  icon (~380 ms).  onComplete fires on transitionend. */
 
-const W = 260;
-const H = 170;
-const TREE_SHEET_SRC = '/sprites/wood/tree.png';   // 960×256 = 5 × 192×256
+const W = 280;
+const H = 230;
+/* Tree sheet is 3 explicit damage-state frames (intact, partial, felled
+   stump) supplied as IMG_7781/7782/7784 — built into a 600×302 strip
+   via ffmpeg crop+colorkey+hstack. */
+const TREE_SHEET_SRC = '/sprites/wood/tree.png';   // 600×302 = 3 × 200×302
 const AXE_SHEET_SRC = '/sprites/wood/axe.png';     // 768×144 = 8 × 96×144
-const TREE_FRAME_W = 192;
-const TREE_FRAME_H = 256;
-const TREE_FRAMES = 5;
+const TREE_FRAME_W = 200;
+const TREE_FRAME_H = 302;
+const TREE_FRAMES = 3;
 const AXE_FRAME_W = 96;
 const AXE_FRAME_H = 144;
 const AXE_IDLE_FRAME = 0;        // axe at rest
@@ -28,26 +31,28 @@ const AXE_CHOP_HOLD_MS = 180;    // how long to show the chop frame after a hit
 
 const AXE_W_DRAW = 48;           // canvas-space draw width
 const AXE_H_DRAW = 72;           // canvas-space draw height
-const TREE_W_DRAW = 130;
-const TREE_H_DRAW = 144;
+const TREE_W_DRAW = 140;
+const TREE_H_DRAW = 212;
 const TREE_X = (W - TREE_W_DRAW) / 2;
 const TREE_Y = H - TREE_H_DRAW;
-const TRUNK_LEFT = TREE_X + 30;
-const TRUNK_RIGHT = TREE_X + TREE_W_DRAW - 30;
+/* Trunk x-range in canvas coords — derived from the trunk's position in
+   the source frame (~x 60..140 of 200-wide source) scaled by 0.7. */
+const TRUNK_LEFT = TREE_X + 42;
+const TRUNK_RIGHT = TREE_X + 98;
 
 // Axe oscillates vertically at the trunk's horizontal centre.
-const AXE_X = TREE_X + TREE_W_DRAW / 2 - AXE_W_DRAW / 2;
+const AXE_X = (TRUNK_LEFT + TRUNK_RIGHT) / 2 - AXE_W_DRAW / 2;
 const AXE_Y_MIN = 6;             // top extreme of the bob
-const AXE_Y_MAX = 78;            // bottom extreme — keeps the blade on the trunk
+const AXE_Y_MAX = 130;           // bottom extreme — keeps the blade on the trunk
 const AXE_OSC_MS = 1200;         // full up-and-down cycle in ms
 
 // Horizontal target band on the trunk.
-const BAND_HEIGHT = 24;
-const BAND_Y_MIN = TREE_Y + 18;
-const BAND_Y_MAX = TREE_Y + TREE_H_DRAW * 0.75 - BAND_HEIGHT;
+const BAND_HEIGHT = 28;
+const BAND_Y_MIN = TREE_Y + 60;
+const BAND_Y_MAX = TREE_Y + TREE_H_DRAW * 0.78 - BAND_HEIGHT;
 const AXE_BLADE_FRAC = 0.35;     // blade Y as a fraction of the axe sprite's H
 
-const WOOD_THUMB = '/icons/wood/wood-pine.png';
+const WOOD_THUMB = '/icons/wood/wood-log.png';
 
 export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
   const canvasRef = useRef(null);
@@ -149,9 +154,12 @@ export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
         }
       }
 
-      // Compute current tree damage frame from hp.
-      const damageT = 1 - Math.max(0, Math.min(1, curHp.current / startHp.current));
-      let treeFrame = Math.min(TREE_FRAMES - 1, Math.floor(damageT * (TREE_FRAMES - 0.001)));
+      // Compute current tree damage frame from hp — three explicit
+      // states (intact / partial / felled stump) per the supplied
+      // sprite art. Frame 0 = full hp; frame 2 = hp <= 0; frame 1 = any
+      // chop progress in between.
+      let treeFrame = curHp.current >= startHp.current ? 0
+                    : curHp.current <= 0 ? (TREE_FRAMES - 1) : 1;
 
       // Felling — lerp tree position + rotation over 400ms.
       let treeRot = 0;
@@ -353,7 +361,11 @@ export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
         <img
           src={WOOD_THUMB}
           alt=""
-          onTransitionEnd={() => onComplete && onComplete({ accuracy: 'good' })}
+          /* The fly element transitions 5 properties (left, bottom, width,
+             height, opacity) — onTransitionEnd fires once per property,
+             so without this guard onComplete (and the inventory + XP
+             write it triggers) ran 5×.  Gate to opacity. */
+          onTransitionEnd={(e) => { if (e.propertyName === 'opacity') onComplete && onComplete({ accuracy: 'good' }); }}
           style={{
             position: 'fixed',
             left: flyTarget ? 'calc(100vw / 12)' : '50%',
