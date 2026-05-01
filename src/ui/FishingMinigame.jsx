@@ -37,6 +37,11 @@ const STRIKE_PERFECT_DIST = 10;      // px; mouth within this = perfect
 const STRIKE_GOOD_DIST = 22;
 const STRIKE_OK_DIST = 34;
 const REEL_DISTANCE = 110;           // px of upward drag to complete the catch
+/* Hook miss-bounce: when the player taps too early (no fish over the
+   hook), the hook reels up and then back down over HOOK_MISS_MS as
+   visual feedback. Lifts HOOK_LIFT px at the peak (sine arc). */
+const HOOK_MISS_MS = 550;
+const HOOK_LIFT = 70;
 
 export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
   const canvasRef = useRef(null);
@@ -54,6 +59,7 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
   const animAcc = useRef(0);
   const lastT = useRef(0);
   const flashUntil = useRef(0);          // miss flash timestamp
+  const hookMissStart = useRef(0);       // miss-bounce start timestamp (0 = idle)
   const strikeResult = useRef(null);     // 'perfect' | 'good' | 'ok' once hooked
   const throwStart = useRef(0);          // timestamp when throw-out animation begins
 
@@ -172,10 +178,20 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
       }
 
       // Hook line follows: tip stays at fish's mouth Y during reeling
-      // and throwing, otherwise hangs to HOOK_Y_BASE.
+      // and throwing, otherwise hangs to HOOK_Y_BASE — except during a
+      // miss-bounce where it arcs up and back down on a sine curve.
+      let strikeHookY = HOOK_Y_BASE;
+      if (phase === 'strike' && hookMissStart.current > 0) {
+        const tMiss = (now - hookMissStart.current) / HOOK_MISS_MS;
+        if (tMiss >= 1) {
+          hookMissStart.current = 0;       // bounce done — back to idle
+        } else {
+          strikeHookY = HOOK_Y_BASE - Math.sin(tMiss * Math.PI) * HOOK_LIFT;
+        }
+      }
       const hookTipY = (phase === 'reeling' || phase === 'throwing')
         ? fy + 36
-        : HOOK_Y_BASE;
+        : strikeHookY;
 
       // ---- DRAW ----
       ctx.clearRect(0, 0, W, H);
@@ -261,6 +277,10 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
     const phase = phaseRef.current;
 
     if (phase === 'strike') {
+      // Ignore taps while the hook is mid-bounce from a previous miss —
+      // the player can't strike while the hook isn't in position anyway.
+      if (hookMissStart.current > 0) return;
+
       // Fish "mouth" sits at the leading edge of the sprite.  When swimming
       // right, the mouth is at fishX + (FISH_FRAME_W - 10).  When swimming
       // left, the mouth is at fishX + 10 (the sprite has been mirrored, so
@@ -277,8 +297,10 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
       else result = 'miss';
 
       if (result === 'miss') {
-        // Brief red flash + speed-up; stay in 'strike' phase.
-        flashUntil.current = performance.now() + 250;
+        // Tapped too early — reel the hook up and back down as feedback.
+        // Drop the previous red-flash + speed-up; the hook bounce alone
+        // communicates "missed" without punishing the player.
+        hookMissStart.current = performance.now();
         return;
       }
       // Snap fish onto hook.  Center its X on HOOK_X so it visually sits
