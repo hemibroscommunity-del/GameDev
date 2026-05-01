@@ -13,20 +13,25 @@ import React, { useEffect, useRef, useState } from 'react';
    'good' / 'ok' / 'miss') so the parent can route through the same reward
    path the gather-mini already uses. */
 
-const W = 320;
-const H = 200;
+/* Sized + positioned to sit BETWEEN the two virtual joysticks at the
+   bottom-center of the screen.  Joysticks live at bottom: calc(25vh + 70px),
+   left/right: ~12px, width 110-130px — so we keep this overlay narrow (260px)
+   and seat it in the same vertical band so the player can read the
+   minigame without losing thumb position on either stick. */
+const W = 260;
+const H = 150;
 const FISH_SHEET_SRC = '/sprites/fish/fish-08.png';   // 1024×72, 16 frames @ 64×72 (yellow tang)
 const FISH_FRAME_W = 64;
 const FISH_FRAME_H = 72;
 const FISH_FRAMES = 16;
 const FISH_FRAME_MS = 70;            // ~14 fps swim cycle
-const FISH_SPEED = 90;               // px/s, swim velocity
+const FISH_SPEED = 80;               // px/s, swim velocity
 const HOOK_X = W / 2;
-const HOOK_Y_BASE = 130;             // hook tip resting position (px from top)
-const STRIKE_PERFECT_DIST = 8;       // px; mouth within this = perfect
-const STRIKE_GOOD_DIST = 18;
-const STRIKE_OK_DIST = 30;
-const REEL_DISTANCE = 140;           // px of upward drag to complete the catch
+const HOOK_Y_BASE = 100;             // hook tip resting position (px from top)
+const STRIKE_PERFECT_DIST = 10;      // px; mouth within this = perfect
+const STRIKE_GOOD_DIST = 22;
+const STRIKE_OK_DIST = 34;
+const REEL_DISTANCE = 110;           // px of upward drag to complete the catch
 
 export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
   const canvasRef = useRef(null);
@@ -97,8 +102,8 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
 
       // Compute fish Y based on phase: baseline during strike, lifting
       // toward the top during reeling in proportion to reelProgress.
-      const baselineY = 80;
-      const topY = 12;
+      const baselineY = 40;
+      const topY = 4;
       const fy = phase === 'reeling'
         ? baselineY + (topY - baselineY) * reelProgress.current
         : baselineY;
@@ -241,17 +246,20 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
   const overlayStyle = {
     position: 'fixed',
     left: '50%',
-    bottom: 'calc(25vh + 80px)',
+    /* Bottom-center, sitting in the same vertical band as the two
+       joysticks so it reads as "between" them. zIndex high enough to
+       sit above any other in-game overlay. */
+    bottom: 'calc(25vh + 50px)',
     transform: 'translateX(-50%)',
     width: W,
     height: H,
-    zIndex: 50,
+    zIndex: 100,
     background: 'linear-gradient(180deg, #5b8cff 0%, #2541b0 100%)',
     border: '2px solid rgba(0,0,0,0.55)',
     borderRadius: 8,
     overflow: 'hidden',
     touchAction: 'none',
-    boxShadow: '0 6px 16px rgba(0,0,0,0.4)',
+    boxShadow: '0 6px 16px rgba(0,0,0,0.5)',
     fontFamily: 'VT323, monospace',
     color: '#fff',
   };
