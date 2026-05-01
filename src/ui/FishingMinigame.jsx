@@ -23,9 +23,14 @@ const H = 150;
 const FISH_SHEET_SRC = '/sprites/fish/fish-08.png';   // 1024×72, 16 frames @ 64×72 (yellow tang)
 const FISH_FRAME_W = 64;
 const FISH_FRAME_H = 72;
-const FISH_FRAMES = 16;
-const FISH_FRAME_MS = 70;            // ~14 fps swim cycle
-const FISH_SPEED = 80;               // px/s, swim velocity
+/* The source AI-generated frames sweep through a yaw rotation rather
+   than a true side-swim animation — frames 5..15 show the fish turning
+   away from the camera, which reads weird on a side-scrolling minigame.
+   Limit the cycle to the first 5 broadside frames and slow it down,
+   then let the programmatic Y-bob below do most of the swim feel. */
+const FISH_FRAMES = 5;
+const FISH_FRAME_MS = 140;           // ~7 fps cycle through the broadside frames
+const FISH_SPEED = 70;               // px/s, swim velocity
 const HOOK_X = W / 2;
 const HOOK_Y_BASE = 100;             // hook tip resting position (px from top)
 const STRIKE_PERFECT_DIST = 10;      // px; mouth within this = perfect
@@ -102,11 +107,18 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
 
       // Compute fish Y based on phase: baseline during strike, lifting
       // toward the top during reeling in proportion to reelProgress.
+      // A small sine bob during 'strike' fakes a swim-bob since the
+      // source frames don't have a real fin-wag cycle.
       const baselineY = 40;
       const topY = 4;
-      const fy = phase === 'reeling'
+      const swimBob = phase === 'strike' ? Math.sin(now / 220) * 3 : 0;
+      const fy = (phase === 'reeling'
         ? baselineY + (topY - baselineY) * reelProgress.current
-        : baselineY;
+        : baselineY) + swimBob;
+
+      // Slight horizontal "wiggle" tied to the same sine — adds a hint of
+      // body undulation when the fish is swimming.
+      const swimWiggle = phase === 'strike' ? Math.sin(now / 160) * 1.2 : 0;
 
       // Hook line follows: tip stays at fish's mouth Y during reeling,
       // otherwise hangs to HOOK_Y_BASE.
@@ -144,13 +156,14 @@ export const FishingMinigame = ({ node, skill, onComplete, onCancel }) => {
       if (imgRef.current) {
         ctx.save();
         const sx = animFrame.current * FISH_FRAME_W;
+        const drawX = fishX.current + swimWiggle;
         if (fishDir.current < 0) {
           // Mirror horizontally — translate then scale(-1, 1).
-          ctx.translate(fishX.current + FISH_FRAME_W, fy);
+          ctx.translate(drawX + FISH_FRAME_W, fy);
           ctx.scale(-1, 1);
           ctx.drawImage(imgRef.current, sx, 0, FISH_FRAME_W, FISH_FRAME_H, 0, 0, FISH_FRAME_W, FISH_FRAME_H);
         } else {
-          ctx.drawImage(imgRef.current, sx, 0, FISH_FRAME_W, FISH_FRAME_H, fishX.current, fy, FISH_FRAME_W, FISH_FRAME_H);
+          ctx.drawImage(imgRef.current, sx, 0, FISH_FRAME_W, FISH_FRAME_H, drawX, fy, FISH_FRAME_W, FISH_FRAME_H);
         }
         ctx.restore();
       }
