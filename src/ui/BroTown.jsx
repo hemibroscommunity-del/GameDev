@@ -14,7 +14,9 @@ const FISH_SPRITE_BY_TIER = {
    (yellow tang) when no panSheetSrc is passed.  Keys are inventory
    keys (fish_<species>) so this matches the fishKey prop directly. */
 const COOK_PAN_BY_FISH = {
-  fish_clownfish: '/sprites/cook/pan-clownfish.png',
+  /* -v2 suffix busts the Cloudflare/browser cache after the strip art
+     was rebuilt from IMG_7795 — same trick used for tree-v2/axe-v2. */
+  fish_clownfish: '/sprites/cook/pan-clownfish-v2.png',
 };
 
 /* Per-cooked-food heal amount when the player taps the tile to eat.
