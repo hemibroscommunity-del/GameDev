@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { FishingMinigame } from './FishingMinigame.jsx';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { startLoadingTileAssets, useSpriteTiles, drawTileLayer, drawBuildingSprites } from '@/rendering/canvasTileAssets.js';
@@ -878,6 +879,7 @@ export var BroTown = function BroTown(_ref0) {
     _useState142 = _slicedToArray(_useState141, 2),
     gatherMini = _useState142[0],
     setGatherMini = _useState142[1]; /* {node, skill, started, result} — timing bar minigame */
+  var [fishingMini, setFishingMini] = useState(null); /* {node, skill} — fishSpot swim/strike/reel minigame */
   var _useState143 = useState(0),
     _useState144 = _slicedToArray(_useState143, 2),
     gatherTick = _useState144[0],
@@ -14732,6 +14734,11 @@ export var BroTown = function BroTown(_ref0) {
       BT_AUDIO.beep(200, 0.05, 0.08, 'square');
       return;
     }
+    if (node.nodeType === 'fishSpot') {
+      setFishingMini({ node: node, skill: 'fishing' });
+      BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
+      return;
+    }
     var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
     var target = 0.2 + Math.random() * 0.6;
     setGatherMini({
@@ -14744,6 +14751,46 @@ export var BroTown = function BroTown(_ref0) {
     });
     BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
   }, []);
+
+  /* applyFishingReward — called when the fishing minigame's reel-up phase
+     completes successfully. Mirrors the inventory + XP block in the
+     gather-mini success path, scoped to fishing only.  result.accuracy is
+     a key into MINIGAME_REWARDS ('perfect' / 'good' / 'ok'). */
+  var _applyFishingReward = useCallback(function (node, result) {
+    var S = stateRef.current;
+    var R = S && S.rpg;
+    if (!node || !R) return;
+    var accuracy = (result && result.accuracy) || 'good';
+    var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
+    BT_AUDIO.beep(600, 0.03, 0.06, 'triangle');
+    /* Consume node */
+    node.alive = false;
+    node.respawnAt = Date.now() + (node.respawnTime || 30000);
+    /* Inventory */
+    if (!R.inventory) R.inventory = {};
+    var baseName = node.baseName || node.name || 'Fish';
+    var baseKey = (node.resourceType || 'fish') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
+    var yieldQty = reward.yieldMult || 1;
+    R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+    /* XP */
+    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+    var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
+    var leveled = addLifeSkillXp(R.lifeSkills, 'fishing', xpAmt);
+    /* Counters */
+    if (!R._compStats) R._compStats = createDefaultCompStats();
+    R._compStats.fishCaught = (R._compStats.fishCaught || 0) + 1;
+    /* Floating numbers near the node */
+    S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
+    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: node.emoji + ' ' + baseName + (yieldQty > 1 ? ' ×' + yieldQty : ''), color: node.color, ts: Date.now() });
+    S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Fishing XP', color: '#00d4b8', ts: Date.now() });
+    if (leveled) {
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: '🎣 Fishing Level ' + R.lifeSkills.fishing.level + '!', color: '#f5c542', ts: Date.now() });
+      BT_AUDIO.collect();
+    }
+    setRpgState(_objectSpread({}, R));
+    try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
+  }, []);
+
   var _desktopFerryman = useCallback(function () {
     setFerrymanPanel(true);
   }, []);
@@ -32384,7 +32431,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       marginRight: 4
     }
-  }, "E"), "\uD83C\uDFAE Minigame Arena"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && !gatherMini && /*#__PURE__*/React.createElement("button", {
+  }, "E"), "\uD83C\uDFAE Minigame Arena"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && !gatherMini && !fishingMini && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     style: {
       bottom: 140,
@@ -32409,6 +32456,12 @@ export var BroTown = function BroTown(_ref0) {
           ts: Date.now()
         });
         BT_AUDIO.beep(200, 0.05, 0.08, 'square');
+        return;
+      }
+      /* fishSpot routes to the dedicated fishing minigame instead of the timing bar */
+      if (node.nodeType === 'fishSpot') {
+        setFishingMini({ node: node, skill: 'fishing' });
+        BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
         return;
       }
       /* Launch timing bar minigame — green zone width scales with skill level */
@@ -32443,6 +32496,11 @@ export var BroTown = function BroTown(_ref0) {
           ts: Date.now()
         });
         BT_AUDIO.beep(200, 0.05, 0.08, 'square');
+        return;
+      }
+      if (node.nodeType === 'fishSpot') {
+        setFishingMini({ node: node, skill: 'fishing' });
+        BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
         return;
       }
       var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
@@ -32711,7 +32769,12 @@ export var BroTown = function BroTown(_ref0) {
       fontFamily: 'VT323,monospace',
       letterSpacing: '.05em'
     }
-  }, "\u26A1 STRIKE!")), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {
+  }, "\u26A1 STRIKE!")), fishingMini && /*#__PURE__*/React.createElement(FishingMinigame, {
+    node: fishingMini.node,
+    skill: fishingMini.skill,
+    onComplete: function (result) { _applyFishingReward(fishingMini.node, result); setFishingMini(null); },
+    onCancel: function () { setFishingMini(null); }
+  }), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {
     var S = stateRef.current;
     var R = S === null || S === void 0 ? void 0 : S.rpg;
     if (!R || (S === null || S === void 0 ? void 0 : S.currentZone) === 'town') return null;
