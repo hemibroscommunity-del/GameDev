@@ -32436,7 +32436,12 @@ export var BroTown = function BroTown(_ref0) {
   }, "E"), "\uD83C\uDFAE Minigame Arena"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && !gatherMini && !fishingMini && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     style: {
-      bottom: 140,
+      /* Inline 'bottom: 140' was hiding this button behind the 25vh
+         BottomDashboard on mobile.  Sit it just above the dashboard
+         instead (matches the class default ~ calc(25vh + 16px) but
+         a bit higher so it clears the mobile dashboard's top border
+         and stays below the joysticks at calc(25vh + 70px)). */
+      bottom: 'calc(25vh + 24px)',
       background: 'rgba(0,180,140,.85)'
     },
     onClick: function onClick(e) {
