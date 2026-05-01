@@ -5,6 +5,7 @@ import { wheelBus } from './mobile/wheelBus.js';
 import { BottomDashboard } from './mobile/BottomDashboard.jsx';
 import { ChatBubble } from './mobile/ChatBubble.jsx';
 import { ChatLauncher } from './mobile/ChatLauncher.jsx';
+import { XpFlyOverlay } from './XpFlyOverlay.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
 import { generateMockInventory, generateMockEquipped } from './mobile/mockItems.js';
@@ -388,6 +389,7 @@ export const GameApp = () => {
       {/* the bottom dashboard nests their content inside the --dash-h band. */}
       {/* Their buses still exist and are exercised by debug commands.      */}
       <BlockRing />
+      <XpFlyOverlay />
       <MasteryNotification />
       <DebugOverlay />
       <BuildBadge />

@@ -8026,7 +8026,17 @@ export var BroTown = function BroTown(_ref0) {
                       _R9._compStats.monstersKilled = (_R9._compStats.monstersKilled || 0) + 1;
                       _R9._compStats.totalGoldEarned = (_R9._compStats.totalGoldEarned || 0) + _killGoldR;
                     }
-                    S.dmgNumbers.push({ x: m.x, y: m.y - 25, text: '+' + _killXpR + 'XP', color: '#60a5fa', ts: Date.now() });
+                    /* +XP floater colored to match the dashboard XP bar (#3ddc97).
+                       Also push a fly-to-bar entry so the player sees the XP
+                       arc into the bar (mirror of the fish-to-bag animation). */
+                    S.dmgNumbers.push({ x: m.x, y: m.y - 25, text: '+' + _killXpR + 'XP', color: '#3ddc97', ts: Date.now() });
+                    if (!S._xpFlies) S._xpFlies = [];
+                    S._xpFlies.push({
+                      id: 'xpf_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                      worldX: m.x, worldY: m.y - 25,
+                      value: _killXpR,
+                      ts: Date.now(),
+                    });
                     S.dmgNumbers.push({ x: m.x, y: m.y - 15, text: '+' + _killGoldR + 'G', color: '#f5c542', ts: Date.now() });
                     distributeKillXpToBuild(_R9, _killXpR);
                     while (_R9.xp >= xpRequired(_R9.level)) {
@@ -15481,17 +15491,44 @@ export var BroTown = function BroTown(_ref0) {
       for (var i = 0; i < e.changedTouches.length; i++) {
         var t = e.changedTouches[i];
         if (t.identifier === ct.id) {
-          /* TEMP DIAGNOSTIC */
+          var _tdx = t.clientX - ct.x, _tdy = t.clientY - ct.y;
+          var _tdist = Math.sqrt(_tdx * _tdx + _tdy * _tdy);
+          var _tdur = Date.now() - ct.t;
           if (window.__broTapLog) {
-            var dx = t.clientX - ct.x, dy = t.clientY - ct.y;
-            var dist = Math.sqrt(dx * dx + dy * dy);
-            var dur = Date.now() - ct.t;
             console.log('[tap-to-lock] touchEnd', {
-              dist: dist.toFixed(1), durationMs: dur,
-              treatedAsSwipe: dist >= 30 && dur < 300 && (dist / Math.max(dur, 1)) >= 0.8,
+              dist: _tdist.toFixed(1), durationMs: _tdur,
+              treatedAsSwipe: _tdist >= 30 && _tdur < 300 && (_tdist / Math.max(_tdur, 1)) >= 0.8,
             });
           }
-          handleCanvasSwipe(ct.x, ct.y, t.clientX, t.clientY, Date.now() - ct.t);
+          handleCanvasSwipe(ct.x, ct.y, t.clientX, t.clientY, _tdur);
+          /* Tap-to-lock-on monsters — handleCanvasSwipe early-returns
+             for non-swipe taps; the canvas onClick is unreliable on
+             multitouch (e.g. left finger on joystick + right finger
+             tapping a monster), so route the lock-on check from here
+             too.  Same monster hit-test as onClick below. */
+          if (_tdist < 30 && _tdur < 300) {
+            var _S = stateRef.current;
+            var _rect = e.currentTarget.getBoundingClientRect();
+            var _cssX = t.clientX - _rect.left;
+            var _cssY = t.clientY - _rect.top;
+            var _cx = _S.camera.x, _cy = _S.camera.y;
+            if (_S.monsters) {
+              var _closest = null, _closestDist = 40;
+              _S.monsters.forEach(function (m) {
+                if (!m.alive) return;
+                var _msx = m.x - _cx, _msy = m.y - _cy;
+                var _d = Math.sqrt(Math.pow(_cssX - _msx, 2) + Math.pow(_cssY - _msy, 2));
+                if (_d < _closestDist) { _closestDist = _d; _closest = m; }
+              });
+              if (_closest) {
+                if (_S.lockedTarget && _S.lockedTarget.ref === _closest) {
+                  _S.lockedTarget = null;
+                } else {
+                  _S.lockedTarget = { type: 'monster', id: _closest.id, ref: _closest };
+                }
+              }
+            }
+          }
           ct.id = null;
           break;
         }
