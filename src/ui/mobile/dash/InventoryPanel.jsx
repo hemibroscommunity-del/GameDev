@@ -131,13 +131,13 @@ export const InventoryPanel = () => {
         padding: '0 2px 6px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         marginBottom: 6,
-        fontSize: 12,
+        fontSize: 15,
       }}>
         <span style={{ color: '#f5c542', fontWeight: 700 }}>
           🪙 {Number(gold).toLocaleString()}
         </span>
         {(goldNuggets > 0 || goldBars > 0) && (
-          <span style={{ color: COL.muted, fontSize: 11 }}>
+          <span style={{ color: COL.muted, fontSize: 13 }}>
             {goldBars > 0 ? `▮${goldBars}` : ''}
             {goldBars > 0 && goldNuggets > 0 ? ' · ' : ''}
             {goldNuggets > 0 ? `◇${goldNuggets}` : ''}

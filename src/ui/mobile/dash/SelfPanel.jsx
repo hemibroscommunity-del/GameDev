@@ -12,7 +12,7 @@ const StatTile = ({ label, value }) => (
     minWidth: 0,
   }}>
     <div style={{ fontSize: 9, color: COL.muted, letterSpacing: '.04em' }}>{label}</div>
-    <div style={{ fontSize: 14, fontWeight: 700 }}>{value}</div>
+    <div style={{ fontSize: 17, fontWeight: 700 }}>{value}</div>
   </div>
 );
 

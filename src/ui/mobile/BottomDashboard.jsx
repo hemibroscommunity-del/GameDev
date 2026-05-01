@@ -34,15 +34,15 @@ const COL = {
   gold:      '#f5c542',
 };
 
-// Bar artwork sliced from the user-supplied mockup screenshot.  Each
-// PNG is the full-width rounded capsule with the metric label baked in.
-// The image stretches to the dashboard's full width; an overlay handles
-// the empty / depleted portion to the right of the fill.
-const BAR_IMG = {
-  hp:   '/icons/ui/bar-hp.png',
-  mp:   '/icons/ui/bar-mp.png',
-  stam: '/icons/ui/bar-stam.png',
-  xp:   '/icons/ui/bar-xp.png',
+// Per-kind colored gradient fills.  The previous PNG artwork had dark
+// padding baked into both ends of each capsule, leaving a visible dead
+// zone inside the rounded shape; CSS gradients fill the container
+// edge-to-edge so the colored portion runs the full width.
+const BAR_FILL = {
+  hp:   'linear-gradient(180deg, #ff5a5f 0%, #c5202c 100%)',
+  mp:   'linear-gradient(180deg, #5b8cff 0%, #2541b0 100%)',
+  stam: 'linear-gradient(180deg, #5fd96b 0%, #1f8a3a 100%)',
+  xp:   'linear-gradient(180deg, #ffd24a 0%, #c98a08 100%)',
 };
 
 // Toolbar icon source.  Each glyph is a separate PNG sliced from the
@@ -145,7 +145,7 @@ const Tooltip = ({ text, onClose }) => {
 // current/max on the right.
 const Bar = ({ label, cur, max, kind, tip, onTip }) => {
   const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
-  const src = BAR_IMG[kind];
+  const fill = BAR_FILL[kind];
   return (
     <div
       onPointerUp={tip && onTip ? (e) => { e.stopPropagation(); onTip(tip); } : undefined}
@@ -157,18 +157,12 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
         cursor: tip ? 'pointer' : 'default',
         touchAction: 'manipulation',
       }}>
-      <img
-        src={src}
-        alt={label}
-        draggable={false}
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '100%',
-          objectFit: 'fill',
-          borderRadius: 14,
-        }}
-      />
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: fill,
+        borderRadius: 14,
+      }} />
       {pct < 100 && (
         <div style={{
           position: 'absolute',
@@ -191,7 +185,7 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
         left: 10,
         top: '50%',
         transform: 'translateY(-50%)',
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: 700,
         color: '#fff',
         letterSpacing: '.04em',
@@ -205,7 +199,7 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
         right: 10,
         top: '50%',
         transform: 'translateY(-50%)',
-        fontSize: 11,
+        fontSize: 15,
         fontWeight: 700,
         color: '#fff',
         letterSpacing: '.04em',
@@ -339,8 +333,8 @@ export const BottomDashboard = () => {
         <>
           {/* Header strip — back-chip (only on drilled child), title, ×. */}
           <div style={{
-            height: 32,
-            flex: '0 0 32px',
+            height: 38,
+            flex: '0 0 38px',
             display: 'flex',
             alignItems: 'center',
             padding: '0 8px',
@@ -441,7 +435,7 @@ export const BottomDashboard = () => {
                           fontSize: 10,
                         }}>
                           <span style={{ color: COL.text, letterSpacing: '.02em' }}>{s.label}</span>
-                          <span style={{ color: COL.text, fontWeight: 700 }}>{val}</span>
+                          <span style={{ color: COL.text, fontWeight: 700, fontSize: 13 }}>{val}</span>
                         </div>
                       </div>
                     );
@@ -484,8 +478,8 @@ export const BottomDashboard = () => {
                           cursor: 'pointer',
                           touchAction: 'manipulation',
                         }}>
-                        <span style={{ fontSize: 12, lineHeight: 1 }}>{sk.icon}</span>
-                        <span style={{ color: COL.muted, fontWeight: 700 }}>{lvl}</span>
+                        <span style={{ fontSize: 14, lineHeight: 1 }}>{sk.icon}</span>
+                        <span style={{ color: COL.muted, fontWeight: 700, fontSize: 14 }}>{lvl}</span>
                       </div>
                     );
                   })}
@@ -523,7 +517,7 @@ export const BottomDashboard = () => {
 };
 
 const chipStyle = {
-  width: 24, height: 24,
+  width: 32, height: 32,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -532,7 +526,9 @@ const chipStyle = {
   borderRadius: 4,
   color: COL.text,
   fontFamily: 'inherit',
-  fontSize: 16,
+  fontSize: 22,
+  fontWeight: 700,
+  lineHeight: 1,
   cursor: 'pointer',
   flex: '0 0 auto',
 };

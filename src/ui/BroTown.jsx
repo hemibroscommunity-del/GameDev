@@ -15454,9 +15454,17 @@ export var BroTown = function BroTown(_ref0) {
       /* Convert screen coords to world coords using camera */
       var worldX = screenX + S.camera.x;
       var worldY = screenY + S.camera.y;
-      /* Aim angle from player to mouse world position */
+      /* Aim angle from player to mouse world position. Only push the
+         aim into S._aimAngle while the player is actively attacking or
+         aiming — otherwise mouse hover would override the body's
+         facing direction every frame, causing the weapon to drift off
+         the hand while walking (mobile sets _aimAngle only during
+         right-joystick / attack events, so the weapon stays locked to
+         facing during free movement; this mirrors that behavior). The
+         click handlers below still seed _aimAngle from _mouseAimAngle
+         at attack-start, so attacks still aim where the cursor is. */
       S._mouseAimAngle = Math.atan2(worldY - S.player.y, worldX - S.player.x);
-      S._aimAngle = S._mouseAimAngle;
+      if (S.autoAttack || S._aiming) S._aimAngle = S._mouseAimAngle;
       S._mouseWorldX = worldX;
       S._mouseWorldY = worldY;
       /* Update facing based on mouse aim */
