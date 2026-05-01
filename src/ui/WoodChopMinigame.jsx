@@ -54,12 +54,12 @@ const AXE_OSC_MS = 1200;         // full up-and-down cycle in ms
 const BAND_HEIGHT = 40;
 const BAND_Y_MIN = TREE_Y + 60;
 const BAND_Y_MAX = TREE_Y + TREE_H_DRAW * 0.78 - BAND_HEIGHT;
-/* Blade Y as a fraction of the axe sprite's drawn height.  The axe
-   art has the blade head at the TOP of the sprite (handle below); 0.20
-   puts the hit-test point right on the visible cutting edge.  The
-   previous 0.35 value placed the hit-test in the middle of the sprite
-   (effectively on the handle), making strikes feel mistimed. */
-const AXE_BLADE_FRAC = 0.20;
+/* Vertical extent of the axe HEAD inside the sprite, expressed as
+   fractions of AXE_H_DRAW.  Hit-test now uses an AABB overlap between
+   [headTop, headBottom] and the band — any part of the head touching
+   the band counts as a hit, instead of a single-point sample. */
+const AXE_HEAD_TOP_FRAC = 0.00;
+const AXE_HEAD_BOT_FRAC = 0.42;
 
 const WOOD_THUMB = '/icons/wood/wood-log.png';
 
@@ -74,6 +74,7 @@ export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
   const axeY = useRef(AXE_Y_MIN);                 // current axe Y, set by sin
   const lastT = useRef(0);
   const lastChopAt = useRef(0);
+  const particlesRef = useRef([]);                // wood-chip particles spawned on hit
 
   // Tree state — track local hp separate from node.hp so we can lerp
   // the damage frame smoothly even after the node is consumed.
@@ -146,21 +147,33 @@ export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
 
     const tick = (now) => {
       rafId = requestAnimationFrame(tick);
+      const dt = Math.min(0.05, (now - lastT.current) / 1000);
       lastT.current = now;
 
       const phase = phaseRef.current;
 
-      // Axe vertical oscillation during chop phase.  Pause the bob
-      // briefly while the chop-particle frame is being shown so the
-      // strike point reads as decisive.
+      // Axe vertical oscillation during chop phase.  Freeze the axe at
+      // its current Y while the chop-hold is active so the strike point
+      // visibly stops the moment the player taps.
       if (phase === 'chop') {
         const inChopHold = now < lastChopAt.current + AXE_CHOP_HOLD_MS;
         if (!inChopHold) {
-          // sin in [-1, 1] → map to [AXE_Y_MIN, AXE_Y_MAX]
           const t = (now / AXE_OSC_MS) * Math.PI * 2;
           const u = (Math.sin(t) + 1) / 2;        // [0, 1]
           axeY.current = AXE_Y_MIN + u * (AXE_Y_MAX - AXE_Y_MIN);
         }
+      }
+
+      // Tick wood-chip particles — gravity + alpha fade.  Cull when life
+      // drops to zero so the array doesn't grow unbounded.
+      const ps = particlesRef.current;
+      for (let i = ps.length - 1; i >= 0; i--) {
+        const p = ps[i];
+        p.vy += 280 * dt;        // gravity
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt / 0.55;     // ~550 ms lifespan
+        if (p.life <= 0) ps.splice(i, 1);
       }
 
       // Compute current tree damage frame from hp — three explicit
@@ -170,17 +183,13 @@ export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
       let treeFrame = curHp.current >= startHp.current ? 0
                     : curHp.current <= 0 ? (TREE_FRAMES - 1) : 1;
 
-      // Felling — lerp tree position + rotation over 400ms.
-      let treeRot = 0;
-      let treeOffY = 0;
-      let treeAlpha = 1;
+      // Felling — tree stays upright in place showing the stump frame
+      // for a brief beat, then hands off to the fly-to-bag.  No tilt,
+      // no slide, no fade — the tree just sits there as the player's
+      // brain registers "the tree is felled".
       if (phase === 'felling') {
-        const tF = Math.min(1, (now - fellingStart.current) / 400);
-        treeRot = tF * (Math.PI * 0.10);   // tilt 18°
-        treeOffY = tF * 18;
-        treeAlpha = 1 - Math.max(0, (tF - 0.7) / 0.3);
-        treeFrame = TREE_FRAMES - 1;       // hold last damage frame
-        if (tF >= 1 && phaseRef.current === 'felling') {
+        treeFrame = TREE_FRAMES - 1;
+        if (now - fellingStart.current >= 350 && phaseRef.current === 'felling') {
           phaseRef.current = 'flying';
           setPhase('flying');
           setFlying(true);
@@ -194,20 +203,13 @@ export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
       ctx.fillStyle = 'rgba(40, 80, 30, 0.18)';
       ctx.fillRect(0, 0, W, H);
 
-      // Tree.
+      // Tree — drawn upright, in place, throughout all phases.
       if (treeImgRef.current) {
-        ctx.save();
-        ctx.globalAlpha = treeAlpha;
-        const tCx = TREE_X + TREE_W_DRAW / 2;
-        const tCy = TREE_Y + TREE_H_DRAW / 2 + treeOffY;
-        ctx.translate(tCx, tCy);
-        if (treeRot) ctx.rotate(treeRot);
         ctx.drawImage(
           treeImgRef.current,
           treeFrame * TREE_FRAME_W, 0, TREE_FRAME_W, TREE_FRAME_H,
-          -TREE_W_DRAW / 2, -TREE_H_DRAW / 2, TREE_W_DRAW, TREE_H_DRAW
+          TREE_X, TREE_Y, TREE_W_DRAW, TREE_H_DRAW
         );
-        ctx.restore();
       }
 
       // Horizontal target band — a translucent red stripe across the
@@ -236,6 +238,14 @@ export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
           AXE_X, axeY.current, AXE_W_DRAW, AXE_H_DRAW
         );
       }
+
+      // Wood-chip particles — small dark-brown squares with quick fade.
+      // Drawn after the axe so they appear in front of the head.
+      for (let i = 0; i < ps.length; i++) {
+        const p = ps[i];
+        ctx.fillStyle = 'rgba(120, 70, 30, ' + Math.max(0, p.life) + ')';
+        ctx.fillRect(p.x - 1.6, p.y - 1.6, 3.2, 3.2);
+      }
     };
 
     rafId = requestAnimationFrame(tick);
@@ -247,22 +257,48 @@ export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
     e.stopPropagation();
     if (phaseRef.current !== 'chop') return;
 
-    // Axe blade Y sits in the upper third of the sprite (the head),
-    // not the geometric centre — 0.35 puts it right on the blade.
-    const bladeY = axeY.current + AXE_H_DRAW * AXE_BLADE_FRAC;
-    const inBand = bladeY >= bandY.current && bladeY <= bandY.current + BAND_HEIGHT;
-    if (!inBand) return;            // miss — neutral, no progress, no penalty
+    // AABB overlap on the axe head's vertical extent vs the band.
+    // Any part of the head touching the band counts as a hit — much
+    // more forgiving than the previous single-point sample.
+    const headTop = axeY.current + AXE_H_DRAW * AXE_HEAD_TOP_FRAC;
+    const headBot = axeY.current + AXE_H_DRAW * AXE_HEAD_BOT_FRAC;
+    const bandTop = bandY.current;
+    const bandBot = bandY.current + BAND_HEIGHT;
+    const overlap = headBot >= bandTop && headTop <= bandBot;
+    if (!overlap) return;                // miss — no progress, no penalty
 
-    // Hit — apply damage, advance counters, reseed band, play sound.
-    lastChopAt.current = performance.now();
+    // Hit — freeze the axe at its current Y for AXE_CHOP_HOLD_MS (the
+    // rAF loop's chop-hold check already skips the bob during that
+    // window, so axeY.current stays where the player committed),
+    // apply damage, spawn chip particles, play sound.
+    const now = performance.now();
+    lastChopAt.current = now;
     curHp.current = Math.max(0, curHp.current - 1);
+
+    // Spawn 10 wood-chip particles at the strike point (intersection of
+    // the axe head's bottom edge and the band centre).
+    const chipX = AXE_X + AXE_W_DRAW / 2;
+    const chipY = Math.max(headTop, bandTop) + (Math.min(headBot, bandBot) - Math.max(headTop, bandTop)) / 2;
+    const ps = particlesRef.current;
+    for (let i = 0; i < 10; i++) {
+      const ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI;  // mostly upward
+      const speed = 60 + Math.random() * 80;
+      ps.push({
+        x: chipX + (Math.random() - 0.5) * 6,
+        y: chipY + (Math.random() - 0.5) * 4,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed,
+        life: 1.0,
+      });
+    }
+
     reseedBand();
     try { BT_AUDIO.hitSound('wood'); } catch {}
 
     if (curHp.current <= 0) {
       phaseRef.current = 'felling';
       setPhase('felling');
-      fellingStart.current = performance.now();
+      fellingStart.current = now;
     }
   };
 
