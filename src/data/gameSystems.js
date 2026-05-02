@@ -5364,7 +5364,11 @@ BT_AUDIO.magicHit = function (opts) {
   var key = (this._magicHitToggle++ & 1) ? 'magic-hit2' : 'magic-hit';
   this.play(key, opts);
 };
-BT_AUDIO.monsterDeath = function (opts) {
+BT_AUDIO.monsterDeath = function (arch, opts) {
+  /* No-op for slimes (fodder).  The splat SFX is owned by the render-
+     loop death-detection in BroTown.jsx — playing the bony-death wav
+     here too was layering the "old death sound" on top of the splat. */
+  if (arch === 'fodder') return;
   this.play('monster-death', opts || { vol: 0.5 });
 };
 BT_AUDIO.loadSample = function (key, url) {

@@ -5762,7 +5762,7 @@ export var BroTown = function BroTown(_ref0) {
                     m.curHp = 0;
                     m.alive = false;
                     m.respawnAt = Date.now() + 30000;
-                    BT_AUDIO.monsterDeath();
+                    BT_AUDIO.monsterDeath(m && m.archetype);
                     var explodeDmg = Math.round(m.dmg * 2);
                     _R6.hp -= shielded ? Math.max(1, Math.floor(explodeDmg * (1 - blockReduc))) : explodeDmg;
                     S.screenShake = 8;
@@ -6586,7 +6586,7 @@ export var BroTown = function BroTown(_ref0) {
                   m.alive = false;
                   m.respawnAt = Date.now() + 30000;
                   m.statuses = {};
-                  BT_AUDIO.monsterDeath();
+                  BT_AUDIO.monsterDeath(m && m.archetype);
 
                   /* §19.1 Quest kill tracking */
                   if (_R6._questKills === undefined) _R6._questKills = {};
@@ -8103,7 +8103,7 @@ export var BroTown = function BroTown(_ref0) {
                   m.alive = false;
                   m.respawnAt = Date.now() + 30000;
                   m.statuses = {};
-                  BT_AUDIO.monsterDeath();
+                  BT_AUDIO.monsterDeath(m && m.archetype);
                   if (S.rpg) {
                     var _R9 = S.rpg;
                     if (!_R9._questKills) _R9._questKills = {};
