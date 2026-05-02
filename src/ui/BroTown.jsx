@@ -10706,17 +10706,16 @@ export var BroTown = function BroTown(_ref0) {
           S.monsters.forEach(function (m) {
             var _ZONES$S$currentZone9, _ZONES$S$currentZone0, _m$statuses2;
             var arch = m.archetype || m.type || 'fodder';
-            /* Slime death effect — when a fodder monster transitions
-               from alive→dead we leave the corpse on screen for 600 ms
-               playing the slime-death.png 8-frame splash, then the
-               normal alive=false suppression takes over.  m._wasFodderAlive
-               is set every alive frame below; the FIRST dead frame seeds
-               m._slimeDeathStart and renders the death sequence.
-               Other archetypes still hit the standard early-out. */
+            /* Slime death effect — fires for any fodder monster the
+               first time we observe alive=false. No reliance on a
+               "was-alive-last-frame" flag (which missed off-screen
+               kills) — fodder + alive=false + no death-start yet
+               always triggers. Death anim renders for 600 ms before
+               the standard alive=false suppression takes over. */
             if (!m.alive) {
-              if (m._wasFodderAlive && m._slimeDeathStart == null) {
+              if (arch === 'fodder' && m._slimeDeathStart == null) {
                 m._slimeDeathStart = now;
-                try { BT_AUDIO.playFile('/audio/slime-death.mp3', 0.7); } catch (e) {}
+                try { BT_AUDIO.playFile('/audio/slime-death.mp3', 0.85); } catch (e) {}
               }
               if (m._slimeDeathStart != null && slimeDeathImgRef.current) {
                 var _dT = now - m._slimeDeathStart;
@@ -10739,9 +10738,6 @@ export var BroTown = function BroTown(_ref0) {
             var mx = (m.renderX !== undefined ? m.renderX : m.x) - cx,
               my = (m.renderY !== undefined ? m.renderY : m.y) - cy;
             if (mx < -40 || mx > W + 40 || my < -40 || my > H + 40) return;
-            /* Track that this fodder was alive THIS frame so we can detect
-               the alive→dead transition next frame (see early-out above). */
-            m._wasFodderAlive = (arch === 'fodder');
 
             /* ═══ SPAWN POP-IN — scale up from 0 when first visible ═══ */
             if (!m._spawnTs) m._spawnTs = now;
@@ -10762,11 +10758,17 @@ export var BroTown = function BroTown(_ref0) {
               hexer: 10
             }[arch] || 10) * spawnScale;
 
-            /* Ground shadow — oval, darker for bigger monsters */
-            ctx.fillStyle = "rgba(0,0,0,".concat(bodySize > 10 ? 0.22 : 0.14, ")");
-            ctx.beginPath();
-            ctx.ellipse(mx + 2, my + bodySize + 3, bodySize * 0.9, bodySize * 0.25, 0, 0, Math.PI * 2);
-            ctx.fill();
+            /* Ground shadow — oval, darker for bigger monsters.
+               Skipped for fodder slimes since the new sprite has
+               its own slime-base "drip" and a separate shadow reads
+               as a small dark blob beside it (the "old slime" the
+               user reported seeing in front of the new one). */
+            if (arch !== 'fodder') {
+              ctx.fillStyle = "rgba(0,0,0,".concat(bodySize > 10 ? 0.22 : 0.14, ")");
+              ctx.beginPath();
+              ctx.ellipse(mx + 2, my + bodySize + 3, bodySize * 0.9, bodySize * 0.25, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
 
             /* Body base color — tinted by zone element for identity */
             var _zElem = (_ZONES$S$currentZone9 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone9 === void 0 ? void 0 : _ZONES$S$currentZone9.element;
@@ -10947,16 +10949,12 @@ export var BroTown = function BroTown(_ref0) {
                   _slimeFrame * 128, 0, 128, 128,
                   mx - _dSize / 2, my + bodySize - _dSize, _dSize, _dSize
                 );
-              } else {
-                ctx.fillStyle = darkColor;
-                ctx.beginPath();
-                ctx.arc(mx, my, bodySize, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = 'rgba(255,255,255,.12)';
-                ctx.beginPath();
-                ctx.arc(mx - bodySize * 0.25, my - bodySize * 0.25, bodySize * 0.5, 0, Math.PI * 2);
-                ctx.fill();
               }
+              /* No procedural fallback — if the sprite hasn't loaded
+                 yet (rare, only first ~50 ms of a session), the slime
+                 just isn't drawn that frame.  The old circle fallback
+                 was confusable with the new sprite if it ever fired
+                 mid-session due to a transient image-load issue. */
             }
 
             /* Element indicator dot — small colored gem above body */
