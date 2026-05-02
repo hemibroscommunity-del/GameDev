@@ -11087,12 +11087,18 @@ export var BroTown = function BroTown(_ref0) {
               });
             }
 
-            /* Emoji face — zone-themed, scaled to body size */
-            var _zoneEmoji = (_ZONES$S$currentZone0 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone0 === void 0 ? void 0 : _ZONES$S$currentZone0.enemyEmoji;
-            var _mEmoji = _zoneEmoji && _zoneEmoji[arch] ? _zoneEmoji[arch] : m.emoji;
-            ctx.font = (bodySize > 12 ? 18 : bodySize > 8 ? 14 : 10) + 'px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(_mEmoji, mx, my + (bodySize > 12 ? 6 : bodySize > 8 ? 5 : 3));
+            /* Emoji face — zone-themed, scaled to body size.  Skipped
+               for fodder slimes since the new sprite is itself the
+               slime visual — drawing the 🟢 emoji on top was the
+               "old slime sprite in front of the new one" the user
+               reported.  Other archetypes still get their emoji face. */
+            if (arch !== 'fodder') {
+              var _zoneEmoji = (_ZONES$S$currentZone0 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone0 === void 0 ? void 0 : _ZONES$S$currentZone0.enemyEmoji;
+              var _mEmoji = _zoneEmoji && _zoneEmoji[arch] ? _zoneEmoji[arch] : m.emoji;
+              ctx.font = (bodySize > 12 ? 18 : bodySize > 8 ? 14 : 10) + 'px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(_mEmoji, mx, my + (bodySize > 12 ? 6 : bodySize > 8 ? 5 : 3));
+            }
 
             /* Stun indicator on monster */
             if (m._stunUntil && Date.now() < m._stunUntil) {
