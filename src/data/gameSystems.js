@@ -4835,6 +4835,26 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       o.stop(this.ctx.currentTime + (dur || 0.1) + 0.05);
     } catch (e) {}
   },
+  /* Play a one-shot audio file (mp3/ogg).  Caches an HTMLAudioElement
+     per URL as a template, then clones for each play so multiple
+     instances can overlap.  Honors this.muted.  Use for short SFX
+     where canvas-tone synthesis isn't expressive enough. */
+  _fileCache: {},
+  playFile: function playFile(url, vol) {
+    if (this.muted) return;
+    try {
+      var template = this._fileCache[url];
+      if (!template) {
+        template = new Audio(url);
+        template.preload = 'auto';
+        this._fileCache[url] = template;
+      }
+      var clone = template.cloneNode();
+      clone.volume = vol == null ? 0.7 : vol;
+      var p = clone.play();
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  },
   /* §6 Material-varied hit sounds per archetype */hitSound: function hitSound(material) {
     if (!this.ctx || this.muted) return;
     try {

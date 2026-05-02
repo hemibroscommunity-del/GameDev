@@ -293,12 +293,19 @@ export const WoodChopMinigame = ({ node, skill, onComplete, onCancel }) => {
     }
 
     reseedBand();
-    try { BT_AUDIO.hitSound('wood'); } catch {}
+    /* Real chop sample extracted from the source video (0-0.7s clip,
+       fade-out trailing 80ms) instead of the synth hitSound thwack.
+       Falls back gracefully if the file fails to load. */
+    try { BT_AUDIO.playFile('/audio/wood-chop.mp3', 0.7); } catch {}
 
     if (curHp.current <= 0) {
       phaseRef.current = 'felling';
       setPhase('felling');
       fellingStart.current = now;
+      /* Tree-fall sample plays once at the moment the killing blow
+         lands.  ~2.5s clip — runs through the felling pause + the
+         start of the fly-to-bag handoff. */
+      try { BT_AUDIO.playFile('/audio/tree-fall.mp3', 0.8); } catch {}
     }
   };
 
