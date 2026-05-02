@@ -7,7 +7,12 @@ import { CookingMinigame } from './CookingMinigame.jsx';
    (yellow tang) when no fishSheetSrc is passed.  Add an entry here
    when wiring a new fish tier with its own swim strip. */
 const FISH_SPRITE_BY_TIER = {
-  Clownfish: '/sprites/fish/fish-02.png',
+  /* -v2 was re-extracted with a corner flood-fill bg mask so the
+     clownfish's white stripes stay opaque (the original fish-02.png
+     used colorkey which made stripe-whites transparent too).
+     FishingMinigame skips its runtime dehalo for any sprite whose
+     path contains '-v2' so the stripes survive there too. */
+  Clownfish: '/sprites/fish/fish-02-v2.png',
 };
 
 /* Per-fish cooking pan map.  CookingMinigame defaults to pan.png
