@@ -258,6 +258,10 @@ export var BroTown = function BroTown(_ref0) {
      lazily on first need; volume scales with distance to nearest
      slime, paused when none in range. */
   var slimeIdleAudioRef = useRef(null);
+  /* Singleton Audio element for the slime death splat — bypasses
+     BT_AUDIO.playFile (cloneNode was failing silently on iOS).
+     Reused per kill: set currentTime=0 then play(). */
+  var slimeDeathAudioRef = useRef(null);
   /* Weapon sprite icons — sword / bow / staff. Drawn next to the character
      scaled down from the 64×64 source. Map<weapon-type, HTMLImageElement>. */
   var weaponSpritesRef = useRef(null);
@@ -10721,12 +10725,29 @@ export var BroTown = function BroTown(_ref0) {
             if (!m.alive) {
               if (arch === 'fodder' && m._slimeDeathStart == null) {
                 m._slimeDeathStart = now;
-                /* Splat SFX fires here (the render-loop sees the alive→
-                   dead transition unconditionally for any fodder).  The
-                   _slimeDeathStart guard ensures it plays exactly once
-                   per kill.  deathBoom() is a no-op for fodder so we
-                   never get a duplicate sound. */
-                try { BT_AUDIO.playFile('/audio/slime-death-v2.mp3', 0.85); } catch (e) {}
+                /* Splat SFX — direct singleton Audio element, no
+                   cloneNode (which was failing silently for some
+                   browsers).  Lazy-init on first kill, then for each
+                   subsequent kill rewind to start and play. */
+                try {
+                  var _sa = slimeDeathAudioRef.current;
+                  if (!_sa) {
+                    _sa = new Audio('/audio/slime-death-v2.mp3');
+                    _sa.preload = 'auto';
+                    _sa.volume = 0.85;
+                    slimeDeathAudioRef.current = _sa;
+                  }
+                  _sa.currentTime = 0;
+                  var _p = _sa.play();
+                  if (_p && _p.catch) _p.catch(function (e) {
+                    console.warn('[slime-death] audio play rejected:', e && e.message);
+                  });
+                  if (typeof window !== 'undefined' && window.__broAudioLog) {
+                    console.log('[slime-death] played at', now);
+                  }
+                } catch (e) {
+                  console.warn('[slime-death] audio threw:', e && e.message);
+                }
               }
               if (m._slimeDeathStart != null && slimeDeathImgRef.current) {
                 var _dT = now - m._slimeDeathStart;
