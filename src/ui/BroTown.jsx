@@ -249,6 +249,15 @@ export var BroTown = function BroTown(_ref0) {
      southwest) × 2 modes (jog 8-frame, stand 1-frame). West/NW/SE are rendered
      by horizontal mirror at draw time. Map<key, {img, frames, w}> when loaded. */
   var playerSpritesRef = useRef(null);
+  /* Slime monster sprite sheets — idle bob (6 × 128×128 = 768×128) and
+     death splash (8 × 128×128 = 1024×128). Loaded once on mount, used
+     in the fodder render branch + the death-effect renderer. */
+  var slimeIdleImgRef = useRef(null);
+  var slimeDeathImgRef = useRef(null);
+  /* Singleton Audio element for the slime proximity loop.  Created
+     lazily on first need; volume scales with distance to nearest
+     slime, paused when none in range. */
+  var slimeIdleAudioRef = useRef(null);
   /* Weapon sprite icons — sword / bow / staff. Drawn next to the character
      scaled down from the 64×64 source. Map<weapon-type, HTMLImageElement>. */
   var weaponSpritesRef = useRef(null);
@@ -1319,6 +1328,57 @@ export var BroTown = function BroTown(_ref0) {
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) { if (j) weaponHandlesRef.current = j; })
       .catch(function () { /* missing — fall back to bottom-center */ });
+
+    /* Slime monster sprites — idle bob loop + death splash. */
+    var slimeIdle = new Image();
+    slimeIdle.onload = function () { slimeIdleImgRef.current = slimeIdle; };
+    slimeIdle.src = '/sprites/monsters/slime-idle.png';
+    var slimeDeath = new Image();
+    slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
+    slimeDeath.src = '/sprites/monsters/slime-death.png';
+  }, []);
+
+  /* Slime proximity-audio loop.  Tick every 80 ms: find nearest alive
+     fodder monster within SLIME_AUDIO_RANGE, scale volume by inverse
+     distance (closer = louder, max 0.5).  Pause when none in range. */
+  useEffect(function () {
+    var SLIME_AUDIO_RANGE = 250;
+    var SLIME_AUDIO_VOL_MAX = 0.5;
+    var id = setInterval(function () {
+      var S = stateRef.current;
+      if (!S || !S.player || !S.monsters || BT_AUDIO.muted) return;
+      var nearest = Infinity;
+      for (var i = 0; i < S.monsters.length; i++) {
+        var m = S.monsters[i];
+        if (!m.alive) continue;
+        var arch = m.archetype || m.type || 'fodder';
+        if (arch !== 'fodder') continue;
+        var dx = m.x - S.player.x, dy = m.y - S.player.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d < nearest) nearest = d;
+      }
+      var au = slimeIdleAudioRef.current;
+      if (nearest <= SLIME_AUDIO_RANGE) {
+        if (!au) {
+          au = new Audio('/audio/slime-idle.mp3');
+          au.loop = true;
+          slimeIdleAudioRef.current = au;
+        }
+        var vol = SLIME_AUDIO_VOL_MAX * (1 - nearest / SLIME_AUDIO_RANGE);
+        au.volume = Math.max(0, Math.min(SLIME_AUDIO_VOL_MAX, vol));
+        if (au.paused) {
+          var p = au.play();
+          if (p && p.catch) p.catch(function () {});
+        }
+      } else if (au && !au.paused) {
+        au.pause();
+      }
+    }, 80);
+    return function () {
+      clearInterval(id);
+      var au = slimeIdleAudioRef.current;
+      if (au) { try { au.pause(); } catch (e) {} }
+    };
   }, []);
 
   /* Prevent iOS page scroll + track keyboard height */
@@ -10645,11 +10705,43 @@ export var BroTown = function BroTown(_ref0) {
         if (S.monsters) {
           S.monsters.forEach(function (m) {
             var _ZONES$S$currentZone9, _ZONES$S$currentZone0, _m$statuses2;
-            if (!m.alive) return;
+            var arch = m.archetype || m.type || 'fodder';
+            /* Slime death effect — when a fodder monster transitions
+               from alive→dead we leave the corpse on screen for 600 ms
+               playing the slime-death.png 8-frame splash, then the
+               normal alive=false suppression takes over.  m._wasFodderAlive
+               is set every alive frame below; the FIRST dead frame seeds
+               m._slimeDeathStart and renders the death sequence.
+               Other archetypes still hit the standard early-out. */
+            if (!m.alive) {
+              if (m._wasFodderAlive && m._slimeDeathStart == null) {
+                m._slimeDeathStart = now;
+                try { BT_AUDIO.playFile('/audio/slime-death.mp3', 0.7); } catch (e) {}
+              }
+              if (m._slimeDeathStart != null && slimeDeathImgRef.current) {
+                var _dT = now - m._slimeDeathStart;
+                if (_dT >= 0 && _dT < 600) {
+                  var _dmx = (m.renderX !== undefined ? m.renderX : m.x) - cx;
+                  var _dmy = (m.renderY !== undefined ? m.renderY : m.y) - cy;
+                  if (_dmx >= -60 && _dmx <= W + 60 && _dmy >= -60 && _dmy <= H + 60) {
+                    var _df = Math.min(7, Math.floor(_dT / 75));
+                    var _dSize = 56;
+                    ctx.drawImage(
+                      slimeDeathImgRef.current,
+                      _df * 128, 0, 128, 128,
+                      _dmx - _dSize / 2, _dmy - _dSize / 2, _dSize, _dSize
+                    );
+                  }
+                }
+              }
+              return;
+            }
             var mx = (m.renderX !== undefined ? m.renderX : m.x) - cx,
               my = (m.renderY !== undefined ? m.renderY : m.y) - cy;
             if (mx < -40 || mx > W + 40 || my < -40 || my > H + 40) return;
-            var arch = m.archetype || m.type || 'fodder';
+            /* Track that this fodder was alive THIS frame so we can detect
+               the alive→dead transition next frame (see early-out above). */
+            m._wasFodderAlive = (arch === 'fodder');
 
             /* ═══ SPAWN POP-IN — scale up from 0 when first visible ═══ */
             if (!m._spawnTs) m._spawnTs = now;
@@ -10835,15 +10927,36 @@ export var BroTown = function BroTown(_ref0) {
                 ctx.fill();
               }
             } else {
-              /* Fodder: simple circle with highlight */
-              ctx.fillStyle = darkColor;
-              ctx.beginPath();
-              ctx.arc(mx, my, bodySize, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.fillStyle = 'rgba(255,255,255,.12)';
-              ctx.beginPath();
-              ctx.arc(mx - bodySize * 0.25, my - bodySize * 0.25, bodySize * 0.5, 0, Math.PI * 2);
-              ctx.fill();
+              /* Fodder: slime sprite (slime-idle.png 6-frame loop).
+                 Falls back to the procedural circle if the sprite hasn't
+                 loaded yet (first ~50 ms of a session). */
+              var _slimeImg = slimeIdleImgRef.current;
+              if (_slimeImg) {
+                /* Slight per-monster offset (m.spawnX, hashed) so a
+                   group of slimes doesn't pulse in lockstep. */
+                var _SLIME_FRAMES = 6;
+                var _SLIME_FRAME_MS = 140;
+                var _phaseOff = ((m.spawnX || 0) | 0) % 600;
+                var _slimeFrame = Math.floor((now + _phaseOff) / _SLIME_FRAME_MS) % _SLIME_FRAMES;
+                /* Render larger than the procedural circle so the new
+                   art reads — sprite anchored so the "feet" line up
+                   with the existing shadow at my + bodySize. */
+                var _dSize = 50 * spawnScale;
+                ctx.drawImage(
+                  _slimeImg,
+                  _slimeFrame * 128, 0, 128, 128,
+                  mx - _dSize / 2, my + bodySize - _dSize, _dSize, _dSize
+                );
+              } else {
+                ctx.fillStyle = darkColor;
+                ctx.beginPath();
+                ctx.arc(mx, my, bodySize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,.12)';
+                ctx.beginPath();
+                ctx.arc(mx - bodySize * 0.25, my - bodySize * 0.25, bodySize * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+              }
             }
 
             /* Element indicator dot — small colored gem above body */
