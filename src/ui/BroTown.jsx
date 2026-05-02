@@ -258,6 +258,12 @@ export var BroTown = function BroTown(_ref0) {
      lazily on first need; volume scales with distance to nearest
      slime, paused when none in range. */
   var slimeIdleAudioRef = useRef(null);
+  /* Per-zone themed-ground tile sheets — small repeatable swatches
+     loaded from public/sprites/tiles/ground-<elem>.png and converted
+     into CanvasPattern objects on first frame so the canvas-2D render
+     can fill the floor with createPattern instead of a solid color. */
+  var groundTilesRef = useRef({});       // Map<zoneId, HTMLImageElement>
+  var groundPatternsRef = useRef({});    // Map<zoneId, CanvasPattern>
   /* Singleton Audio element for the slime death splat — bypasses
      BT_AUDIO.playFile (cloneNode was failing silently on iOS).
      Reused per kill: set currentTime=0 then play(). */
@@ -1342,6 +1348,24 @@ export var BroTown = function BroTown(_ref0) {
     var slimeDeath = new Image();
     slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
     slimeDeath.src = '/sprites/monsters/slime-death-v2.png';
+
+    /* Themed-zone ground swatches — 80×80 repeatable tile per element-
+       biome.  Stored by zone id so the render loop can do a quick
+       dictionary lookup. */
+    var GROUND_TILES = {
+      ember:   '/sprites/tiles/ground-flame.png',
+      mist:    '/sprites/tiles/ground-venom.png',
+      frost:   '/sprites/tiles/ground-frost.png',
+      thunder: '/sprites/tiles/ground-storm.png',
+      hollows: '/sprites/tiles/ground-stone.png',
+      sky:     '/sprites/tiles/ground-wind.png',
+      tidal:   '/sprites/tiles/ground-water.png',
+    };
+    Object.keys(GROUND_TILES).forEach(function (zid) {
+      var img = new Image();
+      img.onload = function () { groundTilesRef.current[zid] = img; };
+      img.src = GROUND_TILES[zid];
+    });
   }, []);
 
   /* Slime proximity-audio loop.  Tick every 80 ms: find nearest alive
@@ -8265,10 +8289,29 @@ export var BroTown = function BroTown(_ref0) {
         var cx = S.camera.x,
           cy = S.camera.y;
 
-        /* Clear canvas each frame */
+        /* Clear canvas each frame.  Themed zones (ember, mist, frost,
+           thunder, hollows, sky, tidal) fill with a repeating ground
+           swatch via createPattern when the tile image is loaded;
+           pattern is anchored to world coords so it doesn't slide
+           with the camera (ctx.translate before fill). Falls back to
+           the solid palette color until the image loads. */
         var _bgColor = _zone.palette ? _zone.palette.ground : '#2d5a1e';
-        ctx.fillStyle = _bgColor;
-        ctx.fillRect(-10, -10, W + 20, H + 20);
+        var _gImg = groundTilesRef.current[S.currentZone];
+        if (_gImg) {
+          var _pat = groundPatternsRef.current[S.currentZone];
+          if (!_pat) {
+            _pat = ctx.createPattern(_gImg, 'repeat');
+            groundPatternsRef.current[S.currentZone] = _pat;
+          }
+          ctx.save();
+          ctx.translate(-cx, -cy);
+          ctx.fillStyle = _pat;
+          ctx.fillRect(cx - 10, cy - 10, W + 20, H + 20);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = _bgColor;
+          ctx.fillRect(-10, -10, W + 20, H + 20);
+        }
 
         /* Tiles */
         var startCol = Math.max(0, Math.floor(cx / TILE));
