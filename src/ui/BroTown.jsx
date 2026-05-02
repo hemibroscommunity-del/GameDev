@@ -264,6 +264,10 @@ export var BroTown = function BroTown(_ref0) {
      can fill the floor with createPattern instead of a solid color. */
   var groundTilesRef = useRef({});       // Map<zoneId, HTMLImageElement>
   var groundPatternsRef = useRef({});    // Map<zoneId, CanvasPattern>
+  /* Per-zone themed tree sprites — replaces the procedural trunk+canopy
+     for tree gather-nodes when the current zone has a matching sheet
+     loaded.  Keyed by zoneId (ember/mist/frost/etc.). */
+  var treeSpritesRef = useRef({});       // Map<zoneId, HTMLImageElement>
   /* Singleton Audio element for the slime death splat — bypasses
      BT_AUDIO.playFile (cloneNode was failing silently on iOS).
      Reused per kill: set currentTime=0 then play(). */
@@ -1365,6 +1369,24 @@ export var BroTown = function BroTown(_ref0) {
       var img = new Image();
       img.onload = function () { groundTilesRef.current[zid] = img; };
       img.src = GROUND_TILES[zid];
+    });
+
+    /* Themed tree sprites per zone — used in the gather-node render to
+       replace the procedural trunk+canopy. Meadow stays procedural
+       (forest baseline). */
+    var TREE_SPRITES = {
+      ember:   '/sprites/trees/tree-flame.png',
+      mist:    '/sprites/trees/tree-venom.png',
+      frost:   '/sprites/trees/tree-frost.png',
+      thunder: '/sprites/trees/tree-storm.png',
+      hollows: '/sprites/trees/tree-stone.png',
+      sky:     '/sprites/trees/tree-wind.png',
+      tidal:   '/sprites/trees/tree-water.png',
+    };
+    Object.keys(TREE_SPRITES).forEach(function (zid) {
+      var img = new Image();
+      img.onload = function () { treeSpritesRef.current[zid] = img; };
+      img.src = TREE_SPRITES[zid];
     });
   }, []);
 
@@ -8321,8 +8343,13 @@ export var BroTown = function BroTown(_ref0) {
 
         /* ── Tileset sprite path: draws tiles directly, skips old procedural loop ── */
         var _usedSpriteLayer = useSpriteTiles(S.currentZone) && drawTileLayer(ctx, map, S.currentZone, cx, cy, W, H, now);
+        /* Themed zones with a loaded ground swatch: the createPattern fill
+           above has already painted the floor.  Skip the dark dim overlay
+           and let the procedural per-tile loop know to skip its grass
+           branch + trailing repaint so the tilesheet stays visible. */
+        var _hasGroundPattern = !!_gImg;
 
-        if (!_usedSpriteLayer) {
+        if (!_usedSpriteLayer && !_hasGroundPattern) {
           /* Darker overlay for procedural zones */
           ctx.fillStyle = 'rgba(0,0,0,0.35)';
           ctx.fillRect(-10, -10, W + 20, H + 20);
@@ -8349,7 +8376,12 @@ export var BroTown = function BroTown(_ref0) {
               sy = r * TILE - cy;
 
             /* Zone-tinted base colors */
-            if (tile === 0 || tile === 5) {
+            if ((tile === 0 || tile === 5) && _hasGroundPattern) {
+              /* Themed zone with loaded ground swatch — skip the
+                 procedural grass paint so the createPattern fill
+                 stays visible.  Skip the trailing fillRect too. */
+              return 1; // continue
+            } else if (tile === 0 || tile === 5) {
               /* Grass — zone palette with subtle texture variation */
               var baseGreen = getTileColor(0, S.currentZone);
               var shade = (cl * 17 + r * 31) % 5;
@@ -10504,7 +10536,26 @@ export var BroTown = function BroTown(_ref0) {
             /* Node body — distinct per type AND tier */
             var nt = node.nodeType || node.resourceType;
             if (nt === 'tree' || nt === 'wood') {
-              /* ═══ TREES — size and color from WOODCUTTING_TIERS ═══ */
+              /* ═══ TREES — themed sprite when loaded, else procedural ═══ */
+              var _treeImg = treeSpritesRef.current[S.currentZone];
+              if (_treeImg && _treeImg.naturalWidth > 0) {
+                /* Themed tree sprite (160×220 source).  Scale so display
+                   height ≈ 24 + tier*4 — same visual hierarchy as the
+                   procedural canopyR ladder.  Anchor bottom of sprite to
+                   ny + 4 so the trunk sits on the gather-node spot. */
+                var _th = 24 + tier * 4;
+                var _tw = _th * (_treeImg.naturalWidth / _treeImg.naturalHeight);
+                ctx.drawImage(_treeImg, nx - _tw / 2, ny + 4 - _th, _tw, _th);
+                /* Axe mark when damaged — small notch at trunk height */
+                if (node.hp < node.maxHp) {
+                  ctx.strokeStyle = 'rgba(60,40,20,.7)';
+                  ctx.lineWidth = 1;
+                  ctx.beginPath();
+                  ctx.moveTo(nx - 3, ny);
+                  ctx.lineTo(nx + 3, ny + 2);
+                  ctx.stroke();
+                }
+              } else {
               var tw2 = nodeTier.trunkW || 3 + tier;
               var th2 = nodeTier.trunkH || 6 + tier * 2;
               var cr = nodeTier.canopyR || 5 + tier * 3;
@@ -10546,6 +10597,7 @@ export var BroTown = function BroTown(_ref0) {
                 ctx.lineTo(nx + tw2 / 2 + 1, ny + 2);
                 ctx.stroke();
               }
+              } /* end procedural-tree else */
             } else if (nt === 'fishSpot' || nt === 'fish') {
               /* ═══ FISH SPOTS — size and color from FISHING_TIERS ═══ */
               var poolR = nodeTier.size || 6 + tier * 2;
