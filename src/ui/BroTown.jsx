@@ -10717,10 +10717,12 @@ export var BroTown = function BroTown(_ref0) {
             if (!m.alive) {
               if (arch === 'fodder' && m._slimeDeathStart == null) {
                 m._slimeDeathStart = now;
-                /* Splat SFX is now triggered from BT_AUDIO.deathBoom('fodder')
-                   at the kill site (gameSystems.js) — playing it here too
-                   would double-stack.  Render-loop only handles the visual
-                   animation. */
+                /* Splat SFX fires here (the render-loop sees the alive→
+                   dead transition unconditionally for any fodder).  The
+                   _slimeDeathStart guard ensures it plays exactly once
+                   per kill.  deathBoom() is a no-op for fodder so we
+                   never get a duplicate sound. */
+                try { BT_AUDIO.playFile('/audio/slime-death-v2.mp3', 0.85); } catch (e) {}
               }
               if (m._slimeDeathStart != null && slimeDeathImgRef.current) {
                 var _dT = now - m._slimeDeathStart;

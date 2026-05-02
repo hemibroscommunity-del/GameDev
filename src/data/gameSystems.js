@@ -4907,15 +4907,12 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     }, 60);
   },
   deathBoom: function deathBoom(arch) {
-    /* Per-archetype death sound routing.  Slimes (fodder) play the
-       messy-splat sample instead of the synth boom — replace the
-       generic boom that was firing alongside our render-loop splat
-       (caused double playback per slime kill).  Other archetypes
-       still get the original synth boom. */
-    if (arch === 'fodder') {
-      this.playFile('/audio/slime-death-v2.mp3', 0.85);
-      return;
-    }
+    /* No-op for slimes (fodder).  The splat SFX is owned by the
+       render-loop death-detection in BroTown.jsx, which fires exactly
+       once per slime kill via the _slimeDeathStart guard.  Suppressing
+       deathBoom here prevents the synth boom from layering on top
+       (which is what the user kept hearing as the "old" sound). */
+    if (arch === 'fodder') return;
     var _this2 = this;
     this.beep(80, 0.3, 0.12, 'sawtooth');
     setTimeout(function () {
