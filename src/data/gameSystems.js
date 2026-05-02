@@ -4906,7 +4906,16 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       return _this.beep(1200, 0.06, 0.04, 'sine');
     }, 60);
   },
-  deathBoom: function deathBoom() {
+  deathBoom: function deathBoom(arch) {
+    /* Per-archetype death sound routing.  Slimes (fodder) play the
+       messy-splat sample instead of the synth boom — replace the
+       generic boom that was firing alongside our render-loop splat
+       (caused double playback per slime kill).  Other archetypes
+       still get the original synth boom. */
+    if (arch === 'fodder') {
+      this.playFile('/audio/slime-death-v2.mp3', 0.85);
+      return;
+    }
     var _this2 = this;
     this.beep(80, 0.3, 0.12, 'sawtooth');
     setTimeout(function () {

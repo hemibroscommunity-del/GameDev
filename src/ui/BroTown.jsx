@@ -1329,13 +1329,15 @@ export var BroTown = function BroTown(_ref0) {
       .then(function (j) { if (j) weaponHandlesRef.current = j; })
       .catch(function () { /* missing — fall back to bottom-center */ });
 
-    /* Slime monster sprites — idle bob loop + death splash. */
+    /* Slime monster sprites — idle bob loop + death splash.  Filenames
+       suffixed -v2 to bust Cloudflare/browser cache so the new sprites
+       are guaranteed-fresh after the asset rebuild. */
     var slimeIdle = new Image();
     slimeIdle.onload = function () { slimeIdleImgRef.current = slimeIdle; };
-    slimeIdle.src = '/sprites/monsters/slime-idle.png';
+    slimeIdle.src = '/sprites/monsters/slime-idle-v2.png';
     var slimeDeath = new Image();
     slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
-    slimeDeath.src = '/sprites/monsters/slime-death.png';
+    slimeDeath.src = '/sprites/monsters/slime-death-v2.png';
   }, []);
 
   /* Slime proximity-audio loop.  Tick every 80 ms: find nearest alive
@@ -5336,7 +5338,7 @@ export var BroTown = function BroTown(_ref0) {
                   size: 1.5 + Math.random() * 2
                 });
               }
-              BT_AUDIO.deathBoom();
+              BT_AUDIO.deathBoom(m && m.archetype);
               setRpgState(_objectSpread({}, _R6));
             }
 
@@ -5782,7 +5784,7 @@ export var BroTown = function BroTown(_ref0) {
                         size: 2 + Math.random() * 3
                       });
                     }
-                    BT_AUDIO.deathBoom();
+                    BT_AUDIO.deathBoom(m && m.archetype);
                     BT_AUDIO.beep(100, 0.2, 0.3, 'sawtooth');
                     S.groundLoot.push({
                       x: m.x,
@@ -6650,7 +6652,7 @@ export var BroTown = function BroTown(_ref0) {
                   if (isGrandSlam) {
                     BT_AUDIO.grandSlam();
                   } else {
-                    BT_AUDIO.deathBoom();
+                    BT_AUDIO.deathBoom(m && m.archetype);
                   }
 
                   /* Screen shake — proportional. Magic kills get no shake;
@@ -8146,7 +8148,7 @@ export var BroTown = function BroTown(_ref0) {
                       BT_AUDIO.levelUp();
                     }
                     var isCrit = a.dmg > pDmg;
-                    BT_AUDIO.deathBoom();
+                    BT_AUDIO.deathBoom(m && m.archetype);
                     S.screenShake = isCrit ? 6 : 3;
                     var killAngle = a.ang;
                     var arrowDeathParts = [];
@@ -10715,7 +10717,10 @@ export var BroTown = function BroTown(_ref0) {
             if (!m.alive) {
               if (arch === 'fodder' && m._slimeDeathStart == null) {
                 m._slimeDeathStart = now;
-                try { BT_AUDIO.playFile('/audio/slime-death.mp3', 0.85); } catch (e) {}
+                /* Splat SFX is now triggered from BT_AUDIO.deathBoom('fodder')
+                   at the kill site (gameSystems.js) — playing it here too
+                   would double-stack.  Render-loop only handles the visual
+                   animation. */
               }
               if (m._slimeDeathStart != null && slimeDeathImgRef.current) {
                 var _dT = now - m._slimeDeathStart;
