@@ -10725,29 +10725,15 @@ export var BroTown = function BroTown(_ref0) {
             if (!m.alive) {
               if (arch === 'fodder' && m._slimeDeathStart == null) {
                 m._slimeDeathStart = now;
-                /* Splat SFX — direct singleton Audio element, no
-                   cloneNode (which was failing silently for some
-                   browsers).  Lazy-init on first kill, then for each
-                   subsequent kill rewind to start and play. */
-                try {
-                  var _sa = slimeDeathAudioRef.current;
-                  if (!_sa) {
-                    _sa = new Audio('/audio/slime-death-v2.mp3');
-                    _sa.preload = 'auto';
-                    _sa.volume = 0.85;
-                    slimeDeathAudioRef.current = _sa;
-                  }
-                  _sa.currentTime = 0;
-                  var _p = _sa.play();
-                  if (_p && _p.catch) _p.catch(function (e) {
-                    console.warn('[slime-death] audio play rejected:', e && e.message);
-                  });
-                  if (typeof window !== 'undefined' && window.__broAudioLog) {
-                    console.log('[slime-death] played at', now);
-                  }
-                } catch (e) {
-                  console.warn('[slime-death] audio threw:', e && e.message);
-                }
+                /* Splat SFX — routed through BT_AUDIO.play() which uses
+                   the Web Audio API (AudioContext).  The AudioContext
+                   is unlocked by the player's first tap/click, so all
+                   sample playback after that works without per-element
+                   autoplay policy blocks (which were rejecting raw
+                   new Audio().play() calls in this render-loop
+                   context). The 'slime-death' key is registered in
+                   BT_AUDIO.SFX_MANIFEST → /audio/slime-death-v2.mp3. */
+                try { BT_AUDIO.play('slime-death', { vol: 0.85 }); } catch (e) {}
               }
               if (m._slimeDeathStart != null && slimeDeathImgRef.current) {
                 var _dT = now - m._slimeDeathStart;

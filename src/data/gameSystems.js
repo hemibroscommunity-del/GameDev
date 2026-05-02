@@ -5347,6 +5347,10 @@ BT_AUDIO.SFX_MANIFEST = {
   'magic-hit':     '/sfx/magic/magic-hit.wav',
   'magic-hit2':    '/sfx/magic/magic-hit2.wav',
   'monster-death': '/sfx/monster/Monster death-bony.wav',
+  /* Slime death splat — routed through Web Audio so it plays without
+     hitting the per-element HTMLAudio autoplay policy that was
+     blocking new Audio().play() in the render loop. */
+  'slime-death':   '/audio/slime-death-v2.mp3',
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits
