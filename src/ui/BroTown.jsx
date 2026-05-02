@@ -1353,22 +1353,42 @@ export var BroTown = function BroTown(_ref0) {
     slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
     slimeDeath.src = '/sprites/monsters/slime-death-v2.png';
 
-    /* Themed-zone ground swatches — 80×80 repeatable tile per element-
-       biome.  Stored by zone id so the render loop can do a quick
-       dictionary lookup. */
-    var GROUND_TILES = {
-      ember:   '/sprites/tiles/ground-flame.png',
-      mist:    '/sprites/tiles/ground-venom.png',
-      frost:   '/sprites/tiles/ground-frost.png',
-      thunder: '/sprites/tiles/ground-storm.png',
-      hollows: '/sprites/tiles/ground-stone.png',
-      sky:     '/sprites/tiles/ground-wind.png',
-      tidal:   '/sprites/tiles/ground-water.png',
+    /* Themed-zone ground swatches — 64×64 procedural noise tiles
+       generated at runtime per zone palette so they tile seamlessly
+       with no checkerboard borders.  The earlier file-based swatches
+       cropped from dungeon-style tilesheets had visible rock-edge
+       borders — replaced with deterministic noise on the zone's
+       ground/floor palette colors. */
+    var ZONE_SWATCH_COLORS = {
+      ember:   { base: '#3a1810', dark: '#1a0805', accent: '#ff5520' },
+      mist:    { base: '#2a4020', dark: '#152010', accent: '#5a8830' },
+      frost:   { base: '#c8d8e8', dark: '#90a8c0', accent: '#e8f0f8' },
+      thunder: { base: '#1a2050', dark: '#0a1030', accent: '#7060c0' },
+      hollows: { base: '#3a3530', dark: '#1f1c18', accent: '#5a554a' },
+      sky:     { base: '#d8c898', dark: '#a89868', accent: '#f0e0b0' },
+      tidal:   { base: '#103860', dark: '#082040', accent: '#3070a0' },
     };
-    Object.keys(GROUND_TILES).forEach(function (zid) {
-      var img = new Image();
-      img.onload = function () { groundTilesRef.current[zid] = img; };
-      img.src = GROUND_TILES[zid];
+    Object.keys(ZONE_SWATCH_COLORS).forEach(function (zid) {
+      var pal = ZONE_SWATCH_COLORS[zid];
+      var off = document.createElement('canvas');
+      off.width = 64; off.height = 64;
+      var octx = off.getContext('2d');
+      octx.fillStyle = pal.base;
+      octx.fillRect(0, 0, 64, 64);
+      /* Deterministic dotted noise — base-shade dots and accent specks
+         using a hash so the pattern is identical each frame.  No edge
+         dots within 2 px of the border so the seam is invisible. */
+      var rng = function (i) { return ((i * 9301 + 49297) % 233280) / 233280; };
+      for (var i = 0; i < 180; i++) {
+        var x = 2 + Math.floor(rng(i * 7) * 60);
+        var y = 2 + Math.floor(rng(i * 11 + 3) * 60);
+        var sz = 1 + Math.floor(rng(i * 13) * 2);
+        octx.fillStyle = rng(i * 17) > 0.85 ? pal.accent : pal.dark;
+        octx.globalAlpha = 0.18 + rng(i * 19) * 0.22;
+        octx.fillRect(x, y, sz, sz);
+      }
+      octx.globalAlpha = 1;
+      groundTilesRef.current[zid] = off;
     });
 
     /* Themed tree sprites per zone — used in the gather-node render to
