@@ -175,10 +175,26 @@ export function drawTiledMap(ctx, zoneId, cx, cy, W, H) {
 
 /**
  * Walkability grid — true = walkable, false = blocked.
- * For brotown only: layer 0 is the ground (always walkable); any non-zero
- * tile in higher layers is treated as a building/tree/prop and blocks.
- * For themed zones we currently mark everything walkable (prototype).
+ *
+ * Rule: a cell is blocked only if any layer places a tile from a
+ * BLOCKING tileset there. Blocking tilesets are identified by name
+ * (case-insensitive substring): "building", "plant", "props". Ground,
+ * paths, terrain, dirt, FX, and SHADOW tilesets are all walkable —
+ * shadows in particular are visual-only and must not block.
+ *
+ * Themed zones currently have no blocking-tileset hits so this returns
+ * an all-walkable grid.
  */
+const BLOCKING_TS_KEYWORDS = ['building', 'plant', 'props'];
+const NON_BLOCKING_TS_KEYWORDS = ['shadow']; // shadow tilesets are walkable
+
+function _isBlockingTileset(name) {
+  if (!name) return false;
+  const n = name.toLowerCase();
+  if (NON_BLOCKING_TS_KEYWORDS.some(k => n.includes(k))) return false;
+  return BLOCKING_TS_KEYWORDS.some(k => n.includes(k));
+}
+
 export function getWalkability(zoneId) {
   const map = _maps[zoneId];
   if (!map) return null;
@@ -186,13 +202,14 @@ export function getWalkability(zoneId) {
   for (let r = 0; r < map.height; r++) {
     grid[r] = new Array(map.width).fill(true);
   }
-  if (zoneId !== 'town') return grid;
-  // Mark every cell that has a non-zero tile in any layer beyond layer 0.
-  for (let li = 1; li < map.layers.length; li++) {
-    const layer = map.layers[li];
+  for (const layer of map.layers) {
     for (let r = 0; r < layer.height; r++) {
       for (let c = 0; c < layer.width; c++) {
-        if (layer.data[r * layer.width + c]) grid[r][c] = false;
+        const gid = layer.data[r * layer.width + c] & 0x1fffffff;
+        if (!gid) continue;
+        const res = _resolveGid(gid, map.tilesets);
+        if (!res) continue;
+        if (_isBlockingTileset(res.ts.name)) grid[r][c] = false;
       }
     }
   }
