@@ -36,6 +36,7 @@ import { eatBus } from './mobile/eatBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { startLoadingTileAssets, useSpriteTiles, drawTileLayer, drawBuildingSprites } from '@/rendering/canvasTileAssets.js';
+import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -1407,6 +1408,19 @@ export var BroTown = function BroTown(_ref0) {
       var img = new Image();
       img.onload = function () { treeSpritesRef.current[zid] = img; };
       img.src = TREE_SPRITES[zid];
+    });
+
+    /* Tiled maps — fire-and-forget preload so the renderer can pick
+       them up as soon as they arrive. Once each map resolves, stash
+       its walkability grid on stateRef so isSolid() can consult it. */
+    preloadAllTiledMaps().then(function () {
+      var S = stateRef.current;
+      if (!S) return;
+      S._tiledWalkable = S._tiledWalkable || {};
+      Object.keys(TILED_ZONE_MAPS).forEach(function (zid) {
+        var grid = getWalkability(zid);
+        if (grid) S._tiledWalkable[zid] = grid;
+      });
     });
   }, []);
 
@@ -3546,6 +3560,11 @@ export var BroTown = function BroTown(_ref0) {
       var tx = Math.floor(px / TILE),
         ty = Math.floor(py / TILE);
       if (tx < 0 || tx >= zone.w || ty < 0 || ty >= zone.h) return true;
+      /* Tiled-map walkability grid (if loaded for this zone). For town,
+         every tile that has a non-zero ID in any layer beyond layer 0
+         is treated as a building/tree/prop and blocks the player. */
+      var _wgrid = (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null;
+      if (_wgrid && _wgrid[ty] && _wgrid[ty][tx] === false) return true;
       var tile = (_S$map = S.map) === null || _S$map === void 0 || (_S$map = _S$map[ty]) === null || _S$map === void 0 ? void 0 : _S$map[tx];
       if (tile === 8 || tile === 9 || tile === 10 || tile === 12 || tile === 14 || tile === 15) return false; /* exit/dungeon/gate/plot/bed walkable */
       return TILE_SOLID.has(tile);
@@ -8361,13 +8380,16 @@ export var BroTown = function BroTown(_ref0) {
         var startRow = Math.max(0, Math.floor(cy / TILE));
         var endRow = Math.min(ROWS - 1, Math.floor((cy + H) / TILE));
 
+        /* ── Tiled map path: hand-authored .tmx draws layers directly. ── */
+        var _usedTiledMap = !!TILED_ZONE_MAPS[S.currentZone] && drawTiledMap(ctx, S.currentZone, cx, cy, W, H);
         /* ── Tileset sprite path: draws tiles directly, skips old procedural loop ── */
-        var _usedSpriteLayer = useSpriteTiles(S.currentZone) && drawTileLayer(ctx, map, S.currentZone, cx, cy, W, H, now);
+        var _usedSpriteLayer = !_usedTiledMap && useSpriteTiles(S.currentZone) && drawTileLayer(ctx, map, S.currentZone, cx, cy, W, H, now);
         /* Themed zones with a loaded ground swatch: the createPattern fill
            above has already painted the floor.  Skip the dark dim overlay
            and let the procedural per-tile loop know to skip its grass
-           branch + trailing repaint so the tilesheet stays visible. */
-        var _hasGroundPattern = !!_gImg;
+           branch + trailing repaint so the tilesheet stays visible.
+           When the Tiled map draws, it owns the floor entirely. */
+        var _hasGroundPattern = !!_gImg || _usedTiledMap;
 
         if (!_usedSpriteLayer && !_hasGroundPattern) {
           /* Darker overlay for procedural zones */
@@ -8386,7 +8408,7 @@ export var BroTown = function BroTown(_ref0) {
         var isNight = false;
         var isDusk = false;
         var zoneElem = ((_ZONES$S$currentZone8 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone8 === void 0 ? void 0 : _ZONES$S$currentZone8.element) || null;
-        if (!_usedSpriteLayer) {
+        if (!_usedSpriteLayer && !_usedTiledMap) {
         var _loop2 = function _loop2(r) {
           var _loop3 = function _loop3(cl) {
             var _map$r;
