@@ -2948,8 +2948,9 @@ export var BroTown = function BroTown(_ref0) {
     }
 
     /* Monsters spawned with zone map — see S.map init above */
-    /* Initialize NPCs — only in town */
-    if (!S.npcs && S.currentZone === 'town') {
+    /* Initialize NPCs — only in town, and only when the Tiled brotown
+       map isn't authoring its own town content. */
+    if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
       S.npcs = NPC_DATA.map(function (npc, i) {
         return _objectSpread(_objectSpread({}, npc), {}, {
           id: 'npc-' + i,
@@ -3597,7 +3598,7 @@ export var BroTown = function BroTown(_ref0) {
         var K = S.keys;
 
         /* Re-initialize NPCs when entering town (they get nulled on zone transitions) */
-        if (!S.npcs && S.currentZone === 'town') {
+        if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
           S.npcs = NPC_DATA.map(function (npc, i) {
             return _objectSpread(_objectSpread({}, npc), {}, {
               id: 'npc-' + i,
@@ -4927,7 +4928,7 @@ export var BroTown = function BroTown(_ref0) {
         var pTileX = Math.floor(P.x / TILE);
         var pTileY = Math.floor(P.y / TILE);
         var nearBldg = null;
-        if (S.currentZone === 'town') {
+        if (S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
           for (var i = 0; i < BUILDINGS.length; i++) {
             var b = BUILDINGS[i];
             /* Check if player is within 2 tiles of building edge */
@@ -9434,8 +9435,9 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Building signs — large prominent signboards (town only) */
-        if (S.currentZone === 'town') BUILDINGS.forEach(function (b, bi) {
+        /* Building signs — large prominent signboards (town only).
+           Skip when the Tiled brotown map owns the town render. */
+        if (S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) BUILDINGS.forEach(function (b, bi) {
           var bsx = (b.bx + b.bw / 2) * TILE - cx;
           var bsy = b.by * TILE - cy - 6;
           if (bsx < -150 || bsx > W + 150 || bsy < -80 || bsy > H + 80) return;
@@ -13571,8 +13573,8 @@ export var BroTown = function BroTown(_ref0) {
           }
         });
 
-        /* Draw NPCs */
-        if (S.npcs) {
+        /* Draw NPCs — suppressed when the Tiled brotown map owns town. */
+        if (S.npcs && !(S.currentZone === 'town' && S._tiledWalkable && S._tiledWalkable.town)) {
           S.npcs.forEach(function (npc) {
             if (!npc.alive) return;
             var nx = npc.renderX - cx,
