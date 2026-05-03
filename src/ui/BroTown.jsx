@@ -3560,11 +3560,15 @@ export var BroTown = function BroTown(_ref0) {
       var tx = Math.floor(px / TILE),
         ty = Math.floor(py / TILE);
       if (tx < 0 || tx >= zone.w || ty < 0 || ty >= zone.h) return true;
-      /* Tiled-map walkability grid (if loaded for this zone). For town,
-         every tile that has a non-zero ID in any layer beyond layer 0
-         is treated as a building/tree/prop and blocks the player. */
+      /* Tiled-map walkability grid (if loaded for this zone). When a
+         grid is present it is AUTHORITATIVE: cells flagged false block,
+         everything else is walkable. The legacy TILE_SOLID check is
+         skipped because the procedural S.map still has old building
+         tiles (3, etc.) underneath the new Tiled render. */
       var _wgrid = (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null;
-      if (_wgrid && _wgrid[ty] && _wgrid[ty][tx] === false) return true;
+      if (_wgrid && _wgrid[ty]) {
+        return _wgrid[ty][tx] === false;
+      }
       var tile = (_S$map = S.map) === null || _S$map === void 0 || (_S$map = _S$map[ty]) === null || _S$map === void 0 ? void 0 : _S$map[tx];
       if (tile === 8 || tile === 9 || tile === 10 || tile === 12 || tile === 14 || tile === 15) return false; /* exit/dungeon/gate/plot/bed walkable */
       return TILE_SOLID.has(tile);
