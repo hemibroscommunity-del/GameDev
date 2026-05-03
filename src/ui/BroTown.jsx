@@ -8283,17 +8283,19 @@ export var BroTown = function BroTown(_ref0) {
                      arrow came from. -cos/-sin of flight angle = the
                      opposite of velocity = direction to entry side.
                      Fodder slimes use the 50 px sprite anchored at
-                     my+8 (top at my-42), so the visual center sits at
-                     my-17 with body half-width ~15 — the default
-                     radius=6/anchor=0 leaves arrows floating outside
-                     the sprite, which is the bug we're fixing. */
-                  var _saIsFodder = m.archetype === 'fodder';
+                     my+8 (top at my-42); the dome-shaped body roughly
+                     fills the ellipse centered at my-17 with rx≈12,
+                     ry≈10. Plant the arrow ~3 px short of the surface
+                     in the entry direction so the arrowhead is buried
+                     in the body rather than floating off the edge. */
+                  var _saIsFodder = (m.archetype || m.type) === 'fodder';
                   var _saEntryDx = -Math.cos(a.ang);
                   var _saEntryDy = -Math.sin(a.ang);
-                  var _saBodyRad = _saIsFodder ? 15 : 6;
+                  var _saRx = _saIsFodder ? 9 : 6;
+                  var _saRy = _saIsFodder ? 7 : 6;
                   var _saYAnchor = _saIsFodder ? -17 : 0;
-                  var _saOx = _saEntryDx * _saBodyRad + (Math.random() - 0.5) * 4;
-                  var _saOy = _saEntryDy * _saBodyRad + _saYAnchor + (Math.random() - 0.5) * 4;
+                  var _saOx = _saEntryDx * _saRx + (Math.random() - 0.5) * 3;
+                  var _saOy = _saEntryDy * _saRy + _saYAnchor + (Math.random() - 0.5) * 3;
                   m._stuckArrows.push({ ang: a.ang, ox: _saOx, oy: _saOy, isStaff: a.isStaff || false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
@@ -11892,11 +11894,12 @@ export var BroTown = function BroTown(_ref0) {
             ctx.fillText(loot.coins + 'G', lx, ly + 14 + bob);
 
             /* Pickup icon — slime-remnants sprite for fodder drops,
-               🦴 emoji for everything else. The remnants sprite is
-               rendered at 16×16 so it reads like a small ground
-               splatter rather than dominating the loot tile. */
+               🦴 emoji for everything else. Remnant rendered at 32x32
+               and centered on the loot tile so it reads as a real
+               ground splat (was 16x16 before, but it disappeared under
+               adjacent coin/skull drops). */
             if (loot.skull === 'fodder' && slimeRemnantsImgRef.current && slimeRemnantsImgRef.current.naturalWidth > 0) {
-              ctx.drawImage(slimeRemnantsImgRef.current, lx - 8, ly - 14 + bob, 16, 16);
+              ctx.drawImage(slimeRemnantsImgRef.current, lx - 16, ly - 16 + bob, 32, 32);
             } else {
               ctx.font = '12px sans-serif';
               ctx.fillText(loot.skullEmoji, lx, ly - 6 + bob);
