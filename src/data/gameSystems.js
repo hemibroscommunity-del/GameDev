@@ -4827,7 +4827,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _zoneMusicUrl: null,   /* current track url; abandons stale fetches */
   ZONE_MUSIC: {
     town: '/audio/music/town-theme.mp3',
-    meadow: '/audio/music/meadow-zone.wav',
+    meadow: '/audio/music/meadow-zone.mp3',
     frost: '/audio/music/frost-zone.mp3',
     thunder: '/audio/music/thunder-zone.mp3',
   },
