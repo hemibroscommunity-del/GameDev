@@ -6357,9 +6357,16 @@ export var BroTown = function BroTown(_ref0) {
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
-              var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(m.y - P.y, 2));
+              /* Fodder slimes use a 50 px sprite anchored above the
+                 hitbox (m.y is feet-level; visual center sits at m.y-17),
+                 so swings aimed at the visible body were missing the
+                 raw m.x/m.y hitbox. Use a virtual y matching the visible
+                 sprite center for fodder. */
+              var _archHit = m.archetype || m.type;
+              var _mHitY = _archHit === 'fodder' ? m.y - 17 : m.y;
+              var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2));
               if (mDist > SWING_RANGE) return;
-              var mAngle = Math.atan2(m.y - P.y, m.x - P.x);
+              var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
               var angleDiff = mAngle - baseAngle;
               while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
               while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
@@ -6469,12 +6476,13 @@ export var BroTown = function BroTown(_ref0) {
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
                 m.curHp -= dmg;
-                /* Fodder hit-reaction — squash anim plays once. Skipped
-                   if the hit is fatal so the death anim takes over
-                   without overlap. */
-                if (m.archetype === 'fodder' && m.curHp > 0) {
+                /* Fodder hit-reaction — squash anim + scale pulse plays
+                   once. Use (archetype||type) so server-synced slimes
+                   without an archetype field still get the reaction.
+                   Skipped on fatal hits so the death anim takes over. */
+                if ((m.archetype || m.type) === 'fodder' && m.curHp > 0) {
                   m._hitAnimStart = Date.now();
-                  m._hitAnimEnd = Date.now() + 250;
+                  m._hitAnimEnd = Date.now() + 400;
                 }
                 /* Count-based weight: 1 per landed hit (Power for melee).
                    Pairs with block = 3 to match the user's hits-vs-blocks
@@ -7406,14 +7414,21 @@ export var BroTown = function BroTown(_ref0) {
             if (!loot.isDeathDrop && loot.skull !== 'fodder' && Date.now() - loot.ts > 60000) return false;
             var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(P.y - loot.y, 2));
 
+            /* Fodder slime remnants: skip magnetism + add a 1.5 s pickup
+               delay so the splat actually lands on the ground and is
+               visible before the player walks over it. Without this,
+               magnetism + the kill-from-melee-range case meant remnants
+               got vacuumed up on the same frame they spawned. */
+            var _isFodderRemnant = loot.skull === 'fodder';
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
             var magnetRange = 50;
-            if (lDist < magnetRange && lDist > 20) {
+            if (!_isFodderRemnant && lDist < magnetRange && lDist > 20) {
               var pullStrength = (1 - lDist / magnetRange) * 3;
               var pullAngle = Math.atan2(P.y - loot.y, P.x - loot.x);
               loot.x += Math.cos(pullAngle) * pullStrength;
               loot.y += Math.sin(pullAngle) * pullStrength;
             }
+            if (_isFodderRemnant && Date.now() - (loot.ts || 0) < 1500) return true;
             if (lDist < 20) {
               /* §4.6 Weapon drop pickup — equip if better, stash otherwise */
               if (loot.isWeapon && loot.weapon) {
@@ -8092,7 +8107,13 @@ export var BroTown = function BroTown(_ref0) {
             var hit = false;
             if (S.monsters) S.monsters.forEach(function (m) {
               if (!m.alive || a.hitIds.has(m.id) || hit) return;
-              if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(m.y - a._renderY, 2)) < (a.isStaff ? 30 : 18)) {
+              /* Same y-offset fix as the melee path — fodder slimes'
+                 visual body sits 17 px above the hitbox center, so
+                 arrows aimed at the visible sprite were drifting past
+                 the raw m.x/m.y point. */
+              var _archProj = m.archetype || m.type;
+              var _mProjY = _archProj === 'fodder' ? m.y - 17 : m.y;
+              if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < (a.isStaff ? 30 : 18)) {
                 a.hitIds.add(m.id);
                 var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
                 if (arrowElem) {
@@ -8125,9 +8146,9 @@ export var BroTown = function BroTown(_ref0) {
                 /* Fodder hit-reaction (ranged variant) — same squash as
                    melee. arrowCollision bonus damage applied below uses
                    the same anim window, no need to re-trigger. */
-                if (m.archetype === 'fodder' && m.curHp > 0) {
+                if ((m.archetype || m.type) === 'fodder' && m.curHp > 0) {
                   m._hitAnimStart = Date.now();
-                  m._hitAnimEnd = Date.now() + 250;
+                  m._hitAnimEnd = Date.now() + 400;
                 }
                 /* Count-based weight: 1 per landed projectile.  Bow hits
                    feed Agility, staff hits feed Mind — so ranged kills
@@ -11299,10 +11320,31 @@ export var BroTown = function BroTown(_ref0) {
                    art reads — sprite anchored so the "feet" line up
                    with the existing shadow at my + bodySize. */
                 var _dSize = 50 * spawnScale;
+                /* Hit reaction gets a quick squash-and-stretch on top
+                   of the sheet swap so the reaction is unmistakable
+                   even if the sheet's per-frame difference is too
+                   subtle at small render sizes. Squash peaks ~40%
+                   into the window (35% wider, 30% shorter) then eases
+                   back to neutral. */
+                var _hitSquashX = 1, _hitSquashY = 1;
+                if (_hittingNow) {
+                  var _hp = (now - m._hitAnimStart) / (m._hitAnimEnd - m._hitAnimStart);
+                  if (_hp < 0.4) {
+                    var _hpIn = _hp / 0.4;
+                    _hitSquashX = 1 + 0.35 * _hpIn;
+                    _hitSquashY = 1 - 0.30 * _hpIn;
+                  } else {
+                    var _hpOut = (_hp - 0.4) / 0.6;
+                    _hitSquashX = 1.35 - 0.35 * _hpOut;
+                    _hitSquashY = 0.70 + 0.30 * _hpOut;
+                  }
+                }
+                var _drawW = _dSize * _hitSquashX;
+                var _drawH = _dSize * _hitSquashY;
                 ctx.drawImage(
                   _slimeImg,
                   _slimeFrame * 128, 0, 128, 128,
-                  mx - _dSize / 2, my + bodySize - _dSize, _dSize, _dSize
+                  mx - _drawW / 2, my + bodySize - _drawH, _drawW, _drawH
                 );
               }
               /* No procedural fallback — if the sprite hasn't loaded
