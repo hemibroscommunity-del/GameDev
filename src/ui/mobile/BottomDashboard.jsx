@@ -22,7 +22,7 @@ import { SettingsPanel }     from './dash/SettingsPanel.jsx';
 // occupies the full 25vh band and the icon row hides.
 
 const COL = {
-  bg:        'rgba(13, 14, 22, 0.92)',
+  bg:        'rgba(13, 14, 22, 1)',
   border:    'rgba(255, 255, 255, 0.10)',
   divider:   'rgba(255, 255, 255, 0.06)',
   text:      '#E8EAF8',

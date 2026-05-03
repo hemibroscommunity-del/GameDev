@@ -31080,7 +31080,7 @@ export var BroTown = function BroTown(_ref0) {
       })));
     };
     return React.createElement(React.Fragment, null, renderGroup('Fish', '🎣', '#3498DB', fish), renderGroup('Wood', '🪓', '#8B6914', wood), renderGroup('Ore', '⛏️', '#8a8a8a', ore), renderGroup('Herbs', '🌿', '#3dd497', herbs), renderGroup('Gear', '🔨', '#b0b0b0', gear), other.length > 0 && renderGroup('Other', '📦', '#00d4b8', other));
-  }()))), tutorialStep >= 0 && tutorialStep < 7 && /*#__PURE__*/React.createElement("div", {
+  }()))), false && tutorialStep >= 0 && tutorialStep < 7 && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       bottom: 180,
