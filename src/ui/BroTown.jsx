@@ -1316,7 +1316,7 @@ export var BroTown = function BroTown(_ref0) {
         };
         img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
         /* Cache-buster: bump v= each time sheet content or frame count changes. */
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=9';
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=10';
       });
     });
 
@@ -3295,8 +3295,10 @@ export var BroTown = function BroTown(_ref0) {
       if (isBackpedaling && effFrames > 1) frame = (effFrames - 1) - frame;
       var srcX = frame * sheet.w;
       /* East source video framed the character slightly smaller. Bump 6%
-         (was 18% — user fed back that 18% was too large). */
-      var sizeMul = info.name === 'east' ? 1.06 : 1.0;
+         (was 18% — user fed back that 18% was too large). The hit pose
+         was extracted from a different source where the character is
+         already at full size, so the bump doesn't apply there. */
+      var sizeMul = (info.name === 'east' && pose !== 'hit') ? 1.06 : 1.0;
       var w = drawSize * sizeMul, h = drawSize * sizeMul;
 
       /* === WEAPON SETUP ===

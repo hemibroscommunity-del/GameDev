@@ -24,7 +24,7 @@ SAT_THRESH = 25
 PAD = 3
 CHAR_HEIGHT_FRAC = 0.78  # match jog/stand character height as fraction of canvas
 FOOT_PAD_FRAC = 0.09     # leave a few px of empty ground under feet so shadow lines up
-BG_BRIGHTNESS_MIN = 200  # only key low-sat pixels brighter than this (preserves black outlines)
+BG_BRIGHTNESS_MIN = 230  # only key low-sat pixels brighter than this (preserves dark/gray outlines, not just pure black)
 
 
 def extract_frames(src: Path, n: int, start_s: float, end_s: float, tmpdir: Path) -> list[Path]:
