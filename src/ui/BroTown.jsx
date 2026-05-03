@@ -7397,10 +7397,13 @@ export var BroTown = function BroTown(_ref0) {
         /* Pick up ground loot — walk over it */
         if (S.groundLoot) {
           S.groundLoot = S.groundLoot.filter(function (loot) {
-            /* Expire after 60 seconds (death drops use their own expiry timer) */
+            /* Expire after 60 seconds (death drops use their own expiry
+               timer; fodder slime remnants persist forever until picked
+               up — pickup-only inventory item, players shouldn't lose
+               them to a 60 s clock). */
             if (loot.isDeathDrop && loot.expiry && Date.now() > loot.expiry) return false;
             if (loot._expired) return false;
-            if (!loot.isDeathDrop && Date.now() - loot.ts > 60000) return false;
+            if (!loot.isDeathDrop && loot.skull !== 'fodder' && Date.now() - loot.ts > 60000) return false;
             var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(P.y - loot.y, 2));
 
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
@@ -8257,12 +8260,19 @@ export var BroTown = function BroTown(_ref0) {
                 if (m._stuckArrows.length < 12) {
                   /* Place the impact on the side of the monster the
                      arrow came from. -cos/-sin of flight angle = the
-                     opposite of velocity = direction to entry side. */
+                     opposite of velocity = direction to entry side.
+                     Fodder slimes use the 50 px sprite anchored at
+                     my+8 (top at my-42), so the visual center sits at
+                     my-17 with body half-width ~15 — the default
+                     radius=6/anchor=0 leaves arrows floating outside
+                     the sprite, which is the bug we're fixing. */
+                  var _saIsFodder = m.archetype === 'fodder';
                   var _saEntryDx = -Math.cos(a.ang);
                   var _saEntryDy = -Math.sin(a.ang);
-                  var _saBodyRad = 6;
+                  var _saBodyRad = _saIsFodder ? 15 : 6;
+                  var _saYAnchor = _saIsFodder ? -17 : 0;
                   var _saOx = _saEntryDx * _saBodyRad + (Math.random() - 0.5) * 4;
-                  var _saOy = _saEntryDy * _saBodyRad + (Math.random() - 0.5) * 4;
+                  var _saOy = _saEntryDy * _saBodyRad + _saYAnchor + (Math.random() - 0.5) * 4;
                   m._stuckArrows.push({ ang: a.ang, ox: _saOx, oy: _saOy, isStaff: a.isStaff || false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
@@ -11563,10 +11573,14 @@ export var BroTown = function BroTown(_ref0) {
               ctx.stroke();
               ctx.setLineDash([]);
             }
-            /* §4 Monster HP bar + level badge — high contrast, immediately readable */
+            /* §4 Monster HP bar + level badge — high contrast, immediately readable.
+               Fodder slimes use the 50 px sprite (anchored at my+8 → top
+               at my-42) instead of a 16 px circle, so their bar needs to
+               sit higher than the bodySize-based default to clear the
+               sprite. */
             var hpPct = Math.max(0, m.curHp / (m.maxHp || m.hp || 1));
             var barW = bodySize > 12 ? 30 : 24;
-            var barY = my - bodySize - 8;
+            var barY = arch === 'fodder' ? my - 48 : my - bodySize - 8;
             /* Bar background with dark border */
             ctx.fillStyle = 'rgba(0,0,0,.7)';
             ctx.fillRect(mx - barW / 2 - 1, barY - 1, barW + 2, 6);
@@ -11660,6 +11674,10 @@ export var BroTown = function BroTown(_ref0) {
         if (S.monsters) {
           S.monsters.forEach(function (m) {
             if (!m.alive || !m._telegraphUntil) return;
+            /* Fodder slimes telegraph through their lunge animation and
+               the visible projectile, so the red cone reads as noise on
+               top of clearer cues — suppress for this archetype. */
+            if (m.archetype === 'fodder') return;
             var remaining = m._telegraphUntil - Date.now();
             if (remaining <= 0) return;
             var mx = (m.renderX !== undefined ? m.renderX : m.x) - cx,
