@@ -5415,21 +5415,10 @@ export var BroTown = function BroTown(_ref0) {
           if (S._dmgBuff && Date.now() < S._dmgBuff) pDmg *= 1.20;
           /* Hexer curse debuff — reduces damage by 30% */
           if (S._cursedUntil && Date.now() < S._cursedUntil) pDmg *= 0.7;
-          /* Swarm bleed tick — damage over time */
-          if (S._bleedUntil && Date.now() < S._bleedUntil) {
-            if (!S._lastBleedTick || Date.now() - S._lastBleedTick > 500) {
-              S._lastBleedTick = Date.now();
-              var bleedDmg = S._bleedDps || 1;
-              _R6.hp = Math.max(1, _R6.hp - bleedDmg);
-              S.dmgNumbers.push({
-                x: P.x + 8,
-                y: P.y - 15,
-                text: '-' + bleedDmg,
-                color: '#cc3333',
-                ts: Date.now()
-              });
-            }
-          }
+          /* Swarm bleed tick — removed (mosquito damage). Application
+             site at the swarm-attack branch is also disabled, so this
+             never fires in any new save. Old saves with leftover
+             _bleedUntil will simply have it ignored. */
           /* §2.1 Crit from Ferocity */
           var critChance = calcCritChance(_R6.ferocity);
           var critMult = calcCritMult(_R6.ferocity);
@@ -5764,7 +5753,7 @@ export var BroTown = function BroTown(_ref0) {
                         color: '#f5c542',
                         ts: Date.now()
                       });
-                      try { BT_AUDIO.play('monster-hit', { vol: 0.6 }); } catch (e) {}
+                      try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                       S.lastDamageTaken = Date.now();
                     } else if (distToP < slamRange && dodged) {
                       S.dmgNumbers.push({
@@ -5823,7 +5812,7 @@ export var BroTown = function BroTown(_ref0) {
                         color: '#a855f7',
                         ts: Date.now()
                       });
-                      try { BT_AUDIO.play('monster-hit', { vol: 0.6 }); } catch (e) {}
+                      try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                       S.lastDamageTaken = Date.now();
                     }
                   }
@@ -5906,7 +5895,7 @@ export var BroTown = function BroTown(_ref0) {
                     color: '#ea580c',
                     ts: Date.now()
                   });
-                  try { BT_AUDIO.play('monster-hit', { vol: 0.6 }); } catch (e) {}
+                  try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                   S.lastDamageTaken = Date.now();
                   S.screenShake = 6;
                   m._chargeUntil = 0; /* stop charging on hit */
@@ -6038,7 +6027,7 @@ export var BroTown = function BroTown(_ref0) {
                     });
                   } else {
                     _R6.hp -= dmgTaken;
-                    try { BT_AUDIO.play('monster-hit', { vol: 0.6 }); } catch (e) {}
+                    try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                     S.lastDamageTaken = Date.now();
                     /* GDD §1.2 Vitality: taking damage AND surviving.
                        Tracked as use-frequency; resolved on next kill. */
@@ -6076,11 +6065,12 @@ export var BroTown = function BroTown(_ref0) {
                       S.screenShake = Math.max(S.screenShake || 0, 6);
                       S._playerStunUntil = Date.now() + 300; /* brief stagger */
                     }
-                    if (arch === 'swarm') {
-                      /* Swarm: rapid weak hits — apply bleed (1% HP/s for 3s) */
-                      S._bleedUntil = Date.now() + 3000;
-                      S._bleedDps = Math.max(1, Math.ceil(_R6.maxHp * 0.01));
-                    }
+                    /* Swarm bleed DoT removed — at higher levels the
+                       1%-of-maxHp tick (every 500 ms for 3 s) read as
+                       phantom "mosquito" damage long after the player
+                       walked away from the swarm, with no visible
+                       source to associate it with. Removed per user
+                       request. */
                     if (arch === 'sentinel' && !shielded) {
                       /* Sentinel: armor-piercing — ignores 50% of block reduction */
                       var pierceDmg = Math.max(0, Math.floor(rawDmg * blockReduc * 0.5));
