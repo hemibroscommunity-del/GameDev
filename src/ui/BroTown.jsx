@@ -1292,16 +1292,24 @@ export var BroTown = function BroTown(_ref0) {
       east: 1006, north: 2008, northeast: 1503, south: 2000, southwest: 1998,
     };
     var JOG_FRAMES = 24;
+    /* Hit-react sheets: 6 frames × 64×64 each (384×64), played once over
+       250 ms (≈ 24 fps source) when the player takes damage. The character
+       is locked from movement/actions during this window — see the
+       playerStunned check in the input section. */
+    var HIT_FRAMES = 6;
+    var HIT_DURATION_MS = 250;
     var sheets = {};
     var dirs = ['east', 'north', 'northeast', 'south', 'southwest'];
-    var poses = ['stand', 'jog'];
+    var poses = ['stand', 'jog', 'hit'];
     var total = dirs.length * poses.length, loaded = 0;
     poses.forEach(function (pose) {
       dirs.forEach(function (dir) {
         var img = new Image();
         img.onload = function () {
-          var frames = pose === 'jog' ? JOG_FRAMES : 1;
-          var intervalMs = pose === 'jog' ? JOG_DURATION_MS[dir] / JOG_FRAMES : 1000;
+          var frames = pose === 'jog' ? JOG_FRAMES : pose === 'hit' ? HIT_FRAMES : 1;
+          var intervalMs = pose === 'jog' ? JOG_DURATION_MS[dir] / JOG_FRAMES
+                          : pose === 'hit' ? HIT_DURATION_MS / HIT_FRAMES
+                          : 1000;
           sheets[pose + '-' + dir] = { img: img, frames: frames, w: 64, intervalMs: intervalMs };
           loaded++;
           if (loaded === total) playerSpritesRef.current = sheets;
@@ -3253,7 +3261,7 @@ export var BroTown = function BroTown(_ref0) {
        responsive. The arc starts slightly cocked back (-30%) and sweeps
        through to +70% of SWING_ARC, biasing the visual toward forward. */
     var SWING_ANIM_MS = 250;
-    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize, weaponType, swingProgress, isBackpedaling) {
+    function drawSpriteCharacter(ctx, screenX, footY, facingAngle, isMoving, now, drawSize, weaponType, swingProgress, isBackpedaling, hitProgress) {
       if (window.__broUseSprites === false) return false;
       var sheets = playerSpritesRef.current;
       if (!sheets) return false;
@@ -3261,7 +3269,11 @@ export var BroTown = function BroTown(_ref0) {
       var a = ((facingAngle % tau) + tau) % tau;
       var idx = Math.round(a / (Math.PI / 4)) % 8;
       var info = SPRITE_DIR_MAP[idx];
-      var pose = isMoving ? 'jog' : 'stand';
+      /* Hit-react preempts jog/stand. Plays once across 0→1 progress
+         and clamps to the final frame when progress >= 1 (caller
+         normally stops passing hitProgress past that point, but the
+         clamp keeps the render stable on edge frames). */
+      var pose = (hitProgress != null) ? 'hit' : (isMoving ? 'jog' : 'stand');
       var sheet = sheets[pose + '-' + info.name];
       if (!sheet) return false;
       /* Stale-cache clamp on frame count. */
@@ -3270,7 +3282,13 @@ export var BroTown = function BroTown(_ref0) {
         : sheet.frames;
       var effFrames = Math.min(sheet.frames, maxFrames);
       var ivl = sheet.intervalMs || 90;
-      var frame = effFrames > 1 ? Math.floor(now / ivl) % effFrames : 0;
+      var frame;
+      if (pose === 'hit') {
+        var clamped = Math.max(0, Math.min(0.9999, hitProgress));
+        frame = Math.min(effFrames - 1, Math.floor(clamped * effFrames));
+      } else {
+        frame = effFrames > 1 ? Math.floor(now / ivl) % effFrames : 0;
+      }
       /* Reverse the cycle when backpedaling so legs appear to move in the
          opposite direction of forward jogging — same frames played in
          reverse, no separate sheet needed. */
@@ -3657,8 +3675,11 @@ export var BroTown = function BroTown(_ref0) {
         /* Live map reference — re-read each frame so zone transitions work */
         var map = S.map;
 
-        /* Check if player is stunned */
-        var playerStunned = S._playerStunUntil && Date.now() < S._playerStunUntil;
+        /* Check if player is stunned. Hit-react lockout (250 ms after
+           any damage) is folded in here so the player can't move or
+           act during the hit-reaction sprite. */
+        var _hitLockActive = S.lastDamageTaken && (Date.now() - S.lastDamageTaken) < 250;
+        var playerStunned = (S._playerStunUntil && Date.now() < S._playerStunUntil) || _hitLockActive;
 
         /* Movement — analog joystick + keyboard fallback */
         /* Dodge roll */
@@ -3671,8 +3692,10 @@ export var BroTown = function BroTown(_ref0) {
         }
         var dx = playerStunned ? 0 : S.stickX,
           dy = playerStunned ? 0 : S.stickY;
-        /* Keyboard overrides if no stick input */
-        if (dx === 0 && dy === 0) {
+        /* Keyboard overrides if no stick input — but ALSO gated by
+           playerStunned so the hit-react lockout can't be bypassed
+           with WASD/arrow keys. */
+        if (!playerStunned && dx === 0 && dy === 0) {
           if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
           if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
           if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
@@ -12881,7 +12904,15 @@ export var BroTown = function BroTown(_ref0) {
           var _swDt = Date.now() - S.swingTimer;
           if (_swDt >= 0 && _swDt < SWING_ANIM_MS) _swingProgress = _swDt / SWING_ANIM_MS;
         }
-        var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize, _wpnTypeForSprite, _swingProgress, !!S._backpedaling);
+        /* Hit-react: lastDamageTaken is set at every player-damage site,
+           so deriving the 250 ms anim progress from it gives one universal
+           trigger without instrumenting each damage call site. */
+        var _hitProgress = null;
+        if (S.lastDamageTaken) {
+          var _hitDt = Date.now() - S.lastDamageTaken;
+          if (_hitDt >= 0 && _hitDt < 250) _hitProgress = _hitDt / 250;
+        }
+        var _spriteDrawn = drawSpriteCharacter(ctx, px, _spriteFootY, _spriteFA, isMoving, now, _spriteSize, _wpnTypeForSprite, _swingProgress, !!S._backpedaling, _hitProgress);
 
         /* ═══ NFT CHECK — does this player have a processed avatar? ═══ */
         var _hasNftBody = false;
