@@ -5124,18 +5124,20 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   if (this._currentZoneAmbient === zoneId) return;
   this._currentZoneAmbient = zoneId;
   this.stopAmbient();
-  /* Zone music — HTMLAudio loop. Browser autoplay policy lets this
-     play after the first user tap (which already unlocked the
-     AudioContext). Volume kept low so it sits under SFX. */
+  /* Zone music — HTMLAudio loop. When a zone has a real composed
+     track, it REPLACES the procedural oscillator drone (early return
+     skips the oscillator setup below) so the player only hears the
+     intended track instead of two layers fighting each other. */
   try {
     var trackUrl = this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId];
     if (trackUrl) {
       var au = new Audio(trackUrl);
       au.loop = true;
-      au.volume = 0.35;
+      au.volume = 0.55;
       var p = au.play();
       if (p && p.catch) p.catch(function () { /* autoplay blocked — silent */ });
       this._zoneMusic = au;
+      return;
     }
   } catch (e) {}
   var zone = ZONES[zoneId];
