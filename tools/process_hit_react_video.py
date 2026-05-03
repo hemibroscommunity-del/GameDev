@@ -19,21 +19,26 @@ from pathlib import Path
 from PIL import Image
 
 FRAMES = 6
-FPS = 24
 SIZE = 64
 SAT_THRESH = 25
 PAD = 3
 CHAR_HEIGHT_FRAC = 0.78  # match jog/stand character height as fraction of canvas
 FOOT_PAD_FRAC = 0.09     # leave a few px of empty ground under feet so shadow lines up
+BG_BRIGHTNESS_MIN = 200  # only key low-sat pixels brighter than this (preserves black outlines)
 
 
-def extract_frames(src: Path, n: int, fps: int, tmpdir: Path) -> list[Path]:
-    """Sample n frames from the start of the video at the given fps."""
-    duration = (n - 0.5) / fps
+def extract_frames(src: Path, n: int, start_s: float, end_s: float, tmpdir: Path) -> list[Path]:
+    """Sample n frames evenly distributed across [start_s, end_s] of the video.
+    Extracts at a slightly higher rate than n/duration to dodge ffmpeg's
+    fps-filter rounding (which can drop the last sample), then keeps only the
+    first n outputs."""
+    duration = max(0.001, end_s - start_s)
+    fps = (n + 0.5) / duration  # over-sample ~0.5 frame
     cmd = [
         "ffmpeg", "-y", "-loglevel", "error",
+        "-ss", f"{start_s:.4f}",
         "-i", str(src),
-        "-ss", "0", "-t", f"{duration:.4f}",
+        "-t", f"{duration + 0.2:.4f}",
         "-vf", f"fps={fps}",
         "-vsync", "0",
         str(tmpdir / "frame_%03d.png"),
@@ -46,7 +51,14 @@ def extract_frames(src: Path, n: int, fps: int, tmpdir: Path) -> list[Path]:
 
 
 def is_background(r: int, g: int, b: int) -> bool:
-    return (max(r, g, b) - min(r, g, b)) <= SAT_THRESH
+    """Background = low saturation AND bright. The brightness floor
+    preserves dark/black outlines (low-sat but dark) on the character,
+    which the previous saturation-only check was wiping along with
+    the white background."""
+    sat = max(r, g, b) - min(r, g, b)
+    if sat > SAT_THRESH:
+        return False
+    return max(r, g, b) >= BG_BRIGHTNESS_MIN
 
 
 def remove_background(img: Image.Image) -> Image.Image:
@@ -111,10 +123,10 @@ def fit_to_canvas(img: Image.Image, size: int) -> Image.Image:
     return canvas
 
 
-def process(src: Path, dst: Path) -> None:
+def process(src: Path, dst: Path, start_s: float, end_s: float) -> None:
     with tempfile.TemporaryDirectory() as td:
         tmpdir = Path(td)
-        frame_paths = extract_frames(src, FRAMES, FPS, tmpdir)
+        frame_paths = extract_frames(src, FRAMES, start_s, end_s, tmpdir)
         keyed = [remove_background(Image.open(p)) for p in frame_paths]
         bboxes = []
         for img in keyed:
@@ -138,6 +150,8 @@ def process(src: Path, dst: Path) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        sys.exit("usage: process_hit_react_video.py <src.mov> <dst.png>")
-    process(Path(sys.argv[1]), Path(sys.argv[2]))
+    if len(sys.argv) not in (3, 5):
+        sys.exit("usage: process_hit_react_video.py <src.mov> <dst.png> [start_s end_s]")
+    start_s = float(sys.argv[3]) if len(sys.argv) == 5 else 0.0
+    end_s = float(sys.argv[4]) if len(sys.argv) == 5 else 0.25
+    process(Path(sys.argv[1]), Path(sys.argv[2]), start_s, end_s)
