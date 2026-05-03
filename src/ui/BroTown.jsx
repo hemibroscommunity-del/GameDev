@@ -1345,15 +1345,16 @@ export var BroTown = function BroTown(_ref0) {
       .then(function (j) { if (j) weaponHandlesRef.current = j; })
       .catch(function () { /* missing — fall back to bottom-center */ });
 
-    /* Slime monster sprites — idle bob loop + death splash.  Filenames
-       suffixed -v2 to bust Cloudflare/browser cache so the new sprites
-       are guaranteed-fresh after the asset rebuild. */
+    /* Slime monster sprites — idle bob loop + death splash.  Sheets are
+       128 px tall; renderer reads frame count from naturalWidth / 128
+       so we can swap in new sheets with different frame counts without
+       touching render code (v4 was 8 frames, v5 is 24 frames). */
     var slimeIdle = new Image();
     slimeIdle.onload = function () { slimeIdleImgRef.current = slimeIdle; };
-    slimeIdle.src = '/sprites/monsters/slime-idle-v4.png';
+    slimeIdle.src = '/sprites/monsters/slime-idle-v5.png';
     var slimeDeath = new Image();
     slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
-    slimeDeath.src = '/sprites/monsters/slime-death-v4.png';
+    slimeDeath.src = '/sprites/monsters/slime-death-v5.png';
     /* Shoot/attack animation — same 8-frame sheet shape as idle/death.
        Plays briefly when the slime lunges at the player so the attack
        cadence reads visually. */
@@ -10894,18 +10895,20 @@ export var BroTown = function BroTown(_ref0) {
                 try { BT_AUDIO.play('slime-death', { vol: 0.85 }); } catch (e) {}
               }
               if (m._slimeDeathStart != null) {
+                var _dImg = slimeDeathImgRef.current;
+                var _dFrames = (_dImg && _dImg.naturalWidth >= 128) ? Math.floor(_dImg.naturalWidth / 128) : 8;
                 var _dT = now - m._slimeDeathStart;
-                var _dDur = 900; /* total anim time in ms (8 frames × 112 ms) */
+                var _dDur = _dFrames * 80; /* ~80 ms per frame keeps pacing consistent across frame counts */
                 if (_dT >= 0 && _dT < _dDur) {
                   var _dmx = (m.renderX !== undefined ? m.renderX : m.x) - cx;
                   var _dmy = (m.renderY !== undefined ? m.renderY : m.y) - cy;
                   if (_dmx >= -60 && _dmx <= W + 60 && _dmy >= -60 && _dmy <= H + 60) {
-                    var _df = Math.min(7, Math.floor((_dT / _dDur) * 8));
+                    var _df = Math.min(_dFrames - 1, Math.floor((_dT / _dDur) * _dFrames));
                     var _dSize = 50;
                     var _dBody = 8; /* fodder bodySize — match idle anchor */
-                    if (slimeDeathImgRef.current && slimeDeathImgRef.current.naturalWidth > 0) {
+                    if (_dImg && _dImg.naturalWidth > 0) {
                       ctx.drawImage(
-                        slimeDeathImgRef.current,
+                        _dImg,
                         _df * 128, 0, 128, 128,
                         _dmx - _dSize / 2, _dmy + _dBody - _dSize, _dSize, _dSize
                       );
@@ -11122,7 +11125,7 @@ export var BroTown = function BroTown(_ref0) {
               var _shootingNow = m._shootAnimEnd && now < m._shootAnimEnd && slimeShootImgRef.current;
               var _slimeImg = _shootingNow ? slimeShootImgRef.current : slimeIdleImgRef.current;
               if (_slimeImg) {
-                var _SLIME_FRAMES = 8;
+                var _SLIME_FRAMES = (_slimeImg.naturalWidth >= 128) ? Math.floor(_slimeImg.naturalWidth / 128) : 8;
                 var _SLIME_FRAME_MS = 120;
                 var _slimeFrame;
                 if (_shootingNow) {
