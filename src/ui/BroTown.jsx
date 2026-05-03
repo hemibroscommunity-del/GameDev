@@ -1994,11 +1994,16 @@ export var BroTown = function BroTown(_ref0) {
                  this just suppresses the visual "ghost hit" in the
                  normal case. */
               var atkSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
-              if (!atkSrc) {
+              /* Prefer the server's authoritative position (payload.attackerX/Y)
+                 over the local snapshot — the server's view is what decided the
+                 attack should fire, and the snapshot can lag a few ticks. */
+              var _atkX = (typeof payload.attackerX === 'number') ? payload.attackerX : (atkSrc ? atkSrc.x : null);
+              var _atkY = (typeof payload.attackerY === 'number') ? payload.attackerY : (atkSrc ? atkSrc.y : null);
+              if (_atkX == null || _atkY == null) {
                 try { console.log('[dmg] net-monster_attack DROPPED (unknown attacker)', { monsterId: payload.monsterId }); } catch (e) {}
                 break;
               }
-              var _atkDx = atkSrc.x - S.player.x, _atkDy = atkSrc.y - S.player.y;
+              var _atkDx = _atkX - S.player.x, _atkDy = _atkY - S.player.y;
               var _atkDist = Math.sqrt(_atkDx * _atkDx + _atkDy * _atkDy);
               if (_atkDist > 160) {
                 try { console.log('[dmg] net-monster_attack DROPPED (out of range)', { monsterId: payload.monsterId, dist: Math.round(_atkDist) }); } catch (e) {}
@@ -2008,7 +2013,7 @@ export var BroTown = function BroTown(_ref0) {
               /* Apply player defense */
               var pDef2 = (R2.endurance || 0) * 0.5 + ((R2.armor ? R2.armor.tierMult : 1) || 1) * 3;
               var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);
-              var inArc = atkSrc ? isAttackInShieldArc(S, atkSrc.x, atkSrc.y) : true;
+              var inArc = isAttackInShieldArc(S, _atkX, _atkY);
               if (S._shieldUp && inArc) {
                 var blockRed = calcBlockReduction ? calcBlockReduction(R2.fortification || 0, R2.shield) : 0.25;
                 var preBlock = dmgTaken2;
