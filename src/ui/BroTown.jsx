@@ -3675,11 +3675,16 @@ export var BroTown = function BroTown(_ref0) {
         /* Live map reference — re-read each frame so zone transitions work */
         var map = S.map;
 
-        /* Check if player is stunned. Hit-react lockout (250 ms after
-           any damage) is folded in here so the player can't move or
-           act during the hit-reaction sprite. */
+        /* Check if player is stunned. Two flavors:
+           - _realStunned: true gameplay stun (hexer, brute stagger, etc.).
+             Used for the stun-indicator UI (dark overlay + stars + STUNNED
+             text) so the indicator only shows for actual stuns.
+           - playerStunned: folds in the 250 ms hit-react lockout so input
+             (joystick + keyboard + auto-attack) is suppressed during the
+             hit-reaction sprite without triggering the stun visual. */
         var _hitLockActive = S.lastDamageTaken && (Date.now() - S.lastDamageTaken) < 250;
-        var playerStunned = (S._playerStunUntil && Date.now() < S._playerStunUntil) || _hitLockActive;
+        var _realStunned = S._playerStunUntil && Date.now() < S._playerStunUntil;
+        var playerStunned = _realStunned || _hitLockActive;
 
         /* Movement — analog joystick + keyboard fallback */
         /* Dodge roll */
@@ -12834,19 +12839,14 @@ export var BroTown = function BroTown(_ref0) {
           });
         }
 
-        /* Player shadow — suppressed during hit-react. The hit anim
-           shifts the character's footing (recoil/kick/lean) so the
-           normal foot-anchored shadow stops lining up with the visible
-           feet and reads as a stray dark circle floating under the
-           sprite. Skipping the shadow for the 250 ms window keeps the
-           reaction clean. */
-        var _hitShadowSuppress = S.lastDamageTaken && (Date.now() - S.lastDamageTaken) < 250;
-        if (!_hitShadowSuppress) {
-          ctx.fillStyle = 'rgba(0,0,0,.18)';
-          ctx.beginPath();
-          ctx.ellipse(px, py + (_slim ? 24 : 42), _slim ? 10 : 18, _slim ? 4 : 6, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
+        /* Player shadow — always rendered. (Earlier I gated this behind
+           the hit-react window thinking the user-reported "dark circle"
+           was the shadow; turned out to be the stunned-indicator dark
+           overlay, which is now correctly limited to real stuns only.) */
+        ctx.fillStyle = 'rgba(0,0,0,.18)';
+        ctx.beginPath();
+        ctx.ellipse(px, py + (_slim ? 24 : 42), _slim ? 10 : 18, _slim ? 4 : 6, 0, 0, Math.PI * 2);
+        ctx.fill();
 
         /* Facing direction — read pre-computed values from simulation phase */
         var dir = S._facing || 'down';
@@ -13779,8 +13779,10 @@ export var BroTown = function BroTown(_ref0) {
           ctx.globalAlpha = 1;
           ctx.restore();
         }
-        /* Stunned indicator — obvious with countdown */
-        if (playerStunned) {
+        /* Stunned indicator — obvious with countdown. Only shows for
+           real gameplay stuns (_realStunned), not for the brief 250 ms
+           hit-react lockout — that one has its own sprite anim. */
+        if (_realStunned) {
           var stunLeft = Math.max(0, ((S._playerStunUntil || 0) - Date.now()) / 1000);
           /* Dark overlay on character */
           ctx.fillStyle = 'rgba(0,0,0,.3)';
