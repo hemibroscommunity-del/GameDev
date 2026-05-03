@@ -9734,45 +9734,43 @@ export var BroTown = function BroTown(_ref0) {
           }
         });
 
-        /* ═══ ZONE EXIT LABELS — show where paths lead ═══ */
+        /* ═══ ZONE EXIT LABELS — show where paths lead ═══
+           Labels render in WHITE on the BLACK out-of-bounds area just
+           past the corresponding edge/corner. Every one of the 8 town
+           exits gets a label (was only N/E/S/W before; the diagonals
+           had no label). textAlign is set per-label so corner labels
+           extend INTO the OOB region rather than overlapping the map. */
         if (S.currentZone === 'town') {
+          var _zwT = ZONES.town.w, _zhT = ZONES.town.h;
+          ctx.save();
           TOWN_EXITS.forEach(function (ex) {
             var _ZONES$ex$zoneId;
-            var lx, ly;
-            if (ex.dir === 'north') {
-              lx = ex.tx * TILE + TILE - cx;
-              ly = TILE * 1.5 - cy;
-            }
-            if (ex.dir === 'south') {
-              lx = ex.tx * TILE + TILE - cx;
-              ly = (ZONES.town.h - 2) * TILE - cy;
-            }
-            if (ex.dir === 'east') {
-              lx = (ZONES.town.w - 2) * TILE - cx;
-              ly = ex.ty * TILE + TILE - cy;
-            }
-            if (ex.dir === 'west') {
-              lx = TILE * 2 - cx;
-              ly = ex.ty * TILE + TILE - cy;
-            }
-            if (lx < -80 || lx > W + 80 || ly < -30 || ly > H + 30) return;
-            /* Glowing label */
-            ctx.font = 'bold 9px "Space Mono", monospace';
-            ctx.textAlign = 'center';
-            var pulse = Math.sin(now / 500) * 0.2 + 0.8;
-            ctx.fillStyle = ex.color;
-            ctx.globalAlpha = pulse;
-            ctx.fillText(ex.label, lx, ly);
+            var lx, ly, align = 'center';
+            var d = ex.dir;
+            if (d === 'north')      { lx = (ex.tx + 1) * TILE - cx; ly = -TILE * 1.0 - cy; }
+            else if (d === 'south') { lx = (ex.tx + 1) * TILE - cx; ly = (_zhT + 1.4) * TILE - cy; }
+            else if (d === 'east')  { lx = (_zwT + 0.5) * TILE - cx; ly = (ex.ty + 1) * TILE - cy; align = 'left'; }
+            else if (d === 'west')  { lx = -TILE * 0.5 - cx;          ly = (ex.ty + 1) * TILE - cy; align = 'right'; }
+            else if (d === 'ne')    { lx = (_zwT + 0.5) * TILE - cx; ly = -TILE * 0.4 - cy; align = 'left'; }
+            else if (d === 'nw')    { lx = -TILE * 0.5 - cx;          ly = -TILE * 0.4 - cy; align = 'right'; }
+            else if (d === 'se')    { lx = (_zwT + 0.5) * TILE - cx; ly = (_zhT + 1.0) * TILE - cy; align = 'left'; }
+            else if (d === 'sw')    { lx = -TILE * 0.5 - cx;          ly = (_zhT + 1.0) * TILE - cy; align = 'right'; }
+            else return;
+            /* Off-screen cull (give horizontal slack for left/right labels) */
+            if (lx < -240 || lx > W + 240 || ly < -50 || ly > H + 50) return;
+            ctx.textAlign = align;
+            /* Zone name in white, 11px */
+            ctx.font = 'bold 11px "Space Mono", monospace';
+            ctx.fillStyle = '#fff';
             ctx.globalAlpha = 1;
-            /* Element icon */
-            var elem = (_ZONES$ex$zoneId = ZONES[ex.zoneId]) === null || _ZONES$ex$zoneId === void 0 ? void 0 : _ZONES$ex$zoneId.element;
-            if (elem) {
-              var lvl = ZONES[ex.zoneId].level;
-              ctx.font = '7px sans-serif';
-              ctx.fillStyle = 'rgba(255,255,255,.5)';
-              ctx.fillText('Lv' + lvl[0] + '-' + lvl[1], lx, ly + 10);
-            }
+            ctx.fillText(ex.label, lx, ly);
+            /* Level range underneath, dimmer */
+            var lvl = ZONES[ex.zoneId].level;
+            ctx.font = '8px sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,.55)';
+            ctx.fillText('Lv ' + lvl[0] + '-' + lvl[1], lx, ly + 12);
           });
+          ctx.restore();
         } else {
           /* In combat zones — show single "TOWN" sign at return exit */
           var _zone5 = ZONES[S.currentZone];
@@ -10805,6 +10803,10 @@ export var BroTown = function BroTown(_ref0) {
 
         /* ═══ RENDER & TICK GATHERING NODES — §18 Life Skills ═══ */
         if (S.gatherNodes) {
+          /* Map-bounds for the OOB clip below — live S.map dims so
+             harvestable resources never render in the black border. */
+          var _gnMapPxW = ((S.map && S.map[0] && S.map[0].length) || 0) * TILE;
+          var _gnMapPxH = ((S.map && S.map.length) || 0) * TILE;
           S.gatherNodes.forEach(function (node) {
             var _RESOURCE_TIERS$Math$;
             /* Respawn check */
@@ -10816,6 +10818,12 @@ export var BroTown = function BroTown(_ref0) {
               return;
             }
             node._hitThisSwing = false; /* reset per frame */
+
+            /* Hard OOB clip — never draw a node whose world position
+               falls past the map's tile grid. Also handles legacy
+               saves where nodes were spawned with the old 5-tile
+               margin and could land closer to the edge than expected. */
+            if (_gnMapPxW > 0 && (node.x < 0 || node.y < 0 || node.x >= _gnMapPxW || node.y >= _gnMapPxH)) return;
 
             var nx = node.x - cx,
               ny = node.y - cy;

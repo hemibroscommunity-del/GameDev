@@ -159,7 +159,10 @@ export function spawnGatherNodes(zoneId, depth) {
   const dc = DEPTH_CONFIG[depth || 'shallow'];
   const nodes = [];
   const W = zone.w * TILE, H = zone.h * TILE;
-  const margin = 5 * TILE;
+  /* 8-tile inset from every edge so harvestable resources stay
+     comfortably inside the playable map and never appear in the
+     out-of-bounds black border. */
+  const margin = 8 * TILE;
   const totalNodes = dc.nodeCount;
   const treeCt = Math.ceil(totalNodes * 0.4);
   const fishCt = Math.ceil(totalNodes * 0.25);
