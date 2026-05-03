@@ -5120,26 +5120,53 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     } catch (e) {}
   }
 }, "_ambientOsc", null), "_ambientGain", null), "_ambientLfo", null), "_currentZoneAmbient", null), "_ambientOsc2", null), "_ambientGain2", null), "_ambientLfo2", null), "startZoneAmbient", function startZoneAmbient(zoneId) {
-  if (!this.ctx || this.muted) return;
-  if (this._currentZoneAmbient === zoneId) return;
+  /* DIAGNOSTIC INSTRUMENTATION — temporary, remove once frost-zone
+     music is confirmed playing. Logs the full state at every decision
+     point so a single browser-console capture pinpoints which failure
+     mode (ctx-null, autoplay-block, manifest-miss, stale-cache, etc.)
+     is hitting. See plans/frozen-shore-still-does-spicy-popcorn.md. */
+  try {
+    console.log('[zone-ambient] called', {
+      zoneId: zoneId,
+      ctx: !!this.ctx,
+      ctxState: this.ctx && this.ctx.state,
+      muted: this.muted,
+      currentZoneAmbient: this._currentZoneAmbient,
+      manifestHit: !!(this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId]),
+      trackUrl: this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId],
+    });
+  } catch (e) {}
+  /* Mute is a hard gate; ctx-null is NOT — HTMLAudio music can play
+     before BT_AUDIO.init() has run. The previous structure bailed on
+     ctx-null before reaching the music path, which silently blocked
+     the frost track on first entry if init hadn't fired yet. */
+  if (this.muted) { try { console.log('[zone-ambient] EARLY-RETURN muted'); } catch (e) {} return; }
+  if (this._currentZoneAmbient === zoneId) { try { console.log('[zone-ambient] EARLY-RETURN already-current'); } catch (e) {} return; }
   this._currentZoneAmbient = zoneId;
   this.stopAmbient();
   /* Zone music — HTMLAudio loop. When a zone has a real composed
      track, it REPLACES the procedural oscillator drone (early return
      skips the oscillator setup below) so the player only hears the
-     intended track instead of two layers fighting each other. */
-  try {
-    var trackUrl = this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId];
-    if (trackUrl) {
+     intended track instead of two layers fighting each other.
+     Independent of the WebAudio ctx — runs even pre-init. */
+  var trackUrl = this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId];
+  if (trackUrl) {
+    try {
       var au = new Audio(trackUrl);
       au.loop = true;
       au.volume = 0.55;
+      try { console.log('[zone-ambient] music attempting play', trackUrl); } catch (e) {}
       var p = au.play();
-      if (p && p.catch) p.catch(function () { /* autoplay blocked — silent */ });
+      if (p && p.then) {
+        p.then(function () { try { console.log('[zone-ambient] music PLAYING ok'); } catch (e) {} })
+         .catch(function (err) { try { console.log('[zone-ambient] music REJECTED', err && err.name, err && err.message); } catch (e) {} });
+      }
       this._zoneMusic = au;
-      return;
-    }
-  } catch (e) {}
+    } catch (e) { try { console.log('[zone-ambient] music THREW', e && e.message); } catch (e2) {} }
+    return;
+  }
+  /* Procedural drone — requires WebAudio. Skip if init hasn't run. */
+  if (!this.ctx) { try { console.log('[zone-ambient] EARLY-RETURN ctx-null (no music for this zone)'); } catch (e) {} return; }
   var zone = ZONES[zoneId];
   if (!zone) return;
   try {
