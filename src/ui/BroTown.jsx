@@ -1350,16 +1350,16 @@ export var BroTown = function BroTown(_ref0) {
        are guaranteed-fresh after the asset rebuild. */
     var slimeIdle = new Image();
     slimeIdle.onload = function () { slimeIdleImgRef.current = slimeIdle; };
-    slimeIdle.src = '/sprites/monsters/slime-idle-v3.png';
+    slimeIdle.src = '/sprites/monsters/slime-idle-v4.png';
     var slimeDeath = new Image();
     slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
-    slimeDeath.src = '/sprites/monsters/slime-death-v3.png';
+    slimeDeath.src = '/sprites/monsters/slime-death-v4.png';
     /* Shoot/attack animation — same 8-frame sheet shape as idle/death.
        Plays briefly when the slime lunges at the player so the attack
        cadence reads visually. */
     var slimeShoot = new Image();
     slimeShoot.onload = function () { slimeShootImgRef.current = slimeShoot; };
-    slimeShoot.src = '/sprites/monsters/slime-shoot-v1.png';
+    slimeShoot.src = '/sprites/monsters/slime-shoot-v2.png';
 
     /* Themed-zone ground swatches — 64×64 procedural noise tiles
        generated at runtime per zone palette so they tile seamlessly
@@ -10893,19 +10893,30 @@ export var BroTown = function BroTown(_ref0) {
                    BT_AUDIO.SFX_MANIFEST → /audio/slime-death-v2.mp3. */
                 try { BT_AUDIO.play('slime-death', { vol: 0.85 }); } catch (e) {}
               }
-              if (m._slimeDeathStart != null && slimeDeathImgRef.current) {
+              if (m._slimeDeathStart != null) {
                 var _dT = now - m._slimeDeathStart;
-                if (_dT >= 0 && _dT < 600) {
+                var _dDur = 900; /* total anim time in ms (8 frames × 112 ms) */
+                if (_dT >= 0 && _dT < _dDur) {
                   var _dmx = (m.renderX !== undefined ? m.renderX : m.x) - cx;
                   var _dmy = (m.renderY !== undefined ? m.renderY : m.y) - cy;
                   if (_dmx >= -60 && _dmx <= W + 60 && _dmy >= -60 && _dmy <= H + 60) {
-                    var _df = Math.min(7, Math.floor(_dT / 75));
-                    var _dSize = 56;
-                    ctx.drawImage(
-                      slimeDeathImgRef.current,
-                      _df * 128, 0, 128, 128,
-                      _dmx - _dSize / 2, _dmy - _dSize / 2, _dSize, _dSize
-                    );
+                    var _df = Math.min(7, Math.floor((_dT / _dDur) * 8));
+                    var _dSize = 50;
+                    var _dBody = 8; /* fodder bodySize — match idle anchor */
+                    if (slimeDeathImgRef.current && slimeDeathImgRef.current.naturalWidth > 0) {
+                      ctx.drawImage(
+                        slimeDeathImgRef.current,
+                        _df * 128, 0, 128, 128,
+                        _dmx - _dSize / 2, _dmy + _dBody - _dSize, _dSize, _dSize
+                      );
+                    } else {
+                      /* Fallback splat — fades out, scales down */
+                      var _fa = 1 - _dT / _dDur;
+                      ctx.fillStyle = 'rgba(80,170,60,' + _fa.toFixed(2) + ')';
+                      ctx.beginPath();
+                      ctx.ellipse(_dmx, _dmy + _dBody - 4, 14 * _fa, 6 * _fa, 0, 0, Math.PI * 2);
+                      ctx.fill();
+                    }
                   }
                 }
               }
