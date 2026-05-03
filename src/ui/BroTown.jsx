@@ -8326,16 +8326,9 @@ export var BroTown = function BroTown(_ref0) {
                       size: 1 + Math.random() * 2.2,
                     });
                   }
-                  /* Burn mark on the body — element-tinted scorch. */
-                  if (!m._burnMarks) m._burnMarks = [];
-                  if (m._burnMarks.length < 10) {
-                    m._burnMarks.push({
-                      ox: (Math.random() - 0.5) * 10,
-                      oy: (Math.random() - 0.5) * 10,
-                      color: _orbColor,
-                      ts: Date.now(),
-                    });
-                  }
+                  /* Burn marks removed per user request — the orb-crash
+                     ring + dissipation particles already convey the hit
+                     without a residue overlay on the body. */
                 }
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
                 m.x += Math.cos(kba) * 5;
@@ -8503,6 +8496,7 @@ export var BroTown = function BroTown(_ref0) {
             var pBlockReduc = pShielded ? calcBlockReduction(_R6P.fortification, _R6P.shield) : 0;
             var pDmg = pShielded ? Math.max(1, Math.floor(proj.rawDmg * (1 - pBlockReduc))) : proj.rawDmg;
             _R6P.hp -= pDmg;
+            try { BT_AUDIO.play('slime-projectile-hit', { vol: 0.7 }); } catch (e) {}
             S.lastDamageTaken = Date.now();
             if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', pDmg);
             S.dmgNumbers.push({
@@ -11522,34 +11516,9 @@ export var BroTown = function BroTown(_ref0) {
               });
             }
 
-            /* ═══ BURN MARKS — magic / staff hits ═══
-               Fade out and drop after 800 ms so the element-tinted
-               cores don't accumulate forever on every monster you
-               magic-hit (was permanent, capped at 10 per monster).
-               Without this, killing a row of venom-element slimes
-               leaves green burn-mark dots behind on each body that
-               read collectively as a green tint on the screen. */
-            if (m._burnMarks && m._burnMarks.length > 0) {
-              var _bmNow = Date.now();
-              m._burnMarks = m._burnMarks.filter(function (bm) { return _bmNow - (bm.ts || 0) < 800; });
-              m._burnMarks.forEach(function (bm) {
-                var _bmAge = (_bmNow - (bm.ts || 0)) / 800;
-                var _bmFade = Math.max(0, 1 - _bmAge);
-                var bmx = mx + bm.ox, bmy = my + bm.oy;
-                /* Outer scorch (dark) */
-                ctx.fillStyle = 'rgba(20, 10, 10, ' + (0.55 * _bmFade).toFixed(2) + ')';
-                ctx.beginPath();
-                ctx.arc(bmx, bmy, 4, 0, Math.PI * 2);
-                ctx.fill();
-                /* Inner element-tinted core */
-                ctx.globalAlpha = _bmFade;
-                ctx.fillStyle = bm.color + '80';
-                ctx.beginPath();
-                ctx.arc(bmx, bmy, 2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
-              });
-            }
+            /* Burn marks render removed — see the spawn-side comment
+               at the staff orb-crash code. Marks no longer get pushed,
+               so this render block became dead code. */
 
             /* ═══ SLASH MARKS — sword swing hits ═══
                Fade out and drop after 350 ms so the white cut doesn't
