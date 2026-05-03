@@ -11231,7 +11231,7 @@ export var BroTown = function BroTown(_ref0) {
                    new Audio().play() calls in this render-loop
                    context). The 'slime-death' key is registered in
                    BT_AUDIO.SFX_MANIFEST → /audio/slime-death-v2.mp3. */
-                try { BT_AUDIO.play('slime-death', { vol: 0.85 }); } catch (e) {}
+                try { BT_AUDIO.play('slime-death', { vol: 0.425 }); } catch (e) {}
               }
               if (m._slimeDeathStart != null) {
                 var _dImg = slimeDeathImgRef.current;

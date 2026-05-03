@@ -5156,7 +5156,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
         var gain = self.ctx.createGain();
         src.buffer = buf;
         src.loop = true;
-        gain.gain.value = 0.55;
+        gain.gain.value = 0.275; /* halved 0.55 → 0.275 so zone music sits as ambient under SFX */
         src.connect(gain);
         gain.connect(self.ctx.destination);
         src.start(0);
