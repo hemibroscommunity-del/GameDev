@@ -8543,20 +8543,52 @@ export var BroTown = function BroTown(_ref0) {
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
             if (pdx * pdx + pdy * pdy > 16 * 16) return true;
             if (_pInvuln) return false;
+            /* Shield blocks slime projectiles outright — no damage,
+               no hit-react, plays the metal-clang shield-block SFX,
+               same as the melee block paths. (Previously the projectile
+               got reduced damage and still triggered the hit-react +
+               the wrong sound.) */
             var pShielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, proj.x, proj.y);
-            var pBlockReduc = pShielded ? calcBlockReduction(_R6P.fortification, _R6P.shield) : 0;
-            var pDmg = pShielded ? Math.max(1, Math.floor(proj.rawDmg * (1 - pBlockReduc))) : proj.rawDmg;
-            _R6P.hp -= pDmg;
+            if (pShielded) {
+              try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+              S.dmgNumbers.push({
+                x: P.x, y: P.y - 20,
+                text: '🛡️ Blocked!',
+                color: '#60a5fa',
+                ts: Date.now(),
+              });
+              S.screenShake = Math.max(S.screenShake || 0, 3);
+              S._blockFlash = Date.now();
+              if (!S._impactRings) S._impactRings = [];
+              S._impactRings.push({
+                x: P.x, y: P.y, ts: Date.now(),
+                color: '#60a5fa', maxR: 25, duration: 200,
+              });
+              for (var _bp = 0; _bp < 8; _bp++) {
+                var _bpA = Math.atan2(P.y - proj.y, P.x - proj.x) + (Math.random() - 0.5) * 1.5;
+                S.hitParticles.push({
+                  x: P.x + Math.cos(_bpA) * 16,
+                  y: P.y + Math.sin(_bpA) * 16,
+                  vx: Math.cos(_bpA) * (1 + Math.random() * 3),
+                  vy: Math.sin(_bpA) * (1 + Math.random() * 3) - 1,
+                  life: 0.5,
+                  color: ['#60a5fa', '#93c5fd', '#fff'][Math.floor(Math.random() * 3)],
+                  size: 1.5 + Math.random(),
+                });
+              }
+              return false;
+            }
+            _R6P.hp -= proj.rawDmg;
             try { BT_AUDIO.play('slime-projectile-hit', { vol: 0.7 }); } catch (e) {}
             S.lastDamageTaken = Date.now();
-            if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', pDmg);
+            if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', proj.rawDmg);
             S.dmgNumbers.push({
               x: P.x, y: P.y - 20,
-              text: pShielded ? '🛡️ -' + pDmg : '-' + pDmg,
-              color: pShielded ? '#60a5fa' : '#fff',
+              text: '-' + proj.rawDmg,
+              color: '#fff',
               ts: Date.now(),
             });
-            S.screenShake = Math.max(S.screenShake || 0, pShielded ? 3 : 4);
+            S.screenShake = Math.max(S.screenShake || 0, 4);
             for (var _hp = 0; _hp < 6; _hp++) {
               var _hpA = Math.random() * Math.PI * 2;
               S.hitParticles.push({
