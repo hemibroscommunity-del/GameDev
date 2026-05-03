@@ -1316,7 +1316,7 @@ export var BroTown = function BroTown(_ref0) {
         };
         img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
         /* Cache-buster: bump v= each time sheet content or frame count changes. */
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=7';
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=8';
       });
     });
 
@@ -12834,11 +12834,19 @@ export var BroTown = function BroTown(_ref0) {
           });
         }
 
-        /* Player shadow */
-        ctx.fillStyle = 'rgba(0,0,0,.18)';
-        ctx.beginPath();
-        ctx.ellipse(px, py + (_slim ? 24 : 42), _slim ? 10 : 18, _slim ? 4 : 6, 0, 0, Math.PI * 2);
-        ctx.fill();
+        /* Player shadow — suppressed during hit-react. The hit anim
+           shifts the character's footing (recoil/kick/lean) so the
+           normal foot-anchored shadow stops lining up with the visible
+           feet and reads as a stray dark circle floating under the
+           sprite. Skipping the shadow for the 250 ms window keeps the
+           reaction clean. */
+        var _hitShadowSuppress = S.lastDamageTaken && (Date.now() - S.lastDamageTaken) < 250;
+        if (!_hitShadowSuppress) {
+          ctx.fillStyle = 'rgba(0,0,0,.18)';
+          ctx.beginPath();
+          ctx.ellipse(px, py + (_slim ? 24 : 42), _slim ? 10 : 18, _slim ? 4 : 6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
         /* Facing direction — read pre-computed values from simulation phase */
         var dir = S._facing || 'down';

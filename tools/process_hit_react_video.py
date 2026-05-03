@@ -23,6 +23,8 @@ FPS = 24
 SIZE = 64
 SAT_THRESH = 25
 PAD = 3
+CHAR_HEIGHT_FRAC = 0.78  # match jog/stand character height as fraction of canvas
+FOOT_PAD_FRAC = 0.09     # leave a few px of empty ground under feet so shadow lines up
 
 
 def extract_frames(src: Path, n: int, fps: int, tmpdir: Path) -> list[Path]:
@@ -87,13 +89,25 @@ def union_bbox(boxes: list[tuple[int, int, int, int]]) -> tuple[int, int, int, i
 
 
 def fit_to_canvas(img: Image.Image, size: int) -> Image.Image:
+    """Scale to CHAR_HEIGHT_FRAC of canvas height and anchor at the bottom
+    (with FOOT_PAD_FRAC under the feet) so the character has proportions
+    similar to the existing jog/stand sheets — full-canvas-fit was making
+    hit sprites visibly oversized vs jog/stand."""
     w, h = img.size
-    scale = min(size / w, size / h)
+    target_h = int(round(size * CHAR_HEIGHT_FRAC))
+    scale = target_h / h
     new_w = max(1, int(round(w * scale)))
     new_h = max(1, int(round(h * scale)))
+    if new_w > size:
+        scale *= size / new_w
+        new_w = size
+        new_h = max(1, int(round(h * scale)))
     resized = img.resize((new_w, new_h), Image.LANCZOS)
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    canvas.paste(resized, ((size - new_w) // 2, (size - new_h) // 2), resized)
+    foot_y = size - int(round(size * FOOT_PAD_FRAC))
+    paste_x = (size - new_w) // 2
+    paste_y = foot_y - new_h
+    canvas.paste(resized, (paste_x, paste_y), resized)
     return canvas
 
 
