@@ -4814,10 +4814,17 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _ambientOsc: null,
   _ambientGain: null,
   _ambientLfo: null,
-  /* Zone music — HTMLAudio handle for the looping MP3 layered on
-     top of the procedural ambient oscillators in zones that have a
-     real composed track. Cleared by stopAmbient. */
-  _zoneMusic: null,
+  /* Zone music — Web Audio source + gain for the looping MP3 in
+     zones with a real composed track. Plays through the same
+     AudioContext as the oscillators, which the game's first user
+     gesture already unlocks. (HTMLAudio has a *separate* autoplay
+     gate that the AudioContext unlock doesn't satisfy, which is why
+     the previous `new Audio()` approach silently failed even though
+     the oscillator drone played fine.) */
+  _zoneMusicSource: null,
+  _zoneMusicGain: null,
+  _zoneMusicBuffers: {}, /* { [trackUrl]: AudioBuffer } cache */
+  _zoneMusicUrl: null,   /* current track url; abandons stale fetches */
   ZONE_MUSIC: {
     frost: '/audio/music/frost-zone.mp3',
   },
@@ -5120,65 +5127,57 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     } catch (e) {}
   }
 }, "_ambientOsc", null), "_ambientGain", null), "_ambientLfo", null), "_currentZoneAmbient", null), "_ambientOsc2", null), "_ambientGain2", null), "_ambientLfo2", null), "startZoneAmbient", function startZoneAmbient(zoneId) {
-  /* Mute is a hard gate; ctx-null is NOT — HTMLAudio music can play
-     before BT_AUDIO.init() has run. */
-  if (this.muted) return;
+  if (!this.ctx || this.muted) return;
   if (this._currentZoneAmbient === zoneId) return;
   this._currentZoneAmbient = zoneId;
   this.stopAmbient();
-  /* Zone music — HTMLAudio loop. When a zone has a real composed
-     track, it REPLACES the procedural oscillator drone so the player
-     only hears the intended track. Independent of the WebAudio ctx.
-
-     Autoplay policy: AudioContext.resume() unlocks Web Audio but
-     does NOT transfer to HTMLAudio elements — Safari/Chrome require
-     a separate user gesture for HTMLAudio.play(). When the initial
-     play() is rejected with NotAllowedError, we stash the element
-     and re-try on the next document-level pointerdown/touchstart/
-     keydown (one-shot, removes itself on success). */
+  /* Zone music — Web Audio path (NOT HTMLAudio). Fetch + decode the
+     MP3 once, cache the AudioBuffer, then play through the same
+     AudioContext as the oscillators. This sidesteps the HTMLAudio
+     autoplay block (the AudioContext is already unlocked by the
+     game's first-tap handler — same unlock the oscillator drone
+     uses). When a zone has a track in ZONE_MUSIC, it REPLACES the
+     procedural drone so the two layers don't fight. */
   var trackUrl = this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId];
   if (trackUrl) {
     var self = this;
-    try {
-      var au = new Audio(trackUrl);
-      au.loop = true;
-      au.volume = 0.55;
-      this._zoneMusic = au;
-      var attempt = au.play();
-      if (attempt && attempt.catch) {
-        attempt.catch(function () {
-          /* Autoplay blocked — re-try on next user gesture. The
-             listener stays attached only until the audio element
-             we currently care about plays successfully (or until a
-             different zone change replaces _zoneMusic, in which
-             case the old retry becomes a no-op). */
-          var retry = function () {
-            if (self._zoneMusic !== au) {
-              cleanup();
-              return;
-            }
-            var p = au.play();
-            if (p && p.then) {
-              p.then(cleanup).catch(function () { /* still blocked, listener stays */ });
-            } else {
-              cleanup();
-            }
-          };
-          var cleanup = function () {
-            document.removeEventListener('pointerdown', retry, true);
-            document.removeEventListener('touchstart', retry, true);
-            document.removeEventListener('keydown', retry, true);
-          };
-          document.addEventListener('pointerdown', retry, true);
-          document.addEventListener('touchstart', retry, true);
-          document.addEventListener('keydown', retry, true);
-        });
-      }
-    } catch (e) {}
+    self._zoneMusicUrl = trackUrl;
+    var startWithBuffer = function (buf) {
+      /* Bail if the user changed zones during the fetch — the
+         _zoneMusicUrl != trackUrl guard makes the stale promise a
+         no-op without leaking a source node. */
+      if (self._zoneMusicUrl !== trackUrl) return;
+      try {
+        if (self.ctx.state === 'suspended') self.ctx.resume();
+        var src = self.ctx.createBufferSource();
+        var gain = self.ctx.createGain();
+        src.buffer = buf;
+        src.loop = true;
+        gain.gain.value = 0.55;
+        src.connect(gain);
+        gain.connect(self.ctx.destination);
+        src.start(0);
+        self._zoneMusicSource = src;
+        self._zoneMusicGain = gain;
+      } catch (e) {}
+    };
+    if (self._zoneMusicBuffers && self._zoneMusicBuffers[trackUrl]) {
+      startWithBuffer(self._zoneMusicBuffers[trackUrl]);
+    } else {
+      try {
+        fetch(trackUrl)
+          .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status)); })
+          .then(function (ab) { return self.ctx.decodeAudioData(ab); })
+          .then(function (buf) {
+            if (!self._zoneMusicBuffers) self._zoneMusicBuffers = {};
+            self._zoneMusicBuffers[trackUrl] = buf;
+            startWithBuffer(buf);
+          })
+          .catch(function () { /* fetch / decode failure — silent */ });
+      } catch (e) {}
+    }
     return;
   }
-  /* Procedural drone — requires WebAudio. Skip if init hasn't run. */
-  if (!this.ctx) return;
   var zone = ZONES[zoneId];
   if (!zone) return;
   try {
@@ -5379,13 +5378,16 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       this._ambientLfo2 = null;
     }
     this._ambientGain2 = null;
-    /* Zone music — pause + drop reference so the HTMLAudio is
-       garbage-collected (avoids piling up Audio objects on every
-       zone hop). */
-    if (this._zoneMusic) {
-      try { this._zoneMusic.pause(); } catch (e) {}
-      this._zoneMusic = null;
+    /* Zone music — stop the Web Audio source + drop refs so the
+       buffer source can be GC'd. The decoded AudioBuffer cache
+       (_zoneMusicBuffers) is intentionally kept across zone hops
+       so re-entering a zone doesn't re-decode. */
+    if (this._zoneMusicSource) {
+      try { this._zoneMusicSource.stop(); } catch (e) {}
+      this._zoneMusicSource = null;
     }
+    this._zoneMusicGain = null;
+    this._zoneMusicUrl = null;
   } catch (e) {}
 }), "setCombatIntensity", function setCombatIntensity(inCombat) {
   if (!this._ambientGain || !this.ctx) return;
