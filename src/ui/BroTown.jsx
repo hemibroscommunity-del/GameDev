@@ -5753,8 +5753,12 @@ export var BroTown = function BroTown(_ref0) {
                         color: '#f5c542',
                         ts: Date.now()
                       });
-                      try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
-                      S.lastDamageTaken = Date.now();
+                      if (blocked) {
+                        try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+                      } else {
+                        try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
+                        S.lastDamageTaken = Date.now();
+                      }
                     } else if (distToP < slamRange && dodged) {
                       S.dmgNumbers.push({
                         x: P.x,
@@ -5812,8 +5816,12 @@ export var BroTown = function BroTown(_ref0) {
                         color: '#a855f7',
                         ts: Date.now()
                       });
-                      try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
-                      S.lastDamageTaken = Date.now();
+                      if (_blocked) {
+                        try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+                      } else {
+                        try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
+                        S.lastDamageTaken = Date.now();
+                      }
                     }
                   }
                   if (ability === 'summon') {
@@ -5895,8 +5903,12 @@ export var BroTown = function BroTown(_ref0) {
                     color: '#ea580c',
                     ts: Date.now()
                   });
-                  try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
-                  S.lastDamageTaken = Date.now();
+                  if (_blocked2) {
+                    try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+                  } else {
+                    try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
+                    S.lastDamageTaken = Date.now();
+                  }
                   S.screenShake = 6;
                   m._chargeUntil = 0; /* stop charging on hit */
                   /* Knockback */
@@ -6027,8 +6039,12 @@ export var BroTown = function BroTown(_ref0) {
                     });
                   } else {
                     _R6.hp -= dmgTaken;
-                    try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
-                    S.lastDamageTaken = Date.now();
+                    if (shielded) {
+                      try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+                    } else {
+                      try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
+                      S.lastDamageTaken = Date.now();
+                    }
                     /* GDD §1.2 Vitality: taking damage AND surviving.
                        Tracked as use-frequency; resolved on next kill. */
                     if (_R6.hp > 0) addBuildUse(_R6, 'vitality', dmgTaken);
@@ -6116,7 +6132,9 @@ export var BroTown = function BroTown(_ref0) {
                         color: '#f5c542',
                         ts: Date.now()
                       });
-                      BT_AUDIO.beep(300, 0.08, 0.12, 'square');
+                      /* (block-impact sound is now BT_AUDIO.play('shield-block')
+                         fired up at the damage application site, so the legacy
+                         square+sine beep duo here is dropped.) */
                       /* ═══ BLOCK FEEDBACK — blue flash + shield particles ═══ */
                       S.screenShake = 3;
                       S._blockFlash = Date.now();
@@ -6141,7 +6159,6 @@ export var BroTown = function BroTown(_ref0) {
                           size: 1.5 + Math.random()
                         });
                       }
-                      BT_AUDIO.beep(600, 0.05, 0.06, 'sine');
                     } else {
                       S.dmgNumbers.push({
                         x: P.x,
