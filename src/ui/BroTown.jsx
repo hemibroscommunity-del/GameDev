@@ -2007,6 +2007,7 @@ export var BroTown = function BroTown(_ref0) {
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
               R2.hp = Math.max(0, R2.hp - Math.ceil(dmgTaken2));
+              try { console.log('[dmg] net-monster_attack', { amt: Math.ceil(dmgTaken2), monsterId: payload.monsterId, attackerId: payload.attackerId }); } catch (e) {}
               S.dmgNumbers.push({
                 x: S.player.x, y: S.player.y - 20,
                 text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c', ts: Date.now()
@@ -2247,6 +2248,7 @@ export var BroTown = function BroTown(_ref0) {
               if (payload.blocked) dmgTaken = Math.ceil(dmgTaken * 0.25);
               if (payload.isCrit) dmgTaken = Math.ceil(dmgTaken * 1.5);
               _R2.hp = Math.max(0, _R2.hp - Math.ceil(dmgTaken));
+              try { console.log('[dmg] net-pvp_hit', { amt: Math.ceil(dmgTaken), attacker: payload.attacker, blocked: payload.blocked }); } catch (e) {}
               S.dmgNumbers.push({
                 x: S.player.x,
                 y: S.player.y - 20,
@@ -2323,6 +2325,7 @@ export var BroTown = function BroTown(_ref0) {
               var isCrit = payload.isCrit;
               if (isCrit) _dmgTaken = Math.ceil(_dmgTaken * 1.5);
               _R3.hp = Math.max(0, _R3.hp - Math.ceil(_dmgTaken));
+              try { console.log('[dmg] net-player_attack', { amt: Math.ceil(_dmgTaken), attacker: payload.id, isCrit: isCrit }); } catch (e) {}
               S.dmgNumbers.push({
                 x: S.player.x,
                 y: S.player.y - 20,
@@ -5756,7 +5759,7 @@ export var BroTown = function BroTown(_ref0) {
                         ts: Date.now()
                       });
                       if (blocked) {
-                        try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+                        try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
                         try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
@@ -5820,7 +5823,7 @@ export var BroTown = function BroTown(_ref0) {
                         ts: Date.now()
                       });
                       if (_blocked) {
-                        try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+                        try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
                         try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
@@ -5908,7 +5911,7 @@ export var BroTown = function BroTown(_ref0) {
                     ts: Date.now()
                   });
                   if (_blocked2) {
-                    try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+                    try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                   } else {
                     try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                     S.lastDamageTaken = Date.now();
@@ -6052,7 +6055,7 @@ export var BroTown = function BroTown(_ref0) {
                     _R6.hp -= dmgTaken;
                     try { console.log('[dmg] monster-melee', { amt: dmgTaken, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y }, dist: Math.round(Math.sqrt((m.x - P.x) ** 2 + (m.y - P.y) ** 2)) }); } catch (e) {}
                     if (shielded) {
-                      try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+                      try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                     } else {
                       try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                       S.lastDamageTaken = Date.now();
@@ -8082,10 +8085,13 @@ export var BroTown = function BroTown(_ref0) {
         S._atkEnergy = (_S$_atkEnergy = S._atkEnergy) !== null && _S$_atkEnergy !== void 0 ? _S$_atkEnergy : 100;
         if (S._atkEnergy < 100) S._atkEnergy = Math.min(100, S._atkEnergy + 0.5);
 
-        /* §2.3 Shield — drains stamina while held. 20/sec = 5 second hold at 100 max stamina. */
+        /* §2.3 Shield — drains stamina while held. 10/sec = 10 second hold
+           at 100 max stamina (was 20/sec → 5 s; user reported shield
+           "losing its hold" while finger was still down — auto-release
+           on stamina-out happening sooner than expected). */
         if (S._shieldUp && S.rpg) {
-          /* 20 stamina/sec at 60fps = 0.333/frame */
-          S.rpg.stamina = Math.max(0, (S.rpg.stamina || 0) - 0.333);
+          /* 10 stamina/sec at 60fps = 0.167/frame */
+          S.rpg.stamina = Math.max(0, (S.rpg.stamina || 0) - 0.167);
           S.shieldEnd = Date.now() + 100;
           if (S.rpg.stamina <= 0) {
             S.rpg.stamina = 0;
@@ -8558,7 +8564,7 @@ export var BroTown = function BroTown(_ref0) {
                the wrong sound.) */
             var pShielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, proj.x, proj.y);
             if (pShielded) {
-              try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
+              try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
               S.dmgNumbers.push({
                 x: P.x, y: P.y - 20,
                 text: '🛡️ Blocked!',
