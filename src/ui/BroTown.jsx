@@ -2028,7 +2028,23 @@ export var BroTown = function BroTown(_ref0) {
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
               R2.hp = Math.max(0, R2.hp - Math.ceil(dmgTaken2));
-              try { console.log('[dmg] net-monster_attack', { amt: Math.ceil(dmgTaken2), monsterId: payload.monsterId, attackerId: payload.attackerId }); } catch (e) {}
+              try {
+                console.log('[dmg] net-monster_attack', {
+                  amt: Math.ceil(dmgTaken2),
+                  monsterId: payload.monsterId,
+                  /* server-side fields — present means brotown-server is deployed past 582553b */
+                  srvAttackerXY: (typeof payload.attackerX === 'number') ? { x: Math.round(payload.attackerX), y: Math.round(payload.attackerY) } : null,
+                  srvDeployed: typeof payload.attackerX === 'number',
+                  /* local snapshot */
+                  localAttacker: atkSrc ? { x: Math.round(atkSrc.x), y: Math.round(atkSrc.y), arch: atkSrc.arch || atkSrc.archetype, alive: atkSrc.alive } : 'NOT_IN_SNAPSHOT',
+                  /* what the filter saw */
+                  resolvedAtk: { x: Math.round(_atkX), y: Math.round(_atkY) },
+                  player: { x: Math.round(S.player.x), y: Math.round(S.player.y) },
+                  dist: Math.round(_atkDist),
+                  shieldUp: !!S._shieldUp,
+                  inArc: inArc,
+                });
+              } catch (e) {}
               S.dmgNumbers.push({
                 x: S.player.x, y: S.player.y - 20,
                 text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c', ts: Date.now()
