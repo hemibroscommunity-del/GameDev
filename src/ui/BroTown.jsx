@@ -8577,8 +8577,21 @@ export var BroTown = function BroTown(_ref0) {
                no hit-react, plays the metal-clang shield-block SFX,
                same as the melee block paths. (Previously the projectile
                got reduced damage and still triggered the hit-react +
-               the wrong sound.) */
-            var pShielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, proj.x, proj.y);
+               the wrong sound.)
+
+               Pass an "incoming-attack" point computed from proj.ang
+               (the projectile's travel direction) instead of its
+               current x/y. At collision time the projectile can have
+               overshot the player by a few px in the direction it was
+               traveling, which made the arc test see the attack coming
+               from in FRONT of the player even though the slime was
+               clearly behind it. The virtual point sits 50 px from the
+               player along (proj.ang + π) — i.e. straight back along
+               the projectile's path — so the arc check resolves to the
+               actual attacker direction. */
+            var _atkFromX = P.x - Math.cos(proj.ang) * 50;
+            var _atkFromY = P.y - Math.sin(proj.ang) * 50;
+            var pShielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, _atkFromX, _atkFromY);
             if (pShielded) {
               try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
               S.dmgNumbers.push({
