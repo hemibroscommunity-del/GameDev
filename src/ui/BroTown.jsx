@@ -6287,7 +6287,14 @@ export var BroTown = function BroTown(_ref0) {
           /* §4.5 Attack speed — base cooldown modified by amulet */
           var atkSpdAmulet = ((_S$rpg9 = S.rpg) === null || _S$rpg9 === void 0 || (_S$rpg9 = _S$rpg9._amuletBonus) === null || _S$rpg9 === void 0 ? void 0 : _S$rpg9.stat) === 'atkSpd' ? 1 + S.rpg._amuletBonus.value / 100 : 1.0;
           var effectiveSwingCd = Math.max(200, Math.floor(SWING_COOLDOWN / atkSpdAmulet));
-          if (S.autoAttack && S.rpg && Date.now() - S.swingTimer >= effectiveSwingCd) {
+          /* Staff fires slower than bow — add the 300 ms penalty to the
+             cooldown gate instead of pushing swingTimer into the future,
+             which made every `Date.now() - swingTimer` reader negative
+             for 300 ms (caused the one-frame character flicker on
+             magic cast since downstream render code assumed swingTimer
+             is always in the past). */
+          var _staffCdExtra = (S.rpg && S.rpg.activeSlot === 'staff') ? 300 : 0;
+          if (S.autoAttack && S.rpg && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             if (!(S._playerStunUntil && Date.now() < S._playerStunUntil)) {
               var _S$rpg0, _S$rpg1;
               if (((_S$rpg0 = S.rpg) === null || _S$rpg0 === void 0 ? void 0 : _S$rpg0.activeSlot) === 'ranged' || ((_S$rpg1 = S.rpg) === null || _S$rpg1 === void 0 ? void 0 : _S$rpg1.activeSlot) === 'staff') {
@@ -6317,7 +6324,7 @@ export var BroTown = function BroTown(_ref0) {
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
                   id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: Date.now()
                 }});
-                S.swingTimer = Date.now() + (isStaff ? 300 : 0); /* Staff fires slower */
+                S.swingTimer = Date.now(); /* Staff cooldown penalty applied at the gate above, not here */
                 if (isStaff) {
                   BT_AUDIO.play('magic-cast', { vol: 0.55 });
                 } else {
@@ -11456,16 +11463,23 @@ export var BroTown = function BroTown(_ref0) {
               });
             }
 
-            /* ═══ SLASH MARKS — sword swing hits ═══ */
+            /* ═══ SLASH MARKS — sword swing hits ═══
+               Fade out and drop after 350 ms so the white cut doesn't
+               stick on the slime body forever (was a permanent overlay
+               with no expiry, accumulating up to 8 marks per monster). */
             if (m._slashMarks && m._slashMarks.length > 0) {
+              var _smNow = Date.now();
+              m._slashMarks = m._slashMarks.filter(function (sm) { return _smNow - (sm.ts || 0) < 350; });
               m._slashMarks.forEach(function (sm) {
+                var _smAge = (_smNow - (sm.ts || 0)) / 350;
+                var _smFade = Math.max(0, 1 - _smAge);
                 var smx = mx + sm.ox, smy = my + sm.oy;
                 ctx.save();
                 ctx.translate(smx, smy);
                 /* Slash visual is perpendicular to the swing direction —
                    draw a short diagonal cut. */
                 ctx.rotate(sm.ang + Math.PI / 4);
-                ctx.strokeStyle = 'rgba(255, 250, 240, 0.85)';
+                ctx.strokeStyle = 'rgba(255, 250, 240, ' + (0.85 * _smFade).toFixed(2) + ')';
                 ctx.lineWidth = 1.5;
                 ctx.lineCap = 'round';
                 ctx.beginPath();
@@ -11473,7 +11487,7 @@ export var BroTown = function BroTown(_ref0) {
                 ctx.lineTo(7, 0);
                 ctx.stroke();
                 /* Thin red bleed line behind the white edge for depth. */
-                ctx.strokeStyle = 'rgba(160, 40, 40, 0.55)';
+                ctx.strokeStyle = 'rgba(160, 40, 40, ' + (0.55 * _smFade).toFixed(2) + ')';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(-6, 1);
