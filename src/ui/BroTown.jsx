@@ -3295,10 +3295,14 @@ export var BroTown = function BroTown(_ref0) {
       if (isBackpedaling && effFrames > 1) frame = (effFrames - 1) - frame;
       var srcX = frame * sheet.w;
       /* East source video framed the character slightly smaller. Bump 6%
-         (was 18% — user fed back that 18% was too large). The hit pose
-         was extracted from a different source where the character is
-         already at full size, so the bump doesn't apply there. */
-      var sizeMul = (info.name === 'east' && pose !== 'hit') ? 1.06 : 1.0;
+         (was 18% — user fed back that 18% was too large). The hit pose's
+         east source frames the character much larger (~67% of frame
+         vs the jog/stand source's ~94%), so it needs the OPPOSITE
+         adjustment — shrink to 0.88× to match the apparent size of
+         the other directions in-game. */
+      var sizeMul = info.name === 'east'
+        ? (pose === 'hit' ? 0.88 : 1.06)
+        : 1.0;
       var w = drawSize * sizeMul, h = drawSize * sizeMul;
 
       /* === WEAPON SETUP ===
@@ -5760,6 +5764,7 @@ export var BroTown = function BroTown(_ref0) {
                         color: '#f5c542',
                         ts: Date.now()
                       });
+                      try { BT_AUDIO.play('monster-hit', { vol: 0.6 }); } catch (e) {}
                       S.lastDamageTaken = Date.now();
                     } else if (distToP < slamRange && dodged) {
                       S.dmgNumbers.push({
@@ -5818,6 +5823,7 @@ export var BroTown = function BroTown(_ref0) {
                         color: '#a855f7',
                         ts: Date.now()
                       });
+                      try { BT_AUDIO.play('monster-hit', { vol: 0.6 }); } catch (e) {}
                       S.lastDamageTaken = Date.now();
                     }
                   }
@@ -5900,6 +5906,7 @@ export var BroTown = function BroTown(_ref0) {
                     color: '#ea580c',
                     ts: Date.now()
                   });
+                  try { BT_AUDIO.play('monster-hit', { vol: 0.6 }); } catch (e) {}
                   S.lastDamageTaken = Date.now();
                   S.screenShake = 6;
                   m._chargeUntil = 0; /* stop charging on hit */
@@ -6031,6 +6038,7 @@ export var BroTown = function BroTown(_ref0) {
                     });
                   } else {
                     _R6.hp -= dmgTaken;
+                    try { BT_AUDIO.play('monster-hit', { vol: 0.6 }); } catch (e) {}
                     S.lastDamageTaken = Date.now();
                     /* GDD §1.2 Vitality: taking damage AND surviving.
                        Tracked as use-frequency; resolved on next kill. */
