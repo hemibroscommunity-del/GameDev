@@ -4598,6 +4598,7 @@ export var BroTown = function BroTown(_ref0) {
               if (!S._lastDrownTick || Date.now() - S._lastDrownTick > 1000) {
                 S._lastDrownTick = Date.now();
                 S.rpg.hp -= DIVE_DAMAGE_RATE;
+                try { console.log('[dmg] drowning', DIVE_DAMAGE_RATE); } catch (e) {}
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 20,
@@ -5746,6 +5747,7 @@ export var BroTown = function BroTown(_ref0) {
                       var slamDmg = Math.ceil(m.dmg * 1.5);
                       var finalDmg = blocked ? Math.max(1, Math.ceil(slamDmg * 0.3)) : slamDmg;
                       _R6.hp -= finalDmg;
+                      try { console.log('[dmg] boss-slam', { amt: finalDmg, archetype: m.archetype || m.type, blocked: blocked }); } catch (e) {}
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
@@ -5809,6 +5811,7 @@ export var BroTown = function BroTown(_ref0) {
                       var sweepDmg = Math.ceil(m.dmg * 1.2);
                       var _finalDmg = _blocked ? Math.max(1, Math.ceil(sweepDmg * 0.3)) : sweepDmg;
                       _R6.hp -= _finalDmg;
+                      try { console.log('[dmg] boss-sweep', { amt: _finalDmg, archetype: m.archetype || m.type, blocked: _blocked }); } catch (e) {}
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
@@ -5896,6 +5899,7 @@ export var BroTown = function BroTown(_ref0) {
                   var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
                   var _finalDmg2 = _blocked2 ? Math.max(1, Math.ceil(chargeDmg * (1 - calcBlockReduction(_R6.fortification, _R6.shield)))) : chargeDmg;
                   _R6.hp -= _finalDmg2;
+                  try { console.log('[dmg] boss-charge', { amt: _finalDmg2, archetype: m.archetype || m.type, blocked: _blocked2 }); } catch (e) {}
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 20,
@@ -6013,6 +6017,7 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.monsterDeath(m && m.archetype);
                     var explodeDmg = Math.round(m.dmg * 2);
                     _R6.hp -= shielded ? Math.max(1, Math.floor(explodeDmg * (1 - blockReduc))) : explodeDmg;
+                    try { console.log('[dmg] volatile-explode', { amt: explodeDmg, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y } }); } catch (e) {}
                     S.screenShake = 8;
                     S.dmgNumbers.push({
                       x: m.x,
@@ -6045,6 +6050,7 @@ export var BroTown = function BroTown(_ref0) {
                     });
                   } else {
                     _R6.hp -= dmgTaken;
+                    try { console.log('[dmg] monster-melee', { amt: dmgTaken, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y }, dist: Math.round(Math.sqrt((m.x - P.x) ** 2 + (m.y - P.y) ** 2)) }); } catch (e) {}
                     if (shielded) {
                       try { BT_AUDIO.play('shield-block', { vol: 0.85 }); } catch (e) {}
                     } else {
@@ -6098,6 +6104,7 @@ export var BroTown = function BroTown(_ref0) {
                       var pierceDmg = Math.max(0, Math.floor(rawDmg * blockReduc * 0.5));
                       if (pierceDmg > 0) {
                         _R6.hp -= pierceDmg;
+                        try { console.log('[dmg] sentinel-pierce', pierceDmg); } catch (e) {}
                         S.dmgNumbers.push({
                           x: P.x + 10,
                           y: P.y - 22,
@@ -6112,6 +6119,7 @@ export var BroTown = function BroTown(_ref0) {
                       if (m._stalkPhase === 'dash' && Math.random() < 0.4) {
                         var critDmg = Math.ceil(dmgTaken * 0.5);
                         _R6.hp -= critDmg;
+                        try { console.log('[dmg] stalker-crit', critDmg); } catch (e) {}
                         S.dmgNumbers.push({
                           x: P.x,
                           y: P.y - 40,
@@ -8579,6 +8587,7 @@ export var BroTown = function BroTown(_ref0) {
               return false;
             }
             _R6P.hp -= proj.rawDmg;
+            try { console.log('[dmg] slime-projectile', { amt: proj.rawDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
             try { BT_AUDIO.play('slime-projectile-hit', { vol: 0.7 }); } catch (e) {}
             S.lastDamageTaken = Date.now();
             if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', proj.rawDmg);

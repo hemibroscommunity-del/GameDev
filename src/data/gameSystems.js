@@ -5423,7 +5423,7 @@ BT_AUDIO.SFX_MANIFEST = {
   'monster-death': '/sfx/monster/Monster death-bony.wav',
   'slime-projectile-hit': '/sfx/monster/slime-projectile-hit.wav',
   'monster-hit':   '/sfx/monster/monster-hit.wav',
-  'shield-block':  '/sfx/shield/shield-block.wav',
+  'shield-block':  '/sfx/shield/shield-block.wav?v=2',
   /* Slime death splat — routed through Web Audio so it plays without
      hitting the per-element HTMLAudio autoplay policy that was
      blocking new Audio().play() in the render loop. */
