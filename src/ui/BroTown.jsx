@@ -1983,15 +1983,31 @@ export var BroTown = function BroTown(_ref0) {
               if (payload.targetId !== S.myId) break;
               var R2 = S.rpg;
               if (!R2 || R2.hp <= 0) break;
+              /* ── Out-of-range filter ──
+                 The server's monster-attack ranging was firing damage
+                 events for monsters the player can't see (off-screen or
+                 desynced from the local snapshot), which read as
+                 mystery damage with no visible attacker. Drop the event
+                 client-side when the attacker isn't a known nearby
+                 monster. The server is authoritative on HP, so on the
+                 next state_sync any genuine HP delta gets reconciled —
+                 this just suppresses the visual "ghost hit" in the
+                 normal case. */
+              var atkSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
+              if (!atkSrc) {
+                try { console.log('[dmg] net-monster_attack DROPPED (unknown attacker)', { monsterId: payload.monsterId }); } catch (e) {}
+                break;
+              }
+              var _atkDx = atkSrc.x - S.player.x, _atkDy = atkSrc.y - S.player.y;
+              var _atkDist = Math.sqrt(_atkDx * _atkDx + _atkDy * _atkDy);
+              if (_atkDist > 160) {
+                try { console.log('[dmg] net-monster_attack DROPPED (out of range)', { monsterId: payload.monsterId, dist: Math.round(_atkDist) }); } catch (e) {}
+                break;
+              }
               var mDmg = payload.dmg || 5;
               /* Apply player defense */
               var pDef2 = (R2.endurance || 0) * 0.5 + ((R2.armor ? R2.armor.tierMult : 1) || 1) * 3;
               var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);
-              /* Check blocking — directional arc per spec.  If the
-                 server payload identifies the attacker, look it up so
-                 we can enforce the 120° arc; otherwise fall back to
-                 omnidirectional block. */
-              var atkSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
               var inArc = atkSrc ? isAttackInShieldArc(S, atkSrc.x, atkSrc.y) : true;
               if (S._shieldUp && inArc) {
                 var blockRed = calcBlockReduction ? calcBlockReduction(R2.fortification || 0, R2.shield) : 0.25;
