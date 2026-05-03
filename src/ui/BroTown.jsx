@@ -7428,7 +7428,11 @@ export var BroTown = function BroTown(_ref0) {
               loot.x += Math.cos(pullAngle) * pullStrength;
               loot.y += Math.sin(pullAngle) * pullStrength;
             }
-            if (_isFodderRemnant && Date.now() - (loot.ts || 0) < 1500) return true;
+            /* Pickup gate matches the render delay (1.9 s) so the
+               splat is on-screen and visible before it can be picked
+               up — otherwise the player walks over the spot during the
+               death anim and the invisible loot vanishes silently. */
+            if (_isFodderRemnant && Date.now() - (loot.ts || 0) < 1900) return true;
             if (lDist < 20) {
               /* §4.6 Weapon drop pickup — equip if better, stash otherwise */
               if (loot.isWeapon && loot.weapon) {
@@ -11767,7 +11771,13 @@ export var BroTown = function BroTown(_ref0) {
               ly = loot.y - cy;
             if (lx < -30 || lx > W + 30 || ly < -30 || ly > H + 30) return;
             var age = (Date.now() - loot.ts) / 1000;
-            var bob = Math.sin(age * 3) * 2;
+            /* Fodder slime remnants appear after the 1.9 s death anim
+               so the splat lands when the slime visually dissolves into
+               particles instead of popping in mid-death. They also sit
+               still — no bob — so they read as a settled puddle. */
+            var _isFodderLoot = loot.skull === 'fodder';
+            if (_isFodderLoot && age < 1.9) return;
+            var bob = _isFodderLoot ? 0 : Math.sin(age * 3) * 2;
             var fadeOut = age > 50 ? 1 - (age - 50) / 10 : 1;
             ctx.globalAlpha = fadeOut;
 
