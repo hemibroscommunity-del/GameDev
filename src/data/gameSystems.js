@@ -4814,6 +4814,13 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _ambientOsc: null,
   _ambientGain: null,
   _ambientLfo: null,
+  /* Zone music — HTMLAudio handle for the looping MP3 layered on
+     top of the procedural ambient oscillators in zones that have a
+     real composed track. Cleared by stopAmbient. */
+  _zoneMusic: null,
+  ZONE_MUSIC: {
+    frost: '/audio/music/frost-zone.mp3',
+  },
   init: function init() {
     if (this.ctx) return;
     try {
@@ -5117,6 +5124,20 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   if (this._currentZoneAmbient === zoneId) return;
   this._currentZoneAmbient = zoneId;
   this.stopAmbient();
+  /* Zone music — HTMLAudio loop. Browser autoplay policy lets this
+     play after the first user tap (which already unlocked the
+     AudioContext). Volume kept low so it sits under SFX. */
+  try {
+    var trackUrl = this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId];
+    if (trackUrl) {
+      var au = new Audio(trackUrl);
+      au.loop = true;
+      au.volume = 0.35;
+      var p = au.play();
+      if (p && p.catch) p.catch(function () { /* autoplay blocked — silent */ });
+      this._zoneMusic = au;
+    }
+  } catch (e) {}
   var zone = ZONES[zoneId];
   if (!zone) return;
   try {
@@ -5317,6 +5338,13 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       this._ambientLfo2 = null;
     }
     this._ambientGain2 = null;
+    /* Zone music — pause + drop reference so the HTMLAudio is
+       garbage-collected (avoids piling up Audio objects on every
+       zone hop). */
+    if (this._zoneMusic) {
+      try { this._zoneMusic.pause(); } catch (e) {}
+      this._zoneMusic = null;
+    }
   } catch (e) {}
 }), "setCombatIntensity", function setCombatIntensity(inCombat) {
   if (!this._ambientGain || !this.ctx) return;
