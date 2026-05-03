@@ -8300,9 +8300,14 @@ export var BroTown = function BroTown(_ref0) {
                     x: m.x, y: m.y, ts: Date.now(),
                     color: _orbColor, maxR: 26, duration: 320,
                   });
-                  /* Inner brighter ring for double-pulse intensity. */
+                  /* Inner brighter ring 40 ms later for double-pulse
+                     intensity. Use a startDelay field rather than
+                     setting ts in the future — future-ts caused the
+                     render to compute negative ages and weird radii on
+                     the first frame after spawn (same family of bug
+                     as the swingTimer +300 player-flicker on cast). */
                   S._impactRings.push({
-                    x: m.x, y: m.y, ts: Date.now() + 40,
+                    x: m.x, y: m.y, ts: Date.now(), startDelay: 40,
                     color: _orbColor, maxR: 14, duration: 220,
                   });
                   /* Dissipation — radial particle spray outward, with a
@@ -11517,20 +11522,32 @@ export var BroTown = function BroTown(_ref0) {
               });
             }
 
-            /* ═══ BURN MARKS — magic / staff hits ═══ */
+            /* ═══ BURN MARKS — magic / staff hits ═══
+               Fade out and drop after 800 ms so the element-tinted
+               cores don't accumulate forever on every monster you
+               magic-hit (was permanent, capped at 10 per monster).
+               Without this, killing a row of venom-element slimes
+               leaves green burn-mark dots behind on each body that
+               read collectively as a green tint on the screen. */
             if (m._burnMarks && m._burnMarks.length > 0) {
+              var _bmNow = Date.now();
+              m._burnMarks = m._burnMarks.filter(function (bm) { return _bmNow - (bm.ts || 0) < 800; });
               m._burnMarks.forEach(function (bm) {
+                var _bmAge = (_bmNow - (bm.ts || 0)) / 800;
+                var _bmFade = Math.max(0, 1 - _bmAge);
                 var bmx = mx + bm.ox, bmy = my + bm.oy;
                 /* Outer scorch (dark) */
-                ctx.fillStyle = 'rgba(20, 10, 10, 0.55)';
+                ctx.fillStyle = 'rgba(20, 10, 10, ' + (0.55 * _bmFade).toFixed(2) + ')';
                 ctx.beginPath();
                 ctx.arc(bmx, bmy, 4, 0, Math.PI * 2);
                 ctx.fill();
                 /* Inner element-tinted core */
+                ctx.globalAlpha = _bmFade;
                 ctx.fillStyle = bm.color + '80';
                 ctx.beginPath();
                 ctx.arc(bmx, bmy, 2, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.globalAlpha = 1;
               });
             }
 
@@ -12015,20 +12032,22 @@ export var BroTown = function BroTown(_ref0) {
         if (S._impactRings) {
           /* Lifecycle filtering handled in pre-render phase */
           S._impactRings.forEach(function (ring) {
-            var rAge = (Date.now() - ring.ts) / ring.duration;
+            var elapsed = Date.now() - ring.ts - (ring.startDelay || 0);
+            if (elapsed < 0) return; /* not yet started (delayed pulse) */
+            var rAge = elapsed / ring.duration;
             if (rAge >= 1) return;
             var rx = ring.x - cx,
               ry = ring.y - cy;
-            var rr = ring.maxR * rAge;
-            ctx.globalAlpha = (1 - rAge) * 0.6;
+            var rr = Math.max(0, ring.maxR * rAge);
+            ctx.globalAlpha = Math.max(0, (1 - rAge) * 0.6);
             ctx.strokeStyle = ring.color;
-            ctx.lineWidth = (1 - rAge) * 3 + 0.5;
+            ctx.lineWidth = Math.max(0.5, (1 - rAge) * 3 + 0.5);
             ctx.beginPath();
             ctx.arc(rx, ry, rr, 0, Math.PI * 2);
             ctx.stroke();
             /* Inner bright fill at start */
             if (rAge < 0.3) {
-              ctx.globalAlpha = (0.3 - rAge) * 0.4;
+              ctx.globalAlpha = Math.max(0, (0.3 - rAge) * 0.4);
               ctx.fillStyle = '#fff';
               ctx.beginPath();
               ctx.arc(rx, ry, rr * 0.5, 0, Math.PI * 2);
