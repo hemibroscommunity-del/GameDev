@@ -7,7 +7,7 @@ export const ZONES = {
   },
   meadow: {
     id: 'meadow', name: 'Starting Meadow', w: 50, h: 40,
-    element: null, level: [1, 5], music: 'meadow', safe: false,
+    element: null, level: [1, 10], music: 'meadow', safe: false,
     palette: { ground: '#3d6b2e', path: '#7a6a45', accent: '#5a9a40' },
     spawns: [{ arch: 'fodder', count: 10 }, { arch: 'swarm', count: 4 }]
   },

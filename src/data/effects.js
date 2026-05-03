@@ -245,16 +245,20 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
   return parts;
 }
 
-/* Zone exits in town */
+/* Zone exits in town — 8 zones at the 8 directional extremes
+   (cardinal edges + corners). Town is 40w × 30h, so:
+     N  → top-center,    NE → top-right corner
+     E  → right-center,  SE → bottom-right corner
+     S  → bottom-center, SW → bottom-left corner
+     W  → left-center,   NW → top-left corner
+   Returning from any zone respawns at the same extreme. */
 export const TOWN_EXITS = [
-  { zoneId: 'meadow',  tx: 20, ty: 0,  dir: 'north', label: 'Meadow ↑',          color: '#5a9a40' },
-  { zoneId: 'ember',   tx: 38, ty: 5,  dir: 'east',  label: 'Ember Fields →',     color: ELEMENTS.flame.color },
-  { zoneId: 'mist',    tx: 0,  ty: 5,  dir: 'west',  label: '← Mistwood',         color: ELEMENTS.venom.color },
-  { zoneId: 'frost',   tx: 38, ty: 15, dir: 'east',  label: 'Frozen Shore →',      color: ELEMENTS.frost.color },
-  { zoneId: 'tidal',   tx: 0,  ty: 15, dir: 'west',  label: '← Tidal Caves',       color: ELEMENTS.water.color },
-  { zoneId: 'thunder', tx: 38, ty: 25, dir: 'east',  label: 'Thunder Peaks →',     color: ELEMENTS.storm.color },
-  { zoneId: 'hollows', tx: 0,  ty: 25, dir: 'west',  label: '← Deep Hollows',      color: ELEMENTS.stone.color },
-  { zoneId: 'sky',     tx: 20, ty: 29, dir: 'south', label: 'Sky Reaches ↓',       color: ELEMENTS.wind.color },
-  { zoneId: 'shadow',  tx: 5,  ty: 28, dir: 'south', label: 'Shadow Sanctum ↓',    color: ELEMENTS.dark.color },
-  { zoneId: 'radiant', tx: 35, ty: 28, dir: 'south', label: 'Radiant Heights ↓',   color: ELEMENTS.light.color },
+  { zoneId: 'meadow',  tx: 20, ty: 0,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
+  { zoneId: 'frost',   tx: 39, ty: 0,  dir: 'ne',    label: 'Frozen Shore ↗',    color: ELEMENTS.frost.color },
+  { zoneId: 'ember',   tx: 39, ty: 15, dir: 'east',  label: 'Ember Fields →',    color: ELEMENTS.flame.color },
+  { zoneId: 'thunder', tx: 39, ty: 29, dir: 'se',    label: 'Thunder Peaks ↘',   color: ELEMENTS.storm.color },
+  { zoneId: 'sky',     tx: 20, ty: 29, dir: 'south', label: 'Sky Reaches ↓',     color: ELEMENTS.wind.color },
+  { zoneId: 'hollows', tx: 0,  ty: 29, dir: 'sw',    label: '↙ Deep Hollows',    color: ELEMENTS.stone.color },
+  { zoneId: 'mist',    tx: 0,  ty: 15, dir: 'west',  label: '← Mistwood',        color: ELEMENTS.venom.color },
+  { zoneId: 'tidal',   tx: 0,  ty: 0,  dir: 'nw',    label: '↖ Tidal Caves',     color: ELEMENTS.water.color },
 ];

@@ -309,15 +309,16 @@ export class TileRenderer {
   }
 
   update(cx, cy, viewW, viewH) {
-    // Draw background fill extending beyond map edges
+    // Two-pass background, matching the Canvas 2D path:
+    //   1. Solid BLACK extending well beyond the map so out-of-bounds
+    //      areas (anywhere past the tile grid) render black.
+    //   2. Zone palette ground color inside the actual map rect.
     this.bgGfx.clear();
     const pad = Math.max(viewW, viewH);
     this.bgGfx.rect(-pad, -pad, this._mapW + pad * 2, this._mapH + pad * 2);
+    this.bgGfx.fill({ color: 0x000000 });
+    this.bgGfx.rect(0, 0, this._mapW, this._mapH);
     this.bgGfx.fill({ color: this._bgColor });
-    if (cx < 0) {
-      this.bgGfx.rect(-pad, -pad, pad + 0, this._mapH + pad * 2);
-      this.bgGfx.fill({ color: 0x000000, alpha: 0.3 });
-    }
   }
 
   destroy() {

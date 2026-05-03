@@ -3842,17 +3842,27 @@ export var BroTown = function BroTown(_ref0) {
 
         /* In town: reaching any edge finds the nearest exit and transitions */
         if (S.currentZone === 'town' && (pty <= 0 || pty >= _zone.h - 1 || ptx <= 0 || ptx >= _zone.w - 1)) {
-          /* Find closest town exit to player position */
+          /* Find closest town exit to player position. 8 directions:
+             cardinal (N/E/S/W) match their respective edge; diagonals
+             (NE/NW/SE/SW) match either of the two adjacent edges so
+             walking off near a corner grabs the corner exit. Distance
+             is manhattan to the exit tile. */
+          var onN = pty <= 0, onS = pty >= _zone.h - 1;
+          var onE = ptx >= _zone.w - 1, onW = ptx <= 0;
           var bestExit = null,
             bestDist = Infinity;
           TOWN_EXITS.forEach(function (ex) {
             var edgeMatch = false;
-            if (ex.dir === 'north' && pty <= 0) edgeMatch = true;
-            if (ex.dir === 'south' && pty >= _zone.h - 1) edgeMatch = true;
-            if (ex.dir === 'east' && ptx >= _zone.w - 1) edgeMatch = true;
-            if (ex.dir === 'west' && ptx <= 0) edgeMatch = true;
+            if (ex.dir === 'north' && onN) edgeMatch = true;
+            if (ex.dir === 'south' && onS) edgeMatch = true;
+            if (ex.dir === 'east'  && onE) edgeMatch = true;
+            if (ex.dir === 'west'  && onW) edgeMatch = true;
+            if (ex.dir === 'ne' && (onN || onE)) edgeMatch = true;
+            if (ex.dir === 'nw' && (onN || onW)) edgeMatch = true;
+            if (ex.dir === 'se' && (onS || onE)) edgeMatch = true;
+            if (ex.dir === 'sw' && (onS || onW)) edgeMatch = true;
             if (!edgeMatch) return;
-            var d = ex.dir === 'north' || ex.dir === 'south' ? Math.abs(ptx - ex.tx) : Math.abs(pty - ex.ty);
+            var d = Math.abs(ptx - ex.tx) + Math.abs(pty - ex.ty);
             if (d < bestDist) {
               bestDist = d;
               bestExit = ex;
@@ -3898,17 +3908,18 @@ export var BroTown = function BroTown(_ref0) {
               S._enteredFromDir = bestExit.dir; /* remember entry direction for return */
               var midX = Math.floor(newZone.w / 2) * TILE;
               var midY = Math.floor(newZone.h / 2) * TILE;
-              if (bestExit.dir === 'north') {
-                P.x = midX; P.y = nH - TILE * 5;
-              } else if (bestExit.dir === 'south') {
-                P.x = midX; P.y = TILE * 5;
-              } else if (bestExit.dir === 'east') {
-                P.x = TILE * 5; P.y = midY;
-              } else if (bestExit.dir === 'west') {
-                P.x = nW - TILE * 5; P.y = midY;
-              } else {
-                P.x = midX; P.y = nH - TILE * 5;
-              }
+              /* Spawn opposite to entry direction so the zone is "in
+                 front of" the player. Cardinal: drop in on the back
+                 edge. Diagonal: drop in at the opposite corner. */
+              if (bestExit.dir === 'north')      { P.x = midX;          P.y = nH - TILE * 5; }
+              else if (bestExit.dir === 'south') { P.x = midX;          P.y = TILE * 5;       }
+              else if (bestExit.dir === 'east')  { P.x = TILE * 5;      P.y = midY;           }
+              else if (bestExit.dir === 'west')  { P.x = nW - TILE * 5; P.y = midY;           }
+              else if (bestExit.dir === 'ne')    { P.x = TILE * 5;      P.y = nH - TILE * 5;  }
+              else if (bestExit.dir === 'nw')    { P.x = nW - TILE * 5; P.y = nH - TILE * 5;  }
+              else if (bestExit.dir === 'se')    { P.x = TILE * 5;      P.y = TILE * 5;       }
+              else if (bestExit.dir === 'sw')    { P.x = nW - TILE * 5; P.y = TILE * 5;       }
+              else                                { P.x = midX;          P.y = nH - TILE * 5; }
               /* Push monsters away from player spawn — minimum 200px distance */
               var _minSpawnDist = 200;
               if (S.monsters) {
@@ -3950,7 +3961,11 @@ export var BroTown = function BroTown(_ref0) {
                   }
                 }
               }
-              /* Place return exit at entry edge, dungeon at far edge, carve paths */
+              /* Place return exit at the spawn corner/edge, dungeon at
+                 the far corner/edge, then carve a short cardinal path
+                 from each so the player has a walkable tile to step on.
+                 Diagonals get tile placements at corners with paths
+                 carved along both adjacent cardinals. */
               if (bestExit.dir === 'north') {
                 S.map[mapH-1][mapMX] = 9; S.map[mapH-1][mapMX+1] = 9;
                 S.map[2][mapMX] = 10; S.map[2][mapMX+1] = 10;
@@ -3971,6 +3986,31 @@ export var BroTown = function BroTown(_ref0) {
                 S.map[mapMY][2] = 10; S.map[mapMY+1][2] = 10;
                 carvePath(mapW-1, mapMY, -1, 0, 4);
                 carvePath(2, mapMY, 1, 0, 4);
+              } else if (bestExit.dir === 'ne') {
+                /* Entered from town's NE → spawned in zone's SW corner.
+                   Return tile at SW; dungeon at NE. */
+                S.map[mapH-1][1] = 9; S.map[mapH-1][2] = 9;
+                S.map[2][mapW-3] = 10; S.map[2][mapW-2] = 10;
+                carvePath(2, mapH-1, 0, -1, 4); carvePath(2, mapH-1, 1, 0, 4);
+                carvePath(mapW-3, 2, 0, 1, 4); carvePath(mapW-3, 2, -1, 0, 4);
+              } else if (bestExit.dir === 'nw') {
+                /* SE corner spawn → return SE, dungeon NW. */
+                S.map[mapH-1][mapW-3] = 9; S.map[mapH-1][mapW-2] = 9;
+                S.map[2][1] = 10; S.map[2][2] = 10;
+                carvePath(mapW-3, mapH-1, 0, -1, 4); carvePath(mapW-3, mapH-1, -1, 0, 4);
+                carvePath(2, 2, 0, 1, 4); carvePath(2, 2, 1, 0, 4);
+              } else if (bestExit.dir === 'se') {
+                /* NW corner spawn → return NW, dungeon SE. */
+                S.map[1][1] = 9; S.map[1][2] = 9;
+                S.map[mapH-3][mapW-3] = 10; S.map[mapH-3][mapW-2] = 10;
+                carvePath(2, 1, 0, 1, 4); carvePath(2, 1, 1, 0, 4);
+                carvePath(mapW-3, mapH-3, 0, -1, 4); carvePath(mapW-3, mapH-3, -1, 0, 4);
+              } else if (bestExit.dir === 'sw') {
+                /* NE corner spawn → return NE, dungeon SW. */
+                S.map[1][mapW-3] = 9; S.map[1][mapW-2] = 9;
+                S.map[mapH-3][1] = 10; S.map[mapH-3][2] = 10;
+                carvePath(mapW-3, 1, 0, 1, 4); carvePath(mapW-3, 1, -1, 0, 4);
+                carvePath(2, mapH-3, 0, -1, 4); carvePath(2, mapH-3, 1, 0, 4);
               }
               S.dmgNumbers.push({
                 x: P.x,
@@ -4026,14 +4066,24 @@ export var BroTown = function BroTown(_ref0) {
             BT_AUDIO.startZoneAmbient('town');
             S.map = generateZoneMap('town');
             S.monsters = []; /* Town has no monsters */
-            /* Spawn near the town edge you originally left from */
+            /* Spawn at the same town extreme you originally left from
+               — 8 directions including diagonals so corner-exit zones
+               return you to the same corner. */
             var twn2 = ZONES.town;
             var entryDir = S._enteredFromDir || 'north';
-            if (entryDir === 'north') { P.x = Math.floor(twn2.w / 2) * TILE; P.y = TILE * 3; }
-            else if (entryDir === 'south') { P.x = Math.floor(twn2.w / 2) * TILE; P.y = (twn2.h - 3) * TILE; }
-            else if (entryDir === 'east') { P.x = (twn2.w - 3) * TILE; P.y = Math.floor(twn2.h / 2) * TILE; }
-            else if (entryDir === 'west') { P.x = TILE * 3; P.y = Math.floor(twn2.h / 2) * TILE; }
-            else { P.x = 20 * TILE; P.y = 20 * TILE; }
+            var twnMidX = Math.floor(twn2.w / 2) * TILE;
+            var twnMidY = Math.floor(twn2.h / 2) * TILE;
+            var twnNX = TILE * 3, twnSX = (twn2.h - 3) * TILE;
+            var twnEX = (twn2.w - 3) * TILE, twnWX = TILE * 3;
+            if (entryDir === 'north')      { P.x = twnMidX; P.y = twnNX;   }
+            else if (entryDir === 'south') { P.x = twnMidX; P.y = twnSX;   }
+            else if (entryDir === 'east')  { P.x = twnEX;   P.y = twnMidY; }
+            else if (entryDir === 'west')  { P.x = twnWX;   P.y = twnMidY; }
+            else if (entryDir === 'ne')    { P.x = twnEX;   P.y = twnNX;   }
+            else if (entryDir === 'nw')    { P.x = twnWX;   P.y = twnNX;   }
+            else if (entryDir === 'se')    { P.x = twnEX;   P.y = twnSX;   }
+            else if (entryDir === 'sw')    { P.x = twnWX;   P.y = twnSX;   }
+            else                            { P.x = 20 * TILE; P.y = 20 * TILE; }
             S._enteredFromDir = null;
             S.dmgNumbers.push({
               x: P.x,
@@ -8522,35 +8572,48 @@ export var BroTown = function BroTown(_ref0) {
         var cx = S.camera.x,
           cy = S.camera.y;
 
-        /* Clear canvas each frame.  Themed zones (ember, mist, frost,
-           thunder, hollows, sky, tidal) fill with a repeating ground
-           swatch via createPattern when the tile image is loaded;
-           pattern is anchored to world coords so it doesn't slide
-           with the camera (ctx.translate before fill). Falls back to
-           the solid palette color until the image loads. */
+        /* Clear canvas each frame in two passes:
+             1. Fill the entire viewport with BLACK so anywhere the
+                camera sees past the zone's tile grid renders solid
+                black (no palette bleed past the boundary).
+             2. Fill the in-bounds rect (0,0 to mapW*TILE, mapH*TILE
+                in world coords) with the zone palette / ground pattern.
+           Live map dimensions are read from S.map directly so the
+           Canvas 2D path matches the PixiJS path (which has always
+           used live map.length / map[0].length). */
+        var _mapRows = (S.map && S.map.length) || ROWS;
+        var _mapCols = (S.map && S.map[0] && S.map[0].length) || COLS;
+        var _mapPxW = _mapCols * TILE;
+        var _mapPxH = _mapRows * TILE;
         var _bgColor = _zone.palette ? _zone.palette.ground : '#2d5a1e';
         var _gImg = groundTilesRef.current[S.currentZone];
+        /* (1) Black for out-of-bounds. Viewport-relative; no translate. */
+        ctx.fillStyle = '#000';
+        ctx.fillRect(-10, -10, W + 20, H + 20);
+        /* (2) Zone fill inside the map rect. World-coord translate so
+           ground patterns are anchored to the world (don't slide). */
+        ctx.save();
+        ctx.translate(-cx, -cy);
         if (_gImg) {
           var _pat = groundPatternsRef.current[S.currentZone];
           if (!_pat) {
             _pat = ctx.createPattern(_gImg, 'repeat');
             groundPatternsRef.current[S.currentZone] = _pat;
           }
-          ctx.save();
-          ctx.translate(-cx, -cy);
           ctx.fillStyle = _pat;
-          ctx.fillRect(cx - 10, cy - 10, W + 20, H + 20);
-          ctx.restore();
         } else {
           ctx.fillStyle = _bgColor;
-          ctx.fillRect(-10, -10, W + 20, H + 20);
         }
+        ctx.fillRect(0, 0, _mapPxW, _mapPxH);
+        ctx.restore();
 
-        /* Tiles */
+        /* Tiles — use live map dimensions, not the cached COLS/ROWS
+           globals (which can lag if updateZoneDimensions is skipped
+           during a re-mount). */
         var startCol = Math.max(0, Math.floor(cx / TILE));
-        var endCol = Math.min(COLS - 1, Math.floor((cx + W) / TILE));
+        var endCol = Math.min(_mapCols - 1, Math.floor((cx + W) / TILE));
         var startRow = Math.max(0, Math.floor(cy / TILE));
-        var endRow = Math.min(ROWS - 1, Math.floor((cy + H) / TILE));
+        var endRow = Math.min(_mapRows - 1, Math.floor((cy + H) / TILE));
 
         /* ── Tiled map path: hand-authored .tmx draws layers directly. ── */
         var _usedTiledMap = !!TILED_ZONE_MAPS[S.currentZone] && drawTiledMap(ctx, S.currentZone, cx, cy, W, H);
