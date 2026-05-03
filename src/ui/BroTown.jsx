@@ -5586,7 +5586,7 @@ export var BroTown = function BroTown(_ref0) {
             }[arch] || 120;
             /* Deep Hollows echo — combat noise doubles aggro range */
             if (S._echoActive) aggroRange *= ECHO_AGGRO_MULT;
-            var atkRange = arch === 'hexer' ? 60 : arch === 'stalker' ? 30 : arch === 'fodder' ? 120 : 18;
+            var atkRange = arch === 'hexer' ? 60 : arch === 'stalker' ? 30 : arch === 'fodder' ? 80 : 18;
             var atkCooldown = {
               fodder: 1500,
               brute: 2200,
@@ -5969,13 +5969,19 @@ export var BroTown = function BroTown(_ref0) {
                   if (arch === 'fodder') {
                     var _projAng = Math.atan2(P.y - m.y, P.x - m.x);
                     if (!S.slimeProjectiles) S.slimeProjectiles = [];
+                    /* life=35 ticks × speed=4 px = 140 px range, just past
+                       the 80 px attack range. Previous life=90 (360 px)
+                       let projectiles travel far past the slime's
+                       visible range, hitting the player long after
+                       they'd walked away — read as phantom "mystery
+                       damage" with no visible attacker. */
                     S.slimeProjectiles.push({
                       x: m.x, y: m.y,
                       ang: _projAng,
                       speed: 4,
                       rawDmg: rawDmg,
                       ownerId: m.id,
-                      life: 90,
+                      life: 35,
                       ts: Date.now(),
                     });
                     return;
