@@ -255,6 +255,7 @@ export var BroTown = function BroTown(_ref0) {
      in the fodder render branch + the death-effect renderer. */
   var slimeIdleImgRef = useRef(null);
   var slimeDeathImgRef = useRef(null);
+  var slimeShootImgRef = useRef(null);
   /* Singleton Audio element for the slime proximity loop.  Created
      lazily on first need; volume scales with distance to nearest
      slime, paused when none in range. */
@@ -1349,10 +1350,16 @@ export var BroTown = function BroTown(_ref0) {
        are guaranteed-fresh after the asset rebuild. */
     var slimeIdle = new Image();
     slimeIdle.onload = function () { slimeIdleImgRef.current = slimeIdle; };
-    slimeIdle.src = '/sprites/monsters/slime-idle-v2.png';
+    slimeIdle.src = '/sprites/monsters/slime-idle-v3.png';
     var slimeDeath = new Image();
     slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
-    slimeDeath.src = '/sprites/monsters/slime-death-v2.png';
+    slimeDeath.src = '/sprites/monsters/slime-death-v3.png';
+    /* Shoot/attack animation — same 8-frame sheet shape as idle/death.
+       Plays briefly when the slime lunges at the player so the attack
+       cadence reads visually. */
+    var slimeShoot = new Image();
+    slimeShoot.onload = function () { slimeShootImgRef.current = slimeShoot; };
+    slimeShoot.src = '/sprites/monsters/slime-shoot-v1.png';
 
     /* Themed-zone ground swatches — 64×64 procedural noise tiles
        generated at runtime per zone palette so they tile seamlessly
@@ -5817,6 +5824,14 @@ export var BroTown = function BroTown(_ref0) {
                     m._telegraphUntil = Date.now() + telegraphDur;
                     m._telegraphAngle = Math.atan2(P.y - m.y, P.x - m.x);
                     m._telegraphRange = atkRange;
+                    /* Fodder slimes: play the shoot/lunge animation
+                       across the telegraph window so the wind-up reads
+                       visually. Cleared automatically when the render
+                       loop sees now > _shootAnimEnd. */
+                    if (arch === 'fodder') {
+                      m._shootAnimStart = Date.now();
+                      m._shootAnimEnd = Date.now() + telegraphDur + 80;
+                    }
                     return; /* don't attack yet */
                   }
                   if (Date.now() < m._telegraphUntil) return; /* still telegraphing */
@@ -11090,17 +11105,28 @@ export var BroTown = function BroTown(_ref0) {
                 ctx.fill();
               }
             } else {
-              /* Fodder: slime sprite (slime-idle.png 6-frame loop).
-                 Falls back to the procedural circle if the sprite hasn't
-                 loaded yet (first ~50 ms of a session). */
-              var _slimeImg = slimeIdleImgRef.current;
+              /* Fodder: slime sprite (8-frame loop). Swaps to the
+                 shoot/lunge sheet during the attack telegraph so the
+                 wind-up plays through to release. */
+              var _shootingNow = m._shootAnimEnd && now < m._shootAnimEnd && slimeShootImgRef.current;
+              var _slimeImg = _shootingNow ? slimeShootImgRef.current : slimeIdleImgRef.current;
               if (_slimeImg) {
-                /* Slight per-monster offset (m.spawnX, hashed) so a
-                   group of slimes doesn't pulse in lockstep. */
-                var _SLIME_FRAMES = 6;
-                var _SLIME_FRAME_MS = 140;
-                var _phaseOff = ((m.spawnX || 0) | 0) % 600;
-                var _slimeFrame = Math.floor((now + _phaseOff) / _SLIME_FRAME_MS) % _SLIME_FRAMES;
+                var _SLIME_FRAMES = 8;
+                var _SLIME_FRAME_MS = 120;
+                var _slimeFrame;
+                if (_shootingNow) {
+                  /* Play the shoot anim once across its window — frame
+                     index advances from 0 → FRAMES-1 over the duration
+                     so it doesn't loop mid-animation. */
+                  var _shootDur = m._shootAnimEnd - m._shootAnimStart;
+                  var _shootT = (now - m._shootAnimStart) / _shootDur;
+                  _slimeFrame = Math.min(_SLIME_FRAMES - 1, Math.max(0, Math.floor(_shootT * _SLIME_FRAMES)));
+                } else {
+                  /* Idle loop — per-monster phase offset so a group
+                     doesn't pulse in lockstep. */
+                  var _phaseOff = ((m.spawnX || 0) | 0) % 600;
+                  _slimeFrame = Math.floor((now + _phaseOff) / _SLIME_FRAME_MS) % _SLIME_FRAMES;
+                }
                 /* Render larger than the procedural circle so the new
                    art reads — sprite anchored so the "feet" line up
                    with the existing shadow at my + bodySize. */
