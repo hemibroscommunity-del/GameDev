@@ -135,6 +135,27 @@ export function setupWebSocket(ctx) {
                         /* Monster died (from another player's kill) */
                         localM.alive = false;
                       }
+                    } else if (md.alive) {
+                      /* Server has a monster we don't — this happens when the
+                         client missed the initial sync for a zone (e.g. very
+                         fast zone-change before state_sync arrived). Register
+                         a placeholder so it's at least visible and damage
+                         events from it can be associated. Tick deltas only
+                         carry id/x/y/hp/alive, so spd/dmg/level/arch/etc are
+                         null until the next state_sync — but the monster will
+                         render at its server position with default visuals
+                         (slime sprite via fallback) and behave correctly. */
+                      S.monsters.push({
+                        id: md.id,
+                        x: md.x, y: md.y,
+                        renderX: md.x, renderY: md.y,
+                        curHp: md.hp, hp: md.hp, maxHp: md.hp,
+                        alive: true,
+                        archetype: 'fodder', /* assume fodder (most common) until state_sync corrects */
+                        type: 'fodder',
+                        spawnX: md.x, spawnY: md.y,
+                        statuses: {},
+                      });
                     }
                   }
                 }

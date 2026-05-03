@@ -1994,15 +1994,25 @@ export var BroTown = function BroTown(_ref0) {
                  this just suppresses the visual "ghost hit" in the
                  normal case. */
               var atkSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
+              /* Drop the event when the attacker isn't in our local
+                 monster snapshot — even if the server provided
+                 attackerX/Y. If the client doesn't have the monster
+                 registered, it can't render the source, so the user
+                 sees damage with no visible attacker. The
+                 wsClient.js tick handler only UPDATES existing local
+                 monsters, so a server-spawned monster the client
+                 missed during initial sync stays invisible until a
+                 zone change re-syncs. Server doesn't track player HP,
+                 so dropping is safe — no desync to reconcile. */
+              if (!atkSrc) {
+                try { console.log('[dmg] net-monster_attack DROPPED (not in snapshot)', { monsterId: payload.monsterId, srvAttackerXY: (typeof payload.attackerX === 'number') ? { x: Math.round(payload.attackerX), y: Math.round(payload.attackerY) } : null }); } catch (e) {}
+                break;
+              }
               /* Prefer the server's authoritative position (payload.attackerX/Y)
                  over the local snapshot — the server's view is what decided the
                  attack should fire, and the snapshot can lag a few ticks. */
-              var _atkX = (typeof payload.attackerX === 'number') ? payload.attackerX : (atkSrc ? atkSrc.x : null);
-              var _atkY = (typeof payload.attackerY === 'number') ? payload.attackerY : (atkSrc ? atkSrc.y : null);
-              if (_atkX == null || _atkY == null) {
-                try { console.log('[dmg] net-monster_attack DROPPED (unknown attacker)', { monsterId: payload.monsterId }); } catch (e) {}
-                break;
-              }
+              var _atkX = (typeof payload.attackerX === 'number') ? payload.attackerX : atkSrc.x;
+              var _atkY = (typeof payload.attackerY === 'number') ? payload.attackerY : atkSrc.y;
               var _atkDx = _atkX - S.player.x, _atkDy = _atkY - S.player.y;
               var _atkDist = Math.sqrt(_atkDx * _atkDx + _atkDy * _atkDy);
               if (_atkDist > 160) {
