@@ -256,6 +256,9 @@ export var BroTown = function BroTown(_ref0) {
   var slimeIdleImgRef = useRef(null);
   var slimeDeathImgRef = useRef(null);
   var slimeShootImgRef = useRef(null);
+  var slimeHitImgRef = useRef(null);
+  var slimeProjectileImgRef = useRef(null);
+  var slimeRemnantsImgRef = useRef(null);
   /* Singleton Audio element for the slime proximity loop.  Created
      lazily on first need; volume scales with distance to nearest
      slime, paused when none in range. */
@@ -1361,6 +1364,19 @@ export var BroTown = function BroTown(_ref0) {
     var slimeShoot = new Image();
     slimeShoot.onload = function () { slimeShootImgRef.current = slimeShoot; };
     slimeShoot.src = '/sprites/monsters/slime-shoot-v2.png';
+    /* Hit-reaction sheet — squash anim plays for 250 ms when a fodder
+       slime takes damage. Priority order in render: hit > shoot > idle. */
+    var slimeHit = new Image();
+    slimeHit.onload = function () { slimeHitImgRef.current = slimeHit; };
+    slimeHit.src = '/sprites/monsters/slime-hit-v1.png';
+    /* Projectile (single-frame orb) and remnants splat (single-frame
+       ground splatter for the inventory pickup drop). */
+    var slimeProj = new Image();
+    slimeProj.onload = function () { slimeProjectileImgRef.current = slimeProj; };
+    slimeProj.src = '/sprites/monsters/slime-projectile-v1.png';
+    var slimeRem = new Image();
+    slimeRem.onload = function () { slimeRemnantsImgRef.current = slimeRem; };
+    slimeRem.src = '/sprites/monsters/slime-remnants-v1.png';
 
     /* Themed-zone ground swatches — 64×64 procedural noise tiles
        generated at runtime per zone palette so they tile seamlessly
@@ -5497,7 +5513,7 @@ export var BroTown = function BroTown(_ref0) {
             }[arch] || 120;
             /* Deep Hollows echo — combat noise doubles aggro range */
             if (S._echoActive) aggroRange *= ECHO_AGGRO_MULT;
-            var atkRange = arch === 'hexer' ? 60 : arch === 'stalker' ? 30 : 18;
+            var atkRange = arch === 'hexer' ? 60 : arch === 'stalker' ? 30 : arch === 'fodder' ? 120 : 18;
             var atkCooldown = {
               fodder: 1500,
               brute: 2200,
@@ -5852,6 +5868,30 @@ export var BroTown = function BroTown(_ref0) {
                   }
                   var blockReduc = shielded ? calcBlockReduction(_R6.fortification, _R6.shield) : 0;
                   var dmgTaken = shielded ? Math.max(1, Math.floor(rawDmg * (1 - blockReduc))) : rawDmg;
+                  /* ═══ FODDER SLIMES — RANGED PROJECTILE ATTACK ═══
+                     Spawn a slime-orb projectile aimed at the player's
+                     position right now. Damage isn't applied here — it
+                     lands when the projectile hits (see slime-projectile
+                     simulation block). Block/shield is recomputed at
+                     impact since the player can raise shield mid-flight.
+                     The early return skips all the inline melee damage
+                     application + archetype effects below — fodder has
+                     no archetype effects, so nothing else is needed
+                     here. */
+                  if (arch === 'fodder') {
+                    var _projAng = Math.atan2(P.y - m.y, P.x - m.x);
+                    if (!S.slimeProjectiles) S.slimeProjectiles = [];
+                    S.slimeProjectiles.push({
+                      x: m.x, y: m.y,
+                      ang: _projAng,
+                      speed: 4,
+                      rawDmg: rawDmg,
+                      ownerId: m.id,
+                      life: 90,
+                      ts: Date.now(),
+                    });
+                    return;
+                  }
                   if (shielded) {
                     if (!_R6._questFlags) _R6._questFlags = {};
                     _R6._questFlags.blocksLanded = (_R6._questFlags.blocksLanded || 0) + 1;
@@ -6429,6 +6469,13 @@ export var BroTown = function BroTown(_ref0) {
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
                 m.curHp -= dmg;
+                /* Fodder hit-reaction — squash anim plays once. Skipped
+                   if the hit is fatal so the death anim takes over
+                   without overlap. */
+                if (m.archetype === 'fodder' && m.curHp > 0) {
+                  m._hitAnimStart = Date.now();
+                  m._hitAnimEnd = Date.now() + 250;
+                }
                 /* Count-based weight: 1 per landed hit (Power for melee).
                    Pairs with block = 3 to match the user's hits-vs-blocks
                    ratio for Endurance share of killXp. */
@@ -7475,7 +7522,15 @@ export var BroTown = function BroTown(_ref0) {
               S.rpg.coins += loot.coins || 0;
               if (loot.coins && S.rpg._compStats) S.rpg._compStats.totalGoldEarned += loot.coins;
               syncRpgToServer(S.rpg);
-              if (loot.skull && S.rpg.inventory) S.rpg.inventory[loot.skull] = (S.rpg.inventory[loot.skull] || 0) + 1;
+              if (loot.skull && S.rpg.inventory) {
+                /* Fodder slime kills deposit "slime-remnants" instead
+                   of the raw archetype key, so the inventory shows the
+                   thematic name + thumbnail (see InventoryPanel
+                   thumbFor). Other archetypes keep their existing
+                   m.type → inventory mapping. */
+                var _invKey = loot.skull === 'fodder' ? 'slime-remnants' : loot.skull;
+                S.rpg.inventory[_invKey] = (S.rpg.inventory[_invKey] || 0) + 1;
+              }
               if (loot.skull) {
                 if (!S.rpg.skulls) S.rpg.skulls = {};
                 S.rpg.skulls[loot.skull] = (S.rpg.skulls[loot.skull] || 0) + 1;
@@ -8064,6 +8119,13 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 m.curHp -= a.dmg;
+                /* Fodder hit-reaction (ranged variant) — same squash as
+                   melee. arrowCollision bonus damage applied below uses
+                   the same anim window, no need to re-trigger. */
+                if (m.archetype === 'fodder' && m.curHp > 0) {
+                  m._hitAnimStart = Date.now();
+                  m._hitAnimEnd = Date.now() + 250;
+                }
                 /* Count-based weight: 1 per landed projectile.  Bow hits
                    feed Agility, staff hits feed Mind — so ranged kills
                    train Agility and magic kills train Mind via
@@ -8318,6 +8380,51 @@ export var BroTown = function BroTown(_ref0) {
             a._projElem = projElem;
             a._isStaffProj = isStaffProj;
             return true;
+          });
+        }
+
+        /* ── Slime projectile simulation + player collision + damage ──
+           Spawned by fodder slimes at telegraph end (see attack code).
+           Travels in a straight line at proj.speed px/tick toward where
+           the player was at fire time. Player can dodge by moving. On
+           contact: re-evaluate shield/block (player can raise shield
+           mid-flight) and apply damage. */
+        if (S.slimeProjectiles && S.slimeProjectiles.length > 0) {
+          var _R6P = S.rpg || {};
+          var _pInvuln = Date.now() < (S.respawnTimer || 0);
+          S.slimeProjectiles = S.slimeProjectiles.filter(function (proj) {
+            proj.life--;
+            if (proj.life <= 0) return false;
+            proj.x += Math.cos(proj.ang) * proj.speed;
+            proj.y += Math.sin(proj.ang) * proj.speed;
+            var pdx = P.x - proj.x, pdy = P.y - proj.y;
+            if (pdx * pdx + pdy * pdy > 16 * 16) return true;
+            if (_pInvuln) return false;
+            var pShielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, proj.x, proj.y);
+            var pBlockReduc = pShielded ? calcBlockReduction(_R6P.fortification, _R6P.shield) : 0;
+            var pDmg = pShielded ? Math.max(1, Math.floor(proj.rawDmg * (1 - pBlockReduc))) : proj.rawDmg;
+            _R6P.hp -= pDmg;
+            S.lastDamageTaken = Date.now();
+            if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', pDmg);
+            S.dmgNumbers.push({
+              x: P.x, y: P.y - 20,
+              text: pShielded ? '🛡️ -' + pDmg : '-' + pDmg,
+              color: pShielded ? '#60a5fa' : '#fff',
+              ts: Date.now(),
+            });
+            S.screenShake = Math.max(S.screenShake || 0, pShielded ? 3 : 4);
+            for (var _hp = 0; _hp < 6; _hp++) {
+              var _hpA = Math.random() * Math.PI * 2;
+              S.hitParticles.push({
+                x: P.x, y: P.y,
+                vx: Math.cos(_hpA) * (1 + Math.random() * 2),
+                vy: Math.sin(_hpA) * (1 + Math.random() * 2) - 1,
+                life: 0.5,
+                color: '#3dd497',
+                size: 1.5 + Math.random(),
+              });
+            }
+            return false;
           });
         }
 
@@ -10179,6 +10286,32 @@ export var BroTown = function BroTown(_ref0) {
           });
         }
 
+        /* ═══ SLIME PROJECTILES — single-frame orb sprite, scaled small ═══
+           Drawn at proj world position with a slight gentle scale-pulse.
+           Falls back to a green circle if the sprite hasn't loaded. */
+        if (S.slimeProjectiles && S.slimeProjectiles.length > 0) {
+          var _projImg = slimeProjectileImgRef.current;
+          S.slimeProjectiles.forEach(function (proj) {
+            var psx = proj.x - cx, psy = proj.y - cy;
+            if (psx < -40 || psx > W + 40 || psy < -40 || psy > H + 40) return;
+            var _projAge = (Date.now() - proj.ts) / 90;
+            var _projPulse = 1 + Math.sin(_projAge * 6) * 0.08;
+            var _projSize = 16 * _projPulse;
+            if (_projImg && _projImg.naturalWidth > 0) {
+              ctx.drawImage(
+                _projImg,
+                psx - _projSize / 2, psy - _projSize / 2,
+                _projSize, _projSize
+              );
+            } else {
+              ctx.fillStyle = '#3dd497';
+              ctx.beginPath();
+              ctx.arc(psx, psy, 5 * _projPulse, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          });
+        }
+
         /* ═══ LOCK-ON INDICATOR ═══ */
         if (S.lockedTarget && S.lockedTarget.ref) {
           var _lt3 = S.lockedTarget.ref;
@@ -11122,13 +11255,24 @@ export var BroTown = function BroTown(_ref0) {
               /* Fodder: slime sprite (8-frame loop). Swaps to the
                  shoot/lunge sheet during the attack telegraph so the
                  wind-up plays through to release. */
+              /* Anim priority: hit > shoot > idle. The hit-reaction
+                 squash preempts the lunge so getting hit visibly
+                 interrupts the slime's wind-up. */
+              var _hittingNow = m._hitAnimEnd && now < m._hitAnimEnd && slimeHitImgRef.current;
               var _shootingNow = m._shootAnimEnd && now < m._shootAnimEnd && slimeShootImgRef.current;
-              var _slimeImg = _shootingNow ? slimeShootImgRef.current : slimeIdleImgRef.current;
+              var _slimeImg = _hittingNow ? slimeHitImgRef.current
+                            : _shootingNow ? slimeShootImgRef.current
+                            : slimeIdleImgRef.current;
               if (_slimeImg) {
                 var _SLIME_FRAMES = (_slimeImg.naturalWidth >= 128) ? Math.floor(_slimeImg.naturalWidth / 128) : 8;
                 var _SLIME_FRAME_MS = 120;
                 var _slimeFrame;
-                if (_shootingNow) {
+                if (_hittingNow) {
+                  /* Play the hit anim once over the [start, end] window. */
+                  var _hitDur = m._hitAnimEnd - m._hitAnimStart;
+                  var _hitT = (now - m._hitAnimStart) / _hitDur;
+                  _slimeFrame = Math.min(_SLIME_FRAMES - 1, Math.max(0, Math.floor(_hitT * _SLIME_FRAMES)));
+                } else if (_shootingNow) {
                   /* Play the shoot anim once across its window — frame
                      index advances from 0 → FRAMES-1 over the duration
                      so it doesn't loop mid-animation. */
@@ -11687,9 +11831,16 @@ export var BroTown = function BroTown(_ref0) {
             ctx.fillStyle = '#f5c542';
             ctx.fillText(loot.coins + 'G', lx, ly + 14 + bob);
 
-            /* Skull on top */
-            ctx.font = '12px sans-serif';
-            ctx.fillText(loot.skullEmoji, lx, ly - 6 + bob);
+            /* Pickup icon — slime-remnants sprite for fodder drops,
+               🦴 emoji for everything else. The remnants sprite is
+               rendered at 16×16 so it reads like a small ground
+               splatter rather than dominating the loot tile. */
+            if (loot.skull === 'fodder' && slimeRemnantsImgRef.current && slimeRemnantsImgRef.current.naturalWidth > 0) {
+              ctx.drawImage(slimeRemnantsImgRef.current, lx - 8, ly - 14 + bob, 16, 16);
+            } else {
+              ctx.font = '12px sans-serif';
+              ctx.fillText(loot.skullEmoji, lx, ly - 6 + bob);
+            }
 
             /* XP sparkle */
             ctx.fillStyle = 'rgba(96,165,250,.4)';

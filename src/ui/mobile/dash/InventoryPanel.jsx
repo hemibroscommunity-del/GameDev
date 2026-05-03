@@ -32,6 +32,7 @@ const classify = (key) => {
 // fish sprites are wired into the minigame.
 const WOOD_THUMB = '/icons/wood/wood-log.png';
 const BURNT_DUST_THUMB = '/icons/cook/burnt-dust.png';
+const SLIME_REMNANTS_THUMB = '/icons/monsters/slime-remnants.png';
 /* Per-tier fish thumbnails (raw + cooked).  Order matters in thumbFor:
    match longer prefixes first so e.g. fish_clownfish doesn't fall
    through to the generic fish_ branch. Add an entry per tier; the
@@ -52,6 +53,7 @@ const thumbFor = (key) => {
   if (FISH_THUMBS[k])               return FISH_THUMBS[k];
   if (k.startsWith('fish_'))        return FISH_THUMB_DEFAULT;
   if (k.startsWith('wood_'))        return WOOD_THUMB;
+  if (k === 'slime-remnants')       return SLIME_REMNANTS_THUMB;
   return null;
 };
 
