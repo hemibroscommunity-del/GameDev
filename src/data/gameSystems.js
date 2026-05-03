@@ -5120,53 +5120,65 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     } catch (e) {}
   }
 }, "_ambientOsc", null), "_ambientGain", null), "_ambientLfo", null), "_currentZoneAmbient", null), "_ambientOsc2", null), "_ambientGain2", null), "_ambientLfo2", null), "startZoneAmbient", function startZoneAmbient(zoneId) {
-  /* DIAGNOSTIC INSTRUMENTATION — temporary, remove once frost-zone
-     music is confirmed playing. Logs the full state at every decision
-     point so a single browser-console capture pinpoints which failure
-     mode (ctx-null, autoplay-block, manifest-miss, stale-cache, etc.)
-     is hitting. See plans/frozen-shore-still-does-spicy-popcorn.md. */
-  try {
-    console.log('[zone-ambient] called', {
-      zoneId: zoneId,
-      ctx: !!this.ctx,
-      ctxState: this.ctx && this.ctx.state,
-      muted: this.muted,
-      currentZoneAmbient: this._currentZoneAmbient,
-      manifestHit: !!(this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId]),
-      trackUrl: this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId],
-    });
-  } catch (e) {}
   /* Mute is a hard gate; ctx-null is NOT — HTMLAudio music can play
-     before BT_AUDIO.init() has run. The previous structure bailed on
-     ctx-null before reaching the music path, which silently blocked
-     the frost track on first entry if init hadn't fired yet. */
-  if (this.muted) { try { console.log('[zone-ambient] EARLY-RETURN muted'); } catch (e) {} return; }
-  if (this._currentZoneAmbient === zoneId) { try { console.log('[zone-ambient] EARLY-RETURN already-current'); } catch (e) {} return; }
+     before BT_AUDIO.init() has run. */
+  if (this.muted) return;
+  if (this._currentZoneAmbient === zoneId) return;
   this._currentZoneAmbient = zoneId;
   this.stopAmbient();
   /* Zone music — HTMLAudio loop. When a zone has a real composed
-     track, it REPLACES the procedural oscillator drone (early return
-     skips the oscillator setup below) so the player only hears the
-     intended track instead of two layers fighting each other.
-     Independent of the WebAudio ctx — runs even pre-init. */
+     track, it REPLACES the procedural oscillator drone so the player
+     only hears the intended track. Independent of the WebAudio ctx.
+
+     Autoplay policy: AudioContext.resume() unlocks Web Audio but
+     does NOT transfer to HTMLAudio elements — Safari/Chrome require
+     a separate user gesture for HTMLAudio.play(). When the initial
+     play() is rejected with NotAllowedError, we stash the element
+     and re-try on the next document-level pointerdown/touchstart/
+     keydown (one-shot, removes itself on success). */
   var trackUrl = this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId];
   if (trackUrl) {
+    var self = this;
     try {
       var au = new Audio(trackUrl);
       au.loop = true;
       au.volume = 0.55;
-      try { console.log('[zone-ambient] music attempting play', trackUrl); } catch (e) {}
-      var p = au.play();
-      if (p && p.then) {
-        p.then(function () { try { console.log('[zone-ambient] music PLAYING ok'); } catch (e) {} })
-         .catch(function (err) { try { console.log('[zone-ambient] music REJECTED', err && err.name, err && err.message); } catch (e) {} });
-      }
       this._zoneMusic = au;
-    } catch (e) { try { console.log('[zone-ambient] music THREW', e && e.message); } catch (e2) {} }
+      var attempt = au.play();
+      if (attempt && attempt.catch) {
+        attempt.catch(function () {
+          /* Autoplay blocked — re-try on next user gesture. The
+             listener stays attached only until the audio element
+             we currently care about plays successfully (or until a
+             different zone change replaces _zoneMusic, in which
+             case the old retry becomes a no-op). */
+          var retry = function () {
+            if (self._zoneMusic !== au) {
+              cleanup();
+              return;
+            }
+            var p = au.play();
+            if (p && p.then) {
+              p.then(cleanup).catch(function () { /* still blocked, listener stays */ });
+            } else {
+              cleanup();
+            }
+          };
+          var cleanup = function () {
+            document.removeEventListener('pointerdown', retry, true);
+            document.removeEventListener('touchstart', retry, true);
+            document.removeEventListener('keydown', retry, true);
+          };
+          document.addEventListener('pointerdown', retry, true);
+          document.addEventListener('touchstart', retry, true);
+          document.addEventListener('keydown', retry, true);
+        });
+      }
+    } catch (e) {}
     return;
   }
   /* Procedural drone — requires WebAudio. Skip if init hasn't run. */
-  if (!this.ctx) { try { console.log('[zone-ambient] EARLY-RETURN ctx-null (no music for this zone)'); } catch (e) {} return; }
+  if (!this.ctx) return;
   var zone = ZONES[zoneId];
   if (!zone) return;
   try {
