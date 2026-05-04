@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { FishingMinigame } from './FishingMinigame.jsx';
 import { WoodChopMinigame } from './WoodChopMinigame.jsx';
 import { CookingMinigame } from './CookingMinigame.jsx';
+import { IntroVideo } from './IntroVideo.jsx';
 
 /* Per-tier fish sprite map.  FishingMinigame defaults to fish-08
    (yellow tang) when no fishSheetSrc is passed.  Add an entry here
@@ -1072,6 +1073,12 @@ export var BroTown = function BroTown(_ref0) {
     _useState190 = _slicedToArray(_useState189, 2),
     showWelcome = _useState190[0],
     setShowWelcome = _useState190[1];
+  /* Bro Town intro video — overlays the game for ~4 s after character
+     creation (fades out at 3 s).  Town music starts during the video. */
+  var _useState229 = useState(false),
+    _useState230 = _slicedToArray(_useState229, 2),
+    showIntro = _useState230[0],
+    setShowIntro = _useState230[1];
   var showLogin = false; /* disabled — no passphrase system */
   var showNameModal = showWelcome;
   var _useState191 = useState(''),
@@ -16263,6 +16270,7 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     setShowWelcome(false);
+    setShowIntro(true);
   };
 
   /* Name / avatar selection modal */
@@ -16351,7 +16359,9 @@ export var BroTown = function BroTown(_ref0) {
       width: '100%'
     }
   }, "PLAY")));
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
+    onComplete: function onComplete() { return setShowIntro(false); }
+  }), /*#__PURE__*/React.createElement("div", {
     className: "brotown-wrap",
     ref: wrapRef,
     style: {
