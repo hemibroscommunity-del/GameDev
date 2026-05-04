@@ -250,7 +250,7 @@ export var BroTown = function BroTown(_ref0) {
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
   var pixiRef = useRef(null);
-  var usePixi = useRef(false); /* true = PixiJS (WebGL), false = Canvas 2D */
+  var usePixi = useRef(true); /* true = PixiJS (WebGL), false = Canvas 2D */
   /* Player sprite sheets — 5 directional poses (east/north/northeast/south/
      southwest) × 2 modes (jog 8-frame, stand 1-frame). West/NW/SE are rendered
      by horizontal mirror at draw time. Map<key, {img, frames, w}> when loaded. */
@@ -2780,42 +2780,10 @@ export var BroTown = function BroTown(_ref0) {
     if (showNameModal || showLogin) return;
     var canvas = canvasRef.current;
     if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-
-    /* Initialize PixiJS renderer (async) — only if enabled */
-    /* NOTE: PixiJS creates a WebGL context which destroys Canvas 2D ctx,
-       so this must NOT run when usePixi is false */
-    if (usePixi.current && !pixiRef.current) {
-      initPixiRenderer(canvas).then(function(renderer) {
-        pixiRef.current = renderer;
-      }).catch(function(err) {
-        console.warn('PixiJS init failed, falling back to Canvas 2D:', err);
-        usePixi.current = false;
-      });
-    }
-    if (!usePixi.current) {
-      /* Canvas 2D mode — ensure we have a valid 2d context */
-      ctx = canvas.getContext('2d');
-      /* Pixel art: disable bilinear filtering so tile blits stay crisp
-         (default true smears sprites into a blurry mess every frame) */
-      ctx.imageSmoothingEnabled = false;
-      /* Start loading tileset assets for Canvas 2D sprite rendering */
-      startLoadingTileAssets();
-    }
-    /* Polyfill roundRect */
-    if (!ctx.roundRect) ctx.roundRect = function (x, y, w, h, r) {
-      var radii = typeof r === 'number' ? [r, r, r, r] : Array.isArray(r) ? r.concat([0, 0, 0, 0]).slice(0, 4) : [0, 0, 0, 0];
-      this.moveTo(x + radii[0], y);
-      this.lineTo(x + w - radii[1], y);
-      this.quadraticCurveTo(x + w, y, x + w, y + radii[1]);
-      this.lineTo(x + w, y + h - radii[2]);
-      this.quadraticCurveTo(x + w, y + h, x + w - radii[2], y + h);
-      this.lineTo(x + radii[3], y + h);
-      this.quadraticCurveTo(x, y + h, x, y + h - radii[3]);
-      this.lineTo(x, y + radii[0]);
-      this.quadraticCurveTo(x, y, x + radii[0], y);
-      this.closePath();
-    };
+    /* Per HTML spec, calling getContext('2d') locks the canvas to 2D —
+       any later getContext('webgl') returns null.  So we defer 2D context
+       acquisition until we know Pixi either succeeded or failed. */
+    var ctx = null;
     var S = stateRef.current;
 
     /* Canvas resize.  Reserve 25vh at the bottom for the BottomDashboard
@@ -2836,13 +2804,63 @@ export var BroTown = function BroTown(_ref0) {
       canvas.height = vh * dpr;
       canvas.style.width = vw + 'px';
       canvas.style.height = vh + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
+    /* Pre-size the canvas BEFORE Pixi init so pixiApp's createPixiApp
+       reads non-zero clientWidth/Height (it falls back to those if the
+       attribute width/height aren't set, and at first useEffect run the
+       canvas is fresh from React with both undefined). */
     resize();
     window.addEventListener('resize', resize);
     if (vv) vv.addEventListener('resize', resize);
     var resizeObs = window.ResizeObserver ? new ResizeObserver(resize) : null;
     if (resizeObs && canvas.parentElement) resizeObs.observe(canvas.parentElement);
+
+    /* Canvas 2D init helper — called either immediately when Pixi is
+       disabled, or from the Pixi-init catch as a runtime fallback. */
+    var initCanvas2D = function () {
+      ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      /* Pixel art: disable bilinear filtering so tile blits stay crisp
+         (default true smears sprites into a blurry mess every frame) */
+      ctx.imageSmoothingEnabled = false;
+      var dpr = window.devicePixelRatio || 1;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      /* Polyfill roundRect for older browsers */
+      if (!ctx.roundRect) ctx.roundRect = function (x, y, w, h, r) {
+        var radii = typeof r === 'number' ? [r, r, r, r] : Array.isArray(r) ? r.concat([0, 0, 0, 0]).slice(0, 4) : [0, 0, 0, 0];
+        this.moveTo(x + radii[0], y);
+        this.lineTo(x + w - radii[1], y);
+        this.quadraticCurveTo(x + w, y, x + w, y + radii[1]);
+        this.lineTo(x + w, y + h - radii[2]);
+        this.quadraticCurveTo(x + w, y + h, x + w - radii[2], y + h);
+        this.lineTo(x + radii[3], y + h);
+        this.quadraticCurveTo(x, y + h, x, y + h - radii[3]);
+        this.lineTo(x, y + radii[0]);
+        this.quadraticCurveTo(x, y, x + radii[0], y);
+        this.closePath();
+      };
+      /* Start loading tileset assets for Canvas 2D sprite rendering */
+      startLoadingTileAssets();
+    };
+
+    /* Initialize PixiJS renderer (async) — only if enabled.  By this
+       point the canvas has been resized so createPixiApp can read its
+       dimensions without falling through to 0×0. */
+    if (usePixi.current && !pixiRef.current) {
+      initPixiRenderer(canvas).then(function(renderer) {
+        pixiRef.current = renderer;
+        window.__pixiActive = true;
+      }).catch(function(err) {
+        console.warn('PixiJS init failed, falling back to Canvas 2D:', err);
+        usePixi.current = false;
+        window.__pixiActive = false;
+        initCanvas2D();
+      });
+    }
+    if (!usePixi.current) {
+      initCanvas2D();
+    }
 
     if (!S.map) {
       updateZoneDimensions(S.currentZone);
@@ -8776,9 +8794,15 @@ export var BroTown = function BroTown(_ref0) {
            PixiJS (WebGL) or Canvas 2D fallback.
            ══════════════════════════════════════════════════════════ */
         if (pixiRef.current && usePixi.current) {
-          /* ── PixiJS RENDER PATH ── */
-          var W = canvas.width / (window.devicePixelRatio || 1);
-          var H = canvas.height / (window.devicePixelRatio || 1);
+          /* ── PixiJS RENDER PATH ──
+             pixiRenderer.js scales the worldContainer by cssW/viewW.
+             It expects viewW/viewH to include the 1.25× world-zoom
+             factor (Canvas 2D used setTransform(dpr*0.8, …) — i.e.
+             1/0.8 = 1.25× more world per CSS pixel).  Without the
+             multiplier scale resolves to 1.0 instead of 0.8 and the
+             world renders ~64% of expected size. */
+          var W = canvas.width / (window.devicePixelRatio || 1) * 1.25;
+          var H = canvas.height / (window.devicePixelRatio || 1) * 1.25;
           pixiRef.current.update(S, W, H, nfts);
         } else {
         /* ── Canvas 2D RENDER PATH (fallback) ── */
@@ -16637,14 +16661,12 @@ export var BroTown = function BroTown(_ref0) {
       var S = stateRef.current;
       var cx = S.camera.x,
         cy = S.camera.y;
-      /* Canvas 2D render path uses ctx.setTransform(dpr, 0, 0, dpr) — uniform
-         dpr scaling, no axial compression. World coords map 1:1 to CSS pixels
-         after camera offset. (PixiJS path uses scale (1.0, 0.8), but PixiJS
-         is currently disabled — see commit de6d1a1; usePixi is initialised
-         to false and never flipped. If PixiJS is ever re-enabled, switch
-         SCALE_Y to 0.8 only when usePixi.current is true.) */
+      /* Canvas 2D path uses ctx.setTransform(dpr, 0, 0, dpr) — uniform
+         scaling, world coords map 1:1 to CSS pixels.  PixiJS path uses
+         scale (1.0, 0.8) on the world container, so Y must be compressed
+         by 0.8 when forward-mapping a monster's world Y into CSS space. */
       var SCALE_X = 1.0;
-      var SCALE_Y = 1.0;
+      var SCALE_Y = usePixi.current ? 0.8 : 1.0;
       /* TEMP DIAGNOSTIC — remove once tap-to-lock is confirmed working. */
       if (window.__broTapLog) {
         var monstersAlive = (S.monsters || []).filter(function (m) { return m.alive; });
