@@ -251,7 +251,15 @@ export var BroTown = function BroTown(_ref0) {
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
   var pixiRef = useRef(null);
-  var usePixi = useRef(true); /* true = PixiJS (WebGL), false = Canvas 2D */
+  /* PixiJS by default; URL `?canvas2d=1` forces Canvas 2D as an escape
+     hatch if the WebGL path is broken on the user's device. */
+  var usePixi = useRef((function () {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('canvas2d') === '1') return false;
+    } catch (e) {}
+    return true;
+  })());
   /* Player sprite sheets — 5 directional poses (east/north/northeast/south/
      southwest) × 2 modes (jog 8-frame, stand 1-frame). West/NW/SE are rendered
      by horizontal mirror at draw time. Map<key, {img, frames, w}> when loaded. */
@@ -8807,10 +8815,16 @@ export var BroTown = function BroTown(_ref0) {
           try {
             pixiRef.current.update(S, W, H, nfts);
           } catch (pixiErr) {
-            if (!S._pixiRenderErrLogged) {
-              S._pixiRenderErrLogged = true;
-              console.error('[pixi-render] update threw', pixiErr && pixiErr.message, pixiErr && pixiErr.stack);
-            }
+            console.error('[pixi-render] update threw — falling back to Canvas 2D', pixiErr && pixiErr.message, pixiErr && pixiErr.stack);
+            /* Auto-fallback: if the Pixi render path throws, we'd loop the
+               same exception forever and the canvas would stay black.
+               Disable Pixi for the rest of the session and re-init the
+               Canvas 2D path so the next frame draws normally. */
+            usePixi.current = false;
+            window.__pixiActive = false;
+            try { pixiRef.current.destroy && pixiRef.current.destroy(); } catch (e) {}
+            pixiRef.current = null;
+            initCanvas2D();
           }
         } else {
         /* ── Canvas 2D RENDER PATH (fallback) ── */

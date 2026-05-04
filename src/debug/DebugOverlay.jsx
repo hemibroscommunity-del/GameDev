@@ -275,17 +275,16 @@ export const DebugOverlay = () => {
   // top of the run button at the bottom-right of the input area.
   return (
     <div style={{
-      /* Anchor at TOP, not bottom — the BottomDashboard occupies the
-         lower ~28vh and was hiding the panel's bottom-anchored variant. */
+      /* TOP 25vh strip with very high z-index so it's visible above
+         everything (welcome modal at 9999, intro video at 100, canvas).
+         Welcome modal box is vertically centred (~50vh), so PLAY at
+         ~60-65vh is comfortably below this strip and stays tappable.
+         BottomDashboard at 28vh from the bottom is also untouched. */
       position: 'fixed', left: 0, right: 0, top: 0,
-      height: '40vh',
+      height: '25vh',
       background: 'rgba(10,10,12,.96)',
       borderBottom: '2px solid #2196f3',
-      /* Sit BELOW the welcome modal (z-index 9999) so the PLAY button is
-         tappable during character creation.  Once the modal unmounts the
-         panel reveals naturally.  D button remains at 100000 so it's
-         always reachable to toggle the panel back. */
-      zIndex: 5000,
+      zIndex: 99999,
       display: 'flex', flexDirection: 'column',
       color: '#cfd8dc',
     }}>
