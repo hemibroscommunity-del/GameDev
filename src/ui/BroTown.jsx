@@ -250,7 +250,7 @@ export var BroTown = function BroTown(_ref0) {
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
   var pixiRef = useRef(null);
-  var usePixi = useRef(false); /* true = PixiJS (WebGL), false = Canvas 2D */
+  var usePixi = useRef(true); /* true = PixiJS (WebGL), false = Canvas 2D */
   /* Player sprite sheets — 5 directional poses (east/north/northeast/south/
      southwest) × 2 modes (jog 8-frame, stand 1-frame). West/NW/SE are rendered
      by horizontal mirror at draw time. Map<key, {img, frames, w}> when loaded. */

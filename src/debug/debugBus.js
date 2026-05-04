@@ -160,13 +160,22 @@ cmd('reload', () => { location.reload(); }, 'reload  — reload the page');
 const initFromUrl = () => {
   /* Debug overlay always enabled — user has no desktop access for live tuning,
      so the floating D/× button needs to be visible on every page load. URL
-     `?nodebug=1` opts out (or call debugBus.disable() then reload). */
+     `?nodebug=1` opts out (or call debugBus.disable() then reload).
+     URL `?debug=1` auto-opens the console panel so the user doesn't have to
+     find the floating button — useful when the game canvas is broken and
+     they need diagnostics immediately. */
   try {
     const params = new URLSearchParams(location.search);
     if (params.get('nodebug') === '1') {
       try { localStorage.removeItem('brotown_debug'); } catch {}
       return;
     }
+    enable();
+    if (params.get('debug') === '1') {
+      state.visible = true;
+      emit();
+    }
+    return;
   } catch {}
   enable();
 };
