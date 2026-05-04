@@ -82,10 +82,48 @@ export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCance
   const dragStartY = useRef(null);
   const reelProgress = useRef(0);
 
+  /* Active reeling-SFX handle so we can stop the clip early. The
+     reeling sample is ~2.5 s; if a fast drag completes the catch in
+     under that window we don't want the sound dragging on after the
+     fish is already pulled out. _stopReel() cleans up + nulls the
+     ref. Calling _startReel again replaces any in-flight handle so
+     overlapping doesn't accumulate. */
+  const reelSrcRef = useRef(null);
+  const _stopReel = () => {
+    const h = reelSrcRef.current;
+    if (h) {
+      try { h.src.stop(0); } catch (e) {}
+      try { h.src.disconnect(); } catch (e) {}
+      try { h.gain.disconnect(); } catch (e) {}
+      reelSrcRef.current = null;
+    }
+  };
+  const _startReel = (vol) => {
+    _stopReel();
+    const h = (() => { try { return BT_AUDIO.play('fishing-reeling', { vol: vol }); } catch (e) { return null; } })();
+    if (h && h.src) {
+      reelSrcRef.current = h;
+      /* If the sample finishes naturally (player drag matches sample
+         length), drop the ref so the next _stopReel/_startReel doesn't
+         try to disconnect a node that's already gone. */
+      try { h.src.onended = () => { if (reelSrcRef.current === h) reelSrcRef.current = null; }; } catch (e) {}
+    }
+  };
+
   // Lure-drop SFX fires once on mount — the splash that signals the
   // bait has hit the water. Played eagerly via useEffect with [] so it
-  // doesn't re-fire on phase changes.
-  useEffect(() => { _fishPlay('fishing-lure-drop', { vol: 0.7 }); }, []);
+  // doesn't re-fire on phase changes. Cleanup on unmount also kills
+  // any in-flight reeling clip — covers the cancel path.
+  useEffect(() => {
+    _fishPlay('fishing-lure-drop', { vol: 0.7 });
+    return () => { _stopReel(); };
+  }, []);
+
+  // Stop the reeling clip whenever phase moves away from 'reeling'
+  // (catch complete → 'throwing' → 'done', or cancel → unmount).
+  useEffect(() => {
+    if (phase !== 'reeling') _stopReel();
+  }, [phase]);
 
   // Throw-to-bag state — when the in-canvas throw finishes, flip
   // setFlying(true) and one rAF later setFlyTarget(true) so a fixed-
@@ -331,8 +369,10 @@ export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCance
         hookMissStart.current = performance.now();
         // Reeling sound for the miss-recovery (hook winds back up to
         // the surface). Volume halved vs the catch-reel so it reads as
-        // less effortful.
-        _fishPlay('fishing-reeling', { vol: 0.45 });
+        // less effortful. Cut it after HOOK_MISS_MS so the clip doesn't
+        // outlast the visible bounce.
+        _startReel(0.45);
+        setTimeout(_stopReel, HOOK_MISS_MS);
         return;
       }
       // Snap fish onto hook.  Center its X on HOOK_X so it visually sits
@@ -349,10 +389,10 @@ export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCance
     if (phase === 'reeling') {
       dragStartY.current = e.clientY;
       // Reeling SFX kicks off when the player starts dragging up.
-      // Sample is ~2.5 s; if a slow drag outlasts that, the pointermove
-      // handler re-triggers on each fresh dragStart so the sound
-      // continues without an audible gap.
-      _fishPlay('fishing-reeling', { vol: 0.7 });
+      // Replaces any in-flight handle so it doesn't double up on
+      // multi-tap reels. The phase-change useEffect cuts it the
+      // moment the catch transitions to 'throwing'.
+      _startReel(0.7);
     }
   };
 

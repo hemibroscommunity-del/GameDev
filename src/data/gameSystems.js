@@ -5489,13 +5489,13 @@ BT_AUDIO.unlock = function () {
   this.loadSfxManifest();
 };
 BT_AUDIO.play = function (key, opts) {
-  if (this.muted || !this.ctx) return;
+  if (this.muted || !this.ctx) return null;
   var buf = this._samples[key];
   if (!buf) {
     // Lazily load on first miss so a sound is at least cached for next time.
     var url = this.SFX_MANIFEST[key];
     if (url) this.loadSample(key, url);
-    return;
+    return null;
   }
   try {
     var src = this.ctx.createBufferSource();
@@ -5508,7 +5508,12 @@ BT_AUDIO.play = function (key, opts) {
     src.connect(g);
     g.connect(this.ctx.destination);
     src.start(0);
+    /* Return a handle so callers that need to cut a sample short
+       (e.g. fishing reel sound when the catch completes mid-clip)
+       can stop playback early. Most callers ignore the return value. */
+    return { src: src, gain: g };
   } catch (e) {}
+  return null;
 };
 
 export const BT_ACHIEVEMENTS = [{
