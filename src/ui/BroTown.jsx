@@ -8826,8 +8826,13 @@ export var BroTown = function BroTown(_ref0) {
             pixiRef.current = null;
             initCanvas2D();
           }
-        } else {
-        /* ── Canvas 2D RENDER PATH (fallback) ── */
+        } else if (ctx) {
+        /* ── Canvas 2D RENDER PATH (fallback) ──
+           Gated on `ctx` so we don't crash on null during the async
+           Pixi-init window.  initCanvas2D() acquires `ctx`; if it
+           hasn't run yet (because usePixi was true at mount and the
+           Pixi promise is still pending) we just skip the render —
+           the next frame after init will draw normally. */
         /* Screen shake disabled — user feedback: no shake at all.
            Force the values to 0 and skip the translate so the canvas-clear
            rect always aligns with the viewport edges (a non-zero translate
@@ -16414,7 +16419,17 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.init();
     BT_AUDIO.join();
     setShowWelcome(false);
-    setShowIntro(true);
+    /* Skip the 4-second intro overlay when the debug console is open
+       (URL `?debug=1`) — the intro at z-index 100 with background:#000
+       still obscures most of the viewport and makes diagnostics hard to
+       read.  Skipping goes straight into gameplay so the panel stays
+       readable. */
+    var _skipIntro = false;
+    try {
+      var _p = new URLSearchParams(window.location.search);
+      if (_p.get('debug') === '1') _skipIntro = true;
+    } catch (e) {}
+    if (!_skipIntro) setShowIntro(true);
   };
 
   /* Name / avatar selection modal */
