@@ -135,12 +135,13 @@ export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCance
   // Load the sprite once.  After load, copy into an offscreen canvas
   // and zero the alpha on any near-white pixel — strips the residual
   // halo ffmpeg's colorkey leaves around the fish.  SKIPPED for sprites
-  // whose filename contains '-v2': those were extracted with a corner
-  // flood-fill bg mask that preserves stripe-whites inside the fish
-  // silhouette (e.g. clownfish), so blanket-zeroing white pixels would
-  // re-erase the very stripes the v2 mask was meant to keep.
+  // whose filename contains '-v2' or '-v3': those were extracted with a
+  // corner flood-fill bg mask that preserves stripe-whites inside the
+  // fish silhouette (e.g. clownfish), so blanket-zeroing white pixels
+  // would re-erase the very stripes the v2/v3 mask was meant to keep.
+  // (-v3 also has alpha=0-pixel RGB zeroed so there's no white bleed.)
   useEffect(() => {
-    const skipDehalo = sheetSrc.includes('-v2');
+    const skipDehalo = sheetSrc.includes('-v2') || sheetSrc.includes('-v3');
     const img = new Image();
     img.src = sheetSrc;
     img.onload = () => {

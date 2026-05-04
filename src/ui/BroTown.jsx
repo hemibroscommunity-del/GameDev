@@ -7,12 +7,15 @@ import { CookingMinigame } from './CookingMinigame.jsx';
    (yellow tang) when no fishSheetSrc is passed.  Add an entry here
    when wiring a new fish tier with its own swim strip. */
 const FISH_SPRITE_BY_TIER = {
-  /* -v2 was re-extracted with a corner flood-fill bg mask so the
-     clownfish's white stripes stay opaque (the original fish-02.png
-     used colorkey which made stripe-whites transparent too).
-     FishingMinigame skips its runtime dehalo for any sprite whose
-     path contains '-v2' so the stripes survive there too. */
-  Clownfish: '/sprites/fish/fish-02-v2.png',
+  /* -v3 cleans up the white halo around the sprite + water ripples.
+     v2 had alpha=0 on those background pixels but their RGB was still
+     (243,243,243), which the canvas bled into the visible silhouette
+     when scaling — the user reported it as a "white halo around the
+     fish and water ripples". tools/dehalo_outside.py zeros RGB on
+     every alpha=0 pixel so there's nothing bright left to bleed.
+     FishingMinigame still skips its runtime dehalo for -v[23] paths
+     so the clownfish's interior white stripes survive. */
+  Clownfish: '/sprites/fish/fish-02-v3.png',
 };
 
 /* Per-fish cooking pan map.  CookingMinigame defaults to pan.png
