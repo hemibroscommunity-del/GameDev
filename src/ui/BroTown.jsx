@@ -3,6 +3,7 @@ import { FishingMinigame } from './FishingMinigame.jsx';
 import { WoodChopMinigame } from './WoodChopMinigame.jsx';
 import { CookingMinigame } from './CookingMinigame.jsx';
 import { IntroVideo } from './IntroVideo.jsx';
+import { MiningMinigame } from './MiningMinigame.jsx';
 
 /* Per-tier fish sprite map.  FishingMinigame defaults to fish-08
    (yellow tang) when no fishSheetSrc is passed.  Add an entry here
@@ -946,6 +947,7 @@ export var BroTown = function BroTown(_ref0) {
     setGatherMini = _useState142[1]; /* {node, skill, started, result} — timing bar minigame */
   var [fishingMini, setFishingMini] = useState(null); /* {node, skill} — fishSpot swim/strike/reel minigame */
   var [woodChopMini, setWoodChopMini] = useState(null); /* {node, skill} — tree chop/fell/log-to-bag minigame */
+  var [miningMini, setMiningMini] = useState(null); /* {node, skill} — slider + extract video minigame */
   var [cookingMini, setCookingMini] = useState(null);   /* {fishKey} — pan/slider/flip cooking minigame */
   var _useState143 = useState(0),
     _useState144 = _slicedToArray(_useState143, 2),
@@ -15590,6 +15592,11 @@ export var BroTown = function BroTown(_ref0) {
       BT_AUDIO.beep(500, 0.03, 0.04, 'sine');
       return;
     }
+    if (node.nodeType === 'oreVein') {
+      setMiningMini({ node: node, skill: 'mining' });
+      BT_AUDIO.beep(400, 0.03, 0.04, 'sine');
+      return;
+    }
     var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
     var target = 0.2 + Math.random() * 0.6;
     setGatherMini({
@@ -15741,6 +15748,44 @@ export var BroTown = function BroTown(_ref0) {
     S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Woodcutting XP', color: '#00d4b8', ts: Date.now() });
     if (leveled) {
       S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: '🪓 Woodcutting Level ' + R.lifeSkills.woodcutting.level + '!', color: '#f5c542', ts: Date.now() });
+      BT_AUDIO.collect();
+    }
+    setRpgState(_objectSpread({}, R));
+    try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
+  }, []);
+
+  /* applyMiningReward — called when the mining minigame finishes.  Same
+     shape as _applyWoodReward: success grants ore + XP, miss is a no-op
+     gather attempt (node stays alive). */
+  var _applyMiningReward = useCallback(function (node, result) {
+    var S = stateRef.current;
+    var R = S && S.rpg;
+    if (!node || !R) return;
+    var accuracy = (result && result.accuracy) || 'good';
+    if (accuracy === 'miss') {
+      BT_AUDIO.beep(180, 0.04, 0.08, 'sawtooth');
+      S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: 'Miss!', color: '#ef4444', ts: Date.now() });
+      return;
+    }
+    var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
+    BT_AUDIO.beep(700, 0.04, 0.07, 'square');
+    node.alive = false;
+    node.respawnAt = Date.now() + (node.respawnTime || 30000);
+    if (!R.inventory) R.inventory = {};
+    var baseName = node.baseName || node.name || 'Copper Ore';
+    var baseKey = (node.resourceType || 'ore') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
+    var yieldQty = reward.yieldMult || 1;
+    R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+    var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
+    var leveled = addLifeSkillXp(R.lifeSkills, 'mining', xpAmt);
+    if (!R._compStats) R._compStats = createDefaultCompStats();
+    R._compStats.oresMined = (R._compStats.oresMined || 0) + 1;
+    S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
+    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: '⛏ ' + baseName + (yieldQty > 1 ? ' ×' + yieldQty : ''), color: node.color, ts: Date.now() });
+    S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Mining XP', color: '#00d4b8', ts: Date.now() });
+    if (leveled) {
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: '⛏ Mining Level ' + R.lifeSkills.mining.level + '!', color: '#f5c542', ts: Date.now() });
       BT_AUDIO.collect();
     }
     setRpgState(_objectSpread({}, R));
@@ -33454,6 +33499,11 @@ export var BroTown = function BroTown(_ref0) {
         BT_AUDIO.beep(500, 0.03, 0.04, 'sine');
         return;
       }
+      if (node.nodeType === 'oreVein') {
+        setMiningMini({ node: node, skill: 'mining' });
+        BT_AUDIO.beep(400, 0.03, 0.04, 'sine');
+        return;
+      }
       /* Launch timing bar minigame — green zone width scales with skill level */
       var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004); /* 12%–40% of bar */
       var target = 0.2 + Math.random() * 0.6; /* random position 20%–80% */
@@ -33496,6 +33546,11 @@ export var BroTown = function BroTown(_ref0) {
       if (node.nodeType === 'tree') {
         setWoodChopMini({ node: node, skill: 'woodcutting' });
         BT_AUDIO.beep(500, 0.03, 0.04, 'sine');
+        return;
+      }
+      if (node.nodeType === 'oreVein') {
+        setMiningMini({ node: node, skill: 'mining' });
+        BT_AUDIO.beep(400, 0.03, 0.04, 'sine');
         return;
       }
       var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
@@ -33775,6 +33830,11 @@ export var BroTown = function BroTown(_ref0) {
     skill: woodChopMini.skill,
     onComplete: function (result) { _applyWoodReward(woodChopMini.node, result); setWoodChopMini(null); },
     onCancel: function () { setWoodChopMini(null); }
+  }), miningMini && /*#__PURE__*/React.createElement(MiningMinigame, {
+    node: miningMini.node,
+    skill: miningMini.skill,
+    onComplete: function (result) { _applyMiningReward(miningMini.node, result); setMiningMini(null); },
+    onCancel: function () { setMiningMini(null); }
   }), cookingMini && /*#__PURE__*/React.createElement(CookingMinigame, {
     fishKey: cookingMini.fishKey,
     panSheetSrc: cookingMini.panSheetSrc,

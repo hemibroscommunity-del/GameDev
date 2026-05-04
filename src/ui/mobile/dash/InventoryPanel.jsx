@@ -45,6 +45,10 @@ const COOKED_FISH_THUMBS = {
 };
 const FISH_THUMB_DEFAULT = '/icons/fish/fish-minnow.png';
 const COOKED_FISH_THUMB_DEFAULT = '/icons/cook/cooked-fish-minnow.png';
+const ORE_THUMBS = {
+  ore_copper_ore: '/icons/ore/ore-copper.png',
+};
+const ORE_THUMB_DEFAULT = '/icons/ore/ore-copper.png';
 const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
   if (COOKED_FISH_THUMBS[k])        return COOKED_FISH_THUMBS[k];
@@ -53,6 +57,8 @@ const thumbFor = (key) => {
   if (FISH_THUMBS[k])               return FISH_THUMBS[k];
   if (k.startsWith('fish_'))        return FISH_THUMB_DEFAULT;
   if (k.startsWith('wood_'))        return WOOD_THUMB;
+  if (ORE_THUMBS[k])                return ORE_THUMBS[k];
+  if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
   if (k === 'slime-remnants')       return SLIME_REMNANTS_THUMB;
   return null;
 };
