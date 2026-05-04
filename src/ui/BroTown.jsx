@@ -250,7 +250,7 @@ export var BroTown = function BroTown(_ref0) {
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
   var pixiRef = useRef(null);
-  var usePixi = useRef(true); /* true = PixiJS (WebGL), false = Canvas 2D */
+  var usePixi = useRef(false); /* true = PixiJS (WebGL), false = Canvas 2D */
   /* Player sprite sheets — 5 directional poses (east/north/northeast/south/
      southwest) × 2 modes (jog 8-frame, stand 1-frame). West/NW/SE are rendered
      by horizontal mirror at draw time. Map<key, {img, frames, w}> when loaded. */
@@ -2788,18 +2788,9 @@ export var BroTown = function BroTown(_ref0) {
     if (usePixi.current && !pixiRef.current) {
       initPixiRenderer(canvas).then(function(renderer) {
         pixiRef.current = renderer;
-        window.__pixiActive = true; /* perf logger and tap-to-lock branch on this */
       }).catch(function(err) {
         console.warn('PixiJS init failed, falling back to Canvas 2D:', err);
         usePixi.current = false;
-        window.__pixiActive = false;
-        /* Canvas 2D path still needs tileset assets — load them now since
-           the init-time block at line ~2803 was skipped on the Pixi attempt. */
-        try {
-          ctx = canvas.getContext('2d');
-          if (ctx) ctx.imageSmoothingEnabled = false;
-          startLoadingTileAssets();
-        } catch (e) {}
       });
     }
     if (!usePixi.current) {
@@ -16646,12 +16637,14 @@ export var BroTown = function BroTown(_ref0) {
       var S = stateRef.current;
       var cx = S.camera.x,
         cy = S.camera.y;
-      /* Canvas 2D path uses ctx.setTransform(dpr, 0, 0, dpr) — uniform
-         scaling, world coords map 1:1 to CSS pixels.  PixiJS path uses
-         scale (1.0, 0.8) on the world container, so Y must be compressed
-         by 0.8 when reverse-mapping a tap into world space. */
+      /* Canvas 2D render path uses ctx.setTransform(dpr, 0, 0, dpr) — uniform
+         dpr scaling, no axial compression. World coords map 1:1 to CSS pixels
+         after camera offset. (PixiJS path uses scale (1.0, 0.8), but PixiJS
+         is currently disabled — see commit de6d1a1; usePixi is initialised
+         to false and never flipped. If PixiJS is ever re-enabled, switch
+         SCALE_Y to 0.8 only when usePixi.current is true.) */
       var SCALE_X = 1.0;
-      var SCALE_Y = usePixi.current ? 0.8 : 1.0;
+      var SCALE_Y = 1.0;
       /* TEMP DIAGNOSTIC — remove once tap-to-lock is confirmed working. */
       if (window.__broTapLog) {
         var monstersAlive = (S.monsters || []).filter(function (m) { return m.alive; });
