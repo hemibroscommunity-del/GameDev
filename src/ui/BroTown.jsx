@@ -8795,14 +8795,14 @@ export var BroTown = function BroTown(_ref0) {
            ══════════════════════════════════════════════════════════ */
         if (pixiRef.current && usePixi.current) {
           /* ── PixiJS RENDER PATH ──
-             pixiRenderer.js scales the worldContainer by cssW/viewW.
-             It expects viewW/viewH to include the 1.25× world-zoom
-             factor (Canvas 2D used setTransform(dpr*0.8, …) — i.e.
-             1/0.8 = 1.25× more world per CSS pixel).  Without the
-             multiplier scale resolves to 1.0 instead of 0.8 and the
-             world renders ~64% of expected size. */
-          var W = canvas.width / (window.devicePixelRatio || 1) * 1.25;
-          var H = canvas.height / (window.devicePixelRatio || 1) * 1.25;
+             Pass raw CSS dimensions; pixiRenderer scales worldContainer
+             by cssW/viewW so equal values give scale=1.0 and the camera
+             math in gameLoop.js (cx = P.x - W/2 with W = canvas.width/dpr)
+             puts the player at screen centre.  pixiRenderer's docstring
+             claims a 1.25× zoom factor, but Canvas 2D never used the
+             matching setTransform(dpr*0.8, …) so the comment is stale. */
+          var W = canvas.width / (window.devicePixelRatio || 1);
+          var H = canvas.height / (window.devicePixelRatio || 1);
           pixiRef.current.update(S, W, H, nfts);
         } else {
         /* ── Canvas 2D RENDER PATH (fallback) ── */
@@ -16661,12 +16661,12 @@ export var BroTown = function BroTown(_ref0) {
       var S = stateRef.current;
       var cx = S.camera.x,
         cy = S.camera.y;
-      /* Canvas 2D path uses ctx.setTransform(dpr, 0, 0, dpr) — uniform
-         scaling, world coords map 1:1 to CSS pixels.  PixiJS path uses
-         scale (1.0, 0.8) on the world container, so Y must be compressed
-         by 0.8 when forward-mapping a monster's world Y into CSS space. */
+      /* Both render paths use uniform scaling (Canvas 2D: setTransform
+         dpr; PixiJS: worldContainer.scale 1.0 because BroTown passes
+         viewW=cssW so cssW/viewW=1.0).  World coords map 1:1 to CSS
+         pixels after camera offset. */
       var SCALE_X = 1.0;
-      var SCALE_Y = usePixi.current ? 0.8 : 1.0;
+      var SCALE_Y = 1.0;
       /* TEMP DIAGNOSTIC — remove once tap-to-lock is confirmed working. */
       if (window.__broTapLog) {
         var monstersAlive = (S.monsters || []).filter(function (m) { return m.alive; });
