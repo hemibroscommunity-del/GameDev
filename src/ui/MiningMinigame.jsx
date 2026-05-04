@@ -15,15 +15,17 @@ import { BT_AUDIO } from '../data/gameSystems.js';
 */
 
 const W = 280;
-const H = 420;
+const H = 240;
 
 const ROCKS_BG = '/minigames/mining/rocks-bg.jpg';
 const COPPER_THUMB = '/minigames/mining/copper-ore.png';
 const SUCCESS_VIDEO = '/minigames/mining/extract-success.mp4';
 const FAIL_VIDEO = '/minigames/mining/extract-fail.mp4';
 
-const SLIDER_W = 36;
-const SLIDER_H = H;
+const STAGE_W = 170;
+const STAGE_H = 190;
+const SLIDER_W = 22;
+const SLIDER_H = 190;
 const OSC_MS = 1400;
 const BAND_FRAC = 0.22;
 
@@ -74,31 +76,33 @@ export const MiningMinigame = ({ node, skill, onComplete, onCancel }) => {
   const indicatorY = indicatorRef.current * SLIDER_H;
 
   return (
-    <div className="bt-mining">
-      <div className="bt-mining-stage" style={{ width: W, height: H }}>
+    <div className="bt-mining" style={{ width: W, height: H }}>
+      <div className="bt-mining-row">
+        <div className="bt-mining-stage" style={{ width: STAGE_W, height: STAGE_H }}>
+          {phase === 'aim' && (
+            <img src={ROCKS_BG} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated' }} />
+          )}
+          {phase === 'success' && (
+            <video src={SUCCESS_VIDEO} autoPlay muted playsInline preload="auto"
+              onEnded={() => finish('good')} onError={() => finish('good')}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
+          {phase === 'fail' && (
+            <video src={FAIL_VIDEO} autoPlay muted playsInline preload="auto"
+              onEnded={() => finish('miss')} onError={() => finish('miss')}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
+        </div>
+
         {phase === 'aim' && (
-          <img src={ROCKS_BG} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated' }} />
-        )}
-        {phase === 'success' && (
-          <video src={SUCCESS_VIDEO} autoPlay muted playsInline preload="auto"
-            onEnded={() => finish('good')} onError={() => finish('good')}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        )}
-        {phase === 'fail' && (
-          <video src={FAIL_VIDEO} autoPlay muted playsInline preload="auto"
-            onEnded={() => finish('miss')} onError={() => finish('miss')}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div className="bt-mining-slider" ref={trackRef} style={{ width: SLIDER_W, height: SLIDER_H }}>
+            <div className="bt-mining-band" style={{ top: bandTop, height: bandH }}>
+              <img src={COPPER_THUMB} alt="" />
+            </div>
+            <div className="bt-mining-indicator" style={{ top: indicatorY }} />
+          </div>
         )}
       </div>
-
-      {phase === 'aim' && (
-        <div className="bt-mining-slider" ref={trackRef} style={{ width: SLIDER_W, height: SLIDER_H }}>
-          <div className="bt-mining-band" style={{ top: bandTop, height: bandH }}>
-            <img src={COPPER_THUMB} alt="" />
-          </div>
-          <div className="bt-mining-indicator" style={{ top: indicatorY }} />
-        </div>
-      )}
 
       <div className="bt-mining-controls">
         {phase === 'aim' && (
