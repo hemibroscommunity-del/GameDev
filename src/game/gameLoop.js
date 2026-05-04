@@ -4435,10 +4435,21 @@ export function setupGameLoop(ctx) {
           }
         }
 
-        /* Expire damage numbers */
-        if (S.dmgNumbers) S.dmgNumbers = S.dmgNumbers.filter(function (d) {
-          return Date.now() - d.ts < 1200;
-        });
+        /* Expire damage numbers — in-place compaction so we don't
+           allocate a fresh array (and discard the old one for GC) every
+           frame.  Date.now() is hoisted out of the inner loop. */
+        if (S.dmgNumbers && S.dmgNumbers.length) {
+          var _dn = S.dmgNumbers;
+          var _dnNow = Date.now();
+          var _dnW = 0;
+          for (var _dnR = 0; _dnR < _dn.length; _dnR++) {
+            if (_dnNow - _dn[_dnR].ts < 1200) {
+              if (_dnW !== _dnR) _dn[_dnW] = _dn[_dnR];
+              _dnW++;
+            }
+          }
+          if (_dnW !== _dn.length) _dn.length = _dnW;
+        }
 
         /* ═══ PLAYTIME TRACKING — increment every ~60 frames (1 second) ═══ */
         if ((_S$rpg11 = S.rpg) !== null && _S$rpg11 !== void 0 && _S$rpg11._compStats) {

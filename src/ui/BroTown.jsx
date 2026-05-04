@@ -3689,6 +3689,48 @@ export var BroTown = function BroTown(_ref0) {
       try {
         if (!S._frameCount) S._frameCount = 0;
         S._frameCount++;
+
+        /* ── Slow-frame diagnostic ── flags any frame whose delta from
+           the previous one exceeds the 60-fps budget by a meaningful
+           margin (>20 ms ≈ <50 fps).  Logged with surrounding state so
+           dips can be correlated with monster count, damage-number
+           churn, open minigames, etc.  Throttled to one log per 500 ms
+           and to the worst frame seen in that window so the console
+           isn't spammed during a sustained dip.  Toggle off at runtime
+           with `window.__btPerf = false`. */
+        var _perfNow = performance.now();
+        if (!S._perf) S._perf = { prevT: _perfNow, slowLastT: 0, worstMs: 0, worstFps: 60, slowFrameCount: 0, totalSlow: 0 };
+        var _perfDelta = _perfNow - S._perf.prevT;
+        S._perf.prevT = _perfNow;
+        if (_perfDelta > 20) {
+          S._perf.totalSlow++;
+          if (_perfDelta > S._perf.worstMs) {
+            S._perf.worstMs = _perfDelta;
+            S._perf.worstFps = Math.round(1000 / _perfDelta);
+          }
+          S._perf.slowFrameCount++;
+        }
+        if (window.__btPerf !== false && _perfNow - S._perf.slowLastT > 500 && S._perf.worstMs > 0) {
+          /* eslint-disable no-console */
+          console.warn('[bt-perf]', {
+            frameMs: +S._perf.worstMs.toFixed(1),
+            instFps: S._perf.worstFps,
+            slowFramesIn500ms: S._perf.slowFrameCount,
+            totalSlowFrames: S._perf.totalSlow,
+            zone: S.currentZone,
+            monsters: (S.monsters && S.monsters.length) || 0,
+            others: (S.others && S.others.length) || 0,
+            projectiles: (S.projectiles && S.projectiles.length) || 0,
+            dmgNumbers: (S.dmgNumbers && S.dmgNumbers.length) || 0,
+            campfires: (S.campfires && S.campfires.length) || 0,
+            miningOpen: !!stateRef.current._miningOpen,
+            renderer: window.__pixiActive ? 'pixi' : 'canvas2d',
+          });
+          /* eslint-enable no-console */
+          S._perf.worstMs = 0;
+          S._perf.slowFrameCount = 0;
+          S._perf.slowLastT = _perfNow;
+        }
         var _S$map$Math$floor$Mat, _S$map2, _S$rpg5, _ZONES$S$currentZone3, _S$rpg7, _S$rpg8, _S$rpg11, _S$_atkEnergy, _ZONES$S$currentZone8, _S$rpg17, _S$rpg19, _S$rpg20, _S$rpg21, _S$rpg24, _ZONES$S$currentZone12;
         /* Ensure canvas has dimensions */
         if (false) { /* canvas size check removed — PixiJS handles resize */
@@ -7880,10 +7922,21 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Expire damage numbers */
-        if (S.dmgNumbers) S.dmgNumbers = S.dmgNumbers.filter(function (d) {
-          return Date.now() - d.ts < 1200;
-        });
+        /* Expire damage numbers — in-place compaction so we don't
+           allocate a fresh array (and discard the old one for GC) every
+           frame.  Date.now() is hoisted out of the inner loop. */
+        if (S.dmgNumbers && S.dmgNumbers.length) {
+          var _dn = S.dmgNumbers;
+          var _dnNow = Date.now();
+          var _dnW = 0;
+          for (var _dnR = 0; _dnR < _dn.length; _dnR++) {
+            if (_dnNow - _dn[_dnR].ts < 1200) {
+              if (_dnW !== _dnR) _dn[_dnW] = _dn[_dnR];
+              _dnW++;
+            }
+          }
+          if (_dnW !== _dn.length) _dn.length = _dnW;
+        }
 
         /* ═══ PLAYTIME TRACKING — increment every ~60 frames (1 second) ═══ */
         if ((_S$rpg11 = S.rpg) !== null && _S$rpg11 !== void 0 && _S$rpg11._compStats) {
