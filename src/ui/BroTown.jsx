@@ -16298,13 +16298,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       marginBottom: 2
     }
-  }, "Action RPG"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'var(--txt3)',
-      marginBottom: 16
-    }
-  }, "9 Elements \xB7 36 Collisions \xB7 Open World"), /*#__PURE__*/React.createElement("img", {
+  }, "Action RPG"), /*#__PURE__*/React.createElement("img", {
     src: '/sprites/player/welcome-bro.png?v=2',
     alt: 'Hemi Bro',
     style: {
