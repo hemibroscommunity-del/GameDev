@@ -1,4 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { BT_AUDIO } from '@/data/gameSystems.js';
+
+/* Helper: short-lived "reeling" sample play. The reeling clip is ~2.5 s
+   so a single play covers the whole drag-up motion most of the time;
+   if the player's drag drags it out longer, we cycle the sound on
+   pointermove ticks. _safePlay catches errors so an unloaded sample
+   can't bubble up. */
+function _fishPlay(key, opts) {
+  try { BT_AUDIO.play(key, opts); } catch (e) {}
+}
 
 /* Fishing minigame.  Two phases:
    - "strike":  fish swims back-and-forth across a contextual rectangle
@@ -71,6 +81,11 @@ export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCance
   // Reel state.
   const dragStartY = useRef(null);
   const reelProgress = useRef(0);
+
+  // Lure-drop SFX fires once on mount — the splash that signals the
+  // bait has hit the water. Played eagerly via useEffect with [] so it
+  // doesn't re-fire on phase changes.
+  useEffect(() => { _fishPlay('fishing-lure-drop', { vol: 0.7 }); }, []);
 
   // Throw-to-bag state — when the in-canvas throw finishes, flip
   // setFlying(true) and one rAF later setFlyTarget(true) so a fixed-
@@ -314,6 +329,10 @@ export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCance
         // Drop the previous red-flash + speed-up; the hook bounce alone
         // communicates "missed" without punishing the player.
         hookMissStart.current = performance.now();
+        // Reeling sound for the miss-recovery (hook winds back up to
+        // the surface). Volume halved vs the catch-reel so it reads as
+        // less effortful.
+        _fishPlay('fishing-reeling', { vol: 0.45 });
         return;
       }
       // Snap fish onto hook.  Center its X on HOOK_X so it visually sits
@@ -322,11 +341,18 @@ export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCance
       fishX.current = HOOK_X - FISH_FRAME_W / 2;
       phaseRef.current = 'reeling';
       setPhase('reeling');
+      // Strike-success splash — fish takes the hook.
+      _fishPlay('fishing-fish-on-hook', { vol: 0.75 });
       return;
     }
 
     if (phase === 'reeling') {
       dragStartY.current = e.clientY;
+      // Reeling SFX kicks off when the player starts dragging up.
+      // Sample is ~2.5 s; if a slow drag outlasts that, the pointermove
+      // handler re-triggers on each fresh dragStart so the sound
+      // continues without an audible gap.
+      _fishPlay('fishing-reeling', { vol: 0.7 });
     }
   };
 
