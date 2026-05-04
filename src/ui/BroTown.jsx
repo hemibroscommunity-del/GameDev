@@ -4,6 +4,7 @@ import { WoodChopMinigame } from './WoodChopMinigame.jsx';
 import { CookingMinigame } from './CookingMinigame.jsx';
 import { IntroVideo } from './IntroVideo.jsx';
 import { MiningMinigame } from './MiningMinigame.jsx';
+import { BUILD_INFO } from './BuildBadge.jsx';
 
 /* Per-tier fish sprite map.  FishingMinigame defaults to fish-08
    (yellow tang) when no fishSheetSrc is passed.  Add an entry here
@@ -16427,7 +16428,15 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       marginBottom: 2
     }
-  }, "Action RPG"), /*#__PURE__*/React.createElement("img", {
+  }, "Action RPG"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: 'var(--txt3)',
+      fontFamily: '"Space Mono", monospace',
+      letterSpacing: '.05em',
+      marginBottom: 12,
+    }
+  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha), /*#__PURE__*/React.createElement("img", {
     src: '/sprites/player/welcome-bro.png?v=2',
     alt: 'Hemi Bro',
     style: {
