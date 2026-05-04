@@ -15,7 +15,7 @@ import { BT_AUDIO } from '../data/gameSystems.js';
 */
 
 const W = 280;
-const H = 240;
+const H = 290;
 
 const ROCKS_BG = '/minigames/mining/rocks-bg.jpg';
 const COPPER_THUMB = '/minigames/mining/copper-ore.png';
@@ -83,12 +83,12 @@ export const MiningMinigame = ({ node, skill, onComplete, onCancel }) => {
             <img src={ROCKS_BG} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated' }} />
           )}
           {phase === 'success' && (
-            <video src={SUCCESS_VIDEO} autoPlay muted playsInline preload="auto"
+            <video src={SUCCESS_VIDEO} autoPlay playsInline preload="auto"
               onEnded={() => finish('good')} onError={() => finish('good')}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           )}
           {phase === 'fail' && (
-            <video src={FAIL_VIDEO} autoPlay muted playsInline preload="auto"
+            <video src={FAIL_VIDEO} autoPlay playsInline preload="auto"
               onEnded={() => finish('miss')} onError={() => finish('miss')}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           )}
