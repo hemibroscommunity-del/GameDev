@@ -2848,11 +2848,13 @@ export var BroTown = function BroTown(_ref0) {
        point the canvas has been resized so createPixiApp can read its
        dimensions without falling through to 0×0. */
     if (usePixi.current && !pixiRef.current) {
+      console.log('[pixi-init] starting', { canvasW: canvas.width, canvasH: canvas.height, clientW: canvas.clientWidth, clientH: canvas.clientHeight, dpr: window.devicePixelRatio });
       initPixiRenderer(canvas).then(function(renderer) {
         pixiRef.current = renderer;
         window.__pixiActive = true;
+        console.log('[pixi-init] success', { rendererW: renderer.app && renderer.app.renderer && renderer.app.renderer.width, rendererH: renderer.app && renderer.app.renderer && renderer.app.renderer.height });
       }).catch(function(err) {
-        console.warn('PixiJS init failed, falling back to Canvas 2D:', err);
+        console.warn('[pixi-init] FAILED, falling back to Canvas 2D:', err);
         usePixi.current = false;
         window.__pixiActive = false;
         initCanvas2D();
@@ -8794,16 +8796,21 @@ export var BroTown = function BroTown(_ref0) {
            PixiJS (WebGL) or Canvas 2D fallback.
            ══════════════════════════════════════════════════════════ */
         if (pixiRef.current && usePixi.current) {
-          /* ── PixiJS RENDER PATH ──
-             Pass raw CSS dimensions; pixiRenderer scales worldContainer
-             by cssW/viewW so equal values give scale=1.0 and the camera
-             math in gameLoop.js (cx = P.x - W/2 with W = canvas.width/dpr)
-             puts the player at screen centre.  pixiRenderer's docstring
-             claims a 1.25× zoom factor, but Canvas 2D never used the
-             matching setTransform(dpr*0.8, …) so the comment is stale. */
+          /* ── PixiJS RENDER PATH ── */
           var W = canvas.width / (window.devicePixelRatio || 1);
           var H = canvas.height / (window.devicePixelRatio || 1);
-          pixiRef.current.update(S, W, H, nfts);
+          if (!S._pixiRenderLogged) {
+            S._pixiRenderLogged = true;
+            console.log('[pixi-render] first frame', { W: W, H: H, cx: S.camera.x, cy: S.camera.y, playerX: S.player && S.player.x, playerY: S.player && S.player.y, zone: S.currentZone, hasMap: !!S.map });
+          }
+          try {
+            pixiRef.current.update(S, W, H, nfts);
+          } catch (pixiErr) {
+            if (!S._pixiRenderErrLogged) {
+              S._pixiRenderErrLogged = true;
+              console.error('[pixi-render] update threw', pixiErr && pixiErr.message, pixiErr && pixiErr.stack);
+            }
+          }
         } else {
         /* ── Canvas 2D RENDER PATH (fallback) ── */
         /* Screen shake disabled — user feedback: no shake at all.
