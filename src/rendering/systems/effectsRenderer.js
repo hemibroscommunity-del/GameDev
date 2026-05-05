@@ -247,17 +247,28 @@ export class EffectsRenderer {
   /* ── Damage Numbers ── */
   _updateDamageNumbers(S, now) {
     const numbers = S.dmgNumbers || [];
-    while (this.dmgTexts.length > this.maxDmgTexts) {
-      const old = this.dmgTexts.shift();
-      old.destroy();
-    }
+    /* No pre-pruning of this.dmgTexts.  The previous shift+destroy loop
+       killed the oldest Text but left the matching dmg._pixiText back-
+       reference pointing at a destroyed object — next frame's
+       `text.x = dmg.x` blew up with `null is not an object (evaluating
+       'this._position.x=e')` (a Pixi v8 internal accessor on destroyed
+       Text).  Age-based cleanup below (1.5 s TTL) handles bounding by
+       itself; with reasonable spawn rates we never hold more than a few
+       dozen dmg numbers concurrently. */
     for (let i = numbers.length - 1; i >= 0; i--) {
       const dmg = numbers[i];
       const age = (now - dmg.ts) / 1000;
       if (age > 1.5) {
-        if (dmg._pixiText) { dmg._pixiText.destroy(); }
+        if (dmg._pixiText && !dmg._pixiText.destroyed) { dmg._pixiText.destroy(); }
+        dmg._pixiText = null;
         numbers.splice(i, 1);
         continue;
+      }
+      /* Defensive: treat a destroyed Text as missing and rebuild.
+         Catches the case where some other path (e.g. zone change clear)
+         destroyed the Text while the dmg entry was still alive. */
+      if (dmg._pixiText && dmg._pixiText.destroyed) {
+        dmg._pixiText = null;
       }
       if (!dmg._pixiText) {
         /* Pick the emoji-safe style when text contains non-ASCII to
@@ -277,6 +288,20 @@ export class EffectsRenderer {
       text.y = dmg.y - age * 40;
       text.alpha = Math.max(0, 1 - age / 1.2);
       text.scale.set(1 + (dmg.crit ? Math.sin(age * 8) * 0.1 : 0));
+    }
+    /* Compact dmgTexts: drop refs to destroyed Text instances
+       (destroyed during age expiry above).  Keeps the array bounded
+       without the dangerous shift+destroy from before. */
+    if (this.dmgTexts.length > 0) {
+      let w = 0;
+      for (let r = 0; r < this.dmgTexts.length; r++) {
+        const t = this.dmgTexts[r];
+        if (t && !t.destroyed) {
+          if (w !== r) this.dmgTexts[w] = t;
+          w++;
+        }
+      }
+      if (w !== this.dmgTexts.length) this.dmgTexts.length = w;
     }
   }
 
