@@ -3661,39 +3661,15 @@ export var BroTown = function BroTown(_ref0) {
       ctx.globalAlpha = 1;
       ctx.restore();
     }
-    var resize = function resize() {
-      var _canvas$parentElement;
-      var dpr = window.devicePixelRatio || 1;
-      var rect = ((_canvas$parentElement = canvas.parentElement) === null || _canvas$parentElement === void 0 ? void 0 : _canvas$parentElement.getBoundingClientRect()) || {
-        width: 0,
-        height: 0
-      };
-      /* Fallback to window dimensions if parent has no size yet */
-      var w = rect.width || window.innerWidth || 800;
-      var hRaw = rect.height || window.innerHeight || 600;
-      /* Reserve 25% of viewport height for the BottomDashboard.  Camera
-         keeps the player centered, so a shorter canvas just clips
-         peripheral world tiles — the avatar stays in the middle. */
-      var h = Math.max(120, Math.round(hRaw * 0.75));
-      if (w < 10 || h < 10) return;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      canvas.style.width = w + 'px';
-      canvas.style.height = h + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    window.addEventListener('resize', resize);
-    /* Also resize when flex container changes (keyboard open/close) */
-    var resizeObs;
-    if (window.ResizeObserver && canvas.parentElement) {
-      resizeObs = new ResizeObserver(resize);
-      resizeObs.observe(canvas.parentElement);
-    }
-    var vv = window.visualViewport;
-    if (vv) {
-      vv.addEventListener('resize', resize);
-    }
+    /* The duplicate resize() block that used to live here has been
+       deleted — it called ctx.setTransform(dpr, 0, 0, dpr) UNGUARDED.
+       During Pixi's async init window, ctx is null (we deferred the
+       getContext('2d') call so Pixi could grab WebGL), and the
+       ResizeObserver this block registered would fire on the canvas
+       parent's first layout — TypeError on null ctx, gameLoop's
+       outer try/catch swallowed it silently, no rendering ever
+       happened.  The earlier resize() at line ~2810 (guarded) plus
+       its listeners cover the same job. */
     var isSolid = function isSolid(px, py) {
       var _S$map;
       var zone = ZONES[S.currentZone];

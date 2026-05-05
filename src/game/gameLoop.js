@@ -656,7 +656,7 @@ export function setupGameLoop(ctx) {
       canvas.height = h * dpr;
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
-      ctx.setTransform(dpr * 0.8, 0, 0, dpr * 0.8, 0, 0);
+      if (ctx) ctx.setTransform(dpr * 0.8, 0, 0, dpr * 0.8, 0, 0);
     };
     resize();
     window.addEventListener('resize', resize);
