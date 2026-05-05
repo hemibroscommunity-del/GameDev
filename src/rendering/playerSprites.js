@@ -45,7 +45,7 @@ const HIT_DURATION_MS = 250;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 28; /* matches the cache-buster on the Canvas 2D loader */
+const VERSION = 29; /* matches the cache-buster on the Canvas 2D loader */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }

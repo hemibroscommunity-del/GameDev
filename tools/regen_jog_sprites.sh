@@ -67,5 +67,5 @@ for d in north south northeast southwest; do
   # pixels and no missing body parts.
   python tools/stabilize_head.py \
     "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \
-    --head-h 12
+    --head-h 16
 done
