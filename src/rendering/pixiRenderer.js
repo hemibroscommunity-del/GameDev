@@ -91,17 +91,20 @@ export async function initPixiRenderer(canvas) {
     worldContainer.x = -cx * scaleX + shakeX;
     worldContainer.y = -cy * scaleY + shakeY;
 
-    // Tile background fill
-    tileRenderer.update(cx, cy, viewW, viewH);
-
-    // Entity updates
-    entityRenderer.update(S, now);
-
-    // Effects updates (screen-space overlays use CSS dimensions)
-    effectsRenderer.update(S, cssW, cssH, now);
+    // Each renderer wrapped — a single throw in entity or effects
+    // (e.g. the bow-kill crash) used to cascade into app.render() never
+    // being called, freezing the canvas at the last good frame.  Now
+    // failures log once per system and the surviving systems still draw.
+    try { tileRenderer.update(cx, cy, viewW, viewH); }
+    catch (e) { if (!update._tileErr) { update._tileErr = true; console.error('[pixi-render] tileRenderer threw', e && e.message, e && e.stack); } }
+    try { entityRenderer.update(S, now); }
+    catch (e) { if (!update._entityErr) { update._entityErr = true; console.error('[pixi-render] entityRenderer threw', e && e.message, e && e.stack); } }
+    try { effectsRenderer.update(S, cssW, cssH, now); }
+    catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
 
     // Manual render
-    app.render();
+    try { app.render(); }
+    catch (e) { if (!update._renderErr) { update._renderErr = true; console.error('[pixi-render] app.render threw', e && e.message, e && e.stack); } }
   }
 
   function destroy() {
