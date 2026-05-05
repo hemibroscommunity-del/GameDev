@@ -48,8 +48,19 @@ function createMonsterDisplay(monster) {
   const container = new Container();
   container.label = `monster_${monster.id}`;
 
+  /* Body is STATIC (archetype-driven circle) — draw once at creation and
+     never redraw.  Previously the entityRenderer called body.clear() +
+     body.circle() + body.fill() every frame for every monster, which
+     flushed the GPU batch and dominated frame time with 14 monsters in
+     meadow.  Tinting / size live for archetype's lifetime. */
   const body = new Graphics();
   const size = getMonsterSize(monster.archetype);
+  body.circle(0, 0, size);
+  body.fill({ color: getMonsterColor(monster.archetype || monster.type) });
+  if (monster.isBoss) {
+    body.circle(0, 0, size + 3);
+    body.stroke({ color: 0xff5e6c, width: 2 });
+  }
   container.addChild(body);
 
   const hpBg = new Graphics();
@@ -65,17 +76,23 @@ function createMonsterDisplay(monster) {
   lvlText.y = -size - 12;
   container.addChild(lvlText);
 
-  // Status effect indicator
-  const statusGfx = new Graphics();
-  container.addChild(statusGfx);
+  /* Single dynamic Graphics for everything that DOES change per frame:
+     status icons, aggro alert, stuck arrows, threat arrow, stun pip.
+     One clear + redraw per monster instead of three. */
+  const dynGfx = new Graphics();
+  container.addChild(dynGfx);
 
   container._body = body;
   container._hpFill = hpFill;
   container._hpBg = hpBg;
   container._lvlText = lvlText;
-  container._statusGfx = statusGfx;
+  container._dynGfx = dynGfx;
   container._size = size;
   container._monster = monster;
+  /* Dirty-flag cache values — skip redraws when nothing relevant changed. */
+  container._lastHpPct = -1;
+  container._lastLvl = -1;
+  container._dynKey = '';
 
   return container;
 }
@@ -182,22 +199,9 @@ export class EntityRenderer {
       display.y = m.y;
       display.visible = m.alive;
 
-      // Redraw body
-      const body = display._body;
       const size = display._size;
-      body.clear();
 
-      // Zone element tint blended with archetype color
-      let color = getMonsterColor(m.archetype || m.type);
-      body.circle(0, 0, size);
-      body.fill({ color });
-
-      if (m.isBoss) {
-        body.circle(0, 0, size + 3);
-        body.stroke({ color: 0xff5e6c, width: 2 });
-      }
-
-      // Emoji
+      // Emoji — once per monster
       if (!display._emoji) {
         const emojiText = new Text({
           text: m.emoji || '🟢',
@@ -208,108 +212,118 @@ export class EntityRenderer {
         display._emoji = emojiText;
       }
 
-      // HP bar
-      const hpPct = Math.max(0, (m.curHp || m.hp) / m.hp);
-      const hpFill = display._hpFill;
-      hpFill.clear();
-      if (hpPct < 1) {
-        const hpColor = hpPct > 0.5 ? 0x3dd497 : hpPct > 0.25 ? 0xf5c542 : 0xff5e6c;
-        hpFill.rect(-HP_BAR_W / 2, -size - 10, HP_BAR_W * hpPct, HP_BAR_H);
-        hpFill.fill({ color: hpColor });
-        display._hpBg.visible = true;
-      } else {
-        display._hpBg.visible = false;
+      // HP bar — only redraw when the % changed (>0.01 movement).
+      const curHp = m.curHp != null ? m.curHp : m.hp;
+      const hpPct = Math.max(0, curHp / m.hp);
+      if (Math.abs(hpPct - display._lastHpPct) > 0.01) {
+        display._lastHpPct = hpPct;
+        const hpFill = display._hpFill;
+        hpFill.clear();
+        if (hpPct < 1) {
+          const hpColor = hpPct > 0.5 ? 0x3dd497 : hpPct > 0.25 ? 0xf5c542 : 0xff5e6c;
+          hpFill.rect(-HP_BAR_W / 2, -size - 10, HP_BAR_W * hpPct, HP_BAR_H);
+          hpFill.fill({ color: hpColor });
+          display._hpBg.visible = true;
+        } else {
+          display._hpBg.visible = false;
+        }
       }
 
-      display._lvlText.text = `Lv${m.level}`;
+      // Level text — only update when level changes.
+      if (m.level !== display._lastLvl) {
+        display._lastLvl = m.level;
+        display._lvlText.text = `Lv${m.level}`;
+      }
 
-      // Status effects — §5.7.3 resonance pulse: when a status enters its
-      // final 25% of duration the icon pulses (1.5–5 Hz, scaling with depth)
-      // and brightens toward white as it nears expiry.
-      const statusGfx = display._statusGfx;
-      statusGfx.clear();
+      /* Single dynamic Graphics — clear once and redraw all dynamic bits
+         (statuses, aggro alert, threat arrow, stun, stuck arrows) here.
+         Skip the entire pass when nothing relevant has changed since last
+         frame — most monsters most frames have no dynamic content. */
       const statuses = m.statuses || {};
-      let sx = -size;
-      for (const [statusId, statusData] of Object.entries(statuses)) {
-        if (!statusData) continue;
-        const elemForStatus = Object.values(ELEMENTS || {}).find(e => e?.status === statusId);
-        const sColor = elemForStatus ? cssColorToHex(elemForStatus.color) : 0xffffff;
-        // Compute resonance depth from status remaining/maxDur.
-        const ratio = 0.25; // RESONANCE_WINDOW_RATIO
-        const winSize = (statusData.maxDur || 0) * ratio;
-        let depth = 0;
-        if (winSize > 0 && statusData.remaining <= winSize) {
-          depth = Math.max(0, Math.min(1, (winSize - statusData.remaining) / winSize));
+      const statusKeys = Object.keys(statuses);
+      const numStatuses = statusKeys.length;
+      const aggroFlash = m._aggroTs && now - m._aggroTs < 600;
+      const threatArrow = m._aggroed && S.player;
+      const stunActive = m._stunUntil && now < m._stunUntil;
+      const stuckCount = (m._stuckArrows && m._stuckArrows.length) || 0;
+      /* Hash of "did the dynamic state change?" — pulse animations need
+         per-frame redraw, so we still rebuild every frame when any of
+         {aggro flash, threat arrow, stun, statuses, stuck arrows}
+         is active.  When NONE are active, skip entirely. */
+      const dynActive = numStatuses > 0 || aggroFlash || threatArrow || stunActive || stuckCount > 0;
+      if (dynActive || display._dynKey !== '') {
+        const dynGfx = display._dynGfx;
+        dynGfx.clear();
+        display._dynKey = dynActive ? '1' : '';
+
+        if (numStatuses > 0) {
+          let sx = -size;
+          for (const statusId of statusKeys) {
+            const statusData = statuses[statusId];
+            if (!statusData) continue;
+            const elemForStatus = Object.values(ELEMENTS || {}).find(e => e?.status === statusId);
+            const sColor = elemForStatus ? cssColorToHex(elemForStatus.color) : 0xffffff;
+            const ratio = 0.25;
+            const winSize = (statusData.maxDur || 0) * ratio;
+            let depth = 0;
+            if (winSize > 0 && statusData.remaining <= winSize) {
+              depth = Math.max(0, Math.min(1, (winSize - statusData.remaining) / winSize));
+            }
+            const pulseHz = depth > 0 ? (1.5 + depth * 3.5) : 0;
+            const pulse = depth > 0 ? (1 + Math.sin(now / 1000 * pulseHz * 2 * Math.PI) * 0.2) : 1;
+            const r = 3 * pulse;
+            let color = sColor;
+            if (depth > 0) {
+              const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+              const sr = (sColor >> 16) & 0xff;
+              const sg = (sColor >> 8) & 0xff;
+              const sb = sColor & 0xff;
+              color = (lerp(sr, 255, depth * 0.7) << 16) | (lerp(sg, 255, depth * 0.7) << 8) | lerp(sb, 255, depth * 0.7);
+            }
+            dynGfx.circle(sx, -size - 16, r);
+            dynGfx.fill({ color: color, alpha: 0.85 });
+            sx += 8;
+          }
         }
-        // Pulse: 1.5 Hz at entry → 5 Hz at expiry.
-        const pulseHz = depth > 0 ? (1.5 + depth * 3.5) : 0;
-        const pulse = depth > 0 ? (1 + Math.sin(now / 1000 * pulseHz * 2 * Math.PI) * 0.2) : 1;
-        const r = 3 * pulse;
-        // Brighten toward white as depth approaches 1.
-        let color = sColor;
-        if (depth > 0) {
-          // Lerp sColor → white by depth.
-          const w = 0xffffff;
-          const lerp = (a, b, t) => Math.round(a + (b - a) * t);
-          const sr = (sColor >> 16) & 0xff;
-          const sg = (sColor >> 8) & 0xff;
-          const sb = sColor & 0xff;
-          color = (lerp(sr, 255, depth * 0.7) << 16) | (lerp(sg, 255, depth * 0.7) << 8) | lerp(sb, 255, depth * 0.7);
+
+        if (aggroFlash) {
+          const age = (now - m._aggroTs) / 600;
+          dynGfx.circle(0, -size - 20, 4);
+          dynGfx.fill({ color: 0xff5e6c, alpha: 1 - age });
         }
-        statusGfx.circle(sx, -size - 16, r);
-        statusGfx.fill({ color: color, alpha: 0.85 });
-        sx += 8;
-      }
 
-      // Aggro alert
-      if (m._aggroTs && now - m._aggroTs < 600) {
-        const age = (now - m._aggroTs) / 600;
-        body.circle(0, -size - 20, 4);
-        body.fill({ color: 0xff5e6c, alpha: 1 - age });
-      }
-
-      // §11.1 Threat direction arrow — small triangular pointer above the
-      // monster, aimed at the player it's currently aggroed on (the local
-      // player for solo / local-AI; multiplayer aggro targeting will need
-      // m._targetId once server-side per-target threat lands).
-      if (m._aggroed && S.player) {
-        const tx = S.player.x - m.x;
-        const ty = S.player.y - m.y;
-        const tlen = Math.sqrt(tx * tx + ty * ty);
-        if (tlen > 0.001) {
-          const ang = Math.atan2(ty, tx);
-          // Arrow base centred at (0, -size - 12) above the monster, pointing
-          // outward in `ang` direction. Triangle is 10 px long, 6 px wide.
-          const baseY = -size - 12;
-          const cx = Math.cos(ang), cy = Math.sin(ang);
-          // Rotate the triangle vertices around (0, baseY).
-          const tipL = 10, halfW = 3;
-          const px1 = cx * tipL,           py1 = cy * tipL;
-          const px2 = -cy * halfW,         py2 = cx * halfW;
-          const px3 = cy * halfW,          py3 = -cx * halfW;
-          body.poly([
-            px1, baseY + py1,
-            px2, baseY + py2,
-            px3, baseY + py3,
-          ]);
-          body.fill({ color: 0xD68A3C, alpha: 0.7 });
+        if (threatArrow) {
+          const tx = S.player.x - m.x;
+          const ty = S.player.y - m.y;
+          const tlen = Math.sqrt(tx * tx + ty * ty);
+          if (tlen > 0.001) {
+            const ang = Math.atan2(ty, tx);
+            const baseY = -size - 12;
+            const cx = Math.cos(ang), cy = Math.sin(ang);
+            const tipL = 10, halfW = 3;
+            dynGfx.poly([
+              cx * tipL,        baseY + cy * tipL,
+              -cy * halfW,      baseY + cx * halfW,
+              cy * halfW,       baseY - cx * halfW,
+            ]);
+            dynGfx.fill({ color: 0xD68A3C, alpha: 0.7 });
+          }
         }
-      }
 
-      // Stun indicator
-      if (m._stunUntil && now < m._stunUntil) {
-        body.circle(0, -size - 18, 5);
-        body.fill({ color: 0xf5c542, alpha: 0.5 + Math.sin(now / 100) * 0.3 });
-      }
+        if (stunActive) {
+          dynGfx.circle(0, -size - 18, 5);
+          dynGfx.fill({ color: 0xf5c542, alpha: 0.5 + Math.sin(now / 100) * 0.3 });
+        }
 
-      // Stuck arrows
-      if (m._stuckArrows) {
-        for (const sa of m._stuckArrows) {
-          const ax = Math.cos(sa.ang) * (size * 0.5) + sa.ox;
-          const ay = Math.sin(sa.ang) * (size * 0.5) + sa.oy;
-          body.moveTo(ax - Math.cos(sa.ang) * 5, ay - Math.sin(sa.ang) * 5);
-          body.lineTo(ax + Math.cos(sa.ang) * 5, ay + Math.sin(sa.ang) * 5);
-          body.stroke({ color: cssColorToHex(sa.color || '#8B6914'), width: 1.5, alpha: 0.8 });
+        if (stuckCount > 0) {
+          for (const sa of m._stuckArrows) {
+            if (!sa || !Number.isFinite(sa.ang) || !Number.isFinite(sa.ox) || !Number.isFinite(sa.oy)) continue;
+            const ax = Math.cos(sa.ang) * (size * 0.5) + sa.ox;
+            const ay = Math.sin(sa.ang) * (size * 0.5) + sa.oy;
+            dynGfx.moveTo(ax - Math.cos(sa.ang) * 5, ay - Math.sin(sa.ang) * 5);
+            dynGfx.lineTo(ax + Math.cos(sa.ang) * 5, ay + Math.sin(sa.ang) * 5);
+            dynGfx.stroke({ color: cssColorToHex(sa.color || '#8B6914'), width: 1.5, alpha: 0.8 });
+          }
         }
       }
     }
