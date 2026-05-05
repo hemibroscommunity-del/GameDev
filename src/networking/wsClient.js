@@ -203,6 +203,16 @@ export function setupWebSocket(ctx) {
                     _stuckArrows: [],
                   });
                 });
+                /* Rebind lockedTarget.ref — .map() replaced every monster
+                   object, so the old ref is orphaned and the lock reticle
+                   would freeze at the stale (x,y).  Find the matching id
+                   in the new array; clear if not found or dead. */
+                if (S.lockedTarget && S.lockedTarget.type === 'monster' && S.lockedTarget.id) {
+                  var _lockedId = S.lockedTarget.id;
+                  var _newRef = S.monsters.find(function (m) { return m.id === _lockedId; });
+                  if (_newRef && _newRef.alive) S.lockedTarget.ref = _newRef;
+                  else S.lockedTarget = null;
+                }
               }
               break;
             }
@@ -219,6 +229,14 @@ export function setupWebSocket(ctx) {
                     _stuckArrows: [],
                   });
                 });
+                /* Same rebind as above — applies whenever the snapshot
+                   replaces the monster array. */
+                if (S.lockedTarget && S.lockedTarget.type === 'monster' && S.lockedTarget.id) {
+                  var _lockedId2 = S.lockedTarget.id;
+                  var _newRef2 = S.monsters.find(function (m) { return m.id === _lockedId2; });
+                  if (_newRef2 && _newRef2.alive) S.lockedTarget.ref = _newRef2;
+                  else S.lockedTarget = null;
+                }
               }
               break;
             }
