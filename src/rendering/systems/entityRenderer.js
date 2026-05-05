@@ -475,7 +475,12 @@ export class EntityRenderer {
         }
         spriteBody.scale.x = mirror ? -1 : 1;
         spriteBody.scale.y = 1;
-        spriteBody.tint = cssColorToHex(torso);
+        /* No tint multiply — the sprites are pre-colored.  Multiplying
+           by S.bodyTorso (default #2563eb) was darkening the avatar
+           because Pixi's tint is a per-channel multiply against white.
+           If body-color customisation comes back later it'll need a
+           filter or per-pixel recolor pass, not raw tint. */
+        spriteBody.tint = 0xffffff;
         spriteBody.visible = true;
         body.visible = false;
         if (display._procDrawn) {

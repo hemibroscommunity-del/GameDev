@@ -90,21 +90,27 @@ export function loadPlayerSprites() {
   return loadPromise;
 }
 
-/** Resolve a `facing` string ('north' | 'south' | 'east' | 'west' |
- *  'northeast' | 'northwest' | 'southeast' | 'southwest') into the
- *  source direction we have a sheet for plus a `mirror` flag for the
- *  three flipped directions.
+/** Resolve a `facing` string into a (dir, mirror) for the sprite path.
+ *  Accepts both the 4-cardinal values that BroTown's input system
+ *  actually emits ('up'/'down'/'left'/'right') AND the 8-direction
+ *  compass names if a future caller supplies them.
  */
 export function resolveDirection(facing) {
   switch (facing) {
-    case 'west':       return { dir: 'east',       mirror: true };
-    case 'northwest':  return { dir: 'northeast',  mirror: true };
-    case 'southeast':  return { dir: 'southwest',  mirror: true };
+    /* 4-cardinal — what S._facing currently uses. */
+    case 'right':      return { dir: 'east',       mirror: false };
+    case 'left':       return { dir: 'east',       mirror: true };
+    case 'up':         return { dir: 'north',      mirror: false };
+    case 'down':       return { dir: 'south',      mirror: false };
+    /* 8-compass — for any path that fills in diagonals. */
     case 'east':       return { dir: 'east',       mirror: false };
+    case 'west':       return { dir: 'east',       mirror: true };
     case 'north':      return { dir: 'north',      mirror: false };
-    case 'northeast':  return { dir: 'northeast',  mirror: false };
     case 'south':      return { dir: 'south',      mirror: false };
+    case 'northeast':  return { dir: 'northeast',  mirror: false };
+    case 'northwest':  return { dir: 'northeast',  mirror: true };
     case 'southwest':  return { dir: 'southwest',  mirror: false };
+    case 'southeast':  return { dir: 'southwest',  mirror: true };
     default:           return { dir: 'south',      mirror: false };
   }
 }
