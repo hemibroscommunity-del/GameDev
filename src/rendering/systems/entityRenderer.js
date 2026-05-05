@@ -8,6 +8,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose } from '../playerSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
+import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -142,9 +143,16 @@ function createPlayerDisplay() {
   const weaponGlowGfx = new Graphics();
   container.addChild(weaponGlowGfx);
 
-  // Weapon visual
+  // Weapon visual — procedural Graphics (fallback) + icon Sprite
+  // (preferred when the weapon-icon PNG has loaded).  Both children
+  // exist; only one is visible per frame.
   const weaponGfx = new Graphics();
   container.addChild(weaponGfx);
+
+  const weaponSprite = new Sprite();
+  weaponSprite.anchor.set(0.5, 0.5);
+  weaponSprite.visible = false;
+  container.addChild(weaponSprite);
 
   // HP / Energy / Mana bars — drawn above the head when in a combat zone.
   const barsGfx = new Graphics();
@@ -164,6 +172,7 @@ function createPlayerDisplay() {
   container._spriteBody = spriteBody;
   container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
+  container._weaponSprite = weaponSprite;
   container._barsGfx = barsGfx;
   container._comboText = comboText;
   container._nameText = nameText;
@@ -879,33 +888,61 @@ export class EntityRenderer {
           }
         }
 
-        if (wpn.type === 'bow') {
-          // Bow arc
-          weaponGfx.arc(wpnX, wpnY, 8, -0.8, 0.8);
-          weaponGfx.stroke({ color: 0x8B6914, width: 2 });
-          // String
-          weaponGfx.moveTo(wpnX + Math.cos(-0.8) * 8, wpnY + Math.sin(-0.8) * 8);
-          weaponGfx.lineTo(wpnX + Math.cos(0.8) * 8, wpnY + Math.sin(0.8) * 8);
-          weaponGfx.stroke({ color: 0xaaaaaa, width: 1, alpha: 0.6 });
-        } else if (wpn.type === 'staff') {
-          // Staff line with orb
-          weaponGfx.moveTo(wpnX, wpnY + 10);
-          weaponGfx.lineTo(wpnX, wpnY - 10);
-          weaponGfx.stroke({ color: 0x8B6914, width: 2 });
-          weaponGfx.circle(wpnX, wpnY - 12, 3);
-          weaponGfx.fill({ color: wpnColor, alpha: 0.8 });
+        /* Weapon icon — prefer the loaded PNG (sword/bow/staff)
+           rendered as a Sprite, fall back to the procedural shapes
+           below if the texture isn't loaded yet. */
+        const weaponSprite = display._weaponSprite;
+        const wpnIconTex = hasWeapon(wpn.type) ? getWeaponTexture(wpn.type) : null;
+        if (wpnIconTex) {
+          if (weaponSprite.texture !== wpnIconTex) weaponSprite.texture = wpnIconTex;
+          weaponSprite.x = wpnX;
+          weaponSprite.y = wpnY;
+          /* Greatsword renders ~28 px tall, regular sword/bow/staff
+             ~22 px.  Source PNGs are ~64 px tall so the fit scale
+             lands the icon at the same apparent size as the procedural
+             fallback.  Mirror horizontally when facing left so blade
+             angles outward. */
+          const targetH = wpn.type === 'greatsword' ? 28 : 22;
+          const fitScale = targetH / Math.max(8, wpnIconTex.height || 64);
+          weaponSprite.scale.x = (facingX < 0 ? -1 : 1) * fitScale;
+          weaponSprite.scale.y = fitScale;
+          weaponSprite.tint = 0xffffff;
+          weaponSprite.visible = true;
         } else {
-          // Sword/greatsword
-          const len = wpn.type === 'greatsword' ? 14 : 10;
-          weaponGfx.moveTo(wpnX, wpnY + 2);
-          weaponGfx.lineTo(wpnX + facingX * len || len * 0.7, wpnY - len * 0.3);
-          weaponGfx.stroke({ color: 0xcccccc, width: wpn.type === 'greatsword' ? 3 : 2 });
-          // Element glow at tip
-          if (elem) {
-            weaponGfx.circle(wpnX + (facingX * len || len * 0.7), wpnY - len * 0.3, 2);
-            weaponGfx.fill({ color: wpnColor, alpha: 0.6 });
+          weaponSprite.visible = false;
+          /* Procedural fallback — abstract line / arc / orb. */
+          if (wpn.type === 'bow') {
+            // Bow arc
+            weaponGfx.arc(wpnX, wpnY, 8, -0.8, 0.8);
+            weaponGfx.stroke({ color: 0x8B6914, width: 2 });
+            // String
+            weaponGfx.moveTo(wpnX + Math.cos(-0.8) * 8, wpnY + Math.sin(-0.8) * 8);
+            weaponGfx.lineTo(wpnX + Math.cos(0.8) * 8, wpnY + Math.sin(0.8) * 8);
+            weaponGfx.stroke({ color: 0xaaaaaa, width: 1, alpha: 0.6 });
+          } else if (wpn.type === 'staff') {
+            // Staff line with orb
+            weaponGfx.moveTo(wpnX, wpnY + 10);
+            weaponGfx.lineTo(wpnX, wpnY - 10);
+            weaponGfx.stroke({ color: 0x8B6914, width: 2 });
+            weaponGfx.circle(wpnX, wpnY - 12, 3);
+            weaponGfx.fill({ color: wpnColor, alpha: 0.8 });
+          } else {
+            // Sword/greatsword
+            const len = wpn.type === 'greatsword' ? 14 : 10;
+            weaponGfx.moveTo(wpnX, wpnY + 2);
+            weaponGfx.lineTo(wpnX + facingX * len || len * 0.7, wpnY - len * 0.3);
+            weaponGfx.stroke({ color: 0xcccccc, width: wpn.type === 'greatsword' ? 3 : 2 });
+            // Element glow at tip
+            if (elem) {
+              weaponGfx.circle(wpnX + (facingX * len || len * 0.7), wpnY - len * 0.3, 2);
+              weaponGfx.fill({ color: wpnColor, alpha: 0.6 });
+            }
           }
         }
+      } else {
+        /* No weapon equipped — hide the icon Sprite so a stale icon
+           doesn't linger from a previous loadout. */
+        if (display._weaponSprite) display._weaponSprite.visible = false;
       }
 
       // Shield visual

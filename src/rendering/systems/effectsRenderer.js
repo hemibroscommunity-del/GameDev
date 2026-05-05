@@ -3,9 +3,10 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
-import { Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
+import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 
 const DMG_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
@@ -634,11 +635,25 @@ export class EffectsRenderer {
     gfx.clear();
 
     const loot = S.groundLoot || [];
+    /* Track which loot entries currently have an associated remnants
+       Sprite so we can hide unused ones at the end of the pass. */
+    const activeRemnants = new Set();
+
     for (let i = loot.length - 1; i >= 0; i--) {
       const l = loot[i];
-      if (l._expired) { loot.splice(i, 1); continue; }
+      if (l._expired) {
+        if (l._pixiSprite && !l._pixiSprite.destroyed) l._pixiSprite.destroy();
+        l._pixiSprite = null;
+        loot.splice(i, 1);
+        continue;
+      }
       const age = (now - l.ts) / 1000;
-      if (age > 30) { loot.splice(i, 1); continue; }
+      if (age > 30) {
+        if (l._pixiSprite && !l._pixiSprite.destroyed) l._pixiSprite.destroy();
+        l._pixiSprite = null;
+        loot.splice(i, 1);
+        continue;
+      }
       const bob = Math.sin(now / 300 + l.x) * 2;
       const alpha = age > 25 ? (30 - age) / 5 : 1;
 
@@ -649,6 +664,24 @@ export class EffectsRenderer {
         gfx.fill({ color: tierColor, alpha });
         gfx.rect(l.x - 5, l.y + bob - 5, 10, 10);
         gfx.stroke({ color: 0xffffff, width: 1, alpha: alpha * 0.5 });
+      } else if (l.skull === 'fodder' && hasSlimeState('remnants')) {
+        /* Slime remnants splat — single-frame sprite from the slime
+           loader.  Pooled per loot entry so we don't spawn a new
+           Sprite every frame.  Mirrors the Canvas 2D draw at
+           BroTown.jsx ~12245. */
+        if (!l._pixiSprite || l._pixiSprite.destroyed) {
+          const sp = new Sprite(getSlimeFrame('remnants', 0));
+          sp.anchor.set(0.5, 0.5);
+          this.lootLayer.addChild(sp);
+          l._pixiSprite = sp;
+        }
+        l._pixiSprite.x = l.x;
+        l._pixiSprite.y = l.y + bob;
+        l._pixiSprite.alpha = alpha;
+        /* Render at 32×32 (matches Canvas 2D's 32px draw at line 12246). */
+        l._pixiSprite.scale.set(32 / (l._pixiSprite.texture.width || 32));
+        l._pixiSprite.visible = true;
+        activeRemnants.add(l._pixiSprite);
       } else {
         if (l.coins) {
           gfx.circle(l.x, l.y + bob, 4);
