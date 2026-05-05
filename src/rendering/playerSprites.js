@@ -29,17 +29,20 @@ const FRAME_H = 64;
 const STAND_FRAMES = 1;
 const HIT_FRAMES = 6;
 
-/* Uniform 1 s jog cycle across all directions — user reported the
-   prior per-direction durations (1503-2008 ms) read as slow-motion
-   compared to east's 1006 ms.  Cadence matches the human gait the
-   source videos were captured at. */
+/* 1 s jog cycle for most directions; northeast (and its mirror,
+   northwest) plays faster because the source video for that view was
+   captured at a slower gait.  Per-direction overrides keep the visual
+   cadence consistent across facings. */
 const JOG_DURATION_MS = 1000;
+const JOG_DURATION_BY_DIR = {
+  northeast: 750,
+};
 const HIT_DURATION_MS = 250;
 
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 12; /* matches the cache-buster on the Canvas 2D loader */
+const VERSION = 13; /* matches the cache-buster on the Canvas 2D loader */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
@@ -136,10 +139,11 @@ export function getFrame(pose, dir, frameIdx) {
 }
 
 /** How long the full animation cycle takes in ms for the given
- *  (pose, dir).  Jog is uniform across directions now; stand is a
- *  no-op (1s placeholder); hit is 250ms. */
-export function cycleMs(pose /* , dir */) {
-  if (pose === 'jog') return JOG_DURATION_MS;
+ *  (pose, dir).  Jog defaults to JOG_DURATION_MS with a per-direction
+ *  override map (e.g. northeast plays faster); stand is a 1s
+ *  placeholder; hit is 250ms. */
+export function cycleMs(pose, dir) {
+  if (pose === 'jog') return JOG_DURATION_BY_DIR[dir] || JOG_DURATION_MS;
   if (pose === 'hit') return HIT_DURATION_MS;
   return 1000;
 }
