@@ -53,16 +53,19 @@ for d in north south northeast southwest; do
   # residue (--kill-bg-grayscale, lum>200 AND sat<0.10).  Replaced
   # --kill-all-light, which over-killed AA outline pixels and produced
   # pixelated outline gaps.
-  #
-  # --smooth-alpha for southwest only: head outline visibly wobbled
-  # frame-to-frame due to sub-pixel motion of a 1-px hard edge.  The
-  # gaussian-blur-on-alpha softens it into a 1-2px AA band that reads
-  # as smooth motion.  Other directions are stable without it.
-  extra=""
-  if [ "$d" = "southwest" ]; then
-    extra="--smooth-alpha"
-  fi
   python tools/dehalo_outside.py \
     "/tmp/jog-$d-strip.png" "public/sprites/player/jog-$d.png" \
-    --frame-h 64 --no-flood --kill-bg-grayscale $extra
+    --frame-h 64 --no-flood --kill-bg-grayscale
+
+  # Per-direction post-processing.  Southwest: stabilize the head
+  # across frames — the AI source had visibly different head silhouette
+  # shapes per frame ("wavy / bumpy" head during playback).  Lock the
+  # top 20 rows to a per-pixel median, aligned to each frame's topmost
+  # opaque row, so the head is byte-identical every frame and only
+  # translates vertically with the body bob.
+  if [ "$d" = "southwest" ]; then
+    python tools/stabilize_head.py \
+      "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \
+      --head-h 20
+  fi
 done
