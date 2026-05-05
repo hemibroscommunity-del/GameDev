@@ -1,17 +1,21 @@
 """
-Per-frame flood-fill dehalo: for each 64x72 cell of a 1024x72 strip,
-flood-fill near-white from the four edges only. Whites inside the fish
-silhouette (stripes, eye highlights) survive because the fill never
-reaches them. Whites outside the silhouette (cropping artifacts, water
-ripple backgrounds) become transparent.
+Per-frame flood-fill dehalo: for each FRAME_W x FRAME_H cell of a
+horizontal strip, flood-fill near-white from the four edges only.
+Whites inside the silhouette (stripes, eye highlights) survive because
+the fill never reaches them. Whites outside the silhouette (cropping
+artifacts, anti-aliased halo from colorkey) become transparent.
+
+CLI:
+  python dehalo_outside.py SRC.png DST.png                 # default 64x72
+  python dehalo_outside.py SRC.png DST.png --frame-h 64    # 64x64 frames
 """
-import sys
+import argparse
 from collections import deque
 from pathlib import Path
 from PIL import Image
 
 FRAME_W = 64
-FRAME_H = 72
+FRAME_H = 72              # default, overridable via --frame-h
 WHITE_THRESH = 235   # >= this on r AND g AND b counts as white-ish background
 
 
@@ -66,20 +70,24 @@ def zero_rgb_on_transparent(img: Image.Image) -> int:
     return n
 
 
-def process(src: Path, dst: Path) -> None:
+def process(src: Path, dst: Path, frame_h: int) -> None:
     img = Image.open(src).convert("RGBA")
     w, h = img.size
-    if h != FRAME_H or w % FRAME_W != 0:
-        raise RuntimeError(f"unexpected size {w}x{h}; expected width%64==0 and height==72")
+    if h != frame_h or w % FRAME_W != 0:
+        raise RuntimeError(f"unexpected size {w}x{h}; expected width%{FRAME_W}==0 and height=={frame_h}")
     frames = w // FRAME_W
     for i in range(frames):
-        flood_clear_frame(img, i * FRAME_W, 0, FRAME_W, FRAME_H)
+        flood_clear_frame(img, i * FRAME_W, 0, FRAME_W, frame_h)
     zeroed = zero_rgb_on_transparent(img)
     img.save(dst, "PNG", optimize=True)
     print(f"{src.name} -> {dst.name}: {frames} frames keyed, {zeroed} alpha=0 pixels zeroed (no more white bleed)")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        sys.exit("usage: dehalo_outside.py <src.png> <dst.png>")
-    process(Path(sys.argv[1]), Path(sys.argv[2]))
+    p = argparse.ArgumentParser(description="Flood-fill dehalo a horizontal sprite strip.")
+    p.add_argument("src")
+    p.add_argument("dst")
+    p.add_argument("--frame-h", type=int, default=FRAME_H,
+                   help=f"frame height in pixels (default {FRAME_H})")
+    args = p.parse_args()
+    process(Path(args.src), Path(args.dst), args.frame_h)

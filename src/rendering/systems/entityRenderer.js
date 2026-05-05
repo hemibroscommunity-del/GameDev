@@ -6,7 +6,7 @@ import { Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
-import { getFrame, resolveDirection, cycleMs, hasPose } from '../playerSprites.js';
+import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 
@@ -570,7 +570,11 @@ export class EntityRenderer {
         const { dir, mirror } = resolveDirection(facing);
         let frameIdx = 0;
         if (pose === 'jog') {
-          frameIdx = Math.floor((now / cycleMs('jog', dir)) * 24) % 24;
+          /* Frame count is per-direction now (24-35) — pulled from
+             the loaded sheet width so a longer strip plays more frames
+             in the same 1s cycle, giving smoother motion. */
+          const fc = playerFrameCount('jog', dir) || 24;
+          frameIdx = Math.floor((now / cycleMs('jog', dir)) * fc) % fc;
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));

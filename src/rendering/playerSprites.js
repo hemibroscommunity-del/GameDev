@@ -22,18 +22,24 @@ import { Assets, Rectangle, Texture } from 'pixi.js';
 
 const FRAME_W = 64;
 const FRAME_H = 64;
-const JOG_FRAMES = 24;
+/* JOG sheets now have VARIABLE frame counts per direction (north 24,
+   south 31, northeast 25, southwest 35, east 24-ish).  Frame count is
+   detected from the loaded texture width (sheet width / FRAME_W).
+   stand/hit stay fixed since their sheets have known shapes. */
+const STAND_FRAMES = 1;
 const HIT_FRAMES = 6;
 
-const JOG_DURATION_MS = {
-  east: 1006, north: 2008, northeast: 1503, south: 2000, southwest: 1998,
-};
+/* Uniform 1 s jog cycle across all directions — user reported the
+   prior per-direction durations (1503-2008 ms) read as slow-motion
+   compared to east's 1006 ms.  Cadence matches the human gait the
+   source videos were captured at. */
+const JOG_DURATION_MS = 1000;
 const HIT_DURATION_MS = 250;
 
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 11; /* matches the cache-buster on the Canvas 2D loader */
+const VERSION = 12; /* matches the cache-buster on the Canvas 2D loader */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
@@ -47,14 +53,18 @@ const manifest = {
 
 let loadPromise = null;
 
-function frameCount(pose) {
-  if (pose === 'jog') return JOG_FRAMES;
-  if (pose === 'hit') return HIT_FRAMES;
-  return 1;
-}
-
 function spriteUrl(pose, dir) {
   return `/sprites/player/${pose}-${dir}.png?v=${VERSION}`;
+}
+
+/* Resolve frame count for a (pose, dir) sheet from the loaded texture
+   width when available — jog sheets vary per direction (24-35 frames)
+   so we can't hardcode.  Falls back to fixed counts for stand/hit. */
+function deriveFrameCount(pose, tex) {
+  const width = (tex && tex.source && tex.source.width) || 0;
+  if (pose === 'jog') return Math.max(1, Math.floor(width / FRAME_W));
+  if (pose === 'hit') return HIT_FRAMES;
+  return STAND_FRAMES;
 }
 
 async function loadSheet(pose, dir) {
@@ -62,7 +72,7 @@ async function loadSheet(pose, dir) {
   try {
     const tex = await Assets.load(url);
     if (!tex || !tex.source) return;
-    const frames = frameCount(pose);
+    const frames = deriveFrameCount(pose, tex);
     const out = [];
     for (let i = 0; i < frames; i++) {
       out.push(new Texture({
@@ -126,12 +136,20 @@ export function getFrame(pose, dir, frameIdx) {
 }
 
 /** How long the full animation cycle takes in ms for the given
- *  (pose, dir).  `stand` is treated as a 1s no-op since it has one
- *  frame.  Used by the renderer to compute frameIdx from `now`. */
-export function cycleMs(pose, dir) {
-  if (pose === 'jog') return JOG_DURATION_MS[dir] || 2000;
+ *  (pose, dir).  Jog is uniform across directions now; stand is a
+ *  no-op (1s placeholder); hit is 250ms. */
+export function cycleMs(pose /* , dir */) {
+  if (pose === 'jog') return JOG_DURATION_MS;
   if (pose === 'hit') return HIT_DURATION_MS;
   return 1000;
+}
+
+/** Frame count for a loaded (pose, dir) sheet.  Renderer uses this
+ *  for jog so it can pick frameIdx based on the actual strip length
+ *  instead of a hardcoded 24 (sheets are now variable: 24-35). */
+export function frameCount(pose, dir) {
+  const set = manifest[pose] && manifest[pose][dir];
+  return set ? set.length : 0;
 }
 
 /** True if at least one sheet for the given pose has loaded.  Cheap
