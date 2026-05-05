@@ -496,7 +496,7 @@ export class EntityRenderer {
            the character bigger — keep the 0.88× shrink.
            Applies to BOTH east and the mirrored W/NW/SE since they
            share the east sheet. */
-        const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.18) : 1.0;
+        const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.15) : 1.0;
         spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
         spriteBody.scale.y = sizeMul;
         /* No tint multiply — the sprites are pre-colored.  Multiplying
