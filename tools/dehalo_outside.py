@@ -93,6 +93,70 @@ def force_binary_alpha(img: Image.Image, threshold: int = 128) -> int:
     return n
 
 
+def smooth_silhouette(img: Image.Image, frame_w: int, frame_h: int) -> int:
+    """Apply a small gaussian blur to the alpha channel per-frame, then
+    re-clip very-low alphas to 0.  Introduces a soft anti-aliased band
+    at the silhouette edge so the boundary doesn't read as a hard jaggy
+    1-pixel wall — mimicking the natural anti-aliasing on jog-east.png.
+    Operates per-frame so the blur doesn't bridge across cell seams."""
+    from PIL import ImageFilter
+    w, h = img.size
+    frames = w // frame_w
+    n = 0
+    for fi in range(frames):
+        x0 = fi * frame_w
+        cell = img.crop((x0, 0, x0 + frame_w, frame_h))
+        r_ch, g_ch, b_ch, a_ch = cell.split()
+        blurred = a_ch.filter(ImageFilter.GaussianBlur(radius=0.6))
+        # Re-binarize the bottom: anything below ~16 -> 0 (kills speckle).
+        bpx = blurred.load()
+        for y in range(frame_h):
+            for x in range(frame_w):
+                v = bpx[x, y]
+                if v < 16:
+                    bpx[x, y] = 0
+                elif v != a_ch.getpixel((x, y)):
+                    n += 1
+        cell = Image.merge("RGBA", (r_ch, g_ch, b_ch, blurred))
+        img.paste(cell, (x0, 0))
+    return n
+
+
+def add_outline(img: Image.Image, frame_w: int, frame_h: int, color=(12, 8, 6), alpha: int = 255) -> int:
+    """Draw a 1-pixel dark border around every silhouette.  AI-generated
+    jog sources don't paint a black outline like the hand-keyed
+    jog-east.png does, so the silhouette edge is just skin-color against
+    the background — every tiny frame-to-frame shift of that edge reads
+    as wobble.  A synthetic outline anchors the boundary so the eye
+    locks onto the outline instead of the moving skin-color edge.
+    Operates per-frame so the outline doesn't bridge across cell seams."""
+    src = img.copy()
+    src_px = src.load()
+    dst_px = img.load()
+    w, h = img.size
+    frames = w // frame_w
+    n = 0
+    for fi in range(frames):
+        x0 = fi * frame_w
+        for fy in range(frame_h):
+            for fx in range(frame_w):
+                r, g, b, a = src_px[x0 + fx, fy]
+                if a != 0:
+                    continue
+                # Check 4-neighbors WITHIN this frame for an opaque pixel.
+                opaque_neighbor = False
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = fx + dx, fy + dy
+                    if 0 <= nx < frame_w and 0 <= ny < frame_h:
+                        if src_px[x0 + nx, ny][3] >= 128:
+                            opaque_neighbor = True
+                            break
+                if opaque_neighbor:
+                    dst_px[x0 + fx, fy] = (color[0], color[1], color[2], alpha)
+                    n += 1
+    return n
+
+
 def kill_light_halo(img: Image.Image, lum_thresh: int = 180) -> int:
     """Drop any partial-alpha pixel whose color is light (RGB mean
     > lum_thresh) to alpha=0.  This is the visible "white pixels
@@ -114,7 +178,7 @@ def kill_light_halo(img: Image.Image, lum_thresh: int = 180) -> int:
     return n
 
 
-def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool) -> None:
+def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool, outline: bool) -> None:
     img = Image.open(src).convert("RGBA")
     w, h = img.size
     if h != frame_h or w % FRAME_W != 0:
@@ -124,6 +188,8 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
         for i in range(frames):
             flood_clear_frame(img, i * FRAME_W, 0, FRAME_W, frame_h)
     halo_n = kill_light_halo(img) if kill_halo else 0
+    outline_n = add_outline(img, FRAME_W, frame_h) if outline else 0
+    smooth_n = smooth_silhouette(img, FRAME_W, frame_h) if outline else 0
     zeroed = zero_rgb_on_transparent(img)
     binary_n = force_binary_alpha(img) if binary_alpha else 0
     img.save(dst, "PNG", optimize=True)
@@ -131,6 +197,8 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
     msg = f"{src.name} -> {dst.name}: {flood_note}, {zeroed} alpha=0 zeroed"
     if kill_halo:
         msg += f", {halo_n} light-halo killed"
+    if outline:
+        msg += f", {smooth_n} alpha smoothed, {outline_n} outline pixels added"
     if binary_alpha:
         msg += f", {binary_n} alpha snapped to 0/255"
     print(msg)
@@ -156,5 +224,10 @@ if __name__ == "__main__":
                         "Removes the leftover white-halo bleed from a soft colorkey "
                         "while preserving DARK partial-alpha pixels (the character's "
                         "anti-aliased outline). Pairs well with --no-flood.")
+    p.add_argument("--outline", action="store_true",
+                   help="draw a 1-pixel dark border around every silhouette. AI "
+                        "jog sources lack the dark outline that anchors east's "
+                        "boundary; without it, the skin-color edge against the "
+                        "background reads as wobble on every tiny frame shift.")
     args = p.parse_args()
-    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo)
+    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo, args.outline)

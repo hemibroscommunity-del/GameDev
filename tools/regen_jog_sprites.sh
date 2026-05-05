@@ -61,5 +61,5 @@ for d in north south northeast southwest; do
 
   python tools/dehalo_outside.py \
     "/tmp/jog-$d-strip.png" "public/sprites/player/jog-$d.png" \
-    --frame-h 64 --no-flood --kill-halo
+    --frame-h 64 --no-flood --kill-halo --outline
 done
