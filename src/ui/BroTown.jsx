@@ -16589,6 +16589,12 @@ export var BroTown = function BroTown(_ref0) {
              tapping a monster), so route the lock-on check from here
              too.  Same monster hit-test as onClick below. */
           if (_tdist < 30 && _tdur < 300) {
+            /* Mobile fires a synthesized click event after touchend.  Mark
+               the timestamp so the canvas onClick handler can skip its
+               tap-to-lock logic for ~500 ms — otherwise onClick re-runs
+               the toggle on the same monster and instantly UNLOCKS what
+               we just locked. */
+            stateRef.current._touchHandledAt = Date.now();
             var _S = stateRef.current;
             var _rect = e.currentTarget.getBoundingClientRect();
             var _cssX = t.clientX - _rect.left;
@@ -16683,6 +16689,15 @@ export var BroTown = function BroTown(_ref0) {
       doSpecialAttack();
     },
     onClick: function onClick(e) {
+      /* Mobile dispatches a synthesized click event ~50-300 ms after
+         touchend.  onTouchEnd already ran the tap-to-lock toggle and
+         set _touchHandledAt — re-running it here would lock then
+         instantly unlock the same monster.  Desktop never sets that
+         flag (only the touch path does), so this gate doesn't affect
+         mouse clicks. */
+      if (stateRef.current._touchHandledAt && Date.now() - stateRef.current._touchHandledAt < 600) {
+        return;
+      }
       var rect = e.currentTarget.getBoundingClientRect();
       /* CSS-pixel tap coords. Compare against monster screen positions in
          the same CSS-pixel space — the renderer applies scaleY 0.8 (world
