@@ -361,10 +361,10 @@ export class EntityRenderer {
           spriteBody.y = size; /* feet at the circle's bottom edge */
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
-          body.visible = false;
+          display._body.visible = false;
         } else {
           spriteBody.visible = false;
-          body.visible = true;
+          display._body.visible = true;
         }
       }
 
