@@ -334,12 +334,15 @@ export class EntityRenderer {
             const phaseOff = ((m.spawnX || 0) | 0) % 600;
             frameIdx = Math.floor((now + phaseOff) / 120) % fc;
           }
-          if (display._slimeState !== state || display._slimeFrame !== frameIdx) {
-            display._slimeState = state;
-            display._slimeFrame = frameIdx;
-            const tex = getSlimeFrame(state, frameIdx);
-            if (tex) spriteBody.texture = tex;
+          /* Always look up + reassign texture — see player sprite
+             notes; the cache-only-on-change pattern lost sprites
+             after zone change. */
+          const tex = getSlimeFrame(state, frameIdx);
+          if (tex && spriteBody.texture !== tex) {
+            spriteBody.texture = tex;
           }
+          display._slimeState = state;
+          display._slimeFrame = frameIdx;
           /* Hit reaction squash — quick stretch + flatten on top of
              the sheet swap.  Peaks at 40% into the window then eases
              back to neutral, matching Canvas 2D's _hitSquashX/Y. */
@@ -566,12 +569,14 @@ export class EntityRenderer {
         let tex = getFrame(pose, dir, frameIdx);
         if (!tex) tex = getFrame('stand', dir, 0);
         if (tex) {
-          if (display._animPose !== pose || display._animDir !== dir || display._animFrame !== frameIdx) {
-            display._animPose = pose;
-            display._animDir = dir;
-            display._animFrame = frameIdx;
+          /* Reassign texture whenever it differs — same self-heal as
+             the local player path, fixes invisible-after-zone-change. */
+          if (spriteBody.texture !== tex) {
             spriteBody.texture = tex;
           }
+          display._animPose = pose;
+          display._animDir = dir;
+          display._animFrame = frameIdx;
           /* Same east-direction size compensation as the local player —
              keeps every player rendered at the same visual scale. */
           const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.10) : 1.0;
@@ -705,12 +710,17 @@ export class EntityRenderer {
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
       if (tex) {
-        if (display._animPose !== pose || display._animDir !== dir || display._animFrame !== frameIdx) {
-          display._animPose = pose;
-          display._animDir = dir;
-          display._animFrame = frameIdx;
+        /* Always assign the texture — the cache-only-on-change pattern
+           was leaving spriteBody with a stale / invalidated texture
+           after zone change (user reports the player going invisible
+           while name / level text remained).  Reassigning every frame
+           is cheap (it's a property write) and self-heals. */
+        if (spriteBody.texture !== tex) {
           spriteBody.texture = tex;
         }
+        display._animPose = pose;
+        display._animDir = dir;
+        display._animFrame = frameIdx;
         /* Per-direction scale multiplier — east source video framed
            the character smaller than the other directions, so the
            sprite needs an upscale to read at the same apparent size.
