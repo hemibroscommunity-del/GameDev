@@ -16566,6 +16566,7 @@ export var BroTown = function BroTown(_ref0) {
         y: t.clientY,
         t: Date.now()
       };
+      try { console.log('[tap] touchStart fired @', Math.round(t.clientX), Math.round(t.clientY)); } catch (e2) {}
     },
     onTouchEnd: function onTouchEnd(e) {
       var ct = canvasTouchRef.current;
@@ -16593,6 +16594,15 @@ export var BroTown = function BroTown(_ref0) {
             var _cssX = t.clientX - _rect.left;
             var _cssY = t.clientY - _rect.top;
             var _cx = _S.camera.x, _cy = _S.camera.y;
+            try {
+              var _alive = (_S.monsters || []).filter(function (m) { return m.alive; });
+              var _near = _alive.map(function (m) {
+                var _msx = m.x - _cx, _msy = m.y - _cy;
+                var _d = Math.hypot(_cssX - _msx, _cssY - _msy);
+                return { id: m.id, x: Math.round(_msx), y: Math.round(_msy), d: Math.round(_d) };
+              }).sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
+              console.log('[tap] tap-to-lock check', { cssX: Math.round(_cssX), cssY: Math.round(_cssY), camera: { x: Math.round(_cx), y: Math.round(_cy) }, alive: _alive.length, nearest: _near });
+            } catch (e3) {}
             if (_S.monsters) {
               var _closest = null, _closestDist = 40;
               _S.monsters.forEach(function (m) {
@@ -16602,11 +16612,14 @@ export var BroTown = function BroTown(_ref0) {
                 if (_d < _closestDist) { _closestDist = _d; _closest = m; }
               });
               if (_closest) {
+                console.log('[tap] LOCKED', _closest.id);
                 if (_S.lockedTarget && _S.lockedTarget.ref === _closest) {
                   _S.lockedTarget = null;
                 } else {
                   _S.lockedTarget = { type: 'monster', id: _closest.id, ref: _closest };
                 }
+              } else {
+                console.log('[tap] no monster within 40px');
               }
             }
           }
