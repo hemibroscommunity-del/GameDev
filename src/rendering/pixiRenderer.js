@@ -49,6 +49,32 @@ export async function initPixiRenderer(canvas) {
     tileRenderer.rebuild(app, map, zoneId);
     entityRenderer.clear();
     effectsRenderer.clear();
+    /* One-shot diagnostic: dump scene-graph state right after zone
+       change so we can see what's detached / hidden / zeroed when
+       sprites go invisible.  Only logs ONCE per zone enter. */
+    try {
+      const wc = worldContainer;
+      const pl = layers.player;
+      const el = layers.entities;
+      const pd = entityRenderer.playerDisplay;
+      console.log('[zone-enter]', {
+        zone: zoneId,
+        worldVisible: wc && wc.visible,
+        worldScale: wc && { x: wc.scale.x, y: wc.scale.y },
+        worldPos: wc && { x: Math.round(wc.x), y: Math.round(wc.y) },
+        worldChildren: wc && wc.children.length,
+        playerLayerInWorld: pl && pl.parent === wc,
+        playerLayerVisible: pl && pl.visible,
+        playerLayerChildren: pl && pl.children.length,
+        entityLayerInWorld: el && el.parent === wc,
+        entityLayerChildren: el && el.children.length,
+        hasPlayerDisplay: !!pd,
+        playerDisplayParent: pd && (pd.parent === pl ? 'playerLayer' : pd.parent ? 'OTHER' : 'DETACHED'),
+        playerDisplayVisible: pd && pd.visible,
+        playerSpriteVisible: pd && pd._spriteBody && pd._spriteBody.visible,
+        playerSpriteHasTexture: pd && pd._spriteBody && !!pd._spriteBody.texture && !pd._spriteBody.texture.destroyed,
+      });
+    } catch (e) { console.warn('[zone-enter] diag threw', e && e.message); }
   }
 
   /**
