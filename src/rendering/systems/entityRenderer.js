@@ -7,6 +7,7 @@ import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose } from '../playerSprites.js';
+import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -64,6 +65,20 @@ function createMonsterDisplay(monster) {
   }
   container.addChild(body);
 
+  /* Sprite-sheet body for fodder slimes.  Only created here for the
+     fodder archetype so non-slime monsters skip the extra display
+     object entirely.  Sprite is anchored bottom-center (0.5, 1.0) so
+     the "feet" line up at the same Y as the procedural circle's
+     bottom; that keeps shadows / damage numbers at the right place
+     when the sprite is taller than the circle. */
+  const isFodder = (monster.archetype || monster.type) === 'fodder';
+  const spriteBody = isFodder ? new Sprite() : null;
+  if (spriteBody) {
+    spriteBody.anchor.set(0.5, 1.0);
+    spriteBody.visible = false;
+    container.addChild(spriteBody);
+  }
+
   const hpBg = new Graphics();
   hpBg.rect(-HP_BAR_W / 2, -size - 10, HP_BAR_W, HP_BAR_H);
   hpBg.fill({ color: 0x000000, alpha: 0.5 });
@@ -84,6 +99,8 @@ function createMonsterDisplay(monster) {
   container.addChild(dynGfx);
 
   container._body = body;
+  container._spriteBody = spriteBody;
+  container._isFodder = isFodder;
   container._hpFill = hpFill;
   container._hpBg = hpBg;
   container._lvlText = lvlText;
@@ -94,6 +111,10 @@ function createMonsterDisplay(monster) {
   container._lastHpPct = -1;
   container._lastLvl = -1;
   container._dynKey = '';
+  /* Slime animation cache — skip texture reassignment when state +
+     frame haven't changed. */
+  container._slimeState = null;
+  container._slimeFrame = -1;
 
   return container;
 }
@@ -233,7 +254,67 @@ export class EntityRenderer {
 
       const size = display._size;
 
-      // Emoji — once per monster
+      /* Slime sprite — fodder archetype gets its own animated sheet
+         (idle / shoot / hit).  Priority: hit > shoot > idle, mirroring
+         the Canvas 2D path in BroTown.jsx ~11635.  Falls back to the
+         procedural circle until sheets resolve. */
+      if (display._isFodder && display._spriteBody) {
+        const spriteBody = display._spriteBody;
+        const hittingNow = m._hitAnimEnd && now < m._hitAnimEnd && hasSlimeState('hit');
+        const shootingNow = m._shootAnimEnd && now < m._shootAnimEnd && hasSlimeState('shoot');
+        const idleAvail = hasSlimeState('idle');
+        const state = hittingNow ? 'hit' : shootingNow ? 'shoot' : (idleAvail ? 'idle' : null);
+        if (state) {
+          let frameIdx;
+          const fc = slimeFrameCount(state);
+          if (state === 'hit') {
+            const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);
+            const t = (now - m._hitAnimStart) / dur;
+            frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
+          } else if (state === 'shoot') {
+            const dur = Math.max(1, m._shootAnimEnd - m._shootAnimStart);
+            const t = (now - m._shootAnimStart) / dur;
+            frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
+          } else {
+            /* Idle loop — per-monster phase offset so a group doesn't
+               pulse in lockstep.  120 ms/frame matches Canvas 2D. */
+            const phaseOff = ((m.spawnX || 0) | 0) % 600;
+            frameIdx = Math.floor((now + phaseOff) / 120) % fc;
+          }
+          if (display._slimeState !== state || display._slimeFrame !== frameIdx) {
+            display._slimeState = state;
+            display._slimeFrame = frameIdx;
+            const tex = getSlimeFrame(state, frameIdx);
+            if (tex) spriteBody.texture = tex;
+          }
+          /* Hit reaction squash — quick stretch + flatten on top of
+             the sheet swap.  Peaks at 40% into the window then eases
+             back to neutral, matching Canvas 2D's _hitSquashX/Y. */
+          let sqx = 1, sqy = 1;
+          if (hittingNow) {
+            const hp = (now - m._hitAnimStart) / Math.max(1, m._hitAnimEnd - m._hitAnimStart);
+            if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
+            else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
+          }
+          /* Render the sprite at 50 px tall (matches Canvas 2D _dSize),
+             anchored bottom-center so feet sit on the ground.  Sprite
+             frames are 128 px so base scale = 50/128. */
+          const baseScale = 50 / 128;
+          spriteBody.scale.x = baseScale * sqx;
+          spriteBody.scale.y = baseScale * sqy;
+          spriteBody.y = size; /* feet at the circle's bottom edge */
+          spriteBody.tint = 0xffffff;
+          spriteBody.visible = true;
+          body.visible = false;
+        } else {
+          spriteBody.visible = false;
+          body.visible = true;
+        }
+      }
+
+      // Emoji — once per monster.  Hidden when the slime sprite is
+      // rendering so the actual slime art isn't covered by a floating
+      // green-circle emoji.
       if (!display._emoji) {
         const emojiText = new Text({
           text: m.emoji || '🟢',
@@ -242,6 +323,11 @@ export class EntityRenderer {
         emojiText.anchor.set(0.5, 0.5);
         display.addChild(emojiText);
         display._emoji = emojiText;
+      }
+      if (display._spriteBody && display._spriteBody.visible) {
+        display._emoji.visible = false;
+      } else if (!display._emoji.visible) {
+        display._emoji.visible = true;
       }
 
       // HP bar — only redraw when the % changed (>0.01 movement).

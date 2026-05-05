@@ -8,6 +8,7 @@ import { EntityRenderer } from './systems/entityRenderer.js';
 import { EffectsRenderer } from './systems/effectsRenderer.js';
 import { loadTileAssets } from './tileAssets.js';
 import { loadPlayerSprites } from './playerSprites.js';
+import { loadSlimeSprites } from './slimeSprites.js';
 
 /**
  * Initializes the PixiJS renderer.
@@ -35,6 +36,8 @@ export async function initPixiRenderer(canvas) {
   // Load player sprite sheets (non-blocking — entityRenderer falls back
   // to procedural Graphics on the first few frames before sheets resolve).
   loadPlayerSprites().catch((err) => console.warn('Player sprites failed to load, using procedural fallback:', err));
+  // Same for slime monsters (idle / shoot / hit / death).
+  loadSlimeSprites().catch((err) => console.warn('Slime sprites failed to load, using procedural fallback:', err));
 
   let currentZone = null;
   let currentMap = null;
