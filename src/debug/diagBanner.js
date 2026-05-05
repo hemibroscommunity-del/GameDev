@@ -103,6 +103,38 @@ const refresh = () => {
   body.scrollTop = body.scrollHeight;
 };
 
+const PERSIST_KEY = 'bt-diag-lines';
+const PERSIST_MAX = 80;
+
+/* On install, restore any persisted lines from localStorage and prepend
+   a "post-crash recovery" marker.  This is what makes the banner useful
+   when the tab fully crashed — the next page load surfaces the last 80
+   lines that were captured before the crash. */
+const restorePersisted = () => {
+  try {
+    const raw = localStorage.getItem(PERSIST_KEY);
+    if (!raw) return;
+    const prev = JSON.parse(raw);
+    if (!Array.isArray(prev)) return;
+    lines.push({ t: Date.now(), level: 'warn', text: '────── PRIOR SESSION (' + prev.length + ' lines) ──────' });
+    for (const ln of prev) lines.push(ln);
+    lines.push({ t: Date.now(), level: 'warn', text: '────── END PRIOR SESSION ──────' });
+  } catch {}
+};
+
+let persistThrottle = 0;
+const persist = () => {
+  /* Throttle to ~5 writes per second.  localStorage.setItem is sync and
+     can stall the main thread if called from every console.log. */
+  const now = Date.now();
+  if (now - persistThrottle < 200) return;
+  persistThrottle = now;
+  try {
+    const tail = lines.slice(-PERSIST_MAX);
+    localStorage.setItem(PERSIST_KEY, JSON.stringify(tail));
+  } catch {}
+};
+
 const push = (level, args) => {
   const text = args.map(a => {
     if (a instanceof Error) return a.stack || a.message;
@@ -113,6 +145,13 @@ const push = (level, args) => {
   }).join(' ');
   lines.push({ t: Date.now(), level, text });
   if (lines.length > MAX_LINES) lines.splice(0, lines.length - MAX_LINES);
+  /* Errors are persisted IMMEDIATELY without throttle so the last gasp
+     before a crash always lands in localStorage. */
+  if (level === 'error') {
+    try { localStorage.setItem(PERSIST_KEY, JSON.stringify(lines.slice(-PERSIST_MAX))); } catch {}
+  } else {
+    persist();
+  }
   if (active) {
     ensureMounted();
     refresh();
@@ -127,8 +166,8 @@ const hookConsole = () => {
       orig(...args);
     };
   }
-  window.addEventListener('error', (e) => push('error', [e.message, e.filename + ':' + e.lineno]));
-  window.addEventListener('unhandledrejection', (e) => push('error', ['unhandledrejection:', e.reason]));
+  window.addEventListener('error', (e) => push('error', [e.message, e.filename + ':' + e.lineno, e.error && e.error.stack]));
+  window.addEventListener('unhandledrejection', (e) => push('error', ['unhandledrejection:', e.reason && (e.reason.stack || e.reason.message || e.reason)]));
 };
 
 export const installDiagBanner = () => {
@@ -136,6 +175,7 @@ export const installDiagBanner = () => {
   active = shouldActivate();
   hookConsole();
   if (!active) return;
+  restorePersisted();
   push('info', ['[bt-diag] banner installed; ?debug=1 detected']);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => { ensureMounted(); refresh(); });
