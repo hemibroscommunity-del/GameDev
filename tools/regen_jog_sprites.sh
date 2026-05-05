@@ -8,13 +8,17 @@
 # detail the source already has correct.  Don't add it back.
 #
 # Pipeline:
-#   1. ffmpeg with TIGHT binary colorkey (similarity 0.01, blend 0.0).
-#      Pure white -> alpha 0; dark outline + character body untouched.
+#   1. ffmpeg colorkey=0xf2f2f2:0.30:0.0 (binary alpha; sim 0.30 catches
+#      more color-drift bg than the old 0.25 without touching skin).
 #   2. Tile the native frames into a horizontal strip.
-#   3. dehalo_outside.py --no-flood (zero RGB on alpha=0 only, so no
-#      white halo bleeds during scaling/filtering).
+#   3. dehalo_outside.py --no-flood --kill-bg-grayscale.
+#      The bg-grayscale kill zeros opaque pixels with lum > 200 AND
+#      saturation < 0.10.  This preserves AA outline pixels (gray at
+#      lum 100-200, killed under the legacy --kill-all-light rule)
+#      and skin highlights (saturated tan).  Only kills near-white
+#      grayscale bg residue.
 #
-# DO NOT pass --binary-alpha, --kill-halo, or --outline.
+# DO NOT pass --binary-alpha, --kill-halo, --outline, or --kill-all-light.
 # DO NOT remove --no-flood (the flood-fill would eat the outline).
 #
 # Usage:  bash tools/regen_jog_sprites.sh
@@ -28,13 +32,14 @@ for d in north south northeast southwest; do
   mkdir -p "/tmp/jog-frames-$d"
 
   # Native frame extraction with binary colorkey.
-  # Target 0xf2f2f2 (the actual background color is ~(240-245, ...),
-  # not pure white).  similarity 0.15 catches the anti-aliased
-  # off-white bleed at the silhouette edge (lum 180-240) without
-  # touching skin tones (~200,140,100) or any clothing color.
+  # Target 0xf2f2f2 (background is ~(240-245, ...), not pure white).
+  # similarity 0.30 catches anti-aliased off-white bleed at the
+  # silhouette edge AND bg pixels with subtle color drift (e.g. yellow
+  # shadow at RGB ~240,230,200) that the old 0.25 missed.  Skin tone
+  # (~200,140,100) is far from 0xf2f2f2 in YUV space, untouched.
   # blend 0.0 = binary alpha (no partial-alpha band, no wobble).
   ffmpeg -y -i "assets/character animations/jog-$d.mov" \
-    -vf "scale=64:64:flags=neighbor,colorkey=0xf2f2f2:0.25:0.0,format=rgba" \
+    -vf "scale=64:64:flags=neighbor,colorkey=0xf2f2f2:0.30:0.0,format=rgba" \
     -fps_mode passthrough -an "/tmp/jog-frames-$d/%03d.png" 2>/dev/null
 
   N=$(ls "/tmp/jog-frames-$d/" | wc -l)
@@ -44,12 +49,11 @@ for d in north south northeast southwest; do
   ffmpeg -y -i "/tmp/jog-frames-$d/%03d.png" -vf "tile=${N}x1" \
     -frames:v 1 -an "/tmp/jog-$d-strip.png" 2>/dev/null
 
-  # Zero RGB on alpha=0 (--no-flood) + kill EVERY opaque light pixel
-  # (--kill-all-light, lum > 160).  These characters are flat tan with
-  # no real highlights, so any lighter-than-skin pixel is colorkey
-  # bleed wherever it sits.  Skin tone is ~lum 150, dark outline/pants
-  # are <lum 60, so 160 is a clean cutoff.
+  # Zero RGB on alpha=0 (--no-flood) + kill near-white grayscale bg
+  # residue (--kill-bg-grayscale, lum>200 AND sat<0.10).  Replaced
+  # --kill-all-light, which over-killed AA outline pixels and produced
+  # pixelated outline gaps.
   python tools/dehalo_outside.py \
     "/tmp/jog-$d-strip.png" "public/sprites/player/jog-$d.png" \
-    --frame-h 64 --no-flood --kill-all-light
+    --frame-h 64 --no-flood --kill-bg-grayscale
 done

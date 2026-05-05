@@ -99,7 +99,11 @@ def kill_all_light(img: Image.Image, lum_thresh: int = 160) -> int:
     (flat colors) — any lighter-than-base-color pixel is off-white
     bleed from the colorkey, regardless of whether it's at the
     silhouette edge or 'interior'.  Skin tone for these jog sprites is
-    ~lum 150; pants/outline are <lum 60; so 160 is a safe cutoff."""
+    ~lum 150; pants/outline are <lum 60; so 160 is a safe cutoff.
+
+    LEGACY: kept for reference / debugging.  Not used by the canonical
+    recipe anymore — see kill_bg_grayscale() below.  This rule killed
+    AA outline pixels (gray at lum 161-200) → pixelated outline gaps."""
     px = img.load()
     w, h = img.size
     n = 0
@@ -107,6 +111,40 @@ def kill_all_light(img: Image.Image, lum_thresh: int = 160) -> int:
         for x in range(w):
             r, g, b, a = px[x, y]
             if a == 255 and (r + g + b) / 3 > lum_thresh:
+                px[x, y] = (0, 0, 0, 0)
+                n += 1
+    return n
+
+
+def kill_bg_grayscale(img: Image.Image, lum_thresh: int = 200, sat_thresh: float = 0.10) -> int:
+    """Zero alpha on opaque pixels that are BOTH light AND near-grayscale.
+    Replaces --kill-all-light, which over-killed AA outline pixels at
+    lum 161-200 (the gray transition band where black outline blends
+    into white bg) and produced pixelated gaps in the outline.
+
+    Now: kill only when lum > 200 AND saturation < 0.10.  This preserves:
+      * Dark / mid-luminance outline pixels (lum < 200) — kept regardless.
+      * Anti-aliased outline pixels (gray, lum 100-200) — kept by lum.
+      * Skin highlights (saturated tan, sat > 0.10) — kept by sat.
+    And kills:
+      * Near-white grayscale background residue from the colorkey
+        (the actual bleed, lum 215-245, sat ~0).
+
+    Saturation is computed as (max(rgb) - min(rgb)) / max(rgb)."""
+    px = img.load()
+    w, h = img.size
+    n = 0
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a != 255:
+                continue
+            lum = (r + g + b) / 3
+            if lum <= lum_thresh:
+                continue
+            mx, mn = max(r, g, b), min(r, g, b)
+            sat = 0 if mx == 0 else (mx - mn) / mx
+            if sat < sat_thresh:
                 px[x, y] = (0, 0, 0, 0)
                 n += 1
     return n
@@ -235,7 +273,7 @@ def kill_light_halo(img: Image.Image, lum_thresh: int = 180) -> int:
     return n
 
 
-def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool, outline: bool, edge_bleed: bool, all_light: bool) -> None:
+def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool, outline: bool, edge_bleed: bool, all_light: bool, bg_grayscale: bool) -> None:
     img = Image.open(src).convert("RGBA")
     w, h = img.size
     if h != frame_h or w % FRAME_W != 0:
@@ -247,6 +285,7 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
     halo_n = kill_light_halo(img) if kill_halo else 0
     bleed_n = kill_edge_bleed(img, FRAME_W, frame_h) if edge_bleed else 0
     all_n = kill_all_light(img) if all_light else 0
+    bg_gray_n = kill_bg_grayscale(img) if bg_grayscale else 0
     outline_n = add_outline(img, FRAME_W, frame_h) if outline else 0
     smooth_n = smooth_silhouette(img, FRAME_W, frame_h) if outline else 0
     zeroed = zero_rgb_on_transparent(img)
@@ -260,6 +299,8 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
         msg += f", {bleed_n} edge-bleed killed"
     if all_light:
         msg += f", {all_n} all-light killed"
+    if bg_grayscale:
+        msg += f", {bg_gray_n} bg-grayscale killed"
     if outline:
         msg += f", {smooth_n} alpha smoothed, {outline_n} outline pixels added"
     if binary_alpha:
@@ -300,10 +341,17 @@ if __name__ == "__main__":
                         "highlights). Two passes by default to chase 2-pixel "
                         "halo inward.")
     p.add_argument("--kill-all-light", action="store_true",
-                   help="zero alpha on EVERY opaque pixel with lum > 160, "
-                        "regardless of position. Use when the character has "
-                        "no real highlights (flat colors), so any "
-                        "lighter-than-base pixel is bleed from the colorkey. "
-                        "More aggressive than --kill-edge-bleed.")
+                   help="LEGACY (kept for reference, not in canonical recipe): "
+                        "zero alpha on EVERY opaque pixel with lum > 160. "
+                        "Killed AA outline pixels (gray, lum 161-200) and "
+                        "produced pixelated outline gaps.  Use --kill-bg-grayscale "
+                        "instead.")
+    p.add_argument("--kill-bg-grayscale", action="store_true",
+                   help="zero alpha on opaque pixels that are BOTH light "
+                        "(lum > 200) AND near-grayscale (sat < 0.10).  Kills "
+                        "near-white bg residue from the colorkey while "
+                        "preserving AA outline pixels (gray, lum 100-200) and "
+                        "skin highlights (saturated tan).  Canonical replacement "
+                        "for --kill-all-light.")
     args = p.parse_args()
-    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo, args.outline, args.kill_edge_bleed, args.kill_all_light)
+    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo, args.outline, args.kill_edge_bleed, args.kill_all_light, args.kill_bg_grayscale)
