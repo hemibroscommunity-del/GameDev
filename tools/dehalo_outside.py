@@ -70,7 +70,30 @@ def zero_rgb_on_transparent(img: Image.Image) -> int:
     return n
 
 
-def process(src: Path, dst: Path, frame_h: int) -> None:
+def force_binary_alpha(img: Image.Image, threshold: int = 128) -> int:
+    """Snap every alpha value to 0 or 255 (cutoff at threshold).
+    Kills the frame-to-frame "wobble" caused by anti-aliased edges
+    sampling slightly different in each source frame — a 92-alpha
+    pixel in frame N becomes a 184-alpha pixel in frame N+1, and the
+    eye reads the boundary as shifting.  Forcing binary alpha matches
+    the visual style of the older hand-edited east sheet."""
+    px = img.load()
+    w, h = img.size
+    n = 0
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a == 0 or a == 255:
+                continue
+            if a >= threshold:
+                px[x, y] = (r, g, b, 255)
+            else:
+                px[x, y] = (0, 0, 0, 0)
+            n += 1
+    return n
+
+
+def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool) -> None:
     img = Image.open(src).convert("RGBA")
     w, h = img.size
     if h != frame_h or w % FRAME_W != 0:
@@ -79,8 +102,12 @@ def process(src: Path, dst: Path, frame_h: int) -> None:
     for i in range(frames):
         flood_clear_frame(img, i * FRAME_W, 0, FRAME_W, frame_h)
     zeroed = zero_rgb_on_transparent(img)
+    binary_n = force_binary_alpha(img) if binary_alpha else 0
     img.save(dst, "PNG", optimize=True)
-    print(f"{src.name} -> {dst.name}: {frames} frames keyed, {zeroed} alpha=0 pixels zeroed (no more white bleed)")
+    msg = f"{src.name} -> {dst.name}: {frames} frames keyed, {zeroed} alpha=0 zeroed"
+    if binary_alpha:
+        msg += f", {binary_n} alpha snapped to 0/255"
+    print(msg)
 
 
 if __name__ == "__main__":
@@ -89,5 +116,7 @@ if __name__ == "__main__":
     p.add_argument("dst")
     p.add_argument("--frame-h", type=int, default=FRAME_H,
                    help=f"frame height in pixels (default {FRAME_H})")
+    p.add_argument("--binary-alpha", action="store_true",
+                   help="force every pixel to alpha 0 or 255 (kills edge wobble)")
     args = p.parse_args()
-    process(Path(args.src), Path(args.dst), args.frame_h)
+    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha)
