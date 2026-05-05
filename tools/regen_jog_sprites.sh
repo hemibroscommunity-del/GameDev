@@ -44,11 +44,12 @@ for d in north south northeast southwest; do
   ffmpeg -y -i "/tmp/jog-frames-$d/%03d.png" -vf "tile=${N}x1" \
     -frames:v 1 -an "/tmp/jog-$d-strip.png" 2>/dev/null
 
-  # Zero RGB on alpha=0 (--no-flood) + kill any off-white edge bleed
-  # that escaped the colorkey. --kill-edge-bleed only touches pixels
-  # adjacent to the silhouette boundary, so interior highlights and
-  # the existing dark outline are untouched.
+  # Zero RGB on alpha=0 (--no-flood) + kill EVERY opaque light pixel
+  # (--kill-all-light, lum > 160).  These characters are flat tan with
+  # no real highlights, so any lighter-than-skin pixel is colorkey
+  # bleed wherever it sits.  Skin tone is ~lum 150, dark outline/pants
+  # are <lum 60, so 160 is a clean cutoff.
   python tools/dehalo_outside.py \
     "/tmp/jog-$d-strip.png" "public/sprites/player/jog-$d.png" \
-    --frame-h 64 --no-flood --kill-edge-bleed
+    --frame-h 64 --no-flood --kill-all-light
 done

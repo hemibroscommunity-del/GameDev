@@ -93,6 +93,25 @@ def force_binary_alpha(img: Image.Image, threshold: int = 128) -> int:
     return n
 
 
+def kill_all_light(img: Image.Image, lum_thresh: int = 160) -> int:
+    """Zero alpha on EVERY opaque pixel whose color is light (RGB mean
+    > lum_thresh).  Use this when the character has no real highlights
+    (flat colors) — any lighter-than-base-color pixel is off-white
+    bleed from the colorkey, regardless of whether it's at the
+    silhouette edge or 'interior'.  Skin tone for these jog sprites is
+    ~lum 150; pants/outline are <lum 60; so 160 is a safe cutoff."""
+    px = img.load()
+    w, h = img.size
+    n = 0
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a == 255 and (r + g + b) / 3 > lum_thresh:
+                px[x, y] = (0, 0, 0, 0)
+                n += 1
+    return n
+
+
 def kill_edge_bleed(img: Image.Image, frame_w: int, frame_h: int, lum_thresh: int = 175, passes: int = 3) -> int:
     """Zero alpha on opaque pixels adjacent to transparent pixels if
     their color is light (RGB mean > lum_thresh).  These are
@@ -216,7 +235,7 @@ def kill_light_halo(img: Image.Image, lum_thresh: int = 180) -> int:
     return n
 
 
-def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool, outline: bool, edge_bleed: bool) -> None:
+def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool, outline: bool, edge_bleed: bool, all_light: bool) -> None:
     img = Image.open(src).convert("RGBA")
     w, h = img.size
     if h != frame_h or w % FRAME_W != 0:
@@ -227,6 +246,7 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
             flood_clear_frame(img, i * FRAME_W, 0, FRAME_W, frame_h)
     halo_n = kill_light_halo(img) if kill_halo else 0
     bleed_n = kill_edge_bleed(img, FRAME_W, frame_h) if edge_bleed else 0
+    all_n = kill_all_light(img) if all_light else 0
     outline_n = add_outline(img, FRAME_W, frame_h) if outline else 0
     smooth_n = smooth_silhouette(img, FRAME_W, frame_h) if outline else 0
     zeroed = zero_rgb_on_transparent(img)
@@ -238,6 +258,8 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
         msg += f", {halo_n} light-halo killed"
     if edge_bleed:
         msg += f", {bleed_n} edge-bleed killed"
+    if all_light:
+        msg += f", {all_n} all-light killed"
     if outline:
         msg += f", {smooth_n} alpha smoothed, {outline_n} outline pixels added"
     if binary_alpha:
@@ -277,5 +299,11 @@ if __name__ == "__main__":
                         "Preserves interior light pixels (real character "
                         "highlights). Two passes by default to chase 2-pixel "
                         "halo inward.")
+    p.add_argument("--kill-all-light", action="store_true",
+                   help="zero alpha on EVERY opaque pixel with lum > 160, "
+                        "regardless of position. Use when the character has "
+                        "no real highlights (flat colors), so any "
+                        "lighter-than-base pixel is bleed from the colorkey. "
+                        "More aggressive than --kill-edge-bleed.")
     args = p.parse_args()
-    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo, args.outline, args.kill_edge_bleed)
+    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo, args.outline, args.kill_edge_bleed, args.kill_all_light)
