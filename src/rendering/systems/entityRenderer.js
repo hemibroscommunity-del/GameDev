@@ -2,10 +2,11 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
-import { Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
+import { getFrame, resolveDirection, cycleMs, hasPose } from '../playerSprites.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -101,8 +102,19 @@ function createPlayerDisplay() {
   const container = new Container();
   container.label = 'localPlayer';
 
+  /* Procedural fallback body — drawn until the sprite sheets resolve
+     (and as a permanent fallback if they fail to load). */
   const body = new Graphics();
   container.addChild(body);
+
+  /* Sprite-sheet body — Sprite whose texture flips per frame based on
+     player facing + animation pose.  Initially has no texture; when
+     the sheet loader finishes, _updatePlayer will assign textures and
+     hide the procedural body. */
+  const spriteBody = new Sprite();
+  spriteBody.anchor.set(0.5, 0.5);
+  spriteBody.visible = false;
+  container.addChild(spriteBody);
 
   // §5.9.5 Combo Chain weapon-glow underlay — drawn behind weaponGfx so the
   // weapon silhouette sits on top of the element-color halo.
@@ -128,11 +140,17 @@ function createPlayerDisplay() {
   container.addChild(nameText);
 
   container._body = body;
+  container._spriteBody = spriteBody;
   container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
   container._barsGfx = barsGfx;
   container._comboText = comboText;
   container._nameText = nameText;
+  /* Animation cache — track last (pose, dir, frameIdx) so we only
+     reassign texture when it actually changes. */
+  container._animPose = null;
+  container._animDir = null;
+  container._animFrame = -1;
 
   return container;
 }
@@ -427,30 +445,80 @@ export class EntityRenderer {
     const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
-    /* Skip body rebuild when idle (no walk animation) and no color
-       change.  Shadow + legs + torso + head are then pixel-identical
-       frame to frame.  When isMoving is true the legs/torso/head all
-       offset by bobY so we have to rebuild every frame. */
-    const colorKey = torso + '|' + legs + '|' + head + '|' + bw + '|' + bh;
-    if (isMoving || display._lastColorKey !== colorKey || display._lastIsMoving !== isMoving) {
-      display._lastColorKey = colorKey;
-      display._lastIsMoving = isMoving;
-      body.clear();
-      // Shadow
-      body.ellipse(0, 20, 10, 4);
-      body.fill({ color: 0x000000, alpha: 0.15 });
-      // Legs with walk animation
-      const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
-      body.rect(-bw / 2, 2 + bobY + legSwing, bw / 2 - 1, bh / 2);
-      body.fill({ color: cssColorToHex(legs) });
-      body.rect(1, 2 + bobY - legSwing, bw / 2 - 1, bh / 2);
-      body.fill({ color: cssColorToHex(legs) });
-      // Torso
-      body.roundRect(-bw / 2, -bh / 2 + bobY, bw, bh / 2 + 4, 3);
-      body.fill({ color: cssColorToHex(torso) });
-      // Head
-      body.circle(0, -bh / 2 - 4 + bobY, 7);
-      body.fill({ color: cssColorToHex(head) });
+    /* Sprite-sheet body — preferred when sheets have loaded.  Picks
+       (pose, dir, frameIdx) from facing + movement, mirrors the source
+       sprite for west / NW / SE, and tints the sprite to match the
+       chosen torso color (cheap GPU multiply, matches Canvas 2D
+       rendering's tint behavior). */
+    const facing = S._facing || 'south';
+    const isHit = S._hitFlash && (now - S._hitFlash) < 250;
+    const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
+    const spritesAvailable = hasPose(pose) || hasPose('stand');
+    if (spritesAvailable) {
+      const spriteBody = display._spriteBody;
+      const { dir, mirror } = resolveDirection(facing);
+      let frameIdx = 0;
+      if (pose === 'jog') {
+        frameIdx = Math.floor((now / cycleMs('jog', dir)) * 24) % 24;
+      } else if (pose === 'hit') {
+        const hitT = (now - (S._hitFlash || 0)) / 250;
+        frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
+      }
+      let tex = getFrame(pose, dir, frameIdx);
+      if (!tex) tex = getFrame('stand', dir, 0);
+      if (tex) {
+        if (display._animPose !== pose || display._animDir !== dir || display._animFrame !== frameIdx) {
+          display._animPose = pose;
+          display._animDir = dir;
+          display._animFrame = frameIdx;
+          spriteBody.texture = tex;
+        }
+        spriteBody.scale.x = mirror ? -1 : 1;
+        spriteBody.scale.y = 1;
+        spriteBody.tint = cssColorToHex(torso);
+        spriteBody.visible = true;
+        body.visible = false;
+        if (display._procDrawn) {
+          /* Free the procedural Graphics paths once the sprite path
+             takes over — prevents the old shapes from sitting in the
+             scene graph indefinitely. */
+          body.clear();
+          display._procDrawn = false;
+        }
+      } else {
+        spriteBody.visible = false;
+        body.visible = true;
+      }
+    } else {
+      display._spriteBody.visible = false;
+      body.visible = true;
+    }
+
+    /* Procedural fallback body — only drawn when sprite path is
+       unavailable.  Skip rebuild when idle and no color change. */
+    if (body.visible) {
+      const colorKey = torso + '|' + legs + '|' + head + '|' + bw + '|' + bh;
+      if (isMoving || display._lastColorKey !== colorKey || display._lastIsMoving !== isMoving) {
+        display._lastColorKey = colorKey;
+        display._lastIsMoving = isMoving;
+        display._procDrawn = true;
+        body.clear();
+        // Shadow
+        body.ellipse(0, 20, 10, 4);
+        body.fill({ color: 0x000000, alpha: 0.15 });
+        // Legs with walk animation
+        const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
+        body.rect(-bw / 2, 2 + bobY + legSwing, bw / 2 - 1, bh / 2);
+        body.fill({ color: cssColorToHex(legs) });
+        body.rect(1, 2 + bobY - legSwing, bw / 2 - 1, bh / 2);
+        body.fill({ color: cssColorToHex(legs) });
+        // Torso
+        body.roundRect(-bw / 2, -bh / 2 + bobY, bw, bh / 2 + 4, 3);
+        body.fill({ color: cssColorToHex(torso) });
+        // Head
+        body.circle(0, -bh / 2 - 4 + bobY, 7);
+        body.fill({ color: cssColorToHex(head) });
+      }
     }
 
     // Weapon visual
