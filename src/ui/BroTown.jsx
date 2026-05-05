@@ -31763,24 +31763,23 @@ export var BroTown = function BroTown(_ref0) {
   }(), /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      top: 8,
-      left: '50%',
-      transform: 'translateX(-50%)',
+      top: 0,
+      left: 0,
+      right: 0,
       zIndex: 18,
-      fontSize: 11,
-      fontWeight: 700,
-      letterSpacing: '.05em',
+      fontSize: 14,
+      fontWeight: 800,
+      letterSpacing: '.08em',
       fontFamily: 'VT323,monospace',
       color: function (_stateRef$current32, _ELEMENTS$z$element4) {
         var z = ZONES[((_stateRef$current32 = stateRef.current) === null || _stateRef$current32 === void 0 ? void 0 : _stateRef$current32.currentZone) || 'town'];
         return z !== null && z !== void 0 && z.element ? (_ELEMENTS$z$element4 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element4 === void 0 ? void 0 : _ELEMENTS$z$element4.color : '#e8eaf8';
       }(),
-      background: 'rgba(0,0,0,.5)',
-      padding: '3px 12px',
-      borderRadius: 6,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center'
+      background: '#000',
+      padding: '6px 12px',
+      textAlign: 'center',
+      borderBottom: '1px solid rgba(255,255,255,0.12)',
+      pointerEvents: 'none',
     }
   }, ((_ZONES = ZONES[((_stateRef$current33 = stateRef.current) === null || _stateRef$current33 === void 0 ? void 0 : _stateRef$current33.currentZone) || 'town']) === null || _ZONES === void 0 ? void 0 : _ZONES.name) || 'Town', function (_stateRef$current34, _stateRef$current35, _stateRef$current36, _z$level) {
     var z = ZONES[((_stateRef$current34 = stateRef.current) === null || _stateRef$current34 === void 0 ? void 0 : _stateRef$current34.currentZone) || 'town'];

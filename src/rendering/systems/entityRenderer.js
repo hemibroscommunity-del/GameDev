@@ -803,11 +803,25 @@ export class EntityRenderer {
       const facing = S._facing || 'down';
       const facingX = facing === 'right' ? 1 : facing === 'left' ? -1 : 0;
       const facingY = facing === 'down' ? 1 : facing === 'up' ? -1 : 0;
-      const wpnX = facingX * 10 || (facing === 'down' ? 6 : -6);
-      const wpnY = facingY * 5 + bobY;
+      /* Hand offset tuned for the 64-px sprite body, not the tiny
+         procedural rectangle.  Side facings (left/right) put the
+         weapon out at the wrist (~20 px from sprite center).  Down
+         puts it slightly forward + right; up puts it slightly behind
+         + left so the weapon reads as held. */
+      let wpnX, wpnY;
+      if (facing === 'right')      { wpnX = 20; wpnY = 4 + bobY; }
+      else if (facing === 'left')  { wpnX = -20; wpnY = 4 + bobY; }
+      else if (facing === 'down')  { wpnX = 14; wpnY = 12 + bobY; }
+      else if (facing === 'up')    { wpnX = -10; wpnY = -2 + bobY; }
+      else                          { wpnX = 14; wpnY = 8 + bobY; }
 
       const activeSlot = S.rpg.activeSlot || 'melee';
-      const wpn = activeSlot === 'melee' ? S.rpg.weapon : S.rpg.rangedWeapon;
+      /* Three slots, three sources: melee, ranged (bow), staff.  The
+         port previously fell through to rangedWeapon for any non-melee
+         slot — that meant 'staff' was rendering the bow texture. */
+      const wpn = activeSlot === 'melee' ? S.rpg.weapon
+                : activeSlot === 'staff' ? (S.rpg.staffWeapon || S.rpg.rangedWeapon)
+                : S.rpg.rangedWeapon;
       if (wpn) {
         const elem = wpn.element1;
         const wpnColor = elem && ELEMENTS[elem] ? cssColorToHex(ELEMENTS[elem].color) : 0xaaaaaa;
@@ -897,12 +911,15 @@ export class EntityRenderer {
           if (weaponSprite.texture !== wpnIconTex) weaponSprite.texture = wpnIconTex;
           weaponSprite.x = wpnX;
           weaponSprite.y = wpnY;
-          /* Greatsword renders ~28 px tall, regular sword/bow/staff
-             ~22 px.  Source PNGs are ~64 px tall so the fit scale
-             lands the icon at the same apparent size as the procedural
-             fallback.  Mirror horizontally when facing left so blade
-             angles outward. */
-          const targetH = wpn.type === 'greatsword' ? 28 : 22;
+          /* Tuned per-weapon target heights so the icon reads at the
+             same apparent size as the 64-px sprite body's hand area.
+             Greatsword is the longest, staff next, sword/bow shorter.
+             Mirror horizontally when facing left so blade angles
+             outward. */
+          const targetH = wpn.type === 'greatsword' ? 36
+                         : wpn.type === 'staff'      ? 34
+                         : wpn.type === 'bow'        ? 28
+                         :                              26;
           const fitScale = targetH / Math.max(8, wpnIconTex.height || 64);
           weaponSprite.scale.x = (facingX < 0 ? -1 : 1) * fitScale;
           weaponSprite.scale.y = fitScale;
