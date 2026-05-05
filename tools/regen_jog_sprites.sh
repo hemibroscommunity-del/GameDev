@@ -53,7 +53,16 @@ for d in north south northeast southwest; do
   # residue (--kill-bg-grayscale, lum>200 AND sat<0.10).  Replaced
   # --kill-all-light, which over-killed AA outline pixels and produced
   # pixelated outline gaps.
+  #
+  # --smooth-alpha for southwest only: head outline visibly wobbled
+  # frame-to-frame due to sub-pixel motion of a 1-px hard edge.  The
+  # gaussian-blur-on-alpha softens it into a 1-2px AA band that reads
+  # as smooth motion.  Other directions are stable without it.
+  extra=""
+  if [ "$d" = "southwest" ]; then
+    extra="--smooth-alpha"
+  fi
   python tools/dehalo_outside.py \
     "/tmp/jog-$d-strip.png" "public/sprites/player/jog-$d.png" \
-    --frame-h 64 --no-flood --kill-bg-grayscale
+    --frame-h 64 --no-flood --kill-bg-grayscale $extra
 done

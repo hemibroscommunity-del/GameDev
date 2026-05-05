@@ -273,7 +273,7 @@ def kill_light_halo(img: Image.Image, lum_thresh: int = 180) -> int:
     return n
 
 
-def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool, outline: bool, edge_bleed: bool, all_light: bool, bg_grayscale: bool) -> None:
+def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool, outline: bool, edge_bleed: bool, all_light: bool, bg_grayscale: bool, smooth_alpha: bool) -> None:
     img = Image.open(src).convert("RGBA")
     w, h = img.size
     if h != frame_h or w % FRAME_W != 0:
@@ -287,7 +287,7 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
     all_n = kill_all_light(img) if all_light else 0
     bg_gray_n = kill_bg_grayscale(img) if bg_grayscale else 0
     outline_n = add_outline(img, FRAME_W, frame_h) if outline else 0
-    smooth_n = smooth_silhouette(img, FRAME_W, frame_h) if outline else 0
+    smooth_n = smooth_silhouette(img, FRAME_W, frame_h) if (outline or smooth_alpha) else 0
     zeroed = zero_rgb_on_transparent(img)
     binary_n = force_binary_alpha(img) if binary_alpha else 0
     img.save(dst, "PNG", optimize=True)
@@ -303,6 +303,8 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
         msg += f", {bg_gray_n} bg-grayscale killed"
     if outline:
         msg += f", {smooth_n} alpha smoothed, {outline_n} outline pixels added"
+    elif smooth_alpha:
+        msg += f", {smooth_n} alpha smoothed"
     if binary_alpha:
         msg += f", {binary_n} alpha snapped to 0/255"
     print(msg)
@@ -353,5 +355,13 @@ if __name__ == "__main__":
                         "preserving AA outline pixels (gray, lum 100-200) and "
                         "skin highlights (saturated tan).  Canonical replacement "
                         "for --kill-all-light.")
+    p.add_argument("--smooth-alpha", action="store_true",
+                   help="per-frame gaussian blur on the alpha channel (radius "
+                        "0.6) + re-clip lows to 0.  Softens the silhouette "
+                        "edge into a 1-2px AA band so sub-pixel frame-to-frame "
+                        "motion doesn't read as jaggy line wobble.  Use on "
+                        "directions where the outline visibly shifts between "
+                        "frames (e.g. head wobble on southwest).  Does NOT add "
+                        "a synthetic outline.")
     args = p.parse_args()
-    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo, args.outline, args.kill_edge_bleed, args.kill_all_light, args.kill_bg_grayscale)
+    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo, args.outline, args.kill_edge_bleed, args.kill_all_light, args.kill_bg_grayscale, args.smooth_alpha)
