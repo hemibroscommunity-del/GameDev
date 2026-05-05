@@ -357,34 +357,43 @@ export class EntityRenderer {
       display.y = other.renderY || other.y || 0;
 
       const body = display._body;
-      body.clear();
       const torso = other.bt || '#2563eb';
       const legs = other.bl || '#1e3a5f';
+      const head = other.color || '#5b52ff';
       const bodyW = 14;
       const bodyH = 22;
       const isMoving = Math.abs(other._smoothVx || 0) > 0.01 || Math.abs(other._smoothVy || 0) > 0.01;
       const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
+      /* Skip the body rebuild while idle and no color/torso changes —
+         shadow + legs + torso + head are otherwise pixel-identical
+         frame to frame.  Walk animation forces a redraw via isMoving. */
+      const colorKey = torso + '|' + legs + '|' + head;
+      if (isMoving || display._lastColorKey !== colorKey || display._lastIsMoving !== isMoving) {
+        display._lastColorKey = colorKey;
+        display._lastIsMoving = isMoving;
+        body.clear();
+        // Shadow
+        body.ellipse(0, 20, 9, 3.5);
+        body.fill({ color: 0x000000, alpha: 0.15 });
+        // Legs with walk animation
+        const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
+        body.rect(-bodyW / 2, 2 + bobY + legSwing, bodyW / 2 - 1, bodyH / 2);
+        body.fill({ color: cssColorToHex(legs) });
+        body.rect(1, 2 + bobY - legSwing, bodyW / 2 - 1, bodyH / 2);
+        body.fill({ color: cssColorToHex(legs) });
+        // Torso
+        body.roundRect(-bodyW / 2, -bodyH / 2 + bobY, bodyW, bodyH / 2 + 4, 3);
+        body.fill({ color: cssColorToHex(torso) });
+        // Head
+        body.circle(0, -bodyH / 2 - 4 + bobY, 6);
+        body.fill({ color: cssColorToHex(head) });
+      }
 
-      // Shadow
-      body.ellipse(0, 20, 9, 3.5);
-      body.fill({ color: 0x000000, alpha: 0.15 });
-
-      // Legs with walk animation
-      const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
-      body.rect(-bodyW / 2, 2 + bobY + legSwing, bodyW / 2 - 1, bodyH / 2);
-      body.fill({ color: cssColorToHex(legs) });
-      body.rect(1, 2 + bobY - legSwing, bodyW / 2 - 1, bodyH / 2);
-      body.fill({ color: cssColorToHex(legs) });
-
-      // Torso
-      body.roundRect(-bodyW / 2, -bodyH / 2 + bobY, bodyW, bodyH / 2 + 4, 3);
-      body.fill({ color: cssColorToHex(torso) });
-
-      // Head
-      body.circle(0, -bodyH / 2 - 4 + bobY, 6);
-      body.fill({ color: cssColorToHex(other.color || '#5b52ff') });
-
-      display._nameText.text = other.name || 'Anon';
+      const nextName = other.name || 'Anon';
+      if (display._lastName !== nextName) {
+        display._lastName = nextName;
+        display._nameText.text = nextName;
+      }
       display._nameText.y = -24 + bobY;
     }
 
@@ -408,34 +417,41 @@ export class EntityRenderer {
     display.y = P.y;
 
     const body = display._body;
-    body.clear();
 
     const torso = S.bodyTorso || '#2563eb';
     const legs = S.bodyLegs || '#1e3a5f';
+    const head = S.myColor || '#5b52ff';
     const slim = S.bodySize === 'slim';
     const bw = slim ? 12 : 16;
     const bh = slim ? 22 : 24;
     const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
-    // Shadow
-    body.ellipse(0, 20, 10, 4);
-    body.fill({ color: 0x000000, alpha: 0.15 });
-
-    // Legs with walk animation
-    const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
-    body.rect(-bw / 2, 2 + bobY + legSwing, bw / 2 - 1, bh / 2);
-    body.fill({ color: cssColorToHex(legs) });
-    body.rect(1, 2 + bobY - legSwing, bw / 2 - 1, bh / 2);
-    body.fill({ color: cssColorToHex(legs) });
-
-    // Torso
-    body.roundRect(-bw / 2, -bh / 2 + bobY, bw, bh / 2 + 4, 3);
-    body.fill({ color: cssColorToHex(torso) });
-
-    // Head
-    body.circle(0, -bh / 2 - 4 + bobY, 7);
-    body.fill({ color: cssColorToHex(S.myColor || '#5b52ff') });
+    /* Skip body rebuild when idle (no walk animation) and no color
+       change.  Shadow + legs + torso + head are then pixel-identical
+       frame to frame.  When isMoving is true the legs/torso/head all
+       offset by bobY so we have to rebuild every frame. */
+    const colorKey = torso + '|' + legs + '|' + head + '|' + bw + '|' + bh;
+    if (isMoving || display._lastColorKey !== colorKey || display._lastIsMoving !== isMoving) {
+      display._lastColorKey = colorKey;
+      display._lastIsMoving = isMoving;
+      body.clear();
+      // Shadow
+      body.ellipse(0, 20, 10, 4);
+      body.fill({ color: 0x000000, alpha: 0.15 });
+      // Legs with walk animation
+      const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
+      body.rect(-bw / 2, 2 + bobY + legSwing, bw / 2 - 1, bh / 2);
+      body.fill({ color: cssColorToHex(legs) });
+      body.rect(1, 2 + bobY - legSwing, bw / 2 - 1, bh / 2);
+      body.fill({ color: cssColorToHex(legs) });
+      // Torso
+      body.roundRect(-bw / 2, -bh / 2 + bobY, bw, bh / 2 + 4, 3);
+      body.fill({ color: cssColorToHex(torso) });
+      // Head
+      body.circle(0, -bh / 2 - 4 + bobY, 7);
+      body.fill({ color: cssColorToHex(head) });
+    }
 
     // Weapon visual
     const weaponGfx = display._weaponGfx;
@@ -730,17 +746,23 @@ export class EntityRenderer {
       display.x = npc.x;
       display.y = npc.y;
 
+      /* NPC body is static (color + optional quest marker); only redraw
+         when the quest flag flips.  NPCs don't move and their color
+         doesn't change. */
       const body = display._body;
-      body.clear();
-      body.circle(0, 0, 14);
-      body.fill({ color: cssColorToHex(npc.color || '#5b52ff'), alpha: 0.7 });
-      body.circle(0, 0, 14);
-      body.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
-
-      // Quest marker
-      if (npc._hasQuest) {
-        body.circle(0, -22, 5);
-        body.fill({ color: 0xf5c542 });
+      const hasQuest = !!npc._hasQuest;
+      if (display._lastQuest !== hasQuest || display._lastColor !== npc.color) {
+        display._lastQuest = hasQuest;
+        display._lastColor = npc.color;
+        body.clear();
+        body.circle(0, 0, 14);
+        body.fill({ color: cssColorToHex(npc.color || '#5b52ff'), alpha: 0.7 });
+        body.circle(0, 0, 14);
+        body.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+        if (hasQuest) {
+          body.circle(0, -22, 5);
+          body.fill({ color: 0xf5c542 });
+        }
       }
     }
 
