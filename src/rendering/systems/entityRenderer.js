@@ -1034,19 +1034,18 @@ export class EntityRenderer {
   }
 
   clear() {
+    /* Called on zone change AND on full renderer destroy.  Preserve the
+       playerDisplay (and petDisplay) across zones — the local player is
+       the one entity that persists.  Destroying + recreating it caused
+       the sprite to render invisibly in some zones (probably a frame
+       race between layer reattachment and the next _updatePlayer pass).
+       app.destroy({children:true}) handles full cleanup at shutdown. */
     for (const [, d] of this.monsterDisplays) d.destroy({ children: true });
     this.monsterDisplays.clear();
     for (const [, d] of this.otherPlayerDisplays) d.destroy({ children: true });
     this.otherPlayerDisplays.clear();
     for (const [, d] of this.npcDisplays) d.destroy({ children: true });
     this.npcDisplays.clear();
-    if (this.playerDisplay) {
-      this.playerDisplay.destroy({ children: true });
-      this.playerDisplay = null;
-    }
-    if (this.petDisplay) {
-      this.petDisplay.destroy({ children: true });
-      this.petDisplay = null;
-    }
+    /* playerDisplay + petDisplay intentionally NOT destroyed here. */
   }
 }
