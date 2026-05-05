@@ -486,16 +486,17 @@ export class EntityRenderer {
           display._animFrame = frameIdx;
           spriteBody.texture = tex;
         }
-        /* Per-direction scale multiplier to match Canvas 2D's
-           drawSpriteCharacter (BroTown.jsx ~3392): the east source
-           video framed the character slightly smaller for jog/stand
-           (compensate 1.06×) and noticeably larger for hit (shrink
-           0.88×).  Applies to BOTH east and the mirrored 'west' / NW
-           / SE since they share the east sheet.  Other directions
-           render at the native sprite size — base scale stays at 1
-           so the overall viewport sizing the user already approved
-           doesn't change. */
-        const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.06) : 1.0;
+        /* Per-direction scale multiplier — east source video framed
+           the character smaller than the other directions, so the
+           sprite needs an upscale to read at the same apparent size.
+           Canvas 2D landed on 1.06×; in the Pixi path 1.06 was still
+           noticeably smaller, so bumped to 1.15× (between Canvas's
+           1.06 and the original 1.18 the user once flagged as too
+           large).  Hit-pose east is the opposite — source frames
+           the character bigger — keep the 0.88× shrink.
+           Applies to BOTH east and the mirrored W/NW/SE since they
+           share the east sheet. */
+        const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.15) : 1.0;
         spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
         spriteBody.scale.y = sizeMul;
         /* No tint multiply — the sprites are pre-colored.  Multiplying
