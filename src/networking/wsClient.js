@@ -204,14 +204,33 @@ export function setupWebSocket(ctx) {
                   });
                 });
                 /* Rebind lockedTarget.ref — .map() replaced every monster
-                   object, so the old ref is orphaned and the lock reticle
-                   would freeze at the stale (x,y).  Find the matching id
-                   in the new array; clear if not found or dead. */
-                if (S.lockedTarget && S.lockedTarget.type === 'monster' && S.lockedTarget.id) {
+                   object, so the old ref is orphaned.  Try id first; if
+                   that fails (e.g. local-spawned `m-meadow-N` vs server
+                   `sm-meadow-N` after the first snapshot arrives),
+                   fall back to nearest-by-position within 40 world px,
+                   so the lock stays glued to whichever monster the user
+                   was actually targeting. */
+                if (S.lockedTarget && S.lockedTarget.type === 'monster' && S.lockedTarget.ref) {
+                  var _oldRef = S.lockedTarget.ref;
                   var _lockedId = S.lockedTarget.id;
-                  var _newRef = S.monsters.find(function (m) { return m.id === _lockedId; });
-                  if (_newRef && _newRef.alive) S.lockedTarget.ref = _newRef;
-                  else S.lockedTarget = null;
+                  var _newRef = _lockedId ? S.monsters.find(function (m) { return m.id === _lockedId; }) : null;
+                  if (!_newRef) {
+                    var _ox = _oldRef.x, _oy = _oldRef.y;
+                    var _bestD = 40 * 40;
+                    for (var _mi = 0; _mi < S.monsters.length; _mi++) {
+                      var _cm = S.monsters[_mi];
+                      if (!_cm.alive) continue;
+                      var _ddx = _cm.x - _ox, _ddy = _cm.y - _oy;
+                      var _dd = _ddx * _ddx + _ddy * _ddy;
+                      if (_dd < _bestD) { _bestD = _dd; _newRef = _cm; }
+                    }
+                  }
+                  if (_newRef && _newRef.alive) {
+                    S.lockedTarget.ref = _newRef;
+                    S.lockedTarget.id = _newRef.id;
+                  } else {
+                    S.lockedTarget = null;
+                  }
                 }
               }
               break;
@@ -229,13 +248,30 @@ export function setupWebSocket(ctx) {
                     _stuckArrows: [],
                   });
                 });
-                /* Same rebind as above — applies whenever the snapshot
-                   replaces the monster array. */
-                if (S.lockedTarget && S.lockedTarget.type === 'monster' && S.lockedTarget.id) {
+                /* Same rebind as above — id first, then nearest-by-position
+                   within 40 world px so the lock survives the local→server
+                   id transition. */
+                if (S.lockedTarget && S.lockedTarget.type === 'monster' && S.lockedTarget.ref) {
+                  var _oldRef2 = S.lockedTarget.ref;
                   var _lockedId2 = S.lockedTarget.id;
-                  var _newRef2 = S.monsters.find(function (m) { return m.id === _lockedId2; });
-                  if (_newRef2 && _newRef2.alive) S.lockedTarget.ref = _newRef2;
-                  else S.lockedTarget = null;
+                  var _newRef2 = _lockedId2 ? S.monsters.find(function (m) { return m.id === _lockedId2; }) : null;
+                  if (!_newRef2) {
+                    var _ox2 = _oldRef2.x, _oy2 = _oldRef2.y;
+                    var _bestD2 = 40 * 40;
+                    for (var _mi2 = 0; _mi2 < S.monsters.length; _mi2++) {
+                      var _cm2 = S.monsters[_mi2];
+                      if (!_cm2.alive) continue;
+                      var _ddx2 = _cm2.x - _ox2, _ddy2 = _cm2.y - _oy2;
+                      var _dd2 = _ddx2 * _ddx2 + _ddy2 * _ddy2;
+                      if (_dd2 < _bestD2) { _bestD2 = _dd2; _newRef2 = _cm2; }
+                    }
+                  }
+                  if (_newRef2 && _newRef2.alive) {
+                    S.lockedTarget.ref = _newRef2;
+                    S.lockedTarget.id = _newRef2.id;
+                  } else {
+                    S.lockedTarget = null;
+                  }
                 }
               }
               break;
