@@ -93,18 +93,44 @@ def force_binary_alpha(img: Image.Image, threshold: int = 128) -> int:
     return n
 
 
-def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool) -> None:
+def kill_light_halo(img: Image.Image, lum_thresh: int = 180) -> int:
+    """Drop any partial-alpha pixel whose color is light (RGB mean
+    > lum_thresh) to alpha=0.  This is the visible "white pixels
+    coming through" — leftover anti-aliased background from the
+    colorkey blend.  Dark partial-alpha pixels are PRESERVED because
+    they're the character's own outline (which we want to keep, like
+    on the hand-keyed jog-east.png)."""
+    px = img.load()
+    w, h = img.size
+    n = 0
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            if a == 0 or a == 255:
+                continue
+            if (r + g + b) / 3 > lum_thresh:
+                px[x, y] = (0, 0, 0, 0)
+                n += 1
+    return n
+
+
+def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool) -> None:
     img = Image.open(src).convert("RGBA")
     w, h = img.size
     if h != frame_h or w % FRAME_W != 0:
         raise RuntimeError(f"unexpected size {w}x{h}; expected width%{FRAME_W}==0 and height=={frame_h}")
     frames = w // FRAME_W
-    for i in range(frames):
-        flood_clear_frame(img, i * FRAME_W, 0, FRAME_W, frame_h)
+    if not no_flood:
+        for i in range(frames):
+            flood_clear_frame(img, i * FRAME_W, 0, FRAME_W, frame_h)
+    halo_n = kill_light_halo(img) if kill_halo else 0
     zeroed = zero_rgb_on_transparent(img)
     binary_n = force_binary_alpha(img) if binary_alpha else 0
     img.save(dst, "PNG", optimize=True)
-    msg = f"{src.name} -> {dst.name}: {frames} frames keyed, {zeroed} alpha=0 zeroed"
+    flood_note = "no-flood" if no_flood else f"{frames} frames keyed"
+    msg = f"{src.name} -> {dst.name}: {flood_note}, {zeroed} alpha=0 zeroed"
+    if kill_halo:
+        msg += f", {halo_n} light-halo killed"
     if binary_alpha:
         msg += f", {binary_n} alpha snapped to 0/255"
     print(msg)
@@ -117,6 +143,18 @@ if __name__ == "__main__":
     p.add_argument("--frame-h", type=int, default=FRAME_H,
                    help=f"frame height in pixels (default {FRAME_H})")
     p.add_argument("--binary-alpha", action="store_true",
-                   help="force every pixel to alpha 0 or 255 (kills edge wobble)")
+                   help="force every pixel to alpha 0 or 255 (NOT recommended for "
+                        "player jog sprites — strips the anti-aliased outline and "
+                        "produces frame-to-frame edge wobble)")
+    p.add_argument("--no-flood", action="store_true",
+                   help="skip the edge-flood-fill pass (only zero RGB on alpha=0). "
+                        "Use this for AI-generated jog sources where the soft "
+                        "colorkey already gave a clean silhouette and you want "
+                        "to PRESERVE the anti-aliased outline like jog-east.png")
+    p.add_argument("--kill-halo", action="store_true",
+                   help="zero alpha on partial-alpha pixels whose color is light. "
+                        "Removes the leftover white-halo bleed from a soft colorkey "
+                        "while preserving DARK partial-alpha pixels (the character's "
+                        "anti-aliased outline). Pairs well with --no-flood.")
     args = p.parse_args()
-    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha)
+    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo)
