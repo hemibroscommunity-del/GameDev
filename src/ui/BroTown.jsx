@@ -8600,24 +8600,39 @@ export var BroTown = function BroTown(_ref0) {
                     var isCrit = a.dmg > pDmg;
                     BT_AUDIO.deathBoom(m && m.archetype);
                     S.screenShake = isCrit ? 6 : 3;
-                    var killAngle = a.ang;
-                    var arrowDeathParts = [];
-                    var _arrowKillElem = arrowElem || projElem || null;
-                    var _arrowKillColl = arrowCollision ? arrowCollision.collision : null;
-                    if (_arrowKillColl) {
-                      var collFx = getCollisionDeathFX(m.x, m.y, _arrowKillColl.id, killAngle, { fodder: 8, brute: 15, swarm: 6, sentinel: 12, volatile: 9, stalker: 10, hexer: 10 }[m.archetype || 'fodder'] || 10, isCrit ? 2 : 1);
-                      collFx.forEach(function (p) { return arrowDeathParts.push(p); });
-                    } else if (_arrowKillElem) {
-                      var elemFx = getElementDeathFX(m.x, m.y, _arrowKillElem, killAngle, m.color, { fodder: 8, brute: 15, swarm: 6, sentinel: 12, volatile: 9, stalker: 10, hexer: 10 }[m.archetype || 'fodder'] || 10, isCrit ? 2 : 1);
-                      elemFx.particles.forEach(function (p) { return arrowDeathParts.push(p); });
-                    } else {
-                      for (var dp = 0; dp < 15; dp++) {
-                        arrowDeathParts.push({ x: m.x, y: m.y, vx: Math.cos(killAngle + (Math.random() - 0.5) * 1.5) * (2 + Math.random() * 4), vy: Math.sin(killAngle + (Math.random() - 0.5) * 1.5) * (2 + Math.random() * 4) - 2, life: 1, color: m.color, size: 1.5 + Math.random() * 2 });
+                    /* Bow / staff kill effects.  Wrapped in try/catch +
+                       hard-capped particle counts because this path was
+                       triggering a full-tab WebKit/WebGL crash on iOS
+                       (no JS error captured — pure native OOM-style
+                       kill).  Both hitParticles AND deathExplosion
+                       rendered the same particles in two separate Pixi
+                       Graphics passes, doubling the GPU load right when
+                       memory was tightest.  Particles now go ONLY into
+                       hitParticles; the deathExplosion entry is dropped
+                       (the Pixi effects renderer doesn't read its
+                       weaponType/killCollision/etc anyway). */
+                    try {
+                      var killAngle = a.ang;
+                      var arrowDeathParts = [];
+                      var _arrowKillElem = arrowElem || projElem || null;
+                      var _arrowKillColl = arrowCollision ? arrowCollision.collision : null;
+                      var _arrowBodySize = { fodder: 8, brute: 15, swarm: 6, sentinel: 12, volatile: 9, stalker: 10, hexer: 10 }[m.archetype || 'fodder'] || 10;
+                      if (_arrowKillColl) {
+                        var collFx = getCollisionDeathFX(m.x, m.y, _arrowKillColl.id, killAngle, _arrowBodySize, isCrit ? 1.5 : 1);
+                        for (var _ci = 0; _ci < Math.min(collFx.length, 8); _ci++) arrowDeathParts.push(collFx[_ci]);
+                      } else if (_arrowKillElem) {
+                        var elemFx = getElementDeathFX(m.x, m.y, _arrowKillElem, killAngle, m.color, _arrowBodySize, isCrit ? 1.5 : 1);
+                        var _ep = elemFx && elemFx.particles ? elemFx.particles : [];
+                        for (var _ei = 0; _ei < Math.min(_ep.length, 8); _ei++) arrowDeathParts.push(_ep[_ei]);
+                      } else {
+                        for (var dp = 0; dp < 5; dp++) {
+                          arrowDeathParts.push({ x: m.x, y: m.y, vx: Math.cos(killAngle + (Math.random() - 0.5) * 1.5) * (2 + Math.random() * 4), vy: Math.sin(killAngle + (Math.random() - 0.5) * 1.5) * (2 + Math.random() * 4) - 2, life: 1, color: m.color, size: 1.5 + Math.random() * 2 });
+                        }
                       }
+                      for (var _di = 0; _di < arrowDeathParts.length; _di++) S.hitParticles.push(arrowDeathParts[_di]);
+                    } catch (_bowFxErr) {
+                      console.error('[bow-kill] death FX threw', _bowFxErr && _bowFxErr.message, _bowFxErr && _bowFxErr.stack);
                     }
-                    arrowDeathParts.forEach(function (dp) { return S.hitParticles.push(dp); });
-                    var _arrowBodySize = { fodder: 8, brute: 15, swarm: 6, sentinel: 12, volatile: 9, stalker: 10, hexer: 10 }[m.archetype || 'fodder'] || 10;
-                    S.deathExplosions.push({ x: m.x, y: m.y, ts: Date.now(), emoji: m.emoji, particles: arrowDeathParts, isGrandSlam: isCrit, killScale: isCrit ? 2 : 1, killType: isStaffProj ? 'magic' : 'ranged', killElement: _arrowKillElem, killCollision: (_arrowKillColl === null || _arrowKillColl === void 0 ? void 0 : _arrowKillColl.id) || null, weaponType: isStaffProj ? 'staff' : 'bow', killAngle: killAngle, bodyColor: m.color, bodySize: _arrowBodySize, archetype: m.archetype || 'fodder', stuckArrows: m._stuckArrows || [] });
                     S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 15, y: m.y + (Math.random() - 0.5) * 15, coins: m.gold || m.coins || 2, xp: 0, skull: m.type, skullEmoji: '🦴', ts: Date.now() });
                     var dropChance = Math.min(0.15, 0.03 + (m.level || 1) * 0.001);
                     if (Math.random() < dropChance) {
