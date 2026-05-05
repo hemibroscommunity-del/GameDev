@@ -30,11 +30,16 @@ import argparse
 from pathlib import Path
 from PIL import Image
 
-# Targets sampled from jog-southwest.png (the canonical skin reference).
-SKIN_TARGET = (225, 148, 76)
+# Outline target sampled from jog-southwest.png (canonical reference).
 OUTLINE_TARGET = (38, 10, 18)
 
-# Source medians (sampled from the current jog-east.png).
+# Skin target: averaged across N/S/SW so east lands in the middle of
+# the other three directions, not at SW's brightest extreme.  An
+# earlier pass shifted east all the way to SW's (225,148,76) and the
+# user said it looked too bright.
+SKIN_TARGET = (220, 147, 78)
+
+# Source medians (sampled from the original jog-east.png before any recolor).
 SKIN_SRC = (201, 130, 68)
 
 
