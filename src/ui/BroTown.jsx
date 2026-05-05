@@ -2857,11 +2857,9 @@ export var BroTown = function BroTown(_ref0) {
        point the canvas has been resized so createPixiApp can read its
        dimensions without falling through to 0×0. */
     if (usePixi.current && !pixiRef.current) {
-      console.log('[pixi-init] starting', { canvasW: canvas.width, canvasH: canvas.height, clientW: canvas.clientWidth, clientH: canvas.clientHeight, dpr: window.devicePixelRatio });
       initPixiRenderer(canvas).then(function(renderer) {
         pixiRef.current = renderer;
         window.__pixiActive = true;
-        console.log('[pixi-init] success', { rendererW: renderer.app && renderer.app.renderer && renderer.app.renderer.width, rendererH: renderer.app && renderer.app.renderer && renderer.app.renderer.height });
       }).catch(function(err) {
         console.warn('[pixi-init] FAILED, falling back to Canvas 2D:', err);
         usePixi.current = false;
@@ -8553,9 +8551,7 @@ export var BroTown = function BroTown(_ref0) {
                   m.alive = false;
                   m.respawnAt = Date.now() + 30000;
                   m.statuses = {};
-                  console.log('[bow-kill] step:1 enter', { id: m.id, arch: m.archetype || m.type });
                   try { BT_AUDIO.monsterDeath(m && m.archetype); } catch (e) {}
-                  console.log('[bow-kill] step:2 monsterDeath audio done');
                   if (S.rpg) {
                     var _R9 = S.rpg;
                     if (!_R9._questKills) _R9._questKills = {};
@@ -8588,7 +8584,6 @@ export var BroTown = function BroTown(_ref0) {
                     });
                     S.dmgNumbers.push({ x: m.x, y: m.y - 15, text: '+' + _killGoldR + 'G', color: '#f5c542', ts: Date.now() });
                     distributeKillXpToBuild(_R9, _killXpR);
-                    console.log('[bow-kill] step:3 xp granted', { xp: _killXpR, gold: _killGoldR });
                     while (_R9.xp >= xpRequired(_R9.level)) {
                       _R9.xp -= xpRequired(_R9.level);
                       _R9.level++;
@@ -8599,11 +8594,9 @@ export var BroTown = function BroTown(_ref0) {
                       _R9.mana = _R9.maxMana;
                       setLevelUpMsg({ level: _R9.level, ts: Date.now() });
                       try { BT_AUDIO.levelUp(); } catch (e) {}
-                      console.log('[bow-kill] step:4 level-up to', _R9.level);
                     }
                     var isCrit = a.dmg > pDmg;
                     try { BT_AUDIO.deathBoom(m && m.archetype); } catch (e) {}
-                    console.log('[bow-kill] step:5 deathBoom audio done');
                     S.screenShake = isCrit ? 6 : 3;
                     /* Bow / staff kill effects.  Wrapped in try/catch +
                        hard-capped particle counts because this path was
@@ -8635,12 +8628,10 @@ export var BroTown = function BroTown(_ref0) {
                         }
                       }
                       for (var _di = 0; _di < arrowDeathParts.length; _di++) S.hitParticles.push(arrowDeathParts[_di]);
-                      console.log('[bow-kill] step:6 particles done', { count: arrowDeathParts.length });
                     } catch (_bowFxErr) {
                       console.error('[bow-kill] death FX threw', _bowFxErr && _bowFxErr.message, _bowFxErr && _bowFxErr.stack);
                     }
                     S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 15, y: m.y + (Math.random() - 0.5) * 15, coins: m.gold || m.coins || 2, xp: 0, skull: m.type, skullEmoji: '🦴', ts: Date.now() });
-                    console.log('[bow-kill] step:7 groundLoot pushed');
                     var dropChance = Math.min(0.15, 0.03 + (m.level || 1) * 0.001);
                     if (Math.random() < dropChance) {
                       var _zone7 = ZONES[S.currentZone];
@@ -8663,19 +8654,14 @@ export var BroTown = function BroTown(_ref0) {
                       S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 20, y: m.y + (Math.random() - 0.5) * 20, ts: Date.now(), isWeapon: true, weapon: { type: dropType, tier: dropTier, tierMult: tierMult, element1: dropE1, element2: dropE2, name: dropName, isVolatile: dropVolatile }, tierColor: RARITY_TIERS[dropTier].color });
                       S.dmgNumbers.push({ x: m.x, y: m.y - 40, text: '🗡️ ' + dropName + '!', color: RARITY_TIERS[dropTier].color, ts: Date.now() });
                     }
-                    console.log('[bow-kill] step:8 drop check done');
                     setRpgState(_objectSpread({}, _R9));
-                    console.log('[bow-kill] step:9 setRpgState done');
                     try { localStorage.setItem('bt_rpg', JSON.stringify(_R9)); } catch (e) {}
-                    console.log('[bow-kill] step:10 localStorage write done');
                   }
                   /* Skull glyph used to be the emoji '☠️'.  Pixi v8 Text
                      with iOS WebGL crashes the tab on emoji + stroke
                      style — see DMG_STYLE_EMOJI in effectsRenderer.js.
-                     Plain ASCII 'X' is the safe substitute that survives
-                     the bow-kill render path on every platform. */
+                     Plain ASCII 'X' is the safe substitute. */
                   S.dmgNumbers.push({ x: m.x, y: m.y - 20, text: 'X', color: '#ff5e6c', ts: Date.now() });
-                  console.log('[bow-kill] step:11 complete');
                 }
                 hit = true;
               }
@@ -8815,10 +8801,6 @@ export var BroTown = function BroTown(_ref0) {
           /* ── PixiJS RENDER PATH ── */
           var W = canvas.width / (window.devicePixelRatio || 1);
           var H = canvas.height / (window.devicePixelRatio || 1);
-          if (!S._pixiRenderLogged) {
-            S._pixiRenderLogged = true;
-            console.log('[pixi-render] first frame', { W: W, H: H, cx: S.camera.x, cy: S.camera.y, playerX: S.player && S.player.x, playerY: S.player && S.player.y, zone: S.currentZone, hasMap: !!S.map });
-          }
           try {
             pixiRef.current.update(S, W, H, nfts);
           } catch (pixiErr) {
@@ -16597,7 +16579,6 @@ export var BroTown = function BroTown(_ref0) {
         y: t.clientY,
         t: Date.now()
       };
-      try { console.log('[tap] touchStart fired @', Math.round(t.clientX), Math.round(t.clientY)); } catch (e2) {}
     },
     onTouchEnd: function onTouchEnd(e) {
       var ct = canvasTouchRef.current;
@@ -16631,15 +16612,6 @@ export var BroTown = function BroTown(_ref0) {
             var _cssX = t.clientX - _rect.left;
             var _cssY = t.clientY - _rect.top;
             var _cx = _S.camera.x, _cy = _S.camera.y;
-            try {
-              var _alive = (_S.monsters || []).filter(function (m) { return m.alive; });
-              var _near = _alive.map(function (m) {
-                var _msx = m.x - _cx, _msy = m.y - _cy;
-                var _d = Math.hypot(_cssX - _msx, _cssY - _msy);
-                return { id: m.id, x: Math.round(_msx), y: Math.round(_msy), d: Math.round(_d) };
-              }).sort(function (a, b) { return a.d - b.d; }).slice(0, 3);
-              console.log('[tap] tap-to-lock check', { cssX: Math.round(_cssX), cssY: Math.round(_cssY), camera: { x: Math.round(_cx), y: Math.round(_cy) }, alive: _alive.length, nearest: _near });
-            } catch (e3) {}
             if (_S.monsters) {
               var _closest = null, _closestDist = 40;
               _S.monsters.forEach(function (m) {
@@ -16649,14 +16621,11 @@ export var BroTown = function BroTown(_ref0) {
                 if (_d < _closestDist) { _closestDist = _d; _closest = m; }
               });
               if (_closest) {
-                console.log('[tap] LOCKED', _closest.id);
                 if (_S.lockedTarget && _S.lockedTarget.ref === _closest) {
                   _S.lockedTarget = null;
                 } else {
                   _S.lockedTarget = { type: 'monster', id: _closest.id, ref: _closest };
                 }
-              } else {
-                console.log('[tap] no monster within 40px');
               }
             }
           }

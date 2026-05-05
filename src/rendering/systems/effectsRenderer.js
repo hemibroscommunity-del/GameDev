@@ -48,6 +48,17 @@ const LABEL_STYLE = new TextStyle({
   dropShadow: { color: '#000000', blur: 2, distance: 1 },
 });
 
+/* Emoji-safe label style for chat bubbles, NPC names, etc. that may
+   contain user-supplied or game-supplied emoji.  Same iOS WebGL
+   crash class as DMG_STYLE_EMOJI — stripping the dropShadow and
+   falling through to the system emoji font sidesteps the bad path. */
+const LABEL_STYLE_EMOJI = new TextStyle({
+  fontFamily: '"Apple Color Emoji","Segoe UI Emoji",VT323,monospace',
+  fontSize: 11,
+  fill: '#ffffff',
+  align: 'center',
+});
+
 function cssToHex(css) {
   if (typeof css !== 'string') return 0xffffff;
   const clean = css.replace('#', '');
@@ -522,17 +533,25 @@ export class EffectsRenderer {
       const sx = source.renderX || source.x || 0;
       const sy = source.renderY || source.y || 0;
 
+      const bubbleText = bubble.text || '';
+      const bubbleHasEmoji = !isAsciiOnly(bubbleText);
       let display = this.chatTexts.get(pid);
-      if (!display) {
+      if (!display || display._hasEmoji !== bubbleHasEmoji) {
+        /* Rebuild the Text when the emoji-vs-ASCII state flips so we
+           never feed an emoji glyph into a stroked / dropshadowed
+           Pixi v8 Text on iOS WebGL (native crash vector). */
+        if (display) { display.destroy(); }
+        const baseStyle = bubbleHasEmoji ? LABEL_STYLE_EMOJI : LABEL_STYLE;
         display = new Text({
           text: '',
-          style: { ...LABEL_STYLE, fontSize: 10, fill: '#ffffff', wordWrap: true, wordWrapWidth: 120 },
+          style: { ...baseStyle, fontSize: 10, fill: '#ffffff', wordWrap: true, wordWrapWidth: 120 },
         });
         display.anchor.set(0.5, 1);
+        display._hasEmoji = bubbleHasEmoji;
         this.overlayLayer.addChild(display);
         this.chatTexts.set(pid, display);
       }
-      display.text = bubble.text || '';
+      display.text = bubbleText;
       display.x = sx;
       display.y = sy - 35;
       display.alpha = age > 4500 ? (5000 - age) / 500 : 1;
