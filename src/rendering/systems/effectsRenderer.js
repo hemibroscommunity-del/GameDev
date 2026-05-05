@@ -400,21 +400,31 @@ export class EffectsRenderer {
     const gfx = this.overlayGfx;
     gfx.clear();
 
-    // Lock-on reticle
-    if (S.lockedTarget && S.lockedTarget.ref) {
-      const lt = S.lockedTarget.ref;
-      const lx = lt.x || lt.renderX || 0;
-      const ly = lt.y || lt.renderY || 0;
-      const lockR = 18 + Math.sin(now / 250) * 3;
-      gfx.circle(lx, ly, lockR);
-      gfx.stroke({ color: 0xff3c3c, width: 2, alpha: 0.8 });
-      // Corner marks
-      for (let c = 0; c < 4; c++) {
-        const ca = (c / 4) * Math.PI * 2 + now / 1500;
-        const cx = lx + Math.cos(ca) * lockR;
-        const cy = ly + Math.sin(ca) * lockR;
-        gfx.circle(cx, cy, 2);
-        gfx.fill({ color: 0xff3c3c, alpha: 0.9 });
+    // Lock-on reticle — defensive: a stale ref (e.g. monster killed
+    // mid-frame) shouldn't take down the entire effects renderer.
+    try {
+      if (S.lockedTarget && S.lockedTarget.ref && S.lockedTarget.ref.alive !== false) {
+        const lt = S.lockedTarget.ref;
+        const lx = lt.x || lt.renderX || 0;
+        const ly = lt.y || lt.renderY || 0;
+        if (Number.isFinite(lx) && Number.isFinite(ly)) {
+          const lockR = 18 + Math.sin(now / 250) * 3;
+          gfx.circle(lx, ly, lockR);
+          gfx.stroke({ color: 0xff3c3c, width: 2, alpha: 0.8 });
+          // Corner marks
+          for (let c = 0; c < 4; c++) {
+            const ca = (c / 4) * Math.PI * 2 + now / 1500;
+            const cx = lx + Math.cos(ca) * lockR;
+            const cy = ly + Math.sin(ca) * lockR;
+            gfx.circle(cx, cy, 2);
+            gfx.fill({ color: 0xff3c3c, alpha: 0.9 });
+          }
+        }
+      }
+    } catch (e) {
+      if (!this._lockErrLogged) {
+        this._lockErrLogged = true;
+        console.error('[overlay] lock reticle threw', e && e.message, e && e.stack);
       }
     }
 
