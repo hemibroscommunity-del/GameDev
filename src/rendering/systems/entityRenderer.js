@@ -236,9 +236,62 @@ export class EntityRenderer {
   _updateMonsters(S, now) {
     const monsters = S.monsters || [];
     const activeIds = new Set();
+    const SLIME_DEATH_MS = 100; /* matches Canvas 2D's _dDur — short fast dissolve */
 
     for (const m of monsters) {
-      if (!m.alive && (!m._deathTs || now - m._deathTs > 2000)) continue;
+      const arch = m.archetype || m.type;
+      const isFodder = arch === 'fodder';
+
+      /* Slime death animation — first observation of alive=false on a
+         fodder slime starts the death timer + plays the splat SFX.
+         Mirrors the Canvas 2D path in BroTown.jsx ~11397.  Animation
+         runs SLIME_DEATH_MS then the display is hidden + cleaned up. */
+      if (!m.alive && isFodder && m._slimeDeathStart == null) {
+        m._slimeDeathStart = now;
+        try {
+          if (typeof window !== 'undefined' && window.BT_AUDIO) {
+            window.BT_AUDIO.play('slime-death', { vol: 0.425 });
+          }
+        } catch {}
+      }
+
+      /* Dead-monster handling: render the death sprite for fodder
+         within the death window; otherwise hide and skip. */
+      if (!m.alive) {
+        const deathT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
+        if (isFodder && deathT != null && deathT >= 0 && deathT < SLIME_DEATH_MS && hasSlimeState('death')) {
+          activeIds.add(m.id);
+          const display = this.monsterDisplays.get(m.id);
+          if (display && display._spriteBody) {
+            const fc = slimeFrameCount('death');
+            const t = deathT / SLIME_DEATH_MS;
+            const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
+            const tex = getSlimeFrame('death', frameIdx);
+            const sb = display._spriteBody;
+            if (tex && (display._slimeState !== 'death' || display._slimeFrame !== frameIdx)) {
+              display._slimeState = 'death';
+              display._slimeFrame = frameIdx;
+              sb.texture = tex;
+            }
+            sb.scale.x = 50 / 128;
+            sb.scale.y = 50 / 128;
+            sb.tint = 0xffffff;
+            sb.visible = true;
+            display.x = m.x;
+            display.y = m.y;
+            display.visible = true;
+            display._body.visible = false;
+            /* Clear any leftover dynamic content (aggro arrow, status
+               icons) so it doesn't linger on the death frame. */
+            if (display._dynGfx) {
+              display._dynGfx.clear();
+              display._dynKey = '';
+            }
+          }
+        }
+        continue;
+      }
+
       activeIds.add(m.id);
 
       let display = this.monsterDisplays.get(m.id);
