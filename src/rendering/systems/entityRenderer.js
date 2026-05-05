@@ -639,13 +639,23 @@ export class EntityRenderer {
   }
 
   _updatePlayer(S, now) {
-    if (!this.playerDisplay) {
+    if (!this.playerDisplay || this.playerDisplay.destroyed) {
       this.playerDisplay = createPlayerDisplay();
+      this.playerLayer.addChild(this.playerDisplay);
+    } else if (this.playerDisplay.parent !== this.playerLayer) {
+      /* Defensive re-attach.  Something on zone change was detaching
+         the playerDisplay from the player layer (or removing it from
+         the scene graph altogether) and the user reported the avatar
+         going invisible in other zones.  This re-parents it every
+         frame if it's missing.  Cheap when already attached (no-op). */
       this.playerLayer.addChild(this.playerDisplay);
     }
 
     const P = S.player;
     const display = this.playerDisplay;
+    /* Force visibility every frame — same defensive concern as the
+       parent re-attach above. */
+    display.visible = true;
     display.x = P.x;
     display.y = P.y;
 
