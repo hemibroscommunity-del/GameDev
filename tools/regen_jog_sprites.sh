@@ -59,11 +59,13 @@ for d in north south northeast southwest; do
 
   # Stabilize the head across frames — the AI sources have visibly
   # different head silhouette shapes per frame ("wavy / bumpy" during
-  # playback).  Picks one reference frame (closest to median top row)
-  # and pastes its top 20 rows into every frame at that frame's own
-  # top row.  Head is byte-identical across frames; outline thickness
-  # is whatever the reference frame had (no thickening from median).
+  # playback).  The tool flood-fills the head's connected component
+  # from the topmost pixel (capped at head-h rows down so it can't
+  # leak into the body), then replaces each frame's head silhouette
+  # with the reference frame's, vertically translated to match the
+  # frame's own top row.  Body / arms / legs untouched; no stuck
+  # pixels and no missing body parts.
   python tools/stabilize_head.py \
     "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \
-    --head-h 20
+    --head-h 12
 done
