@@ -158,8 +158,17 @@ function createPlayerDisplay() {
 function createOtherPlayerDisplay() {
   const container = new Container();
 
+  /* Procedural fallback body — drawn until /sprites/player sheets
+     resolve (and as a permanent fallback if they fail to load). */
   const body = new Graphics();
   container.addChild(body);
+
+  /* Sprite-sheet body — same loader / texture cache the local player
+     uses, just driven by the other player's velocity + facing. */
+  const spriteBody = new Sprite();
+  spriteBody.anchor.set(0.5, 0.5);
+  spriteBody.visible = false;
+  container.addChild(spriteBody);
 
   const weaponGfx = new Graphics();
   container.addChild(weaponGfx);
@@ -170,8 +179,13 @@ function createOtherPlayerDisplay() {
   container.addChild(nameText);
 
   container._body = body;
+  container._spriteBody = spriteBody;
   container._weaponGfx = weaponGfx;
   container._nameText = nameText;
+  /* Animation cache mirrors the local player display. */
+  container._animPose = null;
+  container._animDir = null;
+  container._animFrame = -1;
 
   return container;
 }
@@ -382,29 +396,91 @@ export class EntityRenderer {
       const bodyH = 22;
       const isMoving = Math.abs(other._smoothVx || 0) > 0.01 || Math.abs(other._smoothVy || 0) > 0.01;
       const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
-      /* Skip the body rebuild while idle and no color/torso changes —
-         shadow + legs + torso + head are otherwise pixel-identical
-         frame to frame.  Walk animation forces a redraw via isMoving. */
-      const colorKey = torso + '|' + legs + '|' + head;
-      if (isMoving || display._lastColorKey !== colorKey || display._lastIsMoving !== isMoving) {
-        display._lastColorKey = colorKey;
-        display._lastIsMoving = isMoving;
-        body.clear();
-        // Shadow
-        body.ellipse(0, 20, 9, 3.5);
-        body.fill({ color: 0x000000, alpha: 0.15 });
-        // Legs with walk animation
-        const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
-        body.rect(-bodyW / 2, 2 + bobY + legSwing, bodyW / 2 - 1, bodyH / 2);
-        body.fill({ color: cssColorToHex(legs) });
-        body.rect(1, 2 + bobY - legSwing, bodyW / 2 - 1, bodyH / 2);
-        body.fill({ color: cssColorToHex(legs) });
-        // Torso
-        body.roundRect(-bodyW / 2, -bodyH / 2 + bobY, bodyW, bodyH / 2 + 4, 3);
-        body.fill({ color: cssColorToHex(torso) });
-        // Head
-        body.circle(0, -bodyH / 2 - 4 + bobY, 6);
-        body.fill({ color: cssColorToHex(head) });
+
+      /* Sprite-sheet body — same as local player.  Other players
+         broadcast their facing in `other._facing` (4-cardinal, same
+         as S._facing), but when moving we derive an 8-compass
+         direction from their interpolated velocity for diagonal
+         frames. */
+      let facing;
+      if (isMoving) {
+        const ang = Math.atan2(other._smoothVy || 0, other._smoothVx || 0);
+        const sector = Math.round(ang / (Math.PI / 4));
+        facing = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'][((sector % 8) + 8) % 8];
+      } else {
+        facing = other._facing || 'south';
+      }
+      const isHit = other._hitFlash && (now - other._hitFlash) < 250;
+      const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
+      const spritesAvailable = hasPose(pose) || hasPose('stand');
+      let useSprite = false;
+      if (spritesAvailable) {
+        const spriteBody = display._spriteBody;
+        const { dir, mirror } = resolveDirection(facing);
+        let frameIdx = 0;
+        if (pose === 'jog') {
+          frameIdx = Math.floor((now / cycleMs('jog', dir)) * 24) % 24;
+        } else if (pose === 'hit') {
+          const hitT = (now - (other._hitFlash || 0)) / 250;
+          frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
+        }
+        let tex = getFrame(pose, dir, frameIdx);
+        if (!tex) tex = getFrame('stand', dir, 0);
+        if (tex) {
+          if (display._animPose !== pose || display._animDir !== dir || display._animFrame !== frameIdx) {
+            display._animPose = pose;
+            display._animDir = dir;
+            display._animFrame = frameIdx;
+            spriteBody.texture = tex;
+          }
+          /* Same east-direction size compensation as the local player —
+             keeps every player rendered at the same visual scale. */
+          const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.10) : 1.0;
+          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
+          spriteBody.scale.y = sizeMul;
+          spriteBody.tint = 0xffffff;
+          spriteBody.visible = true;
+          body.visible = false;
+          if (display._procDrawn) {
+            body.clear();
+            display._procDrawn = false;
+          }
+          useSprite = true;
+        } else {
+          spriteBody.visible = false;
+          body.visible = true;
+        }
+      } else {
+        display._spriteBody.visible = false;
+        body.visible = true;
+      }
+
+      /* Procedural fallback body — only drawn when sprite path is
+         unavailable.  Skip rebuild when idle and no color/torso
+         changes. */
+      if (!useSprite) {
+        const colorKey = torso + '|' + legs + '|' + head;
+        if (isMoving || display._lastColorKey !== colorKey || display._lastIsMoving !== isMoving) {
+          display._lastColorKey = colorKey;
+          display._lastIsMoving = isMoving;
+          display._procDrawn = true;
+          body.clear();
+          // Shadow
+          body.ellipse(0, 20, 9, 3.5);
+          body.fill({ color: 0x000000, alpha: 0.15 });
+          // Legs with walk animation
+          const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
+          body.rect(-bodyW / 2, 2 + bobY + legSwing, bodyW / 2 - 1, bodyH / 2);
+          body.fill({ color: cssColorToHex(legs) });
+          body.rect(1, 2 + bobY - legSwing, bodyW / 2 - 1, bodyH / 2);
+          body.fill({ color: cssColorToHex(legs) });
+          // Torso
+          body.roundRect(-bodyW / 2, -bodyH / 2 + bobY, bodyW, bodyH / 2 + 4, 3);
+          body.fill({ color: cssColorToHex(torso) });
+          // Head
+          body.circle(0, -bodyH / 2 - 4 + bobY, 6);
+          body.fill({ color: cssColorToHex(head) });
+        }
       }
 
       const nextName = other.name || 'Anon';
@@ -496,7 +572,7 @@ export class EntityRenderer {
            the character bigger — keep the 0.88× shrink.
            Applies to BOTH east and the mirrored W/NW/SE since they
            share the east sheet. */
-        const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.15) : 1.0;
+        const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.10) : 1.0;
         spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
         spriteBody.scale.y = sizeMul;
         /* No tint multiply — the sprites are pre-colored.  Multiplying
