@@ -27,13 +27,14 @@ for d in north south northeast southwest; do
   rm -rf "/tmp/jog-frames-$d"
   mkdir -p "/tmp/jog-frames-$d"
 
-  # Native frame extraction with TIGHT colorkey.
-  # Target 0xf2f2f2 (the actual background color in these MOVs is
-  # ~(240-245, 240-245, 240-245), not pure white).  similarity 0.06
-  # covers the (~225-255) range and kills any anti-aliased halo too;
-  # blend 0.0 = binary alpha (no partial-alpha band).
+  # Native frame extraction with binary colorkey.
+  # Target 0xf2f2f2 (the actual background color is ~(240-245, ...),
+  # not pure white).  similarity 0.15 catches the anti-aliased
+  # off-white bleed at the silhouette edge (lum 180-240) without
+  # touching skin tones (~200,140,100) or any clothing color.
+  # blend 0.0 = binary alpha (no partial-alpha band, no wobble).
   ffmpeg -y -i "assets/character animations/jog-$d.mov" \
-    -vf "scale=64:64:flags=neighbor,colorkey=0xf2f2f2:0.06:0.0,format=rgba" \
+    -vf "scale=64:64:flags=neighbor,colorkey=0xf2f2f2:0.15:0.0,format=rgba" \
     -fps_mode passthrough -an "/tmp/jog-frames-$d/%03d.png" 2>/dev/null
 
   N=$(ls "/tmp/jog-frames-$d/" | wc -l)
@@ -43,8 +44,11 @@ for d in north south northeast southwest; do
   ffmpeg -y -i "/tmp/jog-frames-$d/%03d.png" -vf "tile=${N}x1" \
     -frames:v 1 -an "/tmp/jog-$d-strip.png" 2>/dev/null
 
-  # Zero RGB on alpha=0 only (--no-flood disables the silhouette flood).
+  # Zero RGB on alpha=0 (--no-flood) + kill any off-white edge bleed
+  # that escaped the colorkey. --kill-edge-bleed only touches pixels
+  # adjacent to the silhouette boundary, so interior highlights and
+  # the existing dark outline are untouched.
   python tools/dehalo_outside.py \
     "/tmp/jog-$d-strip.png" "public/sprites/player/jog-$d.png" \
-    --frame-h 64 --no-flood
+    --frame-h 64 --no-flood --kill-edge-bleed
 done

@@ -93,6 +93,44 @@ def force_binary_alpha(img: Image.Image, threshold: int = 128) -> int:
     return n
 
 
+def kill_edge_bleed(img: Image.Image, frame_w: int, frame_h: int, lum_thresh: int = 180, passes: int = 2) -> int:
+    """Zero alpha on opaque pixels adjacent to transparent pixels if
+    their color is light (RGB mean > lum_thresh).  These are
+    anti-aliased background pixels that survived the colorkey because
+    they were a bit too far from the target color.  Runs `passes`
+    iterations so a 2-pixel-deep halo gets chased inward.
+
+    Per-frame so the bleed kill doesn't bridge across cell seams.
+    Interior light pixels (no transparent neighbor) are PRESERVED so
+    real character highlights stay intact."""
+    w, h = img.size
+    frames = w // frame_w
+    total = 0
+    for _ in range(passes):
+        snapshot = img.copy().load()
+        px = img.load()
+        for fi in range(frames):
+            x0 = fi * frame_w
+            for y in range(frame_h):
+                for x in range(frame_w):
+                    r, g, b, a = snapshot[x0 + x, y]
+                    if a != 255:
+                        continue
+                    if (r + g + b) / 3 <= lum_thresh:
+                        continue
+                    has_transparent = False
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < frame_w and 0 <= ny < frame_h:
+                            if snapshot[x0 + nx, ny][3] == 0:
+                                has_transparent = True
+                                break
+                    if has_transparent:
+                        px[x0 + x, y] = (0, 0, 0, 0)
+                        total += 1
+    return total
+
+
 def smooth_silhouette(img: Image.Image, frame_w: int, frame_h: int) -> int:
     """Apply a small gaussian blur to the alpha channel per-frame, then
     re-clip very-low alphas to 0.  Introduces a soft anti-aliased band
@@ -178,7 +216,7 @@ def kill_light_halo(img: Image.Image, lum_thresh: int = 180) -> int:
     return n
 
 
-def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool, outline: bool) -> None:
+def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bool, kill_halo: bool, outline: bool, edge_bleed: bool) -> None:
     img = Image.open(src).convert("RGBA")
     w, h = img.size
     if h != frame_h or w % FRAME_W != 0:
@@ -188,6 +226,7 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
         for i in range(frames):
             flood_clear_frame(img, i * FRAME_W, 0, FRAME_W, frame_h)
     halo_n = kill_light_halo(img) if kill_halo else 0
+    bleed_n = kill_edge_bleed(img, FRAME_W, frame_h) if edge_bleed else 0
     outline_n = add_outline(img, FRAME_W, frame_h) if outline else 0
     smooth_n = smooth_silhouette(img, FRAME_W, frame_h) if outline else 0
     zeroed = zero_rgb_on_transparent(img)
@@ -197,6 +236,8 @@ def process(src: Path, dst: Path, frame_h: int, binary_alpha: bool, no_flood: bo
     msg = f"{src.name} -> {dst.name}: {flood_note}, {zeroed} alpha=0 zeroed"
     if kill_halo:
         msg += f", {halo_n} light-halo killed"
+    if edge_bleed:
+        msg += f", {bleed_n} edge-bleed killed"
     if outline:
         msg += f", {smooth_n} alpha smoothed, {outline_n} outline pixels added"
     if binary_alpha:
@@ -229,5 +270,12 @@ if __name__ == "__main__":
                         "jog sources lack the dark outline that anchors east's "
                         "boundary; without it, the skin-color edge against the "
                         "background reads as wobble on every tiny frame shift.")
+    p.add_argument("--kill-edge-bleed", action="store_true",
+                   help="zero alpha on opaque LIGHT pixels (lum > 180) that "
+                        "border a transparent pixel. Targeted edge cleanup for "
+                        "anti-aliased background that survived the colorkey. "
+                        "Preserves interior light pixels (real character "
+                        "highlights). Two passes by default to chase 2-pixel "
+                        "halo inward.")
     args = p.parse_args()
-    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo, args.outline)
+    process(Path(args.src), Path(args.dst), args.frame_h, args.binary_alpha, args.no_flood, args.kill_halo, args.outline, args.kill_edge_bleed)
