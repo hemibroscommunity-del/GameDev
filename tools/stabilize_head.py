@@ -5,13 +5,23 @@ silhouette shape per frame — the outline gains/loses a pixel here or
 there, so the head looks "wavy" or "bumpy" during playback even
 though the head should only translate vertically with the body bob.
 
-This tool locks the head region to a single canonical version:
+This tool locks every frame's head region to one reference frame:
   1. For each frame, find the topmost opaque row (alignment anchor).
-  2. Sample the top `head_h` rows from each frame, aligned to its top.
-  3. Per (head-relative-y, x) take the median RGBA across all frames.
-  4. Paste the canonical head back into each frame at its own top row.
+  2. Pick a reference frame — the one whose top row is closest to
+     the median top across all frames (i.e. the most "typical" pose).
+  3. Crop the reference's top `head_h` rows.  This is the canonical
+     head, used as-is.  Outline thickness is whatever the reference
+     frame happens to have — NOT thickened.
+  4. Paste the canonical head into every frame at its own top row.
 
-The result: head outline + interior are byte-identical across frames,
+Why "use ref as-is" instead of per-pixel median across frames:
+  Per-channel median causes outline thickening.  At the silhouette
+  edge, a pixel that's opaque in 50%+ of frames becomes opaque in
+  ALL frames after median, growing the silhouette by ~1px around
+  the head.  Reference-frame-as-canonical preserves the outline
+  exactly as drawn.
+
+The result: head outline + interior byte-identical across frames,
 just translated vertically with the bob.  Body / arms / legs below
 the head region are untouched.
 
@@ -36,20 +46,6 @@ def find_top_row(img: Image.Image) -> int:
             if px[x, y][3] > 0:
                 return y
     return h
-
-
-def median_pixel(samples):
-    """Per-channel median of (r,g,b,a) tuples.  Channel-independent
-    median is a slight cheat for color but fine for the flat tan +
-    dark outline palette here.  Empty -> fully transparent."""
-    if not samples:
-        return (0, 0, 0, 0)
-    n = len(samples)
-    rs = sorted(s[0] for s in samples)
-    gs = sorted(s[1] for s in samples)
-    bs = sorted(s[2] for s in samples)
-    aa = sorted(s[3] for s in samples)
-    return (rs[n // 2], gs[n // 2], bs[n // 2], aa[n // 2])
 
 
 def main() -> None:
@@ -79,26 +75,24 @@ def main() -> None:
     if not tops or min(tops) >= fh:
         raise RuntimeError("all frames appear fully transparent")
 
-    # Build the canonical head: median of head-aligned samples.
-    canonical = Image.new("RGBA", (fw, head_h), (0, 0, 0, 0))
+    # Reference frame: the one whose top row is closest to the median.
+    sorted_tops = sorted(tops)
+    median_top = sorted_tops[len(sorted_tops) // 2]
+    ref_idx = min(range(n), key=lambda i: abs(tops[i] - median_top))
+    ref = frames[ref_idx]
+    ref_top = tops[ref_idx]
+
+    # Crop the reference's head region as the canonical head.
+    can_h = min(head_h, fh - ref_top)
+    canonical = ref.crop((0, ref_top, fw, ref_top + can_h))
     can_px = canonical.load()
-    frame_pxs = [f.load() for f in frames]
-    for hy in range(head_h):
-        for x in range(fw):
-            samples = []
-            for i in range(n):
-                src_y = tops[i] + hy
-                if src_y >= fh:
-                    continue
-                samples.append(frame_pxs[i][x, src_y])
-            can_px[x, hy] = median_pixel(samples)
 
     # Paste canonical head into each frame at its own top row.
     out = img.copy()
     out_px = out.load()
     for i in range(n):
         x0 = i * fw
-        for hy in range(head_h):
+        for hy in range(can_h):
             dst_y = tops[i] + hy
             if dst_y >= fh:
                 continue
@@ -107,7 +101,8 @@ def main() -> None:
 
     out.save(dst, "PNG", optimize=True)
     print(f"{src.name} -> {dst.name}: stabilized {n} heads, "
-          f"head_h={head_h}, top range {min(tops)}-{max(tops)}")
+          f"head_h={can_h}, ref_frame={ref_idx} (top={ref_top}), "
+          f"top range {min(tops)}-{max(tops)}")
 
 
 if __name__ == "__main__":

@@ -57,15 +57,13 @@ for d in north south northeast southwest; do
     "/tmp/jog-$d-strip.png" "public/sprites/player/jog-$d.png" \
     --frame-h 64 --no-flood --kill-bg-grayscale
 
-  # Per-direction post-processing.  Southwest: stabilize the head
-  # across frames — the AI source had visibly different head silhouette
-  # shapes per frame ("wavy / bumpy" head during playback).  Lock the
-  # top 20 rows to a per-pixel median, aligned to each frame's topmost
-  # opaque row, so the head is byte-identical every frame and only
-  # translates vertically with the body bob.
-  if [ "$d" = "southwest" ]; then
-    python tools/stabilize_head.py \
-      "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \
-      --head-h 20
-  fi
+  # Stabilize the head across frames — the AI sources have visibly
+  # different head silhouette shapes per frame ("wavy / bumpy" during
+  # playback).  Picks one reference frame (closest to median top row)
+  # and pastes its top 20 rows into every frame at that frame's own
+  # top row.  Head is byte-identical across frames; outline thickness
+  # is whatever the reference frame had (no thickening from median).
+  python tools/stabilize_head.py \
+    "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \
+    --head-h 20
 done
