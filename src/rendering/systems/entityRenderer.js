@@ -715,7 +715,11 @@ export class EntityRenderer {
       const { dir, mirror } = resolveDirection(facing);
       let frameIdx = 0;
       if (pose === 'jog') {
-        frameIdx = Math.floor((now / cycleMs('jog', dir)) * 24) % 24;
+        /* Per-direction frame count — sheets vary 24-34 frames.  Hard-coding
+           24 was making south (31 frames) and southwest (34) jerky because
+           the loop only played the first 24, then snapped back. */
+        const fc = playerFrameCount('jog', dir) || 24;
+        frameIdx = Math.floor((now / cycleMs('jog', dir)) * fc) % fc;
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;
         frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
