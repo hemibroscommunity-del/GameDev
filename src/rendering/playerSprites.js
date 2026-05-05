@@ -29,20 +29,22 @@ const FRAME_H = 64;
 const STAND_FRAMES = 1;
 const HIT_FRAMES = 6;
 
-/* 1 s jog cycle for most directions; northeast (and its mirror,
-   northwest) plays faster because the source video for that view was
-   captured at a slower gait.  Per-direction overrides keep the visual
-   cadence consistent across facings. */
+/* Base 1 s jog cycle.  Per-direction overrides keep the visual cadence
+   consistent across facings — the source videos were captured at
+   different gaits, and the user requested north / south / northeast
+   slowed by ~40% so the legs don't blur. */
 const JOG_DURATION_MS = 1000;
 const JOG_DURATION_BY_DIR = {
-  northeast: 750,
+  north: 1400,
+  south: 1400,
+  northeast: 1050,
 };
 const HIT_DURATION_MS = 250;
 
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 22; /* matches the cache-buster on the Canvas 2D loader */
+const VERSION = 23; /* matches the cache-buster on the Canvas 2D loader */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
