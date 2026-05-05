@@ -8553,7 +8553,9 @@ export var BroTown = function BroTown(_ref0) {
                   m.alive = false;
                   m.respawnAt = Date.now() + 30000;
                   m.statuses = {};
-                  BT_AUDIO.monsterDeath(m && m.archetype);
+                  console.log('[bow-kill] step:1 enter', { id: m.id, arch: m.archetype || m.type });
+                  try { BT_AUDIO.monsterDeath(m && m.archetype); } catch (e) {}
+                  console.log('[bow-kill] step:2 monsterDeath audio done');
                   if (S.rpg) {
                     var _R9 = S.rpg;
                     if (!_R9._questKills) _R9._questKills = {};
@@ -8586,6 +8588,7 @@ export var BroTown = function BroTown(_ref0) {
                     });
                     S.dmgNumbers.push({ x: m.x, y: m.y - 15, text: '+' + _killGoldR + 'G', color: '#f5c542', ts: Date.now() });
                     distributeKillXpToBuild(_R9, _killXpR);
+                    console.log('[bow-kill] step:3 xp granted', { xp: _killXpR, gold: _killGoldR });
                     while (_R9.xp >= xpRequired(_R9.level)) {
                       _R9.xp -= xpRequired(_R9.level);
                       _R9.level++;
@@ -8595,10 +8598,12 @@ export var BroTown = function BroTown(_ref0) {
                       _R9.stamina = _R9.maxStamina;
                       _R9.mana = _R9.maxMana;
                       setLevelUpMsg({ level: _R9.level, ts: Date.now() });
-                      BT_AUDIO.levelUp();
+                      try { BT_AUDIO.levelUp(); } catch (e) {}
+                      console.log('[bow-kill] step:4 level-up to', _R9.level);
                     }
                     var isCrit = a.dmg > pDmg;
-                    BT_AUDIO.deathBoom(m && m.archetype);
+                    try { BT_AUDIO.deathBoom(m && m.archetype); } catch (e) {}
+                    console.log('[bow-kill] step:5 deathBoom audio done');
                     S.screenShake = isCrit ? 6 : 3;
                     /* Bow / staff kill effects.  Wrapped in try/catch +
                        hard-capped particle counts because this path was
@@ -8630,10 +8635,12 @@ export var BroTown = function BroTown(_ref0) {
                         }
                       }
                       for (var _di = 0; _di < arrowDeathParts.length; _di++) S.hitParticles.push(arrowDeathParts[_di]);
+                      console.log('[bow-kill] step:6 particles done', { count: arrowDeathParts.length });
                     } catch (_bowFxErr) {
                       console.error('[bow-kill] death FX threw', _bowFxErr && _bowFxErr.message, _bowFxErr && _bowFxErr.stack);
                     }
                     S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 15, y: m.y + (Math.random() - 0.5) * 15, coins: m.gold || m.coins || 2, xp: 0, skull: m.type, skullEmoji: '🦴', ts: Date.now() });
+                    console.log('[bow-kill] step:7 groundLoot pushed');
                     var dropChance = Math.min(0.15, 0.03 + (m.level || 1) * 0.001);
                     if (Math.random() < dropChance) {
                       var _zone7 = ZONES[S.currentZone];
@@ -8656,10 +8663,14 @@ export var BroTown = function BroTown(_ref0) {
                       S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 20, y: m.y + (Math.random() - 0.5) * 20, ts: Date.now(), isWeapon: true, weapon: { type: dropType, tier: dropTier, tierMult: tierMult, element1: dropE1, element2: dropE2, name: dropName, isVolatile: dropVolatile }, tierColor: RARITY_TIERS[dropTier].color });
                       S.dmgNumbers.push({ x: m.x, y: m.y - 40, text: '🗡️ ' + dropName + '!', color: RARITY_TIERS[dropTier].color, ts: Date.now() });
                     }
+                    console.log('[bow-kill] step:8 drop check done');
                     setRpgState(_objectSpread({}, _R9));
+                    console.log('[bow-kill] step:9 setRpgState done');
                     try { localStorage.setItem('bt_rpg', JSON.stringify(_R9)); } catch (e) {}
+                    console.log('[bow-kill] step:10 localStorage write done');
                   }
                   S.dmgNumbers.push({ x: m.x, y: m.y - 20, text: '☠️', color: '#ff5e6c', ts: Date.now() });
+                  console.log('[bow-kill] step:11 complete');
                 }
                 hit = true;
               }
