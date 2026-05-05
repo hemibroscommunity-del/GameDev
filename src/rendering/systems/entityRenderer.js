@@ -446,11 +446,24 @@ export class EntityRenderer {
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
     /* Sprite-sheet body — preferred when sheets have loaded.  Picks
-       (pose, dir, frameIdx) from facing + movement, mirrors the source
-       sprite for west / NW / SE, and tints the sprite to match the
-       chosen torso color (cheap GPU multiply, matches Canvas 2D
-       rendering's tint behavior). */
-    const facing = S._facing || 'south';
+       (pose, dir, frameIdx) from facing + movement.
+       When moving, derive an 8-compass facing from velocity (vx, vy)
+       so we get the diagonal sheets (northeast / northwest / etc)
+       instead of being stuck on whichever cardinal S._facing was set
+       to last.  When idle, fall back to S._facing (4-cardinal from
+       the input layer). */
+    let facing;
+    if (isMoving) {
+      const vx = P.vx || 0;
+      const vy = P.vy || 0;
+      /* atan2 returns radians in (-PI, PI]; +x is east, +y is south
+         (screen-down).  Bin into 8 sectors of 45° starting at east. */
+      const ang = Math.atan2(vy, vx);
+      const sector = Math.round(ang / (Math.PI / 4));
+      facing = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'][((sector % 8) + 8) % 8];
+    } else {
+      facing = S._facing || 'south';
+    }
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
     const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
     const spritesAvailable = hasPose(pose) || hasPose('stand');
