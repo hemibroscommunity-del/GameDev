@@ -561,11 +561,18 @@ export class EffectsRenderer {
       const bubbleText = bubble.text || '';
       const bubbleHasEmoji = !isAsciiOnly(bubbleText);
       let display = this.chatTexts.get(pid);
+      /* Treat a destroyed Text as missing — same class of crash that hit
+         _updateDamageNumbers (Pixi v8 setter on a nulled _position).
+         destroy() can come from clear() on zone change or other paths. */
+      if (display && display.destroyed) {
+        this.chatTexts.delete(pid);
+        display = null;
+      }
       if (!display || display._hasEmoji !== bubbleHasEmoji) {
         /* Rebuild the Text when the emoji-vs-ASCII state flips so we
            never feed an emoji glyph into a stroked / dropshadowed
            Pixi v8 Text on iOS WebGL (native crash vector). */
-        if (display) { display.destroy(); }
+        if (display && !display.destroyed) { display.destroy(); }
         const baseStyle = bubbleHasEmoji ? LABEL_STYLE_EMOJI : LABEL_STYLE;
         display = new Text({
           text: '',
@@ -583,8 +590,12 @@ export class EffectsRenderer {
       display.visible = true;
     }
 
-    // Hide stale
+    // Hide stale; drop references to anything destroyed externally.
     for (const [pid, display] of this.chatTexts) {
+      if (display.destroyed) {
+        this.chatTexts.delete(pid);
+        continue;
+      }
       if (!activeIds.has(pid)) {
         display.visible = false;
       }
