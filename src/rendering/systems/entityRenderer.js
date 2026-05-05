@@ -486,8 +486,18 @@ export class EntityRenderer {
           display._animFrame = frameIdx;
           spriteBody.texture = tex;
         }
-        spriteBody.scale.x = mirror ? -1 : 1;
-        spriteBody.scale.y = 1;
+        /* Base sprite scale to match Canvas 2D drawSize: 72 px for the
+           default body, 56 px for slim, against the 64 px source frame.
+           Then multiply by Canvas 2D's per-direction sizeMul — the east
+           source video framed the character slightly smaller on jog/
+           stand (1.06× compensation) and noticeably larger on hit
+           (0.88× shrink).  The sizeMul applies to BOTH east and the
+           mirrored 'west' / NW / SE since they share the east sheet. */
+        const baseSize = slim ? 56 : 72;
+        const baseScale = baseSize / 64;
+        const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.06) : 1.0;
+        spriteBody.scale.x = (mirror ? -1 : 1) * baseScale * sizeMul;
+        spriteBody.scale.y = baseScale * sizeMul;
         /* No tint multiply — the sprites are pre-colored.  Multiplying
            by S.bodyTorso (default #2563eb) was darkening the avatar
            because Pixi's tint is a per-channel multiply against white.
