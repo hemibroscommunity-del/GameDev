@@ -16,6 +16,30 @@ const DMG_STYLE = new TextStyle({
   align: 'center',
 });
 
+/* Emoji-safe text style — used when dmg.text contains non-ASCII
+   characters (skulls, stars, swords, etc.).  iOS Safari + PixiJS v8
+   + stroked Text + emoji glyph is a documented native-crash vector
+   (full tab kill, no JS error).  Dropping the stroke and falling
+   through to the system emoji font (Apple Color Emoji on iOS)
+   sidesteps the WebGL texture path that crashes. */
+const DMG_STYLE_EMOJI = new TextStyle({
+  fontFamily: '"Apple Color Emoji","Segoe UI Emoji",VT323,monospace',
+  fontSize: 14,
+  fontWeight: '800',
+  fill: '#ffffff',
+  align: 'center',
+});
+
+/* Cheap ASCII test — anything outside 0x20-0x7E is treated as emoji. */
+function isAsciiOnly(s) {
+  if (typeof s !== 'string') return true;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x20 || c > 0x7E) return false;
+  }
+  return true;
+}
+
 const LABEL_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
   fontSize: 11,
@@ -225,9 +249,12 @@ export class EffectsRenderer {
         continue;
       }
       if (!dmg._pixiText) {
+        /* Pick the emoji-safe style when text contains non-ASCII to
+           avoid the iOS Safari WebGL emoji-stroke crash. */
+        const baseStyle = isAsciiOnly(dmg.text) ? DMG_STYLE : DMG_STYLE_EMOJI;
         const text = new Text({
           text: dmg.text,
-          style: { ...DMG_STYLE, fontSize: dmg.crit ? 18 : 14, fill: dmg.color || '#ffffff' },
+          style: { ...baseStyle, fontSize: dmg.crit ? 18 : 14, fill: dmg.color || '#ffffff' },
         });
         text.anchor.set(0.5, 0.5);
         this.dmgLayer.addChild(text);

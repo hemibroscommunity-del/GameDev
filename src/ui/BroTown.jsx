@@ -8669,7 +8669,12 @@ export var BroTown = function BroTown(_ref0) {
                     try { localStorage.setItem('bt_rpg', JSON.stringify(_R9)); } catch (e) {}
                     console.log('[bow-kill] step:10 localStorage write done');
                   }
-                  S.dmgNumbers.push({ x: m.x, y: m.y - 20, text: '☠️', color: '#ff5e6c', ts: Date.now() });
+                  /* Skull glyph used to be the emoji '☠️'.  Pixi v8 Text
+                     with iOS WebGL crashes the tab on emoji + stroke
+                     style — see DMG_STYLE_EMOJI in effectsRenderer.js.
+                     Plain ASCII 'X' is the safe substitute that survives
+                     the bow-kill render path on every platform. */
+                  S.dmgNumbers.push({ x: m.x, y: m.y - 20, text: 'X', color: '#ff5e6c', ts: Date.now() });
                   console.log('[bow-kill] step:11 complete');
                 }
                 hit = true;
