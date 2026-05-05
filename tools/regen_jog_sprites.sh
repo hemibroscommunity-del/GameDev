@@ -34,7 +34,7 @@ for d in north south northeast southwest; do
   # touching skin tones (~200,140,100) or any clothing color.
   # blend 0.0 = binary alpha (no partial-alpha band, no wobble).
   ffmpeg -y -i "assets/character animations/jog-$d.mov" \
-    -vf "scale=64:64:flags=neighbor,colorkey=0xf2f2f2:0.15:0.0,format=rgba" \
+    -vf "scale=64:64:flags=neighbor,colorkey=0xf2f2f2:0.25:0.0,format=rgba" \
     -fps_mode passthrough -an "/tmp/jog-frames-$d/%03d.png" 2>/dev/null
 
   N=$(ls "/tmp/jog-frames-$d/" | wc -l)

@@ -93,7 +93,7 @@ def force_binary_alpha(img: Image.Image, threshold: int = 128) -> int:
     return n
 
 
-def kill_edge_bleed(img: Image.Image, frame_w: int, frame_h: int, lum_thresh: int = 180, passes: int = 2) -> int:
+def kill_edge_bleed(img: Image.Image, frame_w: int, frame_h: int, lum_thresh: int = 175, passes: int = 3) -> int:
     """Zero alpha on opaque pixels adjacent to transparent pixels if
     their color is light (RGB mean > lum_thresh).  These are
     anti-aliased background pixels that survived the colorkey because
