@@ -2,106 +2,131 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 <title>Weapon Handle Annotator</title>
 <style>
+  * { box-sizing: border-box; }
   body {
     margin: 0;
     background: #1a1a1a;
     color: #ddd;
-    font-family: ui-sans-serif, system-ui, sans-serif;
+    font: 14px ui-sans-serif, system-ui, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px;
+    padding: 12px 8px 24px;
     min-height: 100vh;
-    box-sizing: border-box;
+    overscroll-behavior: contain;
+    -webkit-tap-highlight-color: transparent;
   }
-  h1 { font-size: 16px; margin: 0 0 4px; font-weight: 500; }
-  .label { font-size: 13px; color: #888; margin-bottom: 12px; }
+  h1 { font-size: 14px; margin: 0 0 4px; font-weight: 500; opacity: 0.7; }
+  .label { font-size: 13px; color: #888; margin-bottom: 8px; text-align: center; }
   .label b { color: #ddd; }
+  .label .coords { color: #f5c542; }
   #stage {
     position: relative;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     border: 1px solid #333;
-    cursor: crosshair;
     background: #2a2a2a;
+    touch-action: manipulation;
+    cursor: crosshair;
   }
   #stage canvas { display: block; }
   #marker {
     position: absolute;
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
     border: 2px solid #f5c542;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    box-shadow: 0 0 0 1px #000;
+    box-shadow: 0 0 0 1px #000, 0 0 8px rgba(245,197,66,0.6);
   }
   .controls {
-    margin-top: 16px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 100%;
+    max-width: 420px;
   }
+  .controls .full { grid-column: 1 / -1; }
   button {
     background: #2a2a2a;
     border: 1px solid #444;
     color: #ddd;
-    padding: 8px 14px;
+    padding: 12px 10px;
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 6px;
+    min-height: 44px;
+    -webkit-user-select: none;
+    user-select: none;
   }
-  button:hover { background: #353535; }
-  button:disabled { opacity: 0.4; cursor: default; }
+  button:active { background: #353535; }
+  button:disabled { opacity: 0.35; cursor: default; }
   .primary { background: #1e5128; border-color: #2a7a3a; }
-  .primary:hover { background: #2a7a3a; }
+  .zoom {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    align-items: center;
+    font-size: 13px;
+    color: #888;
+  }
+  .zoom button { padding: 6px 14px; min-height: 36px; font-weight: 700; }
   textarea {
-    margin-top: 14px;
-    width: 600px; max-width: 100%; height: 120px;
-    background: #0e0e0e;
-    color: #cfd8dc;
-    border: 1px solid #333;
-    font-family: ui-monospace, monospace;
-    font-size: 11px;
-    padding: 8px; box-sizing: border-box;
+    margin-top: 12px; width: 100%; max-width: 600px; height: 100px;
+    background: #0e0e0e; color: #cfd8dc; border: 1px solid #333;
+    font-family: ui-monospace, monospace; font-size: 11px; padding: 8px;
   }
-  .help {
-    font-size: 11px; color: #777; max-width: 580px;
-    text-align: center; line-height: 1.5; margin-top: 10px;
+  .help { font-size: 12px; color: #777; max-width: 580px; text-align: center; line-height: 1.5; margin-top: 10px; }
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1e5128; border: 1px solid #2a7a3a; color: #fff;
+    padding: 10px 16px; border-radius: 6px; font-size: 13px;
+    z-index: 100; pointer-events: none; opacity: 0; transition: opacity 200ms;
   }
+  .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
 
 <h1>Weapon Handle Annotator</h1>
 <div class="label">
-  <b id="frameLabel">Loading…</b>
-  · <span id="counter">0 / 3</span>
+  <b id="frameLabel">Loading…</b><br>
+  <span id="counter">0 / 0</span> · <span class="coords" id="lastCoord">—</span>
 </div>
 
 <div id="stage"></div>
 
+<div class="zoom">
+  <span>zoom</span>
+  <button id="zoomOut">−</button>
+  <span id="zoomLabel">8×</span>
+  <button id="zoomIn">+</button>
+</div>
+
 <div class="controls">
   <button id="prevBtn">← Prev</button>
   <button id="nextBtn">Next →</button>
-  <button id="saveBtn" class="primary">Download JSON</button>
+  <button id="copyBtn"  class="full">Copy JSON to clipboard</button>
+  <button id="saveBtn"  class="full primary">Download JSON</button>
 </div>
 
 <div class="help">
-  Click the <b>handle / grip</b> of each weapon — the spot you'd want
-  to pin to the character's hand. Three weapons total.
-  Save as <code>public/sprites/weapons/handles.json</code>.
+  Tap the <b>handle / grip</b> of each weapon — the spot the character's hand should pin to.<br>
+  Save as <code>public/sprites/weapons/handles.json</code>, or paste the JSON to your assistant.
 </div>
 
 <textarea id="output" readonly></textarea>
+<div class="toast" id="toast"></div>
 
 <script>
-const SCALE = 8;          // 64 → 512 px
 const FRAME_W = 64;
+const SHEET_VER = Date.now();
 
 const WEAPONS = [
   { type: 'sword', src: '/sprites/weapons/swords/Sword1.png' },
@@ -109,14 +134,13 @@ const WEAPONS = [
   { type: 'staff', src: '/sprites/weapons/staffs/Wizard%20Staff2.png' },
 ];
 
-const handles = {};   // { sword: [x, y], ... }
-const images = {};    // type → Image
+const handles = {};
+const images = {};
 let cursor = 0;
+let scale = 8;
 
-const stage = document.getElementById('stage');
+const stage  = document.getElementById('stage');
 const canvas = document.createElement('canvas');
-canvas.width  = FRAME_W * SCALE;
-canvas.height = FRAME_W * SCALE;
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 stage.appendChild(canvas);
@@ -126,55 +150,99 @@ marker.id = 'marker';
 marker.style.display = 'none';
 stage.appendChild(marker);
 
-stage.style.width  = (FRAME_W * SCALE) + 'px';
-stage.style.height = (FRAME_W * SCALE) + 'px';
+function autoFitScale() {
+  const room = Math.min(window.innerWidth - 24, 720);
+  scale = Math.max(4, Math.min(12, Math.floor(room / FRAME_W)));
+}
+autoFitScale();
+window.addEventListener('resize', () => { autoFitScale(); applyScale(); render(); });
+
+function applyScale() {
+  canvas.width  = FRAME_W * scale;
+  canvas.height = FRAME_W * scale;
+  stage.style.width  = (FRAME_W * scale) + 'px';
+  stage.style.height = (FRAME_W * scale) + 'px';
+  ctx.imageSmoothingEnabled = false;
+  document.getElementById('zoomLabel').textContent = scale + '×';
+}
+applyScale();
 
 function load(w) {
   return new Promise(res => {
     const img = new Image();
     img.onload  = () => { images[w.type] = img; res(); };
     img.onerror = () => { console.warn('failed', w.src); res(); };
-    img.src = w.src + '?v=1';
+    img.src = w.src + '?v=' + SHEET_VER;
   });
 }
 
 function render() {
   const w = WEAPONS[cursor];
   if (!w) return;
-  document.getElementById('frameLabel').textContent = w.type + '  · ' + w.src;
+  document.getElementById('frameLabel').textContent = w.type + ' · ' + w.src;
   document.getElementById('counter').textContent = (cursor + 1) + ' / ' + WEAPONS.length;
   ctx.fillStyle = '#2a2a2a';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   const img = images[w.type];
-  if (img) {
-    ctx.drawImage(img, 0, 0, FRAME_W, FRAME_W, 0, 0, FRAME_W * SCALE, FRAME_W * SCALE);
-  }
+  if (img) ctx.drawImage(img, 0, 0, FRAME_W, FRAME_W, 0, 0, FRAME_W * scale, FRAME_W * scale);
   const existing = handles[w.type];
   if (existing) {
     marker.style.display = 'block';
-    marker.style.left = (existing[0] * SCALE) + 'px';
-    marker.style.top  = (existing[1] * SCALE) + 'px';
+    marker.style.left = (existing[0] * scale) + 'px';
+    marker.style.top  = (existing[1] * scale) + 'px';
+    document.getElementById('lastCoord').textContent = '(' + existing[0] + ', ' + existing[1] + ')';
   } else {
     marker.style.display = 'none';
+    document.getElementById('lastCoord').textContent = '—';
   }
   document.getElementById('output').value = JSON.stringify(handles, null, 2);
   document.getElementById('prevBtn').disabled = cursor === 0;
   document.getElementById('nextBtn').disabled = cursor >= WEAPONS.length - 1;
 }
 
-canvas.addEventListener('click', e => {
+function recordAt(clientX, clientY) {
   const w = WEAPONS[cursor];
   if (!w) return;
   const rect = canvas.getBoundingClientRect();
-  const x = Math.round((e.clientX - rect.left) / SCALE);
-  const y = Math.round((e.clientY - rect.top)  / SCALE);
+  const x = Math.max(0, Math.min(FRAME_W - 1, Math.round((clientX - rect.left) / scale)));
+  const y = Math.max(0, Math.min(FRAME_W - 1, Math.round((clientY - rect.top)  / scale)));
   handles[w.type] = [x, y];
   if (cursor < WEAPONS.length - 1) cursor++;
   render();
-});
+}
+
+stage.addEventListener('touchstart', e => { e.preventDefault(); }, { passive: false });
+canvas.addEventListener('click', e => recordAt(e.clientX, e.clientY));
 
 document.getElementById('prevBtn').onclick = () => { if (cursor > 0) { cursor--; render(); } };
 document.getElementById('nextBtn').onclick = () => { if (cursor < WEAPONS.length - 1) { cursor++; render(); } };
+document.getElementById('zoomIn').onclick  = () => { scale = Math.min(12, scale + 1); applyScale(); render(); };
+document.getElementById('zoomOut').onclick = () => { scale = Math.max(3,  scale - 1); applyScale(); render(); };
+
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+document.getElementById('copyBtn').onclick = async () => {
+  const text = JSON.stringify(handles, null, 2);
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Copied ' + text.length + ' chars to clipboard');
+  } catch (e) {
+    const ta = document.getElementById('output');
+    ta.removeAttribute('readonly');
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    ta.setAttribute('readonly', '');
+    toast('Copied via fallback');
+  }
+};
+
 document.getElementById('saveBtn').onclick = () => {
   const blob = new Blob([JSON.stringify(handles, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -184,7 +252,17 @@ document.getElementById('saveBtn').onclick = () => {
   URL.revokeObjectURL(a.href);
 };
 
-Promise.all(WEAPONS.map(load)).then(render);
+// Boot: pre-load existing handles.json so the user can iterate.
+Promise.all(WEAPONS.map(load)).then(async () => {
+  try {
+    const r = await fetch('/sprites/weapons/handles.json?v=' + SHEET_VER);
+    if (r.ok) {
+      const existing = await r.json();
+      for (const k of Object.keys(existing)) handles[k] = existing[k].slice();
+    }
+  } catch (_) {}
+  render();
+});
 </script>
 
 </body>

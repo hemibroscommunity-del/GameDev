@@ -2,89 +2,52 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 <title>Sprite Hand-Anchor Annotator</title>
 <style>
+  * { box-sizing: border-box; }
   body {
     margin: 0;
     background: #1a1a1a;
     color: #ddd;
-    font-family: ui-sans-serif, system-ui, sans-serif;
+    font: 14px ui-sans-serif, system-ui, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px;
+    padding: 12px 8px 24px;
     min-height: 100vh;
-    box-sizing: border-box;
+    overscroll-behavior: contain;
+    -webkit-tap-highlight-color: transparent;
   }
-  h1 { font-size: 16px; margin: 0 0 8px; font-weight: 500; }
+  h1 { font-size: 14px; margin: 0 0 4px; font-weight: 500; opacity: 0.7; }
   .label {
     font-size: 13px;
     color: #888;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-feature-settings: 'tnum';
+    text-align: center;
   }
   .label b { color: #ddd; }
+  .label .coords { color: #f5c542; }
   #stage {
     position: relative;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     border: 1px solid #333;
-    cursor: crosshair;
     background: #2a2a2a;
+    touch-action: manipulation;
+    cursor: crosshair;
   }
   #stage canvas { display: block; }
   #marker {
     position: absolute;
-    width: 12px;
-    height: 12px;
+    width: 18px;
+    height: 18px;
     border: 2px solid #f5c542;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    box-shadow: 0 0 0 1px #000;
-  }
-  .controls {
-    margin-top: 16px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  button {
-    background: #2a2a2a;
-    border: 1px solid #444;
-    color: #ddd;
-    padding: 8px 14px;
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-    border-radius: 4px;
-  }
-  button:hover { background: #353535; }
-  button:disabled { opacity: 0.4; cursor: default; }
-  .primary { background: #1e5128; border-color: #2a7a3a; }
-  .primary:hover { background: #2a7a3a; }
-  .danger { background: #5a2a2a; border-color: #7a3a3a; }
-  textarea {
-    margin-top: 14px;
-    width: 600px;
-    max-width: 100%;
-    height: 160px;
-    background: #0e0e0e;
-    color: #cfd8dc;
-    border: 1px solid #333;
-    font-family: ui-monospace, monospace;
-    font-size: 11px;
-    padding: 8px;
-    box-sizing: border-box;
-  }
-  .help {
-    font-size: 11px;
-    color: #777;
-    max-width: 580px;
-    text-align: center;
-    line-height: 1.5;
-    margin-top: 10px;
+    box-shadow: 0 0 0 1px #000, 0 0 8px rgba(245,197,66,0.6);
   }
   .progress {
     height: 4px;
@@ -100,80 +63,140 @@
     background: #f5c542;
     transition: width 200ms ease-out;
   }
+  .controls {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 100%;
+    max-width: 420px;
+  }
+  .controls .full { grid-column: 1 / -1; }
+  button {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #ddd;
+    padding: 12px 10px;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    min-height: 44px;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  button:active { background: #353535; }
+  button:disabled { opacity: 0.35; cursor: default; }
+  .primary { background: #1e5128; border-color: #2a7a3a; }
+  .danger  { background: #5a2a2a; border-color: #7a3a3a; }
+  .zoom {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    align-items: center;
+    font-size: 13px;
+    color: #888;
+  }
+  .zoom button {
+    padding: 6px 14px;
+    min-height: 36px;
+    font-weight: 700;
+  }
+  textarea {
+    margin-top: 12px;
+    width: 100%;
+    max-width: 600px;
+    height: 120px;
+    background: #0e0e0e;
+    color: #cfd8dc;
+    border: 1px solid #333;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    padding: 8px;
+  }
+  .help {
+    font-size: 12px;
+    color: #777;
+    max-width: 580px;
+    text-align: center;
+    line-height: 1.5;
+    margin-top: 10px;
+  }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e5128;
+    border: 1px solid #2a7a3a;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 200ms;
+  }
+  .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
 
 <h1>Sprite Hand-Anchor Annotator</h1>
 <div class="label">
-  <b id="frameLabel">Loading…</b>
-  · <span id="counter">0 / 125</span>
+  <b id="frameLabel">Loading…</b><br>
+  <span id="counter">0 / ?</span> · <span class="coords" id="lastCoord">—</span>
 </div>
 <div class="progress"><div id="progressBar" style="width:0%"></div></div>
 
 <div id="stage"></div>
 
+<div class="zoom">
+  <span>zoom</span>
+  <button id="zoomOut">−</button>
+  <span id="zoomLabel">6×</span>
+  <button id="zoomIn">+</button>
+</div>
+
 <div class="controls">
   <button id="prevBtn">← Prev</button>
-  <button id="skipBtn">Skip (use prev anchor)</button>
+  <button id="skipBtn">Skip (use prev)</button>
   <button id="nextBtn">Next (no save) →</button>
   <button id="resetBtn" class="danger">Reset all</button>
-  <button id="saveBtn" class="primary">Download JSON</button>
+  <button id="copyBtn"  class="full">Copy JSON to clipboard</button>
+  <button id="saveBtn"  class="full primary">Download JSON</button>
 </div>
 
 <div class="help">
-  Click on the character's <b>right hand</b> in each frame.
-  The marker shows your last click. Auto-advances after each click.
-  Stand sheets are 1 frame each; jog sheets are 24 frames each.
-  When you finish (or anytime), hit <b>Download JSON</b> and save it as
+  Tap the character's <b>right hand</b> in each frame.<br>
+  Mirror flip for W / NW / SE is handled by the renderer — annotate the 5 unmirrored sheets only.<br>
+  Frame count is auto-detected from each sheet. Use the zoom buttons for precision.<br>
+  When done, <b>Copy JSON</b> and paste it to your assistant, or <b>Download</b> and commit it as
   <code>public/sprites/player/anchors.json</code>.
 </div>
 
-<textarea id="output" readonly placeholder="JSON will appear here as you click."></textarea>
+<textarea id="output" readonly placeholder="JSON will appear here as you tap."></textarea>
+<div class="toast" id="toast"></div>
 
 <script>
-const SCALE = 6;                 // 64 → 384 px display
 const FRAME_W = 64;
-const SHEET_VER = 7;             // matches BroTown.jsx ?v=
-const DIRS = ['east','north','northeast','south','southwest'];
-const POSES = [
-  { pose: 'jog',   frames: 24 },
-  { pose: 'stand', frames: 1  },
-];
-
-// Build the queue of all frames to annotate.
-const QUEUE = [];
-for (const { pose, frames } of POSES) {
-  for (const dir of DIRS) {
-    const key = pose + '-' + dir;
-    for (let f = 0; f < frames; f++) QUEUE.push({ key, frame: f, pose, dir });
-  }
-}
-
-// Load all sheets up front.
-const sheets = {};
-let loaded = 0;
-const total = DIRS.length * POSES.length;
-function load(key) {
-  return new Promise(res => {
-    const img = new Image();
-    img.onload = () => { sheets[key] = img; loaded++; res(); };
-    img.onerror = () => { console.warn('failed', key); loaded++; res(); };
-    img.src = '/sprites/player/' + key + '.png?v=' + SHEET_VER;
-  });
-}
-const pending = [];
-for (const { pose } of POSES) for (const dir of DIRS) pending.push(load(pose + '-' + dir));
+const SHEET_VER = Date.now();      // bypass cache, always fetch fresh
+const DIRS  = ['east','north','northeast','south','southwest'];
+const POSES = ['jog','stand'];     // frame count auto-detected from sheet width
 
 // State.
-const anchors = {};   // { 'jog-east': [[x,y], ...], 'stand-east': [[x,y]], ... }
-let cursor = 0;       // index into QUEUE
+const sheets = {};                 // 'jog-east' → Image
+const frameCounts = {};            // 'jog-east' → 32
+const anchors = {};                // 'jog-east' → [[x,y], ...]
+let queue = [];                    // built after sheets load
+let cursor = 0;
+let scale = 6;                     // pixels-per-source-pixel; fits 384px on a 390px iPhone
 
-const stage = document.getElementById('stage');
-const canvas = document.createElement('canvas');
-canvas.width  = FRAME_W * SCALE;
-canvas.height = FRAME_W * SCALE;
-const ctx = canvas.getContext('2d');
+// DOM.
+const stage   = document.getElementById('stage');
+const canvas  = document.createElement('canvas');
+const ctx     = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 stage.appendChild(canvas);
 
@@ -182,17 +205,60 @@ marker.id = 'marker';
 marker.style.display = 'none';
 stage.appendChild(marker);
 
-stage.style.width  = (FRAME_W * SCALE) + 'px';
-stage.style.height = (FRAME_W * SCALE) + 'px';
+function autoFitScale() {
+  const room = Math.min(window.innerWidth - 24, 720);
+  const s = Math.max(4, Math.min(12, Math.floor(room / FRAME_W)));
+  scale = s;
+}
+autoFitScale();
+window.addEventListener('resize', () => { autoFitScale(); applyScale(); render(); });
 
-// Render the current queue item.
+function applyScale() {
+  canvas.width  = FRAME_W * scale;
+  canvas.height = FRAME_W * scale;
+  stage.style.width  = (FRAME_W * scale) + 'px';
+  stage.style.height = (FRAME_W * scale) + 'px';
+  ctx.imageSmoothingEnabled = false;
+  document.getElementById('zoomLabel').textContent = scale + '×';
+}
+applyScale();
+
+// Load every sheet, detect frame count.
+function load(key) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      sheets[key] = img;
+      frameCounts[key] = Math.max(1, Math.round(img.naturalWidth / FRAME_W));
+      res();
+    };
+    img.onerror = () => { console.warn('failed', key); res(); };
+    img.src = '/sprites/player/' + key + '.png?v=' + SHEET_VER;
+  });
+}
+const pending = [];
+for (const pose of POSES) for (const dir of DIRS) pending.push(load(pose + '-' + dir));
+
+function buildQueue() {
+  queue = [];
+  for (const pose of POSES) {
+    for (const dir of DIRS) {
+      const key = pose + '-' + dir;
+      const n = frameCounts[key] || 1;
+      for (let f = 0; f < n; f++) queue.push({ key, frame: f, pose, dir });
+    }
+  }
+}
+
 function render() {
-  const item = QUEUE[cursor];
+  if (!queue.length) return;
+  const item = queue[cursor];
   if (!item) return finish();
   const { key, frame } = item;
-  document.getElementById('frameLabel').textContent = key + '  · frame ' + frame;
-  document.getElementById('counter').textContent = (cursor + 1) + ' / ' + QUEUE.length;
-  document.getElementById('progressBar').style.width = ((cursor + 1) / QUEUE.length * 100).toFixed(1) + '%';
+  const total = frameCounts[key] || 1;
+  document.getElementById('frameLabel').textContent = key + ' · frame ' + frame + ' / ' + (total - 1);
+  document.getElementById('counter').textContent = (cursor + 1) + ' / ' + queue.length;
+  document.getElementById('progressBar').style.width = ((cursor + 1) / queue.length * 100).toFixed(1) + '%';
 
   const img = sheets[key];
   ctx.fillStyle = '#2a2a2a';
@@ -201,49 +267,52 @@ function render() {
     ctx.drawImage(
       img,
       frame * FRAME_W, 0, FRAME_W, FRAME_W,
-      0, 0, FRAME_W * SCALE, FRAME_W * SCALE
+      0, 0, FRAME_W * scale, FRAME_W * scale
     );
   }
 
-  // Show existing anchor as marker if present.
   const existing = anchors[key] && anchors[key][frame];
   if (existing) {
     marker.style.display = 'block';
-    marker.style.left = (existing[0] * SCALE) + 'px';
-    marker.style.top  = (existing[1] * SCALE) + 'px';
+    marker.style.left = (existing[0] * scale) + 'px';
+    marker.style.top  = (existing[1] * scale) + 'px';
+    document.getElementById('lastCoord').textContent = '(' + existing[0] + ', ' + existing[1] + ')';
   } else {
     marker.style.display = 'none';
+    document.getElementById('lastCoord').textContent = '—';
   }
 
   document.getElementById('output').value = JSON.stringify(anchors, null, 2);
   document.getElementById('prevBtn').disabled = cursor === 0;
 }
 
-// Click → record anchor and auto-advance.
-canvas.addEventListener('click', e => {
+function recordAt(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
-  const x = Math.round((e.clientX - rect.left) / SCALE);
-  const y = Math.round((e.clientY - rect.top)  / SCALE);
-  const item = QUEUE[cursor];
+  const x = Math.max(0, Math.min(FRAME_W - 1, Math.round((clientX - rect.left) / scale)));
+  const y = Math.max(0, Math.min(FRAME_W - 1, Math.round((clientY - rect.top)  / scale)));
+  const item = queue[cursor];
   if (!item) return;
   if (!anchors[item.key]) anchors[item.key] = [];
   anchors[item.key][item.frame] = [x, y];
   cursor++;
   render();
-});
+}
+
+// Tap / click on the canvas — `click` covers both mouse and synthesized
+// touch on mobile.  preventDefault on touchstart stops scroll/zoom on iOS.
+stage.addEventListener('touchstart', e => { e.preventDefault(); }, { passive: false });
+canvas.addEventListener('click', e => recordAt(e.clientX, e.clientY));
 
 document.getElementById('prevBtn').onclick = () => { if (cursor > 0) { cursor--; render(); } };
 
 document.getElementById('skipBtn').onclick = () => {
-  // Use previous frame's anchor (or last anchor for this key) as default.
-  const item = QUEUE[cursor];
+  const item = queue[cursor];
   if (!item) return;
   let prev = null;
   if (anchors[item.key] && item.frame > 0) prev = anchors[item.key][item.frame - 1];
   if (!prev) {
-    // Fall back to last entry of any direction we've already done.
     for (let i = cursor - 1; i >= 0; i--) {
-      const q = QUEUE[i];
+      const q = queue[i];
       const v = anchors[q.key] && anchors[q.key][q.frame];
       if (v) { prev = v; break; }
     }
@@ -256,13 +325,40 @@ document.getElementById('skipBtn').onclick = () => {
   render();
 };
 
-document.getElementById('nextBtn').onclick = () => { cursor = Math.min(QUEUE.length - 1, cursor + 1); render(); };
-
+document.getElementById('nextBtn').onclick = () => { cursor = Math.min(queue.length - 1, cursor + 1); render(); };
 document.getElementById('resetBtn').onclick = () => {
   if (!confirm('Clear all anchors?')) return;
   for (const k of Object.keys(anchors)) delete anchors[k];
   cursor = 0;
   render();
+};
+
+document.getElementById('zoomIn').onclick  = () => { scale = Math.min(12, scale + 1); applyScale(); render(); };
+document.getElementById('zoomOut').onclick = () => { scale = Math.max(3,  scale - 1); applyScale(); render(); };
+
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+document.getElementById('copyBtn').onclick = async () => {
+  const text = JSON.stringify(anchors, null, 2);
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Copied ' + text.length + ' chars to clipboard');
+  } catch (e) {
+    // Fallback: select textarea.
+    const ta = document.getElementById('output');
+    ta.removeAttribute('readonly');
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    ta.setAttribute('readonly', '');
+    toast('Copied via fallback');
+  }
 };
 
 document.getElementById('saveBtn').onclick = () => {
@@ -276,14 +372,28 @@ document.getElementById('saveBtn').onclick = () => {
 
 function finish() {
   document.getElementById('frameLabel').textContent = 'All frames annotated.';
-  document.getElementById('counter').textContent = QUEUE.length + ' / ' + QUEUE.length;
+  document.getElementById('counter').textContent = queue.length + ' / ' + queue.length;
   document.getElementById('progressBar').style.width = '100%';
   document.getElementById('output').value = JSON.stringify(anchors, null, 2);
   marker.style.display = 'none';
 }
 
-// Boot.
-Promise.all(pending).then(() => {
+// Boot: load sheets, optionally seed existing anchors.json, then render.
+Promise.all(pending).then(async () => {
+  buildQueue();
+  // Pre-load existing anchors so the user can iterate / fix instead of re-clicking from scratch.
+  try {
+    const r = await fetch('/sprites/player/anchors.json?v=' + SHEET_VER);
+    if (r.ok) {
+      const existing = await r.json();
+      for (const k of Object.keys(existing)) anchors[k] = existing[k].slice();
+      // Auto-jump to first un-annotated frame so user resumes where data left off.
+      for (let i = 0; i < queue.length; i++) {
+        const q = queue[i];
+        if (!anchors[q.key] || anchors[q.key][q.frame] == null) { cursor = i; break; }
+      }
+    }
+  } catch (_) {}
   render();
 });
 </script>
