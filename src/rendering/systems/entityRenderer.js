@@ -742,12 +742,6 @@ export class EntityRenderer {
          : (S._aimAngle != null) ? S._aimAngle
          : (S._facingAngle || 0))
       : 0;
-    /* Cache the most recent aim/shield angle for the "idle after
-       release" case — the body should hold the angle it was last
-       pointed in (per user spec: shield released while standing
-       still keeps the shield direction).  Once the player starts
-       moving (stick or velocity), invalidate the cache so it can't
-       override the live movement direction even for one frame. */
     let isMovingBackward = false;
     if (useAimDirection && isMoving) {
       const dotProd = (P.vx || 0) * Math.cos(aimRefAngle) + (P.vy || 0) * Math.sin(aimRefAngle);
@@ -765,20 +759,16 @@ export class EntityRenderer {
        5. Smoothed S._facingAngle, then legacy 4-cardinal S._facing */
     const stickX = S.stickX || 0;
     const stickY = S.stickY || 0;
-    /* Any non-zero stick value means the user is past the deadzone
-       (the input handler zeroes stickX/Y inside the deadzone), so
-       this should be a strict !== 0 check rather than a threshold. */
     const stickActive = stickX !== 0 || stickY !== 0;
-    /* Cache aim while it's the dominant input; clear the cache the
-       moment any movement signal kicks in.  Without this clear, a
-       frame between shield release and the velocity threshold being
-       crossed would show the cached aim instead of the live
-       movement direction. */
-    if (useAimDirection) {
-      display._lastUsedAim = aimRefAngle;
-    } else if (stickActive || isMoving) {
-      display._lastUsedAim = null;
-    }
+    /* Match the Canvas 2D facing precedence (BroTown.jsx ~13125-13137):
+       1. Shielding → S._shieldAngle
+       2. Attack-aim with backpedal or idle-autoAttack → S._aimAngle
+       3. Live movement input (stick — instant) → atan2(stickY, stickX)
+       4. Velocity (desktop keyboard) → atan2(vy, vx)
+       5. Smoothed S._facingAngle (last movement direction)
+       6. Legacy 4-cardinal S._facing
+       No "remember last aim" cache — falling to S._facingAngle handles
+       the idle-after-release case the same way Canvas 2D does. */
     let facing;
     const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
     if (useAimDirection) {
@@ -791,11 +781,6 @@ export class EntityRenderer {
     } else if (isMoving) {
       const ang = Math.atan2(P.vy || 0, P.vx || 0);
       const sector = Math.round(ang / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
-    } else if (display._lastUsedAim != null) {
-      /* Idle after attack/shield released — keep the last aim angle
-         so the body doesn't drift back to a stale movement direction. */
-      const sector = Math.round(display._lastUsedAim / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8];
     } else if (S._facingAngle !== undefined) {
       const sector = Math.round(S._facingAngle / (Math.PI / 4));
