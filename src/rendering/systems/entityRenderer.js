@@ -725,19 +725,28 @@ export class EntityRenderer {
 
     /* Aim-direction override: while actively attacking (swing window),
        holding the attack input (S._aiming = right joystick / mouse),
-       or blocking (S.isBlocking = shield held), the body faces
-       wherever the right joystick / aim is pointed.  When the right
-       joystick is released, facing falls back to velocity (left
-       joystick) — autoAttack is intentionally NOT included here so
-       that idle / movement still feels like a normal walk-around.
-       Movement is gameplay-slowed 50% during these states, so the
-       jog cycle plays at half speed and reverses when the player
-       walks backward relative to aim. */
+       or shielding (S._shieldUp), the body faces wherever the right
+       joystick / aim is pointed.  When the right joystick is released
+       and the player is moving, facing falls back to velocity (left
+       joystick).  When idle and not aiming, we hold the LAST aim /
+       shield angle so the body doesn't snap back to the previous
+       movement direction the moment the joystick is released. */
     const swingActive = S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWING_ANIM_MS;
-    const useAimDirection = !!(swingActive || S.isBlocking || S._aiming);
+    const isShielding = !!S._shieldUp;
+    const useAimDirection = !!(swingActive || isShielding || S._aiming);
+    /* Pick aim source: shield angle wins while shielding (separate
+       joystick from attack on mobile), then explicit aim, then the
+       smoothed S._facingAngle. */
     const aimRefAngle = useAimDirection
-      ? ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0))
+      ? ((isShielding && S._shieldAngle != null) ? S._shieldAngle
+         : (S._aimAngle != null) ? S._aimAngle
+         : (S._facingAngle || 0))
       : 0;
+    /* Cache the most recent aim/shield angle for the "idle after
+       release" case — the body should hold the angle it was last
+       pointed in (per user spec: shield released while standing
+       still keeps the shield direction). */
+    if (useAimDirection) display._lastUsedAim = aimRefAngle;
     let isMovingBackward = false;
     if (useAimDirection && isMoving) {
       const dotProd = (P.vx || 0) * Math.cos(aimRefAngle) + (P.vy || 0) * Math.sin(aimRefAngle);
@@ -757,6 +766,11 @@ export class EntityRenderer {
     } else if (isMoving) {
       const ang = Math.atan2(P.vy || 0, P.vx || 0);
       const sector = Math.round(ang / (Math.PI / 4));
+      facing = SECTORS[((sector % 8) + 8) % 8];
+    } else if (display._lastUsedAim != null) {
+      /* Idle after attack/shield released — keep the last aim angle
+         so the body doesn't drift back to a stale movement direction. */
+      const sector = Math.round(display._lastUsedAim / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8];
     } else if (S._facingAngle !== undefined) {
       const sector = Math.round(S._facingAngle / (Math.PI / 4));
@@ -933,8 +947,8 @@ export class EntityRenderer {
         const restAng = REST_ANG[wpn.type] != null ? REST_ANG[wpn.type] : 0;
         swingAng = (aimAngleForSwing - restAng) + swingOffset;
       }
-      if (wpn && !S.isBlocking) {
-        /* Weapon is fully hidden while blocking — gameplay rule: you
+      if (wpn && !isShielding) {
+        /* Weapon is fully hidden while shielding — gameplay rule: you
            can attack OR block, never both, so no point drawing the
            weapon sprite or its glow when the shield is up. */
         const elem = wpn.element1;
@@ -1147,7 +1161,11 @@ export class EntityRenderer {
       // S._aimAngle, else facingAngle).  Drawn as a translucent
       // wedge fill plus a thicker rim so it reads as an actual
       // barrier.  Pulses brighter when a hit was just blocked.
-      if (S.rpg.shield && S.isBlocking) {
+      // Renders whenever S._shieldUp — doesn't gate on the shield
+      // item being equipped, since the shield-up input is what
+      // matters here visually (gameplay determines whether the
+      // block actually mitigates damage).
+      if (isShielding) {
         const shieldAng = (S._shieldAngle != null)
           ? S._shieldAngle
           : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
