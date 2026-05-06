@@ -23,7 +23,7 @@ export async function initPixiRenderer(canvas) {
   const tileRenderer = new TileRenderer(layers.tiles);
   const entityRenderer = new EntityRenderer(layers.entities, layers.player);
   const effectsRenderer = new EffectsRenderer(layers);
-  const fpsOverlay = new FpsOverlay(layers.hud);
+  const fpsOverlay = new FpsOverlay();
 
   // Load tile sprite assets (non-blocking — tiles render procedurally until loaded)
   loadTileAssets()
