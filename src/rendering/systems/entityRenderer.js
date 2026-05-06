@@ -753,15 +753,26 @@ export class EntityRenderer {
       isMovingBackward = dotProd < 0;
     }
 
-    /* Sprite-sheet body — preferred when sheets have loaded.  Picks
-       (pose, dir, frameIdx) from facing + movement.
-       Priority: aim direction (if attacking / shielding) → velocity
-       (if moving) → smoothed continuous facingAngle (if idle) →
-       legacy 4-cardinal S._facing. */
+    /* Sprite-sheet body — preferred when sheets have loaded.
+       Priority order:
+       1. Aim direction (attacking / shielding / right-joystick held)
+       2. Left-joystick stick direction (S.stickX / Y — responds the
+          frame the user pushes the stick, before P.vx / P.vy update)
+       3. Velocity (covers desktop keyboard, where stickX/Y aren't set)
+       4. Last-used aim cache (idle after release — body holds the
+          angle the shield/attack was last pointed in)
+       5. Smoothed S._facingAngle, then legacy 4-cardinal S._facing */
+    const stickX = S.stickX || 0;
+    const stickY = S.stickY || 0;
+    const stickActive = Math.abs(stickX) > 0.05 || Math.abs(stickY) > 0.05;
     let facing;
     const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
     if (useAimDirection) {
       const sector = Math.round(aimRefAngle / (Math.PI / 4));
+      facing = SECTORS[((sector % 8) + 8) % 8];
+    } else if (stickActive) {
+      const ang = Math.atan2(stickY, stickX);
+      const sector = Math.round(ang / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8];
     } else if (isMoving) {
       const ang = Math.atan2(P.vy || 0, P.vx || 0);
