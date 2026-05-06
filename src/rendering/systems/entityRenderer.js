@@ -1116,12 +1116,18 @@ export class EntityRenderer {
          when the player faces away.  The weaponContainer wraps all
          three visuals so a single setChildIndex moves them as one. */
       if (display._weaponContainer && display._spriteBody) {
-        /* Per-direction z-order:
-           - E (0), SE (1), S (2)        → in front (toward-camera, sword visible)
-           - SW (3), W (4), NW (5), N (6) → behind (back-turning)
-           - NE (7)                       → in front (right hand swings far back,
-                                            weapon would disappear at pull-back) */
-        const inFront = facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7;
+        /* Per-direction z-order.  Different rule for shield vs weapon:
+           - Weapon: E/SE/S (0,1,2) AND NE (7) in front.  NE is in
+             front so the sword doesn't disappear when the right arm
+             swings far back during a NE jog.
+           - Shield: E/SE/S (0,1,2) in front; NE goes behind so the
+             body partially occludes the guard arc (matches user's
+             expected "blocked by character" look — there's no
+             pull-back-disappearance concern since the weapon is
+             hidden during shield). */
+        const inFront = isShielding
+          ? (facingIdx === 0 || facingIdx === 1 || facingIdx === 2)
+          : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* Pixi setChildIndex removes the child, then inserts at the
