@@ -228,8 +228,21 @@ function createOtherPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* Weapon container — same structure as the local player (see
+     createPlayerDisplay).  Wraps glow underlay, procedural fallback,
+     and the icon Sprite so a single setChildIndex per frame can
+     z-order all three relative to spriteBody. */
+  const weaponContainer = new Container();
+  container.addChild(weaponContainer);
+
+  const weaponGlowGfx = new Graphics();
+  weaponContainer.addChild(weaponGlowGfx);
   const weaponGfx = new Graphics();
-  container.addChild(weaponGfx);
+  weaponContainer.addChild(weaponGfx);
+  const weaponSprite = new Sprite();
+  weaponSprite.anchor.set(0.5, 0.5);
+  weaponSprite.visible = false;
+  weaponContainer.addChild(weaponSprite);
 
   const nameText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
   nameText.anchor.set(0.5, 1);
@@ -240,7 +253,10 @@ function createOtherPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._weaponContainer = weaponContainer;
+  container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
+  container._weaponSprite = weaponSprite;
   container._nameText = nameText;
   /* Animation cache mirrors the local player display. */
   container._animPose = null;
@@ -585,15 +601,17 @@ export class EntityRenderer {
          reuse the last computed 8-compass on display._lastFacing so
          the diagonal idle pose carries through (otherwise it would
          snap back to the broadcast 4-cardinal). */
+      const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
       let facing;
       if (isMoving) {
         const ang = Math.atan2(other._smoothVy || 0, other._smoothVx || 0);
         const sector = Math.round(ang / (Math.PI / 4));
-        facing = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'][((sector % 8) + 8) % 8];
+        facing = SECTORS[((sector % 8) + 8) % 8];
         display._lastFacing = facing;
       } else {
         facing = display._lastFacing || other._facing || 'south';
       }
+      const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
       const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
       const spritesAvailable = hasPose(pose) || hasPose('stand');
@@ -672,6 +690,136 @@ export class EntityRenderer {
           // Head
           body.circle(0, -bodyH / 2 - 4 + bobY, 6);
           body.fill({ color: cssColorToHex(head) });
+        }
+      }
+
+      /* Weapon + shield rendering for other players — mirrors the
+         local-player path with two simplifications:
+         1. No S._aimAngle is broadcast for other players, so the
+            swing/aim direction is derived from their body facing.
+         2. No combo/collision-glow data either; weaponGlowGfx stays
+            empty (kept around for future migration if those signals
+            get broadcast). */
+      const oWeaponGfx = display._weaponGfx;
+      const oWeaponGlowGfx = display._weaponGlowGfx;
+      oWeaponGfx.clear();
+      oWeaponGlowGfx.clear();
+      const oIsShielding = !!other._shieldUp;
+      const oWpnType = other.wpnType || null;
+      /* Shield-direction angle: server only broadcasts _shieldUp, so
+         the arc tracks the body's facing rather than a separate aim. */
+      const aimAngle = facingIdx >= 0 ? facingIdx * Math.PI / 4 : 0;
+      /* Swing window — same 250ms quadratic ease-out as local. */
+      const oSwingActive = other._swingTs && (now - other._swingTs) < SWING_ANIM_MS;
+      let oSwingAng = 0, oSwingProgress = 0, oSwingOffset = 0;
+      if (oSwingActive && oWpnType) {
+        oSwingProgress = (now - other._swingTs) / SWING_ANIM_MS;
+        const eased = 1 - (1 - oSwingProgress) * (1 - oSwingProgress);
+        oSwingOffset = -SWING_FULL_ARC / 2 + eased * SWING_FULL_ARC;
+        const restAng = REST_ANG[oWpnType] != null ? REST_ANG[oWpnType] : 0;
+        oSwingAng = (aimAngle - restAng) + oSwingOffset;
+      }
+      const oSpriteBody = display._spriteBody;
+      const oWeaponSprite = display._weaponSprite;
+      if (oWpnType && !oIsShielding) {
+        const wpnIconTex = hasWeapon(oWpnType) ? getWeaponTexture(oWpnType) : null;
+        if (wpnIconTex) {
+          if (oWeaponSprite.texture !== wpnIconTex) oWeaponSprite.texture = wpnIconTex;
+          const handle = getWeaponHandle(oWpnType);
+          const tw = wpnIconTex.width || 64;
+          const th = wpnIconTex.height || 64;
+          if (handle) oWeaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
+          else oWeaponSprite.anchor.set(0.5, 1.0);
+
+          /* Per-frame hand anchor — same math as local. */
+          const SHEET_W = 64;
+          const { dir, mirror } = resolveDirection(facing);
+          let bodyScale = 1.0;
+          const isHitNow = other._hitFlash && (now - other._hitFlash) < 250;
+          const poseNow = isHitNow ? 'hit' : (isMoving ? 'jog' : 'stand');
+          if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88;
+          else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03;
+          const animFrame = display._animFrame || 0;
+          const hand = display._animPose ? getAnchor(display._animPose, dir, animFrame, mirror) : null;
+          let wpnX = 0, wpnY = 0;
+          if (hand) {
+            const ax = mirror ? (SHEET_W - hand[0]) : hand[0];
+            wpnX = (ax - SHEET_W / 2) * bodyScale;
+            wpnY = (hand[1] - SHEET_W / 2) * bodyScale;
+          } else {
+            /* Crude fallback before sprite anim populates. */
+            wpnX = 14; wpnY = 8 + bobY;
+          }
+          oWeaponSprite.x = wpnX;
+          oWeaponSprite.y = wpnY;
+
+          const targetH = oWpnType === 'greatsword' ? 36
+                         : oWpnType === 'staff'      ? 34
+                         : oWpnType === 'bow'        ? 28
+                         :                              26;
+          const fitScale = targetH / Math.max(8, th);
+          if (oSwingActive) {
+            oWeaponSprite.rotation = oSwingAng;
+            oWeaponSprite.scale.x = fitScale;
+          } else {
+            oWeaponSprite.rotation = 0;
+            const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
+            oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
+          }
+          oWeaponSprite.scale.y = fitScale;
+          oWeaponSprite.tint = 0xffffff;
+          oWeaponSprite.visible = true;
+
+          /* Swing arc trail. */
+          if (oSwingActive) {
+            const trailReach = 42;
+            const startAng = aimAngle - SWING_FULL_ARC / 2;
+            const endAng   = aimAngle + oSwingOffset;
+            const trailAlpha = (1 - oSwingProgress) * 0.35;
+            oWeaponGfx.moveTo(wpnX, wpnY);
+            oWeaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
+            oWeaponGfx.lineTo(wpnX, wpnY);
+            oWeaponGfx.fill({ color: 0xffffff, alpha: trailAlpha });
+            oWeaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
+            oWeaponGfx.stroke({ color: 0xfffac8, width: 2, alpha: trailAlpha * 1.2 });
+          }
+        } else {
+          oWeaponSprite.visible = false;
+        }
+      } else {
+        oWeaponSprite.visible = false;
+      }
+
+      /* Shield arc — same 120° wedge as local, oriented to body facing
+         (no _shieldAngle broadcast).  Block-flash pulse not animated
+         since _blockFlash isn't broadcast. */
+      if (oIsShielding) {
+        const sR = 20;
+        const sArc = Math.PI * 2 / 3;
+        const startA = aimAngle - sArc / 2;
+        const endA   = aimAngle + sArc / 2;
+        oWeaponGfx.moveTo(0, bobY);
+        oWeaponGfx.arc(0, bobY, sR, startA, endA);
+        oWeaponGfx.lineTo(0, bobY);
+        oWeaponGfx.fill({ color: 0x5dade2, alpha: 0.18 });
+        oWeaponGfx.arc(0, bobY, sR, startA, endA);
+        oWeaponGfx.stroke({ color: 0x5dade2, width: 4, alpha: 0.85 });
+      }
+
+      /* Z-order: same per-direction split as local.  Shield uses the
+         forward-half (E/SE/S/SW) in front rule; weapon uses the
+         E/SE/S + NE rule. */
+      if (display._weaponContainer && oSpriteBody) {
+        const inFront = oIsShielding
+          ? (facingIdx >= 0 && facingIdx <= 3)
+          : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
+        const bodyIdx = display.getChildIndex(oSpriteBody);
+        const wcIdx   = display.getChildIndex(display._weaponContainer);
+        const targetIdx = inFront
+          ? (wcIdx > bodyIdx ? bodyIdx + 1 : bodyIdx)
+          : (wcIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1));
+        if (wcIdx !== targetIdx) {
+          display.setChildIndex(display._weaponContainer, targetIdx);
         }
       }
 
