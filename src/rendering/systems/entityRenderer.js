@@ -14,6 +14,20 @@ import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
 
+/* Weapon swing animation — matches the Canvas 2D drawSpriteCharacter
+ * timing (BroTown.jsx:3352).  250ms quadratic-ease-out rotation around
+ * the hand pivot, sweeping ~107° from -53° to +53° relative to the
+ * aim direction.  Each weapon's rest blade angle is the orientation
+ * of the sprite as drawn (sword tilts NE, staff vertical, bow horiz). */
+const SWING_ANIM_MS = 250;
+const SWING_FULL_ARC = Math.PI * 0.85 * 0.70;   // ~107° visual sweep
+const REST_ANG = {
+  sword: -Math.PI / 4,
+  greatsword: -Math.PI / 4,
+  bow: 0,
+  staff: -Math.PI / 2,
+};
+
 const NAME_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
   fontSize: 10,
@@ -879,6 +893,20 @@ export class EntityRenderer {
       const wpn = activeSlot === 'melee' ? S.rpg.weapon
                 : activeSlot === 'staff' ? (S.rpg.staffWeapon || S.rpg.rangedWeapon)
                 : S.rpg.rangedWeapon;
+      /* Swing animation state.  When the player attacks, S.isSwinging
+         goes true and S.swingTimer is set to Date.now().  We compute
+         a quadratic-ease-out progress 0..1, then derive an angular
+         offset that sweeps the blade across the aim direction. */
+      const swingActive = S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWING_ANIM_MS;
+      let swingProgress = 0, swingOffset = 0, swingAng = 0, aimAngleForSwing = 0;
+      if (swingActive && wpn) {
+        swingProgress = (now - S.swingTimer) / SWING_ANIM_MS;
+        const eased = 1 - (1 - swingProgress) * (1 - swingProgress);
+        swingOffset = -SWING_FULL_ARC / 2 + eased * SWING_FULL_ARC;
+        aimAngleForSwing = (S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0);
+        const restAng = REST_ANG[wpn.type] != null ? REST_ANG[wpn.type] : 0;
+        swingAng = (aimAngleForSwing - restAng) + swingOffset;
+      }
       if (wpn) {
         const elem = wpn.element1;
         const wpnColor = elem && ELEMENTS[elem] ? cssColorToHex(ELEMENTS[elem].color) : 0xaaaaaa;
@@ -985,11 +1013,20 @@ export class EntityRenderer {
                          : wpn.type === 'bow'        ? 28
                          :                              26;
           const fitScale = targetH / Math.max(8, th);
-          /* Weapon mirror — flip on facings idx 3..6 (SW/W/NW/N) so
-             the blade angles outward consistently with how the Canvas
-             2D path mirrors.  E/SE/S/NE keep the source orientation. */
-          const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
-          weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
+          /* During an idle pose, mirror the blade horizontally for
+             facings idx 3..6 (SW/W/NW/N) so it angles outward.  During
+             a swing, rotation alone positions the blade — disable
+             mirror, set rotation = swingAng (relative to the sprite's
+             rest orientation, around the grip pivot which is the
+             anchor). */
+          if (swingActive) {
+            weaponSprite.rotation = swingAng;
+            weaponSprite.scale.x = fitScale;
+          } else {
+            weaponSprite.rotation = 0;
+            const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
+            weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
+          }
           weaponSprite.scale.y = fitScale;
           weaponSprite.tint = 0xffffff;
           weaponSprite.visible = true;
@@ -1058,6 +1095,23 @@ export class EntityRenderer {
         }
       }
 
+      /* Swing arc trail — fading sector centered on the hand pivot,
+         sweeping from the swing's start angle through the current
+         blade position.  Drawn on weaponGfx so it z-orders with the
+         weapon sprite via the weaponContainer reorder. */
+      if (swingActive) {
+        const trailReach = 42;          // ~ wSize * 1.47 in Canvas 2D math
+        const startAng = aimAngleForSwing - SWING_FULL_ARC / 2;
+        const endAng   = aimAngleForSwing + swingOffset;
+        const trailAlpha = (1 - swingProgress) * 0.35;
+        weaponGfx.moveTo(wpnX, wpnY);
+        weaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
+        weaponGfx.lineTo(wpnX, wpnY);
+        weaponGfx.fill({ color: 0xffffff, alpha: trailAlpha });
+        weaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
+        weaponGfx.stroke({ color: 0xfffac8, width: 2, alpha: trailAlpha * 1.2 });
+      }
+
       // Shield visual
       if (S.rpg.shield && S.isBlocking) {
         const shieldX = -facingX * 8 || 8;
@@ -1065,18 +1119,6 @@ export class EntityRenderer {
         weaponGfx.fill({ color: 0x3498db, alpha: 0.6 });
         weaponGfx.roundRect(shieldX - 5, -4 + bobY, 10, 14, 2);
         weaponGfx.stroke({ color: 0x5dade2, width: 1 });
-      }
-    }
-
-    // Swing animation
-    if (S.isSwinging && S.swingTimer) {
-      const swAge = (now - S.swingTimer) / 400;
-      if (swAge < 1) {
-        const swArc = (1 - swAge) * Math.PI * 1.5;
-        const swDir = S._facingAngle || 0;
-        const swR = 20;
-        weaponGfx.arc(0, bobY, swR, swDir - swArc / 2, swDir + swArc / 2);
-        weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: (1 - swAge) * 0.5 });
       }
     }
 
