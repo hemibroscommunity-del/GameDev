@@ -2,10 +2,11 @@
  * Tile Map Renderer — renders zone tiles using PixiJS Sprites from tileset assets.
  * Falls back to colored rectangles for tile types without sprite assets.
  */
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture, Rectangle } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_BUILDINGS } from '@/data/buildings.js';
+import { getLoadedTiledMap, getTilesetImage } from '../tiledMaps.js';
 
 function cssToHex(css) {
   if (typeof css !== 'string') return 0x000000;
@@ -75,6 +76,10 @@ export class TileRenderer {
     this._mapW = 0;
     this._mapH = 0;
     this._assets = null;
+    /* Tiled tile-frame caches.  Per-tile-gid Texture (frame within the
+       tileset) is created once on first use and reused across zones. */
+    this._tilesetBaseCache = new Map(); // imageSrc -> Pixi Texture (full image)
+    this._tileFrameCache = new Map();   // gid -> Pixi Texture (frame slice)
   }
 
   /** Set tile assets (call once after loadTileAssets resolves). */
@@ -106,10 +111,85 @@ export class TileRenderer {
     this._mapH = rows * TILE;
     this._bgColor = zone?.palette?.ground ? cssToHex(zone.palette.ground) : 0x2d5a1e;
 
-    if (this._useSprites(zoneId)) {
+    /* Prefer Tiled .tmx data when loaded for this zone — that's the
+       authoritative visual source.  Falls back to per-tile sprites
+       (built from the canvas tile atlas) or procedural rectangles
+       when Tiled isn't available.  _renderedTiled tracks whether the
+       last rebuild used Tiled, so update() can re-trigger rebuild
+       if the Tiled map finishes loading after zone entry. */
+    const tiledMap = getLoadedTiledMap(zoneId);
+    this._renderedTiled = !!tiledMap;
+    if (tiledMap) {
+      this._mapW = tiledMap.width * TILE;
+      this._mapH = tiledMap.height * TILE;
+      this._rebuildFromTiled(tiledMap);
+    } else if (this._useSprites(zoneId)) {
       this._rebuildWithSprites(map, zoneId, rows, cols, zone);
     } else {
       this._rebuildProcedural(map, zoneId, rows, cols, zone);
+    }
+  }
+
+  /** Resolve a global tile id to {tileset, localId}, picking the
+   *  tileset with the highest firstgid <= gid.  Returns null if no
+   *  match (gid 0 = empty cell). */
+  _resolveGid(gid, tilesets) {
+    let pick = null;
+    for (const ts of tilesets) {
+      if (ts.firstgid <= gid) pick = ts;
+      else break;
+    }
+    return pick ? { ts: pick, localId: gid - pick.firstgid } : null;
+  }
+
+  /** Build (or look up cached) Pixi Texture for a global tile id. */
+  _getTileTexture(gid, tilesets) {
+    const cached = this._tileFrameCache.get(gid);
+    if (cached) return cached;
+    const res = this._resolveGid(gid, tilesets);
+    if (!res) return null;
+    const ts = res.ts;
+    let baseTex = this._tilesetBaseCache.get(ts.imageSrc);
+    if (!baseTex) {
+      const img = getTilesetImage(ts.imageSrc);
+      if (!img) return null;            // image not loaded yet — caller falls back
+      baseTex = Texture.from(img);
+      this._tilesetBaseCache.set(ts.imageSrc, baseTex);
+    }
+    const cols = ts.columns || 1;
+    const sx = (res.localId % cols) * ts.tileWidth;
+    const sy = Math.floor(res.localId / cols) * ts.tileHeight;
+    const frame = new Texture({
+      source: baseTex.source,
+      frame: new Rectangle(sx, sy, ts.tileWidth, ts.tileHeight),
+    });
+    this._tileFrameCache.set(gid, frame);
+    return frame;
+  }
+
+  /** Render a fully-loaded Tiled map by placing one Pixi Sprite per
+   *  non-zero tile in each layer.  Cells with gid=0 are skipped.
+   *  Layers render in declaration order, so building/prop layers on
+   *  top of ground layers naturally compose.  Per-tile Sprite count
+   *  is bounded (~6000 for a 40x30 map with ~5 layers); Pixi batches
+   *  the draw efficiently as long as we don't tint or filter them. */
+  _rebuildFromTiled(tiledMap) {
+    for (const layer of tiledMap.layers) {
+      for (let r = 0; r < layer.height; r++) {
+        for (let c = 0; c < layer.width; c++) {
+          const raw = layer.data[r * layer.width + c];
+          if (!raw) continue;
+          const gid = raw & 0x1fffffff;   // strip Tiled flip flags
+          const tex = this._getTileTexture(gid, tiledMap.tilesets);
+          if (!tex) continue;
+          const sprite = new Sprite(tex);
+          sprite.x = c * TILE;
+          sprite.y = r * TILE;
+          sprite.width = TILE;
+          sprite.height = TILE;
+          this.tileContainer.addChild(sprite);
+        }
+      }
     }
   }
 
@@ -309,6 +389,15 @@ export class TileRenderer {
   }
 
   update(cx, cy, viewW, viewH) {
+    /* Auto-refresh when a Tiled map finishes loading AFTER the
+       initial rebuild for this zone — the user briefly sees the
+       procedural fallback, then snaps to the Tiled visuals once
+       the .tmx + tilesets resolve. */
+    if (this.currentZone && !this._renderedTiled) {
+      const tiled = getLoadedTiledMap(this.currentZone);
+      if (tiled) this.rebuild(null, this.currentMap, this.currentZone);
+    }
+
     // Two-pass background, matching the Canvas 2D path:
     //   1. Solid BLACK extending well beyond the map so out-of-bounds
     //      areas (anywhere past the tile grid) render black.

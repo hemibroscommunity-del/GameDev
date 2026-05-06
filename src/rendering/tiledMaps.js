@@ -177,15 +177,16 @@ export function drawTiledMap(ctx, zoneId, cx, cy, W, H) {
  * Walkability grid — true = walkable, false = blocked.
  *
  * Rule: a cell is blocked only if any layer places a tile from a
- * BLOCKING tileset there. Blocking tilesets are identified by name
- * (case-insensitive substring): "building", "plant", "props". Ground,
- * paths, terrain, dirt, FX, and SHADOW tilesets are all walkable —
- * shadows in particular are visual-only and must not block.
+ * BLOCKING tileset there. Currently the only blocking tilesets are
+ * those with "building" in the name. Plants and props are walkable
+ * per user request — characters can run through bushes, barrels,
+ * etc. Ground, paths, terrain, dirt, FX, and SHADOW tilesets remain
+ * walkable; shadows are visual-only and never block.
  *
- * Themed zones currently have no blocking-tileset hits so this returns
- * an all-walkable grid.
+ * Themed zones currently have no blocking-tileset hits so this
+ * returns an all-walkable grid.
  */
-const BLOCKING_TS_KEYWORDS = ['building', 'plant', 'props'];
+const BLOCKING_TS_KEYWORDS = ['building'];
 const NON_BLOCKING_TS_KEYWORDS = ['shadow']; // shadow tilesets are walkable
 
 function _isBlockingTileset(name) {
@@ -220,4 +221,23 @@ export function preloadAllTiledMaps() {
   return Promise.all(Object.keys(TILED_ZONE_MAPS).map(z => loadTiledMap(z).catch(e => {
     console.warn('[tiledMaps] failed to load', z, e);
   })));
+}
+
+/** Returns the cached parsed map for `zoneId`, or null if not loaded.
+ *  Used by the Pixi TileRenderer to render Tiled maps directly. */
+export function getLoadedTiledMap(zoneId) {
+  return _maps[zoneId] || null;
+}
+
+/** Returns the cached tileset image (HTMLImageElement) for the given
+ *  source URL, or null if not yet loaded. */
+export function getTilesetImage(imageSrc) {
+  return _images[imageSrc] || null;
+}
+
+/** True if the listed Tiled tileset name is the building-blocking class.
+ *  Exported so the renderer can z-order building tiles separately if
+ *  desired (currently unused — left as a hook). */
+export function isBlockingTilesetName(name) {
+  return _isBlockingTileset(name);
 }
