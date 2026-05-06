@@ -745,8 +745,9 @@ export class EntityRenderer {
     /* Cache the most recent aim/shield angle for the "idle after
        release" case — the body should hold the angle it was last
        pointed in (per user spec: shield released while standing
-       still keeps the shield direction). */
-    if (useAimDirection) display._lastUsedAim = aimRefAngle;
+       still keeps the shield direction).  Once the player starts
+       moving (stick or velocity), invalidate the cache so it can't
+       override the live movement direction even for one frame. */
     let isMovingBackward = false;
     if (useAimDirection && isMoving) {
       const dotProd = (P.vx || 0) * Math.cos(aimRefAngle) + (P.vy || 0) * Math.sin(aimRefAngle);
@@ -764,7 +765,20 @@ export class EntityRenderer {
        5. Smoothed S._facingAngle, then legacy 4-cardinal S._facing */
     const stickX = S.stickX || 0;
     const stickY = S.stickY || 0;
-    const stickActive = Math.abs(stickX) > 0.05 || Math.abs(stickY) > 0.05;
+    /* Any non-zero stick value means the user is past the deadzone
+       (the input handler zeroes stickX/Y inside the deadzone), so
+       this should be a strict !== 0 check rather than a threshold. */
+    const stickActive = stickX !== 0 || stickY !== 0;
+    /* Cache aim while it's the dominant input; clear the cache the
+       moment any movement signal kicks in.  Without this clear, a
+       frame between shield release and the velocity threshold being
+       crossed would show the cached aim instead of the live
+       movement direction. */
+    if (useAimDirection) {
+      display._lastUsedAim = aimRefAngle;
+    } else if (stickActive || isMoving) {
+      display._lastUsedAim = null;
+    }
     let facing;
     const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
     if (useAimDirection) {
