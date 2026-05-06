@@ -10,6 +10,7 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
+import { getNftTextures } from '../nftAvatars.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -27,6 +28,73 @@ const REST_ANG = {
   bow: 0,
   staff: -Math.PI / 2,
 };
+
+/**
+ * NFT 360° render — applies the front/back cross-fade + horizontal
+ * compression + shear lean to the display's _nftFront/_nftBack
+ * sprites.  Mirrors the Canvas 2D drawNft360 path (BroTown.jsx
+ * ~3594-3661).  Called when the regular sprite-sheet body isn't
+ * being shown and the player has an NFT avatar URL whose textures
+ * have loaded.
+ *
+ * Pixi has no native 2D matrix shear on Sprite, but skewing the
+ * sprite is equivalent: tan(skewX) gives the c-coefficient we want,
+ * and scale.y compensates so sprite height stays at 1×.
+ */
+function applyNftTransform(display, frontTex, backTex, facingAngle, size, bobY) {
+  const front = display._nftFront;
+  const back = display._nftBack;
+  if (front.texture !== frontTex) front.texture = frontTex;
+  if (back.texture !== backTex)   back.texture = backTex;
+
+  /* turnFromCam: 0=facing camera, π=facing away (mirror of Canvas 2D). */
+  const rawTurn = facingAngle - Math.PI / 2;
+  const turnFromCam = Math.abs(((rawTurn % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+  const isFacingRight = Math.cos(facingAngle) > 0;
+  const sinTurn = Math.sin(turnFromCam);
+
+  /* Horizontal compression: 0.5 at pure side, 1.0 at front/back. */
+  const sx = 0.5 + 0.5 * Math.abs(Math.cos(turnFromCam));
+  /* Shear: 0 at front/back, peaks at sin(π/2)*0.25 = 0.25 at pure side. */
+  const kx = sinTurn * 0.25 * (isFacingRight ? -1 : 1);
+  /* Cross-fade band 70°-110° (matches Canvas 2D). */
+  const fadeStart = 1.22, fadeEnd = 1.92;
+  let frontAlpha, backAlpha;
+  if (turnFromCam < fadeStart) { frontAlpha = 1; backAlpha = 0; }
+  else if (turnFromCam > fadeEnd) { frontAlpha = 0; backAlpha = 1; }
+  else {
+    const t = (turnFromCam - fadeStart) / (fadeEnd - fadeStart);
+    frontAlpha = 1 - t;
+    backAlpha = t;
+  }
+
+  /* Pixi skew → matrix c = scale.y*sin(skewX), d = scale.y*cos(skewX).
+     Want c = kx, d = 1 → skewX = atan(kx), scale.y = 1/cos(skewX). */
+  const skewX = Math.atan(kx);
+  const scaleY = 1 / Math.cos(skewX);
+  /* Position both sprites at same place: bottom-anchored at y=10
+     below display origin (matches Canvas 2D's nftY = py - 18). */
+  const FOOT_Y = 10;
+  for (const s of [front, back]) {
+    s.x = 0;
+    s.y = FOOT_Y + bobY;
+    s.width = size;       // Pixi auto-respects scale; resetting here
+    s.height = size;      // re-bases width/height to source size.
+    s.scale.x = (isFacingRight ? -1 : 1) * sx;
+    s.scale.y = scaleY;
+    s.skew.x = skewX;
+    s.skew.y = 0;
+  }
+  front.alpha = frontAlpha;
+  back.alpha = backAlpha;
+  front.visible = frontAlpha > 0.01;
+  back.visible = backAlpha > 0.01;
+}
+
+function hideNft(display) {
+  if (display._nftFront) display._nftFront.visible = false;
+  if (display._nftBack)  display._nftBack.visible = false;
+}
 
 const NAME_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
@@ -153,6 +221,19 @@ function createPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* NFT 360° avatar pair — front/back sprites cross-faded by facing
+     angle, with shear + horizontal compression to fake a "3D rotation"
+     look (mirrors the Canvas 2D drawNft360 path).  Both invisible
+     until an avatar texture pair loads. */
+  const nftFront = new Sprite();
+  nftFront.anchor.set(0.5, 1);
+  nftFront.visible = false;
+  container.addChild(nftFront);
+  const nftBack = new Sprite();
+  nftBack.anchor.set(0.5, 1);
+  nftBack.visible = false;
+  container.addChild(nftBack);
+
   /* All three weapon visuals (glow underlay, procedural fill, icon
      Sprite) live in a single sub-container so the per-frame z-order
      swap between "weapon in front of body" (forward facings) and
@@ -197,6 +278,8 @@ function createPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._nftFront = nftFront;
+  container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
   container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
@@ -228,6 +311,16 @@ function createOtherPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* NFT 360° pair — see createPlayerDisplay for the rationale. */
+  const nftFront = new Sprite();
+  nftFront.anchor.set(0.5, 1);
+  nftFront.visible = false;
+  container.addChild(nftFront);
+  const nftBack = new Sprite();
+  nftBack.anchor.set(0.5, 1);
+  nftBack.visible = false;
+  container.addChild(nftBack);
+
   /* Weapon container — same structure as the local player (see
      createPlayerDisplay).  Wraps glow underlay, procedural fallback,
      and the icon Sprite so a single setChildIndex per frame can
@@ -253,6 +346,8 @@ function createOtherPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._nftFront = nftFront;
+  container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
   container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
@@ -665,10 +760,27 @@ export class EntityRenderer {
         body.visible = true;
       }
 
+      /* NFT 360° body for the remote player — same fallback policy
+         as the local player: only swap in when the sprite path didn't
+         render and the player has an avatar URL whose textures are
+         ready.  Use the velocity-derived angle for smooth rotation. */
+      let oNftShown = false;
+      if (!useSprite && other.avatar) {
+        const nft = getNftTextures(other.avatar);
+        if (nft) {
+          const oRenderAng = isMoving
+            ? Math.atan2(other._smoothVy || 0, other._smoothVx || 0)
+            : (facingIdx >= 0 ? facingIdx * Math.PI / 4 : Math.PI / 2);
+          applyNftTransform(display, nft.front, nft.back, oRenderAng, nft.size, bobY);
+          oNftShown = true;
+        }
+      }
+      if (!oNftShown) hideNft(display);
+
       /* Procedural fallback body — only drawn when sprite path is
          unavailable.  Skip rebuild when idle and no color/torso
          changes. */
-      if (!useSprite) {
+      if (!useSprite && !oNftShown) {
         const colorKey = torso + '|' + legs + '|' + head;
         if (isMoving || display._lastColorKey !== colorKey || display._lastIsMoving !== isMoving) {
           display._lastColorKey = colorKey;
@@ -997,6 +1109,22 @@ export class EntityRenderer {
       display._spriteBody.visible = false;
       body.visible = true;
     }
+
+    /* NFT 360° body — when the regular sprite path didn't render this
+       frame (sheets not loaded, sprites disabled) and the player has
+       an avatar URL with loaded textures, swap in the NFT cross-fade
+       pair.  Hide the procedural body if NFT renders. */
+    let nftShown = false;
+    if (!display._spriteBody.visible && S.myAvatar) {
+      const nft = getNftTextures(S.myAvatar);
+      if (nft) {
+        const renderAng = (S._facingAngle !== undefined) ? S._facingAngle : Math.PI / 2;
+        applyNftTransform(display, nft.front, nft.back, renderAng, nft.size, bobY);
+        body.visible = false;
+        nftShown = true;
+      }
+    }
+    if (!nftShown) hideNft(display);
 
     /* Procedural fallback body — only drawn when sprite path is
        unavailable.  Skip rebuild when idle and no color change. */
