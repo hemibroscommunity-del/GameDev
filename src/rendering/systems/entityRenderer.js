@@ -175,7 +175,10 @@ function createPlayerDisplay() {
 
   const nameText = new Text({ text: '', style: NAME_STYLE });
   nameText.anchor.set(0.5, 1);
-  nameText.y = -28;
+  /* Was -28; bumped to -38 so the name plate doesn't occlude a
+     sword tip that pokes ~5 px above the head when the right arm
+     is fully extended (W jog cycles, etc). */
+  nameText.y = -38;
   container.addChild(nameText);
 
   container._body = body;
@@ -216,7 +219,9 @@ function createOtherPlayerDisplay() {
 
   const nameText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
   nameText.anchor.set(0.5, 1);
-  nameText.y = -24;
+  /* Was -24; bumped to -34 to match the local player nameplate's
+     new offset (sword tip clearance — see createPlayerDisplay). */
+  nameText.y = -34;
   container.addChild(nameText);
 
   container._body = body;
