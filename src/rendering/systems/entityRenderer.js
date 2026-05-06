@@ -723,16 +723,34 @@ export class EntityRenderer {
     const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
+    /* Aim-direction override: while attacking or blocking, the body
+       faces wherever the right joystick / aim is pointed (instead of
+       movement direction).  Movement is also slowed 50% by gameplay
+       during these states, so the jog cycle plays at half speed and
+       reverses when the player walks backward relative to aim.  Both
+       lifted out so the swing math below can reuse swingActive. */
+    const swingActive = S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWING_ANIM_MS;
+    const useAimDirection = !!(swingActive || S.isBlocking);
+    const aimRefAngle = useAimDirection
+      ? ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0))
+      : 0;
+    let isMovingBackward = false;
+    if (useAimDirection && isMoving) {
+      const dotProd = (P.vx || 0) * Math.cos(aimRefAngle) + (P.vy || 0) * Math.sin(aimRefAngle);
+      isMovingBackward = dotProd < 0;
+    }
+
     /* Sprite-sheet body — preferred when sheets have loaded.  Picks
        (pose, dir, frameIdx) from facing + movement.
-       When moving, derive 8-compass from velocity (vx, vy).  When
-       idle, derive 8-compass from S._facingAngle (the smoothed
-       continuous angle from the input layer) so the player rests in
-       the diagonal direction they last moved, instead of snapping to
-       the nearest cardinal in S._facing. */
+       Priority: aim direction (if attacking / shielding) → velocity
+       (if moving) → smoothed continuous facingAngle (if idle) →
+       legacy 4-cardinal S._facing. */
     let facing;
     const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
-    if (isMoving) {
+    if (useAimDirection) {
+      const sector = Math.round(aimRefAngle / (Math.PI / 4));
+      facing = SECTORS[((sector % 8) + 8) % 8];
+    } else if (isMoving) {
       const ang = Math.atan2(P.vy || 0, P.vx || 0);
       const sector = Math.round(ang / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8];
@@ -760,11 +778,17 @@ export class EntityRenderer {
       const spriteBody = display._spriteBody;
       let frameIdx = 0;
       if (pose === 'jog') {
-        /* Per-direction frame count — sheets vary 24-34 frames.  Hard-coding
-           24 was making south (31 frames) and southwest (34) jerky because
-           the loop only played the first 24, then snapped back. */
+        /* Per-direction frame count — sheets vary 24-34 frames.  During
+           an attack or shield (movement slowed 50% by gameplay), play
+           the cycle at half speed so leg motion stays in sync with the
+           halved real-world distance per second.  When the player is
+           walking backward relative to their aim direction, reverse
+           the playback so the legs trail the body. */
         const fc = playerFrameCount('jog', dir) || 24;
-        frameIdx = Math.floor((now / cycleMs('jog', dir)) * fc) % fc;
+        const baseCycle = cycleMs('jog', dir);
+        const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
+        const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
+        frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;
         frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
@@ -893,17 +917,15 @@ export class EntityRenderer {
       const wpn = activeSlot === 'melee' ? S.rpg.weapon
                 : activeSlot === 'staff' ? (S.rpg.staffWeapon || S.rpg.rangedWeapon)
                 : S.rpg.rangedWeapon;
-      /* Swing animation state.  When the player attacks, S.isSwinging
-         goes true and S.swingTimer is set to Date.now().  We compute
-         a quadratic-ease-out progress 0..1, then derive an angular
-         offset that sweeps the blade across the aim direction. */
-      const swingActive = S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWING_ANIM_MS;
-      let swingProgress = 0, swingOffset = 0, swingAng = 0, aimAngleForSwing = 0;
+      /* Swing math.  swingActive was computed at outer scope (drives
+         the aim-direction facing override too); here we derive the
+         per-frame rotation offset and arc trail span. */
+      let swingProgress = 0, swingOffset = 0, swingAng = 0;
+      const aimAngleForSwing = aimRefAngle;
       if (swingActive && wpn) {
         swingProgress = (now - S.swingTimer) / SWING_ANIM_MS;
         const eased = 1 - (1 - swingProgress) * (1 - swingProgress);
         swingOffset = -SWING_FULL_ARC / 2 + eased * SWING_FULL_ARC;
-        aimAngleForSwing = (S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0);
         const restAng = REST_ANG[wpn.type] != null ? REST_ANG[wpn.type] : 0;
         swingAng = (aimAngleForSwing - restAng) + swingOffset;
       }
