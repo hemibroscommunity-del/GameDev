@@ -298,10 +298,16 @@ function recordAt(clientX, clientY) {
   render();
 }
 
-// Tap / click on the canvas — `click` covers both mouse and synthesized
-// touch on mobile.  preventDefault on touchstart stops scroll/zoom on iOS.
-stage.addEventListener('touchstart', e => { e.preventDefault(); }, { passive: false });
-canvas.addEventListener('click', e => recordAt(e.clientX, e.clientY));
+// Tap / click on the canvas — pointerdown covers mouse + touch + pen
+// uniformly.  Earlier version listened to `click` and added a global
+// touchstart preventDefault, which on iOS suppressed the synthesized
+// click so taps never fired.  pointerdown fires on the first touch
+// without that conflict.  touch-action:manipulation on #stage already
+// disables double-tap-to-zoom + pan, so no preventDefault needed.
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  recordAt(e.clientX, e.clientY);
+});
 
 document.getElementById('prevBtn').onclick = () => { if (cursor > 0) { cursor--; render(); } };
 
@@ -378,22 +384,27 @@ function finish() {
   marker.style.display = 'none';
 }
 
-// Boot: load sheets, optionally seed existing anchors.json, then render.
+// Boot: load sheets and start fresh at frame 0.  The previous version
+// pre-loaded anchors.json and auto-jumped to the first un-annotated
+// frame; with brand-new sprite sheets, every existing anchor is wrong
+// (frame counts changed), so a clean start avoids mixing stale and
+// new data.  Pass ?resume=1 to opt back into the resume behavior.
 Promise.all(pending).then(async () => {
   buildQueue();
-  // Pre-load existing anchors so the user can iterate / fix instead of re-clicking from scratch.
-  try {
-    const r = await fetch('/sprites/player/anchors.json?v=' + SHEET_VER);
-    if (r.ok) {
-      const existing = await r.json();
-      for (const k of Object.keys(existing)) anchors[k] = existing[k].slice();
-      // Auto-jump to first un-annotated frame so user resumes where data left off.
-      for (let i = 0; i < queue.length; i++) {
-        const q = queue[i];
-        if (!anchors[q.key] || anchors[q.key][q.frame] == null) { cursor = i; break; }
+  const wantResume = new URLSearchParams(window.location.search).get('resume') === '1';
+  if (wantResume) {
+    try {
+      const r = await fetch('/sprites/player/anchors.json?v=' + SHEET_VER);
+      if (r.ok) {
+        const existing = await r.json();
+        for (const k of Object.keys(existing)) anchors[k] = existing[k].slice();
+        for (let i = 0; i < queue.length; i++) {
+          const q = queue[i];
+          if (!anchors[q.key] || anchors[q.key][q.frame] == null) { cursor = i; break; }
+        }
       }
-    }
-  } catch (_) {}
+    } catch (_) {}
+  }
   render();
 });
 </script>

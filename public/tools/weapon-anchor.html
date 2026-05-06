@@ -211,8 +211,12 @@ function recordAt(clientX, clientY) {
   render();
 }
 
-stage.addEventListener('touchstart', e => { e.preventDefault(); }, { passive: false });
-canvas.addEventListener('click', e => recordAt(e.clientX, e.clientY));
+// pointerdown covers mouse + touch + pen.  click + touchstart-preventDefault
+// suppressed taps on iOS — pointerdown fires reliably without that.
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  recordAt(e.clientX, e.clientY);
+});
 
 document.getElementById('prevBtn').onclick = () => { if (cursor > 0) { cursor--; render(); } };
 document.getElementById('nextBtn').onclick = () => { if (cursor < WEAPONS.length - 1) { cursor++; render(); } };
