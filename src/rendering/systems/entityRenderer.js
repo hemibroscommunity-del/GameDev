@@ -593,7 +593,7 @@ export class EntityRenderer {
           /* Same east-direction size compensation as the local player —
              keeps every player rendered at the same visual scale. */
           let sizeMul = 1.0;
-        if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : 1.08);
+        if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : pose === 'jog' ? 1.00 : 1.08);
         else if (dir === 'southwest' && pose === 'jog') sizeMul = 0.92;
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
           spriteBody.scale.y = sizeMul;
@@ -751,7 +751,7 @@ export class EntityRenderer {
            Applies to BOTH east and the mirrored W/NW/SE since they
            share the east sheet. */
         let sizeMul = 1.0;
-        if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : 1.08);
+        if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : pose === 'jog' ? 1.00 : 1.08);
         else if (dir === 'southwest' && pose === 'jog') sizeMul = 0.92;
         spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
         spriteBody.scale.y = sizeMul;
