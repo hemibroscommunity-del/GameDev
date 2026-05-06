@@ -1117,16 +1117,17 @@ export class EntityRenderer {
          three visuals so a single setChildIndex moves them as one. */
       if (display._weaponContainer && display._spriteBody) {
         /* Per-direction z-order.  Different rule for shield vs weapon:
-           - Weapon: E/SE/S (0,1,2) AND NE (7) in front.  NE is in
-             front so the sword doesn't disappear when the right arm
-             swings far back during a NE jog.
-           - Shield: E/SE/S (0,1,2) in front; NE goes behind so the
-             body partially occludes the guard arc (matches user's
-             expected "blocked by character" look — there's no
-             pull-back-disappearance concern since the weapon is
-             hidden during shield). */
+           - Weapon: E/SE/S (0,1,2) AND NE (7) in front; SW/W/NW/N
+             behind.  NE is in front so the sword doesn't disappear
+             when the right arm swings far back during a NE jog.  SW
+             is behind because the user prefers the look there.
+           - Shield: all forward-half facings — E/SE/S/SW (0,1,2,3) —
+             in front; back-half — W/NW/N/NE (4,5,6,7) — behind.  The
+             shield's wide frontal wedge reads as a guard pose for
+             toward-camera angles and is occluded by the back for
+             away-from-camera angles. */
         const inFront = isShielding
-          ? (facingIdx === 0 || facingIdx === 1 || facingIdx === 2)
+          ? (facingIdx >= 0 && facingIdx <= 3)
           : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
