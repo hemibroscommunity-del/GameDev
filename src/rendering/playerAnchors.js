@@ -32,7 +32,7 @@
  *   express this directly as anchor.set(hx/srcW, hy/srcH).
  */
 
-const ANCHORS_URL = '/sprites/player/anchors.json?v=2';
+const ANCHORS_URL = '/sprites/player/anchors.json?v=3';
 const HANDLES_URL = '/sprites/weapons/handles.json?v=2';
 
 let anchors = null;

@@ -1364,7 +1364,7 @@ export var BroTown = function BroTown(_ref0) {
 
     /* Per-frame hand anchors (built by the public/tools/anchor.html annotator).
        Bump ?v= when re-annotating so cached copies don't shadow the new file. */
-    fetch('/sprites/player/anchors.json?v=2')
+    fetch('/sprites/player/anchors.json?v=3')
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) { if (j) handAnchorsRef.current = j; })
       .catch(function () { /* missing file — sprite falls back to facing-based offset */ });
