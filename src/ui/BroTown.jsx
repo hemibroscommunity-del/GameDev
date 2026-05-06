@@ -1310,7 +1310,7 @@ export var BroTown = function BroTown(_ref0) {
   useEffect(function () {
     /* Source clip durations (ms), used to compute per-direction frame interval. */
     var JOG_DURATION_MS = {
-      east: 1006, north: 2008, northeast: 1503, south: 2000, southwest: 1998,
+      east: 1333, north: 2008, northeast: 1503, south: 2000, southwest: 1998,
     };
     var JOG_FRAMES = 24;
     /* Hit-react sheets: 6 frames × 64×64 each (384×64), played once over
@@ -1337,7 +1337,7 @@ export var BroTown = function BroTown(_ref0) {
         };
         img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
         /* Cache-buster: bump v= each time sheet content or frame count changes. */
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=36';
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=37';
       });
     });
 

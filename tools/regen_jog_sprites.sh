@@ -21,12 +21,19 @@
 # DO NOT pass --binary-alpha, --kill-halo, --outline, or --kill-all-light.
 # DO NOT remove --no-flood (the flood-fill would eat the outline).
 #
+# East note: as of 2026-05-06 east is on the canonical pipeline too (its
+# old hand-keyed source was replaced by an AI-generated MOV like the other
+# four).  East uses its own skin target (188, 121, 69) to match
+# stand-east.png, while the other four use (208, 135, 76).  The legacy
+# tools/recolor_east.py is no longer in the pipeline; --target on
+# match_skin.py replaces it.
+#
 # Usage:  bash tools/regen_jog_sprites.sh
 # Sources expected at: assets/character animations/jog-{dir}.mov
 
 set -euo pipefail
 
-for d in north south northeast southwest; do
+for d in north south northeast southwest east; do
   echo "=== $d ==="
   rm -rf "/tmp/jog-frames-$d"
   mkdir -p "/tmp/jog-frames-$d"
@@ -78,8 +85,15 @@ for d in north south northeast southwest; do
   # Match skin tone to the idle / stand sprites — the AI jog sources
   # come out brighter / peachier than the muted tan of stand-*.png.
   # Target (208, 135, 76) is the average skin median across the four
-  # AI-generated stand sheets.
+  # AI-generated stand sheets.  East uses (188, 121, 69) instead, the
+  # median of stand-east.png specifically — east's idle skin runs cooler
+  # than the other four idle sheets, so harmonizing east-jog with
+  # east-idle requires the cooler target.
+  skin_target="208 135 76"
+  if [ "$d" = "east" ]; then
+    skin_target="188 121 69"
+  fi
   python tools/match_skin.py \
     "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \
-    --target 208 135 76
+    --target $skin_target
 done

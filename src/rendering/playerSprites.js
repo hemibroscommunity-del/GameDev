@@ -39,13 +39,14 @@ const JOG_DURATION_BY_DIR = {
   north: 1400,
   south: 1400,
   northeast: 750,
+  east: 1333, /* new east source is 32 frames @ 24 fps = 1333 ms */
 };
 const HIT_DURATION_MS = 250;
 
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 36; /* matches the cache-buster on the Canvas 2D loader */
+const VERSION = 37; /* matches the cache-buster on the Canvas 2D loader */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
