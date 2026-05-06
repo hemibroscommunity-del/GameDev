@@ -139,21 +139,30 @@ function createPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
-  // §5.9.5 Combo Chain weapon-glow underlay — drawn behind weaponGfx so the
-  // weapon silhouette sits on top of the element-color halo.
+  /* All three weapon visuals (glow underlay, procedural fill, icon
+     Sprite) live in a single sub-container so the per-frame z-order
+     swap between "weapon in front of body" (forward facings) and
+     "weapon behind body" (back facings W/NW/N/NE) can move them as a
+     unit with one setChildIndex call.  Their relative order inside
+     weaponContainer (glow → fill → sprite) is fixed so the silhouette
+     always sits on top of the element-color halo. */
+  const weaponContainer = new Container();
+  container.addChild(weaponContainer);
+
+  // §5.9.5 Combo Chain weapon-glow underlay.
   const weaponGlowGfx = new Graphics();
-  container.addChild(weaponGlowGfx);
+  weaponContainer.addChild(weaponGlowGfx);
 
   // Weapon visual — procedural Graphics (fallback) + icon Sprite
   // (preferred when the weapon-icon PNG has loaded).  Both children
   // exist; only one is visible per frame.
   const weaponGfx = new Graphics();
-  container.addChild(weaponGfx);
+  weaponContainer.addChild(weaponGfx);
 
   const weaponSprite = new Sprite();
   weaponSprite.anchor.set(0.5, 0.5);
   weaponSprite.visible = false;
-  container.addChild(weaponSprite);
+  weaponContainer.addChild(weaponSprite);
 
   // HP / Energy / Mana bars — drawn above the head when in a combat zone.
   const barsGfx = new Graphics();
@@ -171,6 +180,7 @@ function createPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._weaponContainer = weaponContainer;
   container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
   container._weaponSprite = weaponSprite;
@@ -1009,10 +1019,29 @@ export class EntityRenderer {
            doesn't linger from a previous loadout. */
         if (display._weaponSprite) display._weaponSprite.visible = false;
       }
-      /* Z-order swap (weapon behind body for back facings, like the
-         Canvas 2D path) is intentionally NOT done here yet — see
-         migration follow-up. Default child order keeps the weapon
-         in front of spriteBody for all facings. */
+      /* Z-order: weapon in front of body for forward facings (idx 0..3
+         = E/SE/S/SW), weapon behind body for back facings (idx 4..7 =
+         W/NW/N/NE) so a held weapon is partially occluded by the back
+         when the player faces away.  The weaponContainer wraps all
+         three visuals so a single setChildIndex moves them as one. */
+      if (display._weaponContainer && display._spriteBody) {
+        const inFront = facingIdx >= 0 && facingIdx <= 3;
+        const bodyIdx = display.getChildIndex(display._spriteBody);
+        const wcIdx   = display.getChildIndex(display._weaponContainer);
+        /* Pixi setChildIndex removes the child, then inserts at the
+           given index in the post-removal array.  When weaponContainer
+           is currently AFTER spriteBody, removing it leaves spriteBody
+           at its original bodyIdx; when BEFORE, removing shifts
+           spriteBody down by 1.  Compute target accordingly so we land
+           exactly one slot after (in front) or one slot before (behind)
+           spriteBody in the new array. */
+        const targetIdx = inFront
+          ? (wcIdx > bodyIdx ? bodyIdx + 1 : bodyIdx)        // after spriteBody
+          : (wcIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1));  // before spriteBody
+        if (wcIdx !== targetIdx) {
+          display.setChildIndex(display._weaponContainer, targetIdx);
+        }
+      }
 
       // Shield visual
       if (S.rpg.shield && S.isBlocking) {
