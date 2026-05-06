@@ -592,7 +592,9 @@ export class EntityRenderer {
           display._animFrame = frameIdx;
           /* Same east-direction size compensation as the local player —
              keeps every player rendered at the same visual scale. */
-          const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.08) : 1.0;
+          let sizeMul = 1.0;
+        if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : 1.08);
+        else if (dir === 'southwest' && pose === 'jog') sizeMul = 0.92;
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
           spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
@@ -748,7 +750,9 @@ export class EntityRenderer {
            the character bigger — keep the 0.88× shrink.
            Applies to BOTH east and the mirrored W/NW/SE since they
            share the east sheet. */
-        const sizeMul = (dir === 'east') ? (pose === 'hit' ? 0.88 : 1.08) : 1.0;
+        let sizeMul = 1.0;
+        if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : 1.08);
+        else if (dir === 'southwest' && pose === 'jog') sizeMul = 0.92;
         spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
         spriteBody.scale.y = sizeMul;
         /* No tint multiply — the sprites are pre-colored.  Multiplying
