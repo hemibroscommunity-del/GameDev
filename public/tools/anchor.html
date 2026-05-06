@@ -29,6 +29,8 @@
   }
   .label b { color: #ddd; }
   .label .coords { color: #f5c542; }
+  .label .hand-r { color: #f5c542; font-weight: 700; }
+  .label .hand-l { color: #4ad6f5; font-weight: 700; }
   #stage {
     position: relative;
     image-rendering: pixelated;
@@ -39,16 +41,19 @@
     cursor: crosshair;
   }
   #stage canvas { display: block; }
-  #marker {
+  .marker {
     position: absolute;
     width: 18px;
     height: 18px;
-    border: 2px solid #f5c542;
+    border: 2px solid;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    box-shadow: 0 0 0 1px #000, 0 0 8px rgba(245,197,66,0.6);
+    box-shadow: 0 0 0 1px #000;
   }
+  .marker.r { border-color: #f5c542; box-shadow: 0 0 0 1px #000, 0 0 8px rgba(245,197,66,0.6); }
+  .marker.l { border-color: #4ad6f5; box-shadow: 0 0 0 1px #000, 0 0 8px rgba(74,214,245,0.6); }
+  .marker.active { width: 22px; height: 22px; border-width: 3px; }
   .progress {
     height: 4px;
     background: #2a2a2a;
@@ -89,6 +94,7 @@
   button:disabled { opacity: 0.35; cursor: default; }
   .primary { background: #1e5128; border-color: #2a7a3a; }
   .danger  { background: #5a2a2a; border-color: #7a3a3a; }
+  .toggle  { background: #2a3a55; border-color: #3a5a7a; font-weight: 700; }
   .zoom {
     display: flex;
     gap: 6px;
@@ -143,10 +149,10 @@
 </head>
 <body>
 
-<h1>Sprite Hand-Anchor Annotator</h1>
+<h1>Sprite Hand-Anchor Annotator (dual-hand)</h1>
 <div class="label">
   <b id="frameLabel">Loading…</b><br>
-  <span id="counter">0 / ?</span> · <span class="coords" id="lastCoord">—</span>
+  <span id="counter">0 / ?</span> · now tapping <span id="handLabel" class="hand-r">RIGHT</span> · <span class="coords" id="lastCoord">—</span>
 </div>
 <div class="progress"><div id="progressBar" style="width:0%"></div></div>
 
@@ -162,6 +168,7 @@
 <div class="controls">
   <button id="prevBtn">← Prev</button>
   <button id="skipBtn">Skip (use prev)</button>
+  <button id="toggleBtn" class="full toggle">Toggle hand: now RIGHT</button>
   <button id="nextBtn">Next (no save) →</button>
   <button id="resetBtn" class="danger">Reset all</button>
   <button id="copyBtn"  class="full">Copy JSON to clipboard</button>
@@ -169,9 +176,8 @@
 </div>
 
 <div class="help">
-  Tap the character's <b>right hand</b> in each frame.<br>
-  Mirror flip for W / NW / SE is handled by the renderer — annotate the 5 unmirrored sheets only.<br>
-  Frame count is auto-detected from each sheet. Use the zoom buttons for precision.<br>
+  Tap the character's <span class="hand-r">right hand</span> (yellow), then the <span class="hand-l">left hand</span> (cyan) on each frame. The renderer uses left-hand for mirrored facings (W / NW / SE) so the sword stays in the visual right hand of the mirrored character.<br>
+  Right-hand data is pre-loaded from the existing anchors.json — by default you only need to tap left hands. Use the toggle button to redo a right hand if needed.<br>
   When done, <b>Copy JSON</b> and paste it to your assistant, or <b>Download</b> and commit it as
   <code>public/sprites/player/anchors.json</code>.
 </div>
@@ -181,34 +187,38 @@
 
 <script>
 const FRAME_W = 64;
-const SHEET_VER = Date.now();      // bypass cache, always fetch fresh
+const SHEET_VER = Date.now();
 const DIRS  = ['east','north','northeast','south','southwest'];
-const POSES = ['jog','stand'];     // frame count auto-detected from sheet width
+const POSES = ['jog','stand'];
 
 // State.
-const sheets = {};                 // 'jog-east' → Image
-const frameCounts = {};            // 'jog-east' → 32
-const anchors = {};                // 'jog-east' → [[x,y], ...]
-let queue = [];                    // built after sheets load
+const sheets = {};
+const frameCounts = {};
+const anchors = {};   // 'jog-east' -> [{ r: [x,y], l: [x,y] }, ...]
+let queue = [];
 let cursor = 0;
-let scale = 6;                     // pixels-per-source-pixel; fits 384px on a 390px iPhone
+let scale = 6;
+let currentHand = 'r';   // 'r' (right) or 'l' (left)
 
-// DOM.
 const stage   = document.getElementById('stage');
 const canvas  = document.createElement('canvas');
 const ctx     = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 stage.appendChild(canvas);
 
-const marker = document.createElement('div');
-marker.id = 'marker';
-marker.style.display = 'none';
-stage.appendChild(marker);
+const markerR = document.createElement('div');
+markerR.className = 'marker r';
+markerR.style.display = 'none';
+stage.appendChild(markerR);
+
+const markerL = document.createElement('div');
+markerL.className = 'marker l';
+markerL.style.display = 'none';
+stage.appendChild(markerL);
 
 function autoFitScale() {
   const room = Math.min(window.innerWidth - 24, 720);
-  const s = Math.max(4, Math.min(12, Math.floor(room / FRAME_W)));
-  scale = s;
+  scale = Math.max(4, Math.min(12, Math.floor(room / FRAME_W)));
 }
 autoFitScale();
 window.addEventListener('resize', () => { autoFitScale(); applyScale(); render(); });
@@ -223,7 +233,6 @@ function applyScale() {
 }
 applyScale();
 
-// Load every sheet, detect frame count.
 function load(key) {
   return new Promise(res => {
     const img = new Image();
@@ -250,6 +259,36 @@ function buildQueue() {
   }
 }
 
+function ensureEntry(key, frame) {
+  if (!anchors[key]) anchors[key] = [];
+  if (!anchors[key][frame]) anchors[key][frame] = {};
+}
+
+function getEntry(key, frame) {
+  return (anchors[key] && anchors[key][frame]) || null;
+}
+
+/** Decide what hand the user should tap next on this frame.
+ *  Priority: missing hand first; if both present, user can redo via toggle. */
+function neededHand(item) {
+  const e = getEntry(item.key, item.frame);
+  if (!e || !e.r) return 'r';
+  if (!e.l) return 'l';
+  return 'r';   // both present — default to redoing right
+}
+
+function setActiveHand(h) {
+  currentHand = h;
+  const lbl = document.getElementById('handLabel');
+  lbl.textContent = h === 'r' ? 'RIGHT' : 'LEFT';
+  lbl.className = h === 'r' ? 'hand-r' : 'hand-l';
+  const tBtn = document.getElementById('toggleBtn');
+  tBtn.textContent = 'Toggle hand: now ' + (h === 'r' ? 'RIGHT' : 'LEFT');
+  // Active marker visually emphasized.
+  markerR.classList.toggle('active', h === 'r');
+  markerL.classList.toggle('active', h === 'l');
+}
+
 function render() {
   if (!queue.length) return;
   const item = queue[cursor];
@@ -271,16 +310,28 @@ function render() {
     );
   }
 
-  const existing = anchors[key] && anchors[key][frame];
-  if (existing) {
-    marker.style.display = 'block';
-    marker.style.left = (existing[0] * scale) + 'px';
-    marker.style.top  = (existing[1] * scale) + 'px';
-    document.getElementById('lastCoord').textContent = '(' + existing[0] + ', ' + existing[1] + ')';
+  const entry = getEntry(key, frame);
+  if (entry && entry.r) {
+    markerR.style.display = 'block';
+    markerR.style.left = (entry.r[0] * scale) + 'px';
+    markerR.style.top  = (entry.r[1] * scale) + 'px';
   } else {
-    marker.style.display = 'none';
-    document.getElementById('lastCoord').textContent = '—';
+    markerR.style.display = 'none';
   }
+  if (entry && entry.l) {
+    markerL.style.display = 'block';
+    markerL.style.left = (entry.l[0] * scale) + 'px';
+    markerL.style.top  = (entry.l[1] * scale) + 'px';
+  } else {
+    markerL.style.display = 'none';
+  }
+  // Coordinate readout shows the active hand if present.
+  const liveCoord = entry && entry[currentHand];
+  document.getElementById('lastCoord').textContent = liveCoord ? ('(' + liveCoord[0] + ', ' + liveCoord[1] + ')') : '—';
+
+  // Active marker styling
+  markerR.classList.toggle('active', currentHand === 'r');
+  markerL.classList.toggle('active', currentHand === 'l');
 
   document.getElementById('output').value = JSON.stringify(anchors, null, 2);
   document.getElementById('prevBtn').disabled = cursor === 0;
@@ -292,50 +343,79 @@ function recordAt(clientX, clientY) {
   const y = Math.max(0, Math.min(FRAME_W - 1, Math.round((clientY - rect.top)  / scale)));
   const item = queue[cursor];
   if (!item) return;
-  if (!anchors[item.key]) anchors[item.key] = [];
-  anchors[item.key][item.frame] = [x, y];
+  ensureEntry(item.key, item.frame);
+  anchors[item.key][item.frame][currentHand] = [x, y];
+
+  const entry = anchors[item.key][item.frame];
+  // Decide next state.  If the OTHER hand is missing, switch to it on
+  // the same frame.  Otherwise advance to the next frame and pick the
+  // first missing hand (or 'r' if both already present).
+  const other = currentHand === 'r' ? 'l' : 'r';
+  if (!entry[other]) {
+    setActiveHand(other);
+    render();
+    return;
+  }
+  // Both hands done for this frame — advance.
   cursor++;
+  if (cursor < queue.length) {
+    setActiveHand(neededHand(queue[cursor]));
+  }
   render();
 }
 
-// Tap / click on the canvas — pointerdown covers mouse + touch + pen
-// uniformly.  Earlier version listened to `click` and added a global
-// touchstart preventDefault, which on iOS suppressed the synthesized
-// click so taps never fired.  pointerdown fires on the first touch
-// without that conflict.  touch-action:manipulation on #stage already
-// disables double-tap-to-zoom + pan, so no preventDefault needed.
+stage.addEventListener('touchstart', e => { /* allow taps; touch-action handles scroll */ }, { passive: true });
 canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
   recordAt(e.clientX, e.clientY);
 });
 
-document.getElementById('prevBtn').onclick = () => { if (cursor > 0) { cursor--; render(); } };
+document.getElementById('prevBtn').onclick = () => {
+  if (cursor > 0) {
+    cursor--;
+    setActiveHand(neededHand(queue[cursor]));
+    render();
+  }
+};
 
 document.getElementById('skipBtn').onclick = () => {
   const item = queue[cursor];
   if (!item) return;
-  let prev = null;
-  if (anchors[item.key] && item.frame > 0) prev = anchors[item.key][item.frame - 1];
-  if (!prev) {
-    for (let i = cursor - 1; i >= 0; i--) {
-      const q = queue[i];
-      const v = anchors[q.key] && anchors[q.key][q.frame];
-      if (v) { prev = v; break; }
+  // Find previous frame's anchors (any prior queue entry with both hands).
+  let prevR = null, prevL = null;
+  for (let i = cursor - 1; i >= 0; i--) {
+    const q = queue[i];
+    const e = getEntry(q.key, q.frame);
+    if (e) {
+      if (!prevR && e.r) prevR = e.r;
+      if (!prevL && e.l) prevL = e.l;
+      if (prevR && prevL) break;
     }
   }
-  if (prev) {
-    if (!anchors[item.key]) anchors[item.key] = [];
-    anchors[item.key][item.frame] = [prev[0], prev[1]];
-  }
+  ensureEntry(item.key, item.frame);
+  if (prevR) anchors[item.key][item.frame].r = prevR.slice();
+  if (prevL) anchors[item.key][item.frame].l = prevL.slice();
   cursor++;
+  if (cursor < queue.length) setActiveHand(neededHand(queue[cursor]));
   render();
 };
 
-document.getElementById('nextBtn').onclick = () => { cursor = Math.min(queue.length - 1, cursor + 1); render(); };
+document.getElementById('nextBtn').onclick = () => {
+  cursor = Math.min(queue.length - 1, cursor + 1);
+  setActiveHand(neededHand(queue[cursor]));
+  render();
+};
+
 document.getElementById('resetBtn').onclick = () => {
-  if (!confirm('Clear all anchors?')) return;
+  if (!confirm('Clear all anchors (right and left)?')) return;
   for (const k of Object.keys(anchors)) delete anchors[k];
   cursor = 0;
+  setActiveHand('r');
+  render();
+};
+
+document.getElementById('toggleBtn').onclick = () => {
+  setActiveHand(currentHand === 'r' ? 'l' : 'r');
   render();
 };
 
@@ -357,7 +437,6 @@ document.getElementById('copyBtn').onclick = async () => {
     await navigator.clipboard.writeText(text);
     toast('Copied ' + text.length + ' chars to clipboard');
   } catch (e) {
-    // Fallback: select textarea.
     const ta = document.getElementById('output');
     ta.removeAttribute('readonly');
     ta.focus(); ta.select();
@@ -381,30 +460,29 @@ function finish() {
   document.getElementById('counter').textContent = queue.length + ' / ' + queue.length;
   document.getElementById('progressBar').style.width = '100%';
   document.getElementById('output').value = JSON.stringify(anchors, null, 2);
-  marker.style.display = 'none';
+  markerR.style.display = 'none';
+  markerL.style.display = 'none';
 }
 
-// Boot: load sheets and start fresh at frame 0.  The previous version
-// pre-loaded anchors.json and auto-jumped to the first un-annotated
-// frame; with brand-new sprite sheets, every existing anchor is wrong
-// (frame counts changed), so a clean start avoids mixing stale and
-// new data.  Pass ?resume=1 to opt back into the resume behavior.
+// Boot: load sheets, pre-load existing anchors.json (converting bare
+// [x, y] arrays to {r: [x, y]}), then start at first frame missing data.
 Promise.all(pending).then(async () => {
   buildQueue();
-  const wantResume = new URLSearchParams(window.location.search).get('resume') === '1';
-  if (wantResume) {
-    try {
-      const r = await fetch('/sprites/player/anchors.json?v=' + SHEET_VER);
-      if (r.ok) {
-        const existing = await r.json();
-        for (const k of Object.keys(existing)) anchors[k] = existing[k].slice();
-        for (let i = 0; i < queue.length; i++) {
-          const q = queue[i];
-          if (!anchors[q.key] || anchors[q.key][q.frame] == null) { cursor = i; break; }
-        }
+  try {
+    const r = await fetch('/sprites/player/anchors.json?v=' + SHEET_VER);
+    if (r.ok) {
+      const existing = await r.json();
+      for (const k of Object.keys(existing)) {
+        anchors[k] = (existing[k] || []).map(v => {
+          if (Array.isArray(v) && v.length === 2) return { r: v.slice() };
+          if (v && typeof v === 'object') return Object.assign({}, v);
+          return {};
+        });
       }
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
+  // Start at frame 0; pick the active hand based on what's missing.
+  if (queue.length) setActiveHand(neededHand(queue[0]));
   render();
 });
 </script>
