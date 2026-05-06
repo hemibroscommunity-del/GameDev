@@ -549,17 +549,20 @@ export class EntityRenderer {
       const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
       /* Sprite-sheet body — same as local player.  Other players
-         broadcast their facing in `other._facing` (4-cardinal, same
-         as S._facing), but when moving we derive an 8-compass
-         direction from their interpolated velocity for diagonal
-         frames. */
+         broadcast their facing in `other._facing` (4-cardinal), but
+         when moving we derive an 8-compass direction from their
+         interpolated velocity for diagonal frames.  When they stop,
+         reuse the last computed 8-compass on display._lastFacing so
+         the diagonal idle pose carries through (otherwise it would
+         snap back to the broadcast 4-cardinal). */
       let facing;
       if (isMoving) {
         const ang = Math.atan2(other._smoothVy || 0, other._smoothVx || 0);
         const sector = Math.round(ang / (Math.PI / 4));
         facing = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'][((sector % 8) + 8) % 8];
+        display._lastFacing = facing;
       } else {
-        facing = other._facing || 'south';
+        facing = display._lastFacing || other._facing || 'south';
       }
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
       const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
@@ -594,7 +597,7 @@ export class EntityRenderer {
              keeps every player rendered at the same visual scale. */
           let sizeMul = 1.0;
         if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : 1.00);
-        else if (dir === 'southwest' && pose === 'jog') sizeMul = 0.92;
+        else if (dir === 'southwest' && pose !== 'hit') sizeMul = 0.95;
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
           spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
@@ -692,20 +695,20 @@ export class EntityRenderer {
 
     /* Sprite-sheet body — preferred when sheets have loaded.  Picks
        (pose, dir, frameIdx) from facing + movement.
-       When moving, derive an 8-compass facing from velocity (vx, vy)
-       so we get the diagonal sheets (northeast / northwest / etc)
-       instead of being stuck on whichever cardinal S._facing was set
-       to last.  When idle, fall back to S._facing (4-cardinal from
-       the input layer). */
+       When moving, derive 8-compass from velocity (vx, vy).  When
+       idle, derive 8-compass from S._facingAngle (the smoothed
+       continuous angle from the input layer) so the player rests in
+       the diagonal direction they last moved, instead of snapping to
+       the nearest cardinal in S._facing. */
     let facing;
+    const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
     if (isMoving) {
-      const vx = P.vx || 0;
-      const vy = P.vy || 0;
-      /* atan2 returns radians in (-PI, PI]; +x is east, +y is south
-         (screen-down).  Bin into 8 sectors of 45° starting at east. */
-      const ang = Math.atan2(vy, vx);
+      const ang = Math.atan2(P.vy || 0, P.vx || 0);
       const sector = Math.round(ang / (Math.PI / 4));
-      facing = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'][((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8];
+    } else if (S._facingAngle !== undefined) {
+      const sector = Math.round(S._facingAngle / (Math.PI / 4));
+      facing = SECTORS[((sector % 8) + 8) % 8];
     } else {
       facing = S._facing || 'south';
     }
@@ -752,7 +755,7 @@ export class EntityRenderer {
            share the east sheet. */
         let sizeMul = 1.0;
         if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : 1.00);
-        else if (dir === 'southwest' && pose === 'jog') sizeMul = 0.92;
+        else if (dir === 'southwest' && pose !== 'hit') sizeMul = 0.95;
         spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
         spriteBody.scale.y = sizeMul;
         /* No tint multiply — the sprites are pre-colored.  Multiplying
