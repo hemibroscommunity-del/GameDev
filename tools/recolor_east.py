@@ -33,11 +33,11 @@ from PIL import Image
 # Outline target sampled from jog-southwest.png (canonical reference).
 OUTLINE_TARGET = (38, 10, 18)
 
-# Skin target: averaged across N/S/SW so east lands in the middle of
-# the other three directions, not at SW's brightest extreme.  An
-# earlier pass shifted east all the way to SW's (225,148,76) and the
-# user said it looked too bright.
-SKIN_TARGET = (220, 147, 78)
+# Skin target: average median across the four AI-generated stand
+# sheets, the muted-tan reference the user asked all jog animations
+# to match.  Earlier passes shifted east toward brighter jog medians;
+# now everything (jog + east) targets the idle palette.
+SKIN_TARGET = (208, 135, 76)
 
 # Source medians (sampled from the original jog-east.png before any recolor).
 SKIN_SRC = (201, 130, 68)

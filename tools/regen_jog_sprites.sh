@@ -68,4 +68,12 @@ for d in north south northeast southwest; do
   python tools/stabilize_head.py \
     "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \
     --head-h 16
+
+  # Match skin tone to the idle / stand sprites — the AI jog sources
+  # come out brighter / peachier than the muted tan of stand-*.png.
+  # Target (208, 135, 76) is the average skin median across the four
+  # AI-generated stand sheets.
+  python tools/match_skin.py \
+    "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \
+    --target 208 135 76
 done
