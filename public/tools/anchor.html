@@ -176,8 +176,9 @@
 </div>
 
 <div class="help">
-  Tap the character's <span class="hand-r">right hand</span> (yellow), then the <span class="hand-l">left hand</span> (cyan) on each frame. The renderer uses left-hand for mirrored facings (W / NW / SE) so the sword stays in the visual right hand of the mirrored character.<br>
-  Right-hand data is pre-loaded from the existing anchors.json — by default you only need to tap left hands. Use the toggle button to redo a right hand if needed.<br>
+  Per frame: tap the <span class="hand-r">right hand</span> (yellow), then the <span class="hand-l">left hand</span> (cyan), then auto-advance.<br>
+  The renderer uses left-hand for mirrored facings (W / NW / SE) so the sword stays in the visual right hand of the mirrored character.<br>
+  Toggle Hand button redoes either hand on the current frame. − / + buttons adjust zoom.<br>
   When done, <b>Copy JSON</b> and paste it to your assistant, or <b>Download</b> and commit it as
   <code>public/sprites/player/anchors.json</code>.
 </div>
@@ -217,8 +218,11 @@ markerL.style.display = 'none';
 stage.appendChild(markerL);
 
 function autoFitScale() {
-  const room = Math.min(window.innerWidth - 24, 720);
-  scale = Math.max(4, Math.min(12, Math.floor(room / FRAME_W)));
+  /* Floor of 8 for default zoom — gives a 512px canvas which on a
+     390px iPhone screen will overflow horizontally (page scrolls).
+     User can zoom out with the − button if they want to see the
+     whole frame at once.  Cap at 12 for big screens. */
+  scale = Math.max(8, Math.min(12, Math.floor(window.innerWidth / FRAME_W)));
 }
 autoFitScale();
 window.addEventListener('resize', () => { autoFitScale(); applyScale(); render(); });
@@ -266,15 +270,6 @@ function ensureEntry(key, frame) {
 
 function getEntry(key, frame) {
   return (anchors[key] && anchors[key][frame]) || null;
-}
-
-/** Decide what hand the user should tap next on this frame.
- *  Priority: missing hand first; if both present, user can redo via toggle. */
-function neededHand(item) {
-  const e = getEntry(item.key, item.frame);
-  if (!e || !e.r) return 'r';
-  if (!e.l) return 'l';
-  return 'r';   // both present — default to redoing right
 }
 
 function setActiveHand(h) {
@@ -346,20 +341,16 @@ function recordAt(clientX, clientY) {
   ensureEntry(item.key, item.frame);
   anchors[item.key][item.frame][currentHand] = [x, y];
 
-  const entry = anchors[item.key][item.frame];
-  // Decide next state.  If the OTHER hand is missing, switch to it on
-  // the same frame.  Otherwise advance to the next frame and pick the
-  // first missing hand (or 'r' if both already present).
-  const other = currentHand === 'r' ? 'l' : 'r';
-  if (!entry[other]) {
-    setActiveHand(other);
-    render();
-    return;
-  }
-  // Both hands done for this frame — advance.
-  cursor++;
-  if (cursor < queue.length) {
-    setActiveHand(neededHand(queue[cursor]));
+  /* Deterministic per-frame flow: right → left → advance.  Always
+     captures right hand first on each new frame, then left, then
+     moves on.  No surprise switching based on what's "missing" —
+     the user always knows what comes next.  Toggle Hand button
+     overrides this if user wants to redo a specific hand. */
+  if (currentHand === 'r') {
+    setActiveHand('l');
+  } else {
+    cursor++;
+    if (cursor < queue.length) setActiveHand('r');
   }
   render();
 }
@@ -373,7 +364,7 @@ canvas.addEventListener('pointerdown', e => {
 document.getElementById('prevBtn').onclick = () => {
   if (cursor > 0) {
     cursor--;
-    setActiveHand(neededHand(queue[cursor]));
+    setActiveHand('r');
     render();
   }
 };
@@ -381,7 +372,9 @@ document.getElementById('prevBtn').onclick = () => {
 document.getElementById('skipBtn').onclick = () => {
   const item = queue[cursor];
   if (!item) return;
-  // Find previous frame's anchors (any prior queue entry with both hands).
+  // Copy the most recent prior frame's r and l (independently — if
+  // earlier frames have only r, prevL will stay null and current
+  // frame's l won't be touched).
   let prevR = null, prevL = null;
   for (let i = cursor - 1; i >= 0; i--) {
     const q = queue[i];
@@ -396,13 +389,13 @@ document.getElementById('skipBtn').onclick = () => {
   if (prevR) anchors[item.key][item.frame].r = prevR.slice();
   if (prevL) anchors[item.key][item.frame].l = prevL.slice();
   cursor++;
-  if (cursor < queue.length) setActiveHand(neededHand(queue[cursor]));
+  if (cursor < queue.length) setActiveHand('r');
   render();
 };
 
 document.getElementById('nextBtn').onclick = () => {
   cursor = Math.min(queue.length - 1, cursor + 1);
-  setActiveHand(neededHand(queue[cursor]));
+  setActiveHand('r');
   render();
 };
 
@@ -464,25 +457,31 @@ function finish() {
   markerL.style.display = 'none';
 }
 
-// Boot: load sheets, pre-load existing anchors.json (converting bare
-// [x, y] arrays to {r: [x, y]}), then start at first frame missing data.
+// Boot: load sheets and start fresh at frame 0, right hand.  Previous
+// versions pre-loaded anchors.json from the server so the user could
+// resume mid-flow, but with the dual-hand schema change that was causing
+// confusion (right-hand pre-loaded, left empty, "Skip" overwriting
+// right with previous frame's data, etc.).  Pass ?resume=1 to opt back
+// in to the pre-load behavior.
 Promise.all(pending).then(async () => {
   buildQueue();
-  try {
-    const r = await fetch('/sprites/player/anchors.json?v=' + SHEET_VER);
-    if (r.ok) {
-      const existing = await r.json();
-      for (const k of Object.keys(existing)) {
-        anchors[k] = (existing[k] || []).map(v => {
-          if (Array.isArray(v) && v.length === 2) return { r: v.slice() };
-          if (v && typeof v === 'object') return Object.assign({}, v);
-          return {};
-        });
+  const wantResume = new URLSearchParams(window.location.search).get('resume') === '1';
+  if (wantResume) {
+    try {
+      const r = await fetch('/sprites/player/anchors.json?v=' + SHEET_VER);
+      if (r.ok) {
+        const existing = await r.json();
+        for (const k of Object.keys(existing)) {
+          anchors[k] = (existing[k] || []).map(v => {
+            if (Array.isArray(v) && v.length === 2) return { r: v.slice() };
+            if (v && typeof v === 'object') return Object.assign({}, v);
+            return {};
+          });
+        }
       }
-    }
-  } catch (_) {}
-  // Start at frame 0; pick the active hand based on what's missing.
-  if (queue.length) setActiveHand(neededHand(queue[0]));
+    } catch (_) {}
+  }
+  setActiveHand('r');
   render();
 });
 </script>
