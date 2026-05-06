@@ -723,14 +723,15 @@ export class EntityRenderer {
     const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
-    /* Aim-direction override: while attacking or blocking, the body
-       faces wherever the right joystick / aim is pointed (instead of
-       movement direction).  Movement is also slowed 50% by gameplay
-       during these states, so the jog cycle plays at half speed and
-       reverses when the player walks backward relative to aim.  Both
-       lifted out so the swing math below can reuse swingActive. */
+    /* Aim-direction override: while attacking, blocking, holding the
+       attack input (S._aiming), or in autoAttack mode, the body faces
+       wherever the right joystick / aim is pointed.  Movement is
+       gameplay-slowed 50% during these states, so the jog cycle plays
+       at half speed and reverses when the player walks backward
+       relative to aim.  swingActive is lifted to outer scope so the
+       swing math below can reuse it. */
     const swingActive = S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWING_ANIM_MS;
-    const useAimDirection = !!(swingActive || S.isBlocking);
+    const useAimDirection = !!(swingActive || S.isBlocking || S._aiming || S.autoAttack);
     const aimRefAngle = useAimDirection
       ? ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0))
       : 0;
@@ -1134,13 +1135,25 @@ export class EntityRenderer {
         weaponGfx.stroke({ color: 0xfffac8, width: 2, alpha: trailAlpha * 1.2 });
       }
 
-      // Shield visual
+      // Shield visual — 90° guard arc in front of the player, oriented
+      // toward the aim direction (S._shieldAngle if set, else
+      // S._aimAngle, else facingAngle).  Thicker bright stroke when a
+      // hit was just blocked (S._blockFlash within 250 ms).
       if (S.rpg.shield && S.isBlocking) {
-        const shieldX = -facingX * 8 || 8;
-        weaponGfx.roundRect(shieldX - 5, -4 + bobY, 10, 14, 2);
-        weaponGfx.fill({ color: 0x3498db, alpha: 0.6 });
-        weaponGfx.roundRect(shieldX - 5, -4 + bobY, 10, 14, 2);
-        weaponGfx.stroke({ color: 0x5dade2, width: 1 });
+        const shieldAng = (S._shieldAngle != null)
+          ? S._shieldAngle
+          : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
+        const sR = 14;
+        const sArc = Math.PI / 2;             // 90° guard sector
+        const blockAge = S._blockFlash ? (now - S._blockFlash) / 250 : 1;
+        const blockPulse = blockAge < 1 ? (1 - blockAge) : 0;
+        weaponGfx.arc(0, bobY, sR, shieldAng - sArc / 2, shieldAng + sArc / 2);
+        weaponGfx.stroke({ color: 0x5dade2, width: 3 + blockPulse * 4, alpha: 0.55 + blockPulse * 0.35 });
+        if (blockPulse > 0) {
+          // Inner bright pulse to sell the impact moment.
+          weaponGfx.arc(0, bobY, sR, shieldAng - sArc / 2, shieldAng + sArc / 2);
+          weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.8 });
+        }
       }
     }
 
