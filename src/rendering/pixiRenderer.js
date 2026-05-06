@@ -6,6 +6,7 @@ import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer } from './systems/entityRenderer.js';
 import { EffectsRenderer } from './systems/effectsRenderer.js';
+import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadTileAssets } from './tileAssets.js';
 import { loadPlayerSprites } from './playerSprites.js';
 import { loadSlimeSprites } from './slimeSprites.js';
@@ -22,6 +23,7 @@ export async function initPixiRenderer(canvas) {
   const tileRenderer = new TileRenderer(layers.tiles);
   const entityRenderer = new EntityRenderer(layers.entities, layers.player);
   const effectsRenderer = new EffectsRenderer(layers);
+  const fpsOverlay = new FpsOverlay(layers.hud);
 
   // Load tile sprite assets (non-blocking — tiles render procedurally until loaded)
   loadTileAssets()
@@ -139,6 +141,8 @@ export async function initPixiRenderer(canvas) {
     try { effectsRenderer.update(S, cssW, cssH, now); }
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
 
+    fpsOverlay.update(now);
+
     // Manual render
     try { app.render(); }
     catch (e) { if (!update._renderErr) { update._renderErr = true; console.error('[pixi-render] app.render threw', e && e.message, e && e.stack); } }
@@ -148,6 +152,7 @@ export async function initPixiRenderer(canvas) {
     tileRenderer.destroy();
     entityRenderer.clear();
     effectsRenderer.clear();
+    fpsOverlay.destroy();
     app.destroy(false, { children: true });
   }
 
