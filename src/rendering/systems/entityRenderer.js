@@ -842,8 +842,13 @@ export class EntityRenderer {
          the anchor data isn't loaded yet. */
       const SHEET_W = 64;
       const animFrame = display._animFrame || 0;
+      /* Pass `mirror` so getAnchor returns the LEFT hand on mirrored
+         facings (W/NW/SE) — the left anchor flipped via the body's
+         negative scale lands on the visual right-hand side of the
+         mirrored character.  Old single-anchor data is treated as
+         right-hand-only and used regardless of mirror flag. */
       const hand = (spritesAvailable && display._animPose)
-        ? getAnchor(display._animPose, dir, animFrame)
+        ? getAnchor(display._animPose, dir, animFrame, mirror)
         : null;
       let wpnX, wpnY;
       if (hand) {
