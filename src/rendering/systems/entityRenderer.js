@@ -1030,14 +1030,16 @@ export class EntityRenderer {
          when the player faces away.  The weaponContainer wraps all
          three visuals so a single setChildIndex moves them as one. */
       if (display._weaponContainer && display._spriteBody) {
-        /* In-front group: E/SE/S/SW (idx 0..3) plus NE (idx 7).  NE
-           was previously in the "behind" group, but the right hand
-           swings well behind the body during NE pull-back, and with
-           the weapon also behind it got fully occluded — sword
-           disappeared.  NE faces upper-right with the right side
-           toward camera, so weapon-in-front matches the visual.
-           Pure back facings (W=4, NW=5, N=6) stay behind the body. */
-        const inFront = (facingIdx >= 0 && facingIdx <= 3) || facingIdx === 7;
+        /* Per-direction z-order, tuned by visual feedback:
+           - E (0), SE (1), S (2)  → in front: facing toward camera, sword visible
+           - SW (3)                → behind:  partial back-turn, sword reads better behind
+           - W (4)                 → in front: right hand reaches up, sword tip above
+                                     head should peek out — a behind render hid the
+                                     whole blade
+           - NW (5), N (6)         → behind:  pure back facings, sword hidden
+           - NE (7)                → in front: right hand swings far back, weapon
+                                     would otherwise disappear at full pull-back */
+        const inFront = facingIdx !== 3 && facingIdx !== 5 && facingIdx !== 6;
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* Pixi setChildIndex removes the child, then inserts at the
