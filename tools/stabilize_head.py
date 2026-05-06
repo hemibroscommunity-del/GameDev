@@ -89,6 +89,11 @@ def main() -> None:
                    help="max head height in rows below topmost opaque "
                         "pixel — also the flood-fill clip (default 12, "
                         "just the skull, no neck/shoulders)")
+    p.add_argument("--y-offset", type=int, default=0,
+                   help="shift the canonical head down by N rows when "
+                        "pasting into each frame (default 0).  Use to "
+                        "tweak the chin position on a per-direction "
+                        "basis if the locked head looks too high/low.")
     args = p.parse_args()
 
     src = Path(args.src)
@@ -116,13 +121,16 @@ def main() -> None:
     ref_top = tops[ref_idx]
     ref_px = frames[ref_idx].load()
 
+    y_off = args.y_offset
     out = img.copy()
     out_px = out.load()
-    for i in range(n):
-        if i == ref_idx:
-            continue
+    # When y_off > 0 we also need to update the reference frame: clear
+    # its top y_off head rows and shift its head down too, otherwise
+    # the ref frame would look different from the rest.
+    frames_to_process = list(range(n)) if y_off != 0 else [i for i in range(n) if i != ref_idx]
+    for i in frames_to_process:
         x0 = i * fw
-        dy = tops[i] - ref_top
+        dy = tops[i] - ref_top + y_off
         # Translated reference mask (where ref's head will land in this frame).
         new_mask = {(x, y + dy) for (x, y) in ref_mask}
 

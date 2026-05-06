@@ -65,9 +65,15 @@ for d in north south northeast southwest; do
   # with the reference frame's, vertically translated to match the
   # frame's own top row.  Body / arms / legs untouched; no stuck
   # pixels and no missing body parts.
+  # SW chin sat too high after stabilization — bump the canonical head
+  # down 1 row so the chin line reads less compressed against the body.
+  yoff=0
+  if [ "$d" = "southwest" ]; then
+    yoff=1
+  fi
   python tools/stabilize_head.py \
     "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \
-    --head-h 16
+    --head-h 16 --y-offset $yoff
 
   # Match skin tone to the idle / stand sprites — the AI jog sources
   # come out brighter / peachier than the muted tan of stand-*.png.
