@@ -1,5 +1,6 @@
 # Master GDD
 
+
 > Vite + React + PixiJS · WebGL renderer · Real-Time ARPG · 50 players/room · 4-player dungeon parties.
 > Priority: Clarity > Flexibility > Balance > Implementation.
 > **Scope:** Systems only. Content (specific weapons, bosses, zones, quests) lives in JSON data files.
