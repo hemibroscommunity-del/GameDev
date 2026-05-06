@@ -85,13 +85,13 @@ for d in north south northeast southwest east; do
   # Match skin tone to the idle / stand sprites — the AI jog sources
   # come out brighter / peachier than the muted tan of stand-*.png.
   # Target (208, 135, 76) is the average skin median across the four
-  # AI-generated stand sheets.  East uses (188, 121, 69) instead, the
-  # median of stand-east.png specifically — east's idle skin runs cooler
-  # than the other four idle sheets, so harmonizing east-jog with
-  # east-idle requires the cooler target.
+  # AI-generated stand sheets.  East uses (198, 128, 72) instead, a
+  # midpoint between the other four and stand-east's native median
+  # (188, 121, 69) — keeps east in the same family but a touch warmer
+  # so it doesn't read distinctly cooler than the other directions.
   skin_target="208 135 76"
   if [ "$d" = "east" ]; then
-    skin_target="188 121 69"
+    skin_target="198 128 72"
   fi
   python tools/match_skin.py \
     "public/sprites/player/jog-$d.png" "public/sprites/player/jog-$d.png" \

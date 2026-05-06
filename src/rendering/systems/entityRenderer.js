@@ -597,7 +597,7 @@ export class EntityRenderer {
              keeps every player rendered at the same visual scale. */
           let sizeMul = 1.0;
         if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : 1.00);
-        else if (dir === 'southwest' && pose !== 'hit') sizeMul = 0.95;
+        else if (dir === 'southwest' && pose !== 'hit') sizeMul = 0.97;
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
           spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
@@ -755,7 +755,7 @@ export class EntityRenderer {
            share the east sheet. */
         let sizeMul = 1.0;
         if (dir === 'east') sizeMul = (pose === 'hit' ? 0.88 : 1.00);
-        else if (dir === 'southwest' && pose !== 'hit') sizeMul = 0.95;
+        else if (dir === 'southwest' && pose !== 'hit') sizeMul = 0.97;
         spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
         spriteBody.scale.y = sizeMul;
         /* No tint multiply — the sprites are pre-colored.  Multiplying
