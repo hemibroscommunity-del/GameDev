@@ -1,6 +1,20 @@
 /* ═══ DURABLE OBJECTS WEBSOCKET CLIENT ═══ */
 /* Extracted from index.html lines 10309-11445 */
 
+/* Tick arrival timestamps — module-level so the buffer survives
+ * WebSocket reconnects and can be sampled by the FPS/NET overlay
+ * regardless of when setupWebSocket() is called.  performance.now()
+ * values, capped at ~5 minutes of history.  Bytes-per-tick payload
+ * sizes ride along so we can flag size spikes too. */
+const TICK_HISTORY_MS = 5 * 60 * 1000;
+const tickTimes = [];
+const tickSizes = [];
+
+/** Returns the live tick-time ring buffer (do not mutate from outside). */
+export function getTickTimes() { return tickTimes; }
+/** Returns the live tick-size ring buffer (do not mutate from outside). */
+export function getTickSizes() { return tickSizes; }
+
 /**
  * Sets up the WebSocket connection to the game server.
  * Called from a useEffect in BroTown.
@@ -75,6 +89,20 @@ export function setupWebSocket(ctx) {
         switch (msg.type) {
           case 'tick':
             {
+              /* Record arrival time + payload size for the NET overlay /
+               * bt_net() command.  Trim history older than TICK_HISTORY_MS. */
+              {
+                const _tNow = performance.now();
+                tickTimes.push(_tNow);
+                tickSizes.push(evt.data && evt.data.length ? evt.data.length : 0);
+                const _cutoff = _tNow - TICK_HISTORY_MS;
+                let _i = 0;
+                while (_i < tickTimes.length && tickTimes[_i] < _cutoff) _i++;
+                if (_i > 0) {
+                  tickTimes.splice(0, _i);
+                  tickSizes.splice(0, _i);
+                }
+              }
               // §16.9 — Process batched player positions
               if (msg.players) {
                 for (var _i33 = 0, _Object$entries5 = Object.entries(msg.players); _i33 < _Object$entries5.length; _i33++) {
