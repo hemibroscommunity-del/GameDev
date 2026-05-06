@@ -9,6 +9,7 @@ import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
+import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -714,10 +715,20 @@ export class EntityRenderer {
     }
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
     const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
+    /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
+       to outer scope so the weapon-positioning code below can pin to
+       the per-frame hand anchor regardless of whether the spritesheet
+       path drew this frame. */
+    const { dir, mirror } = resolveDirection(facing);
+    const facingIdx = SECTORS.indexOf(facing);   // 0..7: E,SE,S,SW,W,NW,N,NE
+    /* Per-direction body scale.  Hit-east is 0.88 (source frames the
+       character bigger); jog/stand-NE is 1.03 (slightly smaller source). */
+    let bodyScale = 1.0;
+    if (dir === 'east' && pose === 'hit') bodyScale = 0.88;
+    else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03;
     const spritesAvailable = hasPose(pose) || hasPose('stand');
     if (spritesAvailable) {
       const spriteBody = display._spriteBody;
-      const { dir, mirror } = resolveDirection(facing);
       let frameIdx = 0;
       if (pose === 'jog') {
         /* Per-direction frame count — sheets vary 24-34 frames.  Hard-coding
@@ -743,21 +754,10 @@ export class EntityRenderer {
         display._animPose = pose;
         display._animDir = dir;
         display._animFrame = frameIdx;
-        /* Per-direction scale multiplier — east source video framed
-           the character smaller than the other directions, so the
-           sprite needs an upscale to read at the same apparent size.
-           Canvas 2D landed on 1.06×; in the Pixi path 1.06 was still
-           noticeably smaller, so bumped to 1.15× (between Canvas's
-           1.06 and the original 1.18 the user once flagged as too
-           large).  Hit-pose east is the opposite — source frames
-           the character bigger — keep the 0.88× shrink.
-           Applies to BOTH east and the mirrored W/NW/SE since they
-           share the east sheet. */
-        let sizeMul = 1.0;
-        if (dir === 'east' && pose === 'hit') sizeMul = 0.88;
-        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03;
-        spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
-        spriteBody.scale.y = sizeMul;
+        /* bodyScale was computed at outer scope (see comment above).
+           Applied here to the sprite scale; mirror flag flips x. */
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale;
+        spriteBody.scale.y = bodyScale;
         /* No tint multiply — the sprites are pre-colored.  Multiplying
            by S.bodyTorso (default #2563eb) was darkening the avatar
            because Pixi's tint is a per-channel multiply against white.
@@ -815,20 +815,42 @@ export class EntityRenderer {
     weaponGfx.clear();
     weaponGlowGfx.clear();
     if (S.rpg) {
-      const facing = S._facing || 'down';
-      const facingX = facing === 'right' ? 1 : facing === 'left' ? -1 : 0;
-      const facingY = facing === 'down' ? 1 : facing === 'up' ? -1 : 0;
-      /* Hand offset tuned for the 64-px sprite body, not the tiny
-         procedural rectangle.  Side facings (left/right) put the
-         weapon out at the wrist (~20 px from sprite center).  Down
-         puts it slightly forward + right; up puts it slightly behind
-         + left so the weapon reads as held. */
+      /* facingX/facingY are derived from the 8-compass `facing` for
+         the procedural glow lines that need a left/right/up/down hint.
+         The weapon position itself comes from per-frame hand anchors
+         (anchors.json) below. */
+      const _ang = facingIdx >= 0 ? facingIdx * Math.PI / 4 : 0;
+      const _cx = Math.cos(_ang), _sy = Math.sin(_ang);
+      const facingX = _cx > 0.3 ? 1 : _cx < -0.3 ? -1 : 0;
+      const facingY = _sy > 0.3 ? 1 : _sy < -0.3 ? -1 : 0;
+
+      /* Per-frame hand anchor: anchors.json maps (pose, dir, frame) ->
+         [ax, ay] in 64×64 sprite space.  Mirror flag flips the x.
+         Sprite body has anchor (0.5, 0.5) so source pixel (32, 32) is
+         display-local (0, 0); pixel (ax, ay) lands at ((ax-32)*scale,
+         (ay-32)*scale).  Falls back to a crude per-cardinal offset if
+         the anchor data isn't loaded yet. */
+      const SHEET_W = 64;
+      const animFrame = display._animFrame || 0;
+      const hand = (spritesAvailable && display._animPose)
+        ? getAnchor(display._animPose, dir, animFrame)
+        : null;
       let wpnX, wpnY;
-      if (facing === 'right')      { wpnX = 20; wpnY = 4 + bobY; }
-      else if (facing === 'left')  { wpnX = -20; wpnY = 4 + bobY; }
-      else if (facing === 'down')  { wpnX = 14; wpnY = 12 + bobY; }
-      else if (facing === 'up')    { wpnX = -10; wpnY = -2 + bobY; }
-      else                          { wpnX = 14; wpnY = 8 + bobY; }
+      if (hand) {
+        const ax = mirror ? (SHEET_W - hand[0]) : hand[0];
+        wpnX = (ax - SHEET_W / 2) * bodyScale;
+        wpnY = (hand[1] - SHEET_W / 2) * bodyScale;
+      } else {
+        /* Anchor data not loaded yet — use the legacy 4-cardinal
+           offsets so the weapon at least appears in roughly the right
+           place during the brief window before anchors.json resolves. */
+        const cardFacing = S._facing || 'down';
+        if (cardFacing === 'right')      { wpnX = 20; wpnY = 4 + bobY; }
+        else if (cardFacing === 'left')  { wpnX = -20; wpnY = 4 + bobY; }
+        else if (cardFacing === 'down')  { wpnX = 14; wpnY = 12 + bobY; }
+        else if (cardFacing === 'up')    { wpnX = -10; wpnY = -2 + bobY; }
+        else                              { wpnX = 14; wpnY = 8 + bobY; }
+      }
 
       const activeSlot = S.rpg.activeSlot || 'melee';
       /* Three slots, three sources: melee, ranged (bow), staff.  The
@@ -924,19 +946,30 @@ export class EntityRenderer {
         const wpnIconTex = hasWeapon(wpn.type) ? getWeaponTexture(wpn.type) : null;
         if (wpnIconTex) {
           if (weaponSprite.texture !== wpnIconTex) weaponSprite.texture = wpnIconTex;
+          /* Pin the weapon's grip pixel to the hand pixel by setting
+             the Sprite anchor to handles.json's grip coordinate.
+             Falls back to (0.5, bottom) if no handle data — same as
+             the Canvas 2D default `[srcW/2, srcH]`. */
+          const handle = getWeaponHandle(wpn.type);
+          const tw = wpnIconTex.width || 64;
+          const th = wpnIconTex.height || 64;
+          if (handle) weaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
+          else weaponSprite.anchor.set(0.5, 1.0);
           weaponSprite.x = wpnX;
           weaponSprite.y = wpnY;
           /* Tuned per-weapon target heights so the icon reads at the
              same apparent size as the 64-px sprite body's hand area.
-             Greatsword is the longest, staff next, sword/bow shorter.
-             Mirror horizontally when facing left so blade angles
-             outward. */
+             Greatsword is the longest, staff next, sword/bow shorter. */
           const targetH = wpn.type === 'greatsword' ? 36
                          : wpn.type === 'staff'      ? 34
                          : wpn.type === 'bow'        ? 28
                          :                              26;
-          const fitScale = targetH / Math.max(8, wpnIconTex.height || 64);
-          weaponSprite.scale.x = (facingX < 0 ? -1 : 1) * fitScale;
+          const fitScale = targetH / Math.max(8, th);
+          /* Weapon mirror — flip on facings idx 3..6 (SW/W/NW/N) so
+             the blade angles outward consistently with how the Canvas
+             2D path mirrors.  E/SE/S/NE keep the source orientation. */
+          const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
+          weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
           weaponSprite.scale.y = fitScale;
           weaponSprite.tint = 0xffffff;
           weaponSprite.visible = true;
@@ -976,6 +1009,10 @@ export class EntityRenderer {
            doesn't linger from a previous loadout. */
         if (display._weaponSprite) display._weaponSprite.visible = false;
       }
+      /* Z-order swap (weapon behind body for back facings, like the
+         Canvas 2D path) is intentionally NOT done here yet — see
+         migration follow-up. Default child order keeps the weapon
+         in front of spriteBody for all facings. */
 
       // Shield visual
       if (S.rpg.shield && S.isBlocking) {

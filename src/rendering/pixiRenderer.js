@@ -9,6 +9,7 @@ import { EffectsRenderer } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadTileAssets } from './tileAssets.js';
 import { loadPlayerSprites } from './playerSprites.js';
+import { loadPlayerAnchors } from './playerAnchors.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
 
@@ -43,6 +44,8 @@ export async function initPixiRenderer(canvas) {
   loadSlimeSprites().catch((err) => console.warn('Slime sprites failed to load, using procedural fallback:', err));
   // Weapon icons (sword / bow / staff).
   loadWeaponSprites().catch((err) => console.warn('Weapon sprites failed to load, using procedural fallback:', err));
+  // Per-frame hand anchors + weapon grip points.
+  loadPlayerAnchors().catch((err) => console.warn('Player anchors failed to load, using procedural fallback:', err));
 
   let currentZone = null;
   let currentMap = null;
