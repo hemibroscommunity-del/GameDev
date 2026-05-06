@@ -933,7 +933,10 @@ export class EntityRenderer {
         const restAng = REST_ANG[wpn.type] != null ? REST_ANG[wpn.type] : 0;
         swingAng = (aimAngleForSwing - restAng) + swingOffset;
       }
-      if (wpn) {
+      if (wpn && !S.isBlocking) {
+        /* Weapon is fully hidden while blocking — gameplay rule: you
+           can attack OR block, never both, so no point drawing the
+           weapon sprite or its glow when the shield is up. */
         const elem = wpn.element1;
         const wpnColor = elem && ELEMENTS[elem] ? cssColorToHex(ELEMENTS[elem].color) : 0xaaaaaa;
 
@@ -1088,8 +1091,9 @@ export class EntityRenderer {
           }
         }
       } else {
-        /* No weapon equipped — hide the icon Sprite so a stale icon
-           doesn't linger from a previous loadout. */
+        /* No weapon equipped or shield is up — hide the icon Sprite
+           so a stale icon doesn't linger from a previous loadout (or
+           render on top of the shield arc during a block). */
         if (display._weaponSprite) display._weaponSprite.visible = false;
       }
       /* Z-order: weapon in front of body for forward facings (idx 0..3
