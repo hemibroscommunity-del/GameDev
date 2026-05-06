@@ -723,15 +723,18 @@ export class EntityRenderer {
     const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
-    /* Aim-direction override: while attacking, blocking, holding the
-       attack input (S._aiming), or in autoAttack mode, the body faces
-       wherever the right joystick / aim is pointed.  Movement is
-       gameplay-slowed 50% during these states, so the jog cycle plays
-       at half speed and reverses when the player walks backward
-       relative to aim.  swingActive is lifted to outer scope so the
-       swing math below can reuse it. */
+    /* Aim-direction override: while actively attacking (swing window),
+       holding the attack input (S._aiming = right joystick / mouse),
+       or blocking (S.isBlocking = shield held), the body faces
+       wherever the right joystick / aim is pointed.  When the right
+       joystick is released, facing falls back to velocity (left
+       joystick) — autoAttack is intentionally NOT included here so
+       that idle / movement still feels like a normal walk-around.
+       Movement is gameplay-slowed 50% during these states, so the
+       jog cycle plays at half speed and reverses when the player
+       walks backward relative to aim. */
     const swingActive = S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWING_ANIM_MS;
-    const useAimDirection = !!(swingActive || S.isBlocking || S._aiming || S.autoAttack);
+    const useAimDirection = !!(swingActive || S.isBlocking || S._aiming);
     const aimRefAngle = useAimDirection
       ? ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0))
       : 0;
@@ -1135,24 +1138,33 @@ export class EntityRenderer {
         weaponGfx.stroke({ color: 0xfffac8, width: 2, alpha: trailAlpha * 1.2 });
       }
 
-      // Shield visual — 90° guard arc in front of the player, oriented
+      // Shield visual — 120° guard arc in front of the player, oriented
       // toward the aim direction (S._shieldAngle if set, else
-      // S._aimAngle, else facingAngle).  Thicker bright stroke when a
-      // hit was just blocked (S._blockFlash within 250 ms).
+      // S._aimAngle, else facingAngle).  Drawn as a translucent
+      // wedge fill plus a thicker rim so it reads as an actual
+      // barrier.  Pulses brighter when a hit was just blocked.
       if (S.rpg.shield && S.isBlocking) {
         const shieldAng = (S._shieldAngle != null)
           ? S._shieldAngle
           : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
-        const sR = 14;
-        const sArc = Math.PI / 2;             // 90° guard sector
+        const sR = 20;                        // bigger so it's visible
+        const sArc = Math.PI * 2 / 3;         // 120° guard sector
+        const startA = shieldAng - sArc / 2;
+        const endA   = shieldAng + sArc / 2;
         const blockAge = S._blockFlash ? (now - S._blockFlash) / 250 : 1;
         const blockPulse = blockAge < 1 ? (1 - blockAge) : 0;
-        weaponGfx.arc(0, bobY, sR, shieldAng - sArc / 2, shieldAng + sArc / 2);
-        weaponGfx.stroke({ color: 0x5dade2, width: 3 + blockPulse * 4, alpha: 0.55 + blockPulse * 0.35 });
+        // Translucent wedge fill (pivot - arc - pivot).
+        weaponGfx.moveTo(0, bobY);
+        weaponGfx.arc(0, bobY, sR, startA, endA);
+        weaponGfx.lineTo(0, bobY);
+        weaponGfx.fill({ color: 0x5dade2, alpha: 0.18 + blockPulse * 0.25 });
+        // Outer rim — the visible "edge" of the shield.
+        weaponGfx.arc(0, bobY, sR, startA, endA);
+        weaponGfx.stroke({ color: 0x5dade2, width: 4 + blockPulse * 4, alpha: 0.85 });
         if (blockPulse > 0) {
           // Inner bright pulse to sell the impact moment.
-          weaponGfx.arc(0, bobY, sR, shieldAng - sArc / 2, shieldAng + sArc / 2);
-          weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.8 });
+          weaponGfx.arc(0, bobY, sR, startA, endA);
+          weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.9 });
         }
       }
     }
