@@ -723,56 +723,43 @@ export class EntityRenderer {
     const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
-    /* Aim-direction override: while actively attacking (swing window),
-       holding the attack input (S._aiming = right joystick / mouse),
-       or shielding (S._shieldUp), the body faces wherever the right
-       joystick / aim is pointed.  When the right joystick is released
-       and the player is moving, facing falls back to velocity (left
-       joystick).  When idle and not aiming, we hold the LAST aim /
-       shield angle so the body doesn't snap back to the previous
-       movement direction the moment the joystick is released. */
+    /* Match the Canvas 2D facing logic exactly (BroTown.jsx ~13125-13137):
+       1. S._shieldUp → S._shieldAngle (shield direction)
+       2. S._aimAngle when backpedaling OR (idle && autoAttack)
+       3. Live left-joystick stick (instant — only used when 1 and 2 fail)
+       4. Velocity (desktop keyboard fallback)
+       5. Smoothed S._facingAngle (last movement direction)
+       6. Legacy S._facing
+       Notably, S._aiming is NOT a trigger — it was making the body lock
+       to the right-joystick aim even after the user thought they had
+       released, because S._aiming had stale state in some flows. */
     const swingActive = S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWING_ANIM_MS;
     const isShielding = !!S._shieldUp;
-    const useAimDirection = !!(swingActive || isShielding || S._aiming);
-    /* Pick aim source: shield angle wins while shielding (separate
-       joystick from attack on mobile), then explicit aim, then the
-       smoothed S._facingAngle. */
-    const aimRefAngle = useAimDirection
-      ? ((isShielding && S._shieldAngle != null) ? S._shieldAngle
-         : (S._aimAngle != null) ? S._aimAngle
-         : (S._facingAngle || 0))
-      : 0;
+    const aimAttackActive = S._aimAngle != null && (S._backpedaling || (!isMoving && S.autoAttack));
+    /* useAimDirection drives the slowed + reverse jog animation —
+       still want it true during a swing window so the legs stay in
+       sync with the attack-locked body. */
+    const useAimDirection = isShielding || aimAttackActive || swingActive;
+    const aimRefAngle = isShielding
+      ? (S._shieldAngle != null ? S._shieldAngle : (S._facingAngle || 0))
+      : (S._aimAngle != null ? S._aimAngle : (S._facingAngle || 0));
     let isMovingBackward = false;
     if (useAimDirection && isMoving) {
       const dotProd = (P.vx || 0) * Math.cos(aimRefAngle) + (P.vy || 0) * Math.sin(aimRefAngle);
       isMovingBackward = dotProd < 0;
     }
 
-    /* Sprite-sheet body — preferred when sheets have loaded.
-       Priority order:
-       1. Aim direction (attacking / shielding / right-joystick held)
-       2. Left-joystick stick direction (S.stickX / Y — responds the
-          frame the user pushes the stick, before P.vx / P.vy update)
-       3. Velocity (covers desktop keyboard, where stickX/Y aren't set)
-       4. Last-used aim cache (idle after release — body holds the
-          angle the shield/attack was last pointed in)
-       5. Smoothed S._facingAngle, then legacy 4-cardinal S._facing */
     const stickX = S.stickX || 0;
     const stickY = S.stickY || 0;
     const stickActive = stickX !== 0 || stickY !== 0;
-    /* Match the Canvas 2D facing precedence (BroTown.jsx ~13125-13137):
-       1. Shielding → S._shieldAngle
-       2. Attack-aim with backpedal or idle-autoAttack → S._aimAngle
-       3. Live movement input (stick — instant) → atan2(stickY, stickX)
-       4. Velocity (desktop keyboard) → atan2(vy, vx)
-       5. Smoothed S._facingAngle (last movement direction)
-       6. Legacy 4-cardinal S._facing
-       No "remember last aim" cache — falling to S._facingAngle handles
-       the idle-after-release case the same way Canvas 2D does. */
+
     let facing;
     const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
-    if (useAimDirection) {
-      const sector = Math.round(aimRefAngle / (Math.PI / 4));
+    if (isShielding && S._shieldAngle != null) {
+      const sector = Math.round(S._shieldAngle / (Math.PI / 4));
+      facing = SECTORS[((sector % 8) + 8) % 8];
+    } else if (aimAttackActive) {
+      const sector = Math.round(S._aimAngle / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8];
     } else if (stickActive) {
       const ang = Math.atan2(stickY, stickX);
