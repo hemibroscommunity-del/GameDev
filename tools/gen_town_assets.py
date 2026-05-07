@@ -25,7 +25,7 @@ register_heif_opener()
 REPO = Path(__file__).resolve().parent.parent
 SRC_CLEAN = REPO / "IMG_8005.jpeg"
 SRC_YELLOW = REPO / "IMG_8006.heic"
-OUT_TOWN_JPG = REPO / "public" / "maps" / "town.jpg"
+OUT_TOWN_JPG = REPO / "public" / "maps" / "town_v2.jpg"
 OUT_WALK = REPO / "public" / "maps" / "town.walkability.json"
 
 GRID = 32        # 32x32 logical tile grid for walkability

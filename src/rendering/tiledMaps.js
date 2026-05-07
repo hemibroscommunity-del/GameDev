@@ -27,7 +27,10 @@ export const TILED_ZONE_MAPS = {};
  *  Walkability falls back to "all walkable" since there's no per-tile
  *  metadata to derive blocking from. */
 export const IMAGE_ZONE_MAPS = {
-  town:    '/maps/town.jpg',
+  /* Bumped to town_v2.jpg to bust browser/CDN caches that were
+     pinning the previous (stale) /maps/town.jpg.  Bump again next
+     time the painted town artwork changes. */
+  town:    '/maps/town_v2.jpg',
   frost:   '/maps/frost.jpg',
   meadow:  '/maps/meadow.jpg',
   thunder: '/maps/thunder.jpg',
