@@ -391,6 +391,28 @@ export class EffectsRenderer {
     const gfx = this.projectileGfx;
     gfx.clear();
 
+    /* Track aim rotation rate for the mid-flight arrow bend.  Arrows
+       lean slightly in the direction the player is currently rotating
+       their aim — a visual flourish that hints at "tracking" motion. */
+    if (S._aimAngle != null) {
+      if (this._lastAimAngle != null) {
+        let d = S._aimAngle - this._lastAimAngle;
+        // Wrap to [-π, π] so a 359°→1° tick doesn't read as a -358° spin.
+        while (d > Math.PI)  d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        // Smooth so single-frame jitter doesn't whiplash the bend.
+        this._aimRate = (this._aimRate || 0) * 0.7 + d * 0.3;
+      }
+      this._lastAimAngle = S._aimAngle;
+    } else {
+      this._aimRate = 0;
+    }
+    /* Cap and scale — visible bend up to ~20° at fast aim sweeps,
+       zero when standing still.  Negative because a clockwise sweep
+       (positive d in screen-y-down) should bend the arrow CCW for a
+       trailing-tail effect. */
+    const bend = -Math.max(-0.6, Math.min(0.6, (this._aimRate || 0) * 6));
+
     // Local arrows
     const arrows = S.arrows || [];
     for (const a of arrows) {
@@ -410,15 +432,29 @@ export class EffectsRenderer {
         gfx.circle(a._renderX, a._renderY, 9);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.2 });
       } else {
-        // Arrow line
-        const tailX = a._renderX - Math.cos(a.ang) * 12;
-        const tailY = a._renderY - Math.sin(a.ang) * 12;
-        gfx.moveTo(tailX, tailY);
-        gfx.lineTo(a._renderX, a._renderY);
-        gfx.stroke({ color: 0x8B6914, width: 2, alpha: fadeA });
-        // Arrowhead
-        gfx.circle(a._renderX, a._renderY, 2);
-        gfx.fill({ color: elemColor, alpha: fadeA });
+        /* Detailed arrow — wooden shaft + element-colored arrowhead +
+           element-colored fletching.  Drawn rotated so the math is
+           local-coords-friendly.  ang_eff = a.ang + bend so arrows
+           in flight visibly tilt in the direction the player is
+           rotating their aim. */
+        this._drawArrow(gfx, a._renderX, a._renderY, a.ang + bend, elemColor, fadeA);
+      }
+    }
+
+    /* Stuck arrows — embedded in monster bodies after a hit.  Drawn
+       half-length per the Canvas 2D path (BroTown.jsx ~11756). */
+    const monsters = S.monsters || [];
+    for (const m of monsters) {
+      if (!m || !m._stuckArrows || !m._stuckArrows.length) continue;
+      for (const sa of m._stuckArrows) {
+        const sx = m.x + (sa.ox || 0);
+        const sy = m.y + (sa.oy || 0);
+        const color = (sa.color && cssToHex(sa.color)) || 0x8b6914;
+        if (sa.isStaff) {
+          this._drawStuckMagicShard(gfx, sx, sy, sa.ang, color);
+        } else {
+          this._drawStuckArrow(gfx, sx, sy, sa.ang, color);
+        }
       }
     }
 
@@ -430,13 +466,70 @@ export class EffectsRenderer {
         gfx.circle(rp._renderX, rp._renderY, 4);
         gfx.fill({ color: 0xa855f7, alpha: 0.8 });
       } else {
-        const tx = rp._renderX - Math.cos(rp.ang) * 10;
-        const ty = rp._renderY - Math.sin(rp.ang) * 10;
-        gfx.moveTo(tx, ty);
-        gfx.lineTo(rp._renderX, rp._renderY);
-        gfx.stroke({ color: 0xd4a574, width: 1.5, alpha: 0.9 });
+        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, 0xd4a574, 0.9);
       }
     }
+  }
+
+  /** Draw a detailed arrow centered on (cx, cy) rotated by `ang`.
+   *  Body is 16 px long: dark brown shaft + colored triangular head +
+   *  colored fletching marks at the tail. */
+  _drawArrow(gfx, cx, cy, ang, headColor, alpha) {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    /* Local coords (forward = +x, right = +y), then rotate by (c, s). */
+    const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
+    /* Shaft 16 px long, 3 px wide. */
+    const a1 = pt(-8, -1.5), a2 = pt(8, -1.5), a3 = pt(8, 1.5), a4 = pt(-8, 1.5);
+    gfx.poly([a1.x, a1.y, a2.x, a2.y, a3.x, a3.y, a4.x, a4.y]);
+    gfx.fill({ color: 0x3a2210, alpha });
+    /* Arrowhead triangle ahead of the shaft. */
+    const h1 = pt(9, 0), h2 = pt(5, -3.5), h3 = pt(5, 3.5);
+    gfx.poly([h1.x, h1.y, h2.x, h2.y, h3.x, h3.y]);
+    gfx.fill({ color: headColor, alpha });
+    /* Two fletching marks at the tail end. */
+    const f1a = pt(-8, -2.5), f1b = pt(-5, -2.5), f1c = pt(-5, -1), f1d = pt(-8, -1);
+    gfx.poly([f1a.x, f1a.y, f1b.x, f1b.y, f1c.x, f1c.y, f1d.x, f1d.y]);
+    gfx.fill({ color: headColor, alpha: alpha * 0.6 });
+    const f2a = pt(-8, 1), f2b = pt(-5, 1), f2c = pt(-5, 2.5), f2d = pt(-8, 2.5);
+    gfx.poly([f2a.x, f2a.y, f2b.x, f2b.y, f2c.x, f2c.y, f2d.x, f2d.y]);
+    gfx.fill({ color: headColor, alpha: alpha * 0.6 });
+  }
+
+  /** Stuck arrow on a monster — half-length, fletching at the air end,
+   *  arrowhead buried in the body.  Center (cx, cy) is the impact point. */
+  _drawStuckArrow(gfx, cx, cy, ang, color) {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
+    /* Shaft 13 px out, 2.4 px wide. */
+    const a1 = pt(-11, -1.2), a2 = pt(2, -1.2), a3 = pt(2, 1.2), a4 = pt(-11, 1.2);
+    gfx.poly([a1.x, a1.y, a2.x, a2.y, a3.x, a3.y, a4.x, a4.y]);
+    gfx.fill({ color: 0x3a2210, alpha: 0.9 });
+    /* Highlight strip across the top half of the shaft for relief. */
+    const hi1 = pt(-11, -1.2), hi2 = pt(2, -1.2), hi3 = pt(2, -0.4), hi4 = pt(-11, -0.4);
+    gfx.poly([hi1.x, hi1.y, hi2.x, hi2.y, hi3.x, hi3.y, hi4.x, hi4.y]);
+    gfx.fill({ color: 0x5a3820, alpha: 0.85 });
+    /* Fletching at the tail end. */
+    const f1a = pt(-11, -3), f1b = pt(-8, -3), f1c = pt(-8, -1.5), f1d = pt(-11, -1.5);
+    gfx.poly([f1a.x, f1a.y, f1b.x, f1b.y, f1c.x, f1c.y, f1d.x, f1d.y]);
+    gfx.fill({ color, alpha: 0.8 });
+    const f2a = pt(-11, 1.5), f2b = pt(-8, 1.5), f2c = pt(-8, 3), f2d = pt(-11, 3);
+    gfx.poly([f2a.x, f2a.y, f2b.x, f2b.y, f2c.x, f2c.y, f2d.x, f2d.y]);
+    gfx.fill({ color, alpha: 0.8 });
+    /* Tip just protruding from the body. */
+    const t1 = pt(3, 0), t2 = pt(1.5, -2), t3 = pt(1.5, 2);
+    gfx.poly([t1.x, t1.y, t2.x, t2.y, t3.x, t3.y]);
+    gfx.fill({ color, alpha: 0.95 });
+  }
+
+  /** Embedded magic shard from a staff bolt. */
+  _drawStuckMagicShard(gfx, cx, cy, ang, color) {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
+    const t1 = pt(4, 0), t2 = pt(-2, -2), t3 = pt(-2, 2);
+    gfx.poly([t1.x, t1.y, t2.x, t2.y, t3.x, t3.y]);
+    gfx.fill({ color, alpha: 0.66 });
+    gfx.circle(cx, cy, 3);
+    gfx.fill({ color, alpha: 0.27 });
   }
 
   /* ── Monster Telegraphs ── */
@@ -492,24 +585,48 @@ export class EffectsRenderer {
       }
     }
 
-    // Bow aim line
-    if (S._aiming && S._aimAngle != null) {
+    /* Bow / staff aim line — full LOS across the viewport when ranged
+       weapon is active.  Dashed (12 on / 12 off) with a moving dash
+       offset so it reads as "scanning".  Brighter while actively
+       aiming or locked on.  Mirrors the Canvas 2D draw at
+       BroTown.jsx ~13643. */
+    const slot = S.rpg && S.rpg.activeSlot;
+    const isRanged = slot === 'ranged' || slot === 'staff';
+    const isLocked = !!(S.lockedTarget && S.lockedTarget.ref);
+    if (isRanged && (S._aiming || isLocked || S.autoAttack) && S.player) {
       const P = S.player;
-      const aimLen = 80;
-      const ex = P.x + Math.cos(S._aimAngle) * aimLen;
-      const ey = P.y + Math.sin(S._aimAngle) * aimLen;
-      // Dashed effect via segments
-      for (let d = 0; d < aimLen; d += 8) {
-        if ((d / 8) % 2 === 0) {
-          const sx = P.x + Math.cos(S._aimAngle) * d;
-          const sy = P.y + Math.sin(S._aimAngle) * d;
-          const dx = P.x + Math.cos(S._aimAngle) * Math.min(d + 4, aimLen);
-          const dy = P.y + Math.sin(S._aimAngle) * Math.min(d + 4, aimLen);
-          gfx.moveTo(sx, sy);
-          gfx.lineTo(dx, dy);
-          gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.4 * (1 - d / aimLen) });
-        }
+      let aimA;
+      if (isLocked) {
+        const lt = S.lockedTarget.ref;
+        aimA = Math.atan2((lt.y || 0) - P.y, (lt.x || 0) - P.x);
+      } else if (S._aimAngle != null) {
+        aimA = S._aimAngle;
+      } else {
+        aimA = 0;
       }
+      const isAiming = S._aiming || isLocked;
+      const losAlpha = isAiming ? 0.5 : 0.2;
+      /* Length = generous diagonal so the line covers any viewport in
+         any direction.  Pixi v8 Graphics doesn't support setLineDash
+         natively — emulate by stroking 8-px alternating segments and
+         offset by a wall-time hash so it animates. */
+      const losLen = 1200;
+      const dashOn = 12, dashOff = 12, period = dashOn + dashOff;
+      const offset = (now / 15) % period;
+      for (let d = -offset; d < losLen; d += period) {
+        const start = Math.max(0, d);
+        const end   = Math.min(losLen, d + dashOn);
+        if (end <= start) continue;
+        gfx.moveTo(
+          P.x + Math.cos(aimA) * start,
+          P.y + Math.sin(aimA) * start + 14,
+        );
+        gfx.lineTo(
+          P.x + Math.cos(aimA) * end,
+          P.y + Math.sin(aimA) * end + 14,
+        );
+      }
+      gfx.stroke({ color: 0xffffff, width: 2, alpha: losAlpha });
     }
 
     // Shield arc
