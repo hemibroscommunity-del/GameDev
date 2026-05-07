@@ -1592,21 +1592,53 @@ export class EntityRenderer {
         display = new Container();
         display.label = `npc_${npc.id}`;
 
+        /* Static body (Graphics rebuilt only on color change). */
         const body = new Graphics();
         display.addChild(body);
         display._body = body;
 
+        /* HP bar — Graphics, redrawn each frame the value changes. */
+        const hpBar = new Graphics();
+        display.addChild(hpBar);
+        display._hpBar = hpBar;
+
+        /* Star indicator — visual marker that this is an interactable NPC. */
+        const starText = new Text({
+          text: '★',
+          style: { fontFamily: 'sans-serif', fontSize: 8, fontWeight: '700',
+                   fill: '#f5c542', align: 'center' },
+        });
+        starText.anchor.set(0.5, 0.5);
+        starText.y = -14;
+        display.addChild(starText);
+
+        /* Name with translucent dark background, just above the head. */
         const nameText = new Text({
           text: npc.name,
           style: { ...NAME_STYLE, fontSize: 9, fill: npc.color || '#ffffff' },
         });
         nameText.anchor.set(0.5, 1);
-        nameText.y = -28;
+        nameText.y = -17;
         display.addChild(nameText);
+        display._nameText = nameText;
 
+        /* Quest marker — text overlay above the head, pulses vertically.
+           Hidden by default; populated when npc._questMarker is set. */
+        const questMarkerText = new Text({
+          text: '',
+          style: { fontFamily: 'sans-serif', fontSize: 16, fontWeight: '700',
+                   fill: '#f5c542', align: 'center' },
+        });
+        questMarkerText.anchor.set(0.5, 0.5);
+        questMarkerText.visible = false;
+        display.addChild(questMarkerText);
+        display._questMarker = questMarkerText;
+
+        /* Avatar — emoji rendered at the body center.  Special-case
+           '💀' for the Ferryman: no body circle, just the skull. */
         const avatarText = new Text({
           text: npc.avatar || '👤',
-          style: { fontSize: 16, align: 'center' },
+          style: { fontFamily: 'sans-serif', fontSize: 16, align: 'center' },
         });
         avatarText.anchor.set(0.5, 0.5);
         display.addChild(avatarText);
@@ -1619,23 +1651,51 @@ export class EntityRenderer {
       display.x = npc.x;
       display.y = npc.y;
 
-      /* NPC body is static (color + optional quest marker); only redraw
-         when the quest flag flips.  NPCs don't move and their color
-         doesn't change. */
+      /* Body — only redraw when color changes (NPCs are static). */
       const body = display._body;
-      const hasQuest = !!npc._hasQuest;
-      if (display._lastQuest !== hasQuest || display._lastColor !== npc.color) {
-        display._lastQuest = hasQuest;
+      const isSkull = npc.avatar === '💀';
+      if (display._lastColor !== npc.color || display._lastSkull !== isSkull) {
         display._lastColor = npc.color;
+        display._lastSkull = isSkull;
         body.clear();
-        body.circle(0, 0, 14);
-        body.fill({ color: cssColorToHex(npc.color || '#5b52ff'), alpha: 0.7 });
-        body.circle(0, 0, 14);
-        body.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
-        if (hasQuest) {
-          body.circle(0, -22, 5);
-          body.fill({ color: 0xf5c542 });
+        if (!isSkull) {
+          body.circle(0, 0, 11);
+          body.fill({ color: cssColorToHex(npc.color || '#5b52ff'), alpha: 0.85 });
+          body.stroke({ color: 0xffffff, width: 1, alpha: 0.35 });
         }
+      }
+
+      /* HP bar (24x3 above the head, color by remaining HP). */
+      const hpBar = display._hpBar;
+      const maxHp = npc.maxHp || 1;
+      const hp = Math.max(0, npc.hp || 0);
+      const hpPct = hp / maxHp;
+      const hpKey = hpPct.toFixed(2);
+      if (display._lastHpKey !== hpKey) {
+        display._lastHpKey = hpKey;
+        hpBar.clear();
+        hpBar.rect(-12, -22, 24, 3);
+        hpBar.fill({ color: 0x000000, alpha: 0.5 });
+        if (hpPct > 0) {
+          const c = hpPct > 0.5 ? 0x3dd497 : hpPct > 0.25 ? 0xf5c542 : 0xff5e6c;
+          hpBar.rect(-12, -22, 24 * hpPct, 3);
+          hpBar.fill({ color: c });
+        }
+      }
+
+      /* Quest marker — `npc._questMarker` is '❗' (available) or '❓'
+         (turn-in) or null.  Pulses vertically when visible. */
+      const qm = display._questMarker;
+      const qmStr = npc._questMarker || '';
+      if (qmStr) {
+        if (qm.text !== qmStr) qm.text = qmStr;
+        const targetFill = qmStr === '❗' ? '#f5c542' : '#3dd497';
+        if (qm.style.fill !== targetFill) qm.style.fill = targetFill;
+        const pulse = Math.sin(now / 300) * 3;
+        qm.y = -36 + pulse;
+        qm.visible = true;
+      } else if (qm.visible) {
+        qm.visible = false;
       }
     }
 
