@@ -688,15 +688,26 @@ export class EffectsRenderer {
     gfx.clear();
 
     const loot = S.groundLoot || [];
+    /* Track which loot entries we've created Pixi children for so we
+       can dispose orphans.  When the player picks loot up, BroTown
+       removes the entry from S.groundLoot — without this set we'd
+       never see those entries again and their pooled Sprite/Text
+       children would leak in the lootLayer (visible as a "stuck"
+       slime remnant splat after pickup). */
+    if (!this._knownLoot) this._knownLoot = new Set();
+    const activeLoot = new Set();
 
     for (let i = loot.length - 1; i >= 0; i--) {
       const l = loot[i];
       const age = (now - l.ts) / 1000;
       if (l._expired || age > 30) {
         this._disposeLoot(l);
+        this._knownLoot.delete(l);
         loot.splice(i, 1);
         continue;
       }
+      activeLoot.add(l);
+      this._knownLoot.add(l);
       /* Fodder loot has no bob; it's a settled puddle. */
       const isFodder = l.skull === 'fodder';
       const bob = isFodder ? 0 : Math.sin(age * 3) * 2;
@@ -838,6 +849,18 @@ export class EffectsRenderer {
       if (l.xp) {
         gfx.circle(l.x + 6, l.y + bob, 3);
         gfx.fill({ color: 0x5b52ff, alpha });
+      }
+    }
+
+    /* Orphan sweep — anything we've rendered before that's no longer
+       in the active loot list (picked up, despawned by gameplay code,
+       etc.) gets its Pixi children disposed. */
+    if (this._knownLoot.size > activeLoot.size) {
+      for (const l of this._knownLoot) {
+        if (!activeLoot.has(l)) {
+          this._disposeLoot(l);
+          this._knownLoot.delete(l);
+        }
       }
     }
   }
