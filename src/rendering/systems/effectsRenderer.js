@@ -820,17 +820,41 @@ export class EffectsRenderer {
     }
   }
 
-  /* ── Gather Nodes ── */
+  /* ── Gather Nodes ──
+   * Per-node procedural body on the shared nodeGfx, plus pooled
+   * Text objects on the node itself for the tier badge, the resource
+   * emoji, and the 3-line proximity tooltip (shown when the player
+   * is within 50 units).
+   */
+  _disposeNode(node) {
+    if (node._pixiTier && !node._pixiTier.destroyed) node._pixiTier.destroy();
+    if (node._pixiEmoji && !node._pixiEmoji.destroyed) node._pixiEmoji.destroy();
+    if (node._pixiTip1 && !node._pixiTip1.destroyed) node._pixiTip1.destroy();
+    if (node._pixiTip2 && !node._pixiTip2.destroyed) node._pixiTip2.destroy();
+    if (node._pixiTip3 && !node._pixiTip3.destroyed) node._pixiTip3.destroy();
+    node._pixiTier = node._pixiEmoji = node._pixiTip1 = node._pixiTip2 = node._pixiTip3 = null;
+  }
+
   _updateGatherNodes(S, now) {
     const gfx = this.nodeGfx;
     gfx.clear();
 
     const nodes = S._gatherNodes || [];
+    /* Player position for proximity-tooltip distance test. */
+    const px = S.player ? S.player.x : 0;
+    const py = S.player ? S.player.y : 0;
+
     for (const node of nodes) {
-      if (!node.alive) continue;
+      if (!node.alive) {
+        this._disposeNode(node);
+        continue;
+      }
+
+      const tier = node._tier;
+      const tierLvl = node.gatherLvl || 1;
+      const tierStep = Math.min(10, Math.max(1, Math.ceil(tierLvl / 10)));
 
       if (node.nodeType === 'tree') {
-        const tier = node._tier;
         const tw = tier?.trunkW || 3;
         const th = tier?.trunkH || 8;
         const cr = tier?.canopyR || 6;
@@ -840,25 +864,102 @@ export class EffectsRenderer {
         gfx.fill({ color: cssToHex(tier?.canopyColor || '#2a7a1a') });
       } else if (node.nodeType === 'fishSpot') {
         const pulse = Math.sin(now / 600 + node.x) * 0.2 + 1;
-        const r = (node._tier?.size || 6) * pulse;
+        const r = (tier?.size || 6) * pulse;
         gfx.circle(node.x, node.y, r);
         gfx.fill({ color: 0x3498db, alpha: 0.35 });
         gfx.circle(node.x, node.y, r * 0.6);
         gfx.fill({ color: 0x3498db, alpha: 0.2 });
       } else {
-        const size = node._tier?.size || 8;
+        const size = tier?.size || 8;
         gfx.circle(node.x, node.y, size / 2);
-        gfx.fill({ color: cssToHex(node._tier?.rockColor || '#6a6a6a') });
+        gfx.fill({ color: cssToHex(tier?.rockColor || '#6a6a6a') });
         gfx.circle(node.x + 2, node.y - 1, size / 4);
-        gfx.fill({ color: cssToHex(node._tier?.streakColor || '#8a8a8a') });
+        gfx.fill({ color: cssToHex(tier?.streakColor || '#8a8a8a') });
       }
 
+      /* HP bar — width scales with tier so high-tier nodes get a
+         more visible damage indicator. */
       if (node.hp < node.maxHp) {
         const pct = node.hp / node.maxHp;
-        gfx.rect(node.x - 10, node.y + 10, 20, 3);
+        const barW = 14 + tierStep * 4;
+        gfx.rect(node.x - barW / 2, node.y + 8 + tierStep * 2, barW, 3);
         gfx.fill({ color: 0x000000, alpha: 0.5 });
-        gfx.rect(node.x - 10, node.y + 10, 20 * pct, 3);
+        gfx.rect(node.x - barW / 2, node.y + 8 + tierStep * 2, barW * pct, 3);
         gfx.fill({ color: 0x3dd497 });
+      }
+
+      /* Tier badge — small dot to the upper-right with the gatherLvl
+         number on top.  Always visible so the player can see which
+         resources are higher level at a glance. */
+      const tierColor = '#8890b8';   // RESOURCE_TIERS lookup happens in BroTown.jsx; default ok
+      gfx.circle(node.x + 10 + tierStep * 2, node.y - 8, 4);
+      gfx.fill({ color: cssToHex(tierColor), alpha: 0.9 });
+      if (!node._pixiTier || node._pixiTier.destroyed) {
+        node._pixiTier = new Text({
+          text: '',
+          style: { fontFamily: 'VT323, monospace', fontSize: 8, fontWeight: '700',
+                   fill: '#ffffff', align: 'center' },
+        });
+        node._pixiTier.anchor.set(0.5, 0.5);
+        this.nodeLayer.addChild(node._pixiTier);
+      }
+      const tierStr = String(tierLvl);
+      if (node._pixiTier.text !== tierStr) node._pixiTier.text = tierStr;
+      node._pixiTier.x = node.x + 10 + tierStep * 2;
+      node._pixiTier.y = node.y - 7;
+
+      /* Emoji label above the node — node.emoji set by gameplay code. */
+      if (node.emoji) {
+        if (!node._pixiEmoji || node._pixiEmoji.destroyed) {
+          node._pixiEmoji = new Text({
+            text: node.emoji,
+            style: { ...LABEL_STYLE_EMOJI, fontSize: 8 + tierStep * 2 },
+          });
+          node._pixiEmoji.anchor.set(0.5, 1);
+          this.nodeLayer.addChild(node._pixiEmoji);
+        }
+        if (node._pixiEmoji.text !== node.emoji) node._pixiEmoji.text = node.emoji;
+        node._pixiEmoji.x = node.x;
+        node._pixiEmoji.y = node.y - (10 + tierStep * 3);
+      }
+
+      /* Proximity tooltip — 3 lines of info shown when player is
+         within 50 units.  Shown/hidden via .visible to avoid the
+         per-frame Text construction cost. */
+      const dx = px - node.x, dy = py - node.y;
+      const near = dx * dx + dy * dy < 50 * 50;
+      if (near) {
+        const skill = node.skill || 'mining';
+        const skillLabel = skill.charAt(0).toUpperCase() + skill.slice(1);
+        const skillLvl = (S.rpg && S.rpg.lifeSkills && S.rpg.lifeSkills[skill]?.level) || 1;
+        const verb = skill === 'woodcutting' ? 'Chop' : skill === 'fishing' ? 'Fish' : 'Mine';
+
+        const yBase = node.y + 18 + tierStep * 2;
+        const ensureTip = (key, text, color, dy) => {
+          let t = node[key];
+          if (!t || t.destroyed) {
+            t = new Text({
+              text: '',
+              style: { fontFamily: 'VT323, monospace', fontSize: 7, fontWeight: '700',
+                       fill: color, align: 'center' },
+            });
+            t.anchor.set(0.5, 0);
+            this.nodeLayer.addChild(t);
+            node[key] = t;
+          }
+          if (t.text !== text) t.text = text;
+          t.style.fill = color;
+          t.x = node.x;
+          t.y = yBase + dy;
+          t.visible = true;
+        };
+        ensureTip('_pixiTip1', node.spotName || node.name || '', '#ffffffb3', 0);
+        ensureTip('_pixiTip2', `${node.name || ''} (Lv${tierLvl})`, '#ffffff80', 8);
+        ensureTip('_pixiTip3', `${verb} (${skillLabel} Lv${skillLvl})`, '#3dd497', 16);
+      } else {
+        if (node._pixiTip1) node._pixiTip1.visible = false;
+        if (node._pixiTip2) node._pixiTip2.visible = false;
+        if (node._pixiTip3) node._pixiTip3.visible = false;
       }
     }
   }
