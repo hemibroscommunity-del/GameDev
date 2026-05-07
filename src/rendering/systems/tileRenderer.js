@@ -7,7 +7,7 @@ import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_BUILDINGS } from '@/data/buildings.js';
 import { TOWN_EXITS } from '@/data/effects.js';
-import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS } from '../tiledMaps.js';
+import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 
 const ZONE_LABEL_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
@@ -202,15 +202,97 @@ export class TileRenderer {
       t.visible = true;
     }
 
+    /* Looping-video zone path — same render shape as the image path
+       below, but the texture is backed by an HTMLVideoElement that
+       loops forever.  Used for the town map so the painted day/night
+       /weather effects play continuously.  Also lays down the still
+       image as an underlay so the player sees art immediately while
+       the video is decoding (or if autoplay is blocked). */
+    const videoUrl = VIDEO_ZONE_MAPS[zoneId];
+    const imageUrl = IMAGE_ZONE_MAPS[zoneId];
+    if (videoUrl) {
+      this._renderedTiled = true;
+      this._isImageZone = true;
+      /* Underlay = still image, so the player sees a complete town
+         on the very first frame even before the video has decoded. */
+      if (imageUrl) {
+        const baseTex = Assets.cache.get(imageUrl);
+        const baseSprite = new Sprite(baseTex || Texture.EMPTY);
+        baseSprite.x = 0;
+        baseSprite.y = 0;
+        baseSprite.width = this._mapW;
+        baseSprite.height = this._mapH;
+        this.tileContainer.addChild(baseSprite);
+        if (!baseTex) {
+          const w = this._mapW, h = this._mapH;
+          Assets.load(imageUrl).then((loaded) => {
+            if (loaded && !baseSprite.destroyed) {
+              baseSprite.texture = loaded;
+              baseSprite.width = w;
+              baseSprite.height = h;
+            }
+          }).catch(() => {});
+        }
+      }
+      /* Cache the <video> element across zone re-entries so the loop
+         doesn't restart every time the player walks back into town —
+         the same element keeps decoding while the player is in another
+         zone, so re-entry is instant. */
+      this._videoElements = this._videoElements || {};
+      let video = this._videoElements[zoneId];
+      if (!video) {
+        video = document.createElement('video');
+        video.src = videoUrl;
+        video.loop = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.autoplay = true;
+        video.preload = 'auto';
+        video.crossOrigin = 'anonymous';
+        /* Some browsers require the video element to be in the DOM to
+           decode reliably.  Hide it off-screen — Pixi reads pixels
+           through Texture.from(video) regardless. */
+        video.style.position = 'absolute';
+        video.style.width = '1px';
+        video.style.height = '1px';
+        video.style.opacity = '0';
+        video.style.pointerEvents = 'none';
+        video.style.left = '-9999px';
+        document.body.appendChild(video);
+        this._videoElements[zoneId] = video;
+        /* Resume blocked autoplay on the next user gesture (iOS
+           Safari and Chrome's save-data mode both gate even muted
+           autoplay until a touch / pointer event fires). */
+        if (!TileRenderer._videoGestureHooked) {
+          TileRenderer._videoGestureHooked = true;
+          const all = this._videoElements;
+          const resumePending = () => {
+            Object.values(all).forEach((v) => {
+              if (v && v.paused) {
+                const p = v.play();
+                if (p && p.catch) p.catch(() => {});
+              }
+            });
+          };
+          document.addEventListener('pointerdown', resumePending, { passive: true });
+          document.addEventListener('touchstart', resumePending, { passive: true });
+        }
+      }
+      const playPromise = video.play();
+      if (playPromise && playPromise.catch) playPromise.catch(() => {});
+      const videoSprite = new Sprite(Texture.from(video));
+      videoSprite.x = 0;
+      videoSprite.y = 0;
+      videoSprite.width = this._mapW;
+      videoSprite.height = this._mapH;
+      this.tileContainer.addChild(videoSprite);
+      return;
+    }
+
     /* Single-image zone path — when an entry exists in IMAGE_ZONE_MAPS,
        render one Sprite covering the world bounds.  Beats Tiled for
        authoring speed when you already have the art generated, and
-       per-frame draw is just one sprite.
-       When this path runs we set `_isImageZone` so update() skips the
-       procedural overlay decorations (exit portal pulses, etc.) that
-       would otherwise paint colored squares on top of the painted
-       artwork. */
-    const imageUrl = IMAGE_ZONE_MAPS[zoneId];
+       per-frame draw is just one sprite. */
     if (imageUrl) {
       this._renderedTiled = true;   // tell update() not to retry
       this._isImageZone = true;
@@ -613,29 +695,46 @@ export class TileRenderer {
        Drawn on overlayGfx every frame so the pulse animates without
        a full rebuild.  Color per type: 8 generic exit (zone-element
        color), 9 return-to-town (green), 10 dungeon (red).
-       SUPPRESSED for image-mapped zones (e.g. the painted town):
-       the artwork already shows where the exits are via the painted
-       paths, so a colored pulse on top would clash with the
-       hand-painted aesthetic. */
+       Image-mapped zones use a more pronounced pulse — wide radial
+       halo + bright core + outline — so the exits stand out against
+       the painted artwork.  Other zones use a tighter rectangle since
+       the procedural ground tiles already provide visual contrast. */
     this.overlayGfx.clear();
-    if (this._exitTiles.length && !this._isImageZone) {
+    if (this._exitTiles.length) {
       const now = Date.now();
       const zone = ZONES[this.currentZone];
       const elemColor = zone && zone.element ? 0xff5e6c : 0x5b52ff;
+      const obvious = !!this._isImageZone;
       for (const ex of this._exitTiles) {
         const x = ex.c * TILE;
         const y = ex.r * TILE;
+        const cx = x + TILE / 2;
+        const cy = y + TILE / 2;
         let color, pulseSpeed;
         if (ex.tile === 9)      { color = 0x3dd497; pulseSpeed = 400; }
         else if (ex.tile === 10){ color = elemColor; pulseSpeed = 250; }
         else                    { color = elemColor; pulseSpeed = 300; }
         const pulse = Math.sin(now / pulseSpeed + ex.c + ex.r) * 0.2 + 0.6;
-        this.overlayGfx.rect(x - 2, y - 2, TILE + 4, TILE + 4);
-        this.overlayGfx.fill({ color, alpha: pulse * 0.55 });
-        this.overlayGfx.rect(x + 2, y + 2, TILE - 4, TILE - 4);
-        this.overlayGfx.fill({ color, alpha: pulse * 0.25 });
-        this.overlayGfx.rect(x, y, TILE, TILE);
-        this.overlayGfx.stroke({ color, width: 1.5, alpha: pulse * 0.9 });
+        if (obvious) {
+          /* Wide radial halo — three nested circles fading outward,
+             so the exit reads as a glowing portal even on top of the
+             dense painted artwork. */
+          this.overlayGfx.circle(cx, cy, TILE * 1.6);
+          this.overlayGfx.fill({ color, alpha: pulse * 0.18 });
+          this.overlayGfx.circle(cx, cy, TILE * 1.05);
+          this.overlayGfx.fill({ color, alpha: pulse * 0.32 });
+          this.overlayGfx.circle(cx, cy, TILE * 0.55);
+          this.overlayGfx.fill({ color, alpha: pulse * 0.65 });
+          this.overlayGfx.circle(cx, cy, TILE * 0.55);
+          this.overlayGfx.stroke({ color: 0xffffff, width: 2, alpha: pulse * 0.7 });
+        } else {
+          this.overlayGfx.rect(x - 2, y - 2, TILE + 4, TILE + 4);
+          this.overlayGfx.fill({ color, alpha: pulse * 0.55 });
+          this.overlayGfx.rect(x + 2, y + 2, TILE - 4, TILE - 4);
+          this.overlayGfx.fill({ color, alpha: pulse * 0.25 });
+          this.overlayGfx.rect(x, y, TILE, TILE);
+          this.overlayGfx.stroke({ color, width: 1.5, alpha: pulse * 0.9 });
+        }
       }
     }
 

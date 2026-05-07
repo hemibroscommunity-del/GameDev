@@ -41,6 +41,19 @@ export const IMAGE_ZONE_MAPS = {
   sky:     '/maps/sky.jpg',
 };
 
+/** Zones that play a looping video as their map texture.  When a zone
+ *  appears here AND in IMAGE_ZONE_MAPS, the renderer prefers the video
+ *  (so animated effects — water shimmer, lava glow, snow drift — play
+ *  on the map) and uses the still image purely as a fallback if the
+ *  browser refuses to play the video.
+ *
+ *  Mobile autoplay requires the <video> to be `muted`, `playsInline`,
+ *  and `autoplay` — without all three, iOS Safari blocks the loop
+ *  until a user gesture. */
+export const VIDEO_ZONE_MAPS = {
+  town: '/maps/town.mp4',
+};
+
 /** Per-zone walkability JSON.  Each url returns
  *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
  *  a blocked tile.  Used as `S._tiledWalkable[zoneId]` so isSolid()
