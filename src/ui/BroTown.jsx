@@ -42,7 +42,7 @@ import { eatBus } from './mobile/eatBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { startLoadingTileAssets, useSpriteTiles, drawTileLayer, drawBuildingSprites } from '@/rendering/canvasTileAssets.js';
-import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS } from '@/rendering/tiledMaps.js';
+import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps } from '@/rendering/tiledMaps.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -1473,6 +1473,18 @@ export var BroTown = function BroTown(_ref0) {
       Object.keys(TILED_ZONE_MAPS).forEach(function (zid) {
         var grid = getWalkability(zid);
         if (grid) S._tiledWalkable[zid] = grid;
+      });
+    });
+
+    /* Image-zone walkability JSONs (e.g. town, where the painted yellow
+       overlay was processed offline into a 32x32 boolean grid).  Stored
+       on the same _tiledWalkable map isSolid() already consults. */
+    loadWalkabilityMaps().then(function (grids) {
+      var S = stateRef.current;
+      if (!S) return;
+      S._tiledWalkable = S._tiledWalkable || {};
+      Object.keys(grids).forEach(function (zid) {
+        S._tiledWalkable[zid] = grids[zid];
       });
     });
   }, []);

@@ -7,7 +7,7 @@ import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_BUILDINGS } from '@/data/buildings.js';
 import { TOWN_EXITS } from '@/data/effects.js';
-import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
+import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, ROOFTOP_OVERLAYS } from '../tiledMaps.js';
 
 const ZONE_LABEL_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
@@ -64,12 +64,18 @@ const BUILDING_SPRITE_MAP = {
 };
 
 export class TileRenderer {
-  constructor(layer, app) {
+  constructor(layer, app, rooftopsLayer) {
     this.layer = layer;
     /* App reference is needed to call app.renderer.generateTexture
        in _rebuildFromTiled for the static-map bake.  Optional —
        falls through to per-sprite rendering if app isn't available. */
     this.app = app || null;
+    /* Rooftops layer — drawn ABOVE the entity layer so the player
+       passes behind tall buildings (zone-specific PNG with alpha=0
+       everywhere except above each yellow footprint).  Optional;
+       zones without a ROOFTOP_OVERLAYS entry render nothing here. */
+    this.rooftopsLayer = rooftopsLayer || null;
+    this._rooftopsSprite = null;
     // Background fill
     this.bgGfx = new Graphics();
     this.layer.addChild(this.bgGfx);
@@ -125,6 +131,40 @@ export class TileRenderer {
     return this._assets && (zoneId === 'town' || zoneId === 'meadow' || zoneId === 'farm_home');
   }
 
+  /** Build (or rebuild) the rooftops overlay sprite for the current
+   *  zone.  ROOFTOP_OVERLAYS[zoneId] points at a 1024x1024 RGBA PNG
+   *  with alpha=0 everywhere except above each painted-yellow building
+   *  footprint.  We add it to `rooftopsLayer` (sibling of `tiles`,
+   *  z-ordered above `player` in pixiApp.LAYER_NAMES) so the player
+   *  walks behind tall roofs.  No-op when zone has no overlay or the
+   *  rooftops layer wasn't passed to the renderer. */
+  _refreshRooftops(zoneId) {
+    if (!this.rooftopsLayer) return;
+    const url = ROOFTOP_OVERLAYS[zoneId];
+    if (!url) return;
+    const cachedTex = Assets.cache.get(url);
+    const sprite = new Sprite(cachedTex || Texture.EMPTY);
+    sprite.x = 0;
+    sprite.y = 0;
+    sprite.width = this._mapW;
+    sprite.height = this._mapH;
+    this.rooftopsLayer.addChild(sprite);
+    this._rooftopsSprite = sprite;
+    /* Race fix: if the preload is still in flight when the user
+       enters town, swap the texture in once Assets.load resolves. */
+    if (!cachedTex) {
+      const w = this._mapW;
+      const h = this._mapH;
+      Assets.load(url).then((loaded) => {
+        if (loaded && this._rooftopsSprite === sprite && !sprite.destroyed) {
+          sprite.texture = loaded;
+          sprite.width = w;
+          sprite.height = h;
+        }
+      }).catch(() => {});
+    }
+  }
+
   rebuild(app, map, zoneId) {
     this.currentZone = zoneId;
     this.currentMap = map;
@@ -133,6 +173,13 @@ export class TileRenderer {
     // Remove old tile sprites
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
+    // Drop the previous rooftops sprite — _refreshRooftops() rebuilds it
+    // for the new zone if there's an entry in ROOFTOP_OVERLAYS.
+    if (this._rooftopsSprite) {
+      this._rooftopsSprite.parent?.removeChild(this._rooftopsSprite);
+      this._rooftopsSprite.destroy();
+      this._rooftopsSprite = null;
+    }
 
     if (!map) return;
 
@@ -142,6 +189,7 @@ export class TileRenderer {
     this._mapW = cols * TILE;
     this._mapH = rows * TILE;
     this._bgColor = zone?.palette?.ground ? cssToHex(zone.palette.ground) : 0x2d5a1e;
+    this._refreshRooftops(zoneId);
 
     /* Collect exit/entrance positions from the procedural S.map.
        Tiles 8/9/10 mark zone exits, return-to-town, and dungeon
@@ -200,70 +248,6 @@ export class TileRenderer {
       t.y = spec.y;
       t.rotation = spec.rotation || 0;
       t.visible = true;
-    }
-
-    /* Looping-video zone path — same render shape as the image
-       path below, but the texture is backed by an HTMLVideoElement
-       that loops forever.  Used for the town map so its
-       day/night/effects cycle plays continuously.  Mobile autoplay
-       requires `muted` + `playsInline` + `autoplay` — without all
-       three iOS Safari blocks the loop until a user gesture.
-       Falls through to the image path when the browser refuses to
-       play the video (very old browsers, save-data mode, etc.). */
-    const videoUrl = VIDEO_ZONE_MAPS[zoneId];
-    if (videoUrl) {
-      this._renderedTiled = true;
-      /* Cache the <video> element across zone re-entries so the
-         loop doesn't restart every time the player walks back into
-         town.  The same element keeps decoding in the background
-         while you're in another zone, so re-entry is instant. */
-      this._videoElements = this._videoElements || {};
-      let video = this._videoElements[zoneId];
-      if (!video) {
-        video = document.createElement('video');
-        video.src = videoUrl;
-        video.loop = true;
-        video.muted = true;
-        video.playsInline = true;
-        video.autoplay = true;
-        video.preload = 'auto';
-        video.crossOrigin = 'anonymous';
-        this._videoElements[zoneId] = video;
-        /* Some browsers (notably iOS Safari and Chrome with
-           save-data) block autoplay even when muted.  Hook the
-           document so the first user pointer event after entering
-           the zone calls play() inside the gesture handler, which
-           is what those browsers gate on.  Idempotent — only resumes
-           paused videos, and stays attached so subsequent zone
-           entries also benefit. */
-        if (!TileRenderer._videoGestureHooked) {
-          TileRenderer._videoGestureHooked = true;
-          const resumePending = () => {
-            const all = this._videoElements || {};
-            Object.values(all).forEach((v) => {
-              if (v && v.paused) {
-                const p = v.play();
-                if (p && p.catch) p.catch(() => {});
-              }
-            });
-          };
-          document.addEventListener('pointerdown', resumePending, { passive: true });
-          document.addEventListener('touchstart', resumePending, { passive: true });
-        }
-      }
-      /* play() returns a promise that rejects if the browser blocks
-         autoplay.  We swallow the rejection — Pixi will still try
-         to draw the static first frame, and the next user gesture
-         on the canvas will resume playback. */
-      const playPromise = video.play();
-      if (playPromise && playPromise.catch) playPromise.catch(() => {});
-      const sprite = new Sprite(Texture.from(video));
-      sprite.x = 0;
-      sprite.y = 0;
-      sprite.width = this._mapW;
-      sprite.height = this._mapH;
-      this.tileContainer.addChild(sprite);
-      return;
     }
 
     /* Single-image zone path — when an entry exists in IMAGE_ZONE_MAPS,
@@ -709,6 +693,11 @@ export class TileRenderer {
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
     this.overlayGfx.clear();
+    if (this._rooftopsSprite) {
+      this._rooftopsSprite.parent?.removeChild(this._rooftopsSprite);
+      this._rooftopsSprite.destroy();
+      this._rooftopsSprite = null;
+    }
     /* Free baked map RenderTextures (one per visited zone). */
     for (const [, tex] of this._bakedMapCache) {
       if (tex && !tex.destroyed) tex.destroy(true);

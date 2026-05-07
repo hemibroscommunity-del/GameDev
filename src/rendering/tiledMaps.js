@@ -38,31 +38,61 @@ export const IMAGE_ZONE_MAPS = {
   sky:     '/maps/sky.jpg',
 };
 
-/** Zones that use a looping video as the map texture instead of (or
- *  on top of) the still image.  When a zone has both a VIDEO and an
- *  IMAGE entry, the renderer prefers VIDEO and falls back to IMAGE
- *  if the browser blocks autoplay.
- *
- *  Requirements for autoplay on mobile (iOS Safari especially):
- *  the <video> must be `muted`, `playsInline`, and `autoplay`. */
-export const VIDEO_ZONE_MAPS = {
-  town: '/maps/town.mp4',
+/** Per-zone walkability JSON.  Each url returns
+ *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
+ *  a blocked tile.  Used as `S._tiledWalkable[zoneId]` so isSolid()
+ *  treats the painted footprints as collision. */
+export const WALKABILITY_MAPS = {
+  town: '/maps/town.walkability.json',
+};
+
+/** Per-zone "rooftops" image — transparent everywhere except the upper
+ *  parts of buildings.  Rendered on a layer ABOVE the player so the
+ *  player goes behind tall roofs when standing north of a building. */
+export const ROOFTOP_OVERLAYS = {
+  town: '/maps/town_rooftops.png',
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
  *  once at renderer startup (alongside loadTileAssets / loadPlayerSprites).
  *  Without preload, Texture.from(url) in Pixi v8 returns an empty
  *  placeholder — the Sprite shows blank until something else
- *  triggers a load. */
+ *  triggers a load.  Rooftop overlays are loaded the same way. */
 export async function loadImageZoneMaps() {
   // Lazy import so this module stays usable in non-Pixi contexts.
   const { Assets } = await import('pixi.js');
-  const tasks = Object.values(IMAGE_ZONE_MAPS).map((url) =>
+  const urls = [
+    ...Object.values(IMAGE_ZONE_MAPS),
+    ...Object.values(ROOFTOP_OVERLAYS),
+  ];
+  const tasks = urls.map((url) =>
     Assets.load(url).catch((e) => {
       console.warn('[image-zone] failed to load', url, e && e.message);
     })
   );
   await Promise.all(tasks);
+}
+
+/** Fetch every walkability JSON in WALKABILITY_MAPS.  Returns a
+ *  promise resolving to `{ zoneId: grid[][] }` with grid[ty][tx]=true
+ *  for walkable, false for blocked.  Failures are logged and skipped
+ *  rather than rejecting — the caller falls back to procedural
+ *  walkability when a zone's mask isn't available. */
+export async function loadWalkabilityMaps() {
+  const out = {};
+  await Promise.all(Object.entries(WALKABILITY_MAPS).map(async ([zoneId, url]) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (Array.isArray(data && data.grid)) {
+        out[zoneId] = data.grid;
+      }
+    } catch (e) {
+      console.warn('[walkability] failed to load', url, e && e.message);
+    }
+  }));
+  return out;
 }
 
 // Loaded map cache: zoneId -> { width, height, layers, tilesets }
