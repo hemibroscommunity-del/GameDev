@@ -305,7 +305,7 @@ export var BroTown = function BroTown(_ref0) {
   var weaponHandlesRef = useRef(null);
   var stateRef = useRef({
     player: {
-      x: 24 * TILE,
+      x: 16 * TILE,
       y: 16 * TILE,
       vx: 0,
       vy: 0,
@@ -2137,7 +2137,7 @@ export var BroTown = function BroTown(_ref0) {
                   BT_AUDIO.startZoneAmbient('town');
                   S.map = generateZoneMap('town');
                   S.monsters = []; /* Town has no monsters */
-                  S.player.x = 24 * TILE;
+                  S.player.x = 16 * TILE;
                   S.player.y = 16 * TILE;
                   S.respawnTimer = Date.now() + 3000;
                   setRpgState(_objectSpread({}, R2));
@@ -4266,7 +4266,7 @@ export var BroTown = function BroTown(_ref0) {
             else if (entryDir === 'nw')    { P.x = twnWX;   P.y = twnNX;   }
             else if (entryDir === 'se')    { P.x = twnEX;   P.y = twnSX;   }
             else if (entryDir === 'sw')    { P.x = twnWX;   P.y = twnSX;   }
-            else                            { P.x = 24 * TILE; P.y = 16 * TILE; }
+            else                            { P.x = 16 * TILE; P.y = 16 * TILE; }
             S._enteredFromDir = null;
             S.dmgNumbers.push({
               x: P.x,
@@ -6437,7 +6437,7 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.startZoneAmbient('town');
                     S.map = generateZoneMap('town');
                     S.monsters = []; /* Town has no monsters */
-                    P.x = 24 * TILE;
+                    P.x = 16 * TILE;
                     P.y = 16 * TILE;
                     S.respawnTimer = Date.now() + respawnMs;
 

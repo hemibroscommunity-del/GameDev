@@ -246,7 +246,7 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
 }
 
 /* Zone exits in town — 8 zones at the 8 directional extremes
-   (cardinal edges + corners).  Town is 48w × 32h, so:
+   (cardinal edges + corners).  Town is 32w × 32h, so:
      NW → top-left corner,    N  → top-center,    NE → top-right corner
      W  → left-center,                              E  → right-center
      SW → bottom-left corner, S  → bottom-center, SE → bottom-right corner
@@ -255,11 +255,11 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
    at the same extreme. */
 export const TOWN_EXITS = [
   { zoneId: 'frost',   tx: 0,  ty: 0,  dir: 'nw',    label: '↖ Frozen Shore',  color: ELEMENTS.frost.color },
-  { zoneId: 'meadow',  tx: 24, ty: 0,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
-  { zoneId: 'thunder', tx: 47, ty: 0,  dir: 'ne',    label: 'Thunder Peaks ↗', color: ELEMENTS.storm.color },
-  { zoneId: 'tidal',   tx: 47, ty: 16, dir: 'east',  label: 'Tidal Caves →',   color: ELEMENTS.water.color },
-  { zoneId: 'mist',    tx: 47, ty: 31, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
-  { zoneId: 'hollows', tx: 24, ty: 31, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
+  { zoneId: 'meadow',  tx: 16, ty: 0,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
+  { zoneId: 'thunder', tx: 31, ty: 0,  dir: 'ne',    label: 'Thunder Peaks ↗', color: ELEMENTS.storm.color },
+  { zoneId: 'tidal',   tx: 31, ty: 16, dir: 'east',  label: 'Tidal Caves →',   color: ELEMENTS.water.color },
+  { zoneId: 'mist',    tx: 31, ty: 31, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
+  { zoneId: 'hollows', tx: 16, ty: 31, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
   { zoneId: 'ember',   tx: 0,  ty: 31, dir: 'sw',    label: '↙ Ember Fields',  color: ELEMENTS.flame.color },
   { zoneId: 'sky',     tx: 0,  ty: 16, dir: 'west',  label: '← Sky Reaches',   color: ELEMENTS.wind.color },
 ];

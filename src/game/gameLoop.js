@@ -1047,7 +1047,7 @@ export function setupGameLoop(ctx) {
             BT_AUDIO.startZoneAmbient('town');
             S.map = generateZoneMap('town');
             S.monsters = []; /* Town has no monsters */
-            P.x = 24 * TILE;
+            P.x = 16 * TILE;
             P.y = 16 * TILE;
             S.dmgNumbers.push({
               x: P.x,
@@ -3134,7 +3134,7 @@ export function setupGameLoop(ctx) {
                     BT_AUDIO.startZoneAmbient('town');
                     S.map = generateZoneMap('town');
                     S.monsters = []; /* Town has no monsters */
-                    P.x = 24 * TILE;
+                    P.x = 16 * TILE;
                     P.y = 16 * TILE;
                     S.respawnTimer = Date.now() + respawnMs;
 

@@ -27,9 +27,10 @@ export const TILED_ZONE_MAPS = {};
  *  Walkability falls back to "all walkable" since there's no per-tile
  *  metadata to derive blocking from. */
 export const IMAGE_ZONE_MAPS = {
-  /* town_v3.jpg = pixel-art village 1536x1024 (48x32 tiles), all cells
-     walkable.  Bump suffix on next change to bust browser/CDN cache. */
-  town:    '/maps/town_v3.jpg',
+  /* town_v4.jpg = pixel-art square town 1254x1254, rendered into the
+     32x32-tile (1024x1024) world bounds.  All cells walkable (no
+     walkability JSON).  Bump suffix on next change to bust caches. */
+  town:    '/maps/town_v4.jpg',
   frost:   '/maps/frost.jpg',
   meadow:  '/maps/meadow.jpg',
   thunder: '/maps/thunder.jpg',
