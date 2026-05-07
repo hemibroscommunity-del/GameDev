@@ -629,46 +629,131 @@ export class EffectsRenderer {
     }
   }
 
-  /* ── Ground Loot ── */
+  /* ── Ground Loot ──
+   * Each loot entry gets:
+   *   - Procedural draw on the shared lootGfx (glow, ring, coin stack).
+   *   - Optional Sprite (slime remnants splat).
+   *   - Optional Text labels (weapon name, coin count, death-drop
+   *     timer + item count + bag emoji).
+   * Texts are pooled per loot — created lazily, hidden when not
+   *  applicable, destroyed when the loot expires/splices.
+   */
+  _disposeLoot(l) {
+    if (l._pixiSprite && !l._pixiSprite.destroyed) l._pixiSprite.destroy();
+    if (l._pixiLabel && !l._pixiLabel.destroyed) l._pixiLabel.destroy();
+    if (l._pixiTimer && !l._pixiTimer.destroyed) l._pixiTimer.destroy();
+    if (l._pixiCount && !l._pixiCount.destroyed) l._pixiCount.destroy();
+    if (l._pixiIcon && !l._pixiIcon.destroyed) l._pixiIcon.destroy();
+    l._pixiSprite = l._pixiLabel = l._pixiTimer = l._pixiCount = l._pixiIcon = null;
+  }
+
   _updateGroundLoot(S, now) {
     const gfx = this.lootGfx;
     gfx.clear();
 
     const loot = S.groundLoot || [];
-    /* Track which loot entries currently have an associated remnants
-       Sprite so we can hide unused ones at the end of the pass. */
-    const activeRemnants = new Set();
 
     for (let i = loot.length - 1; i >= 0; i--) {
       const l = loot[i];
-      if (l._expired) {
-        if (l._pixiSprite && !l._pixiSprite.destroyed) l._pixiSprite.destroy();
-        l._pixiSprite = null;
-        loot.splice(i, 1);
-        continue;
-      }
       const age = (now - l.ts) / 1000;
-      if (age > 30) {
-        if (l._pixiSprite && !l._pixiSprite.destroyed) l._pixiSprite.destroy();
-        l._pixiSprite = null;
+      if (l._expired || age > 30) {
+        this._disposeLoot(l);
         loot.splice(i, 1);
         continue;
       }
-      const bob = Math.sin(now / 300 + l.x) * 2;
+      /* Fodder loot has no bob; it's a settled puddle. */
+      const isFodder = l.skull === 'fodder';
+      const bob = isFodder ? 0 : Math.sin(age * 3) * 2;
       const alpha = age > 25 ? (30 - age) / 5 : 1;
 
-      if (l.isWeapon) {
-        // Weapon drop — colored square
-        const tierColor = cssToHex(l.tierColor || '#ffffff');
-        gfx.rect(l.x - 5, l.y + bob - 5, 10, 10);
-        gfx.fill({ color: tierColor, alpha });
-        gfx.rect(l.x - 5, l.y + bob - 5, 10, 10);
-        gfx.stroke({ color: 0xffffff, width: 1, alpha: alpha * 0.5 });
-      } else if (l.skull === 'fodder' && hasSlimeState('remnants')) {
-        /* Slime remnants splat — single-frame sprite from the slime
-           loader.  Pooled per loot entry so we don't spawn a new
-           Sprite every frame.  Mirrors the Canvas 2D draw at
-           BroTown.jsx ~12245. */
+      if (l.isDeathDrop) {
+        /* Pulsing red-orange aura that gets faster + brighter as the
+           grace timer ticks down.  Sense of urgency for the player to
+           grab their loot before it despawns. */
+        const timeLeft = l.expiry ? (l.expiry - Date.now()) / 1000 : 30;
+        const urgency = Math.max(0, Math.min(1, 1 - timeLeft / 30));
+        const pulseRate = 2 + urgency * 6;
+        const auraAlpha = (0.2 + Math.sin(age * pulseRate) * 0.15 + urgency * 0.2) * alpha;
+        gfx.circle(l.x, l.y + bob, 18);
+        gfx.fill({ color: 0xea580c, alpha: auraAlpha });
+        const ringColor = urgency > 0.7 ? 0xff5e6c : 0xea580c;
+        gfx.circle(l.x, l.y + bob, 15);
+        gfx.stroke({ color: ringColor, width: 2, alpha });
+        /* Bag emoji icon. */
+        if (!l._pixiIcon || l._pixiIcon.destroyed) {
+          l._pixiIcon = new Text({ text: '💀', style: { ...LABEL_STYLE_EMOJI, fontSize: 18 } });
+          l._pixiIcon.anchor.set(0.5, 0.5);
+          this.lootLayer.addChild(l._pixiIcon);
+        }
+        l._pixiIcon.x = l.x;
+        l._pixiIcon.y = l.y + 6 + bob;
+        l._pixiIcon.alpha = alpha;
+        /* Timer text below. */
+        if (!l._pixiTimer || l._pixiTimer.destroyed) {
+          l._pixiTimer = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 8, fontWeight: '700' } });
+          l._pixiTimer.anchor.set(0.5, 0);
+          this.lootLayer.addChild(l._pixiTimer);
+        }
+        const tStr = Math.ceil(timeLeft) + 's';
+        if (l._pixiTimer.text !== tStr) l._pixiTimer.text = tStr;
+        l._pixiTimer.style.fill = urgency > 0.7 ? '#ff5e6c' : '#ea580c';
+        l._pixiTimer.x = l.x;
+        l._pixiTimer.y = l.y + 22 + bob;
+        l._pixiTimer.alpha = alpha;
+        /* Item count above. */
+        if (!l._pixiCount || l._pixiCount.destroyed) {
+          l._pixiCount = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
+          l._pixiCount.anchor.set(0.5, 1);
+          this.lootLayer.addChild(l._pixiCount);
+        }
+        const itemTotal = (l.deathItems || []).reduce((s, it) => s + (it.qty || 0), 0);
+        const cStr = itemTotal + ' items';
+        if (l._pixiCount.text !== cStr) l._pixiCount.text = cStr;
+        l._pixiCount.x = l.x;
+        l._pixiCount.y = l.y - 12 + bob;
+        l._pixiCount.alpha = alpha;
+        if (timeLeft <= 0) l._expired = true;
+        continue;
+      }
+
+      if (l.isWeapon && l.weapon) {
+        /* Tier-colored aura + ring + emoji + name label. */
+        const tierColor = cssToHex(l.tierColor || '#8890b8');
+        const auraPulse = 0.3 + Math.sin(age * 4) * 0.15;
+        gfx.circle(l.x, l.y + bob, 14);
+        gfx.fill({ color: tierColor, alpha: auraPulse * alpha });
+        gfx.circle(l.x, l.y + bob, 12);
+        gfx.stroke({ color: tierColor, width: 2, alpha });
+        /* Weapon icon (emoji). */
+        if (!l._pixiIcon || l._pixiIcon.destroyed) {
+          const emoji = l.weapon.type === 'sword' ? '⚔️'
+                      : l.weapon.type === 'bow'   ? '🏹'
+                      : l.weapon.type === 'staff' ? '🪄'
+                      : l.weapon.type === 'greatsword' ? '🗡️'
+                      : '⚔️';
+          l._pixiIcon = new Text({ text: emoji, style: { ...LABEL_STYLE_EMOJI, fontSize: 16 } });
+          l._pixiIcon.anchor.set(0.5, 0.5);
+          this.lootLayer.addChild(l._pixiIcon);
+        }
+        l._pixiIcon.x = l.x;
+        l._pixiIcon.y = l.y + 5 + bob;
+        l._pixiIcon.alpha = alpha;
+        /* Name label. */
+        if (!l._pixiLabel || l._pixiLabel.destroyed) {
+          l._pixiLabel = new Text({ text: l.weapon.name || '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
+          l._pixiLabel.anchor.set(0.5, 0);
+          this.lootLayer.addChild(l._pixiLabel);
+        }
+        if (l._pixiLabel.text !== (l.weapon.name || '')) l._pixiLabel.text = l.weapon.name || '';
+        l._pixiLabel.style.fill = l.tierColor || '#8890b8';
+        l._pixiLabel.x = l.x;
+        l._pixiLabel.y = l.y + 18 + bob;
+        l._pixiLabel.alpha = alpha;
+        continue;
+      }
+
+      if (isFodder && hasSlimeState('remnants')) {
+        /* Slime remnants splat sprite (pooled per loot). */
         if (!l._pixiSprite || l._pixiSprite.destroyed) {
           const sp = new Sprite(getSlimeFrame('remnants', 0));
           sp.anchor.set(0.5, 0.5);
@@ -678,19 +763,45 @@ export class EffectsRenderer {
         l._pixiSprite.x = l.x;
         l._pixiSprite.y = l.y + bob;
         l._pixiSprite.alpha = alpha;
-        /* Render at 32×32 (matches Canvas 2D's 32px draw at line 12246). */
         l._pixiSprite.scale.set(32 / (l._pixiSprite.texture.width || 32));
         l._pixiSprite.visible = true;
-        activeRemnants.add(l._pixiSprite);
-      } else {
-        if (l.coins) {
-          gfx.circle(l.x, l.y + bob, 4);
-          gfx.fill({ color: 0xf5c542, alpha });
+        continue;
+      }
+
+      /* Standard coin / xp drop — gold glow + multi-circle "stack" + count. */
+      if (l.rare) {
+        /* Rare loot — pulsing gold halo. */
+        gfx.circle(l.x, l.y + bob, 16);
+        gfx.fill({ color: 0xf5c542, alpha: 0.25 * alpha });
+        gfx.circle(l.x, l.y + bob, 14);
+        gfx.stroke({ color: 0xf5c542, width: 1.5, alpha: (0.4 + Math.sin(age * 4) * 0.3) * alpha });
+      }
+      if (l.coins) {
+        /* Glow base. */
+        gfx.circle(l.x, l.y + bob, 10);
+        gfx.fill({ color: 0xf5c542, alpha: 0.3 * alpha });
+        /* Multi-circle coin stack. */
+        gfx.circle(l.x - 3, l.y + 2 + bob, 4);
+        gfx.fill({ color: 0xf5c542, alpha });
+        gfx.circle(l.x + 2, l.y + 3 + bob, 3.5);
+        gfx.fill({ color: 0xe8b830, alpha });
+        gfx.circle(l.x, l.y + 4 + bob, 3);
+        gfx.fill({ color: 0xd4a020, alpha });
+        /* "<n>G" label. */
+        if (!l._pixiLabel || l._pixiLabel.destroyed) {
+          l._pixiLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
+          l._pixiLabel.anchor.set(0.5, 0);
+          this.lootLayer.addChild(l._pixiLabel);
         }
-        if (l.xp) {
-          gfx.circle(l.x + 6, l.y + bob, 3);
-          gfx.fill({ color: 0x5b52ff, alpha });
-        }
+        const cStr = l.coins + 'G';
+        if (l._pixiLabel.text !== cStr) l._pixiLabel.text = cStr;
+        l._pixiLabel.x = l.x;
+        l._pixiLabel.y = l.y + 14 + bob;
+        l._pixiLabel.alpha = alpha;
+      }
+      if (l.xp) {
+        gfx.circle(l.x + 6, l.y + bob, 3);
+        gfx.fill({ color: 0x5b52ff, alpha });
       }
     }
   }
