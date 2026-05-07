@@ -471,28 +471,29 @@ export class EffectsRenderer {
     }
   }
 
+  /** Trace a closed polygon path via moveTo/lineTo and fill it.
+   *  More reliable than gfx.poly() in Pixi v8 — earlier version
+   *  used poly() and arrows rendered invisible. */
+  _fillPoly(gfx, pts, color, alpha) {
+    gfx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) gfx.lineTo(pts[i].x, pts[i].y);
+    gfx.closePath();
+    gfx.fill({ color, alpha });
+  }
+
   /** Draw a detailed arrow centered on (cx, cy) rotated by `ang`.
    *  Body is 16 px long: dark brown shaft + colored triangular head +
    *  colored fletching marks at the tail. */
   _drawArrow(gfx, cx, cy, ang, headColor, alpha) {
     const c = Math.cos(ang), s = Math.sin(ang);
-    /* Local coords (forward = +x, right = +y), then rotate by (c, s). */
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
     /* Shaft 16 px long, 3 px wide. */
-    const a1 = pt(-8, -1.5), a2 = pt(8, -1.5), a3 = pt(8, 1.5), a4 = pt(-8, 1.5);
-    gfx.poly([a1.x, a1.y, a2.x, a2.y, a3.x, a3.y, a4.x, a4.y]);
-    gfx.fill({ color: 0x3a2210, alpha });
+    this._fillPoly(gfx, [pt(-8, -1.5), pt(8, -1.5), pt(8, 1.5), pt(-8, 1.5)], 0x3a2210, alpha);
     /* Arrowhead triangle ahead of the shaft. */
-    const h1 = pt(9, 0), h2 = pt(5, -3.5), h3 = pt(5, 3.5);
-    gfx.poly([h1.x, h1.y, h2.x, h2.y, h3.x, h3.y]);
-    gfx.fill({ color: headColor, alpha });
+    this._fillPoly(gfx, [pt(9, 0), pt(5, -3.5), pt(5, 3.5)], headColor, alpha);
     /* Two fletching marks at the tail end. */
-    const f1a = pt(-8, -2.5), f1b = pt(-5, -2.5), f1c = pt(-5, -1), f1d = pt(-8, -1);
-    gfx.poly([f1a.x, f1a.y, f1b.x, f1b.y, f1c.x, f1c.y, f1d.x, f1d.y]);
-    gfx.fill({ color: headColor, alpha: alpha * 0.6 });
-    const f2a = pt(-8, 1), f2b = pt(-5, 1), f2c = pt(-5, 2.5), f2d = pt(-8, 2.5);
-    gfx.poly([f2a.x, f2a.y, f2b.x, f2b.y, f2c.x, f2c.y, f2d.x, f2d.y]);
-    gfx.fill({ color: headColor, alpha: alpha * 0.6 });
+    this._fillPoly(gfx, [pt(-8, -2.5), pt(-5, -2.5), pt(-5, -1), pt(-8, -1)], headColor, alpha * 0.6);
+    this._fillPoly(gfx, [pt(-8, 1), pt(-5, 1), pt(-5, 2.5), pt(-8, 2.5)], headColor, alpha * 0.6);
   }
 
   /** Stuck arrow on a monster — half-length, fletching at the air end,
@@ -501,33 +502,21 @@ export class EffectsRenderer {
     const c = Math.cos(ang), s = Math.sin(ang);
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
     /* Shaft 13 px out, 2.4 px wide. */
-    const a1 = pt(-11, -1.2), a2 = pt(2, -1.2), a3 = pt(2, 1.2), a4 = pt(-11, 1.2);
-    gfx.poly([a1.x, a1.y, a2.x, a2.y, a3.x, a3.y, a4.x, a4.y]);
-    gfx.fill({ color: 0x3a2210, alpha: 0.9 });
-    /* Highlight strip across the top half of the shaft for relief. */
-    const hi1 = pt(-11, -1.2), hi2 = pt(2, -1.2), hi3 = pt(2, -0.4), hi4 = pt(-11, -0.4);
-    gfx.poly([hi1.x, hi1.y, hi2.x, hi2.y, hi3.x, hi3.y, hi4.x, hi4.y]);
-    gfx.fill({ color: 0x5a3820, alpha: 0.85 });
+    this._fillPoly(gfx, [pt(-11, -1.2), pt(2, -1.2), pt(2, 1.2), pt(-11, 1.2)], 0x3a2210, 0.9);
+    /* Highlight strip along the top half of the shaft for relief. */
+    this._fillPoly(gfx, [pt(-11, -1.2), pt(2, -1.2), pt(2, -0.4), pt(-11, -0.4)], 0x5a3820, 0.85);
     /* Fletching at the tail end. */
-    const f1a = pt(-11, -3), f1b = pt(-8, -3), f1c = pt(-8, -1.5), f1d = pt(-11, -1.5);
-    gfx.poly([f1a.x, f1a.y, f1b.x, f1b.y, f1c.x, f1c.y, f1d.x, f1d.y]);
-    gfx.fill({ color, alpha: 0.8 });
-    const f2a = pt(-11, 1.5), f2b = pt(-8, 1.5), f2c = pt(-8, 3), f2d = pt(-11, 3);
-    gfx.poly([f2a.x, f2a.y, f2b.x, f2b.y, f2c.x, f2c.y, f2d.x, f2d.y]);
-    gfx.fill({ color, alpha: 0.8 });
+    this._fillPoly(gfx, [pt(-11, -3), pt(-8, -3), pt(-8, -1.5), pt(-11, -1.5)], color, 0.8);
+    this._fillPoly(gfx, [pt(-11, 1.5), pt(-8, 1.5), pt(-8, 3), pt(-11, 3)], color, 0.8);
     /* Tip just protruding from the body. */
-    const t1 = pt(3, 0), t2 = pt(1.5, -2), t3 = pt(1.5, 2);
-    gfx.poly([t1.x, t1.y, t2.x, t2.y, t3.x, t3.y]);
-    gfx.fill({ color, alpha: 0.95 });
+    this._fillPoly(gfx, [pt(3, 0), pt(1.5, -2), pt(1.5, 2)], color, 0.95);
   }
 
   /** Embedded magic shard from a staff bolt. */
   _drawStuckMagicShard(gfx, cx, cy, ang, color) {
     const c = Math.cos(ang), s = Math.sin(ang);
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
-    const t1 = pt(4, 0), t2 = pt(-2, -2), t3 = pt(-2, 2);
-    gfx.poly([t1.x, t1.y, t2.x, t2.y, t3.x, t3.y]);
-    gfx.fill({ color, alpha: 0.66 });
+    this._fillPoly(gfx, [pt(4, 0), pt(-2, -2), pt(-2, 2)], color, 0.66);
     gfx.circle(cx, cy, 3);
     gfx.fill({ color, alpha: 0.27 });
   }

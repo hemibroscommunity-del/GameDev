@@ -2808,6 +2808,13 @@ export var BroTown = function BroTown(_ref0) {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;
       var vhFull = vv ? vv.height : window.innerHeight;
+      /* iOS keyboard fix: when the chat input pops the keyboard,
+         visualViewport.height shrinks by ~300 px while window.innerHeight
+         stays at the original value.  Detect that gap and SKIP the
+         canvas resize so the canvas stays full-size — the keyboard
+         then floats over the canvas like an overlay instead of
+         shifting the scene up and exposing a black bar at the bottom. */
+      if (vv && window.innerHeight - vhFull > 100) return;
       var vh = Math.max(120, Math.round(vhFull * (1 - DASH_FRAC)));
       canvas.width = vw * dpr;
       canvas.height = vh * dpr;

@@ -2,11 +2,21 @@
  * Tile Map Renderer — renders zone tiles using PixiJS Sprites from tileset assets.
  * Falls back to colored rectangles for tile types without sprite assets.
  */
-import { Container, Graphics, Sprite, Texture, Rectangle, Assets } from 'pixi.js';
+import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Assets } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_BUILDINGS } from '@/data/buildings.js';
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS } from '../tiledMaps.js';
+
+const ZONE_NAME_STYLE = new TextStyle({
+  fontFamily: 'VT323, monospace',
+  fontSize: 56,
+  fontWeight: '900',
+  fill: '#ffffff',
+  stroke: { color: '#000000', width: 6 },
+  align: 'center',
+  letterSpacing: 4,
+});
 
 function cssToHex(css) {
   if (typeof css !== 'string') return 0x000000;
@@ -74,6 +84,19 @@ export class TileRenderer {
     this.buildingContainer.label = 'buildingSprites';
     this.layer.addChild(this.buildingContainer);
 
+    /* Zone name banners — one Text per cardinal edge, in the black
+       out-of-bounds area outside the map.  Created lazily in rebuild
+       so all four read the current zone's name. */
+    this._zoneLabelTop = null;
+    this._zoneLabelBottom = null;
+    this._zoneLabelLeft = null;
+    this._zoneLabelRight = null;
+
+    /* Exit portal pulse — drawn per-frame on overlayGfx over S.map
+       cells with tile id 8 (zone exit) / 9 (return-to-town) / 10
+       (dungeon entrance). */
+    this._exitTiles = [];   // [{ r, c, tile }]
+
     this.currentZone = null;
     this.currentMap = null;
     this._bgColor = 0x2d5a1e;
@@ -120,6 +143,63 @@ export class TileRenderer {
     this._mapW = cols * TILE;
     this._mapH = rows * TILE;
     this._bgColor = zone?.palette?.ground ? cssToHex(zone.palette.ground) : 0x2d5a1e;
+
+    /* Collect exit/entrance positions from the procedural S.map.
+       Tiles 8/9/10 mark zone exits, return-to-town, and dungeon
+       entrances.  Used in update() to draw pulsing portal glows. */
+    this._exitTiles = [];
+    for (let r = 0; r < rows; r++) {
+      const row = map[r];
+      if (!row) continue;
+      for (let c = 0; c < cols; c++) {
+        const t = row[c];
+        if (t === 8 || t === 9 || t === 10) {
+          this._exitTiles.push({ r, c, tile: t });
+        }
+      }
+    }
+
+    /* Zone-name banners — placed in the black margin OUTSIDE the map
+       on all four cardinal sides.  Visible when the player approaches
+       any edge.  Big stroked white text. */
+    const zoneName = (zone && zone.name) || zoneId.toUpperCase();
+    if (!this._zoneLabelTop) {
+      this._zoneLabelTop = new Text({ text: '', style: ZONE_NAME_STYLE });
+      this._zoneLabelTop.anchor.set(0.5, 1);
+      this.layer.addChild(this._zoneLabelTop);
+    }
+    if (!this._zoneLabelBottom) {
+      this._zoneLabelBottom = new Text({ text: '', style: ZONE_NAME_STYLE });
+      this._zoneLabelBottom.anchor.set(0.5, 0);
+      this.layer.addChild(this._zoneLabelBottom);
+    }
+    if (!this._zoneLabelLeft) {
+      this._zoneLabelLeft = new Text({ text: '', style: ZONE_NAME_STYLE });
+      this._zoneLabelLeft.anchor.set(0.5, 0.5);
+      this._zoneLabelLeft.rotation = -Math.PI / 2;
+      this.layer.addChild(this._zoneLabelLeft);
+    }
+    if (!this._zoneLabelRight) {
+      this._zoneLabelRight = new Text({ text: '', style: ZONE_NAME_STYLE });
+      this._zoneLabelRight.anchor.set(0.5, 0.5);
+      this._zoneLabelRight.rotation = Math.PI / 2;
+      this.layer.addChild(this._zoneLabelRight);
+    }
+    for (const t of [this._zoneLabelTop, this._zoneLabelBottom, this._zoneLabelLeft, this._zoneLabelRight]) {
+      if (t.text !== zoneName) t.text = zoneName;
+    }
+    /* Top: centered above map by 40 px */
+    this._zoneLabelTop.x = this._mapW / 2;
+    this._zoneLabelTop.y = -40;
+    /* Bottom: centered below map by 40 px */
+    this._zoneLabelBottom.x = this._mapW / 2;
+    this._zoneLabelBottom.y = this._mapH + 40;
+    /* Left: centered vertically, 80 px out (rotated -90 so text reads bottom-up) */
+    this._zoneLabelLeft.x = -80;
+    this._zoneLabelLeft.y = this._mapH / 2;
+    /* Right: centered vertically, 80 px out (rotated +90 so text reads top-down) */
+    this._zoneLabelRight.x = this._mapW + 80;
+    this._zoneLabelRight.y = this._mapH / 2;
 
     /* Single-image zone path — when an entry exists in IMAGE_ZONE_MAPS,
        render one Sprite covering the world bounds.  Beats Tiled for
@@ -471,6 +551,32 @@ export class TileRenderer {
     if (this.currentZone && !this._renderedTiled) {
       const tiled = getLoadedTiledMap(this.currentZone);
       if (tiled) this.rebuild(null, this.currentMap, this.currentZone);
+    }
+
+    /* Pulsing portal glows over zone-exit tiles (8 / 9 / 10).
+       Drawn on overlayGfx every frame so the pulse animates without
+       a full rebuild.  Color per type: 8 generic exit (zone-element
+       color), 9 return-to-town (green), 10 dungeon (red). */
+    this.overlayGfx.clear();
+    if (this._exitTiles.length) {
+      const now = Date.now();
+      const zone = ZONES[this.currentZone];
+      const elemColor = zone && zone.element ? 0xff5e6c : 0x5b52ff;
+      for (const ex of this._exitTiles) {
+        const x = ex.c * TILE;
+        const y = ex.r * TILE;
+        let color, pulseSpeed;
+        if (ex.tile === 9)      { color = 0x3dd497; pulseSpeed = 400; }
+        else if (ex.tile === 10){ color = elemColor; pulseSpeed = 250; }
+        else                    { color = elemColor; pulseSpeed = 300; }
+        const pulse = Math.sin(now / pulseSpeed + ex.c + ex.r) * 0.2 + 0.6;
+        this.overlayGfx.rect(x - 2, y - 2, TILE + 4, TILE + 4);
+        this.overlayGfx.fill({ color, alpha: pulse * 0.55 });
+        this.overlayGfx.rect(x + 2, y + 2, TILE - 4, TILE - 4);
+        this.overlayGfx.fill({ color, alpha: pulse * 0.25 });
+        this.overlayGfx.rect(x, y, TILE, TILE);
+        this.overlayGfx.stroke({ color, width: 1.5, alpha: pulse * 0.9 });
+      }
     }
 
     // Two-pass background, matching the Canvas 2D path:
