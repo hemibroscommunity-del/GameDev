@@ -4092,14 +4092,21 @@ export function setupGameLoop(ctx) {
               });
             }
 
-            /* Hit other players (PvP) — §19 broadcast attack event */
+            /* Hit other players (PvP) — §19 broadcast attack event.
+               Only broadcast when the swing is intentionally aimed at
+               another player (tap-locked) or both players are in an
+               active duel.  Without this gate, every swing in a
+               non-safe zone broadcasts as a PvP hit and co-op partners
+               get tagged as victims of each other while killing
+               shared monsters. */
             if (S.channel) {
               var _ZONES$S$currentZone7;
               var specialMult2 = S._specialAttack ? SPECIAL_ATK_MULT : 1;
               /* §19 PvP only works outside town and safe zones */
               var inSafeZone = (_ZONES$S$currentZone7 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone7 === void 0 ? void 0 : _ZONES$S$currentZone7.safe;
-              if (!inSafeZone) {
-                var pvpAngle = S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.ref ? Math.atan2((S.lockedTarget.ref.y || S.lockedTarget.ref.renderY || P.y) - P.y, (S.lockedTarget.ref.x || S.lockedTarget.ref.renderX || P.x) - P.x) : baseAngle;
+              var pvpLocked = S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.ref;
+              if (!inSafeZone && (pvpLocked || S._inDuel)) {
+                var pvpAngle = pvpLocked ? Math.atan2((S.lockedTarget.ref.y || S.lockedTarget.ref.renderY || P.y) - P.y, (S.lockedTarget.ref.x || S.lockedTarget.ref.renderX || P.x) - P.x) : baseAngle;
                 /* Track threat — attacking a player starts the threat counter */
                 S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
                 if (S.channel) S.channel.send({
