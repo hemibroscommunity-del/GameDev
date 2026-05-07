@@ -12,6 +12,7 @@ import { loadPlayerSprites } from './playerSprites.js';
 import { loadPlayerAnchors } from './playerAnchors.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
+import { loadImageZoneMaps } from './tiledMaps.js';
 
 /**
  * Initializes the PixiJS renderer.
@@ -46,6 +47,10 @@ export async function initPixiRenderer(canvas) {
   loadWeaponSprites().catch((err) => console.warn('Weapon sprites failed to load, using procedural fallback:', err));
   // Per-frame hand anchors + weapon grip points.
   loadPlayerAnchors().catch((err) => console.warn('Player anchors failed to load, using procedural fallback:', err));
+  /* Preload single-image zone maps (frost, etc.) so the Sprite has
+     a real texture by the time the user enters the zone — without
+     this, Texture.from(url) in Pixi v8 yields a blank placeholder. */
+  loadImageZoneMaps().catch((err) => console.warn('Image zone maps failed to load:', err));
 
   let currentZone = null;
   let currentMap = null;

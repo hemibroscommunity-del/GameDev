@@ -209,13 +209,28 @@ export class TileRenderer {
     const imageUrl = IMAGE_ZONE_MAPS[zoneId];
     if (imageUrl) {
       this._renderedTiled = true;   // tell update() not to retry
-      const tex = Assets.cache.get(imageUrl) || Texture.from(imageUrl);
-      const sprite = new Sprite(tex);
+      const cachedTex = Assets.cache.get(imageUrl);
+      const sprite = new Sprite(cachedTex || Texture.EMPTY);
       sprite.x = 0;
       sprite.y = 0;
       sprite.width = this._mapW;
       sprite.height = this._mapH;
       this.tileContainer.addChild(sprite);
+      /* Race fix: if the preload is still in flight when the user
+         enters the zone, the cache miss above leaves the sprite on
+         Texture.EMPTY (blank).  Kick off the load and swap the
+         texture in when it resolves so the player sees the image. */
+      if (!cachedTex) {
+        const w = this._mapW;
+        const h = this._mapH;
+        Assets.load(imageUrl).then((loaded) => {
+          if (loaded && !sprite.destroyed) {
+            sprite.texture = loaded;
+            sprite.width = w;
+            sprite.height = h;
+          }
+        }).catch(() => {});
+      }
       return;
     }
 

@@ -36,6 +36,22 @@ export const IMAGE_ZONE_MAPS = {
   frost: '/maps/frost.jpg',
 };
 
+/** Preload every image-zone map URL into the Pixi Assets cache.  Call
+ *  once at renderer startup (alongside loadTileAssets / loadPlayerSprites).
+ *  Without preload, Texture.from(url) in Pixi v8 returns an empty
+ *  placeholder — the Sprite shows blank until something else
+ *  triggers a load. */
+export async function loadImageZoneMaps() {
+  // Lazy import so this module stays usable in non-Pixi contexts.
+  const { Assets } = await import('pixi.js');
+  const tasks = Object.values(IMAGE_ZONE_MAPS).map((url) =>
+    Assets.load(url).catch((e) => {
+      console.warn('[image-zone] failed to load', url, e && e.message);
+    })
+  );
+  await Promise.all(tasks);
+}
+
 // Loaded map cache: zoneId -> { width, height, layers, tilesets }
 const _maps = {};
 // Loaded tileset image cache: src -> HTMLImageElement
