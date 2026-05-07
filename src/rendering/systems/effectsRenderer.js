@@ -420,6 +420,14 @@ export class EffectsRenderer {
       const elemColor = a._projElem && ELEMENTS[a._projElem] ? cssToHex(ELEMENTS[a._projElem].color) : 0xc8c8d0;
       const fadeA = Math.min(1, a.life / 20);
 
+      /* Motion-blur trail — push the current position into a small
+         ring buffer per arrow, then draw fading line segments back
+         through the history.  Older segments are thinner + more
+         transparent, so the eye reads the trail as a single linear
+         streak that visually extends the arrow's path.
+         Stuck arrows / hit arrows don't need this. */
+      this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.isSpecial || a.ice);
+
       if (a.isSpecial || a.ice) {
         const sz = a._isStaffProj ? 1.5 : 1.0;
         gfx.circle(a._renderX, a._renderY, 5 * sz);
@@ -432,8 +440,8 @@ export class EffectsRenderer {
         gfx.circle(a._renderX, a._renderY, 9);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.2 });
       } else {
-        /* Detailed arrow — wooden shaft + element-colored arrowhead +
-           element-colored fletching.  Drawn rotated so the math is
+        /* Detailed arrow — wooden shaft + colored arrowhead +
+           colored fletching.  Drawn rotated so the math is
            local-coords-friendly.  ang_eff = a.ang + bend so arrows
            in flight visibly tilt in the direction the player is
            rotating their aim. */
@@ -462,12 +470,53 @@ export class EffectsRenderer {
     const remote = S._remoteProjectiles || [];
     for (const rp of remote) {
       if (!rp._renderX) continue;
+      this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff);
       if (rp.isStaff) {
         gfx.circle(rp._renderX, rp._renderY, 4);
         gfx.fill({ color: 0xa855f7, alpha: 0.8 });
       } else {
         this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, 0xd4a574, 0.9);
       }
+    }
+  }
+
+  /** Push the projectile's current render position into a small
+   *  ring-buffer trail on the projectile object, then draw the trail
+   *  as fading line segments behind it.  Each successive segment is
+   *  thinner + more transparent, so the streak reads as motion blur
+   *  the eye strings into a linear path.
+   *
+   *  Trail position is captured ONCE per render frame.  At the
+   *  arrow's typical speed (8 px/frame), an 8-point trail covers
+   *  ~64 px = a clear streak that doesn't lag behind reality. */
+  _updateProjectileTrail(p, gfx, fadeA, isOrb) {
+    const TRAIL_LEN = 8;
+    if (!p._trail) p._trail = [];
+    /* Skip recording if we just teleported (e.g. zone change reset).
+       A jump in distance > 80 px between samples means re-spawn. */
+    const last = p._trail[p._trail.length - 1];
+    if (last) {
+      const dx = p._renderX - last.x;
+      const dy = p._renderY - last.y;
+      if (dx * dx + dy * dy > 80 * 80) p._trail.length = 0;
+    }
+    p._trail.push({ x: p._renderX, y: p._renderY });
+    if (p._trail.length > TRAIL_LEN) p._trail.shift();
+    if (p._trail.length < 2) return;
+    /* Draw segments oldest -> newest.  i=1 at oldest segment,
+       i=trail.length-1 at newest. */
+    for (let i = 1; i < p._trail.length; i++) {
+      const t = i / (p._trail.length - 1);   // 0..1, 1 = closest to head
+      const a0 = p._trail[i - 1];
+      const a1 = p._trail[i];
+      gfx.moveTo(a0.x, a0.y);
+      gfx.lineTo(a1.x, a1.y);
+      gfx.stroke({
+        /* Dark brown for arrows, lighter for orbs. */
+        color: isOrb ? 0xc8c8d0 : 0x5a3820,
+        width: 0.4 + t * 1.6,
+        alpha: fadeA * (0.05 + t * 0.45),
+      });
     }
   }
 
@@ -580,68 +629,12 @@ export class EffectsRenderer {
       }
     }
 
-    /* Bow / staff aim hint — instead of a dashed line (video-gamey),
-       render a stream of small streaks flowing forward along the
-       aim direction with a perpendicular wobble.  Reads as "wind"
-       or "spirit trail" guiding the player's next shot.  Tinted by
-       the equipped weapon's element when one is set. */
-    const slot = S.rpg && S.rpg.activeSlot;
-    const isRanged = slot === 'ranged' || slot === 'staff';
-    const isLocked = !!(S.lockedTarget && S.lockedTarget.ref);
-    if (isRanged && (S._aiming || isLocked || S.autoAttack) && S.player) {
-      const P = S.player;
-      let aimA;
-      if (isLocked) {
-        const lt = S.lockedTarget.ref;
-        aimA = Math.atan2((lt.y || 0) - P.y, (lt.x || 0) - P.x);
-      } else if (S._aimAngle != null) {
-        aimA = S._aimAngle;
-      } else {
-        aimA = 0;
-      }
-      const isAiming = S._aiming || isLocked;
-      /* Element-tint the wind from the equipped weapon's element. */
-      const wpn = (slot === 'ranged' ? S.rpg.rangedWeapon
-                 : slot === 'staff'  ? (S.rpg.staffWeapon || S.rpg.rangedWeapon)
-                 : null);
-      const elem = wpn && wpn.element1;
-      const windColor = elem && ELEMENTS[elem] ? cssToHex(ELEMENTS[elem].color) : 0xffffff;
-
-      const cosA = Math.cos(aimA), sinA = Math.sin(aimA);
-      /* Sparse drift — ~5 particles, widely spaced.  Reads as ambient
-         dust motes carried in the aim direction rather than a busy
-         stream that competes with the arrow visually. */
-      const streamLen = 280;
-      const particleCount = 5;
-      const baseAlpha = isAiming ? 0.18 : 0.08;
-      const cycleMs = isAiming ? 950 : 1500;
-      const phaseShift = (now / cycleMs) % 1;
-
-      for (let i = 0; i < particleCount; i++) {
-        const p = ((i / particleCount) + phaseShift) % 1;
-        const dist = p * streamLen;
-        /* Wider fade-in/out windows since there are fewer particles —
-           don't want any single one to pop. */
-        const fadeIn  = Math.min(1, p * 5);
-        const fadeOut = Math.min(1, (1 - p) * 3);
-        const aFade   = fadeIn * fadeOut;
-        /* Smaller perpendicular wobble — single sine, modest amplitude
-           so the dots feel like they're drifting along the path
-           rather than swirling. */
-        const perp = Math.sin(p * Math.PI * 3 + i * 1.7 + now / 240) * (1.5 + p * 2);
-        const fx = P.x + cosA * dist - sinA * perp;
-        const fy = P.y + sinA * dist + cosA * perp;
-        const streakLen = 2 + p * 2;
-        const tx = fx - cosA * streakLen;
-        const ty = fy - sinA * streakLen;
-        gfx.moveTo(tx, ty);
-        gfx.lineTo(fx, fy);
-        gfx.stroke({
-          color: windColor,
-          width: 0.8 + p * 0.5,
-          alpha: aFade * baseAlpha,
-        });
-      }
+    /* Pre-fire aim hint removed — the per-projectile trail (drawn
+       below as part of each arrow) is now the visual aid for
+       reading flight paths.  Reads as motion blur on the arrow
+       itself rather than a separate guidance overlay, so it doesn't
+       distract from the arrow's silhouette while still letting the
+       eye string successive frames into a linear path. */
     }
 
     // Shield arc
