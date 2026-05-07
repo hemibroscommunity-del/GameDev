@@ -6,16 +6,17 @@ import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Asset
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_BUILDINGS } from '@/data/buildings.js';
+import { TOWN_EXITS } from '@/data/effects.js';
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS } from '../tiledMaps.js';
 
-const ZONE_NAME_STYLE = new TextStyle({
+const ZONE_LABEL_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
-  fontSize: 56,
-  fontWeight: '900',
+  fontSize: 28,
+  fontWeight: '700',
   fill: '#ffffff',
-  stroke: { color: '#000000', width: 6 },
+  stroke: { color: '#000000', width: 4 },
   align: 'center',
-  letterSpacing: 4,
+  letterSpacing: 2,
 });
 
 function cssToHex(css) {
@@ -84,13 +85,11 @@ export class TileRenderer {
     this.buildingContainer.label = 'buildingSprites';
     this.layer.addChild(this.buildingContainer);
 
-    /* Zone name banners — one Text per cardinal edge, in the black
-       out-of-bounds area outside the map.  Created lazily in rebuild
-       so all four read the current zone's name. */
-    this._zoneLabelTop = null;
-    this._zoneLabelBottom = null;
-    this._zoneLabelLeft = null;
-    this._zoneLabelRight = null;
+    /* Zone-name labels — pooled.  In TOWN: one label per exit
+       showing the destination zone's name.  In a themed zone: one
+       label at the return-to-town exit (S.map tile 9) saying "Town".
+       Pool grows on demand, unused entries hidden. */
+    this._zoneLabels = [];
 
     /* Exit portal pulse — drawn per-frame on overlayGfx over S.map
        cells with tile id 8 (zone exit) / 9 (return-to-town) / 10
@@ -159,47 +158,49 @@ export class TileRenderer {
       }
     }
 
-    /* Zone-name banners — placed in the black margin OUTSIDE the map
-       on all four cardinal sides.  Visible when the player approaches
-       any edge.  Big stroked white text. */
-    const zoneName = (zone && zone.name) || zoneId.toUpperCase();
-    if (!this._zoneLabelTop) {
-      this._zoneLabelTop = new Text({ text: '', style: ZONE_NAME_STYLE });
-      this._zoneLabelTop.anchor.set(0.5, 1);
-      this.layer.addChild(this._zoneLabelTop);
+    /* Zone-name labels.  TOWN: place one label per exit, showing the
+       DESTINATION zone's name (so the player sees where each exit
+       leads from inside town).  THEMED ZONES: place one label at the
+       return-to-town exit (S.map tile 9) reading "Town" so the
+       player knows which exit takes them back home. */
+    const labelsForFrame = [];
+    if (zoneId === 'town') {
+      for (const ex of TOWN_EXITS) {
+        const destZone = ZONES[ex.zoneId];
+        const text = (destZone && destZone.name) || ex.zoneId;
+        labelsForFrame.push(this._exitLabelPos(ex.tx, ex.ty, cols, rows, text, ex.dir));
+      }
+    } else {
+      /* Find tile-9 cells (return-to-town) and label one of them. */
+      let placed = 0;
+      for (let r = 0; r < rows && placed < 1; r++) {
+        const row = map[r];
+        if (!row) continue;
+        for (let c = 0; c < cols && placed < 1; c++) {
+          if (row[c] === 9) {
+            labelsForFrame.push(this._exitLabelPos(c, r, cols, rows, 'Town', null));
+            placed++;
+          }
+        }
+      }
     }
-    if (!this._zoneLabelBottom) {
-      this._zoneLabelBottom = new Text({ text: '', style: ZONE_NAME_STYLE });
-      this._zoneLabelBottom.anchor.set(0.5, 0);
-      this.layer.addChild(this._zoneLabelBottom);
+    /* Apply pooled labels.  Grow the pool if needed; hide extras. */
+    while (this._zoneLabels.length < labelsForFrame.length) {
+      const t = new Text({ text: '', style: ZONE_LABEL_STYLE });
+      t.anchor.set(0.5, 0.5);
+      this.layer.addChild(t);
+      this._zoneLabels.push(t);
     }
-    if (!this._zoneLabelLeft) {
-      this._zoneLabelLeft = new Text({ text: '', style: ZONE_NAME_STYLE });
-      this._zoneLabelLeft.anchor.set(0.5, 0.5);
-      this._zoneLabelLeft.rotation = -Math.PI / 2;
-      this.layer.addChild(this._zoneLabelLeft);
+    for (let i = 0; i < this._zoneLabels.length; i++) {
+      const t = this._zoneLabels[i];
+      const spec = labelsForFrame[i];
+      if (!spec) { t.visible = false; continue; }
+      if (t.text !== spec.text) t.text = spec.text;
+      t.x = spec.x;
+      t.y = spec.y;
+      t.rotation = spec.rotation || 0;
+      t.visible = true;
     }
-    if (!this._zoneLabelRight) {
-      this._zoneLabelRight = new Text({ text: '', style: ZONE_NAME_STYLE });
-      this._zoneLabelRight.anchor.set(0.5, 0.5);
-      this._zoneLabelRight.rotation = Math.PI / 2;
-      this.layer.addChild(this._zoneLabelRight);
-    }
-    for (const t of [this._zoneLabelTop, this._zoneLabelBottom, this._zoneLabelLeft, this._zoneLabelRight]) {
-      if (t.text !== zoneName) t.text = zoneName;
-    }
-    /* Top: centered above map by 40 px */
-    this._zoneLabelTop.x = this._mapW / 2;
-    this._zoneLabelTop.y = -40;
-    /* Bottom: centered below map by 40 px */
-    this._zoneLabelBottom.x = this._mapW / 2;
-    this._zoneLabelBottom.y = this._mapH + 40;
-    /* Left: centered vertically, 80 px out (rotated -90 so text reads bottom-up) */
-    this._zoneLabelLeft.x = -80;
-    this._zoneLabelLeft.y = this._mapH / 2;
-    /* Right: centered vertically, 80 px out (rotated +90 so text reads top-down) */
-    this._zoneLabelRight.x = this._mapW + 80;
-    this._zoneLabelRight.y = this._mapH / 2;
 
     /* Single-image zone path — when an entry exists in IMAGE_ZONE_MAPS,
        render one Sprite covering the world bounds.  Beats Tiled for
@@ -235,6 +236,40 @@ export class TileRenderer {
     } else {
       this._rebuildProcedural(map, zoneId, rows, cols, zone);
     }
+  }
+
+  /** Position a zone label NEAR an exit tile but in the black
+   *  margin OUTSIDE the map bounds, so it doesn't cover the playable
+   *  area.  Picks the closest cardinal edge from the tile's position
+   *  (or the exit's `dir` field if provided).  Returns
+   *  { text, x, y, rotation }. */
+  _exitLabelPos(tx, ty, cols, rows, text, dir) {
+    /* Distance to each edge in tile units. */
+    const dN = ty;
+    const dS = rows - 1 - ty;
+    const dW = tx;
+    const dE = cols - 1 - tx;
+    /* If a `dir` was provided (from TOWN_EXITS), use it as a hint. */
+    let edge;
+    if (dir === 'north' || dir === 'ne' || dir === 'nw') edge = 'n';
+    else if (dir === 'south' || dir === 'se' || dir === 'sw') edge = 's';
+    else if (dir === 'east') edge = 'e';
+    else if (dir === 'west') edge = 'w';
+    else {
+      /* No hint — pick whichever edge the tile is closest to. */
+      const min = Math.min(dN, dS, dW, dE);
+      if      (min === dN) edge = 'n';
+      else if (min === dS) edge = 's';
+      else if (min === dW) edge = 'w';
+      else                 edge = 'e';
+    }
+    const cx = tx * TILE + TILE / 2;
+    const cy = ty * TILE + TILE / 2;
+    const PAD = 32;     // distance from map edge into the black margin
+    if (edge === 'n') return { text, x: cx, y: -PAD, rotation: 0 };
+    if (edge === 's') return { text, x: cx, y: rows * TILE + PAD, rotation: 0 };
+    if (edge === 'w') return { text, x: -PAD - 8, y: cy, rotation: -Math.PI / 2 };
+    return { text, x: cols * TILE + PAD + 8, y: cy, rotation: Math.PI / 2 };
   }
 
   /** Resolve a global tile id to {tileset, localId}, picking the

@@ -35416,10 +35416,15 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       flex: 1,
       padding: '8px 10px',
-      background: 'rgba(255,255,255,.08)',
+      /* Opaque white BG + black text so the input stays readable
+         regardless of iOS / Android default input styling overrides
+         (some platforms force white BG even when CSS asks for
+         translucent — that combined with our prior color:#fff was
+         showing as white-on-white). */
+      background: '#ffffff',
       border: '1px solid rgba(255,255,255,.15)',
       borderRadius: 6,
-      color: '#fff',
+      color: '#000',
       fontSize: 16,
       outline: 'none',
       minWidth: 0

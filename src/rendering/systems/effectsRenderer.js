@@ -482,18 +482,24 @@ export class EffectsRenderer {
   }
 
   /** Draw a detailed arrow centered on (cx, cy) rotated by `ang`.
-   *  Body is 16 px long: dark brown shaft + colored triangular head +
-   *  colored fletching marks at the tail. */
-  _drawArrow(gfx, cx, cy, ang, headColor, alpha) {
+   *  Body is 16 px long: dark brown shaft + lighter brown highlight
+   *  strip + brown arrowhead + brown fletching.  Matches the stuck-
+   *  arrow rendering so a live arrow and a stuck one read as the
+   *  same wooden missile. */
+  _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha) {
     const c = Math.cos(ang), s = Math.sin(ang);
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
-    /* Shaft 16 px long, 3 px wide. */
+    /* Shaft 16 px long, 3 px wide — dark brown wood. */
     this._fillPoly(gfx, [pt(-8, -1.5), pt(8, -1.5), pt(8, 1.5), pt(-8, 1.5)], 0x3a2210, alpha);
-    /* Arrowhead triangle ahead of the shaft. */
-    this._fillPoly(gfx, [pt(9, 0), pt(5, -3.5), pt(5, 3.5)], headColor, alpha);
-    /* Two fletching marks at the tail end. */
-    this._fillPoly(gfx, [pt(-8, -2.5), pt(-5, -2.5), pt(-5, -1), pt(-8, -1)], headColor, alpha * 0.6);
-    this._fillPoly(gfx, [pt(-8, 1), pt(-5, 1), pt(-5, 2.5), pt(-8, 2.5)], headColor, alpha * 0.6);
+    /* Highlight strip across the top half of the shaft for relief —
+       same recipe as the stuck arrow. */
+    this._fillPoly(gfx, [pt(-8, -1.5), pt(8, -1.5), pt(8, -0.7), pt(-8, -0.7)], 0x5a3820, alpha * 0.85);
+    /* Arrowhead triangle — lighter brown to read as a metal-ish tip
+       on the wooden shaft. */
+    this._fillPoly(gfx, [pt(9, 0), pt(5, -3.5), pt(5, 3.5)], 0x6a4830, alpha);
+    /* Fletching at the tail end — slightly warmer brown. */
+    this._fillPoly(gfx, [pt(-8, -2.5), pt(-5, -2.5), pt(-5, -1), pt(-8, -1)], 0x5a3820, alpha * 0.85);
+    this._fillPoly(gfx, [pt(-8, 1), pt(-5, 1), pt(-5, 2.5), pt(-8, 2.5)], 0x5a3820, alpha * 0.85);
   }
 
   /** Stuck arrow on a monster — half-length, fletching at the air end,
