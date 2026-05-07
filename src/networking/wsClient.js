@@ -599,8 +599,8 @@ export function setupWebSocket(ctx) {
                   BT_AUDIO.startZoneAmbient('town');
                   S.map = generateZoneMap('town');
                   S.monsters = []; /* Town has no monsters */
-                  S.player.x = 20 * TILE;
-                  S.player.y = 20 * TILE;
+                  S.player.x = 16 * TILE;
+                  S.player.y = 16 * TILE;
                   S.respawnTimer = Date.now() + 3000;
                   setRpgState(_objectSpread({}, R2));
                   try { localStorage.setItem('bt_rpg', JSON.stringify(R2)); } catch(e) {}

@@ -246,19 +246,20 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
 }
 
 /* Zone exits in town — 8 zones at the 8 directional extremes
-   (cardinal edges + corners). Town is 40w × 30h, so:
-     N  → top-center,    NE → top-right corner
-     E  → right-center,  SE → bottom-right corner
-     S  → bottom-center, SW → bottom-left corner
-     W  → left-center,   NW → top-left corner
-   Returning from any zone respawns at the same extreme. */
+   (cardinal edges + corners).  Town is 32w × 32h, so:
+     NW → top-left corner,    N  → top-center,    NE → top-right corner
+     W  → left-center,                              E  → right-center
+     SW → bottom-left corner, S  → bottom-center, SE → bottom-right corner
+   Layout (clockwise from NW): Ice, Floral, Lightning, Water,
+   Poison, Rock, Lava, Wind. Returning from any zone respawns
+   at the same extreme. */
 export const TOWN_EXITS = [
-  { zoneId: 'meadow',  tx: 20, ty: 0,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
-  { zoneId: 'frost',   tx: 39, ty: 0,  dir: 'ne',    label: 'Frozen Shore ↗',    color: ELEMENTS.frost.color },
-  { zoneId: 'ember',   tx: 39, ty: 15, dir: 'east',  label: 'Ember Fields →',    color: ELEMENTS.flame.color },
-  { zoneId: 'thunder', tx: 39, ty: 29, dir: 'se',    label: 'Thunder Peaks ↘',   color: ELEMENTS.storm.color },
-  { zoneId: 'sky',     tx: 20, ty: 29, dir: 'south', label: 'Sky Reaches ↓',     color: ELEMENTS.wind.color },
-  { zoneId: 'hollows', tx: 0,  ty: 29, dir: 'sw',    label: '↙ Deep Hollows',    color: ELEMENTS.stone.color },
-  { zoneId: 'mist',    tx: 0,  ty: 15, dir: 'west',  label: '← Mistwood',        color: ELEMENTS.venom.color },
-  { zoneId: 'tidal',   tx: 0,  ty: 0,  dir: 'nw',    label: '↖ Tidal Caves',     color: ELEMENTS.water.color },
+  { zoneId: 'frost',   tx: 0,  ty: 0,  dir: 'nw',    label: '↖ Frozen Shore',  color: ELEMENTS.frost.color },
+  { zoneId: 'meadow',  tx: 16, ty: 0,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
+  { zoneId: 'thunder', tx: 31, ty: 0,  dir: 'ne',    label: 'Thunder Peaks ↗', color: ELEMENTS.storm.color },
+  { zoneId: 'tidal',   tx: 31, ty: 16, dir: 'east',  label: 'Tidal Caves →',   color: ELEMENTS.water.color },
+  { zoneId: 'mist',    tx: 31, ty: 31, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
+  { zoneId: 'hollows', tx: 16, ty: 31, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
+  { zoneId: 'ember',   tx: 0,  ty: 31, dir: 'sw',    label: '↙ Ember Fields',  color: ELEMENTS.flame.color },
+  { zoneId: 'sky',     tx: 0,  ty: 16, dir: 'west',  label: '← Sky Reaches',   color: ELEMENTS.wind.color },
 ];

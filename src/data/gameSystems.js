@@ -6397,8 +6397,8 @@ export const NPC_DATA = [{
   phrases: ['Welcome to the world!', 'Have you explored the spokes?', 'Beautiful day in town!', 'The enchanter can upgrade your gear.'],
   canFollow: true,
   followZones: ['town', 'meadow'],
-  spawnX: 20 * TILE,
-  spawnY: 13 * TILE,
+  spawnX: 16 * TILE,
+  spawnY: 14 * TILE,
   pathRadius: 60
 }, {
   name: 'Trader Tix',
@@ -6409,8 +6409,8 @@ export const NPC_DATA = [{
   phrases: ['Looking to trade? Check the Market!', 'Good loot in the Ember Fields.', 'Rare drops are worth the grind!', 'Cook your fish before heading out!'],
   canFollow: true,
   followZones: ['town', 'meadow', 'ember', 'frost'],
-  spawnX: 8 * TILE,
-  spawnY: 9 * TILE,
+  spawnX: 6 * TILE,
+  spawnY: 10 * TILE,
   pathRadius: 50
 }, {
   name: 'Enchantress',
@@ -6421,8 +6421,8 @@ export const NPC_DATA = [{
   phrases: ['I can add elements to your weapon.', 'Volatile fusions hit harder!', 'Bring me crystals from the zones.', 'Elements are the key to power.'],
   canFollow: true,
   followZones: ['town'],
-  spawnX: 34 * TILE,
-  spawnY: 20 * TILE,
+  spawnX: 27 * TILE,
+  spawnY: 21 * TILE,
   pathRadius: 30
 }, {
   name: 'Scout',
@@ -6433,7 +6433,7 @@ export const NPC_DATA = [{
   phrases: ['Ember Fields are dangerous but rewarding.', 'Frost zones slow you down — bring fire!', 'Watch out for Volatile enemies — they explode!', 'Each zone has different monsters.'],
   canFollow: true,
   followZones: ['town', 'meadow', 'ember', 'mist', 'frost', 'thunder', 'hollows', 'sky', 'tidal'],
-  spawnX: 20 * TILE,
+  spawnX: 16 * TILE,
   spawnY: 4 * TILE,
   pathRadius: 35
 }, {
@@ -6445,8 +6445,8 @@ export const NPC_DATA = [{
   phrases: ['Ore in, weapons out. Simple.', 'The Woodworker handles bows and staves.', 'Gem slots make all the difference.', 'A crafted weapon has character.'],
   canFollow: true,
   followZones: ['town'],
-  spawnX: 16 * TILE,
-  spawnY: 24 * TILE,
+  spawnX: 13 * TILE,
+  spawnY: 26 * TILE,
   pathRadius: 30
 }, {
   name: 'Healer Luna',
@@ -6457,7 +6457,7 @@ export const NPC_DATA = [{
   phrases: ['Eat well, fight well.', 'The shield absorbs more than you think.', 'Death drops your items — but you can get them back!', 'Cook fish for healing, herbs for buffs.'],
   canFollow: true,
   followZones: ['town', 'meadow'],
-  spawnX: 16 * TILE,
+  spawnX: 13 * TILE,
   spawnY: 6 * TILE,
   pathRadius: 40
 }, {
@@ -6469,8 +6469,8 @@ export const NPC_DATA = [{
   phrases: ['Every monster is a potential friend.', 'Pets collect loot so you can focus on fighting.', 'Higher trapping skill, higher catch rate!', 'Some pets have unique idle behaviors.'],
   canFollow: true,
   followZones: ['town', 'meadow', 'ember', 'mist', 'frost'],
-  spawnX: 28 * TILE,
-  spawnY: 13 * TILE,
+  spawnX: 22 * TILE,
+  spawnY: 14 * TILE,
   pathRadius: 45
 }, {
   name: 'Veteran Ash',
@@ -6481,8 +6481,8 @@ export const NPC_DATA = [{
   phrases: ['Crits change fights.', 'Volatile weapons hit 30% harder on collision.', '36 collisions exist. How many have you found?', 'Ferocity for crits. Elemental Mastery for collision damage.'],
   canFollow: true,
   followZones: ['town', 'meadow', 'ember', 'mist', 'frost', 'thunder', 'hollows', 'sky', 'tidal', 'shadow', 'radiant'],
-  spawnX: 24 * TILE,
-  spawnY: 9 * TILE,
+  spawnX: 19 * TILE,
+  spawnY: 10 * TILE,
   pathRadius: 50
 }, {
   name: 'The Ferryman',
@@ -6493,8 +6493,8 @@ export const NPC_DATA = [{
   phrases: ['Looking for trouble?', 'The Lawless Land takes everything... and gives everything.', 'No rules. No mercy. No refunds.', 'Win it all. Lose it all. Your call.'],
   canFollow: false,
   followZones: ['town'],
-  spawnX: 34 * TILE,
-  spawnY: 13 * TILE,
+  spawnX: 27 * TILE,
+  spawnY: 14 * TILE,
   pathRadius: 10,
   isFerryman: true
 }];

@@ -1024,8 +1024,8 @@ export function setupGameLoop(ctx) {
             BT_AUDIO.startZoneAmbient('town');
             S.map = generateZoneMap('town');
             S.monsters = []; /* Town has no monsters */
-            P.x = 20 * TILE;
-            P.y = 20 * TILE;
+            P.x = 16 * TILE;
+            P.y = 16 * TILE;
             S.dmgNumbers.push({
               x: P.x,
               y: P.y - 40,
@@ -3111,8 +3111,8 @@ export function setupGameLoop(ctx) {
                     BT_AUDIO.startZoneAmbient('town');
                     S.map = generateZoneMap('town');
                     S.monsters = []; /* Town has no monsters */
-                    P.x = 20 * TILE;
-                    P.y = 20 * TILE;
+                    P.x = 16 * TILE;
+                    P.y = 16 * TILE;
                     S.respawnTimer = Date.now() + respawnMs;
 
                     /* Place scattered items as recoverable ground loot at death site */

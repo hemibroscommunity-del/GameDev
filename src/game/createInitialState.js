@@ -7,7 +7,7 @@ import { TILE, PLAYER_COLORS } from '@/data/constants.js';
  */
 export function createInitialState() {
   return {
-    player: { x: 20 * TILE, y: 20 * TILE, vx: 0, vy: 0, dir: 'down' },
+    player: { x: 16 * TILE, y: 16 * TILE, vx: 0, vy: 0, dir: 'down' },
     others: {},
     camera: { x: 0, y: 0 },
     keys: {},

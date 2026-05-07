@@ -14,26 +14,28 @@
 const TILE = 32;
 
 // zoneId -> /maps/<file>.tmx
-export const TILED_ZONE_MAPS = {
-  town:    '/maps/brotown.tmx',
-  ember:   '/maps/ember.tmx',
-  mist:    '/maps/mist.tmx',
-  /* frost intentionally omitted — uses single-image map (see
-     IMAGE_ZONE_MAPS) instead of Tiled tilesets. */
-  thunder: '/maps/thunder.tmx',
-  hollows: '/maps/hollows.tmx',
-  sky:     '/maps/sky.tmx',
-  tidal:   '/maps/tidal.tmx',
-};
+// All 9 main zones now use single-image maps via IMAGE_ZONE_MAPS.
+// This map is kept for any future zones (dungeons, farm, etc.) that
+// still want the Tiled pipeline.
+export const TILED_ZONE_MAPS = {};
 
 /** Single-image zones — instead of building a Tiled grid, the entire
- *  zone is one PNG/JPEG stretched to fit the world bounds.  Faster to
- *  author (drop in a generated image, done) and renders as a single
- *  Pixi Sprite — much faster per-frame than tile sprites.
+ *  zone is one 1024x1024 image rendered at native size (zone bounds
+ *  match image bounds: 32x32 tiles at TILE=32).  Faster to author
+ *  (drop in a generated image, done) and renders as a single Pixi
+ *  Sprite — much faster per-frame than tile sprites.
  *  Walkability falls back to "all walkable" since there's no per-tile
  *  metadata to derive blocking from. */
 export const IMAGE_ZONE_MAPS = {
-  frost: '/maps/frost.jpg',
+  town:    '/maps/town.jpg',
+  frost:   '/maps/frost.jpg',
+  meadow:  '/maps/meadow.jpg',
+  thunder: '/maps/thunder.jpg',
+  tidal:   '/maps/tidal.jpg',
+  mist:    '/maps/mist.jpg',
+  hollows: '/maps/hollows.jpg',
+  ember:   '/maps/ember.jpg',
+  sky:     '/maps/sky.jpg',
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
