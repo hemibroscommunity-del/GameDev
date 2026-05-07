@@ -2,11 +2,11 @@
  * Tile Map Renderer — renders zone tiles using PixiJS Sprites from tileset assets.
  * Falls back to colored rectangles for tile types without sprite assets.
  */
-import { Container, Graphics, Sprite, Texture, Rectangle } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture, Rectangle, Assets } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_BUILDINGS } from '@/data/buildings.js';
-import { getLoadedTiledMap, getTilesetImage } from '../tiledMaps.js';
+import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS } from '../tiledMaps.js';
 
 function cssToHex(css) {
   if (typeof css !== 'string') return 0x000000;
@@ -120,6 +120,23 @@ export class TileRenderer {
     this._mapW = cols * TILE;
     this._mapH = rows * TILE;
     this._bgColor = zone?.palette?.ground ? cssToHex(zone.palette.ground) : 0x2d5a1e;
+
+    /* Single-image zone path — when an entry exists in IMAGE_ZONE_MAPS,
+       render one Sprite covering the world bounds.  Beats Tiled for
+       authoring speed when you already have the art generated, and
+       per-frame draw is just one sprite. */
+    const imageUrl = IMAGE_ZONE_MAPS[zoneId];
+    if (imageUrl) {
+      this._renderedTiled = true;   // tell update() not to retry
+      const tex = Assets.cache.get(imageUrl) || Texture.from(imageUrl);
+      const sprite = new Sprite(tex);
+      sprite.x = 0;
+      sprite.y = 0;
+      sprite.width = this._mapW;
+      sprite.height = this._mapH;
+      this.tileContainer.addChild(sprite);
+      return;
+    }
 
     /* Prefer Tiled .tmx data when loaded for this zone — that's the
        authoritative visual source.  Falls back to per-tile sprites

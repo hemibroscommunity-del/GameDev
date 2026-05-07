@@ -18,11 +18,22 @@ export const TILED_ZONE_MAPS = {
   town:    '/maps/brotown.tmx',
   ember:   '/maps/ember.tmx',
   mist:    '/maps/mist.tmx',
-  frost:   '/maps/frost.tmx',
+  /* frost intentionally omitted — uses single-image map (see
+     IMAGE_ZONE_MAPS) instead of Tiled tilesets. */
   thunder: '/maps/thunder.tmx',
   hollows: '/maps/hollows.tmx',
   sky:     '/maps/sky.tmx',
   tidal:   '/maps/tidal.tmx',
+};
+
+/** Single-image zones — instead of building a Tiled grid, the entire
+ *  zone is one PNG/JPEG stretched to fit the world bounds.  Faster to
+ *  author (drop in a generated image, done) and renders as a single
+ *  Pixi Sprite — much faster per-frame than tile sprites.
+ *  Walkability falls back to "all walkable" since there's no per-tile
+ *  metadata to derive blocking from. */
+export const IMAGE_ZONE_MAPS = {
+  frost: '/maps/frost.jpg',
 };
 
 // Loaded map cache: zoneId -> { width, height, layers, tilesets }
