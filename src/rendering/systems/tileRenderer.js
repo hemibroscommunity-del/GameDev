@@ -7,7 +7,7 @@ import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_BUILDINGS } from '@/data/buildings.js';
 import { TOWN_EXITS } from '@/data/effects.js';
-import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, ROOFTOP_OVERLAYS } from '../tiledMaps.js';
+import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS } from '../tiledMaps.js';
 
 const ZONE_LABEL_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
@@ -64,18 +64,12 @@ const BUILDING_SPRITE_MAP = {
 };
 
 export class TileRenderer {
-  constructor(layer, app, rooftopsLayer) {
+  constructor(layer, app) {
     this.layer = layer;
     /* App reference is needed to call app.renderer.generateTexture
        in _rebuildFromTiled for the static-map bake.  Optional —
        falls through to per-sprite rendering if app isn't available. */
     this.app = app || null;
-    /* Rooftops layer — drawn ABOVE the entity layer so the player
-       passes behind tall buildings (zone-specific PNG with alpha=0
-       everywhere except above each yellow footprint).  Optional;
-       zones without a ROOFTOP_OVERLAYS entry render nothing here. */
-    this.rooftopsLayer = rooftopsLayer || null;
-    this._rooftopsSprite = null;
     // Background fill
     this.bgGfx = new Graphics();
     this.layer.addChild(this.bgGfx);
@@ -131,40 +125,6 @@ export class TileRenderer {
     return this._assets && (zoneId === 'town' || zoneId === 'meadow' || zoneId === 'farm_home');
   }
 
-  /** Build (or rebuild) the rooftops overlay sprite for the current
-   *  zone.  ROOFTOP_OVERLAYS[zoneId] points at a 1024x1024 RGBA PNG
-   *  with alpha=0 everywhere except above each painted-yellow building
-   *  footprint.  We add it to `rooftopsLayer` (sibling of `tiles`,
-   *  z-ordered above `player` in pixiApp.LAYER_NAMES) so the player
-   *  walks behind tall roofs.  No-op when zone has no overlay or the
-   *  rooftops layer wasn't passed to the renderer. */
-  _refreshRooftops(zoneId) {
-    if (!this.rooftopsLayer) return;
-    const url = ROOFTOP_OVERLAYS[zoneId];
-    if (!url) return;
-    const cachedTex = Assets.cache.get(url);
-    const sprite = new Sprite(cachedTex || Texture.EMPTY);
-    sprite.x = 0;
-    sprite.y = 0;
-    sprite.width = this._mapW;
-    sprite.height = this._mapH;
-    this.rooftopsLayer.addChild(sprite);
-    this._rooftopsSprite = sprite;
-    /* Race fix: if the preload is still in flight when the user
-       enters town, swap the texture in once Assets.load resolves. */
-    if (!cachedTex) {
-      const w = this._mapW;
-      const h = this._mapH;
-      Assets.load(url).then((loaded) => {
-        if (loaded && this._rooftopsSprite === sprite && !sprite.destroyed) {
-          sprite.texture = loaded;
-          sprite.width = w;
-          sprite.height = h;
-        }
-      }).catch(() => {});
-    }
-  }
-
   rebuild(app, map, zoneId) {
     this.currentZone = zoneId;
     this.currentMap = map;
@@ -173,13 +133,6 @@ export class TileRenderer {
     // Remove old tile sprites
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
-    // Drop the previous rooftops sprite — _refreshRooftops() rebuilds it
-    // for the new zone if there's an entry in ROOFTOP_OVERLAYS.
-    if (this._rooftopsSprite) {
-      this._rooftopsSprite.parent?.removeChild(this._rooftopsSprite);
-      this._rooftopsSprite.destroy();
-      this._rooftopsSprite = null;
-    }
 
     if (!map) return;
 
@@ -189,7 +142,6 @@ export class TileRenderer {
     this._mapW = cols * TILE;
     this._mapH = rows * TILE;
     this._bgColor = zone?.palette?.ground ? cssToHex(zone.palette.ground) : 0x2d5a1e;
-    this._refreshRooftops(zoneId);
 
     /* Collect exit/entrance positions from the procedural S.map.
        Tiles 8/9/10 mark zone exits, return-to-town, and dungeon
@@ -253,10 +205,15 @@ export class TileRenderer {
     /* Single-image zone path — when an entry exists in IMAGE_ZONE_MAPS,
        render one Sprite covering the world bounds.  Beats Tiled for
        authoring speed when you already have the art generated, and
-       per-frame draw is just one sprite. */
+       per-frame draw is just one sprite.
+       When this path runs we set `_isImageZone` so update() skips the
+       procedural overlay decorations (exit portal pulses, etc.) that
+       would otherwise paint colored squares on top of the painted
+       artwork. */
     const imageUrl = IMAGE_ZONE_MAPS[zoneId];
     if (imageUrl) {
       this._renderedTiled = true;   // tell update() not to retry
+      this._isImageZone = true;
       const cachedTex = Assets.cache.get(imageUrl);
       const sprite = new Sprite(cachedTex || Texture.EMPTY);
       sprite.x = 0;
@@ -281,6 +238,7 @@ export class TileRenderer {
       }
       return;
     }
+    this._isImageZone = false;
 
     /* Prefer Tiled .tmx data when loaded for this zone — that's the
        authoritative visual source.  Falls back to per-tile sprites
@@ -654,9 +612,13 @@ export class TileRenderer {
     /* Pulsing portal glows over zone-exit tiles (8 / 9 / 10).
        Drawn on overlayGfx every frame so the pulse animates without
        a full rebuild.  Color per type: 8 generic exit (zone-element
-       color), 9 return-to-town (green), 10 dungeon (red). */
+       color), 9 return-to-town (green), 10 dungeon (red).
+       SUPPRESSED for image-mapped zones (e.g. the painted town):
+       the artwork already shows where the exits are via the painted
+       paths, so a colored pulse on top would clash with the
+       hand-painted aesthetic. */
     this.overlayGfx.clear();
-    if (this._exitTiles.length) {
+    if (this._exitTiles.length && !this._isImageZone) {
       const now = Date.now();
       const zone = ZONES[this.currentZone];
       const elemColor = zone && zone.element ? 0xff5e6c : 0x5b52ff;
@@ -681,23 +643,25 @@ export class TileRenderer {
     //   1. Solid BLACK extending well beyond the map so out-of-bounds
     //      areas (anywhere past the tile grid) render black.
     //   2. Zone palette ground color inside the actual map rect.
+    //      Skipped for image-mapped zones — the painted image fills
+    //      the rect anyway, and the green palette fill bleeds through
+    //      any transparent edge of the JPG (browsers decode JPEGs as
+    //      opaque, but a sub-pixel rounding artifact at the world
+    //      boundary can still expose this color).
     this.bgGfx.clear();
     const pad = Math.max(viewW, viewH);
     this.bgGfx.rect(-pad, -pad, this._mapW + pad * 2, this._mapH + pad * 2);
     this.bgGfx.fill({ color: 0x000000 });
-    this.bgGfx.rect(0, 0, this._mapW, this._mapH);
-    this.bgGfx.fill({ color: this._bgColor });
+    if (!this._isImageZone) {
+      this.bgGfx.rect(0, 0, this._mapW, this._mapH);
+      this.bgGfx.fill({ color: this._bgColor });
+    }
   }
 
   destroy() {
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
     this.overlayGfx.clear();
-    if (this._rooftopsSprite) {
-      this._rooftopsSprite.parent?.removeChild(this._rooftopsSprite);
-      this._rooftopsSprite.destroy();
-      this._rooftopsSprite = null;
-    }
     /* Free baked map RenderTextures (one per visited zone). */
     for (const [, tex] of this._bakedMapCache) {
       if (tex && !tex.destroyed) tex.destroy(true);

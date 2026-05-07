@@ -46,26 +46,15 @@ export const WALKABILITY_MAPS = {
   town: '/maps/town.walkability.json',
 };
 
-/** Per-zone "rooftops" image — transparent everywhere except the upper
- *  parts of buildings.  Rendered on a layer ABOVE the player so the
- *  player goes behind tall roofs when standing north of a building. */
-export const ROOFTOP_OVERLAYS = {
-  town: '/maps/town_rooftops.png',
-};
-
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
  *  once at renderer startup (alongside loadTileAssets / loadPlayerSprites).
  *  Without preload, Texture.from(url) in Pixi v8 returns an empty
  *  placeholder — the Sprite shows blank until something else
- *  triggers a load.  Rooftop overlays are loaded the same way. */
+ *  triggers a load. */
 export async function loadImageZoneMaps() {
   // Lazy import so this module stays usable in non-Pixi contexts.
   const { Assets } = await import('pixi.js');
-  const urls = [
-    ...Object.values(IMAGE_ZONE_MAPS),
-    ...Object.values(ROOFTOP_OVERLAYS),
-  ];
-  const tasks = urls.map((url) =>
+  const tasks = Object.values(IMAGE_ZONE_MAPS).map((url) =>
     Assets.load(url).catch((e) => {
       console.warn('[image-zone] failed to load', url, e && e.message);
     })

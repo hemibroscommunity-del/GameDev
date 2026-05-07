@@ -6,16 +6,10 @@ import { Application, Container } from 'pixi.js';
 
 /**
  * Layer names in render order (back to front).
- *
- * `rooftops` sits between `player` and `projectiles`: building roofs
- * draw on top of the player (so the player passes BEHIND tall houses
- * like in classic 2D RPGs), but projectiles, particles, and damage
- * numbers draw on top of the rooftops so combat feedback stays
- * visible regardless of where the player is standing.
  */
 export const LAYER_NAMES = [
   'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
-  'gatherNodes', 'telegraphs', 'entities', 'player', 'rooftops',
+  'gatherNodes', 'telegraphs', 'entities', 'player',
   'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
   'atmosphere', 'screenFX', 'hud',
 ];
@@ -45,7 +39,7 @@ function buildScene(app) {
   const layers = {};
   const worldLayers = [
     'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
-    'gatherNodes', 'telegraphs', 'entities', 'player', 'rooftops',
+    'gatherNodes', 'telegraphs', 'entities', 'player',
     'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
   ];
   const screenLayers = ['atmosphere', 'screenFX', 'hud'];
