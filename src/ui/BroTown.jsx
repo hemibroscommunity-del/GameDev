@@ -42,7 +42,7 @@ import { eatBus } from './mobile/eatBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { startLoadingTileAssets, useSpriteTiles, drawTileLayer, drawBuildingSprites } from '@/rendering/canvasTileAssets.js';
-import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps } from '@/rendering/tiledMaps.js';
+import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -3702,6 +3702,13 @@ export var BroTown = function BroTown(_ref0) {
       if (_wgrid && _wgrid[ty]) {
         return _wgrid[ty][tx] === false;
       }
+      /* Image-mapped zones (themed/elemental zones) default to fully
+         walkable when no explicit walkability grid exists.  Town has
+         its own grid via the painted yellow footprints and is handled
+         above; the elemental zones (frost / ember / mist / thunder /
+         hollows / sky / tidal / meadow) have only the painted art and
+         no per-cell collision data, so the player explores freely. */
+      if (IMAGE_ZONE_MAPS[S.currentZone]) return false;
       var tile = (_S$map = S.map) === null || _S$map === void 0 || (_S$map = _S$map[ty]) === null || _S$map === void 0 ? void 0 : _S$map[tx];
       if (tile === 8 || tile === 9 || tile === 10 || tile === 12 || tile === 14 || tile === 15) return false; /* exit/dungeon/gate/plot/bed walkable */
       return TILE_SOLID.has(tile);
