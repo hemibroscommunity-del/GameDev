@@ -3699,8 +3699,24 @@ export var BroTown = function BroTown(_ref0) {
          skipped because the procedural S.map still has old building
          tiles (3, etc.) underneath the new Tiled render. */
       var _wgrid = (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null;
-      if (_wgrid && _wgrid[ty]) {
-        return _wgrid[ty][tx] === false;
+      if (_wgrid && _wgrid.length) {
+        /* The walkability grid uses its OWN resolution (set by the
+           generator — currently 64x64 for the town).  Scale the
+           player's world-pixel position into grid cells via the grid
+           dimensions instead of relying on the zone tile size, so the
+           generator can choose a finer grid without coordinating with
+           this lookup.  zone.w/h * TILE is always the world-pixel
+           extent of the zone. */
+        var _gh = _wgrid.length;
+        var _gw = (_wgrid[0] && _wgrid[0].length) || 0;
+        if (_gw > 0) {
+          var _mw = zone.w * TILE, _mh = zone.h * TILE;
+          var _gx = Math.floor(px * _gw / _mw);
+          var _gy = Math.floor(py * _gh / _mh);
+          if (_gy >= 0 && _gy < _gh && _gx >= 0 && _gx < _gw) {
+            return _wgrid[_gy][_gx] === false;
+          }
+        }
       }
       /* Image-mapped zones (themed/elemental zones) default to fully
          walkable when no explicit walkability grid exists.  Town has

@@ -678,10 +678,23 @@ export function setupGameLoop(ctx) {
         ty = Math.floor(py / TILE);
       if (tx < 0 || tx >= zone.w || ty < 0 || ty >= zone.h) return true;
       /* Explicit per-zone walkability grid (e.g. town's painted yellow
-         footprints) takes precedence over the procedural tile check. */
+         footprints) takes precedence over the procedural tile check.
+         The grid uses its OWN resolution (64x64 currently) — scale
+         world pixels into grid cells via the grid dimensions instead
+         of the zone tile size, so the generator can change resolution
+         without touching this lookup. */
       var _wgrid = (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null;
-      if (_wgrid && _wgrid[ty]) {
-        return _wgrid[ty][tx] === false;
+      if (_wgrid && _wgrid.length) {
+        var _gh = _wgrid.length;
+        var _gw = (_wgrid[0] && _wgrid[0].length) || 0;
+        if (_gw > 0) {
+          var _mw = zone.w * TILE, _mh = zone.h * TILE;
+          var _gx = Math.floor(px * _gw / _mw);
+          var _gy = Math.floor(py * _gh / _mh);
+          if (_gy >= 0 && _gy < _gh && _gx >= 0 && _gx < _gw) {
+            return _wgrid[_gy][_gx] === false;
+          }
+        }
       }
       /* Image-mapped zones (themed/elemental zones) default to fully
          walkable when no explicit grid exists. */

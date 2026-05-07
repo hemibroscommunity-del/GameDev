@@ -28,10 +28,16 @@ SRC_YELLOW = REPO / "IMG_8006.heic"
 OUT_TOWN_JPG = REPO / "public" / "maps" / "town_v2.jpg"
 OUT_WALK = REPO / "public" / "maps" / "town.walkability.json"
 
-GRID = 32        # 32x32 logical tile grid for walkability
+# Walkability grid resolution.  64x64 = 16x16 px cells across the 1024 px
+# town image — fine enough that path edges aren't swallowed up by the
+# block, coarse enough that the JSON is ~10 KB.  Update isSolid() in
+# BroTown.jsx + gameLoop.js if you change this; both scale the lookup
+# from world pixels using the JSON's `width`/`height`.
+GRID = 64
 TILE = 1024 // GRID
-# Cell becomes "blocked" once this fraction of its 32x32 pixels is yellow.
-BLOCK_THRESHOLD = 0.20
+# Cell becomes "blocked" once this fraction of its pixels is yellow.
+# Higher = stricter (fewer cells blocked, paths stay clear).
+BLOCK_THRESHOLD = 0.40
 
 
 def is_yellow(rgb: np.ndarray) -> np.ndarray:
