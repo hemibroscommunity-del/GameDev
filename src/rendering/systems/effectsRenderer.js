@@ -635,7 +635,6 @@ export class EffectsRenderer {
        itself rather than a separate guidance overlay, so it doesn't
        distract from the arrow's silhouette while still letting the
        eye string successive frames into a linear path. */
-    }
 
     // Shield arc
     if (S.isBlocking && S._shieldAngle != null) {
