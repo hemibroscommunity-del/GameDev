@@ -580,11 +580,11 @@ export class EffectsRenderer {
       }
     }
 
-    /* Bow / staff aim line — full LOS across the viewport when ranged
-       weapon is active.  Dashed (12 on / 12 off) with a moving dash
-       offset so it reads as "scanning".  Brighter while actively
-       aiming or locked on.  Mirrors the Canvas 2D draw at
-       BroTown.jsx ~13643. */
+    /* Bow / staff aim hint — instead of a dashed line (video-gamey),
+       render a stream of small streaks flowing forward along the
+       aim direction with a perpendicular wobble.  Reads as "wind"
+       or "spirit trail" guiding the player's next shot.  Tinted by
+       the equipped weapon's element when one is set. */
     const slot = S.rpg && S.rpg.activeSlot;
     const isRanged = slot === 'ranged' || slot === 'staff';
     const isLocked = !!(S.lockedTarget && S.lockedTarget.ref);
@@ -600,37 +600,56 @@ export class EffectsRenderer {
         aimA = 0;
       }
       const isAiming = S._aiming || isLocked;
-      /* Subtler than before — was 0.5/0.2, dropped to 0.28/0.12 so
-         the LOS line reads as an aim hint without dominating the
-         scene. */
-      const losAlpha = isAiming ? 0.28 : 0.12;
-      /* Length = generous diagonal so the line covers any viewport in
-         any direction.  Pixi v8 Graphics doesn't support setLineDash
-         natively — emulate by stroking 8-px alternating segments and
-         offset by a wall-time hash so it animates. */
-      const losLen = 1200;
-      const dashOn = 12, dashOff = 12, period = dashOn + dashOff;
-      const offset = (now / 15) % period;
-      /* Anchor on (P.x, P.y) — same origin the arrows fly from
-         (BroTown.jsx ~15480 spawns at player center).  Earlier
-         version added +14 in y to put the line at torso level, but
-         that put it below the actual arrow flight path; most
-         visible due east/west where the line should be horizontal
-         but sat 14 px under the arrow. */
-      for (let d = -offset; d < losLen; d += period) {
-        const start = Math.max(0, d);
-        const end   = Math.min(losLen, d + dashOn);
-        if (end <= start) continue;
-        gfx.moveTo(
-          P.x + Math.cos(aimA) * start,
-          P.y + Math.sin(aimA) * start,
-        );
-        gfx.lineTo(
-          P.x + Math.cos(aimA) * end,
-          P.y + Math.sin(aimA) * end,
-        );
+      /* Element-tint the wind from the equipped weapon's element. */
+      const wpn = (slot === 'ranged' ? S.rpg.rangedWeapon
+                 : slot === 'staff'  ? (S.rpg.staffWeapon || S.rpg.rangedWeapon)
+                 : null);
+      const elem = wpn && wpn.element1;
+      const windColor = elem && ELEMENTS[elem] ? cssToHex(ELEMENTS[elem].color) : 0xffffff;
+
+      const cosA = Math.cos(aimA), sinA = Math.sin(aimA);
+      /* Stream length — clear path forward, not the full viewport
+         (the old viewport-diagonal felt over-explained).  ~10 tiles. */
+      const streamLen = 320;
+      const particleCount = 28;
+      const baseAlpha = isAiming ? 0.55 : 0.22;
+      /* Forward sweep cycle — particles march phase 0..1 forward,
+         wrapping.  Slower while just autoAttacking (lower urgency),
+         faster when actively aiming. */
+      const cycleMs = isAiming ? 700 : 1100;
+      const phaseShift = (now / cycleMs) % 1;
+
+      for (let i = 0; i < particleCount; i++) {
+        /* Each particle's phase along the stream, animated forward. */
+        const p = ((i / particleCount) + phaseShift) % 1;
+        const dist = p * streamLen;
+        /* Fade in over the first 15% and out over the last 25% so
+           particles don't pop at either end of the stream. */
+        const fadeIn  = Math.min(1, p * 6.6);
+        const fadeOut = Math.min(1, (1 - p) * 4);
+        const aFade   = fadeIn * fadeOut;
+        /* Perpendicular wobble — sinusoidal, varies per-particle so
+           the stream reads as turbulent flow rather than a rigid
+           snake.  Amplitude grows with distance for "spreading wind". */
+        const wob1 = Math.sin(p * Math.PI * 5 + i * 1.7 + now / 180) * (3 + p * 4);
+        const wob2 = Math.sin(p * Math.PI * 3 + i * 0.9 + now / 250) * (2 + p * 2);
+        const perp = wob1 + wob2 * 0.5;
+        /* Forward + perpendicular world position. */
+        const fx = P.x + cosA * dist - sinA * perp;
+        const fy = P.y + sinA * dist + cosA * perp;
+        /* Each particle is a short streak in the aim direction so it
+           reads as motion rather than a static dot. */
+        const streakLen = 4 + p * 4;
+        const tx = fx - cosA * streakLen;
+        const ty = fy - sinA * streakLen;
+        gfx.moveTo(tx, ty);
+        gfx.lineTo(fx, fy);
+        gfx.stroke({
+          color: windColor,
+          width: 1 + p * 0.8,
+          alpha: aFade * baseAlpha,
+        });
       }
-      gfx.stroke({ color: 0xffffff, width: 2, alpha: losAlpha });
     }
 
     // Shield arc
