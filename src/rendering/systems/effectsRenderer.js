@@ -539,67 +539,103 @@ export class EffectsRenderer {
     this._updateChatBubbles(S, now);
   }
 
+  /** Build (or reposition) a chat bubble for `key` over `(sx, sy)` —
+   *  white rounded rectangle background + pointer tip + text.  Pooled
+   *  per key as { container, bg (Graphics), text (Text), hasEmoji }
+   *  in this.chatTexts.  Source can be either a player or an NPC. */
+  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000) {
+    const hasEmoji = !isAsciiOnly(text);
+    let entry = this.chatTexts.get(key);
+    if (entry && entry.text && entry.text.destroyed) {
+      this.chatTexts.delete(key);
+      entry = null;
+    }
+    if (!entry || entry.hasEmoji !== hasEmoji) {
+      if (entry && entry.container && !entry.container.destroyed) entry.container.destroy({ children: true });
+      const container = new Container();
+      const bg = new Graphics();
+      container.addChild(bg);
+      const baseStyle = hasEmoji ? LABEL_STYLE_EMOJI : LABEL_STYLE;
+      const txt = new Text({
+        text: '',
+        style: { ...baseStyle, fontSize: 11, fill: '#1a1428',
+                 wordWrap: true, wordWrapWidth: 140 },
+      });
+      txt.anchor.set(0.5, 0);
+      container.addChild(txt);
+      entry = { container, bg, text: txt, hasEmoji, lastText: '' };
+      this.overlayLayer.addChild(container);
+      this.chatTexts.set(key, entry);
+    }
+    /* Update text content + recompute bg only when text changed. */
+    if (entry.lastText !== text) {
+      entry.lastText = text;
+      entry.text.text = text;
+      const tw = entry.text.width;
+      const th = entry.text.height;
+      const padX = 8, padY = 6, tipH = 6, radius = 8;
+      const bw = Math.min(160, tw + padX * 2);
+      const bh = th + padY * 2;
+      entry.bg.clear();
+      entry.bg.roundRect(-bw / 2, -bh - tipH, bw, bh, radius);
+      entry.bg.fill({ color: 0xffffff, alpha: 0.92 });
+      /* Pointer tip — small downward triangle from the bubble bottom
+         to a point at (0, 0) which is the source's top-of-head. */
+      entry.bg.moveTo(-5, -tipH);
+      entry.bg.lineTo(0, 0);
+      entry.bg.lineTo(5, -tipH);
+      entry.bg.lineTo(-5, -tipH);
+      entry.bg.fill({ color: 0xffffff, alpha: 0.92 });
+      /* Center the text inside the bubble. */
+      entry.text.x = 0;
+      entry.text.y = -bh - tipH + padY;
+    }
+    entry.container.x = sx;
+    entry.container.y = sy - 32;
+    entry.container.alpha = age > totalMs - 500 ? (totalMs - age) / 500 : 1;
+    entry.container.visible = true;
+    return entry;
+  }
+
   _updateChatBubbles(S, now) {
     const bubbles = S.chatBubbles || {};
-    const activeIds = new Set();
+    const activeKeys = new Set();
 
-    // Player + others' bubbles
+    /* Player + others' bubbles. */
     const allSources = { [S.myId]: S.player };
     for (const [id, o] of Object.entries(S.others || {})) {
       allSources[id] = o;
     }
-
     for (const [pid, bubble] of Object.entries(bubbles)) {
+      if (!bubble || !bubble.text) continue;
       const age = now - bubble.ts;
       if (age > 5000) continue;
-      activeIds.add(pid);
-
       const source = allSources[pid];
       if (!source) continue;
       const sx = source.renderX || source.x || 0;
       const sy = source.renderY || source.y || 0;
-
-      const bubbleText = bubble.text || '';
-      const bubbleHasEmoji = !isAsciiOnly(bubbleText);
-      let display = this.chatTexts.get(pid);
-      /* Treat a destroyed Text as missing — same class of crash that hit
-         _updateDamageNumbers (Pixi v8 setter on a nulled _position).
-         destroy() can come from clear() on zone change or other paths. */
-      if (display && display.destroyed) {
-        this.chatTexts.delete(pid);
-        display = null;
-      }
-      if (!display || display._hasEmoji !== bubbleHasEmoji) {
-        /* Rebuild the Text when the emoji-vs-ASCII state flips so we
-           never feed an emoji glyph into a stroked / dropshadowed
-           Pixi v8 Text on iOS WebGL (native crash vector). */
-        if (display && !display.destroyed) { display.destroy(); }
-        const baseStyle = bubbleHasEmoji ? LABEL_STYLE_EMOJI : LABEL_STYLE;
-        display = new Text({
-          text: '',
-          style: { ...baseStyle, fontSize: 10, fill: '#ffffff', wordWrap: true, wordWrapWidth: 120 },
-        });
-        display.anchor.set(0.5, 1);
-        display._hasEmoji = bubbleHasEmoji;
-        this.overlayLayer.addChild(display);
-        this.chatTexts.set(pid, display);
-      }
-      display.text = bubbleText;
-      display.x = sx;
-      display.y = sy - 35;
-      display.alpha = age > 4500 ? (5000 - age) / 500 : 1;
-      display.visible = true;
+      this._renderChatBubble(pid, sx, sy, bubble.text, age);
+      activeKeys.add(pid);
     }
 
-    // Hide stale; drop references to anything destroyed externally.
-    for (const [pid, display] of this.chatTexts) {
-      if (display.destroyed) {
-        this.chatTexts.delete(pid);
+    /* NPC bubbles — entity-bound, lives on npc.chatBubble.
+       Keyed with 'npc:' prefix to avoid colliding with player IDs. */
+    for (const npc of (S.npcs || [])) {
+      if (!npc || !npc.chatBubble || !npc.chatBubble.text) continue;
+      const age = now - npc.chatBubble.ts;
+      if (age > 5000) continue;
+      const key = 'npc:' + npc.id;
+      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age);
+      activeKeys.add(key);
+    }
+
+    /* Hide stale; drop references to anything destroyed externally. */
+    for (const [key, entry] of this.chatTexts) {
+      if (!entry || !entry.container || entry.container.destroyed) {
+        this.chatTexts.delete(key);
         continue;
       }
-      if (!activeIds.has(pid)) {
-        display.visible = false;
-      }
+      if (!activeKeys.has(key)) entry.container.visible = false;
     }
   }
 
@@ -977,7 +1013,13 @@ export class EffectsRenderer {
     this.atmosphereGfx.clear();
     for (const t of this.dmgTexts) t.destroy();
     this.dmgTexts = [];
-    for (const [, t] of this.chatTexts) t.destroy();
+    for (const [, entry] of this.chatTexts) {
+      /* Entry shape changed (now { container, bg, text, ... }); destroy the
+         container which cascades to its children. */
+      if (entry && entry.container && !entry.container.destroyed) {
+        entry.container.destroy({ children: true });
+      }
+    }
     this.chatTexts.clear();
     if (this._levelText) { this._levelText.destroy(); this._levelText = null; }
   }
