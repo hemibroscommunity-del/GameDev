@@ -38,6 +38,17 @@ export const IMAGE_ZONE_MAPS = {
   sky:     '/maps/sky.jpg',
 };
 
+/** Zones that use a looping video as the map texture instead of (or
+ *  on top of) the still image.  When a zone has both a VIDEO and an
+ *  IMAGE entry, the renderer prefers VIDEO and falls back to IMAGE
+ *  if the browser blocks autoplay.
+ *
+ *  Requirements for autoplay on mobile (iOS Safari especially):
+ *  the <video> must be `muted`, `playsInline`, and `autoplay`. */
+export const VIDEO_ZONE_MAPS = {
+  town: '/maps/town.mp4',
+};
+
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
  *  once at renderer startup (alongside loadTileAssets / loadPlayerSprites).
  *  Without preload, Texture.from(url) in Pixi v8 returns an empty
