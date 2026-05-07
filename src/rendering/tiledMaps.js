@@ -51,7 +51,10 @@ export const IMAGE_ZONE_MAPS = {
  *  and `autoplay` — without all three, iOS Safari blocks the loop
  *  until a user gesture. */
 export const VIDEO_ZONE_MAPS = {
-  town: '/maps/town.mp4',
+  /* town_v2.mp4 = re-encoded h264 CRF 28, audio stripped, faststart on
+     (~705 KB instead of ~3.7 MB).  Bump suffix again on next change to
+     bust browser/CDN caches. */
+  town: '/maps/town_v2.mp4',
 };
 
 /** Per-zone walkability JSON.  Each url returns
