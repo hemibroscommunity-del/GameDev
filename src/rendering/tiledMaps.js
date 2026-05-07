@@ -51,11 +51,11 @@ export const IMAGE_ZONE_MAPS = {
  *  and `autoplay` — without all three, iOS Safari blocks the loop
  *  until a user gesture. */
 export const VIDEO_ZONE_MAPS = {
-  /* town_v5.mp4 = re-encoded h264 CRF 30 (12.6 MB -> 2.0 MB), audio
+  /* town_v6.mp4 = re-encoded h264 CRF 30 (12.0 MB -> 1.9 MB), audio
      stripped, faststart on.  Animated portal swirls + lightning +
-     water shimmer over the v5 town painting.  Bump suffix on next
+     water shimmer over the town painting.  Bump suffix on next
      change to bust caches. */
-  town: '/maps/town_v5.mp4',
+  town: '/maps/town_v6.mp4',
 };
 
 /** Per-zone walkability JSON.  Each url returns
