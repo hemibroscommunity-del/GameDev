@@ -605,7 +605,10 @@ export class EffectsRenderer {
         aimA = 0;
       }
       const isAiming = S._aiming || isLocked;
-      const losAlpha = isAiming ? 0.5 : 0.2;
+      /* Subtler than before — was 0.5/0.2, dropped to 0.28/0.12 so
+         the LOS line reads as an aim hint without dominating the
+         scene. */
+      const losAlpha = isAiming ? 0.28 : 0.12;
       /* Length = generous diagonal so the line covers any viewport in
          any direction.  Pixi v8 Graphics doesn't support setLineDash
          natively — emulate by stroking 8-px alternating segments and
@@ -613,17 +616,23 @@ export class EffectsRenderer {
       const losLen = 1200;
       const dashOn = 12, dashOff = 12, period = dashOn + dashOff;
       const offset = (now / 15) % period;
+      /* Anchor on (P.x, P.y) — same origin the arrows fly from
+         (BroTown.jsx ~15480 spawns at player center).  Earlier
+         version added +14 in y to put the line at torso level, but
+         that put it below the actual arrow flight path; most
+         visible due east/west where the line should be horizontal
+         but sat 14 px under the arrow. */
       for (let d = -offset; d < losLen; d += period) {
         const start = Math.max(0, d);
         const end   = Math.min(losLen, d + dashOn);
         if (end <= start) continue;
         gfx.moveTo(
           P.x + Math.cos(aimA) * start,
-          P.y + Math.sin(aimA) * start + 14,
+          P.y + Math.sin(aimA) * start,
         );
         gfx.lineTo(
           P.x + Math.cos(aimA) * end,
-          P.y + Math.sin(aimA) * end + 14,
+          P.y + Math.sin(aimA) * end,
         );
       }
       gfx.stroke({ color: 0xffffff, width: 2, alpha: losAlpha });
