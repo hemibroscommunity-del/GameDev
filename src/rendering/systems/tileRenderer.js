@@ -53,8 +53,12 @@ const BUILDING_SPRITE_MAP = {
 };
 
 export class TileRenderer {
-  constructor(layer) {
+  constructor(layer, app) {
     this.layer = layer;
+    /* App reference is needed to call app.renderer.generateTexture
+       in _rebuildFromTiled for the static-map bake.  Optional —
+       falls through to per-sprite rendering if app isn't available. */
+    this.app = app || null;
     // Background fill
     this.bgGfx = new Graphics();
     this.layer.addChild(this.bgGfx);
@@ -80,6 +84,12 @@ export class TileRenderer {
        tileset) is created once on first use and reused across zones. */
     this._tilesetBaseCache = new Map(); // imageSrc -> Pixi Texture (full image)
     this._tileFrameCache = new Map();   // gid -> Pixi Texture (frame slice)
+    /* RenderTexture cache of the fully-composed Tiled map per zone —
+       lets the renderer draw the entire map as one Sprite per frame
+       instead of thousands of per-tile Sprites.  Built once on the
+       first zone entry, reused on revisits, destroyed if the zone's
+       map data changes. */
+    this._bakedMapCache = new Map();    // zoneId -> Texture (RenderTexture)
   }
 
   /** Set tile assets (call once after loadTileAssets resolves). */
@@ -167,13 +177,35 @@ export class TileRenderer {
     return frame;
   }
 
-  /** Render a fully-loaded Tiled map by placing one Pixi Sprite per
-   *  non-zero tile in each layer.  Cells with gid=0 are skipped.
-   *  Layers render in declaration order, so building/prop layers on
-   *  top of ground layers naturally compose.  Per-tile Sprite count
-   *  is bounded (~6000 for a 40x30 map with ~5 layers); Pixi batches
-   *  the draw efficiently as long as we don't tint or filter them. */
+  /** Render a fully-loaded Tiled map.  When app.renderer is available,
+   *  builds all per-tile Sprites into a temporary container, bakes the
+   *  composite into a single RenderTexture, then displays the map as
+   *  one Sprite using that texture.  This drops per-frame draw count
+   *  from ~6000 (40x30 map x 5 layers) to 1 — significant FPS / GC
+   *  win at the cost of one bake per zone (~5MB texture for a 40x30
+   *  zone, kept in this._bakedMapCache so revisits are instant).
+   *
+   *  Falls back to the live per-tile Sprites if app isn't available
+   *  (e.g., the in-update auto-refresh path that calls rebuild without
+   *  an app reference). */
   _rebuildFromTiled(tiledMap) {
+    /* Cache hit — reuse the previously baked map texture. */
+    if (this.currentZone) {
+      const cached = this._bakedMapCache.get(this.currentZone);
+      if (cached && !cached.destroyed) {
+        const sprite = new Sprite(cached);
+        sprite.x = 0;
+        sprite.y = 0;
+        this.tileContainer.addChild(sprite);
+        return;
+      }
+    }
+
+    /* Build per-tile sprites.  When app is available, these go into a
+       temporary container so we can generate a texture; when not,
+       they render live in tileContainer. */
+    const target = this.app && this.app.renderer ? new Container() : this.tileContainer;
+
     for (const layer of tiledMap.layers) {
       for (let r = 0; r < layer.height; r++) {
         for (let c = 0; c < layer.width; c++) {
@@ -187,8 +219,34 @@ export class TileRenderer {
           sprite.y = r * TILE;
           sprite.width = TILE;
           sprite.height = TILE;
-          this.tileContainer.addChild(sprite);
+          target.addChild(sprite);
         }
+      }
+    }
+
+    /* Bake into a single texture if possible. */
+    if (this.app && this.app.renderer && target !== this.tileContainer) {
+      try {
+        const baked = this.app.renderer.generateTexture({
+          target,
+          frame: { x: 0, y: 0, width: this._mapW, height: this._mapH },
+          resolution: 1,
+        });
+        if (this.currentZone) this._bakedMapCache.set(this.currentZone, baked);
+        const sprite = new Sprite(baked);
+        sprite.x = 0;
+        sprite.y = 0;
+        this.tileContainer.addChild(sprite);
+      } catch (e) {
+        console.warn('[tileRenderer] map bake failed, falling back to per-tile sprites:', e && e.message);
+        /* Move the temp children into tileContainer so we still render. */
+        while (target.children.length) {
+          const child = target.children[0];
+          target.removeChildAt(0);
+          this.tileContainer.addChild(child);
+        }
+      } finally {
+        target.destroy({ children: false });
       }
     }
   }
@@ -414,5 +472,10 @@ export class TileRenderer {
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
     this.overlayGfx.clear();
+    /* Free baked map RenderTextures (one per visited zone). */
+    for (const [, tex] of this._bakedMapCache) {
+      if (tex && !tex.destroyed) tex.destroy(true);
+    }
+    this._bakedMapCache.clear();
   }
 }

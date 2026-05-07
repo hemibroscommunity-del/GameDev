@@ -21,7 +21,7 @@ import { loadWeaponSprites } from './weaponSprites.js';
 export async function initPixiRenderer(canvas) {
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
 
-  const tileRenderer = new TileRenderer(layers.tiles);
+  const tileRenderer = new TileRenderer(layers.tiles, app);
   const entityRenderer = new EntityRenderer(layers.entities, layers.player);
   const effectsRenderer = new EffectsRenderer(layers);
   const fpsOverlay = new FpsOverlay();

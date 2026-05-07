@@ -15,6 +15,11 @@ import { getNftTextures } from '../nftAvatars.js';
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
 
+/* Module-scope SECTORS array — shared by local + other player update
+ * paths.  Was previously allocated as a `const` inside each per-frame
+ * loop, which produced a small but recurring GC pressure source. */
+const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+
 /* Weapon swing animation — matches the Canvas 2D drawSpriteCharacter
  * timing (BroTown.jsx:3352).  250ms quadratic-ease-out rotation around
  * the hand pivot, sweeping ~107° from -53° to +53° relative to the
@@ -696,7 +701,6 @@ export class EntityRenderer {
          reuse the last computed 8-compass on display._lastFacing so
          the diagonal idle pose carries through (otherwise it would
          snap back to the broadcast 4-cardinal). */
-      const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
       let facing;
       if (isMoving) {
         const ang = Math.atan2(other._smoothVy || 0, other._smoothVx || 0);
@@ -1014,7 +1018,6 @@ export class EntityRenderer {
     const stickActive = stickX !== 0 || stickY !== 0;
 
     let facing;
-    const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
     if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8];
