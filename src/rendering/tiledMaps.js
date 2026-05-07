@@ -27,10 +27,11 @@ export const TILED_ZONE_MAPS = {};
  *  Walkability falls back to "all walkable" since there's no per-tile
  *  metadata to derive blocking from. */
 export const IMAGE_ZONE_MAPS = {
-  /* town_v4.jpg = pixel-art square town 1254x1254, rendered into the
-     32x32-tile (1024x1024) world bounds.  All cells walkable (no
-     walkability JSON).  Bump suffix on next change to bust caches. */
-  town:    '/maps/town_v4.jpg',
+  /* town_v5.jpg = pixel-art square town 1254x1254 with central
+     fountain + 4 buildings + 8 themed gates.  Static fallback;
+     animated version overlaid via VIDEO_ZONE_MAPS.town.  Bump suffix
+     on next change to bust browser/CDN caches. */
+  town:    '/maps/town_v5.jpg',
   frost:   '/maps/frost.jpg',
   meadow:  '/maps/meadow.jpg',
   thunder: '/maps/thunder.jpg',
@@ -46,12 +47,16 @@ export const IMAGE_ZONE_MAPS = {
  *  (so animated effects play on the map) and uses the still image as
  *  a fallback if the browser refuses to play the video.
  *
- *  Currently empty — the new pixel-art town has no animated video
- *  variant.  Add an entry here when one becomes available.  Mobile
- *  autoplay requires the <video> to be `muted`, `playsInline`, and
- *  `autoplay` — without all three, iOS Safari blocks the loop until
- *  a user gesture. */
-export const VIDEO_ZONE_MAPS = {};
+ *  Mobile autoplay requires the <video> to be `muted`, `playsInline`,
+ *  and `autoplay` — without all three, iOS Safari blocks the loop
+ *  until a user gesture. */
+export const VIDEO_ZONE_MAPS = {
+  /* town_v5.mp4 = re-encoded h264 CRF 30 (12.6 MB -> 2.0 MB), audio
+     stripped, faststart on.  Animated portal swirls + lightning +
+     water shimmer over the v5 town painting.  Bump suffix on next
+     change to bust caches. */
+  town: '/maps/town_v5.mp4',
+};
 
 /** Per-zone walkability JSON.  Each url returns
  *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
