@@ -1,7 +1,10 @@
 /* ═══ HUB-AND-SPOKE WORLD — §14 ═══ */
 export const ZONES = {
   town: {
-    id: 'town', name: 'Town', w: 32, h: 32,
+    /* 48x32 tiles = 1536x1024 px to match the new pixel-art town image
+       (town_v3.jpg) at native size with no stretching.  All cells are
+       walkable since no walkability JSON is loaded for this zone. */
+    id: 'town', name: 'Town', w: 48, h: 32,
     element: null, level: [0, 0], music: 'town', safe: true,
     palette: { ground: '#4a6741', path: '#8b7355', accent: '#5a7a50' }
   },

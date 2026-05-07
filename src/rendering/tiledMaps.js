@@ -27,10 +27,9 @@ export const TILED_ZONE_MAPS = {};
  *  Walkability falls back to "all walkable" since there's no per-tile
  *  metadata to derive blocking from. */
 export const IMAGE_ZONE_MAPS = {
-  /* Bumped to town_v2.jpg to bust browser/CDN caches that were
-     pinning the previous (stale) /maps/town.jpg.  Bump again next
-     time the painted town artwork changes. */
-  town:    '/maps/town_v2.jpg',
+  /* town_v3.jpg = pixel-art village 1536x1024 (48x32 tiles), all cells
+     walkable.  Bump suffix on next change to bust browser/CDN cache. */
+  town:    '/maps/town_v3.jpg',
   frost:   '/maps/frost.jpg',
   meadow:  '/maps/meadow.jpg',
   thunder: '/maps/thunder.jpg',
@@ -43,27 +42,23 @@ export const IMAGE_ZONE_MAPS = {
 
 /** Zones that play a looping video as their map texture.  When a zone
  *  appears here AND in IMAGE_ZONE_MAPS, the renderer prefers the video
- *  (so animated effects — water shimmer, lava glow, snow drift — play
- *  on the map) and uses the still image purely as a fallback if the
- *  browser refuses to play the video.
+ *  (so animated effects play on the map) and uses the still image as
+ *  a fallback if the browser refuses to play the video.
  *
- *  Mobile autoplay requires the <video> to be `muted`, `playsInline`,
- *  and `autoplay` — without all three, iOS Safari blocks the loop
- *  until a user gesture. */
-export const VIDEO_ZONE_MAPS = {
-  /* town_v2.mp4 = re-encoded h264 CRF 28, audio stripped, faststart on
-     (~705 KB instead of ~3.7 MB).  Bump suffix again on next change to
-     bust browser/CDN caches. */
-  town: '/maps/town_v2.mp4',
-};
+ *  Currently empty — the new pixel-art town has no animated video
+ *  variant.  Add an entry here when one becomes available.  Mobile
+ *  autoplay requires the <video> to be `muted`, `playsInline`, and
+ *  `autoplay` — without all three, iOS Safari blocks the loop until
+ *  a user gesture. */
+export const VIDEO_ZONE_MAPS = {};
 
 /** Per-zone walkability JSON.  Each url returns
  *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
  *  a blocked tile.  Used as `S._tiledWalkable[zoneId]` so isSolid()
- *  treats the painted footprints as collision. */
-export const WALKABILITY_MAPS = {
-  town: '/maps/town.walkability.json',
-};
+ *  treats the painted footprints as collision.  When a zone has an
+ *  IMAGE_ZONE_MAPS entry but NO walkability JSON, isSolid() defaults
+ *  it to fully walkable. */
+export const WALKABILITY_MAPS = {};
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
  *  once at renderer startup (alongside loadTileAssets / loadPlayerSprites).
