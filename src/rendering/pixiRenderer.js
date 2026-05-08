@@ -135,8 +135,19 @@ export async function initPixiRenderer(canvas) {
     // Camera offset: cx/cy are top-left of viewport in world coords.
     // With scale applied, world position X maps to screen position X*scale.
     // We need worldX=cx to map to screen X=0, so: cx*scale + offsetX = 0 → offsetX = -cx*scale
-    worldContainer.x = -cx * scaleX + shakeX;
-    worldContainer.y = -cy * scaleY + shakeY;
+    //
+    // Round to whole screen pixels.  scaleX is 0.8 here, and the camera
+    // tracks the player at sub-pixel precision — without rounding, the
+    // screen-space offset is fractional, so every texture (especially
+    // the 1254 px painted maps that already get downscaled into the
+    // 1024 px world bounds) gets re-sampled at sub-pixel positions
+    // each frame.  That sampling shift looks like frame stuttering even
+    // when fps is 60 because the texels visibly shimmer / crawl as the
+    // camera glides.  Snapping to whole pixels stops the shimmer; the
+    // 1-px snap is far below the threshold where it'd feel like jerky
+    // movement at this scale.
+    worldContainer.x = Math.round(-cx * scaleX + shakeX);
+    worldContainer.y = Math.round(-cy * scaleY + shakeY);
 
     // Each renderer wrapped — a single throw in entity or effects
     // (e.g. the bow-kill crash) used to cascade into app.render() never
