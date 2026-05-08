@@ -29,17 +29,18 @@ export const TILED_ZONE_MAPS = {};
 export const IMAGE_ZONE_MAPS = {
   /* town_v5.jpg = pixel-art square town 1254x1254 with central
      fountain + 4 buildings + 8 themed gates.  Static fallback;
-     animated version overlaid via VIDEO_ZONE_MAPS.town.  Bump suffix
-     on next change to bust browser/CDN caches. */
+     animated version overlaid via VIDEO_ZONE_MAPS.town.
+     <zone>_v2.jpg = matching pixel-art zone paintings (1254x1254
+     each).  Bump suffix on next change to bust browser/CDN caches. */
   town:    '/maps/town_v5.jpg',
-  frost:   '/maps/frost.jpg',
-  meadow:  '/maps/meadow.jpg',
-  thunder: '/maps/thunder.jpg',
-  tidal:   '/maps/tidal.jpg',
-  mist:    '/maps/mist.jpg',
-  hollows: '/maps/hollows.jpg',
-  ember:   '/maps/ember.jpg',
-  sky:     '/maps/sky.jpg',
+  frost:   '/maps/frost_v2.jpg',
+  meadow:  '/maps/meadow_v2.jpg',
+  thunder: '/maps/thunder_v2.jpg',
+  tidal:   '/maps/tidal_v2.jpg',
+  mist:    '/maps/mist_v2.jpg',
+  hollows: '/maps/hollows_v2.jpg',
+  ember:   '/maps/ember_v2.jpg',
+  sky:     '/maps/sky_v2.jpg',
 };
 
 /** Zones that play a looping video as their map texture.  When a zone
