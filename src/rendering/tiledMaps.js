@@ -27,21 +27,21 @@ export const TILED_ZONE_MAPS = {};
  *  Walkability falls back to "all walkable" since there's no per-tile
  *  metadata to derive blocking from. */
 export const IMAGE_ZONE_MAPS = {
-  /* town_v7.jpg = pixel-art square town 1254x1254 with central
-     4-building village ringed by themed regions.  Static fallback
-     for browsers that block video autoplay; the animated overlay
-     is wired through VIDEO_ZONE_MAPS.town below.
-     <zone>_v2.jpg = matching pixel-art zone paintings (1254x1254
-     each).  Bump suffix on next change to bust browser/CDN caches. */
-  town:    '/maps/town_v7.jpg',
-  frost:   '/maps/frost_v3.jpg',
-  meadow:  '/maps/meadow_v3.jpg',
-  thunder: '/maps/thunder_v3.jpg',
-  tidal:   '/maps/tidal_v3.jpg',
-  mist:    '/maps/mist_v3.jpg',
-  hollows: '/maps/hollows_v3.jpg',
-  ember:   '/maps/ember_v3.jpg',
-  sky:     '/maps/sky_v3.jpg',
+  /* All zone art is now at 1024x1024 native to match the 32x32-tile
+     world bounds exactly — Pixi no longer rescales the texture per
+     frame, so bilinear sub-texel shimmer (visible as walking-stutter)
+     is gone.  town_v8.jpg fallback for blocked-autoplay; animated
+     overlay through VIDEO_ZONE_MAPS.town below.  Bump suffix on next
+     change to bust browser/CDN caches. */
+  town:    '/maps/town_v8.jpg',
+  frost:   '/maps/frost_v4.jpg',
+  meadow:  '/maps/meadow_v4.jpg',
+  thunder: '/maps/thunder_v4.jpg',
+  tidal:   '/maps/tidal_v4.jpg',
+  mist:    '/maps/mist_v4.jpg',
+  hollows: '/maps/hollows_v4.jpg',
+  ember:   '/maps/ember_v4.jpg',
+  sky:     '/maps/sky_v4.jpg',
 };
 
 /** Zones that play a looping video as their map texture.  When a zone
@@ -53,12 +53,11 @@ export const IMAGE_ZONE_MAPS = {
  *  and `autoplay` — without all three, iOS Safari blocks the loop
  *  until a user gesture. */
 export const VIDEO_ZONE_MAPS = {
-  /* town_v7.mp4 = re-encoded h264 CRF 30 with -tune animation,
-     audio stripped, faststart on (23.7 MB -> 4.0 MB, 83% smaller).
-     10-second loop with subtle animations (river flow, cherry-
-     blossom petals, lava glow, magical building shimmer).  Bump
-     suffix on next change to bust caches. */
-  town: '/maps/town_v7.mp4',
+  /* town_v8.mp4 = re-encoded at 1024x1024 native (was 960x960) so
+     it matches world bounds and doesn't get scaled per frame.  CRF
+     30, animation tune, audio stripped, faststart on.  Bump suffix
+     on next change to bust caches. */
+  town: '/maps/town_v8.mp4',
 };
 
 /** Per-zone walkability JSON.  Each url returns
