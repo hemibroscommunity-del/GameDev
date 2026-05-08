@@ -629,12 +629,14 @@ export class EffectsRenderer {
       }
     }
 
-    /* Bow / staff line of sight — single thick white line at 20%
-       opacity (80% transparent) running straight along the aim
-       direction.  Subtle enough to not compete with the arrow once
-       it's in flight, but distinct enough to telegraph where the
-       next shot will go.  Drawn while the bow/staff is the active
-       slot AND the player is aiming, locked on, or auto-attacking. */
+    /* Bow / staff line of sight — a beam-shaped ribbon (filled
+       polygon) running along the aim direction, drawn while the
+       bow/staff is the active slot AND the player is aiming, locked
+       on, or auto-attacking.  The two long edges are sine-wavy and
+       the wave PHASE shifts with `now`, so the borders shimmer +
+       drift along the beam — reads like a flowing energy stream
+       rather than a hard hitscan line.  Top and bottom edges run
+       180° out of phase so the beam pulses width-wise. */
     {
       const slot = S.rpg && S.rpg.activeSlot;
       const isRanged = slot === 'ranged' || slot === 'staff';
@@ -651,11 +653,34 @@ export class EffectsRenderer {
           aimA = 0;
         }
         const lineLen = 280;
-        const ex = P.x + Math.cos(aimA) * lineLen;
-        const ey = P.y + Math.sin(aimA) * lineLen;
-        gfx.moveTo(P.x, P.y);
-        gfx.lineTo(ex, ey);
-        gfx.stroke({ color: 0xffffff, width: 4, alpha: 0.2 });
+        const halfW = 2;          // half-width of beam at neutral
+        const waveAmp = 1.6;      // edge wave amplitude in px
+        const waveLen = 42;       // px per wave cycle along the beam
+        const phase = (now / 600) * Math.PI * 2;  // ~600 ms per wave-shift
+        const segments = 24;
+        const cosA = Math.cos(aimA), sinA = Math.sin(aimA);
+        // Perpendicular unit vector (rotate aim by +90°).
+        const perpX = -sinA, perpY = cosA;
+        const top = [];
+        const bot = [];
+        for (let i = 0; i <= segments; i++) {
+          const t = i / segments;
+          const dist = t * lineLen;
+          const bx = P.x + cosA * dist;
+          const by = P.y + sinA * dist;
+          // Wave moves backward along the beam over time (phase increases).
+          const wavePos = (dist / waveLen) * Math.PI * 2 - phase;
+          const topW = halfW + Math.sin(wavePos) * waveAmp;
+          const botW = halfW + Math.sin(wavePos + Math.PI) * waveAmp;
+          top.push(bx + perpX * topW, by + perpY * topW);
+          bot.push(bx - perpX * botW, by - perpY * botW);
+        }
+        // Build closed polygon: top forward, then bottom in reverse.
+        gfx.moveTo(top[0], top[1]);
+        for (let i = 2; i < top.length; i += 2) gfx.lineTo(top[i], top[i + 1]);
+        for (let i = bot.length - 2; i >= 0; i -= 2) gfx.lineTo(bot[i], bot[i + 1]);
+        gfx.closePath();
+        gfx.fill({ color: 0xffffff, alpha: 0.2 });
       }
     }
 
