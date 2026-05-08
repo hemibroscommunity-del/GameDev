@@ -136,18 +136,18 @@ export async function initPixiRenderer(canvas) {
     // With scale applied, world position X maps to screen position X*scale.
     // We need worldX=cx to map to screen X=0, so: cx*scale + offsetX = 0 → offsetX = -cx*scale
     //
-    // Round to whole screen pixels.  scaleX is 0.8 here, and the camera
-    // tracks the player at sub-pixel precision — without rounding, the
-    // screen-space offset is fractional, so every texture (especially
-    // the 1254 px painted maps that already get downscaled into the
-    // 1024 px world bounds) gets re-sampled at sub-pixel positions
-    // each frame.  That sampling shift looks like frame stuttering even
-    // when fps is 60 because the texels visibly shimmer / crawl as the
-    // camera glides.  Snapping to whole pixels stops the shimmer; the
-    // 1-px snap is far below the threshold where it'd feel like jerky
-    // movement at this scale.
-    worldContainer.x = Math.round(-cx * scaleX + shakeX);
-    worldContainer.y = Math.round(-cy * scaleY + shakeY);
+    // We previously Math.round'd these to whole pixels to suppress
+    // texture shimmer when the painted maps were 1254 px scaled into
+    // 1024 px world bounds.  Now that all map art is native 1024×1024
+    // there is no per-frame texture rescale, and rounding is actively
+    // harmful: the camera lerps in sub-pixel steps (0.08–0.18 per
+    // frame), so a rounded worldContainer.x flips by 1 px in a stutter
+    // pattern, dragging the player sprite with it — that 1-px flicker
+    // is what reads as frame-rate jitter even at a steady 60 fps.
+    // Letting the offset stay fractional moves the whole scene in
+    // smooth GPU sub-pixel steps instead.
+    worldContainer.x = -cx * scaleX + shakeX;
+    worldContainer.y = -cy * scaleY + shakeY;
 
     // Each renderer wrapped — a single throw in entity or effects
     // (e.g. the bow-kill crash) used to cascade into app.render() never
