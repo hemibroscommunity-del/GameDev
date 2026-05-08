@@ -629,8 +629,8 @@ export class EffectsRenderer {
       }
     }
 
-    /* Bow / staff line of sight — single thick white line at 10%
-       opacity (90% transparent) running straight along the aim
+    /* Bow / staff line of sight — single thick white line at 20%
+       opacity (80% transparent) running straight along the aim
        direction.  Subtle enough to not compete with the arrow once
        it's in flight, but distinct enough to telegraph where the
        next shot will go.  Drawn while the bow/staff is the active
@@ -655,7 +655,7 @@ export class EffectsRenderer {
         const ey = P.y + Math.sin(aimA) * lineLen;
         gfx.moveTo(P.x, P.y);
         gfx.lineTo(ex, ey);
-        gfx.stroke({ color: 0xffffff, width: 4, alpha: 0.1 });
+        gfx.stroke({ color: 0xffffff, width: 4, alpha: 0.2 });
       }
     }
 
