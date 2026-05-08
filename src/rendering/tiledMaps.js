@@ -34,14 +34,14 @@ export const IMAGE_ZONE_MAPS = {
      <zone>_v2.jpg = matching pixel-art zone paintings (1254x1254
      each).  Bump suffix on next change to bust browser/CDN caches. */
   town:    '/maps/town_v7.jpg',
-  frost:   '/maps/frost_v2.jpg',
-  meadow:  '/maps/meadow_v2.jpg',
-  thunder: '/maps/thunder_v2.jpg',
-  tidal:   '/maps/tidal_v2.jpg',
-  mist:    '/maps/mist_v2.jpg',
-  hollows: '/maps/hollows_v2.jpg',
-  ember:   '/maps/ember_v2.jpg',
-  sky:     '/maps/sky_v2.jpg',
+  frost:   '/maps/frost_v3.jpg',
+  meadow:  '/maps/meadow_v3.jpg',
+  thunder: '/maps/thunder_v3.jpg',
+  tidal:   '/maps/tidal_v3.jpg',
+  mist:    '/maps/mist_v3.jpg',
+  hollows: '/maps/hollows_v3.jpg',
+  ember:   '/maps/ember_v3.jpg',
+  sky:     '/maps/sky_v3.jpg',
 };
 
 /** Zones that play a looping video as their map texture.  When a zone
