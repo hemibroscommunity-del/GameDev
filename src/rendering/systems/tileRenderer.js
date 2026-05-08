@@ -217,6 +217,7 @@ export class TileRenderer {
          on the very first frame even before the video has decoded. */
       if (imageUrl) {
         const baseTex = Assets.cache.get(imageUrl);
+        if (baseTex && baseTex.source) baseTex.source.scaleMode = 'nearest';
         const baseSprite = new Sprite(baseTex || Texture.EMPTY);
         baseSprite.x = 0;
         baseSprite.y = 0;
@@ -227,6 +228,7 @@ export class TileRenderer {
           const w = this._mapW, h = this._mapH;
           Assets.load(imageUrl).then((loaded) => {
             if (loaded && !baseSprite.destroyed) {
+              if (loaded.source) loaded.source.scaleMode = 'nearest';
               baseSprite.texture = loaded;
               baseSprite.width = w;
               baseSprite.height = h;
@@ -292,11 +294,18 @@ export class TileRenderer {
     /* Single-image zone path — when an entry exists in IMAGE_ZONE_MAPS,
        render one Sprite covering the world bounds.  Beats Tiled for
        authoring speed when you already have the art generated, and
-       per-frame draw is just one sprite. */
+       per-frame draw is just one sprite.
+       Texture is rendered with NEAREST filter: the painted maps are
+       pixel art at native 1024×1024 (matches world bounds 1:1), so
+       LINEAR sampling at sub-pixel camera offsets blends adjacent
+       texels each frame and reads as walking-shimmer / judder.
+       NEAREST locks each screen pixel to the closest texel and the
+       texture stays stable as the camera glides. */
     if (imageUrl) {
       this._renderedTiled = true;   // tell update() not to retry
       this._isImageZone = true;
       const cachedTex = Assets.cache.get(imageUrl);
+      if (cachedTex && cachedTex.source) cachedTex.source.scaleMode = 'nearest';
       const sprite = new Sprite(cachedTex || Texture.EMPTY);
       sprite.x = 0;
       sprite.y = 0;
@@ -312,6 +321,7 @@ export class TileRenderer {
         const h = this._mapH;
         Assets.load(imageUrl).then((loaded) => {
           if (loaded && !sprite.destroyed) {
+            if (loaded.source) loaded.source.scaleMode = 'nearest';
             sprite.texture = loaded;
             sprite.width = w;
             sprite.height = h;

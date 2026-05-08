@@ -102,12 +102,15 @@ export async function initPixiRenderer(canvas) {
     const cx = S.camera.x;
     const cy = S.camera.y;
 
-    // Resize PixiJS to match the current canvas dimensions each frame
-    // The game's own resize handler sets canvas.width/height, we sync PixiJS to it
+    // Resize PixiJS to match the current canvas dimensions when they
+    // actually change.  app.renderer.width/.height are stored in
+    // logical (CSS) pixels — same units as cssW / cssH — so the
+    // earlier `/ dpr` on app.renderer.* was double-counting and made
+    // the comparison always-true, firing resize() every frame.
     const dpr = window.devicePixelRatio || 1;
     const cssW = canvas.width / dpr;
     const cssH = canvas.height / dpr;
-    if (Math.abs(app.renderer.width / dpr - cssW) > 1 || Math.abs(app.renderer.height / dpr - cssH) > 1) {
+    if (Math.abs(app.renderer.width - cssW) > 0.5 || Math.abs(app.renderer.height - cssH) > 0.5) {
       app.renderer.resize(cssW, cssH);
     }
 
