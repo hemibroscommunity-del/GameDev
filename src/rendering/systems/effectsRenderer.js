@@ -629,12 +629,35 @@ export class EffectsRenderer {
       }
     }
 
-    /* Pre-fire aim hint removed — the per-projectile trail (drawn
-       below as part of each arrow) is now the visual aid for
-       reading flight paths.  Reads as motion blur on the arrow
-       itself rather than a separate guidance overlay, so it doesn't
-       distract from the arrow's silhouette while still letting the
-       eye string successive frames into a linear path. */
+    /* Bow / staff line of sight — single thick white line at 10%
+       opacity (90% transparent) running straight along the aim
+       direction.  Subtle enough to not compete with the arrow once
+       it's in flight, but distinct enough to telegraph where the
+       next shot will go.  Drawn while the bow/staff is the active
+       slot AND the player is aiming, locked on, or auto-attacking. */
+    {
+      const slot = S.rpg && S.rpg.activeSlot;
+      const isRanged = slot === 'ranged' || slot === 'staff';
+      const isLocked = !!(S.lockedTarget && S.lockedTarget.ref);
+      if (isRanged && (S._aiming || isLocked || S.autoAttack) && S.player) {
+        const P = S.player;
+        let aimA;
+        if (isLocked) {
+          const lt = S.lockedTarget.ref;
+          aimA = Math.atan2((lt.y || 0) - P.y, (lt.x || 0) - P.x);
+        } else if (S._aimAngle != null) {
+          aimA = S._aimAngle;
+        } else {
+          aimA = 0;
+        }
+        const lineLen = 280;
+        const ex = P.x + Math.cos(aimA) * lineLen;
+        const ey = P.y + Math.sin(aimA) * lineLen;
+        gfx.moveTo(P.x, P.y);
+        gfx.lineTo(ex, ey);
+        gfx.stroke({ color: 0xffffff, width: 4, alpha: 0.1 });
+      }
+    }
 
     // Shield arc
     if (S.isBlocking && S._shieldAngle != null) {
