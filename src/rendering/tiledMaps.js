@@ -27,12 +27,13 @@ export const TILED_ZONE_MAPS = {};
  *  Walkability falls back to "all walkable" since there's no per-tile
  *  metadata to derive blocking from. */
 export const IMAGE_ZONE_MAPS = {
-  /* town_v6.jpg = pixel-art square town 1254x1254 with central
-     village + 8 themed gates (static — animated video overlay
-     deliberately removed in this revision).
+  /* town_v7.jpg = pixel-art square town 1254x1254 with central
+     4-building village ringed by themed regions.  Static fallback
+     for browsers that block video autoplay; the animated overlay
+     is wired through VIDEO_ZONE_MAPS.town below.
      <zone>_v2.jpg = matching pixel-art zone paintings (1254x1254
      each).  Bump suffix on next change to bust browser/CDN caches. */
-  town:    '/maps/town_v6.jpg',
+  town:    '/maps/town_v7.jpg',
   frost:   '/maps/frost_v2.jpg',
   meadow:  '/maps/meadow_v2.jpg',
   thunder: '/maps/thunder_v2.jpg',
@@ -48,12 +49,17 @@ export const IMAGE_ZONE_MAPS = {
  *  (so animated effects play on the map) and uses the still image as
  *  a fallback if the browser refuses to play the video.
  *
- *  Currently empty — town reverted to a static image.  Add an entry
- *  here to re-enable an animated overlay.  Mobile autoplay requires
- *  the <video> to be `muted`, `playsInline`, and `autoplay` —
- *  without all three, iOS Safari blocks the loop until a user
- *  gesture. */
-export const VIDEO_ZONE_MAPS = {};
+ *  Mobile autoplay requires the <video> to be `muted`, `playsInline`,
+ *  and `autoplay` — without all three, iOS Safari blocks the loop
+ *  until a user gesture. */
+export const VIDEO_ZONE_MAPS = {
+  /* town_v7.mp4 = re-encoded h264 CRF 30 with -tune animation,
+     audio stripped, faststart on (23.7 MB -> 4.0 MB, 83% smaller).
+     10-second loop with subtle animations (river flow, cherry-
+     blossom petals, lava glow, magical building shimmer).  Bump
+     suffix on next change to bust caches. */
+  town: '/maps/town_v7.mp4',
+};
 
 /** Per-zone walkability JSON.  Each url returns
  *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
