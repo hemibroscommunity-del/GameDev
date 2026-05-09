@@ -3999,16 +3999,23 @@ export var BroTown = function BroTown(_ref0) {
               var midY = Math.floor(newZone.h / 2) * TILE;
               /* Spawn opposite to entry direction so the zone is "in
                  front of" the player. Cardinal: drop in on the back
-                 edge. Diagonal: drop in at the opposite corner. */
-              if (bestExit.dir === 'north')      { P.x = midX;          P.y = nH - TILE * 5; }
-              else if (bestExit.dir === 'south') { P.x = midX;          P.y = TILE * 5;       }
-              else if (bestExit.dir === 'east')  { P.x = TILE * 5;      P.y = midY;           }
-              else if (bestExit.dir === 'west')  { P.x = nW - TILE * 5; P.y = midY;           }
-              else if (bestExit.dir === 'ne')    { P.x = TILE * 5;      P.y = nH - TILE * 5;  }
-              else if (bestExit.dir === 'nw')    { P.x = nW - TILE * 5; P.y = nH - TILE * 5;  }
-              else if (bestExit.dir === 'se')    { P.x = TILE * 5;      P.y = TILE * 5;       }
-              else if (bestExit.dir === 'sw')    { P.x = nW - TILE * 5; P.y = TILE * 5;       }
-              else                                { P.x = midX;          P.y = nH - TILE * 5; }
+                 edge. Diagonal: drop in at the opposite corner.
+                 The dungeon entrance (tile 10) is placed at column MX,
+                 row 2 in every themed zone — for entries that would
+                 otherwise land the player on column MX near the north
+                 edge ('south'), shift them off-axis so they don't
+                 spawn on the dungeon-approach path facing the
+                 entrance.  For 'se' / 'sw' / 'south' that share the
+                 north-area band, also tuck them a bit deeper. */
+              if (bestExit.dir === 'north')      { P.x = midX;             P.y = nH - TILE * 5; }
+              else if (bestExit.dir === 'south') { P.x = midX - TILE * 5;  P.y = TILE * 8;       }
+              else if (bestExit.dir === 'east')  { P.x = TILE * 5;         P.y = midY;           }
+              else if (bestExit.dir === 'west')  { P.x = nW - TILE * 5;    P.y = midY;           }
+              else if (bestExit.dir === 'ne')    { P.x = TILE * 5;         P.y = nH - TILE * 5;  }
+              else if (bestExit.dir === 'nw')    { P.x = nW - TILE * 5;    P.y = nH - TILE * 5;  }
+              else if (bestExit.dir === 'se')    { P.x = TILE * 5;         P.y = TILE * 8;       }
+              else if (bestExit.dir === 'sw')    { P.x = nW - TILE * 5;    P.y = TILE * 8;       }
+              else                                { P.x = midX;             P.y = nH - TILE * 5; }
               /* Push monsters away from player spawn — minimum 200px distance */
               var _minSpawnDist = 200;
               if (S.monsters) {
@@ -4365,9 +4372,14 @@ export var BroTown = function BroTown(_ref0) {
             S.deathExplosions = [];
             S.arrows = [];
             S._ambientParticles = [];
-            /* Spawn near dungeon entrance (north end of zone) */
-            P.x = Math.floor(_zn.w / 2) * TILE;
-            P.y = TILE * 5;
+            /* Spawn south of the dungeon entrance — the entrance sits at
+               (MX, 2) and the path runs along column MX down to the
+               south exit, so dropping the player on (MX, 5) like
+               before put them facing the entrance with one stray
+               north step re-entering the dungeon.  Shift off-column
+               and a few rows south so they're clearly OUTSIDE. */
+            P.x = (Math.floor(_zn.w / 2) - 5) * TILE;
+            P.y = TILE * 8;
             S._zoneWipe = Date.now();
             S.dmgNumbers.push({
               x: P.x,
