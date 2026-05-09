@@ -289,10 +289,13 @@ export class EffectsRenderer {
         } else if (/^\+\d+\s*G$/.test(t)) {
           displayColor = '#f5c542';
         }
-        /* Anti-overlap: when popups spawn at the same spot in quick succession
-           (kill-shot dumps damage, XP, and gold in one frame), offset the new
-           one downward by counting nearby already-rendered popups. */
-        let stack = 0;
+        /* Anti-overlap: place new popup below the lowest existing nearby one
+           so kill-shot popups (damage, XP, gold spawned in one frame at slightly
+           different Y) don't visually overlap. We compute a target Y rather
+           than just adding a fixed offset, because the spawn Ys differ. */
+        const SPACING = 26;
+        let lowestY = -Infinity;
+        let hasNeighbor = false;
         for (let j = 0; j < numbers.length; j++) {
           if (j === i) continue;
           const o = numbers[j];
@@ -301,17 +304,20 @@ export class EffectsRenderer {
           const oAge = (now - o.ts) / 1000;
           if (oAge > 0.6) continue;
           const oY = o.y + (o._stackOffset || 0) - oAge * 40;
-          if (Math.abs(oY - dmg.y) > 30) continue;
-          stack++;
+          if (Math.abs(oY - dmg.y) > 50) continue;
+          hasNeighbor = true;
+          if (oY > lowestY) lowestY = oY;
         }
-        dmg._stackOffset = stack * 16;
+        dmg._stackOffset = hasNeighbor ? (lowestY + SPACING) - dmg.y : 0;
+        const fontSize = dmg.crit ? 27 : 21;
         const text = new Text({
           text: dmg.text,
-          style: { ...baseStyle, fontSize: dmg.crit ? 18 : 14, fill: displayColor },
+          style: { ...baseStyle, fontSize, fill: displayColor },
         });
         /* Pixi v8 TextStyle stores fields privately; the spread above may drop
-           the override. Set fill explicitly to guarantee it takes effect. */
+           overrides. Set fill and fontSize explicitly to guarantee they apply. */
         text.style.fill = displayColor;
+        text.style.fontSize = fontSize;
         text.anchor.set(0.5, 0.5);
         this.dmgLayer.addChild(text);
         this.dmgTexts.push(text);
