@@ -275,11 +275,14 @@ export class EffectsRenderer {
         /* Pick the emoji-safe style when text contains non-ASCII to
            avoid the iOS Safari WebGL emoji-stroke crash. */
         const baseStyle = isAsciiOnly(dmg.text) ? DMG_STYLE : DMG_STYLE_EMOJI;
-        /* Categorize by text content: damage → orange, XP → blue, gold → yellow.
-           Centralized here so 40+ push call sites don't each need recoloring. */
+        /* Categorize popup by structure (ASCII-only patterns):
+             damage  = optional non-letter prefix then optional dash and digits
+             xp      = "+N XP"
+             gold    = "+N G"
+           Centralized here so the 40+ push sites don't each need recoloring. */
         const t = dmg.text || '';
         let displayColor = dmg.color || '#ffffff';
-        if (/^-?\d+$/.test(t) || /^💥\s*\d+$/.test(t) || /^💥⚡\s*\d+$/.test(t)) {
+        if (/^[^A-Za-z+]*-?\d+$/.test(t)) {
           displayColor = '#ff8c1a';
         } else if (/^\+\d+\s*XP$/.test(t)) {
           displayColor = '#60a5fa';
@@ -287,7 +290,7 @@ export class EffectsRenderer {
           displayColor = '#f5c542';
         }
         /* Anti-overlap: when popups spawn at the same spot in quick succession
-           (kill-shot dumps damage + XP + gold in one frame), stagger the new
+           (kill-shot dumps damage, XP, and gold in one frame), offset the new
            one downward by counting nearby already-rendered popups. */
         let stack = 0;
         for (let j = 0; j < numbers.length; j++) {
@@ -306,6 +309,9 @@ export class EffectsRenderer {
           text: dmg.text,
           style: { ...baseStyle, fontSize: dmg.crit ? 18 : 14, fill: displayColor },
         });
+        /* Pixi v8 TextStyle stores fields privately; the spread above may drop
+           the override. Set fill explicitly to guarantee it takes effect. */
+        text.style.fill = displayColor;
         text.anchor.set(0.5, 0.5);
         this.dmgLayer.addChild(text);
         this.dmgTexts.push(text);
