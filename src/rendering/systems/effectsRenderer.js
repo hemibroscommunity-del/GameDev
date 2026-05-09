@@ -275,9 +275,36 @@ export class EffectsRenderer {
         /* Pick the emoji-safe style when text contains non-ASCII to
            avoid the iOS Safari WebGL emoji-stroke crash. */
         const baseStyle = isAsciiOnly(dmg.text) ? DMG_STYLE : DMG_STYLE_EMOJI;
+        /* Categorize by text content: damage → orange, XP → blue, gold → yellow.
+           Centralized here so 40+ push call sites don't each need recoloring. */
+        const t = dmg.text || '';
+        let displayColor = dmg.color || '#ffffff';
+        if (/^-?\d+$/.test(t) || /^💥\s*\d+$/.test(t) || /^💥⚡\s*\d+$/.test(t)) {
+          displayColor = '#ff8c1a';
+        } else if (/^\+\d+\s*XP$/.test(t)) {
+          displayColor = '#60a5fa';
+        } else if (/^\+\d+\s*G$/.test(t)) {
+          displayColor = '#f5c542';
+        }
+        /* Anti-overlap: when popups spawn at the same spot in quick succession
+           (kill-shot dumps damage + XP + gold in one frame), stagger the new
+           one downward by counting nearby already-rendered popups. */
+        let stack = 0;
+        for (let j = 0; j < numbers.length; j++) {
+          if (j === i) continue;
+          const o = numbers[j];
+          if (!o._pixiText || o._pixiText.destroyed) continue;
+          if (Math.abs(o.x - dmg.x) > 60) continue;
+          const oAge = (now - o.ts) / 1000;
+          if (oAge > 0.6) continue;
+          const oY = o.y + (o._stackOffset || 0) - oAge * 40;
+          if (Math.abs(oY - dmg.y) > 30) continue;
+          stack++;
+        }
+        dmg._stackOffset = stack * 16;
         const text = new Text({
           text: dmg.text,
-          style: { ...baseStyle, fontSize: dmg.crit ? 18 : 14, fill: dmg.color || '#ffffff' },
+          style: { ...baseStyle, fontSize: dmg.crit ? 18 : 14, fill: displayColor },
         });
         text.anchor.set(0.5, 0.5);
         this.dmgLayer.addChild(text);
@@ -286,7 +313,7 @@ export class EffectsRenderer {
       }
       const text = dmg._pixiText;
       text.x = dmg.x;
-      text.y = dmg.y - age * 40;
+      text.y = dmg.y + (dmg._stackOffset || 0) - age * 40;
       text.alpha = Math.max(0, 1 - age / 1.2);
       text.scale.set(1 + (dmg.crit ? Math.sin(age * 8) * 0.1 : 0));
     }

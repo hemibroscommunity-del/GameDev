@@ -29067,8 +29067,8 @@ export var BroTown = function BroTown(_ref0) {
     }, React.createElement('path', {
       /* Triangle tip pointing away from centre. */
       d: 'M 50 12 L 46 20 L 54 20 Z',
-      fill: 'rgba(170,210,255,0.85)',
-      stroke: 'rgba(91,165,255,0.95)',
+      fill: 'rgba(170,210,255,1)',
+      stroke: 'rgba(91,165,255,1)',
       strokeWidth: 0.6,
       strokeLinejoin: 'round',
     }));
@@ -29102,9 +29102,9 @@ export var BroTown = function BroTown(_ref0) {
       top: '50%',
       transform: 'translate(-50%,-50%)',
       borderRadius: '50%',
-      background: 'rgba(91,165,255,0.10)',
-      border: '2px solid ' + (autoAttack ? 'rgba(255,120,120,0.7)' : 'rgba(91,165,255,0.55)'),
-      boxShadow: 'inset 0 0 0 14px rgba(91,165,255,0.04), inset 0 0 0 16px rgba(91,165,255,0.40), 0 0 8px rgba(0,0,0,0.35)' + (autoAttack ? ', 0 0 12px rgba(255,80,80,0.45)' : ''),
+      background: 'rgba(91,165,255,1)',
+      border: '2px solid ' + (autoAttack ? 'rgba(255,120,120,1)' : 'rgba(91,165,255,1)'),
+      boxShadow: 'inset 0 0 0 14px rgba(91,165,255,1), inset 0 0 0 16px rgba(91,165,255,1), 0 0 8px rgba(0,0,0,0.35)' + (autoAttack ? ', 0 0 12px rgba(255,80,80,0.45)' : ''),
       touchAction: 'none',
       overflow: 'hidden'
     }
@@ -29148,8 +29148,8 @@ export var BroTown = function BroTown(_ref0) {
       width: isLandscape ? 56 : 48,
       height: isLandscape ? 56 : 48,
       borderRadius: '50%',
-      background: 'radial-gradient(circle at 50% 35%, rgba(170,210,255,0.55) 0%, rgba(91,165,255,0.40) 55%, rgba(40,90,170,0.55) 100%)',
-      border: '1.5px solid rgba(170,210,255,0.65)',
+      background: 'radial-gradient(circle at 50% 35%, rgba(170,210,255,1) 0%, rgba(91,165,255,1) 55%, rgba(40,90,170,1) 100%)',
+      border: '1.5px solid rgba(170,210,255,1)',
       boxShadow:
         'inset 0 2px 3px rgba(255,255,255,0.55),' +
         'inset 0 -3px 4px rgba(20,40,80,0.55),' +
