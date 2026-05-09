@@ -342,8 +342,21 @@ export const BottomDashboard = () => {
           fontWeight: 700,
           letterSpacing: '.04em',
           touchAction: 'manipulation',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
         }}>
-        🪙 {Number(gold).toLocaleString()}
+        <img
+          src="/icons/popups/gold.png"
+          alt=""
+          style={{
+            width: 18,
+            height: 18,
+            imageRendering: 'pixelated',
+            display: 'block',
+          }}
+        />
+        {Number(gold).toLocaleString()}
       </div>
 
     <div

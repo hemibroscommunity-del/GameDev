@@ -8508,9 +8508,11 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
                 /* Cap display at the HP that was actually removed so the kill
-                   blow doesn't show an inflated overkill number. */
+                   blow doesn't show an inflated overkill number. Killing-blow
+                   popups also get a longer ttl so they linger with the XP. */
                 var _displayDmg = Math.min(a.dmg, _hpBefore);
-                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: _displayDmg + '', color: '#ff9', iconKey: a.isStaff ? 'spell' : 'arrow', ts: Date.now() });
+                var _isKill = m.curHp <= 0;
+                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: _displayDmg + '', color: '#ff9', iconKey: a.isStaff ? 'spell' : 'arrow', ttl: _isKill ? 2.5 : undefined, ts: Date.now() });
                 if (m.curHp <= 0) {
                   /* In server-mode the network monster_killed event is
                      authoritative for XP/T1 distribution — only clamp
@@ -8531,22 +8533,20 @@ export var BroTown = function BroTown(_ref0) {
                       var _R9$_quests;
                       if (((_R9$_quests = _R9._quests) === null || _R9$_quests === void 0 ? void 0 : _R9$_quests[qid]) === QUEST_STATUS.active) _R9._questKills[qid] = (_R9._questKills[qid] || 0) + 1;
                     });
-                    /* XP / gold grant + T1 distribution (parity with
-                       melee kill block at ~6620). */
+                    /* XP grant; gold rides on the loot drop only (no
+                       direct grant + popup pair anymore — the pickup is
+                       the only gold path now). */
                     var _wrMultR = _R9._wellRestedUntil && Date.now() < _R9._wellRestedUntil ? WELL_RESTED_XP_MULT : 1;
                     var _isRareR = Math.random() < 0.002;
                     var _killXpR = Math.ceil((_isRareR ? m.xp * 3 : m.xp) * _wrMultR);
-                    var _killGoldR = Math.ceil(_isRareR ? m.gold * 10 : m.gold);
                     _R9.xp = (_R9.xp || 0) + _killXpR;
-                    _R9.coins = (_R9.coins || 0) + _killGoldR;
                     if (_R9._compStats) {
                       _R9._compStats.monstersKilled = (_R9._compStats.monstersKilled || 0) + 1;
-                      _R9._compStats.totalGoldEarned = (_R9._compStats.totalGoldEarned || 0) + _killGoldR;
                     }
-                    /* +XP floater colored to match the dashboard XP bar (#3ddc97).
-                       Also push a fly-to-bar entry so the player sees the XP
-                       arc into the bar (mirror of the fish-to-bag animation). */
-                    S.dmgNumbers.push({ x: m.x, y: m.y - 25, text: '+' + _killXpR + 'XP', color: '#3ddc97', ts: Date.now() });
+                    /* +XP floater + fly-to-bar so the player sees the XP
+                       arc into the bar (mirror of the fish-to-bag animation).
+                       Longer ttl so it lingers as the kill summary message. */
+                    S.dmgNumbers.push({ x: m.x, y: m.y - 25, text: '+' + _killXpR + 'XP', color: '#3ddc97', ttl: 2.5, ts: Date.now() });
                     if (!S._xpFlies) S._xpFlies = [];
                     S._xpFlies.push({
                       id: 'xpf_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
@@ -8554,7 +8554,6 @@ export var BroTown = function BroTown(_ref0) {
                       value: _killXpR,
                       ts: Date.now(),
                     });
-                    S.dmgNumbers.push({ x: m.x, y: m.y - 15, text: '+' + _killGoldR + 'G', color: '#f5c542', ts: Date.now() });
                     distributeKillXpToBuild(_R9, _killXpR);
                     while (_R9.xp >= xpRequired(_R9.level)) {
                       _R9.xp -= xpRequired(_R9.level);
@@ -8603,7 +8602,10 @@ export var BroTown = function BroTown(_ref0) {
                     } catch (_bowFxErr) {
                       console.error('[bow-kill] death FX threw', _bowFxErr && _bowFxErr.message, _bowFxErr && _bowFxErr.stack);
                     }
-                    S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 15, y: m.y + (Math.random() - 0.5) * 15, coins: m.gold || m.coins || 2, xp: 0, skull: m.type, skullEmoji: '🦴', ts: Date.now() });
+                    /* Gold rides on the loot — rare kills carry the 10x bonus
+                       through the drop instead of via a direct grant. */
+                    var _killGoldR = Math.ceil(_isRareR ? (m.gold || 2) * 10 : (m.gold || m.coins || 2));
+                    S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 15, y: m.y + (Math.random() - 0.5) * 15, coins: _killGoldR, xp: 0, skull: m.type, skullEmoji: '🦴', ts: Date.now() });
                     var dropChance = Math.min(0.15, 0.03 + (m.level || 1) * 0.001);
                     if (Math.random() < dropChance) {
                       var _zone7 = ZONES[S.currentZone];

@@ -268,7 +268,8 @@ export class EffectsRenderer {
     for (let i = numbers.length - 1; i >= 0; i--) {
       const dmg = numbers[i];
       const age = (now - dmg.ts) / 1000;
-      if (age > 1.5) {
+      const ttl = dmg.ttl || 1.5;
+      if (age > ttl) {
         if (dmg._pixiText && !dmg._pixiText.destroyed) { dmg._pixiText.destroy(); }
         if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) { dmg._pixiIcon.destroy(); }
         dmg._pixiText = null;
@@ -357,7 +358,9 @@ export class EffectsRenderer {
       const text = dmg._pixiText;
       text.x = dmg.x;
       text.y = dmg.y + (dmg._stackOffset || 0) - age * 40;
-      text.alpha = Math.max(0, 1 - age / 1.2);
+      /* Fade over 80% of ttl so longer-lived popups (kill messages with
+         ttl=2.5) actually stay visible, not invisible most of their life. */
+      text.alpha = Math.max(0, 1 - age / (ttl * 0.8));
       text.scale.set(1 + (dmg.crit ? Math.sin(age * 8) * 0.1 : 0));
       if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
         /* Place icon flush to the right of the text. Text anchor is

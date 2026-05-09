@@ -3542,8 +3542,12 @@ export function setupGameLoop(ctx) {
                 });
                 /* Damage number — scaled by significance. Display value
                    is capped at the HP that was actually removed so the
-                   killing blow doesn't show an inflated overkill number. */
+                   killing blow doesn't show an inflated overkill number.
+                   Killing-blow popups also get a longer ttl so they stay
+                   on screen alongside the XP popup. */
                 var _displayDmg = Math.min(dmg, _hpBefore);
+                var _isKill = m.curHp <= 0;
+                var _killTtl = _isKill ? 2.5 : undefined;
                 if (isCrit && collisionResult) {
                   S.dmgNumbers.push({
                     x: m.x,
@@ -3551,6 +3555,7 @@ export function setupGameLoop(ctx) {
                     text: '💥⚡ ' + _displayDmg,
                     color: '#f5c542',
                     iconKey: 'sword',
+                    ttl: _killTtl,
                     ts: Date.now()
                   });
                 } else if (isCrit) {
@@ -3560,6 +3565,7 @@ export function setupGameLoop(ctx) {
                     text: '💥 ' + _displayDmg,
                     color: '#f5c542',
                     iconKey: 'sword',
+                    ttl: _killTtl,
                     ts: Date.now()
                   });
                 } else {
@@ -3569,6 +3575,7 @@ export function setupGameLoop(ctx) {
                     text: '' + _displayDmg,
                     color: '#fff',
                     iconKey: 'sword',
+                    ttl: _killTtl,
                     ts: Date.now()
                   });
                 }
@@ -3771,27 +3778,20 @@ export function setupGameLoop(ctx) {
                   /* Cap splatter at 80 marks to prevent memory bloat */
                   if (S.groundSplatter.length > 80) S.groundSplatter.splice(0, S.groundSplatter.length - 80);
 
-                  /* Loot cascade — scattered in kill direction, then settles */
-                  /* XP and gold granted immediately on kill — no pickup needed */
+                  /* Loot cascade — scattered in kill direction, then settles.
+                     XP is still granted on kill, but gold now rides on the
+                     loot drop so the pickup is the only path to coins. */
                   var _wrMult = S.rpg._wellRestedUntil && Date.now() < S.rpg._wellRestedUntil ? WELL_RESTED_XP_MULT : 1;
                   var isRare = Math.random() < 0.002; /* 0.2% — 10x scarcer than before */
                   var killXp = Math.ceil((isRare ? m.xp * 3 : m.xp) * _wrMult);
                   var killGold = Math.ceil(isRare ? m.gold * 10 : m.gold);
                   _R6.xp += killXp;
-                  _R6.coins += killGold;
-                  if (_R6._compStats) _R6._compStats.totalGoldEarned += killGold;
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 25,
                     text: '+' + killXp + 'XP',
                     color: '#60a5fa',
-                    ts: Date.now()
-                  });
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 15,
-                    text: '+' + killGold + 'G',
-                    color: '#f5c542',
+                    ttl: 2.5,
                     ts: Date.now()
                   });
                   var lootCount = isGrandSlam ? 3 : 1;
@@ -3801,7 +3801,7 @@ export function setupGameLoop(ctx) {
                     S.groundLoot.push({
                       x: m.x + Math.cos(lootAngle) * lootDist + (Math.random() - 0.5) * 10,
                       y: m.y + Math.sin(lootAngle) * lootDist + (Math.random() - 0.5) * 10,
-                      coins: 0,
+                      coins: li === 0 ? killGold : 0,
                       xp: 0,
                       skull: m.type,
                       skullEmoji: '🦴',
