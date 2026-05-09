@@ -338,12 +338,11 @@ export class EffectsRenderer {
         this.dmgTexts.push(text);
         dmg._pixiText = text;
         /* Icon: explicit dmg.iconKey wins; otherwise fall back to detecting
-           XP/gold from text pattern. Damage popups need an explicit iconKey
+           gold from text pattern. Damage popups need an explicit iconKey
            because the text alone doesn't tell us the weapon type. */
         let iconKey = dmg.iconKey;
         if (!iconKey) {
-          if (/^\+\d+\s*XP$/.test(t)) iconKey = 'xp';
-          else if (/^\+\d+\s*G$/.test(t)) iconKey = 'gold';
+          if (/^\+\d+\s*G$/.test(t)) iconKey = 'gold';
         }
         if (iconKey && POPUP_ICONS[iconKey]) {
           const tex = POPUP_ICONS[iconKey];

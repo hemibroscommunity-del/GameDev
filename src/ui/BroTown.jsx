@@ -8508,11 +8508,9 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
                 /* Cap display at the HP that was actually removed so the kill
-                   blow doesn't show an inflated overkill number. Killing-blow
-                   popups also get a longer ttl so they linger with the XP. */
+                   blow doesn't show an inflated overkill number. */
                 var _displayDmg = Math.min(a.dmg, _hpBefore);
-                var _isKill = m.curHp <= 0;
-                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: _displayDmg + '', color: '#ff9', iconKey: a.isStaff ? 'spell' : 'arrow', ttl: _isKill ? 2.5 : undefined, ts: Date.now() });
+                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: _displayDmg + '', color: '#ff9', iconKey: a.isStaff ? 'spell' : 'arrow', ts: Date.now() });
                 if (m.curHp <= 0) {
                   /* In server-mode the network monster_killed event is
                      authoritative for XP/T1 distribution — only clamp
@@ -8544,9 +8542,8 @@ export var BroTown = function BroTown(_ref0) {
                       _R9._compStats.monstersKilled = (_R9._compStats.monstersKilled || 0) + 1;
                     }
                     /* +XP floater + fly-to-bar so the player sees the XP
-                       arc into the bar (mirror of the fish-to-bag animation).
-                       Longer ttl so it lingers as the kill summary message. */
-                    S.dmgNumbers.push({ x: m.x, y: m.y - 25, text: '+' + _killXpR + 'XP', color: '#3ddc97', ttl: 2.5, ts: Date.now() });
+                       arc into the bar (mirror of the fish-to-bag animation). */
+                    S.dmgNumbers.push({ x: m.x, y: m.y - 25, text: '+' + _killXpR + 'XP', color: '#3ddc97', ts: Date.now() });
                     if (!S._xpFlies) S._xpFlies = [];
                     S._xpFlies.push({
                       id: 'xpf_' + Date.now() + '_' + Math.floor(Math.random() * 1000),

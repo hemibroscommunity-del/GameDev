@@ -3542,12 +3542,8 @@ export function setupGameLoop(ctx) {
                 });
                 /* Damage number — scaled by significance. Display value
                    is capped at the HP that was actually removed so the
-                   killing blow doesn't show an inflated overkill number.
-                   Killing-blow popups also get a longer ttl so they stay
-                   on screen alongside the XP popup. */
+                   killing blow doesn't show an inflated overkill number. */
                 var _displayDmg = Math.min(dmg, _hpBefore);
-                var _isKill = m.curHp <= 0;
-                var _killTtl = _isKill ? 2.5 : undefined;
                 if (isCrit && collisionResult) {
                   S.dmgNumbers.push({
                     x: m.x,
@@ -3555,7 +3551,6 @@ export function setupGameLoop(ctx) {
                     text: '💥⚡ ' + _displayDmg,
                     color: '#f5c542',
                     iconKey: 'sword',
-                    ttl: _killTtl,
                     ts: Date.now()
                   });
                 } else if (isCrit) {
@@ -3565,7 +3560,6 @@ export function setupGameLoop(ctx) {
                     text: '💥 ' + _displayDmg,
                     color: '#f5c542',
                     iconKey: 'sword',
-                    ttl: _killTtl,
                     ts: Date.now()
                   });
                 } else {
@@ -3575,7 +3569,6 @@ export function setupGameLoop(ctx) {
                     text: '' + _displayDmg,
                     color: '#fff',
                     iconKey: 'sword',
-                    ttl: _killTtl,
                     ts: Date.now()
                   });
                 }
@@ -3791,7 +3784,6 @@ export function setupGameLoop(ctx) {
                     y: m.y - 25,
                     text: '+' + killXp + 'XP',
                     color: '#60a5fa',
-                    ttl: 2.5,
                     ts: Date.now()
                   });
                   var lootCount = isGrandSlam ? 3 : 1;
