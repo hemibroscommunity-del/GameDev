@@ -8351,6 +8351,7 @@ export var BroTown = function BroTown(_ref0) {
                   a.hit = true;
                   return;
                 }
+                var _hpBefore = m.curHp;
                 m.curHp -= a.dmg;
                 /* Fodder hit-reaction (ranged variant) — same squash as
                    melee. arrowCollision bonus damage applied below uses
@@ -8506,7 +8507,10 @@ export var BroTown = function BroTown(_ref0) {
                   m._stuckArrows.push({ ang: a.ang, ox: _saOx, oy: _saOy, isStaff: a.isStaff || false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
-                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: a.dmg + '', color: '#ff9', ts: Date.now() });
+                /* Cap display at the HP that was actually removed so the kill
+                   blow doesn't show an inflated overkill number. */
+                var _displayDmg = Math.min(a.dmg, _hpBefore);
+                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: _displayDmg + '', color: '#ff9', iconKey: a.isStaff ? 'spell' : 'arrow', ts: Date.now() });
                 if (m.curHp <= 0) {
                   /* In server-mode the network monster_killed event is
                      authoritative for XP/T1 distribution — only clamp
@@ -8625,11 +8629,9 @@ export var BroTown = function BroTown(_ref0) {
                     setRpgState(_objectSpread({}, _R9));
                     try { localStorage.setItem('bt_rpg', JSON.stringify(_R9)); } catch (e) {}
                   }
-                  /* Skull glyph used to be the emoji '☠️'.  Pixi v8 Text
-                     with iOS WebGL crashes the tab on emoji + stroke
-                     style — see DMG_STYLE_EMOJI in effectsRenderer.js.
-                     Plain ASCII 'X' is the safe substitute. */
-                  S.dmgNumbers.push({ x: m.x, y: m.y - 20, text: 'X', color: '#ff5e6c', ts: Date.now() });
+                  /* Kill marker removed — the damage number (capped at
+                     remaining HP) plus the death effects already convey
+                     the kill without a separate glyph. */
                 }
                 hit = true;
               }

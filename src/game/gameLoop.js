@@ -3401,6 +3401,7 @@ export function setupGameLoop(ctx) {
                 /* Level-difference scaling — hard to kill monsters much higher level */
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
+                var _hpBefore = m.curHp;
                 m.curHp -= dmg;
 
                 /* Report damage to server for authoritative resolution */
@@ -3539,29 +3540,35 @@ export function setupGameLoop(ctx) {
                   maxR: isCrit ? 30 : collisionResult ? 25 : 16,
                   duration: isCrit ? 250 : 150
                 });
-                /* Damage number — scaled by significance */
+                /* Damage number — scaled by significance. Display value
+                   is capped at the HP that was actually removed so the
+                   killing blow doesn't show an inflated overkill number. */
+                var _displayDmg = Math.min(dmg, _hpBefore);
                 if (isCrit && collisionResult) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '💥⚡ ' + dmg,
+                    text: '💥⚡ ' + _displayDmg,
                     color: '#f5c542',
+                    iconKey: 'sword',
                     ts: Date.now()
                   });
                 } else if (isCrit) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '💥 ' + dmg,
+                    text: '💥 ' + _displayDmg,
                     color: '#f5c542',
+                    iconKey: 'sword',
                     ts: Date.now()
                   });
                 } else {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '' + dmg,
+                    text: '' + _displayDmg,
                     color: '#fff',
+                    iconKey: 'sword',
                     ts: Date.now()
                   });
                 }

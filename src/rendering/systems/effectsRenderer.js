@@ -3,10 +3,19 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
-import { Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
+
+/* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
+   type). Loaded async — entries appear in the registry once each PNG is
+   ready. Until then, popups render text-only and the icon is skipped. */
+const POPUP_ICONS = {};
+const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell'];
+Promise.all(POPUP_ICON_KEYS.map((k) =>
+  Assets.load('/icons/popups/' + k + '.png').then((tex) => { POPUP_ICONS[k] = tex; })
+)).catch((err) => console.warn('[popup-icons] load failed', err));
 
 const DMG_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
@@ -261,7 +270,9 @@ export class EffectsRenderer {
       const age = (now - dmg.ts) / 1000;
       if (age > 1.5) {
         if (dmg._pixiText && !dmg._pixiText.destroyed) { dmg._pixiText.destroy(); }
+        if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) { dmg._pixiIcon.destroy(); }
         dmg._pixiText = null;
+        dmg._pixiIcon = null;
         numbers.splice(i, 1);
         continue;
       }
@@ -270,6 +281,9 @@ export class EffectsRenderer {
          destroyed the Text while the dmg entry was still alive. */
       if (dmg._pixiText && dmg._pixiText.destroyed) {
         dmg._pixiText = null;
+      }
+      if (dmg._pixiIcon && dmg._pixiIcon.destroyed) {
+        dmg._pixiIcon = null;
       }
       if (!dmg._pixiText) {
         /* Pick the emoji-safe style when text contains non-ASCII to
@@ -322,12 +336,36 @@ export class EffectsRenderer {
         this.dmgLayer.addChild(text);
         this.dmgTexts.push(text);
         dmg._pixiText = text;
+        /* Icon: explicit dmg.iconKey wins; otherwise fall back to detecting
+           XP/gold from text pattern. Damage popups need an explicit iconKey
+           because the text alone doesn't tell us the weapon type. */
+        let iconKey = dmg.iconKey;
+        if (!iconKey) {
+          if (/^\+\d+\s*XP$/.test(t)) iconKey = 'xp';
+          else if (/^\+\d+\s*G$/.test(t)) iconKey = 'gold';
+        }
+        if (iconKey && POPUP_ICONS[iconKey]) {
+          const tex = POPUP_ICONS[iconKey];
+          const icon = new Sprite(tex);
+          icon.anchor.set(0, 0.5);
+          const targetH = fontSize;
+          icon.scale.set(targetH / tex.height);
+          this.dmgLayer.addChild(icon);
+          dmg._pixiIcon = icon;
+        }
       }
       const text = dmg._pixiText;
       text.x = dmg.x;
       text.y = dmg.y + (dmg._stackOffset || 0) - age * 40;
       text.alpha = Math.max(0, 1 - age / 1.2);
       text.scale.set(1 + (dmg.crit ? Math.sin(age * 8) * 0.1 : 0));
+      if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
+        /* Place icon flush to the right of the text. Text anchor is
+           (0.5, 0.5), so the right edge sits at text.x + text.width/2. */
+        dmg._pixiIcon.x = text.x + text.width / 2 + 3;
+        dmg._pixiIcon.y = text.y;
+        dmg._pixiIcon.alpha = text.alpha;
+      }
     }
     /* Compact dmgTexts: drop refs to destroyed Text instances
        (destroyed during age expiry above).  Keeps the array bounded
@@ -1247,6 +1285,13 @@ export class EffectsRenderer {
     this.atmosphereGfx.clear();
     for (const t of this.dmgTexts) t.destroy();
     this.dmgTexts = [];
+    /* Icons live on dmg entries (dmg._pixiIcon) which are owned by
+       game state, not this list. Walking the dmgLayer is the most
+       reliable way to drop any orphaned icon Sprites on clear. */
+    for (let i = this.dmgLayer.children.length - 1; i >= 0; i--) {
+      const c = this.dmgLayer.children[i];
+      if (c instanceof Sprite && !c.destroyed) c.destroy();
+    }
     for (const [, entry] of this.chatTexts) {
       /* Entry shape changed (now { container, bg, text, ... }); destroy the
          container which cascades to its children. */
