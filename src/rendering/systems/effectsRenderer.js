@@ -1078,13 +1078,29 @@ export class EffectsRenderer {
         /* Glow base. */
         gfx.circle(l.x, l.y + bob, 10);
         gfx.fill({ color: 0xf5c542, alpha: 0.3 * alpha });
-        /* Multi-circle coin stack. */
-        gfx.circle(l.x - 3, l.y + 2 + bob, 4);
-        gfx.fill({ color: 0xf5c542, alpha });
-        gfx.circle(l.x + 2, l.y + 3 + bob, 3.5);
-        gfx.fill({ color: 0xe8b830, alpha });
-        gfx.circle(l.x, l.y + 4 + bob, 3);
-        gfx.fill({ color: 0xd4a020, alpha });
+        /* Coin icon sprite (matches HUD/popup gold icon).  Falls back
+           to the procedural multi-circle stack while the PNG is loading. */
+        const goldTex = POPUP_ICONS.gold;
+        if (goldTex) {
+          if (!l._pixiSprite || l._pixiSprite.destroyed) {
+            const sp = new Sprite(goldTex);
+            sp.anchor.set(0.5, 0.5);
+            this.lootLayer.addChild(sp);
+            l._pixiSprite = sp;
+          }
+          l._pixiSprite.x = l.x;
+          l._pixiSprite.y = l.y + 3 + bob;
+          l._pixiSprite.alpha = alpha;
+          l._pixiSprite.scale.set(14 / (l._pixiSprite.texture.width || 14));
+          l._pixiSprite.visible = true;
+        } else {
+          gfx.circle(l.x - 3, l.y + 2 + bob, 4);
+          gfx.fill({ color: 0xf5c542, alpha });
+          gfx.circle(l.x + 2, l.y + 3 + bob, 3.5);
+          gfx.fill({ color: 0xe8b830, alpha });
+          gfx.circle(l.x, l.y + 4 + bob, 3);
+          gfx.fill({ color: 0xd4a020, alpha });
+        }
         /* "<n>G" label. */
         if (!l._pixiLabel || l._pixiLabel.destroyed) {
           l._pixiLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });

@@ -8319,10 +8319,20 @@ export var BroTown = function BroTown(_ref0) {
               /* Same y-offset fix as the melee path — fodder slimes'
                  visual body sits 17 px above the hitbox center, so
                  arrows aimed at the visible sprite were drifting past
-                 the raw m.x/m.y point. */
+                 the raw m.x/m.y point.  Snowman is taller (64 px
+                 sprite anchored to the feet at m.y + 13), with its
+                 visual center ~19 px above m.y and arms that extend
+                 outward — needs both the y-offset and a wider radius. */
               var _archProj = m.archetype || m.type;
-              var _mProjY = _archProj === 'fodder' ? m.y - 17 : m.y;
-              if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < (a.isStaff ? 30 : 18)) {
+              var _mProjY = m.y;
+              var _hitR = a.isStaff ? 30 : 18;
+              if (_archProj === 'fodder') {
+                _mProjY = m.y - 17;
+              } else if (_archProj === 'snowman') {
+                _mProjY = m.y - 19;
+                _hitR = a.isStaff ? 44 : 32;
+              }
+              if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
                 a.hitIds.add(m.id);
                 var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
                 if (arrowElem) {
