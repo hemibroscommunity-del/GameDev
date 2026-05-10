@@ -6659,13 +6659,17 @@ export var BroTown = function BroTown(_ref0) {
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
                 m.curHp -= dmg;
-                /* Fodder hit-reaction — squash anim + scale pulse plays
-                   once. Use (archetype||type) so server-synced slimes
-                   without an archetype field still get the reaction.
-                   Skipped on fatal hits so the death anim takes over. */
-                if ((m.archetype || m.type) === 'fodder' && m.curHp > 0) {
-                  m._hitAnimStart = Date.now();
-                  m._hitAnimEnd = Date.now() + 400;
+                /* Hit-reaction sheet plays once per non-fatal hit.  Use
+                   (archetype||type) so server-synced monsters without an
+                   archetype field still get the reaction.  Snowman gets a
+                   600 ms window for its 12-frame recoil; fodder slime
+                   stays at 400 ms for its squash. */
+                {
+                  var _hitArch = m.archetype || m.type;
+                  if ((_hitArch === 'fodder' || _hitArch === 'snowman') && m.curHp > 0) {
+                    m._hitAnimStart = Date.now();
+                    m._hitAnimEnd = Date.now() + (_hitArch === 'snowman' ? 600 : 400);
+                  }
                 }
                 /* Count-based weight: 1 per landed hit (Power for melee).
                    Pairs with block = 3 to match the user's hits-vs-blocks
@@ -8363,12 +8367,15 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 var _hpBefore = m.curHp;
                 m.curHp -= a.dmg;
-                /* Fodder hit-reaction (ranged variant) — same squash as
-                   melee. arrowCollision bonus damage applied below uses
-                   the same anim window, no need to re-trigger. */
-                if ((m.archetype || m.type) === 'fodder' && m.curHp > 0) {
-                  m._hitAnimStart = Date.now();
-                  m._hitAnimEnd = Date.now() + 400;
+                /* Hit-reaction (ranged variant) — mirrors the melee path.
+                   arrowCollision bonus damage applied below uses the
+                   same anim window, no need to re-trigger. */
+                {
+                  var _hitArchR = m.archetype || m.type;
+                  if ((_hitArchR === 'fodder' || _hitArchR === 'snowman') && m.curHp > 0) {
+                    m._hitAnimStart = Date.now();
+                    m._hitAnimEnd = Date.now() + (_hitArchR === 'snowman' ? 600 : 400);
+                  }
                 }
                 /* Count-based weight: 1 per landed projectile.  Bow hits
                    feed Agility, staff hits feed Mind — so ranged kills

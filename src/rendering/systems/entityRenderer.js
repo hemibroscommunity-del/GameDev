@@ -8,7 +8,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
-import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount } from '../snowmanSprites.js';
+import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount } from '../snowmanSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -545,16 +545,39 @@ export class EntityRenderer {
             facing = SECTORS[((sector % 8) + 8) % 8];
             display._lastFacing = facing;
           }
-          const fc = snowmanFrameCount(facing);
-          const phaseOff = ((m.spawnX || 0) | 0) % 1000;
-          /* 125 ms/frame = ~2x the natural 250 ms cadence; the source
-             mp4s play their idle loop too slowly at the original speed. */
-          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 125) % fc : 0;
-          const frame = getSnowmanFrame(facing, frameIdx);
-          if (frame) {
-            if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;
+          /* Hit reaction takes priority over idle when within the
+             _hitAnim window.  Non-directional sheet — same recoil
+             texture regardless of facing — but we still keep the
+             facing-derived mirror so the snowman's "front" stays
+             oriented correctly. */
+          const hitFc = snowmanHitFrameCount();
+          const inHitWindow = m._hitAnimEnd && now < m._hitAnimEnd && hitFc > 0;
+          let frameTex = null;
+          let mirror = false;
+          if (inHitWindow) {
+            const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);
+            const t = (now - m._hitAnimStart) / dur;
+            const idx = Math.max(0, Math.min(hitFc - 1, Math.floor(t * hitFc)));
+            frameTex = getSnowmanHitFrame(idx);
+            /* Mirror to face the same way as idle would. */
+            const idleMap = getSnowmanFrame(facing, 0);
+            mirror = idleMap ? idleMap.mirror : false;
+          } else {
+            const fc = snowmanFrameCount(facing);
+            const phaseOff = ((m.spawnX || 0) | 0) % 1000;
+            /* 125 ms/frame = ~2x the natural 250 ms cadence; the source
+               mp4s play their idle loop too slowly at the original speed. */
+            const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 125) % fc : 0;
+            const idleFrame = getSnowmanFrame(facing, frameIdx);
+            if (idleFrame) {
+              frameTex = idleFrame.tex;
+              mirror = idleFrame.mirror;
+            }
+          }
+          if (frameTex) {
+            if (spriteBody.texture !== frameTex) spriteBody.texture = frameTex;
             const baseScale = 64 / 128;
-            spriteBody.scale.x = baseScale * (frame.mirror ? -1 : 1);
+            spriteBody.scale.x = baseScale * (mirror ? -1 : 1);
             spriteBody.scale.y = baseScale;
             spriteBody.y = size;
             spriteBody.tint = 0xffffff;
