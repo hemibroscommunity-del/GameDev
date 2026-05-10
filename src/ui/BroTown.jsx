@@ -5516,10 +5516,12 @@ export var BroTown = function BroTown(_ref0) {
                 m._stuckArrows = [];
                 m._slashMarks = [];
                 m._burnMarks = [];
-                /* Clear slime death-anim state so the splat sprite +
-                   sound fire fresh on the NEXT death (the render-loop
-                   guard checks _slimeDeathStart == null). */
+                /* Clear slime + snowman death-anim state so the splat
+                   sprite / shatter sheet fire fresh on the NEXT death
+                   (render-loop guards check _slimeDeathStart == null
+                   and _snowmanDeathStart == null). */
                 m._slimeDeathStart = null;
+                m._snowmanDeathStart = null;
                 m.x = m.spawnX + (Math.random() - 0.5) * 60;
                 m.y = m.spawnY + (Math.random() - 0.5) * 60;
               }
