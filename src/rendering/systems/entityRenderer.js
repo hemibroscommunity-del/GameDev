@@ -8,7 +8,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
-import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount } from '../snowmanSprites.js';
+import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -395,10 +395,12 @@ export class EntityRenderer {
     const monsters = S.monsters || [];
     const activeIds = new Set();
     const SLIME_DEATH_MS = 100; /* matches Canvas 2D's _dDur — short fast dissolve */
+    const SNOWMAN_DEATH_MS = 500; /* user-requested 0.5 s shatter */
 
     for (const m of monsters) {
       const arch = m.archetype || m.type;
       const isFodder = arch === 'fodder';
+      const isSnowman = arch === 'snowman';
 
       /* Slime death animation — first observation of alive=false on a
          fodder slime starts the death timer + plays the splat SFX.
@@ -411,6 +413,13 @@ export class EntityRenderer {
             window.BT_AUDIO.play('slime-death', { vol: 0.425 });
           }
         } catch {}
+      }
+
+      /* Snowman death — separate timer so it doesn't share the slime's
+         100 ms window.  No SFX hook here; the global deathBoom in
+         gameLoop.js fires for every kill. */
+      if (!m.alive && isSnowman && m._snowmanDeathStart == null) {
+        m._snowmanDeathStart = now;
       }
 
       /* Dead-monster handling: render the death sprite for fodder
@@ -441,6 +450,33 @@ export class EntityRenderer {
             display._body.visible = false;
             /* Clear any leftover dynamic content (aggro arrow, status
                icons) so it doesn't linger on the death frame. */
+            if (display._dynGfx) {
+              display._dynGfx.clear();
+              display._dynKey = '';
+            }
+          }
+        }
+        const snowDeathT = m._snowmanDeathStart != null ? now - m._snowmanDeathStart : null;
+        const snowFc = snowmanDeathFrameCount();
+        if (isSnowman && snowDeathT != null && snowDeathT >= 0 && snowDeathT < SNOWMAN_DEATH_MS && snowFc > 0) {
+          activeIds.add(m.id);
+          const display = this.monsterDisplays.get(m.id);
+          if (display && display._spriteBody) {
+            const t = snowDeathT / SNOWMAN_DEATH_MS;
+            const frameIdx = Math.max(0, Math.min(snowFc - 1, Math.floor(t * snowFc)));
+            const tex = getSnowmanDeathFrame(frameIdx);
+            const sb = display._spriteBody;
+            if (tex && sb.texture !== tex) sb.texture = tex;
+            const baseScale = 64 / 128;
+            sb.scale.x = baseScale;
+            sb.scale.y = baseScale;
+            sb.y = display._size;
+            sb.tint = 0xffffff;
+            sb.visible = true;
+            display.x = m.x;
+            display.y = m.y;
+            display.visible = true;
+            display._body.visible = false;
             if (display._dynGfx) {
               display._dynGfx.clear();
               display._dynKey = '';
