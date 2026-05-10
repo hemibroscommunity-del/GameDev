@@ -7,6 +7,7 @@ import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
+import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -1062,6 +1063,24 @@ export class EffectsRenderer {
         l._pixiSprite.y = l.y + bob;
         l._pixiSprite.alpha = alpha;
         l._pixiSprite.scale.set(32 / (l._pixiSprite.texture.width || 32));
+        l._pixiSprite.visible = true;
+        continue;
+      }
+
+      const snowmanRemnantsTex = l.skull === 'snowman' ? getSnowmanRemnantsTex() : null;
+      if (snowmanRemnantsTex) {
+        /* Snowman death-scene sprite (pooled per loot).  Larger than the
+           slime splat — the art is a full broken-snowman scene. */
+        if (!l._pixiSprite || l._pixiSprite.destroyed) {
+          const sp = new Sprite(snowmanRemnantsTex);
+          sp.anchor.set(0.5, 0.5);
+          this.lootLayer.addChild(sp);
+          l._pixiSprite = sp;
+        }
+        l._pixiSprite.x = l.x;
+        l._pixiSprite.y = l.y + bob;
+        l._pixiSprite.alpha = alpha;
+        l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
         continue;
       }

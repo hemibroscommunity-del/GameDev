@@ -39,6 +39,10 @@ const DIR_MAP = {
 };
 
 const SHEETS = {};   // sourceDir -> { frames: Texture[] }
+/* Single-frame death-scene sprite — what's left on the ground after a
+   snowman is killed.  Held as a bare Texture, not a sheet, because
+   it never animates. */
+let remnantsTex = null;
 let loadPromise = null;
 
 function dirShort(dir) {
@@ -63,10 +67,24 @@ async function loadOne(dir) {
   }
 }
 
+async function loadRemnants() {
+  try {
+    const tex = await Assets.load(`/sprites/monsters/snowman-remnants.png?v=${SPRITE_VERSION}`);
+    if (tex && tex.source) remnantsTex = tex;
+  } catch {
+    /* missing — caller falls back to procedural coin pile */
+  }
+}
+
 export function loadSnowmanSprites() {
   if (loadPromise) return loadPromise;
-  loadPromise = Promise.all(SOURCE_DIRS.map(loadOne));
+  loadPromise = Promise.all([...SOURCE_DIRS.map(loadOne), loadRemnants()]);
   return loadPromise;
+}
+
+/** Single-frame death-scene texture, or null until loaded. */
+export function getRemnantsTexture() {
+  return remnantsTex;
 }
 
 /* Resolve a facing + frame index to the texture + mirror flag.  Frame
