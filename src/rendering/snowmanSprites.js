@@ -1,21 +1,26 @@
 /* Snowman monster sprite loader for the Pixi renderer.
  *
- * 8-direction static sprites — one PNG per direction at 128×128 with
- * alpha.  5 source PNGs (south, southwest, east, north, northeast);
- * the remaining 3 (west, northwest, southeast) are mirrors rendered by
- * flipping scale.x at draw time.  Same convention as playerSprites.
+ * 8-direction animated idle loops.  5 source PNGs (south, southwest,
+ * east, north, northeast) at /sprites/monsters/snowman/snowman-{s|sw|
+ * e|n|ne}.png.  Each is a horizontal strip of 128×128 frames; frame
+ * count is auto-detected from the loaded texture width so we can swap
+ * art with different counts without touching this file.  The
+ * remaining 3 facings (west, northwest, southeast) reuse the
+ * corresponding source texture rendered with scale.x = -baseScale.
  *
- * Lookup: getFrame('south') -> { tex, mirror }.  Returns null until
- * the file resolves; entityRenderer falls back to the procedural
- * archetype circle while the load is in flight.
+ * Lookup: getFrame('south', frameIdx) -> { tex, mirror }.  Returns
+ * null until the source PNG resolves; entityRenderer falls back to
+ * the procedural archetype circle while the load is in flight.
  */
 
-import { Assets } from 'pixi.js';
+import { Assets, Rectangle, Texture } from 'pixi.js';
+
+const FRAME_W = 128;
+const FRAME_H = 128;
 
 const SOURCE_DIRS = ['south', 'southwest', 'east', 'north', 'northeast'];
 
-/* Map every 8-cardinal facing to a (sourceDir, mirror) pair.  Mirror
-   directions reuse the source texture with scale.x = -baseScale. */
+/* Map every 8-cardinal facing to a (sourceDir, mirror) pair. */
 const DIR_MAP = {
   south:     { src: 'south',     mirror: false },
   southwest: { src: 'southwest', mirror: false },
@@ -27,21 +32,29 @@ const DIR_MAP = {
   southeast: { src: 'southwest', mirror: true  },
 };
 
-const TEXTURES = {};
+const SHEETS = {};   // sourceDir -> { frames: Texture[] }
 let loadPromise = null;
+
+function dirShort(dir) {
+  return ({ south: 's', southwest: 'sw', east: 'e', north: 'n', northeast: 'ne' })[dir];
+}
 
 async function loadOne(dir) {
   try {
     const tex = await Assets.load(`/sprites/monsters/snowman/snowman-${dirShort(dir)}.png`);
-    if (tex) TEXTURES[dir] = tex;
+    if (!tex || !tex.source) return;
+    const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
+    const frames = [];
+    for (let i = 0; i < count; i++) {
+      frames.push(new Texture({
+        source: tex.source,
+        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
+      }));
+    }
+    SHEETS[dir] = { frames };
   } catch {
-    /* missing sheet — caller falls back to procedural circle */
+    /* missing strip — caller falls back to procedural circle */
   }
-}
-
-/* Match the on-disk filename convention (snowman-s.png, snowman-sw.png, ...). */
-function dirShort(dir) {
-  return ({ south: 's', southwest: 'sw', east: 'e', north: 'n', northeast: 'ne' })[dir];
 }
 
 export function loadSnowmanSprites() {
@@ -50,16 +63,24 @@ export function loadSnowmanSprites() {
   return loadPromise;
 }
 
-/* Resolve a facing string to the texture + mirror flag for that
-   direction.  Returns null if the corresponding source sheet hasn't
-   loaded yet. */
-export function getFrame(facing) {
+/* Resolve a facing + frame index to the texture + mirror flag.  Frame
+   index wraps modulo the strip's frame count, so callers can pass an
+   ever-incrementing counter without bounds checking. */
+export function getFrame(facing, frameIdx) {
   const m = DIR_MAP[facing] || DIR_MAP.south;
-  const tex = TEXTURES[m.src];
-  if (!tex) return null;
-  return { tex, mirror: m.mirror };
+  const sheet = SHEETS[m.src];
+  if (!sheet || sheet.frames.length === 0) return null;
+  const len = sheet.frames.length;
+  const idx = ((frameIdx % len) + len) % len;
+  return { tex: sheet.frames[idx], mirror: m.mirror };
+}
+
+export function frameCount(facing) {
+  const m = DIR_MAP[facing] || DIR_MAP.south;
+  const sheet = SHEETS[m.src];
+  return (sheet && sheet.frames.length) || 0;
 }
 
 export function hasFrames() {
-  return Object.keys(TEXTURES).length > 0;
+  return Object.keys(SHEETS).length > 0;
 }

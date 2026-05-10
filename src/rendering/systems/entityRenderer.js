@@ -8,7 +8,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
-import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames } from '../snowmanSprites.js';
+import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount } from '../snowmanSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -526,10 +526,12 @@ export class EntityRenderer {
         }
       }
 
-      /* Snowman sprite — 8-direction static stills.  Facing is derived
-         from velocity (last delta x/y), falling back to "south" when
-         standing still.  Mirror sources cover W / NW / SE via a
-         negative scale.x on draw. */
+      /* Snowman sprite — 8-direction animated idle loop.  Facing is
+         derived from per-frame velocity (last delta x/y), falling back
+         to "south" when standing still.  W / NW / SE reuse the
+         opposite-source texture with scale.x negated.  Frames advance
+         at 250 ms/frame with a per-spawn phase offset so a group
+         doesn't pulse in lockstep. */
       if (display._isSnowman && display._spriteBody) {
         const spriteBody = display._spriteBody;
         if (hasSnowmanFrames()) {
@@ -543,7 +545,10 @@ export class EntityRenderer {
             facing = SECTORS[((sector % 8) + 8) % 8];
             display._lastFacing = facing;
           }
-          const frame = getSnowmanFrame(facing);
+          const fc = snowmanFrameCount(facing);
+          const phaseOff = ((m.spawnX || 0) | 0) % 1000;
+          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 250) % fc : 0;
+          const frame = getSnowmanFrame(facing, frameIdx);
           if (frame) {
             if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;
             const baseScale = 64 / 128;
