@@ -21,7 +21,9 @@ Run from project root:  python tools/process_snowman_strips.py
 import os
 import subprocess
 import tempfile
+import numpy as np
 from PIL import Image
+from scipy import ndimage
 from rembg import remove, new_session
 
 DIRS = ['s', 'sw', 'e', 'n', 'ne']
@@ -38,9 +40,25 @@ SESSION = new_session('isnet-general-use')
 
 
 def remove_bg(img):
-    """Run the segmenter and return an RGBA Pillow image."""
-    out = remove(img, session=SESSION)
-    return out.convert('RGBA')
+    """Run the segmenter, then fill interior holes in the alpha mask.
+
+    rembg sometimes punches holes inside large uniform regions of the
+    snowman body where its confidence drops.  scipy.ndimage's
+    binary_fill_holes treats any transparent pixel NOT reachable from
+    the image border as an interior hole and fills it back in.  We
+    apply the resulting mask to the original (pre-segmentation) RGB so
+    those filled-in pixels recover their original snowman color
+    instead of being flat black."""
+    cut = remove(img, session=SESSION).convert('RGBA')
+    arr = np.array(cut)
+    rgb = np.array(img.convert('RGB'))
+    alpha = arr[:, :, 3]
+    solid = alpha > 128
+    filled = ndimage.binary_fill_holes(solid)
+    new_alpha = np.where(filled, np.maximum(alpha, 255), alpha).astype(np.uint8)
+    out_rgb = np.where(filled[..., None] & (alpha[..., None] < 128), rgb, arr[:, :, :3])
+    out = np.dstack([out_rgb, new_alpha])
+    return Image.fromarray(out, mode='RGBA')
 
 
 def fit_square(img, size):
