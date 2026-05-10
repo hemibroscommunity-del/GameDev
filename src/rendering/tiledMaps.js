@@ -53,11 +53,9 @@ export const IMAGE_ZONE_MAPS = {
  *  and `autoplay` — without all three, iOS Safari blocks the loop
  *  until a user gesture. */
 export const VIDEO_ZONE_MAPS = {
-  /* town_v8.mp4 = re-encoded at 1024x1024 native (was 960x960) so
-     it matches world bounds and doesn't get scaled per frame.  CRF
-     30, animation tune, audio stripped, faststart on.  Bump suffix
-     on next change to bust caches. */
-  town: '/maps/town_v8.mp4',
+  /* Town is intentionally absent — the looping town_v8.mp4 overlay
+     read as "muddy" against the painted art.  Town now uses the
+     IMAGE_ZONE_MAPS still image (town_v8.jpg) as its only map. */
 };
 
 /** Per-zone walkability JSON.  Each url returns

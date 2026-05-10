@@ -547,10 +547,7 @@ export class EntityRenderer {
           }
           const fc = snowmanFrameCount(facing);
           const phaseOff = ((m.spawnX || 0) | 0) % 1000;
-          /* Town freezes the loop on frame 0 — animation reads as
-             "muddy" against the dense town tile palette. */
-          const inTown = S.currentZone === 'town';
-          const frameIdx = inTown ? 0 : (fc > 0 ? Math.floor((now + phaseOff) / 250) % fc : 0);
+          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 250) % fc : 0;
           const frame = getSnowmanFrame(facing, frameIdx);
           if (frame) {
             if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;
