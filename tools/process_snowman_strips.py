@@ -1,16 +1,18 @@
 """Build the snowman idle-loop sprite strips from the source MP4s.
 
-Why this script exists: ffmpeg's `colorkey` filter is global — it
-turns *any* pixel matching the background color transparent, which
-ate the black hat and bright snow highlights of the painted snowman
-art.  We instead flood-fill from the image border so only
-border-connected bg pixels become transparent; interior pixels that
-happen to match the bg stay opaque.
+Why this script: ffmpeg's `colorkey` and a flood-fill from the border
+both fail when the snowman has dark elements (hat, wood arms) on a
+black background — the hat *is* pure black, identical to the bg, so
+no color-similarity check can tell them apart.  We delegate
+foreground detection to rembg (U²-Net), which uses a trained neural
+network to identify the snowman silhouette regardless of color.
 
 Pipeline per direction:
-  1. ffmpeg samples the MP4 at 4 fps for 6 s -> 24 frames at 128x128
-  2. Pillow flood-fills each frame's bg from the border
-  3. Pillow combines the 24 RGBA frames into one horizontal strip
+  1. ffmpeg samples each MP4 at 4 fps for 6 s -> 24 PNG frames at the
+     source resolution (preserves detail for the segmenter)
+  2. rembg returns RGBA frames with the background as alpha=0
+  3. Pillow downscales to 128x128 (preserving aspect, padded square)
+     and tiles all 24 into a 3072x128 horizontal strip
   4. Strip lands at public/sprites/monsters/snowman/snowman-{dir}.png
 
 Run from project root:  python tools/process_snowman_strips.py
@@ -18,18 +20,11 @@ Run from project root:  python tools/process_snowman_strips.py
 
 import os
 import subprocess
-import sys
 import tempfile
-from collections import deque
 from PIL import Image
+from rembg import remove, new_session
 
-DIRS_BG = {
-    's': 'white',
-    'sw': 'black',
-    'e': 'black',
-    'n': 'white',
-    'ne': 'black',
-}
+DIRS = ['s', 'sw', 'e', 'n', 'ne']
 
 SRC_DIR = 'assets/monster animations/snowman'
 DEST_DIR = 'public/sprites/monsters/snowman'
@@ -37,95 +32,33 @@ FPS = 4
 DURATION = 6
 FRAME_SIZE = 128
 NUM_FRAMES = FPS * DURATION  # 24
-RGB_TOLERANCE = 3   # per-channel ± window for "matches bg"
+
+# u2net is the default; isnet-general-use is sharper on solid silhouettes.
+SESSION = new_session('isnet-general-use')
 
 
-def floodfill_bg_to_alpha(img, bg_rgb, tol):
-    """Make every bg-colored pixel reachable from the border transparent.
-       Two passes:
-         1. Border-seeded BFS marks the bg-connected region.
-         2. Erode the bg mask by 1 pixel — any keyed pixel adjacent to
-            a kept pixel is un-keyed.  This restores the anti-aliased
-            silhouette fringe (which is slightly off-bg and would
-            otherwise leave a halo when the keyer chews through).
-       Interior bg-colored pixels (a hat shadow surrounded by the hat,
-       a snow highlight surrounded by snow) stay opaque because the
-       flood never reaches them. """
-    w, h = img.size
-    px = img.load()
-    bgr, bgg, bgb = bg_rgb
-    bg_mask = bytearray(w * h)   # 1 = will become transparent
-    q = deque()
-
-    def is_bg(x, y):
-        r, g, b, _a = px[x, y]
-        return (abs(r - bgr) <= tol
-                and abs(g - bgg) <= tol
-                and abs(b - bgb) <= tol)
-
-    # Seed every border pixel that matches bg
-    for x in range(w):
-        for y in (0, h - 1):
-            if not bg_mask[y * w + x] and is_bg(x, y):
-                bg_mask[y * w + x] = 1
-                q.append((x, y))
-    for y in range(1, h - 1):
-        for x in (0, w - 1):
-            if not bg_mask[y * w + x] and is_bg(x, y):
-                bg_mask[y * w + x] = 1
-                q.append((x, y))
-
-    while q:
-        x, y = q.popleft()
-        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < w and 0 <= ny < h and not bg_mask[ny * w + nx]:
-                if is_bg(nx, ny):
-                    bg_mask[ny * w + nx] = 1
-                    q.append((nx, ny))
-
-    # Erode the bg mask: any "bg" pixel that has at least one
-    # foreground 4-neighbor is restored to foreground.  This puts the
-    # anti-aliased edge pixels back where they belong.
-    erode = bytearray(w * h)
-    for y in range(h):
-        for x in range(w):
-            i = y * w + x
-            if bg_mask[i]:
-                has_fg_neighbor = False
-                if x > 0 and not bg_mask[i - 1]: has_fg_neighbor = True
-                elif x < w - 1 and not bg_mask[i + 1]: has_fg_neighbor = True
-                elif y > 0 and not bg_mask[i - w]: has_fg_neighbor = True
-                elif y < h - 1 and not bg_mask[i + w]: has_fg_neighbor = True
-                if has_fg_neighbor:
-                    erode[i] = 1   # mark "do not key"
-
-    # Apply: flip alpha of every bg_mask=1 pixel that wasn't restored.
-    for y in range(h):
-        for x in range(w):
-            i = y * w + x
-            if bg_mask[i] and not erode[i]:
-                r, g, b, _a = px[x, y]
-                px[x, y] = (r, g, b, 0)
-
-    return img
+def remove_bg(img):
+    """Run the segmenter and return an RGBA Pillow image."""
+    out = remove(img, session=SESSION)
+    return out.convert('RGBA')
 
 
-def process_direction(dir_short, bg_kind):
+def fit_square(img, size):
+    """Resize preserving aspect, then center-pad to a transparent square."""
+    img.thumbnail((size, size), Image.LANCZOS)
+    out = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    out.paste(img, ((size - img.width) // 2, (size - img.height) // 2), img)
+    return out
+
+
+def process_direction(dir_short):
     src = os.path.join(SRC_DIR, f'snowman-idle-{dir_short}.mp4')
     dst = os.path.join(DEST_DIR, f'snowman-{dir_short}.png')
-    bg_rgb = (255, 255, 255) if bg_kind == 'white' else (0, 0, 0)
-    pad_color = 'white' if bg_kind == 'white' else 'black'
 
     with tempfile.TemporaryDirectory() as tmp:
-        # Extract scaled frames; pad in matching bg color so the floodfill
-        # cleanly removes the padding in the same pass.
         cmd = [
             'ffmpeg', '-y', '-t', str(DURATION), '-i', src,
-            '-vf',
-            (f'fps={FPS},'
-             f'scale={FRAME_SIZE}:{FRAME_SIZE}:force_original_aspect_ratio=decrease,'
-             f'pad={FRAME_SIZE}:{FRAME_SIZE}:(ow-iw)/2:(oh-ih)/2:color={pad_color}'),
+            '-vf', f'fps={FPS}',
             '-loglevel', 'error',
             os.path.join(tmp, 'frame_%04d.png'),
         ]
@@ -136,18 +69,20 @@ def process_direction(dir_short, bg_kind):
             frame_path = os.path.join(tmp, f'frame_{i + 1:04d}.png')
             if not os.path.exists(frame_path):
                 continue
-            img = Image.open(frame_path).convert('RGBA')
-            img = floodfill_bg_to_alpha(img, bg_rgb, RGB_TOLERANCE)
-            strip.paste(img, (FRAME_SIZE * i, 0))
+            img = Image.open(frame_path).convert('RGB')
+            cut = remove_bg(img)
+            small = fit_square(cut, FRAME_SIZE)
+            strip.paste(small, (FRAME_SIZE * i, 0))
+            print(f'  {dir_short} frame {i + 1}/{NUM_FRAMES}', end='\r')
 
         os.makedirs(DEST_DIR, exist_ok=True)
         strip.save(dst)
-        print(f'wrote {dst}  ({strip.size[0]}x{strip.size[1]} rgba)')
+        print(f'\nwrote {dst}  ({strip.size[0]}x{strip.size[1]} rgba)')
 
 
 def main():
-    for d, bg in DIRS_BG.items():
-        process_direction(d, bg)
+    for d in DIRS:
+        process_direction(d)
 
 
 if __name__ == '__main__':
