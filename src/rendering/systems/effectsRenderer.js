@@ -1070,7 +1070,9 @@ export class EffectsRenderer {
       const snowmanRemnantsTex = l.skull === 'snowman' ? getSnowmanRemnantsTex() : null;
       if (snowmanRemnantsTex) {
         /* Snowman death-scene sprite (pooled per loot).  Larger than the
-           slime splat — the art is a full broken-snowman scene. */
+           slime splat — the art is a full broken-snowman scene.  No
+           bob and no expiry-fade: the art reads as a settled wreck on
+           the ground, not a hovering pickup. */
         if (!l._pixiSprite || l._pixiSprite.destroyed) {
           const sp = new Sprite(snowmanRemnantsTex);
           sp.anchor.set(0.5, 0.5);
@@ -1078,8 +1080,8 @@ export class EffectsRenderer {
           l._pixiSprite = sp;
         }
         l._pixiSprite.x = l.x;
-        l._pixiSprite.y = l.y + bob;
-        l._pixiSprite.alpha = alpha;
+        l._pixiSprite.y = l.y;
+        l._pixiSprite.alpha = 1;
         l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
         continue;

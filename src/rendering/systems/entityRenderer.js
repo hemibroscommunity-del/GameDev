@@ -547,7 +547,9 @@ export class EntityRenderer {
           }
           const fc = snowmanFrameCount(facing);
           const phaseOff = ((m.spawnX || 0) | 0) % 1000;
-          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 250) % fc : 0;
+          /* 125 ms/frame = ~2x the natural 250 ms cadence; the source
+             mp4s play their idle loop too slowly at the original speed. */
+          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 125) % fc : 0;
           const frame = getSnowmanFrame(facing, frameIdx);
           if (frame) {
             if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;

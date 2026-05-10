@@ -22,7 +22,7 @@ const FRAME_H = 128;
    edge cache) hold the previous PNG by URL, so swapping bytes alone
    isn't enough — the URL has to change.  Append as ?v=… so the file
    on disk keeps its pretty name. */
-const SPRITE_VERSION = '2.1.8';
+const SPRITE_VERSION = '2.1.11';
 
 const SOURCE_DIRS = ['south', 'southwest', 'east', 'north', 'northeast'];
 
