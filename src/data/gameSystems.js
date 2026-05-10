@@ -4400,6 +4400,13 @@ export const ARCHETYPES = {
     spdMult: 1.0,
     emoji: '💀',
     color: '#8E44AD'
+  },
+  snowman: {
+    hpMult: 1.3,
+    dmgMult: 1.1,
+    spdMult: 0.8,
+    emoji: '⛄',
+    color: '#b0d8f0'
   }
 };
 

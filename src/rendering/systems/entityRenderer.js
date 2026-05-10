@@ -8,6 +8,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
+import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames } from '../snowmanSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -116,7 +117,7 @@ const HP_BAR_H = 3;
 function getMonsterSize(archetype) {
   const sizes = {
     fodder: 8, swarm: 6, brute: 14, sentinel: 12,
-    volatile: 9, stalker: 10, hexer: 10,
+    volatile: 9, stalker: 10, hexer: 10, snowman: 13,
   };
   return sizes[archetype] || 8;
 }
@@ -125,7 +126,7 @@ function getMonsterColor(archetype) {
   const colors = {
     fodder: 0x3dd497, swarm: 0xf5c542, brute: 0xff5e6c,
     sentinel: 0x5b52ff, volatile: 0xea580c, stalker: 0x8890b8,
-    hexer: 0xa78bfa,
+    hexer: 0xa78bfa, snowman: 0xb0d8f0,
   };
   return colors[archetype] || 0x3dd497;
 }
@@ -161,7 +162,8 @@ function createMonsterDisplay(monster) {
      bottom; that keeps shadows / damage numbers at the right place
      when the sprite is taller than the circle. */
   const isFodder = (monster.archetype || monster.type) === 'fodder';
-  const spriteBody = isFodder ? new Sprite() : null;
+  const isSnowman = (monster.archetype || monster.type) === 'snowman';
+  const spriteBody = (isFodder || isSnowman) ? new Sprite() : null;
   if (spriteBody) {
     spriteBody.anchor.set(0.5, 1.0);
     spriteBody.visible = false;
@@ -190,6 +192,7 @@ function createMonsterDisplay(monster) {
   container._body = body;
   container._spriteBody = spriteBody;
   container._isFodder = isFodder;
+  container._isSnowman = isSnowman;
   container._hpFill = hpFill;
   container._hpBg = hpBg;
   container._lvlText = lvlText;
@@ -521,6 +524,45 @@ export class EntityRenderer {
           spriteBody.visible = false;
           display._body.visible = true;
         }
+      }
+
+      /* Snowman sprite — 8-direction static stills.  Facing is derived
+         from velocity (last delta x/y), falling back to "south" when
+         standing still.  Mirror sources cover W / NW / SE via a
+         negative scale.x on draw. */
+      if (display._isSnowman && display._spriteBody) {
+        const spriteBody = display._spriteBody;
+        if (hasSnowmanFrames()) {
+          const dx = m.x - (display._lastX != null ? display._lastX : m.x);
+          const dy = m.y - (display._lastY != null ? display._lastY : m.y);
+          const moving = dx * dx + dy * dy > 0.04;
+          let facing = display._lastFacing || 'south';
+          if (moving) {
+            const ang = Math.atan2(dy, dx);
+            const sector = Math.round(ang / (Math.PI / 4));
+            facing = SECTORS[((sector % 8) + 8) % 8];
+            display._lastFacing = facing;
+          }
+          const frame = getSnowmanFrame(facing);
+          if (frame) {
+            if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;
+            const baseScale = 64 / 128;
+            spriteBody.scale.x = baseScale * (frame.mirror ? -1 : 1);
+            spriteBody.scale.y = baseScale;
+            spriteBody.y = size;
+            spriteBody.tint = 0xffffff;
+            spriteBody.visible = true;
+            display._body.visible = false;
+          } else {
+            spriteBody.visible = false;
+            display._body.visible = true;
+          }
+        } else {
+          spriteBody.visible = false;
+          display._body.visible = true;
+        }
+        display._lastX = m.x;
+        display._lastY = m.y;
       }
 
       // Emoji — once per monster.  Hidden when the slime sprite is

@@ -36,9 +36,9 @@ export const ZONES = {
     id: 'frost', name: 'Frozen Shore', w: 32, h: 32,
     element: 'frost', secondary: 'storm', level: [1, 10], music: 'frost', safe: false,
     palette: { ground: '#5a6a7a', path: '#8a9aaa', accent: '#3a5a8a' },
-    spawns: [{ arch: 'brute', count: 4 }, { arch: 'sentinel', count: 3 }, { arch: 'hexer', count: 3 }],
+    spawns: [{ arch: 'snowman', count: 4 }, { arch: 'brute', count: 3 }, { arch: 'sentinel', count: 2 }, { arch: 'hexer', count: 3 }],
     atmosphere: { tint: 'rgba(140,180,220,0.06)', vignette: 'rgba(60,100,160,0.10)' },
-    enemyEmoji: { fodder: '❄️', brute: '🐻‍❄️', swarm: '🦅', volatile: '🧊', stalker: '🐺', hexer: '🌀', sentinel: '🏔️' }
+    enemyEmoji: { fodder: '❄️', brute: '🐻‍❄️', swarm: '🦅', volatile: '🧊', stalker: '🐺', hexer: '🌀', sentinel: '🏔️', snowman: '⛄' }
   },
   thunder: {
     id: 'thunder', name: 'Thunder Peaks', w: 32, h: 32,
