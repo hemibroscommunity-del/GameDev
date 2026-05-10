@@ -18,6 +18,12 @@ import { Assets, Rectangle, Texture } from 'pixi.js';
 const FRAME_W = 128;
 const FRAME_H = 128;
 
+/* Bump on every sprite-art change.  Browsers (and Cloudflare Pages'
+   edge cache) hold the previous PNG by URL, so swapping bytes alone
+   isn't enough — the URL has to change.  Append as ?v=… so the file
+   on disk keeps its pretty name. */
+const SPRITE_VERSION = '2.1.8';
+
 const SOURCE_DIRS = ['south', 'southwest', 'east', 'north', 'northeast'];
 
 /* Map every 8-cardinal facing to a (sourceDir, mirror) pair. */
@@ -41,7 +47,7 @@ function dirShort(dir) {
 
 async function loadOne(dir) {
   try {
-    const tex = await Assets.load(`/sprites/monsters/snowman/snowman-${dirShort(dir)}.png`);
+    const tex = await Assets.load(`/sprites/monsters/snowman/snowman-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const frames = [];
