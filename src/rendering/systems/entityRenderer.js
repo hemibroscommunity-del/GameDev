@@ -115,11 +115,16 @@ const HP_BAR_W = 24;
 const HP_BAR_H = 3;
 
 function getMonsterSize(archetype) {
-  const sizes = {
-    fodder: 8, swarm: 6, brute: 14, sentinel: 12,
-    volatile: 9, stalker: 10, hexer: 10, snowman: 13,
-  };
-  return sizes[archetype] || 8;
+  /* Slime/fodder stays small (renders as a 50-px sprite, the 8-px
+     circle is the procedural fallback / hitbox anchor).  Snowman
+     stays at 13 because its sprite anchor (spriteBody.y = size)
+     pins the 64-px sprite's feet to the circle's bottom edge.
+     Every other archetype is a bare procedural circle, so bump the
+     radius to 32 (64-px diameter) per the user's "64x64 for non-
+     slime monsters" call-out. */
+  if (archetype === 'fodder') return 8;
+  if (archetype === 'snowman') return 13;
+  return 32;
 }
 
 function getMonsterColor(archetype) {
@@ -1650,8 +1655,11 @@ export class EntityRenderer {
       display.alpha = 1;
     }
 
-    // Stun
-    if (S._stunUntil && now < S._stunUntil) {
+    // Stun pip — reads the gameplay stun field (S._playerStunUntil),
+    // which is what hit-react + brute-charge set.  Earlier code read
+    // S._stunUntil here, which nothing on the player ever populates,
+    // so the pip never showed.
+    if (S._playerStunUntil && now < S._playerStunUntil) {
       body.circle(0, -bh / 2 - 14 + bobY, 6);
       body.fill({ color: 0x000000, alpha: 0.5 });
     }

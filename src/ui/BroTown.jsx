@@ -5829,6 +5829,8 @@ export var BroTown = function BroTown(_ref0) {
                       } else {
                         try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
+                        S._hitFlash = Date.now();
+                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + 250);
                       }
                     } else if (distToP < slamRange && dodged) {
                       S.dmgNumbers.push({
@@ -5893,6 +5895,8 @@ export var BroTown = function BroTown(_ref0) {
                       } else {
                         try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
+                        S._hitFlash = Date.now();
+                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + 250);
                       }
                     }
                   }

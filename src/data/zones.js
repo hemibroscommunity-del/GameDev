@@ -14,7 +14,7 @@ export const ZONES = {
     id: 'meadow', name: 'Starting Meadow', w: 32, h: 32,
     element: null, level: [1, 10], music: 'meadow', safe: false,
     palette: { ground: '#3d6b2e', path: '#7a6a45', accent: '#5a9a40' },
-    spawns: [{ arch: 'fodder', count: 10 }, { arch: 'swarm', count: 4 }]
+    spawns: [{ arch: 'fodder', count: 10 }]
   },
   ember: {
     id: 'ember', name: 'Ember Fields', w: 32, h: 32,
@@ -36,7 +36,7 @@ export const ZONES = {
     id: 'frost', name: 'Frozen Shore', w: 32, h: 32,
     element: 'frost', secondary: 'storm', level: [1, 10], music: 'frost', safe: false,
     palette: { ground: '#5a6a7a', path: '#8a9aaa', accent: '#3a5a8a' },
-    spawns: [{ arch: 'snowman', count: 4 }, { arch: 'brute', count: 3 }, { arch: 'sentinel', count: 2 }, { arch: 'hexer', count: 3 }],
+    spawns: [{ arch: 'snowman', count: 4 }],
     atmosphere: { tint: 'rgba(140,180,220,0.06)', vignette: 'rgba(60,100,160,0.10)' },
     enemyEmoji: { fodder: '❄️', brute: '🐻‍❄️', swarm: '🦅', volatile: '🧊', stalker: '🐺', hexer: '🌀', sentinel: '🏔️', snowman: '⛄' }
   },
