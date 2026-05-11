@@ -8834,6 +8834,12 @@ export var BroTown = function BroTown(_ref0) {
            throws here we log + flag and let the next frame retry,
            instead of trying to re-init a defunct Canvas 2D pipeline.
            ══════════════════════════════════════════════════════════ */
+        /* Diagnostic: measure how much of the frame budget the Pixi
+           render itself takes.  Enables via `window.__btRenderProf = 1`
+           in the console.  When on, every slow frame (>20 ms total)
+           logs simT vs renderT so we can tell if the simulation or
+           the renderer is the bottleneck. */
+        var _simEndT = (window.__btRenderProf ? performance.now() : 0);
         if (pixiRef.current) {
           var W = canvas.width / (window.devicePixelRatio || 1);
           var H = canvas.height / (window.devicePixelRatio || 1);
@@ -8844,6 +8850,24 @@ export var BroTown = function BroTown(_ref0) {
               window.__pixiUpdateErrLogged = true;
               console.error('[pixi-render] update threw', pixiErr && pixiErr.message, pixiErr && pixiErr.stack);
             }
+          }
+        }
+        if (window.__btRenderProf) {
+          var _renderEndT = performance.now();
+          var _simMs = _simEndT - _perfNow;
+          var _renderMs = _renderEndT - _simEndT;
+          var _totalMs = _renderEndT - _perfNow;
+          if (_totalMs > 20) {
+            /* eslint-disable no-console */
+            console.warn('[bt-frame-split]', {
+              totalMs: +_totalMs.toFixed(1),
+              simMs: +_simMs.toFixed(1),
+              renderMs: +_renderMs.toFixed(1),
+              monsters: (S.monsters && S.monsters.length) || 0,
+              hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
+              zone: S.currentZone,
+            });
+            /* eslint-enable no-console */
           }
         }
       } catch (gameLoopErr) {
