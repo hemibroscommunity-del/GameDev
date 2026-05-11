@@ -10150,9 +10150,9 @@ export var BroTown = function BroTown(_ref0) {
        Aim comes from S._aimAngle (set by the right joystick), so the
        player can line up the shot with the right stick and fire it by
        tapping the left stick twice.  The flash overlay (lFlashRef)
-       pulses white between the two taps so the player can see the
-       window is open; it clears on the second tap or when the window
-       expires (DOUBLE_TAP_MS). */
+       pulses white between the two taps; the knob itself also grows
+       instantly on the first tap and slow-shrinks back to its static
+       24 px size when the window closes (timeout or second tap). */
     var _lLastTap = 0;
     var _lFlashTimer = null;
     var DOUBLE_TAP_MS = 350;
@@ -10162,27 +10162,46 @@ export var BroTown = function BroTown(_ref0) {
       if (on) el.classList.add('bt-joy-flash-active');
       else el.classList.remove('bt-joy-flash-active');
     };
+    var growKnobOnTap = function growKnobOnTap() {
+      var k = knobRef.current;
+      if (!k) return;
+      /* Snap to grown size — no transition on grow. */
+      k.style.transition = 'width 0s, height 0s';
+      k.style.width = '40px';
+      k.style.height = '40px';
+    };
+    var shrinkKnobToStatic = function shrinkKnobToStatic() {
+      var k = knobRef.current;
+      if (!k) return;
+      /* Smooth shrink back to the CSS-defined size (24 px). */
+      k.style.transition = 'width 0.5s ease-out, height 0.5s ease-out';
+      k.style.width = '';
+      k.style.height = '';
+    };
     var lS = function lS(e) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
       var now = Date.now();
       if (_lLastTap && now - _lLastTap < DOUBLE_TAP_MS) {
-        /* Second tap inside window → fire special, clear flash. */
+        /* Second tap inside window → fire special, close window. */
         _lLastTap = 0;
         if (_lFlashTimer) {
           clearTimeout(_lFlashTimer);
           _lFlashTimer = null;
         }
         setLFlash(false);
+        shrinkKnobToStatic();
         doSpecialAttack();
       } else {
-        /* First tap → start window + flash. */
+        /* First tap → arm window, start flash, grow knob. */
         _lLastTap = now;
         setLFlash(true);
+        growKnobOnTap();
         if (_lFlashTimer) clearTimeout(_lFlashTimer);
         _lFlashTimer = setTimeout(function () {
           setLFlash(false);
+          shrinkKnobToStatic();
           _lLastTap = 0;
           _lFlashTimer = null;
         }, DOUBLE_TAP_MS);
@@ -29118,27 +29137,26 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 0,
     }
   }), /*#__PURE__*/React.createElement("div", {
-    /* White flash ring — visible during the double-tap window after the
-       first tap; class is toggled in lS().  Pulses via @keyframes
-       bt-joy-flash in game.css. */
-    ref: lFlashRef,
-    style: {
-      position: 'absolute',
-      inset: 0,
-      borderRadius: '50%',
-      border: '3px solid rgba(255,255,255,0.9)',
-      boxShadow: '0 0 12px rgba(255,255,255,0.7), inset 0 0 12px rgba(255,255,255,0.5)',
-      opacity: 0,
-      pointerEvents: 'none',
-      zIndex: 2,
-    }
-  }), /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
     ref: knobRef,
     style: {
       zIndex: 3
     }
-  }))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    /* White flash overlay nested inside the knob — moves with the
+       knob's transform.  Visible during the double-tap window after the
+       first tap; class bt-joy-flash-active is toggled by lS(). */
+    ref: lFlashRef,
+    style: {
+      position: 'absolute',
+      inset: 0,
+      borderRadius: '50%',
+      background: 'rgba(255,255,255,0.95)',
+      boxShadow: '0 0 10px rgba(255,255,255,0.75)',
+      opacity: 0,
+      pointerEvents: 'none',
+    }
+  })))), /*#__PURE__*/React.createElement("div", {
     className: "bt-desktop-hide",
     style: {
       position: 'fixed',
