@@ -155,16 +155,15 @@ input{font-family:inherit}
 .bt-joystick-zone{z-index:30;display:block;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
 
-/* Translucent blue joystick — outer ring + concentric inner ring,
-   8-direction arrows on the left, beveled centre on both sides. */
+/* Joystick base — outer disc hidden (transparent); only the centre knob
+   ("inner ring") + the 8-direction arrows on the left joystick remain
+   visible.  Touch zone keeps its size/shape via width/height/border-radius. */
 .bt-joystick-base{
   width:120px;height:120px;position:relative;touch-action:none;
   border-radius:50%;
-  background:rgba(91,165,255,1);
-  border:2px solid rgba(91,165,255,1);
-  box-shadow:inset 0 0 0 14px rgba(91,165,255,1),
-             inset 0 0 0 16px rgba(91,165,255,1),
-             0 0 8px rgba(0,0,0,0.35);
+  background:transparent;
+  border:none;
+  box-shadow:none;
 }
 /* Left-joystick centre — beveled blue button matching the right joystick,
    but without an icon.  Hints "this is interactable". */

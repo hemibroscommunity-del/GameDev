@@ -29135,6 +29135,7 @@ export var BroTown = function BroTown(_ref0) {
     ref: rJoyRef,
     className: "bt-rjoy-base",
     style: {
+      // Outer disc hidden — only knob ("inner ring") + auto-attack glow remain.
       width: isLandscape ? 120 : 100,
       height: isLandscape ? 120 : 100,
       position: 'absolute',
@@ -29142,9 +29143,9 @@ export var BroTown = function BroTown(_ref0) {
       top: '50%',
       transform: 'translate(-50%,-50%)',
       borderRadius: '50%',
-      background: 'rgba(91,165,255,1)',
-      border: '2px solid ' + (autoAttack ? 'rgba(255,120,120,1)' : 'rgba(91,165,255,1)'),
-      boxShadow: 'inset 0 0 0 14px rgba(91,165,255,1), inset 0 0 0 16px rgba(91,165,255,1), 0 0 8px rgba(0,0,0,0.35)' + (autoAttack ? ', 0 0 12px rgba(255,80,80,0.45)' : ''),
+      background: 'transparent',
+      border: 'none',
+      boxShadow: autoAttack ? '0 0 12px rgba(255,80,80,0.45)' : 'none',
       touchAction: 'none',
       overflow: 'hidden'
     }
