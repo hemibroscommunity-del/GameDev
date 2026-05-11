@@ -39,6 +39,7 @@ const COOKED_HEAL_BY_KEY = {
 };
 import { cookingBus } from './mobile/cookingBus.js';
 import { eatBus } from './mobile/eatBus.js';
+import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
@@ -1296,6 +1297,18 @@ export var BroTown = function BroTown(_ref0) {
       return clearInterval(interval);
     };
   }, [showNameModal, showLogin]);
+  /* Weapon-swap bar (WeaponSwapBar.jsx) publishes the requested slot here;
+     mirror it into rpgState so the rKnob emoji + getActiveWeapon callers
+     pick up the change. weaponSwapBus already mutates window._gameState
+     directly so game-loop logic flips immediately on tap. */
+  useEffect(function () {
+    return weaponSwapBus.subscribe(function (slot) {
+      var S = stateRef.current;
+      if (!S || !S.rpg) return;
+      S.rpg.activeSlot = slot;
+      setRpgState(_objectSpread({}, S.rpg));
+    });
+  }, []);
   /* Load player sprite sheets once, on mount. Per-direction frame counts
      and cycle durations differ — east source video is ~1 s, north/south
      ~2 s. Storing intervalMs per sheet lets each direction animate at its
@@ -10164,8 +10177,6 @@ export var BroTown = function BroTown(_ref0) {
       ly: 0,
       lt: 0
     };
-    var _rLastTap = 0;
-    var WEAPON_CYCLE = ['melee', 'ranged', 'staff']; /* sword → bow → staff */
     var rS = function rS(e) {
       e.preventDefault();
       e.stopPropagation();
@@ -10177,53 +10188,8 @@ export var BroTown = function BroTown(_ref0) {
       rSwipe.sx = t.clientX;
       rSwipe.sy = t.clientY;
       rSwipe.st = Date.now();
-      /* Double-tap detection → weapon swap */
-      var now = Date.now();
-      if (now - _rLastTap < 350) {
-        var S2 = stateRef.current;
-        if (S2.rpg) {
-          var _S2$rpg$weapon3, _S2$rpg$rangedWeapon3, _ELEMENTS$swapElem;
-          var slots = ['melee', 'ranged'];
-          /* Add staff if player has a staff weapon */
-          if (S2.rpg.staffWeapon) slots.push('staff');
-          var curIdx = slots.indexOf(S2.rpg.activeSlot || 'melee');
-          var nextSlot = slots[(curIdx + 1) % slots.length];
-          S2.rpg.activeSlot = nextSlot;
-          setRpgState(_objectSpread({}, S2.rpg));
-          var wpnName = nextSlot === 'melee' ? (_S2$rpg$weapon3 = S2.rpg.weapon) === null || _S2$rpg$weapon3 === void 0 ? void 0 : _S2$rpg$weapon3.name : nextSlot === 'ranged' ? (_S2$rpg$rangedWeapon3 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon3 === void 0 ? void 0 : _S2$rpg$rangedWeapon3.name : 'Staff';
-          S2.dmgNumbers.push({
-            x: S2.player.x,
-            y: S2.player.y - 40,
-            text: '🔄 ' + wpnName,
-            color: '#f5c542',
-            ts: now
-          });
-          BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
-          setTimeout(function () {
-            return BT_AUDIO.beep(800, 0.04, 0.06, 'sine');
-          }, 60);
-          /* ═══ WEAPON SWAP VISUAL — burst of element-colored sparks ═══ */
-          S2._weaponSwapFlash = now;
-          var swapWpn = getActiveWeapon(S2.rpg);
-          var swapElem = swapWpn === null || swapWpn === void 0 ? void 0 : swapWpn.element1;
-          var swapColor = swapElem ? ((_ELEMENTS$swapElem = ELEMENTS[swapElem]) === null || _ELEMENTS$swapElem === void 0 ? void 0 : _ELEMENTS$swapElem.color) || '#fff' : '#f5c542';
-          for (var ws = 0; ws < 12; ws++) {
-            var wsA = ws / 12 * Math.PI * 2;
-            S2.hitParticles.push({
-              x: S2.player.x,
-              y: S2.player.y,
-              vx: Math.cos(wsA) * (1.5 + Math.random() * 2),
-              vy: Math.sin(wsA) * (1.5 + Math.random() * 2) - 1,
-              life: 0.4,
-              color: swapColor,
-              size: 1 + Math.random() * 1.5
-            });
-          }
-        }
-        _rLastTap = 0;
-        return; /* don't swing on the swap tap */
-      }
-      _rLastTap = now;
+      // Weapon swap (formerly: double-tap here) is now driven by the
+      // on-screen WeaponSwapBar buttons via weaponSwapBus.
       handleRJoyMove(t.clientX, t.clientY);
       doSwing();
     };

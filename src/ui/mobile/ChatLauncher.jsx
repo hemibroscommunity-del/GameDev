@@ -16,14 +16,10 @@ export const ChatLauncher = () => {
       aria-label="Chat"
       style={{
         position: 'fixed',
-        // Sits to the LEFT of the contextual interact prompt, in the
-        // same vertical band (calc(var(--dash-h) + 16px)).  The interact
-        // prompt is centred at left:50% with translateX(-50%) and ~200 px
-        // wide; offsetting the chat icon ~140 px left of centre keeps
-        // them clear of each other on typical mobile viewports.
-        left: 'calc(50% - 140px)',
+        // Pinned to the far right of the playfield, same vertical band as
+        // the weapon-swap bar (which now occupies the old bottom-centre slot).
+        right: 16,
         bottom: 'calc(var(--dash-h) + 16px)',
-        transform: 'translateX(-50%)',
         width: 40,
         height: 40,
         padding: 0,
