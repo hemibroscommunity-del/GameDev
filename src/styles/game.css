@@ -168,7 +168,7 @@ input{font-family:inherit}
 /* Left-joystick centre — beveled blue button matching the right joystick,
    but without an icon.  Hints "this is interactable". */
 .bt-joystick-knob{
-  width:48px;height:48px;
+  width:24px;height:24px;
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   border-radius:50%;
   background:radial-gradient(circle at 50% 35%,

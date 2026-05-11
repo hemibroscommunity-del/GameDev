@@ -29150,6 +29150,28 @@ export var BroTown = function BroTown(_ref0) {
       overflow: 'hidden'
     }
   }, /*#__PURE__*/React.createElement("svg", {
+    /* 8 directional arrows mirroring the left joystick.  Same viewBox
+       conventions: centre at (50,50), arrowheads on a 38-px-radius circle. */
+    viewBox: '0 0 100 100',
+    style: {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      pointerEvents: 'none',
+    }
+  }, [0, 45, 90, 135, 180, 225, 270, 315].map(function (deg) {
+    return React.createElement('g', {
+      key: deg,
+      transform: 'rotate(' + deg + ' 50 50)',
+    }, React.createElement('path', {
+      d: 'M 50 12 L 46 20 L 54 20 Z',
+      fill: 'rgba(170,210,255,1)',
+      stroke: 'rgba(91,165,255,1)',
+      strokeWidth: 0.6,
+      strokeLinejoin: 'round',
+    }));
+  })), /*#__PURE__*/React.createElement("svg", {
     style: {
       position: 'absolute',
       inset: 0,
@@ -29186,8 +29208,8 @@ export var BroTown = function BroTown(_ref0) {
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      width: isLandscape ? 56 : 48,
-      height: isLandscape ? 56 : 48,
+      width: isLandscape ? 28 : 24,
+      height: isLandscape ? 28 : 24,
       borderRadius: '50%',
       background: 'radial-gradient(circle at 50% 35%, rgba(170,210,255,1) 0%, rgba(91,165,255,1) 55%, rgba(40,90,170,1) 100%)',
       border: '1.5px solid rgba(170,210,255,1)',
@@ -29199,7 +29221,7 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: isLandscape ? 24 : 20,
+      fontSize: isLandscape ? 14 : 12,
       lineHeight: 1,
       pointerEvents: 'none',
       textShadow: '0 1px 2px rgba(0,0,0,0.7)',
