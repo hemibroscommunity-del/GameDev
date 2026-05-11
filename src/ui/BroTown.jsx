@@ -6891,9 +6891,10 @@ export var BroTown = function BroTown(_ref0) {
                   S._hitStopDuration = 25;
                   S._hitStop = Date.now() + 25;
                 }
-                /* Knockback — §Creative Vision: proportional to hit weight */
+                /* Knockback — §Creative Vision: proportional to hit weight.
+                   Special attacks knock back ~3x (10 → 30) for the heavy-hit feel. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                var kbForce = isCrit ? 14 : S._specialAttack ? 10 : 6;
+                var kbForce = S._specialAttack ? 30 : isCrit ? 14 : 6;
                 /* Collision adds extra knockback */
                 var collisionKb = collisionResult ? 4 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
@@ -8532,8 +8533,10 @@ export var BroTown = function BroTown(_ref0) {
                      without a residue overlay on the body. */
                 }
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
-                m.x += Math.cos(kba) * 5;
-                m.y += Math.sin(kba) * 5;
+                /* Special projectiles (bow heavy / staff burst) knock back 3x. */
+                var _projKb = a.isSpecial ? 15 : 5;
+                m.x += Math.cos(kba) * _projKb;
+                m.y += Math.sin(kba) * _projKb;
                 var rangedWpnType = a.isStaff ? 'staff' : 'bow';
                 var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, rangedWpnType, false);
                 rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
