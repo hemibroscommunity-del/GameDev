@@ -566,11 +566,14 @@ export class EntityRenderer {
             if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
             else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
           }
-          /* Render the sprite at 64 px tall, anchored bottom-center
+          /* Render the sprite at 96 px tall, anchored bottom-center
              so feet sit on the ground.  Sprite frames are 128 px so
-             base scale = 64/128.  Bumped from the 50-px Canvas 2D
-             default per user "slimes too small to see" call-out. */
-          const baseScale = 64 / 128;
+             base scale = 96/128.  Bumped 50 → 64 → 96 per repeated
+             "slimes still too small" call-outs — the slime body only
+             fills ~half of the 128-px frame (lots of transparent
+             padding), so a 64-px render reads visually smaller than
+             the 64-px player whose sprite fills the whole frame. */
+          const baseScale = 96 / 128;
           spriteBody.scale.x = baseScale * sqx;
           spriteBody.scale.y = baseScale * sqy;
           spriteBody.y = size; /* feet at the circle's bottom edge */
