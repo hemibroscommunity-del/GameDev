@@ -6839,8 +6839,12 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 /* Real WAV — replaces the old synth material thump.
                    Alternates between sword-hit2 / sword-hit3; the original
-                   sword-hit sample is reserved for grand-slam hits. */
-                BT_AUDIO.swordHit({ vol: 0.55 });
+                   sword-hit sample is reserved for grand-slam hits.
+                   Snowman is suppressed so the snowball-thud snowman-hit
+                   played above isn't masked by the metallic sword wav. */
+                if ((m.archetype || m.type) !== 'snowman') {
+                  BT_AUDIO.swordHit({ vol: 0.55 });
+                }
 
                 /* §19.1 Quest tracking — combat flags */
                 if (!_R6._questFlags) _R6._questFlags = {};
@@ -8510,26 +8514,31 @@ export var BroTown = function BroTown(_ref0) {
                 var rangedWpnType = a.isStaff ? 'staff' : 'bow';
                 var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, rangedWpnType, false);
                 rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
-                if (!m._stuckArrows) m._stuckArrows = [];
-                if (m._stuckArrows.length < 12) {
-                  /* Place the impact on the side of the monster the
-                     arrow came from. -cos/-sin of flight angle = the
-                     opposite of velocity = direction to entry side.
-                     Fodder slimes use the 50 px sprite anchored at
-                     my+8 (top at my-42); the dome-shaped body roughly
-                     fills the ellipse centered at my-17 with rx≈12,
-                     ry≈10. Plant the arrow ~3 px short of the surface
-                     in the entry direction so the arrowhead is buried
-                     in the body rather than floating off the edge. */
-                  var _saIsFodder = (m.archetype || m.type) === 'fodder';
-                  var _saEntryDx = -Math.cos(a.ang);
-                  var _saEntryDy = -Math.sin(a.ang);
-                  var _saRx = _saIsFodder ? 9 : 6;
-                  var _saRy = _saIsFodder ? 7 : 6;
-                  var _saYAnchor = _saIsFodder ? -17 : 0;
-                  var _saOx = _saEntryDx * _saRx + (Math.random() - 0.5) * 3;
-                  var _saOy = _saEntryDy * _saRy + _saYAnchor + (Math.random() - 0.5) * 3;
-                  m._stuckArrows.push({ ang: a.ang, ox: _saOx, oy: _saOy, isStaff: a.isStaff || false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
+                /* Staff projectiles are magic — no physical shaft to
+                   leave embedded in the body.  Particle FX from
+                   spawnWeaponHitFX above is the visual residue. */
+                if (!a.isStaff) {
+                  if (!m._stuckArrows) m._stuckArrows = [];
+                  if (m._stuckArrows.length < 12) {
+                    /* Place the impact on the side of the monster the
+                       arrow came from. -cos/-sin of flight angle = the
+                       opposite of velocity = direction to entry side.
+                       Fodder slimes use the 50 px sprite anchored at
+                       my+8 (top at my-42); the dome-shaped body roughly
+                       fills the ellipse centered at my-17 with rx≈12,
+                       ry≈10. Plant the arrow ~3 px short of the surface
+                       in the entry direction so the arrowhead is buried
+                       in the body rather than floating off the edge. */
+                    var _saIsFodder = (m.archetype || m.type) === 'fodder';
+                    var _saEntryDx = -Math.cos(a.ang);
+                    var _saEntryDy = -Math.sin(a.ang);
+                    var _saRx = _saIsFodder ? 9 : 6;
+                    var _saRy = _saIsFodder ? 7 : 6;
+                    var _saYAnchor = _saIsFodder ? -17 : 0;
+                    var _saOx = _saEntryDx * _saRx + (Math.random() - 0.5) * 3;
+                    var _saOy = _saEntryDy * _saRy + _saYAnchor + (Math.random() - 0.5) * 3;
+                    m._stuckArrows.push({ ang: a.ang, ox: _saOx, oy: _saOy, isStaff: false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
+                  }
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
                 /* Cap display at the HP that was actually removed so the kill
