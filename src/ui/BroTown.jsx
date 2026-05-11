@@ -6672,6 +6672,9 @@ export var BroTown = function BroTown(_ref0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArch === 'snowman' ? 600 : 400);
                   }
+                  if (_hitArch === 'snowman' && m.curHp > 0) {
+                    try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
+                  }
                 }
                 /* Count-based weight: 1 per landed hit (Power for melee).
                    Pairs with block = 3 to match the user's hits-vs-blocks
@@ -8377,6 +8380,9 @@ export var BroTown = function BroTown(_ref0) {
                   if ((_hitArchR === 'fodder' || _hitArchR === 'snowman') && m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArchR === 'snowman' ? 600 : 400);
+                  }
+                  if (_hitArchR === 'snowman' && m.curHp > 0) {
+                    try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
                   }
                 }
                 /* Count-based weight: 1 per landed projectile.  Bow hits

@@ -5438,6 +5438,8 @@ BT_AUDIO.SFX_MANIFEST = {
      hitting the per-element HTMLAudio autoplay policy that was
      blocking new Audio().play() in the render loop. */
   'slime-death':   '/audio/slime-death-v2.mp3',
+  'snowman-death': '/audio/snowman-death.mp3',
+  'snowman-hit':   '/sfx/monster/snowman-hit.wav',
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits
@@ -5460,6 +5462,10 @@ BT_AUDIO.monsterDeath = function (arch, opts) {
      loop death-detection in BroTown.jsx — playing the bony-death wav
      here too was layering the "old death sound" on top of the splat. */
   if (arch === 'fodder') return;
+  if (arch === 'snowman') {
+    this.play('snowman-death', opts || { vol: 0.65 });
+    return;
+  }
   this.play('monster-death', opts || { vol: 0.5 });
 };
 BT_AUDIO.loadSample = function (key, url) {
