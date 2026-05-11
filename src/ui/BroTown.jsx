@@ -9997,7 +9997,7 @@ export var BroTown = function BroTown(_ref0) {
     var rawDx = clientX - bcx;
     var rawDy = clientY - bcy;
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    var maxR = rect.width / 2 - 10;
+    var maxR = rect.width / 2 - 20;
     var clampDist = Math.min(dist, maxR);
     var angle = Math.atan2(rawDy, rawDx);
     var knobX = Math.cos(angle) * clampDist;
@@ -10053,7 +10053,7 @@ export var BroTown = function BroTown(_ref0) {
     var rawDx = clientX - bcx,
       rawDy = clientY - bcy;
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    var maxR = rect.width / 2 - 8;
+    var maxR = rect.width / 2 - 18;
     var clampDist = Math.min(dist, maxR);
     var angle = Math.atan2(rawDy, rawDx);
     if (rKnobRef.current) {
