@@ -1599,6 +1599,9 @@ export class EntityRenderer {
           ? S._shieldAngle
           : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
         const sR = 16;                        // hand-out distance from body
+        // Player sprite is bottom-anchored (feet at y=0), so subtract to
+        // raise the shield from feet level up to roughly chest height.
+        const shieldHoldY = -32;
         const blockAge = S._blockFlash ? (now - S._blockFlash) / 250 : 1;
         const blockPulse = blockAge < 1 ? (1 - blockAge) : 0;
         const shieldFrame = getShieldFrame(shieldAng);
@@ -1606,10 +1609,9 @@ export class EntityRenderer {
         if (shieldFrame && shieldSprite) {
           if (shieldSprite.texture !== shieldFrame.tex) shieldSprite.texture = shieldFrame.tex;
           shieldSprite.x = Math.cos(shieldAng) * sR;
-          shieldSprite.y = Math.sin(shieldAng) * sR + bobY;
-          /* Render at 28 px (sprite is 64 px source, scaled down to
-             read as a held shield without dwarfing the player). */
-          const baseScale = 28 / 64;
+          shieldSprite.y = Math.sin(shieldAng) * sR + bobY + shieldHoldY;
+          /* Render at 56 px (sprite is 64 px source). */
+          const baseScale = 56 / 64;
           shieldSprite.scale.x = baseScale * (shieldFrame.mirror ? -1 : 1);
           shieldSprite.scale.y = baseScale;
           /* Brief brightness pop on a successful block. */

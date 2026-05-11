@@ -10,8 +10,8 @@ const C = {
 // determines how far out the icon orbits from the joystick edge.
 const RING_BAND = 36;
 const RING_GAP  = 7;
-const SHIELD_ICON_W = 81;
-const SHIELD_ICON_H = 81;
+const SHIELD_ICON_W = 77;
+const SHIELD_ICON_H = 77;
 const COMMITMENT_GAP_MS = 75;
 
 // Wood-shield sprite URLs — match the version used by the Pixi loader so the
