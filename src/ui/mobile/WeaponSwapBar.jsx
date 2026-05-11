@@ -38,8 +38,20 @@ export const WeaponSwapBar = () => {
         return (
           <button
             key={s.key}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => weaponSwapBus.setSlot(s.key)}
+            // Fire on pointer/touch down (not onClick) so the swap works
+            // even while another finger is mid-drag on the right joystick.
+            // The joystick's window-level touchmove handler calls
+            // preventDefault for its tracked finger, which can suppress the
+            // synthesized click on a second finger's tap — pointerdown
+            // bypasses that race entirely.
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              weaponSwapBus.setSlot(s.key);
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              weaponSwapBus.setSlot(s.key);
+            }}
             aria-label={s.key}
             style={{
               position: 'fixed',
@@ -62,6 +74,7 @@ export const WeaponSwapBar = () => {
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'opacity .15s, filter .15s, background .15s, border-color .15s',
+              touchAction: 'manipulation',
               WebkitTouchCallout: 'none',
               WebkitUserSelect: 'none',
               userSelect: 'none',

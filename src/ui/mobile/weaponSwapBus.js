@@ -8,6 +8,9 @@ const listeners = new Set();
 export const weaponSwapBus = {
   activeSlot: 'melee',
   setSlot(slot) {
+    // Skip re-entrant duplicate calls — pointerdown and touchstart both
+    // fire for the same tap on mobile, so guard against double dispatch.
+    if (this.activeSlot === slot) return;
     this.activeSlot = slot;
     const g = window._gameState && window._gameState.current;
     if (g && g.rpg) g.rpg.activeSlot = slot;
