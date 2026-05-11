@@ -80,6 +80,14 @@ export async function createPixiApp(canvas) {
     autoDensity: true,
     powerPreference: 'high-performance',
     autoStart: false,
+    /* Snap every sprite's render position to whole screen pixels.
+       Zone texture is NEAREST-sampled and snaps to pixels, but the
+       player sprite uses fractional P.x / P.y and drifts smoothly
+       within those snapped frames — that mismatch reads as walking
+       stutter even at a steady 60 fps.  roundPixels keeps the data
+       layer fractional (so lerps / physics stay smooth) but aligns
+       render positions, so player and world step together. */
+    roundPixels: true,
   };
 
   // Try WebGL first
