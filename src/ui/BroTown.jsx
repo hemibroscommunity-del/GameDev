@@ -3769,12 +3769,18 @@ export var BroTown = function BroTown(_ref0) {
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
           } else S._dodgeRoll = null;
         }
-        var dx = playerStunned ? 0 : S.stickX,
-          dy = playerStunned ? 0 : S.stickY;
-        /* Keyboard overrides if no stick input — but ALSO gated by
-           playerStunned so the hit-react lockout can't be bypassed
-           with WASD/arrow keys. */
-        if (!playerStunned && dx === 0 && dy === 0) {
+        /* Movement gated by REAL stuns only (hexer / brute charge).
+           The 250 ms hit-react lockout (_hitLockActive) no longer
+           freezes movement -- in projectile-heavy zones like meadow
+           a slime hit every few seconds stacked 250 ms freezes that
+           read as "frame stutter" even at 60 fps.  Visual hit-react
+           sprite + screen shake + particles still play; the player
+           just keeps their dodge ability mid-hit. */
+        var dx = _realStunned ? 0 : S.stickX,
+          dy = _realStunned ? 0 : S.stickY;
+        /* Keyboard overrides if no stick input — same gating:
+           real stuns block, hit-react lockout does not. */
+        if (!_realStunned && dx === 0 && dy === 0) {
           if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
           if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
           if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
