@@ -10,8 +10,8 @@ const C = {
 // determines how far out the icon orbits from the joystick edge.
 const RING_BAND = 36;
 const RING_GAP  = 7;
-const SHIELD_ICON_W = 30;
-const SHIELD_ICON_H = 30;
+const SHIELD_ICON_W = 90;
+const SHIELD_ICON_H = 90;
 const COMMITMENT_GAP_MS = 75;
 
 // Wood-shield sprite URLs — match the version used by the Pixi loader so the
@@ -25,9 +25,10 @@ const SHIELD_SPRITES = {
 };
 // Same sector → (view, mirror) mapping the in-game renderer uses
 // (see shieldSprites.js#getShieldFrame). Keeps the joystick icon in sync
-// with how the held shield is drawn.
+// with how the held shield is drawn. NE (7) and NW (5) use the opposite
+// mirror from their S-side counterparts so they don't read as SE/SW.
 const SHIELD_VIEW   = ['side', '3q', 'front', '3q', 'side', '3q', 'front', '3q'];
-const SHIELD_MIRROR = [false,   false, false,  true,  true,   true,  false,  false];
+const SHIELD_MIRROR = [false,   false, false,  true,  true,   false, false,  true];
 const pickShieldFrame = (angle) => {
   const TAU = Math.PI * 2;
   const a = ((angle % TAU) + TAU) % TAU;

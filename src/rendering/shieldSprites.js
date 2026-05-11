@@ -48,7 +48,9 @@ export function getShieldFrame(angle) {
   /* 4 view buckets — N reuses front because we don't have a back-view
      PNG; the artist gave us only forward-facing wood. */
   const view   = ['side', '3q', 'front', '3q', 'side', '3q', 'front', '3q'][sector];
-  const mirror = [false,  false, false,  true,  true,   true,  false,  false][sector];
+  // NE (7) and NW (5) use the opposite mirror from SE/SW so up-diagonals
+  // don't read as down-diagonals — fixes "facing NE shows the SE sprite".
+  const mirror = [false,  false, false,  true,  true,   false, false,  true][sector];
   const tex = SHEETS[view] && SHEETS[view].tex;
   return tex ? { tex, mirror } : null;
 }
