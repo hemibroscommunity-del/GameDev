@@ -3,10 +3,6 @@ import { blockRingBus } from './blockRingBus.js';
 
 // Color canon — spec §"Color and Typography Canon".
 const C = {
-  iconDimFill:    'rgba(244, 199, 117, 0.4)',
-  iconDimStroke:  'rgba(244, 199, 117, 0.6)',
-  iconActiveFill:    '#F4E0A8',
-  iconActiveStroke:  '#5A3A10',
   parryFlash:  '#F4E0A8',
 };
 
@@ -14,9 +10,31 @@ const C = {
 // determines how far out the icon orbits from the joystick edge.
 const RING_BAND = 36;
 const RING_GAP  = 7;
-const SHIELD_ICON_W = 28;
-const SHIELD_ICON_H = 30;
+const SHIELD_ICON_W = 73;
+const SHIELD_ICON_H = 73;
 const COMMITMENT_GAP_MS = 75;
+
+// Wood-shield sprite URLs — match the version used by the Pixi loader so the
+// browser cache is shared with the in-game shield. When equip slots exist, the
+// `equippedShield` lookup should swap these out.
+const SHIELD_SPRITE_VERSION = '2.1.23';
+const SHIELD_SPRITES = {
+  front: `/sprites/shields/wood-shield-front.png?v=${SHIELD_SPRITE_VERSION}`,
+  '3q':  `/sprites/shields/wood-shield-3q.png?v=${SHIELD_SPRITE_VERSION}`,
+  side:  `/sprites/shields/wood-shield-side.png?v=${SHIELD_SPRITE_VERSION}`,
+};
+// Same sector → (view, mirror) mapping the in-game renderer uses
+// (see shieldSprites.js#getShieldFrame). Keeps the joystick icon in sync
+// with how the held shield is drawn. NE (7) and NW (5) use the opposite
+// mirror from their S-side counterparts so they don't read as SE/SW.
+const SHIELD_VIEW   = ['side', '3q', 'front', '3q', 'side', '3q', 'front', '3q'];
+const SHIELD_MIRROR = [false,   false, false,  true,  true,   false, false,  true];
+const pickShieldFrame = (angle) => {
+  const TAU = Math.PI * 2;
+  const a = ((angle % TAU) + TAU) % TAU;
+  const sector = Math.round(a / (Math.PI / 4)) % 8;
+  return { src: SHIELD_SPRITES[SHIELD_VIEW[sector]], mirror: SHIELD_MIRROR[sector] };
+};
 
 const useRaf = (cb) => {
   useEffect(() => {
@@ -35,28 +53,30 @@ const norm = (a) => {
 };
 const lerpAngle = (a, b, t) => a + norm(b - a) * t;
 
-// Heater-shield silhouette: twin peaks at the top with a small V-notch,
-// sides curving inward to a sharp point at the bottom. Drawn in its natural
-// orientation; the icon container rotates so the bottom tip indicates the
-// current block direction.
-const ShieldGlyph = ({ active }) => {
-  const stroke = active ? C.iconActiveStroke : C.iconDimStroke;
-  const fill   = active ? C.iconActiveFill   : C.iconDimFill;
-  return (
-    <svg width={SHIELD_ICON_W} height={SHIELD_ICON_H} viewBox="0 0 28 30">
-      {/* Outer heater-shield outline. */}
-      <path
-        d="M2 4 L9 2 L14 5 L19 2 L26 4 C26 16 21 23 14 28 C7 23 2 16 2 4 Z"
-        fill={fill} stroke={stroke}
-        strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" />
-      {/* Inner border — gives the double-line look from the reference. */}
-      <path
-        d="M4.5 6 L10 4.5 L14 7 L18 4.5 L23.5 6 C23.5 15 19.5 21 14 25 C8.5 21 4.5 15 4.5 6 Z"
-        fill="none" stroke={stroke} strokeWidth={0.9}
-        strokeLinejoin="round" opacity={0.65} />
-    </svg>
-  );
-};
+// Miniaturized wood-shield icon — uses the same three sprite views as the
+// in-game shield (front / 3-quarter / side) so the joystick icon previews the
+// actual held shield. When `active` (blocking) it renders the full sprite at
+// 1.0 opacity; idle it collapses to a dark silhouette / drop-shadow read so
+// the player can tell at a glance whether the block is engaged.
+const ShieldGlyph = ({ active, frame }) => (
+  <img
+    src={frame.src}
+    alt=""
+    draggable={false}
+    style={{
+      width: SHIELD_ICON_W,
+      height: SHIELD_ICON_H,
+      transform: frame.mirror ? 'scaleX(-1)' : 'none',
+      // Idle: brightness(0) turns the sprite solid black, giving a shadow/silhouette
+      // read; the slight blur softens the edges so it reads as a cast shadow
+      // rather than a flat stamp. Active: render the sprite normally.
+      filter: active ? 'none' : 'brightness(0) blur(0.6px) opacity(0.55)',
+      imageRendering: 'pixelated',
+      pointerEvents: 'none',
+      userSelect: 'none',
+    }}
+  />
+);
 
 export const BlockRing = () => {
   const [geo, setGeo] = useState(null);
@@ -249,11 +269,10 @@ export const BlockRing = () => {
             style={{ opacity: flashAlpha }} />
         )}
       </svg>
-      {/* Shield icon — sole visible/touchable element. Rotated so the
-          heater-shield's sharp bottom tip points along the current shield
-          angle (i.e. outward from the joystick), doubling as a directional
-          indicator. SVG tip is at the bottom of the viewBox (+y direction),
-          so we offset by -π/2 to align with shieldAng's atan2 convention. */}
+      {/* Shield icon — sole visible/touchable element. The wood-shield is
+          drawn upright in each view; direction is conveyed by the icon's
+          position around the ring plus the view/mirror change (front for
+          N/S, 3q for diagonals, side for E/W), matching the in-game shield. */}
       <div
         onTouchStart={onBandTouchStart}
         onMouseDown={onBandMouseDown}
@@ -263,8 +282,6 @@ export const BlockRing = () => {
           left: sx - SHIELD_ICON_W / 2,
           top:  sy - SHIELD_ICON_H / 2,
           width: SHIELD_ICON_W, height: SHIELD_ICON_H,
-          transform: `rotate(${shieldAng - Math.PI / 2}rad)`,
-          transformOrigin: '50% 50%',
           pointerEvents: 'auto',
           touchAction: 'none',
           cursor: 'pointer',
@@ -274,7 +291,7 @@ export const BlockRing = () => {
           userSelect: 'none',
           filter: blocking ? 'drop-shadow(0 0 4px rgba(244,199,117,.7))' : 'none',
         }}>
-        <ShieldGlyph active={blocking} />
+        <ShieldGlyph active={blocking} frame={pickShieldFrame(shieldAng)} />
       </div>
     </div>
   );

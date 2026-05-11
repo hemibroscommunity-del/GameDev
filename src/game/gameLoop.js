@@ -3493,9 +3493,10 @@ export function setupGameLoop(ctx) {
                   S._hitStopDuration = 25;
                   S._hitStop = Date.now() + 25;
                 }
-                /* Knockback — §Creative Vision: proportional to hit weight */
+                /* Knockback — §Creative Vision: proportional to hit weight.
+                   Special attacks knock back ~3x (10 → 30) for the heavy-hit feel. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                var kbForce = isCrit ? 14 : S._specialAttack ? 10 : 6;
+                var kbForce = S._specialAttack ? 30 : isCrit ? 14 : 6;
                 /* Collision adds extra knockback */
                 var collisionKb = collisionResult ? 4 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);

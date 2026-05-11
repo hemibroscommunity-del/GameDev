@@ -325,7 +325,9 @@ export class EffectsRenderer {
           if (oY > lowestY) lowestY = oY;
         }
         dmg._stackOffset = hasNeighbor ? (lowestY + SPACING) - dmg.y : 0;
-        const fontSize = dmg.crit ? 27 : 21;
+        const baseFontSize = dmg.crit ? 27 : 21;
+        /* Special-attack hits render at 2x so the heavy hit reads clearly. */
+        const fontSize = dmg.special ? baseFontSize * 2 : baseFontSize;
         const text = new Text({
           text: dmg.text,
           style: { ...baseStyle, fontSize, fill: displayColor },
@@ -509,11 +511,20 @@ export class EffectsRenderer {
       this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.isSpecial || a.ice);
 
       if (a.isSpecial || a.ice) {
-        const sz = a._isStaffProj ? 1.5 : 1.0;
-        gfx.circle(a._renderX, a._renderY, 5 * sz);
-        gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
-        gfx.circle(a._renderX, a._renderY, 8 * sz);
-        gfx.fill({ color: elemColor, alpha: fadeA * 0.2 });
+        /* Bigger + yellow glow ring so specials read as distinct from
+           regular projectiles. Three concentric circles:
+            – outer yellow halo for the "special" tell
+            – mid element-tinted glow
+            – bright element-tinted core */
+        const sz = a._isStaffProj ? 2.0 : 1.6;
+        gfx.circle(a._renderX, a._renderY, 16 * sz);
+        gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.22 });
+        gfx.circle(a._renderX, a._renderY, 12 * sz);
+        gfx.fill({ color: elemColor, alpha: fadeA * 0.35 });
+        gfx.circle(a._renderX, a._renderY, 7 * sz);
+        gfx.fill({ color: elemColor, alpha: fadeA * 0.9 });
+        gfx.circle(a._renderX, a._renderY, 7 * sz);
+        gfx.stroke({ color: 0xfff2a8, width: 1.5, alpha: fadeA * 0.85 });
       } else if (a._isStaffProj) {
         gfx.circle(a._renderX, a._renderY, 5);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
