@@ -1599,9 +1599,9 @@ export class EntityRenderer {
           ? S._shieldAngle
           : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
         const sR = 16;                        // hand-out distance from body
-        // Player sprite is bottom-anchored (feet at y=0), so subtract to
-        // raise the shield from feet level up to roughly chest height.
-        const shieldHoldY = -32;
+        // Player sprite is bottom-anchored (feet at y=0). With the 2x size
+        // bump the shield center sits at feet, top reaches chest naturally.
+        const shieldHoldY = 0;
         const blockAge = S._blockFlash ? (now - S._blockFlash) / 250 : 1;
         const blockPulse = blockAge < 1 ? (1 - blockAge) : 0;
         const shieldFrame = getShieldFrame(shieldAng);
