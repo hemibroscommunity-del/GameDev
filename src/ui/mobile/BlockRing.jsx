@@ -10,8 +10,8 @@ const C = {
 // determines how far out the icon orbits from the joystick edge.
 const RING_BAND = 36;
 const RING_GAP  = 7;
-const SHIELD_ICON_W = 77;
-const SHIELD_ICON_H = 77;
+const SHIELD_ICON_W = 73;
+const SHIELD_ICON_H = 73;
 const COMMITMENT_GAP_MS = 75;
 
 // Wood-shield sprite URLs — match the version used by the Pixi loader so the
@@ -55,8 +55,9 @@ const lerpAngle = (a, b, t) => a + norm(b - a) * t;
 
 // Miniaturized wood-shield icon — uses the same three sprite views as the
 // in-game shield (front / 3-quarter / side) so the joystick icon previews the
-// actual held shield. When `active` (blocking) it renders at full opacity; idle
-// it dims so the player can still see through the icon.
+// actual held shield. When `active` (blocking) it renders the full sprite at
+// 1.0 opacity; idle it collapses to a dark silhouette / drop-shadow read so
+// the player can tell at a glance whether the block is engaged.
 const ShieldGlyph = ({ active, frame }) => (
   <img
     src={frame.src}
@@ -66,7 +67,10 @@ const ShieldGlyph = ({ active, frame }) => (
       width: SHIELD_ICON_W,
       height: SHIELD_ICON_H,
       transform: frame.mirror ? 'scaleX(-1)' : 'none',
-      opacity: active ? 1 : 0.6,
+      // Idle: brightness(0) turns the sprite solid black, giving a shadow/silhouette
+      // read; the slight blur softens the edges so it reads as a cast shadow
+      // rather than a flat stamp. Active: render the sprite normally.
+      filter: active ? 'none' : 'brightness(0) blur(0.6px) opacity(0.55)',
       imageRendering: 'pixelated',
       pointerEvents: 'none',
       userSelect: 'none',
