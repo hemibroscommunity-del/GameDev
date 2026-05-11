@@ -6839,8 +6839,13 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 /* Real WAV — replaces the old synth material thump.
                    Alternates between sword-hit2 / sword-hit3; the original
-                   sword-hit sample is reserved for grand-slam hits. */
-                BT_AUDIO.swordHit({ vol: 0.55 });
+                   sword-hit sample is reserved for grand-slam hits.
+                   Snowman gets its own snowball-thud snowman-hit (played
+                   in the hit-reaction block above) instead — the metallic
+                   sword wav is wrong for a snow body. */
+                if ((m.archetype || m.type) !== 'snowman') {
+                  BT_AUDIO.swordHit({ vol: 0.55 });
+                }
 
                 /* §19.1 Quest tracking — combat flags */
                 if (!_R6._questFlags) _R6._questFlags = {};
