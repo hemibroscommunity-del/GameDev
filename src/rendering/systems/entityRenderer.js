@@ -467,7 +467,11 @@ export class EntityRenderer {
             const tex = getSnowmanDeathFrame(frameIdx);
             const sb = display._spriteBody;
             if (tex && sb.texture !== tex) sb.texture = tex;
-            const baseScale = 64 / 128;
+            /* Smaller than the 64-px idle/hit scale — particles
+               radiate out to the frame edges, so a smaller render
+               keeps the explosion footprint from reading as a hard
+               square. */
+            const baseScale = 40 / 128;
             sb.scale.x = baseScale;
             sb.scale.y = baseScale;
             sb.y = display._size;
