@@ -4505,8 +4505,9 @@ export function xpRequired(level) {
   return Math.ceil(at100 * Math.pow(1.08, level - 100));
 }
 
-/* §15.2 Special attack multiplier (no element = raw damage boost) */
-export const SPECIAL_ATK_MULT = 1.8;
+/* §15.2 Special attack multiplier (no element = raw damage boost).
+   Bumped 1.8 → 2.0 so a special does exactly 2× a normal hit. */
+export const SPECIAL_ATK_MULT = 2.0;
 
 /* Create a default player RPG state with the new stat system */
 export function createDefaultRpg() {

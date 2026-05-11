@@ -1571,18 +1571,31 @@ export class EntityRenderer {
       /* Swing arc trail — fading sector centered on the hand pivot,
          sweeping from the swing's start angle through the current
          blade position.  Drawn on weaponGfx so it z-orders with the
-         weapon sprite via the weaponContainer reorder. */
+         weapon sprite via the weaponContainer reorder.
+         Special-attack swings render at ~1.5x reach with a saturated
+         yellow fill so the heavy attack reads as larger and more
+         noticeable than a normal swing. */
       if (swingActive) {
-        const trailReach = 42;          // ~ wSize * 1.47 in Canvas 2D math
+        const isSpecialSwing = !!S._specialAttack;
+        const trailReach = isSpecialSwing ? 64 : 42;
         const startAng = aimAngleForSwing - SWING_FULL_ARC / 2;
         const endAng   = aimAngleForSwing + swingOffset;
-        const trailAlpha = (1 - swingProgress) * 0.35;
+        const baseAlpha = (1 - swingProgress) * 0.35;
+        const trailAlpha = isSpecialSwing ? baseAlpha * 1.6 : baseAlpha;
+        const fillColor   = isSpecialSwing ? 0xffd54a : 0xffffff;
+        const strokeColor = isSpecialSwing ? 0xfff2a8 : 0xfffac8;
+        const strokeWidth = isSpecialSwing ? 4 : 2;
         weaponGfx.moveTo(wpnX, wpnY);
         weaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
         weaponGfx.lineTo(wpnX, wpnY);
-        weaponGfx.fill({ color: 0xffffff, alpha: trailAlpha });
+        weaponGfx.fill({ color: fillColor, alpha: trailAlpha });
         weaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
-        weaponGfx.stroke({ color: 0xfffac8, width: 2, alpha: trailAlpha * 1.2 });
+        weaponGfx.stroke({ color: strokeColor, width: strokeWidth, alpha: trailAlpha * 1.2 });
+        if (isSpecialSwing) {
+          /* Outer yellow halo ring — adds the "glow" cue beyond the arc. */
+          weaponGfx.arc(wpnX, wpnY, trailReach + 10, startAng, endAng);
+          weaponGfx.stroke({ color: 0xf5c542, width: 3, alpha: trailAlpha * 0.7 });
+        }
       }
 
       // Shield visual — 120° guard arc in front of the player, oriented
