@@ -29253,10 +29253,7 @@ export var BroTown = function BroTown(_ref0) {
       pointerEvents: 'none',
       textShadow: '0 1px 2px rgba(0,0,0,0.7)',
     }
-  }, function (_stateRef$rkb) {
-    var slot = ((_stateRef$rkb = stateRef.current) === null || _stateRef$rkb === void 0 || (_stateRef$rkb = _stateRef$rkb.rpg) === null || _stateRef$rkb === void 0 ? void 0 : _stateRef$rkb.activeSlot) || 'melee';
-    return slot === 'ranged' ? '🏹' : slot === 'staff' ? '🪄' : '⚔️';
-  }()))), /*#__PURE__*/React.createElement("div", {
+  }, /* Knob left blank — active weapon is shown in WeaponSwapBar instead. */ null))), /*#__PURE__*/React.createElement("div", {
     ref: shieldJoyRef,
     className: "bt-desktop-hide bt-legacy-shield-removed",
     style: {
