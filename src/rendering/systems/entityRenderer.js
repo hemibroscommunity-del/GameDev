@@ -7,6 +7,7 @@ import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
+import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
@@ -272,6 +273,15 @@ function createPlayerDisplay() {
   weaponSprite.visible = false;
   weaponContainer.addChild(weaponSprite);
 
+  /* Wood-shield sprite — replaces the procedural cyan arc when the
+     PNGs have loaded.  Anchored at center-bottom so it pivots
+     around the grip and rotates into position naturally; we hide
+     it whenever isShielding flips false. */
+  const shieldSprite = new Sprite();
+  shieldSprite.anchor.set(0.5, 0.5);
+  shieldSprite.visible = false;
+  container.addChild(shieldSprite);
+
   // HP / Energy / Mana bars — drawn above the head when in a combat zone.
   const barsGfx = new Graphics();
   container.addChild(barsGfx);
@@ -297,6 +307,7 @@ function createPlayerDisplay() {
   container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
   container._weaponSprite = weaponSprite;
+  container._shieldSprite = shieldSprite;
   container._barsGfx = barsGfx;
   container._comboText = comboText;
   container._nameText = nameText;
@@ -445,8 +456,8 @@ export class EntityRenderer {
               display._slimeFrame = frameIdx;
               sb.texture = tex;
             }
-            sb.scale.x = 50 / 128;
-            sb.scale.y = 50 / 128;
+            sb.scale.x = 64 / 128;
+            sb.scale.y = 64 / 128;
             sb.tint = 0xffffff;
             sb.visible = true;
             display.x = m.x;
@@ -555,10 +566,11 @@ export class EntityRenderer {
             if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
             else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
           }
-          /* Render the sprite at 50 px tall (matches Canvas 2D _dSize),
-             anchored bottom-center so feet sit on the ground.  Sprite
-             frames are 128 px so base scale = 50/128. */
-          const baseScale = 50 / 128;
+          /* Render the sprite at 64 px tall, anchored bottom-center
+             so feet sit on the ground.  Sprite frames are 128 px so
+             base scale = 64/128.  Bumped from the 50-px Canvas 2D
+             default per user "slimes too small to see" call-out. */
+          const baseScale = 64 / 128;
           spriteBody.scale.x = baseScale * sqx;
           spriteBody.scale.y = baseScale * sqy;
           spriteBody.y = size; /* feet at the circle's bottom edge */
@@ -1569,25 +1581,44 @@ export class EntityRenderer {
         const shieldAng = (S._shieldAngle != null)
           ? S._shieldAngle
           : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
-        const sR = 20;                        // bigger so it's visible
-        const sArc = Math.PI * 2 / 3;         // 120° guard sector
-        const startA = shieldAng - sArc / 2;
-        const endA   = shieldAng + sArc / 2;
+        const sR = 16;                        // hand-out distance from body
         const blockAge = S._blockFlash ? (now - S._blockFlash) / 250 : 1;
         const blockPulse = blockAge < 1 ? (1 - blockAge) : 0;
-        // Translucent wedge fill (pivot - arc - pivot).
-        weaponGfx.moveTo(0, bobY);
-        weaponGfx.arc(0, bobY, sR, startA, endA);
-        weaponGfx.lineTo(0, bobY);
-        weaponGfx.fill({ color: 0x5dade2, alpha: 0.18 + blockPulse * 0.25 });
-        // Outer rim — the visible "edge" of the shield.
-        weaponGfx.arc(0, bobY, sR, startA, endA);
-        weaponGfx.stroke({ color: 0x5dade2, width: 4 + blockPulse * 4, alpha: 0.85 });
-        if (blockPulse > 0) {
-          // Inner bright pulse to sell the impact moment.
-          weaponGfx.arc(0, bobY, sR, startA, endA);
-          weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.9 });
+        const shieldFrame = getShieldFrame(shieldAng);
+        const shieldSprite = display._shieldSprite;
+        if (shieldFrame && shieldSprite) {
+          if (shieldSprite.texture !== shieldFrame.tex) shieldSprite.texture = shieldFrame.tex;
+          shieldSprite.x = Math.cos(shieldAng) * sR;
+          shieldSprite.y = Math.sin(shieldAng) * sR + bobY;
+          /* Render at 28 px (sprite is 64 px source, scaled down to
+             read as a held shield without dwarfing the player). */
+          const baseScale = 28 / 64;
+          shieldSprite.scale.x = baseScale * (shieldFrame.mirror ? -1 : 1);
+          shieldSprite.scale.y = baseScale;
+          /* Brief brightness pop on a successful block. */
+          const pulseTint = blockPulse > 0 ? 0xffffff : 0xffffff;
+          shieldSprite.tint = pulseTint;
+          shieldSprite.alpha = 0.95 + blockPulse * 0.05;
+          shieldSprite.visible = true;
+        } else {
+          if (shieldSprite) shieldSprite.visible = false;
+          /* Fallback procedural arc — sprite hasn't loaded yet. */
+          const sArc = Math.PI * 2 / 3;
+          const startA = shieldAng - sArc / 2;
+          const endA   = shieldAng + sArc / 2;
+          weaponGfx.moveTo(0, bobY);
+          weaponGfx.arc(0, bobY, 20, startA, endA);
+          weaponGfx.lineTo(0, bobY);
+          weaponGfx.fill({ color: 0x5dade2, alpha: 0.18 + blockPulse * 0.25 });
+          weaponGfx.arc(0, bobY, 20, startA, endA);
+          weaponGfx.stroke({ color: 0x5dade2, width: 4 + blockPulse * 4, alpha: 0.85 });
+          if (blockPulse > 0) {
+            weaponGfx.arc(0, bobY, 20, startA, endA);
+            weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.9 });
+          }
         }
+      } else if (display._shieldSprite) {
+        display._shieldSprite.visible = false;
       }
     }
 

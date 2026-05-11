@@ -4554,7 +4554,7 @@ export function createDefaultRpg() {
       tierMult: 1.0,
       element1: null,
       element2: null,
-      name: 'Wood Sword',
+      name: 'Bamboo Stick',
       isVolatile: false,
       gearBase: 'wood'
     },

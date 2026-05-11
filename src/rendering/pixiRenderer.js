@@ -13,6 +13,7 @@ import { loadPlayerAnchors } from './playerAnchors.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites } from './snowmanSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
+import { loadShieldSprites } from './shieldSprites.js';
 import { loadImageZoneMaps } from './tiledMaps.js';
 
 /**
@@ -48,6 +49,8 @@ export async function initPixiRenderer(canvas) {
   loadSnowmanSprites().catch((err) => console.warn('Snowman sprites failed to load, using procedural fallback:', err));
   // Weapon icons (sword / bow / staff).
   loadWeaponSprites().catch((err) => console.warn('Weapon sprites failed to load, using procedural fallback:', err));
+  // Shield (front / 3-quarter / side wood-shield views).
+  loadShieldSprites().catch((err) => console.warn('Shield sprites failed to load, using procedural arc fallback:', err));
   // Per-frame hand anchors + weapon grip points.
   loadPlayerAnchors().catch((err) => console.warn('Player anchors failed to load, using procedural fallback:', err));
   /* Preload single-image zone maps (frost, etc.) so the Sprite has
