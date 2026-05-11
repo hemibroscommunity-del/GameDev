@@ -1551,6 +1551,23 @@ export class EntityRenderer {
         }
       }
 
+      /* Shield z-order: when the shield is held facing N / NE / NW
+         (sectors 6, 7, 5), the shield should sit BEHIND the player
+         sprite so it reads as held away from the camera; for every
+         other facing it stays in front (its default order, since it
+         was added after spriteBody). */
+      if (display._shieldSprite && display._shieldSprite.visible && display._spriteBody) {
+        const shieldBehind = (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+        const bodyIdx = display.getChildIndex(display._spriteBody);
+        const shIdx   = display.getChildIndex(display._shieldSprite);
+        const targetShIdx = shieldBehind
+          ? (shIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1))   // before spriteBody
+          : (shIdx > bodyIdx ? bodyIdx + 1 : bodyIdx);               // after spriteBody
+        if (shIdx !== targetShIdx) {
+          display.setChildIndex(display._shieldSprite, targetShIdx);
+        }
+      }
+
       /* Swing arc trail — fading sector centered on the hand pivot,
          sweeping from the swing's start angle through the current
          blade position.  Drawn on weaponGfx so it z-orders with the

@@ -11,11 +11,15 @@
 
 import { Assets } from 'pixi.js';
 
+/* Bump on every weapon-art change so URL-keyed browser/CDN caches
+   refetch instead of serving the previous PNG. */
+const SPRITE_VERSION = '2.1.24';
+
 const SHEETS = {
-  sword:      { url: '/sprites/weapons/swords/Sword1.png',          tex: null },
-  greatsword: { url: '/sprites/weapons/swords/Sword1.png',          tex: null },
-  bow:        { url: '/sprites/weapons/bows/Bow2.png',              tex: null },
-  staff:      { url: '/sprites/weapons/staffs/Wizard%20Staff2.png', tex: null },
+  sword:      { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
+  greatsword: { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
+  bow:        { url: `/sprites/weapons/bows/Bow2.png?v=${SPRITE_VERSION}`,              tex: null },
+  staff:      { url: `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${SPRITE_VERSION}`, tex: null },
 };
 
 let loadPromise = null;
