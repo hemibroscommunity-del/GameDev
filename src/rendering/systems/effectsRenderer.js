@@ -325,7 +325,9 @@ export class EffectsRenderer {
           if (oY > lowestY) lowestY = oY;
         }
         dmg._stackOffset = hasNeighbor ? (lowestY + SPACING) - dmg.y : 0;
-        const fontSize = dmg.crit ? 27 : 21;
+        const baseFontSize = dmg.crit ? 27 : 21;
+        /* Special-attack hits render at 2x so the heavy hit reads clearly. */
+        const fontSize = dmg.special ? baseFontSize * 2 : baseFontSize;
         const text = new Text({
           text: dmg.text,
           style: { ...baseStyle, fontSize, fill: displayColor },

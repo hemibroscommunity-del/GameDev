@@ -6938,13 +6938,16 @@ export var BroTown = function BroTown(_ref0) {
                   maxR: isCrit ? 30 : collisionResult ? 25 : 16,
                   duration: isCrit ? 250 : 150
                 });
-                /* Damage number — scaled by significance */
+                /* Damage number — scaled by significance.  Tag with
+                   special:true so the renderer can render it 2x larger. */
+                var _isSpecialDmg = !!S._specialAttack;
                 if (isCrit && collisionResult) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
                     text: '💥⚡ ' + dmg,
                     color: '#f5c542',
+                    special: _isSpecialDmg,
                     ts: Date.now()
                   });
                 } else if (isCrit) {
@@ -6953,6 +6956,7 @@ export var BroTown = function BroTown(_ref0) {
                     y: m.y - 20,
                     text: '💥 ' + dmg,
                     color: '#f5c542',
+                    special: _isSpecialDmg,
                     ts: Date.now()
                   });
                 } else {
@@ -6961,6 +6965,7 @@ export var BroTown = function BroTown(_ref0) {
                     y: m.y - 20,
                     text: '' + dmg,
                     color: '#fff',
+                    special: _isSpecialDmg,
                     ts: Date.now()
                   });
                 }
@@ -8562,7 +8567,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* Cap display at the HP that was actually removed so the kill
                    blow doesn't show an inflated overkill number. */
                 var _displayDmg = Math.min(a.dmg, _hpBefore);
-                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: _displayDmg + '', color: '#ff9', iconKey: a.isStaff ? 'spell' : 'arrow', ts: Date.now() });
+                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: _displayDmg + '', color: '#ff9', iconKey: a.isStaff ? 'spell' : 'arrow', special: !!a.isSpecial, ts: Date.now() });
                 if (m.curHp <= 0) {
                   /* In server-mode the network monster_killed event is
                      authoritative for XP/T1 distribution — only clamp
@@ -29173,7 +29178,7 @@ export var BroTown = function BroTown(_ref0) {
     ref: rJoyRef,
     className: "bt-rjoy-base",
     style: {
-      // Outer disc hidden — only knob ("inner ring") + auto-attack glow remain.
+      // Outer ring filled with a light transparent gray puck.
       width: isLandscape ? 120 : 100,
       height: isLandscape ? 120 : 100,
       position: 'absolute',
@@ -29181,9 +29186,11 @@ export var BroTown = function BroTown(_ref0) {
       top: '50%',
       transform: 'translate(-50%,-50%)',
       borderRadius: '50%',
-      background: 'transparent',
-      border: 'none',
-      boxShadow: autoAttack ? '0 0 12px rgba(255,80,80,0.45)' : 'none',
+      background: 'rgba(255,255,255,0.10)',
+      border: '1px solid ' + (autoAttack ? 'rgba(255,120,120,0.8)' : 'rgba(255,255,255,0.18)'),
+      boxShadow: autoAttack
+        ? '0 0 12px rgba(255,80,80,0.45)'
+        : '0 1px 4px rgba(0,0,0,0.35)',
       touchAction: 'none',
       overflow: 'hidden'
     }
@@ -29269,12 +29276,12 @@ export var BroTown = function BroTown(_ref0) {
       width: isLandscape ? 28 : 24,
       height: isLandscape ? 28 : 24,
       borderRadius: '50%',
-      background: 'radial-gradient(circle at 50% 35%, rgba(170,210,255,1) 0%, rgba(91,165,255,1) 55%, rgba(40,90,170,1) 100%)',
-      border: '1.5px solid rgba(170,210,255,1)',
+      background: 'radial-gradient(circle at 50% 35%, rgba(170,170,170,1) 0%, rgba(85,85,85,1) 55%, rgba(30,30,30,1) 100%)',
+      border: '1.5px solid rgba(170,170,170,0.85)',
       boxShadow:
-        'inset 0 2px 3px rgba(255,255,255,0.55),' +
-        'inset 0 -3px 4px rgba(20,40,80,0.55),' +
-        'inset 0 0 6px rgba(91,165,255,0.30),' +
+        'inset 0 2px 3px rgba(255,255,255,0.35),' +
+        'inset 0 -3px 4px rgba(0,0,0,0.6),' +
+        'inset 0 0 6px rgba(0,0,0,0.35),' +
         '0 1px 3px rgba(0,0,0,0.5)',
       display: 'flex',
       alignItems: 'center',
