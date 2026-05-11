@@ -9976,10 +9976,12 @@ export var BroTown = function BroTown(_ref0) {
   /* Virtual joysticks — each tracks its own finger */
   var joystickRef = useRef(null);
   var knobRef = useRef(null);
+  var lStickRef = useRef(null);
   var joystickActive = useRef(false);
   var lTouchId = useRef(null);
   var rJoyRef = useRef(null);
   var rKnobRef = useRef(null);
+  var rStickRef = useRef(null);
   var rJoyActive = useRef(false);
   var rTouchId = useRef(null);
   var shieldJoyRef = useRef(null);
@@ -10003,6 +10005,11 @@ export var BroTown = function BroTown(_ref0) {
     if (knobRef.current) {
       knobRef.current.style.transform = "translate(calc(-50% + ".concat(knobX, "px), calc(-50% + ").concat(knobY, "px))");
     }
+    if (lStickRef.current) {
+      lStickRef.current.style.width = clampDist + 'px';
+      lStickRef.current.style.transform = 'rotate(' + angle + 'rad)';
+      lStickRef.current.style.opacity = clampDist > 4 ? '0.85' : '0';
+    }
     var S = stateRef.current;
     var deadzone = 12;
     if (dist < deadzone) {
@@ -10024,6 +10031,10 @@ export var BroTown = function BroTown(_ref0) {
   var handleJoystickEnd = useCallback(function () {
     joystickActive.current = false;
     if (knobRef.current) knobRef.current.style.transform = 'translate(-50%,-50%)';
+    if (lStickRef.current) {
+      lStickRef.current.style.width = '0px';
+      lStickRef.current.style.opacity = '0';
+    }
     var S = stateRef.current;
     /* Dodge roll disabled on joystick — use screen swipe instead */
     lTrail.current = [];
@@ -10049,6 +10060,11 @@ export var BroTown = function BroTown(_ref0) {
       var kx = Math.cos(angle) * clampDist,
         ky = Math.sin(angle) * clampDist;
       rKnobRef.current.style.transform = "translate(calc(-50% + ".concat(kx, "px), calc(-50% + ").concat(ky, "px))");
+    }
+    if (rStickRef.current) {
+      rStickRef.current.style.width = clampDist + 'px';
+      rStickRef.current.style.transform = 'rotate(' + angle + 'rad)';
+      rStickRef.current.style.opacity = clampDist > 4 ? '0.85' : '0';
     }
     var S = stateRef.current;
     if (dist > 8) {
@@ -10082,6 +10098,10 @@ export var BroTown = function BroTown(_ref0) {
   var handleRJoyEnd = useCallback(function () {
     rJoyActive.current = false;
     if (rKnobRef.current) rKnobRef.current.style.transform = 'translate(-50%,-50%)';
+    if (rStickRef.current) {
+      rStickRef.current.style.width = '0px';
+      rStickRef.current.style.opacity = '0';
+    }
     var S = stateRef.current;
     S.autoAttack = false;
     setAutoAttack(false);
@@ -29113,6 +29133,27 @@ export var BroTown = function BroTown(_ref0) {
       strokeLinejoin: 'round',
     }));
   })), /*#__PURE__*/React.createElement("div", {
+    /* Analog "stick" line — anchored at joystick centre, grows toward the
+       knob when dragged.  transform-origin at left-centre so rotation pivots
+       at the disc centre; width set dynamically by handleJoystickMove. */
+    ref: lStickRef,
+    style: {
+      position: 'absolute',
+      left: '50%',
+      top: '50%',
+      width: 0,
+      height: 6,
+      marginTop: -3,
+      transformOrigin: '0% 50%',
+      transform: 'rotate(0rad)',
+      background: 'linear-gradient(90deg, rgba(170,210,255,1), rgba(91,165,255,1))',
+      borderRadius: 3,
+      boxShadow: '0 0 4px rgba(91,165,255,0.6)',
+      opacity: 0,
+      pointerEvents: 'none',
+      zIndex: 0,
+    }
+  }), /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
     ref: knobRef,
     style: {
@@ -29199,6 +29240,26 @@ export var BroTown = function BroTown(_ref0) {
     return null;
   }()), /* Mana text removed — shown contextually above the player. */
   null, /*#__PURE__*/React.createElement("div", {
+    /* Analog "stick" line for the right joystick — mirrors lStickRef.
+       Width and rotation are driven by handleRJoyMove. */
+    ref: rStickRef,
+    style: {
+      position: 'absolute',
+      left: '50%',
+      top: '50%',
+      width: 0,
+      height: 6,
+      marginTop: -3,
+      transformOrigin: '0% 50%',
+      transform: 'rotate(0rad)',
+      background: 'linear-gradient(90deg, rgba(170,210,255,1), rgba(91,165,255,1))',
+      borderRadius: 3,
+      boxShadow: '0 0 4px rgba(91,165,255,0.6)',
+      opacity: 0,
+      pointerEvents: 'none',
+      zIndex: 0,
+    }
+  }), /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
     style: {
       // Beveled translucent-blue disc — the bevel hints "this is a
