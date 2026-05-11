@@ -5439,7 +5439,7 @@ BT_AUDIO.SFX_MANIFEST = {
      blocking new Audio().play() in the render loop. */
   'slime-death':   '/audio/slime-death-v2.mp3',
   'snowman-death': '/audio/snowman-death.mp3',
-  'snowman-hit':   '/sfx/monster/snowman-hit.wav?v=2',
+  'snowman-hit':   '/sfx/monster/snowman-hit.wav?v=3',
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits
