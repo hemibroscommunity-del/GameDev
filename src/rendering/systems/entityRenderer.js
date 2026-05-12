@@ -515,9 +515,19 @@ export class EntityRenderer {
         this.monsterDisplays.set(m.id, display);
       }
 
-      display.x = m.x;
-      display.y = m.y;
-      display.visible = m.alive;
+      /* Guarded writes — every assignment to a Pixi DisplayObject's
+         x / y / visible / scale / tint marks the transform matrix
+         dirty, which forces the entity-layer's batch geometry
+         buffer to rebuild on the next render pass.  At 10 idle
+         slimes × 60 fps × 9 redundant writes each, that's ~5400
+         dirty-marks per second purely from "writing the same value
+         I wrote last frame."  Guarding with `if (current !== target)`
+         turns idle slimes into zero-dirty after the first frame.
+         Matches the dirty-flag idiom already used for HP / level /
+         dynGfx redraws elsewhere in this file. */
+      if (display.x !== m.x) display.x = m.x;
+      if (display.y !== m.y) display.y = m.y;
+      if (display.visible !== m.alive) display.visible = m.alive;
 
       const size = display._size;
 
@@ -566,23 +576,27 @@ export class EntityRenderer {
             if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
             else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
           }
-          /* Render the sprite at 96 px tall, anchored bottom-center
+          /* Render the sprite at 64 px tall, anchored bottom-center
              so feet sit on the ground.  Sprite frames are 128 px so
-             base scale = 96/128.  Bumped 50 → 64 → 96 per repeated
-             "slimes still too small" call-outs — the slime body only
-             fills ~half of the 128-px frame (lots of transparent
-             padding), so a 64-px render reads visually smaller than
-             the 64-px player whose sprite fills the whole frame. */
-          const baseScale = 96 / 128;
-          spriteBody.scale.x = baseScale * sqx;
-          spriteBody.scale.y = baseScale * sqy;
-          spriteBody.y = size; /* feet at the circle's bottom edge */
-          spriteBody.tint = 0xffffff;
-          spriteBody.visible = true;
-          display._body.visible = false;
+             base scale = 64/128.  Previously bumped to 96 for
+             visibility, but on mobile the 96^2 fill per slime x 10
+             slimes saturated the GPU and dropped meadow to 10-20 fps
+             (bt-frame-split data: renderMs 39-100, simMs 1-8).  64
+             cuts per-slime fill to 44% with minimal visual cost.
+             The slime body fills ~half of the 128-px frame, so 64
+             renders at roughly player-sprite scale. */
+          const baseScale = 64 / 128;
+          const sx = baseScale * sqx;
+          const sy = baseScale * sqy;
+          if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
+          if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
+          if (spriteBody.y !== size) spriteBody.y = size; /* feet at the circle's bottom edge */
+          if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+          if (!spriteBody.visible) spriteBody.visible = true;
+          if (display._body.visible) display._body.visible = false;
         } else {
-          spriteBody.visible = false;
-          display._body.visible = true;
+          if (spriteBody.visible) spriteBody.visible = false;
+          if (!display._body.visible) display._body.visible = true;
         }
       }
 
@@ -637,15 +651,16 @@ export class EntityRenderer {
           if (frameTex) {
             if (spriteBody.texture !== frameTex) spriteBody.texture = frameTex;
             const baseScale = 64 / 128;
-            spriteBody.scale.x = baseScale * (mirror ? -1 : 1);
-            spriteBody.scale.y = baseScale;
-            spriteBody.y = size;
-            spriteBody.tint = 0xffffff;
-            spriteBody.visible = true;
-            display._body.visible = false;
+            const sx = baseScale * (mirror ? -1 : 1);
+            if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
+            if (spriteBody.scale.y !== baseScale) spriteBody.scale.y = baseScale;
+            if (spriteBody.y !== size) spriteBody.y = size;
+            if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+            if (!spriteBody.visible) spriteBody.visible = true;
+            if (display._body.visible) display._body.visible = false;
           } else {
-            spriteBody.visible = false;
-            display._body.visible = true;
+            if (spriteBody.visible) spriteBody.visible = false;
+            if (!display._body.visible) display._body.visible = true;
           }
         } else {
           spriteBody.visible = false;

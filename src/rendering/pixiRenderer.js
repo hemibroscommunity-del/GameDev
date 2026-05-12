@@ -162,18 +162,56 @@ export async function initPixiRenderer(canvas) {
     // (e.g. the bow-kill crash) used to cascade into app.render() never
     // being called, freezing the canvas at the last good frame.  Now
     // failures log once per system and the surviving systems still draw.
+    /* Per-stage timing so we can finally see WHICH sub-renderer is the
+       meadow bottleneck.  Throttled to one log per 500 ms, only on
+       slow total frames (>30 ms).  Logs the worst frame in each window
+       to surface real spikes instead of averaging them away. */
+    const _t0 = performance.now();
     try { tileRenderer.update(cx, cy, viewW, viewH); }
     catch (e) { if (!update._tileErr) { update._tileErr = true; console.error('[pixi-render] tileRenderer threw', e && e.message, e && e.stack); } }
+    const _t1 = performance.now();
     try { entityRenderer.update(S, now); }
     catch (e) { if (!update._entityErr) { update._entityErr = true; console.error('[pixi-render] entityRenderer threw', e && e.message, e && e.stack); } }
+    const _t2 = performance.now();
     try { effectsRenderer.update(S, cssW, cssH, now); }
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
+    const _t3 = performance.now();
 
     fpsOverlay.update(now);
+    const _t4 = performance.now();
 
     // Manual render
     try { app.render(); }
     catch (e) { if (!update._renderErr) { update._renderErr = true; console.error('[pixi-render] app.render threw', e && e.message, e && e.stack); } }
+    const _t5 = performance.now();
+
+    const _renderTotal = _t5 - _t0;
+    if (!update._pp) update._pp = { lastT: 0, worst: 0, tile: 0, entity: 0, effects: 0, fps: 0, render: 0, monsters: 0 };
+    if (_renderTotal > 30 && _renderTotal > update._pp.worst) {
+      update._pp.worst   = _renderTotal;
+      update._pp.tile    = _t1 - _t0;
+      update._pp.entity  = _t2 - _t1;
+      update._pp.effects = _t3 - _t2;
+      update._pp.fps     = _t4 - _t3;
+      update._pp.render  = _t5 - _t4;
+      update._pp.monsters = (S.monsters && S.monsters.length) || 0;
+    }
+    if (_t5 - update._pp.lastT > 500 && update._pp.worst > 30) {
+      /* eslint-disable no-console */
+      console.warn('[bt-render-split]', {
+        totalMs:    +update._pp.worst.toFixed(1),
+        tileMs:     +update._pp.tile.toFixed(1),
+        entityMs:   +update._pp.entity.toFixed(1),
+        effectsMs:  +update._pp.effects.toFixed(1),
+        fpsMs:      +update._pp.fps.toFixed(1),
+        appRenderMs:+update._pp.render.toFixed(1),
+        monsters:   update._pp.monsters,
+        zone:       S.currentZone,
+      });
+      /* eslint-enable no-console */
+      update._pp.lastT = _t5;
+      update._pp.worst = 0;
+    }
   }
 
   function destroy() {

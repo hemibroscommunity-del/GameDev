@@ -52,7 +52,16 @@ const hookConsole = () => {
   consoleHooked = true;
   for (const lvl of ['log', 'warn', 'error', 'info']) {
     const orig = console[lvl].bind(console);
-    console[lvl] = (...args) => { pushLog(lvl, args); orig(...args); };
+    /* Gate capture on visible — when the debug overlay is closed
+       (state.visible === false), skip the JSON.stringify + array
+       push + emit() that pushLog does on every console call.  This
+       cut ~30 console.warn-induced React re-renders per second on
+       mobile during sustained gameplay.  Errors still go through
+       always so post-mortem logs aren't lost. */
+    console[lvl] = (...args) => {
+      if (state.visible || lvl === 'error') pushLog(lvl, args);
+      orig(...args);
+    };
   }
   window.addEventListener('error', (e) => pushLog('error', [e.message, e.filename + ':' + e.lineno]));
   window.addEventListener('unhandledrejection', (e) => pushLog('error', ['unhandledrejection:', e.reason]));
@@ -69,9 +78,19 @@ const hookWebSocket = () => {
     ws.addEventListener('open',  () => { state.perf.wsState = 'open';   emit(); });
     ws.addEventListener('close', () => { state.perf.wsState = 'closed'; emit(); });
     ws.addEventListener('error', () => { state.perf.wsState = 'error';  emit(); });
-    ws.addEventListener('message', (evt) => pushWS('in', evt.data));
+    /* Gate WS capture on visible — when the debug overlay is closed,
+       skip JSON.parse + storing parsed object in wsFrames + emit().
+       This was the smoking gun: 30 Hz server ticks * JSON.parse +
+       React re-render through emit() = ~1 s cadence GC pauses that
+       read as "world sticks for a moment every second" on mobile. */
+    ws.addEventListener('message', (evt) => {
+      if (state.visible) pushWS('in', evt.data);
+    });
     const origSend = ws.send.bind(ws);
-    ws.send = (data) => { pushWS('out', data); return origSend(data); };
+    ws.send = (data) => {
+      if (state.visible) pushWS('out', data);
+      return origSend(data);
+    };
     return ws;
   };
   Wrapped.prototype = Native.prototype;

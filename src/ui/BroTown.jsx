@@ -3769,12 +3769,18 @@ export var BroTown = function BroTown(_ref0) {
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
           } else S._dodgeRoll = null;
         }
-        var dx = playerStunned ? 0 : S.stickX,
-          dy = playerStunned ? 0 : S.stickY;
-        /* Keyboard overrides if no stick input — but ALSO gated by
-           playerStunned so the hit-react lockout can't be bypassed
-           with WASD/arrow keys. */
-        if (!playerStunned && dx === 0 && dy === 0) {
+        /* Movement gated by REAL stuns only (hexer / brute charge).
+           The 250 ms hit-react lockout (_hitLockActive) no longer
+           freezes movement -- in projectile-heavy zones like meadow
+           a slime hit every few seconds stacked 250 ms freezes that
+           read as "frame stutter" even at 60 fps.  Visual hit-react
+           sprite + screen shake + particles still play; the player
+           just keeps their dodge ability mid-hit. */
+        var dx = _realStunned ? 0 : S.stickX,
+          dy = _realStunned ? 0 : S.stickY;
+        /* Keyboard overrides if no stick input — same gating:
+           real stuns block, hit-react lockout does not. */
+        if (!_realStunned && dx === 0 && dy === 0) {
           if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
           if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
           if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
@@ -8828,6 +8834,12 @@ export var BroTown = function BroTown(_ref0) {
            throws here we log + flag and let the next frame retry,
            instead of trying to re-init a defunct Canvas 2D pipeline.
            ══════════════════════════════════════════════════════════ */
+        /* Sim/render split — always on, logs only on slow frames
+           (>30 ms) and throttled to once every 500 ms to avoid spam
+           in the mobile console.  Tells us whether the JS game-loop
+           work (simMs) or the Pixi render (renderMs) is the
+           bottleneck.  */
+        var _simEndT = performance.now();
         if (pixiRef.current) {
           var W = canvas.width / (window.devicePixelRatio || 1);
           var H = canvas.height / (window.devicePixelRatio || 1);
@@ -8839,6 +8851,31 @@ export var BroTown = function BroTown(_ref0) {
               console.error('[pixi-render] update threw', pixiErr && pixiErr.message, pixiErr && pixiErr.stack);
             }
           }
+        }
+        var _renderEndT = performance.now();
+        var _totalMs = _renderEndT - _perfNow;
+        if (!S._splitLog) S._splitLog = { lastT: 0, worstTotal: 0, worstSim: 0, worstRender: 0 };
+        if (_totalMs > 30 && _totalMs > S._splitLog.worstTotal) {
+          S._splitLog.worstTotal = _totalMs;
+          S._splitLog.worstSim = _simEndT - _perfNow;
+          S._splitLog.worstRender = _renderEndT - _simEndT;
+        }
+        if (_renderEndT - S._splitLog.lastT > 500 && S._splitLog.worstTotal > 30) {
+          /* eslint-disable no-console */
+          console.warn('[bt-frame-split]', {
+            totalMs: +S._splitLog.worstTotal.toFixed(1),
+            simMs: +S._splitLog.worstSim.toFixed(1),
+            renderMs: +S._splitLog.worstRender.toFixed(1),
+            monsters: (S.monsters && S.monsters.length) || 0,
+            hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
+            slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
+            zone: S.currentZone,
+          });
+          /* eslint-enable no-console */
+          S._splitLog.lastT = _renderEndT;
+          S._splitLog.worstTotal = 0;
+          S._splitLog.worstSim = 0;
+          S._splitLog.worstRender = 0;
         }
       } catch (gameLoopErr) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
