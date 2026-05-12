@@ -515,9 +515,19 @@ export class EntityRenderer {
         this.monsterDisplays.set(m.id, display);
       }
 
-      display.x = m.x;
-      display.y = m.y;
-      display.visible = m.alive;
+      /* Guarded writes — every assignment to a Pixi DisplayObject's
+         x / y / visible / scale / tint marks the transform matrix
+         dirty, which forces the entity-layer's batch geometry
+         buffer to rebuild on the next render pass.  At 10 idle
+         slimes × 60 fps × 9 redundant writes each, that's ~5400
+         dirty-marks per second purely from "writing the same value
+         I wrote last frame."  Guarding with `if (current !== target)`
+         turns idle slimes into zero-dirty after the first frame.
+         Matches the dirty-flag idiom already used for HP / level /
+         dynGfx redraws elsewhere in this file. */
+      if (display.x !== m.x) display.x = m.x;
+      if (display.y !== m.y) display.y = m.y;
+      if (display.visible !== m.alive) display.visible = m.alive;
 
       const size = display._size;
 
@@ -574,15 +584,17 @@ export class EntityRenderer {
              padding), so a 64-px render reads visually smaller than
              the 64-px player whose sprite fills the whole frame. */
           const baseScale = 96 / 128;
-          spriteBody.scale.x = baseScale * sqx;
-          spriteBody.scale.y = baseScale * sqy;
-          spriteBody.y = size; /* feet at the circle's bottom edge */
-          spriteBody.tint = 0xffffff;
-          spriteBody.visible = true;
-          display._body.visible = false;
+          const sx = baseScale * sqx;
+          const sy = baseScale * sqy;
+          if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
+          if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
+          if (spriteBody.y !== size) spriteBody.y = size; /* feet at the circle's bottom edge */
+          if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+          if (!spriteBody.visible) spriteBody.visible = true;
+          if (display._body.visible) display._body.visible = false;
         } else {
-          spriteBody.visible = false;
-          display._body.visible = true;
+          if (spriteBody.visible) spriteBody.visible = false;
+          if (!display._body.visible) display._body.visible = true;
         }
       }
 
@@ -637,15 +649,16 @@ export class EntityRenderer {
           if (frameTex) {
             if (spriteBody.texture !== frameTex) spriteBody.texture = frameTex;
             const baseScale = 64 / 128;
-            spriteBody.scale.x = baseScale * (mirror ? -1 : 1);
-            spriteBody.scale.y = baseScale;
-            spriteBody.y = size;
-            spriteBody.tint = 0xffffff;
-            spriteBody.visible = true;
-            display._body.visible = false;
+            const sx = baseScale * (mirror ? -1 : 1);
+            if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
+            if (spriteBody.scale.y !== baseScale) spriteBody.scale.y = baseScale;
+            if (spriteBody.y !== size) spriteBody.y = size;
+            if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+            if (!spriteBody.visible) spriteBody.visible = true;
+            if (display._body.visible) display._body.visible = false;
           } else {
-            spriteBody.visible = false;
-            display._body.visible = true;
+            if (spriteBody.visible) spriteBody.visible = false;
+            if (!display._body.visible) display._body.visible = true;
           }
         } else {
           spriteBody.visible = false;
