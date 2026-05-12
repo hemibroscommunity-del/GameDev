@@ -410,7 +410,10 @@ export class EntityRenderer {
   _updateMonsters(S, now) {
     const monsters = S.monsters || [];
     const activeIds = new Set();
-    const SLIME_DEATH_MS = 100; /* matches Canvas 2D's _dDur — short fast dissolve */
+    const SLIME_DEATH_MS = 800; /* v6 death video plays the full sit -> burst ->
+                                    scatter -> splatter sequence; 800 ms lets the
+                                    24 frames read clearly (~30 fps playback).
+                                    Was 100 ms back when v5 was a tight dissolve. */
     const SNOWMAN_DEATH_MS = 500; /* user-requested 0.5 s shatter */
 
     for (const m of monsters) {
