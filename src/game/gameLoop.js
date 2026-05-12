@@ -2677,6 +2677,7 @@ export function setupGameLoop(ctx) {
                         ts: Date.now()
                       });
                       S.lastDamageTaken = Date.now();
+                      S._hitFlash = Date.now();
                     } else if (distToP < slamRange && dodged) {
                       S.dmgNumbers.push({
                         x: P.x,
@@ -2735,6 +2736,7 @@ export function setupGameLoop(ctx) {
                         ts: Date.now()
                       });
                       S.lastDamageTaken = Date.now();
+                      S._hitFlash = Date.now();
                     }
                   }
                   if (ability === 'summon') {
@@ -2817,6 +2819,7 @@ export function setupGameLoop(ctx) {
                     ts: Date.now()
                   });
                   S.lastDamageTaken = Date.now();
+                  S._hitFlash = Date.now();
                   S.screenShake = 6;
                   m._chargeUntil = 0; /* stop charging on hit */
                   /* Knockback */
@@ -2877,6 +2880,8 @@ export function setupGameLoop(ctx) {
                     m.respawnAt = Date.now() + 30000;
                     var explodeDmg = Math.round(m.dmg * 2);
                     _R6.hp -= shielded ? Math.max(1, Math.floor(explodeDmg * (1 - blockReduc))) : explodeDmg;
+                    S.lastDamageTaken = Date.now();
+                    S._hitFlash = Date.now();
                     S.screenShake = 8;
                     S.dmgNumbers.push({
                       x: m.x,
@@ -2910,6 +2915,7 @@ export function setupGameLoop(ctx) {
                   } else {
                     _R6.hp -= dmgTaken;
                     S.lastDamageTaken = Date.now();
+                    S._hitFlash = Date.now();
 
                     /* ═══ ARCHETYPE-SPECIFIC ATTACK EFFECTS ═══ */
                     if (arch === 'hexer' && !shielded) {
