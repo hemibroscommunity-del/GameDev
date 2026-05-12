@@ -459,8 +459,8 @@ export class EntityRenderer {
               display._slimeFrame = frameIdx;
               sb.texture = tex;
             }
-            sb.scale.x = 64 / 128;
-            sb.scale.y = 64 / 128;
+            sb.scale.x = 96 / 128;
+            sb.scale.y = 96 / 128;
             sb.tint = 0xffffff;
             sb.visible = true;
             display.x = m.x;
@@ -579,16 +579,14 @@ export class EntityRenderer {
             if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
             else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
           }
-          /* Render the sprite at 64 px tall, anchored bottom-center
+          /* Render the sprite at 96 px tall, anchored bottom-center
              so feet sit on the ground.  Sprite frames are 128 px so
-             base scale = 64/128.  Previously bumped to 96 for
-             visibility, but on mobile the 96^2 fill per slime x 10
-             slimes saturated the GPU and dropped meadow to 10-20 fps
-             (bt-frame-split data: renderMs 39-100, simMs 1-8).  64
-             cuts per-slime fill to 44% with minimal visual cost.
-             The slime body fills ~half of the 128-px frame, so 64
-             renders at roughly player-sprite scale. */
-          const baseScale = 64 / 128;
+             base scale = 96/128.  Briefly dropped to 64 in v2.1.54
+             while chasing a perf issue we thought was sprite fillrate;
+             v2.1.56 found the real cause (debugBus WS capture) and
+             restored 96.  The slime body only fills ~half of the
+             128-px frame, so 96 reads at roughly player-sprite scale. */
+          const baseScale = 96 / 128;
           const sx = baseScale * sqx;
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;

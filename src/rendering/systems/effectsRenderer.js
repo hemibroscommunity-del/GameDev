@@ -1073,7 +1073,11 @@ export class EffectsRenderer {
         l._pixiSprite.x = l.x;
         l._pixiSprite.y = l.y + bob;
         l._pixiSprite.alpha = alpha;
-        l._pixiSprite.scale.set(32 / (l._pixiSprite.texture.width || 32));
+        /* Slime splat scaled up with the live slime sprite (96 px).
+           Previously 32; bumped to 48 to keep the splat proportional
+           to the larger live slime so the pickup reads as the same
+           creature's remains. */
+        l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 48));
         l._pixiSprite.visible = true;
         continue;
       }
