@@ -68,17 +68,7 @@ function buildScene(app) {
  * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
  */
 export async function createPixiApp(canvas) {
-  const rawDpr = window.devicePixelRatio || 1;
-  /* Mobile GPUs hit fillrate limits at full DPR (commonly 2-3 on
-     phones).  At DPR=3 the renderer pushes 9x the pixels of DPR=1;
-     for a meadow with 10 slime sprites + a 1024x1024 zone painting
-     that saturates the GPU and drops frame time from ~16 ms to
-     50-100 ms.  Cap at 1.5 -- the zone art already uses NEAREST
-     sampling and doesn't benefit from extra DPR, and player /
-     monster sprites at 1.5 read as crisp without paying the
-     fillrate cost of 2-3x.  Diagnosed via [bt-frame-split] showing
-     renderMs at 39-100 ms / totalMs while simMs stays under 10. */
-  const dpr = Math.min(rawDpr, 1.5);
+  const dpr = window.devicePixelRatio || 1;
 
   const initOpts = {
     canvas: canvas,
