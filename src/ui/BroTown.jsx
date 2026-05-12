@@ -6954,6 +6954,7 @@ export var BroTown = function BroTown(_ref0) {
                     y: m.y - 20,
                     text: '💥⚡ ' + dmg,
                     color: '#f5c542',
+                    iconKey: 'sword',
                     special: _isSpecialDmg,
                     ts: Date.now()
                   });
@@ -6963,6 +6964,7 @@ export var BroTown = function BroTown(_ref0) {
                     y: m.y - 20,
                     text: '💥 ' + dmg,
                     color: '#f5c542',
+                    iconKey: 'sword',
                     special: _isSpecialDmg,
                     ts: Date.now()
                   });
@@ -6972,6 +6974,7 @@ export var BroTown = function BroTown(_ref0) {
                     y: m.y - 20,
                     text: '' + dmg,
                     color: '#fff',
+                    iconKey: 'sword',
                     special: _isSpecialDmg,
                     ts: Date.now()
                   });
@@ -9556,6 +9559,7 @@ export var BroTown = function BroTown(_ref0) {
         maxLife: 200,
         hitIds: new Set(),
         isSpecial: true,
+        isStaff: false,
         element: hasElement || null,
         ice: true /* uses the large glowing arrow visual */
       });
@@ -9564,7 +9568,9 @@ export var BroTown = function BroTown(_ref0) {
         return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
       }, 60);
     } else if (activeWpn.type === 'staff') {
-      /* STAFF heavy — burst of 3 projectiles in a cone */
+      /* STAFF heavy — burst of 3 projectiles in a cone.  isStaff:true so
+         the hit handler picks the 'spell' popup icon (vs 'arrow' for
+         bows) and the projectile renders as magic, not a physical arrow. */
       if (!S.arrows) S.arrows = [];
       var _wpnDmg = calcWeaponDmg(activeWpn.type, R.power, activeWpn.tierMult);
       for (var si = -1; si <= 1; si++) {
@@ -9576,6 +9582,7 @@ export var BroTown = function BroTown(_ref0) {
           maxLife: 150,
           hitIds: new Set(),
           isSpecial: true,
+          isStaff: true,
           element: hasElement || null,
           ice: true
         });
@@ -10035,7 +10042,6 @@ export var BroTown = function BroTown(_ref0) {
   var joystickRef = useRef(null);
   var knobRef = useRef(null);
   var lStickRef = useRef(null);
-  var lFlashRef = useRef(null);
   var joystickActive = useRef(false);
   var lTouchId = useRef(null);
   var rJoyRef = useRef(null);
@@ -10191,66 +10197,10 @@ export var BroTown = function BroTown(_ref0) {
       for (var i = 0; i < tl.length; i++) if (tl[i].identifier === id) return tl[i];
       return null;
     };
-    /* Double-tap-on-left-joystick → special attack.
-       Aim comes from S._aimAngle (set by the right joystick), so the
-       player can line up the shot with the right stick and fire it by
-       tapping the left stick twice.  The flash overlay (lFlashRef)
-       pulses white between the two taps; the knob itself also grows
-       instantly on the first tap and slow-shrinks back to its static
-       24 px size when the window closes (timeout or second tap). */
-    var _lLastTap = 0;
-    var _lFlashTimer = null;
-    var DOUBLE_TAP_MS = 350;
-    var setLFlash = function setLFlash(on) {
-      var el = lFlashRef.current;
-      if (!el) return;
-      if (on) el.classList.add('bt-joy-flash-active');
-      else el.classList.remove('bt-joy-flash-active');
-    };
-    var growKnobOnTap = function growKnobOnTap() {
-      var k = knobRef.current;
-      if (!k) return;
-      /* Snap to grown size — no transition on grow. */
-      k.style.transition = 'width 0s, height 0s';
-      k.style.width = '40px';
-      k.style.height = '40px';
-    };
-    var shrinkKnobToStatic = function shrinkKnobToStatic() {
-      var k = knobRef.current;
-      if (!k) return;
-      /* Smooth shrink back to the CSS-defined size (24 px). */
-      k.style.transition = 'width 0.5s ease-out, height 0.5s ease-out';
-      k.style.width = '';
-      k.style.height = '';
-    };
     var lS = function lS(e) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      var now = Date.now();
-      if (_lLastTap && now - _lLastTap < DOUBLE_TAP_MS) {
-        /* Second tap inside window → fire special, close window. */
-        _lLastTap = 0;
-        if (_lFlashTimer) {
-          clearTimeout(_lFlashTimer);
-          _lFlashTimer = null;
-        }
-        setLFlash(false);
-        shrinkKnobToStatic();
-        doSpecialAttack();
-      } else {
-        /* First tap → arm window, start flash, grow knob. */
-        _lLastTap = now;
-        setLFlash(true);
-        growKnobOnTap();
-        if (_lFlashTimer) clearTimeout(_lFlashTimer);
-        _lFlashTimer = setTimeout(function () {
-          setLFlash(false);
-          shrinkKnobToStatic();
-          _lLastTap = 0;
-          _lFlashTimer = null;
-        }, DOUBLE_TAP_MS);
-      }
       lTouchId.current = t.identifier;
       joystickActive.current = true;
       handleJoystickMove(t.clientX, t.clientY);
@@ -10271,6 +10221,11 @@ export var BroTown = function BroTown(_ref0) {
         handleJoystickEnd();
       }
     };
+    /* Right-joystick swipe-to-special.  Track start (sx/sy/st) on touch
+       down and the last known position (lx/ly/lt) on every move; on
+       touch end, if the recent motion qualifies as a flick, fire
+       doSpecialAttack using the flick direction as the aim angle. */
+    var rSwipe = { sx: 0, sy: 0, st: 0, lx: 0, ly: 0, lt: 0 };
     var rS = function rS(e) {
       e.preventDefault();
       e.stopPropagation();
@@ -10279,8 +10234,12 @@ export var BroTown = function BroTown(_ref0) {
       rJoyActive.current = true;
       setAutoAttack(true);
       stateRef.current.autoAttack = true;
-      // Weapon swap → WeaponSwapBar. Special attack → double-tap left
-      // joystick. Right joystick is just aim + auto-swing while held.
+      rSwipe.sx = t.clientX;
+      rSwipe.sy = t.clientY;
+      rSwipe.st = Date.now();
+      rSwipe.lx = 0;
+      rSwipe.ly = 0;
+      rSwipe.lt = 0;
       handleRJoyMove(t.clientX, t.clientY);
       doSwing();
     };
@@ -10290,15 +10249,42 @@ export var BroTown = function BroTown(_ref0) {
       if (t) {
         e.preventDefault();
         handleRJoyMove(t.clientX, t.clientY);
+        rSwipe.lx = t.clientX;
+        rSwipe.ly = t.clientY;
+        rSwipe.lt = Date.now();
       }
     };
     var rE = function rE(e) {
-      // Special attack moved off the right joystick — now triggered by
-      // double-tapping the left joystick.  Right joystick just controls
-      // aim + auto-attack while held.
       if (rTouchId.current === null) return;
       var t = findT(e.changedTouches, rTouchId.current);
       if (t) {
+        /* Flick detection — last-leg speed (recent burst) OR
+           total-distance/total-duration speed (slow but committed). */
+        var refX = rSwipe.lx || rSwipe.sx;
+        var refY = rSwipe.ly || rSwipe.sy;
+        var refT = rSwipe.lt || rSwipe.st;
+        var dx = t.clientX - refX, dy = t.clientY - refY;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var dur = Date.now() - refT;
+        var spd = dist / Math.max(dur, 1);
+        var totalDx = t.clientX - rSwipe.sx, totalDy = t.clientY - rSwipe.sy;
+        var totalDist = Math.sqrt(totalDx * totalDx + totalDy * totalDy);
+        var totalDur = Date.now() - rSwipe.st;
+        var totalSpd = totalDist / Math.max(totalDur, 1);
+        var isFlick = (spd > 0.15 && dist > 8 && dur < 400)
+          || (totalSpd > 0.2 && totalDist > 15 && totalDur < 500);
+        if (isFlick) {
+          var S2 = stateRef.current;
+          S2._hasUsedSwipe = true;
+          var useDx = totalDist > dist ? totalDx : dx;
+          var useDy = totalDist > dist ? totalDy : dy;
+          var flickAng = Math.atan2(useDy, useDx);
+          S2._aimAngle = flickAng;
+          S2._facing = Math.abs(useDx) > Math.abs(useDy)
+            ? (useDx > 0 ? 'right' : 'left')
+            : (useDy > 0 ? 'down' : 'up');
+          doSpecialAttack();
+        }
         rTouchId.current = null;
         handleRJoyEnd();
       }
@@ -29185,23 +29171,9 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-joystick-knob",
     ref: knobRef,
     style: {
-      zIndex: 3
+      zIndex: 1
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    /* White flash overlay nested inside the knob — moves with the
-       knob's transform.  Visible during the double-tap window after the
-       first tap; class bt-joy-flash-active is toggled by lS(). */
-    ref: lFlashRef,
-    style: {
-      position: 'absolute',
-      inset: 0,
-      borderRadius: '50%',
-      background: 'rgba(255,255,255,0.95)',
-      boxShadow: '0 0 10px rgba(255,255,255,0.75)',
-      opacity: 0,
-      pointerEvents: 'none',
-    }
-  })))), /*#__PURE__*/React.createElement("div", {
+  }))), /*#__PURE__*/React.createElement("div", {
     className: "bt-desktop-hide",
     style: {
       position: 'fixed',

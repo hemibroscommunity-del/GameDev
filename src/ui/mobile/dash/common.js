@@ -28,10 +28,14 @@ export const TIER_COLOR = {
 export const getState = () => (typeof window !== 'undefined') && window._gameState && window._gameState.current;
 
 // Common panel container — fills the dashboard's content area below the header.
+// touchAction: 'pan-y' opts back in to vertical scrolling for the inner panel
+// since the parent dashboard sets touch-action:none to suppress accidental
+// browser pan/zoom on swipes over dashboard chrome.
 export const panelStyle = {
   flex: 1,
   minHeight: 0,
   overflow: 'auto',
+  touchAction: 'pan-y',
   padding: '8px 12px 10px',
   color: COL.text,
   fontFamily: 'VT323, monospace',
