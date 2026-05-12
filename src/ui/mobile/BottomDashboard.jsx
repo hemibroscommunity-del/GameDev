@@ -361,6 +361,7 @@ export const BottomDashboard = () => {
 
     <div
       onPointerDown={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
       style={{
         position: 'fixed',
         left: 0, right: 0, bottom: 0,
@@ -374,7 +375,13 @@ export const BottomDashboard = () => {
         flexDirection: 'column',
         boxSizing: 'border-box',
         paddingBottom: 'env(safe-area-inset-bottom)',
-        touchAction: 'manipulation',
+        /* touch-action: none swallows browser default gestures (pan,
+           zoom, swipe) on the dashboard chrome.  Inner scrollable panels
+           use panelStyle.touchAction = 'pan-y' to opt back in to
+           vertical scrolling. Without this, an accidental horizontal
+           swipe on the dashboard area was being interpreted as a page
+           pan and the viewport visibly juddered. */
+        touchAction: 'none',
       }}
     >
       {active ? (
