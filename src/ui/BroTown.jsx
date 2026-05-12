@@ -8834,12 +8834,12 @@ export var BroTown = function BroTown(_ref0) {
            throws here we log + flag and let the next frame retry,
            instead of trying to re-init a defunct Canvas 2D pipeline.
            ══════════════════════════════════════════════════════════ */
-        /* Diagnostic: measure how much of the frame budget the Pixi
-           render itself takes.  Enables via `window.__btRenderProf = 1`
-           in the console.  When on, every slow frame (>20 ms total)
-           logs simT vs renderT so we can tell if the simulation or
-           the renderer is the bottleneck. */
-        var _simEndT = (window.__btRenderProf ? performance.now() : 0);
+        /* Sim/render split — always on, logs only on slow frames
+           (>30 ms) and throttled to once every 500 ms to avoid spam
+           in the mobile console.  Tells us whether the JS game-loop
+           work (simMs) or the Pixi render (renderMs) is the
+           bottleneck.  */
+        var _simEndT = performance.now();
         if (pixiRef.current) {
           var W = canvas.width / (window.devicePixelRatio || 1);
           var H = canvas.height / (window.devicePixelRatio || 1);
@@ -8852,23 +8852,30 @@ export var BroTown = function BroTown(_ref0) {
             }
           }
         }
-        if (window.__btRenderProf) {
-          var _renderEndT = performance.now();
-          var _simMs = _simEndT - _perfNow;
-          var _renderMs = _renderEndT - _simEndT;
-          var _totalMs = _renderEndT - _perfNow;
-          if (_totalMs > 20) {
-            /* eslint-disable no-console */
-            console.warn('[bt-frame-split]', {
-              totalMs: +_totalMs.toFixed(1),
-              simMs: +_simMs.toFixed(1),
-              renderMs: +_renderMs.toFixed(1),
-              monsters: (S.monsters && S.monsters.length) || 0,
-              hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
-              zone: S.currentZone,
-            });
-            /* eslint-enable no-console */
-          }
+        var _renderEndT = performance.now();
+        var _totalMs = _renderEndT - _perfNow;
+        if (!S._splitLog) S._splitLog = { lastT: 0, worstTotal: 0, worstSim: 0, worstRender: 0 };
+        if (_totalMs > 30 && _totalMs > S._splitLog.worstTotal) {
+          S._splitLog.worstTotal = _totalMs;
+          S._splitLog.worstSim = _simEndT - _perfNow;
+          S._splitLog.worstRender = _renderEndT - _simEndT;
+        }
+        if (_renderEndT - S._splitLog.lastT > 500 && S._splitLog.worstTotal > 30) {
+          /* eslint-disable no-console */
+          console.warn('[bt-frame-split]', {
+            totalMs: +S._splitLog.worstTotal.toFixed(1),
+            simMs: +S._splitLog.worstSim.toFixed(1),
+            renderMs: +S._splitLog.worstRender.toFixed(1),
+            monsters: (S.monsters && S.monsters.length) || 0,
+            hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
+            slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
+            zone: S.currentZone,
+          });
+          /* eslint-enable no-console */
+          S._splitLog.lastT = _renderEndT;
+          S._splitLog.worstTotal = 0;
+          S._splitLog.worstSim = 0;
+          S._splitLog.worstRender = 0;
         }
       } catch (gameLoopErr) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
