@@ -68,7 +68,16 @@ function buildScene(app) {
  * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
  */
 export async function createPixiApp(canvas) {
-  const dpr = window.devicePixelRatio || 1;
+  /* Mobile GPUs hit fillrate limits at full DPR (commonly 2-3 on
+     phones).  At DPR=3 the renderer pushes 9x the pixels of DPR=1;
+     for meadow with 10 slime sprites + the 1024x1024 zone painting
+     that saturates the GPU (bt-frame-split: renderMs 39-100,
+     simMs 1-8).  Cap at integer 2 to keep buffer dims integer
+     (fractional 1.5 + autoDensity caused black/glitchy render in
+     v2.1.49).  DPR=3 phones drop to 2 -> ~44% of pixel work; DPR=2
+     and below are unchanged. */
+  const rawDpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(Math.max(1, Math.floor(rawDpr)), 2);
 
   const initOpts = {
     canvas: canvas,
