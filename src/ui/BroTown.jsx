@@ -43,6 +43,7 @@ import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
+import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -3980,6 +3981,7 @@ export var BroTown = function BroTown(_ref0) {
             /* Zone exits — open to all players (quest gate removed) */
             {
               S.currentZone = bestExit.zoneId;
+              perfTracker.setZone(bestExit.zoneId);
               updateZoneDimensions(bestExit.zoneId);
               BT_AUDIO.startZoneAmbient(bestExit.zoneId);
               discoverZone(bestExit.zoneId); /* §ENC — Encyclopedia zone discovery */
@@ -8857,6 +8859,32 @@ export var BroTown = function BroTown(_ref0) {
         }
         var _renderEndT = performance.now();
         var _totalMs = _renderEndT - _perfNow;
+        /* Every-frame sample into perfTracker so the Debug overlay's Perf
+           tab can render a chart + long-frame attribution.  Cheap: one
+           array slot write per RAF.  Stage breakdown pulled from
+           pixiRenderer's _lastStages (which is itself always-on). */
+        var _stages = (pixiRef.current && pixiRef.current.update && pixiRef.current.update._lastStages) || null;
+        perfTracker.record({
+          t: _renderEndT,
+          totalMs: _totalMs,
+          simMs: _simEndT - _perfNow,
+          renderMs: _renderEndT - _simEndT,
+          tileMs: _stages ? _stages.tileMs : 0,
+          entityMs: _stages ? _stages.entityMs : 0,
+          effectsMs: _stages ? _stages.effectsMs : 0,
+          fpsMs: _stages ? _stages.fpsMs : 0,
+          appMs: _stages ? _stages.appMs : 0,
+          zone: S.currentZone,
+          monsters: (S.monsters && S.monsters.length) || 0,
+          others: (S.others && S.others.length) || 0,
+          projectiles: (S.projectiles && S.projectiles.length) || 0,
+          hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
+          slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
+          dmgNumbers: (S.dmgNumbers && S.dmgNumbers.length) || 0,
+          groundLoot: (S.groundLoot && S.groundLoot.length) || 0,
+          groundSplatter: (S.groundSplatter && S.groundSplatter.length) || 0,
+          campfires: (S.campfires && S.campfires.length) || 0,
+        });
         if (!S._splitLog) S._splitLog = { lastT: 0, worstTotal: 0, worstSim: 0, worstRender: 0 };
         if (_totalMs > 30 && _totalMs > S._splitLog.worstTotal) {
           S._splitLog.worstTotal = _totalMs;
@@ -8884,6 +8912,8 @@ export var BroTown = function BroTown(_ref0) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
       }
     };
+    perfTracker.init();
+    perfTracker.setZone(stateRef.current.currentZone || 'town');
     frameRef.current = requestAnimationFrame(_gameLoop);
 
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */

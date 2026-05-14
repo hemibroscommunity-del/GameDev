@@ -186,6 +186,16 @@ export async function initPixiRenderer(canvas) {
     const _t5 = performance.now();
 
     const _renderTotal = _t5 - _t0;
+    /* Per-frame stage breakdown stashed where BroTown.jsx can pick it up
+       in the same RAF tick (perfTracker.record).  Always-on so the Perf
+       overlay sees every frame, not just slow ones. */
+    update._lastStages = {
+      tileMs:    _t1 - _t0,
+      entityMs:  _t2 - _t1,
+      effectsMs: _t3 - _t2,
+      fpsMs:     _t4 - _t3,
+      appMs:     _t5 - _t4,
+    };
     if (!update._pp) update._pp = { lastT: 0, worst: 0, tile: 0, entity: 0, effects: 0, fps: 0, render: 0, monsters: 0 };
     if (_renderTotal > 30 && _renderTotal > update._pp.worst) {
       update._pp.worst   = _renderTotal;
