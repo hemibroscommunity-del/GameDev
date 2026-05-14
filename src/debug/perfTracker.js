@@ -44,6 +44,13 @@ const makeZoneStats = (zoneId, t) => ({
 
 let zoneStats = makeZoneStats('?', 0);
 
+/* Throttled spike log so the user's existing console copy-paste
+   workflow surfaces stage attribution without needing to open the
+   Perf tab.  Fires at most every 500 ms on the worst frame seen in
+   that window when totalMs > LONG_FRAME_THRESHOLD_MS. */
+let spikeLastT = 0;
+let spikeWorst = null;
+
 let longTaskObserver = null;
 const initLongTaskObserver = () => {
   if (longTaskObserver) return;
@@ -98,6 +105,34 @@ export const perfTracker = {
       if (ms > FREEZE_THRESHOLD_MS) zoneStats.freezeFrames++;
       longFrames.push(sample);
       if (longFrames.length > LONG_FRAME_BUFFER) longFrames.shift();
+      /* Surface the worst spike per 500 ms window into the console
+         with full stage attribution.  This is the data needed to
+         answer "which sub-stage is slow" — sim vs tile vs entity vs
+         effects vs fps vs app.render.  Throttled identically to
+         [bt-perf] / [bt-frame-split] so it doesn't spam. */
+      if (!spikeWorst || ms > spikeWorst.totalMs) spikeWorst = sample;
+      const tNow = sample.t || performance.now();
+      if (tNow - spikeLastT > 500 && spikeWorst) {
+        /* eslint-disable no-console */
+        console.warn('[bt-spike]', {
+          totalMs:  +spikeWorst.totalMs.toFixed(1),
+          simMs:    +spikeWorst.simMs.toFixed(1),
+          renderMs: +spikeWorst.renderMs.toFixed(1),
+          tileMs:   +spikeWorst.tileMs.toFixed(1),
+          entityMs: +spikeWorst.entityMs.toFixed(1),
+          effectsMs:+spikeWorst.effectsMs.toFixed(1),
+          fpsMs:    +spikeWorst.fpsMs.toFixed(1),
+          appMs:    +spikeWorst.appMs.toFixed(1),
+          zone:     spikeWorst.zone,
+          monsters: spikeWorst.monsters,
+          particles:spikeWorst.hitParticles,
+          splatter: spikeWorst.groundSplatter,
+          dmgNums:  spikeWorst.dmgNumbers,
+        });
+        /* eslint-enable no-console */
+        spikeLastT = tNow;
+        spikeWorst = null;
+      }
     }
   },
 
