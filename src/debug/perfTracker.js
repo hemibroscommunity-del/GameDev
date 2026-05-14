@@ -83,12 +83,19 @@ export const perfTracker = {
   },
 
   /** Called every frame from BroTown.jsx after sim + render are timed.
-   *  sample: { t, totalMs, simMs, renderMs, tileMs, entityMs,
+   *  sample: { t, intervalMs, workMs, simMs, renderMs, tileMs, entityMs,
    *            effectsMs, fpsMs, appMs, zone, monsters, ... }
    *
-   *  Auto-resets per-zone counters when sample.zone changes — saves
-   *  threading setZone() calls through every zone-mutation site
-   *  (respawns, dungeon warps, clan-war joins, etc.). */
+   *  intervalMs = gap between consecutive RAF callbacks (what the user
+   *  PERCEIVES as a frozen frame — includes browser composite, GC,
+   *  style recalc, third-party handlers between our callbacks).
+   *  workMs    = time spent INSIDE our RAF callback (sim + pixi update).
+   *  When intervalMs >> workMs the slow part is in the browser between
+   *  our callbacks, not in our code.  This was the bug in v2.1.61-63:
+   *  we were tracking workMs and missing the browser-side gaps that
+   *  feel like stutter.
+   *
+   *  Auto-resets per-zone counters when sample.zone changes. */
   record(sample) {
     if (sample.zone && sample.zone !== zoneStats.zone) {
       zoneStats = makeZoneStats(sample.zone, sample.t || performance.now());
@@ -96,6 +103,9 @@ export const perfTracker = {
     ring[ringIdx] = sample;
     ringIdx = (ringIdx + 1) % RING_SIZE;
     if (ringCount < RING_SIZE) ringCount++;
+    /* totalMs == intervalMs (user-perceived frame time).  We keep
+       totalMs as the field name so existing chart / stats code that
+       reads sample.totalMs doesn't need to change. */
     const ms = sample.totalMs;
     zoneStats.totalFrames++;
     zoneStats.sumMs += ms;
@@ -114,8 +124,17 @@ export const perfTracker = {
       const tNow = sample.t || performance.now();
       if (tNow - spikeLastT > 500 && spikeWorst) {
         /* eslint-disable no-console */
+        const _interval = +spikeWorst.totalMs.toFixed(1);
+        const _work     = +(spikeWorst.workMs || 0).toFixed(1);
+        const _outside  = +(spikeWorst.totalMs - (spikeWorst.workMs || 0)).toFixed(1);
         console.warn('[bt-spike]', {
-          totalMs:  +spikeWorst.totalMs.toFixed(1),
+          /* intervalMs is what the user FEELS as a freeze.  workMs is
+             what our RAF callback spent.  outsideMs is browser-side
+             work between our callbacks (composite, GC, style, etc.).
+             If outsideMs is the bulk, the freeze is NOT our code. */
+          intervalMs: _interval,
+          workMs:     _work,
+          outsideMs:  _outside,
           simMs:    +spikeWorst.simMs.toFixed(1),
           renderMs: +spikeWorst.renderMs.toFixed(1),
           tileMs:   +spikeWorst.tileMs.toFixed(1),

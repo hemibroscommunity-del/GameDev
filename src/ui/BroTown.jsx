@@ -8858,15 +8858,20 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
         var _renderEndT = performance.now();
-        var _totalMs = _renderEndT - _perfNow;
-        /* Every-frame sample into perfTracker so the Debug overlay's Perf
-           tab can render a chart + long-frame attribution.  Cheap: one
-           array slot write per RAF.  Stage breakdown pulled from
-           pixiRenderer's _lastStages (which is itself always-on). */
+        var _workMs = _renderEndT - _perfNow;
+        /* totalMs is the INTERVAL between consecutive RAF callbacks
+           (= S._perf.prevT delta computed earlier in this frame =
+           _perfDelta).  THAT is what the user perceives as a freeze —
+           it includes browser composite, GC, style recalc, and any
+           work the browser does BETWEEN our RAFs.  workMs is what our
+           callback alone spent.  When totalMs >> workMs, the freeze is
+           browser-side, not our code. */
+        var _intervalMs = (S._perf && _perfDelta) || _workMs;
         var _stages = (pixiRef.current && pixiRef.current.update && pixiRef.current.update._lastStages) || null;
         perfTracker.record({
           t: _renderEndT,
-          totalMs: _totalMs,
+          totalMs: _intervalMs,
+          workMs: _workMs,
           simMs: _simEndT - _perfNow,
           renderMs: _renderEndT - _simEndT,
           tileMs: _stages ? _stages.tileMs : 0,

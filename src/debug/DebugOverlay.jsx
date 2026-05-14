@@ -301,18 +301,24 @@ const PerfPanel = () => {
     </div>
   );
 
-  /* Long-frame attribution: which stage was dominant for this spike? */
+  /* Long-frame attribution.  First decide: was the spike OUR work
+     (workMs ≈ totalMs) or the browser BETWEEN our callbacks
+     (workMs << totalMs)?  Only when it's our work do we drill into
+     which sub-stage dominated. */
   const stageOf = (lf) => {
+    const work = lf.workMs || 0;
+    const outside = lf.totalMs - work;
+    if (outside > work && outside > 16) {
+      return 'outside ' + fmt1(outside);
+    }
     const stages = [
-      ['sim',    (lf.simMs || 0) - (lf.renderMs ? 0 : 0)],
+      ['sim',    lf.simMs || 0],
       ['tile',   lf.tileMs || 0],
       ['entity', lf.entityMs || 0],
       ['fx',     lf.effectsMs || 0],
       ['fps',    lf.fpsMs || 0],
       ['app',    lf.appMs || 0],
     ];
-    /* sim = totalMs - renderMs in our split, so handle separately */
-    stages[0][1] = lf.simMs || 0;
     let best = stages[0];
     for (const s of stages) if (s[1] > best[1]) best = s;
     return best[0] + ' ' + fmt1(best[1]);
@@ -323,9 +329,11 @@ const PerfPanel = () => {
       <Section title="LIVE">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
           <Cell k="FPS (avg 1s)" v={p.fps} />
-          <Cell k="Frame ms (last)" v={fmt1(last && last.totalMs)} hot={last && last.totalMs > 33} />
-          <Cell k="Sim ms (last)" v={fmt1(last && last.simMs)} />
-          <Cell k="Render ms (last)" v={fmt1(last && last.renderMs)} />
+          <Cell k="Interval ms" v={fmt1(last && last.totalMs)} hot={last && last.totalMs > 33} />
+          <Cell k="Work ms (ours)" v={fmt1(last && last.workMs)} hot={last && last.workMs > 16} />
+          <Cell k="Outside ms (browser)" v={fmt1(last && (last.totalMs - (last.workMs || 0)))} hot={last && (last.totalMs - (last.workMs || 0)) > 30} />
+          <Cell k="Sim ms" v={fmt1(last && last.simMs)} />
+          <Cell k="Render ms" v={fmt1(last && last.renderMs)} />
           <Cell k="Renderer" v={p.renderer} />
           <Cell k="WS state" v={p.wsState} />
         </div>
