@@ -277,6 +277,7 @@ const PerfPanel = () => {
   const samples = perfTracker.getSamples();
   const longFrames = perfTracker.getLongFrames();
   const longTasks = perfTracker.getLongTasks();
+  const extEvents = perfTracker.getExtEvents();
   const zoneStats = perfTracker.getZoneStats();
   const last60 = perfTracker.summary(60);
   const last600 = perfTracker.summary(600);
@@ -378,6 +379,18 @@ const PerfPanel = () => {
               <span style={{ color: '#888' }}>
                 m{lf.monsters} p{lf.projectiles} hp{lf.hitParticles} dn{lf.dmgNumbers}
               </span>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title={'EXTERNAL EVENTS >5ms (' + extEvents.length + ', non-RAF, e.g. ws handler)'}>
+        <div style={{ fontSize: 10, maxHeight: 90, overflowY: 'auto' }}>
+          {extEvents.length === 0 && <div style={{ color: '#888' }}>none captured yet</div>}
+          {extEvents.slice().reverse().slice(0, 20).map((ev, i) => (
+            <div key={i} style={{ borderBottom: '1px solid #1a1a1a', padding: '2px 0', display: 'grid', gridTemplateColumns: '60px 1fr', gap: 4 }}>
+              <span style={{ color: ev.ms > 30 ? '#ef5350' : '#ffb74d' }}>{fmt1(ev.ms)}ms</span>
+              <span style={{ color: '#aed581' }}>{ev.name}</span>
             </div>
           ))}
         </div>

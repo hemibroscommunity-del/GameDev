@@ -31,6 +31,8 @@ let ringCount = 0;
 
 const longFrames = [];
 const longTasks = [];
+const extEvents = [];      // Slow non-RAF events: ws handler, custom timers.
+const EXT_BUFFER = 60;
 
 const makeZoneStats = (zoneId, t) => ({
   zone: zoneId,
@@ -162,8 +164,19 @@ export const perfTracker = {
 
   getLongFrames() { return longFrames.slice(); },
   getLongTasks() { return longTasks.slice(); },
+  getExtEvents() { return extEvents.slice(); },
   getZoneStats() { return { ...zoneStats }; },
   hasLongTaskObserver() { return !!longTaskObserver; },
+
+  /** Push a slow non-RAF event (e.g. WS handler took 40 ms).  Used to
+   *  attribute the "outside ms" gap between RAF callbacks — when an
+   *  external handler runs slowly between RAFs, the next RAF is
+   *  delayed and the user feels a freeze.  Caller decides the
+   *  threshold (this just records what it gets). */
+  recordExternal(name, ms) {
+    extEvents.push({ t: performance.now(), name: name, ms: ms });
+    if (extEvents.length > EXT_BUFFER) extEvents.shift();
+  },
 
   /** Compute distribution stats over the last `nFrames` samples. */
   summary(nFrames) {
@@ -190,6 +203,7 @@ export const perfTracker = {
     ringCount = 0;
     longFrames.length = 0;
     longTasks.length = 0;
+    extEvents.length = 0;
     zoneStats = makeZoneStats(zoneStats.zone, performance.now());
   },
 };

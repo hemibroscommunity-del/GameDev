@@ -1601,12 +1601,38 @@ export var BroTown = function BroTown(_ref0) {
         setChatLog(_toConsumableArray(S.chatLog));
       };
       ws.onmessage = function (evt) {
+        var _wsStart = performance.now();
         var msg;
         try {
           msg = JSON.parse(evt.data);
         } catch (_unused1) {
           return;
         }
+        /* Tail timing — wrap the rest of the body and log + push to
+           perfTracker when this handler exceeds 5 ms.  Server sends
+           ticks at 30 Hz; if each handler call takes 30+ ms we monopolise
+           the main thread between RAF callbacks (= the rhythmic outside-
+           the-RAF spike pattern we captured in v2.1.65). */
+        var _wsType = msg.type;
+        var _wsDone = function _wsDone() {
+          var _wsMs = performance.now() - _wsStart;
+          if (!ws._slowLog) ws._slowLog = { lastT: 0, worst: 0, worstType: '' };
+          if (_wsMs > 5) {
+            if (_wsMs > ws._slowLog.worst) { ws._slowLog.worst = _wsMs; ws._slowLog.worstType = _wsType; }
+            if (window.perfTracker && window.perfTracker.recordExternal) {
+              window.perfTracker.recordExternal('ws.' + _wsType, _wsMs);
+            }
+          }
+          if (performance.now() - ws._slowLog.lastT > 500 && ws._slowLog.worst > 5) {
+            /* eslint-disable no-console */
+            console.warn('[bt-ws-slow]', { ms: +ws._slowLog.worst.toFixed(1), type: ws._slowLog.worstType });
+            /* eslint-enable no-console */
+            ws._slowLog.lastT = performance.now();
+            ws._slowLog.worst = 0;
+            ws._slowLog.worstType = '';
+          }
+        };
+        try {
         switch (msg.type) {
           case 'tick':
             {
@@ -1804,6 +1830,7 @@ export var BroTown = function BroTown(_ref0) {
               _processGameEvent(msg.type, _payload, S);
             }
         }
+        } finally { _wsDone(); }
       };
 
       /* §16.10 — Shared game event dispatcher (used by both direct messages and batched tick events) */
