@@ -8891,8 +8891,8 @@ export var BroTown = function BroTown(_ref0) {
           campfires: (S.campfires && S.campfires.length) || 0,
         });
         if (!S._splitLog) S._splitLog = { lastT: 0, worstTotal: 0, worstSim: 0, worstRender: 0 };
-        if (_totalMs > 30 && _totalMs > S._splitLog.worstTotal) {
-          S._splitLog.worstTotal = _totalMs;
+        if (_workMs > 30 && _workMs > S._splitLog.worstTotal) {
+          S._splitLog.worstTotal = _workMs;
           S._splitLog.worstSim = _simEndT - _perfNow;
           S._splitLog.worstRender = _renderEndT - _simEndT;
         }
