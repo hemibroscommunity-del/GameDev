@@ -24,7 +24,7 @@ const SHEETS = {
   idle:     { url: '/sprites/monsters/slime-idle-v5.png',     frames: [] },
   shoot:    { url: '/sprites/monsters/slime-shoot-v2.png',    frames: [] },
   hit:      { url: '/sprites/monsters/slime-hit-v1.png',      frames: [] },
-  death:    { url: '/sprites/monsters/slime-death-v5.png',    frames: [] },
+  death:    { url: '/sprites/monsters/slime-death-v6.png',    frames: [] },
   /* Single-frame splat that lands on the ground after the death anim
      ends.  Loaded as a 1-frame "sheet" so the same machinery applies. */
   remnants: { url: '/sprites/monsters/slime-remnants-v1.png', frames: [] },
