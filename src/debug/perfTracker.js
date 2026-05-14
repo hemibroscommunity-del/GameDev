@@ -76,6 +76,62 @@ const initLongTaskObserver = () => {
   }
 };
 
+/* Wrap setInterval / setTimeout globally so we can time the actual
+ * callbacks they fire.  When a callback takes > 5 ms we push an
+ * extEvent tagged 'setInterval(<period>ms)' or 'setTimeout(<delay>ms)'.
+ * That gives direct attribution for the rhythmic between-RAF stutter
+ * captured in v2.1.65 (every long frame was "outside" the RAF) when
+ * WS handler instrumentation in v2.1.66 came up clean — the next
+ * most likely cause is one of the dashboard's 200-1000 ms force-re-
+ * render setIntervals doing a heavy React commit. */
+let timersHooked = false;
+const initTimerHooks = () => {
+  if (timersHooked) return;
+  if (typeof window === 'undefined') return;
+  timersHooked = true;
+  const origSetInterval = window.setInterval;
+  const origSetTimeout = window.setTimeout;
+  window.setInterval = function (fn, period) {
+    const rest = Array.prototype.slice.call(arguments, 2);
+    const wrapped = function () {
+      const t0 = performance.now();
+      try { return fn.apply(this, arguments); }
+      finally {
+        const dt = performance.now() - t0;
+        if (dt > 5) {
+          extEvents.push({ t: t0, name: 'setInterval(' + (period | 0) + 'ms)', ms: dt });
+          if (extEvents.length > EXT_BUFFER) extEvents.shift();
+        }
+      }
+    };
+    return origSetInterval.apply(this, [wrapped, period].concat(rest));
+  };
+  window.setTimeout = function (fn, delay) {
+    if (typeof fn !== 'function') {
+      return origSetTimeout.apply(this, arguments);
+    }
+    const rest = Array.prototype.slice.call(arguments, 2);
+    const wrapped = function () {
+      const t0 = performance.now();
+      try { return fn.apply(this, arguments); }
+      finally {
+        const dt = performance.now() - t0;
+        if (dt > 10) {
+          extEvents.push({ t: t0, name: 'setTimeout(' + (delay | 0) + 'ms)', ms: dt });
+          if (extEvents.length > EXT_BUFFER) extEvents.shift();
+        }
+      }
+    };
+    return origSetTimeout.apply(this, [wrapped, delay].concat(rest));
+  };
+};
+
+/* Hook timers at module load so setInterval / setTimeout calls that
+   happen BEFORE BroTown's useEffect runs perfTracker.init() are also
+   wrapped.  Many React components register their setInterval in
+   useEffect on first mount, which can fire before our init. */
+initTimerHooks();
+
 export const perfTracker = {
   init: initLongTaskObserver,
 
