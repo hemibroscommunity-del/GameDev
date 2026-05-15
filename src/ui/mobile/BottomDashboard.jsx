@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { xpRequired } from '../../data/gameSystems.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { InventoryPanel }    from './dash/InventoryPanel.jsx';
@@ -286,11 +286,37 @@ const PANELS = {
 export const BottomDashboard = () => {
   const [, force] = useState(0);
   const [tooltip, setTooltip] = useState('');
+  const dashRef = useRef(null);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 200);
     return () => clearInterval(id);
   }, []);
   useEffect(() => dashboardPanelBus.subscribe(() => force(v => v + 1)), []);
+  /* Native non-passive touchmove preventDefault on the dashboard.
+     Stops iOS from interpreting an upward swipe over the bars/buttons
+     as a page pan -- which previously caused the dashboard area to
+     shake (rubber-band / URL-bar transition).  React's synthetic
+     onTouchMove is passive on some Safari versions so preventDefault
+     there is ignored; this listener is explicitly passive: false.
+     Touches that started inside a scrollable panel (overflow auto/scroll)
+     are allowed to bubble untouched so panel content can still scroll. */
+  useEffect(() => {
+    const el = dashRef.current;
+    if (!el) return;
+    const onMove = (e) => {
+      let node = e.target;
+      while (node && node !== el && node.nodeType === 1) {
+        try {
+          const cs = window.getComputedStyle(node);
+          if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') return;
+        } catch (_) {}
+        node = node.parentNode;
+      }
+      if (e.cancelable) e.preventDefault();
+    };
+    el.addEventListener('touchmove', onMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onMove);
+  }, []);
 
   const stack = dashboardPanelBus.state.stack;
   const activeId = stack.length ? stack[stack.length - 1] : null;
@@ -360,8 +386,8 @@ export const BottomDashboard = () => {
       </div>
 
     <div
+      ref={dashRef}
       onPointerDown={(e) => e.stopPropagation()}
-      onTouchMove={(e) => e.stopPropagation()}
       style={{
         position: 'fixed',
         left: 0, right: 0, bottom: 0,

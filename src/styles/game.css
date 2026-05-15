@@ -3,8 +3,11 @@
 ═══════════════════════════════════════════ */
 :root {
   /* Bottom dashboard band height.  Single source of truth — JS-side
-     code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */
-  --dash-h:   28vh;
+     code (BroTown.jsx DASH_FRAC) must be kept in sync if changed.
+     svh = small viewport height (URL bar visible) — stable across iOS
+     Safari URL-bar transitions, which were causing visible shake on
+     upward swipes when this was just 'vh'. */
+  --dash-h:   28svh;
   --ink:      #0b0c14;
   --ink2:     #12141f;
   --ink3:     #1a1d2e;
