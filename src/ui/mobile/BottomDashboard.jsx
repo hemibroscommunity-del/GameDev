@@ -156,7 +156,7 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
         height: 28,
         overflow: 'hidden',
         cursor: tip ? 'pointer' : 'default',
-        touchAction: 'manipulation',
+        touchAction: 'none',
       }}>
       <img
         src={src}
@@ -240,7 +240,7 @@ const IconButton = ({ glyph, label, active, onClick }) => {
         cursor: 'pointer',
         fontFamily: 'VT323, monospace',
         opacity: active ? 1 : 0.95,
-        touchAction: 'manipulation',
+        touchAction: 'none',
       }}
     >
       <img
@@ -341,7 +341,7 @@ export const BottomDashboard = () => {
           fontSize: 18,
           fontWeight: 700,
           letterSpacing: '.04em',
-          touchAction: 'manipulation',
+          touchAction: 'none',
           display: 'flex',
           alignItems: 'center',
           gap: 4,
@@ -471,7 +471,7 @@ export const BottomDashboard = () => {
                           border: '1px solid rgba(255,255,255,0.06)',
                           overflow: 'hidden',
                           cursor: 'pointer',
-                          touchAction: 'manipulation',
+                          touchAction: 'none',
                         }}>
                         <div style={{
                           position: 'absolute',
@@ -531,7 +531,7 @@ export const BottomDashboard = () => {
                           fontSize: 11,
                           minHeight: 0,
                           cursor: 'pointer',
-                          touchAction: 'manipulation',
+                          touchAction: 'none',
                         }}>
                         <span style={{ fontSize: 15, lineHeight: 1 }}>{sk.icon}</span>
                         <span style={{ color: COL.muted, fontWeight: 700, fontSize: 15 }}>{lvl}</span>

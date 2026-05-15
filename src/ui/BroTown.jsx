@@ -10488,6 +10488,18 @@ export var BroTown = function BroTown(_ref0) {
     };
   }, [showNameModal, showLogin]);
   var joinTown = function joinTown() {
+    /* Refuse to start while the page is pinch-zoomed.  iOS Safari ignores
+       maximum-scale/user-scalable=no, so users can still pinch.  If they
+       enter that state and press PLAY, the canvas sizes off the zoomed
+       viewport and the in-game layout breaks.  Easier to gate than to
+       try to recover. */
+    try {
+      var _vvScale = (window.visualViewport && window.visualViewport.scale) || 1;
+      if (_vvScale > 1.05) {
+        alert('Please pinch-out to reset zoom (back to 100%) before starting.');
+        return;
+      }
+    } catch (e) {}
     var name = nameInput.trim() || 'Anon';
     var S = stateRef.current;
     S.myName = name;
