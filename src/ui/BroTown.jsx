@@ -43,6 +43,7 @@ import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
+import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -270,10 +271,13 @@ export var BroTown = function BroTown(_ref0) {
   var slimeHitImgRef = useRef(null);
   var slimeProjectileImgRef = useRef(null);
   var slimeRemnantsImgRef = useRef(null);
-  /* Singleton Audio element for the slime proximity loop.  Created
-     lazily on first need; volume scales with distance to nearest
-     slime, paused when none in range. */
-  var slimeIdleAudioRef = useRef(null);
+  /* Web Audio buffer + nodes for the slime proximity loop.  Created
+     lazily on first need; gain scales with distance to nearest slime,
+     gain goes to 0 when none in range.  Moved off HTMLAudio in v2.1.68
+     because iOS Safari's HTMLAudio property accesses / play() promise
+     work was firing between RAFs and causing rhythmic 60-80 ms stutter
+     in zones with slimes (meadow, ember).  Same recipe as zone music. */
+  var slimeIdleAudioRef = useRef({ buffer: null, source: null, gain: null });
   /* Per-zone themed-ground tile sheets — small repeatable swatches
      loaded from public/sprites/tiles/ground-<elem>.png and converted
      into CanvasPattern objects on first frame so the canvas-2D render
@@ -1446,14 +1450,48 @@ export var BroTown = function BroTown(_ref0) {
   }, []);
 
   /* Slime proximity-audio loop.  Tick every 80 ms: find nearest alive
-     fodder monster within SLIME_AUDIO_RANGE, scale volume by inverse
-     distance (closer = louder, max 0.5).  Pause when none in range. */
+     fodder monster within SLIME_AUDIO_RANGE, scale gain by inverse
+     distance (closer = louder, max 0.5).  Routed through Web Audio
+     (BT_AUDIO.ctx) — the previous HTMLAudio path's property accesses
+     and play() promise work were firing between RAFs and caused the
+     rhythmic 60-80 ms stutter shown in IMG_8281/8282 (zones with
+     slimes: meadow, ember).  Same recipe as zone music: fetch +
+     decodeAudioData once, then a single looping BufferSource whose
+     gain we modulate. */
   useEffect(function () {
     var SLIME_AUDIO_RANGE = 250;
     var SLIME_AUDIO_VOL_MAX = 0.5;
+    var URL = '/audio/slime-idle.mp3';
+    var slot = slimeIdleAudioRef.current;
+    var loadBuffer = function () {
+      if (slot.buffer || slot._loading || !BT_AUDIO.ctx) return;
+      slot._loading = true;
+      fetch(URL)
+        .then(function (r) { return r.arrayBuffer(); })
+        .then(function (ab) { return BT_AUDIO.ctx.decodeAudioData(ab); })
+        .then(function (buf) { slot.buffer = buf; slot._loading = false; })
+        .catch(function () { slot._loading = false; });
+    };
+    var ensureSource = function () {
+      if (slot.source || !slot.buffer || !BT_AUDIO.ctx) return;
+      try {
+        var src = BT_AUDIO.ctx.createBufferSource();
+        var gain = BT_AUDIO.ctx.createGain();
+        src.buffer = slot.buffer;
+        src.loop = true;
+        gain.gain.value = 0;
+        src.connect(gain);
+        gain.connect(BT_AUDIO.ctx.destination);
+        src.start(0);
+        slot.source = src;
+        slot.gain = gain;
+      } catch (e) {}
+    };
+    loadBuffer();
     var id = setInterval(function () {
       var S = stateRef.current;
       if (!S || !S.player || !S.monsters || BT_AUDIO.muted) return;
+      if (!BT_AUDIO.ctx) return;
       var nearest = Infinity;
       for (var i = 0; i < S.monsters.length; i++) {
         var m = S.monsters[i];
@@ -1464,27 +1502,22 @@ export var BroTown = function BroTown(_ref0) {
         var d = Math.sqrt(dx * dx + dy * dy);
         if (d < nearest) nearest = d;
       }
-      var au = slimeIdleAudioRef.current;
       if (nearest <= SLIME_AUDIO_RANGE) {
-        if (!au) {
-          au = new Audio('/audio/slime-idle.mp3');
-          au.loop = true;
-          slimeIdleAudioRef.current = au;
+        if (!slot.buffer) { loadBuffer(); return; }
+        ensureSource();
+        if (slot.gain) {
+          var vol = SLIME_AUDIO_VOL_MAX * (1 - nearest / SLIME_AUDIO_RANGE);
+          slot.gain.gain.value = Math.max(0, Math.min(SLIME_AUDIO_VOL_MAX, vol));
         }
-        var vol = SLIME_AUDIO_VOL_MAX * (1 - nearest / SLIME_AUDIO_RANGE);
-        au.volume = Math.max(0, Math.min(SLIME_AUDIO_VOL_MAX, vol));
-        if (au.paused) {
-          var p = au.play();
-          if (p && p.catch) p.catch(function () {});
-        }
-      } else if (au && !au.paused) {
-        au.pause();
+      } else if (slot.gain) {
+        slot.gain.gain.value = 0;
       }
     }, 80);
     return function () {
       clearInterval(id);
-      var au = slimeIdleAudioRef.current;
-      if (au) { try { au.pause(); } catch (e) {} }
+      try { if (slot.source) slot.source.stop(); } catch (e) {}
+      slot.source = null;
+      slot.gain = null;
     };
   }, []);
 
@@ -1600,12 +1633,38 @@ export var BroTown = function BroTown(_ref0) {
         setChatLog(_toConsumableArray(S.chatLog));
       };
       ws.onmessage = function (evt) {
+        var _wsStart = performance.now();
         var msg;
         try {
           msg = JSON.parse(evt.data);
         } catch (_unused1) {
           return;
         }
+        /* Tail timing — wrap the rest of the body and log + push to
+           perfTracker when this handler exceeds 5 ms.  Server sends
+           ticks at 30 Hz; if each handler call takes 30+ ms we monopolise
+           the main thread between RAF callbacks (= the rhythmic outside-
+           the-RAF spike pattern we captured in v2.1.65). */
+        var _wsType = msg.type;
+        var _wsDone = function _wsDone() {
+          var _wsMs = performance.now() - _wsStart;
+          if (!ws._slowLog) ws._slowLog = { lastT: 0, worst: 0, worstType: '' };
+          if (_wsMs > 5) {
+            if (_wsMs > ws._slowLog.worst) { ws._slowLog.worst = _wsMs; ws._slowLog.worstType = _wsType; }
+            if (window.perfTracker && window.perfTracker.recordExternal) {
+              window.perfTracker.recordExternal('ws.' + _wsType, _wsMs);
+            }
+          }
+          if (performance.now() - ws._slowLog.lastT > 500 && ws._slowLog.worst > 5) {
+            /* eslint-disable no-console */
+            console.warn('[bt-ws-slow]', { ms: +ws._slowLog.worst.toFixed(1), type: ws._slowLog.worstType });
+            /* eslint-enable no-console */
+            ws._slowLog.lastT = performance.now();
+            ws._slowLog.worst = 0;
+            ws._slowLog.worstType = '';
+          }
+        };
+        try {
         switch (msg.type) {
           case 'tick':
             {
@@ -1803,6 +1862,7 @@ export var BroTown = function BroTown(_ref0) {
               _processGameEvent(msg.type, _payload, S);
             }
         }
+        } finally { _wsDone(); }
       };
 
       /* §16.10 — Shared game event dispatcher (used by both direct messages and batched tick events) */
@@ -3980,6 +4040,7 @@ export var BroTown = function BroTown(_ref0) {
             /* Zone exits — open to all players (quest gate removed) */
             {
               S.currentZone = bestExit.zoneId;
+              perfTracker.setZone(bestExit.zoneId);
               updateZoneDimensions(bestExit.zoneId);
               BT_AUDIO.startZoneAmbient(bestExit.zoneId);
               discoverZone(bestExit.zoneId); /* §ENC — Encyclopedia zone discovery */
@@ -8856,10 +8917,41 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
         var _renderEndT = performance.now();
-        var _totalMs = _renderEndT - _perfNow;
+        var _workMs = _renderEndT - _perfNow;
+        /* totalMs is the INTERVAL between consecutive RAF callbacks
+           (= S._perf.prevT delta computed earlier in this frame =
+           _perfDelta).  THAT is what the user perceives as a freeze —
+           it includes browser composite, GC, style recalc, and any
+           work the browser does BETWEEN our RAFs.  workMs is what our
+           callback alone spent.  When totalMs >> workMs, the freeze is
+           browser-side, not our code. */
+        var _intervalMs = (S._perf && _perfDelta) || _workMs;
+        var _stages = (pixiRef.current && pixiRef.current.update && pixiRef.current.update._lastStages) || null;
+        perfTracker.record({
+          t: _renderEndT,
+          totalMs: _intervalMs,
+          workMs: _workMs,
+          simMs: _simEndT - _perfNow,
+          renderMs: _renderEndT - _simEndT,
+          tileMs: _stages ? _stages.tileMs : 0,
+          entityMs: _stages ? _stages.entityMs : 0,
+          effectsMs: _stages ? _stages.effectsMs : 0,
+          fpsMs: _stages ? _stages.fpsMs : 0,
+          appMs: _stages ? _stages.appMs : 0,
+          zone: S.currentZone,
+          monsters: (S.monsters && S.monsters.length) || 0,
+          others: (S.others && S.others.length) || 0,
+          projectiles: (S.projectiles && S.projectiles.length) || 0,
+          hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
+          slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
+          dmgNumbers: (S.dmgNumbers && S.dmgNumbers.length) || 0,
+          groundLoot: (S.groundLoot && S.groundLoot.length) || 0,
+          groundSplatter: (S.groundSplatter && S.groundSplatter.length) || 0,
+          campfires: (S.campfires && S.campfires.length) || 0,
+        });
         if (!S._splitLog) S._splitLog = { lastT: 0, worstTotal: 0, worstSim: 0, worstRender: 0 };
-        if (_totalMs > 30 && _totalMs > S._splitLog.worstTotal) {
-          S._splitLog.worstTotal = _totalMs;
+        if (_workMs > 30 && _workMs > S._splitLog.worstTotal) {
+          S._splitLog.worstTotal = _workMs;
           S._splitLog.worstSim = _simEndT - _perfNow;
           S._splitLog.worstRender = _renderEndT - _simEndT;
         }
@@ -8884,6 +8976,8 @@ export var BroTown = function BroTown(_ref0) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
       }
     };
+    perfTracker.init();
+    perfTracker.setZone(stateRef.current.currentZone || 'town');
     frameRef.current = requestAnimationFrame(_gameLoop);
 
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */

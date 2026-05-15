@@ -166,24 +166,37 @@ export async function initPixiRenderer(canvas) {
        meadow bottleneck.  Throttled to one log per 500 ms, only on
        slow total frames (>30 ms).  Logs the worst frame in each window
        to surface real spikes instead of averaging them away. */
+    /* Reset stages at frame start so a partial / aborted pass doesn't
+       leave the previous frame's values in place — that caused
+       confusing attributions like "totalMs 50 / appMs 83" in the
+       Perf overlay's long-frame table when a frame that bailed early
+       inherited the prior slow frame's appMs reading. */
+    if (!update._lastStages) update._lastStages = { tileMs: 0, entityMs: 0, effectsMs: 0, fpsMs: 0, appMs: 0 };
+    update._lastStages.tileMs = update._lastStages.entityMs = update._lastStages.effectsMs = update._lastStages.fpsMs = update._lastStages.appMs = 0;
+
     const _t0 = performance.now();
     try { tileRenderer.update(cx, cy, viewW, viewH); }
     catch (e) { if (!update._tileErr) { update._tileErr = true; console.error('[pixi-render] tileRenderer threw', e && e.message, e && e.stack); } }
     const _t1 = performance.now();
+    update._lastStages.tileMs = _t1 - _t0;
     try { entityRenderer.update(S, now); }
     catch (e) { if (!update._entityErr) { update._entityErr = true; console.error('[pixi-render] entityRenderer threw', e && e.message, e && e.stack); } }
     const _t2 = performance.now();
+    update._lastStages.entityMs = _t2 - _t1;
     try { effectsRenderer.update(S, cssW, cssH, now); }
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
+    update._lastStages.effectsMs = _t3 - _t2;
 
     fpsOverlay.update(now);
     const _t4 = performance.now();
+    update._lastStages.fpsMs = _t4 - _t3;
 
     // Manual render
     try { app.render(); }
     catch (e) { if (!update._renderErr) { update._renderErr = true; console.error('[pixi-render] app.render threw', e && e.message, e && e.stack); } }
     const _t5 = performance.now();
+    update._lastStages.appMs = _t5 - _t4;
 
     const _renderTotal = _t5 - _t0;
     if (!update._pp) update._pp = { lastT: 0, worst: 0, tile: 0, entity: 0, effects: 0, fps: 0, render: 0, monsters: 0 };

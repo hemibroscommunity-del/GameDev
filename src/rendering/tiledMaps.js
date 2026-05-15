@@ -35,12 +35,12 @@ export const IMAGE_ZONE_MAPS = {
      change to bust browser/CDN caches. */
   town:    '/maps/town_v8.jpg',
   frost:   '/maps/frost_v4.jpg',
-  meadow:  '/maps/meadow_v4.jpg',
+  meadow:  '/maps/meadow_v5.jpg',
   thunder: '/maps/thunder_v4.jpg',
-  tidal:   '/maps/tidal_v4.jpg',
+  tidal:   '/maps/tidal_v5.jpg',
   mist:    '/maps/mist_v4.jpg',
-  hollows: '/maps/hollows_v4.jpg',
-  ember:   '/maps/ember_v4.jpg',
+  hollows: '/maps/hollows_v5.jpg',
+  ember:   '/maps/ember_v5.jpg',
   sky:     '/maps/sky_v4.jpg',
 };
 
