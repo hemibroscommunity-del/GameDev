@@ -6626,13 +6626,15 @@ export var BroTown = function BroTown(_ref0) {
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
-              /* Fodder slimes use a 50 px sprite anchored above the
-                 hitbox (m.y is feet-level; visual center sits at m.y-17),
-                 so swings aimed at the visible body were missing the
-                 raw m.x/m.y hitbox. Use a virtual y matching the visible
-                 sprite center for fodder. */
+              /* Fodder slimes render as a 96 px sprite anchored at the
+                 feet (m.y is feet-level); the visible body center sits
+                 ~30 px above that.  v2.1.70 raised the offset from -17
+                 to -30 because taps/swings aimed at the top of the
+                 visible slime were missing while taps below the body
+                 were still landing — the -17 offset was tuned to the
+                 older 50 px sprite. */
               var _archHit = m.archetype || m.type;
-              var _mHitY = _archHit === 'fodder' ? m.y - 17 : m.y;
+              var _mHitY = _archHit === 'fodder' ? m.y - 30 : m.y;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2));
               if (mDist > SWING_RANGE) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
@@ -8423,18 +8425,18 @@ export var BroTown = function BroTown(_ref0) {
             var hit = false;
             if (S.monsters) S.monsters.forEach(function (m) {
               if (!m.alive || a.hitIds.has(m.id) || hit) return;
-              /* Same y-offset fix as the melee path — fodder slimes'
-                 visual body sits 17 px above the hitbox center, so
-                 arrows aimed at the visible sprite were drifting past
-                 the raw m.x/m.y point.  Snowman is taller (64 px
-                 sprite anchored to the feet at m.y + 13), with its
-                 visual center ~19 px above m.y and arms that extend
+              /* Same y-offset fix as the melee path — fodder slimes
+                 render at 96 px anchored at the feet, visual body
+                 center sits ~30 px above m.y (raised from 17 in
+                 v2.1.70 to match the bigger sprite).  Snowman is taller
+                 (64 px sprite anchored to the feet at m.y + 13), with
+                 its visual center ~19 px above m.y and arms that extend
                  outward — needs both the y-offset and a wider radius. */
               var _archProj = m.archetype || m.type;
               var _mProjY = m.y;
               var _hitR = a.isStaff ? 30 : 18;
               if (_archProj === 'fodder') {
-                _mProjY = m.y - 17;
+                _mProjY = m.y - 30;
               } else if (_archProj === 'snowman') {
                 _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;
@@ -10757,7 +10759,14 @@ export var BroTown = function BroTown(_ref0) {
               var _closest = null, _closestDist = 40;
               _S.monsters.forEach(function (m) {
                 if (!m.alive) return;
-                var _msx = m.x - _cx, _msy = m.y - _cy;
+                /* Match the melee/projectile hit-Y shift so the tap
+                   target lines up with the visible slime body, not the
+                   feet-level m.y point. */
+                var _archTap = m.archetype || m.type;
+                var _mTapY = _archTap === 'fodder' ? m.y - 30
+                           : _archTap === 'snowman' ? m.y - 19
+                           : m.y;
+                var _msx = m.x - _cx, _msy = _mTapY - _cy;
                 var _d = Math.sqrt(Math.pow(_cssX - _msx, 2) + Math.pow(_cssY - _msy, 2));
                 if (_d < _closestDist) { _closestDist = _d; _closest = m; }
               });
@@ -10881,8 +10890,14 @@ export var BroTown = function BroTown(_ref0) {
           closestDist = 40;
         S.monsters.forEach(function (m) {
           if (!m.alive) return;
+          /* Match the melee/projectile hit-Y shift so taps line up with
+             the visible body, not the feet-level m.y point. */
+          var _archTap = m.archetype || m.type;
+          var _mTapY = _archTap === 'fodder' ? m.y - 30
+                     : _archTap === 'snowman' ? m.y - 19
+                     : m.y;
           var msx = (m.x - cx) * SCALE_X;
-          var msy = (m.y - cy) * SCALE_Y;
+          var msy = (_mTapY - cy) * SCALE_Y;
           var d = Math.sqrt(Math.pow(cssX - msx, 2) + Math.pow(cssY - msy, 2));
           if (d < closestDist) {
             closestDist = d;
