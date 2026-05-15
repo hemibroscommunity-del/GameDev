@@ -410,7 +410,10 @@ export class EntityRenderer {
   _updateMonsters(S, now) {
     const monsters = S.monsters || [];
     const activeIds = new Set();
-    const SLIME_DEATH_MS = 100; /* matches Canvas 2D's _dDur — short fast dissolve */
+    const SLIME_DEATH_MS = 400; /* v7 sprite: 15-frame burst (windup pre-trimmed in
+                                    the sheet, so frame 0 is already the explosion).
+                                    400 ms / 15 = ~27 ms/frame -> ~37 fps, fast enough
+                                    that the explosion reads as immediate. */
     const SNOWMAN_DEATH_MS = 500; /* user-requested 0.5 s shatter */
 
     for (const m of monsters) {
