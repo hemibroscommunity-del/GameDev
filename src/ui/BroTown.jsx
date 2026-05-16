@@ -10477,6 +10477,26 @@ export var BroTown = function BroTown(_ref0) {
     };
   }, [showNameModal, showLogin, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleShieldMove]);
 
+  /* Block iOS rubber-band on the contextual interact buttons (Enter
+     Tavern, Sleep, etc).  Same root cause as the dashboard shake — a
+     touch that starts inside one of these fixed-position buttons and
+     drags upward gets interpreted as a page pan, triggering the URL-bar
+     transition + reflow.  React's onTouchMove is passive on Safari so
+     preventDefault there is ignored; this is a document-level delegated
+     listener attached with passive: false.  The buttons are rendered
+     inline in many places, so a delegated approach is simpler than
+     refactoring each callsite. */
+  useEffect(function () {
+    var onMove = function (e) {
+      var t = e.target;
+      if (t && t.closest && t.closest('.bt-interact-prompt')) {
+        if (e.cancelable) e.preventDefault();
+      }
+    };
+    document.addEventListener('touchmove', onMove, { passive: false });
+    return function () { document.removeEventListener('touchmove', onMove); };
+  }, []);
+
   /* Keep keyboard open — focus input when game starts and periodically re-focus */
   useEffect(function () {
     if (showNameModal || showLogin) return;
