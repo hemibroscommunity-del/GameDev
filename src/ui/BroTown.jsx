@@ -1396,7 +1396,7 @@ export var BroTown = function BroTown(_ref0) {
     slimeIdle.src = '/sprites/monsters/slime-idle-v5.png';
     var slimeDeath = new Image();
     slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
-    slimeDeath.src = '/sprites/monsters/slime-death-v5.png';
+    slimeDeath.src = '/sprites/monsters/slime-death-v9.png';
     /* Shoot/attack animation — same 8-frame sheet shape as idle/death.
        Plays briefly when the slime lunges at the player so the attack
        cadence reads visually. */
