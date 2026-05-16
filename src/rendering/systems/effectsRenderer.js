@@ -580,6 +580,21 @@ export class EffectsRenderer {
         this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, 0xd4a574, 0.9);
       }
     }
+
+    /* Slime projectiles — green slime-orbs thrown by fodder slimes.
+       Simulated in BroTown (S.slimeProjectiles); rendered here so the
+       player can see what's incoming and dodge it. Three-circle pattern
+       matches the staff-proj orb look, tinted slime-green. */
+    const slimeProjs = S.slimeProjectiles || [];
+    for (const sp of slimeProjs) {
+      this._updateProjectileTrail(sp, gfx, 1.0, /* isOrb */ true);
+      gfx.circle(sp.x, sp.y, 9);
+      gfx.fill({ color: 0x3dd497, alpha: 0.22 });
+      gfx.circle(sp.x, sp.y, 6);
+      gfx.fill({ color: 0x3dd497, alpha: 0.55 });
+      gfx.circle(sp.x, sp.y, 3.5);
+      gfx.fill({ color: 0xb8f5d8, alpha: 0.95 });
+    }
   }
 
   /** Push the projectile's current render position into a small

@@ -6171,6 +6171,7 @@ export var BroTown = function BroTown(_ref0) {
                     var explodeDmg = Math.round(m.dmg * 2);
                     _R6.hp -= shielded ? Math.max(1, Math.floor(explodeDmg * (1 - blockReduc))) : explodeDmg;
                     if (window.__dmgLog) try { console.log('[dmg] volatile-explode', { amt: explodeDmg, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y } }); } catch (e) {}
+                    if (!shielded) S._hitFlash = Date.now();
                     S.screenShake = 8;
                     S.dmgNumbers.push({
                       x: m.x,
@@ -6209,6 +6210,7 @@ export var BroTown = function BroTown(_ref0) {
                     } else {
                       try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                       S.lastDamageTaken = Date.now();
+                      S._hitFlash = Date.now();
                     }
                     /* GDD §1.2 Vitality: taking damage AND surviving.
                        Tracked as use-frequency; resolved on next kill. */
@@ -8844,6 +8846,7 @@ export var BroTown = function BroTown(_ref0) {
             if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: proj.rawDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
             try { BT_AUDIO.play('slime-projectile-hit', { vol: 0.7 }); } catch (e) {}
             S.lastDamageTaken = Date.now();
+            S._hitFlash = Date.now();
             if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', proj.rawDmg);
             S.dmgNumbers.push({
               x: P.x, y: P.y - 20,
