@@ -3413,9 +3413,13 @@ export function setupGameLoop(ctx) {
                   BT_AUDIO.beep(200, 0.03, 0.04, 'square');
                   return;
                 }
-                /* Level-difference scaling — hard to kill monsters much higher level */
+                /* Level-difference scaling — hard to kill monsters much higher level.
+                   _dmgBeforeMitigation captures the would-have-been hit so
+                   the popup below can show what was shaved off. */
+                var _dmgBeforeMitigation = dmg;
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
+                var _mitigated = Math.max(0, _dmgBeforeMitigation - dmg);
                 var _hpBefore = m.curHp;
                 m.curHp -= dmg;
 
@@ -3591,6 +3595,20 @@ export function setupGameLoop(ctx) {
                     color: '#fff',
                     iconKey: 'sword',
                     special: _isSpecialDmg,
+                    ts: Date.now()
+                  });
+                }
+                /* Mitigated-damage indicator — when level-diff scaling
+                   shaved part of the hit (e.g. a 25-base hit on a
+                   higher-level monster lands as 11), float the missing
+                   14 in muted gray below the actual number so the
+                   player can see how much defense ate. */
+                if (_mitigated > 0) {
+                  S.dmgNumbers.push({
+                    x: m.x,
+                    y: m.y - 6,
+                    text: 'blk ' + _mitigated,
+                    color: '#888',
                     ts: Date.now()
                   });
                 }
