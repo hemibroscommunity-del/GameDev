@@ -78,11 +78,38 @@ export const GameApp = () => {
   // to play any sound until an AudioContext is created (or resumed) inside a
   // user-initiated handler. Once unlocked we also kick off SFX preload.
   useEffect(() => {
+    // Sync persisted mute preference. SettingsPanel writes
+    // 'brotown_audio_off' to localStorage but only pushes the value
+    // into BT_AUDIO.muted on toggle, so without this a returning
+    // player who muted last session would hear sound this session
+    // while the UI toggle still shows OFF.
+    try {
+      if (localStorage.getItem('brotown_audio_off') === '1') {
+        BT_AUDIO.muted = true;
+      }
+    } catch (e) {}
+
     let done = false;
+    // Reusable silent WAV (44-byte header, 0 samples). Playing this as
+    // an HTMLAudio element on the first gesture is the standard trick to
+    // switch iOS Safari's audio session from the default Ambient category
+    // (which the physical mute switch silences) to a category that
+    // overrides the mute switch. Web Audio playback in the same context
+    // inherits the switch. Harmless no-op on desktop/Android.
+    const SILENT_WAV =
+      'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+
     const unlock = () => {
       if (done) return;
       done = true;
       try { BT_AUDIO.init(); BT_AUDIO.unlock(); } catch (e) {}
+      try {
+        const a = new Audio(SILENT_WAV);
+        a.setAttribute('playsinline', '');
+        a.setAttribute('webkit-playsinline', '');
+        const p = a.play();
+        if (p && p.catch) p.catch(function () {});
+      } catch (e) {}
       window.removeEventListener('touchstart', unlock, true);
       window.removeEventListener('mousedown', unlock, true);
       window.removeEventListener('keydown', unlock, true);
