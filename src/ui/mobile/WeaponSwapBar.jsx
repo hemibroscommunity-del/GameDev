@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { weaponSwapBus } from './weaponSwapBus.js';
 
 // Three weapon-slot buttons grouped into a single pill at the bottom-left
@@ -25,7 +25,6 @@ const PILL_CENTER_X = 'calc(50% - 140px)';
 
 export const WeaponSwapBar = () => {
   const [active, setActive] = useState(readActive);
-  const barRef = useRef(null);
 
   useEffect(() => {
     setActive(readActive());
@@ -36,22 +35,14 @@ export const WeaponSwapBar = () => {
     return () => { off(); clearInterval(poll); };
   }, []);
 
-  // Native non-passive touchmove preventDefault — stops iOS from
-  // interpreting an upward swipe across the pill as a page pan,
-  // which caused the same rubber-band shake the dashboard had.
-  // React's onTouchMove is passive on Safari so preventDefault there
-  // is ignored; this listener is explicitly passive: false.
-  useEffect(() => {
-    const el = barRef.current;
-    if (!el) return;
-    const onMove = (e) => { if (e.cancelable) e.preventDefault(); };
-    el.addEventListener('touchmove', onMove, { passive: false });
-    return () => el.removeEventListener('touchmove', onMove);
-  }, []);
+  // Rubber-band block lives at the document-capture level inside
+  // BroTown (matches by the .weapon-swap-pill class on the wrapper).
+  // Per-element bubble-phase listeners were not catching the gesture
+  // before iOS started the URL-bar transition.
 
   return (
     <div
-      ref={barRef}
+      className="weapon-swap-pill"
       style={{
         position: 'fixed',
         left: PILL_CENTER_X,
