@@ -363,7 +363,18 @@ export class EffectsRenderer {
       /* Fade over 80% of ttl so longer-lived popups (kill messages with
          ttl=2.5) actually stay visible, not invisible most of their life. */
       text.alpha = Math.max(0, 1 - age / (ttl * 0.8));
-      text.scale.set(1 + (dmg.crit ? Math.sin(age * 8) * 0.1 : 0));
+      /* Spawn pop: scale 1.6 -> 1.0 over 120ms (ease-out) so the number
+         visibly punches in on the first hit, then settles. Crit wiggle
+         layers on top after the pop has decayed. */
+      const POP_DUR = 0.12;
+      const POP_AMOUNT = 0.6;
+      let popBoost = 0;
+      if (age < POP_DUR) {
+        const t = 1 - age / POP_DUR;
+        popBoost = POP_AMOUNT * t * t;
+      }
+      const critWiggle = dmg.crit ? Math.sin(age * 8) * 0.1 : 0;
+      text.scale.set(1 + popBoost + critWiggle);
       if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
         /* Place icon flush to the right of the text. Text anchor is
            (0.5, 0.5), so the right edge sits at text.x + text.width/2. */
