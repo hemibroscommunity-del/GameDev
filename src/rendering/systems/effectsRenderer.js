@@ -114,6 +114,12 @@ export class EffectsRenderer {
     this.dmgTexts = [];
     this.maxDmgTexts = 50;
 
+    /* Tracked Sprite instances for slime projectiles. We attach the
+       sprite to proj._pixiSprite for fast lookup, and keep parallel
+       entries here so we can destroy orphans after the simulator
+       drops a projectile from S.slimeProjectiles. */
+    this.slimeProjSprites = [];
+
     // Chat bubble texts
     this.chatTexts = new Map();
 
@@ -578,6 +584,40 @@ export class EffectsRenderer {
         gfx.fill({ color: 0xa855f7, alpha: 0.8 });
       } else {
         this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, 0xd4a574, 0.9);
+      }
+    }
+
+    /* Slime projectiles — uses the slime-projectile-v1 sheet via the
+       slimeSprites loader, scaled down so the orb reads at ~50 px.
+       We reap orphaned sprites whose proj is no longer in the
+       simulator's array. */
+    const slimeProjs = S.slimeProjectiles || [];
+    const liveProjs = new Set(slimeProjs);
+    for (let i = this.slimeProjSprites.length - 1; i >= 0; i--) {
+      const entry = this.slimeProjSprites[i];
+      if (!liveProjs.has(entry.proj) || !entry.sprite || entry.sprite.destroyed) {
+        if (entry.sprite && !entry.sprite.destroyed) entry.sprite.destroy();
+        if (entry.proj) entry.proj._pixiSprite = null;
+        this.slimeProjSprites.splice(i, 1);
+      }
+    }
+    if (hasSlimeState('projectile')) {
+      const projTex = getSlimeFrame('projectile', 0);
+      for (const sp of slimeProjs) {
+        let sprite = sp._pixiSprite;
+        if (!sprite || sprite.destroyed) {
+          sprite = new Sprite(projTex);
+          sprite.anchor.set(0.5, 0.5);
+          /* 128 px source -> 0.08 = ~10 px on-screen.  Previously 0.4
+             read way too big (half the slime); user wanted ~80%
+             reduction. */
+          sprite.scale.set(0.08);
+          this.projectileLayer.addChild(sprite);
+          sp._pixiSprite = sprite;
+          this.slimeProjSprites.push({ proj: sp, sprite });
+        }
+        sprite.x = sp.x;
+        sprite.y = sp.y;
       }
     }
   }
