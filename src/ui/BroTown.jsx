@@ -6630,12 +6630,11 @@ export var BroTown = function BroTown(_ref0) {
                  feet (m.y is feet-level).  Sprite frame bottom = m.y+8,
                  frame top = m.y-88, visual mid-frame = m.y-40.  The
                  -17 offset (v2.1.59 era) was tuned to a 50 px sprite;
-                 -30 (v2.1.70) still left the top of the slime missing
-                 hits per user.  v2.1.71 pushes it to -50 (slightly
-                 above mid-frame) so swings aimed anywhere on the
-                 visible body land cleanly. */
+                 -30 (v2.1.70) still missed the top; -50 (v2.1.71)
+                 overshot.  -40 (v2.1.72, mid-frame) is the sweet spot
+                 confirmed by user. */
               var _archHit = m.archetype || m.type;
-              var _mHitY = _archHit === 'fodder' ? m.y - 50 : m.y;
+              var _mHitY = _archHit === 'fodder' ? m.y - 40 : m.y;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2));
               if (mDist > SWING_RANGE) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
@@ -8428,17 +8427,16 @@ export var BroTown = function BroTown(_ref0) {
               if (!m.alive || a.hitIds.has(m.id) || hit) return;
               /* Same y-offset fix as the melee path — fodder slimes
                  render at 96 px anchored at the feet, sprite mid-frame
-                 at m.y - 40, so projectiles use m.y - 50 (matches
-                 melee, v2.1.71).  Snowman is taller (64 px sprite
-                 anchored to the feet at m.y + 13), visual center ~19 px
-                 above m.y and arms that extend outward — needs both the
-                 y-offset and a wider radius. */
+                 at m.y - 40, so projectiles aim there (v2.1.72).
+                 Snowman is taller (64 px sprite anchored to the feet
+                 at m.y + 13), visual center ~19 px above m.y and arms
+                 that extend outward — needs both the y-offset and a
+                 wider radius. */
               var _archProj = m.archetype || m.type;
               var _mProjY = m.y;
               var _hitR = a.isStaff ? 30 : 18;
               if (_archProj === 'fodder') {
-                _mProjY = m.y - 50;
-                _hitR = a.isStaff ? 44 : 32;
+                _mProjY = m.y - 40;
               } else if (_archProj === 'snowman') {
                 _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;
@@ -10765,7 +10763,7 @@ export var BroTown = function BroTown(_ref0) {
                    target lines up with the visible slime body, not the
                    feet-level m.y point. */
                 var _archTap = m.archetype || m.type;
-                var _mTapY = _archTap === 'fodder' ? m.y - 50
+                var _mTapY = _archTap === 'fodder' ? m.y - 40
                            : _archTap === 'snowman' ? m.y - 19
                            : m.y;
                 var _msx = m.x - _cx, _msy = _mTapY - _cy;
@@ -10895,7 +10893,7 @@ export var BroTown = function BroTown(_ref0) {
           /* Match the melee/projectile hit-Y shift so taps line up with
              the visible body, not the feet-level m.y point. */
           var _archTap = m.archetype || m.type;
-          var _mTapY = _archTap === 'fodder' ? m.y - 50
+          var _mTapY = _archTap === 'fodder' ? m.y - 40
                      : _archTap === 'snowman' ? m.y - 19
                      : m.y;
           var msx = (m.x - cx) * SCALE_X;
