@@ -4842,7 +4842,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     mist: '/audio/music/mist-zone.mp3',
     hollows: '/audio/music/hollows-zone.mp3',
     tidal: '/audio/music/tidal-zone.mp3',
-    wasteland: '/audio/music/wasteland-zone.mp3',
+    sky: '/audio/music/desert-winds.mp3',
     farm_home: '/audio/music/town-theme.mp3',
   },
   init: function init() {
