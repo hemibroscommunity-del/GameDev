@@ -1396,7 +1396,7 @@ export var BroTown = function BroTown(_ref0) {
     slimeIdle.src = '/sprites/monsters/slime-idle-v5.png';
     var slimeDeath = new Image();
     slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
-    slimeDeath.src = '/sprites/monsters/slime-death-v5.png';
+    slimeDeath.src = '/sprites/monsters/slime-death-v9.png';
     /* Shoot/attack animation — same 8-frame sheet shape as idle/death.
        Plays briefly when the slime lunges at the player so the attack
        cadence reads visually. */
@@ -6626,13 +6626,15 @@ export var BroTown = function BroTown(_ref0) {
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
-              /* Fodder slimes use a 50 px sprite anchored above the
-                 hitbox (m.y is feet-level; visual center sits at m.y-17),
-                 so swings aimed at the visible body were missing the
-                 raw m.x/m.y hitbox. Use a virtual y matching the visible
-                 sprite center for fodder. */
+              /* Fodder slimes render as a 96 px sprite anchored at the
+                 feet (m.y is feet-level).  Sprite frame bottom = m.y+8,
+                 frame top = m.y-88, visual mid-frame = m.y-40.  The
+                 -17 offset (v2.1.59 era) was tuned to a 50 px sprite;
+                 -30 (v2.1.70) still missed the top; -50 (v2.1.71)
+                 overshot.  -40 (v2.1.72, mid-frame) is the sweet spot
+                 confirmed by user. */
               var _archHit = m.archetype || m.type;
-              var _mHitY = _archHit === 'fodder' ? m.y - 17 : m.y;
+              var _mHitY = _archHit === 'fodder' ? m.y - 40 : m.y;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2));
               if (mDist > SWING_RANGE) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
@@ -8423,18 +8425,18 @@ export var BroTown = function BroTown(_ref0) {
             var hit = false;
             if (S.monsters) S.monsters.forEach(function (m) {
               if (!m.alive || a.hitIds.has(m.id) || hit) return;
-              /* Same y-offset fix as the melee path — fodder slimes'
-                 visual body sits 17 px above the hitbox center, so
-                 arrows aimed at the visible sprite were drifting past
-                 the raw m.x/m.y point.  Snowman is taller (64 px
-                 sprite anchored to the feet at m.y + 13), with its
-                 visual center ~19 px above m.y and arms that extend
-                 outward — needs both the y-offset and a wider radius. */
+              /* Same y-offset fix as the melee path — fodder slimes
+                 render at 96 px anchored at the feet, sprite mid-frame
+                 at m.y - 40, so projectiles aim there (v2.1.72).
+                 Snowman is taller (64 px sprite anchored to the feet
+                 at m.y + 13), visual center ~19 px above m.y and arms
+                 that extend outward — needs both the y-offset and a
+                 wider radius. */
               var _archProj = m.archetype || m.type;
               var _mProjY = m.y;
               var _hitR = a.isStaff ? 30 : 18;
               if (_archProj === 'fodder') {
-                _mProjY = m.y - 17;
+                _mProjY = m.y - 40;
               } else if (_archProj === 'snowman') {
                 _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;
@@ -10757,7 +10759,14 @@ export var BroTown = function BroTown(_ref0) {
               var _closest = null, _closestDist = 40;
               _S.monsters.forEach(function (m) {
                 if (!m.alive) return;
-                var _msx = m.x - _cx, _msy = m.y - _cy;
+                /* Match the melee/projectile hit-Y shift so the tap
+                   target lines up with the visible slime body, not the
+                   feet-level m.y point. */
+                var _archTap = m.archetype || m.type;
+                var _mTapY = _archTap === 'fodder' ? m.y - 40
+                           : _archTap === 'snowman' ? m.y - 19
+                           : m.y;
+                var _msx = m.x - _cx, _msy = _mTapY - _cy;
                 var _d = Math.sqrt(Math.pow(_cssX - _msx, 2) + Math.pow(_cssY - _msy, 2));
                 if (_d < _closestDist) { _closestDist = _d; _closest = m; }
               });
@@ -10881,8 +10890,14 @@ export var BroTown = function BroTown(_ref0) {
           closestDist = 40;
         S.monsters.forEach(function (m) {
           if (!m.alive) return;
+          /* Match the melee/projectile hit-Y shift so taps line up with
+             the visible body, not the feet-level m.y point. */
+          var _archTap = m.archetype || m.type;
+          var _mTapY = _archTap === 'fodder' ? m.y - 40
+                     : _archTap === 'snowman' ? m.y - 19
+                     : m.y;
           var msx = (m.x - cx) * SCALE_X;
-          var msy = (m.y - cy) * SCALE_Y;
+          var msy = (_mTapY - cy) * SCALE_Y;
           var d = Math.sqrt(Math.pow(cssX - msx, 2) + Math.pow(cssY - msy, 2));
           if (d < closestDist) {
             closestDist = d;

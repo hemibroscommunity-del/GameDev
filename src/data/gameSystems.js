@@ -4838,6 +4838,12 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     meadow: '/audio/music/meadow-zone.mp3',
     frost: '/audio/music/frost-zone.mp3',
     thunder: '/audio/music/thunder-zone.mp3',
+    ember: '/audio/music/ember-zone.mp3',
+    mist: '/audio/music/mist-zone.mp3',
+    hollows: '/audio/music/hollows-zone.mp3',
+    tidal: '/audio/music/tidal-zone.mp3',
+    wasteland: '/audio/music/wasteland-zone.mp3',
+    farm_home: '/audio/music/town-theme.mp3',
   },
   init: function init() {
     if (this.ctx) return;
