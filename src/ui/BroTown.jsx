@@ -6373,6 +6373,7 @@ export var BroTown = function BroTown(_ref0) {
                     /* §5.5 Player death — inventory scatter + escalating respawn */
                     if (!_R6._compStats) _R6._compStats = createDefaultCompStats();
                     _R6._compStats.deaths++;
+                    if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: P.x, y: P.y } });
                     var deathX = P.x,
                       deathY = P.y;
                     var deathZone = S.currentZone;
@@ -6838,6 +6839,7 @@ export var BroTown = function BroTown(_ref0) {
                   /* §5.9.6 — combo burst applies to collision damage too. */
                   collisionResult.damage = Math.round(collisionResult.damage * _comboBurst);
                   m.curHp -= collisionResult.damage;
+                  if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: collisionResult.damage, isCrit: true } });
                   /* §5.9.4 Combo spread (count 2+) — propagate the consumed
                      status to the nearest enemy that doesn't already have it.
                      Sword swipe with multiple hits only spreads from the

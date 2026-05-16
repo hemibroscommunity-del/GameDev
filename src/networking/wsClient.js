@@ -648,6 +648,36 @@ export function setupWebSocket(ctx) {
               });
               break;
             }
+          case 'player_died_to_monster':
+            {
+              /* Phase 1 shared-monster visual feedback: a remote player
+                 died on their client (to monster damage, not PvP — PvP
+                 deaths are already handled by pvp_confirmed).  Spawn the
+                 same red death-burst particles + "💀" popup we render
+                 locally, anchored to the position they reported, so the
+                 kill reads visibly in shared zones. */
+              if (payload.id === S.myId) break;
+              var dx = payload.x || 0, dy = payload.y || 0;
+              for (var dp3 = 0; dp3 < 20; dp3++) {
+                var dpA3 = dp3 / 20 * Math.PI * 2;
+                S.hitParticles.push({
+                  x: dx, y: dy,
+                  vx: Math.cos(dpA3) * (2 + Math.random() * 4),
+                  vy: Math.sin(dpA3) * (2 + Math.random() * 4) - 1,
+                  life: 1.0,
+                  color: ['#ff5e6c','#cc2233','#ff8888'][Math.floor(Math.random()*3)],
+                  size: 2 + Math.random() * 2
+                });
+              }
+              S.dmgNumbers.push({
+                x: dx, y: dy - 40,
+                text: '💀',
+                color: '#ff5e6c',
+                ts: Date.now(),
+                ttl: 2.0
+              });
+              break;
+            }
           /* mkt_order removed — marketplace uses server API now */
           case 'arena_bet':
             {
