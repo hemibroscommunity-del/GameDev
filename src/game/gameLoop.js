@@ -3600,17 +3600,11 @@ export function setupGameLoop(ctx) {
                 }
                 /* Mitigated-damage indicator — when level-diff scaling
                    shaved part of the hit (e.g. a 25-base hit on a
-                   higher-level monster lands as 11), float the missing
-                   14 in muted gray below the actual number so the
-                   player can see how much defense ate. */
-                if (_mitigated > 0) {
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 6,
-                    text: 'blk ' + _mitigated,
-                    color: '#888',
-                    ts: Date.now()
-                  });
+                   higher-level monster lands as 11), tack "block 14"
+                   onto the same popup in muted gray via subText so the
+                   player sees one combined line instead of two. */
+                if (_mitigated > 0 && S.dmgNumbers.length > 0) {
+                  S.dmgNumbers[S.dmgNumbers.length - 1].subText = 'block ' + _mitigated;
                 }
                 if (m.curHp <= 0) {
                   var _ELEMENTS$splatElem, _ZONES$S$currentZone6;
