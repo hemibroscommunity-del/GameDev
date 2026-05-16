@@ -608,9 +608,10 @@ export class EffectsRenderer {
         if (!sprite || sprite.destroyed) {
           sprite = new Sprite(projTex);
           sprite.anchor.set(0.5, 0.5);
-          /* 128 px source -> 0.4 = ~51 px on-screen, sized to read as
-             a clear incoming attack without dominating the slime. */
-          sprite.scale.set(0.4);
+          /* 128 px source -> 0.08 = ~10 px on-screen.  Previously 0.4
+             read way too big (half the slime); user wanted ~80%
+             reduction. */
+          sprite.scale.set(0.08);
           this.projectileLayer.addChild(sprite);
           sp._pixiSprite = sprite;
           this.slimeProjSprites.push({ proj: sp, sprite });

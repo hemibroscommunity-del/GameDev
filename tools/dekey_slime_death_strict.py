@@ -27,6 +27,11 @@ from PIL import Image
 
 def kill(r, g, b):
     lum = (r + g + b) / 3
+    # Brightness ceiling: anything brighter than mid-green reads as a
+    # bright/whitish dot against the dark in-game background — kill it.
+    # Threshold picked after black-bg visual inspection of v10 frames.
+    if lum >= 90:
+        return True
     if lum < 50:
         return False
     mx = max(r, g, b)
