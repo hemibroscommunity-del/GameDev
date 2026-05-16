@@ -410,7 +410,10 @@ export class EntityRenderer {
   _updateMonsters(S, now) {
     const monsters = S.monsters || [];
     const activeIds = new Set();
-    const SLIME_DEATH_MS = 100; /* matches Canvas 2D's _dDur — short fast dissolve */
+    const SLIME_DEATH_MS = 400; /* v7 sprite: 15-frame burst (windup pre-trimmed in
+                                    the sheet, so frame 0 is already the explosion).
+                                    400 ms / 15 = ~27 ms/frame -> ~37 fps, fast enough
+                                    that the explosion reads as immediate. */
     const SNOWMAN_DEATH_MS = 500; /* user-requested 0.5 s shatter */
 
     for (const m of monsters) {
@@ -456,8 +459,8 @@ export class EntityRenderer {
               display._slimeFrame = frameIdx;
               sb.texture = tex;
             }
-            sb.scale.x = 64 / 128;
-            sb.scale.y = 64 / 128;
+            sb.scale.x = 96 / 128;
+            sb.scale.y = 96 / 128;
             sb.tint = 0xffffff;
             sb.visible = true;
             display.x = m.x;
@@ -515,9 +518,19 @@ export class EntityRenderer {
         this.monsterDisplays.set(m.id, display);
       }
 
-      display.x = m.x;
-      display.y = m.y;
-      display.visible = m.alive;
+      /* Guarded writes — every assignment to a Pixi DisplayObject's
+         x / y / visible / scale / tint marks the transform matrix
+         dirty, which forces the entity-layer's batch geometry
+         buffer to rebuild on the next render pass.  At 10 idle
+         slimes × 60 fps × 9 redundant writes each, that's ~5400
+         dirty-marks per second purely from "writing the same value
+         I wrote last frame."  Guarding with `if (current !== target)`
+         turns idle slimes into zero-dirty after the first frame.
+         Matches the dirty-flag idiom already used for HP / level /
+         dynGfx redraws elsewhere in this file. */
+      if (display.x !== m.x) display.x = m.x;
+      if (display.y !== m.y) display.y = m.y;
+      if (display.visible !== m.alive) display.visible = m.alive;
 
       const size = display._size;
 
@@ -568,21 +581,23 @@ export class EntityRenderer {
           }
           /* Render the sprite at 96 px tall, anchored bottom-center
              so feet sit on the ground.  Sprite frames are 128 px so
-             base scale = 96/128.  Bumped 50 → 64 → 96 per repeated
-             "slimes still too small" call-outs — the slime body only
-             fills ~half of the 128-px frame (lots of transparent
-             padding), so a 64-px render reads visually smaller than
-             the 64-px player whose sprite fills the whole frame. */
+             base scale = 96/128.  Briefly dropped to 64 in v2.1.54
+             while chasing a perf issue we thought was sprite fillrate;
+             v2.1.56 found the real cause (debugBus WS capture) and
+             restored 96.  The slime body only fills ~half of the
+             128-px frame, so 96 reads at roughly player-sprite scale. */
           const baseScale = 96 / 128;
-          spriteBody.scale.x = baseScale * sqx;
-          spriteBody.scale.y = baseScale * sqy;
-          spriteBody.y = size; /* feet at the circle's bottom edge */
-          spriteBody.tint = 0xffffff;
-          spriteBody.visible = true;
-          display._body.visible = false;
+          const sx = baseScale * sqx;
+          const sy = baseScale * sqy;
+          if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
+          if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
+          if (spriteBody.y !== size) spriteBody.y = size; /* feet at the circle's bottom edge */
+          if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+          if (!spriteBody.visible) spriteBody.visible = true;
+          if (display._body.visible) display._body.visible = false;
         } else {
-          spriteBody.visible = false;
-          display._body.visible = true;
+          if (spriteBody.visible) spriteBody.visible = false;
+          if (!display._body.visible) display._body.visible = true;
         }
       }
 
@@ -637,15 +652,16 @@ export class EntityRenderer {
           if (frameTex) {
             if (spriteBody.texture !== frameTex) spriteBody.texture = frameTex;
             const baseScale = 64 / 128;
-            spriteBody.scale.x = baseScale * (mirror ? -1 : 1);
-            spriteBody.scale.y = baseScale;
-            spriteBody.y = size;
-            spriteBody.tint = 0xffffff;
-            spriteBody.visible = true;
-            display._body.visible = false;
+            const sx = baseScale * (mirror ? -1 : 1);
+            if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
+            if (spriteBody.scale.y !== baseScale) spriteBody.scale.y = baseScale;
+            if (spriteBody.y !== size) spriteBody.y = size;
+            if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+            if (!spriteBody.visible) spriteBody.visible = true;
+            if (display._body.visible) display._body.visible = false;
           } else {
-            spriteBody.visible = false;
-            display._body.visible = true;
+            if (spriteBody.visible) spriteBody.visible = false;
+            if (!display._body.visible) display._body.visible = true;
           }
         } else {
           spriteBody.visible = false;

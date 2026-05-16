@@ -43,6 +43,7 @@ import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
+import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -270,10 +271,13 @@ export var BroTown = function BroTown(_ref0) {
   var slimeHitImgRef = useRef(null);
   var slimeProjectileImgRef = useRef(null);
   var slimeRemnantsImgRef = useRef(null);
-  /* Singleton Audio element for the slime proximity loop.  Created
-     lazily on first need; volume scales with distance to nearest
-     slime, paused when none in range. */
-  var slimeIdleAudioRef = useRef(null);
+  /* Web Audio buffer + nodes for the slime proximity loop.  Created
+     lazily on first need; gain scales with distance to nearest slime,
+     gain goes to 0 when none in range.  Moved off HTMLAudio in v2.1.68
+     because iOS Safari's HTMLAudio property accesses / play() promise
+     work was firing between RAFs and causing rhythmic 60-80 ms stutter
+     in zones with slimes (meadow, ember).  Same recipe as zone music. */
+  var slimeIdleAudioRef = useRef({ buffer: null, source: null, gain: null });
   /* Per-zone themed-ground tile sheets — small repeatable swatches
      loaded from public/sprites/tiles/ground-<elem>.png and converted
      into CanvasPattern objects on first frame so the canvas-2D render
@@ -1446,14 +1450,48 @@ export var BroTown = function BroTown(_ref0) {
   }, []);
 
   /* Slime proximity-audio loop.  Tick every 80 ms: find nearest alive
-     fodder monster within SLIME_AUDIO_RANGE, scale volume by inverse
-     distance (closer = louder, max 0.5).  Pause when none in range. */
+     fodder monster within SLIME_AUDIO_RANGE, scale gain by inverse
+     distance (closer = louder, max 0.5).  Routed through Web Audio
+     (BT_AUDIO.ctx) — the previous HTMLAudio path's property accesses
+     and play() promise work were firing between RAFs and caused the
+     rhythmic 60-80 ms stutter shown in IMG_8281/8282 (zones with
+     slimes: meadow, ember).  Same recipe as zone music: fetch +
+     decodeAudioData once, then a single looping BufferSource whose
+     gain we modulate. */
   useEffect(function () {
     var SLIME_AUDIO_RANGE = 250;
     var SLIME_AUDIO_VOL_MAX = 0.5;
+    var URL = '/audio/slime-idle.mp3';
+    var slot = slimeIdleAudioRef.current;
+    var loadBuffer = function () {
+      if (slot.buffer || slot._loading || !BT_AUDIO.ctx) return;
+      slot._loading = true;
+      fetch(URL)
+        .then(function (r) { return r.arrayBuffer(); })
+        .then(function (ab) { return BT_AUDIO.ctx.decodeAudioData(ab); })
+        .then(function (buf) { slot.buffer = buf; slot._loading = false; })
+        .catch(function () { slot._loading = false; });
+    };
+    var ensureSource = function () {
+      if (slot.source || !slot.buffer || !BT_AUDIO.ctx) return;
+      try {
+        var src = BT_AUDIO.ctx.createBufferSource();
+        var gain = BT_AUDIO.ctx.createGain();
+        src.buffer = slot.buffer;
+        src.loop = true;
+        gain.gain.value = 0;
+        src.connect(gain);
+        gain.connect(BT_AUDIO.ctx.destination);
+        src.start(0);
+        slot.source = src;
+        slot.gain = gain;
+      } catch (e) {}
+    };
+    loadBuffer();
     var id = setInterval(function () {
       var S = stateRef.current;
       if (!S || !S.player || !S.monsters || BT_AUDIO.muted) return;
+      if (!BT_AUDIO.ctx) return;
       var nearest = Infinity;
       for (var i = 0; i < S.monsters.length; i++) {
         var m = S.monsters[i];
@@ -1464,27 +1502,22 @@ export var BroTown = function BroTown(_ref0) {
         var d = Math.sqrt(dx * dx + dy * dy);
         if (d < nearest) nearest = d;
       }
-      var au = slimeIdleAudioRef.current;
       if (nearest <= SLIME_AUDIO_RANGE) {
-        if (!au) {
-          au = new Audio('/audio/slime-idle.mp3');
-          au.loop = true;
-          slimeIdleAudioRef.current = au;
+        if (!slot.buffer) { loadBuffer(); return; }
+        ensureSource();
+        if (slot.gain) {
+          var vol = SLIME_AUDIO_VOL_MAX * (1 - nearest / SLIME_AUDIO_RANGE);
+          slot.gain.gain.value = Math.max(0, Math.min(SLIME_AUDIO_VOL_MAX, vol));
         }
-        var vol = SLIME_AUDIO_VOL_MAX * (1 - nearest / SLIME_AUDIO_RANGE);
-        au.volume = Math.max(0, Math.min(SLIME_AUDIO_VOL_MAX, vol));
-        if (au.paused) {
-          var p = au.play();
-          if (p && p.catch) p.catch(function () {});
-        }
-      } else if (au && !au.paused) {
-        au.pause();
+      } else if (slot.gain) {
+        slot.gain.gain.value = 0;
       }
     }, 80);
     return function () {
       clearInterval(id);
-      var au = slimeIdleAudioRef.current;
-      if (au) { try { au.pause(); } catch (e) {} }
+      try { if (slot.source) slot.source.stop(); } catch (e) {}
+      slot.source = null;
+      slot.gain = null;
     };
   }, []);
 
@@ -1600,12 +1633,38 @@ export var BroTown = function BroTown(_ref0) {
         setChatLog(_toConsumableArray(S.chatLog));
       };
       ws.onmessage = function (evt) {
+        var _wsStart = performance.now();
         var msg;
         try {
           msg = JSON.parse(evt.data);
         } catch (_unused1) {
           return;
         }
+        /* Tail timing — wrap the rest of the body and log + push to
+           perfTracker when this handler exceeds 5 ms.  Server sends
+           ticks at 30 Hz; if each handler call takes 30+ ms we monopolise
+           the main thread between RAF callbacks (= the rhythmic outside-
+           the-RAF spike pattern we captured in v2.1.65). */
+        var _wsType = msg.type;
+        var _wsDone = function _wsDone() {
+          var _wsMs = performance.now() - _wsStart;
+          if (!ws._slowLog) ws._slowLog = { lastT: 0, worst: 0, worstType: '' };
+          if (_wsMs > 5) {
+            if (_wsMs > ws._slowLog.worst) { ws._slowLog.worst = _wsMs; ws._slowLog.worstType = _wsType; }
+            if (window.perfTracker && window.perfTracker.recordExternal) {
+              window.perfTracker.recordExternal('ws.' + _wsType, _wsMs);
+            }
+          }
+          if (performance.now() - ws._slowLog.lastT > 500 && ws._slowLog.worst > 5) {
+            /* eslint-disable no-console */
+            console.warn('[bt-ws-slow]', { ms: +ws._slowLog.worst.toFixed(1), type: ws._slowLog.worstType });
+            /* eslint-enable no-console */
+            ws._slowLog.lastT = performance.now();
+            ws._slowLog.worst = 0;
+            ws._slowLog.worstType = '';
+          }
+        };
+        try {
         switch (msg.type) {
           case 'tick':
             {
@@ -1803,6 +1862,7 @@ export var BroTown = function BroTown(_ref0) {
               _processGameEvent(msg.type, _payload, S);
             }
         }
+        } finally { _wsDone(); }
       };
 
       /* §16.10 — Shared game event dispatcher (used by both direct messages and batched tick events) */
@@ -3769,12 +3829,18 @@ export var BroTown = function BroTown(_ref0) {
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
           } else S._dodgeRoll = null;
         }
-        var dx = playerStunned ? 0 : S.stickX,
-          dy = playerStunned ? 0 : S.stickY;
-        /* Keyboard overrides if no stick input — but ALSO gated by
-           playerStunned so the hit-react lockout can't be bypassed
-           with WASD/arrow keys. */
-        if (!playerStunned && dx === 0 && dy === 0) {
+        /* Movement gated by REAL stuns only (hexer / brute charge).
+           The 250 ms hit-react lockout (_hitLockActive) no longer
+           freezes movement -- in projectile-heavy zones like meadow
+           a slime hit every few seconds stacked 250 ms freezes that
+           read as "frame stutter" even at 60 fps.  Visual hit-react
+           sprite + screen shake + particles still play; the player
+           just keeps their dodge ability mid-hit. */
+        var dx = _realStunned ? 0 : S.stickX,
+          dy = _realStunned ? 0 : S.stickY;
+        /* Keyboard overrides if no stick input — same gating:
+           real stuns block, hit-react lockout does not. */
+        if (!_realStunned && dx === 0 && dy === 0) {
           if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
           if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
           if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
@@ -3974,6 +4040,7 @@ export var BroTown = function BroTown(_ref0) {
             /* Zone exits — open to all players (quest gate removed) */
             {
               S.currentZone = bestExit.zoneId;
+              perfTracker.setZone(bestExit.zoneId);
               updateZoneDimensions(bestExit.zoneId);
               BT_AUDIO.startZoneAmbient(bestExit.zoneId);
               discoverZone(bestExit.zoneId); /* §ENC — Encyclopedia zone discovery */
@@ -6948,6 +7015,7 @@ export var BroTown = function BroTown(_ref0) {
                     y: m.y - 20,
                     text: '💥⚡ ' + dmg,
                     color: '#f5c542',
+                    iconKey: 'sword',
                     special: _isSpecialDmg,
                     ts: Date.now()
                   });
@@ -6957,6 +7025,7 @@ export var BroTown = function BroTown(_ref0) {
                     y: m.y - 20,
                     text: '💥 ' + dmg,
                     color: '#f5c542',
+                    iconKey: 'sword',
                     special: _isSpecialDmg,
                     ts: Date.now()
                   });
@@ -6966,6 +7035,7 @@ export var BroTown = function BroTown(_ref0) {
                     y: m.y - 20,
                     text: '' + dmg,
                     color: '#fff',
+                    iconKey: 'sword',
                     special: _isSpecialDmg,
                     ts: Date.now()
                   });
@@ -8828,6 +8898,12 @@ export var BroTown = function BroTown(_ref0) {
            throws here we log + flag and let the next frame retry,
            instead of trying to re-init a defunct Canvas 2D pipeline.
            ══════════════════════════════════════════════════════════ */
+        /* Sim/render split — always on, logs only on slow frames
+           (>30 ms) and throttled to once every 500 ms to avoid spam
+           in the mobile console.  Tells us whether the JS game-loop
+           work (simMs) or the Pixi render (renderMs) is the
+           bottleneck.  */
+        var _simEndT = performance.now();
         if (pixiRef.current) {
           var W = canvas.width / (window.devicePixelRatio || 1);
           var H = canvas.height / (window.devicePixelRatio || 1);
@@ -8840,10 +8916,68 @@ export var BroTown = function BroTown(_ref0) {
             }
           }
         }
+        var _renderEndT = performance.now();
+        var _workMs = _renderEndT - _perfNow;
+        /* totalMs is the INTERVAL between consecutive RAF callbacks
+           (= S._perf.prevT delta computed earlier in this frame =
+           _perfDelta).  THAT is what the user perceives as a freeze —
+           it includes browser composite, GC, style recalc, and any
+           work the browser does BETWEEN our RAFs.  workMs is what our
+           callback alone spent.  When totalMs >> workMs, the freeze is
+           browser-side, not our code. */
+        var _intervalMs = (S._perf && _perfDelta) || _workMs;
+        var _stages = (pixiRef.current && pixiRef.current.update && pixiRef.current.update._lastStages) || null;
+        perfTracker.record({
+          t: _renderEndT,
+          totalMs: _intervalMs,
+          workMs: _workMs,
+          simMs: _simEndT - _perfNow,
+          renderMs: _renderEndT - _simEndT,
+          tileMs: _stages ? _stages.tileMs : 0,
+          entityMs: _stages ? _stages.entityMs : 0,
+          effectsMs: _stages ? _stages.effectsMs : 0,
+          fpsMs: _stages ? _stages.fpsMs : 0,
+          appMs: _stages ? _stages.appMs : 0,
+          zone: S.currentZone,
+          monsters: (S.monsters && S.monsters.length) || 0,
+          others: (S.others && S.others.length) || 0,
+          projectiles: (S.projectiles && S.projectiles.length) || 0,
+          hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
+          slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
+          dmgNumbers: (S.dmgNumbers && S.dmgNumbers.length) || 0,
+          groundLoot: (S.groundLoot && S.groundLoot.length) || 0,
+          groundSplatter: (S.groundSplatter && S.groundSplatter.length) || 0,
+          campfires: (S.campfires && S.campfires.length) || 0,
+        });
+        if (!S._splitLog) S._splitLog = { lastT: 0, worstTotal: 0, worstSim: 0, worstRender: 0 };
+        if (_workMs > 30 && _workMs > S._splitLog.worstTotal) {
+          S._splitLog.worstTotal = _workMs;
+          S._splitLog.worstSim = _simEndT - _perfNow;
+          S._splitLog.worstRender = _renderEndT - _simEndT;
+        }
+        if (_renderEndT - S._splitLog.lastT > 500 && S._splitLog.worstTotal > 30) {
+          /* eslint-disable no-console */
+          console.warn('[bt-frame-split]', {
+            totalMs: +S._splitLog.worstTotal.toFixed(1),
+            simMs: +S._splitLog.worstSim.toFixed(1),
+            renderMs: +S._splitLog.worstRender.toFixed(1),
+            monsters: (S.monsters && S.monsters.length) || 0,
+            hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
+            slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
+            zone: S.currentZone,
+          });
+          /* eslint-enable no-console */
+          S._splitLog.lastT = _renderEndT;
+          S._splitLog.worstTotal = 0;
+          S._splitLog.worstSim = 0;
+          S._splitLog.worstRender = 0;
+        }
       } catch (gameLoopErr) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
       }
     };
+    perfTracker.init();
+    perfTracker.setZone(stateRef.current.currentZone || 'town');
     frameRef.current = requestAnimationFrame(_gameLoop);
 
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */
@@ -9519,6 +9653,7 @@ export var BroTown = function BroTown(_ref0) {
         maxLife: 200,
         hitIds: new Set(),
         isSpecial: true,
+        isStaff: false,
         element: hasElement || null,
         ice: true /* uses the large glowing arrow visual */
       });
@@ -9527,7 +9662,9 @@ export var BroTown = function BroTown(_ref0) {
         return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
       }, 60);
     } else if (activeWpn.type === 'staff') {
-      /* STAFF heavy — burst of 3 projectiles in a cone */
+      /* STAFF heavy — burst of 3 projectiles in a cone.  isStaff:true so
+         the hit handler picks the 'spell' popup icon (vs 'arrow' for
+         bows) and the projectile renders as magic, not a physical arrow. */
       if (!S.arrows) S.arrows = [];
       var _wpnDmg = calcWeaponDmg(activeWpn.type, R.power, activeWpn.tierMult);
       for (var si = -1; si <= 1; si++) {
@@ -9539,6 +9676,7 @@ export var BroTown = function BroTown(_ref0) {
           maxLife: 150,
           hitIds: new Set(),
           isSpecial: true,
+          isStaff: true,
           element: hasElement || null,
           ice: true
         });
@@ -9998,7 +10136,6 @@ export var BroTown = function BroTown(_ref0) {
   var joystickRef = useRef(null);
   var knobRef = useRef(null);
   var lStickRef = useRef(null);
-  var lFlashRef = useRef(null);
   var joystickActive = useRef(false);
   var lTouchId = useRef(null);
   var rJoyRef = useRef(null);
@@ -10154,66 +10291,10 @@ export var BroTown = function BroTown(_ref0) {
       for (var i = 0; i < tl.length; i++) if (tl[i].identifier === id) return tl[i];
       return null;
     };
-    /* Double-tap-on-left-joystick → special attack.
-       Aim comes from S._aimAngle (set by the right joystick), so the
-       player can line up the shot with the right stick and fire it by
-       tapping the left stick twice.  The flash overlay (lFlashRef)
-       pulses white between the two taps; the knob itself also grows
-       instantly on the first tap and slow-shrinks back to its static
-       24 px size when the window closes (timeout or second tap). */
-    var _lLastTap = 0;
-    var _lFlashTimer = null;
-    var DOUBLE_TAP_MS = 350;
-    var setLFlash = function setLFlash(on) {
-      var el = lFlashRef.current;
-      if (!el) return;
-      if (on) el.classList.add('bt-joy-flash-active');
-      else el.classList.remove('bt-joy-flash-active');
-    };
-    var growKnobOnTap = function growKnobOnTap() {
-      var k = knobRef.current;
-      if (!k) return;
-      /* Snap to grown size — no transition on grow. */
-      k.style.transition = 'width 0s, height 0s';
-      k.style.width = '40px';
-      k.style.height = '40px';
-    };
-    var shrinkKnobToStatic = function shrinkKnobToStatic() {
-      var k = knobRef.current;
-      if (!k) return;
-      /* Smooth shrink back to the CSS-defined size (24 px). */
-      k.style.transition = 'width 0.5s ease-out, height 0.5s ease-out';
-      k.style.width = '';
-      k.style.height = '';
-    };
     var lS = function lS(e) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      var now = Date.now();
-      if (_lLastTap && now - _lLastTap < DOUBLE_TAP_MS) {
-        /* Second tap inside window → fire special, close window. */
-        _lLastTap = 0;
-        if (_lFlashTimer) {
-          clearTimeout(_lFlashTimer);
-          _lFlashTimer = null;
-        }
-        setLFlash(false);
-        shrinkKnobToStatic();
-        doSpecialAttack();
-      } else {
-        /* First tap → arm window, start flash, grow knob. */
-        _lLastTap = now;
-        setLFlash(true);
-        growKnobOnTap();
-        if (_lFlashTimer) clearTimeout(_lFlashTimer);
-        _lFlashTimer = setTimeout(function () {
-          setLFlash(false);
-          shrinkKnobToStatic();
-          _lLastTap = 0;
-          _lFlashTimer = null;
-        }, DOUBLE_TAP_MS);
-      }
       lTouchId.current = t.identifier;
       joystickActive.current = true;
       handleJoystickMove(t.clientX, t.clientY);
@@ -10234,6 +10315,11 @@ export var BroTown = function BroTown(_ref0) {
         handleJoystickEnd();
       }
     };
+    /* Right-joystick swipe-to-special.  Track start (sx/sy/st) on touch
+       down and the last known position (lx/ly/lt) on every move; on
+       touch end, if the recent motion qualifies as a flick, fire
+       doSpecialAttack using the flick direction as the aim angle. */
+    var rSwipe = { sx: 0, sy: 0, st: 0, lx: 0, ly: 0, lt: 0 };
     var rS = function rS(e) {
       e.preventDefault();
       e.stopPropagation();
@@ -10242,8 +10328,12 @@ export var BroTown = function BroTown(_ref0) {
       rJoyActive.current = true;
       setAutoAttack(true);
       stateRef.current.autoAttack = true;
-      // Weapon swap → WeaponSwapBar. Special attack → double-tap left
-      // joystick. Right joystick is just aim + auto-swing while held.
+      rSwipe.sx = t.clientX;
+      rSwipe.sy = t.clientY;
+      rSwipe.st = Date.now();
+      rSwipe.lx = 0;
+      rSwipe.ly = 0;
+      rSwipe.lt = 0;
       handleRJoyMove(t.clientX, t.clientY);
       doSwing();
     };
@@ -10253,15 +10343,42 @@ export var BroTown = function BroTown(_ref0) {
       if (t) {
         e.preventDefault();
         handleRJoyMove(t.clientX, t.clientY);
+        rSwipe.lx = t.clientX;
+        rSwipe.ly = t.clientY;
+        rSwipe.lt = Date.now();
       }
     };
     var rE = function rE(e) {
-      // Special attack moved off the right joystick — now triggered by
-      // double-tapping the left joystick.  Right joystick just controls
-      // aim + auto-attack while held.
       if (rTouchId.current === null) return;
       var t = findT(e.changedTouches, rTouchId.current);
       if (t) {
+        /* Flick detection — last-leg speed (recent burst) OR
+           total-distance/total-duration speed (slow but committed). */
+        var refX = rSwipe.lx || rSwipe.sx;
+        var refY = rSwipe.ly || rSwipe.sy;
+        var refT = rSwipe.lt || rSwipe.st;
+        var dx = t.clientX - refX, dy = t.clientY - refY;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var dur = Date.now() - refT;
+        var spd = dist / Math.max(dur, 1);
+        var totalDx = t.clientX - rSwipe.sx, totalDy = t.clientY - rSwipe.sy;
+        var totalDist = Math.sqrt(totalDx * totalDx + totalDy * totalDy);
+        var totalDur = Date.now() - rSwipe.st;
+        var totalSpd = totalDist / Math.max(totalDur, 1);
+        var isFlick = (spd > 0.15 && dist > 8 && dur < 400)
+          || (totalSpd > 0.2 && totalDist > 15 && totalDur < 500);
+        if (isFlick) {
+          var S2 = stateRef.current;
+          S2._hasUsedSwipe = true;
+          var useDx = totalDist > dist ? totalDx : dx;
+          var useDy = totalDist > dist ? totalDy : dy;
+          var flickAng = Math.atan2(useDy, useDx);
+          S2._aimAngle = flickAng;
+          S2._facing = Math.abs(useDx) > Math.abs(useDy)
+            ? (useDx > 0 ? 'right' : 'left')
+            : (useDy > 0 ? 'down' : 'up');
+          doSpecialAttack();
+        }
         rTouchId.current = null;
         handleRJoyEnd();
       }
@@ -29148,23 +29265,9 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-joystick-knob",
     ref: knobRef,
     style: {
-      zIndex: 3
+      zIndex: 1
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    /* White flash overlay nested inside the knob — moves with the
-       knob's transform.  Visible during the double-tap window after the
-       first tap; class bt-joy-flash-active is toggled by lS(). */
-    ref: lFlashRef,
-    style: {
-      position: 'absolute',
-      inset: 0,
-      borderRadius: '50%',
-      background: 'rgba(255,255,255,0.95)',
-      boxShadow: '0 0 10px rgba(255,255,255,0.75)',
-      opacity: 0,
-      pointerEvents: 'none',
-    }
-  })))), /*#__PURE__*/React.createElement("div", {
+  }))), /*#__PURE__*/React.createElement("div", {
     className: "bt-desktop-hide",
     style: {
       position: 'fixed',

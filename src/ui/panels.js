@@ -1185,8 +1185,8 @@ export function renderBroTownUI(uiCtx) {
       if (!stateRef.current._isDesktop) return;
       var S = stateRef.current;
       var rect = e.currentTarget.getBoundingClientRect();
-      var screenX = (e.clientX - rect.left) * 1.25;
-      var screenY = (e.clientY - rect.top) * 1.25;
+      var screenX = (e.clientX - rect.left) * 1.0;
+      var screenY = (e.clientY - rect.top) * 1.0;
       /* Convert screen coords to world coords using camera */
       var worldX = screenX + S.camera.x;
       var worldY = screenY + S.camera.y;
@@ -1229,8 +1229,8 @@ export function renderBroTownUI(uiCtx) {
     },
     onClick: function onClick(e) {
       var rect = e.currentTarget.getBoundingClientRect();
-      var tapX = (e.clientX - rect.left) * 1.25;
-      var tapY = (e.clientY - rect.top) * 1.25;
+      var tapX = (e.clientX - rect.left) * 1.0;
+      var tapY = (e.clientY - rect.top) * 1.0;
       var S = stateRef.current;
       var cx = S.camera.x,
         cy = S.camera.y;

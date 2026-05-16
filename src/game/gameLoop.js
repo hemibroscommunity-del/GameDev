@@ -735,8 +735,17 @@ export function setupGameLoop(ctx) {
           }
           return;
         }
-        var W = canvas.width / (window.devicePixelRatio || 1) * 1.25;
-        var H = canvas.height / (window.devicePixelRatio || 1) * 1.25;
+        /* Viewport zoom factor — controls how much world is visible per
+           CSS pixel.  Was 1.25 (game showed 25% more world, world
+           rendered at scale=0.8).  That sub-pixel scale caused walking
+           shimmer/stutter as the camera glided fractionally; world art
+           snapped or shimmered depending on filter mode.  At 1.0 the
+           world renders at native scale (1 world px = 1 CSS px), so
+           there's no sub-pixel resampling and motion is smooth.  Side
+           effect: game is more zoomed in (visible area is ~20% smaller
+           than before). */
+        var W = canvas.width / (window.devicePixelRatio || 1) * 1.0;
+        var H = canvas.height / (window.devicePixelRatio || 1) * 1.0;
         var P = S.player;
         var K = S.keys;
 
