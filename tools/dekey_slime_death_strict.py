@@ -7,12 +7,16 @@ green tint. This pass enforces "must look green" instead of "must not
 look white", which is the right framing for a green sprite.
 
 Rule, applied frame by frame:
-  - KEEP dark pixels (lum < 50) unconditionally — preserves AA edges
-    on outlines and dark green shadow tones.
-  - Anywhere lum >= 50, require green-dominance margin (g - max(r,b))
-    >= 20.  Empirical pass on v9 showed real chunks sit at delta 30+
-    while residue clusters at delta 5-15 with lum 70-100 — that's
-    the muddy grey-green the user reads as "white".
+  - KEEP dark pixels (lum < 50) unconditionally — preserves outline.
+  - Anywhere lum >= 50, require BOTH saturation >= 0.35 AND green
+    dominance (g > max(r,b)).  Pixels failing either test read as
+    grey/muddy to the eye and are zeroed.
+
+  Empirical pass on v9 showed real chunks sit at sat 0.45-0.80 while
+  the "white residue" the user complained about clustered at sat
+  0.20-0.34 (e.g. 97,128,96 — technically green-dominant but
+  desaturated enough to read as off-white).  This pass kills ~1.6k
+  such pixels.
 
 Usage:
   python tools/dekey_slime_death_strict.py SRC.png DST.png
@@ -25,8 +29,14 @@ def kill(r, g, b):
     lum = (r + g + b) / 3
     if lum < 50:
         return False
-    delta = g - max(r, b)
-    return delta < 20
+    mx = max(r, g, b)
+    mn = min(r, g, b)
+    sat = 0 if mx == 0 else (mx - mn) / mx
+    if sat < 0.35:
+        return True
+    if g <= max(r, b):
+        return True
+    return False
 
 
 def main(src_path, dst_path):
