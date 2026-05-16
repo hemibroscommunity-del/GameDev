@@ -71,7 +71,7 @@ input{font-family:inherit}
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   animation:promptPulse 1.5s ease-in-out infinite;
-  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  -webkit-tap-highlight-color:transparent;touch-action:none}
 @keyframes promptPulse{0%,100%{opacity:.9;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.04)}}
 .bt-players-btn{position:absolute;top:8px;left:52px;z-index:20;height:30px;padding:0 10px;
   border-radius:8px;background:rgba(0,0,0,.45);border:1.5px solid rgba(255,255,255,.15);

@@ -67,6 +67,12 @@ export const WeaponSwapBar = () => {
         borderRadius: (BUTTON_SIZE + PADDING * 2) / 2,
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
         zIndex: 35,
+        // touch-action: none on the whole pill — combined with the
+        // native touchmove listener above, blocks iOS's pan/rubber-band
+        // gesture from initiating at touchstart. Without this, Safari
+        // marks the touch as a scroll candidate before the listener
+        // fires and the shake still happens.
+        touchAction: 'none',
       }}
     >
       {SLOTS.map(s => {
@@ -107,7 +113,7 @@ export const WeaponSwapBar = () => {
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'opacity .15s, filter .15s, background .15s, border-color .15s, box-shadow .15s',
-              touchAction: 'manipulation',
+              touchAction: 'none',
               WebkitTouchCallout: 'none',
               WebkitUserSelect: 'none',
               userSelect: 'none',
