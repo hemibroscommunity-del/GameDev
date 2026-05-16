@@ -9,16 +9,17 @@ is brighter green than the death-anim chunks).
 Rule:
   KILL only when (lum >= LUM_KILL AND sat < SAT_KILL).
 
-  Defaults tuned against slime-hit-v1.png: brightest specular pixels
-  were around (228, 239, 216) at lum 228, sat 0.10.  Body mid-tones
-  range lum 100-180 at sat 0.35-0.55, so picking 180/0.30 catches
-  the shine without touching body fill.
+  Defaults retuned after a first pass at 180/0.30 ate some bright
+  green body pixels (e.g. (175, 213, 154) at sat 0.28 — clearly
+  green, user wanted it back).  Pure specular pixels sit at sat
+  0.0-0.15; the green body's brightest fill sits at sat 0.20+, so
+  sat < 0.20 separates them cleanly.
 """
 import sys
 from PIL import Image
 
 LUM_KILL = 180
-SAT_KILL = 0.30
+SAT_KILL = 0.20
 
 
 def kill(r, g, b):
