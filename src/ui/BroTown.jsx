@@ -5557,6 +5557,12 @@ export var BroTown = function BroTown(_ref0) {
           var _activeWpn = getActiveWeapon(_R6);
           var wpnType = WEAPON_TYPES[_activeWpn.type] || WEAPON_TYPES.greatsword;
           var pDmg = calcWeaponDmg(_activeWpn.type, _R6.power, _activeWpn.tierMult);
+          /* Snapshot the un-modified base — the "block N" popup compares
+             the final dmg against this so any negative modifier (curse,
+             level-diff scaling, future debuffs) shows up without needing
+             a per-source code path.  Matches the value shown in the
+             WeaponSwapBar DMG readout. */
+          var _pDmgBase = pDmg;
           /* §4 Amulet bonus — elemental damage boost */
           if (((_R6$_amuletBonus = _R6._amuletBonus) === null || _R6$_amuletBonus === void 0 ? void 0 : _R6$_amuletBonus.stat) === 'elemDmg' && _activeWpn.element1) pDmg *= 1 + _R6._amuletBonus.value / 100;
           /* §18.1 Food buff — damage multiplier */
@@ -6746,12 +6752,14 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 /* Level-difference scaling — hard to kill monsters much higher level.
-                   _dmgBeforeMitigation captures the would-have-been hit so
-                   the popup below can show what was shaved off. */
-                var _dmgBeforeMitigation = dmg;
+                   _expectedDmg is the would-have-been hit if no debuffs
+                   or scaling fired (base × specialMult, no crit/curse/lvlDiff).
+                   The "block N" popup floats _mitigated = expected − actual,
+                   clamped at 0 so crits/buffs don't render a negative gap. */
+                var _expectedDmg = Math.round(_pDmgBase * specialMult);
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
-                var _mitigated = Math.max(0, _dmgBeforeMitigation - dmg);
+                var _mitigated = Math.max(0, _expectedDmg - dmg);
                 m.curHp -= dmg;
                 /* Hit-reaction sheet plays once per non-fatal hit.  Use
                    (archetype||type) so server-synced monsters without an
