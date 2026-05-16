@@ -524,12 +524,28 @@ export class EffectsRenderer {
          through the history.  Older segments are thinner + more
          transparent, so the eye reads the trail as a single linear
          streak that visually extends the arrow's path.
-         Stuck arrows / hit arrows don't need this. */
-      this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.isSpecial || a.ice);
+         Stuck arrows / hit arrows don't need this.
+         Bow heavy attacks (isSpecial without _isStaffProj) keep the
+         arrow trail style — the orb trail belongs to staff/ice. */
+      this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice);
 
-      if (a.isSpecial || a.ice) {
-        /* Bigger + yellow glow ring so specials read as distinct from
-           regular projectiles. Three concentric circles:
+      const isBowHeavy = a.isSpecial && !a._isStaffProj && !a.ice;
+      if (isBowHeavy) {
+        /* Heavy bow shot — draw the arrow normally with a bright
+           element-tinted halo around it.  Reads as a powered shot
+           (clearly distinct from a regular arrow) without hiding the
+           arrow itself in an orb. */
+        gfx.circle(a._renderX, a._renderY, 13);
+        gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.25 });
+        gfx.circle(a._renderX, a._renderY, 9);
+        gfx.fill({ color: elemColor, alpha: fadeA * 0.45 });
+        gfx.circle(a._renderX, a._renderY, 5);
+        gfx.fill({ color: 0xfff2a8, alpha: fadeA * 0.55 });
+        this._drawArrow(gfx, a._renderX, a._renderY, a.ang + bend, elemColor, fadeA);
+      } else if (a.isSpecial || a.ice) {
+        /* Staff special / ice — bigger yellow glow ring so specials
+           read as distinct from regular projectiles. Three concentric
+           circles:
             – outer yellow halo for the "special" tell
             – mid element-tinted glow
             – bright element-tinted core */
