@@ -17,11 +17,12 @@ Run from repo root:
   python tools/regen_slime_death.py
 
 Tunables (all in 0..255 luminance space):
-  KEY_LUM_HARD   pixels brighter than this always die.
-  KEY_LUM_SOFT   pixels brighter than this die if not green-dominant.
+  KEY_LUM_HARD   any opaque pixel brighter than this dies, period.
+                 No green-leniency here -- pale-green highlights read
+                 as "white" to the eye, so they go.
   KEY_LUM_SAT    pixels brighter than this die if low-saturation.
-  KEY_SAT_MIN    saturation threshold for the soft cut.
-  KEY_GREEN_LEAD how much g must beat both r and b to count as slime.
+                 Catches mid-luminance greys/whites.
+  KEY_SAT_MIN    saturation threshold for the desaturated branch.
 """
 import os
 import shutil
@@ -40,14 +41,12 @@ FRAME_SIZE = 128
 SRC_CROP_TOP = 384      # 640x1408 -> centred 640x640
 SRC_CROP_HEIGHT = 640
 
-# Aggressive near-white key. The slime body is saturated green
-# (g >> r, b) with luminance in the 50-130 range, so a wide near-white
-# net does not eat the slime.
-KEY_LUM_HARD = 180      # anything brighter than this -> alpha 0
-KEY_LUM_SAT  = 130      # plus low-saturation between this and HARD
-KEY_SAT_MIN  = 0.22     # saturation cutoff for the desaturated branch
-KEY_LUM_SOFT = 150      # plus non-green-dominant pixels above this
-KEY_GREEN_LEAD = 8      # g must lead both r and b by this to survive
+# Strict "anything white" key. Slime body sits in lum 50-125 (saturated
+# green, g >> r,b). Above 125 the pixels are pale-green-cream highlights
+# from the source video that read as white -- so kill them flat.
+KEY_LUM_HARD = 125      # anything brighter than this -> alpha 0, no exceptions
+KEY_LUM_SAT  = 90       # plus low-saturation pixels above this lum
+KEY_SAT_MIN  = 0.20     # saturation cutoff for the desaturated branch
 
 
 def extract_frames():
@@ -82,11 +81,9 @@ def key_frame(im: Image.Image) -> Image.Image:
             mx = max(r, g, b)
             mn = min(r, g, b)
             sat = 0 if mx == 0 else (mx - mn) / mx
-            green_dom = (g > r + KEY_GREEN_LEAD) and (g > b + KEY_GREEN_LEAD)
             kill = (
                 lum > KEY_LUM_HARD
                 or (lum > KEY_LUM_SAT and sat < KEY_SAT_MIN)
-                or (lum > KEY_LUM_SOFT and not green_dom)
             )
             if kill:
                 px[x, y] = (0, 0, 0, 0)
