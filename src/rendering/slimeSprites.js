@@ -1,9 +1,9 @@
 /* Slime monster sprite-sheet loader for the Pixi renderer.
  *
  * Mirrors the Canvas 2D path in BroTown.jsx (~line 1384):
- *   /sprites/monsters/slime-idle-v6.png       — idle loop (specular-dekeyed)
- *   /sprites/monsters/slime-shoot-v3.png      — attack lunge (specular-dekeyed)
- *   /sprites/monsters/slime-hit-v2.png        — squash on damage (specular-dekeyed)
+ *   /sprites/monsters/slime-idle-v5.png       — idle loop
+ *   /sprites/monsters/slime-shoot-v2.png      — attack lunge
+ *   /sprites/monsters/slime-hit-v1.png        — squash on damage
  *   /sprites/monsters/slime-death-v10.png     — death burst (15 frames, strict-keyed)
  *   /sprites/monsters/slime-projectile-v1.png — single-frame ranged orb
  *
@@ -22,9 +22,9 @@ const FRAME_W = 128;
 const FRAME_H = 128;
 
 const SHEETS = {
-  idle:       { url: '/sprites/monsters/slime-idle-v6.png',       frames: [] },
-  shoot:      { url: '/sprites/monsters/slime-shoot-v3.png',      frames: [] },
-  hit:        { url: '/sprites/monsters/slime-hit-v2.png',        frames: [] },
+  idle:       { url: '/sprites/monsters/slime-idle-v5.png',       frames: [] },
+  shoot:      { url: '/sprites/monsters/slime-shoot-v2.png',      frames: [] },
+  hit:        { url: '/sprites/monsters/slime-hit-v1.png',        frames: [] },
   death:      { url: '/sprites/monsters/slime-death-v10.png',     frames: [] },
   /* Single-frame splat that lands on the ground after the death anim
      ends.  Loaded as a 1-frame "sheet" so the same machinery applies. */
