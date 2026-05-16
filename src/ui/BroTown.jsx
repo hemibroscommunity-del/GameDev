@@ -10672,10 +10672,7 @@ export var BroTown = function BroTown(_ref0) {
       top: 0,
       left: 0,
       width: '100vw',
-      /* 100svh = small viewport (URL bar visible). 100dvh changes during
-         iOS Safari URL-bar transitions and was visibly shaking the
-         dashboard area on upward swipes; svh stays put. */
-      height: '100svh',
+      height: '100dvh',
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column'
