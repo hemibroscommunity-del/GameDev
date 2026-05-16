@@ -57,7 +57,7 @@ export const ZONES = {
     enemyEmoji: { fodder: '🪨', brute: '🦏', swarm: '🦂', volatile: '💎', hexer: '⚱️' }
   },
   sky: {
-    id: 'sky', name: 'Sky Reaches', w: 32, h: 32,
+    id: 'sky', name: 'Desert Winds', w: 32, h: 32,
     element: 'wind', secondary: 'frost', level: [1, 10], music: 'sky', safe: false,
     palette: { ground: '#6a7a8a', path: '#aabbcc', accent: '#8a9aaa' },
     spawns: [{ arch: 'stalker', count: 4 }, { arch: 'hexer', count: 3 }, { arch: 'volatile', count: 3 }],

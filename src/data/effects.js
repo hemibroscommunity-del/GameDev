@@ -261,5 +261,5 @@ export const TOWN_EXITS = [
   { zoneId: 'mist',    tx: 31, ty: 31, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
   { zoneId: 'hollows', tx: 16, ty: 31, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
   { zoneId: 'ember',   tx: 0,  ty: 31, dir: 'sw',    label: '↙ Ember Fields',  color: ELEMENTS.flame.color },
-  { zoneId: 'sky',     tx: 0,  ty: 16, dir: 'west',  label: '← Sky Reaches',   color: ELEMENTS.wind.color },
+  { zoneId: 'sky',     tx: 0,  ty: 16, dir: 'west',  label: '← Desert Winds',  color: ELEMENTS.wind.color },
 ];
