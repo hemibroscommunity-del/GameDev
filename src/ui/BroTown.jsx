@@ -1764,8 +1764,12 @@ export var BroTown = function BroTown(_ref0) {
               }
               S.others = others;
               setPlayerCount(msg.playerCount || Object.keys(others).length + 1);
-              /* Load server monsters if provided — disabled: use local AI instead */
-              if (false && msg.monsters && msg.monsters.length > 0) {
+              /* Load server monsters when present — shared monster
+                 instances across all players, GDD §7 damage-share
+                 active.  Empty list means the server has no monsters
+                 for this zone (town, or a dungeon the server doesn't
+                 model); fall back to client-local. */
+              if (msg.monsters && msg.monsters.length > 0) {
                 S._serverMonsters = true;
                 S.monsters = msg.monsters.map(function(m) {
                   return _objectSpread(_objectSpread({}, m), {}, {
@@ -1775,13 +1779,21 @@ export var BroTown = function BroTown(_ref0) {
                     _stuckArrows: [],
                   });
                 });
+              } else {
+                S._serverMonsters = false;
               }
               break;
             }
           case 'zone_monsters':
             {
-              /* Server sent full monster list — disabled: use local AI instead */
-              if (false && msg.monsters) {
+              /* Server sent the full monster list for a zone (sent on
+                 zone change).  Non-empty → server-authoritative,
+                 replace local snapshot.  Empty → server doesn't model
+                 this zone (dungeon, town); flip back to client-local
+                 and re-spawn if the local zone-change code skipped its
+                 spawn while the previous flag was still true. */
+              if (!msg.monsters) break;
+              if (msg.monsters.length > 0) {
                 S._serverMonsters = true;
                 S.monsters = msg.monsters.map(function(m) {
                   return _objectSpread(_objectSpread({}, m), {}, {
@@ -1791,6 +1803,18 @@ export var BroTown = function BroTown(_ref0) {
                     _stuckArrows: [],
                   });
                 });
+              } else {
+                var _prevSrvFlag = S._serverMonsters;
+                S._serverMonsters = false;
+                /* If we just transitioned from a server-managed zone
+                   to a non-server zone, the local zone-change code
+                   skipped its spawnMonstersForZone call.  Re-spawn now
+                   for known ZONES entries (dungeons handle their own
+                   spawn in the depth-descent code). */
+                if (_prevSrvFlag) {
+                  var _zn = ZONES[S.currentZone];
+                  if (_zn) S.monsters = spawnMonstersForZone(_zn);
+                }
               }
               break;
             }
@@ -1987,12 +2011,19 @@ export var BroTown = function BroTown(_ref0) {
                   }
                 }
               }
-              /* Award XP and gold if we are a recipient */
+              /* Award XP and gold if we are a recipient.  GDD §7:
+                 contribution-weighted split — each recipient gets
+                 monster.xp * shares[myId] (and gold likewise, but only
+                 if listed in goldRecipients which the server gates at
+                 0.05 share).  Falls back to the legacy whole-amount
+                 path when shares aren't present (older server build). */
               if (payload.recipients && payload.recipients.includes(S.myId)) {
                 var R = S.rpg;
                 if (R) {
-                  var killXp = payload.xp || 0;
-                  var killGold = payload.gold || 0;
+                  var myShare = (payload.shares && typeof payload.shares[S.myId] === 'number') ? payload.shares[S.myId] : 1;
+                  var killXp = Math.max(0, Math.round((payload.xp || 0) * myShare));
+                  var goldList = payload.goldRecipients || payload.recipients;
+                  var killGold = goldList.includes(S.myId) ? Math.max(0, Math.round((payload.gold || 0) * myShare)) : 0;
                   R.xp = (R.xp || 0) + killXp;
                   R.coins = (R.coins || 0) + killGold;
                   if (R._compStats) {
@@ -2028,8 +2059,25 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'monster_attack':
             {
-              /* Server monster attacked us */
-              if (payload.targetId !== S.myId) break;
+              /* Server monster attacked someone */
+              if (payload.targetId !== S.myId) {
+                /* Remote-player hit feedback: flash their sprite + float a
+                   damage number over them so other players' fights read
+                   as real, not invisible.  No HP math — server is
+                   authoritative on remote HP; this is purely visual. */
+                var rOther = S.others && S.others[payload.targetId];
+                if (rOther) {
+                  rOther._hitFlash = Date.now();
+                  S.dmgNumbers.push({
+                    x: rOther.x || 0,
+                    y: (rOther.y || 0) - 20,
+                    text: '-' + (payload.dmg || 0),
+                    color: '#ff5e6c',
+                    ts: Date.now()
+                  });
+                }
+                break;
+              }
               var R2 = S.rpg;
               if (!R2 || R2.hp <= 0) break;
               /* ── Out-of-range filter ──
@@ -2161,6 +2209,70 @@ export var BroTown = function BroTown(_ref0) {
                 }, respawnDelay);
               }
               setRpgState(_objectSpread({}, R2));
+              break;
+            }
+          case 'player_hurt_by_monster':
+            {
+              /* Client-local monster damage report — used in zones that
+                 still run client-local AI (e.g. dungeon waves).  For
+                 server-authoritative zones the monster_attack handler
+                 above already does this; this case covers anything
+                 else.  Visual only. */
+              if (payload.id === S.myId) break;
+              var hurtOther = S.others && S.others[payload.id];
+              if (!hurtOther) break;
+              hurtOther._hitFlash = Date.now();
+              S.dmgNumbers.push({
+                x: hurtOther.x || 0,
+                y: (hurtOther.y || 0) - 20,
+                text: '-' + (payload.dmg || 0),
+                color: '#ff5e6c',
+                ts: Date.now()
+              });
+              break;
+            }
+          case 'monster_dmg_at':
+            {
+              /* Client-local monster damage broadcast — used in zones
+                 that still run client-local AI.  Server-authoritative
+                 zones use monster_hit instead, which the handler above
+                 already covers.  Drops own echoes. */
+              if (payload.id === S.myId) break;
+              S.dmgNumbers.push({
+                x: payload.x || 0,
+                y: (payload.y || 0) - 20,
+                text: '-' + (payload.dmg || 0),
+                color: payload.isCrit ? '#fbbf24' : '#ff8888',
+                ts: Date.now()
+              });
+              break;
+            }
+          case 'player_died_to_monster':
+            {
+              /* Remote player died on their client.  Spawn the same
+                 red death-burst + skull popup we render locally,
+                 anchored to the reported position.  PvP deaths are
+                 handled by pvp_confirmed and aren't double-rendered. */
+              if (payload.id === S.myId) break;
+              var dthX = payload.x || 0, dthY = payload.y || 0;
+              for (var dpx = 0; dpx < 20; dpx++) {
+                var dpAx = dpx / 20 * Math.PI * 2;
+                S.hitParticles.push({
+                  x: dthX, y: dthY,
+                  vx: Math.cos(dpAx) * (2 + Math.random() * 4),
+                  vy: Math.sin(dpAx) * (2 + Math.random() * 4) - 1,
+                  life: 1.0,
+                  color: ['#ff5e6c','#cc2233','#ff8888'][Math.floor(Math.random()*3)],
+                  size: 2 + Math.random() * 2
+                });
+              }
+              S.dmgNumbers.push({
+                x: dthX, y: dthY - 40,
+                text: '💀',
+                color: '#ff5e6c',
+                ts: Date.now(),
+                ttl: 2.0
+              });
               break;
             }
           /* mkt_order removed — marketplace uses server API now */
@@ -6767,7 +6879,13 @@ export var BroTown = function BroTown(_ref0) {
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
-                m.curHp -= dmg;
+                /* Server-authoritative zones: HP only flows from server
+                   monster_hit ticks.  Local decrement would race the
+                   server's view and cause double-credit on the kill
+                   block below.  Visual hit-react, particles, and the
+                   monster_dmg_at broadcast still fire so the hit
+                   reads instantly. */
+                if (!S._serverMonsters) m.curHp -= dmg;
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: dmg, isCrit: isCrit } });
                 /* Hit-reaction sheet plays once per non-fatal hit.  Use
                    (archetype||type) so server-synced monsters without an
@@ -6838,7 +6956,7 @@ export var BroTown = function BroTown(_ref0) {
                   if (collisionResult.collision && collisionResult.collision.type === 'capstone') masteryEarnCert('first-capstone');
                   /* §5.9.6 — combo burst applies to collision damage too. */
                   collisionResult.damage = Math.round(collisionResult.damage * _comboBurst);
-                  m.curHp -= collisionResult.damage;
+                  if (!S._serverMonsters) m.curHp -= collisionResult.damage;
                   if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: collisionResult.damage, isCrit: true } });
                   /* §5.9.4 Combo spread (count 2+) — propagate the consumed
                      status to the nearest enemy that doesn't already have it.
@@ -8502,7 +8620,7 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 var _hpBefore = m.curHp;
-                m.curHp -= a.dmg;
+                if (!S._serverMonsters) m.curHp -= a.dmg;
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: a.dmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
                    arrowCollision bonus damage applied below uses the
@@ -8537,7 +8655,7 @@ export var BroTown = function BroTown(_ref0) {
                   if (activeWpn && activeWpn.isVolatile) masteryEarnCert('first-volatile');
                   if (arrowCollision.resonating) masteryEarnCert('first-resonance-hit');
                   if (arrowCollision.collision && arrowCollision.collision.type === 'capstone') masteryEarnCert('first-capstone');
-                  m.curHp -= arrowCollision.damage;
+                  if (!S._serverMonsters) m.curHp -= arrowCollision.damage;
                   var coll = arrowCollision.collision;
                   var elemCol = ((_ELEMENTS$arrowCollis = ELEMENTS[arrowCollision.triggerElement]) === null || _ELEMENTS$arrowCollis === void 0 ? void 0 : _ELEMENTS$arrowCollis.color) || '#fff';
                   /* §5.7 Resonance — bright readout + ring on resonance-timed projectile collisions. */
