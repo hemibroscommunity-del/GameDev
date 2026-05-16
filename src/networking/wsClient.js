@@ -609,6 +609,27 @@ export function setupWebSocket(ctx) {
               setRpgState(_objectSpread({}, R2));
               break;
             }
+          case 'player_hurt_by_monster':
+            {
+              /* Phase 1 shared-monster visual feedback: a remote player
+                 broadcast that they just took monster damage on their
+                 own client.  We render the hit-flash + a floating dmg
+                 number over their sprite so the encounter reads as a
+                 real fight to bystanders, even though monsters are
+                 still client-local. */
+              if (payload.id === S.myId) break;
+              var hurtOther = S.others && S.others[payload.id];
+              if (!hurtOther) break;
+              hurtOther._hitFlash = Date.now();
+              S.dmgNumbers.push({
+                x: hurtOther.x || 0,
+                y: (hurtOther.y || 0) - 20,
+                text: '-' + (payload.dmg || 0),
+                color: '#ff5e6c',
+                ts: Date.now()
+              });
+              break;
+            }
           /* mkt_order removed — marketplace uses server API now */
           case 'arena_bet':
             {

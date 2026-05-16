@@ -5916,6 +5916,7 @@ export var BroTown = function BroTown(_ref0) {
                         try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
                         S._hitFlash = Date.now();
+                        if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: finalDmg } });
                         S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + 250);
                       }
                     } else if (distToP < slamRange && dodged) {
@@ -5982,6 +5983,7 @@ export var BroTown = function BroTown(_ref0) {
                         try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
                         S._hitFlash = Date.now();
+                        if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _finalDmg } });
                         S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + 250);
                       }
                     }
@@ -6177,7 +6179,10 @@ export var BroTown = function BroTown(_ref0) {
                     var explodeDmg = Math.round(m.dmg * 2);
                     _R6.hp -= shielded ? Math.max(1, Math.floor(explodeDmg * (1 - blockReduc))) : explodeDmg;
                     if (window.__dmgLog) try { console.log('[dmg] volatile-explode', { amt: explodeDmg, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y } }); } catch (e) {}
-                    if (!shielded) S._hitFlash = Date.now();
+                    if (!shielded) {
+                      S._hitFlash = Date.now();
+                      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: explodeDmg } });
+                    }
                     S.screenShake = 8;
                     S.dmgNumbers.push({
                       x: m.x,
@@ -6217,6 +6222,7 @@ export var BroTown = function BroTown(_ref0) {
                       try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
                       S.lastDamageTaken = Date.now();
                       S._hitFlash = Date.now();
+                      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: dmgTaken } });
                     }
                     /* GDD §1.2 Vitality: taking damage AND surviving.
                        Tracked as use-frequency; resolved on next kill. */
@@ -8867,6 +8873,7 @@ export var BroTown = function BroTown(_ref0) {
             try { BT_AUDIO.play('slime-projectile-hit', { vol: 0.7 }); } catch (e) {}
             S.lastDamageTaken = Date.now();
             S._hitFlash = Date.now();
+            if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: proj.rawDmg } });
             if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', proj.rawDmg);
             S.dmgNumbers.push({
               x: P.x, y: P.y - 20,
