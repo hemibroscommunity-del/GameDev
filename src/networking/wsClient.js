@@ -630,6 +630,24 @@ export function setupWebSocket(ctx) {
               });
               break;
             }
+          case 'monster_dmg_at':
+            {
+              /* Phase 1 shared-monster visual feedback: another player
+                 just damaged a monster on their client.  Monsters are
+                 still client-local so we can't tag the same instance,
+                 but rendering a floating damage number at the world
+                 position they hit (sent in the payload) makes nearby
+                 fights read as real, not invisible. */
+              if (payload.id === S.myId) break;
+              S.dmgNumbers.push({
+                x: payload.x || 0,
+                y: (payload.y || 0) - 20,
+                text: '-' + (payload.dmg || 0),
+                color: payload.isCrit ? '#fbbf24' : '#ff8888',
+                ts: Date.now()
+              });
+              break;
+            }
           /* mkt_order removed — marketplace uses server API now */
           case 'arena_bet':
             {

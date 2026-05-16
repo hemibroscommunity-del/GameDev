@@ -6767,6 +6767,7 @@ export var BroTown = function BroTown(_ref0) {
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
                 m.curHp -= dmg;
+                if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: dmg, isCrit: isCrit } });
                 /* Hit-reaction sheet plays once per non-fatal hit.  Use
                    (archetype||type) so server-synced monsters without an
                    archetype field still get the reaction.  Snowman gets a
@@ -8500,6 +8501,7 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 var _hpBefore = m.curHp;
                 m.curHp -= a.dmg;
+                if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: a.dmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
                    arrowCollision bonus damage applied below uses the
                    same anim window, no need to re-trigger. */
