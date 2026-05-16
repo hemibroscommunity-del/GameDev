@@ -3556,35 +3556,41 @@ export function setupGameLoop(ctx) {
                   maxR: isCrit ? 30 : collisionResult ? 25 : 16,
                   duration: isCrit ? 250 : 150
                 });
-                /* Damage number — scaled by significance. Display value
-                   is capped at the HP that was actually removed so the
-                   killing blow doesn't show an inflated overkill number. */
-                var _displayDmg = Math.min(dmg, _hpBefore);
+                /* Damage number — show the rolled damage, NOT the
+                   killing-blow-capped value. A 40-dmg special on a
+                   4-HP enemy used to render as "4" (capped at hp left),
+                   which read as a truncated digit and undersold the
+                   big hit. special:true also tells the renderer to use
+                   2x font so special hits read clearly. */
+                var _isSpecialDmg = !!S._specialAttack;
                 if (isCrit && collisionResult) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '💥⚡ ' + _displayDmg,
+                    text: '💥⚡ ' + dmg,
                     color: '#f5c542',
                     iconKey: 'sword',
+                    special: _isSpecialDmg,
                     ts: Date.now()
                   });
                 } else if (isCrit) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '💥 ' + _displayDmg,
+                    text: '💥 ' + dmg,
                     color: '#f5c542',
                     iconKey: 'sword',
+                    special: _isSpecialDmg,
                     ts: Date.now()
                   });
                 } else {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '' + _displayDmg,
+                    text: '' + dmg,
                     color: '#fff',
                     iconKey: 'sword',
+                    special: _isSpecialDmg,
                     ts: Date.now()
                   });
                 }
