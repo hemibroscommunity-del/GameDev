@@ -1393,7 +1393,7 @@ export var BroTown = function BroTown(_ref0) {
        touching render code (v4 was 8 frames, v5 is 24 frames). */
     var slimeIdle = new Image();
     slimeIdle.onload = function () { slimeIdleImgRef.current = slimeIdle; };
-    slimeIdle.src = '/sprites/monsters/slime-idle-v5.png';
+    slimeIdle.src = '/sprites/monsters/slime-idle-v6.png';
     var slimeDeath = new Image();
     slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
     slimeDeath.src = '/sprites/monsters/slime-death-v10.png';
@@ -1402,12 +1402,12 @@ export var BroTown = function BroTown(_ref0) {
        cadence reads visually. */
     var slimeShoot = new Image();
     slimeShoot.onload = function () { slimeShootImgRef.current = slimeShoot; };
-    slimeShoot.src = '/sprites/monsters/slime-shoot-v2.png';
+    slimeShoot.src = '/sprites/monsters/slime-shoot-v3.png';
     /* Hit-reaction sheet — squash anim plays for 250 ms when a fodder
        slime takes damage. Priority order in render: hit > shoot > idle. */
     var slimeHit = new Image();
     slimeHit.onload = function () { slimeHitImgRef.current = slimeHit; };
-    slimeHit.src = '/sprites/monsters/slime-hit-v1.png';
+    slimeHit.src = '/sprites/monsters/slime-hit-v2.png';
     /* Projectile (single-frame orb) and remnants splat (single-frame
        ground splatter for the inventory pickup drop). */
     var slimeProj = new Image();
