@@ -1,10 +1,11 @@
 /* Slime monster sprite-sheet loader for the Pixi renderer.
  *
  * Mirrors the Canvas 2D path in BroTown.jsx (~line 1384):
- *   /sprites/monsters/slime-idle-v5.png   — idle loop
- *   /sprites/monsters/slime-shoot-v2.png  — attack lunge
- *   /sprites/monsters/slime-hit-v1.png    — squash on damage
- *   /sprites/monsters/slime-death-v9.png  — death burst (15 frames, no windup)
+ *   /sprites/monsters/slime-idle-v5.png       — idle loop
+ *   /sprites/monsters/slime-shoot-v2.png      — attack lunge
+ *   /sprites/monsters/slime-hit-v1.png        — squash on damage
+ *   /sprites/monsters/slime-death-v10.png     — death burst (15 frames, strict-keyed)
+ *   /sprites/monsters/slime-projectile-v1.png — single-frame ranged orb
  *
  * All sheets are horizontal strips of 128×128 frames.  Frame count is
  * auto-detected from the loaded texture width so we can swap art with
@@ -21,13 +22,17 @@ const FRAME_W = 128;
 const FRAME_H = 128;
 
 const SHEETS = {
-  idle:     { url: '/sprites/monsters/slime-idle-v5.png',     frames: [] },
-  shoot:    { url: '/sprites/monsters/slime-shoot-v2.png',    frames: [] },
-  hit:      { url: '/sprites/monsters/slime-hit-v1.png',      frames: [] },
-  death:    { url: '/sprites/monsters/slime-death-v9.png',    frames: [] },
+  idle:       { url: '/sprites/monsters/slime-idle-v5.png',       frames: [] },
+  shoot:      { url: '/sprites/monsters/slime-shoot-v2.png',      frames: [] },
+  hit:        { url: '/sprites/monsters/slime-hit-v1.png',        frames: [] },
+  death:      { url: '/sprites/monsters/slime-death-v10.png',     frames: [] },
   /* Single-frame splat that lands on the ground after the death anim
      ends.  Loaded as a 1-frame "sheet" so the same machinery applies. */
-  remnants: { url: '/sprites/monsters/slime-remnants-v1.png', frames: [] },
+  remnants:   { url: '/sprites/monsters/slime-remnants-v1.png',   frames: [] },
+  /* Single-frame slime orb thrown by fodder slimes — drawn at the
+     projectile's render position with a small scale so it reads as a
+     visible incoming attack. */
+  projectile: { url: '/sprites/monsters/slime-projectile-v1.png', frames: [] },
 };
 
 let loadPromise = null;

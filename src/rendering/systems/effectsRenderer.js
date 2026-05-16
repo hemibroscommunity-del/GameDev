@@ -114,6 +114,12 @@ export class EffectsRenderer {
     this.dmgTexts = [];
     this.maxDmgTexts = 50;
 
+    /* Tracked Sprite instances for slime projectiles. We attach the
+       sprite to proj._pixiSprite for fast lookup, and keep parallel
+       entries here so we can destroy orphans after the simulator
+       drops a projectile from S.slimeProjectiles. */
+    this.slimeProjSprites = [];
+
     // Chat bubble texts
     this.chatTexts = new Map();
 
@@ -581,19 +587,37 @@ export class EffectsRenderer {
       }
     }
 
-    /* Slime projectiles — green slime-orbs thrown by fodder slimes.
-       Simulated in BroTown (S.slimeProjectiles); rendered here so the
-       player can see what's incoming and dodge it. Three-circle pattern
-       matches the staff-proj orb look, tinted slime-green. */
+    /* Slime projectiles — uses the slime-projectile-v1 sheet via the
+       slimeSprites loader, scaled down so the orb reads at ~50 px.
+       We reap orphaned sprites whose proj is no longer in the
+       simulator's array. */
     const slimeProjs = S.slimeProjectiles || [];
-    for (const sp of slimeProjs) {
-      this._updateProjectileTrail(sp, gfx, 1.0, /* isOrb */ true);
-      gfx.circle(sp.x, sp.y, 9);
-      gfx.fill({ color: 0x3dd497, alpha: 0.22 });
-      gfx.circle(sp.x, sp.y, 6);
-      gfx.fill({ color: 0x3dd497, alpha: 0.55 });
-      gfx.circle(sp.x, sp.y, 3.5);
-      gfx.fill({ color: 0xb8f5d8, alpha: 0.95 });
+    const liveProjs = new Set(slimeProjs);
+    for (let i = this.slimeProjSprites.length - 1; i >= 0; i--) {
+      const entry = this.slimeProjSprites[i];
+      if (!liveProjs.has(entry.proj) || !entry.sprite || entry.sprite.destroyed) {
+        if (entry.sprite && !entry.sprite.destroyed) entry.sprite.destroy();
+        if (entry.proj) entry.proj._pixiSprite = null;
+        this.slimeProjSprites.splice(i, 1);
+      }
+    }
+    if (hasSlimeState('projectile')) {
+      const projTex = getSlimeFrame('projectile', 0);
+      for (const sp of slimeProjs) {
+        let sprite = sp._pixiSprite;
+        if (!sprite || sprite.destroyed) {
+          sprite = new Sprite(projTex);
+          sprite.anchor.set(0.5, 0.5);
+          /* 128 px source -> 0.4 = ~51 px on-screen, sized to read as
+             a clear incoming attack without dominating the slime. */
+          sprite.scale.set(0.4);
+          this.projectileLayer.addChild(sprite);
+          sp._pixiSprite = sprite;
+          this.slimeProjSprites.push({ proj: sp, sprite });
+        }
+        sprite.x = sp.x;
+        sprite.y = sp.y;
+      }
     }
   }
 
