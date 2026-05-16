@@ -9497,13 +9497,16 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     if (!S.rpg || Date.now() - S.swingTimer < SWING_COOLDOWN) return;
     if (S._playerStunUntil && Date.now() < S._playerStunUntil) return;
+    var slot = S.rpg.activeSlot || 'melee';
+    /* Ranged/staff: let the auto-attack loop fire the projectile on the
+       next frame so the first shot matches the equipped weapon. Resetting
+       swingTimer here would force a melee swing AND delay the projectile
+       by the full swing cooldown. */
+    if (slot === 'ranged' || slot === 'staff') return;
     S.swingTimer = Date.now();
     S.isSwinging = true;
     S._specialAttack = false;
-    var slot = S.rpg.activeSlot || 'melee';
-    if (slot !== 'ranged' && slot !== 'staff') {
-      BT_AUDIO.play('sword-swing', { vol: 0.55 });
-    }
+    BT_AUDIO.play('sword-swing', { vol: 0.55 });
   }, []);
 
   /* Special attack — 4x damage, 10s cooldown */
