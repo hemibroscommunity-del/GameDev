@@ -279,8 +279,10 @@ export class EffectsRenderer {
       if (age > ttl) {
         if (dmg._pixiText && !dmg._pixiText.destroyed) { dmg._pixiText.destroy(); }
         if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) { dmg._pixiIcon.destroy(); }
+        if (dmg._pixiSub  && !dmg._pixiSub.destroyed)  { dmg._pixiSub.destroy(); }
         dmg._pixiText = null;
         dmg._pixiIcon = null;
+        dmg._pixiSub  = null;
         numbers.splice(i, 1);
         continue;
       }
@@ -292,6 +294,9 @@ export class EffectsRenderer {
       }
       if (dmg._pixiIcon && dmg._pixiIcon.destroyed) {
         dmg._pixiIcon = null;
+      }
+      if (dmg._pixiSub && dmg._pixiSub.destroyed) {
+        dmg._pixiSub = null;
       }
       if (!dmg._pixiText) {
         /* Pick the emoji-safe style when text contains non-ASCII to
@@ -362,6 +367,23 @@ export class EffectsRenderer {
           this.dmgLayer.addChild(icon);
           dmg._pixiIcon = icon;
         }
+        /* Optional muted-gray suffix Text drawn on the same line as the
+           main number (e.g. "11" with "block 14" after it for mitigated
+           hits).  Smaller font + #888 fill gives a secondary read without
+           a second popup floating separately. */
+        if (dmg.subText) {
+          const subSize = Math.max(11, Math.round(fontSize * 0.65));
+          const sub = new Text({
+            text: dmg.subText,
+            style: { ...baseStyle, fontSize: subSize, fill: '#888' },
+          });
+          sub.style.fill = '#888';
+          sub.style.fontSize = subSize;
+          sub.anchor.set(0, 0.5);
+          this.dmgLayer.addChild(sub);
+          this.dmgTexts.push(sub);
+          dmg._pixiSub = sub;
+        }
       }
       const text = dmg._pixiText;
       text.x = dmg.x;
@@ -387,6 +409,19 @@ export class EffectsRenderer {
         dmg._pixiIcon.x = text.x + text.width / 2 + 3;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
+      }
+      if (dmg._pixiSub && !dmg._pixiSub.destroyed) {
+        /* Sub text sits after the icon if there is one, otherwise flush
+           to the right edge of the main text.  Anchor is (0, 0.5) so
+           setting .x places its left edge. */
+        let subX = text.x + text.width / 2 + 4;
+        if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
+          subX = dmg._pixiIcon.x + (dmg._pixiIcon.width || 0) + 4;
+        }
+        dmg._pixiSub.x = subX;
+        dmg._pixiSub.y = text.y;
+        dmg._pixiSub.alpha = text.alpha;
+        dmg._pixiSub.scale.set(text.scale.x);
       }
     }
     /* Compact dmgTexts: drop refs to destroyed Text instances
