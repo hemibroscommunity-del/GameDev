@@ -9670,7 +9670,10 @@ export var BroTown = function BroTown(_ref0) {
       aimAng = Math.atan2((lt.y || 0) - S.player.y, (lt.x || 0) - S.player.x);
     }
     if (activeWpn.type === 'bow') {
-      /* BOW heavy — large elemental arrow in swipe direction */
+      /* BOW heavy — large elemental arrow in swipe direction.  Renders
+         in effectsRenderer as a regular arrow with a bright halo ring;
+         no `ice` flag (that flag is the "draw as orb" toggle and is
+         reserved for staff/ice specials now). */
       if (!S.arrows) S.arrows = [];
       var wpnDmg = calcWeaponDmg(activeWpn.type, R.power, activeWpn.tierMult);
       S.arrows.push({
@@ -9682,8 +9685,7 @@ export var BroTown = function BroTown(_ref0) {
         hitIds: new Set(),
         isSpecial: true,
         isStaff: false,
-        element: hasElement || null,
-        ice: true /* uses the large glowing arrow visual */
+        element: hasElement || null
       });
       BT_AUDIO.beep(400, 0.12, 0.15, 'sine');
       setTimeout(function () {
