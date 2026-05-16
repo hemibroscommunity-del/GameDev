@@ -22175,6 +22175,7 @@ export var BroTown = function BroTown(_ref0) {
       S.monsters = [];
       S.gatherNodes = [];
       S.npcs = null;
+      BT_AUDIO.startZoneAmbient('wasteland');
       /* Spawn in safe pad center */
       var wz = ZONES.wasteland;
       S.player.x = Math.floor(wz.w / 2) * TILE;
@@ -23731,6 +23732,7 @@ export var BroTown = function BroTown(_ref0) {
       S.monsters = [];
       S.gatherNodes = [];
       S.npcs = null;
+      BT_AUDIO.startZoneAmbient('wasteland');
       /* Spawn in safe pad center */
       var wz = ZONES.wasteland;
       S.player.x = Math.floor(wz.w / 2) * TILE;
