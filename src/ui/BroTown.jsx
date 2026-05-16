@@ -10477,25 +10477,6 @@ export var BroTown = function BroTown(_ref0) {
     };
   }, [showNameModal, showLogin, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleShieldMove]);
 
-  /* Block iOS rubber-band on the contextual interact buttons (.bt-interact-prompt)
-     and the weapon-swap pill (.weapon-swap-pill).  Same root cause as the
-     dashboard shake — a touch that starts inside one of these small fixed-
-     position elements and drags upward gets interpreted as a page-pan
-     candidate at touchstart time, triggering the URL-bar transition.
-     Bubble-phase per-element listeners weren't catching it; this is a
-     document-level capture-phase listener attached with passive: false,
-     so it fires before any other handler in the path. */
-  useEffect(function () {
-    var onMove = function (e) {
-      var t = e.target;
-      if (t && t.closest && t.closest('.bt-interact-prompt, .weapon-swap-pill')) {
-        if (e.cancelable) e.preventDefault();
-      }
-    };
-    document.addEventListener('touchmove', onMove, { passive: false, capture: true });
-    return function () { document.removeEventListener('touchmove', onMove, { capture: true }); };
-  }, []);
-
   /* Keep keyboard open — focus input when game starts and periodically re-focus */
   useEffect(function () {
     if (showNameModal || showLogin) return;

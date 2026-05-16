@@ -35,14 +35,8 @@ export const WeaponSwapBar = () => {
     return () => { off(); clearInterval(poll); };
   }, []);
 
-  // Rubber-band block lives at the document-capture level inside
-  // BroTown (matches by the .weapon-swap-pill class on the wrapper).
-  // Per-element bubble-phase listeners were not catching the gesture
-  // before iOS started the URL-bar transition.
-
   return (
     <div
-      className="weapon-swap-pill"
       style={{
         position: 'fixed',
         left: PILL_CENTER_X,
@@ -58,12 +52,6 @@ export const WeaponSwapBar = () => {
         borderRadius: (BUTTON_SIZE + PADDING * 2) / 2,
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
         zIndex: 35,
-        // touch-action: none on the whole pill — combined with the
-        // native touchmove listener above, blocks iOS's pan/rubber-band
-        // gesture from initiating at touchstart. Without this, Safari
-        // marks the touch as a scroll candidate before the listener
-        // fires and the shake still happens.
-        touchAction: 'none',
       }}
     >
       {SLOTS.map(s => {
@@ -104,7 +92,7 @@ export const WeaponSwapBar = () => {
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'opacity .15s, filter .15s, background .15s, border-color .15s, box-shadow .15s',
-              touchAction: 'none',
+              touchAction: 'manipulation',
               WebkitTouchCallout: 'none',
               WebkitUserSelect: 'none',
               userSelect: 'none',
