@@ -579,26 +579,35 @@ export function setupWebSocket(ctx) {
               /* Apply player defense */
               var pDef2 = (R2.endurance || 0) * 0.5 + ((R2.armor ? R2.armor.tierMult : 1) || 1) * 3;
               var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);
-              /* Check blocking */
+              /* Check blocking.  Full block when shield is up: no
+                 damage gets through.  (Was a partial reduction; user
+                 request is "the damage gets blocked.") */
               if (S._shieldUp) {
-                var blockRed = calcBlockReduction ? calcBlockReduction(R2.fortification || 0, R2.shield) : 0.25;
-                dmgTaken2 *= (1 - blockRed);
+                dmgTaken2 = 0;
                 R2.stamina = Math.max(0, (R2.stamina || 0) - 15);
               }
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
               R2.hp = Math.max(0, R2.hp - Math.ceil(dmgTaken2));
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 20,
-                text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c', ts: Date.now()
-              });
-              for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
-                x: S.player.x, y: S.player.y,
-                vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
-                life: 0.6, color: '#ff5e6c', size: 2
-              });
-              S.screenShake = 3;
-              BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
+              if (dmgTaken2 === 0 && S._shieldUp) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 20,
+                  text: '🛡️ Blocked!', color: '#60a5fa', ts: Date.now()
+                });
+                try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
+              } else {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 20,
+                  text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c', ts: Date.now()
+                });
+                for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
+                  x: S.player.x, y: S.player.y,
+                  vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
+                  life: 0.6, color: '#ff5e6c', size: 2
+                });
+                S.screenShake = 3;
+                BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
+              }
               if (R2.hp <= 0) {
                 /* Player death from server monster */
                 if (!R2._compStats) R2._compStats = createDefaultCompStats();
