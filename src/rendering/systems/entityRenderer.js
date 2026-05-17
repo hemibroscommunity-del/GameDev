@@ -853,7 +853,11 @@ export class EntityRenderer {
           const _tex = getPlayerDeathFrame(playerDeathFrameForElapsed(_elapsed));
           if (_tex && _spriteBody.texture !== _tex) _spriteBody.texture = _tex;
           _spriteBody.tint = 0xffffff;
-          _spriteBody.scale.set(1);
+          /* Source frame is 128 px and fills most of the frame — the
+             living player sprite has more padding so it renders smaller
+             at scale 1.  Scale down ~50% so the corpse sits at roughly
+             the same visual size as the living body. */
+          _spriteBody.scale.set(0.5);
           _spriteBody.visible = true;
           if (_body) _body.visible = false;
         } else if (_spriteBody) {
@@ -1181,7 +1185,10 @@ export class EntityRenderer {
         const _selfTex = getPlayerDeathFrame(playerDeathFrameForElapsed(_selfElapsed));
         if (_selfTex && _selfSpriteBody.texture !== _selfTex) _selfSpriteBody.texture = _selfTex;
         _selfSpriteBody.tint = 0xffffff;
-        _selfSpriteBody.scale.set(1);
+        /* 50% scale — matches the remote-render scale below; source
+           death frames fill more of the 128 px canvas than the living
+           sprite does. */
+        _selfSpriteBody.scale.set(0.5);
         _selfSpriteBody.visible = true;
         if (_selfBody) _selfBody.visible = false;
       } else if (_selfSpriteBody) {
