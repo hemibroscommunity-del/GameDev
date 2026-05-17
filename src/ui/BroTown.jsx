@@ -6636,7 +6636,12 @@ export var BroTown = function BroTown(_ref0) {
                     P.x = 16 * TILE;
                     P.y = 16 * TILE;
                     S.respawnTimer = Date.now() + respawnMs;
-                    S._deathStart = 0;
+                    /* Don't clear S._deathStart here — the renderer
+                       gates the self death visual on a 3.5 s window
+                       from _deathStart so the animation plays even
+                       when hp is restored synchronously.  The next
+                       death will overwrite _deathStart with a fresh
+                       Date.now(). */
                     /* Now that hp is restored and we've teleported to
                        town, send a move so the server learns dead=false
                        + the new zone+position, and broadcast a respawn
