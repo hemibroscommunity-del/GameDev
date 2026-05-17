@@ -1171,13 +1171,22 @@ export class EntityRenderer {
 
     /* Self death visual — play the death sprite animation (player ->
        skeleton -> bone pile).  S._deathStart is set in the death
-       handlers in BroTown.jsx and cleared on respawn.  Gate on the
-       timestamp + elapsed window rather than hp <= 0: the local-
-       monster death path restores hp in the same synchronous block,
-       so an hp-only gate flickers for a single frame.  Holding the
-       death visual for SELF_DEATH_HOLD_MS guarantees the full
-       animation plays, even when hp is back to max underneath. */
+       handlers in BroTown.jsx and cleared on respawn.  Gate on a
+       3.5 s window from the timestamp so the local-monster death
+       path (synchronous hp restore) still gets a visible animation;
+       also stay dead while hp <= 0 so the 5 s server-monster
+       respawn window holds the corpse on screen the whole way.
+
+       Defensive: if hp dropped to 0 but no death handler set
+       _deathStart (e.g. a damage path we missed, or a race where
+       the renderer runs between the hp decrement and the handler's
+       _deathStart assignment), seed it ourselves.  Cleared on
+       respawn by the handlers, so this only kicks in when nothing
+       else set it. */
     const SELF_DEATH_HOLD_MS = 3500;
+    if (S.rpg && S.rpg.hp <= 0 && !S._deathStart) {
+      S._deathStart = Date.now();
+    }
     const _selfElapsed = S._deathStart ? Date.now() - S._deathStart : Infinity;
     const selfDead = _selfElapsed < SELF_DEATH_HOLD_MS || !!(S.rpg && S.rpg.hp <= 0);
     if (selfDead) {
