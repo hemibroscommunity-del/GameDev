@@ -3183,14 +3183,6 @@ export function spawnMonstersForZone(zone, levelMod) {
       var maxLvl = (zone.level[1] || 10) + lm;
       var lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)));
       var m = createMonster('m-' + zone.id + '-' + idx, arch, lvl, x, y, zone.element);
-      /* Ember Fields fodder render as fire goblins — they're tougher
-         than the slime fodder elsewhere, so the player gets to see
-         the wind-up + fireball cycle play out instead of one-shotting
-         them.  Same archetype, just a per-zone hp scalar. */
-      if (zone.id === 'ember' && arch === 'fodder') {
-        m.hp = Math.ceil(m.hp * 4);
-        m.maxHp = Math.ceil(m.maxHp * 4);
-      }
       m.curHp = m.hp;
       m.type = arch;
       monsters.push(m);
@@ -4366,6 +4358,17 @@ export const ARCHETYPES = {
     spdMult: 1.0,
     emoji: '🟢',
     color: '#3dd497'
+  },
+  /* Fire goblin — Ember Fields variant.  Behaves like fodder for AI
+     purposes (telegraph + projectile shot, see BroTown.jsx ~6265/6298)
+     but with 4x hp so the wind-up cycle has time to play out and the
+     fireball actually reaches the player. */
+  fireGoblin: {
+    hpMult: 2.4,
+    dmgMult: 0.8,
+    spdMult: 1.0,
+    emoji: '🔥',
+    color: '#ea580c'
   },
   brute: {
     hpMult: 1.5,

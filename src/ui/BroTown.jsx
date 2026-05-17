@@ -5906,9 +5906,10 @@ export var BroTown = function BroTown(_ref0) {
             }[arch] || 120;
             /* Deep Hollows echo — combat noise doubles aggro range */
             if (S._echoActive) aggroRange *= ECHO_AGGRO_MULT;
-            var atkRange = arch === 'hexer' ? 60 : arch === 'stalker' ? 30 : arch === 'fodder' ? 80 : 18;
+            var atkRange = arch === 'hexer' ? 60 : arch === 'stalker' ? 30 : (arch === 'fodder' || arch === 'fireGoblin') ? 80 : 18;
             var atkCooldown = {
               fodder: 1500,
+              fireGoblin: 1500,
               brute: 2200,
               swarm: 800,
               sentinel: 1800,
@@ -6258,11 +6259,11 @@ export var BroTown = function BroTown(_ref0) {
                     m._telegraphUntil = Date.now() + telegraphDur;
                     m._telegraphAngle = Math.atan2(P.y - m.y, P.x - m.x);
                     m._telegraphRange = atkRange;
-                    /* Fodder slimes: play the shoot/lunge animation
-                       across the telegraph window so the wind-up reads
-                       visually. Cleared automatically when the render
-                       loop sees now > _shootAnimEnd. */
-                    if (arch === 'fodder') {
+                    /* Fodder slimes / fire goblins: play the shoot/lunge
+                       animation across the telegraph window so the wind-up
+                       reads visually. Cleared automatically when the
+                       render loop sees now > _shootAnimEnd. */
+                    if (arch === 'fodder' || arch === 'fireGoblin') {
                       m._shootAnimStart = Date.now();
                       m._shootAnimEnd = Date.now() + telegraphDur + 80;
                     }
@@ -6295,7 +6296,7 @@ export var BroTown = function BroTown(_ref0) {
                      application + archetype effects below — fodder has
                      no archetype effects, so nothing else is needed
                      here. */
-                  if (arch === 'fodder') {
+                  if (arch === 'fodder' || arch === 'fireGoblin') {
                     var _projAng = Math.atan2(P.y - m.y, P.x - m.x);
                     if (!S.slimeProjectiles) S.slimeProjectiles = [];
                     /* life=35 ticks × speed=4 px = 140 px range, just past

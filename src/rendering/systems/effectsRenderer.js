@@ -653,8 +653,8 @@ export class EffectsRenderer {
         this.slimeProjSprites.splice(i, 1);
       }
     }
-    /* Ember-zone fodder shoots fire-goblin fireballs instead of slime
-       orbs.  Sprite is drawn pointing southwest, so we rotate by
+    /* Ember-zone fireGoblin shoots fireballs instead of slime orbs.
+       Sprite is drawn pointing southwest, so we rotate by
        (ang - FIREBALL_BASE_ANG) to line the head up with the flight
        direction.  Falls back to the slime orb if the fireball asset
        hasn't loaded yet. */
@@ -664,10 +664,10 @@ export class EffectsRenderer {
     const projTex = fireballTex || slimeOrbTex;
     if (projTex) {
       const useFireball = projTex === fireballTex;
-      /* Fireball source is 256 px and reads best at ~32 px on screen
-         (bigger than the slime orb so the flame is legible).  Slime
-         orb stays at its existing 0.08 of 128 px = ~10 px. */
-      const projScale = useFireball ? 32 / 256 : 0.08;
+      /* Fireball renders at 16 px on screen (halved from v2.2.5's 32
+         per user feedback).  Slime orb stays at its existing 0.08 of
+         128 px = ~10 px. */
+      const projScale = useFireball ? 16 / 256 : 0.08;
       for (const sp of slimeProjs) {
         let sprite = sp._pixiSprite;
         if (!sprite || sprite.destroyed) {
@@ -1089,8 +1089,8 @@ export class EffectsRenderer {
       }
       activeLoot.add(l);
       this._knownLoot.add(l);
-      /* Fodder loot has no bob; it's a settled puddle. */
-      const isFodder = l.skull === 'fodder';
+      /* Fodder / fireGoblin loot has no bob; it's a settled puddle/pile. */
+      const isFodder = l.skull === 'fodder' || l.skull === 'fireGoblin';
       const bob = isFodder ? 0 : Math.sin(age * 3) * 2;
       const alpha = age > 25 ? (30 - age) / 5 : 1;
 
@@ -1181,13 +1181,12 @@ export class EffectsRenderer {
       }
 
       if (isFodder) {
-        /* Pick which remnants art represents this fodder kill.  Ember
-           Fields fodder uses the burnt-stick pile left by the fire
-           goblin; everywhere else uses the slime splat.  Falls back to
-           the slime sheet if the goblin remnants haven't loaded yet
-           so the loot still reads as something. */
-        const inEmber = S.currentZone === 'ember';
-        const goblinRemnantsTex = inEmber ? getFireGoblinRemnantsTex() : null;
+        /* Pick the remnants art for this kill.  fireGoblin loot uses
+           the burnt-stick pile; slime fodder uses the splat.  Falls
+           back to the slime sheet if the goblin remnants haven't
+           loaded yet so the loot still reads as something. */
+        const isGoblinLoot = l.skull === 'fireGoblin';
+        const goblinRemnantsTex = isGoblinLoot ? getFireGoblinRemnantsTex() : null;
         const slimeRemnantsTex = hasSlimeState('remnants') ? getSlimeFrame('remnants', 0) : null;
         const remnTex = goblinRemnantsTex || slimeRemnantsTex;
         if (remnTex) {
@@ -1201,11 +1200,12 @@ export class EffectsRenderer {
           l._pixiSprite.x = l.x;
           l._pixiSprite.y = l.y + bob;
           l._pixiSprite.alpha = alpha;
-          /* 48 px on-screen for the slime splat reads at the right
-             scale alongside the 96 px live slime.  Goblin remnants
-             keep the same 48 px so the loot grid feels consistent
-             across fodder variants. */
-          l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 48));
+          /* Slime splat renders at 48 px; goblin remnants render at
+             24 px (halved per user feedback v2.2.7, matching the
+             halved live-goblin scale so loot reads as the same
+             creature's leavings). */
+          const targetPx = isGoblinLoot ? 24 : 48;
+          l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
           l._pixiSprite.visible = true;
           continue;
         }

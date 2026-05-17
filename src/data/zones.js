@@ -20,7 +20,7 @@ export const ZONES = {
     id: 'ember', name: 'Ember Fields', w: 32, h: 32,
     element: 'flame', secondary: 'stone', level: [1, 10], music: 'ember', safe: false,
     palette: { ground: '#5a3a2a', path: '#8b6545', accent: '#a04020' },
-    spawns: [{ arch: 'fodder', count: 6 }, { arch: 'brute', count: 3 }, { arch: 'volatile', count: 4 }],
+    spawns: [{ arch: 'fireGoblin', count: 6 }, { arch: 'brute', count: 3 }, { arch: 'volatile', count: 4 }],
     atmosphere: { tint: 'rgba(180,60,20,0.06)', vignette: 'rgba(120,30,0,0.12)' },
     enemyEmoji: { fodder: '🔥', brute: '🌋', swarm: '🦎', volatile: '💣', hexer: '🧙', sentinel: '⚔️' }
   },

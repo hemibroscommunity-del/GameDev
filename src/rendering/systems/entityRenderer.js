@@ -125,7 +125,7 @@ function getMonsterSize(archetype) {
      Every other archetype is a bare procedural circle, so bump the
      radius to 32 (64-px diameter) per the user's "64x64 for non-
      slime monsters" call-out. */
-  if (archetype === 'fodder') return 8;
+  if (archetype === 'fodder' || archetype === 'fireGoblin') return 8;
   if (archetype === 'snowman') return 13;
   return 32;
 }
@@ -169,9 +169,11 @@ function createMonsterDisplay(monster) {
      the "feet" line up at the same Y as the procedural circle's
      bottom; that keeps shadows / damage numbers at the right place
      when the sprite is taller than the circle. */
-  const isFodder = (monster.archetype || monster.type) === 'fodder';
-  const isSnowman = (monster.archetype || monster.type) === 'snowman';
-  const spriteBody = (isFodder || isSnowman) ? new Sprite() : null;
+  const archKey = monster.archetype || monster.type;
+  const isFodder = archKey === 'fodder';
+  const isFireGoblin = archKey === 'fireGoblin';
+  const isSnowman = archKey === 'snowman';
+  const spriteBody = (isFodder || isFireGoblin || isSnowman) ? new Sprite() : null;
   if (spriteBody) {
     spriteBody.anchor.set(0.5, 1.0);
     spriteBody.visible = false;
@@ -200,6 +202,7 @@ function createMonsterDisplay(monster) {
   container._body = body;
   container._spriteBody = spriteBody;
   container._isFodder = isFodder;
+  container._isFireGoblin = isFireGoblin;
   container._isSnowman = isSnowman;
   container._hpFill = hpFill;
   container._hpBg = hpBg;
@@ -425,15 +428,16 @@ export class EntityRenderer {
     for (const m of monsters) {
       const arch = m.archetype || m.type;
       const isFodder = arch === 'fodder';
+      const isFireGoblin = arch === 'fireGoblin';
       const isSnowman = arch === 'snowman';
 
-      /* Fodder death timer — first observation of alive=false stamps
-         m._slimeDeathStart (kept its slime-era name to avoid touching
-         every reader).  Reused by the goblin death branch in Ember.
-         Slime splat SFX is suppressed in Ember — goblin doesn't pop. */
-      if (!m.alive && isFodder && m._slimeDeathStart == null) {
+      /* Fodder / goblin death timer — first observation of alive=false
+         stamps m._slimeDeathStart (kept its slime-era name to avoid
+         touching every reader).  Goblin reuses the same field; the SFX
+         only fires for the slime variant. */
+      if (!m.alive && (isFodder || isFireGoblin) && m._slimeDeathStart == null) {
         m._slimeDeathStart = now;
-        if (S.currentZone !== 'ember') {
+        if (isFodder) {
           try {
             if (typeof window !== 'undefined' && window.BT_AUDIO) {
               window.BT_AUDIO.play('slime-death', { vol: 0.425 });
@@ -449,15 +453,13 @@ export class EntityRenderer {
         m._snowmanDeathStart = now;
       }
 
-      /* Dead-monster handling: render the death sprite for fodder
-         within the death window; otherwise hide and skip.  Ember Fields
-         fodder uses the fire-goblin death sheet (16 frames over
-         GOBLIN_DEATH_MS); everywhere else uses the slime splat. */
+      /* Dead-monster handling: render the death sprite for fodder /
+         fireGoblin within the death window; otherwise hide and skip.
+         fireGoblin uses the fire-goblin death sheet (16 frames over
+         GOBLIN_DEATH_MS); fodder uses the slime splat. */
       if (!m.alive) {
         const deathT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
-        const inEmber = S.currentZone === 'ember';
-        const useGoblinDeath = inEmber && hasFireGoblinDeathFrames();
-        if (useGoblinDeath && isFodder && deathT != null && deathT >= 0 && deathT < GOBLIN_DEATH_MS) {
+        if (isFireGoblin && hasFireGoblinDeathFrames() && deathT != null && deathT >= 0 && deathT < GOBLIN_DEATH_MS) {
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
           if (display && display._spriteBody) {
@@ -467,9 +469,10 @@ export class EntityRenderer {
             const tex = getFireGoblinDeathFrame(frameIdx);
             const sb = display._spriteBody;
             if (tex && sb.texture !== tex) sb.texture = tex;
-            /* Same on-screen scale as the live goblin (128/256) so the
-               cut from walk -> death reads as continuous. */
-            const baseScale = 128 / 256;
+            /* Same on-screen scale as the live goblin (64/256) so the
+               cut from walk -> death reads as continuous.  Halved from
+               the v2.2.5 128/256 per user feedback (sprite was too big). */
+            const baseScale = 64 / 256;
             sb.scale.x = baseScale;
             sb.scale.y = baseScale;
             sb.y = display._size;
@@ -486,8 +489,7 @@ export class EntityRenderer {
           }
           continue;
         }
-        const useSlimeDeath = !inEmber;
-        if (useSlimeDeath && isFodder && deathT != null && deathT >= 0 && deathT < SLIME_DEATH_MS && hasSlimeState('death')) {
+        if (isFodder && deathT != null && deathT >= 0 && deathT < SLIME_DEATH_MS && hasSlimeState('death')) {
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
           if (display && display._spriteBody) {
@@ -581,10 +583,11 @@ export class EntityRenderer {
          the Canvas 2D path in BroTown.jsx ~11635.  Falls back to the
          procedural circle until sheets resolve.
 
-         Per-zone skin: in Ember Fields, fodder renders as a fire
-         goblin (4 directional walk strips) instead of a slime.  The
-         goblin branch runs first; the slime branch is the default. */
-      if (display._isFodder && display._spriteBody && S.currentZone === 'ember' && hasFireGoblinFrames()) {
+         fireGoblin archetype renders the directional walk + hit-recoil
+         strips.  Attack-strip playback is disabled (v2.2.6) -- the
+         goblin keeps walking through the wind-up.  fireGoblin runs
+         first; fodder slime is the fallback. */
+      if (display._isFireGoblin && display._spriteBody && hasFireGoblinFrames()) {
         const spriteBody = display._spriteBody;
         const dx = m.x - (display._lastX != null ? display._lastX : m.x);
         const dy = m.y - (display._lastY != null ? display._lastY : m.y);
@@ -633,10 +636,12 @@ export class EntityRenderer {
             if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
             else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
           }
-          /* 256 px source frames -> render at 128 px tall.  Goblin fills
-             most of the frame, so this reads ~40% bigger on screen than
-             the slime body (which only fills half its 128 px frame). */
-          const baseScale = 128 / 256;
+          /* 256 px source frames -> render at 64 px tall.  Halved from
+             v2.2.5's 128/256 per user feedback -- goblin was reading too
+             big on screen.  Still ~equivalent to the slime body's
+             on-screen size (slime body fills half its 128 px frame
+             rendered at 96/128 = 96 px wide -> ~48 px live creature). */
+          const baseScale = 64 / 256;
           const sx = baseScale * sqx * (frame.mirror ? -1 : 1);
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
