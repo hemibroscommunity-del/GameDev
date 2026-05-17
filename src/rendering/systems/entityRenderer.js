@@ -587,12 +587,26 @@ export class EntityRenderer {
          the slime/fodder branch when sheets haven't loaded. */
       if (display._variantKey && display._spriteBody && variantSprites && variantSprites.walk && variantSprites.walk.has()) {
         const spriteBody = display._spriteBody;
+        /* Smoothed velocity for facing.  Single-frame dx/dy wobbles
+           across sector boundaries when the server interpolates --
+           with 8 facings mapping to 4 directional sheets, that wobble
+           reads as a visible sheet swap (e.g. 'north' uses sheet 'n',
+           'northeast' uses sheet 'e' -- VERY different art).  EMA the
+           velocity, sector-snap the smoothed value, and require a
+           higher confidence bar (smoothMag > 0.5 px/frame) before
+           changing facing.  Slime fodder didn't have this problem
+           because it's non-directional. */
         const dx = m.x - (display._lastX != null ? display._lastX : m.x);
         const dy = m.y - (display._lastY != null ? display._lastY : m.y);
-        const moving = dx * dx + dy * dy > 0.04;
+        const alpha = 0.2;
+        display._smoothVx = (display._smoothVx || 0) * (1 - alpha) + dx * alpha;
+        display._smoothVy = (display._smoothVy || 0) * (1 - alpha) + dy * alpha;
+        const sVx = display._smoothVx;
+        const sVy = display._smoothVy;
+        const movingSmooth = sVx * sVx + sVy * sVy > 0.25;  /* > 0.5 px/frame */
         let facing = display._lastFacing || 'south';
-        if (moving) {
-          const ang = Math.atan2(dy, dx);
+        if (movingSmooth) {
+          const ang = Math.atan2(sVy, sVx);
           const sector = Math.round(ang / (Math.PI / 4));
           facing = SECTORS[((sector % 8) + 8) % 8];
           display._lastFacing = facing;

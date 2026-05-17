@@ -160,11 +160,29 @@ async function loadRemnants() {
 
 function lookup(map, sheets, facing, frameIdx) {
   const m = map[facing] || map.south;
-  const sheet = sheets[m.src];
+  let sheet = sheets[m.src];
+  let mirror = m.mirror;
+  /* Fallback: if the requested facing's sheet hasn't resolved yet,
+     reach for the next-best loaded sheet so the renderer doesn't fall
+     to the procedural-body branch mid-load (visible as a per-frame
+     flicker between the goblin and an empty/circle on the first 200 ms
+     after entry).  Preference order: requested sheet -> south ->
+     anything loaded. */
+  if (!sheet || sheet.frames.length === 0) {
+    const south = sheets['s'];
+    if (south && south.frames.length) {
+      sheet = south;
+      mirror = false;
+    } else {
+      for (const key of Object.keys(sheets)) {
+        if (sheets[key].frames.length > 0) { sheet = sheets[key]; mirror = false; break; }
+      }
+    }
+  }
   if (!sheet || sheet.frames.length === 0) return null;
   const len = sheet.frames.length;
   const idx = ((frameIdx % len) + len) % len;
-  return { tex: sheet.frames[idx], mirror: m.mirror };
+  return { tex: sheet.frames[idx], mirror };
 }
 
 function countOf(map, sheets, facing) {
