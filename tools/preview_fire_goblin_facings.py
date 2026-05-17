@@ -18,13 +18,13 @@ FRAME_W = 256
 # Mirror of the WALK_MAP / HIT_MAP / ATTACK_MAP in fireGoblinSprites.js
 WALK_MAP = {
     'south':     ('s',  False),
-    'southwest': ('sw', False),
-    'west':      ('e',  True),
-    'northwest': ('n',  False),
+    'southwest': ('e',  False),
+    'west':      ('sw', False),
+    'northwest': ('sw', False),
     'north':     ('n',  False),
-    'northeast': ('e',  False),
-    'east':      ('e',  False),
-    'southeast': ('sw', True),
+    'northeast': ('sw', True),
+    'east':      ('sw', True),
+    'southeast': ('e',  True),
 }
 HIT_MAP = {
     'south':     ('s',  False),

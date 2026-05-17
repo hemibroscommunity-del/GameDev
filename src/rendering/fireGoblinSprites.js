@@ -43,23 +43,23 @@ const WALK_DIRS = ['s', 'sw', 'e', 'n'];
 const ATTACK_DIRS = ['s', 'sw', 'w', 'nw', 'n'];
 const HIT_DIRS = ['s', 'sw', 'nw', 'n'];
 
-/* WALK: only 4 source directions.  East-side facings (E, NE) use the
-   'e' sheet directly per user spec ("east doubles for NE").  Missing
-   west-side facings are produced by mirroring east-side sources:
-     west      -> mirror of 'e' (side-profile flipped)
-     southeast -> mirror of 'sw' (forward-3/4 flipped)
-     northwest -> 'n' (back-facing — closest available for up-left;
-                       no mirror because 'n' is symmetric and there's
-                       no proper NW source) */
+/* WALK: 4 source files but the names are misleading -- per user
+   v2.3.5 review, the actual poses are:
+     walk-sw.png -- pure side profile facing west (NOT southwest)
+     walk-e.png  -- 3/4 view facing southwest (NOT east)
+     walk-n.png  -- back
+     walk-s.png  -- front
+   So the proper map uses 'sw' for W/NW (side profile) and 'e' for
+   SW (3/4 view), with east-side facings produced by mirroring. */
 const WALK_MAP = {
   south:     { src: 's',  mirror: false },
-  southwest: { src: 'sw', mirror: false },
-  west:      { src: 'e',  mirror: true  },
-  northwest: { src: 'n',  mirror: false },
+  southwest: { src: 'e',  mirror: false },
+  west:      { src: 'sw', mirror: false },
+  northwest: { src: 'sw', mirror: false },
   north:     { src: 'n',  mirror: false },
-  northeast: { src: 'e',  mirror: false },
-  east:      { src: 'e',  mirror: false },
-  southeast: { src: 'sw', mirror: true  },
+  northeast: { src: 'sw', mirror: true  },
+  east:      { src: 'sw', mirror: true  },
+  southeast: { src: 'e',  mirror: true  },
 };
 
 /* ATTACK: 5 source directions (N / NW / W / SW / S).  East-side
