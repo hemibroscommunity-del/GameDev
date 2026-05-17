@@ -47,6 +47,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
+import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor } from '@/data/monsterVariants.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
@@ -1772,12 +1773,18 @@ export var BroTown = function BroTown(_ref0) {
               if (msg.monsters && msg.monsters.length > 0) {
                 S._serverMonsters = true;
                 S.monsters = msg.monsters.map(function(m) {
-                  return _objectSpread(_objectSpread({}, m), {}, {
+                  var local = _objectSpread(_objectSpread({}, m), {}, {
+                    archetype: m.arch, type: m.arch,
                     curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-                    alive: m.alive, type: m.arch, statuses: {}, _hitThisSwing: false,
+                    alive: m.alive, statuses: {}, _hitThisSwing: false,
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
                   });
+                  /* Apply per-zone variant skin (see monsterVariants.js).
+                     Maps ember fodder -> fireGoblin so the renderer + AI
+                     route to the variant sheets without any inline
+                     zone/archetype check elsewhere in the codebase. */
+                  return applyZoneVariant(local, S.currentZone);
                 });
               } else {
                 S._serverMonsters = false;
@@ -1796,12 +1803,14 @@ export var BroTown = function BroTown(_ref0) {
               if (msg.monsters.length > 0) {
                 S._serverMonsters = true;
                 S.monsters = msg.monsters.map(function(m) {
-                  return _objectSpread(_objectSpread({}, m), {}, {
+                  var local = _objectSpread(_objectSpread({}, m), {}, {
+                    archetype: m.arch, type: m.arch,
                     curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-                    alive: m.alive, type: m.arch, statuses: {}, _hitThisSwing: false,
+                    alive: m.alive, statuses: {}, _hitThisSwing: false,
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
                   });
+                  return applyZoneVariant(local, S.currentZone);
                 });
               } else {
                 var _prevSrvFlag = S._serverMonsters;
@@ -5906,17 +5915,19 @@ export var BroTown = function BroTown(_ref0) {
             }[arch] || 120;
             /* Deep Hollows echo — combat noise doubles aggro range */
             if (S._echoActive) aggroRange *= ECHO_AGGRO_MULT;
-            var atkRange = arch === 'hexer' ? 60 : arch === 'stalker' ? 30 : (arch === 'fodder' || arch === 'fireGoblin') ? 80 : 18;
+            /* AI dispatch uses base archetype so variants inherit
+               behaviour from their parent (e.g. fireGoblin -> fodder). */
+            var _baseArch = baseArchetypeOf(arch);
+            var atkRange = _baseArch === 'hexer' ? 60 : _baseArch === 'stalker' ? 30 : _baseArch === 'fodder' ? 80 : 18;
             var atkCooldown = {
               fodder: 1500,
-              fireGoblin: 1500,
               brute: 2200,
               swarm: 800,
               sentinel: 1800,
               volatile: 1200,
               stalker: 1000,
               hexer: 2500
-            }[arch] || 1500;
+            }[_baseArch] || 1500;
             if (distToP < aggroRange && moveMult > 0) {
               /* ═══ AGGRO ALERT — "!" flash when enemy first notices player ═══ */
               if (!m._aggroed) {
@@ -6259,11 +6270,11 @@ export var BroTown = function BroTown(_ref0) {
                     m._telegraphUntil = Date.now() + telegraphDur;
                     m._telegraphAngle = Math.atan2(P.y - m.y, P.x - m.x);
                     m._telegraphRange = atkRange;
-                    /* Fodder slimes / fire goblins: play the shoot/lunge
-                       animation across the telegraph window so the wind-up
-                       reads visually. Cleared automatically when the
-                       render loop sees now > _shootAnimEnd. */
-                    if (arch === 'fodder' || arch === 'fireGoblin') {
+                    /* Fodder-like (fodder slimes, fireGoblin variant, etc.):
+                       play the shoot/lunge animation across the telegraph
+                       window so the wind-up reads visually.  Cleared
+                       automatically when the render loop sees now > _shootAnimEnd. */
+                    if (isFodderLike(arch)) {
                       m._shootAnimStart = Date.now();
                       m._shootAnimEnd = Date.now() + telegraphDur + 80;
                     }
@@ -6296,7 +6307,7 @@ export var BroTown = function BroTown(_ref0) {
                      application + archetype effects below — fodder has
                      no archetype effects, so nothing else is needed
                      here. */
-                  if (arch === 'fodder' || arch === 'fireGoblin') {
+                  if (isFodderLike(arch)) {
                     var _projAng = Math.atan2(P.y - m.y, P.x - m.x);
                     if (!S.slimeProjectiles) S.slimeProjectiles = [];
                     /* life=35 ticks × speed=4 px = 140 px range, just past
@@ -6972,12 +6983,12 @@ export var BroTown = function BroTown(_ref0) {
                 var _expectedDmg = Math.round(_pDmgBase * specialMult);
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
-                /* fireGoblin armor — takes 1/4 incoming damage.  Server's
-                   HP is fodder-scale so the scaling here keeps local + server
-                   in sync (both deplete by dmg/4 per hit -> 3-4 hits to kill). */
-                if (m.archetype === 'fireGoblin' || m.type === 'fireGoblin') {
-                  dmg = Math.max(1, Math.round(dmg / 4));
-                }
+                /* Variant armor (see monsterVariants.incomingDmgScalar).
+                   Server's HP is base-archetype scale, so the scaling here
+                   keeps local + server in sync -- both deplete by the same
+                   reduced amount per hit. */
+                var _resist = incomingDmgScalarFor(m);
+                if (_resist !== 1) dmg = Math.max(1, Math.round(dmg * _resist));
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
                 /* Server-authoritative zones: HP only flows from server
                    monster_hit ticks.  Local decrement would race the
@@ -6994,7 +7005,8 @@ export var BroTown = function BroTown(_ref0) {
                    stays at 400 ms for its squash. */
                 {
                   var _hitArch = m.archetype || m.type;
-                  if ((_hitArch === 'fodder' || _hitArch === 'fireGoblin' || _hitArch === 'snowman') && m.curHp > 0) {
+                  var _hitBase = baseArchetypeOf(_hitArch);
+                  if ((_hitBase === 'fodder' || _hitArch === 'snowman') && m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArch === 'snowman' ? 600 : 400);
                   }
@@ -8724,13 +8736,11 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 var _hpBefore = m.curHp;
-                /* fireGoblin armor — see melee path; arrows scale the
-                   same 1/4 so the goblin takes 3-4 hits regardless of
-                   weapon. */
-                var _arrowDmg = a.dmg;
-                if (m.archetype === 'fireGoblin' || m.type === 'fireGoblin') {
-                  _arrowDmg = Math.max(1, Math.round(_arrowDmg / 4));
-                }
+                /* Variant armor (see monsterVariants.incomingDmgScalar) --
+                   arrows scale the same as melee so the variant's hit
+                   count is consistent across weapon types. */
+                var _arrowResist = incomingDmgScalarFor(m);
+                var _arrowDmg = _arrowResist !== 1 ? Math.max(1, Math.round(a.dmg * _arrowResist)) : a.dmg;
                 if (!S._serverMonsters) m.curHp -= _arrowDmg;
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
@@ -8738,7 +8748,8 @@ export var BroTown = function BroTown(_ref0) {
                    same anim window, no need to re-trigger. */
                 {
                   var _hitArchR = m.archetype || m.type;
-                  if ((_hitArchR === 'fodder' || _hitArchR === 'fireGoblin' || _hitArchR === 'snowman') && m.curHp > 0) {
+                  var _hitBaseR = baseArchetypeOf(_hitArchR);
+                  if ((_hitBaseR === 'fodder' || _hitArchR === 'snowman') && m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArchR === 'snowman' ? 600 : 400);
                   }

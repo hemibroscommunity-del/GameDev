@@ -8,7 +8,8 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
-import { getRemnantsTexture as getFireGoblinRemnantsTex, getFireballTexture as getFireGoblinFireballTex, FIREBALL_BASE_ANG } from '../fireGoblinSprites.js';
+import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -653,21 +654,35 @@ export class EffectsRenderer {
         this.slimeProjSprites.splice(i, 1);
       }
     }
-    /* Ember-zone fireGoblin shoots fireballs instead of slime orbs.
-       Sprite is drawn pointing southwest, so we rotate by
-       (ang - FIREBALL_BASE_ANG) to line the head up with the flight
-       direction.  Falls back to the slime orb if the fireball asset
-       hasn't loaded yet. */
-    const inEmber = S.currentZone === 'ember';
-    const fireballTex = inEmber ? getFireGoblinFireballTex() : null;
-    const slimeOrbTex = hasSlimeState('projectile') ? getSlimeFrame('projectile', 0) : null;
-    const projTex = fireballTex || slimeOrbTex;
+    /* Projectile rendering -- variants can override the slime-orb art
+       per zone.  Resolves the active zone's variant (e.g. ember.fodder
+       -> fireGoblin) and uses its projectile.tex if defined.  Rotation
+       comes from the variant's baseAng so the sprite nose lines up
+       with sp.ang regardless of the source pose. */
+    let projTex = null;
+    let projBaseAng = 0;
+    let projScale = 0.08;
+    const zoneOverrides = ZONE_VARIANT_MAP[S.currentZone] || null;
+    if (zoneOverrides) {
+      for (const baseArch of Object.keys(zoneOverrides)) {
+        const variantKey = zoneOverrides[baseArch];
+        const vSprites = variantSpritesFor(variantKey);
+        const variant = MONSTER_VARIANTS[variantKey];
+        const tex = vSprites && vSprites.projectile ? vSprites.projectile.get() : null;
+        if (tex) {
+          projTex = tex;
+          projBaseAng = vSprites.projectile.baseAng || 0;
+          projScale = (variant && variant.projectileScalePx ? variant.projectileScalePx : 16) / 256;
+          break;
+        }
+      }
+    }
+    if (!projTex && hasSlimeState('projectile')) {
+      projTex = getSlimeFrame('projectile', 0);
+      projBaseAng = 0;
+      projScale = 0.08;
+    }
     if (projTex) {
-      const useFireball = projTex === fireballTex;
-      /* Fireball renders at 16 px on screen (halved from v2.2.5's 32
-         per user feedback).  Slime orb stays at its existing 0.08 of
-         128 px = ~10 px. */
-      const projScale = useFireball ? 16 / 256 : 0.08;
       for (const sp of slimeProjs) {
         let sprite = sp._pixiSprite;
         if (!sprite || sprite.destroyed) {
@@ -684,7 +699,7 @@ export class EffectsRenderer {
         }
         sprite.x = sp.x;
         sprite.y = sp.y;
-        sprite.rotation = useFireball ? (sp.ang || 0) - FIREBALL_BASE_ANG : 0;
+        sprite.rotation = projBaseAng !== 0 ? (sp.ang || 0) - projBaseAng : 0;
       }
     }
   }
@@ -1089,8 +1104,8 @@ export class EffectsRenderer {
       }
       activeLoot.add(l);
       this._knownLoot.add(l);
-      /* Fodder / fireGoblin loot has no bob; it's a settled puddle/pile. */
-      const isFodder = l.skull === 'fodder' || l.skull === 'fireGoblin';
+      /* Fodder + variant loot has no bob; it's a settled puddle/pile. */
+      const isFodder = l.skull === 'fodder' || !!MONSTER_VARIANTS[l.skull];
       const bob = isFodder ? 0 : Math.sin(age * 3) * 2;
       const alpha = age > 25 ? (30 - age) / 5 : 1;
 
@@ -1181,14 +1196,15 @@ export class EffectsRenderer {
       }
 
       if (isFodder) {
-        /* Pick the remnants art for this kill.  fireGoblin loot uses
-           the burnt-stick pile; slime fodder uses the splat.  Falls
-           back to the slime sheet if the goblin remnants haven't
-           loaded yet so the loot still reads as something. */
-        const isGoblinLoot = l.skull === 'fireGoblin';
-        const goblinRemnantsTex = isGoblinLoot ? getFireGoblinRemnantsTex() : null;
+        /* Pick the remnants art for this kill.  Variants supply their
+           own remnants texture via variantSprites; raw fodder uses the
+           slime splat.  Falls back to the slime sheet if the variant
+           remnants haven't loaded yet. */
+        const variant = MONSTER_VARIANTS[l.skull] || null;
+        const variantSprites = variant ? variantSpritesFor(l.skull) : null;
+        const variantRemnTex = variantSprites && variantSprites.remnants ? variantSprites.remnants.get() : null;
         const slimeRemnantsTex = hasSlimeState('remnants') ? getSlimeFrame('remnants', 0) : null;
-        const remnTex = goblinRemnantsTex || slimeRemnantsTex;
+        const remnTex = variantRemnTex || slimeRemnantsTex;
         if (remnTex) {
           if (!l._pixiSprite || l._pixiSprite.destroyed) {
             const sp = new Sprite(remnTex);
@@ -1200,11 +1216,9 @@ export class EffectsRenderer {
           l._pixiSprite.x = l.x;
           l._pixiSprite.y = l.y + bob;
           l._pixiSprite.alpha = alpha;
-          /* Slime splat renders at 48 px; goblin remnants render at
-             24 px (halved per user feedback v2.2.7, matching the
-             halved live-goblin scale so loot reads as the same
-             creature's leavings). */
-          const targetPx = isGoblinLoot ? 24 : 48;
+          /* Slime splat renders at 48 px on-screen; variant remnants
+             use their own remnantsScalePx (default 48). */
+          const targetPx = variantRemnTex ? (variant.remnantsScalePx || 48) : 48;
           l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
           l._pixiSprite.visible = true;
           continue;

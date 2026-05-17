@@ -10,7 +10,8 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
-import { getFrame as getFireGoblinFrame, hasFrames as hasFireGoblinFrames, frameCount as fireGoblinFrameCount, getAttackFrame as getFireGoblinAttackFrame, hasAttackFrames as hasFireGoblinAttackFrames, attackFrameCount as fireGoblinAttackFrameCount, getHitFrame as getFireGoblinHitFrame, hasHitFrames as hasFireGoblinHitFrames, hitFrameCount as fireGoblinHitFrameCount, getDeathFrame as getFireGoblinDeathFrame, hasDeathFrames as hasFireGoblinDeathFrames, deathFrameCount as fireGoblinDeathFrameCount } from '../fireGoblinSprites.js';
+import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { MONSTER_VARIANTS } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
@@ -125,7 +126,7 @@ function getMonsterSize(archetype) {
      Every other archetype is a bare procedural circle, so bump the
      radius to 32 (64-px diameter) per the user's "64x64 for non-
      slime monsters" call-out. */
-  if (archetype === 'fodder' || archetype === 'fireGoblin') return 8;
+  if (archetype === 'fodder' || MONSTER_VARIANTS[archetype]) return 8;
   if (archetype === 'snowman') return 13;
   return 32;
 }
@@ -171,9 +172,9 @@ function createMonsterDisplay(monster) {
      when the sprite is taller than the circle. */
   const archKey = monster.archetype || monster.type;
   const isFodder = archKey === 'fodder';
-  const isFireGoblin = archKey === 'fireGoblin';
+  const variantKey = MONSTER_VARIANTS[archKey] ? archKey : null;
   const isSnowman = archKey === 'snowman';
-  const spriteBody = (isFodder || isFireGoblin || isSnowman) ? new Sprite() : null;
+  const spriteBody = (isFodder || variantKey || isSnowman) ? new Sprite() : null;
   if (spriteBody) {
     spriteBody.anchor.set(0.5, 1.0);
     spriteBody.visible = false;
@@ -202,7 +203,7 @@ function createMonsterDisplay(monster) {
   container._body = body;
   container._spriteBody = spriteBody;
   container._isFodder = isFodder;
-  container._isFireGoblin = isFireGoblin;
+  container._variantKey = variantKey;
   container._isSnowman = isSnowman;
   container._hpFill = hpFill;
   container._hpBg = hpBg;
@@ -420,22 +421,22 @@ export class EntityRenderer {
                                     400 ms / 15 = ~27 ms/frame -> ~37 fps, fast enough
                                     that the explosion reads as immediate. */
     const SNOWMAN_DEATH_MS = 500; /* user-requested 0.5 s shatter */
-    const GOBLIN_DEATH_MS = 1000; /* 16-frame stagger -> 62 ms/frame, a slower
-                                     theatrical fall that ends on the wreckage
-                                     pose so the cut to the remnants drop reads
-                                     as continuous. */
+    /* Variant death durations come from MONSTER_VARIANTS[key].deathMs;
+       see monsterVariants.js for the per-variant config. */
 
     for (const m of monsters) {
       const arch = m.archetype || m.type;
       const isFodder = arch === 'fodder';
-      const isFireGoblin = arch === 'fireGoblin';
+      const variantKey = MONSTER_VARIANTS[arch] ? arch : null;
+      const variant = variantKey ? MONSTER_VARIANTS[variantKey] : null;
+      const variantSprites = variantKey ? variantSpritesFor(variantKey) : null;
       const isSnowman = arch === 'snowman';
 
-      /* Fodder / goblin death timer — first observation of alive=false
+      /* Fodder + variant death timer — first observation of alive=false
          stamps m._slimeDeathStart (kept its slime-era name to avoid
-         touching every reader).  Goblin reuses the same field; the SFX
-         only fires for the slime variant. */
-      if (!m.alive && (isFodder || isFireGoblin) && m._slimeDeathStart == null) {
+         touching every reader).  Variants reuse the same field; the
+         slime-splat SFX only fires for raw fodder. */
+      if (!m.alive && (isFodder || variantKey) && m._slimeDeathStart == null) {
         m._slimeDeathStart = now;
         if (isFodder) {
           try {
@@ -454,25 +455,25 @@ export class EntityRenderer {
       }
 
       /* Dead-monster handling: render the death sprite for fodder /
-         fireGoblin within the death window; otherwise hide and skip.
-         fireGoblin uses the fire-goblin death sheet (16 frames over
-         GOBLIN_DEATH_MS); fodder uses the slime splat. */
+         variants within the death window; otherwise hide and skip.
+         Variants use their own death sheet over variant.deathMs;
+         raw fodder uses the slime splat over SLIME_DEATH_MS. */
       if (!m.alive) {
         const deathT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
-        if (isFireGoblin && hasFireGoblinDeathFrames() && deathT != null && deathT >= 0 && deathT < GOBLIN_DEATH_MS) {
+        if (variant && variantSprites && variantSprites.death && variantSprites.death.has()
+            && deathT != null && deathT >= 0 && deathT < (variant.deathMs || 1000)) {
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
           if (display && display._spriteBody) {
-            const fc = fireGoblinDeathFrameCount();
-            const t = deathT / GOBLIN_DEATH_MS;
+            const fc = variantSprites.death.count();
+            const t = deathT / (variant.deathMs || 1000);
             const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
-            const tex = getFireGoblinDeathFrame(frameIdx);
+            const tex = variantSprites.death.get(frameIdx);
             const sb = display._spriteBody;
             if (tex && sb.texture !== tex) sb.texture = tex;
-            /* Same on-screen scale as the live goblin (64/256) so the
-               cut from walk -> death reads as continuous.  Halved from
-               the v2.2.5 128/256 per user feedback (sprite was too big). */
-            const baseScale = 64 / 256;
+            /* Same on-screen scale as the live variant so the cut from
+               walk -> death reads as continuous. */
+            const baseScale = (variant.liveScalePx || 64) / 256;
             sb.scale.x = baseScale;
             sb.scale.y = baseScale;
             sb.y = display._size;
@@ -578,16 +579,13 @@ export class EntityRenderer {
 
       const size = display._size;
 
-      /* Slime sprite — fodder archetype gets its own animated sheet
-         (idle / shoot / hit).  Priority: hit > shoot > idle, mirroring
-         the Canvas 2D path in BroTown.jsx ~11635.  Falls back to the
-         procedural circle until sheets resolve.
-
-         fireGoblin archetype renders the directional walk + hit-recoil
-         strips.  Attack-strip playback is disabled (v2.2.6) -- the
-         goblin keeps walking through the wind-up.  fireGoblin runs
-         first; fodder slime is the fallback. */
-      if (display._isFireGoblin && display._spriteBody && hasFireGoblinFrames()) {
+      /* Variant render path -- any monster whose archetype maps to a
+         MONSTER_VARIANTS entry (e.g. fireGoblin) renders its
+         directional walk + hit-recoil strips here.  Variant config
+         (liveScalePx, deathMs, etc.) lives in monsterVariants.js;
+         sprite-side lives in monsterVariantSprites.js.  Falls back to
+         the slime/fodder branch when sheets haven't loaded. */
+      if (display._variantKey && display._spriteBody && variantSprites && variantSprites.walk && variantSprites.walk.has()) {
         const spriteBody = display._spriteBody;
         const dx = m.x - (display._lastX != null ? display._lastX : m.x);
         const dy = m.y - (display._lastY != null ? display._lastY : m.y);
@@ -599,36 +597,32 @@ export class EntityRenderer {
           facing = SECTORS[((sector % 8) + 8) % 8];
           display._lastFacing = facing;
         }
-        /* Priority chain: hit recoil > walk loop.  Attack-strip
-           playback during the telegraph window is disabled per user
-           feedback v2.2.6 — the cast pose interrupted the walk loop
-           in a way that read as a teleport.  The fireball still fires
-           on schedule; the goblin just keeps walking through the
-           wind-up.  Re-enable by restoring the attackNow branch + the
-           getFireGoblinAttackFrame import. */
-        const hitNow = m._hitAnimEnd && now < m._hitAnimEnd && hasFireGoblinHitFrames();
+        /* Priority chain: hit recoil > walk loop.  Variants opt in to
+           an attack-strip branch by setting variantSprites.attack;
+           fireGoblin's is intentionally null (cast pose interrupted
+           the walk in an awkward way -- the fireball still fires on
+           schedule via the AI telegraph). */
+        const hitSprites = variantSprites.hit;
+        const hitNow = m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
         let frame;
         if (hitNow) {
-          const hfc = fireGoblinHitFrameCount(facing);
+          const hfc = hitSprites.count(facing);
           const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);
           const t = (now - m._hitAnimStart) / dur;
           const hIdx = hfc > 0 ? Math.max(0, Math.min(hfc - 1, Math.floor(t * hfc))) : 0;
-          frame = getFireGoblinHitFrame(facing, hIdx);
+          frame = hitSprites.get(facing, hIdx);
         } else {
-          const fc = fireGoblinFrameCount(facing);
+          const fc = variantSprites.walk.count(facing);
           const phaseOff = ((m.spawnX || 0) | 0) % 800;
-          /* 100 ms/frame -> 8-frame loop completes in ~0.8 s, a brisk
-             torch-bearer pace that reads as walking. */
-          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 100) % fc : 0;
-          frame = getFireGoblinFrame(facing, frameIdx);
+          const stepMs = variant.walkFrameMs || 100;
+          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / stepMs) % fc : 0;
+          frame = variantSprites.walk.get(facing, frameIdx);
         }
         if (frame && frame.tex) {
           if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;
           /* Squash is suppressed when the dedicated hit sheet is playing
-             — the sheet already shows the recoil, so doubling it with a
-             scale flatten looks rubbery.  Keep the squash as a fallback
-             for the brief moment between damage application and the
-             hit sheet finishing loading. */
+             (sheet already shows recoil).  Kept as a fallback for the
+             moment between damage application and sheet load. */
           let sqx = 1, sqy = 1;
           const hittingNow = m._hitAnimEnd && now < m._hitAnimEnd;
           if (hittingNow && !hitNow) {
@@ -636,12 +630,7 @@ export class EntityRenderer {
             if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
             else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
           }
-          /* 256 px source frames -> render at 64 px tall.  Halved from
-             v2.2.5's 128/256 per user feedback -- goblin was reading too
-             big on screen.  Still ~equivalent to the slime body's
-             on-screen size (slime body fills half its 128 px frame
-             rendered at 96/128 = 96 px wide -> ~48 px live creature). */
-          const baseScale = 64 / 256;
+          const baseScale = (variant.liveScalePx || 64) / 256;
           const sx = baseScale * sqx * (frame.mirror ? -1 : 1);
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;

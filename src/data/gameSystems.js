@@ -11,6 +11,7 @@ import { ELEMENTS } from './elements.js';
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS } from './effects.js';
 import { AMULET_TIERS, SALVAGE_RETURN_RATE } from './items.js';
+import { applyZoneVariant } from './monsterVariants.js';
 
 /* ── Babel helper polyfills (from pre-transpiled source) ── */
 function _slicedToArray(r, e) { if (Array.isArray(r)) return r; if (Symbol.iterator in Object(r)) { const a = []; let f = true; const t = r[Symbol.iterator](); for (let n; !(f = (n = t.next()).done) && (a.push(n.value), a.length !== e); f = true); return a; } }
@@ -3185,6 +3186,10 @@ export function spawnMonstersForZone(zone, levelMod) {
       var m = createMonster('m-' + zone.id + '-' + idx, arch, lvl, x, y, zone.element);
       m.curHp = m.hp;
       m.type = arch;
+      /* Zone variant skin (e.g. fodder -> fireGoblin in ember).  Pure
+         archetype-name swap; stats are already done by createMonster
+         since the variant is also a real ARCHETYPES entry. */
+      applyZoneVariant(m, zone.id);
       monsters.push(m);
       idx++;
     }

@@ -13,7 +13,7 @@ import { loadPlayerAnchors } from './playerAnchors.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { loadSnowmanSprites } from './snowmanSprites.js';
-import { loadFireGoblinSprites } from './fireGoblinSprites.js';
+import { loadAllVariantSprites } from './monsterVariantSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
 import { loadShieldSprites } from './shieldSprites.js';
 import { loadImageZoneMaps } from './tiledMaps.js';
@@ -51,9 +51,9 @@ export async function initPixiRenderer(canvas) {
   loadSlimeSprites().catch((err) => console.warn('Slime sprites failed to load, using procedural fallback:', err));
   // Snowman monsters — 5 source directional stills (W / NW / SE rendered by mirror).
   loadSnowmanSprites().catch((err) => console.warn('Snowman sprites failed to load, using procedural fallback:', err));
-  // Fire goblin — fodder skin for the Ember Fields zone. 4 walk strips
-  // (S / SW / E / N); missing facings reuse the closest pose.
-  loadFireGoblinSprites().catch((err) => console.warn('Fire goblin sprites failed to load, using slime fallback:', err));
+  // All registered monster variants (fire goblin, future zone skins, etc.)
+  // -- single batched preload, each variant module handles its own assets.
+  loadAllVariantSprites().catch((err) => console.warn('Monster variant sprites failed to load, using base archetype fallback:', err));
   // Weapon icons (sword / bow / staff).
   loadWeaponSprites().catch((err) => console.warn('Weapon sprites failed to load, using procedural fallback:', err));
   // Shield (front / 3-quarter / side wood-shield views).
