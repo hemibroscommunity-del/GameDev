@@ -2174,8 +2174,9 @@ export var BroTown = function BroTown(_ref0) {
               });
               S.screenShake = 3;
               BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
-              if (R2.hp <= 0) {
+              if (R2.hp <= 0 && !S._dying) {
                 /* Player death from server monster */
+                S._dying = true;
                 if (!R2._compStats) R2._compStats = createDefaultCompStats();
                 R2._compStats.deaths++;
                 /* Death-anim timeline starts now; renderer plays the
@@ -2225,6 +2226,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.player.y = 16 * TILE;
                   S.respawnTimer = Date.now() + 3000;
                   S._deathStart = 0;
+                  S._dying = false;
                   /* Server learns dead=false + new zone via this move;
                      other clients clear our _isDead via the broadcast. */
                   if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
@@ -6531,24 +6533,26 @@ export var BroTown = function BroTown(_ref0) {
                       }, 80);
                     }
                   }
-                  if (_R6.hp <= 0) {
-                    /* §5.5 Player death — inventory scatter + escalating respawn */
+                  if (_R6.hp <= 0 && !S._dying) {
+                    /* §5.5 Player death — inventory scatter + escalating respawn.
+                       Split into a synchronous "death moment" block (feedback,
+                       broadcasts, scatter, popups) and a deferred 3.5 s
+                       restore+teleport so the death animation plays at the
+                       death position before the player is whisked off to town.
+                       S._dying gates re-entry while we wait for the timeout. */
+                    S._dying = true;
                     if (!_R6._compStats) _R6._compStats = createDefaultCompStats();
                     _R6._compStats.deaths++;
-                    /* Start the death-animation timeline.  Renderer reads
-                       S._deathStart to compute which frame to play.  Local-
-                       monster death restores hp in the same synchronous
-                       block (below), so the animation only renders for a
-                       frame here — fine for local-monster encounters where
-                       respawn is instant. */
+                    /* Start the death-animation timeline.  Renderer plays
+                       the 21-frame sequence over ~3.15 s, then holds the
+                       final pile-of-bones frame until the setTimeout below
+                       fires the respawn and clears the dead state. */
                     S._deathStart = Date.now();
                     /* Tell the server immediately that we died.  The
                        channelShim move builder reads dead = rpg.hp <= 0,
-                       so sending a move now (before we restore hp below)
-                       gives the server a fresh playerState.dead = true.
-                       Without this, server-monster AI keeps targeting us
-                       for many ticks after death because no move messages
-                       arrive while we're dead-but-not-yet-respawned. */
+                       so sending a move now (while hp is still 0) gives
+                       the server a fresh playerState.dead = true.  Without
+                       this, server-monster AI keeps targeting us. */
                     if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } });
                     if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: P.x, y: P.y } });
                     var deathX = P.x,
@@ -6624,33 +6628,7 @@ export var BroTown = function BroTown(_ref0) {
                     _R6._deathTimestamps.push(dnow);
                     var respawnMs = Math.min(RESPAWN_MAX, RESPAWN_BASE + recentDeaths * RESPAWN_ESCALATE);
 
-                    /* Restore and teleport to town */
-                    _R6.hp = _R6.maxHp;
-                    _R6.stamina = _R6.maxStamina;
-                    _R6.mana = _R6.maxMana;
-                    S.currentZone = 'town';
-                    updateZoneDimensions('town');
-                    BT_AUDIO.startZoneAmbient('town');
-                    S.map = generateZoneMap('town');
-                    S.monsters = []; /* Town has no monsters */
-                    P.x = 16 * TILE;
-                    P.y = 16 * TILE;
-                    S.respawnTimer = Date.now() + respawnMs;
-                    /* Don't clear S._deathStart here — the renderer
-                       gates the self death visual on a 3.5 s window
-                       from _deathStart so the animation plays even
-                       when hp is restored synchronously.  The next
-                       death will overwrite _deathStart with a fresh
-                       Date.now(). */
-                    /* Now that hp is restored and we've teleported to
-                       town, send a move so the server learns dead=false
-                       + the new zone+position, and broadcast a respawn
-                       event so other clients clear our _isDead visual. */
-                    if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } });
-                    if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
-
                     /* Place scattered items as recoverable ground loot at death site */
-                    /* These persist in a special array so they survive zone transitions for recovery */
                     if (scatteredItems.length > 0) {
                       if (!S._deathDrops) S._deathDrops = [];
                       S._deathDrops.push({
@@ -6663,7 +6641,9 @@ export var BroTown = function BroTown(_ref0) {
                       });
                     }
 
-                    /* Death feedback */
+                    /* Death feedback popups float at the death position
+                       (P.x/P.y are still the death coords here — teleport
+                       is deferred to the setTimeout below). */
                     S.dmgNumbers.push({
                       x: P.x,
                       y: P.y - 50,
@@ -6692,10 +6672,39 @@ export var BroTown = function BroTown(_ref0) {
                       color: '#ea580c',
                       ts: Date.now()
                     });
-                    S.groundLoot = [];
-                    S.hitParticles = [];
-                    S.arrows = [];
-                    S._ambientParticles = [];
+
+                    /* Deferred restore + teleport — runs after the 3.5 s
+                       death animation finishes so the player visually
+                       collapses at the death position before respawning
+                       in town.  hp stays 0 during the hold, which the
+                       renderer's selfDead gate keeps the corpse sprite
+                       on screen.  S._dying prevents re-entry into this
+                       block if more damage events arrive in the
+                       meantime. */
+                    setTimeout(function () {
+                      _R6.hp = _R6.maxHp;
+                      _R6.stamina = _R6.maxStamina;
+                      _R6.mana = _R6.maxMana;
+                      S.currentZone = 'town';
+                      updateZoneDimensions('town');
+                      BT_AUDIO.startZoneAmbient('town');
+                      S.map = generateZoneMap('town');
+                      S.monsters = []; /* Town has no monsters */
+                      P.x = 16 * TILE;
+                      P.y = 16 * TILE;
+                      S.respawnTimer = Date.now() + respawnMs;
+                      S._dying = false;
+                      S.groundLoot = [];
+                      S.hitParticles = [];
+                      S.arrows = [];
+                      S._ambientParticles = [];
+                      /* Server learns dead=false + new zone via this move;
+                         other clients clear our _isDead via the broadcast. */
+                      if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } });
+                      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
+                      setRpgState(_objectSpread({}, _R6));
+                      try { localStorage.setItem('bt_rpg', JSON.stringify(_R6)); } catch (e) {}
+                    }, 3500);
                   }
                   setRpgState(_objectSpread({}, _R6));
                 }
