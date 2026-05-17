@@ -483,6 +483,13 @@ export function setupWebSocket(ctx) {
               if (S.monsters) {
                 var deadM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (deadM) {
+                  /* Clear death-anim guards FIRST so the entityRenderer
+                     sees a fresh alive=false transition.  Without this,
+                     a stale _slimeDeathStart from a prior kill blocks
+                     the splat SFX + death sprite hook for the rest of
+                     the session. */
+                  deadM._slimeDeathStart = null;
+                  deadM._snowmanDeathStart = null;
                   deadM.alive = false;
                   deadM.curHp = 0;
                   deadM.hp = 0;
@@ -494,6 +501,33 @@ export function setupWebSocket(ctx) {
                       life: 1.0, color: deadM.color || '#ff5e6c', size: 3
                     });
                   }
+                  /* Remnant splat — without this, server-mode kills
+                     leave no body on the ground.  Single-player pushes
+                     this in gameLoop.js at the kill site, but server
+                     mode short-circuits that path (line 2431 returns
+                     early on _serverMonsters), so the splat has to be
+                     pushed here when the server reports the kill. */
+                  try {
+                    if (!S.groundLoot) S.groundLoot = [];
+                    S.groundLoot.push({
+                      x: deadM.x || deadM.renderX,
+                      y: deadM.y || deadM.renderY,
+                      coins: 0,
+                      xp: 0,
+                      skull: deadM.archetype || deadM.type,
+                      skullEmoji: '🦴',
+                      ts: Date.now(),
+                    });
+                  } catch (e) {}
+                  /* Archetype-specific death MP3 (snowman-death etc.).
+                     Fodder slimes get their splat SFX from the
+                     entityRenderer first-frame hook so monsterDeath
+                     is a no-op there. */
+                  try {
+                    if (BT_AUDIO && BT_AUDIO.monsterDeath) {
+                      BT_AUDIO.monsterDeath(deadM.archetype || deadM.type);
+                    }
+                  } catch (e) {}
                 }
               }
               /* Award XP and gold if we are a recipient */

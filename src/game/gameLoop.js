@@ -2390,6 +2390,15 @@ export function setupGameLoop(ctx) {
                 m.alive = true;
                 m.curHp = m.hp;
                 m.statuses = {}; /* clear statuses on respawn */
+                /* Clear slime + snowman death-anim guards so the splat
+                   sprite + death SFX fire fresh on the NEXT death.
+                   Without this, the entityRenderer's
+                   `_slimeDeathStart == null` check stays false forever
+                   after the first kill -- subsequent kills play no
+                   sound, no death animation, and the body just
+                   disappears.  Mirrors BroTown.jsx:5609-5610. */
+                m._slimeDeathStart = null;
+                m._snowmanDeathStart = null;
                 m.x = m.spawnX + (Math.random() - 0.5) * 60;
                 m.y = m.spawnY + (Math.random() - 0.5) * 60;
               }
@@ -2471,7 +2480,9 @@ export function setupGameLoop(ctx) {
                   size: 1.5 + Math.random() * 2
                 });
               }
-              BT_AUDIO.deathBoom();
+              var _dotArch = m.archetype || m.type;
+              BT_AUDIO.deathBoom(_dotArch);
+              BT_AUDIO.monsterDeath(_dotArch);
               setRpgState(_objectSpread({}, _R6));
             }
 
@@ -2916,7 +2927,9 @@ export function setupGameLoop(ctx) {
                         size: 2 + Math.random() * 3
                       });
                     }
-                    BT_AUDIO.deathBoom();
+                    var _volArch = m.archetype || m.type;
+                    BT_AUDIO.deathBoom(_volArch);
+                    BT_AUDIO.monsterDeath(_volArch);
                     BT_AUDIO.beep(100, 0.2, 0.3, 'sawtooth');
                     S.groundLoot.push({
                       x: m.x,
@@ -3325,9 +3338,25 @@ export function setupGameLoop(ctx) {
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
-              var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(m.y - P.y, 2));
+              /* Fodder slimes render as a 96-px sprite anchored at the
+                 feet (m.y is the feet), so the visual body sits ~40 px
+                 above m.y.  The pre-fix hit-test measured from m.y
+                 directly, making slimes feel impossible to hit -- the
+                 swing reach was checked against the feet point, far
+                 below the body.  Now: 34x50 AABB centred at
+                 (m.x, m.y - 40) for fodder, point-test for others.
+                 Closest-edge distance keeps the reach circle behaviour
+                 but expands the hit zone to the user-specified box. */
+              var _archHit = m.archetype || m.type;
+              var _isFodder = _archHit === 'fodder';
+              var _slimeCY = _isFodder ? m.y - 40 : m.y;
+              var _halfW = _isFodder ? 17 : 0;
+              var _halfH = _isFodder ? 25 : 0;
+              var _ex = Math.max(0, Math.abs(m.x - P.x) - _halfW);
+              var _ey = Math.max(0, Math.abs(_slimeCY - P.y) - _halfH);
+              var mDist = Math.sqrt(_ex * _ex + _ey * _ey);
               if (mDist > SWING_RANGE) return;
-              var mAngle = Math.atan2(m.y - P.y, m.x - P.x);
+              var mAngle = Math.atan2(_slimeCY - P.y, m.x - P.x);
               var angleDiff = mAngle - baseAngle;
               while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
               while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
@@ -3678,12 +3707,19 @@ export function setupGameLoop(ctx) {
                     S._killSlowmoDuration = isGrandSlam && isBigEnemy ? 300 : isGrandSlam ? 200 : 150;
                   }
 
-                  /* Sound — proportional to significance */
+                  /* Sound — proportional to significance.  monsterDeath
+                     plays the archetype-specific MP3 (snowman-death,
+                     monster-death) and is a no-op for fodder (the slime
+                     splat is owned by the entityRenderer first-frame
+                     hook).  deathBoom layers the synth boom on top for
+                     non-fodder kills.  Both need the archetype. */
+                  var _killArch = m.archetype || m.type;
                   if (isGrandSlam) {
                     BT_AUDIO.grandSlam();
                   } else {
-                    BT_AUDIO.deathBoom();
+                    BT_AUDIO.deathBoom(_killArch);
                   }
+                  BT_AUDIO.monsterDeath(_killArch);
 
                   /* Screen shake — proportional */
                   S.screenShake = Math.round(4 * killScale);
