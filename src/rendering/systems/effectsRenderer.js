@@ -8,6 +8,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
+import { getRemnantsTexture as getFireGoblinRemnantsTex } from '../fireGoblinSprites.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -1164,24 +1165,35 @@ export class EffectsRenderer {
         continue;
       }
 
-      if (isFodder && hasSlimeState('remnants')) {
-        /* Slime remnants splat sprite (pooled per loot). */
-        if (!l._pixiSprite || l._pixiSprite.destroyed) {
-          const sp = new Sprite(getSlimeFrame('remnants', 0));
-          sp.anchor.set(0.5, 0.5);
-          this.lootLayer.addChild(sp);
-          l._pixiSprite = sp;
+      if (isFodder) {
+        /* Pick which remnants art represents this fodder kill.  Ember
+           Fields fodder uses the burnt-stick pile left by the fire
+           goblin; everywhere else uses the slime splat.  Falls back to
+           the slime sheet if the goblin remnants haven't loaded yet
+           so the loot still reads as something. */
+        const inEmber = S.currentZone === 'ember';
+        const goblinRemnantsTex = inEmber ? getFireGoblinRemnantsTex() : null;
+        const slimeRemnantsTex = hasSlimeState('remnants') ? getSlimeFrame('remnants', 0) : null;
+        const remnTex = goblinRemnantsTex || slimeRemnantsTex;
+        if (remnTex) {
+          if (!l._pixiSprite || l._pixiSprite.destroyed) {
+            const sp = new Sprite(remnTex);
+            sp.anchor.set(0.5, 0.5);
+            this.lootLayer.addChild(sp);
+            l._pixiSprite = sp;
+          }
+          if (l._pixiSprite.texture !== remnTex) l._pixiSprite.texture = remnTex;
+          l._pixiSprite.x = l.x;
+          l._pixiSprite.y = l.y + bob;
+          l._pixiSprite.alpha = alpha;
+          /* 48 px on-screen for the slime splat reads at the right
+             scale alongside the 96 px live slime.  Goblin remnants
+             keep the same 48 px so the loot grid feels consistent
+             across fodder variants. */
+          l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 48));
+          l._pixiSprite.visible = true;
+          continue;
         }
-        l._pixiSprite.x = l.x;
-        l._pixiSprite.y = l.y + bob;
-        l._pixiSprite.alpha = alpha;
-        /* Slime splat scaled up with the live slime sprite (96 px).
-           Previously 32; bumped to 48 to keep the splat proportional
-           to the larger live slime so the pickup reads as the same
-           creature's remains. */
-        l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 48));
-        l._pixiSprite.visible = true;
-        continue;
       }
 
       const snowmanRemnantsTex = l.skull === 'snowman' ? getSnowmanRemnantsTex() : null;

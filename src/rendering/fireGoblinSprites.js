@@ -1,14 +1,18 @@
 /* Fire-goblin monster sprite loader for the Pixi renderer.
  *
- * Three animation sets, each a per-facing strip of 8 × 256 px square
- * frames:
+ * Directional animations (per-facing strip of 8 × 256 px frames):
  *   walk-{s|sw|e|n}.png        — 4 source directions for the walk loop
  *   attack-{s|sw|w|nw|n}.png   — 5 source directions for the wind-up
  *   hit-{s|sw|nw|n}.png        — 4 source directions for the recoil
  *
- * 8-facing DIR_MAP per set; missing facings reuse the closest source
- * with mirror=true where the motion flips cleanly, or fall through to
- * the nearest pose where mirroring would look wrong.
+ * Non-directional assets:
+ *   death.png      — 16 frames × 256 px, plays once on kill
+ *   remnants.png   — single 256 px frame, the burnt-stick pile left
+ *                    on the ground for the goblin loot drop
+ *
+ * 8-facing DIR_MAP per directional set; missing facings reuse the
+ * closest source with mirror=true where the motion flips cleanly, or
+ * fall through to the nearest pose where mirroring would look wrong.
  *
  * Lookup APIs return { tex, mirror } or null until the source PNG
  * resolves; entityRenderer falls back to the slime sheet (or the
@@ -22,7 +26,7 @@ const FRAME_H = 256;
 
 /* Bump on every sprite-art change so Cloudflare Pages' edge cache
    serves the new PNG instead of the old one. */
-const SPRITE_VERSION = '2.2.3';
+const SPRITE_VERSION = '2.2.4';
 
 const WALK_DIRS = ['s', 'sw', 'e', 'n'];
 const ATTACK_DIRS = ['s', 'sw', 'w', 'nw', 'n'];
@@ -73,6 +77,8 @@ const HIT_MAP = {
 const walkSheets = {};   // dir -> { frames: Texture[] }
 const attackSheets = {}; // dir -> { frames: Texture[] }
 const hitSheets = {};    // dir -> { frames: Texture[] }
+let deathFrames = [];    // Texture[] — non-directional, plays once
+let remnantsTex = null;  // single-frame texture for the loot drop
 let loadPromise = null;
 
 async function loadStrip(url, into, key) {
@@ -105,8 +111,31 @@ export function loadFireGoblinSprites() {
   for (const d of HIT_DIRS) {
     tasks.push(loadStrip(`/sprites/monsters/fire-goblin/hit-${d}.png?v=${SPRITE_VERSION}`, hitSheets, d));
   }
+  tasks.push(loadDeathStrip());
+  tasks.push(loadRemnants());
   loadPromise = Promise.all(tasks);
   return loadPromise;
+}
+
+async function loadDeathStrip() {
+  try {
+    const tex = await Assets.load(`/sprites/monsters/fire-goblin/death.png?v=${SPRITE_VERSION}`);
+    if (!tex || !tex.source) return;
+    const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
+    for (let i = 0; i < count; i++) {
+      deathFrames.push(new Texture({
+        source: tex.source,
+        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
+      }));
+    }
+  } catch { /* missing — caller leaves death blank */ }
+}
+
+async function loadRemnants() {
+  try {
+    const tex = await Assets.load(`/sprites/monsters/fire-goblin/remnants.png?v=${SPRITE_VERSION}`);
+    if (tex && tex.source) remnantsTex = tex;
+  } catch { /* missing — caller falls back to slime remnants */ }
 }
 
 function lookup(map, sheets, facing, frameIdx) {
@@ -158,4 +187,25 @@ export function hitFrameCount(facing) {
 
 export function hasHitFrames() {
   return Object.keys(hitSheets).length > 0;
+}
+
+/* Death animation — non-directional, plays once clamped to last frame
+   so the body settles into the wreckage. */
+export function getDeathFrame(frameIdx) {
+  if (deathFrames.length === 0) return null;
+  const idx = Math.max(0, Math.min(deathFrames.length - 1, frameIdx));
+  return deathFrames[idx];
+}
+
+export function deathFrameCount() {
+  return deathFrames.length;
+}
+
+export function hasDeathFrames() {
+  return deathFrames.length > 0;
+}
+
+/* Single-frame remnants texture for the loot drop on the ground. */
+export function getRemnantsTexture() {
+  return remnantsTex;
 }

@@ -10,7 +10,7 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
-import { getFrame as getFireGoblinFrame, hasFrames as hasFireGoblinFrames, frameCount as fireGoblinFrameCount, getAttackFrame as getFireGoblinAttackFrame, hasAttackFrames as hasFireGoblinAttackFrames, attackFrameCount as fireGoblinAttackFrameCount, getHitFrame as getFireGoblinHitFrame, hasHitFrames as hasFireGoblinHitFrames, hitFrameCount as fireGoblinHitFrameCount } from '../fireGoblinSprites.js';
+import { getFrame as getFireGoblinFrame, hasFrames as hasFireGoblinFrames, frameCount as fireGoblinFrameCount, getAttackFrame as getFireGoblinAttackFrame, hasAttackFrames as hasFireGoblinAttackFrames, attackFrameCount as fireGoblinAttackFrameCount, getHitFrame as getFireGoblinHitFrame, hasHitFrames as hasFireGoblinHitFrames, hitFrameCount as fireGoblinHitFrameCount, getDeathFrame as getFireGoblinDeathFrame, hasDeathFrames as hasFireGoblinDeathFrames, deathFrameCount as fireGoblinDeathFrameCount } from '../fireGoblinSprites.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
@@ -417,23 +417,29 @@ export class EntityRenderer {
                                     400 ms / 15 = ~27 ms/frame -> ~37 fps, fast enough
                                     that the explosion reads as immediate. */
     const SNOWMAN_DEATH_MS = 500; /* user-requested 0.5 s shatter */
+    const GOBLIN_DEATH_MS = 1000; /* 16-frame stagger -> 62 ms/frame, a slower
+                                     theatrical fall that ends on the wreckage
+                                     pose so the cut to the remnants drop reads
+                                     as continuous. */
 
     for (const m of monsters) {
       const arch = m.archetype || m.type;
       const isFodder = arch === 'fodder';
       const isSnowman = arch === 'snowman';
 
-      /* Slime death animation — first observation of alive=false on a
-         fodder slime starts the death timer + plays the splat SFX.
-         Mirrors the Canvas 2D path in BroTown.jsx ~11397.  Animation
-         runs SLIME_DEATH_MS then the display is hidden + cleaned up. */
+      /* Fodder death timer — first observation of alive=false stamps
+         m._slimeDeathStart (kept its slime-era name to avoid touching
+         every reader).  Reused by the goblin death branch in Ember.
+         Slime splat SFX is suppressed in Ember — goblin doesn't pop. */
       if (!m.alive && isFodder && m._slimeDeathStart == null) {
         m._slimeDeathStart = now;
-        try {
-          if (typeof window !== 'undefined' && window.BT_AUDIO) {
-            window.BT_AUDIO.play('slime-death', { vol: 0.425 });
-          }
-        } catch {}
+        if (S.currentZone !== 'ember') {
+          try {
+            if (typeof window !== 'undefined' && window.BT_AUDIO) {
+              window.BT_AUDIO.play('slime-death', { vol: 0.425 });
+            }
+          } catch {}
+        }
       }
 
       /* Snowman death — separate timer so it doesn't share the slime's
@@ -444,13 +450,43 @@ export class EntityRenderer {
       }
 
       /* Dead-monster handling: render the death sprite for fodder
-         within the death window; otherwise hide and skip.  Skip the
-         slime death sheet for Ember Fields fodder — those render as
-         fire goblins, and there's no goblin death sheet yet, so let
-         them disappear cleanly instead of playing a slime explosion. */
+         within the death window; otherwise hide and skip.  Ember Fields
+         fodder uses the fire-goblin death sheet (16 frames over
+         GOBLIN_DEATH_MS); everywhere else uses the slime splat. */
       if (!m.alive) {
         const deathT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
-        const useSlimeDeath = S.currentZone !== 'ember';
+        const inEmber = S.currentZone === 'ember';
+        const useGoblinDeath = inEmber && hasFireGoblinDeathFrames();
+        if (useGoblinDeath && isFodder && deathT != null && deathT >= 0 && deathT < GOBLIN_DEATH_MS) {
+          activeIds.add(m.id);
+          const display = this.monsterDisplays.get(m.id);
+          if (display && display._spriteBody) {
+            const fc = fireGoblinDeathFrameCount();
+            const t = deathT / GOBLIN_DEATH_MS;
+            const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
+            const tex = getFireGoblinDeathFrame(frameIdx);
+            const sb = display._spriteBody;
+            if (tex && sb.texture !== tex) sb.texture = tex;
+            /* Same on-screen scale as the live goblin (128/256) so the
+               cut from walk -> death reads as continuous. */
+            const baseScale = 128 / 256;
+            sb.scale.x = baseScale;
+            sb.scale.y = baseScale;
+            sb.y = display._size;
+            sb.tint = 0xffffff;
+            sb.visible = true;
+            display.x = m.x;
+            display.y = m.y;
+            display.visible = true;
+            display._body.visible = false;
+            if (display._dynGfx) {
+              display._dynGfx.clear();
+              display._dynKey = '';
+            }
+          }
+          continue;
+        }
+        const useSlimeDeath = !inEmber;
         if (useSlimeDeath && isFodder && deathT != null && deathT >= 0 && deathT < SLIME_DEATH_MS && hasSlimeState('death')) {
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
