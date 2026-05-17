@@ -8,7 +8,7 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
-import { getRemnantsTexture as getFireGoblinRemnantsTex } from '../fireGoblinSprites.js';
+import { getRemnantsTexture as getFireGoblinRemnantsTex, getFireballTexture as getFireGoblinFireballTex, FIREBALL_BASE_ANG } from '../fireGoblinSprites.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -653,23 +653,38 @@ export class EffectsRenderer {
         this.slimeProjSprites.splice(i, 1);
       }
     }
-    if (hasSlimeState('projectile')) {
-      const projTex = getSlimeFrame('projectile', 0);
+    /* Ember-zone fodder shoots fire-goblin fireballs instead of slime
+       orbs.  Sprite is drawn pointing southwest, so we rotate by
+       (ang - FIREBALL_BASE_ANG) to line the head up with the flight
+       direction.  Falls back to the slime orb if the fireball asset
+       hasn't loaded yet. */
+    const inEmber = S.currentZone === 'ember';
+    const fireballTex = inEmber ? getFireGoblinFireballTex() : null;
+    const slimeOrbTex = hasSlimeState('projectile') ? getSlimeFrame('projectile', 0) : null;
+    const projTex = fireballTex || slimeOrbTex;
+    if (projTex) {
+      const useFireball = projTex === fireballTex;
+      /* Fireball source is 256 px and reads best at ~32 px on screen
+         (bigger than the slime orb so the flame is legible).  Slime
+         orb stays at its existing 0.08 of 128 px = ~10 px. */
+      const projScale = useFireball ? 32 / 256 : 0.08;
       for (const sp of slimeProjs) {
         let sprite = sp._pixiSprite;
         if (!sprite || sprite.destroyed) {
           sprite = new Sprite(projTex);
           sprite.anchor.set(0.5, 0.5);
-          /* 128 px source -> 0.08 = ~10 px on-screen.  Previously 0.4
-             read way too big (half the slime); user wanted ~80%
-             reduction. */
-          sprite.scale.set(0.08);
+          sprite.scale.set(projScale);
           this.projectileLayer.addChild(sprite);
           sp._pixiSprite = sprite;
           this.slimeProjSprites.push({ proj: sp, sprite });
         }
+        if (sprite.texture !== projTex) {
+          sprite.texture = projTex;
+          sprite.scale.set(projScale);
+        }
         sprite.x = sp.x;
         sprite.y = sp.y;
+        sprite.rotation = useFireball ? (sp.ang || 0) - FIREBALL_BASE_ANG : 0;
       }
     }
   }

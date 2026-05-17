@@ -9,6 +9,11 @@
  *   death.png      — 16 frames × 256 px, plays once on kill
  *   remnants.png   — single 256 px frame, the burnt-stick pile left
  *                    on the ground for the goblin loot drop
+ *   fireball.png   — single 256 px frame, the projectile the goblin
+ *                    shoots.  Sprite is drawn pointing southwest
+ *                    (atan2 angle ~ 3π/4), so the renderer should set
+ *                    sprite.rotation = projectile.ang - FIREBALL_BASE_ANG
+ *                    to make it nose in the direction of flight.
  *
  * 8-facing DIR_MAP per directional set; missing facings reuse the
  * closest source with mirror=true where the motion flips cleanly, or
@@ -26,7 +31,13 @@ const FRAME_H = 256;
 
 /* Bump on every sprite-art change so Cloudflare Pages' edge cache
    serves the new PNG instead of the old one. */
-const SPRITE_VERSION = '2.2.4';
+const SPRITE_VERSION = '2.2.5';
+
+/* The fireball is drawn pointing southwest (nose at lower-left).
+   atan2(dy, dx) where down is +y gives 3π/4 for that direction.
+   Renderers subtract this from the projectile's flight angle to land
+   on the right Pixi rotation value. */
+export const FIREBALL_BASE_ANG = Math.PI * 0.75;
 
 const WALK_DIRS = ['s', 'sw', 'e', 'n'];
 const ATTACK_DIRS = ['s', 'sw', 'w', 'nw', 'n'];
@@ -79,6 +90,7 @@ const attackSheets = {}; // dir -> { frames: Texture[] }
 const hitSheets = {};    // dir -> { frames: Texture[] }
 let deathFrames = [];    // Texture[] — non-directional, plays once
 let remnantsTex = null;  // single-frame texture for the loot drop
+let fireballTex = null;  // single-frame texture for the projectile
 let loadPromise = null;
 
 async function loadStrip(url, into, key) {
@@ -113,8 +125,16 @@ export function loadFireGoblinSprites() {
   }
   tasks.push(loadDeathStrip());
   tasks.push(loadRemnants());
+  tasks.push(loadFireball());
   loadPromise = Promise.all(tasks);
   return loadPromise;
+}
+
+async function loadFireball() {
+  try {
+    const tex = await Assets.load(`/sprites/monsters/fire-goblin/fireball.png?v=${SPRITE_VERSION}`);
+    if (tex && tex.source) fireballTex = tex;
+  } catch { /* missing — caller falls back to slime orb */ }
 }
 
 async function loadDeathStrip() {
@@ -208,4 +228,9 @@ export function hasDeathFrames() {
 /* Single-frame remnants texture for the loot drop on the ground. */
 export function getRemnantsTexture() {
   return remnantsTex;
+}
+
+/* Single-frame fireball projectile texture.  See FIREBALL_BASE_ANG. */
+export function getFireballTexture() {
+  return fireballTex;
 }
