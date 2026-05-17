@@ -62,32 +62,37 @@ const WALK_MAP = {
   southeast: { src: 'e',  mirror: true  },
 };
 
-/* ATTACK: 5 source directions (N / NW / W / SW / S).  East-side
-   facings are produced by mirroring their west-side counterparts —
-   attack motion flips cleanly so this looks natural. */
+/* ATTACK: 5 source files, but labels are shifted one position
+   relative to actual direction (per user v2.3.6 review).  Cyclical
+   reassignment on the west side:
+     NW slot uses attack-w (the file misnamed 'w')
+     W  slot uses attack-sw (the file misnamed 'sw')
+     SW slot uses attack-nw (the file misnamed 'nw')
+   East-side facings are produced by mirroring. */
 const ATTACK_MAP = {
   south:     { src: 's',  mirror: false },
-  southwest: { src: 'sw', mirror: false },
-  west:      { src: 'w',  mirror: false },
-  northwest: { src: 'nw', mirror: false },
+  southwest: { src: 'nw', mirror: false },
+  west:      { src: 'sw', mirror: false },
+  northwest: { src: 'w',  mirror: false },
   north:     { src: 'n',  mirror: false },
-  northeast: { src: 'nw', mirror: true  },
-  east:      { src: 'w',  mirror: true  },
-  southeast: { src: 'sw', mirror: true  },
+  northeast: { src: 'w',  mirror: true  },
+  east:      { src: 'sw', mirror: true  },
+  southeast: { src: 'nw', mirror: true  },
 };
 
-/* HIT: 4 source directions (N / NW / SW / S).  Per user note the SW
-   source is mostly side-on, so it doubles for both SW and W (and
-   mirrors for E and SE).  NW mirrors to NE. */
+/* HIT: 4 source files but labels are off (per user v2.3.6 review):
+   hit-nw.png and hit-sw.png are swapped relative to the directions
+   they cover.  NW now uses the 'sw' file; W and SW share the 'nw'
+   file.  East-side facings are produced by mirroring. */
 const HIT_MAP = {
   south:     { src: 's',  mirror: false },
-  southwest: { src: 'sw', mirror: false },
-  west:      { src: 'sw', mirror: false },
-  northwest: { src: 'nw', mirror: false },
+  southwest: { src: 'nw', mirror: false },
+  west:      { src: 'nw', mirror: false },
+  northwest: { src: 'sw', mirror: false },
   north:     { src: 'n',  mirror: false },
-  northeast: { src: 'nw', mirror: true  },
-  east:      { src: 'sw', mirror: true  },
-  southeast: { src: 'sw', mirror: true  },
+  northeast: { src: 'sw', mirror: true  },
+  east:      { src: 'nw', mirror: true  },
+  southeast: { src: 'nw', mirror: true  },
 };
 
 const walkSheets = {};   // dir -> { frames: Texture[] }

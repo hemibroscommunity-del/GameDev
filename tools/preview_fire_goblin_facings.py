@@ -28,23 +28,23 @@ WALK_MAP = {
 }
 HIT_MAP = {
     'south':     ('s',  False),
-    'southwest': ('sw', False),
-    'west':      ('sw', False),
-    'northwest': ('nw', False),
+    'southwest': ('nw', False),
+    'west':      ('nw', False),
+    'northwest': ('sw', False),
     'north':     ('n',  False),
-    'northeast': ('nw', True),
-    'east':      ('sw', True),
-    'southeast': ('sw', True),
+    'northeast': ('sw', True),
+    'east':      ('nw', True),
+    'southeast': ('nw', True),
 }
 ATTACK_MAP = {
     'south':     ('s',  False),
-    'southwest': ('sw', False),
-    'west':      ('w',  False),
-    'northwest': ('nw', False),
+    'southwest': ('nw', False),
+    'west':      ('sw', False),
+    'northwest': ('w',  False),
     'north':     ('n',  False),
-    'northeast': ('nw', True),
-    'east':      ('w',  True),
-    'southeast': ('sw', True),
+    'northeast': ('w',  True),
+    'east':      ('sw', True),
+    'southeast': ('nw', True),
 }
 
 # 3x3 compass grid: (col, row) for each facing.  Center empty.
