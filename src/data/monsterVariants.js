@@ -44,7 +44,10 @@ export const MONSTER_VARIANTS = {
        liveScalePx (death frames use the same).  remnants/projectile
        scales are absolute on-screen pixel sizes. */
     liveScalePx: 64,
-    walkFrameMs: 100,
+    /* 8-frame walk loop -> 33 ms/frame = ~264 ms full cycle, giving
+       the goblin a brisk jog cadence (3x faster than the 100 ms
+       default per user feedback v2.3.2). */
+    walkFrameMs: 33,
     deathMs: 1000,
     remnantsScalePx: 24,
     projectileScalePx: 16,
