@@ -2071,9 +2071,13 @@ export var BroTown = function BroTown(_ref0) {
                 /* Remote-player hit feedback: flash their sprite + float a
                    damage number over them so other players' fights read
                    as real, not invisible.  No HP math — server is
-                   authoritative on remote HP; this is purely visual. */
+                   authoritative on remote HP; this is purely visual.
+                   Suppress entirely when the remote is dead: prevents
+                   phantom hit-flashes on a corpse while the server
+                   hasn't yet stopped its monster AI from targeting
+                   them (idle players, slow disconnect detection). */
                 var rOther = S.others && S.others[payload.targetId];
-                if (rOther) {
+                if (rOther && !rOther._isDead) {
                   rOther._hitFlash = Date.now();
                   S.dmgNumbers.push({
                     x: rOther.x || 0,
@@ -2174,6 +2178,12 @@ export var BroTown = function BroTown(_ref0) {
                 /* Player death from server monster */
                 if (!R2._compStats) R2._compStats = createDefaultCompStats();
                 R2._compStats.deaths++;
+                /* Tell the server we died now so monster AI stops
+                   targeting us during the 5 s respawn window, and
+                   broadcast the death so remote clients render a
+                   dead pose at our last position. */
+                if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
+                if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: S.player.x, y: S.player.y } });
                 /* Gold penalty */
                 var goldLost2 = Math.floor(R2.coins * DEATH_GOLD_PENALTY);
                 R2.coins = Math.max(0, R2.coins - goldLost2);
@@ -2211,6 +2221,10 @@ export var BroTown = function BroTown(_ref0) {
                   S.player.x = 16 * TILE;
                   S.player.y = 16 * TILE;
                   S.respawnTimer = Date.now() + 3000;
+                  /* Server learns dead=false + new zone via this move;
+                     other clients clear our _isDead via the broadcast. */
+                  if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
+                  if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
                   setRpgState(_objectSpread({}, R2));
                   try { localStorage.setItem('bt_rpg', JSON.stringify(R2)); } catch(e) {}
                 }, respawnDelay);
@@ -2258,9 +2272,19 @@ export var BroTown = function BroTown(_ref0) {
             {
               /* Remote player died on their client.  Spawn the same
                  red death-burst + skull popup we render locally,
-                 anchored to the reported position.  PvP deaths are
-                 handled by pvp_confirmed and aren't double-rendered. */
+                 anchored to the reported position.  Also set
+                 _isDead on the remote entry so we render a death
+                 pose and suppress further hit-flash events for them
+                 until they broadcast player_respawned (or their next
+                 tick payload shows them alive in a new zone).  PvP
+                 deaths are handled by pvp_confirmed and aren't
+                 double-rendered. */
               if (payload.id === S.myId) break;
+              var deadOther = S.others && S.others[payload.id];
+              if (deadOther) {
+                deadOther._isDead = true;
+                deadOther._deathTs = Date.now();
+              }
               var dthX = payload.x || 0, dthY = payload.y || 0;
               for (var dpx = 0; dpx < 20; dpx++) {
                 var dpAx = dpx / 20 * Math.PI * 2;
@@ -2280,6 +2304,21 @@ export var BroTown = function BroTown(_ref0) {
                 ts: Date.now(),
                 ttl: 2.0
               });
+              break;
+            }
+          case 'player_respawned':
+            {
+              /* Remote player respawned — clear the death visual.  We
+                 also tolerate the tick-arrival ordering case where the
+                 remote's move msg (with the new town position) arrives
+                 first; the renderer simply reads _isDead each frame, so
+                 clearing it here is sufficient. */
+              if (payload.id === S.myId) break;
+              var resOther = S.others && S.others[payload.id];
+              if (resOther) {
+                resOther._isDead = false;
+                resOther._deathTs = 0;
+              }
               break;
             }
           /* mkt_order removed — marketplace uses server API now */
@@ -6492,6 +6531,14 @@ export var BroTown = function BroTown(_ref0) {
                     /* §5.5 Player death — inventory scatter + escalating respawn */
                     if (!_R6._compStats) _R6._compStats = createDefaultCompStats();
                     _R6._compStats.deaths++;
+                    /* Tell the server immediately that we died.  The
+                       channelShim move builder reads dead = rpg.hp <= 0,
+                       so sending a move now (before we restore hp below)
+                       gives the server a fresh playerState.dead = true.
+                       Without this, server-monster AI keeps targeting us
+                       for many ticks after death because no move messages
+                       arrive while we're dead-but-not-yet-respawned. */
+                    if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } });
                     if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: P.x, y: P.y } });
                     var deathX = P.x,
                       deathY = P.y;
@@ -6578,6 +6625,12 @@ export var BroTown = function BroTown(_ref0) {
                     P.x = 16 * TILE;
                     P.y = 16 * TILE;
                     S.respawnTimer = Date.now() + respawnMs;
+                    /* Now that hp is restored and we've teleported to
+                       town, send a move so the server learns dead=false
+                       + the new zone+position, and broadcast a respawn
+                       event so other clients clear our _isDead visual. */
+                    if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } });
+                    if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
 
                     /* Place scattered items as recoverable ground loot at death site */
                     /* These persist in a special array so they survive zone transitions for recovery */

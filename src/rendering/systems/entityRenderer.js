@@ -837,6 +837,19 @@ export class EntityRenderer {
       display.x = other.renderX || other.x || 0;
       display.y = other.renderY || other.y || 0;
 
+      /* Death state — fade the whole display and tilt the body
+         sprite onto its side so the player reads as "fallen".  The
+         name/level label stays inside the container so it tilts too,
+         which is fine (it visually anchors to the body).  Cleared by
+         player_respawned. */
+      if (other._isDead) {
+        if (display.alpha !== 0.45) display.alpha = 0.45;
+        if (display.rotation !== Math.PI / 2) display.rotation = Math.PI / 2;
+      } else {
+        if (display.alpha !== 1) display.alpha = 1;
+        if (display.rotation !== 0) display.rotation = 0;
+      }
+
       const body = display._body;
       const torso = other.bt || '#2563eb';
       const legs = other.bl || '#1e3a5f';
@@ -1127,6 +1140,21 @@ export class EntityRenderer {
     display.visible = true;
     display.x = P.x;
     display.y = P.y;
+
+    /* Self death visual — fade + tilt while dead.  Matches the
+       remote-player rendering so the local view of our own corpse
+       looks the same as everyone else's view of it.  Active during
+       the 5 s server-monster respawn window (line 2201 in BroTown);
+       for local-monster death the restore is instant so this is a
+       one-frame flicker, which is fine. */
+    const selfDead = !!(S.rpg && S.rpg.hp <= 0);
+    if (selfDead) {
+      if (display.alpha !== 0.45) display.alpha = 0.45;
+      if (display.rotation !== Math.PI / 2) display.rotation = Math.PI / 2;
+    } else {
+      if (display.alpha !== 1) display.alpha = 1;
+      if (display.rotation !== 0) display.rotation = 0;
+    }
 
     const body = display._body;
 
