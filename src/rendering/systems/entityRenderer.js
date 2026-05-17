@@ -10,6 +10,7 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
+import { getFrame as getFireGoblinFrame, hasFrames as hasFireGoblinFrames, frameCount as fireGoblinFrameCount } from '../fireGoblinSprites.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
@@ -443,10 +444,14 @@ export class EntityRenderer {
       }
 
       /* Dead-monster handling: render the death sprite for fodder
-         within the death window; otherwise hide and skip. */
+         within the death window; otherwise hide and skip.  Skip the
+         slime death sheet for Ember Fields fodder — those render as
+         fire goblins, and there's no goblin death sheet yet, so let
+         them disappear cleanly instead of playing a slime explosion. */
       if (!m.alive) {
         const deathT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
-        if (isFodder && deathT != null && deathT >= 0 && deathT < SLIME_DEATH_MS && hasSlimeState('death')) {
+        const useSlimeDeath = S.currentZone !== 'ember';
+        if (useSlimeDeath && isFodder && deathT != null && deathT >= 0 && deathT < SLIME_DEATH_MS && hasSlimeState('death')) {
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
           if (display && display._spriteBody) {
@@ -538,8 +543,59 @@ export class EntityRenderer {
       /* Slime sprite — fodder archetype gets its own animated sheet
          (idle / shoot / hit).  Priority: hit > shoot > idle, mirroring
          the Canvas 2D path in BroTown.jsx ~11635.  Falls back to the
-         procedural circle until sheets resolve. */
-      if (display._isFodder && display._spriteBody) {
+         procedural circle until sheets resolve.
+
+         Per-zone skin: in Ember Fields, fodder renders as a fire
+         goblin (4 directional walk strips) instead of a slime.  The
+         goblin branch runs first; the slime branch is the default. */
+      if (display._isFodder && display._spriteBody && S.currentZone === 'ember' && hasFireGoblinFrames()) {
+        const spriteBody = display._spriteBody;
+        const dx = m.x - (display._lastX != null ? display._lastX : m.x);
+        const dy = m.y - (display._lastY != null ? display._lastY : m.y);
+        const moving = dx * dx + dy * dy > 0.04;
+        let facing = display._lastFacing || 'south';
+        if (moving) {
+          const ang = Math.atan2(dy, dx);
+          const sector = Math.round(ang / (Math.PI / 4));
+          facing = SECTORS[((sector % 8) + 8) % 8];
+          display._lastFacing = facing;
+        }
+        const fc = fireGoblinFrameCount(facing);
+        const phaseOff = ((m.spawnX || 0) | 0) % 800;
+        /* 100 ms/frame -> 8-frame loop completes in ~0.8 s, a brisk
+           torch-bearer pace that reads as walking. */
+        const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 100) % fc : 0;
+        const frame = getFireGoblinFrame(facing, frameIdx);
+        if (frame && frame.tex) {
+          if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;
+          /* Hit reaction squash — reuse the slime path's math so the
+             goblin recoil reads the same as everything else. */
+          let sqx = 1, sqy = 1;
+          const hittingNow = m._hitAnimEnd && now < m._hitAnimEnd;
+          if (hittingNow) {
+            const hp = (now - m._hitAnimStart) / Math.max(1, m._hitAnimEnd - m._hitAnimStart);
+            if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
+            else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
+          }
+          /* 256 px source frames -> render at 128 px tall.  Goblin fills
+             most of the frame, so this reads ~40% bigger on screen than
+             the slime body (which only fills half its 128 px frame). */
+          const baseScale = 128 / 256;
+          const sx = baseScale * sqx * (frame.mirror ? -1 : 1);
+          const sy = baseScale * sqy;
+          if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
+          if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
+          if (spriteBody.y !== size) spriteBody.y = size;
+          if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+          if (!spriteBody.visible) spriteBody.visible = true;
+          if (display._body.visible) display._body.visible = false;
+        } else {
+          if (spriteBody.visible) spriteBody.visible = false;
+          if (!display._body.visible) display._body.visible = true;
+        }
+        display._lastX = m.x;
+        display._lastY = m.y;
+      } else if (display._isFodder && display._spriteBody) {
         const spriteBody = display._spriteBody;
         const hittingNow = m._hitAnimEnd && now < m._hitAnimEnd && hasSlimeState('hit');
         const shootingNow = m._shootAnimEnd && now < m._shootAnimEnd && hasSlimeState('shoot');
