@@ -54,9 +54,10 @@ GRID = {
     'southwest': (0, 2), 'south':    (1, 2), 'southeast': (2, 2),
 }
 
-CELL = 192      # rendered sprite size per cell
-PAD = 12        # padding inside each cell for label
-LABEL_H = 28    # height reserved for the text label
+CELL = 240      # rendered sprite size per cell
+PAD = 14        # padding inside each cell for label
+LABEL_H = 34    # height reserved for the text label
+TITLE_H = 40    # title row above the compass grid
 
 def load_frame0(action, src):
     """Returns the first 256x256 frame of the source sheet, or a
@@ -73,30 +74,35 @@ def load_frame0(action, src):
 def render_preview(map_, action):
     cw = CELL + PAD * 2
     ch = CELL + PAD * 2 + LABEL_H
-    canvas = Image.new('RGBA', (cw * 3, ch * 3), (20, 22, 32, 255))
+    canvas_w = cw * 3
+    canvas_h = TITLE_H + ch * 3
+    canvas = Image.new('RGBA', (canvas_w, canvas_h), (20, 22, 32, 255))
     draw = ImageDraw.Draw(canvas)
     try:
-        font = ImageFont.truetype('arial.ttf', 16)
-        font_small = ImageFont.truetype('arial.ttf', 11)
+        font_title = ImageFont.truetype('arial.ttf', 20)
+        font = ImageFont.truetype('arial.ttf', 18)
     except Exception:
+        font_title = ImageFont.load_default()
         font = ImageFont.load_default()
-        font_small = ImageFont.load_default()
-    # Title at top center
-    title = f'fire goblin -- {action.upper()} -- frame 0 of each mapped source'
-    draw.text((10, 4), title, fill='#cfd2e0', font=font_small)
+    # Title row above the grid
+    title = f'Fire goblin facings -- {action.upper()} (frame 0 of each mapped source)'
+    draw.text((PAD, 10), title, fill='#cfd2e0', font=font_title)
     for facing, (col, row) in GRID.items():
         src, mirror = map_[facing]
         frame = load_frame0(action, src)
-        # Apply mirror as the renderer would
         if mirror:
             frame = frame.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
         frame = frame.resize((CELL, CELL), Image.Resampling.LANCZOS)
-        x = col * cw + PAD
-        y = row * ch + PAD + LABEL_H
-        canvas.paste(frame, (x, y), frame)
-        # Label with facing + source
+        cell_x = col * cw
+        cell_y = TITLE_H + row * ch
+        # Faint cell border so each direction visually separates
+        draw.rectangle([cell_x + 2, cell_y + 2, cell_x + cw - 2, cell_y + ch - 2],
+                       outline=(50, 55, 75), width=1)
+        # Sprite
+        canvas.paste(frame, (cell_x + PAD, cell_y + PAD + LABEL_H), frame)
+        # Label centered above sprite
         label = f'{facing}  ({src}{" + mirror" if mirror else ""})'
-        draw.text((col * cw + PAD, row * ch + 4), label, fill='#E8EAF8', font=font)
+        draw.text((cell_x + PAD, cell_y + PAD), label, fill='#E8EAF8', font=font)
     return canvas
 
 def main():
