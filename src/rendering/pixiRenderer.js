@@ -11,6 +11,7 @@ import { loadTileAssets } from './tileAssets.js';
 import { loadPlayerSprites } from './playerSprites.js';
 import { loadPlayerAnchors } from './playerAnchors.js';
 import { loadSlimeSprites } from './slimeSprites.js';
+import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { loadSnowmanSprites } from './snowmanSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
 import { loadShieldSprites } from './shieldSprites.js';
@@ -43,6 +44,8 @@ export async function initPixiRenderer(canvas) {
   // Load player sprite sheets (non-blocking — entityRenderer falls back
   // to procedural Graphics on the first few frames before sheets resolve).
   loadPlayerSprites().catch((err) => console.warn('Player sprites failed to load, using procedural fallback:', err));
+  // Player death animation — 21-frame transformation (alive -> skeleton -> bone pile).
+  loadPlayerDeathSprites().catch((err) => console.warn('Player death sprites failed to load, using fade-rotate fallback:', err));
   // Same for slime monsters (idle / shoot / hit / death / remnants).
   loadSlimeSprites().catch((err) => console.warn('Slime sprites failed to load, using procedural fallback:', err));
   // Snowman monsters — 5 source directional stills (W / NW / SE rendered by mirror).

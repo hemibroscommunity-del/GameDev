@@ -2178,6 +2178,9 @@ export var BroTown = function BroTown(_ref0) {
                 /* Player death from server monster */
                 if (!R2._compStats) R2._compStats = createDefaultCompStats();
                 R2._compStats.deaths++;
+                /* Death-anim timeline starts now; renderer plays the
+                   21-frame sequence until respawn clears it. */
+                S._deathStart = Date.now();
                 /* Tell the server we died now so monster AI stops
                    targeting us during the 5 s respawn window, and
                    broadcast the death so remote clients render a
@@ -2221,6 +2224,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.player.x = 16 * TILE;
                   S.player.y = 16 * TILE;
                   S.respawnTimer = Date.now() + 3000;
+                  S._deathStart = 0;
                   /* Server learns dead=false + new zone via this move;
                      other clients clear our _isDead via the broadcast. */
                   if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
@@ -6531,6 +6535,13 @@ export var BroTown = function BroTown(_ref0) {
                     /* §5.5 Player death — inventory scatter + escalating respawn */
                     if (!_R6._compStats) _R6._compStats = createDefaultCompStats();
                     _R6._compStats.deaths++;
+                    /* Start the death-animation timeline.  Renderer reads
+                       S._deathStart to compute which frame to play.  Local-
+                       monster death restores hp in the same synchronous
+                       block (below), so the animation only renders for a
+                       frame here — fine for local-monster encounters where
+                       respawn is instant. */
+                    S._deathStart = Date.now();
                     /* Tell the server immediately that we died.  The
                        channelShim move builder reads dead = rpg.hp <= 0,
                        so sending a move now (before we restore hp below)
@@ -6625,6 +6636,7 @@ export var BroTown = function BroTown(_ref0) {
                     P.x = 16 * TILE;
                     P.y = 16 * TILE;
                     S.respawnTimer = Date.now() + respawnMs;
+                    S._deathStart = 0;
                     /* Now that hp is restored and we've teleported to
                        town, send a move so the server learns dead=false
                        + the new zone+position, and broadcast a respawn

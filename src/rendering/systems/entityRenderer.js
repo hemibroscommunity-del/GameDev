@@ -10,6 +10,7 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
+import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
@@ -837,17 +838,40 @@ export class EntityRenderer {
       display.x = other.renderX || other.x || 0;
       display.y = other.renderY || other.y || 0;
 
-      /* Death state — fade the whole display and tilt the body
-         sprite onto its side so the player reads as "fallen".  The
-         name/level label stays inside the container so it tilts too,
-         which is fine (it visually anchors to the body).  Cleared by
-         player_respawned. */
+      /* Death state — play the death sprite animation (player crumbles
+         into a skeleton then a pile of bones) until player_respawned
+         clears _isDead.  Hide weapon/shield/NFT/procedural body so the
+         corpse reads cleanly.  Fall back to a fade+tilt visual if the
+         sheet hasn't loaded yet. */
       if (other._isDead) {
-        if (display.alpha !== 0.45) display.alpha = 0.45;
-        if (display.rotation !== Math.PI / 2) display.rotation = Math.PI / 2;
-      } else {
         if (display.alpha !== 1) display.alpha = 1;
         if (display.rotation !== 0) display.rotation = 0;
+        const _elapsed = Date.now() - (other._deathTs || Date.now());
+        const _spriteBody = display._spriteBody;
+        const _body = display._body;
+        if (hasPlayerDeathSprites() && _spriteBody) {
+          const _tex = getPlayerDeathFrame(playerDeathFrameForElapsed(_elapsed));
+          if (_tex && _spriteBody.texture !== _tex) _spriteBody.texture = _tex;
+          _spriteBody.tint = 0xffffff;
+          _spriteBody.scale.set(1);
+          _spriteBody.visible = true;
+          if (_body) _body.visible = false;
+        } else if (_spriteBody) {
+          /* Sheet not loaded yet — fallback fade+tilt. */
+          display.alpha = 0.45;
+          display.rotation = Math.PI / 2;
+        }
+        /* Hide weapon + shield on the corpse. */
+        if (display._weaponContainer) display._weaponContainer.visible = false;
+        if (display._shieldSprite) display._shieldSprite.visible = false;
+        if (display._nftFront) display._nftFront.visible = false;
+        if (display._nftBack) display._nftBack.visible = false;
+        continue;
+      }
+      /* Living — restore visibility of containers that might have been
+         hidden by a previous death frame on this display. */
+      if (display._weaponContainer && !display._weaponContainer.visible) {
+        display._weaponContainer.visible = true;
       }
 
       const body = display._body;
@@ -1141,19 +1165,39 @@ export class EntityRenderer {
     display.x = P.x;
     display.y = P.y;
 
-    /* Self death visual — fade + tilt while dead.  Matches the
-       remote-player rendering so the local view of our own corpse
-       looks the same as everyone else's view of it.  Active during
-       the 5 s server-monster respawn window (line 2201 in BroTown);
-       for local-monster death the restore is instant so this is a
-       one-frame flicker, which is fine. */
+    /* Self death visual — play the death sprite animation (player ->
+       skeleton -> bone pile).  S._deathStart is set in the death
+       handlers in BroTown.jsx and cleared on respawn.  Early-return
+       so the rest of _updatePlayer (jog frames, weapon, bars) doesn't
+       overwrite the death texture or render a sword on the corpse. */
     const selfDead = !!(S.rpg && S.rpg.hp <= 0);
     if (selfDead) {
-      if (display.alpha !== 0.45) display.alpha = 0.45;
-      if (display.rotation !== Math.PI / 2) display.rotation = Math.PI / 2;
-    } else {
       if (display.alpha !== 1) display.alpha = 1;
       if (display.rotation !== 0) display.rotation = 0;
+      const _selfElapsed = Date.now() - (S._deathStart || Date.now());
+      const _selfSpriteBody = display._spriteBody;
+      const _selfBody = display._body;
+      if (hasPlayerDeathSprites() && _selfSpriteBody) {
+        const _selfTex = getPlayerDeathFrame(playerDeathFrameForElapsed(_selfElapsed));
+        if (_selfTex && _selfSpriteBody.texture !== _selfTex) _selfSpriteBody.texture = _selfTex;
+        _selfSpriteBody.tint = 0xffffff;
+        _selfSpriteBody.scale.set(1);
+        _selfSpriteBody.visible = true;
+        if (_selfBody) _selfBody.visible = false;
+      } else if (_selfSpriteBody) {
+        display.alpha = 0.45;
+        display.rotation = Math.PI / 2;
+      }
+      if (display._weaponContainer) display._weaponContainer.visible = false;
+      if (display._shieldSprite) display._shieldSprite.visible = false;
+      if (display._nftFront) display._nftFront.visible = false;
+      if (display._nftBack) display._nftBack.visible = false;
+      return;
+    }
+    /* Living — restore weapon container visibility (might have been
+       hidden by a previous death frame). */
+    if (display._weaponContainer && !display._weaponContainer.visible) {
+      display._weaponContainer.visible = true;
     }
 
     const body = display._body;
