@@ -52,6 +52,20 @@ export const MONSTER_VARIANTS = {
     deathMs: 1000,
     remnantsScalePx: 24,
     projectileScalePx: 16,
+    /* Client-authoritative movement.  The server only knows the base
+       fodder archetype, so server-driven positions would advance at
+       fodder speed regardless of ARCHETYPES.fireGoblin.spdMult.  With
+       this flag set, BroTown.jsx skips the server-position override
+       and lets each client's local AI run -- the goblin actually
+       chases at the bumped spdMult.  Trade-off: position diverges
+       slightly between players' views; damage / death / loot stay
+       authoritative via monster id, not coordinates. */
+    clientSideMovement: true,
+    /* m.spd to write when applyZoneVariant remaps a server monster.
+       Matches createMonster's formula: 0.5 * spdMult.  Without this,
+       server-spawned goblins inherit fodder's 0.5 spd and local AI
+       chases at fodder speed even with clientSideMovement on. */
+    spd: 1.5,
   },
 };
 
@@ -86,7 +100,10 @@ export function isFodderLike(arch) {
 
 /* Mutate a monster object in-place so its archetype/type/arch reflect
    the per-zone variant.  Idempotent — calling twice is harmless.
-   Returns the same monster reference for chaining. */
+   Returns the same monster reference for chaining.
+   Also overrides m.spd with the variant's spd when set, so client-
+   authoritative AI runs at the variant's pace instead of the server's
+   base-archetype speed. */
 export function applyZoneVariant(monster, zoneId) {
   if (!monster || !zoneId) return monster;
   const overrides = ZONE_VARIANT_MAP[zoneId];
@@ -97,6 +114,8 @@ export function applyZoneVariant(monster, zoneId) {
   monster.archetype = variantKey;
   monster.type = variantKey;
   if (monster.arch !== undefined) monster.arch = variantKey;
+  const v = MONSTER_VARIANTS[variantKey];
+  if (v && v.spd != null) monster.spd = v.spd;
   return monster;
 }
 
@@ -107,4 +126,15 @@ export function incomingDmgScalarFor(monster) {
   const arch = monster && (monster.archetype || monster.type);
   const v = variantForArchetype(arch);
   return v ? v.incomingDmgScalar : 1;
+}
+
+/* True if this monster's variant overrides server-driven movement
+   with local AI.  Used by BroTown.jsx to bypass the
+   _serverMonsters position lock for specific variants (see fireGoblin
+   notes).  Returns false for raw archetypes and any variant without
+   the flag explicitly set. */
+export function usesClientSideMovement(monster) {
+  const arch = monster && (monster.archetype || monster.type);
+  const v = variantForArchetype(arch);
+  return !!(v && v.clientSideMovement);
 }

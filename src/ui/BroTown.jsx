@@ -47,7 +47,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
-import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor } from '@/data/monsterVariants.js';
+import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement } from '@/data/monsterVariants.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
@@ -1715,8 +1715,13 @@ export var BroTown = function BroTown(_ref0) {
                     var md = zoneData[mi];
                     var localM = S.monsters.find(function(m) { return m.id === md.id; });
                     if (localM) {
-                      localM.x = md.x;
-                      localM.y = md.y;
+                      /* Client-authoritative variants (e.g. fireGoblin)
+                         keep their locally-simulated position; server
+                         position is ignored.  HP / alive still sync. */
+                      if (!usesClientSideMovement(localM)) {
+                        localM.x = md.x;
+                        localM.y = md.y;
+                      }
                       localM.curHp = md.hp;
                       /* Don't overwrite maxHp — it stays at the spawn value */
                       if (md.alive && !localM.alive) {
@@ -5870,8 +5875,12 @@ export var BroTown = function BroTown(_ref0) {
             if (m._stunUntil && Date.now() < m._stunUntil) return;
 
             /* Status-based movement modifiers */
-            /* When server monsters are active, skip ALL local AI — server handles movement, aggro, attacks, respawns */
-            if (S._serverMonsters) {
+            /* When server monsters are active, skip ALL local AI — server handles movement, aggro, attacks, respawns.
+               EXCEPTION: client-authoritative variants (e.g. fireGoblin
+               with the clientSideMovement flag) fall through and run
+               their AI locally so per-archetype spdMult takes effect
+               even in MP. */
+            if (S._serverMonsters && !usesClientSideMovement(m)) {
               /* Only run render interpolation — smooth monster position toward server position */
               if (m.renderX === undefined) { m.renderX = m.x; m.renderY = m.y; }
               var mInterpDx = m.x - m.renderX;
