@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { weaponSwapBus } from './weaponSwapBus.js';
 import { WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon } from '../../data/gameSystems.js';
 
@@ -58,6 +58,11 @@ const PILL_BOTTOM = 'calc(var(--dash-h) + 6px)';
 export const WeaponSwapBar = () => {
   const [state, setState] = useState(readState);
   const active = state.slot;
+  const wrapRef = useRef(null);
+  // Track per-touch state so we can distinguish a tap (negligible
+  // movement) from a swipe.  Keyed by touch.identifier so multi-touch
+  // (e.g. joystick on another finger) doesn't interfere.
+  const touchesRef = useRef(new Map());
 
   useEffect(() => {
     setState(readState());
@@ -68,12 +73,74 @@ export const WeaponSwapBar = () => {
     return () => { off(); clearInterval(poll); };
   }, []);
 
+  /* Native non-passive touchmove on the pill wrapper.  preventDefaults
+     the gesture so iOS doesn't interpret an upward swipe across the
+     pill as a page-pan / URL-bar transition (the "rubber band").
+     Prior attempts (v2.1.78-80) attached this in various forms and were
+     reverted because they broke neighbouring interactions; this version
+     scopes the listener strictly to the pill element and only acts when
+     a touch that started inside the pill is still active, so a swipe
+     that originated elsewhere (e.g. the joystick) is never blocked. */
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const onMove = (e) => {
+      if (touchesRef.current.size === 0) return; // no tap-in-progress on the pill
+      if (e.cancelable) e.preventDefault();
+    };
+    el.addEventListener('touchmove', onMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onMove);
+  }, []);
+
   const dmgText = state.dmgMin === state.dmgMax
     ? String(state.dmgMin)
     : `${state.dmgMin}-${state.dmgMax}`;
 
+  const TAP_THRESHOLD_PX = 10;
+  const handleTouchStart = (e, slot) => {
+    e.stopPropagation();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      touchesRef.current.set(t.identifier, { slot, x: t.clientX, y: t.clientY, moved: false });
+    }
+  };
+  const handleTouchMove = (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      const rec = touchesRef.current.get(t.identifier);
+      if (!rec) continue;
+      const dx = t.clientX - rec.x;
+      const dy = t.clientY - rec.y;
+      if (dx * dx + dy * dy > TAP_THRESHOLD_PX * TAP_THRESHOLD_PX) rec.moved = true;
+    }
+  };
+  const handleTouchEnd = (e, slot) => {
+    let fired = false;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      const rec = touchesRef.current.get(t.identifier);
+      touchesRef.current.delete(t.identifier);
+      if (!rec || rec.moved) continue;
+      if (rec.slot !== slot) continue;
+      weaponSwapBus.setSlot(slot);
+      fired = true;
+    }
+    /* preventDefault here suppresses the synthetic onClick iOS would
+       otherwise dispatch ~300ms after touchend.  Without this, a touch
+       tap would fire the swap twice (once from touchend, once from the
+       click). Mouse clicks on desktop still hit the onClick handler
+       since they don't go through touchend. */
+    if (fired && e.cancelable) e.preventDefault();
+  };
+  const handleTouchCancel = (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      touchesRef.current.delete(e.changedTouches[i].identifier);
+    }
+  };
+
   return (
     <div
+      ref={wrapRef}
       style={{
         position: 'fixed',
         left: PILL_CENTER_X,
@@ -88,6 +155,7 @@ export const WeaponSwapBar = () => {
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
         overflow: 'hidden',
         zIndex: 35,
+        touchAction: 'none',
       }}
     >
       {/* Buttons row */}
@@ -105,16 +173,19 @@ export const WeaponSwapBar = () => {
           return (
             <button
               key={s.key}
-              // Fire on pointer/touch down (not onClick) so the swap works
-              // even while another finger is mid-drag on the right joystick.
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                weaponSwapBus.setSlot(s.key);
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                weaponSwapBus.setSlot(s.key);
-              }}
+              /* Tap-only: record the touch on start, mark as moved on
+                 touchmove past 10 px, fire swap on touchend only if not
+                 marked moved.  An accidental upward swipe across the
+                 pill no longer changes the weapon.  Keyed by touch
+                 identifier so a finger mid-drag on the right joystick
+                 doesn't block a tap from a second finger. */
+              onTouchStart={(e) => handleTouchStart(e, s.key)}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={(e) => handleTouchEnd(e, s.key)}
+              onTouchCancel={handleTouchCancel}
+              /* Mouse path (desktop) -- onPointerUp with no significant
+                 movement.  Click events still work as a fallback. */
+              onClick={(e) => { e.stopPropagation(); weaponSwapBus.setSlot(s.key); }}
               aria-label={s.key}
               style={{
                 width: BUTTON_SIZE,

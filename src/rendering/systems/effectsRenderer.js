@@ -405,8 +405,14 @@ export class EffectsRenderer {
       text.scale.set(1 + popBoost + critWiggle);
       if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
         /* Place icon flush to the right of the text. Text anchor is
-           (0.5, 0.5), so the right edge sits at text.x + text.width/2. */
-        dmg._pixiIcon.x = text.x + text.width / 2 + 3;
+           (0.5, 0.5), so the right edge sits at text.x + text.width/2.
+           Gap scales with fontSize because special-attack popups render
+           at 2x and the prior fixed 3 px was tight enough that the
+           icon visually clipped the last digit ("40" reading as
+           "4[sword]"). Stroked text also extends a few px past the
+           measured width on iOS canvas rendering. */
+        const _iconGap = Math.max(4, (text.style.fontSize || 21) * 0.18);
+        dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
       }
@@ -414,9 +420,10 @@ export class EffectsRenderer {
         /* Sub text sits after the icon if there is one, otherwise flush
            to the right edge of the main text.  Anchor is (0, 0.5) so
            setting .x places its left edge. */
-        let subX = text.x + text.width / 2 + 4;
+        const _subGap = Math.max(4, (text.style.fontSize || 21) * 0.18);
+        let subX = text.x + text.width / 2 + _subGap;
         if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
-          subX = dmg._pixiIcon.x + (dmg._pixiIcon.width || 0) + 4;
+          subX = dmg._pixiIcon.x + (dmg._pixiIcon.width || 0) + _subGap;
         }
         dmg._pixiSub.x = subX;
         dmg._pixiSub.y = text.y;
