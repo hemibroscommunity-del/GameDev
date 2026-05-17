@@ -6292,19 +6292,18 @@ export var BroTown = function BroTown(_ref0) {
                       }
                     }
                     if (shielded) {
-                      m._stunUntil = Date.now() + 2000;
+                      /* No longer stuns the monster on block.  The 2s
+                         stun (previously here) effectively prevented
+                         monsters from attacking at all while the player
+                         held shield -- block, stun, block again before
+                         the stun ended, repeat, monster never recovers.
+                         Block now only mitigates the incoming damage;
+                         the monster continues its normal attack cadence. */
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 30,
                         text: '🛡️ -' + dmgTaken,
                         color: '#60a5fa',
-                        ts: Date.now()
-                      });
-                      S.dmgNumbers.push({
-                        x: m.x,
-                        y: m.y - 25,
-                        text: 'STUNNED',
-                        color: '#f5c542',
                         ts: Date.now()
                       });
                       /* (block-impact sound is now BT_AUDIO.play('shield-block')
@@ -6642,18 +6641,8 @@ export var BroTown = function BroTown(_ref0) {
                  overshot.  -40 (v2.1.72, mid-frame) is the sweet spot
                  confirmed by user. */
               var _archHit = m.archetype || m.type;
-              var _isFodderHit = _archHit === 'fodder';
-              var _mHitY = _isFodderHit ? m.y - 40 : m.y;
-              /* Fodder slime gets a 34x50 AABB hitbox centred at
-                 (m.x, m.y - 40).  Closest-edge distance is checked
-                 against SWING_RANGE so the reach circle still applies
-                 -- but the hit zone is the rect, not a single point.
-                 Non-fodder monsters keep the point check. */
-              var _halfWHit = _isFodderHit ? 17 : 0;
-              var _halfHHit = _isFodderHit ? 25 : 0;
-              var _exHit = Math.max(0, Math.abs(m.x - P.x) - _halfWHit);
-              var _eyHit = Math.max(0, Math.abs(_mHitY - P.y) - _halfHHit);
-              var mDist = Math.sqrt(_exHit * _exHit + _eyHit * _eyHit);
+              var _mHitY = _archHit === 'fodder' ? m.y - 40 : m.y;
+              var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2));
               if (mDist > SWING_RANGE) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
               var angleDiff = mAngle - baseAngle;
@@ -8467,23 +8456,13 @@ export var BroTown = function BroTown(_ref0) {
               var _archProj = m.archetype || m.type;
               var _mProjY = m.y;
               var _hitR = a.isStaff ? 30 : 18;
-              /* Fodder slime is a rect (34x50 at m.y-40), not a circle.
-                 Use closest-edge distance so the projectile registers
-                 a hit when its tip is anywhere within the rect inflated
-                 by the projectile's normal radius. */
-              var _projHalfW = 0;
-              var _projHalfH = 0;
               if (_archProj === 'fodder') {
                 _mProjY = m.y - 40;
-                _projHalfW = 17;
-                _projHalfH = 25;
               } else if (_archProj === 'snowman') {
                 _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;
               }
-              var _exProj = Math.max(0, Math.abs(m.x - a._renderX) - _projHalfW);
-              var _eyProj = Math.max(0, Math.abs(_mProjY - a._renderY) - _projHalfH);
-              if (Math.sqrt(_exProj * _exProj + _eyProj * _eyProj) < _hitR) {
+              if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
                 a.hitIds.add(m.id);
                 var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
                 if (arrowElem) {

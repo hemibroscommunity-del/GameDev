@@ -659,10 +659,12 @@ export class EffectsRenderer {
         if (!sprite || sprite.destroyed) {
           sprite = new Sprite(projTex);
           sprite.anchor.set(0.5, 0.5);
-          /* 128 px source -> 0.08 = ~10 px on-screen.  Previously 0.4
-             read way too big (half the slime); user wanted ~80%
-             reduction. */
-          sprite.scale.set(0.08);
+          /* 128 px source -> 0.2 = ~25 px on-screen.  0.08 (v2.1.79)
+             was a 10 px dot -- so small the player couldn't see slime
+             projectiles flying at all.  0.4 (pre-v2.1.79) was way too
+             big (half the slime body).  0.2 is the middle ground:
+             clearly visible, still smaller than the slime. */
+          sprite.scale.set(0.2);
           this.projectileLayer.addChild(sprite);
           sp._pixiSprite = sprite;
           this.slimeProjSprites.push({ proj: sp, sprite });

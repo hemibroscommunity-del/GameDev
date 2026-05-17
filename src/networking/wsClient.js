@@ -457,11 +457,15 @@ export function setupWebSocket(ctx) {
                   hitM.hp = Math.round(payload.hpPct * hitM.maxHp);
                   hitM.curHp = hitM.hp;
                   hitM._hitFlash = Date.now();
-                  /* Show damage number (skip our own — we already show it locally) */
+                  /* Show damage number (skip our own — we already show it locally).
+                     Match the local-player path's convention: positive
+                     value, no leading dash.  Was: text: '-' + payload.dmg
+                     which read as a negative "-13" when own-player
+                     hits show "13". */
                   if (payload.attackerId !== S.myId) {
                     S.dmgNumbers.push({
                       x: hitM.x || hitM.renderX, y: (hitM.y || hitM.renderY) - 20,
-                      text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888',
+                      text: '' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888',
                       ts: Date.now()
                     });
                   }

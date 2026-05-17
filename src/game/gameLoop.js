@@ -3338,25 +3338,9 @@ export function setupGameLoop(ctx) {
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
-              /* Fodder slimes render as a 96-px sprite anchored at the
-                 feet (m.y is the feet), so the visual body sits ~40 px
-                 above m.y.  The pre-fix hit-test measured from m.y
-                 directly, making slimes feel impossible to hit -- the
-                 swing reach was checked against the feet point, far
-                 below the body.  Now: 34x50 AABB centred at
-                 (m.x, m.y - 40) for fodder, point-test for others.
-                 Closest-edge distance keeps the reach circle behaviour
-                 but expands the hit zone to the user-specified box. */
-              var _archHit = m.archetype || m.type;
-              var _isFodder = _archHit === 'fodder';
-              var _slimeCY = _isFodder ? m.y - 40 : m.y;
-              var _halfW = _isFodder ? 17 : 0;
-              var _halfH = _isFodder ? 25 : 0;
-              var _ex = Math.max(0, Math.abs(m.x - P.x) - _halfW);
-              var _ey = Math.max(0, Math.abs(_slimeCY - P.y) - _halfH);
-              var mDist = Math.sqrt(_ex * _ex + _ey * _ey);
+              var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(m.y - P.y, 2));
               if (mDist > SWING_RANGE) return;
-              var mAngle = Math.atan2(_slimeCY - P.y, m.x - P.x);
+              var mAngle = Math.atan2(m.y - P.y, m.x - P.x);
               var angleDiff = mAngle - baseAngle;
               while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
               while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
