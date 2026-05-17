@@ -1969,8 +1969,12 @@ export var BroTown = function BroTown(_ref0) {
               if (S.monsters) {
                 var hitM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (hitM) {
-                  hitM.hp = Math.round(payload.hpPct * hitM.maxHp);
-                  hitM.curHp = hitM.hp;
+                  /* Update curHp from the server's authoritative hpPct,
+                     but DON'T touch hitM.hp — that's the spawn-time
+                     max-HP reference the HP bar uses as its denominator.
+                     Clobbering it made curHp == hp on every hit, which
+                     locked the bar percentage at 100%. */
+                  hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
                   hitM._hitFlash = Date.now();
                   /* Show damage number (skip our own — we already show it locally) */
                   if (payload.attackerId !== S.myId) {
@@ -2000,7 +2004,10 @@ export var BroTown = function BroTown(_ref0) {
                 if (deadM) {
                   deadM.alive = false;
                   deadM.curHp = 0;
-                  deadM.hp = 0;
+                  /* Don't clobber deadM.hp — for server monsters it's
+                     the spawn-time max-HP reference used by the HP bar
+                     denominator.  Zeroing it broke every slime's bar
+                     on its 2nd life after respawn. */
                   /* Death particles */
                   for (var dp = 0; dp < 8; dp++) {
                     S.hitParticles.push({
@@ -6762,7 +6769,14 @@ export var BroTown = function BroTown(_ref0) {
                  confirmed by user. */
               var _archHit = m.archetype || m.type;
               var _mHitY = _archHit === 'fodder' ? m.y - 40 : m.y;
-              var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2));
+              /* Treat fodder slimes as a 20 px-radius blob — the
+                 96 px-tall sprite has a wide bottom that the
+                 player visually reads as touchable from further
+                 away than the m.x point check allows.  Subtract
+                 the body radius from the measured distance so
+                 swings that visually connect actually register. */
+              var _hitR = _archHit === 'fodder' ? 20 : 0;
+              var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
               if (mDist > SWING_RANGE) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
               var angleDiff = mAngle - baseAngle;
@@ -8586,6 +8600,10 @@ export var BroTown = function BroTown(_ref0) {
               var _hitR = a.isStaff ? 30 : 18;
               if (_archProj === 'fodder') {
                 _mProjY = m.y - 40;
+                /* Slime body is wider than the 18 px default — bump
+                   the radius so arrows that visually hit the body
+                   register.  Same intuition as the melee +20 bonus. */
+                _hitR = a.isStaff ? 38 : 26;
               } else if (_archProj === 'snowman') {
                 _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;

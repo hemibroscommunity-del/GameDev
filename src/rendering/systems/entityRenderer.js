@@ -690,8 +690,12 @@ export class EntityRenderer {
       }
 
       // HP bar — only redraw when the % changed (>0.01 movement).
+      // Use maxHp as the denominator so the bar survives server
+      // respawns (the kill handler used to zero m.hp, which broke
+      // every monster's bar on its 2nd life).
       const curHp = m.curHp != null ? m.curHp : m.hp;
-      const hpPct = Math.max(0, curHp / m.hp);
+      const maxHpDenom = m.maxHp || m.hp || 1;
+      const hpPct = Math.max(0, curHp / maxHpDenom);
       if (Math.abs(hpPct - display._lastHpPct) > 0.01) {
         display._lastHpPct = hpPct;
         const hpFill = display._hpFill;
