@@ -4364,17 +4364,21 @@ export const ARCHETYPES = {
     emoji: '🟢',
     color: '#3dd497'
   },
-  /* Fire goblin — Ember Fields variant.  Stats mirror fodder so the
-     server's authoritative HP (which only knows the base fodder archetype)
-     stays in sync with the local view.  Toughness is delivered by
-     a 1/4 incoming-damage scalar applied in the player hit paths
-     instead of inflated HP -- this way solo and multiplayer both
-     converge on 3-4 hits to kill.  Behaves like fodder for AI too
-     (telegraph + projectile shot, see BroTown.jsx ~6265/6298). */
+  /* Fire goblin — Ember Fields variant.  HP/dmg mirror fodder so the
+     server's authoritative scalars (which only know the base fodder
+     archetype) stay in sync with the local view.  Toughness is
+     delivered by a 1/4 incoming-damage scalar applied in the player
+     hit paths instead of inflated HP -- this way solo and multiplayer
+     both converge on 3-4 hits to kill.
+
+     spdMult: 3.0 -- goblin chases ~3x faster than slime fodder
+     (per user feedback v2.3.3).  Only affects single-player /
+     client-spawned monsters; server-managed monsters move at the
+     server's authoritative speed. */
   fireGoblin: {
     hpMult: 0.6,
     dmgMult: 0.8,
-    spdMult: 1.0,
+    spdMult: 3.0,
     emoji: '🔥',
     color: '#ea580c'
   },

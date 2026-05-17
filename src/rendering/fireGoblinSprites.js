@@ -43,18 +43,23 @@ const WALK_DIRS = ['s', 'sw', 'e', 'n'];
 const ATTACK_DIRS = ['s', 'sw', 'w', 'nw', 'n'];
 const HIT_DIRS = ['s', 'sw', 'nw', 'n'];
 
-/* WALK: only 4 source directions (no W / NW art).  Missing facings
-   pick the closest available pose; west reuses the side-on sw,
-   northwest falls back to the back-facing n. */
+/* WALK: only 4 source directions.  East-side facings (E, NE) use the
+   'e' sheet directly per user spec ("east doubles for NE").  Missing
+   west-side facings are produced by mirroring east-side sources:
+     west      -> mirror of 'e' (side-profile flipped)
+     southeast -> mirror of 'sw' (forward-3/4 flipped)
+     northwest -> 'n' (back-facing — closest available for up-left;
+                       no mirror because 'n' is symmetric and there's
+                       no proper NW source) */
 const WALK_MAP = {
   south:     { src: 's',  mirror: false },
   southwest: { src: 'sw', mirror: false },
-  west:      { src: 'sw', mirror: false },
+  west:      { src: 'e',  mirror: true  },
   northwest: { src: 'n',  mirror: false },
   north:     { src: 'n',  mirror: false },
   northeast: { src: 'e',  mirror: false },
   east:      { src: 'e',  mirror: false },
-  southeast: { src: 's',  mirror: false },
+  southeast: { src: 'sw', mirror: true  },
 };
 
 /* ATTACK: 5 source directions (N / NW / W / SW / S).  East-side
