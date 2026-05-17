@@ -3427,6 +3427,12 @@ export function setupGameLoop(ctx) {
                 var _expectedDmg = Math.round(_pDmgBase * specialMult);
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
+                /* fireGoblin armor — takes 1/4 incoming damage.  Server's
+                   HP is fodder-scale so the scaling here keeps local + server
+                   in sync (both deplete by dmg/4 per hit -> 3-4 hits to kill). */
+                if (m.archetype === 'fireGoblin' || m.type === 'fireGoblin') {
+                  dmg = Math.max(1, Math.round(dmg / 4));
+                }
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
                 var _hpBefore = m.curHp;
                 m.curHp -= dmg;

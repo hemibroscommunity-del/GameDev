@@ -6972,6 +6972,12 @@ export var BroTown = function BroTown(_ref0) {
                 var _expectedDmg = Math.round(_pDmgBase * specialMult);
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
+                /* fireGoblin armor — takes 1/4 incoming damage.  Server's
+                   HP is fodder-scale so the scaling here keeps local + server
+                   in sync (both deplete by dmg/4 per hit -> 3-4 hits to kill). */
+                if (m.archetype === 'fireGoblin' || m.type === 'fireGoblin') {
+                  dmg = Math.max(1, Math.round(dmg / 4));
+                }
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
                 /* Server-authoritative zones: HP only flows from server
                    monster_hit ticks.  Local decrement would race the
@@ -6988,7 +6994,7 @@ export var BroTown = function BroTown(_ref0) {
                    stays at 400 ms for its squash. */
                 {
                   var _hitArch = m.archetype || m.type;
-                  if ((_hitArch === 'fodder' || _hitArch === 'snowman') && m.curHp > 0) {
+                  if ((_hitArch === 'fodder' || _hitArch === 'fireGoblin' || _hitArch === 'snowman') && m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArch === 'snowman' ? 600 : 400);
                   }
@@ -8718,14 +8724,21 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 var _hpBefore = m.curHp;
-                if (!S._serverMonsters) m.curHp -= a.dmg;
-                if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: a.dmg, isCrit: false } });
+                /* fireGoblin armor — see melee path; arrows scale the
+                   same 1/4 so the goblin takes 3-4 hits regardless of
+                   weapon. */
+                var _arrowDmg = a.dmg;
+                if (m.archetype === 'fireGoblin' || m.type === 'fireGoblin') {
+                  _arrowDmg = Math.max(1, Math.round(_arrowDmg / 4));
+                }
+                if (!S._serverMonsters) m.curHp -= _arrowDmg;
+                if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
                    arrowCollision bonus damage applied below uses the
                    same anim window, no need to re-trigger. */
                 {
                   var _hitArchR = m.archetype || m.type;
-                  if ((_hitArchR === 'fodder' || _hitArchR === 'snowman') && m.curHp > 0) {
+                  if ((_hitArchR === 'fodder' || _hitArchR === 'fireGoblin' || _hitArchR === 'snowman') && m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArchR === 'snowman' ? 600 : 400);
                   }
@@ -8740,7 +8753,7 @@ export var BroTown = function BroTown(_ref0) {
                    reserved for melee swing damage. */
                 if (S.rpg) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);
                 if (S._serverMonsters && S.channel) {
-                  var arrowTotalDmg = a.dmg;
+                  var arrowTotalDmg = _arrowDmg;
                   if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
                   S.channel.send({ type: 'monster_damage', payload: {
                     monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null
