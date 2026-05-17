@@ -596,15 +596,14 @@ export class EntityRenderer {
           facing = SECTORS[((sector % 8) + 8) % 8];
           display._lastFacing = facing;
         }
-        /* Priority chain: hit recoil > attack wind-up > walk loop.
-           - Hit window: m._hitAnim{Start,End} (set on damage application).
-             Plays the directional recoil strip as a one-shot; a hit
-             always interrupts whatever the goblin was doing.
-           - Attack window: m._shootAnim{Start,End} (set by fodder AI
-             telegraph at BroTown.jsx ~6266, ~480 ms wind-up).
-           - Default: walk loop at 100 ms/frame. */
-        const hitNow    = m._hitAnimEnd   && now < m._hitAnimEnd   && hasFireGoblinHitFrames();
-        const attackNow = m._shootAnimEnd && now < m._shootAnimEnd && hasFireGoblinAttackFrames();
+        /* Priority chain: hit recoil > walk loop.  Attack-strip
+           playback during the telegraph window is disabled per user
+           feedback v2.2.6 — the cast pose interrupted the walk loop
+           in a way that read as a teleport.  The fireball still fires
+           on schedule; the goblin just keeps walking through the
+           wind-up.  Re-enable by restoring the attackNow branch + the
+           getFireGoblinAttackFrame import. */
+        const hitNow = m._hitAnimEnd && now < m._hitAnimEnd && hasFireGoblinHitFrames();
         let frame;
         if (hitNow) {
           const hfc = fireGoblinHitFrameCount(facing);
@@ -612,12 +611,6 @@ export class EntityRenderer {
           const t = (now - m._hitAnimStart) / dur;
           const hIdx = hfc > 0 ? Math.max(0, Math.min(hfc - 1, Math.floor(t * hfc))) : 0;
           frame = getFireGoblinHitFrame(facing, hIdx);
-        } else if (attackNow) {
-          const afc = fireGoblinAttackFrameCount(facing);
-          const dur = Math.max(1, m._shootAnimEnd - m._shootAnimStart);
-          const t = (now - m._shootAnimStart) / dur;
-          const aIdx = afc > 0 ? Math.max(0, Math.min(afc - 1, Math.floor(t * afc))) : 0;
-          frame = getFireGoblinAttackFrame(facing, aIdx);
         } else {
           const fc = fireGoblinFrameCount(facing);
           const phaseOff = ((m.spawnX || 0) | 0) % 800;
