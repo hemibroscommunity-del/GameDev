@@ -1,9 +1,10 @@
 /* Fire-goblin monster sprite loader for the Pixi renderer.
  *
- * Two animation sets, each a per-facing strip of 8 × 256 px square
+ * Three animation sets, each a per-facing strip of 8 × 256 px square
  * frames:
- *   walk-{s|sw|e|n}.png       — 4 source directions for the walk loop
- *   attack-{s|sw|w|nw|n}.png  — 5 source directions for the wind-up swing
+ *   walk-{s|sw|e|n}.png        — 4 source directions for the walk loop
+ *   attack-{s|sw|w|nw|n}.png   — 5 source directions for the wind-up
+ *   hit-{s|sw|nw|n}.png        — 4 source directions for the recoil
  *
  * 8-facing DIR_MAP per set; missing facings reuse the closest source
  * with mirror=true where the motion flips cleanly, or fall through to
@@ -21,10 +22,11 @@ const FRAME_H = 256;
 
 /* Bump on every sprite-art change so Cloudflare Pages' edge cache
    serves the new PNG instead of the old one. */
-const SPRITE_VERSION = '2.2.2';
+const SPRITE_VERSION = '2.2.3';
 
 const WALK_DIRS = ['s', 'sw', 'e', 'n'];
 const ATTACK_DIRS = ['s', 'sw', 'w', 'nw', 'n'];
+const HIT_DIRS = ['s', 'sw', 'nw', 'n'];
 
 /* WALK: only 4 source directions (no W / NW art).  Missing facings
    pick the closest available pose; west reuses the side-on sw,
@@ -54,8 +56,23 @@ const ATTACK_MAP = {
   southeast: { src: 'sw', mirror: true  },
 };
 
+/* HIT: 4 source directions (N / NW / SW / S).  Per user note the SW
+   source is mostly side-on, so it doubles for both SW and W (and
+   mirrors for E and SE).  NW mirrors to NE. */
+const HIT_MAP = {
+  south:     { src: 's',  mirror: false },
+  southwest: { src: 'sw', mirror: false },
+  west:      { src: 'sw', mirror: false },
+  northwest: { src: 'nw', mirror: false },
+  north:     { src: 'n',  mirror: false },
+  northeast: { src: 'nw', mirror: true  },
+  east:      { src: 'sw', mirror: true  },
+  southeast: { src: 'sw', mirror: true  },
+};
+
 const walkSheets = {};   // dir -> { frames: Texture[] }
 const attackSheets = {}; // dir -> { frames: Texture[] }
+const hitSheets = {};    // dir -> { frames: Texture[] }
 let loadPromise = null;
 
 async function loadStrip(url, into, key) {
@@ -84,6 +101,9 @@ export function loadFireGoblinSprites() {
   }
   for (const d of ATTACK_DIRS) {
     tasks.push(loadStrip(`/sprites/monsters/fire-goblin/attack-${d}.png?v=${SPRITE_VERSION}`, attackSheets, d));
+  }
+  for (const d of HIT_DIRS) {
+    tasks.push(loadStrip(`/sprites/monsters/fire-goblin/hit-${d}.png?v=${SPRITE_VERSION}`, hitSheets, d));
   }
   loadPromise = Promise.all(tasks);
   return loadPromise;
@@ -126,4 +146,16 @@ export function attackFrameCount(facing) {
 
 export function hasAttackFrames() {
   return Object.keys(attackSheets).length > 0;
+}
+
+export function getHitFrame(facing, frameIdx) {
+  return lookup(HIT_MAP, hitSheets, facing, frameIdx);
+}
+
+export function hitFrameCount(facing) {
+  return countOf(HIT_MAP, hitSheets, facing);
+}
+
+export function hasHitFrames() {
+  return Object.keys(hitSheets).length > 0;
 }

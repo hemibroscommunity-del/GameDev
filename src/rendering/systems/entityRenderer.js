@@ -10,7 +10,7 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
-import { getFrame as getFireGoblinFrame, hasFrames as hasFireGoblinFrames, frameCount as fireGoblinFrameCount, getAttackFrame as getFireGoblinAttackFrame, hasAttackFrames as hasFireGoblinAttackFrames, attackFrameCount as fireGoblinAttackFrameCount } from '../fireGoblinSprites.js';
+import { getFrame as getFireGoblinFrame, hasFrames as hasFireGoblinFrames, frameCount as fireGoblinFrameCount, getAttackFrame as getFireGoblinAttackFrame, hasAttackFrames as hasFireGoblinAttackFrames, attackFrameCount as fireGoblinAttackFrameCount, getHitFrame as getFireGoblinHitFrame, hasHitFrames as hasFireGoblinHitFrames, hitFrameCount as fireGoblinHitFrameCount } from '../fireGoblinSprites.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
@@ -560,15 +560,23 @@ export class EntityRenderer {
           facing = SECTORS[((sector % 8) + 8) % 8];
           display._lastFacing = facing;
         }
-        /* Attack window takes priority over walk loop.  Fodder AI in
-           BroTown.jsx ~6266 sets _shootAnim{Start,End} on the telegraph
-           wind-up, so the attack strip plays during the ~480 ms warning
-           before the hit lands.  Play it as a one-shot from frame 0,
-           clamped to the last frame so the swing reads as committing
-           through. */
-        const attackingNow = m._shootAnimEnd && now < m._shootAnimEnd && hasFireGoblinAttackFrames();
+        /* Priority chain: hit recoil > attack wind-up > walk loop.
+           - Hit window: m._hitAnim{Start,End} (set on damage application).
+             Plays the directional recoil strip as a one-shot; a hit
+             always interrupts whatever the goblin was doing.
+           - Attack window: m._shootAnim{Start,End} (set by fodder AI
+             telegraph at BroTown.jsx ~6266, ~480 ms wind-up).
+           - Default: walk loop at 100 ms/frame. */
+        const hitNow    = m._hitAnimEnd   && now < m._hitAnimEnd   && hasFireGoblinHitFrames();
+        const attackNow = m._shootAnimEnd && now < m._shootAnimEnd && hasFireGoblinAttackFrames();
         let frame;
-        if (attackingNow) {
+        if (hitNow) {
+          const hfc = fireGoblinHitFrameCount(facing);
+          const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);
+          const t = (now - m._hitAnimStart) / dur;
+          const hIdx = hfc > 0 ? Math.max(0, Math.min(hfc - 1, Math.floor(t * hfc))) : 0;
+          frame = getFireGoblinHitFrame(facing, hIdx);
+        } else if (attackNow) {
           const afc = fireGoblinAttackFrameCount(facing);
           const dur = Math.max(1, m._shootAnimEnd - m._shootAnimStart);
           const t = (now - m._shootAnimStart) / dur;
@@ -584,11 +592,14 @@ export class EntityRenderer {
         }
         if (frame && frame.tex) {
           if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;
-          /* Hit reaction squash — reuse the slime path's math so the
-             goblin recoil reads the same as everything else. */
+          /* Squash is suppressed when the dedicated hit sheet is playing
+             — the sheet already shows the recoil, so doubling it with a
+             scale flatten looks rubbery.  Keep the squash as a fallback
+             for the brief moment between damage application and the
+             hit sheet finishing loading. */
           let sqx = 1, sqy = 1;
           const hittingNow = m._hitAnimEnd && now < m._hitAnimEnd;
-          if (hittingNow) {
+          if (hittingNow && !hitNow) {
             const hp = (now - m._hitAnimStart) / Math.max(1, m._hitAnimEnd - m._hitAnimStart);
             if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
             else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
