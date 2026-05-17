@@ -10,7 +10,7 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
-import { getFrame as getFireGoblinFrame, hasFrames as hasFireGoblinFrames, frameCount as fireGoblinFrameCount } from '../fireGoblinSprites.js';
+import { getFrame as getFireGoblinFrame, hasFrames as hasFireGoblinFrames, frameCount as fireGoblinFrameCount, getAttackFrame as getFireGoblinAttackFrame, hasAttackFrames as hasFireGoblinAttackFrames, attackFrameCount as fireGoblinAttackFrameCount } from '../fireGoblinSprites.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
@@ -560,12 +560,28 @@ export class EntityRenderer {
           facing = SECTORS[((sector % 8) + 8) % 8];
           display._lastFacing = facing;
         }
-        const fc = fireGoblinFrameCount(facing);
-        const phaseOff = ((m.spawnX || 0) | 0) % 800;
-        /* 100 ms/frame -> 8-frame loop completes in ~0.8 s, a brisk
-           torch-bearer pace that reads as walking. */
-        const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 100) % fc : 0;
-        const frame = getFireGoblinFrame(facing, frameIdx);
+        /* Attack window takes priority over walk loop.  Fodder AI in
+           BroTown.jsx ~6266 sets _shootAnim{Start,End} on the telegraph
+           wind-up, so the attack strip plays during the ~480 ms warning
+           before the hit lands.  Play it as a one-shot from frame 0,
+           clamped to the last frame so the swing reads as committing
+           through. */
+        const attackingNow = m._shootAnimEnd && now < m._shootAnimEnd && hasFireGoblinAttackFrames();
+        let frame;
+        if (attackingNow) {
+          const afc = fireGoblinAttackFrameCount(facing);
+          const dur = Math.max(1, m._shootAnimEnd - m._shootAnimStart);
+          const t = (now - m._shootAnimStart) / dur;
+          const aIdx = afc > 0 ? Math.max(0, Math.min(afc - 1, Math.floor(t * afc))) : 0;
+          frame = getFireGoblinAttackFrame(facing, aIdx);
+        } else {
+          const fc = fireGoblinFrameCount(facing);
+          const phaseOff = ((m.spawnX || 0) | 0) % 800;
+          /* 100 ms/frame -> 8-frame loop completes in ~0.8 s, a brisk
+             torch-bearer pace that reads as walking. */
+          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / 100) % fc : 0;
+          frame = getFireGoblinFrame(facing, frameIdx);
+        }
         if (frame && frame.tex) {
           if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;
           /* Hit reaction squash — reuse the slime path's math so the
