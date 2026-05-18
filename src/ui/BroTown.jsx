@@ -6624,6 +6624,22 @@ export var BroTown = function BroTown(_ref0) {
                         _R6.hp = Math.min(_R6.maxHp, _R6.hp + _ss.gemBonus.value);
                       }
                     }
+                    /* Variant block-punish stun (e.g. skeleton: 5 s).
+                       Local AI loop checks m._stunUntil and skips the
+                       monster's update while it's set, so the chase
+                       freezes for the configured window.  Floats a
+                       "STUNNED" popup over the monster so the punish
+                       reads. */
+                    if (_localAtkVariant && _localAtkVariant.blockStunMs) {
+                      m._stunUntil = Math.max(m._stunUntil || 0, Date.now() + _localAtkVariant.blockStunMs);
+                      S.dmgNumbers.push({
+                        x: m.x,
+                        y: m.y - 30,
+                        text: 'STUNNED!',
+                        color: '#fbbf24',
+                        ts: Date.now()
+                      });
+                    }
                   }
 
                   /* Volatile: AoE damage burst when low HP */

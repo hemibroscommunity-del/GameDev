@@ -106,6 +106,11 @@ export const MONSTER_VARIANTS = {
        before defense + final damage are computed).  v2.3.49 bumped
        2 -> 4 per user request. */
     dmgMult: 4,
+    /* Block punish -- a successful shield block on a skeleton swing
+       stuns it for 5 s.  Reads as a tactical reward: time the block,
+       freeze the chase, capitalize.  Applied in BroTown.jsx's local
+       melee shielded branch. */
+    blockStunMs: 5000,
     xpMult: 2,                /* skeleton form is the harder kill */
   },
   fireGoblin: {

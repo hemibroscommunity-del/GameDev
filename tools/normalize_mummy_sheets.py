@@ -19,6 +19,15 @@ FRAME_H = 256
 N_FRAMES = 16
 TARGET_H = 220
 
+# Per-direction override for cases where a pose reads visibly smaller
+# despite the height match.  nw bumped 10 % per user (the NE+NW slots
+# read smaller than S/SE/W/N in-game; the source pose tucks the arms
+# in tighter than the others so the perceived silhouette is narrower
+# even at the same TARGET_H).
+TARGET_H_BY_DIR = {
+    'nw': 242,
+}
+
 DIRS = ['s', 'se', 'w', 'nw', 'n']
 
 
@@ -67,7 +76,8 @@ def normalize(direction):
     # at the extreme ends get a few px shaved.  This is preferable to
     # the v2.3.47 max-width cap, which made walk-n render 207 px tall
     # while the rest were 220, producing visibly mismatched sizes.
-    scale = TARGET_H / bbox_h
+    target_h = TARGET_H_BY_DIR.get(direction, TARGET_H)
+    scale = target_h / bbox_h
     new_w = int(round(bbox_w * scale))
     new_h = int(round(bbox_h * scale))
     out_sheet = Image.new('RGBA', (FRAME_W * N_FRAMES, FRAME_H), (0, 0, 0, 0))
