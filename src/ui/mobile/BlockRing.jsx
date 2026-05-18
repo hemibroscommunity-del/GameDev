@@ -249,12 +249,24 @@ export const BlockRing = () => {
 
   // Outer wrapper: pointer-events: none — touches inside the joystick fall
   // through to the underlying joystick and continue to drive auto-attack.
+  //
+  // z-index ladder (game.css + minigame overlays):
+  //   bt-joystick-zone:    30
+  //   bt-interact-prompt:  35   ← contextual "press to do X" prompts
+  //   {Fishing,Cooking,WoodChop,Mining}Minigame: 100
+  //   MoreOverlay:        9200
+  // Shield sits at 10 so taps on any of the above land on the menu/minigame,
+  // not on the shield icon — user request: "shield should be behind the
+  // contextual menu and minigame UI."  Was 31, which put the shield ABOVE
+  // the joystick zone but BELOW the prompts — sufficient mathematically,
+  // but the inner icon's pointer-events: auto still managed to steal taps
+  // in overlap edges (narrow screens, shield rotated to bottom of ring).
   return (
     <div style={{
       position: 'fixed',
       left: cx - ringOuter, top: cy - ringOuter,
       width: size, height: size,
-      zIndex: 31,
+      zIndex: 10,
       pointerEvents: 'none',
     }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}

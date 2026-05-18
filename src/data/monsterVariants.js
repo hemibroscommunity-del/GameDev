@@ -1,3 +1,5 @@
+import { ZONES } from './zones.js';
+
 /* ═══ MONSTER VARIANT REGISTRY ═══
  *
  * Single source of truth for per-zone monster skins.
@@ -118,13 +120,26 @@ export function isFodderLike(arch) {
 }
 
 /* Mutate a monster object in-place so its archetype/type/arch reflect
-   the per-zone variant.  Idempotent — calling twice is harmless.
+   the per-zone variant AND its level is clamped to the zone's
+   level range.  Idempotent — calling twice is harmless.
    Returns the same monster reference for chaining.
    Also overrides m.spd with the variant's spd when set, so client-
    authoritative AI runs at the variant's pace instead of the server's
-   base-archetype speed. */
+   base-archetype speed.
+
+   The level clamp is the client-side defense against server-sent
+   monsters that exceed the zone's spec (e.g. elemental zone 1 caps
+   at [1, 2] — see zones.js).  Runs first so it applies to every
+   per-zone monster regardless of whether a variant remap follows. */
 export function applyZoneVariant(monster, zoneId) {
   if (!monster || !zoneId) return monster;
+  const zone = ZONES[zoneId];
+  if (zone && Array.isArray(zone.level) && zone.level.length === 2 && typeof monster.level === 'number') {
+    const minLv = zone.level[0];
+    const maxLv = zone.level[1];
+    if (maxLv > 0 && monster.level > maxLv) monster.level = maxLv;
+    if (monster.level < minLv) monster.level = minLv;
+  }
   const overrides = ZONE_VARIANT_MAP[zoneId];
   if (!overrides) return monster;
   const baseArch = monster.archetype || monster.type || monster.arch;
