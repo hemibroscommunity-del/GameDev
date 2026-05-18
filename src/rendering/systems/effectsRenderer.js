@@ -1091,7 +1091,41 @@ export class EffectsRenderer {
     if (l._pixiTimer && !l._pixiTimer.destroyed) l._pixiTimer.destroy();
     if (l._pixiCount && !l._pixiCount.destroyed) l._pixiCount.destroy();
     if (l._pixiIcon && !l._pixiIcon.destroyed) l._pixiIcon.destroy();
+    if (l._pixiCoinSprite && !l._pixiCoinSprite.destroyed) l._pixiCoinSprite.destroy();
+    if (l._pixiCoinLabel && !l._pixiCoinLabel.destroyed) l._pixiCoinLabel.destroy();
     l._pixiSprite = l._pixiLabel = l._pixiTimer = l._pixiCount = l._pixiIcon = null;
+    l._pixiCoinSprite = l._pixiCoinLabel = null;
+  }
+
+  /** Draw a gold-coin sprite + "<n>G" label centered at (l.x, anchorY),
+   *  layered ABOVE any remnants/wreck sprite already added for this loot
+   *  entry.  Uses dedicated _pixiCoinSprite / _pixiCoinLabel slots so it
+   *  doesn't collide with the remnants' _pixiSprite. */
+  _renderCoinOverlay(l, anchorY, alpha) {
+    const goldTex = POPUP_ICONS.gold;
+    if (goldTex) {
+      if (!l._pixiCoinSprite || l._pixiCoinSprite.destroyed) {
+        const sp = new Sprite(goldTex);
+        sp.anchor.set(0.5, 0.5);
+        this.lootLayer.addChild(sp);
+        l._pixiCoinSprite = sp;
+      }
+      l._pixiCoinSprite.x = l.x;
+      l._pixiCoinSprite.y = anchorY;
+      l._pixiCoinSprite.alpha = alpha;
+      l._pixiCoinSprite.scale.set(12 / (l._pixiCoinSprite.texture.width || 12));
+      l._pixiCoinSprite.visible = true;
+    }
+    if (!l._pixiCoinLabel || l._pixiCoinLabel.destroyed) {
+      l._pixiCoinLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
+      l._pixiCoinLabel.anchor.set(0.5, 0);
+      this.lootLayer.addChild(l._pixiCoinLabel);
+    }
+    const cStr = l.coins + 'G';
+    if (l._pixiCoinLabel.text !== cStr) l._pixiCoinLabel.text = cStr;
+    l._pixiCoinLabel.x = l.x;
+    l._pixiCoinLabel.y = anchorY + 7;
+    l._pixiCoinLabel.alpha = alpha;
   }
 
   _updateGroundLoot(S, now) {
@@ -1236,6 +1270,10 @@ export class EffectsRenderer {
           const targetPx = variantRemnTex ? (variant.remnantsScalePx || 48) : 48;
           l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
           l._pixiSprite.visible = true;
+          /* Coin sits ON TOP of the remnants when gold rides on this drop.
+             10 px above center so the player can see there's gold to grab
+             without picking up the skull blindly. */
+          if (l.coins) this._renderCoinOverlay(l, l.y - 10 + bob, alpha);
           continue;
         }
       }
@@ -1257,6 +1295,8 @@ export class EffectsRenderer {
         l._pixiSprite.alpha = 1;
         l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
+        /* Coin sits on top of the wreck when gold rides on this drop. */
+        if (l.coins) this._renderCoinOverlay(l, l.y - 14, alpha);
         continue;
       }
 
