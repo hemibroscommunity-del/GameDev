@@ -1299,8 +1299,11 @@ export class EffectsRenderer {
         /* Pick the remnants art for this kill.  Variants supply their
            own remnants texture via variantSprites; raw fodder uses the
            slime splat.  Falls back to the slime sheet if the variant
-           remnants haven't loaded yet. */
+           remnants haven't loaded yet -- unless the variant opts out
+           via noFodderRemnants (e.g. mummy / skeleton, where a green
+           slime splat would look out of place in Desert Winds). */
         const variant = MONSTER_VARIANTS[l.skull] || null;
+        if (variant && variant.noFodderRemnants) continue;
         const variantSprites = variant ? variantSpritesFor(l.skull) : null;
         const variantRemnTex = variantSprites && variantSprites.remnants ? variantSprites.remnants.get() : null;
         const slimeRemnantsTex = hasSlimeState('remnants') ? getSlimeFrame('remnants', 0) : null;

@@ -47,7 +47,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
-import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
+import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
@@ -6548,7 +6548,15 @@ export var BroTown = function BroTown(_ref0) {
                      application + archetype effects below — fodder has
                      no archetype effects, so nothing else is needed
                      here. */
-                  if (isFodderLike(arch)) {
+                  /* isFodderLike covers raw fodder AND any variant with
+                     baseArchetype: 'fodder' (mummy, skeleton, fireGoblin
+                     etc.).  Variants opt out of the slime orb spawn by
+                     setting MONSTER_VARIANTS[arch].noProjectile -- e.g.
+                     mummies are pure melee shamblers, no green orb.
+                     Without this gate every mummy was firing slime
+                     projectiles at the player. */
+                  var _variantCfg = MONSTER_VARIANTS[arch];
+                  if (isFodderLike(arch) && !(_variantCfg && _variantCfg.noProjectile)) {
                     var _projAng = Math.atan2(P.y - m.y, P.x - m.x);
                     if (!S.slimeProjectiles) S.slimeProjectiles = [];
                     /* life=35 ticks × speed=4 px = 140 px range, just past

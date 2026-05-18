@@ -47,6 +47,14 @@ export const MONSTER_VARIANTS = {
     spd: 0.4,                 /* slower than fodder's 0.5 */
     xpMult: 1,                /* base XP -- the skeleton form pays
                                  the second-hit XP via its own mult */
+    /* Mummies are pure melee shamblers -- no ranged slime orb, and
+       their loot drop shouldn't render the green slime splat the
+       fodder branch falls back to when a variant has no remnants
+       art of its own.  Both flags checked at the existing fodder-
+       inheritance sites (BroTown.jsx projectile spawn,
+       effectsRenderer.js ground-loot fodder branch). */
+    noProjectile: true,
+    noFodderRemnants: true,
     /* Transform trigger -- when m.curHp / m.maxHp drops below this,
        the mummy plays transform.png frames then swaps archetype to
        'skeleton' (see transformsTo).  Set false to disable. */
@@ -73,6 +81,13 @@ export const MONSTER_VARIANTS = {
     spd: 1.4,                 /* charges the player vs fodder's 0.5 */
     clientSideMovement: true, /* same trick as fireGoblin: local AI
                                  chase since server only knows fodder */
+    /* Skeleton inherits the no-projectile + no-slime-remnants flags
+       from the mummy form so the inheritance doesn't reappear after
+       the transform (the swap leaves baseArchetype: 'fodder' in
+       place for AI dispatch, which would otherwise re-arm the slime
+       orb fire and the slime-splat ground loot). */
+    noProjectile: true,
+    noFodderRemnants: true,
     xpMult: 2,                /* skeleton form is the harder kill */
   },
   fireGoblin: {
