@@ -1378,7 +1378,7 @@ export class EffectsRenderer {
     const gfx = this.nodeGfx;
     gfx.clear();
 
-    const nodes = S._gatherNodes || [];
+    const nodes = S.gatherNodes || [];
     /* Player position for proximity-tooltip distance test. */
     const px = S.player ? S.player.x : 0;
     const py = S.player ? S.player.y : 0;
