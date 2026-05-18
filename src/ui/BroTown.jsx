@@ -2227,6 +2227,15 @@ export var BroTown = function BroTown(_ref0) {
                 break;
               }
               var mDmg = payload.dmg || 5;
+              /* Per-variant damage multiplier -- the skeleton form
+                 (post-mummy-transform) deals 2x the base.  Server
+                 doesn't know about variants, so we scale here on the
+                 client using the LOCAL archetype of the attacker. */
+              var _atkArchKey = atkSrc.archetype || atkSrc.type;
+              var _atkVariant = MONSTER_VARIANTS[_atkArchKey];
+              if (_atkVariant && _atkVariant.dmgMult) {
+                mDmg = Math.ceil(mDmg * _atkVariant.dmgMult);
+              }
               /* Apply player defense */
               var pDef2 = (R2.endurance || 0) * 0.5 + ((R2.armor ? R2.armor.tierMult : 1) || 1) * 3;
               var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);

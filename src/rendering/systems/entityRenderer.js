@@ -624,56 +624,35 @@ export class EntityRenderer {
          at spawn time for any variant, so it's safe to reuse here. */
       if (variantKey && display._spriteBody && variantSprites && variantSprites.walk && variantSprites.walk.has()) {
         const spriteBody = display._spriteBody;
-        /* Facing tracks the per-frame velocity directly so direction
-           changes register immediately (user request v2.3.2).  The
-           v2.3.1 EMA smoothing fixed flicker but introduced lag.
-           Higher threshold here suppresses sub-pixel wobble across
-           sector boundaries without delaying real direction changes:
-           real motion is ~3 px/frame, server-tick interpolation
-           wobble is ~0.1-0.2 px, so 0.5 px squared (= 0.25) splits
-           cleanly between them.
+        /* Facing: immediate commit on each moving frame, with a short
+           lock-out after each change so adjacent-sector wobble during
+           diagonal motion can't swap the sprite every frame.
 
-           Debounce: server-driven monsters (mummy etc.) move via
-           step-function position updates at the server tick rate, so
-           two consecutive ticks can land on different sectors when
-           the angle sits near a 22.5-deg boundary -- which read as
-           sprite-sheet flicker on diagonals.  Hold a candidate
-           facing for FACING_DEBOUNCE_MS before applying it; quick
-           boundary wobbles get filtered, real direction changes
-           still update within ~70 ms.  fireGoblin doesn't trip this
-           because clientSideMovement gives smooth per-frame motion. */
+           Previous v2.3.44 used a "candidate must persist 70 ms"
+           debounce.  Net effect on server-driven monsters: facing
+           took 2-3 server ticks to commit even on clean direction
+           changes, AND if any tick landed in an adjacent sector the
+           timer restarted, so user saw "insensitive" facing updates.
+           The lock-out flips it: commit immediately, then block for
+           FACING_LOCK_MS.  Real direction changes (which arrive at
+           >100 ms server-tick spacing) sail past the lock; same-
+           frame wobble can't sneak a second change in. */
         const dx = m.x - (display._lastX != null ? display._lastX : m.x);
         const dy = m.y - (display._lastY != null ? display._lastY : m.y);
-        /* Threshold lowered v2.3.46: 0.25 (0.5 px/frame) worked for
-           client-side variants (fireGoblin/skeleton at ~1.4 px/frame)
-           but excluded server-driven mummies (~0.4 px/tick).  Mummy
-           was stuck on the initial 'south' facing because dx² = 0.16
-           never cleared the bar.  0.04 (0.2 px/frame) catches the
-           mummy's slow shuffle; wobble (~0.1-0.2 px reported in the
-           v2.3.2 comment) lands at the edge but the 70 ms debounce
-           below filters anything that doesn't persist. */
         const moving = dx * dx + dy * dy > 0.04;
         let facing = display._lastFacing || 'south';
-        const FACING_DEBOUNCE_MS = 70;
+        const FACING_LOCK_MS = 50;
         if (moving) {
           const ang = Math.atan2(dy, dx);
           const sector = Math.round(ang / (Math.PI / 4));
           const candidate = SECTORS[((sector % 8) + 8) % 8];
           display._lastMovedAt = now;
-          if (candidate === facing) {
-            /* Same direction as current -- clear any pending swap. */
-            display._pendingFacing = null;
-            display._pendingFacingAt = 0;
-          } else if (display._pendingFacing !== candidate) {
-            /* New candidate direction -- start the dwell timer. */
-            display._pendingFacing = candidate;
-            display._pendingFacingAt = now;
-          } else if (now - display._pendingFacingAt >= FACING_DEBOUNCE_MS) {
-            /* Candidate has held for the dwell window -- commit. */
-            facing = candidate;
-            display._lastFacing = candidate;
-            display._pendingFacing = null;
-            display._pendingFacingAt = 0;
+          if (candidate !== facing) {
+            if (!display._lastFacing || now - (display._lastFacingChangeAt || 0) >= FACING_LOCK_MS) {
+              facing = candidate;
+              display._lastFacing = candidate;
+              display._lastFacingChangeAt = now;
+            }
           }
         }
         /* Idle pose -- when the monster hasn't moved for ~150 ms, hold a

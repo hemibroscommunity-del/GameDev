@@ -41,7 +41,10 @@ export const MONSTER_VARIANTS = {
     baseArchetype: 'fodder',
     incomingDmgScalar: 0.5,   /* ~2 hits to push past transform threshold */
     liveScalePx: 64,
-    walkFrameMs: 90,          /* shuffle, slower than fodder slime */
+    walkFrameMs: 180,         /* deliberate shuffle -- 50 % slower
+                                 than the v2.3.42 90 ms cadence to
+                                 match the actual on-screen travel
+                                 speed (user request). */
     deathMs: 1000,
     remnantsScalePx: 48,
     spd: 0.4,                 /* slower than fodder's 0.5 */
@@ -90,6 +93,12 @@ export const MONSTER_VARIANTS = {
        orb fire and the slime-splat ground loot). */
     noProjectile: true,
     noFodderRemnants: true,
+    /* 2x outgoing damage scalar -- the skeleton is the "danger" form
+       of the mummy, so its melee swings hit twice as hard.  Applied
+       in BroTown.jsx's monster_attack handler (we scale the server's
+       payload.dmg by the attacker variant's dmgMult before computing
+       defense + final damage taken). */
+    dmgMult: 2,
     xpMult: 2,                /* skeleton form is the harder kill */
   },
   fireGoblin: {
