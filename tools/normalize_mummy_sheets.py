@@ -16,7 +16,7 @@ OUT_DIR = os.path.join(REPO, 'public', 'sprites', 'monsters', 'mummy')
 
 FRAME_W = 256
 FRAME_H = 256
-N_FRAMES = 8
+N_FRAMES = 16
 TARGET_H = 220
 
 DIRS = ['s', 'se', 'w', 'nw', 'n']

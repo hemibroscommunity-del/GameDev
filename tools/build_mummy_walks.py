@@ -28,7 +28,7 @@ import numpy as np
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(REPO, 'public', 'sprites', 'monsters', 'mummy')
-N_FRAMES = 8
+N_FRAMES = 16
 FRAME = 256
 KEY = np.array([255, 0, 255], dtype=np.int16)
 SIM = 95

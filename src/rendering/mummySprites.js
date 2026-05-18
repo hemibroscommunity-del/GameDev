@@ -23,7 +23,7 @@ const FRAME_H = 256;
 
 /* Bump on every sprite-art change so Cloudflare Pages' edge cache
    serves the new PNG instead of the old one. */
-const SPRITE_VERSION = '2.3.39';
+const SPRITE_VERSION = '2.3.48';
 
 const WALK_DIRS = ['s', 'se', 'w', 'nw', 'n'];
 

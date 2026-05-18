@@ -41,10 +41,11 @@ export const MONSTER_VARIANTS = {
     baseArchetype: 'fodder',
     incomingDmgScalar: 0.5,   /* ~2 hits to push past transform threshold */
     liveScalePx: 64,
-    walkFrameMs: 180,         /* deliberate shuffle -- 50 % slower
-                                 than the v2.3.42 90 ms cadence to
-                                 match the actual on-screen travel
-                                 speed (user request). */
+    walkFrameMs: 90,          /* v2.3.48: walk strip now has 16 frames
+                                 (was 8).  Cycle duration stays at
+                                 ~1.44 s overall, but the per-frame
+                                 dwell halved so the shuffle reads as
+                                 smoother instead of choppy. */
     deathMs: 1000,
     remnantsScalePx: 48,
     spd: 0.4,                 /* slower than fodder's 0.5 */
