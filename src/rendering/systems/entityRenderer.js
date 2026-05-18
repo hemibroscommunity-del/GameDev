@@ -10,6 +10,8 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
+import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { MONSTER_VARIANTS } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
@@ -124,7 +126,7 @@ function getMonsterSize(archetype) {
      Every other archetype is a bare procedural circle, so bump the
      radius to 32 (64-px diameter) per the user's "64x64 for non-
      slime monsters" call-out. */
-  if (archetype === 'fodder') return 8;
+  if (archetype === 'fodder' || MONSTER_VARIANTS[archetype]) return 8;
   if (archetype === 'snowman') return 13;
   return 32;
 }
@@ -168,9 +170,11 @@ function createMonsterDisplay(monster) {
      the "feet" line up at the same Y as the procedural circle's
      bottom; that keeps shadows / damage numbers at the right place
      when the sprite is taller than the circle. */
-  const isFodder = (monster.archetype || monster.type) === 'fodder';
-  const isSnowman = (monster.archetype || monster.type) === 'snowman';
-  const spriteBody = (isFodder || isSnowman) ? new Sprite() : null;
+  const archKey = monster.archetype || monster.type;
+  const isFodder = archKey === 'fodder';
+  const variantKey = MONSTER_VARIANTS[archKey] ? archKey : null;
+  const isSnowman = archKey === 'snowman';
+  const spriteBody = (isFodder || variantKey || isSnowman) ? new Sprite() : null;
   if (spriteBody) {
     spriteBody.anchor.set(0.5, 1.0);
     spriteBody.visible = false;
@@ -199,6 +203,7 @@ function createMonsterDisplay(monster) {
   container._body = body;
   container._spriteBody = spriteBody;
   container._isFodder = isFodder;
+  container._variantKey = variantKey;
   container._isSnowman = isSnowman;
   container._hpFill = hpFill;
   container._hpBg = hpBg;
@@ -416,23 +421,30 @@ export class EntityRenderer {
                                     400 ms / 15 = ~27 ms/frame -> ~37 fps, fast enough
                                     that the explosion reads as immediate. */
     const SNOWMAN_DEATH_MS = 500; /* user-requested 0.5 s shatter */
+    /* Variant death durations come from MONSTER_VARIANTS[key].deathMs;
+       see monsterVariants.js for the per-variant config. */
 
     for (const m of monsters) {
       const arch = m.archetype || m.type;
       const isFodder = arch === 'fodder';
+      const variantKey = MONSTER_VARIANTS[arch] ? arch : null;
+      const variant = variantKey ? MONSTER_VARIANTS[variantKey] : null;
+      const variantSprites = variantKey ? variantSpritesFor(variantKey) : null;
       const isSnowman = arch === 'snowman';
 
-      /* Slime death animation — first observation of alive=false on a
-         fodder slime starts the death timer + plays the splat SFX.
-         Mirrors the Canvas 2D path in BroTown.jsx ~11397.  Animation
-         runs SLIME_DEATH_MS then the display is hidden + cleaned up. */
-      if (!m.alive && isFodder && m._slimeDeathStart == null) {
+      /* Fodder + variant death timer — first observation of alive=false
+         stamps m._slimeDeathStart (kept its slime-era name to avoid
+         touching every reader).  Variants reuse the same field; the
+         slime-splat SFX only fires for raw fodder. */
+      if (!m.alive && (isFodder || variantKey) && m._slimeDeathStart == null) {
         m._slimeDeathStart = now;
-        try {
-          if (typeof window !== 'undefined' && window.BT_AUDIO) {
-            window.BT_AUDIO.play('slime-death', { vol: 0.425 });
-          }
-        } catch {}
+        if (isFodder) {
+          try {
+            if (typeof window !== 'undefined' && window.BT_AUDIO) {
+              window.BT_AUDIO.play('slime-death', { vol: 0.425 });
+            }
+          } catch {}
+        }
       }
 
       /* Snowman death — separate timer so it doesn't share the slime's
@@ -442,10 +454,61 @@ export class EntityRenderer {
         m._snowmanDeathStart = now;
       }
 
-      /* Dead-monster handling: render the death sprite for fodder
-         within the death window; otherwise hide and skip. */
+      /* Dead-monster handling: render the death sprite for fodder /
+         variants within the death window; otherwise hide and skip.
+         Variants use their own death sheet over variant.deathMs;
+         raw fodder uses the slime splat over SLIME_DEATH_MS.
+         Keep the display in activeIds for the full death window even
+         if sheets aren't loaded yet -- otherwise the cleanup loop
+         destroys it before the sprites resolve and the user sees a
+         pop-out instead of an animation. */
       if (!m.alive) {
         const deathT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
+        const variantDeathMs = variant ? (variant.deathMs || 1000) : 0;
+        if (variant && deathT != null && deathT >= 0 && deathT < variantDeathMs) {
+          activeIds.add(m.id);
+        }
+        if (variant && variantSprites && variantSprites.death && variantSprites.death.has()
+            && deathT != null && deathT >= 0 && deathT < variantDeathMs) {
+          activeIds.add(m.id);
+          const display = this.monsterDisplays.get(m.id);
+          if (display && display._spriteBody) {
+            const fc = variantSprites.death.count();
+            const t = deathT / (variant.deathMs || 1000);
+            const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
+            const tex = variantSprites.death.get(frameIdx);
+            const sb = display._spriteBody;
+            if (tex && sb.texture !== tex) sb.texture = tex;
+            /* Same on-screen scale as the live variant so the cut from
+               walk -> death reads as continuous. */
+            const baseScale = (variant.liveScalePx || 64) / 256;
+            sb.scale.x = baseScale;
+            sb.scale.y = baseScale;
+            sb.y = display._size;
+            sb.tint = 0xffffff;
+            sb.visible = true;
+            display.x = m.x;
+            display.y = m.y;
+            display.visible = true;
+            display._body.visible = false;
+            /* Clear HP bar.  The alive-branch HP-bar maintenance code
+               skips on dead monsters, so without this the bar freezes
+               at whatever fraction the last alive tick saw -- if the
+               server jumps straight from "alive 50%" to monster_kill
+               without an intermediate hp=0 tick, the bar stays
+               half-full over a corpse (v2.3.17 bug report).  Set
+               _lastHpPct = 1 so the post-respawn redraw triggers
+               cleanly on the first damage tick. */
+            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
+            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            display._lastHpPct = 1;
+            if (display._dynGfx) {
+              display._dynGfx.clear();
+              display._dynKey = '';
+            }
+          }
+          continue;
+        }
         if (isFodder && deathT != null && deathT >= 0 && deathT < SLIME_DEATH_MS && hasSlimeState('death')) {
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
@@ -468,6 +531,11 @@ export class EntityRenderer {
             display.y = m.y;
             display.visible = true;
             display._body.visible = false;
+            /* Clear HP bar -- see variant death branch for context;
+               same problem applies to raw fodder slime kills. */
+            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
+            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            display._lastHpPct = 1;
             /* Clear any leftover dynamic content (aggro arrow, status
                icons) so it doesn't linger on the death frame. */
             if (display._dynGfx) {
@@ -501,6 +569,10 @@ export class EntityRenderer {
             display.y = m.y;
             display.visible = true;
             display._body.visible = false;
+            /* Clear HP bar -- same fix as slime / variant death branches. */
+            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
+            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
               display._dynKey = '';
@@ -535,11 +607,94 @@ export class EntityRenderer {
 
       const size = display._size;
 
-      /* Slime sprite — fodder archetype gets its own animated sheet
-         (idle / shoot / hit).  Priority: hit > shoot > idle, mirroring
-         the Canvas 2D path in BroTown.jsx ~11635.  Falls back to the
-         procedural circle until sheets resolve. */
-      if (display._isFodder && display._spriteBody) {
+      /* Variant render path -- any monster whose archetype maps to a
+         MONSTER_VARIANTS entry (e.g. fireGoblin) renders its
+         directional walk + hit-recoil strips here.  Variant config
+         (liveScalePx, deathMs, etc.) lives in monsterVariants.js;
+         sprite-side lives in monsterVariantSprites.js.  Falls back to
+         the slime/fodder branch when sheets haven't loaded. */
+      if (display._variantKey && display._spriteBody && variantSprites && variantSprites.walk && variantSprites.walk.has()) {
+        const spriteBody = display._spriteBody;
+        /* Facing tracks the per-frame velocity directly so direction
+           changes register immediately (user request v2.3.2).  The
+           v2.3.1 EMA smoothing fixed flicker but introduced lag.
+           Higher threshold here suppresses sub-pixel wobble across
+           sector boundaries without delaying real direction changes:
+           real motion is ~3 px/frame, server-tick interpolation
+           wobble is ~0.1-0.2 px, so 0.5 px squared (= 0.25) splits
+           cleanly between them. */
+        const dx = m.x - (display._lastX != null ? display._lastX : m.x);
+        const dy = m.y - (display._lastY != null ? display._lastY : m.y);
+        const moving = dx * dx + dy * dy > 0.25;
+        let facing = display._lastFacing || 'south';
+        if (moving) {
+          const ang = Math.atan2(dy, dx);
+          const sector = Math.round(ang / (Math.PI / 4));
+          facing = SECTORS[((sector % 8) + 8) % 8];
+          display._lastFacing = facing;
+          display._lastMovedAt = now;
+        }
+        /* Idle pose -- when the monster hasn't moved for ~150 ms, hold a
+           single frame of the last-facing walk strip instead of cycling.
+           Avoids the "moonwalking on the spot" look while the AI is in
+           cooldown / out of range, but still resumes the walk loop the
+           moment it starts chasing again. */
+        const IDLE_AFTER_MS = 150;
+        const isIdle = !moving && (now - (display._lastMovedAt || 0)) > IDLE_AFTER_MS;
+
+        /* Priority chain: hit recoil > idle pose > walk loop.  Variants
+           opt in to an attack-strip branch by setting
+           variantSprites.attack; fireGoblin's is intentionally null. */
+        const hitSprites = variantSprites.hit;
+        const hitNow = m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
+        let frame;
+        if (hitNow) {
+          const hfc = hitSprites.count(facing);
+          const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);
+          const t = (now - m._hitAnimStart) / dur;
+          const hIdx = hfc > 0 ? Math.max(0, Math.min(hfc - 1, Math.floor(t * hfc))) : 0;
+          frame = hitSprites.get(facing, hIdx);
+        } else if (isIdle) {
+          /* Hold a single frame -- we don't ship a dedicated idle
+             sheet so use the closest-to-neutral walk frame.  Frame
+             0 is the first contact pose, which reads as standing
+             still better than mid-stride frames. */
+          frame = variantSprites.walk.get(facing, 0);
+        } else {
+          const fc = variantSprites.walk.count(facing);
+          const phaseOff = ((m.spawnX || 0) | 0) % 800;
+          const stepMs = variant.walkFrameMs || 100;
+          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / stepMs) % fc : 0;
+          frame = variantSprites.walk.get(facing, frameIdx);
+        }
+        if (frame && frame.tex) {
+          if (spriteBody.texture !== frame.tex) spriteBody.texture = frame.tex;
+          /* Squash is suppressed when the dedicated hit sheet is playing
+             (sheet already shows recoil).  Kept as a fallback for the
+             moment between damage application and sheet load. */
+          let sqx = 1, sqy = 1;
+          const hittingNow = m._hitAnimEnd && now < m._hitAnimEnd;
+          if (hittingNow && !hitNow) {
+            const hp = (now - m._hitAnimStart) / Math.max(1, m._hitAnimEnd - m._hitAnimStart);
+            if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
+            else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
+          }
+          const baseScale = (variant.liveScalePx || 64) / 256;
+          const sx = baseScale * sqx * (frame.mirror ? -1 : 1);
+          const sy = baseScale * sqy;
+          if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
+          if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
+          if (spriteBody.y !== size) spriteBody.y = size;
+          if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+          if (!spriteBody.visible) spriteBody.visible = true;
+          if (display._body.visible) display._body.visible = false;
+        } else {
+          if (spriteBody.visible) spriteBody.visible = false;
+          if (!display._body.visible) display._body.visible = true;
+        }
+        display._lastX = m.x;
+        display._lastY = m.y;
+      } else if (display._isFodder && display._spriteBody) {
         const spriteBody = display._spriteBody;
         const hittingNow = m._hitAnimEnd && now < m._hitAnimEnd && hasSlimeState('hit');
         const shootingNow = m._shootAnimEnd && now < m._shootAnimEnd && hasSlimeState('shoot');

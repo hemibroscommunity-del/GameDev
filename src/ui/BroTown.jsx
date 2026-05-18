@@ -47,6 +47,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
+import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
@@ -1714,19 +1715,56 @@ export var BroTown = function BroTown(_ref0) {
                     var md = zoneData[mi];
                     var localM = S.monsters.find(function(m) { return m.id === md.id; });
                     if (localM) {
-                      localM.x = md.x;
-                      localM.y = md.y;
+                      /* Client-authoritative variants (e.g. fireGoblin)
+                         keep their locally-simulated position; server
+                         position is ignored.  HP / alive still sync. */
+                      if (!usesClientSideMovement(localM)) {
+                        localM.x = md.x;
+                        localM.y = md.y;
+                      }
                       localM.curHp = md.hp;
                       /* Don't overwrite maxHp — it stays at the spawn value */
                       if (md.alive && !localM.alive) {
-                        /* Monster respawned */
+                        /* Monster respawned -- clear all per-life
+                           transient flags so the next death replays
+                           the loot drop, SFX, stuck arrows, and the
+                           death animation cleanly. */
                         localM.alive = true;
                         localM.renderX = md.x;
                         localM.renderY = md.y;
+                        localM._stuckArrows = [];
+                        localM._slimeDeathStart = null;
+                        localM._snowmanDeathStart = null;
+                        localM._lootDropped = false;
+                        localM._deathSfxPlayed = false;
                       }
                       if (!md.alive && localM.alive) {
-                        /* Monster died (from another player's kill) */
+                        /* Monster died (from another player's kill or
+                           server-driven mechanics).  Drop the remnant
+                           pile here as the canonical alive -> dead
+                           transition for server-managed monsters --
+                           m.curHp -= dmg in the local hit paths is
+                           gated on !S._serverMonsters so those never
+                           fire in MP, leaving this tick branch (and
+                           the monster_kill handler) as the only
+                           places that know the kill happened. */
                         localM.alive = false;
+                        if (!localM._lootDropped && S.groundLoot && isRemnantSkull(localM.type)) {
+                          localM._lootDropped = true;
+                          S.groundLoot.push({
+                            x: (localM.x || localM.renderX || 0) + (Math.random() - 0.5) * 12,
+                            y: (localM.y || localM.renderY || 0) + (Math.random() - 0.5) * 12,
+                            coins: 0,
+                            xp: 0,
+                            skull: localM.type,
+                            skullEmoji: '🦴',
+                            ts: Date.now(),
+                          });
+                        }
+                        if (!localM._deathSfxPlayed) {
+                          localM._deathSfxPlayed = true;
+                          try { BT_AUDIO.monsterDeath(localM.archetype || localM.type); } catch (e) {}
+                        }
                       }
                     }
                   }
@@ -1772,12 +1810,18 @@ export var BroTown = function BroTown(_ref0) {
               if (msg.monsters && msg.monsters.length > 0) {
                 S._serverMonsters = true;
                 S.monsters = msg.monsters.map(function(m) {
-                  return _objectSpread(_objectSpread({}, m), {}, {
+                  var local = _objectSpread(_objectSpread({}, m), {}, {
+                    archetype: m.arch, type: m.arch,
                     curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-                    alive: m.alive, type: m.arch, statuses: {}, _hitThisSwing: false,
+                    alive: m.alive, statuses: {}, _hitThisSwing: false,
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
                   });
+                  /* Apply per-zone variant skin (see monsterVariants.js).
+                     Maps ember fodder -> fireGoblin so the renderer + AI
+                     route to the variant sheets without any inline
+                     zone/archetype check elsewhere in the codebase. */
+                  return applyZoneVariant(local, S.currentZone);
                 });
               } else {
                 S._serverMonsters = false;
@@ -1796,12 +1840,14 @@ export var BroTown = function BroTown(_ref0) {
               if (msg.monsters.length > 0) {
                 S._serverMonsters = true;
                 S.monsters = msg.monsters.map(function(m) {
-                  return _objectSpread(_objectSpread({}, m), {}, {
+                  var local = _objectSpread(_objectSpread({}, m), {}, {
+                    archetype: m.arch, type: m.arch,
                     curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-                    alive: m.alive, type: m.arch, statuses: {}, _hitThisSwing: false,
+                    alive: m.alive, statuses: {}, _hitThisSwing: false,
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
                   });
+                  return applyZoneVariant(local, S.currentZone);
                 });
               } else {
                 var _prevSrvFlag = S._serverMonsters;
@@ -2002,8 +2048,39 @@ export var BroTown = function BroTown(_ref0) {
               if (S.monsters) {
                 var deadM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (deadM) {
+                  /* In server-mode the local m.curHp -= dmg branches are
+                     all gated on !S._serverMonsters, so neither melee nor
+                     arrow kill code ever fires `if (m.curHp <= 0)` --
+                     meaning the local loot push never happens.  Drop the
+                     remnant here so fodder + variants leave debris on the
+                     ground in MP.  _lootDropped is the canonical
+                     "already pushed" flag (cleared on respawn in the
+                     tick handler) -- v2.3.17 fix: the previous _wasAlive
+                     gate fired false-negative when the tick handler
+                     arrived first and set alive=false silently. */
                   deadM.alive = false;
                   deadM.curHp = 0;
+                  if (!deadM._lootDropped && S.groundLoot && isRemnantSkull(deadM.type)) {
+                    deadM._lootDropped = true;
+                    S.groundLoot.push({
+                      x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
+                      y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
+                      coins: 0,
+                      xp: 0,
+                      skull: deadM.type,
+                      skullEmoji: '🦴',
+                      ts: Date.now(),
+                    });
+                  }
+                  /* Per-archetype death SFX (snowman-death, monster-death
+                     fallback; slime fodder is muted via its own splat
+                     hook in entityRenderer).  Local hit paths call this
+                     too but bail in MP before reaching it -- monster_kill
+                     is the only path that knows the kill happened here. */
+                  if (!deadM._deathSfxPlayed) {
+                    deadM._deathSfxPlayed = true;
+                    try { BT_AUDIO.monsterDeath(deadM.archetype || deadM.type); } catch (e) {}
+                  }
                   /* Don't clobber deadM.hp — for server monsters it's
                      the spawn-time max-HP reference used by the HP bar
                      denominator.  Zeroing it broke every slime's bar
@@ -2028,7 +2105,12 @@ export var BroTown = function BroTown(_ref0) {
                 var R = S.rpg;
                 if (R) {
                   var myShare = (payload.shares && typeof payload.shares[S.myId] === 'number') ? payload.shares[S.myId] : 1;
-                  var killXp = Math.max(0, Math.round((payload.xp || 0) * myShare));
+                  /* Variant XP bonus -- fireGoblin (and any future
+                     variant with xpMult) takes more hits than its base
+                     archetype, so the server's base-archetype XP gets
+                     multiplied client-side on receipt. */
+                  var _killedVariantXpMult = xpMultFor(S.monsters && S.monsters.find(function(mm) { return mm.id === payload.monsterId; }));
+                  var killXp = Math.max(0, Math.round((payload.xp || 0) * myShare * _killedVariantXpMult));
                   var goldList = payload.goldRecipients || payload.recipients;
                   var killGold = goldList.includes(S.myId) ? Math.max(0, Math.round((payload.gold || 0) * myShare)) : 0;
                   R.xp = (R.xp || 0) + killXp;
@@ -5807,9 +5889,21 @@ export var BroTown = function BroTown(_ref0) {
             }
             /* Check if DoT killed */
             if (m.curHp <= 0 && m.alive) {
-              /* When server monsters: server handles kill via monster_kill event — don't set alive=false locally */
+              /* When server monsters: server handles kill via monster_kill event — don't set alive=false locally.
+                 Drop a visual remnant pile so DoT kills leave debris too. */
               if (S._serverMonsters) {
                 m.curHp = 0; /* clamp for HP bar display */
+                if (S.groundLoot && isRemnantSkull(m.type)) {
+                  S.groundLoot.push({
+                    x: m.x + (Math.random() - 0.5) * 12,
+                    y: m.y + (Math.random() - 0.5) * 12,
+                    coins: 0,
+                    xp: 0,
+                    skull: m.type,
+                    skullEmoji: '🦴',
+                    ts: Date.now(),
+                  });
+                }
                 return;
               }
               m.alive = false;
@@ -5858,9 +5952,21 @@ export var BroTown = function BroTown(_ref0) {
             /* Skip if stunned */
             if (m._stunUntil && Date.now() < m._stunUntil) return;
 
+            /* Skip during knockback recovery so the player sees the
+               bump on client-side-AI variants (fireGoblin etc).
+               Without this the AI snaps the monster back toward the
+               player on the next frame and the m.x/y += hit at the
+               damage site is invisible.  200 ms window matches the
+               stamp set by the melee + arrow hit paths. */
+            if (m._kbUntil && Date.now() < m._kbUntil) return;
+
             /* Status-based movement modifiers */
-            /* When server monsters are active, skip ALL local AI — server handles movement, aggro, attacks, respawns */
-            if (S._serverMonsters) {
+            /* When server monsters are active, skip ALL local AI — server handles movement, aggro, attacks, respawns.
+               EXCEPTION: client-authoritative variants (e.g. fireGoblin
+               with the clientSideMovement flag) fall through and run
+               their AI locally so per-archetype spdMult takes effect
+               even in MP. */
+            if (S._serverMonsters && !usesClientSideMovement(m)) {
               /* Only run render interpolation — smooth monster position toward server position */
               if (m.renderX === undefined) { m.renderX = m.x; m.renderY = m.y; }
               var mInterpDx = m.x - m.renderX;
@@ -5904,7 +6010,10 @@ export var BroTown = function BroTown(_ref0) {
             }[arch] || 120;
             /* Deep Hollows echo — combat noise doubles aggro range */
             if (S._echoActive) aggroRange *= ECHO_AGGRO_MULT;
-            var atkRange = arch === 'hexer' ? 60 : arch === 'stalker' ? 30 : arch === 'fodder' ? 80 : 18;
+            /* AI dispatch uses base archetype so variants inherit
+               behaviour from their parent (e.g. fireGoblin -> fodder). */
+            var _baseArch = baseArchetypeOf(arch);
+            var atkRange = _baseArch === 'hexer' ? 60 : _baseArch === 'stalker' ? 30 : _baseArch === 'fodder' ? 80 : 18;
             var atkCooldown = {
               fodder: 1500,
               brute: 2200,
@@ -5913,7 +6022,7 @@ export var BroTown = function BroTown(_ref0) {
               volatile: 1200,
               stalker: 1000,
               hexer: 2500
-            }[arch] || 1500;
+            }[_baseArch] || 1500;
             if (distToP < aggroRange && moveMult > 0) {
               /* ═══ AGGRO ALERT — "!" flash when enemy first notices player ═══ */
               if (!m._aggroed) {
@@ -6256,11 +6365,11 @@ export var BroTown = function BroTown(_ref0) {
                     m._telegraphUntil = Date.now() + telegraphDur;
                     m._telegraphAngle = Math.atan2(P.y - m.y, P.x - m.x);
                     m._telegraphRange = atkRange;
-                    /* Fodder slimes: play the shoot/lunge animation
-                       across the telegraph window so the wind-up reads
-                       visually. Cleared automatically when the render
-                       loop sees now > _shootAnimEnd. */
-                    if (arch === 'fodder') {
+                    /* Fodder-like (fodder slimes, fireGoblin variant, etc.):
+                       play the shoot/lunge animation across the telegraph
+                       window so the wind-up reads visually.  Cleared
+                       automatically when the render loop sees now > _shootAnimEnd. */
+                    if (isFodderLike(arch)) {
                       m._shootAnimStart = Date.now();
                       m._shootAnimEnd = Date.now() + telegraphDur + 80;
                     }
@@ -6298,7 +6407,7 @@ export var BroTown = function BroTown(_ref0) {
                      application + archetype effects below — fodder has
                      no archetype effects, so nothing else is needed
                      here. */
-                  if (arch === 'fodder') {
+                  if (isFodderLike(arch)) {
                     var _projAng = Math.atan2(P.y - m.y, P.x - m.x);
                     if (!S.slimeProjectiles) S.slimeProjectiles = [];
                     /* life=35 ticks × speed=4 px = 140 px range, just past
@@ -6849,14 +6958,21 @@ export var BroTown = function BroTown(_ref0) {
                  overshot.  -40 (v2.1.72, mid-frame) is the sweet spot
                  confirmed by user. */
               var _archHit = m.archetype || m.type;
-              var _mHitY = _archHit === 'fodder' ? m.y - 40 : m.y;
-              /* Treat fodder slimes as a 20 px-radius blob — the
-                 96 px-tall sprite has a wide bottom that the
-                 player visually reads as touchable from further
-                 away than the m.x point check allows.  Subtract
-                 the body radius from the measured distance so
-                 swings that visually connect actually register. */
-              var _hitR = _archHit === 'fodder' ? 20 : 0;
+              /* Reference Y for hit math -- the monster's *body
+                 center* on screen, not the feet anchor at m.y.
+                 fodder (96 px slime sprite) is offset 40 px above
+                 m.y; fireGoblin (64 px sprite anchored at feet) is
+                 offset ~28 px above. */
+              var _mHitY = _archHit === 'fodder' ? m.y - 40 :
+                           _archHit === 'fireGoblin' ? m.y - 28 :
+                           m.y;
+              /* Per-archetype hit radius bonus -- swings that
+                 visually connect should register even if the m.x
+                 point is just outside SWING_RANGE.  Slime: wide
+                 blob (20).  fireGoblin: upright torso (14). */
+              var _hitR = _archHit === 'fodder' ? 20 :
+                          _archHit === 'fireGoblin' ? 14 :
+                          0;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
               if (mDist > SWING_RANGE) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
@@ -6973,6 +7089,12 @@ export var BroTown = function BroTown(_ref0) {
                 var _expectedDmg = Math.round(_pDmgBase * specialMult);
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
+                /* Variant armor (see monsterVariants.incomingDmgScalar).
+                   Server's HP is base-archetype scale, so the scaling here
+                   keeps local + server in sync -- both deplete by the same
+                   reduced amount per hit. */
+                var _resist = incomingDmgScalarFor(m);
+                if (_resist !== 1) dmg = Math.max(1, Math.round(dmg * _resist));
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
                 /* Server-authoritative zones: HP only flows from server
                    monster_hit ticks.  Local decrement would race the
@@ -6989,7 +7111,8 @@ export var BroTown = function BroTown(_ref0) {
                    stays at 400 ms for its squash. */
                 {
                   var _hitArch = m.archetype || m.type;
-                  if ((_hitArch === 'fodder' || _hitArch === 'snowman') && m.curHp > 0) {
+                  var _hitBase = baseArchetypeOf(_hitArch);
+                  if ((_hitBase === 'fodder' || _hitArch === 'snowman') && m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArch === 'snowman' ? 600 : 400);
                   }
@@ -7199,11 +7322,21 @@ export var BroTown = function BroTown(_ref0) {
                 /* Knockback — §Creative Vision: proportional to hit weight.
                    Special attacks knock back ~3x (10 → 30) for the heavy-hit feel. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                var kbForce = S._specialAttack ? 30 : isCrit ? 14 : 6;
+                /* +50% knockback across the board (v2.3.15) -- the
+                   prior numbers (30/14/6 + 4) read as a polite tap;
+                   45/21/9 + 6 makes hits feel like they actually
+                   send the monster. */
+                var kbForce = S._specialAttack ? 45 : isCrit ? 21 : 9;
                 /* Collision adds extra knockback */
-                var collisionKb = collisionResult ? 4 : 0;
+                var collisionKb = collisionResult ? 6 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
                 m.y += Math.sin(kbAngle) * (kbForce + collisionKb);
+                /* Knockback recovery -- without this, client-side-AI
+                   variants (fireGoblin etc) snap back to chase the
+                   player on the next frame and the bump is invisible.
+                   Suspends AI movement for ~200 ms so the player sees
+                   the hit register. */
+                m._kbUntil = Date.now() + 200;
                 /* §Creative Vision — Weapon-specific hit particles */
                 var wpnHitType = _activeWpn.type || 'sword';
                 var weaponFX = spawnWeaponHitFX(m.x, m.y, kbAngle, wpnHitType, isCrit);
@@ -7502,7 +7635,9 @@ export var BroTown = function BroTown(_ref0) {
                   /* XP and gold granted immediately on kill — no pickup needed */
                   var _wrMult = S.rpg._wellRestedUntil && Date.now() < S.rpg._wellRestedUntil ? WELL_RESTED_XP_MULT : 1;
                   var isRare = Math.random() < 0.002; /* 0.2% — 10x scarcer than before */
-                  var killXp = Math.ceil((isRare ? m.xp * 3 : m.xp) * _wrMult);
+                  /* Variant XP bonus -- e.g. fireGoblin gives 2x for
+                     being tougher to kill (see monsterVariants.xpMult). */
+                  var killXp = Math.ceil((isRare ? m.xp * 3 : m.xp) * _wrMult * xpMultFor(m));
                   var killGold = Math.ceil(isRare ? m.gold * 10 : m.gold);
                   _R6.xp += killXp;
                   _R6.coins += killGold;
@@ -7950,20 +8085,21 @@ export var BroTown = function BroTown(_ref0) {
         if (S.groundLoot) {
           S.groundLoot = S.groundLoot.filter(function (loot) {
             /* Expire after 60 seconds (death drops use their own expiry
-               timer; fodder slime remnants persist forever until picked
-               up — pickup-only inventory item, players shouldn't lose
-               them to a 60 s clock). */
+               timer; fodder slime + variant remnants persist forever
+               until picked up — pickup-only inventory item, players
+               shouldn't lose them to a 60 s clock). */
             if (loot.isDeathDrop && loot.expiry && Date.now() > loot.expiry) return false;
             if (loot._expired) return false;
-            if (!loot.isDeathDrop && loot.skull !== 'fodder' && Date.now() - loot.ts > 60000) return false;
+            if (!loot.isDeathDrop && !isRemnantSkull(loot.skull) && Date.now() - loot.ts > 60000) return false;
             var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(P.y - loot.y, 2));
 
-            /* Fodder slime remnants: skip magnetism + add a 1.5 s pickup
-               delay so the splat actually lands on the ground and is
-               visible before the player walks over it. Without this,
-               magnetism + the kill-from-melee-range case meant remnants
-               got vacuumed up on the same frame they spawned. */
-            var _isFodderRemnant = loot.skull === 'fodder';
+            /* Fodder slime + variant remnants: skip magnetism + add a
+               brief pickup delay so the splat/pile actually lands on
+               the ground and is visible before the player walks over
+               it. Without this, magnetism + the kill-from-melee-range
+               case meant remnants got vacuumed up on the same frame
+               they spawned -- the fireGoblin debris bug in v2.3.7. */
+            var _isFodderRemnant = isRemnantSkull(loot.skull);
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
             var magnetRange = 50;
             if (!_isFodderRemnant && lDist < magnetRange && lDist > 20) {
@@ -8089,12 +8225,14 @@ export var BroTown = function BroTown(_ref0) {
               if (loot.coins && S.rpg._compStats) S.rpg._compStats.totalGoldEarned += loot.coins;
               syncRpgToServer(S.rpg);
               if (loot.skull && S.rpg.inventory) {
-                /* Fodder slime kills deposit "slime-remnants" instead
-                   of the raw archetype key, so the inventory shows the
-                   thematic name + thumbnail (see InventoryPanel
-                   thumbFor). Other archetypes keep their existing
-                   m.type → inventory mapping. */
-                var _invKey = loot.skull === 'fodder' ? 'slime-remnants' : loot.skull;
+                /* Map archetype/variant skull -> thematic inventory key
+                   so the inventory thumbnail (see InventoryPanel
+                   thumbFor) shows the right pickup art instead of the
+                   raw archetype name. */
+                var _invKey =
+                  loot.skull === 'fodder'     ? 'slime-remnants' :
+                  loot.skull === 'fireGoblin' ? 'fire-goblin-remnants' :
+                  loot.skull;
                 S.rpg.inventory[_invKey] = (S.rpg.inventory[_invKey] || 0) + 1;
               }
               if (loot.skull) {
@@ -8685,6 +8823,16 @@ export var BroTown = function BroTown(_ref0) {
                    the radius so arrows that visually hit the body
                    register.  Same intuition as the melee +20 bonus. */
                 _hitR = a.isStaff ? 38 : 26;
+              } else if (_archProj === 'fireGoblin') {
+                /* Goblin's visible body sits ~26-30 px above m.y
+                   (sprite anchor at feet, body extends upward 64 px
+                   tall on screen).  Without this offset, arrows aimed
+                   at the body whiff and only feet-level shots
+                   register -- the source of the "arrows beneath the
+                   sprite" bug.  Wider hit radius too for the upright
+                   torso silhouette. */
+                _mProjY = m.y - 28;
+                _hitR = a.isStaff ? 40 : 26;
               } else if (_archProj === 'snowman') {
                 _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;
@@ -8719,14 +8867,20 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 var _hpBefore = m.curHp;
-                if (!S._serverMonsters) m.curHp -= a.dmg;
-                if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: a.dmg, isCrit: false } });
+                /* Variant armor (see monsterVariants.incomingDmgScalar) --
+                   arrows scale the same as melee so the variant's hit
+                   count is consistent across weapon types. */
+                var _arrowResist = incomingDmgScalarFor(m);
+                var _arrowDmg = _arrowResist !== 1 ? Math.max(1, Math.round(a.dmg * _arrowResist)) : a.dmg;
+                if (!S._serverMonsters) m.curHp -= _arrowDmg;
+                if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
                    arrowCollision bonus damage applied below uses the
                    same anim window, no need to re-trigger. */
                 {
                   var _hitArchR = m.archetype || m.type;
-                  if ((_hitArchR === 'fodder' || _hitArchR === 'snowman') && m.curHp > 0) {
+                  var _hitBaseR = baseArchetypeOf(_hitArchR);
+                  if ((_hitBaseR === 'fodder' || _hitArchR === 'snowman') && m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArchR === 'snowman' ? 600 : 400);
                   }
@@ -8741,7 +8895,7 @@ export var BroTown = function BroTown(_ref0) {
                    reserved for melee swing damage. */
                 if (S.rpg) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);
                 if (S._serverMonsters && S.channel) {
-                  var arrowTotalDmg = a.dmg;
+                  var arrowTotalDmg = _arrowDmg;
                   if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
                   S.channel.send({ type: 'monster_damage', payload: {
                     monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null
@@ -8854,10 +9008,15 @@ export var BroTown = function BroTown(_ref0) {
                      without a residue overlay on the body. */
                 }
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
-                /* Special projectiles (bow heavy / staff burst) knock back 3x. */
-                var _projKb = a.isSpecial ? 15 : 5;
+                /* Special projectiles (bow heavy / staff burst) knock
+                   back 3x.  Base 5 -> 8, special 15 -> 23 = +50% per
+                   user (v2.3.15) so arrow hits read as forceful. */
+                var _projKb = a.isSpecial ? 23 : 8;
                 m.x += Math.cos(kba) * _projKb;
                 m.y += Math.sin(kba) * _projKb;
+                /* Knockback recovery -- see melee path; pauses
+                   client-side AI so the bump is visible. */
+                m._kbUntil = Date.now() + 200;
                 var rangedWpnType = a.isStaff ? 'staff' : 'bow';
                 var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, rangedWpnType, false);
                 rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
@@ -8876,12 +9035,24 @@ export var BroTown = function BroTown(_ref0) {
                        ry≈10. Plant the arrow ~3 px short of the surface
                        in the entry direction so the arrowhead is buried
                        in the body rather than floating off the edge. */
-                    var _saIsFodder = (m.archetype || m.type) === 'fodder';
+                    var _saArch = m.archetype || m.type;
+                    var _saIsFodder = _saArch === 'fodder';
+                    /* Per-archetype stuck-arrow anchors -- arrows should
+                       bury in the body silhouette, not float in space.
+                       fireGoblin: taller upright creature (64 px sprite,
+                       body center ~30 px above feet) needs a bigger
+                       y-anchor than slime (17 px) and a slightly wider
+                       hit ellipse. */
                     var _saEntryDx = -Math.cos(a.ang);
                     var _saEntryDy = -Math.sin(a.ang);
-                    var _saRx = _saIsFodder ? 9 : 6;
-                    var _saRy = _saIsFodder ? 7 : 6;
-                    var _saYAnchor = _saIsFodder ? -17 : 0;
+                    var _saRx, _saRy, _saYAnchor;
+                    if (_saArch === 'fireGoblin') {
+                      _saRx = 14; _saRy = 18; _saYAnchor = -30;
+                    } else if (_saIsFodder) {
+                      _saRx = 9; _saRy = 7; _saYAnchor = -17;
+                    } else {
+                      _saRx = 6; _saRy = 6; _saYAnchor = 0;
+                    }
                     var _saOx = _saEntryDx * _saRx + (Math.random() - 0.5) * 3;
                     var _saOy = _saEntryDy * _saRy + _saYAnchor + (Math.random() - 0.5) * 3;
                     m._stuckArrows.push({ ang: a.ang, ox: _saOx, oy: _saOy, isStaff: false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
@@ -8895,10 +9066,24 @@ export var BroTown = function BroTown(_ref0) {
                 if (m.curHp <= 0) {
                   /* In server-mode the network monster_killed event is
                      authoritative for XP/T1 distribution — only clamp
-                     local HP for display and bail. */
+                     local HP for display and bail.  Push a visual
+                     remnant pile before bailing so kills via bow / staff
+                     still leave debris on the ground (fireGoblin debris
+                     bug v2.3.10). */
                   if (S._serverMonsters) {
                     m.curHp = 0;
                     hit = true;
+                    if (S.groundLoot && isRemnantSkull(m.type)) {
+                      S.groundLoot.push({
+                        x: m.x + (Math.random() - 0.5) * 12,
+                        y: m.y + (Math.random() - 0.5) * 12,
+                        coins: 0,
+                        xp: 0,
+                        skull: m.type,
+                        skullEmoji: '🦴',
+                        ts: Date.now(),
+                      });
+                    }
                     return;
                   }
                   m.alive = false;
@@ -8917,7 +9102,9 @@ export var BroTown = function BroTown(_ref0) {
                        the only gold path now). */
                     var _wrMultR = _R9._wellRestedUntil && Date.now() < _R9._wellRestedUntil ? WELL_RESTED_XP_MULT : 1;
                     var _isRareR = Math.random() < 0.002;
-                    var _killXpR = Math.ceil((_isRareR ? m.xp * 3 : m.xp) * _wrMultR);
+                    /* Same variant XP bonus as the melee path -- keeps
+                       bow/staff kills on the same XP curve as melee. */
+                    var _killXpR = Math.ceil((_isRareR ? m.xp * 3 : m.xp) * _wrMultR * xpMultFor(m));
                     _R9.xp = (_R9.xp || 0) + _killXpR;
                     if (_R9._compStats) {
                       _R9._compStats.monstersKilled = (_R9._compStats.monstersKilled || 0) + 1;

@@ -34,6 +34,7 @@ const WOOD_THUMB = '/icons/wood/wood-log.png';
 const BURNT_DUST_THUMB = '/icons/cook/burnt-dust.png';
 const SLIME_REMNANTS_THUMB = '/icons/monsters/slime-remnants.png';
 const SNOWMAN_REMNANTS_THUMB = '/icons/monsters/snowman-remnants.png';
+const FIRE_GOBLIN_REMNANTS_THUMB = '/icons/monsters/fire-goblin-remnants.png';
 /* Per-tier fish thumbnails (raw + cooked).  Order matters in thumbFor:
    match longer prefixes first so e.g. fish_clownfish doesn't fall
    through to the generic fish_ branch. Add an entry per tier; the
@@ -61,6 +62,7 @@ const thumbFor = (key) => {
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
   if (k === 'slime-remnants')       return SLIME_REMNANTS_THUMB;
+  if (k === 'fire-goblin-remnants') return FIRE_GOBLIN_REMNANTS_THUMB;
   if (k === 'snowman')              return SNOWMAN_REMNANTS_THUMB;
   return null;
 };

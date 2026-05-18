@@ -8,6 +8,8 @@ import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
+import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -361,8 +363,18 @@ export class EffectsRenderer {
         if (iconKey && POPUP_ICONS[iconKey]) {
           const tex = POPUP_ICONS[iconKey];
           const icon = new Sprite(tex);
-          icon.anchor.set(0, 0.5);
-          const targetH = fontSize;
+          /* Anchor right-center so icon.x is the icon's RIGHT edge.
+             Lets us place the icon to the LEFT of the text without
+             juggling icon.width.  Layout becomes: [icon] number [sub]
+             instead of number [icon] sub -- crucial for special hits
+             where a 50+ px wide icon used to crowd the damage number
+             on the right side (v2.3.20 bug). */
+          icon.anchor.set(1, 0.5);
+          /* Cap icon height at 22 px regardless of fontSize.  At the
+             previous fontSize-tied scale, special-crit hits put a
+             54 px icon next to a single-digit number, eating most of
+             the popup width. */
+          const targetH = Math.min(fontSize, 22);
           icon.scale.set(targetH / tex.height);
           this.dmgLayer.addChild(icon);
           dmg._pixiIcon = icon;
@@ -404,27 +416,20 @@ export class EffectsRenderer {
       const critWiggle = dmg.crit ? Math.sin(age * 8) * 0.1 : 0;
       text.scale.set(1 + popBoost + critWiggle);
       if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
-        /* Place icon flush to the right of the text. Text anchor is
-           (0.5, 0.5), so the right edge sits at text.x + text.width/2.
-           Gap scales with fontSize because special-attack popups render
-           at 2x and the prior fixed 3 px was tight enough that the
-           icon visually clipped the last digit ("40" reading as
-           "4[sword]"). Stroked text also extends a few px past the
-           measured width on iOS canvas rendering. */
-        const _iconGap = Math.max(4, (text.style.fontSize || 21) * 0.18);
-        dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
+        /* Place icon flush to the LEFT of the text (anchor 1,0.5 so
+           icon.x is the icon's right edge).  Text anchor is (0.5, 0.5),
+           so its left edge sits at text.x - text.width/2.  Layout:
+           [icon] number ...  Icon never crowds the number now. */
+        dmg._pixiIcon.x = text.x - text.width / 2 - 4;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
       }
       if (dmg._pixiSub && !dmg._pixiSub.destroyed) {
-        /* Sub text sits after the icon if there is one, otherwise flush
-           to the right edge of the main text.  Anchor is (0, 0.5) so
-           setting .x places its left edge. */
-        const _subGap = Math.max(4, (text.style.fontSize || 21) * 0.18);
-        let subX = text.x + text.width / 2 + _subGap;
-        if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
-          subX = dmg._pixiIcon.x + (dmg._pixiIcon.width || 0) + _subGap;
-        }
+        /* Sub text sits flush to the right edge of the main text.
+           Anchor is (0, 0.5) so setting .x places its left edge.
+           Icon moved to the LEFT (v2.3.20) so the right side is
+           always clear for the sub. */
+        const subX = text.x + text.width / 2 + 4;
         dmg._pixiSub.x = subX;
         dmg._pixiSub.y = text.y;
         dmg._pixiSub.alpha = text.alpha;
@@ -659,25 +664,56 @@ export class EffectsRenderer {
         this.slimeProjSprites.splice(i, 1);
       }
     }
-    if (hasSlimeState('projectile')) {
-      const projTex = getSlimeFrame('projectile', 0);
+    /* Projectile rendering -- variants can override the slime-orb art
+       per zone.  Resolves the active zone's variant (e.g. ember.fodder
+       -> fireGoblin) and uses its projectile.tex if defined.  Rotation
+       comes from the variant's baseAng so the sprite nose lines up
+       with sp.ang regardless of the source pose. */
+    let projTex = null;
+    let projBaseAng = 0;
+    let projScale = 0.08;
+    const zoneOverrides = ZONE_VARIANT_MAP[S.currentZone] || null;
+    if (zoneOverrides) {
+      for (const baseArch of Object.keys(zoneOverrides)) {
+        const variantKey = zoneOverrides[baseArch];
+        const vSprites = variantSpritesFor(variantKey);
+        const variant = MONSTER_VARIANTS[variantKey];
+        const tex = vSprites && vSprites.projectile ? vSprites.projectile.get() : null;
+        if (tex) {
+          projTex = tex;
+          projBaseAng = vSprites.projectile.baseAng || 0;
+          projScale = (variant && variant.projectileScalePx ? variant.projectileScalePx : 16) / 256;
+          break;
+        }
+      }
+    }
+    if (!projTex && hasSlimeState('projectile')) {
+      projTex = getSlimeFrame('projectile', 0);
+      projBaseAng = 0;
+      /* 128 px source -> 0.2 = ~25 px on-screen.  0.08 (v2.1.79) was
+         a 10 px dot -- so small the player couldn't see slime
+         projectiles flying at all.  0.2 is the middle ground:
+         clearly visible, still smaller than the slime body. */
+      projScale = 0.2;
+    }
+    if (projTex) {
       for (const sp of slimeProjs) {
         let sprite = sp._pixiSprite;
         if (!sprite || sprite.destroyed) {
           sprite = new Sprite(projTex);
           sprite.anchor.set(0.5, 0.5);
-          /* 128 px source -> 0.2 = ~25 px on-screen.  0.08 (v2.1.79)
-             was a 10 px dot -- so small the player couldn't see slime
-             projectiles flying at all.  0.4 (pre-v2.1.79) was way too
-             big (half the slime body).  0.2 is the middle ground:
-             clearly visible, still smaller than the slime. */
-          sprite.scale.set(0.2);
+          sprite.scale.set(projScale);
           this.projectileLayer.addChild(sprite);
           sp._pixiSprite = sprite;
           this.slimeProjSprites.push({ proj: sp, sprite });
         }
+        if (sprite.texture !== projTex) {
+          sprite.texture = projTex;
+          sprite.scale.set(projScale);
+        }
         sprite.x = sp.x;
         sprite.y = sp.y;
+        sprite.rotation = projBaseAng !== 0 ? (sp.ang || 0) - projBaseAng : 0;
       }
     }
   }
@@ -1082,8 +1118,8 @@ export class EffectsRenderer {
       }
       activeLoot.add(l);
       this._knownLoot.add(l);
-      /* Fodder loot has no bob; it's a settled puddle. */
-      const isFodder = l.skull === 'fodder';
+      /* Fodder + variant loot has no bob; it's a settled puddle/pile. */
+      const isFodder = l.skull === 'fodder' || !!MONSTER_VARIANTS[l.skull];
       const bob = isFodder ? 0 : Math.sin(age * 3) * 2;
       const alpha = age > 25 ? (30 - age) / 5 : 1;
 
@@ -1173,24 +1209,34 @@ export class EffectsRenderer {
         continue;
       }
 
-      if (isFodder && hasSlimeState('remnants')) {
-        /* Slime remnants splat sprite (pooled per loot). */
-        if (!l._pixiSprite || l._pixiSprite.destroyed) {
-          const sp = new Sprite(getSlimeFrame('remnants', 0));
-          sp.anchor.set(0.5, 0.5);
-          this.lootLayer.addChild(sp);
-          l._pixiSprite = sp;
+      if (isFodder) {
+        /* Pick the remnants art for this kill.  Variants supply their
+           own remnants texture via variantSprites; raw fodder uses the
+           slime splat.  Falls back to the slime sheet if the variant
+           remnants haven't loaded yet. */
+        const variant = MONSTER_VARIANTS[l.skull] || null;
+        const variantSprites = variant ? variantSpritesFor(l.skull) : null;
+        const variantRemnTex = variantSprites && variantSprites.remnants ? variantSprites.remnants.get() : null;
+        const slimeRemnantsTex = hasSlimeState('remnants') ? getSlimeFrame('remnants', 0) : null;
+        const remnTex = variantRemnTex || slimeRemnantsTex;
+        if (remnTex) {
+          if (!l._pixiSprite || l._pixiSprite.destroyed) {
+            const sp = new Sprite(remnTex);
+            sp.anchor.set(0.5, 0.5);
+            this.lootLayer.addChild(sp);
+            l._pixiSprite = sp;
+          }
+          if (l._pixiSprite.texture !== remnTex) l._pixiSprite.texture = remnTex;
+          l._pixiSprite.x = l.x;
+          l._pixiSprite.y = l.y + bob;
+          l._pixiSprite.alpha = alpha;
+          /* Slime splat renders at 48 px on-screen; variant remnants
+             use their own remnantsScalePx (default 48). */
+          const targetPx = variantRemnTex ? (variant.remnantsScalePx || 48) : 48;
+          l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
+          l._pixiSprite.visible = true;
+          continue;
         }
-        l._pixiSprite.x = l.x;
-        l._pixiSprite.y = l.y + bob;
-        l._pixiSprite.alpha = alpha;
-        /* Slime splat scaled up with the live slime sprite (96 px).
-           Previously 32; bumped to 48 to keep the splat proportional
-           to the larger live slime so the pickup reads as the same
-           creature's remains. */
-        l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 48));
-        l._pixiSprite.visible = true;
-        continue;
       }
 
       const snowmanRemnantsTex = l.skull === 'snowman' ? getSnowmanRemnantsTex() : null;

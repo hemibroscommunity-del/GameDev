@@ -1,6 +1,8 @@
 /* ═══ DURABLE OBJECTS WEBSOCKET CLIENT ═══ */
 /* Extracted from index.html lines 10309-11445 */
 
+import { applyZoneVariant } from '../data/monsterVariants.js';
+
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay
  * regardless of when setupWebSocket() is called.  performance.now()
@@ -172,18 +174,20 @@ export function setupWebSocket(ctx) {
                          carry id/x/y/hp/alive, so spd/dmg/level/arch/etc are
                          null until the next state_sync — but the monster will
                          render at its server position with default visuals
-                         (slime sprite via fallback) and behave correctly. */
-                      S.monsters.push({
+                         and behave correctly. */
+                      var placeholder = {
                         id: md.id,
                         x: md.x, y: md.y,
                         renderX: md.x, renderY: md.y,
                         curHp: md.hp, hp: md.hp, maxHp: md.hp,
                         alive: true,
-                        archetype: 'fodder', /* assume fodder (most common) until state_sync corrects */
+                        archetype: 'fodder',
                         type: 'fodder',
                         spawnX: md.x, spawnY: md.y,
                         statuses: {},
-                      });
+                      };
+                      applyZoneVariant(placeholder, S.currentZone);
+                      S.monsters.push(placeholder);
                     }
                   }
                 }
@@ -224,12 +228,16 @@ export function setupWebSocket(ctx) {
               if (msg.monsters && msg.monsters.length > 0) {
                 S._serverMonsters = true;
                 S.monsters = msg.monsters.map(function(m) {
-                  return _objectSpread(_objectSpread({}, m), {}, {
+                  var local = _objectSpread(_objectSpread({}, m), {}, {
+                    archetype: m.arch, type: m.arch,
                     curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-                    alive: m.alive, type: m.arch, statuses: {}, _hitThisSwing: false,
+                    alive: m.alive, statuses: {}, _hitThisSwing: false,
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
                   });
+                  /* Apply per-zone variant skin (e.g. ember fodder ->
+                     fireGoblin) so the renderer + AI route correctly. */
+                  return applyZoneVariant(local, S.currentZone);
                 });
                 /* Rebind lockedTarget.ref — .map() replaced every monster
                    object, so the old ref is orphaned.  Try id first; if
@@ -269,12 +277,14 @@ export function setupWebSocket(ctx) {
               if (msg.monsters) {
                 S._serverMonsters = true;
                 S.monsters = msg.monsters.map(function(m) {
-                  return _objectSpread(_objectSpread({}, m), {}, {
+                  var local = _objectSpread(_objectSpread({}, m), {}, {
+                    archetype: m.arch, type: m.arch,
                     curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-                    alive: m.alive, type: m.arch, statuses: {}, _hitThisSwing: false,
+                    alive: m.alive, statuses: {}, _hitThisSwing: false,
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
                   });
+                  return applyZoneVariant(local, S.currentZone);
                 });
                 /* Same rebind as above — id first, then nearest-by-position
                    within 40 world px so the lock survives the local→server

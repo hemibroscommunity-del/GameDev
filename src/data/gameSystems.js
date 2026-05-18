@@ -11,6 +11,7 @@ import { ELEMENTS } from './elements.js';
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS } from './effects.js';
 import { AMULET_TIERS, SALVAGE_RETURN_RATE } from './items.js';
+import { applyZoneVariant } from './monsterVariants.js';
 
 /* ── Babel helper polyfills (from pre-transpiled source) ── */
 function _slicedToArray(r, e) { if (Array.isArray(r)) return r; if (Symbol.iterator in Object(r)) { const a = []; let f = true; const t = r[Symbol.iterator](); for (let n; !(f = (n = t.next()).done) && (a.push(n.value), a.length !== e); f = true); return a; } }
@@ -3185,6 +3186,10 @@ export function spawnMonstersForZone(zone, levelMod) {
       var m = createMonster('m-' + zone.id + '-' + idx, arch, lvl, x, y, zone.element);
       m.curHp = m.hp;
       m.type = arch;
+      /* Zone variant skin (e.g. fodder -> fireGoblin in ember).  Pure
+         archetype-name swap; stats are already done by createMonster
+         since the variant is also a real ARCHETYPES entry. */
+      applyZoneVariant(m, zone.id);
       monsters.push(m);
       idx++;
     }
@@ -4358,6 +4363,24 @@ export const ARCHETYPES = {
     spdMult: 1.0,
     emoji: '🟢',
     color: '#3dd497'
+  },
+  /* Fire goblin — Ember Fields variant.  HP/dmg mirror fodder so the
+     server's authoritative scalars (which only know the base fodder
+     archetype) stay in sync with the local view.  Toughness is
+     delivered by a 1/4 incoming-damage scalar applied in the player
+     hit paths instead of inflated HP -- this way solo and multiplayer
+     both converge on 3-4 hits to kill.
+
+     spdMult: 3.0 -- goblin chases ~3x faster than slime fodder
+     (per user feedback v2.3.3).  Only affects single-player /
+     client-spawned monsters; server-managed monsters move at the
+     server's authoritative speed. */
+  fireGoblin: {
+    hpMult: 0.6,
+    dmgMult: 0.8,
+    spdMult: 3.0,
+    emoji: '🔥',
+    color: '#ea580c'
   },
   brute: {
     hpMult: 1.5,

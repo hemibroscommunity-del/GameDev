@@ -6,6 +6,7 @@
 /* Import all game data via barrel — avoids needing to track which export lives in which file */
 import * as DATA from "@/data/index.js";
 import { IMAGE_ZONE_MAPS } from "@/rendering/tiledMaps.js";
+import { incomingDmgScalarFor } from "@/data/monsterVariants.js";
 
 /* Destructure the most commonly used symbols for convenience */
 const {
@@ -3440,6 +3441,12 @@ export function setupGameLoop(ctx) {
                 var _expectedDmg = Math.round(_pDmgBase * specialMult);
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
+                /* Variant armor (see monsterVariants.incomingDmgScalar).
+                   Server's HP is base-archetype scale, so the scaling here
+                   keeps local + server in sync -- both deplete by the same
+                   reduced amount per hit. */
+                var _resist = incomingDmgScalarFor(m);
+                if (_resist !== 1) dmg = Math.max(1, Math.round(dmg * _resist));
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
                 var _hpBefore = m.curHp;
                 m.curHp -= dmg;
