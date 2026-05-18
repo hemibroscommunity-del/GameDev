@@ -8958,7 +8958,12 @@ export var BroTown = function BroTown(_ref0) {
             if (a.life <= 0) return false;
             var hit = false;
             if (S.monsters) S.monsters.forEach(function (m) {
-              if (!m.alive || a.hitIds.has(m.id) || hit) return;
+              /* Non-piercing arrows bail after the first hit (default).
+                 Piercing arrows keep iterating so a single shot chains
+                 through every monster in its hit radius; hitIds still
+                 prevents the same monster from taking multiple ticks
+                 of damage from one arrow. */
+              if (!m.alive || a.hitIds.has(m.id) || (hit && !a.pierce)) return;
               /* Same y-offset fix as the melee path — fodder slimes
                  render at 96 px anchored at the feet, sprite mid-frame
                  at m.y - 40, so projectiles aim there (v2.1.72).
@@ -9365,7 +9370,12 @@ export var BroTown = function BroTown(_ref0) {
                 hit = true;
               }
             });
-            if (hit) return false;
+            /* Non-piercing arrows die on the first hit.  Piercing
+               arrows survive each hit and only expire when a.life
+               (line 8954, decrements each frame) hits zero -- so
+               the arrow flies its full range and damages everything
+               along the line. */
+            if (hit && !a.pierce) return false;
             /* Store render-ready element info */
             a._projElem = projElem;
             a._isStaffProj = isStaffProj;
@@ -10250,7 +10260,9 @@ export var BroTown = function BroTown(_ref0) {
       /* BOW heavy — large elemental arrow in swipe direction.  Renders
          in effectsRenderer as a regular arrow with a bright halo ring;
          no `ice` flag (that flag is the "draw as orb" toggle and is
-         reserved for staff/ice specials now). */
+         reserved for staff/ice specials now).  pierce:true keeps the
+         arrow alive after each hit so it travels through every monster
+         it overlaps -- hitIds prevents double-hits on the same target. */
       if (!S.arrows) S.arrows = [];
       var wpnDmg = calcWeaponDmg(activeWpn.type, R.power, activeWpn.tierMult);
       S.arrows.push({
@@ -10262,6 +10274,7 @@ export var BroTown = function BroTown(_ref0) {
         hitIds: new Set(),
         isSpecial: true,
         isStaff: false,
+        pierce: true,
         element: hasElement || null
       });
       BT_AUDIO.beep(400, 0.12, 0.15, 'sine');
