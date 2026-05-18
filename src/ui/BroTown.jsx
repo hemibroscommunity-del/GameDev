@@ -8921,12 +8921,24 @@ export var BroTown = function BroTown(_ref0) {
                        ry≈10. Plant the arrow ~3 px short of the surface
                        in the entry direction so the arrowhead is buried
                        in the body rather than floating off the edge. */
-                    var _saIsFodder = (m.archetype || m.type) === 'fodder';
+                    var _saArch = m.archetype || m.type;
+                    var _saIsFodder = _saArch === 'fodder';
+                    /* Per-archetype stuck-arrow anchors -- arrows should
+                       bury in the body silhouette, not float in space.
+                       fireGoblin: taller upright creature (64 px sprite,
+                       body center ~30 px above feet) needs a bigger
+                       y-anchor than slime (17 px) and a slightly wider
+                       hit ellipse. */
                     var _saEntryDx = -Math.cos(a.ang);
                     var _saEntryDy = -Math.sin(a.ang);
-                    var _saRx = _saIsFodder ? 9 : 6;
-                    var _saRy = _saIsFodder ? 7 : 6;
-                    var _saYAnchor = _saIsFodder ? -17 : 0;
+                    var _saRx, _saRy, _saYAnchor;
+                    if (_saArch === 'fireGoblin') {
+                      _saRx = 14; _saRy = 18; _saYAnchor = -30;
+                    } else if (_saIsFodder) {
+                      _saRx = 9; _saRy = 7; _saYAnchor = -17;
+                    } else {
+                      _saRx = 6; _saRy = 6; _saYAnchor = 0;
+                    }
                     var _saOx = _saEntryDx * _saRx + (Math.random() - 0.5) * 3;
                     var _saOy = _saEntryDy * _saRy + _saYAnchor + (Math.random() - 0.5) * 3;
                     m._stuckArrows.push({ ang: a.ang, ox: _saOx, oy: _saOy, isStaff: false, color: projElem && ELEMENTS[projElem] ? ELEMENTS[projElem].color : '#8B6914' });
