@@ -18,7 +18,9 @@ export const ZONES = {
   },
   ember: {
     id: 'ember', name: 'Ember Fields', w: 32, h: 32,
-    element: 'flame', secondary: 'stone', level: [1, 10], music: 'ember', safe: false,
+    /* Elemental zone 1 — monsters cap at level 2 (user request).
+       Higher-tier elemental zones (when added) will use larger ranges. */
+    element: 'flame', secondary: 'stone', level: [1, 2], music: 'ember', safe: false,
     palette: { ground: '#5a3a2a', path: '#8b6545', accent: '#a04020' },
     /* Variant: ember fodder renders as fireGoblin (see monsterVariants.js
        ZONE_VARIANT_MAP).  zones.js stays in base-archetype terms; the
@@ -29,7 +31,8 @@ export const ZONES = {
   },
   mist: {
     id: 'mist', name: 'Mistwood', w: 32, h: 32,
-    element: 'venom', secondary: 'wind', level: [1, 10], music: 'mist', safe: false,
+    /* Elemental zone 1 — see ember note. */
+    element: 'venom', secondary: 'wind', level: [1, 2], music: 'mist', safe: false,
     palette: { ground: '#2a4a2a', path: '#5a6a45', accent: '#3a5a30' },
     spawns: [{ arch: 'swarm', count: 5 }, { arch: 'stalker', count: 3 }, { arch: 'hexer', count: 3 }],
     atmosphere: { tint: 'rgba(30,90,30,0.05)', vignette: 'rgba(10,50,10,0.15)' },
@@ -37,7 +40,8 @@ export const ZONES = {
   },
   frost: {
     id: 'frost', name: 'Frozen Shore', w: 32, h: 32,
-    element: 'frost', secondary: 'storm', level: [1, 10], music: 'frost', safe: false,
+    /* Elemental zone 1 — see ember note. */
+    element: 'frost', secondary: 'storm', level: [1, 2], music: 'frost', safe: false,
     palette: { ground: '#5a6a7a', path: '#8a9aaa', accent: '#3a5a8a' },
     spawns: [{ arch: 'snowman', count: 4 }],
     atmosphere: { tint: 'rgba(140,180,220,0.06)', vignette: 'rgba(60,100,160,0.10)' },
@@ -45,7 +49,8 @@ export const ZONES = {
   },
   thunder: {
     id: 'thunder', name: 'Thunder Peaks', w: 32, h: 32,
-    element: 'storm', secondary: 'flame', level: [1, 10], music: 'thunder', safe: false,
+    /* Elemental zone 1 — see ember note. */
+    element: 'storm', secondary: 'flame', level: [1, 2], music: 'thunder', safe: false,
     palette: { ground: '#4a4a5a', path: '#6a6a7a', accent: '#7a5aaa' },
     spawns: [{ arch: 'fodder', count: 6 }, { arch: 'volatile', count: 4 }, { arch: 'stalker', count: 3 }],
     atmosphere: { tint: 'rgba(100,70,170,0.05)', vignette: 'rgba(50,30,100,0.12)' },
@@ -53,7 +58,8 @@ export const ZONES = {
   },
   hollows: {
     id: 'hollows', name: 'Deep Hollows', w: 32, h: 32,
-    element: 'stone', secondary: 'venom', level: [1, 10], music: 'hollows', safe: false,
+    /* Elemental zone 1 — see ember note. */
+    element: 'stone', secondary: 'venom', level: [1, 2], music: 'hollows', safe: false,
     palette: { ground: '#3a3a3a', path: '#5a5a5a', accent: '#6a5a4a' },
     spawns: [{ arch: 'brute', count: 4 }, { arch: 'sentinel', count: 3 }, { arch: 'swarm', count: 4 }],
     atmosphere: { tint: 'rgba(80,70,50,0.06)', vignette: 'rgba(30,25,15,0.18)' },
@@ -61,7 +67,8 @@ export const ZONES = {
   },
   sky: {
     id: 'sky', name: 'Desert Winds', w: 32, h: 32,
-    element: 'wind', secondary: 'frost', level: [1, 10], music: 'sky', safe: false,
+    /* Elemental zone 1 — see ember note. */
+    element: 'wind', secondary: 'frost', level: [1, 2], music: 'sky', safe: false,
     palette: { ground: '#6a7a8a', path: '#aabbcc', accent: '#8a9aaa' },
     spawns: [{ arch: 'stalker', count: 4 }, { arch: 'hexer', count: 3 }, { arch: 'volatile', count: 3 }],
     atmosphere: { tint: 'rgba(160,190,210,0.04)', vignette: 'rgba(100,140,180,0.06)' },
@@ -69,7 +76,8 @@ export const ZONES = {
   },
   tidal: {
     id: 'tidal', name: 'Tidal Caves', w: 32, h: 32,
-    element: 'water', secondary: 'venom', level: [1, 10], music: 'tidal', safe: false,
+    /* Elemental zone 1 — see ember note. */
+    element: 'water', secondary: 'venom', level: [1, 2], music: 'tidal', safe: false,
     palette: { ground: '#2a4a5a', path: '#4a6a7a', accent: '#2a6a9a' },
     spawns: [{ arch: 'swarm', count: 4 }, { arch: 'hexer', count: 4 }, { arch: 'brute', count: 3 }],
     atmosphere: { tint: 'rgba(30,80,120,0.05)', vignette: 'rgba(10,40,80,0.12)' },
