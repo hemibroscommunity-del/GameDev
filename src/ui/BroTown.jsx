@@ -2044,7 +2044,17 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'monster_kill':
             {
-              /* A monster was killed — show death effects, award XP/gold if we're a recipient */
+              /* A monster was killed — show death effects, award XP if
+                 we're a recipient.  Gold no longer auto-adds: it rides
+                 on the loot pickup so the player must walk over the
+                 coin (matches the SP melee/staff/bow paths). */
+              var _amRecipient = payload.recipients && payload.recipients.includes(S.myId);
+              var _goldList = payload.goldRecipients || payload.recipients || [];
+              var _amGoldRecipient = _amRecipient && _goldList.includes(S.myId);
+              var _myShare = (payload.shares && typeof payload.shares[S.myId] === 'number') ? payload.shares[S.myId] : 1;
+              var _killVarMult = xpMultFor(S.monsters && S.monsters.find(function(mm) { return mm.id === payload.monsterId; }));
+              var _killXpPre = _amRecipient ? Math.max(0, Math.round((payload.xp || 0) * _myShare * _killVarMult)) : 0;
+              var _killGoldPre = _amGoldRecipient ? Math.max(0, Math.round((payload.gold || 0) * _myShare)) : 0;
               if (S.monsters) {
                 var deadM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (deadM) {
@@ -2065,10 +2075,22 @@ export var BroTown = function BroTown(_ref0) {
                     S.groundLoot.push({
                       x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
                       y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
-                      coins: 0,
+                      coins: _killGoldPre,
                       xp: 0,
                       skull: deadM.type,
                       skullEmoji: '🦴',
+                      ts: Date.now(),
+                    });
+                  } else if (!deadM._lootDropped && S.groundLoot && _killGoldPre > 0) {
+                    /* Non-skull-dropper but we earned gold — push a
+                       coin-only pickup so the walkover gold path still
+                       works for non-fodder server archetypes. */
+                    deadM._lootDropped = true;
+                    S.groundLoot.push({
+                      x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
+                      y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
+                      coins: _killGoldPre,
+                      xp: 0,
                       ts: Date.now(),
                     });
                   }
@@ -2095,29 +2117,19 @@ export var BroTown = function BroTown(_ref0) {
                   }
                 }
               }
-              /* Award XP and gold if we are a recipient.  GDD §7:
+              /* Award XP if we are a recipient.  GDD §7:
                  contribution-weighted split — each recipient gets
-                 monster.xp * shares[myId] (and gold likewise, but only
-                 if listed in goldRecipients which the server gates at
-                 0.05 share).  Falls back to the legacy whole-amount
-                 path when shares aren't present (older server build). */
-              if (payload.recipients && payload.recipients.includes(S.myId)) {
+                 monster.xp * shares[myId].  Gold is no longer added
+                 here; it spawned on the loot drop above and the player
+                 must walk over it (pickup logic awards coins + shows
+                 the +NG popup in gold w/ coin icon). */
+              if (_amRecipient) {
                 var R = S.rpg;
                 if (R) {
-                  var myShare = (payload.shares && typeof payload.shares[S.myId] === 'number') ? payload.shares[S.myId] : 1;
-                  /* Variant XP bonus -- fireGoblin (and any future
-                     variant with xpMult) takes more hits than its base
-                     archetype, so the server's base-archetype XP gets
-                     multiplied client-side on receipt. */
-                  var _killedVariantXpMult = xpMultFor(S.monsters && S.monsters.find(function(mm) { return mm.id === payload.monsterId; }));
-                  var killXp = Math.max(0, Math.round((payload.xp || 0) * myShare * _killedVariantXpMult));
-                  var goldList = payload.goldRecipients || payload.recipients;
-                  var killGold = goldList.includes(S.myId) ? Math.max(0, Math.round((payload.gold || 0) * myShare)) : 0;
+                  var killXp = _killXpPre;
                   R.xp = (R.xp || 0) + killXp;
-                  R.coins = (R.coins || 0) + killGold;
                   if (R._compStats) {
                     R._compStats.monstersKilled = (R._compStats.monstersKilled || 0) + 1;
-                    R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + killGold;
                   }
                   /* Use-trained T1 split: divide killXp across stats by
                      their relative _buildUse share since the last kill,
@@ -2125,8 +2137,8 @@ export var BroTown = function BroTown(_ref0) {
                   distributeKillXpToBuild(R, killXp);
                   S.dmgNumbers.push({
                     x: S.player.x, y: S.player.y - 30,
-                    text: '+' + killXp + 'XP +' + killGold + 'G',
-                    color: '#f5c542', ts: Date.now()
+                    text: '+' + killXp + 'XP',
+                    color: '#60a5fa', ts: Date.now()
                   });
                   /* Check level up — T1 is use-trained (no unspent points),
                      T2 still allocated via the Stats menu (5 points per
@@ -4020,6 +4032,74 @@ export var BroTown = function BroTown(_ref0) {
         var P = S.player;
         var K = S.keys;
 
+        /* ═══ Defensive death-flow catch ═══
+           The "rich" death handlers (server monster_attack ~2272, local
+           monster damage ~6659) set S._dying, broadcast, scatter
+           inventory, and schedule the 3.5 s respawn.  But other damage
+           paths — drowning (~5012), PvP attack_confirmed (~2632),
+           player_attack (~2710), and anything else that just decrements
+           S.rpg.hp — never trigger a respawn, so the player dies, the
+           renderer's defensive _deathStart fallback plays the animation,
+           and then... nothing.  No teleport.  This block is the
+           catch-all: if HP reaches 0 from ANY source without S._dying
+           being set, run the essentials of the canonical handler so
+           respawn always fires. */
+        if (S.rpg && S.rpg.hp <= 0 && !S._dying) {
+          S._dying = true;
+          if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
+          S.rpg._compStats.deaths++;
+          if (!S._deathStart) S._deathStart = Date.now();
+          /* Stop momentum so the corpse doesn't drift during the
+             death-anim hold. */
+          P.vx = 0; P.vy = 0;
+          S._slideVx = 0; S._slideVy = 0;
+          /* Tell the server we're dead (move builder reads hp<=0 as
+             dead) and broadcast the death so remotes render us prone. */
+          if (S.channel) {
+            try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+            try { S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: P.x, y: P.y } }); } catch (e) {}
+          }
+          /* Gold penalty — same rate as the rich handlers. */
+          var _defGoldLost = Math.floor((S.rpg.coins || 0) * DEATH_GOLD_PENALTY);
+          S.rpg.coins = Math.max(0, (S.rpg.coins || 0) - _defGoldLost);
+          /* Popup (skip if a rich handler already pushed one this tick). */
+          S.dmgNumbers.push({ x: P.x, y: P.y - 50, text: '💀 YOU DIED', color: '#ff5e6c', ts: Date.now() });
+          if (_defGoldLost > 0) S.dmgNumbers.push({ x: P.x, y: P.y - 35, text: '-' + _defGoldLost + 'G', color: '#ff5e6c', ts: Date.now() });
+          S.screenShake = Math.max(S.screenShake || 0, 10);
+          S._deathFlash = Date.now();
+          try { BT_AUDIO.playerDeath ? BT_AUDIO.playerDeath() : BT_AUDIO.beep(80, 0.3, 0.4, 'sawtooth'); } catch (e) {}
+          /* Deferred restore + teleport.  Captures S.rpg by reference
+             (it's the same object across ticks) so mutations apply to
+             the current state object even if React reassigns the ref. */
+          var _defRpg = S.rpg;
+          setTimeout(function () {
+            _defRpg.hp = _defRpg.maxHp;
+            _defRpg.stamina = _defRpg.maxStamina;
+            _defRpg.mana = _defRpg.maxMana;
+            S.currentZone = 'town';
+            try { updateZoneDimensions('town'); } catch (e) {}
+            try { BT_AUDIO.startZoneAmbient('town'); } catch (e) {}
+            try { S.map = generateZoneMap('town'); } catch (e) {}
+            S.monsters = [];
+            P.x = 16 * TILE;
+            P.y = 16 * TILE;
+            P.vx = 0; P.vy = 0;
+            S.respawnTimer = Date.now() + 3000;
+            S._dying = false;
+            S._deathStart = 0;
+            S.groundLoot = [];
+            S.hitParticles = [];
+            S.arrows = [];
+            S._ambientParticles = [];
+            if (S.channel) {
+              try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+              try { S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } }); } catch (e) {}
+            }
+            setRpgState(_objectSpread({}, _defRpg));
+            try { localStorage.setItem('bt_rpg', JSON.stringify(_defRpg)); } catch (e) {}
+          }, 3500);
+        }
+
         /* Re-initialize NPCs when entering town (they get nulled on zone transitions) */
         if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
           S.npcs = NPC_DATA.map(function (npc, i) {
@@ -4065,16 +4145,22 @@ export var BroTown = function BroTown(_ref0) {
              hit-reaction sprite without triggering the stun visual. */
         var _hitLockActive = S.lastDamageTaken && (Date.now() - S.lastDamageTaken) < 250;
         var _realStunned = S._playerStunUntil && Date.now() < S._playerStunUntil;
+        /* Dead during the death-animation hold (HP=0 or _dying set by
+           a death handler).  Suppresses joystick + keyboard + dodge so
+           the corpse stays put until the respawn setTimeout fires. */
+        var _playerDead = !!S._dying || !!(S.rpg && S.rpg.hp <= 0);
         var playerStunned = _realStunned || _hitLockActive;
 
         /* Movement — analog joystick + keyboard fallback */
-        /* Dodge roll */
-        if (S._dodgeRoll) {
+        /* Dodge roll — cancelled mid-roll if the player just died. */
+        if (S._dodgeRoll && !_playerDead) {
           var rollAge = Date.now() - S._dodgeRoll.startTime;
           if (rollAge < 200) {
             S.player.x += Math.cos(S._dodgeRoll.angle) * 6;
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
           } else S._dodgeRoll = null;
+        } else if (S._dodgeRoll && _playerDead) {
+          S._dodgeRoll = null;
         }
         /* Movement gated by REAL stuns only (hexer / brute charge).
            The 250 ms hit-react lockout (_hitLockActive) no longer
@@ -4082,12 +4168,13 @@ export var BroTown = function BroTown(_ref0) {
            a slime hit every few seconds stacked 250 ms freezes that
            read as "frame stutter" even at 60 fps.  Visual hit-react
            sprite + screen shake + particles still play; the player
-           just keeps their dodge ability mid-hit. */
-        var dx = _realStunned ? 0 : S.stickX,
-          dy = _realStunned ? 0 : S.stickY;
+           just keeps their dodge ability mid-hit.
+           Death also freezes — no walking around as a corpse. */
+        var dx = (_realStunned || _playerDead) ? 0 : S.stickX,
+          dy = (_realStunned || _playerDead) ? 0 : S.stickY;
         /* Keyboard overrides if no stick input — same gating:
-           real stuns block, hit-react lockout does not. */
-        if (!_realStunned && dx === 0 && dy === 0) {
+           real stuns + death block, hit-react lockout does not. */
+        if (!_realStunned && !_playerDead && dx === 0 && dy === 0) {
           if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
           if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
           if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
@@ -6803,8 +6890,13 @@ export var BroTown = function BroTown(_ref0) {
                       S.monsters = []; /* Town has no monsters */
                       P.x = 16 * TILE;
                       P.y = 16 * TILE;
+                      P.vx = 0; P.vy = 0;
                       S.respawnTimer = Date.now() + respawnMs;
                       S._dying = false;
+                      /* Clear the death-animation start so the next death
+                         retriggers the renderer's death timeline from
+                         frame 0 rather than reading a stale _selfElapsed. */
+                      S._deathStart = 0;
                       S.groundLoot = [];
                       S.hitParticles = [];
                       S.arrows = [];
@@ -7631,8 +7723,10 @@ export var BroTown = function BroTown(_ref0) {
                   /* Cap splatter at 80 marks to prevent memory bloat */
                   if (S.groundSplatter.length > 80) S.groundSplatter.splice(0, S.groundSplatter.length - 80);
 
-                  /* Loot cascade — scattered in kill direction, then settles */
-                  /* XP and gold granted immediately on kill — no pickup needed */
+                  /* Loot cascade — XP grants on kill, gold rides on the
+                     loot drop so the pickup is the only path to coins
+                     (matches the bow/staff path at ~9100 and the
+                     extracted gameLoop.js single-player path). */
                   var _wrMult = S.rpg._wellRestedUntil && Date.now() < S.rpg._wellRestedUntil ? WELL_RESTED_XP_MULT : 1;
                   var isRare = Math.random() < 0.002; /* 0.2% — 10x scarcer than before */
                   /* Variant XP bonus -- e.g. fireGoblin gives 2x for
@@ -7640,20 +7734,11 @@ export var BroTown = function BroTown(_ref0) {
                   var killXp = Math.ceil((isRare ? m.xp * 3 : m.xp) * _wrMult * xpMultFor(m));
                   var killGold = Math.ceil(isRare ? m.gold * 10 : m.gold);
                   _R6.xp += killXp;
-                  _R6.coins += killGold;
-                  if (_R6._compStats) _R6._compStats.totalGoldEarned += killGold;
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 25,
                     text: '+' + killXp + 'XP',
                     color: '#60a5fa',
-                    ts: Date.now()
-                  });
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 15,
-                    text: '+' + killGold + 'G',
-                    color: '#f5c542',
                     ts: Date.now()
                   });
                   var lootCount = isGrandSlam ? 3 : 1;
@@ -7663,7 +7748,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.groundLoot.push({
                       x: m.x + Math.cos(lootAngle) * lootDist + (Math.random() - 0.5) * 10,
                       y: m.y + Math.sin(lootAngle) * lootDist + (Math.random() - 0.5) * 10,
-                      coins: 0,
+                      coins: li === 0 ? killGold : 0,
                       xp: 0,
                       skull: m.type,
                       skullEmoji: '🦴',
