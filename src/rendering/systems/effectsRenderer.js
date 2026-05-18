@@ -1403,6 +1403,13 @@ export class EffectsRenderer {
         l._pixiLabel.y = l.y + 14 + bob;
         l._pixiLabel.alpha = alpha;
       }
+      /* Shard overlay for the coin-pile branch -- non-fodder kills
+         (stalker, hexer, volatile, etc.) don't hit the remnants
+         branches above, so without this the shard would roll, land
+         in the loot, but be invisible until pickup.  Sits above the
+         coin sprite so the player can read both the gold count and
+         the zone shard at a glance. */
+      if (l.shard) this._renderShardOverlay(l, l.y - 15 + bob, alpha);
       if (l.xp) {
         gfx.circle(l.x + 6, l.y + bob, 3);
         gfx.fill({ color: 0x5b52ff, alpha });
