@@ -28,16 +28,21 @@ const SPRITE_VERSION = '2.3.39';
 const WALK_DIRS = ['s', 'se', 'w', 'nw', 'n'];
 
 /* User's uploaded set covers S/SE on the right side plus W/NW/N
-   on the left.  Right-side (E, NE, SW) get produced by mirroring. */
+   on the left.  Right-side (E, NE) get produced by mirroring.
+   v2.3.45: SE/SW mirror flags swapped per user review -- the file
+   labeled 'se' actually shows the mummy facing SW (the user reported
+   "mummy faces southwest when traveling southeast and vice versa").
+   So traveling SE now mirrors 'se' to flip it east; traveling SW uses
+   'se' as-is. */
 const WALK_MAP = {
   south:     { src: 's',  mirror: false },
-  southeast: { src: 'se', mirror: false },
+  southeast: { src: 'se', mirror: true  },
   east:      { src: 'w',  mirror: true  },
   northeast: { src: 'nw', mirror: true  },
   north:     { src: 'n',  mirror: false },
   northwest: { src: 'nw', mirror: false },
   west:      { src: 'w',  mirror: false },
-  southwest: { src: 'se', mirror: true  },
+  southwest: { src: 'se', mirror: false },
 };
 
 const walkSheets = {};         // dir -> { frames: Texture[] }
