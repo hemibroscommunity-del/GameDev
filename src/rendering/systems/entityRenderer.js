@@ -631,17 +631,42 @@ export class EntityRenderer {
            sector boundaries without delaying real direction changes:
            real motion is ~3 px/frame, server-tick interpolation
            wobble is ~0.1-0.2 px, so 0.5 px squared (= 0.25) splits
-           cleanly between them. */
+           cleanly between them.
+
+           Debounce: server-driven monsters (mummy etc.) move via
+           step-function position updates at the server tick rate, so
+           two consecutive ticks can land on different sectors when
+           the angle sits near a 22.5-deg boundary -- which read as
+           sprite-sheet flicker on diagonals.  Hold a candidate
+           facing for FACING_DEBOUNCE_MS before applying it; quick
+           boundary wobbles get filtered, real direction changes
+           still update within ~70 ms.  fireGoblin doesn't trip this
+           because clientSideMovement gives smooth per-frame motion. */
         const dx = m.x - (display._lastX != null ? display._lastX : m.x);
         const dy = m.y - (display._lastY != null ? display._lastY : m.y);
         const moving = dx * dx + dy * dy > 0.25;
         let facing = display._lastFacing || 'south';
+        const FACING_DEBOUNCE_MS = 70;
         if (moving) {
           const ang = Math.atan2(dy, dx);
           const sector = Math.round(ang / (Math.PI / 4));
-          facing = SECTORS[((sector % 8) + 8) % 8];
-          display._lastFacing = facing;
+          const candidate = SECTORS[((sector % 8) + 8) % 8];
           display._lastMovedAt = now;
+          if (candidate === facing) {
+            /* Same direction as current -- clear any pending swap. */
+            display._pendingFacing = null;
+            display._pendingFacingAt = 0;
+          } else if (display._pendingFacing !== candidate) {
+            /* New candidate direction -- start the dwell timer. */
+            display._pendingFacing = candidate;
+            display._pendingFacingAt = now;
+          } else if (now - display._pendingFacingAt >= FACING_DEBOUNCE_MS) {
+            /* Candidate has held for the dwell window -- commit. */
+            facing = candidate;
+            display._lastFacing = candidate;
+            display._pendingFacing = null;
+            display._pendingFacingAt = 0;
+          }
         }
         /* Idle pose -- when the monster hasn't moved for ~150 ms, hold a
            single frame of the last-facing walk strip instead of cycling.
