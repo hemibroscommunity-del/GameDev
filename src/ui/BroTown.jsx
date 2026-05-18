@@ -5915,6 +5915,14 @@ export var BroTown = function BroTown(_ref0) {
             /* Skip if stunned */
             if (m._stunUntil && Date.now() < m._stunUntil) return;
 
+            /* Skip during knockback recovery so the player sees the
+               bump on client-side-AI variants (fireGoblin etc).
+               Without this the AI snaps the monster back toward the
+               player on the next frame and the m.x/y += hit at the
+               damage site is invisible.  200 ms window matches the
+               stamp set by the melee + arrow hit paths. */
+            if (m._kbUntil && Date.now() < m._kbUntil) return;
+
             /* Status-based movement modifiers */
             /* When server monsters are active, skip ALL local AI — server handles movement, aggro, attacks, respawns.
                EXCEPTION: client-authoritative variants (e.g. fireGoblin
@@ -7282,6 +7290,12 @@ export var BroTown = function BroTown(_ref0) {
                 var collisionKb = collisionResult ? 6 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
                 m.y += Math.sin(kbAngle) * (kbForce + collisionKb);
+                /* Knockback recovery -- without this, client-side-AI
+                   variants (fireGoblin etc) snap back to chase the
+                   player on the next frame and the bump is invisible.
+                   Suspends AI movement for ~200 ms so the player sees
+                   the hit register. */
+                m._kbUntil = Date.now() + 200;
                 /* §Creative Vision — Weapon-specific hit particles */
                 var wpnHitType = _activeWpn.type || 'sword';
                 var weaponFX = spawnWeaponHitFX(m.x, m.y, kbAngle, wpnHitType, isCrit);
@@ -8959,6 +8973,9 @@ export var BroTown = function BroTown(_ref0) {
                 var _projKb = a.isSpecial ? 23 : 8;
                 m.x += Math.cos(kba) * _projKb;
                 m.y += Math.sin(kba) * _projKb;
+                /* Knockback recovery -- see melee path; pauses
+                   client-side AI so the bump is visible. */
+                m._kbUntil = Date.now() + 200;
                 var rangedWpnType = a.isStaff ? 'staff' : 'bow';
                 var rangedHitFX = spawnWeaponHitFX(m.x, m.y, kba, rangedWpnType, false);
                 rangedHitFX.forEach(function (p) { return S.hitParticles.push(p); });
