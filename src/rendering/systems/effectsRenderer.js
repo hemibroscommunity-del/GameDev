@@ -413,11 +413,11 @@ export class EffectsRenderer {
         /* Place icon flush to the right of the text. Text anchor is
            (0.5, 0.5), so the right edge sits at text.x + text.width/2.
            Gap scales with fontSize because special-attack popups render
-           at 2x and a fixed small gap was tight enough that the icon
-           visually clipped the last digit ("40" reading as "4[sword]").
-           Stroked text also extends a few px past the measured width
-           on iOS canvas rendering. */
-        const _iconGap = Math.max(4, (text.style.fontSize || 21) * 0.18);
+           at 2x.  Min 10 px because the prior 4 px floor still let the
+           magic icon clip the last digit on fire-goblin hits ("32"
+           reading as "3[magic]").  Stroked text extends a few px past
+           text.width on iOS canvas rendering. */
+        const _iconGap = Math.max(10, (text.style.fontSize || 21) * 0.35);
         dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
@@ -426,7 +426,7 @@ export class EffectsRenderer {
         /* Sub text sits after the icon if there is one, otherwise flush
            to the right edge of the main text.  Anchor is (0, 0.5) so
            setting .x places its left edge. */
-        const _subGap = Math.max(4, (text.style.fontSize || 21) * 0.18);
+        const _subGap = Math.max(10, (text.style.fontSize || 21) * 0.35);
         let subX = text.x + text.width / 2 + _subGap;
         if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
           subX = dmg._pixiIcon.x + (dmg._pixiIcon.width || 0) + _subGap;
