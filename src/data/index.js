@@ -7,3 +7,4 @@ export * from './lifeSkills.js';
 export * from './effects.js';
 export * from './items.js';
 export * from './gameSystems.js';
+export * from './shards.js';

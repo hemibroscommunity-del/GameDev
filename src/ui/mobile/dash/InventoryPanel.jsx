@@ -52,6 +52,11 @@ const ORE_THUMBS = {
 };
 const ORE_THUMB_DEFAULT = '/icons/ore/ore-copper.png';
 const FISHING_POLE_THUMB = '/icons/tools/fishing-pole.png';
+/* Elemental shards: one PNG per zone, all under /icons/shards/<key>.png
+   following the keys defined in src/data/shards.js (shard_meadow,
+   shard_ember, ...).  thumbFor() takes the shard_ prefix branch
+   below so any zone we add later just needs the PNG dropped in --
+   no new code in the inventory panel. */
 const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
   if (COOKED_FISH_THUMBS[k])        return COOKED_FISH_THUMBS[k];
@@ -62,6 +67,7 @@ const thumbFor = (key) => {
   if (k.startsWith('wood_'))        return WOOD_THUMB;
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
+  if (k.startsWith('shard_'))       return `/icons/shards/${k}.png`;
   if (k === 'fishing_pole')         return FISHING_POLE_THUMB;
   if (k === 'slime-remnants')       return SLIME_REMNANTS_THUMB;
   if (k === 'fire-goblin-remnants') return FIRE_GOBLIN_REMNANTS_THUMB;
