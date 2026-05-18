@@ -10,6 +10,7 @@ import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSp
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
+import { ZONE_SHARDS } from '../../data/shards.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -19,6 +20,15 @@ const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell'];
 Promise.all(POPUP_ICON_KEYS.map((k) =>
   Assets.load('/icons/popups/' + k + '.png').then((tex) => { POPUP_ICONS[k] = tex; })
 )).catch((err) => console.warn('[popup-icons] load failed', err));
+
+/* Elemental shard icons -- one PNG per zone, served from
+   /icons/shards/.  Loaded lazily, falling back to a procedural circle
+   draw until the texture resolves so an in-flight load doesn't blank
+   the overlay. */
+const SHARD_ICONS = {};
+Promise.all(Object.values(ZONE_SHARDS).map((s) =>
+  Assets.load('/icons/shards/' + s.key + '.png').then((tex) => { SHARD_ICONS[s.key] = tex; })
+)).catch((err) => console.warn('[shard-icons] load failed', err));
 
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
    loaded, _updateGatherNodes falls through to the procedural drawing path
@@ -1111,8 +1121,31 @@ export class EffectsRenderer {
     if (l._pixiIcon && !l._pixiIcon.destroyed) l._pixiIcon.destroy();
     if (l._pixiCoinSprite && !l._pixiCoinSprite.destroyed) l._pixiCoinSprite.destroy();
     if (l._pixiCoinLabel && !l._pixiCoinLabel.destroyed) l._pixiCoinLabel.destroy();
+    if (l._pixiShardSprite && !l._pixiShardSprite.destroyed) l._pixiShardSprite.destroy();
     l._pixiSprite = l._pixiLabel = l._pixiTimer = l._pixiCount = l._pixiIcon = null;
-    l._pixiCoinSprite = l._pixiCoinLabel = null;
+    l._pixiCoinSprite = l._pixiCoinLabel = l._pixiShardSprite = null;
+  }
+
+  /** Draw the elemental shard icon centered at (l.x, anchorY), layered
+   *  above any remnants/coin sprite already added for this loot entry.
+   *  Uses _pixiShardSprite so it doesn't collide with the other pooled
+   *  sprites.  Falls back silently while the PNG is still loading -- a
+   *  missing icon is preferable to a glyph that pops in mid-frame. */
+  _renderShardOverlay(l, anchorY, alpha) {
+    const tex = SHARD_ICONS[l.shard];
+    if (!tex) return;
+    if (!l._pixiShardSprite || l._pixiShardSprite.destroyed) {
+      const sp = new Sprite(tex);
+      sp.anchor.set(0.5, 0.5);
+      this.lootLayer.addChild(sp);
+      l._pixiShardSprite = sp;
+    }
+    if (l._pixiShardSprite.texture !== tex) l._pixiShardSprite.texture = tex;
+    l._pixiShardSprite.x = l.x;
+    l._pixiShardSprite.y = anchorY;
+    l._pixiShardSprite.alpha = alpha;
+    l._pixiShardSprite.scale.set(16 / (l._pixiShardSprite.texture.width || 16));
+    l._pixiShardSprite.visible = true;
   }
 
   /** Draw a gold-coin sprite + "<n>G" label centered at (l.x, anchorY),
@@ -1292,6 +1325,10 @@ export class EffectsRenderer {
              10 px above center so the player can see there's gold to grab
              without picking up the skull blindly. */
           if (l.coins) this._renderCoinOverlay(l, l.y - 10 + bob, alpha);
+          /* Shard floats just above the coin (or above the remnants if
+             there's no coin) so the player can read the zone-affiliation
+             at a glance without picking up. */
+          if (l.shard) this._renderShardOverlay(l, l.y - (l.coins ? 24 : 12) + bob, alpha);
           continue;
         }
       }
@@ -1315,6 +1352,7 @@ export class EffectsRenderer {
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         if (l.coins) this._renderCoinOverlay(l, l.y - 14, alpha);
+        if (l.shard) this._renderShardOverlay(l, l.y - (l.coins ? 28 : 14), alpha);
         continue;
       }
 

@@ -48,6 +48,7 @@ import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
+import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
@@ -1751,6 +1752,7 @@ export var BroTown = function BroTown(_ref0) {
                         localM.alive = false;
                         if (!localM._lootDropped && S.groundLoot && isRemnantSkull(localM.type)) {
                           localM._lootDropped = true;
+                          var _shardA = rollMonsterShard(S.currentZone);
                           S.groundLoot.push({
                             x: (localM.x || localM.renderX || 0) + (Math.random() - 0.5) * 12,
                             y: (localM.y || localM.renderY || 0) + (Math.random() - 0.5) * 12,
@@ -1759,6 +1761,7 @@ export var BroTown = function BroTown(_ref0) {
                             skull: localM.type,
                             skullEmoji: '🦴',
                             ts: Date.now(),
+                            shard: _shardA,
                           });
                         }
                         if (!localM._deathSfxPlayed) {
@@ -2072,6 +2075,7 @@ export var BroTown = function BroTown(_ref0) {
                   deadM.curHp = 0;
                   if (!deadM._lootDropped && S.groundLoot && isRemnantSkull(deadM.type)) {
                     deadM._lootDropped = true;
+                    var _shardB = rollMonsterShard(S.currentZone);
                     S.groundLoot.push({
                       x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
                       y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
@@ -2080,6 +2084,7 @@ export var BroTown = function BroTown(_ref0) {
                       skull: deadM.type,
                       skullEmoji: '🦴',
                       ts: Date.now(),
+                      shard: _shardB,
                     });
                   } else if (!deadM._lootDropped && S.groundLoot && _killGoldPre > 0) {
                     /* Non-skull-dropper but we earned gold — push a
@@ -5714,6 +5719,20 @@ export var BroTown = function BroTown(_ref0) {
                       ts: Date.now()
                     });
                   }
+                  /* Pet hands the elemental shard over too -- otherwise
+                     auto-looted piles silently lose the shard since this
+                     branch removes the loot entry (return false below). */
+                  if (loot.shard && S.rpg.inventory) {
+                    S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
+                    var _petShard = shardByKey(loot.shard);
+                    S.dmgNumbers.push({
+                      x: S._petX,
+                      y: S._petY - 28,
+                      text: pet.emoji + ' + ' + (_petShard ? _petShard.label : 'Shard'),
+                      color: (_petShard && _petShard.color) || '#cce6ff',
+                      ts: Date.now()
+                    });
+                  }
                   BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
                   if (!S.rpg._questFlags) S.rpg._questFlags = {};
                   S.rpg._questFlags.petLootCount = (S.rpg._questFlags.petLootCount || 0) + 1;
@@ -5981,6 +6000,7 @@ export var BroTown = function BroTown(_ref0) {
               if (S._serverMonsters) {
                 m.curHp = 0; /* clamp for HP bar display */
                 if (S.groundLoot && isRemnantSkull(m.type)) {
+                  var _shardC = rollMonsterShard(S.currentZone);
                   S.groundLoot.push({
                     x: m.x + (Math.random() - 0.5) * 12,
                     y: m.y + (Math.random() - 0.5) * 12,
@@ -5989,6 +6009,7 @@ export var BroTown = function BroTown(_ref0) {
                     skull: m.type,
                     skullEmoji: '🦴',
                     ts: Date.now(),
+                    shard: _shardC,
                   });
                 }
                 return;
@@ -6010,6 +6031,7 @@ export var BroTown = function BroTown(_ref0) {
                 color: '#ff5e6c',
                 ts: Date.now()
               });
+              var _shardD = rollMonsterShard(S.currentZone);
               S.groundLoot.push({
                 x: m.x,
                 y: m.y,
@@ -6017,7 +6039,8 @@ export var BroTown = function BroTown(_ref0) {
                 xp: 0,
                 skull: m.type,
                 skullEmoji: '🦴',
-                ts: Date.now()
+                ts: Date.now(),
+                shard: _shardD,
               });
               S.screenShake = 3;
               /* Death particles */
@@ -6578,6 +6601,7 @@ export var BroTown = function BroTown(_ref0) {
                     }
                     BT_AUDIO.deathBoom(m && m.archetype);
                     BT_AUDIO.beep(100, 0.2, 0.3, 'sawtooth');
+                    var _shardE = rollMonsterShard(S.currentZone);
                     S.groundLoot.push({
                       x: m.x,
                       y: m.y,
@@ -6585,7 +6609,8 @@ export var BroTown = function BroTown(_ref0) {
                       xp: 0,
                       skull: m.type,
                       skullEmoji: '🦴',
-                      ts: Date.now()
+                      ts: Date.now(),
+                      shard: _shardE,
                     });
                   } else {
                     _R6.hp -= dmgTaken;
@@ -7765,6 +7790,10 @@ export var BroTown = function BroTown(_ref0) {
                     ts: Date.now()
                   });
                   var lootCount = isGrandSlam ? 3 : 1;
+                  /* One shard roll per kill, attached to the primary pile
+                     (li === 0) so grand-slam kills don't compound into
+                     multiple shard chances. */
+                  var _shardF = rollMonsterShard(S.currentZone);
                   for (var li = 0; li < lootCount; li++) {
                     var lootAngle = killAngle + (Math.random() - 0.5) * 1.0;
                     var lootDist = 15 + Math.random() * 25 * killScale;
@@ -7776,7 +7805,8 @@ export var BroTown = function BroTown(_ref0) {
                       skull: m.type,
                       skullEmoji: '🦴',
                       ts: Date.now() + li * 80,
-                      rare: isRare && li === 0
+                      rare: isRare && li === 0,
+                      shard: li === 0 ? _shardF : null,
                     });
                   }
                   if (isRare) {
@@ -8342,6 +8372,20 @@ export var BroTown = function BroTown(_ref0) {
                   loot.skull === 'fireGoblin' ? 'fire-goblin-remnants' :
                   loot.skull;
                 S.rpg.inventory[_invKey] = (S.rpg.inventory[_invKey] || 0) + 1;
+              }
+              /* Elemental shard rides on the loot when a 10 % monster
+                 roll succeeded.  Goes straight to inventory under the
+                 shard_<zone> key so it shows up as its own tile. */
+              if (loot.shard && S.rpg.inventory) {
+                S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
+                var _pickedShard = shardByKey(loot.shard);
+                S.dmgNumbers.push({
+                  x: loot.x + 12,
+                  y: loot.y - 22,
+                  text: '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'),
+                  color: (_pickedShard && _pickedShard.color) || '#cce6ff',
+                  ts: Date.now()
+                });
               }
               if (loot.skull) {
                 if (!S.rpg.skulls) S.rpg.skulls = {};
@@ -9189,6 +9233,7 @@ export var BroTown = function BroTown(_ref0) {
                     m.curHp = 0;
                     hit = true;
                     if (S.groundLoot && isRemnantSkull(m.type)) {
+                      var _shardG = rollMonsterShard(S.currentZone);
                       S.groundLoot.push({
                         x: m.x + (Math.random() - 0.5) * 12,
                         y: m.y + (Math.random() - 0.5) * 12,
@@ -9197,6 +9242,7 @@ export var BroTown = function BroTown(_ref0) {
                         skull: m.type,
                         skullEmoji: '🦴',
                         ts: Date.now(),
+                        shard: _shardG,
                       });
                     }
                     return;
@@ -9285,7 +9331,8 @@ export var BroTown = function BroTown(_ref0) {
                     /* Gold rides on the loot — rare kills carry the 10x bonus
                        through the drop instead of via a direct grant. */
                     var _killGoldR = Math.ceil(_isRareR ? (m.gold || 2) * 10 : (m.gold || m.coins || 2));
-                    S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 15, y: m.y + (Math.random() - 0.5) * 15, coins: _killGoldR, xp: 0, skull: m.type, skullEmoji: '🦴', ts: Date.now() });
+                    var _shardH = rollMonsterShard(S.currentZone);
+                    S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 15, y: m.y + (Math.random() - 0.5) * 15, coins: _killGoldR, xp: 0, skull: m.type, skullEmoji: '🦴', ts: Date.now(), shard: _shardH });
                     var dropChance = Math.min(0.15, 0.03 + (m.level || 1) * 0.001);
                     if (Math.random() < dropChance) {
                       var _zone7 = ZONES[S.currentZone];
@@ -10455,6 +10502,15 @@ export var BroTown = function BroTown(_ref0) {
     var baseKey = (node.resourceType || 'fish') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
     var yieldQty = reward.yieldMult || 1;
     R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+    /* Elemental shard -- 33% per successful harvest, keyed off current
+       zone.  Shows a floating "+ <Shard>" popup and adds straight to
+       inventory (no ground-loot intermediary -- harvest is direct). */
+    var _shardF1 = rollHarvestShard(S.currentZone);
+    if (_shardF1) {
+      R.inventory[_shardF1] = (R.inventory[_shardF1] || 0) + 1;
+      var _shardDesc1 = shardByKey(_shardF1);
+      S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc1 ? _shardDesc1.label : 'Shard'), color: (_shardDesc1 && _shardDesc1.color) || '#cce6ff', ts: Date.now() });
+    }
     /* XP */
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
     var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
@@ -10563,6 +10619,13 @@ export var BroTown = function BroTown(_ref0) {
     var baseKey = (node.resourceType || 'wood') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
     var yieldQty = reward.yieldMult || 1;
     R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+    /* Elemental shard -- 33% per chop, same scheme as fishing/mining. */
+    var _shardF2 = rollHarvestShard(S.currentZone);
+    if (_shardF2) {
+      R.inventory[_shardF2] = (R.inventory[_shardF2] || 0) + 1;
+      var _shardDesc2 = shardByKey(_shardF2);
+      S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc2 ? _shardDesc2.label : 'Shard'), color: (_shardDesc2 && _shardDesc2.color) || '#cce6ff', ts: Date.now() });
+    }
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
     var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
     var leveled = addLifeSkillXp(R.lifeSkills, 'woodcutting', xpAmt);
@@ -10601,6 +10664,13 @@ export var BroTown = function BroTown(_ref0) {
     var baseKey = (node.resourceType || 'ore') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
     var yieldQty = reward.yieldMult || 1;
     R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+    /* Elemental shard -- 33% per mine, same scheme as fishing/wood. */
+    var _shardF3 = rollHarvestShard(S.currentZone);
+    if (_shardF3) {
+      R.inventory[_shardF3] = (R.inventory[_shardF3] || 0) + 1;
+      var _shardDesc3 = shardByKey(_shardF3);
+      S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc3 ? _shardDesc3.label : 'Shard'), color: (_shardDesc3 && _shardDesc3.color) || '#cce6ff', ts: Date.now() });
+    }
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
     var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
     var leveled = addLifeSkillXp(R.lifeSkills, 'mining', xpAmt);
