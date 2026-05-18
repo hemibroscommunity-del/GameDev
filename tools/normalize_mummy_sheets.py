@@ -59,20 +59,28 @@ def normalize(direction):
     l, t, r, b = union
     bbox_h = b - t
     bbox_w = r - l
+    # Always scale by HEIGHT so every direction lands at the same
+    # TARGET_H -> on-screen height stays consistent across the 8 cardinals.
+    # If the resulting width overflows the 256 cell (walk-n's arms-spread
+    # stance, etc.), CENTER-CLIP the resized image rather than scaling
+    # smaller -- the figure's body stays the same height, fingertips
+    # at the extreme ends get a few px shaved.  This is preferable to
+    # the v2.3.47 max-width cap, which made walk-n render 207 px tall
+    # while the rest were 220, producing visibly mismatched sizes.
     scale = TARGET_H / bbox_h
-    # Cap the scale so the figure's WIDTH stays inside the 256-frame
-    # cell -- walk-n's arms-out stance was wider than tall after the
-    # height-based scale, so arms spilled into adjacent frames.
-    max_w_scale = (FRAME_W - 8) / bbox_w
-    scale = min(scale, max_w_scale)
     new_w = int(round(bbox_w * scale))
     new_h = int(round(bbox_h * scale))
     out_sheet = Image.new('RGBA', (FRAME_W * N_FRAMES, FRAME_H), (0, 0, 0, 0))
-    pad_x = (FRAME_W - new_w) // 2
     pad_y = FRAME_H - new_h - 8
     for i, f in enumerate(frames):
         cropped = f.crop((l, t, r, b))
         resized = cropped.resize((new_w, new_h), Image.LANCZOS)
+        if new_w > FRAME_W:
+            excess = new_w - FRAME_W
+            resized = resized.crop((excess // 2, 0, excess // 2 + FRAME_W, new_h))
+            pad_x = 0
+        else:
+            pad_x = (FRAME_W - new_w) // 2
         out_sheet.paste(resized, (i * FRAME_W + pad_x, pad_y), resized)
     out_sheet.save(path)
     print(f'  wrote {os.path.relpath(path, REPO)}  bbox={union}  scale={scale:.3f}  -> figure {new_w}x{new_h}')

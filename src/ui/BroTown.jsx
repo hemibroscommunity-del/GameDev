@@ -6553,6 +6553,17 @@ export var BroTown = function BroTown(_ref0) {
                     if (ss.flatDef) rawDmg = Math.max(1, Math.floor(rawDmg - ss.flatDef));
                   }
                   var blockReduc = shielded ? calcBlockReduction(_R6.fortification, _R6.shield) : 0;
+                  /* Per-variant damage multiplier (e.g. skeleton.dmgMult = 4
+                     for the post-mummy-transform danger form).  This is the
+                     LOCAL melee path -- runs for client-side-movement
+                     variants like fireGoblin and skeleton, which bypass
+                     the server's monster_attack handler.  Without this
+                     scale here, the skeleton's 4x damage only applied to
+                     monsters whose damage came in via the WS handler. */
+                  var _localAtkVariant = MONSTER_VARIANTS[arch];
+                  if (_localAtkVariant && _localAtkVariant.dmgMult) {
+                    rawDmg = Math.ceil(rawDmg * _localAtkVariant.dmgMult);
+                  }
                   /* Full block when shield arc catches the attack -- no
                      damage gets through (was rawDmg * (1 - blockReduc)
                      with a Math.max(1) floor, which always let at least
