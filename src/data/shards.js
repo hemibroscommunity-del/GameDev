@@ -12,14 +12,19 @@
  * in thumbFor().  Colors should track the zone palette so the player
  * can read which shard belongs to which zone at a glance. */
 
+/* Colors match the artwork in /icons/shards/<key>.png so the floating
+   "+ <Shard>" pickup popup reads the same hue as the gem the player
+   just saw on the loot pile.  Thunder reads gold (not the violet
+   storm-zone palette) and sky reads seafoam (not the pale-blue wind
+   palette) because the source PNGs were rendered that way. */
 export const ZONE_SHARDS = {
-  meadow:  { key: 'shard_meadow',  color: '#5a9a40', label: 'Verdant Shard'  },
-  ember:   { key: 'shard_ember',   color: '#ff6633', label: 'Ember Shard'    },
-  mist:    { key: 'shard_mist',    color: '#6abb40', label: 'Mist Shard'     },
-  frost:   { key: 'shard_frost',   color: '#88ccff', label: 'Frost Shard'    },
-  thunder: { key: 'shard_thunder', color: '#9966ff', label: 'Thunder Shard'  },
-  hollows: { key: 'shard_hollows', color: '#b09a82', label: 'Stone Shard'    },
-  sky:     { key: 'shard_sky',     color: '#cce6ff', label: 'Wind Shard'     },
+  meadow:  { key: 'shard_meadow',  color: '#7ddc55', label: 'Verdant Shard'  },
+  ember:   { key: 'shard_ember',   color: '#ff7733', label: 'Ember Shard'    },
+  mist:    { key: 'shard_mist',    color: '#56d456', label: 'Mist Shard'     },
+  frost:   { key: 'shard_frost',   color: '#7ec8ff', label: 'Frost Shard'    },
+  thunder: { key: 'shard_thunder', color: '#f5c542', label: 'Thunder Shard'  },
+  hollows: { key: 'shard_hollows', color: '#b8946a', label: 'Stone Shard'    },
+  sky:     { key: 'shard_sky',     color: '#9be0c9', label: 'Wind Shard'     },
   tidal:   { key: 'shard_tidal',   color: '#3a8acc', label: 'Tidal Shard'    },
 };
 
