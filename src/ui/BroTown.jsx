@@ -2317,6 +2317,7 @@ export var BroTown = function BroTown(_ref0) {
                   BT_AUDIO.startZoneAmbient('town');
                   S.map = generateZoneMap('town');
                   S.monsters = []; /* Town has no monsters */
+                  S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
                   S.player.x = 16 * TILE;
                   S.player.y = 16 * TILE;
                   S.respawnTimer = Date.now() + 3000;
@@ -4081,6 +4082,7 @@ export var BroTown = function BroTown(_ref0) {
             try { BT_AUDIO.startZoneAmbient('town'); } catch (e) {}
             try { S.map = generateZoneMap('town'); } catch (e) {}
             S.monsters = [];
+            S.gatherNodes = []; /* Town is safe -- no harvestable resources; clear stale entries from the previous zone */
             P.x = 16 * TILE;
             P.y = 16 * TILE;
             P.vx = 0; P.vy = 0;
@@ -4573,6 +4575,7 @@ export var BroTown = function BroTown(_ref0) {
             BT_AUDIO.startZoneAmbient('town');
             S.map = generateZoneMap('town');
             S.monsters = []; /* Town has no monsters */
+            S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
             /* Spawn at the same town extreme you originally left from
                — 8 directions including diagonals so corner-exit zones
                return you to the same corner. */
@@ -5560,6 +5563,23 @@ export var BroTown = function BroTown(_ref0) {
           S._nearMinigameArena = P.x >= ma.x - TILE * 2 && P.x <= ma.x + ma.w + TILE * 2 && P.y >= ma.y - TILE && P.y <= ma.y + ma.h + TILE * 2;
         } else {
           S._nearMinigameArena = false;
+        }
+
+        /* Revive harvested gather nodes whose respawnAt has elapsed.
+           Each node keeps its original x/y/tier/etc.; we just flip
+           alive back on and refill HP.  Effects renderer recreates the
+           sprite next frame because the previous dispose nulled the
+           _pixiSprite slot. */
+        if (S.gatherNodes) {
+          var _nowMs = Date.now();
+          for (var _gi = 0; _gi < S.gatherNodes.length; _gi++) {
+            var _gn = S.gatherNodes[_gi];
+            if (!_gn.alive && _gn.respawnAt && _nowMs >= _gn.respawnAt) {
+              _gn.alive = true;
+              _gn.hp = _gn.maxHp;
+              _gn.respawnAt = 0;
+            }
+          }
         }
 
         /* Detect nearest gatherable node */
@@ -6888,6 +6908,7 @@ export var BroTown = function BroTown(_ref0) {
                       BT_AUDIO.startZoneAmbient('town');
                       S.map = generateZoneMap('town');
                       S.monsters = []; /* Town has no monsters */
+                      S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
                       P.x = 16 * TILE;
                       P.y = 16 * TILE;
                       P.vx = 0; P.vy = 0;

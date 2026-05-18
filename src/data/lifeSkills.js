@@ -130,7 +130,7 @@ export function createGatherNode(zoneId, depth, x, y, nodeType) {
   const flavoredSpot = flavorSpotName(baseSpot, elem, nodeType);
 
   const xp = Math.ceil(tier.lvl * 1.5 + 5);
-  const respawnTime = 20000 + tier.lvl * 500;
+  const respawnTime = 120000; /* 2 minutes after harvest the node revives in place */
   return {
     x, y, zoneId, depth,
     resTier: dc.resTier,

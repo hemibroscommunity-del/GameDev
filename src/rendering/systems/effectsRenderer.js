@@ -1405,12 +1405,21 @@ export class EffectsRenderer {
    * is within 50 units).
    */
   _disposeNode(node) {
-    if (node._pixiTier && !node._pixiTier.destroyed) node._pixiTier.destroy();
-    if (node._pixiEmoji && !node._pixiEmoji.destroyed) node._pixiEmoji.destroy();
-    if (node._pixiTip1 && !node._pixiTip1.destroyed) node._pixiTip1.destroy();
-    if (node._pixiTip2 && !node._pixiTip2.destroyed) node._pixiTip2.destroy();
-    if (node._pixiTip3 && !node._pixiTip3.destroyed) node._pixiTip3.destroy();
-    if (node._pixiSprite && !node._pixiSprite.destroyed) node._pixiSprite.destroy();
+    /* Explicit removeFromParent before destroy: Pixi v8's Sprite.destroy()
+       normally unparents the child, but in this codebase dead nodes were
+       leaving zombie sprites on screen (harvested ore visually stuck
+       around).  Belt-and-suspenders the unparent step. */
+    const kill = (obj) => {
+      if (!obj || obj.destroyed) return;
+      if (obj.parent) obj.parent.removeChild(obj);
+      obj.destroy();
+    };
+    kill(node._pixiTier);
+    kill(node._pixiEmoji);
+    kill(node._pixiTip1);
+    kill(node._pixiTip2);
+    kill(node._pixiTip3);
+    kill(node._pixiSprite);
     node._pixiTier = node._pixiEmoji = node._pixiTip1 = node._pixiTip2 = node._pixiTip3 = node._pixiSprite = null;
   }
 
@@ -1425,6 +1434,10 @@ export class EffectsRenderer {
 
     for (const node of nodes) {
       if (!node.alive) {
+        /* Dead nodes stay in S.gatherNodes so the BroTown game-tick
+           revive loop can flip alive=true after respawnAt elapses.
+           Their Pixi sprite is torn down once on the first dead frame;
+           a fresh sprite is created when the node revives. */
         this._disposeNode(node);
         continue;
       }
