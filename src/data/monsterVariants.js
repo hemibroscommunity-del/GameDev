@@ -138,3 +138,13 @@ export function usesClientSideMovement(monster) {
   const v = variantForArchetype(arch);
   return !!(v && v.clientSideMovement);
 }
+
+/* True if a loot drop's skull tag should be treated as a "remnant
+   pile" -- persists forever (no 60s expiry), excluded from magnetism,
+   and has a brief pickup delay so the splat/pile lands on the ground
+   before the player can vacuum it.  Slime fodder's original behavior,
+   extended here to every variant whose remnants art is meant to be
+   a settled pile (all of them so far). */
+export function isRemnantSkull(skull) {
+  return skull === 'fodder' || !!(skull && MONSTER_VARIANTS[skull]);
+}

@@ -47,7 +47,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
-import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement } from '@/data/monsterVariants.js';
+import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull } from '@/data/monsterVariants.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
@@ -7976,20 +7976,21 @@ export var BroTown = function BroTown(_ref0) {
         if (S.groundLoot) {
           S.groundLoot = S.groundLoot.filter(function (loot) {
             /* Expire after 60 seconds (death drops use their own expiry
-               timer; fodder slime remnants persist forever until picked
-               up — pickup-only inventory item, players shouldn't lose
-               them to a 60 s clock). */
+               timer; fodder slime + variant remnants persist forever
+               until picked up — pickup-only inventory item, players
+               shouldn't lose them to a 60 s clock). */
             if (loot.isDeathDrop && loot.expiry && Date.now() > loot.expiry) return false;
             if (loot._expired) return false;
-            if (!loot.isDeathDrop && loot.skull !== 'fodder' && Date.now() - loot.ts > 60000) return false;
+            if (!loot.isDeathDrop && !isRemnantSkull(loot.skull) && Date.now() - loot.ts > 60000) return false;
             var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(P.y - loot.y, 2));
 
-            /* Fodder slime remnants: skip magnetism + add a 1.5 s pickup
-               delay so the splat actually lands on the ground and is
-               visible before the player walks over it. Without this,
-               magnetism + the kill-from-melee-range case meant remnants
-               got vacuumed up on the same frame they spawned. */
-            var _isFodderRemnant = loot.skull === 'fodder';
+            /* Fodder slime + variant remnants: skip magnetism + add a
+               brief pickup delay so the splat/pile actually lands on
+               the ground and is visible before the player walks over
+               it. Without this, magnetism + the kill-from-melee-range
+               case meant remnants got vacuumed up on the same frame
+               they spawned -- the fireGoblin debris bug in v2.3.7. */
+            var _isFodderRemnant = isRemnantSkull(loot.skull);
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
             var magnetRange = 50;
             if (!_isFodderRemnant && lDist < magnetRange && lDist > 20) {
