@@ -2227,12 +2227,24 @@ export var BroTown = function BroTown(_ref0) {
                 break;
               }
               var mDmg = payload.dmg || 5;
-              /* Per-variant damage multiplier -- the skeleton form
-                 (post-mummy-transform) deals 2x the base.  Server
-                 doesn't know about variants, so we scale here on the
-                 client using the LOCAL archetype of the attacker. */
+              /* Per-variant damage multiplier + range gating.  Server
+                 doesn't know about variants, so we apply the local
+                 attacker variant's scalars here:
+                 - dmgMult: skeleton hits ~4x harder.
+                 - noProjectile: server's fodder AI fires ranged
+                   slime-orb attacks; the client suppresses the
+                   visual via noProjectile, but the server's
+                   monster_attack still applies the hit, which the
+                   user reads as "invisible projectile".  Drop the
+                   damage entirely when a noProjectile attacker is
+                   outside melee range so mummies / skeletons can
+                   only land melee swings. */
               var _atkArchKey = atkSrc.archetype || atkSrc.type;
               var _atkVariant = MONSTER_VARIANTS[_atkArchKey];
+              if (_atkVariant && _atkVariant.noProjectile && _atkDist > 60) {
+                if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (noProjectile out of melee)', { monsterId: payload.monsterId, dist: Math.round(_atkDist), arch: _atkArchKey }); } catch (e) {}
+                break;
+              }
               if (_atkVariant && _atkVariant.dmgMult) {
                 mDmg = Math.ceil(mDmg * _atkVariant.dmgMult);
               }

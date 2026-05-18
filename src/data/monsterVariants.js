@@ -40,7 +40,11 @@ export const MONSTER_VARIANTS = {
   mummy: {
     baseArchetype: 'fodder',
     incomingDmgScalar: 0.5,   /* ~2 hits to push past transform threshold */
-    liveScalePx: 64,
+    liveScalePx: 96,          /* user request v2.3.49: ~50 % larger than
+                                 the previous 64 to match the desired
+                                 on-screen presence of the shuffling
+                                 mummy.  Skeleton stays at its own
+                                 (already-bigger) liveScalePx 96. */
     walkFrameMs: 90,          /* v2.3.48: walk strip now has 16 frames
                                  (was 8).  Cycle duration stays at
                                  ~1.44 s overall, but the per-frame
@@ -74,11 +78,13 @@ export const MONSTER_VARIANTS = {
     baseArchetype: 'fodder',  /* AI inherits fodder telegraph/attack,
                                  but spd + clientSideMovement let it
                                  chase locally rather than wander */
-    incomingDmgScalar: 0.5,
-    liveScalePx: 96,          /* 50 % bigger than mummy's 64 per user
-                                 request -- the skeleton form should
-                                 read as a more imposing on-screen
-                                 silhouette than the shuffling mummy */
+    incomingDmgScalar: 0.25,  /* v2.3.49: halved from 0.5 -> 0.25 so
+                                 the skeleton effectively has 2x HP.
+                                 HP itself is server-authoritative
+                                 (server thinks it's still fodder),
+                                 so the toughness bump rides on the
+                                 client-side damage scalar instead. */
+    liveScalePx: 96,
     walkFrameMs: 110,         /* 50 % slower per user request (was 55).
                                  Strip duration ~ 880 ms across 8 frames,
                                  reads as a more deliberate charge. */
@@ -94,12 +100,12 @@ export const MONSTER_VARIANTS = {
        orb fire and the slime-splat ground loot). */
     noProjectile: true,
     noFodderRemnants: true,
-    /* 2x outgoing damage scalar -- the skeleton is the "danger" form
-       of the mummy, so its melee swings hit twice as hard.  Applied
-       in BroTown.jsx's monster_attack handler (we scale the server's
-       payload.dmg by the attacker variant's dmgMult before computing
-       defense + final damage taken). */
-    dmgMult: 2,
+    /* Outgoing damage scalar -- skeleton is the "danger" form, so
+       its melee swings hit 4x.  Applied in BroTown.jsx's monster_attack
+       handler (scales payload.dmg by attacker variant's dmgMult
+       before defense + final damage are computed).  v2.3.49 bumped
+       2 -> 4 per user request. */
+    dmgMult: 4,
     xpMult: 2,                /* skeleton form is the harder kill */
   },
   fireGoblin: {
