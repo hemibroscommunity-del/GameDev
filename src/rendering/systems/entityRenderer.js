@@ -11,7 +11,7 @@ import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
-import { MONSTER_VARIANTS } from '../../data/monsterVariants.js';
+import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
@@ -420,6 +420,14 @@ export class EntityRenderer {
        see monsterVariants.js for the per-variant config. */
 
     for (const m of monsters) {
+      /* Mid-fight variant transform check (currently just mummy ->
+         skeleton at HP <= transformAt).  Idempotent and cheap; the
+         renderer is the natural place since it already touches every
+         live monster per frame.  Returns true on the single tick the
+         swap fires, which we use to flip _spriteBody.visible off
+         briefly so the new archetype's sprite isn't drawn under stale
+         dimensions. */
+      maybeTransformMonster(m);
       const arch = m.archetype || m.type;
       const isFodder = arch === 'fodder';
       const variantKey = MONSTER_VARIANTS[arch] ? arch : null;
@@ -608,7 +616,13 @@ export class EntityRenderer {
          (liveScalePx, deathMs, etc.) lives in monsterVariants.js;
          sprite-side lives in monsterVariantSprites.js.  Falls back to
          the slime/fodder branch when sheets haven't loaded. */
-      if (display._variantKey && display._spriteBody && variantSprites && variantSprites.walk && variantSprites.walk.has()) {
+      /* Gate the variant render branch on the LIVE variantKey rather
+         than the cached display._variantKey: when a mummy transforms
+         to a skeleton mid-fight (see maybeTransformMonster) the
+         monster's archetype changes, so we have to re-resolve the
+         sprite set per frame.  display._spriteBody was already created
+         at spawn time for any variant, so it's safe to reuse here. */
+      if (variantKey && display._spriteBody && variantSprites && variantSprites.walk && variantSprites.walk.has()) {
         const spriteBody = display._spriteBody;
         /* Facing tracks the per-frame velocity directly so direction
            changes register immediately (user request v2.3.2).  The
@@ -637,20 +651,46 @@ export class EntityRenderer {
         const IDLE_AFTER_MS = 150;
         const isIdle = !moving && (now - (display._lastMovedAt || 0)) > IDLE_AFTER_MS;
 
-        /* Priority chain: hit recoil > attack wind-up > idle pose > walk loop.
+        /* Priority chain: transform > hit recoil > attack wind-up >
+           idle pose > walk loop.  The transform branch plays a
+           variant's one-shot transition strip (mummy -> skeleton
+           bandage shred) for transformHoldMs ms after the trigger,
+           sourcing frames from the FROM archetype's variantSprites
+           (the skeleton variant inherits the play-out from mummy).
            Variants opt into the attack-strip branch by setting
-           variantSprites.attack (fireGoblin uses its 5-direction sheet,
-           triggered by the fodder-like _shootAnim window in BroTown).  The
-           wind-up sheet plays once across the telegraph window, mapped to
-           the frame index by elapsed-fraction so the swing reads at any
-           telegraph duration. */
+           variantSprites.attack (fireGoblin uses its 5-direction
+           sheet, triggered by the fodder-like _shootAnim window in
+           BroTown).  The wind-up sheet plays once across the
+           telegraph window, mapped to the frame index by elapsed-
+           fraction so the swing reads at any telegraph duration. */
+        const transformElapsed = m._transformStart ? (now - m._transformStart) : -1;
+        const transformHold = m._transformHoldMs || 0;
+        const transformingNow = transformElapsed >= 0 && transformElapsed < transformHold;
+        let transformSprites = null;
+        if (transformingNow && m._transformFromArch) {
+          const fromVariantSprites = variantSpritesFor(m._transformFromArch);
+          if (fromVariantSprites && fromVariantSprites.transform && fromVariantSprites.transform.has()) {
+            transformSprites = fromVariantSprites.transform;
+          }
+        }
         const hitSprites = variantSprites.hit;
         const attackSprites = variantSprites.attack;
-        const hitNow = m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
-        const attackNow = !hitNow && m._shootAnimEnd && now < m._shootAnimEnd
+        const hitNow = !transformingNow && m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
+        const attackNow = !transformingNow && !hitNow && m._shootAnimEnd && now < m._shootAnimEnd
           && attackSprites && attackSprites.has();
         let frame;
-        if (hitNow) {
+        if (transformingNow && transformSprites) {
+          /* Non-directional one-shot.  Map elapsed to frame index
+             at the variant's transformFrameMs rate; clamp to last so
+             the final pose holds until the swap to the new
+             archetype's walk loop. */
+          const fromVariant = MONSTER_VARIANTS[m._transformFromArch];
+          const stepMs = (fromVariant && fromVariant.transformFrameMs) || 60;
+          const tfc = transformSprites.count();
+          const tIdx = tfc > 0 ? Math.max(0, Math.min(tfc - 1, Math.floor(transformElapsed / stepMs))) : 0;
+          const tex = transformSprites.get(tIdx);
+          frame = tex ? { tex, mirror: false } : null;
+        } else if (hitNow) {
           const hfc = hitSprites.count(facing);
           const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);
           const t = (now - m._hitAnimStart) / dur;

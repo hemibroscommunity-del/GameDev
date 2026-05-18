@@ -33,6 +33,45 @@ import { ZONES } from './zones.js';
 /* Per-variant config.  Keys are the archetype name as it appears on
    monster.archetype after applyZoneVariant has been called. */
 export const MONSTER_VARIANTS = {
+  /* Mummy -- the desert-winds (sky) fodder variant.  Slow shuffle in
+     mummy form; at transformAt HP fraction the bandages shred (see
+     transform.png) and the monster swaps to its 'skeleton' archetype
+     mid-fight, gaining speed and a chase pose. */
+  mummy: {
+    baseArchetype: 'fodder',
+    incomingDmgScalar: 0.5,   /* ~2 hits to push past transform threshold */
+    liveScalePx: 64,
+    walkFrameMs: 90,          /* shuffle, slower than fodder slime */
+    deathMs: 1000,
+    remnantsScalePx: 48,
+    spd: 0.4,                 /* slower than fodder's 0.5 */
+    xpMult: 1,                /* base XP -- the skeleton form pays
+                                 the second-hit XP via its own mult */
+    /* Transform trigger -- when m.curHp / m.maxHp drops below this,
+       the mummy plays transform.png frames then swaps archetype to
+       'skeleton' (see transformsTo).  Set false to disable. */
+    transformAt: 0.5,
+    transformsTo: 'skeleton',
+    transformFrameMs: 60,     /* 8 frames * 60 ms = 480 ms shred */
+    transformHoldMs: 480,     /* total animation duration */
+  },
+  /* Skeleton -- the runtime-spawned 'second life' of a mummy.  Faster
+     than the mummy, chases the player.  Not in ZONE_VARIANT_MAP since
+     it appears only via the mummy -> skeleton transform. */
+  skeleton: {
+    baseArchetype: 'fodder',  /* AI inherits fodder telegraph/attack,
+                                 but spd + clientSideMovement let it
+                                 chase locally rather than wander */
+    incomingDmgScalar: 0.5,
+    liveScalePx: 64,
+    walkFrameMs: 55,          /* faster animation cycle vs mummy 90 */
+    deathMs: 1000,
+    remnantsScalePx: 48,
+    spd: 1.4,                 /* charges the player vs fodder's 0.5 */
+    clientSideMovement: true, /* same trick as fireGoblin: local AI
+                                 chase since server only knows fodder */
+    xpMult: 2,                /* skeleton form is the harder kill */
+  },
   fireGoblin: {
     /* AI dispatch — variant inherits attack/move logic from this
        base archetype.  fodder = telegraphs then fires a projectile. */
@@ -95,6 +134,7 @@ export const MONSTER_VARIANTS = {
      ZONE_VARIANT_MAP[zoneId] = { [baseArchetype]: variantKey } */
 export const ZONE_VARIANT_MAP = {
   ember: { fodder: 'fireGoblin' },
+  sky:   { fodder: 'mummy' },
 };
 
 /* Lookup helpers — used by the renderer, AI dispatch, and damage
@@ -197,4 +237,43 @@ export function xpMultFor(monster) {
   const arch = monster && (monster.archetype || monster.type);
   const v = variantForArchetype(arch);
   return v && v.xpMult ? v.xpMult : 1;
+}
+
+/* Mid-fight transform check.  Variants with transformAt + transformsTo
+   (currently just 'mummy' -> 'skeleton') swap archetype client-side
+   when m.curHp / m.maxHp drops below the threshold.  Idempotent:
+   already-transformed monsters short-circuit on the !current.transformsTo
+   guard.  Stamps m._transformStart so the renderer can play the
+   variant's transform animation over the existing walk frames before
+   the new archetype's walk loop takes over.
+
+   The server doesn't know about variants -- this is a purely
+   client-side visual + behavior swap.  m.spd updates so the variant's
+   clientSideMovement chase kicks in immediately; the renderer keeps
+   showing the bandage shred for transformHoldMs ms before the
+   skeleton walk-cycle replaces it.
+
+   Returns true on the tick we actually fire the transform (one-shot). */
+export function maybeTransformMonster(m) {
+  if (!m || !m.alive) return false;
+  if (m._transformStart) return false; /* already transforming or done */
+  const arch = m.archetype || m.type;
+  const v = MONSTER_VARIANTS[arch];
+  if (!v || !v.transformsTo) return false;
+  const maxHp = m.maxHp || m.hp || 1;
+  const curHp = m.curHp != null ? m.curHp : m.hp;
+  if (curHp == null || curHp <= 0) return false;
+  if (curHp / maxHp > v.transformAt) return false;
+  /* Trigger -- stamp the start time so the renderer plays the
+     transform strip, then swap archetype/spd to the new form. */
+  m._transformStart = Date.now();
+  m._transformHoldMs = v.transformHoldMs || 480;
+  m._transformFromArch = arch; /* renderer reads this to pick the
+                                  source variant's transform frames */
+  m.archetype = v.transformsTo;
+  m.type = v.transformsTo;
+  if (m.arch !== undefined) m.arch = v.transformsTo;
+  const next = MONSTER_VARIANTS[v.transformsTo];
+  if (next && next.spd != null) m.spd = next.spd;
+  return true;
 }
