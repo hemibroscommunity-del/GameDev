@@ -1727,16 +1727,40 @@ export var BroTown = function BroTown(_ref0) {
                       if (md.alive && !localM.alive) {
                         /* Monster respawned -- clear stuck arrows from
                            the previous life so the new spawn doesn't
-                           inherit a pin-cushion silhouette. */
+                           inherit a pin-cushion silhouette.  Also clear
+                           _lootDropped so the next kill drops a fresh
+                           remnant pile (otherwise the flag carries
+                           forever and the second life leaves nothing). */
                         localM.alive = true;
                         localM.renderX = md.x;
                         localM.renderY = md.y;
                         localM._stuckArrows = [];
                         localM._slimeDeathStart = null;
+                        localM._lootDropped = false;
                       }
                       if (!md.alive && localM.alive) {
-                        /* Monster died (from another player's kill) */
+                        /* Monster died (from another player's kill or
+                           server-driven mechanics).  Drop the remnant
+                           pile here as the canonical alive -> dead
+                           transition for server-managed monsters --
+                           m.curHp -= dmg in the local hit paths is
+                           gated on !S._serverMonsters so those never
+                           fire in MP, leaving this tick branch (and
+                           the monster_kill handler) as the only
+                           places that know the kill happened. */
                         localM.alive = false;
+                        if (!localM._lootDropped && S.groundLoot && isRemnantSkull(localM.type)) {
+                          localM._lootDropped = true;
+                          S.groundLoot.push({
+                            x: (localM.x || localM.renderX || 0) + (Math.random() - 0.5) * 12,
+                            y: (localM.y || localM.renderY || 0) + (Math.random() - 0.5) * 12,
+                            coins: 0,
+                            xp: 0,
+                            skull: localM.type,
+                            skullEmoji: '🦴',
+                            ts: Date.now(),
+                          });
+                        }
                       }
                     }
                   }
@@ -2025,13 +2049,15 @@ export var BroTown = function BroTown(_ref0) {
                      arrow kill code ever fires `if (m.curHp <= 0)` --
                      meaning the local loot push never happens.  Drop the
                      remnant here so fodder + variants leave debris on the
-                     ground in MP.  Guard on the previous alive flag so
-                     solo kills (which set alive=false locally first) don't
-                     double-push when the server's monster_kill arrives. */
-                  var _wasAlive = deadM.alive;
+                     ground in MP.  _lootDropped is the canonical
+                     "already pushed" flag (cleared on respawn in the
+                     tick handler) -- v2.3.17 fix: the previous _wasAlive
+                     gate fired false-negative when the tick handler
+                     arrived first and set alive=false silently. */
                   deadM.alive = false;
                   deadM.curHp = 0;
-                  if (_wasAlive && S.groundLoot && isRemnantSkull(deadM.type)) {
+                  if (!deadM._lootDropped && S.groundLoot && isRemnantSkull(deadM.type)) {
+                    deadM._lootDropped = true;
                     S.groundLoot.push({
                       x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
                       y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,

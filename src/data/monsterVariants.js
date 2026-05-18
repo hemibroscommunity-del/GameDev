@@ -153,11 +153,17 @@ export function usesClientSideMovement(monster) {
 /* True if a loot drop's skull tag should be treated as a "remnant
    pile" -- persists forever (no 60s expiry), excluded from magnetism,
    and has a brief pickup delay so the splat/pile lands on the ground
-   before the player can vacuum it.  Slime fodder's original behavior,
-   extended here to every variant whose remnants art is meant to be
-   a settled pile (all of them so far). */
+   before the player can vacuum it.  Covers every monster that has
+   dedicated remnants art:
+     - 'fodder'    -> slime splat
+     - 'snowman'   -> snowman wreck
+     - any variant -> variant.remnants texture (e.g. fireGoblin debris)
+   Used by both the tick/monster_kill loot-drop guard (so the pile
+   actually spawns in MP where the local hit code never fires) and the
+   loot-filter logic (persistence, magnetism, pickup delay). */
 export function isRemnantSkull(skull) {
-  return skull === 'fodder' || !!(skull && MONSTER_VARIANTS[skull]);
+  return skull === 'fodder' || skull === 'snowman'
+      || !!(skull && MONSTER_VARIANTS[skull]);
 }
 
 /* Per-kill XP multiplier for a variant.  Server-mode XP rolls

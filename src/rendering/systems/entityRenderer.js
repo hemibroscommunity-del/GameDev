@@ -491,6 +491,17 @@ export class EntityRenderer {
             display.y = m.y;
             display.visible = true;
             display._body.visible = false;
+            /* Clear HP bar.  The alive-branch HP-bar maintenance code
+               skips on dead monsters, so without this the bar freezes
+               at whatever fraction the last alive tick saw -- if the
+               server jumps straight from "alive 50%" to monster_kill
+               without an intermediate hp=0 tick, the bar stays
+               half-full over a corpse (v2.3.17 bug report).  Set
+               _lastHpPct = 1 so the post-respawn redraw triggers
+               cleanly on the first damage tick. */
+            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
+            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
               display._dynKey = '';
@@ -520,6 +531,11 @@ export class EntityRenderer {
             display.y = m.y;
             display.visible = true;
             display._body.visible = false;
+            /* Clear HP bar -- see variant death branch for context;
+               same problem applies to raw fodder slime kills. */
+            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
+            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            display._lastHpPct = 1;
             /* Clear any leftover dynamic content (aggro arrow, status
                icons) so it doesn't linger on the death frame. */
             if (display._dynGfx) {
@@ -553,6 +569,10 @@ export class EntityRenderer {
             display.y = m.y;
             display.visible = true;
             display._body.visible = false;
+            /* Clear HP bar -- same fix as slime / variant death branches. */
+            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
+            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
               display._dynKey = '';
