@@ -7273,9 +7273,13 @@ export var BroTown = function BroTown(_ref0) {
                 /* Knockback — §Creative Vision: proportional to hit weight.
                    Special attacks knock back ~3x (10 → 30) for the heavy-hit feel. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                var kbForce = S._specialAttack ? 30 : isCrit ? 14 : 6;
+                /* +50% knockback across the board (v2.3.15) -- the
+                   prior numbers (30/14/6 + 4) read as a polite tap;
+                   45/21/9 + 6 makes hits feel like they actually
+                   send the monster. */
+                var kbForce = S._specialAttack ? 45 : isCrit ? 21 : 9;
                 /* Collision adds extra knockback */
-                var collisionKb = collisionResult ? 4 : 0;
+                var collisionKb = collisionResult ? 6 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
                 m.y += Math.sin(kbAngle) * (kbForce + collisionKb);
                 /* §Creative Vision — Weapon-specific hit particles */
@@ -8949,8 +8953,10 @@ export var BroTown = function BroTown(_ref0) {
                      without a residue overlay on the body. */
                 }
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
-                /* Special projectiles (bow heavy / staff burst) knock back 3x. */
-                var _projKb = a.isSpecial ? 15 : 5;
+                /* Special projectiles (bow heavy / staff burst) knock
+                   back 3x.  Base 5 -> 8, special 15 -> 23 = +50% per
+                   user (v2.3.15) so arrow hits read as forceful. */
+                var _projKb = a.isSpecial ? 23 : 8;
                 m.x += Math.cos(kba) * _projKb;
                 m.y += Math.sin(kba) * _projKb;
                 var rangedWpnType = a.isStaff ? 'staff' : 'bow';
