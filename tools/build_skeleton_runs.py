@@ -1,15 +1,16 @@
 """Skeleton form run-cycle sprite sheets — mirror of build_mummy_walks
 with the skeleton .movs and run-<dir>.png output names.
 
-Direction map by visual inspection of frame[0]:
-  s   = front, red eye sockets facing camera
-  e   = right profile, clean side stride
-  se  = right side, sprinting variant with speed lines
-        (treated as SE for tighter directional fidelity)
-  ne  = 3/4 back-right, spine ridge visible
-  n   = back, head tilted, body angled away
-  w   = left profile (skeleton set ships W separately rather than
-        relying on the renderer to mirror E -- see build map)
+Direction map (after the user's visual-confirmation pass — initial
+guesses for se/e/ne/n were corrected):
+  s    = front, red eye sockets facing camera
+  w    = left profile, sprint with speed lines  (was guessed 'se')
+  w-2  = left profile, cleaner stride           (was guessed 'e';
+         user said it's "also W" -- kept as a second W variant so
+         the renderer can pick which one reads better, or we can
+         merge the two strips into a 16-frame loop later)
+  n    = back, body angled away                 (was guessed 'ne')
+  sw   = facing toward viewer-left-down         (was guessed 'n')
 """
 import os
 import subprocess
@@ -25,11 +26,11 @@ KEY = np.array([255, 0, 255], dtype=np.int16)
 SIM = 95
 
 VIDS = {
-    's':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_2e5d3dc8-b40d-414c-b465-204318ed5ff4_generated_video.mov',
-    'se': '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_e52613e7-a66a-4ba1-9d10-cefcc87ece88_generated_video.mov',
-    'e':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_be7b0f4f-f44a-4cb0-a19c-02bfb057d798_generated_video.mov',
-    'ne': '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_46cb19f4-42c1-4f37-bd13-207d760a2e0d_generated_video.mov',
-    'n':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_2224b8a7-2fa8-49dd-829e-f11891ef3b0a_generated_video.mov',
+    's':   '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_2e5d3dc8-b40d-414c-b465-204318ed5ff4_generated_video.mov',
+    'w':   '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_e52613e7-a66a-4ba1-9d10-cefcc87ece88_generated_video.mov',
+    'w-2': '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_be7b0f4f-f44a-4cb0-a19c-02bfb057d798_generated_video.mov',
+    'n':   '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_46cb19f4-42c1-4f37-bd13-207d760a2e0d_generated_video.mov',
+    'sw':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_2224b8a7-2fa8-49dd-829e-f11891ef3b0a_generated_video.mov',
 }
 
 

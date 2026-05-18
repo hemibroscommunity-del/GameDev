@@ -12,11 +12,12 @@ For each direction:
   - tile horizontally into a single sprite sheet
   - save to public/sprites/monsters/mummy/walk-<dir>.png
 
-Direction map is by visual inspection of frame[0] of each .mov:
+Direction map (after the user's visual-confirmation pass — initial
+guesses for 'e' and 'ne' were corrected to 'w' and 'nw'):
   s   = front, red eyes facing camera, mid-stride
-  se  = 3/4 front-right, body angled toward camera-right
-  e   = right profile
-  ne  = 3/4 back-right, back/shoulders visible
+  se  = 3/4 front, body angled toward viewer-right
+  w   = left profile  (was guessed as 'e' from the frame[0] thumbnail)
+  nw  = 3/4 back-left (was guessed as 'ne')
   n   = back, no face features, arms spread
 """
 import os
@@ -35,8 +36,8 @@ SIM = 95
 VIDS = {
     's':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_8853cd40-fb83-42b5-b617-ea4cbfe299bc_generated_video.mov',
     'se': '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_dabb3f54-61ad-425f-81b5-f65e010d38da_generated_video.mov',
-    'e':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_f4985290-f33b-46d3-933a-6beb30cafd3c_generated_video.mov',
-    'ne': '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_f6d60268-0109-49a0-9a5e-b3284d671312_generated_video.mov',
+    'w':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_f4985290-f33b-46d3-933a-6beb30cafd3c_generated_video.mov',
+    'nw': '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_f6d60268-0109-49a0-9a5e-b3284d671312_generated_video.mov',
     'n':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_50b4efbe-e7f6-4456-afe1-1cae21fb4565_generated_video.mov',
 }
 
