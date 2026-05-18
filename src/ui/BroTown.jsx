@@ -1725,18 +1725,18 @@ export var BroTown = function BroTown(_ref0) {
                       localM.curHp = md.hp;
                       /* Don't overwrite maxHp — it stays at the spawn value */
                       if (md.alive && !localM.alive) {
-                        /* Monster respawned -- clear stuck arrows from
-                           the previous life so the new spawn doesn't
-                           inherit a pin-cushion silhouette.  Also clear
-                           _lootDropped so the next kill drops a fresh
-                           remnant pile (otherwise the flag carries
-                           forever and the second life leaves nothing). */
+                        /* Monster respawned -- clear all per-life
+                           transient flags so the next death replays
+                           the loot drop, SFX, stuck arrows, and the
+                           death animation cleanly. */
                         localM.alive = true;
                         localM.renderX = md.x;
                         localM.renderY = md.y;
                         localM._stuckArrows = [];
                         localM._slimeDeathStart = null;
+                        localM._snowmanDeathStart = null;
                         localM._lootDropped = false;
+                        localM._deathSfxPlayed = false;
                       }
                       if (!md.alive && localM.alive) {
                         /* Monster died (from another player's kill or
@@ -1760,6 +1760,10 @@ export var BroTown = function BroTown(_ref0) {
                             skullEmoji: '🦴',
                             ts: Date.now(),
                           });
+                        }
+                        if (!localM._deathSfxPlayed) {
+                          localM._deathSfxPlayed = true;
+                          try { BT_AUDIO.monsterDeath(localM.archetype || localM.type); } catch (e) {}
                         }
                       }
                     }
@@ -2067,6 +2071,15 @@ export var BroTown = function BroTown(_ref0) {
                       skullEmoji: '🦴',
                       ts: Date.now(),
                     });
+                  }
+                  /* Per-archetype death SFX (snowman-death, monster-death
+                     fallback; slime fodder is muted via its own splat
+                     hook in entityRenderer).  Local hit paths call this
+                     too but bail in MP before reaching it -- monster_kill
+                     is the only path that knows the kill happened here. */
+                  if (!deadM._deathSfxPlayed) {
+                    deadM._deathSfxPlayed = true;
+                    try { BT_AUDIO.monsterDeath(deadM.archetype || deadM.type); } catch (e) {}
                   }
                   /* Don't clobber deadM.hp — for server monsters it's
                      the spawn-time max-HP reference used by the HP bar
