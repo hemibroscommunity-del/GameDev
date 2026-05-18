@@ -493,7 +493,11 @@ export function setupWebSocket(ctx) {
             }
           case 'monster_kill':
             {
-              /* A monster was killed — show death effects, award XP/gold if we're a recipient */
+              /* A monster was killed — show death effects, award XP if
+                 we're a recipient.  Gold rides on the loot drop and is
+                 only awarded when the player walks over the pickup. */
+              var _amRecipient = payload.recipients && payload.recipients.includes(S.myId);
+              var _killGoldPre = _amRecipient ? (payload.gold || 0) : 0;
               if (S.monsters) {
                 var deadM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (deadM) {
@@ -515,18 +519,15 @@ export function setupWebSocket(ctx) {
                       life: 1.0, color: deadM.color || '#ff5e6c', size: 3
                     });
                   }
-                  /* Remnant splat — without this, server-mode kills
-                     leave no body on the ground.  Single-player pushes
-                     this in gameLoop.js at the kill site, but server
-                     mode short-circuits that path (line 2431 returns
-                     early on _serverMonsters), so the splat has to be
-                     pushed here when the server reports the kill. */
+                  /* Remnant splat + gold pickup — without this, server-mode
+                     kills leave no body on the ground.  Gold rides on the
+                     drop so picking up the skull awards the coins. */
                   try {
                     if (!S.groundLoot) S.groundLoot = [];
                     S.groundLoot.push({
                       x: deadM.x || deadM.renderX,
                       y: deadM.y || deadM.renderY,
-                      coins: 0,
+                      coins: _killGoldPre,
                       xp: 0,
                       skull: deadM.archetype || deadM.type,
                       skullEmoji: '🦴',
@@ -544,22 +545,20 @@ export function setupWebSocket(ctx) {
                   } catch (e) {}
                 }
               }
-              /* Award XP and gold if we are a recipient */
-              if (payload.recipients && payload.recipients.includes(S.myId)) {
+              /* Award XP if we are a recipient (gold is awarded via the
+                 walkover pickup spawned above). */
+              if (_amRecipient) {
                 var R = S.rpg;
                 if (R) {
                   var killXp = payload.xp || 0;
-                  var killGold = payload.gold || 0;
                   R.xp = (R.xp || 0) + killXp;
-                  R.coins = (R.coins || 0) + killGold;
                   if (R._compStats) {
                     R._compStats.monstersKilled = (R._compStats.monstersKilled || 0) + 1;
-                    R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + killGold;
                   }
                   S.dmgNumbers.push({
                     x: S.player.x, y: S.player.y - 30,
-                    text: '+' + killXp + 'XP +' + killGold + 'G',
-                    color: '#f5c542', ts: Date.now()
+                    text: '+' + killXp + 'XP',
+                    color: '#60a5fa', ts: Date.now()
                   });
                   /* Check level up */
                   while (R.xp >= xpRequired(R.level)) {

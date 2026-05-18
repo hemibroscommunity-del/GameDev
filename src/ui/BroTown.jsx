@@ -2044,7 +2044,17 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'monster_kill':
             {
-              /* A monster was killed — show death effects, award XP/gold if we're a recipient */
+              /* A monster was killed — show death effects, award XP if
+                 we're a recipient.  Gold no longer auto-adds: it rides
+                 on the loot pickup so the player must walk over the
+                 coin (matches the SP melee/staff/bow paths). */
+              var _amRecipient = payload.recipients && payload.recipients.includes(S.myId);
+              var _goldList = payload.goldRecipients || payload.recipients || [];
+              var _amGoldRecipient = _amRecipient && _goldList.includes(S.myId);
+              var _myShare = (payload.shares && typeof payload.shares[S.myId] === 'number') ? payload.shares[S.myId] : 1;
+              var _killVarMult = xpMultFor(S.monsters && S.monsters.find(function(mm) { return mm.id === payload.monsterId; }));
+              var _killXpPre = _amRecipient ? Math.max(0, Math.round((payload.xp || 0) * _myShare * _killVarMult)) : 0;
+              var _killGoldPre = _amGoldRecipient ? Math.max(0, Math.round((payload.gold || 0) * _myShare)) : 0;
               if (S.monsters) {
                 var deadM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (deadM) {
@@ -2065,10 +2075,22 @@ export var BroTown = function BroTown(_ref0) {
                     S.groundLoot.push({
                       x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
                       y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
-                      coins: 0,
+                      coins: _killGoldPre,
                       xp: 0,
                       skull: deadM.type,
                       skullEmoji: '🦴',
+                      ts: Date.now(),
+                    });
+                  } else if (!deadM._lootDropped && S.groundLoot && _killGoldPre > 0) {
+                    /* Non-skull-dropper but we earned gold — push a
+                       coin-only pickup so the walkover gold path still
+                       works for non-fodder server archetypes. */
+                    deadM._lootDropped = true;
+                    S.groundLoot.push({
+                      x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
+                      y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
+                      coins: _killGoldPre,
+                      xp: 0,
                       ts: Date.now(),
                     });
                   }
@@ -2095,29 +2117,19 @@ export var BroTown = function BroTown(_ref0) {
                   }
                 }
               }
-              /* Award XP and gold if we are a recipient.  GDD §7:
+              /* Award XP if we are a recipient.  GDD §7:
                  contribution-weighted split — each recipient gets
-                 monster.xp * shares[myId] (and gold likewise, but only
-                 if listed in goldRecipients which the server gates at
-                 0.05 share).  Falls back to the legacy whole-amount
-                 path when shares aren't present (older server build). */
-              if (payload.recipients && payload.recipients.includes(S.myId)) {
+                 monster.xp * shares[myId].  Gold is no longer added
+                 here; it spawned on the loot drop above and the player
+                 must walk over it (pickup logic awards coins + shows
+                 the +NG popup in gold w/ coin icon). */
+              if (_amRecipient) {
                 var R = S.rpg;
                 if (R) {
-                  var myShare = (payload.shares && typeof payload.shares[S.myId] === 'number') ? payload.shares[S.myId] : 1;
-                  /* Variant XP bonus -- fireGoblin (and any future
-                     variant with xpMult) takes more hits than its base
-                     archetype, so the server's base-archetype XP gets
-                     multiplied client-side on receipt. */
-                  var _killedVariantXpMult = xpMultFor(S.monsters && S.monsters.find(function(mm) { return mm.id === payload.monsterId; }));
-                  var killXp = Math.max(0, Math.round((payload.xp || 0) * myShare * _killedVariantXpMult));
-                  var goldList = payload.goldRecipients || payload.recipients;
-                  var killGold = goldList.includes(S.myId) ? Math.max(0, Math.round((payload.gold || 0) * myShare)) : 0;
+                  var killXp = _killXpPre;
                   R.xp = (R.xp || 0) + killXp;
-                  R.coins = (R.coins || 0) + killGold;
                   if (R._compStats) {
                     R._compStats.monstersKilled = (R._compStats.monstersKilled || 0) + 1;
-                    R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + killGold;
                   }
                   /* Use-trained T1 split: divide killXp across stats by
                      their relative _buildUse share since the last kill,
@@ -2125,8 +2137,8 @@ export var BroTown = function BroTown(_ref0) {
                   distributeKillXpToBuild(R, killXp);
                   S.dmgNumbers.push({
                     x: S.player.x, y: S.player.y - 30,
-                    text: '+' + killXp + 'XP +' + killGold + 'G',
-                    color: '#f5c542', ts: Date.now()
+                    text: '+' + killXp + 'XP',
+                    color: '#60a5fa', ts: Date.now()
                   });
                   /* Check level up — T1 is use-trained (no unspent points),
                      T2 still allocated via the Stats menu (5 points per
@@ -7631,8 +7643,10 @@ export var BroTown = function BroTown(_ref0) {
                   /* Cap splatter at 80 marks to prevent memory bloat */
                   if (S.groundSplatter.length > 80) S.groundSplatter.splice(0, S.groundSplatter.length - 80);
 
-                  /* Loot cascade — scattered in kill direction, then settles */
-                  /* XP and gold granted immediately on kill — no pickup needed */
+                  /* Loot cascade — XP grants on kill, gold rides on the
+                     loot drop so the pickup is the only path to coins
+                     (matches the bow/staff path at ~9100 and the
+                     extracted gameLoop.js single-player path). */
                   var _wrMult = S.rpg._wellRestedUntil && Date.now() < S.rpg._wellRestedUntil ? WELL_RESTED_XP_MULT : 1;
                   var isRare = Math.random() < 0.002; /* 0.2% — 10x scarcer than before */
                   /* Variant XP bonus -- e.g. fireGoblin gives 2x for
@@ -7640,20 +7654,11 @@ export var BroTown = function BroTown(_ref0) {
                   var killXp = Math.ceil((isRare ? m.xp * 3 : m.xp) * _wrMult * xpMultFor(m));
                   var killGold = Math.ceil(isRare ? m.gold * 10 : m.gold);
                   _R6.xp += killXp;
-                  _R6.coins += killGold;
-                  if (_R6._compStats) _R6._compStats.totalGoldEarned += killGold;
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 25,
                     text: '+' + killXp + 'XP',
                     color: '#60a5fa',
-                    ts: Date.now()
-                  });
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 15,
-                    text: '+' + killGold + 'G',
-                    color: '#f5c542',
                     ts: Date.now()
                   });
                   var lootCount = isGrandSlam ? 3 : 1;
@@ -7663,7 +7668,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.groundLoot.push({
                       x: m.x + Math.cos(lootAngle) * lootDist + (Math.random() - 0.5) * 10,
                       y: m.y + Math.sin(lootAngle) * lootDist + (Math.random() - 0.5) * 10,
-                      coins: 0,
+                      coins: li === 0 ? killGold : 0,
                       xp: 0,
                       skull: m.type,
                       skullEmoji: '🦴',
