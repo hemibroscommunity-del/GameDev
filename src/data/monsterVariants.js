@@ -63,7 +63,10 @@ export const MONSTER_VARIANTS = {
                                  but spd + clientSideMovement let it
                                  chase locally rather than wander */
     incomingDmgScalar: 0.5,
-    liveScalePx: 64,
+    liveScalePx: 96,          /* 50 % bigger than mummy's 64 per user
+                                 request -- the skeleton form should
+                                 read as a more imposing on-screen
+                                 silhouette than the shuffling mummy */
     walkFrameMs: 55,          /* faster animation cycle vs mummy 90 */
     deathMs: 1000,
     remnantsScalePx: 48,

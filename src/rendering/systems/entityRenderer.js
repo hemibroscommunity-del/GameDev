@@ -647,9 +647,19 @@ export class EntityRenderer {
            single frame of the last-facing walk strip instead of cycling.
            Avoids the "moonwalking on the spot" look while the AI is in
            cooldown / out of range, but still resumes the walk loop the
-           moment it starts chasing again. */
+           moment it starts chasing again.
+
+           Only applies to variants with clientSideMovement -- those run
+           local AI that updates m.x every frame, so a true stop reads
+           as actual idle.  Server-driven variants (mummy) get positions
+           at the server tick rate; gaps between ticks routinely exceed
+           150 ms even while the monster is "moving" gameplay-wise, so
+           idle detection mis-fires and freezes the walk loop on frame 0
+           (user reported: "moving static picture").  For those, cycle
+           the walk strip unconditionally. */
         const IDLE_AFTER_MS = 150;
-        const isIdle = !moving && (now - (display._lastMovedAt || 0)) > IDLE_AFTER_MS;
+        const canIdle = !!variant.clientSideMovement;
+        const isIdle = canIdle && !moving && (now - (display._lastMovedAt || 0)) > IDLE_AFTER_MS;
 
         /* Priority chain: transform > hit recoil > attack wind-up >
            idle pose > walk loop.  The transform branch plays a
