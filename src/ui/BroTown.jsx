@@ -1725,10 +1725,14 @@ export var BroTown = function BroTown(_ref0) {
                       localM.curHp = md.hp;
                       /* Don't overwrite maxHp — it stays at the spawn value */
                       if (md.alive && !localM.alive) {
-                        /* Monster respawned */
+                        /* Monster respawned -- clear stuck arrows from
+                           the previous life so the new spawn doesn't
+                           inherit a pin-cushion silhouette. */
                         localM.alive = true;
                         localM.renderX = md.x;
                         localM.renderY = md.y;
+                        localM._stuckArrows = [];
+                        localM._slimeDeathStart = null;
                       }
                       if (!md.alive && localM.alive) {
                         /* Monster died (from another player's kill) */

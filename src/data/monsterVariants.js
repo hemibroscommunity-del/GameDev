@@ -56,7 +56,9 @@ export const MONSTER_VARIANTS = {
        so the pile reads at roughly the same on-screen size as the
        slime splat. */
     remnantsScalePx: 48,
-    projectileScalePx: 16,
+    /* Fireball on-screen size.  16 px was a bit small to read against
+       the bright zone -- 50% bump per user (v2.3.13). */
+    projectileScalePx: 24,
     /* Client-authoritative movement.  The server only knows the base
        fodder archetype, so server-driven positions would advance at
        fodder speed regardless of ARCHETYPES.fireGoblin.spdMult.  With
