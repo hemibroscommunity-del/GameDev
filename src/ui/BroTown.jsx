@@ -47,7 +47,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
-import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull } from '@/data/monsterVariants.js';
+import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
@@ -2066,7 +2066,12 @@ export var BroTown = function BroTown(_ref0) {
                 var R = S.rpg;
                 if (R) {
                   var myShare = (payload.shares && typeof payload.shares[S.myId] === 'number') ? payload.shares[S.myId] : 1;
-                  var killXp = Math.max(0, Math.round((payload.xp || 0) * myShare));
+                  /* Variant XP bonus -- fireGoblin (and any future
+                     variant with xpMult) takes more hits than its base
+                     archetype, so the server's base-archetype XP gets
+                     multiplied client-side on receipt. */
+                  var _killedVariantXpMult = xpMultFor(S.monsters && S.monsters.find(function(mm) { return mm.id === payload.monsterId; }));
+                  var killXp = Math.max(0, Math.round((payload.xp || 0) * myShare * _killedVariantXpMult));
                   var goldList = payload.goldRecipients || payload.recipients;
                   var killGold = goldList.includes(S.myId) ? Math.max(0, Math.round((payload.gold || 0) * myShare)) : 0;
                   R.xp = (R.xp || 0) + killXp;
@@ -7571,7 +7576,9 @@ export var BroTown = function BroTown(_ref0) {
                   /* XP and gold granted immediately on kill — no pickup needed */
                   var _wrMult = S.rpg._wellRestedUntil && Date.now() < S.rpg._wellRestedUntil ? WELL_RESTED_XP_MULT : 1;
                   var isRare = Math.random() < 0.002; /* 0.2% — 10x scarcer than before */
-                  var killXp = Math.ceil((isRare ? m.xp * 3 : m.xp) * _wrMult);
+                  /* Variant XP bonus -- e.g. fireGoblin gives 2x for
+                     being tougher to kill (see monsterVariants.xpMult). */
+                  var killXp = Math.ceil((isRare ? m.xp * 3 : m.xp) * _wrMult * xpMultFor(m));
                   var killGold = Math.ceil(isRare ? m.gold * 10 : m.gold);
                   _R6.xp += killXp;
                   _R6.coins += killGold;
@@ -8159,12 +8166,14 @@ export var BroTown = function BroTown(_ref0) {
               if (loot.coins && S.rpg._compStats) S.rpg._compStats.totalGoldEarned += loot.coins;
               syncRpgToServer(S.rpg);
               if (loot.skull && S.rpg.inventory) {
-                /* Fodder slime kills deposit "slime-remnants" instead
-                   of the raw archetype key, so the inventory shows the
-                   thematic name + thumbnail (see InventoryPanel
-                   thumbFor). Other archetypes keep their existing
-                   m.type → inventory mapping. */
-                var _invKey = loot.skull === 'fodder' ? 'slime-remnants' : loot.skull;
+                /* Map archetype/variant skull -> thematic inventory key
+                   so the inventory thumbnail (see InventoryPanel
+                   thumbFor) shows the right pickup art instead of the
+                   raw archetype name. */
+                var _invKey =
+                  loot.skull === 'fodder'     ? 'slime-remnants' :
+                  loot.skull === 'fireGoblin' ? 'fire-goblin-remnants' :
+                  loot.skull;
                 S.rpg.inventory[_invKey] = (S.rpg.inventory[_invKey] || 0) + 1;
               }
               if (loot.skull) {
@@ -9029,7 +9038,9 @@ export var BroTown = function BroTown(_ref0) {
                        the only gold path now). */
                     var _wrMultR = _R9._wellRestedUntil && Date.now() < _R9._wellRestedUntil ? WELL_RESTED_XP_MULT : 1;
                     var _isRareR = Math.random() < 0.002;
-                    var _killXpR = Math.ceil((_isRareR ? m.xp * 3 : m.xp) * _wrMultR);
+                    /* Same variant XP bonus as the melee path -- keeps
+                       bow/staff kills on the same XP curve as melee. */
+                    var _killXpR = Math.ceil((_isRareR ? m.xp * 3 : m.xp) * _wrMultR * xpMultFor(m));
                     _R9.xp = (_R9.xp || 0) + _killXpR;
                     if (_R9._compStats) {
                       _R9._compStats.monstersKilled = (_R9._compStats.monstersKilled || 0) + 1;

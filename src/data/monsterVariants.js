@@ -73,6 +73,10 @@ export const MONSTER_VARIANTS = {
        server-spawned goblins inherit fodder's 0.5 spd and local AI
        chases at fodder speed even with clientSideMovement on. */
     spd: 1.5,
+    /* XP awarded per kill is multiplied by this on the client.
+       Server uses the base 'fodder' XP value; client doubles it on
+       receipt because goblins take 3-4 hits vs slimes' 1 hit. */
+    xpMult: 2,
   },
 };
 
@@ -154,4 +158,14 @@ export function usesClientSideMovement(monster) {
    a settled pile (all of them so far). */
 export function isRemnantSkull(skull) {
   return skull === 'fodder' || !!(skull && MONSTER_VARIANTS[skull]);
+}
+
+/* Per-kill XP multiplier for a variant.  Server-mode XP rolls
+   through the base archetype, so the client scales it on receipt
+   in the monster_kill handler.  Returns 1 for raw archetypes and
+   variants without xpMult set. */
+export function xpMultFor(monster) {
+  const arch = monster && (monster.archetype || monster.type);
+  const v = variantForArchetype(arch);
+  return v && v.xpMult ? v.xpMult : 1;
 }
