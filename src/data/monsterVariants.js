@@ -50,7 +50,12 @@ export const MONSTER_VARIANTS = {
        baseline but no longer running. */
     walkFrameMs: 66,
     deathMs: 1000,
-    remnantsScalePx: 24,
+    /* Source remnants.png is 256x256 and the burnt-stick pile occupies
+       maybe 60% of the frame.  At 24 px the pile read as ~14 px on
+       screen -- effectively invisible (v2.3.8 bug).  Bumped to 48 px
+       so the pile reads at roughly the same on-screen size as the
+       slime splat. */
+    remnantsScalePx: 48,
     projectileScalePx: 16,
     /* Client-authoritative movement.  The server only knows the base
        fodder archetype, so server-driven positions would advance at
