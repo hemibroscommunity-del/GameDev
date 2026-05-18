@@ -75,7 +75,9 @@ export const MONSTER_VARIANTS = {
                                  request -- the skeleton form should
                                  read as a more imposing on-screen
                                  silhouette than the shuffling mummy */
-    walkFrameMs: 55,          /* faster animation cycle vs mummy 90 */
+    walkFrameMs: 110,         /* 50 % slower per user request (was 55).
+                                 Strip duration ~ 880 ms across 8 frames,
+                                 reads as a more deliberate charge. */
     deathMs: 1000,
     remnantsScalePx: 48,
     spd: 1.4,                 /* charges the player vs fodder's 0.5 */

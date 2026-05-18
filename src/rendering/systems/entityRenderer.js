@@ -644,7 +644,15 @@ export class EntityRenderer {
            because clientSideMovement gives smooth per-frame motion. */
         const dx = m.x - (display._lastX != null ? display._lastX : m.x);
         const dy = m.y - (display._lastY != null ? display._lastY : m.y);
-        const moving = dx * dx + dy * dy > 0.25;
+        /* Threshold lowered v2.3.46: 0.25 (0.5 px/frame) worked for
+           client-side variants (fireGoblin/skeleton at ~1.4 px/frame)
+           but excluded server-driven mummies (~0.4 px/tick).  Mummy
+           was stuck on the initial 'south' facing because dx² = 0.16
+           never cleared the bar.  0.04 (0.2 px/frame) catches the
+           mummy's slow shuffle; wobble (~0.1-0.2 px reported in the
+           v2.3.2 comment) lands at the edge but the 70 ms debounce
+           below filters anything that doesn't persist. */
+        const moving = dx * dx + dy * dy > 0.04;
         let facing = display._lastFacing || 'south';
         const FACING_DEBOUNCE_MS = 70;
         if (moving) {
