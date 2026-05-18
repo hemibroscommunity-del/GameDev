@@ -1418,16 +1418,28 @@ export class EffectsRenderer {
     const gfx = this.nodeGfx;
     gfx.clear();
 
-    const nodes = S.gatherNodes || [];
+    const nodes = S.gatherNodes;
+    if (!nodes) return;
+
+    /* Prune harvested nodes: dispose their Pixi children, then splice
+       them out of S.gatherNodes so they don't accumulate frame after
+       frame.  Without this, dead-but-still-in-array nodes left zombie
+       sprites in the world (harvest didn't visually clear the resource)
+       and crowded the proximity check, so the player would walk up to a
+       dead-looking tree/ore and get no interaction prompt. */
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      if (!nodes[i].alive) {
+        this._disposeNode(nodes[i]);
+        nodes.splice(i, 1);
+      }
+    }
+
     /* Player position for proximity-tooltip distance test. */
     const px = S.player ? S.player.x : 0;
     const py = S.player ? S.player.y : 0;
 
     for (const node of nodes) {
-      if (!node.alive) {
-        this._disposeNode(node);
-        continue;
-      }
+      /* Array is pre-filtered to alive nodes above. */
 
       const tier = node._tier;
       const tierLvl = node.gatherLvl || 1;
