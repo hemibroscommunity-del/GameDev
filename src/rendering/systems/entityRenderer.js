@@ -632,12 +632,19 @@ export class EntityRenderer {
           const sector = Math.round(ang / (Math.PI / 4));
           facing = SECTORS[((sector % 8) + 8) % 8];
           display._lastFacing = facing;
+          display._lastMovedAt = now;
         }
-        /* Priority chain: hit recoil > walk loop.  Variants opt in to
-           an attack-strip branch by setting variantSprites.attack;
-           fireGoblin's is intentionally null (cast pose interrupted
-           the walk in an awkward way -- the fireball still fires on
-           schedule via the AI telegraph). */
+        /* Idle pose -- when the monster hasn't moved for ~150 ms, hold a
+           single frame of the last-facing walk strip instead of cycling.
+           Avoids the "moonwalking on the spot" look while the AI is in
+           cooldown / out of range, but still resumes the walk loop the
+           moment it starts chasing again. */
+        const IDLE_AFTER_MS = 150;
+        const isIdle = !moving && (now - (display._lastMovedAt || 0)) > IDLE_AFTER_MS;
+
+        /* Priority chain: hit recoil > idle pose > walk loop.  Variants
+           opt in to an attack-strip branch by setting
+           variantSprites.attack; fireGoblin's is intentionally null. */
         const hitSprites = variantSprites.hit;
         const hitNow = m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
         let frame;
@@ -647,6 +654,12 @@ export class EntityRenderer {
           const t = (now - m._hitAnimStart) / dur;
           const hIdx = hfc > 0 ? Math.max(0, Math.min(hfc - 1, Math.floor(t * hfc))) : 0;
           frame = hitSprites.get(facing, hIdx);
+        } else if (isIdle) {
+          /* Hold a single frame -- we don't ship a dedicated idle
+             sheet so use the closest-to-neutral walk frame.  Frame
+             0 is the first contact pose, which reads as standing
+             still better than mid-stride frames. */
+          frame = variantSprites.walk.get(facing, 0);
         } else {
           const fc = variantSprites.walk.count(facing);
           const phaseOff = ((m.spawnX || 0) | 0) % 800;
