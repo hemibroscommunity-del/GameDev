@@ -5562,6 +5562,23 @@ export var BroTown = function BroTown(_ref0) {
           S._nearMinigameArena = false;
         }
 
+        /* Revive harvested gather nodes whose respawnAt has elapsed.
+           Each node keeps its original x/y/tier/etc.; we just flip
+           alive back on and refill HP.  Effects renderer recreates the
+           sprite next frame because the previous dispose nulled the
+           _pixiSprite slot. */
+        if (S.gatherNodes) {
+          var _nowMs = Date.now();
+          for (var _gi = 0; _gi < S.gatherNodes.length; _gi++) {
+            var _gn = S.gatherNodes[_gi];
+            if (!_gn.alive && _gn.respawnAt && _nowMs >= _gn.respawnAt) {
+              _gn.alive = true;
+              _gn.hp = _gn.maxHp;
+              _gn.respawnAt = 0;
+            }
+          }
+        }
+
         /* Detect nearest gatherable node */
         S._nearNode = null;
         if (S.gatherNodes) {

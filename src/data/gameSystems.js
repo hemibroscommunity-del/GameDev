@@ -5170,7 +5170,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   if (!this.ctx || this.muted) return;
   if (this._currentZoneAmbient === zoneId) return;
   this._currentZoneAmbient = zoneId;
-  this.stopAmbient();
+  /* Crossfade music between zones: fade the previous track to 0 over
+     ~600 ms and let stopAmbient schedule its source.stop after the
+     ramp.  Procedural drones (osc + LFO) still hard-stop -- they're
+     low-volume and a fade adds little. */
+  this.stopAmbient(true);
   /* Zone music — Web Audio path (NOT HTMLAudio). Fetch + decode the
      MP3 once, cache the AudioBuffer, then play through the same
      AudioContext as the oscillators. This sidesteps the HTMLAudio
@@ -5193,7 +5197,13 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
         var gain = self.ctx.createGain();
         src.buffer = buf;
         src.loop = true;
-        gain.gain.value = 0.275; /* halved 0.55 → 0.275 so zone music sits as ambient under SFX */
+        /* Fade in from 0 to 0.275 over 600 ms.  Pairs with the
+           600 ms fade-out scheduled by stopAmbient(true) for a
+           soft crossfade across zone boundaries. */
+        var TARGET_VOL = 0.275; /* halved 0.55 → 0.275 so zone music sits as ambient under SFX */
+        var t0 = self.ctx.currentTime;
+        gain.gain.setValueAtTime(0, t0);
+        gain.gain.linearRampToValueAtTime(TARGET_VOL, t0 + 0.6);
         src.connect(gain);
         gain.connect(self.ctx.destination);
         src.start(0);
@@ -5398,7 +5408,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       this._ambientLfo2 = lfo2;
     }
   } catch (e) {}
-}), "stopAmbient", function stopAmbient() {
+}), "stopAmbient", function stopAmbient(fadeMusic) {
   try {
     if (this._ambientOsc) {
       this._ambientOsc.stop();
@@ -5421,9 +5431,29 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     /* Zone music — stop the Web Audio source + drop refs so the
        buffer source can be GC'd. The decoded AudioBuffer cache
        (_zoneMusicBuffers) is intentionally kept across zone hops
-       so re-entering a zone doesn't re-decode. */
+       so re-entering a zone doesn't re-decode.
+
+       When fadeMusic is true, ramp the existing gain to 0 over
+       600 ms and let the source play on until just past the ramp
+       end; the audio engine keeps the routed graph alive past the
+       _zoneMusicSource ref drop because the local src/gain closure
+       still holds them.  Used for the zone-transition crossfade. */
     if (this._zoneMusicSource) {
-      try { this._zoneMusicSource.stop(); } catch (e) {}
+      var src = this._zoneMusicSource;
+      if (fadeMusic && this._zoneMusicGain && this.ctx) {
+        try {
+          var oldGain = this._zoneMusicGain;
+          var now = this.ctx.currentTime;
+          oldGain.gain.cancelScheduledValues(now);
+          oldGain.gain.setValueAtTime(oldGain.gain.value, now);
+          oldGain.gain.linearRampToValueAtTime(0, now + 0.6);
+          src.stop(now + 0.65);
+        } catch (e) {
+          try { src.stop(); } catch (_) {}
+        }
+      } else {
+        try { src.stop(); } catch (e) {}
+      }
       this._zoneMusicSource = null;
     }
     this._zoneMusicGain = null;

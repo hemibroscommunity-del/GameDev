@@ -1405,12 +1405,21 @@ export class EffectsRenderer {
    * is within 50 units).
    */
   _disposeNode(node) {
-    if (node._pixiTier && !node._pixiTier.destroyed) node._pixiTier.destroy();
-    if (node._pixiEmoji && !node._pixiEmoji.destroyed) node._pixiEmoji.destroy();
-    if (node._pixiTip1 && !node._pixiTip1.destroyed) node._pixiTip1.destroy();
-    if (node._pixiTip2 && !node._pixiTip2.destroyed) node._pixiTip2.destroy();
-    if (node._pixiTip3 && !node._pixiTip3.destroyed) node._pixiTip3.destroy();
-    if (node._pixiSprite && !node._pixiSprite.destroyed) node._pixiSprite.destroy();
+    /* Explicit removeFromParent before destroy: Pixi v8's Sprite.destroy()
+       normally unparents the child, but in this codebase dead nodes were
+       leaving zombie sprites on screen (harvested ore visually stuck
+       around).  Belt-and-suspenders the unparent step. */
+    const kill = (obj) => {
+      if (!obj || obj.destroyed) return;
+      if (obj.parent) obj.parent.removeChild(obj);
+      obj.destroy();
+    };
+    kill(node._pixiTier);
+    kill(node._pixiEmoji);
+    kill(node._pixiTip1);
+    kill(node._pixiTip2);
+    kill(node._pixiTip3);
+    kill(node._pixiSprite);
     node._pixiTier = node._pixiEmoji = node._pixiTip1 = node._pixiTip2 = node._pixiTip3 = node._pixiSprite = null;
   }
 
@@ -1418,28 +1427,20 @@ export class EffectsRenderer {
     const gfx = this.nodeGfx;
     gfx.clear();
 
-    const nodes = S.gatherNodes;
-    if (!nodes) return;
-
-    /* Prune harvested nodes: dispose their Pixi children, then splice
-       them out of S.gatherNodes so they don't accumulate frame after
-       frame.  Without this, dead-but-still-in-array nodes left zombie
-       sprites in the world (harvest didn't visually clear the resource)
-       and crowded the proximity check, so the player would walk up to a
-       dead-looking tree/ore and get no interaction prompt. */
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      if (!nodes[i].alive) {
-        this._disposeNode(nodes[i]);
-        nodes.splice(i, 1);
-      }
-    }
-
+    const nodes = S.gatherNodes || [];
     /* Player position for proximity-tooltip distance test. */
     const px = S.player ? S.player.x : 0;
     const py = S.player ? S.player.y : 0;
 
     for (const node of nodes) {
-      /* Array is pre-filtered to alive nodes above. */
+      if (!node.alive) {
+        /* Dead nodes stay in S.gatherNodes so the BroTown game-tick
+           revive loop can flip alive=true after respawnAt elapses.
+           Their Pixi sprite is torn down once on the first dead frame;
+           a fresh sprite is created when the node revives. */
+        this._disposeNode(node);
+        continue;
+      }
 
       const tier = node._tier;
       const tierLvl = node.gatherLvl || 1;
