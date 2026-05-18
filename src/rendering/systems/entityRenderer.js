@@ -457,11 +457,19 @@ export class EntityRenderer {
       /* Dead-monster handling: render the death sprite for fodder /
          variants within the death window; otherwise hide and skip.
          Variants use their own death sheet over variant.deathMs;
-         raw fodder uses the slime splat over SLIME_DEATH_MS. */
+         raw fodder uses the slime splat over SLIME_DEATH_MS.
+         Keep the display in activeIds for the full death window even
+         if sheets aren't loaded yet -- otherwise the cleanup loop
+         destroys it before the sprites resolve and the user sees a
+         pop-out instead of an animation. */
       if (!m.alive) {
         const deathT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
+        const variantDeathMs = variant ? (variant.deathMs || 1000) : 0;
+        if (variant && deathT != null && deathT >= 0 && deathT < variantDeathMs) {
+          activeIds.add(m.id);
+        }
         if (variant && variantSprites && variantSprites.death && variantSprites.death.has()
-            && deathT != null && deathT >= 0 && deathT < (variant.deathMs || 1000)) {
+            && deathT != null && deathT >= 0 && deathT < variantDeathMs) {
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
           if (display && display._spriteBody) {
