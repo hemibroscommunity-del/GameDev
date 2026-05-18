@@ -32,7 +32,7 @@ const NODE_SPRITE_SOURCES = {
 };
 const NODE_SPRITE_TEX = {};
 /* Target render heights in world px at tierStep 1, scaled up with tier. */
-const NODE_SPRITE_HEIGHT_BASE = { tree: 28, fishSpot: 22, oreVein: 22 };
+const NODE_SPRITE_HEIGHT_BASE = { tree: 112, fishSpot: 88, oreVein: 88 };
 const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   Assets.load(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
