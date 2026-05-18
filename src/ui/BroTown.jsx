@@ -4032,6 +4032,74 @@ export var BroTown = function BroTown(_ref0) {
         var P = S.player;
         var K = S.keys;
 
+        /* ═══ Defensive death-flow catch ═══
+           The "rich" death handlers (server monster_attack ~2272, local
+           monster damage ~6659) set S._dying, broadcast, scatter
+           inventory, and schedule the 3.5 s respawn.  But other damage
+           paths — drowning (~5012), PvP attack_confirmed (~2632),
+           player_attack (~2710), and anything else that just decrements
+           S.rpg.hp — never trigger a respawn, so the player dies, the
+           renderer's defensive _deathStart fallback plays the animation,
+           and then... nothing.  No teleport.  This block is the
+           catch-all: if HP reaches 0 from ANY source without S._dying
+           being set, run the essentials of the canonical handler so
+           respawn always fires. */
+        if (S.rpg && S.rpg.hp <= 0 && !S._dying) {
+          S._dying = true;
+          if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
+          S.rpg._compStats.deaths++;
+          if (!S._deathStart) S._deathStart = Date.now();
+          /* Stop momentum so the corpse doesn't drift during the
+             death-anim hold. */
+          P.vx = 0; P.vy = 0;
+          S._slideVx = 0; S._slideVy = 0;
+          /* Tell the server we're dead (move builder reads hp<=0 as
+             dead) and broadcast the death so remotes render us prone. */
+          if (S.channel) {
+            try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+            try { S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: P.x, y: P.y } }); } catch (e) {}
+          }
+          /* Gold penalty — same rate as the rich handlers. */
+          var _defGoldLost = Math.floor((S.rpg.coins || 0) * DEATH_GOLD_PENALTY);
+          S.rpg.coins = Math.max(0, (S.rpg.coins || 0) - _defGoldLost);
+          /* Popup (skip if a rich handler already pushed one this tick). */
+          S.dmgNumbers.push({ x: P.x, y: P.y - 50, text: '💀 YOU DIED', color: '#ff5e6c', ts: Date.now() });
+          if (_defGoldLost > 0) S.dmgNumbers.push({ x: P.x, y: P.y - 35, text: '-' + _defGoldLost + 'G', color: '#ff5e6c', ts: Date.now() });
+          S.screenShake = Math.max(S.screenShake || 0, 10);
+          S._deathFlash = Date.now();
+          try { BT_AUDIO.playerDeath ? BT_AUDIO.playerDeath() : BT_AUDIO.beep(80, 0.3, 0.4, 'sawtooth'); } catch (e) {}
+          /* Deferred restore + teleport.  Captures S.rpg by reference
+             (it's the same object across ticks) so mutations apply to
+             the current state object even if React reassigns the ref. */
+          var _defRpg = S.rpg;
+          setTimeout(function () {
+            _defRpg.hp = _defRpg.maxHp;
+            _defRpg.stamina = _defRpg.maxStamina;
+            _defRpg.mana = _defRpg.maxMana;
+            S.currentZone = 'town';
+            try { updateZoneDimensions('town'); } catch (e) {}
+            try { BT_AUDIO.startZoneAmbient('town'); } catch (e) {}
+            try { S.map = generateZoneMap('town'); } catch (e) {}
+            S.monsters = [];
+            P.x = 16 * TILE;
+            P.y = 16 * TILE;
+            P.vx = 0; P.vy = 0;
+            S.respawnTimer = Date.now() + 3000;
+            S._dying = false;
+            S._deathStart = 0;
+            S.groundLoot = [];
+            S.hitParticles = [];
+            S.arrows = [];
+            S._ambientParticles = [];
+            if (S.channel) {
+              try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+              try { S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } }); } catch (e) {}
+            }
+            setRpgState(_objectSpread({}, _defRpg));
+            try { localStorage.setItem('bt_rpg', JSON.stringify(_defRpg)); } catch (e) {}
+          }, 3500);
+        }
+
         /* Re-initialize NPCs when entering town (they get nulled on zone transitions) */
         if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
           S.npcs = NPC_DATA.map(function (npc, i) {
@@ -4077,16 +4145,22 @@ export var BroTown = function BroTown(_ref0) {
              hit-reaction sprite without triggering the stun visual. */
         var _hitLockActive = S.lastDamageTaken && (Date.now() - S.lastDamageTaken) < 250;
         var _realStunned = S._playerStunUntil && Date.now() < S._playerStunUntil;
+        /* Dead during the death-animation hold (HP=0 or _dying set by
+           a death handler).  Suppresses joystick + keyboard + dodge so
+           the corpse stays put until the respawn setTimeout fires. */
+        var _playerDead = !!S._dying || !!(S.rpg && S.rpg.hp <= 0);
         var playerStunned = _realStunned || _hitLockActive;
 
         /* Movement — analog joystick + keyboard fallback */
-        /* Dodge roll */
-        if (S._dodgeRoll) {
+        /* Dodge roll — cancelled mid-roll if the player just died. */
+        if (S._dodgeRoll && !_playerDead) {
           var rollAge = Date.now() - S._dodgeRoll.startTime;
           if (rollAge < 200) {
             S.player.x += Math.cos(S._dodgeRoll.angle) * 6;
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
           } else S._dodgeRoll = null;
+        } else if (S._dodgeRoll && _playerDead) {
+          S._dodgeRoll = null;
         }
         /* Movement gated by REAL stuns only (hexer / brute charge).
            The 250 ms hit-react lockout (_hitLockActive) no longer
@@ -4094,12 +4168,13 @@ export var BroTown = function BroTown(_ref0) {
            a slime hit every few seconds stacked 250 ms freezes that
            read as "frame stutter" even at 60 fps.  Visual hit-react
            sprite + screen shake + particles still play; the player
-           just keeps their dodge ability mid-hit. */
-        var dx = _realStunned ? 0 : S.stickX,
-          dy = _realStunned ? 0 : S.stickY;
+           just keeps their dodge ability mid-hit.
+           Death also freezes — no walking around as a corpse. */
+        var dx = (_realStunned || _playerDead) ? 0 : S.stickX,
+          dy = (_realStunned || _playerDead) ? 0 : S.stickY;
         /* Keyboard overrides if no stick input — same gating:
-           real stuns block, hit-react lockout does not. */
-        if (!_realStunned && dx === 0 && dy === 0) {
+           real stuns + death block, hit-react lockout does not. */
+        if (!_realStunned && !_playerDead && dx === 0 && dy === 0) {
           if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
           if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
           if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
@@ -6815,8 +6890,13 @@ export var BroTown = function BroTown(_ref0) {
                       S.monsters = []; /* Town has no monsters */
                       P.x = 16 * TILE;
                       P.y = 16 * TILE;
+                      P.vx = 0; P.vy = 0;
                       S.respawnTimer = Date.now() + respawnMs;
                       S._dying = false;
+                      /* Clear the death-animation start so the next death
+                         retriggers the renderer's death timeline from
+                         frame 0 rather than reading a stale _selfElapsed. */
+                      S._deathStart = 0;
                       S.groundLoot = [];
                       S.hitParticles = [];
                       S.arrows = [];
