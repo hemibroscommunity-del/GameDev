@@ -15,6 +15,9 @@ import {
   getFrame as fgWalkFrame,
   hasFrames as fgHasWalk,
   frameCount as fgWalkCount,
+  getAttackFrame as fgAttackFrame,
+  hasAttackFrames as fgHasAttack,
+  attackFrameCount as fgAttackCount,
   getHitFrame as fgHitFrame,
   hasHitFrames as fgHasHit,
   hitFrameCount as fgHitCount,
@@ -29,12 +32,11 @@ import {
 export const VARIANT_SPRITES = {
   fireGoblin: {
     load: loadFireGoblinSprites,
-    walk:  { get: fgWalkFrame,  has: fgHasWalk,  count: fgWalkCount  },
-    hit:   { get: fgHitFrame,   has: fgHasHit,   count: fgHitCount   },
-    /* No idle sheet -- walk loop covers standing.  No attack sheet
-       (disabled per user feedback v2.2.6). */
+    walk:   { get: fgWalkFrame,   has: fgHasWalk,   count: fgWalkCount   },
+    attack: { get: fgAttackFrame, has: fgHasAttack, count: fgAttackCount },
+    hit:    { get: fgHitFrame,    has: fgHasHit,    count: fgHitCount    },
+    /* No idle sheet -- walk frame 0 holds the standing pose. */
     idle:   null,
-    attack: null,
     death: { get: fgDeathFrame, has: fgHasDeath, count: fgDeathCount },
     /* getRemnantsTexture / getFireballTexture return the texture or
        null until loaded; renderer treats null as "not ready yet". */
