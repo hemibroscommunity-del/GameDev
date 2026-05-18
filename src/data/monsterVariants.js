@@ -49,6 +49,14 @@ export const MONSTER_VARIANTS = {
        completes in ~528 ms, still snappier than the original 100 ms
        baseline but no longer running. */
     walkFrameMs: 66,
+    /* Attack strip plays at a fixed frame rate (8 frames * 50 ms = 400 ms)
+       then the renderer holds the last frame until _shootAnimEnd.  Earlier
+       v2.3.23 spread the strip across the full telegraph window (480 ms),
+       which made the swing read slow and the body looked like it was
+       skidding mid-attack -- the goblin's chase motion lingered while the
+       swing was still mid-arc.  Decoupling swing speed from telegraph
+       length lets the wind-up snap and the body settle on the held pose. */
+    attackFrameMs: 50,
     deathMs: 1000,
     /* Source remnants.png is 256x256 and the burnt-stick pile occupies
        maybe 60% of the frame.  At 24 px the pile read as ~14 px on

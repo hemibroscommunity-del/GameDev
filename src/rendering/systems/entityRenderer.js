@@ -662,10 +662,15 @@ export class EntityRenderer {
           const hIdx = hfc > 0 ? Math.max(0, Math.min(hfc - 1, Math.floor(t * hfc))) : 0;
           frame = hitSprites.get(facing, hIdx);
         } else if (attackNow) {
+          /* Fixed-rate playback then hold the last frame -- decouples the
+             swing speed from the telegraph window so the strike reads
+             quickly even when the telegraph is long.  Strip duration =
+             frameCount * attackFrameMs; once elapsed exceeds that the
+             clamp pins us to the final pose until _shootAnimEnd. */
           const afc = attackSprites.count(facing);
-          const dur = Math.max(1, m._shootAnimEnd - m._shootAnimStart);
-          const t = (now - m._shootAnimStart) / dur;
-          const aIdx = afc > 0 ? Math.max(0, Math.min(afc - 1, Math.floor(t * afc))) : 0;
+          const stepMs = variant.attackFrameMs || 70;
+          const elapsed = now - m._shootAnimStart;
+          const aIdx = afc > 0 ? Math.max(0, Math.min(afc - 1, Math.floor(elapsed / stepMs))) : 0;
           frame = attackSprites.get(facing, aIdx);
         } else if (isIdle) {
           /* Hold a single frame -- we don't ship a dedicated idle
