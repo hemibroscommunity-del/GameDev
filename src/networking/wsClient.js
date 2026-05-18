@@ -457,11 +457,15 @@ export function setupWebSocket(ctx) {
                   hitM.hp = Math.round(payload.hpPct * hitM.maxHp);
                   hitM.curHp = hitM.hp;
                   hitM._hitFlash = Date.now();
-                  /* Show damage number (skip our own — we already show it locally) */
+                  /* Show damage number (skip our own — we already show it locally).
+                     Match the local-player path's convention: positive
+                     value, no leading dash.  Was: text: '-' + payload.dmg
+                     which read as a negative "-13" when own-player
+                     hits show "13". */
                   if (payload.attackerId !== S.myId) {
                     S.dmgNumbers.push({
                       x: hitM.x || hitM.renderX, y: (hitM.y || hitM.renderY) - 20,
-                      text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888',
+                      text: '' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888',
                       ts: Date.now()
                     });
                   }
@@ -483,6 +487,13 @@ export function setupWebSocket(ctx) {
               if (S.monsters) {
                 var deadM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (deadM) {
+                  /* Clear death-anim guards FIRST so the entityRenderer
+                     sees a fresh alive=false transition.  Without this,
+                     a stale _slimeDeathStart from a prior kill blocks
+                     the splat SFX + death sprite hook for the rest of
+                     the session. */
+                  deadM._slimeDeathStart = null;
+                  deadM._snowmanDeathStart = null;
                   deadM.alive = false;
                   deadM.curHp = 0;
                   deadM.hp = 0;
@@ -494,6 +505,33 @@ export function setupWebSocket(ctx) {
                       life: 1.0, color: deadM.color || '#ff5e6c', size: 3
                     });
                   }
+                  /* Remnant splat — without this, server-mode kills
+                     leave no body on the ground.  Single-player pushes
+                     this in gameLoop.js at the kill site, but server
+                     mode short-circuits that path (line 2431 returns
+                     early on _serverMonsters), so the splat has to be
+                     pushed here when the server reports the kill. */
+                  try {
+                    if (!S.groundLoot) S.groundLoot = [];
+                    S.groundLoot.push({
+                      x: deadM.x || deadM.renderX,
+                      y: deadM.y || deadM.renderY,
+                      coins: 0,
+                      xp: 0,
+                      skull: deadM.archetype || deadM.type,
+                      skullEmoji: '🦴',
+                      ts: Date.now(),
+                    });
+                  } catch (e) {}
+                  /* Archetype-specific death MP3 (snowman-death etc.).
+                     Fodder slimes get their splat SFX from the
+                     entityRenderer first-frame hook so monsterDeath
+                     is a no-op there. */
+                  try {
+                    if (BT_AUDIO && BT_AUDIO.monsterDeath) {
+                      BT_AUDIO.monsterDeath(deadM.archetype || deadM.type);
+                    }
+                  } catch (e) {}
                 }
               }
               /* Award XP and gold if we are a recipient */
@@ -541,26 +579,35 @@ export function setupWebSocket(ctx) {
               /* Apply player defense */
               var pDef2 = (R2.endurance || 0) * 0.5 + ((R2.armor ? R2.armor.tierMult : 1) || 1) * 3;
               var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);
-              /* Check blocking */
+              /* Check blocking.  Full block when shield is up: no
+                 damage gets through.  (Was a partial reduction; user
+                 request is "the damage gets blocked.") */
               if (S._shieldUp) {
-                var blockRed = calcBlockReduction ? calcBlockReduction(R2.fortification || 0, R2.shield) : 0.25;
-                dmgTaken2 *= (1 - blockRed);
+                dmgTaken2 = 0;
                 R2.stamina = Math.max(0, (R2.stamina || 0) - 15);
               }
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
               R2.hp = Math.max(0, R2.hp - Math.ceil(dmgTaken2));
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 20,
-                text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c', ts: Date.now()
-              });
-              for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
-                x: S.player.x, y: S.player.y,
-                vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
-                life: 0.6, color: '#ff5e6c', size: 2
-              });
-              S.screenShake = 3;
-              BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
+              if (dmgTaken2 === 0 && S._shieldUp) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 20,
+                  text: '🛡️ Blocked!', color: '#60a5fa', ts: Date.now()
+                });
+                try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
+              } else {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 20,
+                  text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c', ts: Date.now()
+                });
+                for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
+                  x: S.player.x, y: S.player.y,
+                  vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
+                  life: 0.6, color: '#ff5e6c', size: 2
+                });
+                S.screenShake = 3;
+                BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
+              }
               if (R2.hp <= 0) {
                 /* Player death from server monster */
                 if (!R2._compStats) R2._compStats = createDefaultCompStats();

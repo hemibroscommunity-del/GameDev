@@ -2133,9 +2133,10 @@ export var BroTown = function BroTown(_ref0) {
               var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);
               var inArc = isAttackInShieldArc(S, _atkX, _atkY);
               if (S._shieldUp && inArc) {
-                var blockRed = calcBlockReduction ? calcBlockReduction(R2.fortification || 0, R2.shield) : 0.25;
-                var preBlock = dmgTaken2;
-                dmgTaken2 *= (1 - blockRed);
+                /* Full block: no damage through.  (Was partial via
+                   calcBlockReduction; user request is "the damage gets
+                   blocked.") */
+                dmgTaken2 = 0;
                 R2.stamina = Math.max(0, (R2.stamina || 0) - 15);
                 /* Count-based weight: 1 successful block = 3 hits worth
                    of endurance share.  Pairs with hit weight = 1 to
@@ -4033,19 +4034,16 @@ export var BroTown = function BroTown(_ref0) {
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost') terrainSlide = 0.92; /* ice: adds momentum/slide */
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'venom' && footTile === 0) terrainMult *= 0.85; /* swamp: heavy on grass */
 
-        /* Frost zone: walking on sand (snow drifts) collects snow */
+        /* Frost zone: walking on sand (snow drifts) silently adds snow
+           to inventory (used by the snowman ability).  The "+1 snow"
+           floater was removed per user request -- the inventory
+           addition still happens so snowballs/snowmen remain craftable,
+           but the popup spam is gone. */
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost' && footTile === 6 && S.rpg) {
           if (!S._lastSnowCollect || Date.now() - S._lastSnowCollect > 2000) {
             S._lastSnowCollect = Date.now();
             if (!S.rpg.inventory) S.rpg.inventory = {};
             S.rpg.inventory.snow = (S.rpg.inventory.snow || 0) + 1;
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 20,
-              text: '❄️+1 snow',
-              color: '#a0d8f0',
-              ts: Date.now()
-            });
           }
         }
 
@@ -6064,13 +6062,13 @@ export var BroTown = function BroTown(_ref0) {
                     var blocked = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
                     if (distToP < slamRange && !invuln && !dodged) {
                       var slamDmg = Math.ceil(m.dmg * 1.5);
-                      var finalDmg = blocked ? Math.max(1, Math.ceil(slamDmg * 0.3)) : slamDmg;
+                      var finalDmg = blocked ? 0 : slamDmg;
                       _R6.hp -= finalDmg;
                       if (window.__dmgLog) try { console.log('[dmg] boss-slam', { amt: finalDmg, archetype: m.archetype || m.type, blocked: blocked }); } catch (e) {}
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: blocked ? '🛡️ Blocked! -' + finalDmg : '-' + finalDmg,
+                        text: blocked ? '🛡️ Blocked!' : '-' + finalDmg,
                         color: '#f5c542',
                         ts: Date.now()
                       });
@@ -6131,13 +6129,13 @@ export var BroTown = function BroTown(_ref0) {
                     var _blocked = Date.now() < S.shieldEnd;
                     if (distToP < sweepRange && !invuln && !_dodged) {
                       var sweepDmg = Math.ceil(m.dmg * 1.2);
-                      var _finalDmg = _blocked ? Math.max(1, Math.ceil(sweepDmg * 0.3)) : sweepDmg;
+                      var _finalDmg = _blocked ? 0 : sweepDmg;
                       _R6.hp -= _finalDmg;
                       if (window.__dmgLog) try { console.log('[dmg] boss-sweep', { amt: _finalDmg, archetype: m.archetype || m.type, blocked: _blocked }); } catch (e) {}
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: _blocked ? '🛡️ -' + _finalDmg : '-' + _finalDmg,
+                        text: _blocked ? '🛡️ Blocked!' : '-' + _finalDmg,
                         color: '#a855f7',
                         ts: Date.now()
                       });
@@ -6284,7 +6282,12 @@ export var BroTown = function BroTown(_ref0) {
                     if (ss.flatDef) rawDmg = Math.max(1, Math.floor(rawDmg - ss.flatDef));
                   }
                   var blockReduc = shielded ? calcBlockReduction(_R6.fortification, _R6.shield) : 0;
-                  var dmgTaken = shielded ? Math.max(1, Math.floor(rawDmg * (1 - blockReduc))) : rawDmg;
+                  /* Full block when shield arc catches the attack -- no
+                     damage gets through (was rawDmg * (1 - blockReduc)
+                     with a Math.max(1) floor, which always let at least
+                     1 hp through even with 75% block).  Player request
+                     is "the damage gets blocked," so 0 across the board. */
+                  var dmgTaken = shielded ? 0 : rawDmg;
                   /* ═══ FODDER SLIMES — RANGED PROJECTILE ATTACK ═══
                      Spawn a slime-orb projectile aimed at the player's
                      position right now. Damage isn't applied here — it
@@ -6341,7 +6344,7 @@ export var BroTown = function BroTown(_ref0) {
                     m.respawnAt = Date.now() + 30000;
                     BT_AUDIO.monsterDeath(m && m.archetype);
                     var explodeDmg = Math.round(m.dmg * 2);
-                    _R6.hp -= shielded ? Math.max(1, Math.floor(explodeDmg * (1 - blockReduc))) : explodeDmg;
+                    _R6.hp -= shielded ? 0 : explodeDmg;
                     if (window.__dmgLog) try { console.log('[dmg] volatile-explode', { amt: explodeDmg, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y } }); } catch (e) {}
                     if (!shielded) {
                       S._hitFlash = Date.now();
@@ -6462,19 +6465,18 @@ export var BroTown = function BroTown(_ref0) {
                       }
                     }
                     if (shielded) {
-                      m._stunUntil = Date.now() + 2000;
+                      /* No longer stuns the monster on block.  The 2s
+                         stun (previously here) effectively prevented
+                         monsters from attacking at all while the player
+                         held shield -- block, stun, block again before
+                         the stun ended, repeat, monster never recovers.
+                         Block now only mitigates the incoming damage;
+                         the monster continues its normal attack cadence. */
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 30,
-                        text: '🛡️ -' + dmgTaken,
+                        text: '🛡️ Blocked!',
                         color: '#60a5fa',
-                        ts: Date.now()
-                      });
-                      S.dmgNumbers.push({
-                        x: m.x,
-                        y: m.y - 25,
-                        text: 'STUNNED',
-                        color: '#f5c542',
                         ts: Date.now()
                       });
                       /* (block-impact sound is now BT_AUDIO.play('shield-block')

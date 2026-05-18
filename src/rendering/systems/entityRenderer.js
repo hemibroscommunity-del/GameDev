@@ -884,7 +884,19 @@ export class EntityRenderer {
       const head = other.color || '#5b52ff';
       const bodyW = 14;
       const bodyH = 22;
-      const isMoving = Math.abs(other._smoothVx || 0) > 0.01 || Math.abs(other._smoothVy || 0) > 0.01;
+      /* When a remote player stops, the sender stops broadcasting move
+         events entirely (the broadcast in gameLoop.js/BroTown.jsx is
+         gated on isMoving), so _vx/_vy stay at whatever the LAST
+         broadcast was -- a non-zero running velocity.  The smoothed
+         values then decay TOWARDS that stale value, never reaching
+         zero, so a remote player who stopped a second ago still shows
+         the jog animation forever.
+         Workaround: if we haven't received an update in 150ms, treat
+         them as idle.  Reliable because moving players broadcast every
+         ~33ms; a 150ms gap means they stopped. */
+      const STALE_UPDATE_MS = 150;
+      const stale = !other._lastUpdate || (now - other._lastUpdate) > STALE_UPDATE_MS;
+      const isMoving = !stale && (Math.abs(other._smoothVx || 0) > 0.01 || Math.abs(other._smoothVy || 0) > 0.01);
       const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
       /* Sprite-sheet body — same as local player.  Other players
