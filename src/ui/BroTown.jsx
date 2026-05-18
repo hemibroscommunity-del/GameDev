@@ -6085,7 +6085,11 @@ export var BroTown = function BroTown(_ref0) {
             var distToP = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(m.y - P.y, 2));
             var arch = m.archetype || m.type || 'fodder';
 
-            /* Aggro range varies by archetype */
+            /* Aggro range varies by archetype.  fireGoblin sits in this
+               table (not in monsterVariants) because the lookup keys
+               directly on m.archetype, which is the variant key after
+               applyZoneVariant runs.  Bumped 100 -> 200 per user --
+               fodder-default felt too close to engage in the ember zone. */
             var aggroRange = {
               fodder: 100,
               brute: 90,
@@ -6093,10 +6097,17 @@ export var BroTown = function BroTown(_ref0) {
               sentinel: 80,
               volatile: 110,
               stalker: 160,
-              hexer: 140
+              hexer: 140,
+              fireGoblin: 200
             }[arch] || 120;
             /* Deep Hollows echo — combat noise doubles aggro range */
             if (S._echoActive) aggroRange *= ECHO_AGGRO_MULT;
+            /* Retaliation window -- when a fodder-base monster gets hit
+               the damage path sets _chaseUntil so the AI keeps chasing
+               for a few seconds even if the player runs back out of the
+               normal aggro radius.  Fixes the "goblin stands there while
+               you shoot it from outside its sight" complaint. */
+            var _retaliating = m._chaseUntil && Date.now() < m._chaseUntil;
             /* AI dispatch uses base archetype so variants inherit
                behaviour from their parent (e.g. fireGoblin -> fodder). */
             var _baseArch = baseArchetypeOf(arch);
@@ -6110,7 +6121,7 @@ export var BroTown = function BroTown(_ref0) {
               stalker: 1000,
               hexer: 2500
             }[_baseArch] || 1500;
-            if (distToP < aggroRange && moveMult > 0) {
+            if ((distToP < aggroRange || _retaliating) && moveMult > 0) {
               /* ═══ AGGRO ALERT — "!" flash when enemy first notices player ═══ */
               if (!m._aggroed) {
                 m._aggroed = true;
@@ -7207,6 +7218,18 @@ export var BroTown = function BroTown(_ref0) {
                   if ((_hitBase === 'fodder' || _hitArch === 'snowman') && m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArch === 'snowman' ? 600 : 400);
+                  }
+                  /* Retaliation — getting hit forces aggro and keeps the
+                     monster chasing the player for 5s even if the player
+                     is past the normal aggro range.  Gated on fodder-base
+                     because that's the only archetype with multi-hit
+                     survivors (fireGoblin); plain slimes one-shot so the
+                     flag is moot.  Snowmen are stationary turrets, so
+                     skip them too. */
+                  if (_hitBase === 'fodder' && m.curHp > 0) {
+                    m._aggroed = true;
+                    m._aggroTs = m._aggroTs || Date.now();
+                    m._chaseUntil = Date.now() + 5000;
                   }
                   if (_hitArch === 'snowman' && m.curHp > 0) {
                     try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
@@ -8968,6 +8991,13 @@ export var BroTown = function BroTown(_ref0) {
                   if ((_hitBaseR === 'fodder' || _hitArchR === 'snowman') && m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArchR === 'snowman' ? 600 : 400);
+                  }
+                  /* Retaliation — mirrors the melee path so arrow/staff
+                     hits also force fireGoblin to chase the player for 5s. */
+                  if (_hitBaseR === 'fodder' && m.curHp > 0) {
+                    m._aggroed = true;
+                    m._aggroTs = m._aggroTs || Date.now();
+                    m._chaseUntil = Date.now() + 5000;
                   }
                   if (_hitArchR === 'snowman' && m.curHp > 0) {
                     try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
