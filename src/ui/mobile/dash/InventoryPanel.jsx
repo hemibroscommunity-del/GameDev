@@ -51,6 +51,7 @@ const ORE_THUMBS = {
   ore_copper_ore: '/icons/ore/ore-copper.png',
 };
 const ORE_THUMB_DEFAULT = '/icons/ore/ore-copper.png';
+const FISHING_POLE_THUMB = '/icons/tools/fishing-pole.png';
 const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
   if (COOKED_FISH_THUMBS[k])        return COOKED_FISH_THUMBS[k];
@@ -61,6 +62,7 @@ const thumbFor = (key) => {
   if (k.startsWith('wood_'))        return WOOD_THUMB;
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
+  if (k === 'fishing_pole')         return FISHING_POLE_THUMB;
   if (k === 'slime-remnants')       return SLIME_REMNANTS_THUMB;
   if (k === 'fire-goblin-remnants') return FIRE_GOBLIN_REMNANTS_THUMB;
   if (k === 'snowman')              return SNOWMAN_REMNANTS_THUMB;
