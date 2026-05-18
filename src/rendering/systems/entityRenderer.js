@@ -293,6 +293,15 @@ function createPlayerDisplay() {
   comboText.anchor.set(0.5, 1);
   container.addChild(comboText);
 
+  // Stun countdown timer -- floats above the stun-star ring for any
+  // variant with blockStunMs (skeleton: 5 s).  Hidden when m._stunUntil
+  // isn't set or has expired.  Pooled per monster so we don't churn
+  // Text instances on every stun.
+  const stunTimerText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 11, fontWeight: '800', fill: '#fbbf24' } });
+  stunTimerText.anchor.set(0.5, 1);
+  stunTimerText.visible = false;
+  container.addChild(stunTimerText);
+
   const nameText = new Text({ text: '', style: NAME_STYLE });
   nameText.anchor.set(0.5, 1);
   /* Was -28; bumped to -38 so the name plate doesn't occlude a
@@ -311,6 +320,7 @@ function createPlayerDisplay() {
   container._weaponSprite = weaponSprite;
   container._shieldSprite = shieldSprite;
   container._comboText = comboText;
+  container._stunTimerText = stunTimerText;
   container._nameText = nameText;
   /* Animation cache — track last (pose, dir, frameIdx) so we only
      reassign texture when it actually changes. */
@@ -957,6 +967,21 @@ export class EntityRenderer {
       const aggroFlash = m._aggroTs && now - m._aggroTs < 600;
       const threatArrow = m._aggroed && S.player;
       const stunActive = m._stunUntil && now < m._stunUntil;
+      /* Stun countdown text -- pooled Text on the monster container;
+         shown only while stunActive.  Cleared (hidden) the frame the
+         stun expires so we don't leak a stale "0s" over the corpse. */
+      if (display._stunTimerText && !display._stunTimerText.destroyed) {
+        if (stunActive) {
+          const remainMs = m._stunUntil - now;
+          const remainSec = Math.max(0, Math.ceil(remainMs / 1000));
+          const txt = remainSec + 's';
+          if (display._stunTimerText.text !== txt) display._stunTimerText.text = txt;
+          display._stunTimerText.y = -display._size - 32;
+          display._stunTimerText.visible = true;
+        } else if (display._stunTimerText.visible) {
+          display._stunTimerText.visible = false;
+        }
+      }
       const stuckCount = (m._stuckArrows && m._stuckArrows.length) || 0;
       /* Hash of "did the dynamic state change?" — pulse animations need
          per-frame redraw, so we still rebuild every frame when any of
@@ -1023,8 +1048,33 @@ export class EntityRenderer {
         }
 
         if (stunActive) {
-          dynGfx.circle(0, -size - 18, 5);
-          dynGfx.fill({ color: 0xf5c542, alpha: 0.5 + Math.sin(now / 100) * 0.3 });
+          /* Three 5-point stars orbiting in a squashed ellipse above
+             the head -- standard "stunned" cartoon convention.  The
+             orbit period is 700 ms; stars are slightly different
+             phases so the ring reads as motion. */
+          const centerY = -size - 22;
+          const orbitRx = 14;     // horizontal radius
+          const orbitRy = 5;      // vertical (squashed for ellipse look)
+          const starR = 4;        // outer radius of each star
+          const starR2 = starR * 0.4; // inner radius (5-point ratio)
+          const orbitT = now / 700 * Math.PI * 2;
+          for (let si = 0; si < 3; si++) {
+            const a = orbitT + (si * Math.PI * 2 / 3);
+            const sx = Math.cos(a) * orbitRx;
+            const sy = centerY + Math.sin(a) * orbitRy;
+            /* Stars in front of the orbit center fade slightly to
+               sell the depth.  Sin(a) > 0 means below center (front
+               of monster from the camera's POV). */
+            const depthAlpha = 0.75 + Math.sin(a) * 0.2;
+            const pts = [];
+            for (let p = 0; p < 10; p++) {
+              const ang = -Math.PI / 2 + p * Math.PI / 5;
+              const rad = (p % 2 === 0) ? starR : starR2;
+              pts.push(sx + Math.cos(ang) * rad, sy + Math.sin(ang) * rad);
+            }
+            dynGfx.poly(pts);
+            dynGfx.fill({ color: 0xfbbf24, alpha: depthAlpha });
+          }
         }
 
         if (stuckCount > 0) {
