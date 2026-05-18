@@ -5823,9 +5823,21 @@ export var BroTown = function BroTown(_ref0) {
             }
             /* Check if DoT killed */
             if (m.curHp <= 0 && m.alive) {
-              /* When server monsters: server handles kill via monster_kill event — don't set alive=false locally */
+              /* When server monsters: server handles kill via monster_kill event — don't set alive=false locally.
+                 Drop a visual remnant pile so DoT kills leave debris too. */
               if (S._serverMonsters) {
                 m.curHp = 0; /* clamp for HP bar display */
+                if (S.groundLoot && isRemnantSkull(m.type)) {
+                  S.groundLoot.push({
+                    x: m.x + (Math.random() - 0.5) * 12,
+                    y: m.y + (Math.random() - 0.5) * 12,
+                    coins: 0,
+                    xp: 0,
+                    skull: m.type,
+                    skullEmoji: '🦴',
+                    ts: Date.now(),
+                  });
+                }
                 return;
               }
               m.alive = false;
@@ -8928,10 +8940,24 @@ export var BroTown = function BroTown(_ref0) {
                 if (m.curHp <= 0) {
                   /* In server-mode the network monster_killed event is
                      authoritative for XP/T1 distribution — only clamp
-                     local HP for display and bail. */
+                     local HP for display and bail.  Push a visual
+                     remnant pile before bailing so kills via bow / staff
+                     still leave debris on the ground (fireGoblin debris
+                     bug v2.3.10). */
                   if (S._serverMonsters) {
                     m.curHp = 0;
                     hit = true;
+                    if (S.groundLoot && isRemnantSkull(m.type)) {
+                      S.groundLoot.push({
+                        x: m.x + (Math.random() - 0.5) * 12,
+                        y: m.y + (Math.random() - 0.5) * 12,
+                        coins: 0,
+                        xp: 0,
+                        skull: m.type,
+                        skullEmoji: '🦴',
+                        ts: Date.now(),
+                      });
+                    }
                     return;
                   }
                   m.alive = false;
