@@ -20,6 +20,24 @@ Promise.all(POPUP_ICON_KEYS.map((k) =>
   Assets.load('/icons/popups/' + k + '.png').then((tex) => { POPUP_ICONS[k] = tex; })
 )).catch((err) => console.warn('[popup-icons] load failed', err));
 
+/* Gather-node sprites — keyed by node.nodeType. Until each texture is
+   loaded, _updateGatherNodes falls through to the procedural drawing path
+   below. Source PNGs are ~1000-1250 px; in-game node footprints are
+   tier-sized (tier.size ≈ 6-12 px), so each sprite is scaled to a target
+   pixel height tuned to feel right next to the player sprite. */
+const NODE_SPRITE_SOURCES = {
+  tree:     '/sprites/trees/tree-pine.png',
+  fishSpot: '/sprites/world/fish-spot.png',
+  oreVein:  '/sprites/world/ore-vein.png',
+};
+const NODE_SPRITE_TEX = {};
+/* Target render heights in world px at tierStep 1, scaled up with tier. */
+const NODE_SPRITE_HEIGHT_BASE = { tree: 112, fishSpot: 88, oreVein: 88 };
+const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
+Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
+  Assets.load(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
+)).catch((err) => console.warn('[node-sprites] load failed', err));
+
 const DMG_STYLE = new TextStyle({
   fontFamily: 'VT323, monospace',
   fontSize: 14,
@@ -1352,14 +1370,15 @@ export class EffectsRenderer {
     if (node._pixiTip1 && !node._pixiTip1.destroyed) node._pixiTip1.destroy();
     if (node._pixiTip2 && !node._pixiTip2.destroyed) node._pixiTip2.destroy();
     if (node._pixiTip3 && !node._pixiTip3.destroyed) node._pixiTip3.destroy();
-    node._pixiTier = node._pixiEmoji = node._pixiTip1 = node._pixiTip2 = node._pixiTip3 = null;
+    if (node._pixiSprite && !node._pixiSprite.destroyed) node._pixiSprite.destroy();
+    node._pixiTier = node._pixiEmoji = node._pixiTip1 = node._pixiTip2 = node._pixiTip3 = node._pixiSprite = null;
   }
 
   _updateGatherNodes(S, now) {
     const gfx = this.nodeGfx;
     gfx.clear();
 
-    const nodes = S._gatherNodes || [];
+    const nodes = S.gatherNodes || [];
     /* Player position for proximity-tooltip distance test. */
     const px = S.player ? S.player.x : 0;
     const py = S.player ? S.player.y : 0;
@@ -1374,7 +1393,24 @@ export class EffectsRenderer {
       const tierLvl = node.gatherLvl || 1;
       const tierStep = Math.min(10, Math.max(1, Math.ceil(tierLvl / 10)));
 
-      if (node.nodeType === 'tree') {
+      const spriteTex = NODE_SPRITE_TEX[node.nodeType];
+      if (spriteTex) {
+        if (!node._pixiSprite || node._pixiSprite.destroyed) {
+          node._pixiSprite = new Sprite(spriteTex);
+          node._pixiSprite.anchor.set(0.5, NODE_SPRITE_ANCHOR_Y[node.nodeType] ?? 0.5);
+          /* Add at bottom of nodeLayer so the tier badge, emoji, and
+             proximity tips (added with plain addChild elsewhere) stack
+             above every sprite. */
+          this.nodeLayer.addChildAt(node._pixiSprite, 0);
+        }
+        const targetH = (NODE_SPRITE_HEIGHT_BASE[node.nodeType] ?? 24) * (1 + (tierStep - 1) * 0.15);
+        const baseScale = targetH / spriteTex.height;
+        /* Restore the gentle breathe-pulse the old procedural pond had. */
+        const pulse = node.nodeType === 'fishSpot' ? (1 + Math.sin(now / 600 + node.x) * 0.04) : 1;
+        node._pixiSprite.scale.set(baseScale * pulse);
+        node._pixiSprite.x = node.x;
+        node._pixiSprite.y = node.y;
+      } else if (node.nodeType === 'tree') {
         const tw = tier?.trunkW || 3;
         const th = tier?.trunkH || 8;
         const cr = tier?.canopyR || 6;

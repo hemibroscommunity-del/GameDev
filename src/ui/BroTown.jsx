@@ -5478,7 +5478,7 @@ export var BroTown = function BroTown(_ref0) {
         /* Detect nearest gatherable node */
         S._nearNode = null;
         if (S.gatherNodes) {
-          var closest = 60; /* max interaction range */
+          var closest = 100; /* max interaction range — sized to cover the tallest sprite footprint (trees ~112 px tall) so the canopy area is reachable */
           S.gatherNodes.forEach(function (n) {
             if (!n.alive || n.respawnAt && Date.now() < n.respawnAt) return;
             var nd = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow(n.y - P.y, 2));
