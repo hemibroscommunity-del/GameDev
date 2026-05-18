@@ -134,7 +134,22 @@ export const MONSTER_VARIANTS = {
      ZONE_VARIANT_MAP[zoneId] = { [baseArchetype]: variantKey } */
 export const ZONE_VARIANT_MAP = {
   ember: { fodder: 'fireGoblin' },
-  sky:   { fodder: 'mummy' },
+  /* sky / Desert Winds: every server archetype remaps to 'mummy' so
+     MP players see mummies regardless of whether the server seeds
+     fodder or stalker/hexer/volatile/etc.  Server AI keeps running
+     for the LIVE archetype; the variant is purely a client-side
+     visual skin + the mummy->skeleton transform trigger.  Drop
+     entries here later if Desert Winds should also feature non-mummy
+     enemy types. */
+  sky: {
+    fodder:   'mummy',
+    stalker:  'mummy',
+    hexer:    'mummy',
+    volatile: 'mummy',
+    brute:    'mummy',
+    swarm:    'mummy',
+    sentinel: 'mummy',
+  },
 };
 
 /* Lookup helpers — used by the renderer, AI dispatch, and damage
