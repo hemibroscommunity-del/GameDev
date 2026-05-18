@@ -2016,8 +2016,28 @@ export var BroTown = function BroTown(_ref0) {
               if (S.monsters) {
                 var deadM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (deadM) {
+                  /* In server-mode the local m.curHp -= dmg branches are
+                     all gated on !S._serverMonsters, so neither melee nor
+                     arrow kill code ever fires `if (m.curHp <= 0)` --
+                     meaning the local loot push never happens.  Drop the
+                     remnant here so fodder + variants leave debris on the
+                     ground in MP.  Guard on the previous alive flag so
+                     solo kills (which set alive=false locally first) don't
+                     double-push when the server's monster_kill arrives. */
+                  var _wasAlive = deadM.alive;
                   deadM.alive = false;
                   deadM.curHp = 0;
+                  if (_wasAlive && S.groundLoot && isRemnantSkull(deadM.type)) {
+                    S.groundLoot.push({
+                      x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
+                      y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
+                      coins: 0,
+                      xp: 0,
+                      skull: deadM.type,
+                      skullEmoji: '🦴',
+                      ts: Date.now(),
+                    });
+                  }
                   /* Don't clobber deadM.hp — for server monsters it's
                      the spawn-time max-HP reference used by the HP bar
                      denominator.  Zeroing it broke every slime's bar
@@ -6880,14 +6900,21 @@ export var BroTown = function BroTown(_ref0) {
                  overshot.  -40 (v2.1.72, mid-frame) is the sweet spot
                  confirmed by user. */
               var _archHit = m.archetype || m.type;
-              var _mHitY = _archHit === 'fodder' ? m.y - 40 : m.y;
-              /* Treat fodder slimes as a 20 px-radius blob — the
-                 96 px-tall sprite has a wide bottom that the
-                 player visually reads as touchable from further
-                 away than the m.x point check allows.  Subtract
-                 the body radius from the measured distance so
-                 swings that visually connect actually register. */
-              var _hitR = _archHit === 'fodder' ? 20 : 0;
+              /* Reference Y for hit math -- the monster's *body
+                 center* on screen, not the feet anchor at m.y.
+                 fodder (96 px slime sprite) is offset 40 px above
+                 m.y; fireGoblin (64 px sprite anchored at feet) is
+                 offset ~28 px above. */
+              var _mHitY = _archHit === 'fodder' ? m.y - 40 :
+                           _archHit === 'fireGoblin' ? m.y - 28 :
+                           m.y;
+              /* Per-archetype hit radius bonus -- swings that
+                 visually connect should register even if the m.x
+                 point is just outside SWING_RANGE.  Slime: wide
+                 blob (20).  fireGoblin: upright torso (14). */
+              var _hitR = _archHit === 'fodder' ? 20 :
+                          _archHit === 'fireGoblin' ? 14 :
+                          0;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
               if (mDist > SWING_RANGE) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
@@ -8724,6 +8751,16 @@ export var BroTown = function BroTown(_ref0) {
                    the radius so arrows that visually hit the body
                    register.  Same intuition as the melee +20 bonus. */
                 _hitR = a.isStaff ? 38 : 26;
+              } else if (_archProj === 'fireGoblin') {
+                /* Goblin's visible body sits ~26-30 px above m.y
+                   (sprite anchor at feet, body extends upward 64 px
+                   tall on screen).  Without this offset, arrows aimed
+                   at the body whiff and only feet-level shots
+                   register -- the source of the "arrows beneath the
+                   sprite" bug.  Wider hit radius too for the upright
+                   torso silhouette. */
+                _mProjY = m.y - 28;
+                _hitR = a.isStaff ? 40 : 26;
               } else if (_archProj === 'snowman') {
                 _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;
