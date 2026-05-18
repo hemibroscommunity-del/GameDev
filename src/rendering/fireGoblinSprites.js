@@ -31,7 +31,7 @@ const FRAME_H = 256;
 
 /* Bump on every sprite-art change so Cloudflare Pages' edge cache
    serves the new PNG instead of the old one. */
-const SPRITE_VERSION = '2.3.7';
+const SPRITE_VERSION = '2.3.26';
 
 /* The fireball is drawn pointing southwest (nose at lower-left).
    atan2(dy, dx) where down is +y gives 3π/4 for that direction.
