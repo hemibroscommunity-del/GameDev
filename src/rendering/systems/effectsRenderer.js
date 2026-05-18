@@ -363,8 +363,18 @@ export class EffectsRenderer {
         if (iconKey && POPUP_ICONS[iconKey]) {
           const tex = POPUP_ICONS[iconKey];
           const icon = new Sprite(tex);
-          icon.anchor.set(0, 0.5);
-          const targetH = fontSize;
+          /* Anchor right-center so icon.x is the icon's RIGHT edge.
+             Lets us place the icon to the LEFT of the text without
+             juggling icon.width.  Layout becomes: [icon] number [sub]
+             instead of number [icon] sub -- crucial for special hits
+             where a 50+ px wide icon used to crowd the damage number
+             on the right side (v2.3.20 bug). */
+          icon.anchor.set(1, 0.5);
+          /* Cap icon height at 22 px regardless of fontSize.  At the
+             previous fontSize-tied scale, special-crit hits put a
+             54 px icon next to a single-digit number, eating most of
+             the popup width. */
+          const targetH = Math.min(fontSize, 22);
           icon.scale.set(targetH / tex.height);
           this.dmgLayer.addChild(icon);
           dmg._pixiIcon = icon;
@@ -406,20 +416,20 @@ export class EffectsRenderer {
       const critWiggle = dmg.crit ? Math.sin(age * 8) * 0.1 : 0;
       text.scale.set(1 + popBoost + critWiggle);
       if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
-        /* Place icon flush to the right of the text. Text anchor is
-           (0.5, 0.5), so the right edge sits at text.x + text.width/2. */
-        dmg._pixiIcon.x = text.x + text.width / 2 + 3;
+        /* Place icon flush to the LEFT of the text (anchor 1,0.5 so
+           icon.x is the icon's right edge).  Text anchor is (0.5, 0.5),
+           so its left edge sits at text.x - text.width/2.  Layout:
+           [icon] number ...  Icon never crowds the number now. */
+        dmg._pixiIcon.x = text.x - text.width / 2 - 4;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
       }
       if (dmg._pixiSub && !dmg._pixiSub.destroyed) {
-        /* Sub text sits after the icon if there is one, otherwise flush
-           to the right edge of the main text.  Anchor is (0, 0.5) so
-           setting .x places its left edge. */
-        let subX = text.x + text.width / 2 + 4;
-        if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
-          subX = dmg._pixiIcon.x + (dmg._pixiIcon.width || 0) + 4;
-        }
+        /* Sub text sits flush to the right edge of the main text.
+           Anchor is (0, 0.5) so setting .x places its left edge.
+           Icon moved to the LEFT (v2.3.20) so the right side is
+           always clear for the sub. */
+        const subX = text.x + text.width / 2 + 4;
         dmg._pixiSub.x = subX;
         dmg._pixiSub.y = text.y;
         dmg._pixiSub.alpha = text.alpha;
