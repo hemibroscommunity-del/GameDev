@@ -31,7 +31,7 @@ const FRAME_H = 256;
 
 /* Bump on every sprite-art change so Cloudflare Pages' edge cache
    serves the new PNG instead of the old one. */
-const SPRITE_VERSION = '2.3.7';
+const SPRITE_VERSION = '2.3.26';
 
 /* The fireball is drawn pointing southwest (nose at lower-left).
    atan2(dy, dx) where down is +y gives 3π/4 for that direction.
@@ -62,37 +62,36 @@ const WALK_MAP = {
   southeast: { src: 'e',  mirror: true  },
 };
 
-/* ATTACK: 5 source files, but labels are shifted one position
-   relative to actual direction (per user v2.3.6 review).  Cyclical
-   reassignment on the west side:
-     NW slot uses attack-w (the file misnamed 'w')
-     W  slot uses attack-sw (the file misnamed 'sw')
-     SW slot uses attack-nw (the file misnamed 'nw')
+/* ATTACK: 5 source files, labels shifted two positions on the west
+   side relative to actual direction (per user v2.3.24 review):
+     NW slot uses attack-n  (the file misnamed 'n' for that pose)
+     W  slot uses attack-sw
+     SW slot uses attack-w
    East-side facings are produced by mirroring. */
 const ATTACK_MAP = {
   south:     { src: 's',  mirror: false },
-  southwest: { src: 'nw', mirror: false },
+  southwest: { src: 'w',  mirror: false },
   west:      { src: 'sw', mirror: false },
-  northwest: { src: 'w',  mirror: false },
+  northwest: { src: 'n',  mirror: false },
   north:     { src: 'n',  mirror: false },
-  northeast: { src: 'w',  mirror: true  },
+  northeast: { src: 'n',  mirror: true  },
   east:      { src: 'sw', mirror: true  },
-  southeast: { src: 'nw', mirror: true  },
+  southeast: { src: 'w',  mirror: true  },
 };
 
-/* HIT: 4 source files but labels are off (per user v2.3.6 review):
-   hit-nw.png and hit-sw.png are swapped relative to the directions
-   they cover.  NW now uses the 'sw' file; W and SW share the 'nw'
-   file.  East-side facings are produced by mirroring. */
+/* HIT: 4 source files.  SW and NW use the naturally-named file
+   (per user v2.3.24 review — the earlier v2.3.6 swap was reverted
+   when the SW/NW source art was redrawn).  W still doubles up with
+   NW art; east-side facings are produced by mirroring. */
 const HIT_MAP = {
   south:     { src: 's',  mirror: false },
-  southwest: { src: 'nw', mirror: false },
+  southwest: { src: 'sw', mirror: false },
   west:      { src: 'nw', mirror: false },
-  northwest: { src: 'sw', mirror: false },
+  northwest: { src: 'nw', mirror: false },
   north:     { src: 'n',  mirror: false },
-  northeast: { src: 'sw', mirror: true  },
+  northeast: { src: 'nw', mirror: true  },
   east:      { src: 'nw', mirror: true  },
-  southeast: { src: 'nw', mirror: true  },
+  southeast: { src: 'sw', mirror: true  },
 };
 
 const walkSheets = {};   // dir -> { frames: Texture[] }

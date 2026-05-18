@@ -642,11 +642,18 @@ export class EntityRenderer {
         const IDLE_AFTER_MS = 150;
         const isIdle = !moving && (now - (display._lastMovedAt || 0)) > IDLE_AFTER_MS;
 
-        /* Priority chain: hit recoil > idle pose > walk loop.  Variants
-           opt in to an attack-strip branch by setting
-           variantSprites.attack; fireGoblin's is intentionally null. */
+        /* Priority chain: hit recoil > attack wind-up > idle pose > walk loop.
+           Variants opt into the attack-strip branch by setting
+           variantSprites.attack (fireGoblin uses its 5-direction sheet,
+           triggered by the fodder-like _shootAnim window in BroTown).  The
+           wind-up sheet plays once across the telegraph window, mapped to
+           the frame index by elapsed-fraction so the swing reads at any
+           telegraph duration. */
         const hitSprites = variantSprites.hit;
+        const attackSprites = variantSprites.attack;
         const hitNow = m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
+        const attackNow = !hitNow && m._shootAnimEnd && now < m._shootAnimEnd
+          && attackSprites && attackSprites.has();
         let frame;
         if (hitNow) {
           const hfc = hitSprites.count(facing);
@@ -654,6 +661,17 @@ export class EntityRenderer {
           const t = (now - m._hitAnimStart) / dur;
           const hIdx = hfc > 0 ? Math.max(0, Math.min(hfc - 1, Math.floor(t * hfc))) : 0;
           frame = hitSprites.get(facing, hIdx);
+        } else if (attackNow) {
+          /* Fixed-rate playback then hold the last frame -- decouples the
+             swing speed from the telegraph window so the strike reads
+             quickly even when the telegraph is long.  Strip duration =
+             frameCount * attackFrameMs; once elapsed exceeds that the
+             clamp pins us to the final pose until _shootAnimEnd. */
+          const afc = attackSprites.count(facing);
+          const stepMs = variant.attackFrameMs || 70;
+          const elapsed = now - m._shootAnimStart;
+          const aIdx = afc > 0 ? Math.max(0, Math.min(afc - 1, Math.floor(elapsed / stepMs))) : 0;
+          frame = attackSprites.get(facing, aIdx);
         } else if (isIdle) {
           /* Hold a single frame -- we don't ship a dedicated idle
              sheet so use the closest-to-neutral walk frame.  Frame
