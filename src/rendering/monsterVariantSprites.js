@@ -47,6 +47,7 @@ import {
   getDeathFrame as skDeathFrame,
   hasDeathFrames as skHasDeath,
   deathFrameCount as skDeathCount,
+  getRemnantsTexture as skRemnants,
 } from './skeletonSprites.js';
 
 export const VARIANT_SPRITES = {
@@ -82,6 +83,12 @@ export const VARIANT_SPRITES = {
        at MONSTER_VARIANTS.skeleton.deathMs in entityRenderer's death
        branch (line ~474), clamps to last frame so the pile settles. */
     death: { get: skDeathFrame, has: skHasDeath, count: skDeathCount },
+    /* Bone-pile remnants -- single-frame texture rendered by
+       effectsRenderer's ground-loot branch when the skeleton kill's
+       loot drop lands.  variant.noFodderRemnants is OFF for skeleton
+       so the fodder branch picks up this texture instead of falling
+       through to the slime splat. */
+    remnants: { get: skRemnants },
   },
 };
 

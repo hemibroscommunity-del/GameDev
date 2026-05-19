@@ -95,13 +95,13 @@ export const MONSTER_VARIANTS = {
     spd: 1.4,                 /* charges the player vs fodder's 0.5 */
     clientSideMovement: true, /* same trick as fireGoblin: local AI
                                  chase since server only knows fodder */
-    /* Skeleton inherits the no-projectile + no-slime-remnants flags
-       from the mummy form so the inheritance doesn't reappear after
-       the transform (the swap leaves baseArchetype: 'fodder' in
-       place for AI dispatch, which would otherwise re-arm the slime
-       orb fire and the slime-splat ground loot). */
+    /* Skeleton inherits the no-projectile flag from the mummy form
+       so the slime-orb fire doesn't re-arm after the transform.
+       v2.3.61: dropped noFodderRemnants -- the skeleton now has its
+       own remnants.png (bone pile) so the fodder branch in
+       effectsRenderer picks up that texture instead of falling
+       through to the slime splat. */
     noProjectile: true,
-    noFodderRemnants: true,
     /* Outgoing damage scalar -- skeleton is the "danger" form, so
        its melee swings hit 4x.  Applied in BroTown.jsx's monster_attack
        handler (scales payload.dmg by attacker variant's dmgMult

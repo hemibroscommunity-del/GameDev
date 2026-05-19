@@ -8542,6 +8542,8 @@ export var BroTown = function BroTown(_ref0) {
                 var _invKey =
                   loot.skull === 'fodder'     ? 'slime-remnants' :
                   loot.skull === 'fireGoblin' ? 'fire-goblin-remnants' :
+                  loot.skull === 'skeleton'   ? 'skeleton-remnants' :
+                  loot.skull === 'mummy'      ? 'skeleton-remnants' :
                   loot.skull;
                 S.rpg.inventory[_invKey] = (S.rpg.inventory[_invKey] || 0) + 1;
               }
