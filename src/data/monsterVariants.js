@@ -91,6 +91,13 @@ export const MONSTER_VARIANTS = {
     deathMs: 1200,            /* 16-frame death sheet at ~75 ms/frame =
                                  1.2 s total -- crumble -> dust ->
                                  bone pile settling on the ground. */
+    /* The user's death source video was pre-shrunk to keep all
+       bones + dust effects inside the 544 x 544 canvas, so the
+       figure inside each chroma-keyed cell reads ~half the size of
+       the live skeleton's silhouette.  Render the death frames at
+       2x the live scale to compensate -- 192 px tall matches the
+       perceived size of the live 96 px sprite. */
+    deathScalePx: 192,
     remnantsScalePx: 48,
     spd: 1.4,                 /* charges the player vs fodder's 0.5 */
     clientSideMovement: true, /* same trick as fireGoblin: local AI

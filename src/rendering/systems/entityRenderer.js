@@ -492,9 +492,15 @@ export class EntityRenderer {
             const tex = variantSprites.death.get(frameIdx);
             const sb = display._spriteBody;
             if (tex && sb.texture !== tex) sb.texture = tex;
-            /* Same on-screen scale as the live variant so the cut from
-               walk -> death reads as continuous. */
-            const baseScale = (variant.liveScalePx || 64) / 256;
+            /* Death scale: variant.deathScalePx if set, else falls
+               back to liveScalePx so the cut from walk -> death stays
+               continuous by default.  Set deathScalePx larger than
+               liveScalePx when the death source had to be pre-shrunk
+               to fit its effects inside the canvas (e.g. skeleton's
+               crumble + dust burst) -- the variant scales itself
+               back up at render time. */
+            const deathPx = variant.deathScalePx || variant.liveScalePx || 64;
+            const baseScale = deathPx / 256;
             sb.scale.x = baseScale;
             sb.scale.y = baseScale;
             sb.y = display._size;
