@@ -114,14 +114,20 @@ export function canAccessDepth(rpg, zoneId, depth) {
   return rpg.lifeSkills?.dungeonClears?.[gateKey] === true || rpg.dungeonClears?.[gateKey] === true;
 }
 
-export function createGatherNode(zoneId, depth, x, y, nodeType) {
+/* forcedTierLvl, when set, picks the tier whose .lvl matches instead of
+   the random getNodeTierForDepth() roll.  Used by the wsClient to build
+   local node objects from server-authoritative zone_nodes payloads so
+   every client agrees on the tier per node (otherwise two clients each
+   roll their own tier for the same server node id and diverge). */
+export function createGatherNode(zoneId, depth, x, y, nodeType, forcedTierLvl) {
   const zone = ZONES[zoneId];
   const dc = DEPTH_CONFIG[depth];
   const elem = zone?.element;
   const res = elem ? (ZONE_RESOURCES[elem] || null) : null;
 
   const tiersTable = nodeType === 'tree' ? WOODCUTTING_TIERS : nodeType === 'fishSpot' ? FISHING_TIERS : MINING_TIERS;
-  const tier = getNodeTierForDepth(tiersTable, depth);
+  const tier = (forcedTierLvl != null && tiersTable.find(t => t.lvl === forcedTierLvl))
+    || getNodeTierForDepth(tiersTable, depth);
   const skillName = nodeType === 'tree' ? 'woodcutting' : nodeType === 'fishSpot' ? 'fishing' : 'mining';
   const resType = nodeType === 'tree' ? 'wood' : nodeType === 'fishSpot' ? 'fish' : 'ore';
 

@@ -2,6 +2,20 @@
 /* Extracted from index.html lines 10309-11445 */
 
 import { applyZoneVariant } from '../data/monsterVariants.js';
+import { createGatherNode } from '../data/lifeSkills.js';
+
+/* Build a client-side gather-node object from the server's
+   zone_nodes / state_sync payload.  Server only sends id, type, x, y,
+   tierLvl, alive, respawnAt; the client thickens it with the full
+   tier/name/flavor data from lifeSkills.js so the renderer +
+   interaction code don't need a parallel "server node" path. */
+function _buildServerNode(serverN, zoneId) {
+  const local = createGatherNode(zoneId, 'shallow', serverN.x, serverN.y, serverN.nodeType, serverN.tierLvl);
+  local.id = serverN.id;
+  local.alive = !!serverN.alive;
+  local.respawnAt = serverN.respawnAt || 0;
+  return local;
+}
 
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay
@@ -142,6 +156,25 @@ export function setupWebSocket(ctx) {
                   _processGameEvent(_evt.type, payload, S);
                 }
               }
+              // Server gather-node state updates (alive / respawnAt only;
+              // position + type + tierLvl were sent once at state_sync /
+              // zone_nodes).
+              if (msg.nodes && S._serverGatherNodes && S.gatherNodes) {
+                var myZoneN = S.currentZone || 'town';
+                var zoneNodeData = msg.nodes[myZoneN];
+                if (zoneNodeData) {
+                  for (var ni = 0; ni < zoneNodeData.length; ni++) {
+                    var nd = zoneNodeData[ni];
+                    var localN = S.gatherNodes.find(function (gn) { return gn.id === nd.id; });
+                    if (localN) {
+                      localN.alive = !!nd.alive;
+                      localN.respawnAt = nd.respawnAt || 0;
+                      if (nd.alive) localN.hp = localN.maxHp; /* revive refills hp */
+                    }
+                  }
+                }
+              }
+
               // Server monster position/HP updates
               if (msg.monsters && S._serverMonsters && S.monsters) {
                 var myZone = S.currentZone || 'town';
@@ -269,6 +302,16 @@ export function setupWebSocket(ctx) {
                   }
                 }
               }
+              /* Server-authoritative gather nodes — first arrival sets
+                 the flag and replaces S.gatherNodes wholesale.  The zone
+                 the nodes belong to is the player's currentZone since
+                 state_sync is sent on join with the join-zone. */
+              if (msg.nodes) {
+                S._serverGatherNodes = true;
+                S.gatherNodes = msg.nodes.map(function (n) {
+                  return _buildServerNode(n, msg.monsterZone || S.currentZone);
+                });
+              }
               break;
             }
           case 'zone_monsters':
@@ -311,6 +354,21 @@ export function setupWebSocket(ctx) {
                     S.lockedTarget = null;
                   }
                 }
+              }
+              break;
+            }
+          case 'zone_nodes':
+            {
+              /* Server sent the full gather-node list for a zone.  Replace
+                 S.gatherNodes wholesale; the BroTown game tick gates its
+                 client-local spawnGatherNodes() and revive loop on
+                 !S._serverGatherNodes so they stop running once we get
+                 here. */
+              if (msg.nodes) {
+                S._serverGatherNodes = true;
+                S.gatherNodes = msg.nodes.map(function (n) {
+                  return _buildServerNode(n, msg.zone || S.currentZone);
+                });
               }
               break;
             }
@@ -1311,6 +1369,10 @@ export function setupWebSocket(ctx) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
         /* Direct message types — sent immediately to server, not as broadcast events */
         if (msg.type === 'monster_damage') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'node_strike') {
           ws.send(JSON.stringify(msg));
           return;
         }

@@ -3142,8 +3142,10 @@ export var BroTown = function BroTown(_ref0) {
       /* Spawn monsters for current zone */
       var zone = ZONES[S.currentZone];
       if(!S._serverMonsters) S.monsters = spawnMonstersForZone(zone);
-      /* Spawn gathering nodes */
-      S.gatherNodes = spawnGatherNodes(S.currentZone, 'shallow');
+      /* Spawn gathering nodes (skipped when the server is authoritative -- the
+         worker's state_sync / zone_nodes broadcast replaces S.gatherNodes
+         and flips S._serverGatherNodes on). */
+      if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, 'shallow');
       /* Initialize life skills if missing */
       if (S.rpg && !S.rpg.lifeSkills) S.rpg.lifeSkills = createDefaultLifeSkills();
       if (S.rpg && !S.rpg.dungeonClears) S.rpg.dungeonClears = {};
@@ -4407,7 +4409,7 @@ export var BroTown = function BroTown(_ref0) {
               /* Monsters + nodes at shallow depth */
               var depthCfg = DEPTH_CONFIG[entryDepth];
               if(!S._serverMonsters) S.monsters = spawnMonstersForZone(newZone, (depthCfg === null || depthCfg === void 0 ? void 0 : depthCfg.levelMod) || 0);
-              S.gatherNodes = spawnGatherNodes(bestExit.zoneId, entryDepth);
+              if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(bestExit.zoneId, entryDepth);
               var nW = newZone.w * TILE,
                 nH = newZone.h * TILE;
               /* Spawn continues your direction of travel from town.
@@ -4650,7 +4652,7 @@ export var BroTown = function BroTown(_ref0) {
               var zn = ZONES[S.currentZone];
               S.map = generateZoneMap(S.currentZone);
               if(!S._serverMonsters) S.monsters = spawnMonstersForZone(zn, (dc === null || dc === void 0 ? void 0 : dc.levelMod) || 0);
-              S.gatherNodes = spawnGatherNodes(S.currentZone, nextDepth);
+              if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, nextDepth);
               P.x = zn.w / 2 * TILE;
               P.y = (zn.h - 3) * TILE;
               S.groundLoot = [];
@@ -4785,7 +4787,7 @@ export var BroTown = function BroTown(_ref0) {
             globalThis.COLS = _zn.w;
             globalThis.ROWS = _zn.h;
             if(!S._serverMonsters) S.monsters = spawnMonstersForZone(_zn, (_dc2 === null || _dc2 === void 0 ? void 0 : _dc2.levelMod) || 0);
-            S.gatherNodes = spawnGatherNodes(S.currentZone, depth);
+            if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, depth);
             S.groundLoot = [];
             S.hitParticles = [];
             S.deathExplosions = [];
@@ -5574,8 +5576,13 @@ export var BroTown = function BroTown(_ref0) {
            Each node keeps its original x/y/tier/etc.; we just flip
            alive back on and refill HP.  Effects renderer recreates the
            sprite next frame because the previous dispose nulled the
-           _pixiSprite slot. */
-        if (S.gatherNodes) {
+           _pixiSprite slot.
+
+           Skipped when the server is authoritative -- the worker ticks
+           its own respawn loop and broadcasts the revival via tick
+           deltas; wsClient.js applies alive=true on the local node
+           there.  Running both would race. */
+        if (S.gatherNodes && !S._serverGatherNodes) {
           var _nowMs = Date.now();
           for (var _gi = 0; _gi < S.gatherNodes.length; _gi++) {
             var _gn = S.gatherNodes[_gi];
@@ -10530,6 +10537,13 @@ export var BroTown = function BroTown(_ref0) {
     /* Consume node */
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
+    /* When the server owns gather-node state, tell it about the harvest so
+       it broadcasts the deplete + respawn to every other player.  Local
+       mutation above stays as a client-prediction so the player sees the
+       node disappear immediately; the tick delta reconciles on arrival. */
+    if (S._serverGatherNodes && S.channel) {
+      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone } }); } catch (e) {}
+    }
     /* Inventory */
     if (!R.inventory) R.inventory = {};
     var baseName = node.baseName || node.name || 'Fish';
@@ -10648,6 +10662,13 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.beep(500, 0.03, 0.06, 'triangle');
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
+    /* When the server owns gather-node state, tell it about the harvest so
+       it broadcasts the deplete + respawn to every other player.  Local
+       mutation above stays as a client-prediction so the player sees the
+       node disappear immediately; the tick delta reconciles on arrival. */
+    if (S._serverGatherNodes && S.channel) {
+      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone } }); } catch (e) {}
+    }
     if (!R.inventory) R.inventory = {};
     var baseName = node.baseName || node.name || 'Pine';
     var baseKey = (node.resourceType || 'wood') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
@@ -10693,6 +10714,13 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.beep(700, 0.04, 0.07, 'square');
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
+    /* When the server owns gather-node state, tell it about the harvest so
+       it broadcasts the deplete + respawn to every other player.  Local
+       mutation above stays as a client-prediction so the player sees the
+       node disappear immediately; the tick delta reconciles on arrival. */
+    if (S._serverGatherNodes && S.channel) {
+      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone } }); } catch (e) {}
+    }
     if (!R.inventory) R.inventory = {};
     var baseName = node.baseName || node.name || 'Copper Ore';
     var baseKey = (node.resourceType || 'ore') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
@@ -28659,6 +28687,9 @@ export var BroTown = function BroTown(_ref0) {
       if (node.hp <= 0) {
         node.alive = false;
         node.respawnAt = Date.now() + node.respawnTime;
+        if (S._serverGatherNodes && S.channel) {
+          try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone } }); } catch (e) {}
+        }
         if (!R.inventory) R.inventory = {};
         var baseName = node.baseName || node.name;
         var baseKey = node.resourceType + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
