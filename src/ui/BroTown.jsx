@@ -47,7 +47,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
-import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
+import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
@@ -2282,6 +2282,27 @@ export var BroTown = function BroTown(_ref0) {
                 break;
               }
               var mDmg = payload.dmg || 5;
+              /* Per-variant damage multiplier + range gating.  Server
+                 doesn't know about variants, so we apply the local
+                 attacker variant's scalars here:
+                 - dmgMult: skeleton hits ~4x harder.
+                 - noProjectile: server's fodder AI fires ranged
+                   slime-orb attacks; the client suppresses the
+                   visual via noProjectile, but the server's
+                   monster_attack still applies the hit, which the
+                   user reads as "invisible projectile".  Drop the
+                   damage entirely when a noProjectile attacker is
+                   outside melee range so mummies / skeletons can
+                   only land melee swings. */
+              var _atkArchKey = atkSrc.archetype || atkSrc.type;
+              var _atkVariant = MONSTER_VARIANTS[_atkArchKey];
+              if (_atkVariant && _atkVariant.noProjectile && _atkDist > 60) {
+                if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (noProjectile out of melee)', { monsterId: payload.monsterId, dist: Math.round(_atkDist), arch: _atkArchKey }); } catch (e) {}
+                break;
+              }
+              if (_atkVariant && _atkVariant.dmgMult) {
+                mDmg = Math.ceil(mDmg * _atkVariant.dmgMult);
+              }
               /* Apply player defense */
               var pDef2 = (R2.endurance || 0) * 0.5 + ((R2.armor ? R2.armor.tierMult : 1) || 1) * 3;
               var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);
@@ -4685,7 +4706,12 @@ export var BroTown = function BroTown(_ref0) {
         if (S.map && ptx >= 0 && pty >= 0 && pty < _zone.h && ptx < _zone.w) {
           var _S$map$pty;
           var tile = (_S$map$pty = S.map[pty]) === null || _S$map$pty === void 0 ? void 0 : _S$map$pty[ptx];
-          if (tile === 10 && S.currentZone !== 'town' && !S._inDungeon) {
+          /* Dungeon entry disabled v2.3.54 per user request -- the
+             depth-tier dungeons aren't ready for play yet so the
+             tile-10 trigger no-ops.  Flip this to `tile === 10` to
+             re-enable.  Generated maps still place tile 10 at the
+             far edge but stepping on it does nothing now. */
+          if (false && tile === 10 && S.currentZone !== 'town' && !S._inDungeon) {
             var _S$rpg6;
             /* §14.1 Dungeon entrance — find deepest accessible depth */
             var currentDepth = S._currentDepth || 'shallow';
@@ -5653,15 +5679,25 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Detect nearest gatherable node */
+        /* Detect nearest gatherable node.  Per-node proximity range
+           scales with the node's sprite height so high-tier trees
+           (112 * (1 + (tierStep-1) * 0.15) = up to ~262 px on tier
+           41-50) are still reachable from the canopy area.  Was a
+           fixed 100 px ceiling, which left some tall sprites visually
+           in-range but proximity-out-of-range (user: "resources
+           showing that have no menu to interact with it"). */
         S._nearNode = null;
         if (S.gatherNodes) {
-          var closest = 100; /* max interaction range — sized to cover the tallest sprite footprint (trees ~112 px tall) so the canopy area is reachable */
+          var closestDist = Infinity;
           S.gatherNodes.forEach(function (n) {
             if (!n.alive || n.respawnAt && Date.now() < n.respawnAt) return;
+            var _baseH = n.nodeType === 'tree' ? 112 : 88;
+            var _tierStep = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
+            var _spriteH = _baseH * (1 + (_tierStep - 1) * 0.15);
+            var _proxR = Math.max(100, _spriteH * 0.75); /* 75% of sprite height + min 100 */
             var nd = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow(n.y - P.y, 2));
-            if (nd < closest) {
-              closest = nd;
+            if (nd < _proxR && nd < closestDist) {
+              closestDist = nd;
               S._nearNode = n;
             }
           });
@@ -6598,6 +6634,17 @@ export var BroTown = function BroTown(_ref0) {
                     if (ss.flatDef) rawDmg = Math.max(1, Math.floor(rawDmg - ss.flatDef));
                   }
                   var blockReduc = shielded ? calcBlockReduction(_R6.fortification, _R6.shield) : 0;
+                  /* Per-variant damage multiplier (e.g. skeleton.dmgMult = 4
+                     for the post-mummy-transform danger form).  This is the
+                     LOCAL melee path -- runs for client-side-movement
+                     variants like fireGoblin and skeleton, which bypass
+                     the server's monster_attack handler.  Without this
+                     scale here, the skeleton's 4x damage only applied to
+                     monsters whose damage came in via the WS handler. */
+                  var _localAtkVariant = MONSTER_VARIANTS[arch];
+                  if (_localAtkVariant && _localAtkVariant.dmgMult) {
+                    rawDmg = Math.ceil(rawDmg * _localAtkVariant.dmgMult);
+                  }
                   /* Full block when shield arc catches the attack -- no
                      damage gets through (was rawDmg * (1 - blockReduc)
                      with a Math.max(1) floor, which always let at least
@@ -6614,7 +6661,15 @@ export var BroTown = function BroTown(_ref0) {
                      application + archetype effects below — fodder has
                      no archetype effects, so nothing else is needed
                      here. */
-                  if (isFodderLike(arch)) {
+                  /* isFodderLike covers raw fodder AND any variant with
+                     baseArchetype: 'fodder' (mummy, skeleton, fireGoblin
+                     etc.).  Variants opt out of the slime orb spawn by
+                     setting MONSTER_VARIANTS[arch].noProjectile -- e.g.
+                     mummies are pure melee shamblers, no green orb.
+                     Without this gate every mummy was firing slime
+                     projectiles at the player. */
+                  var _variantCfg = MONSTER_VARIANTS[arch];
+                  if (isFodderLike(arch) && !(_variantCfg && _variantCfg.noProjectile)) {
                     var _projAng = Math.atan2(P.y - m.y, P.x - m.x);
                     if (!S.slimeProjectiles) S.slimeProjectiles = [];
                     /* life=35 ticks × speed=4 px = 140 px range, just past
@@ -6649,6 +6704,22 @@ export var BroTown = function BroTown(_ref0) {
                       if (((_ss$gemBonus = _ss.gemBonus) === null || _ss$gemBonus === void 0 ? void 0 : _ss$gemBonus.stat) === 'hpOnBlock') {
                         _R6.hp = Math.min(_R6.maxHp, _R6.hp + _ss.gemBonus.value);
                       }
+                    }
+                    /* Variant block-punish stun (e.g. skeleton: 5 s).
+                       Local AI loop checks m._stunUntil and skips the
+                       monster's update while it's set, so the chase
+                       freezes for the configured window.  Floats a
+                       "STUNNED" popup over the monster so the punish
+                       reads. */
+                    if (_localAtkVariant && _localAtkVariant.blockStunMs) {
+                      m._stunUntil = Math.max(m._stunUntil || 0, Date.now() + _localAtkVariant.blockStunMs);
+                      S.dmgNumbers.push({
+                        x: m.x,
+                        y: m.y - 30,
+                        text: 'STUNNED!',
+                        color: '#fbbf24',
+                        ts: Date.now()
+                      });
                     }
                   }
 
@@ -7180,13 +7251,19 @@ export var BroTown = function BroTown(_ref0) {
                  offset ~28 px above. */
               var _mHitY = _archHit === 'fodder' ? m.y - 40 :
                            _archHit === 'fireGoblin' ? m.y - 28 :
+                           _archHit === 'mummy' || _archHit === 'skeleton' ? m.y - 48 :
                            m.y;
               /* Per-archetype hit radius bonus -- swings that
                  visually connect should register even if the m.x
                  point is just outside SWING_RANGE.  Slime: wide
-                 blob (20).  fireGoblin: upright torso (14). */
+                 blob (20).  fireGoblin: upright torso (14).  Mummy
+                 + skeleton: tall 96-px figures, the user reported
+                 their hitbox was "way too small" so bump 40 -- the
+                 effective vertical extent now covers the full body
+                 from feet (m.y - 8) to crown (m.y - 88). */
               var _hitR = _archHit === 'fodder' ? 20 :
                           _archHit === 'fireGoblin' ? 14 :
+                          _archHit === 'mummy' || _archHit === 'skeleton' ? 40 :
                           0;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
               if (mDist > SWING_RANGE) return;
@@ -9080,6 +9157,13 @@ export var BroTown = function BroTown(_ref0) {
               } else if (_archProj === 'snowman') {
                 _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;
+              } else if (_archProj === 'mummy' || _archProj === 'skeleton') {
+                /* 96 px sprite anchored at feet -- aim at mid-body
+                   ~48 px up, wide hit radius to cover the full
+                   figure height plus a bit (user reported hitbox
+                   was "way too small"). */
+                _mProjY = m.y - 48;
+                _hitR = a.isStaff ? 50 : 40;
               }
               if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
                 a.hitIds.add(m.id);

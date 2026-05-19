@@ -11,7 +11,7 @@ import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
-import { MONSTER_VARIANTS } from '../../data/monsterVariants.js';
+import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
@@ -293,6 +293,15 @@ function createPlayerDisplay() {
   comboText.anchor.set(0.5, 1);
   container.addChild(comboText);
 
+  // Stun countdown timer -- floats above the stun-star ring for any
+  // variant with blockStunMs (skeleton: 5 s).  Hidden when m._stunUntil
+  // isn't set or has expired.  Pooled per monster so we don't churn
+  // Text instances on every stun.
+  const stunTimerText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 11, fontWeight: '800', fill: '#fbbf24' } });
+  stunTimerText.anchor.set(0.5, 1);
+  stunTimerText.visible = false;
+  container.addChild(stunTimerText);
+
   const nameText = new Text({ text: '', style: NAME_STYLE });
   nameText.anchor.set(0.5, 1);
   /* Was -28; bumped to -38 so the name plate doesn't occlude a
@@ -311,6 +320,7 @@ function createPlayerDisplay() {
   container._weaponSprite = weaponSprite;
   container._shieldSprite = shieldSprite;
   container._comboText = comboText;
+  container._stunTimerText = stunTimerText;
   container._nameText = nameText;
   /* Animation cache — track last (pose, dir, frameIdx) so we only
      reassign texture when it actually changes. */
@@ -420,6 +430,14 @@ export class EntityRenderer {
        see monsterVariants.js for the per-variant config. */
 
     for (const m of monsters) {
+      /* Mid-fight variant transform check (currently just mummy ->
+         skeleton at HP <= transformAt).  Idempotent and cheap; the
+         renderer is the natural place since it already touches every
+         live monster per frame.  Returns true on the single tick the
+         swap fires, which we use to flip _spriteBody.visible off
+         briefly so the new archetype's sprite isn't drawn under stale
+         dimensions. */
+      maybeTransformMonster(m);
       const arch = m.archetype || m.type;
       const isFodder = arch === 'fodder';
       const variantKey = MONSTER_VARIANTS[arch] ? arch : null;
@@ -608,49 +626,112 @@ export class EntityRenderer {
          (liveScalePx, deathMs, etc.) lives in monsterVariants.js;
          sprite-side lives in monsterVariantSprites.js.  Falls back to
          the slime/fodder branch when sheets haven't loaded. */
-      if (display._variantKey && display._spriteBody && variantSprites && variantSprites.walk && variantSprites.walk.has()) {
+      /* Gate the variant render branch on the LIVE variantKey rather
+         than the cached display._variantKey: when a mummy transforms
+         to a skeleton mid-fight (see maybeTransformMonster) the
+         monster's archetype changes, so we have to re-resolve the
+         sprite set per frame.  display._spriteBody was already created
+         at spawn time for any variant, so it's safe to reuse here. */
+      if (variantKey && display._spriteBody && variantSprites && variantSprites.walk && variantSprites.walk.has()) {
         const spriteBody = display._spriteBody;
-        /* Facing tracks the per-frame velocity directly so direction
-           changes register immediately (user request v2.3.2).  The
-           v2.3.1 EMA smoothing fixed flicker but introduced lag.
-           Higher threshold here suppresses sub-pixel wobble across
-           sector boundaries without delaying real direction changes:
-           real motion is ~3 px/frame, server-tick interpolation
-           wobble is ~0.1-0.2 px, so 0.5 px squared (= 0.25) splits
-           cleanly between them. */
+        /* Facing: commit only when two CONSECUTIVE moving observations
+           agree on the same sector.  Server-driven monsters tick at
+           ~100 ms; the 50 ms lock-out in v2.3.47 was shorter than the
+           tick interval, so two consecutive ticks could land in
+           different adjacent sectors and both commit -> flicker.  The
+           v2.3.44 "must persist 70 ms" debounce also failed because
+           it restarted the timer on each new candidate, so genuine
+           direction changes felt "insensitive."
+
+           Consecutive-agreement check: store the LAST candidate;
+           commit when this frame's candidate equals it.  Two ticks
+           in the same direction -> ~200 ms latency on real changes
+           but adjacent-sector wobble (alternating candidates) never
+           gets two matches in a row, so it can't swap the sprite.
+           First-ever observation commits immediately so a fresh
+           server-spawned monster doesn't stay 'south' for 200 ms. */
         const dx = m.x - (display._lastX != null ? display._lastX : m.x);
         const dy = m.y - (display._lastY != null ? display._lastY : m.y);
-        const moving = dx * dx + dy * dy > 0.25;
+        const moving = dx * dx + dy * dy > 0.04;
         let facing = display._lastFacing || 'south';
         if (moving) {
           const ang = Math.atan2(dy, dx);
           const sector = Math.round(ang / (Math.PI / 4));
-          facing = SECTORS[((sector % 8) + 8) % 8];
-          display._lastFacing = facing;
+          const candidate = SECTORS[((sector % 8) + 8) % 8];
           display._lastMovedAt = now;
+          if (candidate !== facing) {
+            const prevCandidate = display._lastCandidate;
+            if (!display._lastFacing) {
+              /* First movement -- commit immediately so the sprite
+                 isn't stuck on the default 'south' for a tick. */
+              facing = candidate;
+              display._lastFacing = candidate;
+            } else if (prevCandidate === candidate) {
+              /* Two ticks in a row at the same new direction --
+                 confident enough to swap. */
+              facing = candidate;
+              display._lastFacing = candidate;
+            }
+          }
+          display._lastCandidate = candidate;
         }
-        /* Idle pose -- when the monster hasn't moved for ~150 ms, hold a
-           single frame of the last-facing walk strip instead of cycling.
-           Avoids the "moonwalking on the spot" look while the AI is in
-           cooldown / out of range, but still resumes the walk loop the
-           moment it starts chasing again. */
-        const IDLE_AFTER_MS = 150;
-        const isIdle = !moving && (now - (display._lastMovedAt || 0)) > IDLE_AFTER_MS;
+        /* Idle pose -- when the monster hasn't moved for the idle
+           window, hold a single frame of the last-facing walk strip
+           instead of cycling.  Avoids "moonwalking on the spot" while
+           the AI is in cooldown / out of range, and the user wants
+           the static directional pose when the mummy isn't moving.
 
-        /* Priority chain: hit recoil > attack wind-up > idle pose > walk loop.
+           Per-source threshold:
+           - clientSideMovement variants (fireGoblin / skeleton) update
+             m.x every frame so true stops register quickly -- 150 ms.
+           - server-driven variants (mummy) get position updates only
+             at the server tick rate, so gaps between ticks routinely
+             exceed 150 ms even while the monster is "moving" -- need
+             a longer window (500 ms) so active movement still reads
+             as moving but a real stop still triggers the idle pose. */
+        const idleAfterMs = variant.clientSideMovement ? 150 : 500;
+        const isIdle = !moving && (now - (display._lastMovedAt || 0)) > idleAfterMs;
+
+        /* Priority chain: transform > hit recoil > attack wind-up >
+           idle pose > walk loop.  The transform branch plays a
+           variant's one-shot transition strip (mummy -> skeleton
+           bandage shred) for transformHoldMs ms after the trigger,
+           sourcing frames from the FROM archetype's variantSprites
+           (the skeleton variant inherits the play-out from mummy).
            Variants opt into the attack-strip branch by setting
-           variantSprites.attack (fireGoblin uses its 5-direction sheet,
-           triggered by the fodder-like _shootAnim window in BroTown).  The
-           wind-up sheet plays once across the telegraph window, mapped to
-           the frame index by elapsed-fraction so the swing reads at any
-           telegraph duration. */
+           variantSprites.attack (fireGoblin uses its 5-direction
+           sheet, triggered by the fodder-like _shootAnim window in
+           BroTown).  The wind-up sheet plays once across the
+           telegraph window, mapped to the frame index by elapsed-
+           fraction so the swing reads at any telegraph duration. */
+        const transformElapsed = m._transformStart ? (now - m._transformStart) : -1;
+        const transformHold = m._transformHoldMs || 0;
+        const transformingNow = transformElapsed >= 0 && transformElapsed < transformHold;
+        let transformSprites = null;
+        if (transformingNow && m._transformFromArch) {
+          const fromVariantSprites = variantSpritesFor(m._transformFromArch);
+          if (fromVariantSprites && fromVariantSprites.transform && fromVariantSprites.transform.has()) {
+            transformSprites = fromVariantSprites.transform;
+          }
+        }
         const hitSprites = variantSprites.hit;
         const attackSprites = variantSprites.attack;
-        const hitNow = m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
-        const attackNow = !hitNow && m._shootAnimEnd && now < m._shootAnimEnd
+        const hitNow = !transformingNow && m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
+        const attackNow = !transformingNow && !hitNow && m._shootAnimEnd && now < m._shootAnimEnd
           && attackSprites && attackSprites.has();
         let frame;
-        if (hitNow) {
+        if (transformingNow && transformSprites) {
+          /* Non-directional one-shot.  Map elapsed to frame index
+             at the variant's transformFrameMs rate; clamp to last so
+             the final pose holds until the swap to the new
+             archetype's walk loop. */
+          const fromVariant = MONSTER_VARIANTS[m._transformFromArch];
+          const stepMs = (fromVariant && fromVariant.transformFrameMs) || 60;
+          const tfc = transformSprites.count();
+          const tIdx = tfc > 0 ? Math.max(0, Math.min(tfc - 1, Math.floor(transformElapsed / stepMs))) : 0;
+          const tex = transformSprites.get(tIdx);
+          frame = tex ? { tex, mirror: false } : null;
+        } else if (hitNow) {
           const hfc = hitSprites.count(facing);
           const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);
           const t = (now - m._hitAnimStart) / dur;
@@ -692,7 +773,11 @@ export class EntityRenderer {
             if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
             else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
           }
-          const baseScale = (variant.liveScalePx || 64) / 256;
+          /* Per-direction scaleMult (set by the variant's lookup map,
+             e.g. mummy E + SW at 0.9 to even out perceived silhouette
+             vs the other 6 facings).  Defaults to 1 when unset. */
+          const dirScale = (frame.scaleMult != null) ? frame.scaleMult : 1;
+          const baseScale = (variant.liveScalePx || 64) / 256 * dirScale;
           const sx = baseScale * sqx * (frame.mirror ? -1 : 1);
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
@@ -783,11 +868,25 @@ export class EntityRenderer {
           const dy = m.y - (display._lastY != null ? display._lastY : m.y);
           const moving = dx * dx + dy * dy > 0.04;
           let facing = display._lastFacing || 'south';
+          /* Same 2-consecutive-tick agreement filter as the variant
+             render branch (v2.3.53).  Server-driven snowman ticks at
+             ~100 ms; without this the adjacent-sector boundary wobble
+             swapped the sprite every tick on diagonal motion. */
           if (moving) {
             const ang = Math.atan2(dy, dx);
             const sector = Math.round(ang / (Math.PI / 4));
-            facing = SECTORS[((sector % 8) + 8) % 8];
-            display._lastFacing = facing;
+            const candidate = SECTORS[((sector % 8) + 8) % 8];
+            if (candidate !== facing) {
+              const prevCandidate = display._lastCandidate;
+              if (!display._lastFacing) {
+                facing = candidate;
+                display._lastFacing = candidate;
+              } else if (prevCandidate === candidate) {
+                facing = candidate;
+                display._lastFacing = candidate;
+              }
+            }
+            display._lastCandidate = candidate;
           }
           /* Hit reaction takes priority over idle when within the
              _hitAnim window.  Non-directional sheet — same recoil
@@ -895,6 +994,21 @@ export class EntityRenderer {
       const aggroFlash = m._aggroTs && now - m._aggroTs < 600;
       const threatArrow = m._aggroed && S.player;
       const stunActive = m._stunUntil && now < m._stunUntil;
+      /* Stun countdown text -- pooled Text on the monster container;
+         shown only while stunActive.  Cleared (hidden) the frame the
+         stun expires so we don't leak a stale "0s" over the corpse. */
+      if (display._stunTimerText && !display._stunTimerText.destroyed) {
+        if (stunActive) {
+          const remainMs = m._stunUntil - now;
+          const remainSec = Math.max(0, Math.ceil(remainMs / 1000));
+          const txt = remainSec + 's';
+          if (display._stunTimerText.text !== txt) display._stunTimerText.text = txt;
+          display._stunTimerText.y = -display._size - 32;
+          display._stunTimerText.visible = true;
+        } else if (display._stunTimerText.visible) {
+          display._stunTimerText.visible = false;
+        }
+      }
       const stuckCount = (m._stuckArrows && m._stuckArrows.length) || 0;
       /* Hash of "did the dynamic state change?" — pulse animations need
          per-frame redraw, so we still rebuild every frame when any of
@@ -961,8 +1075,33 @@ export class EntityRenderer {
         }
 
         if (stunActive) {
-          dynGfx.circle(0, -size - 18, 5);
-          dynGfx.fill({ color: 0xf5c542, alpha: 0.5 + Math.sin(now / 100) * 0.3 });
+          /* Three 5-point stars orbiting in a squashed ellipse above
+             the head -- standard "stunned" cartoon convention.  The
+             orbit period is 700 ms; stars are slightly different
+             phases so the ring reads as motion. */
+          const centerY = -size - 22;
+          const orbitRx = 14;     // horizontal radius
+          const orbitRy = 5;      // vertical (squashed for ellipse look)
+          const starR = 4;        // outer radius of each star
+          const starR2 = starR * 0.4; // inner radius (5-point ratio)
+          const orbitT = now / 700 * Math.PI * 2;
+          for (let si = 0; si < 3; si++) {
+            const a = orbitT + (si * Math.PI * 2 / 3);
+            const sx = Math.cos(a) * orbitRx;
+            const sy = centerY + Math.sin(a) * orbitRy;
+            /* Stars in front of the orbit center fade slightly to
+               sell the depth.  Sin(a) > 0 means below center (front
+               of monster from the camera's POV). */
+            const depthAlpha = 0.75 + Math.sin(a) * 0.2;
+            const pts = [];
+            for (let p = 0; p < 10; p++) {
+              const ang = -Math.PI / 2 + p * Math.PI / 5;
+              const rad = (p % 2 === 0) ? starR : starR2;
+              pts.push(sx + Math.cos(ang) * rad, sy + Math.sin(ang) * rad);
+            }
+            dynGfx.poly(pts);
+            dynGfx.fill({ color: 0xfbbf24, alpha: depthAlpha });
+          }
         }
 
         if (stuckCount > 0) {

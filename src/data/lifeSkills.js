@@ -90,11 +90,14 @@ export const MINING_TIERS = [
 
 /* Depth tiers per spoke */
 export const DEPTH_CONFIG = {
-  shallow: { depthIdx: 0, levelMod: 0,  resTier: 1,  dungeonGate: null,      nodeCount: 8, lvlRange: [1, 10] },
-  mid:     { depthIdx: 1, levelMod: 10, resTier: 3,  dungeonGate: 'shallow', nodeCount: 7, lvlRange: [11, 20] },
-  deep:    { depthIdx: 2, levelMod: 20, resTier: 5,  dungeonGate: 'mid',     nodeCount: 6, lvlRange: [21, 40] },
-  abyss:   { depthIdx: 3, levelMod: 40, resTier: 9,  dungeonGate: 'deep',    nodeCount: 5, lvlRange: [41, 60] },
-  core:    { depthIdx: 4, levelMod: 60, resTier: 13, dungeonGate: 'abyss',   nodeCount: 4, lvlRange: [61, 80] },
+  /* nodeCount lowered v2.3.54 -- the previous 8/7/6/5/4 felt
+     cluttered in-game.  4/3/3/2/2 + the MAX_NODES_PER_ZONE cap
+     in spawnGatherNodes keep zones airy. */
+  shallow: { depthIdx: 0, levelMod: 0,  resTier: 1,  dungeonGate: null,      nodeCount: 4, lvlRange: [1, 10] },
+  mid:     { depthIdx: 1, levelMod: 10, resTier: 3,  dungeonGate: 'shallow', nodeCount: 3, lvlRange: [11, 20] },
+  deep:    { depthIdx: 2, levelMod: 20, resTier: 5,  dungeonGate: 'mid',     nodeCount: 3, lvlRange: [21, 40] },
+  abyss:   { depthIdx: 3, levelMod: 40, resTier: 9,  dungeonGate: 'deep',    nodeCount: 2, lvlRange: [41, 60] },
+  core:    { depthIdx: 4, levelMod: 60, resTier: 13, dungeonGate: 'abyss',   nodeCount: 2, lvlRange: [61, 80] },
 };
 
 export function getNodeTierForDepth(tiersArray, depth) {
@@ -160,9 +163,18 @@ export function createGatherNode(zoneId, depth, x, y, nodeType, forcedTierLvl) {
   };
 }
 
+/* Hard cap on resource nodes per zone, applied AFTER the per-depth
+   nodeCount.  Keeps zones from feeling like a forest farm even if a
+   depth config inadvertently bumps the count.  v2.3.54. */
+const MAX_NODES_PER_ZONE = 6;
+
 export function spawnGatherNodes(zoneId, depth) {
   const zone = ZONES[zoneId];
-  if (!zone || zone.safe) return [];
+  /* Defensive: never spawn nodes in town (already filtered via
+     zone.safe) or any zone explicitly flagged no-resources.  The
+     zone.safe check has been here since the original spawn logic;
+     keep both for belt + suspenders. */
+  if (!zone || zone.safe || zoneId === 'town') return [];
   const dc = DEPTH_CONFIG[depth || 'shallow'];
   const nodes = [];
   const W = zone.w * TILE, H = zone.h * TILE;
@@ -170,7 +182,7 @@ export function spawnGatherNodes(zoneId, depth) {
      comfortably inside the playable map and never appear in the
      out-of-bounds black border. */
   const margin = 8 * TILE;
-  const totalNodes = dc.nodeCount;
+  const totalNodes = Math.min(MAX_NODES_PER_ZONE, dc.nodeCount);
   const treeCt = Math.ceil(totalNodes * 0.4);
   const fishCt = Math.ceil(totalNodes * 0.25);
   const oreCt = Math.max(1, totalNodes - treeCt - fishCt);

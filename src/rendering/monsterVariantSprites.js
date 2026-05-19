@@ -29,6 +29,23 @@ import {
   FIREBALL_BASE_ANG as FG_BASE_ANG,
 } from './fireGoblinSprites.js';
 
+import {
+  loadMummySprites,
+  getFrame as mWalkFrame,
+  hasFrames as mHasWalk,
+  frameCount as mWalkCount,
+  getTransformFrame as mTransformFrame,
+  hasTransformFrames as mHasTransform,
+  transformFrameCount as mTransformCount,
+} from './mummySprites.js';
+
+import {
+  loadSkeletonSprites,
+  getFrame as skWalkFrame,
+  hasFrames as skHasWalk,
+  frameCount as skWalkCount,
+} from './skeletonSprites.js';
+
 export const VARIANT_SPRITES = {
   fireGoblin: {
     load: loadFireGoblinSprites,
@@ -42,6 +59,22 @@ export const VARIANT_SPRITES = {
        null until loaded; renderer treats null as "not ready yet". */
     remnants:   { get: fgRemnants },
     projectile: { get: fgFireball, baseAng: FG_BASE_ANG },
+  },
+  mummy: {
+    load: loadMummySprites,
+    walk:   { get: mWalkFrame, has: mHasWalk, count: mWalkCount },
+    /* No attack/hit/death art yet -- renderer falls through to the
+       generic fodder paths.  The transform field plays the one-shot
+       bandage shred at the moment the mummy crosses its HP threshold
+       (see MONSTER_VARIANTS.mummy.transformAt + transformFrameMs). */
+    transform: { get: mTransformFrame, has: mHasTransform, count: mTransformCount },
+  },
+  skeleton: {
+    load: loadSkeletonSprites,
+    /* Skeleton uses the run strip for both moving and standing
+       (frame 0 holds the contact pose for the standing case in
+       entityRenderer's idle branch). */
+    walk: { get: skWalkFrame, has: skHasWalk, count: skWalkCount },
   },
 };
 
