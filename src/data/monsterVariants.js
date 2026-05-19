@@ -88,18 +88,26 @@ export const MONSTER_VARIANTS = {
     walkFrameMs: 110,         /* 50 % slower per user request (was 55).
                                  Strip duration ~ 880 ms across 8 frames,
                                  reads as a more deliberate charge. */
-    deathMs: 1000,
+    deathMs: 1200,            /* 16-frame death sheet at ~75 ms/frame =
+                                 1.2 s total -- crumble -> dust ->
+                                 bone pile settling on the ground. */
+    /* The user's death source video was pre-shrunk to keep all
+       bones + dust effects inside the 544 x 544 canvas, so the
+       figure inside each chroma-keyed cell reads smaller than the
+       live skeleton's silhouette.  v2.3.65: 1.5x (was 2x in v2.3.64,
+       which read too large per user). */
+    deathScalePx: 144,
     remnantsScalePx: 48,
     spd: 1.4,                 /* charges the player vs fodder's 0.5 */
     clientSideMovement: true, /* same trick as fireGoblin: local AI
                                  chase since server only knows fodder */
-    /* Skeleton inherits the no-projectile + no-slime-remnants flags
-       from the mummy form so the inheritance doesn't reappear after
-       the transform (the swap leaves baseArchetype: 'fodder' in
-       place for AI dispatch, which would otherwise re-arm the slime
-       orb fire and the slime-splat ground loot). */
+    /* Skeleton inherits the no-projectile flag from the mummy form
+       so the slime-orb fire doesn't re-arm after the transform.
+       v2.3.61: dropped noFodderRemnants -- the skeleton now has its
+       own remnants.png (bone pile) so the fodder branch in
+       effectsRenderer picks up that texture instead of falling
+       through to the slime splat. */
     noProjectile: true,
-    noFodderRemnants: true,
     /* Outgoing damage scalar -- skeleton is the "danger" form, so
        its melee swings hit 4x.  Applied in BroTown.jsx's monster_attack
        handler (scales payload.dmg by attacker variant's dmgMult

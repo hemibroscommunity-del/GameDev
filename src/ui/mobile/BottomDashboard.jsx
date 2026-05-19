@@ -38,23 +38,29 @@ const COL = {
 // PNG has dark padding baked into both ends; the Bar component
 // over-stretches the image and clips the parent so the colored middle
 // fills edge-to-edge with flat corners (no rounded pill).
+//
+// v=2.3.68: cache-bust suffix added because users reported the bars
+// + toolbar icons missing in-game.  Cloudflare's edge had served the
+// PNGs for ~weeks; the new ?v= query string forces a fresh fetch on
+// every browser (the bytes haven't changed -- the suffix just busts
+// the URL-based cache key).
 const BAR_IMG = {
-  hp:   '/icons/ui/bar-hp.png',
-  mp:   '/icons/ui/bar-mp.png',
-  stam: '/icons/ui/bar-stam.png',
-  xp:   '/icons/ui/bar-xp.png',
+  hp:   '/icons/ui/bar-hp.png?v=2.3.68',
+  mp:   '/icons/ui/bar-mp.png?v=2.3.68',
+  stam: '/icons/ui/bar-stam.png?v=2.3.68',
+  xp:   '/icons/ui/bar-xp.png?v=2.3.68',
 };
 
 // Toolbar icon source.  Each glyph is a separate PNG sliced from the
 // user-supplied mockup screenshots by tools/slice_toolbar_icons.py
 // (first batch) and tools/slice_more_icons.py (second batch).
 const ICON_SRC = {
-  inventory: '/icons/ui/bag.png',
-  friends:   '/icons/ui/friends.png',
-  codex:     '/icons/ui/codex.png',
-  journey:   '/icons/ui/journey.png',
-  map:       '/icons/ui/map.png',
-  more:      '/icons/ui/more.png',
+  inventory: '/icons/ui/bag.png?v=2.3.68',
+  friends:   '/icons/ui/friends.png?v=2.3.68',
+  codex:     '/icons/ui/codex.png?v=2.3.68',
+  journey:   '/icons/ui/journey.png?v=2.3.68',
+  map:       '/icons/ui/map.png?v=2.3.68',
+  more:      '/icons/ui/more.png?v=2.3.68',
 };
 
 // 5 Tier-1 character stats shown in the middle dashboard column.
