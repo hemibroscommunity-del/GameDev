@@ -1096,6 +1096,14 @@ export var BroTown = function BroTown(_ref0) {
     _useState192 = _slicedToArray(_useState191, 2),
     nameInput = _useState192[0],
     setNameInput = _useState192[1];
+  /* Optional room code -- pre-seeded from localStorage so a returning
+     player who pinned a friend's room sees it on next load. */
+  var _useStateRoom = useState(function () {
+    try { return (localStorage.getItem('bt_room_code') || '').trim(); } catch (e) { return ''; }
+  });
+  var _useStateRoomArr = _slicedToArray(_useStateRoom, 2);
+  var roomInput = _useStateRoomArr[0];
+  var setRoomInput = _useStateRoomArr[1];
   var _useState193 = useState(null),
     _useState194 = _slicedToArray(_useState193, 2),
     selectedAvatar = _useState194[0],
@@ -11364,7 +11372,18 @@ export var BroTown = function BroTown(_ref0) {
       localStorage.removeItem('bt_tutorial');
       localStorage.removeItem('bt_codex');
       localStorage.removeItem('bt_player');
+      /* Room state -- always clear sticky on a fresh PLAY click so we
+         re-pick / re-resolve.  The code field is set fresh below from
+         the welcome-modal input (or cleared if left blank). */
+      localStorage.removeItem('bt_room');
+      localStorage.removeItem('bt_room_code');
     } catch (e) {}
+    /* Persist optional room code from the welcome modal -- wsClient
+       picks it up on connect and locks to that room (no auto-route). */
+    var _roomCodeTrim = (roomInput || '').trim();
+    if (_roomCodeTrim) {
+      try { localStorage.setItem('bt_room_code', _roomCodeTrim); } catch (e) {}
+    }
     /* Fresh RPG state for all players */
     S.rpg = createDefaultRpg();
     recalcDerived(S.rpg);
@@ -11477,10 +11496,43 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 600,
       outline: 'none',
       textAlign: 'center',
-      marginBottom: 12,
+      marginBottom: 8,
       boxSizing: 'border-box'
     }
-  }), /*#__PURE__*/React.createElement("button", {
+  }), /*#__PURE__*/React.createElement("input", {
+    value: roomInput,
+    onChange: function onChangeRoom(e) {
+      return setRoomInput(e.target.value);
+    },
+    onKeyDown: function onKeyDownRoom(e) {
+      return e.key === 'Enter' && joinTown();
+    },
+    placeholder: "Room code (optional)",
+    maxLength: 32,
+    style: {
+      width: '100%',
+      padding: '8px 12px',
+      background: 'var(--ink3)',
+      border: '1px solid var(--line)',
+      borderRadius: 8,
+      color: 'var(--txt2)',
+      fontSize: 12,
+      fontWeight: 500,
+      outline: 'none',
+      textAlign: 'center',
+      marginBottom: 4,
+      boxSizing: 'border-box',
+      opacity: 0.85
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      color: 'var(--txt3)',
+      textAlign: 'center',
+      marginBottom: 8,
+      fontFamily: '"Space Mono", monospace'
+    }
+  }, "Leave blank to auto-join the next open room"), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
       marginTop: 12,

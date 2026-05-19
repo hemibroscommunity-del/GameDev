@@ -35,13 +35,51 @@ export function setupWebSocket(ctx) {
     var S = stateRef.current;
 
     /* ═══ DURABLE OBJECTS WEBSOCKET CLIENT ═══ */
-    var WS_URL = (window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev') + '/ws?room=brotown';
+    /* Each room is a separate Durable Object instance, capped at 50
+       players server-side (returns 503 "Room full" on the WS upgrade
+       once full).  We auto-route across numbered rooms (brotown-1,
+       brotown-2, ...) on a failed upgrade, persist the room that
+       accepted us, and let the player pin a specific room via the
+       Room Code field on the welcome modal (bt_room_code) so friends
+       can rendezvous. */
+    var WS_BASE = window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev';
+    var ROOM_PREFIX = 'brotown';
+    var MAX_ROOM_NUM = 20; // 20 rooms x 50 players = 1000 total cap
+    function _wsRoomUrl(roomName) {
+      return WS_BASE + '/ws?room=' + encodeURIComponent(roomName);
+    }
+    function _nextRoom(curName) {
+      var m = /^brotown-(\d+)$/.exec(curName || '');
+      var n = m ? (parseInt(m[1], 10) + 1) : 1;
+      if (n > MAX_ROOM_NUM) return null;
+      return ROOM_PREFIX + '-' + n;
+    }
+    /* Initial room selection priority:
+         1. bt_room_code  — explicit code from the welcome modal; we
+            stay on that room even on 503 (player intended this exact
+            room, presumably to meet a friend).
+         2. bt_room       — last room we successfully connected to;
+            sticky so reconnects don't bounce a player out of their
+            session-long room.
+         3. brotown-1     — default starting room. */
+    function _initialRoom() {
+      try {
+        var code = (localStorage.getItem('bt_room_code') || '').trim();
+        if (code) return { name: code, locked: true };
+        var sticky = (localStorage.getItem('bt_room') || '').trim();
+        if (sticky) return { name: sticky, locked: false };
+      } catch (e) {}
+      return { name: ROOM_PREFIX + '-1', locked: false };
+    }
+    var currentRoom = _initialRoom();
+    var wsOpened = false;
     var ws = null;
     var reconnectTimer = null;
     var reconnectDelay = 1000;
     function connect() {
+      wsOpened = false;
       try {
-        ws = new WebSocket(WS_URL);
+        ws = new WebSocket(_wsRoomUrl(currentRoom.name));
       } catch (e) {
         scheduleReconnect();
         return;
@@ -49,7 +87,15 @@ export function setupWebSocket(ctx) {
       ws.onopen = function () {
         var _S$rpg, _S$rpg2, _S$rpg3;
         S._realtimeStatus = 'connected';
+        wsOpened = true;
         reconnectDelay = 1000;
+        /* Persist successful room for sticky reconnect on next page
+           load.  Skip for locked (explicit-code) rooms so the code
+           itself is what's remembered, not the resolved name. */
+        if (!currentRoom.locked) {
+          try { localStorage.setItem('bt_room', currentRoom.name); } catch (e) {}
+        }
+        S._currentRoom = currentRoom.name;
         ws.send(JSON.stringify({
           type: 'join',
           id: S.myId,
@@ -1257,6 +1303,24 @@ export function setupWebSocket(ctx) {
 
       ws.onclose = function () {
         S._realtimeStatus = 'disconnected';
+        /* Upgrade failed (onopen never fired) AND the player didn't
+           pin a specific room → presume the room was full (503) or
+           otherwise unreachable, and try the next room number on a
+           short fixed delay.  Once we wrap past MAX_ROOM_NUM we
+           reset to room-1 and fall through to normal exp-backoff so
+           we don't burn quota retrying a server that's truly down. */
+        if (!wsOpened && !currentRoom.locked) {
+          var next = _nextRoom(currentRoom.name);
+          if (next) {
+            currentRoom = { name: next, locked: false };
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connect, 150);
+            return;
+          }
+          /* Exhausted the room range -- wrap to room-1 with normal
+             backoff so we don't hammer the worker if it's all down. */
+          currentRoom = { name: ROOM_PREFIX + '-1', locked: false };
+        }
         scheduleReconnect();
       };
       ws.onerror = function () {
