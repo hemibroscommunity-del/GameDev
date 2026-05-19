@@ -2136,30 +2136,43 @@ export var BroTown = function BroTown(_ref0) {
                      arrived first and set alive=false silently. */
                   deadM.alive = false;
                   deadM.curHp = 0;
+                  /* Loot drop: push the pile on every client so two screens
+                     show the same drop at the same position.  Each client
+                     stores its own per-share coin amount on the pile (coin
+                     icon glow stays visible even when coins=0 because the
+                     renderer also gates on l.recipients).  The recipients
+                     list gates pickup so a non-contributor walking over
+                     just gets a "not yours" beep instead of taking the
+                     loot.  Position uses the server's kill x/y (payload.x/y)
+                     so every screen agrees -- no per-client jitter. */
+                  var _lootX = (typeof payload.x === 'number') ? payload.x : (deadM.x || deadM.renderX);
+                  var _lootY = (typeof payload.y === 'number') ? payload.y : (deadM.y || deadM.renderY);
                   if (!deadM._lootDropped && S.groundLoot && isRemnantSkull(deadM.type)) {
                     deadM._lootDropped = true;
                     var _shardB = rollMonsterShard(S.currentZone);
                     S.groundLoot.push({
-                      x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
-                      y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
+                      x: _lootX, y: _lootY,
                       coins: _killGoldPre,
                       xp: 0,
                       skull: deadM.type,
                       skullEmoji: '🦴',
                       ts: Date.now(),
                       shard: _shardB,
+                      recipients: _goldList,
                     });
-                  } else if (!deadM._lootDropped && S.groundLoot && _killGoldPre > 0) {
-                    /* Non-skull-dropper but we earned gold — push a
-                       coin-only pickup so the walkover gold path still
-                       works for non-fodder server archetypes. */
+                  } else if (!deadM._lootDropped && S.groundLoot) {
+                    /* Non-skull-dropper.  Push on every client (not gated
+                       on _killGoldPre > 0 like the old code) so two screens
+                       see the same pile; the renderer falls back to the
+                       coin glow when recipients is set even if this client
+                       isn't earning anything. */
                     deadM._lootDropped = true;
                     S.groundLoot.push({
-                      x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
-                      y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
+                      x: _lootX, y: _lootY,
                       coins: _killGoldPre,
                       xp: 0,
                       ts: Date.now(),
+                      recipients: _goldList,
                     });
                   }
                   /* Per-archetype death SFX (snowman-death, monster-death
@@ -8423,6 +8436,18 @@ export var BroTown = function BroTown(_ref0) {
                up — otherwise the player walks over the spot during the
                death anim and the invisible loot vanishes silently. */
             if (_isFodderRemnant && Date.now() - (loot.ts || 0) < 100) return true;
+            /* Multiplayer recipient gate: monster_kill loot piles carry a
+               `recipients` list of player ids who can claim the drop.
+               Non-recipients walk over without picking up; the pile stays
+               on screen so the rightful owner can come grab it.  Plays a
+               soft "not yours" beep once per pile per player. */
+            if (lDist < 20 && loot.recipients && !loot.recipients.includes(S.myId)) {
+              if (!loot._notYoursBeeped) {
+                loot._notYoursBeeped = true;
+                try { BT_AUDIO.beep(220, 0.04, 0.05, 'sine'); } catch (e) {}
+              }
+              return true;
+            }
             if (lDist < 20) {
               /* §4.6 Weapon drop pickup — equip if better, stash otherwise */
               if (loot.isWeapon && loot.weapon) {

@@ -1367,10 +1367,14 @@ export class EffectsRenderer {
         gfx.circle(l.x, l.y + bob, 14);
         gfx.stroke({ color: 0xf5c542, width: 1.5, alpha: (0.4 + Math.sin(age * 4) * 0.3) * alpha });
       }
-      if (l.coins) {
-        /* Glow base. */
+      if (l.coins || l.recipients) {
+        /* Glow base.  Non-owners (l.recipients set but viewer not in
+           the list) get a dimmer glow so the pile reads as "someone
+           else's" without changing the icon. */
+        const ownsThis = !l.recipients || !S.myId || l.recipients.includes(S.myId);
+        const glowAlpha = (ownsThis ? 0.3 : 0.12) * alpha;
         gfx.circle(l.x, l.y + bob, 10);
-        gfx.fill({ color: 0xf5c542, alpha: 0.3 * alpha });
+        gfx.fill({ color: 0xf5c542, alpha: glowAlpha });
         /* Coin icon sprite (matches HUD/popup gold icon).  Falls back
            to the procedural multi-circle stack while the PNG is loading. */
         const goldTex = POPUP_ICONS.gold;
@@ -1383,7 +1387,7 @@ export class EffectsRenderer {
           }
           l._pixiSprite.x = l.x;
           l._pixiSprite.y = l.y + 3 + bob;
-          l._pixiSprite.alpha = alpha;
+          l._pixiSprite.alpha = (ownsThis ? 1 : 0.45) * alpha;
           l._pixiSprite.scale.set(14 / (l._pixiSprite.texture.width || 14));
           l._pixiSprite.visible = true;
         } else {
