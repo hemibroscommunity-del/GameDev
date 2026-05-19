@@ -14,7 +14,7 @@ import { Assets, Rectangle, Texture } from 'pixi.js';
 
 const FRAME_W = 256;
 const FRAME_H = 256;
-const SPRITE_VERSION = '2.3.61';
+const SPRITE_VERSION = '2.3.62';
 
 const RUN_DIRS = ['s', 'w', 'nw', 'n', 'sw'];
 const DEATH_FRAMES_EXPECTED = 16;
