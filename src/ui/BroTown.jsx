@@ -1608,7 +1608,7 @@ export var BroTown = function BroTown(_ref0) {
         return;
       }
       ws.onopen = function () {
-        var _S$rpg, _S$rpg2, _S$rpg3;
+        var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI;
         S._realtimeStatus = 'connected';
         reconnectDelay = 1000;
         ws.send(JSON.stringify({
@@ -1626,6 +1626,14 @@ export var BroTown = function BroTown(_ref0) {
             bt: S.bodyTorso || '#2563eb',
             bl: S.bodyLegs || '#1e3a5f',
             bs: S.bodySize || 'slim',
+            /* Bootstrap fields for server-authoritative coins / inventory.
+               Used only on a player's FIRST connection to the GameRoom
+               DO (when DO storage has no rpg:<playerId> entry yet); the
+               server persists this and ignores the field on subsequent
+               connects, so localStorage tampering only affects the
+               first session. */
+            rpgCoins: ((_S$rpgC = S.rpg) === null || _S$rpgC === void 0 ? void 0 : _S$rpgC.coins) || 0,
+            rpgInventory: ((_S$rpgI = S.rpg) === null || _S$rpgI === void 0 ? void 0 : _S$rpgI.inventory) || {},
             rpgLv: ((_S$rpg = S.rpg) === null || _S$rpg === void 0 ? void 0 : _S$rpg.level) || 1,
             rpgHp: ((_S$rpg2 = S.rpg) === null || _S$rpg2 === void 0 ? void 0 : _S$rpg2.hp) || 50,
             rpgMaxHp: ((_S$rpg3 = S.rpg) === null || _S$rpg3 === void 0 ? void 0 : _S$rpg3.maxHp) || 50
@@ -1872,6 +1880,55 @@ export var BroTown = function BroTown(_ref0) {
                   return local;
                 });
               }
+              /* Server-authoritative ground loot — server now owns the
+                 pile list, validates pickups, and emits private
+                 loot_credit events with the picker's authorized share.
+                 Setting S._serverLoot disables the legacy client-local
+                 loot push in the monster_kill handler. */
+              if (msg.loot) {
+                S._serverLoot = true;
+                S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
+              }
+              break;
+            }
+          case 'zone_loot':
+            {
+              /* Sent on zone change.  Replace S.groundLoot with the new
+                 zone's authoritative pile list. */
+              if (msg.loot) {
+                S._serverLoot = true;
+                S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
+              }
+              break;
+            }
+          case 'loot_credit':
+            {
+              /* Private message: server is granting us the share + (if
+                 we were first to pick up) the one-of inventory drop.
+                 _applyLootCredit handles the popup + SFX + local pile
+                 despawn.  The actual coin/inventory mutation rides on
+                 the player_state event that immediately follows. */
+              if (msg.payload) _applyLootCredit(msg.payload, S);
+              break;
+            }
+          case 'player_state':
+            {
+              /* Server-authoritative rpg state snapshot.  OVERWRITE
+                 local R.coins / R.inventory with the worker's totals
+                 -- this is the closure for cheats that try to modify
+                 the local value (they get stomped on the next sync).
+                 Fires on join (bootstrap) and after every server-
+                 validated rpg-mutating action (currently loot pickup;
+                 future: harvest / sales / quest / etc.). */
+              if (!msg.payload || !S.rpg) break;
+              if (typeof msg.payload.coins === 'number') {
+                S.rpg.coins = msg.payload.coins;
+              }
+              if (msg.payload.inventory && typeof msg.payload.inventory === 'object') {
+                S.rpg.inventory = _objectSpread({}, msg.payload.inventory);
+              }
+              setRpgState(_objectSpread({}, S.rpg));
+              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
             }
           case 'zone_nodes':
@@ -2002,8 +2059,134 @@ export var BroTown = function BroTown(_ref0) {
       };
 
       /* §16.10 — Shared game event dispatcher (used by both direct messages and batched tick events) */
+      /* Thicken a server-authoritative loot pile (the worker's wire
+         payload from loot_drop / zone_loot / state_sync.loot) into the
+         shape the renderer + pickup filter consume.  The "coins" field
+         is the player's own share (server's total * shares[myId]) so
+         the existing renderer's "+Xg" label shows the right amount;
+         watchers with no share get coins=0 and the renderer falls back
+         to the dim "[killer]'s loot" view via the recipients gate. */
+      function _buildServerPile(p, myId) {
+        var myShare = (p.shares && typeof p.shares[myId] === 'number') ? p.shares[myId] : 0;
+        return {
+          lootId: p.lootId,
+          x: p.x, y: p.y,
+          coins: Math.round((p.coins || 0) * myShare),
+          xp: 0,
+          skull: p.skull || null,
+          skullEmoji: p.skull ? '🦴' : null,
+          shard: p.shard || null,
+          recipients: p.recipients || [],
+          killerName: p.killerName || 'Player',
+          ts: p.ts || Date.now(),
+          inventoryClaimed: !!p.inventoryClaimed,
+          _serverLoot: true,
+        };
+      }
+
+      /* Server-issued loot_credit handler.  The actual coin /
+         inventory mutation lives in the player_state event that
+         follows this one over the same WS (server is authoritative
+         for the rpg store -- this handler stays purely cosmetic).
+         Responsibilities here:
+           * floating popups + SFX so the player feels the pickup
+           * comp-stat increment (still local; will migrate later)
+           * shard label lookup for the popup
+           * despawn the picker's local copy of the pile
+      */
+      function _applyLootCredit(payload, S) {
+        if (!S.rpg) return;
+        var R = S.rpg;
+        if (payload.coins && payload.coins > 0) {
+          if (R._compStats) R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + payload.coins;
+          S.dmgNumbers.push({
+            x: S.player.x + 12, y: S.player.y - 8,
+            text: '+' + payload.coins + 'G',
+            color: '#f5c542', ts: Date.now(),
+          });
+        }
+        if (payload.shard) {
+          var _pickedShard = shardByKey(payload.shard);
+          S.dmgNumbers.push({
+            x: S.player.x + 12, y: S.player.y - 22,
+            text: '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'),
+            color: (_pickedShard && _pickedShard.color) || '#cce6ff',
+            ts: Date.now(),
+          });
+        }
+        if (payload.skull) {
+          /* Local skull-counter tally still tracked client-side --
+             not part of inventory; just a kill-trophy ledger.  Server
+             doesn't replicate it. */
+          if (!R.skulls) R.skulls = {};
+          R.skulls[payload.skull] = (R.skulls[payload.skull] || 0) + 1;
+        }
+        BT_AUDIO.beep(500, 0.06, 0.1, 'sine');
+        try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
+        /* Despawn the picker's local copy of the pile -- they're done
+           with it.  Other recipients keep their copy until their own
+           credit / despawn arrives. */
+        if (payload.lootId && S.groundLoot) {
+          for (var _glci = 0; _glci < S.groundLoot.length; _glci++) {
+            if (S.groundLoot[_glci].lootId === payload.lootId) {
+              S.groundLoot[_glci]._expired = true;
+              break;
+            }
+          }
+        }
+      }
+
       function _processGameEvent(type, payload, S) {
         switch (type) {
+          case 'loot_drop':
+            {
+              /* Server-authoritative pile from a monster kill.  Push to
+                 local groundLoot if not already present -- the worker
+                 also includes new piles in state_sync / zone_loot for
+                 joiners, so the same id may arrive twice. */
+              if (!payload || !payload.pile || !S.groundLoot) break;
+              var _existing = S.groundLoot.find(function (l) { return l.lootId === payload.pile.lootId; });
+              if (_existing) break;
+              S.groundLoot.push(_buildServerPile(payload.pile, S.myId));
+              break;
+            }
+          case 'loot_claimed':
+            {
+              /* Broadcast: another player claimed against this pile.
+                 If they were the first claimer, the one-of inventory
+                 portion is gone -- null it on our local copy so the
+                 visual reverts to a plain coin pile and a subsequent
+                 pickup doesn't try to claim the inventory again. */
+              if (!payload || !payload.lootId || !S.groundLoot) break;
+              for (var _lcj = 0; _lcj < S.groundLoot.length; _lcj++) {
+                var _loCl = S.groundLoot[_lcj];
+                if (_loCl.lootId !== payload.lootId) continue;
+                if (payload.inventoryClaimedNow) {
+                  _loCl.inventoryClaimed = true;
+                  _loCl.skull = null;
+                  _loCl.shard = null;
+                }
+                /* If WE are the one who claimed, the loot_credit case
+                   (top-level) handles the local despawn -- nothing
+                   else to do here for the picker. */
+                break;
+              }
+              break;
+            }
+          case 'loot_despawn':
+            {
+              /* Server says the pile is done -- last recipient claimed
+                 or 60 s expiry hit.  Mark expired so renderer + filter
+                 clear it. */
+              if (!payload || !payload.lootId || !S.groundLoot) break;
+              for (var _lde = 0; _lde < S.groundLoot.length; _lde++) {
+                if (S.groundLoot[_lde].lootId === payload.lootId) {
+                  S.groundLoot[_lde]._expired = true;
+                  break;
+                }
+              }
+              break;
+            }
           case 'chat':
             {
               if (!payload || payload.id === S.myId) break;
@@ -2136,31 +2319,60 @@ export var BroTown = function BroTown(_ref0) {
                      arrived first and set alive=false silently. */
                   deadM.alive = false;
                   deadM.curHp = 0;
-                  if (!deadM._lootDropped && S.groundLoot && isRemnantSkull(deadM.type)) {
-                    deadM._lootDropped = true;
-                    var _shardB = rollMonsterShard(S.currentZone);
-                    S.groundLoot.push({
-                      x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
-                      y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
-                      coins: _killGoldPre,
-                      xp: 0,
-                      skull: deadM.type,
-                      skullEmoji: '🦴',
-                      ts: Date.now(),
-                      shard: _shardB,
-                    });
-                  } else if (!deadM._lootDropped && S.groundLoot && _killGoldPre > 0) {
-                    /* Non-skull-dropper but we earned gold — push a
-                       coin-only pickup so the walkover gold path still
-                       works for non-fodder server archetypes. */
-                    deadM._lootDropped = true;
-                    S.groundLoot.push({
-                      x: (deadM.x || deadM.renderX) + (Math.random() - 0.5) * 12,
-                      y: (deadM.y || deadM.renderY) + (Math.random() - 0.5) * 12,
-                      coins: _killGoldPre,
-                      xp: 0,
-                      ts: Date.now(),
-                    });
+                  /* Loot drop: push the pile on every client so two screens
+                     show the same drop at the same position.  Each client
+                     stores its own per-share coin amount on the pile (coin
+                     icon glow stays visible even when coins=0 because the
+                     renderer also gates on l.recipients).  The recipients
+                     list gates pickup so a non-contributor walking over
+                     just gets a "not yours" beep instead of taking the
+                     loot.  Position uses the server's kill x/y (payload.x/y)
+                     so every screen agrees -- no per-client jitter. */
+                  var _lootX = (typeof payload.x === 'number') ? payload.x : (deadM.x || deadM.renderX);
+                  var _lootY = (typeof payload.y === 'number') ? payload.y : (deadM.y || deadM.renderY);
+                  /* Local loot-pile push.  Skipped when the worker is
+                     authoritative for loot (S._serverLoot): in that
+                     mode the server emits loot_drop and we receive the
+                     pile via the loot_drop case in _processGameEvent
+                     above.  This block remains as the fallback for
+                     dungeons / SP / zones the worker doesn't model.
+                     Death SFX, particles, and XP attribution still run
+                     either way (see below). */
+                  if (!S._serverLoot) {
+                    var _lootId = 'mk-' + payload.monsterId;
+                    /* Killer name for the "[X]'s loot" label on non-owner
+                       screens.  Fall back to 'Player' if we don't have the
+                       other-player entry yet (e.g. they just joined). */
+                    var _killerName = (payload.killerId === S.myId)
+                      ? (S.myName || 'You')
+                      : ((S.others && S.others[payload.killerId] && S.others[payload.killerId].name) || 'Player');
+                    if (!deadM._lootDropped && S.groundLoot && isRemnantSkull(deadM.type)) {
+                      deadM._lootDropped = true;
+                      var _shardB = rollMonsterShard(S.currentZone);
+                      S.groundLoot.push({
+                        lootId: _lootId,
+                        x: _lootX, y: _lootY,
+                        coins: _killGoldPre,
+                        xp: 0,
+                        skull: deadM.type,
+                        skullEmoji: '🦴',
+                        ts: Date.now(),
+                        shard: _shardB,
+                        recipients: _goldList,
+                        killerName: _killerName,
+                      });
+                    } else if (!deadM._lootDropped && S.groundLoot) {
+                      deadM._lootDropped = true;
+                      S.groundLoot.push({
+                        lootId: _lootId,
+                        x: _lootX, y: _lootY,
+                        coins: _killGoldPre,
+                        xp: 0,
+                        ts: Date.now(),
+                        recipients: _goldList,
+                        killerName: _killerName,
+                      });
+                    }
                   }
                   /* Per-archetype death SFX (snowman-death, monster-death
                      fallback; slime fodder is muted via its own splat
@@ -3095,6 +3307,10 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         if (msg.type === 'node_strike') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'loot_pickup') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -8423,6 +8639,33 @@ export var BroTown = function BroTown(_ref0) {
                up — otherwise the player walks over the spot during the
                death anim and the invisible loot vanishes silently. */
             if (_isFodderRemnant && Date.now() - (loot.ts || 0) < 100) return true;
+            /* Multiplayer recipient gate: monster_kill loot piles carry a
+               `recipients` list of player ids who can claim the drop.
+               Non-recipients walk over without picking up; the pile stays
+               on screen so the rightful owner can come grab it.  Plays a
+               soft "not yours" beep once per pile per player. */
+            if (lDist < 20 && loot.recipients && !loot.recipients.includes(S.myId)) {
+              if (!loot._notYoursBeeped) {
+                loot._notYoursBeeped = true;
+                try { BT_AUDIO.beep(220, 0.04, 0.05, 'sine'); } catch (e) {}
+              }
+              return true;
+            }
+            /* Server-authoritative loot: when a recipient walks into a
+               worker-owned pile, send a loot_pickup request and wait
+               for the server's loot_credit reply (which both grants
+               the share and despawns the pile locally via
+               _applyLootCredit).  Keep the pile visible until then so
+               there's no ghost-state if the request fails. */
+            if (lDist < 20 && loot._serverLoot && loot.lootId) {
+              if (!loot._pickupPending) {
+                loot._pickupPending = true;
+                if (S.channel) {
+                  try { S.channel.send({ type: 'loot_pickup', payload: { lootId: loot.lootId, zone: S.currentZone } }); } catch (e) {}
+                }
+              }
+              return true;
+            }
             if (lDist < 20) {
               /* §4.6 Weapon drop pickup — equip if better, stash otherwise */
               if (loot.isWeapon && loot.weapon) {
@@ -8530,30 +8773,27 @@ export var BroTown = function BroTown(_ref0) {
                 return false;
               }
 
-              /* Normal loot pickup (gold only — XP granted on kill) */
+              /* Legacy local-pickup path -- runs for dungeons / SP /
+                 any zone the worker doesn't model.  Server-authoritative
+                 piles bail above via the loot_pickup request path and
+                 never reach here.  No cross-client broadcast needed
+                 (no other contributors share this drop without the
+                 server). */
               S.rpg.coins += loot.coins || 0;
               if (loot.coins && S.rpg._compStats) S.rpg._compStats.totalGoldEarned += loot.coins;
               syncRpgToServer(S.rpg);
               if (loot.skull && S.rpg.inventory) {
-                /* Map archetype/variant skull -> thematic inventory key
-                   so the inventory thumbnail (see InventoryPanel
-                   thumbFor) shows the right pickup art instead of the
-                   raw archetype name. */
                 var _invKey =
                   loot.skull === 'fodder'     ? 'slime-remnants' :
                   loot.skull === 'fireGoblin' ? 'fire-goblin-remnants' :
                   loot.skull;
                 S.rpg.inventory[_invKey] = (S.rpg.inventory[_invKey] || 0) + 1;
               }
-              /* Elemental shard rides on the loot when a 10 % monster
-                 roll succeeded.  Goes straight to inventory under the
-                 shard_<zone> key so it shows up as its own tile. */
               if (loot.shard && S.rpg.inventory) {
                 S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
                 var _pickedShard = shardByKey(loot.shard);
                 S.dmgNumbers.push({
-                  x: loot.x + 12,
-                  y: loot.y - 22,
+                  x: loot.x + 12, y: loot.y - 22,
                   text: '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'),
                   color: (_pickedShard && _pickedShard.color) || '#cce6ff',
                   ts: Date.now()

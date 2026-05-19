@@ -1122,8 +1122,44 @@ export class EffectsRenderer {
     if (l._pixiCoinSprite && !l._pixiCoinSprite.destroyed) l._pixiCoinSprite.destroy();
     if (l._pixiCoinLabel && !l._pixiCoinLabel.destroyed) l._pixiCoinLabel.destroy();
     if (l._pixiShardSprite && !l._pixiShardSprite.destroyed) l._pixiShardSprite.destroy();
+    if (l._pixiOwnerLabel && !l._pixiOwnerLabel.destroyed) l._pixiOwnerLabel.destroy();
     l._pixiSprite = l._pixiLabel = l._pixiTimer = l._pixiCount = l._pixiIcon = null;
-    l._pixiCoinSprite = l._pixiCoinLabel = l._pixiShardSprite = null;
+    l._pixiCoinSprite = l._pixiCoinLabel = l._pixiShardSprite = l._pixiOwnerLabel = null;
+  }
+
+  /** Renders a stroked "[killer]'s loot" label above an MP loot pile
+   *  that the local player can't claim.  Stroked white-on-black so it
+   *  stays readable on any zone background (snow / dirt / lava).
+   *  Owners get null (no label); the helper hides any existing one. */
+  _renderOwnerLabel(l, ownsThis, alpha) {
+    const show = !ownsThis && !!l.killerName;
+    if (!show) {
+      if (l._pixiOwnerLabel && !l._pixiOwnerLabel.destroyed) {
+        l._pixiOwnerLabel.visible = false;
+      }
+      return;
+    }
+    if (!l._pixiOwnerLabel || l._pixiOwnerLabel.destroyed) {
+      l._pixiOwnerLabel = new Text({
+        text: '',
+        style: {
+          fontFamily: 'VT323, monospace',
+          fontSize: 12,
+          fontWeight: '700',
+          fill: '#ffffff',
+          stroke: { color: '#000000', width: 3 },
+          align: 'center',
+        },
+      });
+      l._pixiOwnerLabel.anchor.set(0.5, 1);
+      this.lootLayer.addChild(l._pixiOwnerLabel);
+    }
+    const txt = l.killerName + "'s loot";
+    if (l._pixiOwnerLabel.text !== txt) l._pixiOwnerLabel.text = txt;
+    l._pixiOwnerLabel.x = l.x;
+    l._pixiOwnerLabel.y = l.y - 22;
+    l._pixiOwnerLabel.alpha = alpha;
+    l._pixiOwnerLabel.visible = true;
   }
 
   /** Draw the elemental shard icon centered at (l.x, anchorY), layered
@@ -1152,7 +1188,12 @@ export class EffectsRenderer {
    *  layered ABOVE any remnants/wreck sprite already added for this loot
    *  entry.  Uses dedicated _pixiCoinSprite / _pixiCoinLabel slots so it
    *  doesn't collide with the remnants' _pixiSprite. */
-  _renderCoinOverlay(l, anchorY, alpha) {
+  _renderCoinOverlay(l, anchorY, alpha, ownsThis) {
+    /* ownsThis === false signals MP loot the local player can't claim
+       (someone else's contribution-weighted drop).  Render the icon in
+       gray + lower alpha and skip the "+Xg" label since the watcher
+       doesn't know the recipient's per-share value. */
+    const owned = ownsThis !== false;
     const goldTex = POPUP_ICONS.gold;
     if (goldTex) {
       if (!l._pixiCoinSprite || l._pixiCoinSprite.destroyed) {
@@ -1163,20 +1204,26 @@ export class EffectsRenderer {
       }
       l._pixiCoinSprite.x = l.x;
       l._pixiCoinSprite.y = anchorY;
-      l._pixiCoinSprite.alpha = alpha;
+      l._pixiCoinSprite.alpha = (owned ? 1 : 0.4) * alpha;
+      l._pixiCoinSprite.tint = owned ? 0xffffff : 0x555555;
       l._pixiCoinSprite.scale.set(12 / (l._pixiCoinSprite.texture.width || 12));
       l._pixiCoinSprite.visible = true;
     }
-    if (!l._pixiCoinLabel || l._pixiCoinLabel.destroyed) {
-      l._pixiCoinLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
-      l._pixiCoinLabel.anchor.set(0.5, 0);
-      this.lootLayer.addChild(l._pixiCoinLabel);
+    if (owned) {
+      if (!l._pixiCoinLabel || l._pixiCoinLabel.destroyed) {
+        l._pixiCoinLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
+        l._pixiCoinLabel.anchor.set(0.5, 0);
+        this.lootLayer.addChild(l._pixiCoinLabel);
+      }
+      const cStr = l.coins + 'G';
+      if (l._pixiCoinLabel.text !== cStr) l._pixiCoinLabel.text = cStr;
+      l._pixiCoinLabel.x = l.x;
+      l._pixiCoinLabel.y = anchorY + 7;
+      l._pixiCoinLabel.alpha = alpha;
+      l._pixiCoinLabel.visible = true;
+    } else if (l._pixiCoinLabel && !l._pixiCoinLabel.destroyed) {
+      l._pixiCoinLabel.visible = false;
     }
-    const cStr = l.coins + 'G';
-    if (l._pixiCoinLabel.text !== cStr) l._pixiCoinLabel.text = cStr;
-    l._pixiCoinLabel.x = l.x;
-    l._pixiCoinLabel.y = anchorY + 7;
-    l._pixiCoinLabel.alpha = alpha;
   }
 
   _updateGroundLoot(S, now) {
@@ -1326,12 +1373,16 @@ export class EffectsRenderer {
           l._pixiSprite.visible = true;
           /* Coin sits ON TOP of the remnants when gold rides on this drop.
              10 px above center so the player can see there's gold to grab
-             without picking up the skull blindly. */
-          if (l.coins) this._renderCoinOverlay(l, l.y - 10 + bob, alpha);
+             without picking up the skull blindly.  Non-owners get a
+             grayed-out coin icon (no label) so they can see the pile
+             exists but read it as "not yours". */
+          const ownsThis = !l.recipients || !S.myId || l.recipients.includes(S.myId);
+          if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 10 + bob, alpha, ownsThis);
           /* Shard floats just above the coin (or above the remnants if
              there's no coin) so the player can read the zone-affiliation
              at a glance without picking up. */
-          if (l.shard) this._renderShardOverlay(l, l.y - (l.coins ? 24 : 12) + bob, alpha);
+          if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 24 : 12) + bob, alpha);
+          this._renderOwnerLabel(l, ownsThis, alpha);
           continue;
         }
       }
@@ -1354,8 +1405,10 @@ export class EffectsRenderer {
         l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
-        if (l.coins) this._renderCoinOverlay(l, l.y - 14, alpha);
-        if (l.shard) this._renderShardOverlay(l, l.y - (l.coins ? 28 : 14), alpha);
+        const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
+        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14, alpha, snOwn);
+        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14), alpha);
+        this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }
 
@@ -1367,10 +1420,15 @@ export class EffectsRenderer {
         gfx.circle(l.x, l.y + bob, 14);
         gfx.stroke({ color: 0xf5c542, width: 1.5, alpha: (0.4 + Math.sin(age * 4) * 0.3) * alpha });
       }
-      if (l.coins) {
-        /* Glow base. */
+      if (l.coins || l.recipients) {
+        /* Glow base.  Non-owners (l.recipients set but viewer not in
+           the list) get a gray glow + grayscale-tinted coin icon so
+           the pile reads as "someone else's drop" at a glance. */
+        const ownsThis = !l.recipients || !S.myId || l.recipients.includes(S.myId);
+        const glowColor = ownsThis ? 0xf5c542 : 0x666666;
+        const glowAlpha = (ownsThis ? 0.3 : 0.18) * alpha;
         gfx.circle(l.x, l.y + bob, 10);
-        gfx.fill({ color: 0xf5c542, alpha: 0.3 * alpha });
+        gfx.fill({ color: glowColor, alpha: glowAlpha });
         /* Coin icon sprite (matches HUD/popup gold icon).  Falls back
            to the procedural multi-circle stack while the PNG is loading. */
         const goldTex = POPUP_ICONS.gold;
@@ -1383,7 +1441,8 @@ export class EffectsRenderer {
           }
           l._pixiSprite.x = l.x;
           l._pixiSprite.y = l.y + 3 + bob;
-          l._pixiSprite.alpha = alpha;
+          l._pixiSprite.alpha = (ownsThis ? 1 : 0.5) * alpha;
+          l._pixiSprite.tint = ownsThis ? 0xffffff : 0x555555;
           l._pixiSprite.scale.set(14 / (l._pixiSprite.texture.width || 14));
           l._pixiSprite.visible = true;
         } else {
@@ -1394,17 +1453,24 @@ export class EffectsRenderer {
           gfx.circle(l.x, l.y + 4 + bob, 3);
           gfx.fill({ color: 0xd4a020, alpha });
         }
-        /* "<n>G" label. */
-        if (!l._pixiLabel || l._pixiLabel.destroyed) {
-          l._pixiLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
-          l._pixiLabel.anchor.set(0.5, 0);
-          this.lootLayer.addChild(l._pixiLabel);
+        /* "<n>G" label.  Owners only -- watchers don't know the
+           recipient's per-share value and would otherwise see "0G". */
+        if (ownsThis && l.coins) {
+          if (!l._pixiLabel || l._pixiLabel.destroyed) {
+            l._pixiLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
+            l._pixiLabel.anchor.set(0.5, 0);
+            this.lootLayer.addChild(l._pixiLabel);
+          }
+          const cStr = l.coins + 'G';
+          if (l._pixiLabel.text !== cStr) l._pixiLabel.text = cStr;
+          l._pixiLabel.x = l.x;
+          l._pixiLabel.y = l.y + 14 + bob;
+          l._pixiLabel.alpha = alpha;
+          l._pixiLabel.visible = true;
+        } else if (l._pixiLabel && !l._pixiLabel.destroyed) {
+          l._pixiLabel.visible = false;
         }
-        const cStr = l.coins + 'G';
-        if (l._pixiLabel.text !== cStr) l._pixiLabel.text = cStr;
-        l._pixiLabel.x = l.x;
-        l._pixiLabel.y = l.y + 14 + bob;
-        l._pixiLabel.alpha = alpha;
+        this._renderOwnerLabel(l, ownsThis, alpha);
       }
       /* Shard overlay for the coin-pile branch -- non-fodder kills
          (stalker, hexer, volatile, etc.) don't hit the remnants
