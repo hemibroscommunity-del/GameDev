@@ -10935,14 +10935,20 @@ export var BroTown = function BroTown(_ref0) {
        mutation above stays as a client-prediction so the player sees the
        node disappear immediately; the tick delta reconciles on arrival. */
     if (S._serverGatherNodes && S.channel) {
-      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone } }); } catch (e) {}
+      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone, accuracy: accuracy } }); } catch (e) {}
     }
-    /* Inventory */
-    if (!R.inventory) R.inventory = {};
+    /* Inventory grant for the resource itself (fish_clownfish, etc.).
+       When the server owns gather nodes the worker's _handleNodeStrike
+       applies the grant + emits player_state; we skip the local
+       mutation here so the server's value isn't double-counted.  For
+       dungeon / SP zones the local path stays as the fallback. */
     var baseName = node.baseName || node.name || 'Fish';
-    var baseKey = (node.resourceType || 'fish') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
     var yieldQty = reward.yieldMult || 1;
-    R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+    if (!R.inventory) R.inventory = {};
+    if (!S._serverGatherNodes) {
+      var baseKey = (node.resourceType || 'fish') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
+      R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+    }
     /* Elemental shard -- 33% per successful harvest, keyed off current
        zone.  Shows a floating "+ <Shard>" popup and adds straight to
        inventory (no ground-loot intermediary -- harvest is direct). */
@@ -11060,13 +11066,17 @@ export var BroTown = function BroTown(_ref0) {
        mutation above stays as a client-prediction so the player sees the
        node disappear immediately; the tick delta reconciles on arrival. */
     if (S._serverGatherNodes && S.channel) {
-      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone } }); } catch (e) {}
+      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone, accuracy: accuracy } }); } catch (e) {}
     }
-    if (!R.inventory) R.inventory = {};
+    /* Resource inventory grant on the worker when authoritative;
+       local fallback for dungeon / SP. */
     var baseName = node.baseName || node.name || 'Pine';
-    var baseKey = (node.resourceType || 'wood') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
     var yieldQty = reward.yieldMult || 1;
-    R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+    if (!R.inventory) R.inventory = {};
+    if (!S._serverGatherNodes) {
+      var baseKeyW = (node.resourceType || 'wood') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
+      R.inventory[baseKeyW] = (R.inventory[baseKeyW] || 0) + yieldQty;
+    }
     /* Elemental shard -- 33% per chop, same scheme as fishing/mining. */
     var _shardF2 = rollHarvestShard(S.currentZone);
     if (_shardF2) {
@@ -11112,13 +11122,17 @@ export var BroTown = function BroTown(_ref0) {
        mutation above stays as a client-prediction so the player sees the
        node disappear immediately; the tick delta reconciles on arrival. */
     if (S._serverGatherNodes && S.channel) {
-      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone } }); } catch (e) {}
+      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone, accuracy: accuracy } }); } catch (e) {}
     }
-    if (!R.inventory) R.inventory = {};
+    /* Resource inventory grant on the worker when authoritative;
+       local fallback for dungeon / SP. */
     var baseName = node.baseName || node.name || 'Copper Ore';
-    var baseKey = (node.resourceType || 'ore') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
     var yieldQty = reward.yieldMult || 1;
-    R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+    if (!R.inventory) R.inventory = {};
+    if (!S._serverGatherNodes) {
+      var baseKeyM = (node.resourceType || 'ore') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
+      R.inventory[baseKeyM] = (R.inventory[baseKeyM] || 0) + yieldQty;
+    }
     /* Elemental shard -- 33% per mine, same scheme as fishing/wood. */
     var _shardF3 = rollHarvestShard(S.currentZone);
     if (_shardF3) {
@@ -29125,13 +29139,19 @@ export var BroTown = function BroTown(_ref0) {
         node.alive = false;
         node.respawnAt = Date.now() + node.respawnTime;
         if (S._serverGatherNodes && S.channel) {
-          try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone } }); } catch (e) {}
+          try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone, accuracy: result } }); } catch (e) {}
         }
         if (!R.inventory) R.inventory = {};
         var baseName = node.baseName || node.name;
-        var baseKey = node.resourceType + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
         var yieldQty = reward.yieldMult || 1;
-        R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+        /* Resource inventory grant -- server applies it via
+           node_strike + player_state when S._serverGatherNodes is
+           true; the legacy local grant below stays as fallback for
+           dungeons / SP only. */
+        if (!S._serverGatherNodes) {
+          var baseKey = node.resourceType + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
+          R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
+        }
         var processVerb = gatherMini.skill === 'fishing' ? 'Descaled' : gatherMini.skill === 'woodcutting' ? 'Stripped' : 'Smelted';
         if (node.element) {
           var _ZONE_RESOURCES$node$, _ZONE_RESOURCES$node$2;
