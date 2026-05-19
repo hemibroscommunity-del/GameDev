@@ -1,6 +1,6 @@
 {
   "name": "hemi-bros-arpg",
-  "version": "2.3.64",
+  "version": "2.3.65",
   "private": true,
   "type": "module",
   "scripts": {
