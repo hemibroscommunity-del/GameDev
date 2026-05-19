@@ -774,7 +774,11 @@ export class EntityRenderer {
             if (hp < 0.4) { const k = hp / 0.4; sqx = 1 + 0.35 * k; sqy = 1 - 0.30 * k; }
             else { const k = (hp - 0.4) / 0.6; sqx = 1.35 - 0.35 * k; sqy = 0.70 + 0.30 * k; }
           }
-          const baseScale = (variant.liveScalePx || 64) / 256;
+          /* Per-direction scaleMult (set by the variant's lookup map,
+             e.g. mummy E + SW at 0.9 to even out perceived silhouette
+             vs the other 6 facings).  Defaults to 1 when unset. */
+          const dirScale = (frame.scaleMult != null) ? frame.scaleMult : 1;
+          const baseScale = (variant.liveScalePx || 64) / 256 * dirScale;
           const sx = baseScale * sqx * (frame.mirror ? -1 : 1);
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
@@ -865,11 +869,25 @@ export class EntityRenderer {
           const dy = m.y - (display._lastY != null ? display._lastY : m.y);
           const moving = dx * dx + dy * dy > 0.04;
           let facing = display._lastFacing || 'south';
+          /* Same 2-consecutive-tick agreement filter as the variant
+             render branch (v2.3.53).  Server-driven snowman ticks at
+             ~100 ms; without this the adjacent-sector boundary wobble
+             swapped the sprite every tick on diagonal motion. */
           if (moving) {
             const ang = Math.atan2(dy, dx);
             const sector = Math.round(ang / (Math.PI / 4));
-            facing = SECTORS[((sector % 8) + 8) % 8];
-            display._lastFacing = facing;
+            const candidate = SECTORS[((sector % 8) + 8) % 8];
+            if (candidate !== facing) {
+              const prevCandidate = display._lastCandidate;
+              if (!display._lastFacing) {
+                facing = candidate;
+                display._lastFacing = candidate;
+              } else if (prevCandidate === candidate) {
+                facing = candidate;
+                display._lastFacing = candidate;
+              }
+            }
+            display._lastCandidate = candidate;
           }
           /* Hit reaction takes priority over idle when within the
              _hitAnim window.  Non-directional sheet — same recoil

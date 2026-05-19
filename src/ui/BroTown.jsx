@@ -4645,7 +4645,12 @@ export var BroTown = function BroTown(_ref0) {
         if (S.map && ptx >= 0 && pty >= 0 && pty < _zone.h && ptx < _zone.w) {
           var _S$map$pty;
           var tile = (_S$map$pty = S.map[pty]) === null || _S$map$pty === void 0 ? void 0 : _S$map$pty[ptx];
-          if (tile === 10 && S.currentZone !== 'town' && !S._inDungeon) {
+          /* Dungeon entry disabled v2.3.54 per user request -- the
+             depth-tier dungeons aren't ready for play yet so the
+             tile-10 trigger no-ops.  Flip this to `tile === 10` to
+             re-enable.  Generated maps still place tile 10 at the
+             far edge but stepping on it does nothing now. */
+          if (false && tile === 10 && S.currentZone !== 'town' && !S._inDungeon) {
             var _S$rpg6;
             /* §14.1 Dungeon entrance — find deepest accessible depth */
             var currentDepth = S._currentDepth || 'shallow';
@@ -7170,13 +7175,19 @@ export var BroTown = function BroTown(_ref0) {
                  offset ~28 px above. */
               var _mHitY = _archHit === 'fodder' ? m.y - 40 :
                            _archHit === 'fireGoblin' ? m.y - 28 :
+                           _archHit === 'mummy' || _archHit === 'skeleton' ? m.y - 48 :
                            m.y;
               /* Per-archetype hit radius bonus -- swings that
                  visually connect should register even if the m.x
                  point is just outside SWING_RANGE.  Slime: wide
-                 blob (20).  fireGoblin: upright torso (14). */
+                 blob (20).  fireGoblin: upright torso (14).  Mummy
+                 + skeleton: tall 96-px figures, the user reported
+                 their hitbox was "way too small" so bump 40 -- the
+                 effective vertical extent now covers the full body
+                 from feet (m.y - 8) to crown (m.y - 88). */
               var _hitR = _archHit === 'fodder' ? 20 :
                           _archHit === 'fireGoblin' ? 14 :
+                          _archHit === 'mummy' || _archHit === 'skeleton' ? 40 :
                           0;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
               if (mDist > SWING_RANGE) return;
@@ -9070,6 +9081,13 @@ export var BroTown = function BroTown(_ref0) {
               } else if (_archProj === 'snowman') {
                 _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;
+              } else if (_archProj === 'mummy' || _archProj === 'skeleton') {
+                /* 96 px sprite anchored at feet -- aim at mid-body
+                   ~48 px up, wide hit radius to cover the full
+                   figure height plus a bit (user reported hitbox
+                   was "way too small"). */
+                _mProjY = m.y - 48;
+                _hitR = a.isStaff ? 50 : 40;
               }
               if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
                 a.hitIds.add(m.id);

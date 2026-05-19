@@ -32,17 +32,19 @@ const WALK_DIRS = ['s', 'se', 'w', 'nw', 'n'];
    v2.3.45: SE/SW mirror flags swapped per user review -- the file
    labeled 'se' actually shows the mummy facing SW (the user reported
    "mummy faces southwest when traveling southeast and vice versa").
-   So traveling SE now mirrors 'se' to flip it east; traveling SW uses
-   'se' as-is. */
+   v2.3.54: per-direction scaleMult.  East + Southwest read visibly
+   larger than the other 6 facings even after normalize_mummy_sheets
+   matched their figure heights to 220 px.  Bumping them down 10 %
+   evens the perceived silhouette without touching the source PNGs. */
 const WALK_MAP = {
-  south:     { src: 's',  mirror: false },
-  southeast: { src: 'se', mirror: true  },
-  east:      { src: 'w',  mirror: true  },
-  northeast: { src: 'nw', mirror: true  },
-  north:     { src: 'n',  mirror: false },
-  northwest: { src: 'nw', mirror: false },
-  west:      { src: 'w',  mirror: false },
-  southwest: { src: 'se', mirror: false },
+  south:     { src: 's',  mirror: false, scaleMult: 1.0 },
+  southeast: { src: 'se', mirror: true,  scaleMult: 1.0 },
+  east:      { src: 'w',  mirror: true,  scaleMult: 0.9 },
+  northeast: { src: 'nw', mirror: true,  scaleMult: 1.0 },
+  north:     { src: 'n',  mirror: false, scaleMult: 1.0 },
+  northwest: { src: 'nw', mirror: false, scaleMult: 1.0 },
+  west:      { src: 'w',  mirror: false, scaleMult: 1.0 },
+  southwest: { src: 'se', mirror: false, scaleMult: 0.9 },
 };
 
 const walkSheets = {};         // dir -> { frames: Texture[] }
@@ -96,6 +98,7 @@ function lookup(map, sheets, facing, frameIdx) {
   const m = map[facing] || map.south;
   let sheet = sheets[m.src];
   let mirror = m.mirror;
+  const scaleMult = (m.scaleMult != null) ? m.scaleMult : 1;
   if (!sheet || sheet.frames.length === 0) {
     const south = sheets['s'];
     if (south && south.frames.length) {
@@ -110,7 +113,7 @@ function lookup(map, sheets, facing, frameIdx) {
   if (!sheet || sheet.frames.length === 0) return null;
   const len = sheet.frames.length;
   const idx = ((frameIdx % len) + len) % len;
-  return { tex: sheet.frames[idx], mirror };
+  return { tex: sheet.frames[idx], mirror, scaleMult };
 }
 
 function countOf(map, sheets, facing) {
