@@ -88,7 +88,9 @@ export const MONSTER_VARIANTS = {
     walkFrameMs: 110,         /* 50 % slower per user request (was 55).
                                  Strip duration ~ 880 ms across 8 frames,
                                  reads as a more deliberate charge. */
-    deathMs: 1000,
+    deathMs: 1200,            /* 16-frame death sheet at ~75 ms/frame =
+                                 1.2 s total -- crumble -> dust ->
+                                 bone pile settling on the ground. */
     remnantsScalePx: 48,
     spd: 1.4,                 /* charges the player vs fodder's 0.5 */
     clientSideMovement: true, /* same trick as fireGoblin: local AI
