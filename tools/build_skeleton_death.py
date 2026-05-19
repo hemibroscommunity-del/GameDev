@@ -60,12 +60,26 @@ def main():
         total = len(all_frames)
         positions = [round(i * (total - 1) / (N_FRAMES - 1)) for i in range(N_FRAMES)]
         sheet = Image.new('RGBA', (FRAME * N_FRAMES, FRAME), (0, 0, 0, 0))
+        # Mid-explosion frames (~6-9 of the 16) have bones reaching to
+        # the very top of the source canvas -- top=0 in the keyed
+        # bbox.  When rendered bottom-anchored at the same baseScale
+        # as the live skeleton (liveScalePx / 256), the explosion top
+        # sits noticeably higher than the live silhouette and reads
+        # as "cut off at the top of the window" (user report).
+        # Pre-shrink each frame to 85 % and anchor at the bottom of
+        # the cell so the explosion has ~38 px of headroom up top
+        # while the bone-pile still settles at the monster's feet.
+        DEATH_SHRINK = 0.85
+        new_size = int(round(FRAME * DEATH_SHRINK))
+        pad_x = (FRAME - new_size) // 2
+        pad_y = FRAME - new_size      # bottom-anchored
         for i, p in enumerate(positions):
             fp = os.path.join(tmp, all_frames[p])
             f = chroma_key(Image.open(fp))
-            sheet.paste(f, (i * FRAME, 0), f)
+            f = f.resize((new_size, new_size), Image.LANCZOS)
+            sheet.paste(f, (i * FRAME + pad_x, pad_y), f)
         sheet.save(OUT)
-        print(f'wrote {os.path.relpath(OUT, REPO)}  ({FRAME * N_FRAMES}x{FRAME})  total={total}  positions={positions}')
+        print(f'wrote {os.path.relpath(OUT, REPO)}  ({FRAME * N_FRAMES}x{FRAME})  total={total}  positions={positions}  shrink={DEATH_SHRINK}')
 
 
 if __name__ == '__main__':
