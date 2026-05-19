@@ -70,7 +70,7 @@ const {
   xpRequired, monsterStat, createDefaultCompStats,
   applyStatus, tickStatuses, getOldestStatusElement,
   lookupCollision, resolveCollision, getEffectiveness,
-  getTileColor, generateZoneMap, spawnMonstersForZone, spawnGatherNodes,
+  getTileColor, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createGatherNode,
   drawMask, getStatVisuals, createDefaultClan,
   awardSkillXp, addLifeSkillXp, addResource, getResource, skillXpRequired,
   evaluateMinigame, createMinigameInstance, createPet,
@@ -1707,6 +1707,25 @@ export var BroTown = function BroTown(_ref0) {
                   _processGameEvent(_evt.type, payload, S);
                 }
               }
+              // Server gather-node state deltas (alive/respawnAt only;
+              // position + type + tierLvl came once at state_sync /
+              // zone_nodes).
+              if (msg.nodes && S._serverGatherNodes && S.gatherNodes) {
+                var myZoneN = S.currentZone || 'town';
+                var zoneNodeData = msg.nodes[myZoneN];
+                if (zoneNodeData) {
+                  for (var nni = 0; nni < zoneNodeData.length; nni++) {
+                    var nnd = zoneNodeData[nni];
+                    var localN = S.gatherNodes.find(function (gn) { return gn.id === nnd.id; });
+                    if (localN) {
+                      localN.alive = !!nnd.alive;
+                      localN.respawnAt = nnd.respawnAt || 0;
+                      if (nnd.alive) localN.hp = localN.maxHp;
+                    }
+                  }
+                }
+              }
+
               // Server monster position/HP updates
               if (msg.monsters && S._serverMonsters && S.monsters) {
                 var myZone = S.currentZone || 'town';
@@ -1828,6 +1847,44 @@ export var BroTown = function BroTown(_ref0) {
                 });
               } else {
                 S._serverMonsters = false;
+              }
+              /* Server-authoritative gather nodes — thicken the worker's
+                 minimal {id,nodeType,x,y,tierLvl,alive,respawnAt} payload
+                 into the full client node shape using createGatherNode
+                 with a forced tier lvl (so two clients agree on tier
+                 per server node id).  msg.monsterZone is the join zone. */
+              if (msg.nodes) {
+                console.log('[gather-sync] state_sync nodes:', msg.nodes.length, 'zone:', msg.monsterZone || S.currentZone);
+                S._serverGatherNodes = true;
+                var _nzone = msg.monsterZone || S.currentZone;
+                S.gatherNodes = msg.nodes.map(function (n) {
+                  var local = createGatherNode(_nzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
+                  local.id = n.id;
+                  local.alive = !!n.alive;
+                  local.respawnAt = n.respawnAt || 0;
+                  return local;
+                });
+              }
+              break;
+            }
+          case 'zone_nodes':
+            {
+              /* Server sent the full gather-node list for a zone (sent on
+                 zone change).  Replace S.gatherNodes wholesale; the
+                 client-local spawnGatherNodes() and the v2.3.30 revive
+                 loop are gated on !S._serverGatherNodes so they stop
+                 running once we flip the flag here. */
+              if (msg.nodes) {
+                console.log('[gather-sync] zone_nodes:', msg.nodes.length, 'zone:', msg.zone);
+                S._serverGatherNodes = true;
+                var _zzone = msg.zone || S.currentZone;
+                S.gatherNodes = msg.nodes.map(function (n) {
+                  var local = createGatherNode(_zzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
+                  local.id = n.id;
+                  local.alive = !!n.alive;
+                  local.respawnAt = n.respawnAt || 0;
+                  return local;
+                });
               }
               break;
             }
@@ -3007,6 +3064,10 @@ export var BroTown = function BroTown(_ref0) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
         /* Direct message types — sent immediately to server, not as broadcast events */
         if (msg.type === 'monster_damage') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'node_strike') {
           ws.send(JSON.stringify(msg));
           return;
         }
