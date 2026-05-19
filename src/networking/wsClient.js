@@ -307,10 +307,13 @@ export function setupWebSocket(ctx) {
                  the nodes belong to is the player's currentZone since
                  state_sync is sent on join with the join-zone. */
               if (msg.nodes) {
+                console.log('[gather-sync] state_sync nodes:', msg.nodes.length, 'zone:', msg.monsterZone || S.currentZone, msg.nodes.slice(0, 3));
                 S._serverGatherNodes = true;
                 S.gatherNodes = msg.nodes.map(function (n) {
                   return _buildServerNode(n, msg.monsterZone || S.currentZone);
                 });
+              } else {
+                console.log('[gather-sync] state_sync: NO nodes field present');
               }
               break;
             }
@@ -365,6 +368,7 @@ export function setupWebSocket(ctx) {
                  !S._serverGatherNodes so they stop running once we get
                  here. */
               if (msg.nodes) {
+                console.log('[gather-sync] zone_nodes:', msg.nodes.length, 'zone:', msg.zone, msg.nodes.slice(0, 3));
                 S._serverGatherNodes = true;
                 S.gatherNodes = msg.nodes.map(function (n) {
                   return _buildServerNode(n, msg.zone || S.currentZone);
