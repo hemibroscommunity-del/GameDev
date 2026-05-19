@@ -5613,15 +5613,25 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        /* Detect nearest gatherable node */
+        /* Detect nearest gatherable node.  Per-node proximity range
+           scales with the node's sprite height so high-tier trees
+           (112 * (1 + (tierStep-1) * 0.15) = up to ~262 px on tier
+           41-50) are still reachable from the canopy area.  Was a
+           fixed 100 px ceiling, which left some tall sprites visually
+           in-range but proximity-out-of-range (user: "resources
+           showing that have no menu to interact with it"). */
         S._nearNode = null;
         if (S.gatherNodes) {
-          var closest = 100; /* max interaction range — sized to cover the tallest sprite footprint (trees ~112 px tall) so the canopy area is reachable */
+          var closestDist = Infinity;
           S.gatherNodes.forEach(function (n) {
             if (!n.alive || n.respawnAt && Date.now() < n.respawnAt) return;
+            var _baseH = n.nodeType === 'tree' ? 112 : 88;
+            var _tierStep = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
+            var _spriteH = _baseH * (1 + (_tierStep - 1) * 0.15);
+            var _proxR = Math.max(100, _spriteH * 0.75); /* 75% of sprite height + min 100 */
             var nd = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow(n.y - P.y, 2));
-            if (nd < closest) {
-              closest = nd;
+            if (nd < _proxR && nd < closestDist) {
+              closestDist = nd;
               S._nearNode = n;
             }
           });
