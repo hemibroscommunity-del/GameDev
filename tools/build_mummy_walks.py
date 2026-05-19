@@ -36,7 +36,9 @@ SIM = 95
 VIDS = {
     's':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_8853cd40-fb83-42b5-b617-ea4cbfe299bc_generated_video.mov',
     'se': '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_dabb3f54-61ad-425f-81b5-f65e010d38da_generated_video.mov',
-    'w':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_f4985290-f33b-46d3-933a-6beb30cafd3c_generated_video.mov',
+    # New west walk uploaded v2.3.58 -- replaced the previous f4985290
+    # source.  East renders by mirroring this strip per WALK_MAP.
+    'w':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_480bd4c6-007b-4745-8bcf-91698c45b1bb_generated_video.mov',
     'nw': '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_f6d60268-0109-49a0-9a5e-b3284d671312_generated_video.mov',
     'n':  '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_50b4efbe-e7f6-4456-afe1-1cae21fb4565_generated_video.mov',
 }
