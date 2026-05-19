@@ -1608,7 +1608,7 @@ export var BroTown = function BroTown(_ref0) {
         return;
       }
       ws.onopen = function () {
-        var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI;
+        var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI, _S$rpgL;
         S._realtimeStatus = 'connected';
         reconnectDelay = 1000;
         ws.send(JSON.stringify({
@@ -1626,14 +1626,15 @@ export var BroTown = function BroTown(_ref0) {
             bt: S.bodyTorso || '#2563eb',
             bl: S.bodyLegs || '#1e3a5f',
             bs: S.bodySize || 'slim',
-            /* Bootstrap fields for server-authoritative coins / inventory.
-               Used only on a player's FIRST connection to the GameRoom
-               DO (when DO storage has no rpg:<playerId> entry yet); the
-               server persists this and ignores the field on subsequent
-               connects, so localStorage tampering only affects the
-               first session. */
+            /* Bootstrap fields for server-authoritative coins / inventory
+               / lifeSkills.  Used only on a player's FIRST connection
+               to the GameRoom DO (when DO storage has no rpg:<playerId>
+               entry yet); the server persists this and ignores the
+               fields on subsequent connects, so localStorage tampering
+               only affects the first session. */
             rpgCoins: ((_S$rpgC = S.rpg) === null || _S$rpgC === void 0 ? void 0 : _S$rpgC.coins) || 0,
             rpgInventory: ((_S$rpgI = S.rpg) === null || _S$rpgI === void 0 ? void 0 : _S$rpgI.inventory) || {},
+            rpgLifeSkills: ((_S$rpgL = S.rpg) === null || _S$rpgL === void 0 ? void 0 : _S$rpgL.lifeSkills) || {},
             rpgLv: ((_S$rpg = S.rpg) === null || _S$rpg === void 0 ? void 0 : _S$rpg.level) || 1,
             rpgHp: ((_S$rpg2 = S.rpg) === null || _S$rpg2 === void 0 ? void 0 : _S$rpg2.hp) || 50,
             rpgMaxHp: ((_S$rpg3 = S.rpg) === null || _S$rpg3 === void 0 ? void 0 : _S$rpg3.maxHp) || 50
@@ -1914,12 +1915,13 @@ export var BroTown = function BroTown(_ref0) {
           case 'player_state':
             {
               /* Server-authoritative rpg state snapshot.  OVERWRITE
-                 local R.coins / R.inventory with the worker's totals
-                 -- this is the closure for cheats that try to modify
-                 the local value (they get stomped on the next sync).
-                 Fires on join (bootstrap) and after every server-
-                 validated rpg-mutating action (currently loot pickup;
-                 future: harvest / sales / quest / etc.). */
+                 local R.coins / R.inventory / R.lifeSkills with the
+                 worker's totals -- this is the closure for cheats
+                 that try to modify the local value (they get stomped
+                 on the next sync).  Fires on join (bootstrap) and
+                 after every server-validated rpg-mutating action
+                 (currently loot pickup + harvest; future: sales /
+                 quest / etc.). */
               if (!msg.payload || !S.rpg) break;
               if (typeof msg.payload.coins === 'number') {
                 S.rpg.coins = msg.payload.coins;
@@ -1927,8 +1929,54 @@ export var BroTown = function BroTown(_ref0) {
               if (msg.payload.inventory && typeof msg.payload.inventory === 'object') {
                 S.rpg.inventory = _objectSpread({}, msg.payload.inventory);
               }
+              if (msg.payload.lifeSkills && typeof msg.payload.lifeSkills === 'object') {
+                /* Preserve client-only sub-fields (resources / gems /
+                   farmPlots / pets / etc.) by spreading the server's
+                   per-skill objects on top of the existing R.lifeSkills.
+                   Server owns woodcutting / fishing / mining today; the
+                   non-XP-bearing maps stay client-side until their own
+                   migrations land. */
+                if (!S.rpg.lifeSkills) S.rpg.lifeSkills = {};
+                Object.keys(msg.payload.lifeSkills).forEach(function (k) {
+                  S.rpg.lifeSkills[k] = _objectSpread({}, msg.payload.lifeSkills[k]);
+                });
+              }
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+              break;
+            }
+          case 'harvest_credit':
+            {
+              /* Server's non-deterministic feedback for a harvest the
+                 client just requested via node_strike.  Carries the
+                 shard roll outcome (server-owned RNG) and the level-up
+                 confirmation; the client uses these for the +Shard
+                 popup and the "Skill Level N!" popup.  Deterministic
+                 popups ("PERFECT!", "+Pine ×2", "+10 Woodcutting XP")
+                 still fire client-side at apply time because the
+                 client knows accuracy + tier and matches the server's
+                 formula. */
+              if (!msg.payload || !S.rpg) break;
+              var hc = msg.payload;
+              if (hc.shard) {
+                var _pickedHShard = shardByKey(hc.shard);
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 54,
+                  text: '+ ' + (_pickedHShard ? _pickedHShard.label : 'Shard'),
+                  color: (_pickedHShard && _pickedHShard.color) || '#cce6ff',
+                  ts: Date.now(),
+                });
+              }
+              if (hc.leveled && hc.skillName) {
+                var _sklEmoji = hc.skillName === 'fishing' ? '🎣' : hc.skillName === 'woodcutting' ? '🪓' : '⛏';
+                var _sklLabel = hc.skillName.charAt(0).toUpperCase() + hc.skillName.slice(1);
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 50,
+                  text: _sklEmoji + ' ' + _sklLabel + ' Level ' + (hc.newLevel || '?') + '!',
+                  color: '#f5c542', ts: Date.now(),
+                });
+                try { BT_AUDIO.collect(); } catch (e) {}
+              }
               break;
             }
           case 'zone_nodes':
@@ -10949,23 +10997,27 @@ export var BroTown = function BroTown(_ref0) {
       var baseKey = (node.resourceType || 'fish') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
       R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
     }
-    /* Elemental shard -- 33% per successful harvest, keyed off current
-       zone.  Shows a floating "+ <Shard>" popup and adds straight to
-       inventory (no ground-loot intermediary -- harvest is direct). */
-    var _shardF1 = rollHarvestShard(S.currentZone);
-    if (_shardF1) {
-      R.inventory[_shardF1] = (R.inventory[_shardF1] || 0) + 1;
-      var _shardDesc1 = shardByKey(_shardF1);
-      S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc1 ? _shardDesc1.label : 'Shard'), color: (_shardDesc1 && _shardDesc1.color) || '#cce6ff', ts: Date.now() });
-    }
-    /* XP */
-    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+    /* Elemental shard + lifeSkill XP -- server-applied in MP (worker's
+       _handleNodeStrike rolls the shard + grants XP + emits
+       harvest_credit for the popup).  Local path stays as the SP /
+       dungeon fallback. */
     var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
-    var leveled = addLifeSkillXp(R.lifeSkills, 'fishing', xpAmt);
-    /* Counters */
+    var leveled = false;
+    if (!S._serverGatherNodes) {
+      var _shardF1 = rollHarvestShard(S.currentZone);
+      if (_shardF1) {
+        R.inventory[_shardF1] = (R.inventory[_shardF1] || 0) + 1;
+        var _shardDesc1 = shardByKey(_shardF1);
+        S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc1 ? _shardDesc1.label : 'Shard'), color: (_shardDesc1 && _shardDesc1.color) || '#cce6ff', ts: Date.now() });
+      }
+      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+      leveled = addLifeSkillXp(R.lifeSkills, 'fishing', xpAmt);
+    }
+    /* Counters (client-side; not part of the rpg cheat surface). */
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.fishCaught = (R._compStats.fishCaught || 0) + 1;
-    /* Floating numbers near the node */
+    /* Floating numbers near the node (deterministic; safe to predict
+       client-side regardless of who owns the state). */
     S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
     S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: node.emoji + ' ' + baseName + (yieldQty > 1 ? ' ×' + yieldQty : ''), color: node.color, ts: Date.now() });
     S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Fishing XP', color: '#00d4b8', ts: Date.now() });
@@ -11077,16 +11129,20 @@ export var BroTown = function BroTown(_ref0) {
       var baseKeyW = (node.resourceType || 'wood') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
       R.inventory[baseKeyW] = (R.inventory[baseKeyW] || 0) + yieldQty;
     }
-    /* Elemental shard -- 33% per chop, same scheme as fishing/mining. */
-    var _shardF2 = rollHarvestShard(S.currentZone);
-    if (_shardF2) {
-      R.inventory[_shardF2] = (R.inventory[_shardF2] || 0) + 1;
-      var _shardDesc2 = shardByKey(_shardF2);
-      S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc2 ? _shardDesc2.label : 'Shard'), color: (_shardDesc2 && _shardDesc2.color) || '#cce6ff', ts: Date.now() });
-    }
-    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+    /* Shard + XP server-applied in MP (see harvest_credit popup
+       handler).  Local path stays for SP / dungeons. */
     var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
-    var leveled = addLifeSkillXp(R.lifeSkills, 'woodcutting', xpAmt);
+    var leveled = false;
+    if (!S._serverGatherNodes) {
+      var _shardF2 = rollHarvestShard(S.currentZone);
+      if (_shardF2) {
+        R.inventory[_shardF2] = (R.inventory[_shardF2] || 0) + 1;
+        var _shardDesc2 = shardByKey(_shardF2);
+        S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc2 ? _shardDesc2.label : 'Shard'), color: (_shardDesc2 && _shardDesc2.color) || '#cce6ff', ts: Date.now() });
+      }
+      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+      leveled = addLifeSkillXp(R.lifeSkills, 'woodcutting', xpAmt);
+    }
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.treesFelled = (R._compStats.treesFelled || 0) + 1;
     S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
@@ -11133,16 +11189,20 @@ export var BroTown = function BroTown(_ref0) {
       var baseKeyM = (node.resourceType || 'ore') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
       R.inventory[baseKeyM] = (R.inventory[baseKeyM] || 0) + yieldQty;
     }
-    /* Elemental shard -- 33% per mine, same scheme as fishing/wood. */
-    var _shardF3 = rollHarvestShard(S.currentZone);
-    if (_shardF3) {
-      R.inventory[_shardF3] = (R.inventory[_shardF3] || 0) + 1;
-      var _shardDesc3 = shardByKey(_shardF3);
-      S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc3 ? _shardDesc3.label : 'Shard'), color: (_shardDesc3 && _shardDesc3.color) || '#cce6ff', ts: Date.now() });
-    }
-    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+    /* Shard + XP server-applied in MP (see harvest_credit popup
+       handler).  Local path stays for SP / dungeons. */
     var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
-    var leveled = addLifeSkillXp(R.lifeSkills, 'mining', xpAmt);
+    var leveled = false;
+    if (!S._serverGatherNodes) {
+      var _shardF3 = rollHarvestShard(S.currentZone);
+      if (_shardF3) {
+        R.inventory[_shardF3] = (R.inventory[_shardF3] || 0) + 1;
+        var _shardDesc3 = shardByKey(_shardF3);
+        S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc3 ? _shardDesc3.label : 'Shard'), color: (_shardDesc3 && _shardDesc3.color) || '#cce6ff', ts: Date.now() });
+      }
+      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+      leveled = addLifeSkillXp(R.lifeSkills, 'mining', xpAmt);
+    }
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.oresMined = (R._compStats.oresMined || 0) + 1;
     S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
