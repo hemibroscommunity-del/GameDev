@@ -5500,9 +5500,10 @@ BT_AUDIO.SFX_MANIFEST = {
   'slime-death':   '/audio/slime-death-v2.mp3',
   'snowman-death': '/audio/snowman-death.mp3',
   /* Bones-crumble SFX -- extracted from the skeleton death source
-     video (ed421fd9...).  Plays via BT_AUDIO.monsterDeath dispatch
-     when a skeleton dies. */
-  'skeleton-death': '/audio/skeleton-death.mp3',
+     video (ed421fd9...) and trimmed to 1.2 s (peak + 0.3 s fade
+     out) so it matches deathMs and doesn't trail past the bone-
+     pile settle.  Plays via BT_AUDIO.monsterDeath. */
+  'skeleton-death': '/audio/skeleton-death.mp3?v=2',
   'snowman-hit':   '/sfx/monster/snowman-hit.wav?v=3',
 };
 
