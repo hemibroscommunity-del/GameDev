@@ -634,36 +634,46 @@ export class EntityRenderer {
          at spawn time for any variant, so it's safe to reuse here. */
       if (variantKey && display._spriteBody && variantSprites && variantSprites.walk && variantSprites.walk.has()) {
         const spriteBody = display._spriteBody;
-        /* Facing: immediate commit on each moving frame, with a short
-           lock-out after each change so adjacent-sector wobble during
-           diagonal motion can't swap the sprite every frame.
+        /* Facing: commit only when two CONSECUTIVE moving observations
+           agree on the same sector.  Server-driven monsters tick at
+           ~100 ms; the 50 ms lock-out in v2.3.47 was shorter than the
+           tick interval, so two consecutive ticks could land in
+           different adjacent sectors and both commit -> flicker.  The
+           v2.3.44 "must persist 70 ms" debounce also failed because
+           it restarted the timer on each new candidate, so genuine
+           direction changes felt "insensitive."
 
-           Previous v2.3.44 used a "candidate must persist 70 ms"
-           debounce.  Net effect on server-driven monsters: facing
-           took 2-3 server ticks to commit even on clean direction
-           changes, AND if any tick landed in an adjacent sector the
-           timer restarted, so user saw "insensitive" facing updates.
-           The lock-out flips it: commit immediately, then block for
-           FACING_LOCK_MS.  Real direction changes (which arrive at
-           >100 ms server-tick spacing) sail past the lock; same-
-           frame wobble can't sneak a second change in. */
+           Consecutive-agreement check: store the LAST candidate;
+           commit when this frame's candidate equals it.  Two ticks
+           in the same direction -> ~200 ms latency on real changes
+           but adjacent-sector wobble (alternating candidates) never
+           gets two matches in a row, so it can't swap the sprite.
+           First-ever observation commits immediately so a fresh
+           server-spawned monster doesn't stay 'south' for 200 ms. */
         const dx = m.x - (display._lastX != null ? display._lastX : m.x);
         const dy = m.y - (display._lastY != null ? display._lastY : m.y);
         const moving = dx * dx + dy * dy > 0.04;
         let facing = display._lastFacing || 'south';
-        const FACING_LOCK_MS = 50;
         if (moving) {
           const ang = Math.atan2(dy, dx);
           const sector = Math.round(ang / (Math.PI / 4));
           const candidate = SECTORS[((sector % 8) + 8) % 8];
           display._lastMovedAt = now;
           if (candidate !== facing) {
-            if (!display._lastFacing || now - (display._lastFacingChangeAt || 0) >= FACING_LOCK_MS) {
+            const prevCandidate = display._lastCandidate;
+            if (!display._lastFacing) {
+              /* First movement -- commit immediately so the sprite
+                 isn't stuck on the default 'south' for a tick. */
               facing = candidate;
               display._lastFacing = candidate;
-              display._lastFacingChangeAt = now;
+            } else if (prevCandidate === candidate) {
+              /* Two ticks in a row at the same new direction --
+                 confident enough to swap. */
+              facing = candidate;
+              display._lastFacing = candidate;
             }
           }
+          display._lastCandidate = candidate;
         }
         /* Idle pose -- when the monster hasn't moved for ~150 ms, hold a
            single frame of the last-facing walk strip instead of cycling.
