@@ -21,19 +21,18 @@ import numpy as np
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(
     REPO,
-    '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_f840de52-97a8-434c-bb05-ddb5909aef85_generated_video.mp4',
+    # v2.3.63 replacement: re-uploaded source video, this one keeps
+    # all the bones + dust inside the 544 x 544 canvas the whole 5 s
+    # so we no longer need to cap to the first 2 s like v2.3.62.
+    '_users_1c1c79a0-6a1d-45f8-b7cb-5dde29783305_generated_ed421fd9-1c41-435b-901d-1f2a8015deb9_generated_video.mov',
 )
 OUT = os.path.join(REPO, 'public', 'sprites', 'monsters', 'skeleton', 'death.png')
 
 N_FRAMES = 16
 FRAME = 256
-# User feedback v2.3.62: the source video runs ~6 s but the AI gen
-# pushed bones beyond the 544 x 544 canvas boundary after the 2 s
-# mark, so the post-2s frames look like the explosion is hitting a
-# hard square edge.  Limit sampling to the first 2 s (48 frames at
-# the source's 24 fps), which captures standing -> mid-crumble while
-# the bones still fit inside the canvas.
-MAX_SOURCE_FRAMES = 48
+# v2.3.63 source keeps all action inside the canvas through the full
+# clip, so we sample across the whole video instead of the v2.3.62
+# 2 s cap.
 KEY = np.array([255, 0, 255], dtype=np.int16)
 SIM = 95
 
@@ -65,10 +64,8 @@ def main():
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         all_frames = sorted(p for p in os.listdir(tmp) if p.startswith('frame-'))
         total = len(all_frames)
-        # Sample N_FRAMES evenly across only the first MAX_SOURCE_FRAMES
-        # source frames (capped at the actual decode count if shorter).
-        upper = min(total - 1, MAX_SOURCE_FRAMES - 1)
-        positions = [round(i * upper / (N_FRAMES - 1)) for i in range(N_FRAMES)]
+        # Sample N_FRAMES evenly across the full decoded clip.
+        positions = [round(i * (total - 1) / (N_FRAMES - 1)) for i in range(N_FRAMES)]
         sheet = Image.new('RGBA', (FRAME * N_FRAMES, FRAME), (0, 0, 0, 0))
         # No pre-shrink needed -- the 2 s cap keeps bones inside the
         # source canvas, so the figure has natural headroom at the top
