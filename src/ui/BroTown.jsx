@@ -2004,19 +2004,26 @@ export var BroTown = function BroTown(_ref0) {
       /* §16.10 — Shared game event dispatcher (used by both direct messages and batched tick events) */
       function _processGameEvent(type, payload, S) {
         switch (type) {
-          case 'loot_pickup':
+          case 'loot_inventory_claimed':
             {
-              /* Another player claimed an MP loot pile.  Despawn the
-                 matching entry from our local groundLoot so every screen
-                 agrees that the pile is gone (otherwise each contributor's
-                 client keeps its own copy until they walk over it, which
-                 was duping skull remnants on shared kills). */
+              /* Another player took the one-of inventory drop (skull
+                 remnant, shard) from an MP pile.  Each recipient still
+                 has their own gold share waiting, so DON'T despawn the
+                 pile -- just clear the skull/shard fields so the visual
+                 reverts to a plain coin pile and a subsequent recipient
+                 picking up gets only their gold (not a second skull).
+                 Watchers, who have no share to claim, get _expired
+                 since the pile has nothing left for them to see. */
               if (!payload || !payload.lootId || !S.groundLoot) break;
               for (var _lpi = 0; _lpi < S.groundLoot.length; _lpi++) {
-                if (S.groundLoot[_lpi].lootId === payload.lootId) {
-                  S.groundLoot[_lpi]._expired = true;
-                  break;
-                }
+                var _loIc = S.groundLoot[_lpi];
+                if (_loIc.lootId !== payload.lootId) continue;
+                _loIc.inventoryClaimed = true;
+                _loIc.skull = null;
+                _loIc.shard = null;
+                var _amRecip = _loIc.recipients && _loIc.recipients.includes(S.myId);
+                if (!_amRecip) _loIc._expired = true;
+                break;
               }
               break;
             }
@@ -3142,7 +3149,7 @@ export var BroTown = function BroTown(_ref0) {
           ws.send(JSON.stringify(msg));
           return;
         }
-        if (msg.type === 'loot_pickup') {
+        if (msg.type === 'loot_inventory_claimed') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -8590,49 +8597,57 @@ export var BroTown = function BroTown(_ref0) {
                 return false;
               }
 
-              /* MP loot piles carry a lootId (the dead monster's id).
-                 Broadcast a loot_pickup so every other client despawns
-                 the same pile from their local groundLoot -- without
-                 this, each contributor's local pickup despawns only
-                 their own copy and a shared kill produces N skull
-                 remnants (one per contributor's inventory). */
-              if (loot.lootId && S.channel) {
-                try {
-                  S.channel.send({ type: 'loot_pickup', payload: { lootId: loot.lootId, zone: S.currentZone } });
-                } catch (e) {}
-              }
-              /* Normal loot pickup (gold only — XP granted on kill) */
+              /* Normal loot pickup (gold only — XP granted on kill).
+                 Gold is contribution-weighted: each recipient walks over
+                 to claim their own share independently, so DON'T despawn
+                 the pile for everyone here -- only this picker's local
+                 pile (return false below).  Inventory drops (skull / shard)
+                 are one-of and go to whoever picks up first; we broadcast
+                 loot_inventory_claimed so other clients null those fields
+                 and don't double-award them. */
               S.rpg.coins += loot.coins || 0;
               if (loot.coins && S.rpg._compStats) S.rpg._compStats.totalGoldEarned += loot.coins;
               syncRpgToServer(S.rpg);
-              if (loot.skull && S.rpg.inventory) {
-                /* Map archetype/variant skull -> thematic inventory key
-                   so the inventory thumbnail (see InventoryPanel
-                   thumbFor) shows the right pickup art instead of the
-                   raw archetype name. */
-                var _invKey =
-                  loot.skull === 'fodder'     ? 'slime-remnants' :
-                  loot.skull === 'fireGoblin' ? 'fire-goblin-remnants' :
-                  loot.skull;
-                S.rpg.inventory[_invKey] = (S.rpg.inventory[_invKey] || 0) + 1;
+              var _firstClaim = !loot.inventoryClaimed && (loot.skull || loot.shard);
+              if (!loot.inventoryClaimed) {
+                if (loot.skull && S.rpg.inventory) {
+                  /* Map archetype/variant skull -> thematic inventory key
+                     so the inventory thumbnail (see InventoryPanel
+                     thumbFor) shows the right pickup art instead of the
+                     raw archetype name. */
+                  var _invKey =
+                    loot.skull === 'fodder'     ? 'slime-remnants' :
+                    loot.skull === 'fireGoblin' ? 'fire-goblin-remnants' :
+                    loot.skull;
+                  S.rpg.inventory[_invKey] = (S.rpg.inventory[_invKey] || 0) + 1;
+                }
+                /* Elemental shard rides on the loot when a 10 % monster
+                   roll succeeded.  Goes straight to inventory under the
+                   shard_<zone> key so it shows up as its own tile. */
+                if (loot.shard && S.rpg.inventory) {
+                  S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
+                  var _pickedShard = shardByKey(loot.shard);
+                  S.dmgNumbers.push({
+                    x: loot.x + 12,
+                    y: loot.y - 22,
+                    text: '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'),
+                    color: (_pickedShard && _pickedShard.color) || '#cce6ff',
+                    ts: Date.now()
+                  });
+                }
+                if (loot.skull) {
+                  if (!S.rpg.skulls) S.rpg.skulls = {};
+                  S.rpg.skulls[loot.skull] = (S.rpg.skulls[loot.skull] || 0) + 1;
+                }
+                loot.inventoryClaimed = true;
               }
-              /* Elemental shard rides on the loot when a 10 % monster
-                 roll succeeded.  Goes straight to inventory under the
-                 shard_<zone> key so it shows up as its own tile. */
-              if (loot.shard && S.rpg.inventory) {
-                S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
-                var _pickedShard = shardByKey(loot.shard);
-                S.dmgNumbers.push({
-                  x: loot.x + 12,
-                  y: loot.y - 22,
-                  text: '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'),
-                  color: (_pickedShard && _pickedShard.color) || '#cce6ff',
-                  ts: Date.now()
-                });
-              }
-              if (loot.skull) {
-                if (!S.rpg.skulls) S.rpg.skulls = {};
-                S.rpg.skulls[loot.skull] = (S.rpg.skulls[loot.skull] || 0) + 1;
+              /* Broadcast the inventory claim once per pile so other
+                 recipients see the skull/shard disappear and don't
+                 double-award.  Watchers get _expired on receive. */
+              if (_firstClaim && loot.lootId && S.channel) {
+                try {
+                  S.channel.send({ type: 'loot_inventory_claimed', payload: { lootId: loot.lootId, zone: S.currentZone } });
+                } catch (e) {}
               }
               if (loot.coins) S.dmgNumbers.push({
                 x: loot.x + 12,
