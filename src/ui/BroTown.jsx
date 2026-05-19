@@ -2168,6 +2168,12 @@ export var BroTown = function BroTown(_ref0) {
                      loot_pickup broadcast to despawn the pile on every
                      client when the first recipient claims it. */
                   var _lootId = 'mk-' + payload.monsterId;
+                  /* Killer name for the "[X]'s loot" label on non-owner
+                     screens.  Fall back to 'Player' if we don't have the
+                     other-player entry yet (e.g. they just joined). */
+                  var _killerName = (payload.killerId === S.myId)
+                    ? (S.myName || 'You')
+                    : ((S.others && S.others[payload.killerId] && S.others[payload.killerId].name) || 'Player');
                   if (!deadM._lootDropped && S.groundLoot && isRemnantSkull(deadM.type)) {
                     deadM._lootDropped = true;
                     var _shardB = rollMonsterShard(S.currentZone);
@@ -2181,6 +2187,7 @@ export var BroTown = function BroTown(_ref0) {
                       ts: Date.now(),
                       shard: _shardB,
                       recipients: _goldList,
+                      killerName: _killerName,
                     });
                   } else if (!deadM._lootDropped && S.groundLoot) {
                     /* Non-skull-dropper.  Push on every client (not gated
@@ -2196,6 +2203,7 @@ export var BroTown = function BroTown(_ref0) {
                       xp: 0,
                       ts: Date.now(),
                       recipients: _goldList,
+                      killerName: _killerName,
                     });
                   }
                   /* Per-archetype death SFX (snowman-death, monster-death

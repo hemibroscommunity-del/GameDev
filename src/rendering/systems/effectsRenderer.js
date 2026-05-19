@@ -1122,8 +1122,44 @@ export class EffectsRenderer {
     if (l._pixiCoinSprite && !l._pixiCoinSprite.destroyed) l._pixiCoinSprite.destroy();
     if (l._pixiCoinLabel && !l._pixiCoinLabel.destroyed) l._pixiCoinLabel.destroy();
     if (l._pixiShardSprite && !l._pixiShardSprite.destroyed) l._pixiShardSprite.destroy();
+    if (l._pixiOwnerLabel && !l._pixiOwnerLabel.destroyed) l._pixiOwnerLabel.destroy();
     l._pixiSprite = l._pixiLabel = l._pixiTimer = l._pixiCount = l._pixiIcon = null;
-    l._pixiCoinSprite = l._pixiCoinLabel = l._pixiShardSprite = null;
+    l._pixiCoinSprite = l._pixiCoinLabel = l._pixiShardSprite = l._pixiOwnerLabel = null;
+  }
+
+  /** Renders a stroked "[killer]'s loot" label above an MP loot pile
+   *  that the local player can't claim.  Stroked white-on-black so it
+   *  stays readable on any zone background (snow / dirt / lava).
+   *  Owners get null (no label); the helper hides any existing one. */
+  _renderOwnerLabel(l, ownsThis, alpha) {
+    const show = !ownsThis && !!l.killerName;
+    if (!show) {
+      if (l._pixiOwnerLabel && !l._pixiOwnerLabel.destroyed) {
+        l._pixiOwnerLabel.visible = false;
+      }
+      return;
+    }
+    if (!l._pixiOwnerLabel || l._pixiOwnerLabel.destroyed) {
+      l._pixiOwnerLabel = new Text({
+        text: '',
+        style: {
+          fontFamily: 'VT323, monospace',
+          fontSize: 12,
+          fontWeight: '700',
+          fill: '#ffffff',
+          stroke: { color: '#000000', width: 3 },
+          align: 'center',
+        },
+      });
+      l._pixiOwnerLabel.anchor.set(0.5, 1);
+      this.lootLayer.addChild(l._pixiOwnerLabel);
+    }
+    const txt = l.killerName + "'s loot";
+    if (l._pixiOwnerLabel.text !== txt) l._pixiOwnerLabel.text = txt;
+    l._pixiOwnerLabel.x = l.x;
+    l._pixiOwnerLabel.y = l.y - 22;
+    l._pixiOwnerLabel.alpha = alpha;
+    l._pixiOwnerLabel.visible = true;
   }
 
   /** Draw the elemental shard icon centered at (l.x, anchorY), layered
@@ -1346,6 +1382,7 @@ export class EffectsRenderer {
              there's no coin) so the player can read the zone-affiliation
              at a glance without picking up. */
           if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 24 : 12) + bob, alpha);
+          this._renderOwnerLabel(l, ownsThis, alpha);
           continue;
         }
       }
@@ -1371,6 +1408,7 @@ export class EffectsRenderer {
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
         if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14, alpha, snOwn);
         if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14), alpha);
+        this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }
 
@@ -1415,17 +1453,24 @@ export class EffectsRenderer {
           gfx.circle(l.x, l.y + 4 + bob, 3);
           gfx.fill({ color: 0xd4a020, alpha });
         }
-        /* "<n>G" label. */
-        if (!l._pixiLabel || l._pixiLabel.destroyed) {
-          l._pixiLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
-          l._pixiLabel.anchor.set(0.5, 0);
-          this.lootLayer.addChild(l._pixiLabel);
+        /* "<n>G" label.  Owners only -- watchers don't know the
+           recipient's per-share value and would otherwise see "0G". */
+        if (ownsThis && l.coins) {
+          if (!l._pixiLabel || l._pixiLabel.destroyed) {
+            l._pixiLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700', fill: '#f5c542' } });
+            l._pixiLabel.anchor.set(0.5, 0);
+            this.lootLayer.addChild(l._pixiLabel);
+          }
+          const cStr = l.coins + 'G';
+          if (l._pixiLabel.text !== cStr) l._pixiLabel.text = cStr;
+          l._pixiLabel.x = l.x;
+          l._pixiLabel.y = l.y + 14 + bob;
+          l._pixiLabel.alpha = alpha;
+          l._pixiLabel.visible = true;
+        } else if (l._pixiLabel && !l._pixiLabel.destroyed) {
+          l._pixiLabel.visible = false;
         }
-        const cStr = l.coins + 'G';
-        if (l._pixiLabel.text !== cStr) l._pixiLabel.text = cStr;
-        l._pixiLabel.x = l.x;
-        l._pixiLabel.y = l.y + 14 + bob;
-        l._pixiLabel.alpha = alpha;
+        this._renderOwnerLabel(l, ownsThis, alpha);
       }
       /* Shard overlay for the coin-pile branch -- non-fodder kills
          (stalker, hexer, volatile, etc.) don't hit the remnants
