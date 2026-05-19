@@ -675,23 +675,22 @@ export class EntityRenderer {
           }
           display._lastCandidate = candidate;
         }
-        /* Idle pose -- when the monster hasn't moved for ~150 ms, hold a
-           single frame of the last-facing walk strip instead of cycling.
-           Avoids the "moonwalking on the spot" look while the AI is in
-           cooldown / out of range, but still resumes the walk loop the
-           moment it starts chasing again.
+        /* Idle pose -- when the monster hasn't moved for the idle
+           window, hold a single frame of the last-facing walk strip
+           instead of cycling.  Avoids "moonwalking on the spot" while
+           the AI is in cooldown / out of range, and the user wants
+           the static directional pose when the mummy isn't moving.
 
-           Only applies to variants with clientSideMovement -- those run
-           local AI that updates m.x every frame, so a true stop reads
-           as actual idle.  Server-driven variants (mummy) get positions
-           at the server tick rate; gaps between ticks routinely exceed
-           150 ms even while the monster is "moving" gameplay-wise, so
-           idle detection mis-fires and freezes the walk loop on frame 0
-           (user reported: "moving static picture").  For those, cycle
-           the walk strip unconditionally. */
-        const IDLE_AFTER_MS = 150;
-        const canIdle = !!variant.clientSideMovement;
-        const isIdle = canIdle && !moving && (now - (display._lastMovedAt || 0)) > IDLE_AFTER_MS;
+           Per-source threshold:
+           - clientSideMovement variants (fireGoblin / skeleton) update
+             m.x every frame so true stops register quickly -- 150 ms.
+           - server-driven variants (mummy) get position updates only
+             at the server tick rate, so gaps between ticks routinely
+             exceed 150 ms even while the monster is "moving" -- need
+             a longer window (500 ms) so active movement still reads
+             as moving but a real stop still triggers the idle pose. */
+        const idleAfterMs = variant.clientSideMovement ? 150 : 500;
+        const isIdle = !moving && (now - (display._lastMovedAt || 0)) > idleAfterMs;
 
         /* Priority chain: transform > hit recoil > attack wind-up >
            idle pose > walk loop.  The transform branch plays a
