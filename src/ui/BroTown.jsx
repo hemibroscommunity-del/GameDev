@@ -1608,7 +1608,7 @@ export var BroTown = function BroTown(_ref0) {
         return;
       }
       ws.onopen = function () {
-        var _S$rpg, _S$rpg2, _S$rpg3;
+        var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI;
         S._realtimeStatus = 'connected';
         reconnectDelay = 1000;
         ws.send(JSON.stringify({
@@ -1626,6 +1626,14 @@ export var BroTown = function BroTown(_ref0) {
             bt: S.bodyTorso || '#2563eb',
             bl: S.bodyLegs || '#1e3a5f',
             bs: S.bodySize || 'slim',
+            /* Bootstrap fields for server-authoritative coins / inventory.
+               Used only on a player's FIRST connection to the GameRoom
+               DO (when DO storage has no rpg:<playerId> entry yet); the
+               server persists this and ignores the field on subsequent
+               connects, so localStorage tampering only affects the
+               first session. */
+            rpgCoins: ((_S$rpgC = S.rpg) === null || _S$rpgC === void 0 ? void 0 : _S$rpgC.coins) || 0,
+            rpgInventory: ((_S$rpgI = S.rpg) === null || _S$rpgI === void 0 ? void 0 : _S$rpgI.inventory) || {},
             rpgLv: ((_S$rpg = S.rpg) === null || _S$rpg === void 0 ? void 0 : _S$rpg.level) || 1,
             rpgHp: ((_S$rpg2 = S.rpg) === null || _S$rpg2 === void 0 ? void 0 : _S$rpg2.hp) || 50,
             rpgMaxHp: ((_S$rpg3 = S.rpg) === null || _S$rpg3 === void 0 ? void 0 : _S$rpg3.maxHp) || 50
@@ -1897,10 +1905,30 @@ export var BroTown = function BroTown(_ref0) {
             {
               /* Private message: server is granting us the share + (if
                  we were first to pick up) the one-of inventory drop.
-                 The client side just APPLIES the increment -- the
-                 authorization happened on the worker.  Despawn the
-                 picker's local pile here since they're done with it. */
+                 _applyLootCredit handles the popup + SFX + local pile
+                 despawn.  The actual coin/inventory mutation rides on
+                 the player_state event that immediately follows. */
               if (msg.payload) _applyLootCredit(msg.payload, S);
+              break;
+            }
+          case 'player_state':
+            {
+              /* Server-authoritative rpg state snapshot.  OVERWRITE
+                 local R.coins / R.inventory with the worker's totals
+                 -- this is the closure for cheats that try to modify
+                 the local value (they get stomped on the next sync).
+                 Fires on join (bootstrap) and after every server-
+                 validated rpg-mutating action (currently loot pickup;
+                 future: harvest / sales / quest / etc.). */
+              if (!msg.payload || !S.rpg) break;
+              if (typeof msg.payload.coins === 'number') {
+                S.rpg.coins = msg.payload.coins;
+              }
+              if (msg.payload.inventory && typeof msg.payload.inventory === 'object') {
+                S.rpg.inventory = _objectSpread({}, msg.payload.inventory);
+              }
+              setRpgState(_objectSpread({}, S.rpg));
+              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
             }
           case 'zone_nodes':
@@ -2056,32 +2084,28 @@ export var BroTown = function BroTown(_ref0) {
         };
       }
 
-      /* Apply the server-issued loot_credit grant to the local RPG
-         state.  This is the closing step in the pickup round-trip:
-         client sends loot_pickup -> server validates + computes share
-         + emits loot_credit -> client applies here.  The server
-         already wrote claimedBy[myId] and (if first picker)
-         inventoryClaimed=true, so it's safe to take this as gospel
-         and mark the local pile expired -- worker will broadcast
-         loot_despawn to everyone else when appropriate. */
+      /* Server-issued loot_credit handler.  The actual coin /
+         inventory mutation lives in the player_state event that
+         follows this one over the same WS (server is authoritative
+         for the rpg store -- this handler stays purely cosmetic).
+         Responsibilities here:
+           * floating popups + SFX so the player feels the pickup
+           * comp-stat increment (still local; will migrate later)
+           * shard label lookup for the popup
+           * despawn the picker's local copy of the pile
+      */
       function _applyLootCredit(payload, S) {
         if (!S.rpg) return;
         var R = S.rpg;
         if (payload.coins && payload.coins > 0) {
-          R.coins = (R.coins || 0) + payload.coins;
           if (R._compStats) R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + payload.coins;
+          S.dmgNumbers.push({
+            x: S.player.x + 12, y: S.player.y - 8,
+            text: '+' + payload.coins + 'G',
+            color: '#f5c542', ts: Date.now(),
+          });
         }
-        if (payload.skull && R.inventory) {
-          var _invKey =
-            payload.skull === 'fodder'     ? 'slime-remnants' :
-            payload.skull === 'fireGoblin' ? 'fire-goblin-remnants' :
-            payload.skull;
-          R.inventory[_invKey] = (R.inventory[_invKey] || 0) + 1;
-          if (!R.skulls) R.skulls = {};
-          R.skulls[payload.skull] = (R.skulls[payload.skull] || 0) + 1;
-        }
-        if (payload.shard && R.inventory) {
-          R.inventory[payload.shard] = (R.inventory[payload.shard] || 0) + 1;
+        if (payload.shard) {
           var _pickedShard = shardByKey(payload.shard);
           S.dmgNumbers.push({
             x: S.player.x + 12, y: S.player.y - 22,
@@ -2090,18 +2114,15 @@ export var BroTown = function BroTown(_ref0) {
             ts: Date.now(),
           });
         }
-        if (payload.coins && payload.coins > 0) {
-          S.dmgNumbers.push({
-            x: S.player.x + 12, y: S.player.y - 8,
-            text: '+' + payload.coins + 'G',
-            color: '#f5c542', ts: Date.now(),
-          });
+        if (payload.skull) {
+          /* Local skull-counter tally still tracked client-side --
+             not part of inventory; just a kill-trophy ledger.  Server
+             doesn't replicate it. */
+          if (!R.skulls) R.skulls = {};
+          R.skulls[payload.skull] = (R.skulls[payload.skull] || 0) + 1;
         }
         BT_AUDIO.beep(500, 0.06, 0.1, 'sine');
         try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
-        syncRpgToServer(R);
-        setRpgState(_objectSpread({}, R));
-        try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
         /* Despawn the picker's local copy of the pile -- they're done
            with it.  Other recipients keep their copy until their own
            credit / despawn arrives. */
