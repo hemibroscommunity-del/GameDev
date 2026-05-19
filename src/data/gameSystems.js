@@ -5499,6 +5499,10 @@ BT_AUDIO.SFX_MANIFEST = {
      blocking new Audio().play() in the render loop. */
   'slime-death':   '/audio/slime-death-v2.mp3',
   'snowman-death': '/audio/snowman-death.mp3',
+  /* Bones-crumble SFX -- extracted from the skeleton death source
+     video (ed421fd9...).  Plays via BT_AUDIO.monsterDeath dispatch
+     when a skeleton dies. */
+  'skeleton-death': '/audio/skeleton-death.mp3',
   'snowman-hit':   '/sfx/monster/snowman-hit.wav?v=3',
 };
 
@@ -5524,6 +5528,13 @@ BT_AUDIO.monsterDeath = function (arch, opts) {
   if (arch === 'fodder') return;
   if (arch === 'snowman') {
     this.play('snowman-death', opts || { vol: 0.65 });
+    return;
+  }
+  if (arch === 'skeleton') {
+    /* Use the SFX bundled with the skeleton death video.  Mummy
+       (pre-transform kills) and other archetypes still fall through
+       to the generic monster-death. */
+    this.play('skeleton-death', opts || { vol: 0.75 });
     return;
   }
   this.play('monster-death', opts || { vol: 0.5 });
