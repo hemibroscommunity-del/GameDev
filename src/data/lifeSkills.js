@@ -114,11 +114,12 @@ export function canAccessDepth(rpg, zoneId, depth) {
   return rpg.lifeSkills?.dungeonClears?.[gateKey] === true || rpg.dungeonClears?.[gateKey] === true;
 }
 
-/* forcedTierLvl, when set, picks the tier whose .lvl matches instead of
-   the random getNodeTierForDepth() roll.  Used by the wsClient to build
-   local node objects from server-authoritative zone_nodes payloads so
-   every client agrees on the tier per node (otherwise two clients each
-   roll their own tier for the same server node id and diverge). */
+/* forcedTierLvl, when set, picks the tier whose .lvl matches instead
+   of the random getNodeTierForDepth() roll.  Used by BroTown.jsx's
+   state_sync / zone_nodes handlers to build local node objects from
+   server-authoritative payloads so every client agrees on the tier
+   per server node id (otherwise two clients each roll their own tier
+   for the same server node id and diverge). */
 export function createGatherNode(zoneId, depth, x, y, nodeType, forcedTierLvl) {
   const zone = ZONES[zoneId];
   const dc = DEPTH_CONFIG[depth];

@@ -1854,7 +1854,6 @@ export var BroTown = function BroTown(_ref0) {
                  with a forced tier lvl (so two clients agree on tier
                  per server node id).  msg.monsterZone is the join zone. */
               if (msg.nodes) {
-                console.log('[gather-sync] state_sync nodes:', msg.nodes.length, 'zone:', msg.monsterZone || S.currentZone);
                 S._serverGatherNodes = true;
                 var _nzone = msg.monsterZone || S.currentZone;
                 S.gatherNodes = msg.nodes.map(function (n) {
@@ -1875,7 +1874,6 @@ export var BroTown = function BroTown(_ref0) {
                  loop are gated on !S._serverGatherNodes so they stop
                  running once we flip the flag here. */
               if (msg.nodes) {
-                console.log('[gather-sync] zone_nodes:', msg.nodes.length, 'zone:', msg.zone);
                 S._serverGatherNodes = true;
                 var _zzone = msg.zone || S.currentZone;
                 S.gatherNodes = msg.nodes.map(function (n) {
