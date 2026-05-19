@@ -2004,6 +2004,22 @@ export var BroTown = function BroTown(_ref0) {
       /* §16.10 — Shared game event dispatcher (used by both direct messages and batched tick events) */
       function _processGameEvent(type, payload, S) {
         switch (type) {
+          case 'loot_pickup':
+            {
+              /* Another player claimed an MP loot pile.  Despawn the
+                 matching entry from our local groundLoot so every screen
+                 agrees that the pile is gone (otherwise each contributor's
+                 client keeps its own copy until they walk over it, which
+                 was duping skull remnants on shared kills). */
+              if (!payload || !payload.lootId || !S.groundLoot) break;
+              for (var _lpi = 0; _lpi < S.groundLoot.length; _lpi++) {
+                if (S.groundLoot[_lpi].lootId === payload.lootId) {
+                  S.groundLoot[_lpi]._expired = true;
+                  break;
+                }
+              }
+              break;
+            }
           case 'chat':
             {
               if (!payload || payload.id === S.myId) break;
@@ -2147,10 +2163,16 @@ export var BroTown = function BroTown(_ref0) {
                      so every screen agrees -- no per-client jitter. */
                   var _lootX = (typeof payload.x === 'number') ? payload.x : (deadM.x || deadM.renderX);
                   var _lootY = (typeof payload.y === 'number') ? payload.y : (deadM.y || deadM.renderY);
+                  /* Loot pile id is the dead monster's id -- one kill, one
+                     pile, every client agrees on the id.  Used by the
+                     loot_pickup broadcast to despawn the pile on every
+                     client when the first recipient claims it. */
+                  var _lootId = 'mk-' + payload.monsterId;
                   if (!deadM._lootDropped && S.groundLoot && isRemnantSkull(deadM.type)) {
                     deadM._lootDropped = true;
                     var _shardB = rollMonsterShard(S.currentZone);
                     S.groundLoot.push({
+                      lootId: _lootId,
                       x: _lootX, y: _lootY,
                       coins: _killGoldPre,
                       xp: 0,
@@ -2168,6 +2190,7 @@ export var BroTown = function BroTown(_ref0) {
                        isn't earning anything. */
                     deadM._lootDropped = true;
                     S.groundLoot.push({
+                      lootId: _lootId,
                       x: _lootX, y: _lootY,
                       coins: _killGoldPre,
                       xp: 0,
@@ -3108,6 +3131,10 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         if (msg.type === 'node_strike') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'loot_pickup') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -8555,6 +8582,17 @@ export var BroTown = function BroTown(_ref0) {
                 return false;
               }
 
+              /* MP loot piles carry a lootId (the dead monster's id).
+                 Broadcast a loot_pickup so every other client despawns
+                 the same pile from their local groundLoot -- without
+                 this, each contributor's local pickup despawns only
+                 their own copy and a shared kill produces N skull
+                 remnants (one per contributor's inventory). */
+              if (loot.lootId && S.channel) {
+                try {
+                  S.channel.send({ type: 'loot_pickup', payload: { lootId: loot.lootId, zone: S.currentZone } });
+                } catch (e) {}
+              }
               /* Normal loot pickup (gold only — XP granted on kill) */
               S.rpg.coins += loot.coins || 0;
               if (loot.coins && S.rpg._compStats) S.rpg._compStats.totalGoldEarned += loot.coins;
