@@ -3732,7 +3732,13 @@ export var BroTown = function BroTown(_ref0) {
      rpgState changes (equipment, stat allocation, level-up), we push
      a stats_update so the worker's damage math and regen tick stay
      consistent with the client's view.  Debounced via React's
-     coalesced state updates -- one emit per render commit.  Cheap. */
+     coalesced state updates -- one emit per render commit.
+
+     Signature dedupe: rpgState changes on every player_state
+     received (which is at minimum every regen tick when below max),
+     and stats_update triggers a server-side player_state response,
+     creating a feedback loop that doubled WS traffic.  Now we only
+     emit when the signature actually changes. */
   useEffect(function () {
     if (!rpgState) return;
     var S = stateRef.current;
@@ -3742,6 +3748,16 @@ export var BroTown = function BroTown(_ref0) {
     var amuBon = rpgState._amuletBonus || null;
     var amuletHpRegen = (amuBon && amuBon.stat === 'hpRegen') ? (amuBon.value || 0) : 0;
     var amuletStaminaRegen = (amuBon && amuBon.stat === 'staminaRegen') ? (amuBon.value || 0) : 0;
+    var _sig = [
+      rpgState.maxHp || 100, rpgState.maxStamina || 100, rpgState.maxMana || 100,
+      def, amuletHpRegen, amuletStaminaRegen,
+      rpgState.power || 0, rpgState.vitality || 0, rpgState.endurance || 0,
+      rpgState.agility || 0, rpgState.mind || 0, rpgState.ferocity || 0,
+      rpgState.elementalMastery || 0, rpgState.fortification || 0,
+      rpgState.restoration || 0, rpgState.influence || 0,
+    ].join('|');
+    if (S._lastStatsUpdateSig === _sig) return;
+    S._lastStatsUpdateSig = _sig;
     try {
       S.channel.send({
         type: 'stats_update',
@@ -4752,8 +4768,17 @@ export var BroTown = function BroTown(_ref0) {
            and then... nothing.  No teleport.  This block is the
            catch-all: if HP reaches 0 from ANY source without S._dying
            being set, run the essentials of the canonical handler so
-           respawn always fires. */
-        if (S.rpg && S.rpg.hp <= 0 && !S._dying) {
+           respawn always fires.
+           In MP the server is the canonical death authority -- it
+           emits player_died as soon as ps.hp hits 0, and the rich
+           handler in the WS switch runs the death animation +
+           respawn.  We MUST NOT fire this catch-all in MP because
+           the server's player_state may overwrite local hp to 0
+           one tick before player_died lands, and this block would
+           then race the canonical handler -- ending up with two
+           respawn timers (3.5s here vs. server's player_respawned)
+           and a clobbered post-respawn hp via _defRpg.hp = maxHp. */
+        if (!S._serverMonsters && S.rpg && S.rpg.hp <= 0 && !S._dying) {
           S._dying = true;
           if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
           S.rpg._compStats.deaths++;
