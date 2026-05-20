@@ -9790,6 +9790,11 @@ export var BroTown = function BroTown(_ref0) {
             S._shieldUp = false;
             S._shieldCdUntil = Date.now() + 2000;
             S.shieldEnd = 0;
+            /* Flag the active double-tap-hold gesture as auto-released
+               so the right-joystick handler doesn't fire a second
+               endBlock + broadcast on the eventual touch-end. */
+            S._shieldAutoReleased = true;
+            try { blockRingBus.endBlock(); } catch (e) {}
             if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: false }});
           }
         } else {
@@ -12005,12 +12010,15 @@ export var BroTown = function BroTown(_ref0) {
     };
     /* Left joystick double-tap = cycle weapon (melee -> ranged -> staff).
        Constants shared with the right joystick at the head of this
-       useEffect so both gestures use the same tap-vs-drag classifier. */
-    var DOUBLE_TAP_WINDOW_MS = 350;
-    var TAP_MAX_DURATION_MS = 250;
-    var TAP_MAX_MOVE_SQ_PX = 144; /* 12 px squared */
-    var DOUBLE_TAP_MAX_DIST_SQ_PX = 3600; /* 60 px squared */
-    var PREVIEW_HOLD_MS = 400;
+       useEffect so both gestures use the same tap-vs-drag classifier.
+       v2.3.98: window tightened from 350->220 ms after user feedback
+       that a quick re-press to start moving after a swap was being
+       counted as a second tap and double-cycling the weapon. */
+    var DOUBLE_TAP_WINDOW_MS = 220;
+    var TAP_MAX_DURATION_MS = 200;
+    var TAP_MAX_MOVE_SQ_PX = 100; /* 10 px squared */
+    var DOUBLE_TAP_MAX_DIST_SQ_PX = 2500; /* 50 px squared */
+    var PREVIEW_HOLD_MS = 350;
     var SLOT_ICON = { melee: 'sword', ranged: 'bow', staff: 'staff' };
     var getNextWeaponSlot = function () {
       var S2 = stateRef.current;
@@ -12026,27 +12034,16 @@ export var BroTown = function BroTown(_ref0) {
       var t = e.changedTouches[0];
       var nowMs = Date.now();
       var lts = lTapState.current;
-      var dxLast = t.clientX - lts.lastX;
-      var dyLast = t.clientY - lts.lastY;
-      var isDoubleTap = lts.lastEndAt > 0
-        && (nowMs - lts.lastEndAt) < DOUBLE_TAP_WINDOW_MS
-        && (dxLast * dxLast + dyLast * dyLast) < DOUBLE_TAP_MAX_DIST_SQ_PX;
       lTouchId.current = t.identifier;
       joystickActive.current = true;
       lts.startAt = nowMs;
       lts.startX = t.clientX;
       lts.startY = t.clientY;
       lts.moved = false;
-      if (isDoubleTap) {
-        /* Consume the double-tap: cycle weapon + hide preview.  The
-           current touch is still tracked as a movement gesture if the
-           player keeps holding/dragging -- only the discrete cycle
-           action fires here. */
-        lts.lastEndAt = 0;
-        if (lPreviewTimer.current) { clearTimeout(lPreviewTimer.current); lPreviewTimer.current = null; }
-        if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
-        try { _desktopCycleWeapon(); } catch (err) {}
-      }
+      /* No cycle fire on touchstart -- v2.3.98 moved the trigger to
+         touchend so a quick re-press to start moving after a single
+         tap is correctly classified as a drag and does NOT count as
+         the second tap of a double-tap cycle. */
       handleJoystickMove(t.clientX, t.clientY);
     };
     var lM = function lM(e) {
@@ -12071,20 +12068,37 @@ export var BroTown = function BroTown(_ref0) {
         lTouchId.current = null;
         handleJoystickEnd();
         if (wasTap) {
-          lts.lastEndAt = endT;
-          lts.lastX = t.clientX;
-          lts.lastY = t.clientY;
-          /* Show the NEXT weapon slot as a preview inside the disc so
-             the player can confirm the swap target before committing
-             to the second tap.  Window auto-closes after PREVIEW_HOLD_MS. */
-          if (lJoyPreviewRef.current) {
-            var nextSlot = getNextWeaponSlot();
-            lJoyPreviewRef.current.textContent = SLOT_ICON[nextSlot] || 'sword';
-            lJoyPreviewRef.current.style.display = 'flex';
-            if (lPreviewTimer.current) clearTimeout(lPreviewTimer.current);
-            lPreviewTimer.current = setTimeout(function () {
-              if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
-            }, PREVIEW_HOLD_MS);
+          /* Did this tap COMPLETE a double-tap with a recent prior
+             tap?  Check the prior tap's end-time + position against
+             this tap-end.  If yes -> cycle weapon and consume.  If no
+             -> start a new preview window. */
+          var dxPrev = t.clientX - lts.lastX;
+          var dyPrev = t.clientY - lts.lastY;
+          var isSecondTap = lts.lastEndAt > 0
+            && (endT - lts.lastEndAt) < DOUBLE_TAP_WINDOW_MS
+            && (dxPrev * dxPrev + dyPrev * dyPrev) < DOUBLE_TAP_MAX_DIST_SQ_PX;
+          if (isSecondTap) {
+            lts.lastEndAt = 0;
+            if (lPreviewTimer.current) { clearTimeout(lPreviewTimer.current); lPreviewTimer.current = null; }
+            if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+            try { _desktopCycleWeapon(); } catch (err) {}
+          } else {
+            lts.lastEndAt = endT;
+            lts.lastX = t.clientX;
+            lts.lastY = t.clientY;
+            /* Show the NEXT weapon slot as a preview inside the disc
+               so the player can confirm the swap target before
+               committing to the second tap.  Window auto-closes
+               after PREVIEW_HOLD_MS. */
+            if (lJoyPreviewRef.current) {
+              var nextSlot = getNextWeaponSlot();
+              lJoyPreviewRef.current.textContent = SLOT_ICON[nextSlot] || 'sword';
+              lJoyPreviewRef.current.style.display = 'flex';
+              if (lPreviewTimer.current) clearTimeout(lPreviewTimer.current);
+              lPreviewTimer.current = setTimeout(function () {
+                if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+              }, PREVIEW_HOLD_MS);
+            }
           }
         } else {
           /* Drag/long-press cancels any pending double-tap. */
@@ -12189,17 +12203,20 @@ export var BroTown = function BroTown(_ref0) {
         if (rShieldGesture.current) {
           /* Release shield on the gesture-touch end.  Mirrors what
              BlockRing.endBlock did when the orbiting glyph was the
-             touch target. */
+             touch target.  If the shield already auto-released due to
+             stamina depletion, skip the redundant broadcast + UI
+             update -- the game loop already handled it. */
           rShieldGesture.current = false;
           var Send = stateRef.current;
-          if (Send) {
+          if (Send && !Send._shieldAutoReleased) {
             Send._shieldUp = false;
             if (Send.channel) {
               try { Send.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: Send.myId, up: false } }); } catch (err) {}
             }
+            try { setShieldUp(false); } catch (err) {}
+            try { blockRingBus.endBlock(); } catch (err) {}
           }
-          try { setShieldUp(false); } catch (err) {}
-          try { blockRingBus.endBlock(); } catch (err) {}
+          if (Send) Send._shieldAutoReleased = false;
           rTouchId.current = null;
           handleRJoyEnd();
           return;
