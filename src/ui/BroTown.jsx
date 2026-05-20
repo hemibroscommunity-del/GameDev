@@ -2014,6 +2014,20 @@ export var BroTown = function BroTown(_ref0) {
               if (typeof msg.payload.maxMana === 'number') {
                 S.rpg.maxMana = msg.payload.maxMana;
               }
+              /* Food buff timers -- worker is authoritative for the
+                 endsAt timestamps so a cheater can't extend their
+                 _dmgBuff by writing it locally.  Mirror onto the
+                 client's S._dmgBuff / _regenBuff / etc. flags so the
+                 existing client-side UI + math reads the server values. */
+              if (msg.payload._buffs && typeof msg.payload._buffs === 'object') {
+                var _sb = msg.payload._buffs;
+                if (typeof _sb.damage === 'number') S._dmgBuff = _sb.damage;
+                if (typeof _sb.regen === 'number') S._regenBuff = _sb.regen;
+                if (typeof _sb.resist === 'number') S._resistBuff = _sb.resist;
+                if (typeof _sb.spd === 'number') S._spdBuff = _sb.spd;
+                if (typeof _sb.hp === 'number') S._hpBuff = _sb.hp;
+                if (typeof _sb.mana === 'number') S._manaBuff = _sb.mana;
+              }
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
@@ -3639,6 +3653,10 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         if (msg.type === 'shop_purchase') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'cook_recipe') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -18990,6 +19008,15 @@ export var BroTown = function BroTown(_ref0) {
         if (!canCook || !hasIngredients) return;
         var R = stateRef.current.rpg;
         var sk = R.lifeSkills;
+        var S = stateRef.current;
+        /* Server-authoritative cooking recipes in MP: worker mirrors
+           COOKING_RECIPES + validates ingredient ownership + applies
+           buff/heal to ps + ps._buffs.  Local consume + buff timer
+           stay as snappy visual prediction; player_state arrives
+           shortly with the authoritative inventory + buff state. */
+        if (S._serverMonsters && S.channel) {
+          try { S.channel.send({ type: 'cook_recipe', payload: { recipeIdx: ri } }); } catch (e) {}
+        }
         /* Consume ingredients */
         Object.entries(recipe.ingredients).forEach(function (_ref113) {
           var _ref114 = _slicedToArray(_ref113, 2),
@@ -19006,7 +19033,6 @@ export var BroTown = function BroTown(_ref0) {
         });
         /* Apply food buff */
         var dur = (recipe.duration || 0) * 1000;
-        var S = stateRef.current;
         if (recipe.buff === 'heal') {
           R.hp = Math.min(R.maxHp, R.hp + recipe.power);
         }
@@ -29772,6 +29798,16 @@ export var BroTown = function BroTown(_ref0) {
       },
       onTouchStart: function onTouchStart(e) {
         e.preventDefault();
+        /* Server-authoritative cooking recipe in MP -- see the cooking
+           panel onClick (~line 18989) for the predict + sync flow.
+           Recipe index resolved by indexOf since `best` is one of the
+           filtered COOKING_RECIPES entries. */
+        if (S._serverMonsters && S.channel) {
+          var _recipeIdx = COOKING_RECIPES.indexOf(best);
+          if (_recipeIdx >= 0) {
+            try { S.channel.send({ type: 'cook_recipe', payload: { recipeIdx: _recipeIdx } }); } catch (e2) {}
+          }
+        }
         /* Consume ingredients */
         Object.entries(best.ingredients).forEach(function (_ref236) {
           var _ref237 = _slicedToArray(_ref236, 2),
