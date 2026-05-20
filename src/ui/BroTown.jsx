@@ -1663,7 +1663,18 @@ export var BroTown = function BroTown(_ref0) {
             rpgStamina: (S.rpg && typeof S.rpg.stamina === 'number') ? S.rpg.stamina : 100,
             rpgMaxStamina: (S.rpg && typeof S.rpg.maxStamina === 'number') ? S.rpg.maxStamina : 100,
             rpgMana: (S.rpg && typeof S.rpg.mana === 'number') ? S.rpg.mana : 100,
-            rpgMaxMana: (S.rpg && typeof S.rpg.maxMana === 'number') ? S.rpg.maxMana : 100
+            rpgMaxMana: (S.rpg && typeof S.rpg.maxMana === 'number') ? S.rpg.maxMana : 100,
+            /* Raw stats bootstrap (slice v2.3.79).  Worker clamps each
+               to level * 10 + 20 on first connect; subsequent connects
+               read from DO storage rather than this join payload. */
+            rpgPower: (S.rpg && typeof S.rpg.power === 'number') ? S.rpg.power : 0,
+            rpgVitality: (S.rpg && typeof S.rpg.vitality === 'number') ? S.rpg.vitality : 0,
+            rpgEndurance: (S.rpg && typeof S.rpg.endurance === 'number') ? S.rpg.endurance : 0,
+            rpgAgility: (S.rpg && typeof S.rpg.agility === 'number') ? S.rpg.agility : 0,
+            rpgMind: (S.rpg && typeof S.rpg.mind === 'number') ? S.rpg.mind : 0,
+            rpgFerocity: (S.rpg && typeof S.rpg.ferocity === 'number') ? S.rpg.ferocity : 0,
+            rpgElementalMastery: (S.rpg && typeof S.rpg.elementalMastery === 'number') ? S.rpg.elementalMastery : 0,
+            rpgFortification: (S.rpg && typeof S.rpg.fortification === 'number') ? S.rpg.fortification : 0
           }
         }));
         var welcomeMsg = {
@@ -3717,12 +3728,30 @@ export var BroTown = function BroTown(_ref0) {
       S.channel.send({
         type: 'stats_update',
         payload: {
+          /* maxHp / maxStamina / maxMana ignored by worker since v2.3.79
+             -- server tracks raw stats below and computes its own maxes
+             from the formula.  Kept on the wire for backward compat with
+             any older worker that hasn't been deployed yet. */
           maxHp: rpgState.maxHp || 100,
           maxStamina: rpgState.maxStamina || 100,
           maxMana: rpgState.maxMana || 100,
+          /* Equipment-derived (still client-trusted because amulet/armor
+             stores aren't server-migrated yet). */
           def: def,
           amuletHpRegen: amuletHpRegen,
           amuletStaminaRegen: amuletStaminaRegen,
+          /* Raw stats — worker clamps each to level * 10 + 20.  Cheater
+             pushing R.vitality = 99999 gets clamped on the server,
+             which then recomputes maxHp from the clamped value.  T1
+             use-trained increments + amulet stat bonuses still land. */
+          power: rpgState.power || 0,
+          vitality: rpgState.vitality || 0,
+          endurance: rpgState.endurance || 0,
+          agility: rpgState.agility || 0,
+          mind: rpgState.mind || 0,
+          ferocity: rpgState.ferocity || 0,
+          elementalMastery: rpgState.elementalMastery || 0,
+          fortification: rpgState.fortification || 0,
           restoration: rpgState.restoration || 0,
           influence: rpgState.influence || 0,
         },
