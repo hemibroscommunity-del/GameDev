@@ -1685,7 +1685,12 @@ export var BroTown = function BroTown(_ref0) {
             rpgArmor: (S.rpg && S.rpg.armor) || null,
             rpgShield: (S.rpg && S.rpg.shield) || null,
             rpgAmulet: (S.rpg && S.rpg.amulet) || null,
-            rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash : []
+            rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash : [],
+            /* Quest state bootstrap (slice 17). */
+            rpgQuests: (S.rpg && S.rpg._quests) || {},
+            rpgQuestFlags: (S.rpg && S.rpg._questFlags) || {},
+            rpgQuestKills: (S.rpg && S.rpg._questKills) || {},
+            rpgAchievementPoints: (S.rpg && typeof S.rpg.achievementPoints === 'number') ? S.rpg.achievementPoints : 0
           }
         }));
         var welcomeMsg = {
@@ -2054,6 +2059,14 @@ export var BroTown = function BroTown(_ref0) {
               if ('shield' in msg.payload) S.rpg.shield = msg.payload.shield;
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
+              /* Quest state mirror (slice 17).  Worker is authoritative
+                 for chain progression + reward grants.  Quest completion
+                 criteria (kill counts / item drops / NPC dialog) still
+                 run client-side. */
+              if (msg.payload._quests && typeof msg.payload._quests === 'object') S.rpg._quests = msg.payload._quests;
+              if (msg.payload._questFlags && typeof msg.payload._questFlags === 'object') S.rpg._questFlags = msg.payload._questFlags;
+              if (msg.payload._questKills && typeof msg.payload._questKills === 'object') S.rpg._questKills = msg.payload._questKills;
+              if (typeof msg.payload.achievementPoints === 'number') S.rpg.achievementPoints = msg.payload.achievementPoints;
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
@@ -3695,6 +3708,14 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         if (msg.type === 'forge_weapon') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'quest_accept') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'quest_turn_in') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -25291,6 +25312,16 @@ export var BroTown = function BroTown(_ref0) {
       var R = stateRef.current.rpg;
       if (!R._quests) R._quests = {};
       R._quests[questPanel.quest.id] = QUEST_STATUS.active;
+      /* Server-authoritative quest state in MP -- worker tracks the
+         _quests transitions so a cheater can't activate a quest they
+         haven't been offered.  Local mutation stays as snappy UI
+         feedback; player_state arrives with authoritative _quests. */
+      {
+        var _Sqa = stateRef.current;
+        if (_Sqa._serverMonsters && _Sqa.channel) {
+          try { _Sqa.channel.send({ type: 'quest_accept', payload: { questId: questPanel.quest.id } }); } catch (e) {}
+        }
+      }
       setRpgState(_objectSpread({}, R));
       try {
         localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -25322,6 +25353,17 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       var R = stateRef.current.rpg;
       if (!R._quests) R._quests = {};
+      /* Server-authoritative quest reward in MP -- worker validates
+         the quest is 'active', looks up reward gold + xp from its
+         own QUEST_REWARDS table, applies, unlocks next.  Local
+         mutation stays as snappy popup feedback; player_state
+         arrives with authoritative _quests + coins + xp + level. */
+      {
+        var _Sqt = stateRef.current;
+        if (_Sqt._serverMonsters && _Sqt.channel) {
+          try { _Sqt.channel.send({ type: 'quest_turn_in', payload: { questId: questPanel.quest.id } }); } catch (e) {}
+        }
+      }
       R._quests[questPanel.quest.id] = QUEST_STATUS.turnedIn;
       R.coins += questPanel.quest.reward.gold;
       R.xp += questPanel.quest.reward.xp;
