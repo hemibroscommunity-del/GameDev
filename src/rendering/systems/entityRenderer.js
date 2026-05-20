@@ -692,6 +692,16 @@ export class EntityRenderer {
         if (moving) {
           display._lastMovedAt = now;
         }
+        /* Accumulated visual displacement -- drives the walk frame
+           index below.  We add the sqrt of every actual rendered
+           dx/dy step regardless of whether it crosses the "moving"
+           threshold, so even sub-pixel easing increments contribute.
+           When the monster truly stops (no rx/ry change at all for
+           many frames) the value plateaus and the frame index
+           freezes naturally -- no isIdle gate needed. */
+        const stepLen = Math.sqrt(dx * dx + dy * dy);
+        display._walkDist = (display._walkDist || 0) + stepLen;
+        if (stepLen > 0.001) display._lastDistGrowAt = now;
         /* Direction derivation needs an actual dx/dy this frame -- a
            bare recentServerMove signal has no direction info, so skip
            the facing update on stamp-only frames. */
@@ -725,22 +735,18 @@ export class EntityRenderer {
           }
           display._lastCandidate = candidate;
         }
-        /* Idle pose -- when the monster hasn't moved for the idle
-           window, hold a single frame of the last-facing walk strip
-           instead of cycling.  Avoids "moonwalking on the spot" while
-           the AI is in cooldown / out of range, and the user wants
-           the static directional pose when the mummy isn't moving.
-
-           Per-source threshold:
-           - clientSideMovement variants (fireGoblin / skeleton) update
-             m.x every frame so true stops register quickly -- 150 ms.
-           - server-driven variants (mummy) get position updates only
-             at the server tick rate, so gaps between ticks routinely
-             exceed 150 ms even while the monster is "moving" -- need
-             a longer window (500 ms) so active movement still reads
-             as moving but a real stop still triggers the idle pose. */
-        const idleAfterMs = variant.clientSideMovement ? 150 : 500;
-        const isIdle = !moving && (now - (display._lastMovedAt || 0)) > idleAfterMs;
+        /* Idle pose -- when the monster's visual position has not
+           changed for IDLE_AFTER_MS, freeze on a static frame.  We
+           track "_walkDist last grew" instead of "moved this frame"
+           because the rx-delta moving signal is too noisy for slow
+           server-driven variants (1-px catch-ups every ~55 ms with
+           dx=0 between bumps).  As long as renderX is creeping along,
+           _lastDistGrowAt keeps refreshing and the walk loop plays.
+           When the monster truly stops, _walkDist plateaus, the
+           refresh stalls, and after IDLE_AFTER_MS the idle pose
+           kicks in. */
+        const IDLE_AFTER_MS = 600;
+        const isIdle = (now - (display._lastDistGrowAt || 0)) > IDLE_AFTER_MS;
 
         /* Priority chain: transform > hit recoil > attack wind-up >
            idle pose > walk loop.  The transform branch plays a
@@ -805,10 +811,21 @@ export class EntityRenderer {
              still better than mid-stride frames. */
           frame = variantSprites.walk.get(facing, 0);
         } else {
+          /* Walk loop frame index is driven by ACCUMULATED VISUAL
+             displacement rather than wall-clock time.  This guarantees
+             the animation only advances when the sprite is actually
+             moving on-screen, regardless of how fast or how slowly --
+             slow mummies cycle slowly, fast skeletons cycle quickly,
+             stopped monsters freeze.  variant.walkDistPerFrame
+             controls the px-of-displacement per frame increment
+             (default 1.5 -- tuned so a fodder-speed monster cycles
+             every ~0.8 s at its natural pace). */
           const fc = variantSprites.walk.count(facing);
-          const phaseOff = ((m.spawnX || 0) | 0) % 800;
-          const stepMs = variant.walkFrameMs || 100;
-          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / stepMs) % fc : 0;
+          const DIST_PER_FRAME = variant.walkDistPerFrame || 1.5;
+          const phaseOff = ((m.spawnX || 0) | 0) % (fc * 100);
+          const frameIdx = fc > 0
+            ? Math.floor(((display._walkDist || 0) + phaseOff) / DIST_PER_FRAME) % fc
+            : 0;
           frame = variantSprites.walk.get(facing, frameIdx);
         }
         if (frame && frame.tex) {
