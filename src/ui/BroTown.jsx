@@ -3446,6 +3446,10 @@ export var BroTown = function BroTown(_ref0) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        if (msg.type === 'cook_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'broadcast' && msg.event) {
           if (msg.event === 'move') {
             // Movement: overwrite pending (only latest position matters)
@@ -11162,24 +11166,36 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     var R = S && S.rpg;
     if (!R || !fishKey) return;
+    /* Popups fire client-side regardless of who applies the state --
+       they're deterministic from `kind`.  The actual inventory mutation
+       + cooking XP gain go through the server when the channel is open;
+       fallback to local apply otherwise (SP / disconnected). */
+    if (kind === 'cooked') {
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '🍳 Cooked!', color: '#f5c542', ts: Date.now() });
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: '+8 Cooking XP', color: '#00d4b8', ts: Date.now() });
+    } else {
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '🔥 Burnt!', color: '#ff5e6c', ts: Date.now() });
+    }
+    if (S.channel) {
+      /* Server-mediated path: cook_request lets the worker validate
+         the player has the raw fish, consume it, and apply cooked or
+         burnt_dust + cooking XP server-side.  Authoritative inventory
+         comes back via player_state.  Closes the "cook a fish you
+         don't own" cheat. */
+      try { S.channel.send({ type: 'cook_request', payload: { fishKey: fishKey, kind: kind } }); } catch (e) {}
+      return;
+    }
+    /* Fallback: no channel (SP / dungeon offline). */
     if (!R.inventory) R.inventory = {};
-    /* Always consume 1 raw fish — burnt or cooked, the fish is gone. */
     if ((R.inventory[fishKey] || 0) > 0) R.inventory[fishKey] -= 1;
     if (R.inventory[fishKey] <= 0) delete R.inventory[fishKey];
     if (kind === 'cooked') {
       var cookedKey = 'cooked_' + fishKey;
       R.inventory[cookedKey] = (R.inventory[cookedKey] || 0) + 1;
       if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      var leveled = addLifeSkillXp(R.lifeSkills, 'cooking', 8);
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '🍳 Cooked!', color: '#f5c542', ts: Date.now() });
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: '+8 Cooking XP', color: '#00d4b8', ts: Date.now() });
-      if (leveled) {
-        S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 62, text: '🍳 Cooking Level ' + R.lifeSkills.cooking.level + '!', color: '#f5c542', ts: Date.now() });
-        BT_AUDIO.collect();
-      }
+      addLifeSkillXp(R.lifeSkills, 'cooking', 8);
     } else {
       R.inventory.burnt_dust = (R.inventory.burnt_dust || 0) + 1;
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '🔥 Burnt!', color: '#ff5e6c', ts: Date.now() });
     }
     setRpgState(_objectSpread({}, R));
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
