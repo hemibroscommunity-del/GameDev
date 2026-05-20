@@ -2019,6 +2019,33 @@ export var BroTown = function BroTown(_ref0) {
               }
               break;
             }
+          case 'stat_allocated':
+            {
+              /* Server confirmed our stat_allocate request.  Apply
+                 R[stat]++ locally, refresh the str/def/vit/spd/lck
+                 aliases, and run recalcDerived so the dashboard
+                 numbers update.  unspentT2 also mirrored here (the
+                 player_state right after carries it too, but the
+                 explicit value avoids any race). */
+              if (!msg.payload || !S.rpg) break;
+              var sa = msg.payload;
+              if (!sa.stat) break;
+              var Rsa = S.rpg;
+              Rsa[sa.stat] = (Rsa[sa.stat] || 0) + 1;
+              Rsa.str = Rsa.power;
+              Rsa.def = Rsa.fortification;
+              Rsa.vit = Rsa.vitality;
+              Rsa.spd = Rsa.agility;
+              Rsa.lck = Rsa.ferocity;
+              if (typeof sa.newUnspentT2 === 'number') {
+                Rsa.unspentT2 = sa.newUnspentT2;
+              }
+              Rsa.unspentPts = (Rsa.unspentT1 || 0) + (Rsa.unspentT2 || 0);
+              recalcDerived(Rsa);
+              setRpgState(_objectSpread({}, Rsa));
+              try { localStorage.setItem('bt_rpg', JSON.stringify(Rsa)); } catch (e) {}
+              break;
+            }
           case 'zone_nodes':
             {
               /* Server sent the full gather-node list for a zone (sent on
@@ -3412,6 +3439,10 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         if (msg.type === 'loot_pickup') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'stat_allocate') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -17557,19 +17588,13 @@ export var BroTown = function BroTown(_ref0) {
         var R = S.rpg;
         if (!R.unspentT2 || R.unspentT2 <= 0) return;
         if (!confirm('Spend 1 Tier 2 point on ' + label + '? (' + R.unspentT2 + ' remaining)')) return;
-        R[key] = (R[key] || 0) + 1;
-        R.unspentT2--;
-        R.unspentPts = (R.unspentT1 || 0) + (R.unspentT2 || 0);
-        R.str = R.power;
-        R.def = R.fortification;
-        R.vit = R.vitality;
-        R.spd = R.agility;
-        R.lck = R.ferocity;
-        recalcDerived(R);
-        setRpgState(_objectSpread({}, R));
-        try {
-          localStorage.setItem('bt_rpg', JSON.stringify(R));
-        } catch (e) {}
+        /* Server-validated allocation: send the request, let the worker
+           validate ps.unspentT2 + apply, then mirror via stat_allocated
+           event.  No local mutation here so a modified client can't
+           bypass the unspentT2 gate. */
+        if (S.channel) {
+          try { S.channel.send({ type: 'stat_allocate', payload: { stat: key } }); } catch (e) {}
+        }
         BT_AUDIO.beep(700, 0.06, 0.1, 'sine');
       }
     }, "+"));
