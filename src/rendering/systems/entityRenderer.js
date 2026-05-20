@@ -702,38 +702,56 @@ export class EntityRenderer {
         const stepLen = Math.sqrt(dx * dx + dy * dy);
         display._walkDist = (display._walkDist || 0) + stepLen;
         if (stepLen > 0.001) display._lastDistGrowAt = now;
-        /* Direction derivation needs an actual dx/dy this frame -- a
-           bare recentServerMove signal has no direction info, so skip
-           the facing update on stamp-only frames. */
-        if (hasFrameDelta) {
-          const ang = Math.atan2(dy, dx);
+        /* Direction is derived from ACCUMULATED displacement vector
+           rather than per-frame dx/dy.  Slow passive wanderers (mummy
+           at 0.12 px/tick in idle wander mode = ~5.4 px/sec) have very
+           small dy + tiny floating-point + integer-rounding jitter in
+           dx, so atan2 on the per-frame delta returns wildly different
+           sectors frame-to-frame (a mummy walking north can show east
+           or west because atan2(-0.2, 0.001) lands in a wholly
+           different sector than atan2(-0.2, -0.001)).
+
+           Reference-point pattern: stash the rx/ry from the last time
+           we committed a direction, and only recompute when the
+           monster has displaced >= DIR_REF_DIST from that anchor.
+           The vector over 2 px of accumulated motion is far more
+           stable than the vector over a single sub-pixel frame
+           delta, so the direction it implies is reliable.  Anchor
+           resets after each recompute so direction stays current as
+           the monster turns. */
+        if (display._dirRefX == null) {
+          display._dirRefX = rx;
+          display._dirRefY = ry;
+        }
+        const ddx = rx - display._dirRefX;
+        const ddy = ry - display._dirRefY;
+        const ddist2 = ddx * ddx + ddy * ddy;
+        const DIR_REF_DIST = 2;
+        if (ddist2 >= DIR_REF_DIST * DIR_REF_DIST) {
+          const ang = Math.atan2(ddy, ddx);
           const sector = Math.round(ang / (Math.PI / 4));
           const candidate = SECTORS[((sector % 8) + 8) % 8];
-          if (candidate !== facing) {
+          if (!display._lastFacing) {
+            /* First committed direction -- snap immediately so the
+               sprite isn't stuck on the default 'south'. */
+            facing = candidate;
+            display._lastFacing = candidate;
+            display._facingCommittedAt = now;
+          } else if (candidate !== facing) {
             const prevCandidate = display._lastCandidate;
-            /* Minimum facing-hold window: once a facing commits,
-               hold it for FACING_HOLD_MS before allowing another
-               swap.  Stacks with the two-tick consecutive-agreement
-               check below to suppress the wobble that happens when a
-               monster's path angle straddles a sector boundary and
-               the candidate alternates between two neighbours. */
-            const FACING_HOLD_MS = 250;
-            const heldFor = now - (display._facingCommittedAt || 0);
-            if (!display._lastFacing) {
-              /* First movement -- commit immediately so the sprite
-                 isn't stuck on the default 'south' for a tick. */
-              facing = candidate;
-              display._lastFacing = candidate;
-              display._facingCommittedAt = now;
-            } else if (prevCandidate === candidate && heldFor >= FACING_HOLD_MS) {
-              /* Two ticks in a row at the same new direction AND
-                 minimum hold elapsed -- confident enough to swap. */
+            /* Two consecutive recomputes (each over 2 px of motion)
+               must agree on the new sector before we swap, so
+               occasional straddle-the-boundary anchors can't flip
+               the sprite. */
+            if (prevCandidate === candidate) {
               facing = candidate;
               display._lastFacing = candidate;
               display._facingCommittedAt = now;
             }
           }
           display._lastCandidate = candidate;
+          display._dirRefX = rx;
+          display._dirRefY = ry;
         }
         /* Idle pose -- when the monster's visual position has not
            changed for IDLE_AFTER_MS, freeze on a static frame.  We
