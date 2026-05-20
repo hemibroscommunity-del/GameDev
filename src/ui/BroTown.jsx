@@ -3694,6 +3694,10 @@ export var BroTown = function BroTown(_ref0) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        if (msg.type === 'forge_weapon') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'broadcast' && msg.event) {
           if (msg.event === 'move') {
             // Movement: overwrite pending (only latest position matters)
@@ -22274,10 +22278,21 @@ export var BroTown = function BroTown(_ref0) {
         if (!canForge || !hasOre || !hasGold || !meetsStat) return;
         var R = stateRef.current.rpg;
         if (!R.inventory) R.inventory = {};
+        var bsMelee = stateRef.current._bsType || 'greatsword';
+        /* Server-authoritative forge in MP: worker mirrors
+           BLACKSMITH_TIERS, validates skill + stat + ore + coins,
+           consumes + mints + swaps to stash + applies XP.  Local
+           mutation stays as snappy visual prediction; player_state
+           arrives with authoritative weapon + stash + coins + inv. */
+        {
+          var _Sfw = stateRef.current;
+          if (_Sfw._serverMonsters && _Sfw.channel) {
+            try { _Sfw.channel.send({ type: 'forge_weapon', payload: { weaponType: bsMelee, tierKey: key, isWoodwork: false } }); } catch (e) {}
+          }
+        }
         R.inventory[oreKey] = (R.inventory[oreKey] || 0) - bt.oreCost;
         if (R.inventory[oreKey] <= 0) delete R.inventory[oreKey];
         R.coins -= bt.goldCost;
-        var bsMelee = stateRef.current._bsType || 'greatsword';
         var wpnKey = 'weapon';
         var wpnType = bsMelee;
         if (R[wpnKey] && R[wpnKey].name) {
@@ -23377,11 +23392,19 @@ export var BroTown = function BroTown(_ref0) {
         if (!canCraft || !hasWood || !hasGold) return;
         var R = stateRef.current.rpg;
         if (!R.inventory) R.inventory = {};
+        var wpnType = craftType === 'bow' ? 'bow' : 'staff';
+        /* Server-authoritative forge in MP -- mirrors WOODWORKING_TIERS.
+           See blacksmith forge (~line 22273) for the predict + sync flow. */
+        {
+          var _Sww = stateRef.current;
+          if (_Sww._serverMonsters && _Sww.channel) {
+            try { _Sww.channel.send({ type: 'forge_weapon', payload: { weaponType: wpnType, tierKey: key, isWoodwork: true } }); } catch (e) {}
+          }
+        }
         R.inventory[woodKey] = (R.inventory[woodKey] || 0) - wt.woodCost;
         if (R.inventory[woodKey] <= 0) delete R.inventory[woodKey];
         R.coins -= wt.goldCost;
         var wpnKey = craftType === 'bow' ? 'rangedWeapon' : 'staffWeapon';
-        var wpnType = craftType === 'bow' ? 'bow' : 'staff';
         if (R[wpnKey] && R[wpnKey].name) {
           if (!R.weaponStash) R.weaponStash = [];
           if (R.weaponStash.length < WEAPON_STASH_MAX) R.weaponStash.push(_objectSpread({}, R[wpnKey]));
