@@ -3690,6 +3690,10 @@ export var BroTown = function BroTown(_ref0) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        if (msg.type === 'sell_weapon') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'broadcast' && msg.event) {
           if (msg.event === 'move') {
             // Movement: overwrite pending (only latest position matters)
@@ -26651,6 +26655,17 @@ export var BroTown = function BroTown(_ref0) {
         if (!R.weaponStash) return;
         var sold = R.weaponStash[si];
         var sellVal = Math.ceil((sold.tierMult || 1) * (((_WEAPON_TYPES$sold$ty2 = WEAPON_TYPES[sold.type]) === null || _WEAPON_TYPES$sold$ty2 === void 0 ? void 0 : _WEAPON_TYPES$sold$ty2.base) || 30) * 0.5);
+        /* Server-authoritative stash sell in MP: worker validates the
+           stash entry exists, computes the same sell value, credits
+           coins, splices the stash.  Local mutation stays as snappy
+           visual prediction; player_state arrives shortly with the
+           authoritative stash + coins. */
+        {
+          var _Ssw = stateRef.current;
+          if (_Ssw._serverMonsters && _Ssw.channel) {
+            try { _Ssw.channel.send({ type: 'sell_weapon', payload: { stashIdx: si } }); } catch (e) {}
+          }
+        }
         R.coins += sellVal;
         if (R._compStats) R._compStats.totalGoldEarned += sellVal;
         R.weaponStash.splice(si, 1);
