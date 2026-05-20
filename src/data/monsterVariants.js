@@ -157,15 +157,14 @@ export const MONSTER_VARIANTS = {
     /* Fireball on-screen size.  16 px was a bit small to read against
        the bright zone -- 50% bump per user (v2.3.13). */
     projectileScalePx: 24,
-    /* Client-authoritative movement.  The server only knows the base
-       fodder archetype, so server-driven positions would advance at
-       fodder speed regardless of ARCHETYPES.fireGoblin.spdMult.  With
-       this flag set, BroTown.jsx skips the server-position override
-       and lets each client's local AI run -- the goblin actually
-       chases at the bumped spdMult.  Trade-off: position diverges
-       slightly between players' views; damage / death / loot stay
-       authoritative via monster id, not coordinates. */
-    clientSideMovement: true,
+    /* Movement is now server-authoritative.  The worker mirrors
+       fireGoblin's spd (1.5) via _variantSpeed in
+       brotown-server/src/index.js so server-driven positions move
+       at the correct variant pace -- no more clientSideMovement
+       escape hatch.  Two players viewing the same fireGoblin now
+       see identical positions (closes the v2.3.62-era
+       "position diverges slightly between players' views"
+       trade-off). */
     /* m.spd to write when applyZoneVariant remaps a server monster.
        Matches createMonster's formula: 0.5 * spdMult.  Without this,
        server-spawned goblins inherit fodder's 0.5 spd and local AI
