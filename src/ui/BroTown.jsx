@@ -28381,7 +28381,7 @@ export var BroTown = function BroTown(_ref0) {
         }
       }
     }, isBlocked ? '🚫 Blocked' : '🚫 Block');
-  }()))), ((_stateRef$current40 = stateRef.current) === null || _stateRef$current40 === void 0 ? void 0 : _stateRef$current40.currentZone) === 'frost' && rpgState && /*#__PURE__*/React.createElement("div", {
+  }()))), false && ((_stateRef$current40 = stateRef.current) === null || _stateRef$current40 === void 0 ? void 0 : _stateRef$current40.currentZone) === 'frost' && rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       bottom: 130,
@@ -28700,7 +28700,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: '#ff5e6c'
     }
-  }, "\uD83D\uDD0A Echo! 2\xD7 aggro")), ((_stateRef$current49 = stateRef.current) === null || _stateRef$current49 === void 0 ? void 0 : _stateRef$current49.currentZone) === 'frost' && rpgState && hasUnlock(rpgState, 'zone_mechanics') && /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDD0A Echo! 2\xD7 aggro")), false && ((_stateRef$current49 = stateRef.current) === null || _stateRef$current49 === void 0 ? void 0 : _stateRef$current49.currentZone) === 'frost' && rpgState && hasUnlock(rpgState, 'zone_mechanics') && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       bottom: 125,
@@ -30005,8 +30005,10 @@ export var BroTown = function BroTown(_ref0) {
     var inv = R.inventory || {};
     var buttons = [];
 
-    /* ── FROZEN SHORE actions ── */
-    if (zElem === 'frost') {
+    /* ── FROZEN SHORE actions ── (UI disabled per user request; underlying
+       _snowballs / _snowmen / _sled physics still in the game loop in case
+       we re-enable.  Flip the false back to enable.) */
+    if (false && zElem === 'frost') {
       /* Throw Snowball */
       var canSnowball = !S._snowballCd || Date.now() > S._snowballCd;
       buttons.push(React.createElement('button', {
