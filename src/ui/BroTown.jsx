@@ -6941,16 +6941,30 @@ export var BroTown = function BroTown(_ref0) {
                their AI locally so per-archetype spdMult takes effect
                even in MP. */
             if (S._serverMonsters && !usesClientSideMovement(m)) {
-              /* Only run render interpolation — smooth monster position toward server position */
+              /* Continuous exponential easing toward server position.
+                 The previous "jump up to 3 px when gap > 0.5" pattern
+                 made slow server-driven variants (mummy at 0.4 spd)
+                 stutter visibly: server rounds m.x/m.y to integer
+                 before broadcasting, so the integer x bumps by 1 only
+                 every ~44 ms.  The interp caught up in one frame then
+                 sat for ~3 frames -- 1-frame-of-motion / 3-frames-of-
+                 standstill is what the user means by "movement
+                 calculation and server tick sync" looking wrong.
+                 25 % per frame at 60 fps gives smooth sub-pixel motion
+                 every frame: a 1 px jump from a server bump catches
+                 up over ~5 frames (~80 ms), which matches the natural
+                 ~44 ms bump cadence + a small lag.  Snap on huge
+                 jumps (zone change / respawn) stays. */
               if (m.renderX === undefined) { m.renderX = m.x; m.renderY = m.y; }
               var mInterpDx = m.x - m.renderX;
               var mInterpDy = m.y - m.renderY;
               var mInterpDist = Math.sqrt(mInterpDx * mInterpDx + mInterpDy * mInterpDy);
-              if (mInterpDist > 80) { m.renderX = m.x; m.renderY = m.y; }
-              else if (mInterpDist > 0.5) {
-                var mStep = Math.min(mInterpDist, 3.0);
-                m.renderX += (mInterpDx / mInterpDist) * mStep;
-                m.renderY += (mInterpDy / mInterpDist) * mStep;
+              if (mInterpDist > 80) {
+                m.renderX = m.x;
+                m.renderY = m.y;
+              } else if (mInterpDist > 0.05) {
+                m.renderX += mInterpDx * 0.25;
+                m.renderY += mInterpDy * 0.25;
               }
               return; /* skip all local AI below */
             }
