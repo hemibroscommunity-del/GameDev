@@ -1640,7 +1640,21 @@ export var BroTown = function BroTown(_ref0) {
             rpgUnspentT2: ((_S$rpgUT = S.rpg) === null || _S$rpgUT === void 0 ? void 0 : _S$rpgUT.unspentT2) || 0,
             rpgLv: ((_S$rpg = S.rpg) === null || _S$rpg === void 0 ? void 0 : _S$rpg.level) || 1,
             rpgHp: ((_S$rpg2 = S.rpg) === null || _S$rpg2 === void 0 ? void 0 : _S$rpg2.hp) || 50,
-            rpgMaxHp: ((_S$rpg3 = S.rpg) === null || _S$rpg3 === void 0 ? void 0 : _S$rpg3.maxHp) || 50
+            rpgMaxHp: ((_S$rpg3 = S.rpg) === null || _S$rpg3 === void 0 ? void 0 : _S$rpg3.maxHp) || 50,
+            /* Server-authoritative HP store derived stats.  def + amuletHpRegen
+               + restoration are session-only on the worker (recomputed from the
+               stats_update event whenever recalcDerived runs).  These join
+               values are the initial seed before the first stats_update. */
+            rpgDef: (function () {
+              var _r = S.rpg || {};
+              var _at = (_r.armor && typeof _r.armor.tierMult === 'number') ? _r.armor.tierMult : 1;
+              return (_r.endurance || 0) * 0.5 + _at * 3;
+            })(),
+            rpgAmuletHpRegen: (function () {
+              var _ab = (S.rpg && S.rpg._amuletBonus) || null;
+              return (_ab && _ab.stat === 'hpRegen') ? (_ab.value || 0) : 0;
+            })(),
+            rpgRestoration: (S.rpg && typeof S.rpg.restoration === 'number') ? S.rpg.restoration : 0
           }
         }));
         var welcomeMsg = {
@@ -1957,7 +1971,95 @@ export var BroTown = function BroTown(_ref0) {
               if (typeof msg.payload.unspentT2 === 'number') {
                 S.rpg.unspentT2 = msg.payload.unspentT2;
               }
+              /* HP store -- worker applies monster + pvp damage, runs
+                 regen tick, resets on level-up + respawn.  Client
+                 OVERWRITES R.hp + R.maxHp on every player_state so
+                 a DevTools R.hp = 99999 cheat gets stomped on the
+                 next sync (which is at minimum every ~670 ms via the
+                 regen tick when the player is below max). */
+              if (typeof msg.payload.hp === 'number') {
+                S.rpg.hp = msg.payload.hp;
+              }
+              if (typeof msg.payload.maxHp === 'number') {
+                S.rpg.maxHp = msg.payload.maxHp;
+              }
               setRpgState(_objectSpread({}, S.rpg));
+              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+              break;
+            }
+          case 'player_died':
+            {
+              /* Server detected our HP hit 0.  Drives the death animation
+                 + screen shake + gold-loss popup.  Server owns the respawn
+                 timer; we wait for player_respawned to teleport home and
+                 player_state to restore hp/stamina/mana.  Local R.hp
+                 is no longer the trigger (worker authoritative this slice). */
+              if (!S.rpg || S._dying) break;
+              S._dying = true;
+              if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
+              S.rpg._compStats.deaths++;
+              S._deathStart = Date.now();
+              /* Gold penalty mirrors the legacy local-death path
+                 (worker doesn't apply this yet; client is still the
+                 source for R.coins this slice will not change). */
+              var _goldLost3 = Math.floor((S.rpg.coins || 0) * DEATH_GOLD_PENALTY);
+              if (_goldLost3 > 0 && S.channel) {
+                /* Client still mutates R.coins for the gold-loss popup;
+                   server tracks coins via the loot path, so its view
+                   will drift on death until coins-on-death migrates.
+                   Note: the player_state on respawn does NOT re-apply
+                   this penalty, so the cheat surface here is the same
+                   as it was before this slice. */
+                S.rpg.coins = Math.max(0, S.rpg.coins - _goldLost3);
+              }
+              /* Death particles + audio + popup. */
+              for (var _dp3 = 0; _dp3 < 25; _dp3++) {
+                var _dpA3 = _dp3 / 25 * Math.PI * 2;
+                S.hitParticles.push({
+                  x: S.player.x, y: S.player.y,
+                  vx: Math.cos(_dpA3) * (2 + Math.random() * 4),
+                  vy: Math.sin(_dpA3) * (2 + Math.random() * 4) - 1,
+                  life: 1.0, color: ['#ff5e6c', '#cc2233', '#ff8888'][Math.floor(Math.random() * 3)], size: 2 + Math.random() * 3
+                });
+              }
+              S.screenShake = 10;
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 40,
+                text: '💀 YOU DIED', color: '#ff5e6c', ts: Date.now()
+              });
+              if (_goldLost3 > 0) S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 55,
+                text: '-' + _goldLost3 + 'G', color: '#fbbf24', ts: Date.now()
+              });
+              BT_AUDIO.deathBoom();
+              /* Tell the room we died so remote clients render a dead
+                 pose at our last position.  Server already knows. */
+              if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
+              if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: S.player.x, y: S.player.y } });
+              setRpgState(_objectSpread({}, S.rpg));
+              break;
+            }
+          case 'player_respawned':
+            {
+              /* Server's respawn timer elapsed -- teleport to town and
+                 clear local death state.  hp/stamina/mana are restored
+                 server-side and arrive via the player_state that fires
+                 alongside this event. */
+              S.currentZone = (msg.payload && msg.payload.zone) || 'town';
+              updateZoneDimensions(S.currentZone);
+              BT_AUDIO.startZoneAmbient(S.currentZone);
+              S.map = generateZoneMap(S.currentZone);
+              S.monsters = [];
+              S.gatherNodes = [];
+              S.player.x = 16 * TILE;
+              S.player.y = 16 * TILE;
+              S.respawnTimer = Date.now() + 3000;
+              S._deathStart = 0;
+              S._dying = false;
+              /* Tell the server our new position + zone + dead=false.
+                 Other clients clear our _isDead via the broadcast. */
+              if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
+              if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
             }
@@ -2011,9 +2113,11 @@ export var BroTown = function BroTown(_ref0) {
               if (cc.leveled) {
                 setLevelUpMsg({ level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
                 try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
-                /* Restore pools to max on level-up.  Will fold into the
-                   HP-on-server slice. */
-                if (S.rpg.maxHp) S.rpg.hp = S.rpg.maxHp;
+                /* HP restore on level-up: worker now resets ps.hp =
+                   ps.maxHp inside _addCombatXp and emits player_state
+                   alongside this combat_credit, so R.hp lands at max
+                   from the network -- no local write needed.
+                   Stamina + mana still client-side until slice 1b. */
                 if (S.rpg.maxStamina) S.rpg.stamina = S.rpg.maxStamina;
                 if (S.rpg.maxMana) S.rpg.mana = S.rpg.maxMana;
               }
@@ -2651,14 +2755,24 @@ export var BroTown = function BroTown(_ref0) {
               if (_atkVariant && _atkVariant.dmgMult) {
                 mDmg = Math.ceil(mDmg * _atkVariant.dmgMult);
               }
-              /* Apply player defense */
+              /* Apply player defense.  In MP the worker is the source of
+                 truth for HP -- it ran the same formula and pushed the
+                 resolved dmgTaken in the event payload.  Prefer that for
+                 the popup; fall back to local recompute when serverMonsters
+                 isn't set (SP-only mode, local AI). */
               var pDef2 = (R2.endurance || 0) * 0.5 + ((R2.armor ? R2.armor.tierMult : 1) || 1) * 3;
-              var dmgTaken2 = Math.max(1, mDmg - pDef2 * 0.3);
+              var dmgTaken2 = (typeof payload.dmgTaken === 'number' && S._serverMonsters)
+                ? payload.dmgTaken
+                : Math.max(1, mDmg - pDef2 * 0.3);
               var inArc = isAttackInShieldArc(S, _atkX, _atkY);
               if (S._shieldUp && inArc) {
                 /* Full block: no damage through.  (Was partial via
                    calcBlockReduction; user request is "the damage gets
-                   blocked.") */
+                   blocked.")  In MP the server already skipped the
+                   attack when ps.blocking was set on the move event,
+                   so dmgTaken2 from payload is for non-block hits; but
+                   if a stale shield-up arc-test landed here we still
+                   want the local block visual. */
                 dmgTaken2 = 0;
                 R2.stamina = Math.max(0, (R2.stamina || 0) - 15);
                 /* Count-based weight: 1 successful block = 3 hits worth
@@ -2669,7 +2783,13 @@ export var BroTown = function BroTown(_ref0) {
               }
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
-              R2.hp = Math.max(0, R2.hp - Math.ceil(dmgTaken2));
+              /* HP mutation: worker authoritative in MP.  Don't decrement
+                 local R.hp here -- the player_state event that follows
+                 monster_attack carries the new authoritative hp.  Keep
+                 the SP-only path for client-local monsters. */
+              if (!S._serverMonsters) {
+                R2.hp = Math.max(0, R2.hp - Math.ceil(dmgTaken2));
+              }
               if (window.__dmgLog) try {
                 console.log('[dmg] net-monster_attack', {
                   amt: Math.ceil(dmgTaken2),
@@ -2698,8 +2818,14 @@ export var BroTown = function BroTown(_ref0) {
               });
               S.screenShake = 3;
               BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
-              if (R2.hp <= 0 && !S._dying) {
-                /* Player death from server monster */
+              /* Death path: in MP the worker fires player_died (which
+                 handles the death animation + popup) and player_respawned
+                 (which teleports to town) -- both wired in the WS switch
+                 above.  Local R2.hp can lag the server by a tick, so we
+                 must NOT trigger death from a local <=0 check in MP.
+                 Keep the SP path for client-local monsters. */
+              if (!S._serverMonsters && R2.hp <= 0 && !S._dying) {
+                /* Player death from client-local monster (SP mode) */
                 S._dying = true;
                 if (!R2._compStats) R2._compStats = createDefaultCompStats();
                 R2._compStats.deaths++;
@@ -3032,7 +3158,15 @@ export var BroTown = function BroTown(_ref0) {
               // §16.12 — Server already resolved block via historical state
               if (payload.blocked) dmgTaken = Math.ceil(dmgTaken * 0.25);
               if (payload.isCrit) dmgTaken = Math.ceil(dmgTaken * 1.5);
-              _R2.hp = Math.max(0, _R2.hp - Math.ceil(dmgTaken));
+              /* Prefer the server's resolved dmgTaken when present
+                 (worker now applies HP damage and the value rides on
+                 the payload).  Falls back to local recompute if a peer
+                 hasn't deployed the new worker yet. */
+              if (typeof payload.dmgTaken === 'number') dmgTaken = payload.dmgTaken;
+              /* Worker authoritative HP store: don't mutate R2.hp here.
+                 The player_state event that follows pvp_hit carries the
+                 new authoritative value.  Death is driven by the server's
+                 player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-pvp_hit', { amt: Math.ceil(dmgTaken), attacker: payload.attacker, blocked: payload.blocked }); } catch (e) {}
               S.dmgNumbers.push({
                 x: S.player.x,
@@ -3059,7 +3193,14 @@ export var BroTown = function BroTown(_ref0) {
               });
               S.screenShake = payload.blocked ? 2 : 4;
               BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
-              if (_R2.hp <= 0) {
+              /* Predict "Killed by X" popup from the (server-resolved
+                 or locally-computed) dmgTaken vs current local hp.  HP
+                 doesn't mutate locally in MP anymore, so checking
+                 _R2.hp <= 0 directly would never fire.  The server-side
+                 player_died event drives the death animation; this
+                 attribution popup is best-effort. */
+              var _wouldDiePvp = (_R2.hp - Math.ceil(dmgTaken)) <= 0;
+              if (_wouldDiePvp) {
                 S.dmgNumbers.push({
                   x: S.player.x,
                   y: S.player.y - 45,
@@ -3078,7 +3219,7 @@ export var BroTown = function BroTown(_ref0) {
                   from: S.myId,
                   dmg: dmgTaken,
                   isCrit: payload.isCrit,
-                  died: _R2.hp <= 0,
+                  died: _wouldDiePvp,
                   name: S.myName,
                   blocked: payload.blocked
                 }
@@ -3109,7 +3250,10 @@ export var BroTown = function BroTown(_ref0) {
               var _dmgTaken = Math.max(1, _rawDmg - _pDef * 0.3);
               var isCrit = payload.isCrit;
               if (isCrit) _dmgTaken = Math.ceil(_dmgTaken * 1.5);
-              _R3.hp = Math.max(0, _R3.hp - Math.ceil(_dmgTaken));
+              /* Worker authoritative HP store: don't mutate R3.hp here.
+                 The player_state event that follows player_attack carries
+                 the new authoritative value.  Death is driven by the
+                 server's player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-player_attack', { amt: Math.ceil(_dmgTaken), attacker: payload.id, isCrit: isCrit }); } catch (e) {}
               S.dmgNumbers.push({
                 x: S.player.x,
@@ -3137,7 +3281,11 @@ export var BroTown = function BroTown(_ref0) {
                   duration: 2000
                 }
               });
-              if (_R3.hp <= 0) {
+              /* Predict "Killed by X" popup from predicted dmg vs current
+                 local hp (worker-authoritative store means _R3.hp won't
+                 reflect the hit until player_state arrives). */
+              var _wouldDieAtk = (_R3.hp - Math.ceil(_dmgTaken)) <= 0;
+              if (_wouldDieAtk) {
                 S.dmgNumbers.push({
                   x: S.player.x,
                   y: S.player.y - 45,
@@ -3155,7 +3303,7 @@ export var BroTown = function BroTown(_ref0) {
                   from: S.myId,
                   dmg: _dmgTaken,
                   isCrit: isCrit,
-                  died: _R3.hp <= 0
+                  died: _wouldDieAtk
                 }
               });
               setRpgState(_objectSpread({}, _R3));
@@ -3450,6 +3598,10 @@ export var BroTown = function BroTown(_ref0) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        if (msg.type === 'stats_update') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'broadcast' && msg.event) {
           if (msg.event === 'move') {
             // Movement: overwrite pending (only latest position matters)
@@ -3515,6 +3667,34 @@ export var BroTown = function BroTown(_ref0) {
       S._realtimeStatus = 'disconnected';
     };
   }, [showNameModal, showLogin]);
+
+  /* ═══ Server stats_update sync ═══
+     The worker tracks HP authoritatively but doesn't know our derived
+     stats (maxHp / def / amulet hpRegen / restoration).  Whenever
+     rpgState changes (equipment, stat allocation, level-up), we push
+     a stats_update so the worker's damage math and regen tick stay
+     consistent with the client's view.  Debounced via React's
+     coalesced state updates -- one emit per render commit.  Cheap. */
+  useEffect(function () {
+    if (!rpgState) return;
+    var S = stateRef.current;
+    if (!S || !S.channel) return;
+    var armorTier = (rpgState.armor && typeof rpgState.armor.tierMult === 'number') ? rpgState.armor.tierMult : 1;
+    var def = (rpgState.endurance || 0) * 0.5 + armorTier * 3;
+    var amuBon = rpgState._amuletBonus || null;
+    var amuletHpRegen = (amuBon && amuBon.stat === 'hpRegen') ? (amuBon.value || 0) : 0;
+    try {
+      S.channel.send({
+        type: 'stats_update',
+        payload: {
+          maxHp: rpgState.maxHp || 100,
+          def: def,
+          amuletHpRegen: amuletHpRegen,
+          restoration: rpgState.restoration || 0,
+        },
+      });
+    } catch (e) {}
+  }, [rpgState]);
 
 
   /* ═══ GAME LOOP — Full simulation + PixiJS/Canvas 2D rendering ═══ */
@@ -9043,7 +9223,10 @@ export var BroTown = function BroTown(_ref0) {
             if (!S._regenTimer) S._regenTimer = 0;
             S._regenTimer++;
             var restMult = 1 + (_R7.restoration || 0) * 0.001;
-            if (S._regenTimer % 4 === 0) {
+            /* In MP the worker runs HP regen on its own tick (_tickPlayerRegen)
+               and pushes the new value via player_state.  Skip the local
+               mutation so dual regen doesn't race the server snapshot. */
+            if (S._regenTimer % 4 === 0 && !S._serverMonsters) {
               var healAmt = Math.max(1, Math.ceil(_R7.maxHp * 0.001 * restMult * regenMult));
               var effectiveMax = hasHpBuff ? Math.floor(_R7.maxHp * 1.25) : _R7.maxHp;
               _R7.hp = Math.min(effectiveMax, _R7.hp + healAmt);
@@ -9069,7 +9252,8 @@ export var BroTown = function BroTown(_ref0) {
           if (_R8.hp < _R8.maxHp) {
             if (!S._regenTimer) S._regenTimer = 0;
             S._regenTimer++;
-            if (S._regenTimer % 10 === 0) {
+            /* MP: worker runs in-combat HP regen too -- skip local. */
+            if (S._regenTimer % 10 === 0 && !S._serverMonsters) {
               var _R8$_amuletBonus;
               var _healAmt = Math.max(1, Math.ceil(_R8.maxHp * 0.0005));
               if (((_R8$_amuletBonus = _R8._amuletBonus) === null || _R8$_amuletBonus === void 0 ? void 0 : _R8$_amuletBonus.stat) === 'hpRegen') _healAmt = Math.ceil(_healAmt * (1 + _R8._amuletBonus.value));
