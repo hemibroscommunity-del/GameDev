@@ -619,8 +619,14 @@ export class EntityRenderer {
          turns idle slimes into zero-dirty after the first frame.
          Matches the dirty-flag idiom already used for HP / level /
          dynGfx redraws elsewhere in this file. */
-      if (display.x !== m.x) display.x = m.x;
-      if (display.y !== m.y) display.y = m.y;
+      /* Use renderX/renderY (smoothed toward m.x by the MP interp
+         loop in BroTown.jsx) when available so server-driven monsters
+         glide between ticks instead of teleporting per tick.  SP
+         monsters never set renderX, so fall back to m.x. */
+      const rx = m.renderX != null ? m.renderX : m.x;
+      const ry = m.renderY != null ? m.renderY : m.y;
+      if (display.x !== rx) display.x = rx;
+      if (display.y !== ry) display.y = ry;
       if (display.visible !== m.alive) display.visible = m.alive;
 
       const size = display._size;
@@ -655,8 +661,15 @@ export class EntityRenderer {
            gets two matches in a row, so it can't swap the sprite.
            First-ever observation commits immediately so a fresh
            server-spawned monster doesn't stay 'south' for 200 ms. */
-        const dx = m.x - (display._lastX != null ? display._lastX : m.x);
-        const dy = m.y - (display._lastY != null ? display._lastY : m.y);
+        /* Track deltas on the smoothed render position rather than the
+           raw server-tick position.  rx/ry come from m.renderX/renderY
+           (interpolated every frame by BroTown.jsx's MP loop) when
+           available, so slow server-driven monsters (e.g. mummy at
+           0.4 spd) read as moving on every frame between ticks
+           instead of alternating moving/idle.  SP monsters update
+           m.x every frame so the rx==m.x fallback works there too. */
+        const dx = rx - (display._lastX != null ? display._lastX : rx);
+        const dy = ry - (display._lastY != null ? display._lastY : ry);
         const moving = dx * dx + dy * dy > 0.04;
         let facing = display._lastFacing || 'south';
         if (moving) {
@@ -666,16 +679,26 @@ export class EntityRenderer {
           display._lastMovedAt = now;
           if (candidate !== facing) {
             const prevCandidate = display._lastCandidate;
+            /* Minimum facing-hold window: once a facing commits,
+               hold it for FACING_HOLD_MS before allowing another
+               swap.  Stacks with the two-tick consecutive-agreement
+               check below to suppress the wobble that happens when a
+               monster's path angle straddles a sector boundary and
+               the candidate alternates between two neighbours. */
+            const FACING_HOLD_MS = 250;
+            const heldFor = now - (display._facingCommittedAt || 0);
             if (!display._lastFacing) {
               /* First movement -- commit immediately so the sprite
                  isn't stuck on the default 'south' for a tick. */
               facing = candidate;
               display._lastFacing = candidate;
-            } else if (prevCandidate === candidate) {
-              /* Two ticks in a row at the same new direction --
-                 confident enough to swap. */
+              display._facingCommittedAt = now;
+            } else if (prevCandidate === candidate && heldFor >= FACING_HOLD_MS) {
+              /* Two ticks in a row at the same new direction AND
+                 minimum hold elapsed -- confident enough to swap. */
               facing = candidate;
               display._lastFacing = candidate;
+              display._facingCommittedAt = now;
             }
           }
           display._lastCandidate = candidate;
@@ -795,8 +818,8 @@ export class EntityRenderer {
           if (spriteBody.visible) spriteBody.visible = false;
           if (!display._body.visible) display._body.visible = true;
         }
-        display._lastX = m.x;
-        display._lastY = m.y;
+        display._lastX = rx;
+        display._lastY = ry;
       } else if (display._isFodder && display._spriteBody) {
         const spriteBody = display._spriteBody;
         const hittingNow = m._hitAnimEnd && now < m._hitAnimEnd && hasSlimeState('hit');
