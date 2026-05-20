@@ -3623,6 +3623,10 @@ export var BroTown = function BroTown(_ref0) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        if (msg.type === 'eat_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'broadcast' && msg.event) {
           if (msg.event === 'move') {
             // Movement: overwrite pending (only latest position matters)
@@ -18817,10 +18821,18 @@ export var BroTown = function BroTown(_ref0) {
           if (atFull) return;
           var R = stateRef.current.rpg;
           if (!R.inventory[key] || R.inventory[key] < 1) return;
+          var S = stateRef.current;
+          /* Server-authoritative inventory + HP in MP: send eat_request
+             and let the worker validate ownership + apply the heal +
+             decrement.  Predict locally for snappy bar + popup feel;
+             player_state arrives shortly and reconciles. */
           R.inventory[key]--;
           if (R.inventory[key] <= 0) delete R.inventory[key];
           var healed = Math.min(healAmt, R.maxHp - R.hp);
           R.hp = Math.min(R.maxHp, R.hp + healAmt);
+          if (S._serverMonsters && S.channel) {
+            try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
+          }
           setRpgState(_objectSpread({}, R));
           try {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
@@ -26268,6 +26280,10 @@ export var BroTown = function BroTown(_ref0) {
             color: '#3dd497',
             ts: Date.now()
           });
+          /* (Eat handler patched to send eat_request -- see block above.) */
+          if (stateRef.current._serverMonsters && stateRef.current.channel) {
+            try { stateRef.current.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
+          }
           BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         }
       }, "\uD83D\uDC1F ", fishName, " \xD7", qty, " (+", healAmt, "HP)");
