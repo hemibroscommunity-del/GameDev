@@ -1809,6 +1809,19 @@ export var BroTown = function BroTown(_ref0) {
                          keep their locally-simulated position; server
                          position is ignored.  HP / alive still sync. */
                       if (!usesClientSideMovement(localM)) {
+                        /* Stamp _lastPosChangeAt whenever the server's
+                           rounded position differs from our cached
+                           x/y.  Slow server-driven variants (mummy at
+                           0.4 spd) only see integer x changes every
+                           ~44 ms (round-trips below the 0.5-px interp
+                           threshold), so renderX-delta detection in
+                           the renderer is sparse + drops moving=false
+                           between bumps.  This stamp gives the
+                           renderer a direct "server pushed a new
+                           position this recently" signal. */
+                        if (md.x !== localM.x || md.y !== localM.y) {
+                          localM._lastPosChangeAt = Date.now();
+                        }
                         localM.x = md.x;
                         localM.y = md.y;
                       }

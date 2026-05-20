@@ -670,13 +670,35 @@ export class EntityRenderer {
            m.x every frame so the rx==m.x fallback works there too. */
         const dx = rx - (display._lastX != null ? display._lastX : rx);
         const dy = ry - (display._lastY != null ? display._lastY : ry);
-        const moving = dx * dx + dy * dy > 0.04;
+        /* Two movement signals OR'd together:
+           1. Frame-local renderX/renderY delta -- works whenever the
+              interp loop is actively advancing the smoothed position.
+           2. Server-side stamp m._lastPosChangeAt -- set in the WS
+              handler whenever the server's rounded position differs
+              from our cached x/y.  Slow server-driven variants (mummy
+              0.4 spd) only hit dx > 0 on ~1 in 3 render frames (the
+              rounded integer x bumps every ~44 ms, interp catches up
+              in one frame, then dx=0 until the next bump), which
+              caused isIdle to flicker on between bumps.  The server
+              stamp gives a fresh-within-300ms continuous "the
+              monster is moving" signal even when this frame's
+              renderX delta happens to be 0. */
+        const POS_FRESH_MS = 300;
+        const recentServerMove = m._lastPosChangeAt != null
+          && (now - m._lastPosChangeAt) < POS_FRESH_MS;
+        const hasFrameDelta = dx * dx + dy * dy > 0.04;
+        const moving = hasFrameDelta || recentServerMove;
         let facing = display._lastFacing || 'south';
         if (moving) {
+          display._lastMovedAt = now;
+        }
+        /* Direction derivation needs an actual dx/dy this frame -- a
+           bare recentServerMove signal has no direction info, so skip
+           the facing update on stamp-only frames. */
+        if (hasFrameDelta) {
           const ang = Math.atan2(dy, dx);
           const sector = Math.round(ang / (Math.PI / 4));
           const candidate = SECTORS[((sector % 8) + 8) % 8];
-          display._lastMovedAt = now;
           if (candidate !== facing) {
             const prevCandidate = display._lastCandidate;
             /* Minimum facing-hold window: once a facing commits,
