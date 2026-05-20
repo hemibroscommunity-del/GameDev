@@ -7045,8 +7045,17 @@ export var BroTown = function BroTown(_ref0) {
                   if (chDist < 30 && Math.random() < 0.01) m._sentinelPause = 800; /* wind-up pause */
                 }
               } else {
-                /* Fodder + Brute: direct chase */
-                if (chDist > 15) {
+                /* Fodder + Brute: direct chase.  Stop at 55 px to give
+                   the player room to face the monster and raise their
+                   directional shield before the swing connects -- this
+                   is the SAME perimeter the worker uses for server-
+                   driven monsters (see brotown-server _tickMonsters,
+                   ATTACK_RANGE = 55).  Lives here too because variants
+                   with clientSideMovement:true (fireGoblin / skeleton)
+                   override the server position and run THIS AI locally;
+                   without the matching threshold those variants would
+                   still chase right onto the player. */
+                if (chDist > 55) {
                   m.x += chDx / chDist * m.spd * moveMult;
                   m.y += chDy / chDist * m.spd * moveMult;
                 }
