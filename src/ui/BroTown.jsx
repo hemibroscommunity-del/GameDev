@@ -3627,6 +3627,10 @@ export var BroTown = function BroTown(_ref0) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        if (msg.type === 'shop_purchase') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'broadcast' && msg.event) {
           if (msg.event === 'move') {
             // Movement: overwrite pending (only latest position matters)
@@ -3720,6 +3724,7 @@ export var BroTown = function BroTown(_ref0) {
           amuletHpRegen: amuletHpRegen,
           amuletStaminaRegen: amuletStaminaRegen,
           restoration: rpgState.restoration || 0,
+          influence: rpgState.influence || 0,
         },
       });
     } catch (e) {}
@@ -17982,10 +17987,16 @@ export var BroTown = function BroTown(_ref0) {
       },
       onClick: function onClick() {
         var R = stateRef.current.rpg;
+        var S = stateRef.current;
         /* §2.6 Influence discount — 0.2% per point, max 20% */
         var discount = Math.min(0.20, (R.influence || 0) * 0.002);
         var finalCost = Math.max(1, Math.floor(item.cost * (1 - discount)));
         if (R.coins < finalCost) return;
+        /* Server-authoritative shop in MP: worker mirrors the 5-item
+           table, validates coins + influence discount, applies effect
+           (pool restore / inventory grant), emits player_state.  Local
+           mutation stays as snappy visual prediction; server's view
+           overwrites on the next player_state. */
         R.coins -= finalCost;
         if (!R._questFlags) R._questFlags = {};
         R._questFlags.boughtItem = true;
@@ -17996,6 +18007,9 @@ export var BroTown = function BroTown(_ref0) {
         if (item.effect === 'trap') {
           if (!R.inventory) R.inventory = {};
           R.inventory.basic_trap = (R.inventory.basic_trap || 0) + 1;
+        }
+        if (S._serverMonsters && S.channel) {
+          try { S.channel.send({ type: 'shop_purchase', payload: { itemId: item.id } }); } catch (e) {}
         }
         if (item.effect === 'dmgBuff') {
           stateRef.current._dmgBuff = Date.now() + 60000;
