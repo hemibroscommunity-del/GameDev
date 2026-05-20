@@ -144,13 +144,14 @@ export const MONSTER_VARIANTS = {
        baseline but no longer running.  (Time-based legacy; the walk
        loop is now driven by walkDistPerFrame below.) */
     walkFrameMs: 66,
-    /* v2.3.93+ walk frame index is distance-driven.  Default 1.5 px
-       per frame increment paired with fireGoblin's 1.5 spd (67.5 px/sec)
-       made the loop cycle every ~0.35 s -- too fast vs the prior
-       time-based cycle.  Bumped to 3.0 to slow it back down to roughly
-       half that rate, matching the user's expectation that fireGoblin
-       reads snappy but not frenetic. */
-    walkDistPerFrame: 3.0,
+    /* v2.3.93+ walk frame index is distance-driven.  fireGoblin's
+       fast spd (67.5 px/sec at chase) combined with its short
+       walkFrameMs source pacing makes the legacy cycle frantic.
+       Bumped to 6.0 (was 3.0) so each frame holds for ~90 ms of
+       actual travel, halving the on-screen cycle rate again per
+       v2.3.96 user feedback ("his run animation needs to be slowed
+       down by 2x from here"). */
+    walkDistPerFrame: 6.0,
     /* Attack strip plays at a fixed frame rate (8 frames * 50 ms = 400 ms)
        then the renderer holds the last frame until _shootAnimEnd.  Earlier
        v2.3.23 spread the strip across the full telegraph window (480 ms),
