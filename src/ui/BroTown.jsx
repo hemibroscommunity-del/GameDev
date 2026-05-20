@@ -1674,7 +1674,18 @@ export var BroTown = function BroTown(_ref0) {
             rpgMind: (S.rpg && typeof S.rpg.mind === 'number') ? S.rpg.mind : 0,
             rpgFerocity: (S.rpg && typeof S.rpg.ferocity === 'number') ? S.rpg.ferocity : 0,
             rpgElementalMastery: (S.rpg && typeof S.rpg.elementalMastery === 'number') ? S.rpg.elementalMastery : 0,
-            rpgFortification: (S.rpg && typeof S.rpg.fortification === 'number') ? S.rpg.fortification : 0
+            rpgFortification: (S.rpg && typeof S.rpg.fortification === 'number') ? S.rpg.fortification : 0,
+            /* Equipment slots bootstrap (slice 12).  Worker stores
+               these as opaque objects; stash truncated to cap server-
+               side. */
+            rpgWeapon: (S.rpg && S.rpg.weapon) || null,
+            rpgRangedWeapon: (S.rpg && S.rpg.rangedWeapon) || null,
+            rpgStaffWeapon: (S.rpg && S.rpg.staffWeapon) || null,
+            rpgActiveSlot: (S.rpg && S.rpg.activeSlot) || 'melee',
+            rpgArmor: (S.rpg && S.rpg.armor) || null,
+            rpgShield: (S.rpg && S.rpg.shield) || null,
+            rpgAmulet: (S.rpg && S.rpg.amulet) || null,
+            rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash : []
           }
         }));
         var welcomeMsg = {
@@ -2028,6 +2039,21 @@ export var BroTown = function BroTown(_ref0) {
                 if (typeof _sb.hp === 'number') S._hpBuff = _sb.hp;
                 if (typeof _sb.mana === 'number') S._manaBuff = _sb.mana;
               }
+              /* Equipment slots -- worker is the canonical owner.  An
+                 equip_request swap, marketplace buy, or future server-
+                 side crafting result lands here.  Note: rangedWeapon /
+                 staffWeapon may legitimately be undefined in payload
+                 (e.g., a player who never bought a bow); only assign
+                 when the field is present so we don't overwrite a
+                 freshly-acquired weapon with null. */
+              if ('weapon' in msg.payload) S.rpg.weapon = msg.payload.weapon;
+              if ('rangedWeapon' in msg.payload) S.rpg.rangedWeapon = msg.payload.rangedWeapon;
+              if ('staffWeapon' in msg.payload) S.rpg.staffWeapon = msg.payload.staffWeapon;
+              if (typeof msg.payload.activeSlot === 'string') S.rpg.activeSlot = msg.payload.activeSlot;
+              if ('armor' in msg.payload) S.rpg.armor = msg.payload.armor;
+              if ('shield' in msg.payload) S.rpg.shield = msg.payload.shield;
+              if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
+              if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
@@ -3657,6 +3683,10 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         if (msg.type === 'cook_recipe') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'equip_request') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -26587,6 +26617,16 @@ export var BroTown = function BroTown(_ref0) {
         /* Equip from stash, put old weapon in stash */
         if (swIsRanged) R.rangedWeapon = swapWpn;else R.weapon = swapWpn;
         R.weaponStash[si] = old;
+        /* Server-authoritative equipment in MP: tell the worker to
+           perform the same swap so its view stays in sync.  The
+           swap above is local prediction; player_state arrives
+           shortly with the worker's authoritative weapon + stash. */
+        {
+          var _Seq = stateRef.current;
+          if (_Seq._serverMonsters && _Seq.channel) {
+            try { _Seq.channel.send({ type: 'equip_request', payload: { stashIdx: si, slot: swIsRanged ? 'rangedWeapon' : 'weapon' } }); } catch (e) {}
+          }
+        }
         setRpgState(_objectSpread({}, R));
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
