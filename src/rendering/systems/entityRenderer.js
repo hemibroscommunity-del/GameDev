@@ -431,13 +431,12 @@ export class EntityRenderer {
 
     for (const m of monsters) {
       /* Mid-fight variant transform check (currently just mummy ->
-         skeleton at HP <= transformAt).  Idempotent and cheap; the
-         renderer is the natural place since it already touches every
-         live monster per frame.  Returns true on the single tick the
-         swap fires, which we use to flip _spriteBody.visible off
-         briefly so the new archetype's sprite isn't drawn under stale
-         dimensions. */
-      maybeTransformMonster(m);
+         skeleton at HP <= transformAt).  Server is authoritative for
+         this when S._serverMonsters is true -- the worker detects the
+         threshold + emits a monster_transform event that BroTown.jsx
+         applies in _processGameEvent.  This local fallback runs only
+         in SP / dungeon mode where the worker doesn't model the zone. */
+      if (!S._serverMonsters) maybeTransformMonster(m);
       const arch = m.archetype || m.type;
       const isFodder = arch === 'fodder';
       const variantKey = MONSTER_VARIANTS[arch] ? arch : null;

@@ -2558,6 +2558,30 @@ export var BroTown = function BroTown(_ref0) {
               }
               break;
             }
+          case 'monster_transform':
+            {
+              /* Server-driven variant transform (currently just
+                 mummy -> skeleton at HP <= 50%).  Worker detects the
+                 threshold + emits this event for every client in the
+                 zone, so every screen plays the shred animation at
+                 the same tick.  Replaces the per-client
+                 maybeTransformMonster() trigger in entityRenderer.js
+                 -- that local path is now gated on !S._serverMonsters
+                 (dungeon / SP only). */
+              if (!payload || !S.monsters) break;
+              var tm = S.monsters.find(function (mm) { return mm.id === payload.id; });
+              if (!tm) break;
+              var fromV = MONSTER_VARIANTS[payload.fromVariant];
+              tm._transformStart = Date.now();
+              tm._transformHoldMs = (fromV && fromV.transformHoldMs) || 480;
+              tm._transformFromArch = payload.fromVariant;
+              tm.archetype = payload.toVariant;
+              tm.type = payload.toVariant;
+              if (tm.arch !== undefined) tm.arch = payload.toVariant;
+              var toV = MONSTER_VARIANTS[payload.toVariant];
+              if (toV && toV.spd != null) tm.spd = toV.spd;
+              break;
+            }
           case 'monster_hit':
             {
               /* A monster was hit — show damage number and hit effects for everyone */

@@ -99,8 +99,12 @@ export const MONSTER_VARIANTS = {
     deathScalePx: 144,
     remnantsScalePx: 48,
     spd: 1.4,                 /* charges the player vs fodder's 0.5 */
-    clientSideMovement: true, /* same trick as fireGoblin: local AI
-                                 chase since server only knows fodder */
+    /* Movement is server-authoritative.  The worker applies
+       skeleton's spd via _variantSpeed when the mummy -> skeleton
+       transform fires server-side (see _tickMonsters); a
+       monster_transform event tells the client to swap visuals +
+       play the shred animation.  No clientSideMovement override
+       needed -- server position is the source of truth. */
     /* Skeleton inherits the no-projectile flag from the mummy form
        so the slime-orb fire doesn't re-arm after the transform.
        v2.3.61: dropped noFodderRemnants -- the skeleton now has its
