@@ -1654,7 +1654,16 @@ export var BroTown = function BroTown(_ref0) {
               var _ab = (S.rpg && S.rpg._amuletBonus) || null;
               return (_ab && _ab.stat === 'hpRegen') ? (_ab.value || 0) : 0;
             })(),
-            rpgRestoration: (S.rpg && typeof S.rpg.restoration === 'number') ? S.rpg.restoration : 0
+            rpgAmuletStaminaRegen: (function () {
+              var _ab2 = (S.rpg && S.rpg._amuletBonus) || null;
+              return (_ab2 && _ab2.stat === 'staminaRegen') ? (_ab2.value || 0) : 0;
+            })(),
+            rpgRestoration: (S.rpg && typeof S.rpg.restoration === 'number') ? S.rpg.restoration : 0,
+            /* Stamina + mana pools — slice 1b bootstrap. */
+            rpgStamina: (S.rpg && typeof S.rpg.stamina === 'number') ? S.rpg.stamina : 100,
+            rpgMaxStamina: (S.rpg && typeof S.rpg.maxStamina === 'number') ? S.rpg.maxStamina : 100,
+            rpgMana: (S.rpg && typeof S.rpg.mana === 'number') ? S.rpg.mana : 100,
+            rpgMaxMana: (S.rpg && typeof S.rpg.maxMana === 'number') ? S.rpg.maxMana : 100
           }
         }));
         var welcomeMsg = {
@@ -1971,17 +1980,28 @@ export var BroTown = function BroTown(_ref0) {
               if (typeof msg.payload.unspentT2 === 'number') {
                 S.rpg.unspentT2 = msg.payload.unspentT2;
               }
-              /* HP store -- worker applies monster + pvp damage, runs
-                 regen tick, resets on level-up + respawn.  Client
-                 OVERWRITES R.hp + R.maxHp on every player_state so
-                 a DevTools R.hp = 99999 cheat gets stomped on the
-                 next sync (which is at minimum every ~670 ms via the
-                 regen tick when the player is below max). */
+              /* HP / stamina / mana store -- worker applies damage,
+                 ability costs, shield drain, regen, level-up + respawn
+                 resets.  Client OVERWRITES on every player_state so a
+                 DevTools R.hp/stamina/mana = 99999 cheat gets stomped
+                 on the next sync. */
               if (typeof msg.payload.hp === 'number') {
                 S.rpg.hp = msg.payload.hp;
               }
               if (typeof msg.payload.maxHp === 'number') {
                 S.rpg.maxHp = msg.payload.maxHp;
+              }
+              if (typeof msg.payload.stamina === 'number') {
+                S.rpg.stamina = msg.payload.stamina;
+              }
+              if (typeof msg.payload.maxStamina === 'number') {
+                S.rpg.maxStamina = msg.payload.maxStamina;
+              }
+              if (typeof msg.payload.mana === 'number') {
+                S.rpg.mana = msg.payload.mana;
+              }
+              if (typeof msg.payload.maxMana === 'number') {
+                S.rpg.maxMana = msg.payload.maxMana;
               }
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
@@ -2113,13 +2133,10 @@ export var BroTown = function BroTown(_ref0) {
               if (cc.leveled) {
                 setLevelUpMsg({ level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
                 try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
-                /* HP restore on level-up: worker now resets ps.hp =
-                   ps.maxHp inside _addCombatXp and emits player_state
-                   alongside this combat_credit, so R.hp lands at max
-                   from the network -- no local write needed.
-                   Stamina + mana still client-side until slice 1b. */
-                if (S.rpg.maxStamina) S.rpg.stamina = S.rpg.maxStamina;
-                if (S.rpg.maxMana) S.rpg.mana = S.rpg.maxMana;
+                /* Pool restore on level-up: worker resets hp/stamina/mana
+                   = max inside _addCombatXp and emits player_state alongside
+                   this combat_credit, so R.* lands at max from the network.
+                   No local write needed in MP. */
               }
               break;
             }
@@ -3602,6 +3619,10 @@ export var BroTown = function BroTown(_ref0) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        if (msg.type === 'ability_use') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'broadcast' && msg.event) {
           if (msg.event === 'move') {
             // Movement: overwrite pending (only latest position matters)
@@ -3683,13 +3704,17 @@ export var BroTown = function BroTown(_ref0) {
     var def = (rpgState.endurance || 0) * 0.5 + armorTier * 3;
     var amuBon = rpgState._amuletBonus || null;
     var amuletHpRegen = (amuBon && amuBon.stat === 'hpRegen') ? (amuBon.value || 0) : 0;
+    var amuletStaminaRegen = (amuBon && amuBon.stat === 'staminaRegen') ? (amuBon.value || 0) : 0;
     try {
       S.channel.send({
         type: 'stats_update',
         payload: {
           maxHp: rpgState.maxHp || 100,
+          maxStamina: rpgState.maxStamina || 100,
+          maxMana: rpgState.maxMana || 100,
           def: def,
           amuletHpRegen: amuletHpRegen,
+          amuletStaminaRegen: amuletStaminaRegen,
           restoration: rpgState.restoration || 0,
         },
       });
@@ -9234,14 +9259,14 @@ export var BroTown = function BroTown(_ref0) {
             }
           }
           /* Stamina regen — 10/s base (10 sec full recharge) × Restoration */
-          if (_R7.stamina < _R7.maxStamina) {
+          if (_R7.stamina < _R7.maxStamina && !S._serverMonsters) {
             var _R7$_amuletBonus;
             var stRestMult = 1 + (_R7.restoration || 0) * 0.001;
             var stAmuletMult = ((_R7$_amuletBonus = _R7._amuletBonus) === null || _R7$_amuletBonus === void 0 ? void 0 : _R7$_amuletBonus.stat) === 'staminaRegen' ? 1 + _R7._amuletBonus.value / 100 : 1;
             _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stRestMult * regenMult * stAmuletMult);
           }
           /* Mana regen — §3.4: OOC 2.5%/s after 2s × Restoration */
-          if (_R7.mana < _R7.maxMana && Date.now() - S.lastDamageTaken > 2000) {
+          if (_R7.mana < _R7.maxMana && Date.now() - S.lastDamageTaken > 2000 && !S._serverMonsters) {
             var mRestMult = 1 + (_R7.restoration || 0) * 0.001;
             var manaRegenMult = hasManaBuff ? 1.3 : 1.0;
             _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mRestMult * manaRegenMult);
@@ -9261,11 +9286,11 @@ export var BroTown = function BroTown(_ref0) {
             }
           }
           /* Stamina always regens — 10/sec */
-          if (_R8.stamina < _R8.maxStamina) {
+          if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
             _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60);
           }
           /* Slow mana regen in combat — 1%/s */
-          if (_R8.mana < _R8.maxMana) {
+          if (_R8.mana < _R8.maxMana && !S._serverMonsters) {
             _R8.mana = Math.min(_R8.maxMana, _R8.mana + _R8.maxMana * 0.00017);
           }
         }
@@ -9550,8 +9575,14 @@ export var BroTown = function BroTown(_ref0) {
            "losing its hold" while finger was still down — auto-release
            on stamina-out happening sooner than expected). */
         if (S._shieldUp && S.rpg) {
-          /* 10 stamina/sec at 60fps = 0.167/frame */
-          S.rpg.stamina = Math.max(0, (S.rpg.stamina || 0) - 0.167);
+          /* 10 stamina/sec at 60fps = 0.167/frame.  In MP the worker
+             runs the drain on its tick (5/tick at ~1.5 Hz ≈ 7.5/sec),
+             so skip the local mutation -- player_state will sync the
+             bar.  Local predict still helps the auto-release feel
+             responsive at 0, so we keep the <=0 release branch. */
+          if (!S._serverMonsters) {
+            S.rpg.stamina = Math.max(0, (S.rpg.stamina || 0) - 0.167);
+          }
           S.shieldEnd = Date.now() + 100;
           if (S.rpg.stamina <= 0) {
             S.rpg.stamina = 0;
@@ -10753,7 +10784,14 @@ export var BroTown = function BroTown(_ref0) {
   var doStandardDodge = function (S, R, ang) {
     var dodgeCost = Math.ceil((R.maxStamina || 100) * 0.2);
     if ((R.stamina || 0) < dodgeCost) return;
+    /* Server-authoritative stamina in MP: send ability_use and let the
+       worker validate + deduct.  Local predict for snappy bar feedback;
+       player_state arrives shortly with the authoritative value.  In SP
+       the local mutation is the only writer. */
     R.stamina -= dodgeCost;
+    if (S._serverMonsters && S.channel) {
+      try { S.channel.send({ type: 'ability_use', payload: { type: 'dodge' } }); } catch (e) {}
+    }
     /* GDD §1.2 Endurance + Agility — tracked as use-frequency and
        resolved when the next monster dies. */
     addBuildUse(R, 'endurance', dodgeCost);
@@ -10768,7 +10806,11 @@ export var BroTown = function BroTown(_ref0) {
     if ((R.stamina || 0) < lungeCost) return doStandardDodge(S, R, ang);
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
+    /* Server-authoritative stamina in MP — see doStandardDodge note. */
     R.stamina -= lungeCost;
+    if (S._serverMonsters && S.channel) {
+      try { S.channel.send({ type: 'ability_use', payload: { type: 'lunge' } }); } catch (e) {}
+    }
     addBuildUse(R, 'endurance', lungeCost);
     addBuildUse(R, 'agility', lungeCost);
     /* §12.2 cert — first lunge executed. */
@@ -10809,7 +10851,11 @@ export var BroTown = function BroTown(_ref0) {
     if ((R.stamina || 0) < retCost) return doStandardDodge(S, R, ang);
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
+    /* Server-authoritative stamina in MP — see doStandardDodge note. */
     R.stamina -= retCost;
+    if (S._serverMonsters && S.channel) {
+      try { S.channel.send({ type: 'ability_use', payload: { type: 'retreat' } }); } catch (e) {}
+    }
     addBuildUse(R, 'endurance', retCost);
     addBuildUse(R, 'agility', retCost);
     /* §12.2 cert — first retreat shot executed. */
@@ -10984,7 +11030,14 @@ export var BroTown = function BroTown(_ref0) {
       return;
     }
     if (!isTutorialSwipe) {
+      /* Server-authoritative mana in MP: predict the deduction locally
+         for snappy bar feedback, then send ability_use so the worker
+         validates + applies.  player_state arrives shortly with the
+         authoritative value. */
       R.mana -= manaCost;
+      if (S._serverMonsters && S.channel) {
+        try { S.channel.send({ type: 'ability_use', payload: { type: 'swipe', tier: tierIdx } }); } catch (e) {}
+      }
       /* GDD §1.2 Mind: spending mana on swipe triggers. */
       addBuildUse(R, 'mind', manaCost);
     }
