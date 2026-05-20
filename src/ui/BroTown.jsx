@@ -1608,7 +1608,7 @@ export var BroTown = function BroTown(_ref0) {
         return;
       }
       ws.onopen = function () {
-        var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI, _S$rpgL;
+        var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI, _S$rpgL, _S$rpgLV, _S$rpgXP, _S$rpgUT;
         S._realtimeStatus = 'connected';
         reconnectDelay = 1000;
         ws.send(JSON.stringify({
@@ -1635,6 +1635,9 @@ export var BroTown = function BroTown(_ref0) {
             rpgCoins: ((_S$rpgC = S.rpg) === null || _S$rpgC === void 0 ? void 0 : _S$rpgC.coins) || 0,
             rpgInventory: ((_S$rpgI = S.rpg) === null || _S$rpgI === void 0 ? void 0 : _S$rpgI.inventory) || {},
             rpgLifeSkills: ((_S$rpgL = S.rpg) === null || _S$rpgL === void 0 ? void 0 : _S$rpgL.lifeSkills) || {},
+            rpgLevel: ((_S$rpgLV = S.rpg) === null || _S$rpgLV === void 0 ? void 0 : _S$rpgLV.level) || 1,
+            rpgXp: ((_S$rpgXP = S.rpg) === null || _S$rpgXP === void 0 ? void 0 : _S$rpgXP.xp) || 0,
+            rpgUnspentT2: ((_S$rpgUT = S.rpg) === null || _S$rpgUT === void 0 ? void 0 : _S$rpgUT.unspentT2) || 0,
             rpgLv: ((_S$rpg = S.rpg) === null || _S$rpg === void 0 ? void 0 : _S$rpg.level) || 1,
             rpgHp: ((_S$rpg2 = S.rpg) === null || _S$rpg2 === void 0 ? void 0 : _S$rpg2.hp) || 50,
             rpgMaxHp: ((_S$rpg3 = S.rpg) === null || _S$rpg3 === void 0 ? void 0 : _S$rpg3.maxHp) || 50
@@ -1941,6 +1944,19 @@ export var BroTown = function BroTown(_ref0) {
                   S.rpg.lifeSkills[k] = _objectSpread({}, msg.payload.lifeSkills[k]);
                 });
               }
+              /* Combat XP / level / unspent T2 stat points -- worker
+                 applies on monster_kill (and persists), client mirrors
+                 here.  A modified client that sets R.xp = 999999 will
+                 get stomped on the next kill's player_state. */
+              if (typeof msg.payload.level === 'number') {
+                S.rpg.level = msg.payload.level;
+              }
+              if (typeof msg.payload.xp === 'number') {
+                S.rpg.xp = msg.payload.xp;
+              }
+              if (typeof msg.payload.unspentT2 === 'number') {
+                S.rpg.unspentT2 = msg.payload.unspentT2;
+              }
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
@@ -1976,6 +1992,30 @@ export var BroTown = function BroTown(_ref0) {
                   color: '#f5c542', ts: Date.now(),
                 });
                 try { BT_AUDIO.collect(); } catch (e) {}
+              }
+              break;
+            }
+          case 'combat_credit':
+            {
+              /* Server's combat-XP grant from a monster kill we
+                 contributed to.  Carries the authoritative xpAmt + the
+                 level-up confirmation.  The deterministic "+N XP"
+                 popup still predicts client-side at monster_kill time
+                 (same payload.xp * shares formula) so the player gets
+                 instant feedback; this handler is for level-up only.
+                 Combat-level regen (HP / stamina / mana to max) stays
+                 client-side until its own slice migrates those pools
+                 to the server. */
+              if (!msg.payload || !S.rpg) break;
+              var cc = msg.payload;
+              if (cc.leveled) {
+                setLevelUpMsg({ level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
+                try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
+                /* Restore pools to max on level-up.  Will fold into the
+                   HP-on-server slice. */
+                if (S.rpg.maxHp) S.rpg.hp = S.rpg.maxHp;
+                if (S.rpg.maxStamina) S.rpg.stamina = S.rpg.maxStamina;
+                if (S.rpg.maxMana) S.rpg.mana = S.rpg.maxMana;
               }
               break;
             }
@@ -2455,30 +2495,43 @@ export var BroTown = function BroTown(_ref0) {
                 var R = S.rpg;
                 if (R) {
                   var killXp = _killXpPre;
-                  R.xp = (R.xp || 0) + killXp;
                   if (R._compStats) {
                     R._compStats.monstersKilled = (R._compStats.monstersKilled || 0) + 1;
                   }
                   /* Use-trained T1 split: divide killXp across stats by
                      their relative _buildUse share since the last kill,
-                     then reset the tally. */
+                     then reset the tally.  T1 stats are still
+                     client-side; T2 (xp/level/unspentT2) is server-
+                     authoritative when S._serverMonsters is true. */
                   distributeKillXpToBuild(R, killXp);
+                  /* "+N XP" popup -- client-predicted from
+                     payload.xp * shares[myId] * killVarMult for snappy
+                     UX.  The actual R.xp update arrives via
+                     player_state shortly after; combat_credit handles
+                     the level-up popup + SFX. */
                   S.dmgNumbers.push({
                     x: S.player.x, y: S.player.y - 30,
                     text: '+' + killXp + 'XP',
                     color: '#60a5fa', ts: Date.now()
                   });
-                  /* Check level up — T1 is use-trained (no unspent points),
-                     T2 still allocated via the Stats menu (5 points per
-                     level per GDD §1.4). */
-                  while (R.xp >= xpRequired(R.level)) {
-                    R.xp -= xpRequired(R.level);
-                    R.level++;
-                    R.unspentT2 = (R.unspentT2 || 0) + 5;
-                    recalcDerived(R);
-                    R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
-                    setLevelUpMsg({ level: R.level, ts: Date.now() });
-                    BT_AUDIO.levelUp();
+                  /* Local R.xp += / level-up loop runs only when the
+                     worker doesn't own combat XP for this kill (i.e.
+                     when _serverMonsters is false -- dungeons / SP).
+                     For server monsters, _addCombatXp on the worker
+                     applies XP + level-up + 5 unspentT2 per level,
+                     then sends combat_credit (popup/SFX) and
+                     player_state (authoritative totals). */
+                  if (!S._serverMonsters) {
+                    R.xp = (R.xp || 0) + killXp;
+                    while (R.xp >= xpRequired(R.level)) {
+                      R.xp -= xpRequired(R.level);
+                      R.level++;
+                      R.unspentT2 = (R.unspentT2 || 0) + 5;
+                      recalcDerived(R);
+                      R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
+                      setLevelUpMsg({ level: R.level, ts: Date.now() });
+                      BT_AUDIO.levelUp();
+                    }
                   }
                   setRpgState(_objectSpread({}, R));
                   try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch(e) {}
