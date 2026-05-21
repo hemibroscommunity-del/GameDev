@@ -509,12 +509,14 @@ export const BottomDashboard = () => {
                 flexDirection: 'column',
                 minWidth: 0,
                 gap: 4,
-                /* v2.3.113: column frame -- subtle border + tint so the
-                   three dashboard columns read as discrete sections. */
+                /* v2.3.116: stronger column frame with subtle red tint
+                   to color-code the combat-stats section + inner shadow
+                   for elevation. */
                 padding: 4,
                 borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.025)',
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(255,100,100,0.04)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
               }}>
                 <ColHeader>{S?.myName || 'Anon'} · Lv {level}</ColHeader>
                 {/* v2.3.111: derived stats list moved here from the
@@ -563,7 +565,18 @@ export const BottomDashboard = () => {
                             cursor: 'pointer',
                             touchAction: 'none',
                           }}>
-                          <span style={{ color: COL.text, fontWeight: 700, fontSize: 12 }}>{r.label}</span>
+                          {/* v2.3.116: stat label normalized to match
+                              column header styling -- uppercase +
+                              letter-spaced + muted, so the section
+                              reads as a single coherent stat sheet
+                              instead of a paragraph. */}
+                          <span style={{
+                            color: COL.muted,
+                            fontWeight: 700,
+                            fontSize: 11,
+                            textTransform: 'uppercase',
+                            letterSpacing: '.06em',
+                          }}>{r.label}</span>
                           <span style={{ color: COL.text, fontWeight: 800, fontSize: 15 }}>{r.val}</span>
                         </div>
                       ))}
@@ -584,11 +597,13 @@ export const BottomDashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
-                /* v2.3.113: column frame -- subtle border + tint. */
+                /* v2.3.116: stronger frame + subtle purple tint for the
+                   Build section + inner shadow for elevation. */
                 padding: 4,
                 borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.025)',
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(120,110,255,0.04)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
               }}>
                 <ColHeader>Build</ColHeader>
                 <div style={{
@@ -692,11 +707,13 @@ export const BottomDashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
-                /* v2.3.113: column frame -- subtle border + tint. */
+                /* v2.3.116: stronger frame + subtle green tint for the
+                   Life Skills section + inner shadow for elevation. */
                 padding: 4,
                 borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.025)',
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(80,200,130,0.04)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
               }}>
                 <ColHeader>Life Skills</ColHeader>
                 <div style={{
