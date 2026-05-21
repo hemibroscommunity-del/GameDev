@@ -107,7 +107,7 @@ function hideNft(display) {
 }
 
 const NAME_STYLE = new TextStyle({
-  fontFamily: 'VT323, monospace',
+  fontFamily: 'Atkinson Hyperlegible, sans-serif',
   fontSize: 10,
   fontWeight: '700',
   fill: '#ffffff',

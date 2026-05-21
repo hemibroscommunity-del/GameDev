@@ -10,7 +10,7 @@ import { TOWN_EXITS } from '@/data/effects.js';
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 
 const ZONE_LABEL_STYLE = new TextStyle({
-  fontFamily: 'VT323, monospace',
+  fontFamily: 'Atkinson Hyperlegible, sans-serif',
   fontSize: 28,
   fontWeight: '700',
   fill: '#ffffff',

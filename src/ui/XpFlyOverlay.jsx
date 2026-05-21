@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 
 /* XpFlyOverlay — reads S._xpFlies entries pushed by the kill-reward path
    in BroTown.jsx and renders each as a fixed-position floating "+N XP"
@@ -75,7 +75,7 @@ const XpFly = ({ fly, cx, cy }) => {
         transform: 'translate(-50%, -50%) scale(' + (arrived ? 0.6 : 1.0) + ')',
         opacity: arrived ? 0 : 1,
         color: '#3ddc97',
-        fontFamily: 'VT323, monospace',
+        fontFamily: 'Atkinson Hyperlegible, sans-serif',
         fontWeight: 700,
         fontSize: 22,
         textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 4px rgba(61,220,151,.55)',

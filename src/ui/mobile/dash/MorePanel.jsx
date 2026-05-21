@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { COL, panelStyle } from './common.js';
 
@@ -31,7 +31,7 @@ export const MorePanel = () => (
             borderRadius: 6,
             padding: '6px 4px',
             color: COL.text,
-            fontFamily: 'VT323, monospace',
+            fontFamily: 'Atkinson Hyperlegible, sans-serif',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',

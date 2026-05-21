@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { xpRequired } from '../../data/gameSystems.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { InventoryPanel }    from './dash/InventoryPanel.jsx';
@@ -132,7 +132,7 @@ const Tooltip = ({ text, onClose }) => {
         border: '1px solid rgba(255,255,255,0.16)',
         borderRadius: 8,
         color: '#E8EAF8',
-        fontFamily: 'VT323, monospace',
+        fontFamily: 'Atkinson Hyperlegible, sans-serif',
         fontSize: 15,
         lineHeight: 1.3,
         zIndex: 36,
@@ -201,7 +201,7 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
         letterSpacing: '.04em',
         textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 1px rgba(0,0,0,.95)',
         pointerEvents: 'none',
-        fontFamily: 'VT323, monospace',
+        fontFamily: 'Atkinson Hyperlegible, sans-serif',
       }}>{label}</span>
       {/* Live current / max (right side). */}
       <span style={{
@@ -215,7 +215,7 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
         letterSpacing: '.04em',
         textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 1px rgba(0,0,0,.95)',
         pointerEvents: 'none',
-        fontFamily: 'VT323, monospace',
+        fontFamily: 'Atkinson Hyperlegible, sans-serif',
       }}>{Math.round(cur)} / {Math.round(max)}</span>
     </div>
   );
@@ -244,7 +244,7 @@ const IconButton = ({ glyph, label, active, onClick }) => {
         borderRight: `1px solid ${COL.divider}`,
         color: COL.text,
         cursor: 'pointer',
-        fontFamily: 'VT323, monospace',
+        fontFamily: 'Atkinson Hyperlegible, sans-serif',
         opacity: active ? 1 : 0.95,
         touchAction: 'none',
       }}
@@ -369,7 +369,7 @@ export const BottomDashboard = () => {
           borderRadius: 8,
           padding: '4px 10px',
           color: '#f5c542',
-          fontFamily: 'VT323, monospace',
+          fontFamily: 'Atkinson Hyperlegible, sans-serif',
           fontSize: 18,
           fontWeight: 700,
           letterSpacing: '.04em',
@@ -401,7 +401,7 @@ export const BottomDashboard = () => {
         background: COL.bg,
         borderTop: `1px solid ${COL.border}`,
         color: COL.text,
-        fontFamily: 'VT323, monospace',
+        fontFamily: 'Atkinson Hyperlegible, sans-serif',
         zIndex: 30,
         display: 'flex',
         flexDirection: 'column',

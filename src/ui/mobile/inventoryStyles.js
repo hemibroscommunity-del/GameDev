@@ -38,9 +38,9 @@ export const INV = {
 };
 
 export const FONT = {
-  serif: '"EB Garamond", "Cormorant", Georgia, serif',
-  sans:  'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-  mono:  'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace',
+  serif: '"Atkinson Hyperlegible", sans-serif',
+  sans:  '"Atkinson Hyperlegible", sans-serif',
+  mono:  '"Atkinson Hyperlegible", sans-serif',
 };
 
 // Quality / rarity tints (Elite + Godly tile borders).

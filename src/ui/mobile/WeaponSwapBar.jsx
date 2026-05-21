@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { weaponSwapBus } from './weaponSwapBus.js';
 import { WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon } from '../../data/gameSystems.js';
 
@@ -228,7 +228,7 @@ export const WeaponSwapBar = () => {
         style={{
           borderTop: '1px solid rgba(255,255,255,0.12)',
           padding: '2px 8px 3px',
-          fontFamily: 'VT323, monospace',
+          fontFamily: 'Atkinson Hyperlegible, sans-serif',
           fontSize: 14,
           lineHeight: 1,
           color: '#E8EAF8',

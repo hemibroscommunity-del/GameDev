@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { BT_AUDIO } from '@/data/gameSystems.js';
 
 /* Helper: short-lived "reeling" sample play. The reeling clip is ~2.5 s
@@ -466,7 +466,7 @@ export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCance
     overflow: 'hidden',
     touchAction: 'none',
     boxShadow: '0 6px 16px rgba(0,0,0,0.5)',
-    fontFamily: 'VT323, monospace',
+    fontFamily: 'Atkinson Hyperlegible, sans-serif',
     color: '#fff',
   };
 

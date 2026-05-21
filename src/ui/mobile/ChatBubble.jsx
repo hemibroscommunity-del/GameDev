@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { chatBubbleBus } from './chatBubbleBus.js';
 
 // Over-the-character chat bubble. Opens from the bottom-dashboard chat
@@ -86,7 +86,7 @@ export const ChatBubble = () => {
           borderRadius: 10,
           boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
           color: '#fff',
-          fontFamily: 'VT323, monospace',
+          fontFamily: 'Atkinson Hyperlegible, sans-serif',
         }}
       >
         <input

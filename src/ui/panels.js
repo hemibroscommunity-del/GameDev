@@ -1,4 +1,4 @@
-/* ═══ BROTOWN UI — React JSX panels ═══ */
+﻿/* ═══ BROTOWN UI — React JSX panels ═══ */
 /* Bulk extracted from index.html lines 22750-42641 */
 /* Contains all game UI panels: stats, inventory, skills, shop, */
 /* marketplace, clan, arena, guilds, encyclopedia, etc. */
@@ -795,7 +795,7 @@ export function renderBroTownUI(uiCtx) {
       fontSize: 22,
       fontWeight: 800,
       color: 'var(--txt)',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       letterSpacing: '.06em'
     }
   }, "HEMI BROS"), /*#__PURE__*/React.createElement("div", {
@@ -893,7 +893,7 @@ export function renderBroTownUI(uiCtx) {
       fontWeight: 700,
       cursor: 'pointer',
       opacity: nftLoading || !nftIdInput ? 0.5 : 1,
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       whiteSpace: 'nowrap'
     }
   }, nftLoading ? '...' : 'FIND')), nftError && /*#__PURE__*/React.createElement("div", {
@@ -933,7 +933,7 @@ export function renderBroTownUI(uiCtx) {
       fontSize: 14,
       fontWeight: 800,
       color: 'var(--txt)',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, "Hemi Bro #", nftLookup.ID), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1101,7 +1101,7 @@ export function renderBroTownUI(uiCtx) {
       fontSize: 14,
       fontWeight: 800,
       cursor: 'pointer',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       letterSpacing: '.08em',
       width: '100%'
     }
@@ -1476,7 +1476,7 @@ export function renderBroTownUI(uiCtx) {
         fontSize: 10,
         fontWeight: 800,
         color: timeLeft < 120 ? '#ff5e6c' : 'rgba(255,255,255,.5)',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Atkinson Hyperlegible,sans-serif'
       }
     }, mins, ":", secs < 10 ? '0' + secs : secs), !inWarZone && /*#__PURE__*/React.createElement("div", {
       style: {
@@ -2037,7 +2037,7 @@ export function renderBroTownUI(uiCtx) {
         fontSize: 12,
         fontWeight: 900,
         color: timeLeft < 10 ? '#ff5e6c' : '#f5c542',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Atkinson Hyperlegible,sans-serif'
       }
     }, timeLeft.toFixed(1), "s"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -4490,7 +4490,7 @@ export function renderBroTownUI(uiCtx) {
         fontSize: 14,
         fontWeight: 900,
         color: timeLeft < 5000 ? '#ff5e6c' : '#f5c542',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Atkinson Hyperlegible,sans-serif'
       }
     }, timeLeftSec, "s"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -8958,7 +8958,7 @@ export function renderBroTownUI(uiCtx) {
       color: '#f5c542',
       fontSize: 11,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -9135,7 +9135,7 @@ export function renderBroTownUI(uiCtx) {
       color: '#f5c542',
       fontSize: 10,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -9380,7 +9380,7 @@ export function renderBroTownUI(uiCtx) {
       color: '#f5c542',
       fontSize: 10,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -9875,7 +9875,7 @@ export function renderBroTownUI(uiCtx) {
         color: '#f5c542',
         fontSize: 10,
         fontWeight: 800,
-        fontFamily: 'Space Mono,monospace',
+        fontFamily: 'Atkinson Hyperlegible,sans-serif',
         textAlign: 'right',
         outline: 'none'
       }
@@ -10232,7 +10232,7 @@ export function renderBroTownUI(uiCtx) {
       color: '#f5c542',
       fontSize: 11,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -12586,7 +12586,7 @@ export function renderBroTownUI(uiCtx) {
       fontSize: 10,
       fontWeight: 800,
       color: '#3dd497',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, "\uD83C\uDFE1 Your Farm", ((_stateRef$current19 = stateRef.current) === null || _stateRef$current19 === void 0 || (_stateRef$current19 = _stateRef$current19.rpg) === null || _stateRef$current19 === void 0 ? void 0 : _stateRef$current19._wellRestedUntil) && Date.now() < stateRef.current.rpg._wellRestedUntil && /*#__PURE__*/React.createElement("span", {
     style: {
@@ -12650,7 +12650,7 @@ export function renderBroTownUI(uiCtx) {
       fontSize: 10,
       fontWeight: 800,
       color: '#ff5e6c',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, "\u2620\uFE0F LAWLESS LAND \u2014 ALL items drop on death")), ((_stateRef$current22 = stateRef.current) === null || _stateRef$current22 === void 0 ? void 0 : _stateRef$current22._fenceClimb) && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -12710,7 +12710,7 @@ export function renderBroTownUI(uiCtx) {
       fontSize: 10,
       fontWeight: 800,
       color: '#3dd497',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, "\uD83C\uDFE1 Your Farm \u2014 Safe Zone")), ((_stateRef$current24 = stateRef.current) === null || _stateRef$current24 === void 0 ? void 0 : _stateRef$current24._sleeping) && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -16056,7 +16056,7 @@ export function renderBroTownUI(uiCtx) {
       fontSize: 11,
       fontWeight: 700,
       color: '#fff',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       letterSpacing: '.03em',
       paddingRight: 16
     }
@@ -16098,7 +16098,7 @@ export function renderBroTownUI(uiCtx) {
     style: {
       fontSize: 40,
       fontWeight: 900,
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       color: '#f5c542',
       textShadow: '0 0 30px rgba(245,197,66,.8), 0 0 60px rgba(245,197,66,.4), 0 2px 4px rgba(0,0,0,.6)',
       letterSpacing: '.15em'
@@ -16282,7 +16282,7 @@ export function renderBroTownUI(uiCtx) {
       fontSize: 11,
       fontWeight: 700,
       letterSpacing: '.05em',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       color: function (_stateRef$current32, _ELEMENTS$z$element4) {
         var z = ZONES[((_stateRef$current32 = stateRef.current) === null || _stateRef$current32 === void 0 ? void 0 : _stateRef$current32.currentZone) || 'town'];
         return z !== null && z !== void 0 && z.element ? (_ELEMENTS$z$element4 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element4 === void 0 ? void 0 : _ELEMENTS$z$element4.color : '#e8eaf8';
@@ -16322,7 +16322,7 @@ export function renderBroTownUI(uiCtx) {
         zIndex: 18,
         fontSize: 9,
         fontWeight: 700,
-        fontFamily: 'VT323,monospace',
+        fontFamily: 'Atkinson Hyperlegible,sans-serif',
         background: 'rgba(234,88,12,.25)',
         padding: '3px 12px',
         borderRadius: 6,
@@ -16352,7 +16352,7 @@ export function renderBroTownUI(uiCtx) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        fontFamily: 'VT323,monospace',
+        fontFamily: 'Atkinson Hyperlegible,sans-serif',
         color: '#f5c542',
         marginBottom: 2
       }
@@ -17686,7 +17686,7 @@ export function renderBroTownUI(uiCtx) {
         fontSize: 10,
         fontWeight: 700,
         cursor: 'pointer',
-        fontFamily: 'VT323,monospace',
+        fontFamily: 'Atkinson Hyperlegible,sans-serif',
         letterSpacing: '.05em'
       },
       onTouchStart: function onTouchStart(ev) {
@@ -18200,7 +18200,7 @@ export function renderBroTownUI(uiCtx) {
       fontWeight: 700,
       color: 'var(--txt)',
       marginBottom: 6,
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, gatherMini.skill === 'woodcutting' ? '🪓' : gatherMini.skill === 'fishing' ? '🎣' : '⛏️', " TAP when the bar hits the green zone!"), function (_gatherMini$node) {
     var elapsed = (Date.now() - gatherMini.started) / 1000;
@@ -18416,7 +18416,7 @@ export function renderBroTownUI(uiCtx) {
       fontWeight: 800,
       cursor: 'pointer',
       width: '100%',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       letterSpacing: '.05em'
     }
   }, "\u26A1 STRIKE!")), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {
@@ -19498,7 +19498,7 @@ export function renderBroTownUI(uiCtx) {
         fontSize: 8,
         fontWeight: 700,
         color: 'rgba(255,255,255,.6)',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Atkinson Hyperlegible,sans-serif'
       }
     }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || slot), elemCol && React.createElement('span', {
       style: {
@@ -19989,7 +19989,7 @@ export function renderBroTownUI(uiCtx) {
       fontWeight: 700,
       cursor: 'pointer',
       flexShrink: 0,
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, "Send")));
 };

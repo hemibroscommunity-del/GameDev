@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { BT_AUDIO } from '../data/gameSystems.js';
 
 /* Cooking minigame.
@@ -175,7 +175,7 @@ export const CookingMinigame = ({ fishKey, panSheetSrc, onComplete, onCancel }) 
     overflow: 'hidden',
     touchAction: 'none',
     boxShadow: '0 6px 16px rgba(0,0,0,0.55)',
-    fontFamily: 'VT323, monospace',
+    fontFamily: 'Atkinson Hyperlegible, sans-serif',
     color: '#fff',
   };
 

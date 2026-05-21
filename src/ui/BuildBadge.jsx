@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 // Build constants are injected at build time by Vite (see vite.config.js).
 // Fall back gracefully if running in a context where they weren't replaced.
@@ -20,7 +20,7 @@ export const BuildBadge = () => (
       padding: '2px 6px',
       background: 'rgba(0,0,0,0.55)',
       color: '#cfd8dc',
-      fontFamily: '"Space Mono", monospace',
+      fontFamily: 'Atkinson Hyperlegible, sans-serif',
       fontSize: 10,
       lineHeight: '14px',
       borderRadius: 3,

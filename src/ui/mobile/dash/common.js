@@ -1,4 +1,4 @@
-// Shared style + helper module for the in-dashboard panels.
+﻿// Shared style + helper module for the in-dashboard panels.
 
 export const COL = {
   bg:        'rgba(13, 14, 22, 0.92)',
@@ -38,7 +38,7 @@ export const panelStyle = {
   touchAction: 'pan-y',
   padding: '8px 12px 10px',
   color: COL.text,
-  fontFamily: 'VT323, monospace',
+  fontFamily: 'Atkinson Hyperlegible, sans-serif',
   fontSize: 15,
 };
 

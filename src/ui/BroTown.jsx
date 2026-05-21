@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { FishingMinigame } from './FishingMinigame.jsx';
 import { WoodChopMinigame } from './WoodChopMinigame.jsx';
 import { CookingMinigame } from './CookingMinigame.jsx';
@@ -12567,7 +12567,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 22,
       fontWeight: 800,
       color: 'var(--txt)',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       letterSpacing: '.06em'
     }
   }, "HEMI BROS"), /*#__PURE__*/React.createElement("div", {
@@ -12581,7 +12581,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       fontSize: 9,
       color: 'var(--txt3)',
-      fontFamily: '"Space Mono", monospace',
+      fontFamily: 'Atkinson Hyperlegible, sans-serif',
       letterSpacing: '.05em',
       marginBottom: 12,
     }
@@ -12654,7 +12654,7 @@ export var BroTown = function BroTown(_ref0) {
       color: 'var(--txt3)',
       textAlign: 'center',
       marginBottom: 8,
-      fontFamily: '"Space Mono", monospace'
+      fontFamily: 'Atkinson Hyperlegible, sans-serif'
     }
   }, "Leave blank to auto-join the next open room"), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
@@ -12668,7 +12668,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 14,
       fontWeight: 800,
       cursor: 'pointer',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       letterSpacing: '.08em',
       width: '100%'
     }
@@ -13153,7 +13153,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 10,
         fontWeight: 800,
         color: timeLeft < 120 ? '#ff5e6c' : 'rgba(255,255,255,.5)',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Atkinson Hyperlegible,sans-serif'
       }
     }, mins, ":", secs < 10 ? '0' + secs : secs), !inWarZone && /*#__PURE__*/React.createElement("div", {
       style: {
@@ -13714,7 +13714,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 12,
         fontWeight: 900,
         color: timeLeft < 10 ? '#ff5e6c' : '#f5c542',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Atkinson Hyperlegible,sans-serif'
       }
     }, timeLeft.toFixed(1), "s"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -16167,7 +16167,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 14,
         fontWeight: 900,
         color: timeLeft < 5000 ? '#ff5e6c' : '#f5c542',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Atkinson Hyperlegible,sans-serif'
       }
     }, timeLeftSec, "s"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -20642,7 +20642,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#f5c542',
       fontSize: 11,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -20819,7 +20819,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#f5c542',
       fontSize: 10,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -21064,7 +21064,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#f5c542',
       fontSize: 10,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -21559,7 +21559,7 @@ export var BroTown = function BroTown(_ref0) {
         color: '#f5c542',
         fontSize: 10,
         fontWeight: 800,
-        fontFamily: 'Space Mono,monospace',
+        fontFamily: 'Atkinson Hyperlegible,sans-serif',
         textAlign: 'right',
         outline: 'none'
       }
@@ -21916,7 +21916,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#f5c542',
       fontSize: 11,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -24290,7 +24290,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       fontWeight: 800,
       color: '#3dd497',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, "\uD83C\uDFE1 Your Farm", ((_stateRef$current19 = stateRef.current) === null || _stateRef$current19 === void 0 || (_stateRef$current19 = _stateRef$current19.rpg) === null || _stateRef$current19 === void 0 ? void 0 : _stateRef$current19._wellRestedUntil) && Date.now() < stateRef.current.rpg._wellRestedUntil && /*#__PURE__*/React.createElement("span", {
     style: {
@@ -24354,7 +24354,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       fontWeight: 800,
       color: '#ff5e6c',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, "\u2620\uFE0F LAWLESS LAND \u2014 ALL items drop on death")), ((_stateRef$current22 = stateRef.current) === null || _stateRef$current22 === void 0 ? void 0 : _stateRef$current22._fenceClimb) && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -24414,7 +24414,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       fontWeight: 800,
       color: '#3dd497',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, "\uD83C\uDFE1 Your Farm \u2014 Safe Zone")), ((_stateRef$current24 = stateRef.current) === null || _stateRef$current24 === void 0 ? void 0 : _stateRef$current24._sleeping) && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -27807,7 +27807,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 11,
       fontWeight: 700,
       color: '#fff',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       letterSpacing: '.03em',
       paddingRight: 16
     }
@@ -27849,7 +27849,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       fontSize: 40,
       fontWeight: 900,
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       color: '#f5c542',
       textShadow: '0 0 30px rgba(245,197,66,.8), 0 0 60px rgba(245,197,66,.4), 0 2px 4px rgba(0,0,0,.6)',
       letterSpacing: '.15em'
@@ -28033,7 +28033,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 14,
       fontWeight: 800,
       letterSpacing: '.08em',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       color: function (_stateRef$current32, _ELEMENTS$z$element4) {
         var z = ZONES[((_stateRef$current32 = stateRef.current) === null || _stateRef$current32 === void 0 ? void 0 : _stateRef$current32.currentZone) || 'town'];
         return z !== null && z !== void 0 && z.element ? (_ELEMENTS$z$element4 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element4 === void 0 ? void 0 : _ELEMENTS$z$element4.color : '#e8eaf8';
@@ -28072,7 +28072,7 @@ export var BroTown = function BroTown(_ref0) {
         zIndex: 18,
         fontSize: 9,
         fontWeight: 700,
-        fontFamily: 'VT323,monospace',
+        fontFamily: 'Atkinson Hyperlegible,sans-serif',
         background: 'rgba(234,88,12,.25)',
         padding: '3px 12px',
         borderRadius: 6,
@@ -28102,7 +28102,7 @@ export var BroTown = function BroTown(_ref0) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        fontFamily: 'VT323,monospace',
+        fontFamily: 'Atkinson Hyperlegible,sans-serif',
         color: '#f5c542',
         marginBottom: 2
       }
@@ -29436,7 +29436,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 10,
         fontWeight: 700,
         cursor: 'pointer',
-        fontFamily: 'VT323,monospace',
+        fontFamily: 'Atkinson Hyperlegible,sans-serif',
         letterSpacing: '.05em'
       },
       onTouchStart: function onTouchStart(ev) {
@@ -29986,7 +29986,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: 'var(--txt)',
       marginBottom: 6,
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, gatherMini.skill === 'woodcutting' ? '🪓' : gatherMini.skill === 'fishing' ? '🎣' : '⛏️', " TAP when the bar hits the green zone!"), function (_gatherMini$node) {
     var elapsed = (Date.now() - gatherMini.started) / 1000;
@@ -30211,7 +30211,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 800,
       cursor: 'pointer',
       width: '100%',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Atkinson Hyperlegible,sans-serif',
       letterSpacing: '.05em'
     }
   }, "\u26A1 STRIKE!")), fishingMini && /*#__PURE__*/React.createElement(FishingMinigame, {
@@ -31329,7 +31329,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 8,
         fontWeight: 700,
         color: 'rgba(255,255,255,.6)',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Atkinson Hyperlegible,sans-serif'
       }
     }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || slot), elemCol && React.createElement('span', {
       style: {
@@ -31834,7 +31834,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       cursor: 'pointer',
       flexShrink: 0,
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Atkinson Hyperlegible,sans-serif'
     }
   }, "Send")));
 };
