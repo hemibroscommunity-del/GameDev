@@ -1,4 +1,4 @@
-/* ═══ GAME LOOP — Canvas rendering + simulation ═══ */
+﻿/* ═══ GAME LOOP — Canvas rendering + simulation ═══ */
 /* Bulk extracted from index.html lines 11448-22244 */
 /* This is the main useEffect body that runs the game loop. */
 /* It receives all closure dependencies as a context object. */
@@ -2199,7 +2199,7 @@ export function setupGameLoop(ctx) {
                 /* attack at 40px range */
                 /* Pet deals 15% of player weapon damage, scales with pet level */
                 var petLvl = pet.level || 1;
-                var pDmgBase = S.rpg ? calcWeaponDmg((activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) || 'greatsword', S.rpg.power || 0, (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.tierMult) || 1) : 5;
+                var pDmgBase = S.rpg ? calcWeaponDmg((activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) || 'greatsword', S.rpg || {}, (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.tierMult) || 1) : 5;
                 var petDmg = Math.max(1, Math.ceil(pDmgBase * 0.15 * (1 + petLvl * 0.02)));
                 nearestM.curHp -= petDmg;
                 S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
@@ -2345,7 +2345,7 @@ export function setupGameLoop(ctx) {
           /* §4.4 Weapon Damage — uses new stat system */
           var _activeWpn = getActiveWeapon(_R6);
           var wpnType = WEAPON_TYPES[_activeWpn.type] || WEAPON_TYPES.greatsword;
-          var pDmg = calcWeaponDmg(_activeWpn.type, _R6.power, _activeWpn.tierMult);
+          var pDmg = calcWeaponDmg(_activeWpn.type, _R6 || {}, _activeWpn.tierMult);
           /* Snapshot the un-modified base — the "block N" popup compares
              the final dmg against this so any negative modifier (curse,
              level-diff scaling, future debuffs) shows up without needing
@@ -3543,10 +3543,10 @@ export function setupGameLoop(ctx) {
                   S._hitStopDuration = 25;
                   S._hitStop = Date.now() + 25;
                 }
-                /* Knockback — §Creative Vision: proportional to hit weight.
-                   Special attacks knock back ~3x (10 → 30) for the heavy-hit feel. */
+                /* Knockback — v2.3.110 user-bumped: substantial normal
+                   knockback (30 px), 1.5x on crit, 2x on special. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                var kbForce = S._specialAttack ? 30 : isCrit ? 14 : 6;
+                var kbForce = S._specialAttack ? 60 : isCrit ? 45 : 30;
                 /* Collision adds extra knockback */
                 var collisionKb = collisionResult ? 4 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);

@@ -4480,17 +4480,27 @@ export function calcMaxMana(mind) {
   return 100 + mind * 3.5;
 }
 
-/* §4.4 Weapon Damage */
-export function calcWeaponDmg(weaponType, statVal, tierMult) {
+/* §4.4 Weapon Damage.  Second arg accepts either:
+   - a number (the legacy stat value -- treated as raw input), OR
+   - an rpg object (preferred) -- function picks the correct stat
+     for weaponType via EQUIP_STAT_MAP (POW melee, AGI bow, MIND staff).
+   v2.3.110: object form added because every legacy caller was passing
+   rpg.power regardless of weapon type, which left bow + staff scaling
+   off POW even after v2.3.109 mapped them to AGI/MIND in
+   EQUIP_STAT_MAP.  Special attacks reading the wrong stat is what
+   caused staff specials to land below the WeaponSwapBar's displayed
+   range. */
+export function calcWeaponDmg(weaponType, statValOrRpg, tierMult) {
   var w = WEAPON_TYPES[weaponType];
+  var statVal;
+  if (statValOrRpg && typeof statValOrRpg === 'object') {
+    var statKey = EQUIP_STAT_MAP[weaponType] || 'power';
+    statVal = statValOrRpg[statKey] || 0;
+  } else {
+    statVal = statValOrRpg || 0;
+  }
   var base = (w.base + statVal * 0.8) * tierMult;
-  /* v2.3.109: every weapon now rolls inside a damage range.  Variance
-     decreases from magic -> melee -> archery per user request:
-       staff (magic):   0.5x – 1.5x   range 1.0  (widest)
-       sword/greatsword:0.75x – 1.25x range 0.5  (mid)
-       bow (archery):   0.6x – 0.8x   range 0.2  (tightest; same
-                                     avg 0.7x as the prior flat 0.7x
-                                     bow multiplier in gameLoop). */
+  /* Per-type variance: staff widest, melee mid, bow tightest. */
   if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.0);
   if (weaponType === 'bow')    return base * (0.6  + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);

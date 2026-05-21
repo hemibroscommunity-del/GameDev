@@ -16,7 +16,7 @@ import { ZONE_SHARDS } from '../../data/shards.js';
    type). Loaded async — entries appear in the registry once each PNG is
    ready. Until then, popups render text-only and the icon is skipped. */
 const POPUP_ICONS = {};
-const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell'];
+const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
 Promise.all(POPUP_ICON_KEYS.map((k) =>
   Assets.load('/icons/popups/' + k + '.png').then((tex) => { POPUP_ICONS[k] = tex; })
 )).catch((err) => console.warn('[popup-icons] load failed', err));

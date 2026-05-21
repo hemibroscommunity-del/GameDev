@@ -2992,7 +2992,11 @@ export var BroTown = function BroTown(_ref0) {
               } catch (e) {}
               S.dmgNumbers.push({
                 x: S.player.x, y: S.player.y - 20,
-                text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c', ts: Date.now()
+                text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c',
+                /* v2.3.110: heart glyph alongside "-N" popup so the
+                   loss-of-HP intent reads instantly. */
+                iconKey: 'heart',
+                ts: Date.now()
               });
               for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
                 x: S.player.x, y: S.player.y,
@@ -6693,7 +6697,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* attack at 40px range */
                 /* Pet deals 15% of player weapon damage, scales with pet level */
                 var petLvl = pet.level || 1;
-                var pDmgBase = S.rpg ? calcWeaponDmg((activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) || 'greatsword', S.rpg.power || 0, (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.tierMult) || 1) : 5;
+                var pDmgBase = S.rpg ? calcWeaponDmg((activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) || 'greatsword', S.rpg || {}, (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.tierMult) || 1) : 5;
                 var petDmg = Math.max(1, Math.ceil(pDmgBase * 0.15 * (1 + petLvl * 0.02)));
                 nearestM.curHp -= petDmg;
                 S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
@@ -6839,7 +6843,7 @@ export var BroTown = function BroTown(_ref0) {
           /* §4.4 Weapon Damage — uses new stat system */
           var _activeWpn = getActiveWeapon(_R6);
           var wpnType = WEAPON_TYPES[_activeWpn.type] || WEAPON_TYPES.greatsword;
-          var pDmg = calcWeaponDmg(_activeWpn.type, _R6.power, _activeWpn.tierMult);
+          var pDmg = calcWeaponDmg(_activeWpn.type, _R6 || {}, _activeWpn.tierMult);
           /* Snapshot the un-modified base — the "block N" popup compares
              the final dmg against this so any negative modifier (curse,
              level-diff scaling, future debuffs) shows up without needing
@@ -7735,6 +7739,7 @@ export var BroTown = function BroTown(_ref0) {
                         y: P.y - 30,
                         text: '-' + dmgTaken,
                         color: '#ff5e6c',
+                        iconKey: 'heart',
                         ts: Date.now()
                       });
                     }
@@ -8456,13 +8461,13 @@ export var BroTown = function BroTown(_ref0) {
                   S._hitStop = Date.now() + 25;
                 }
                 /* Knockback — §Creative Vision: proportional to hit weight.
-                   Special attacks knock back ~3x (10 → 30) for the heavy-hit feel. */
+                   Special attacks knock back ~2x (per user v2.3.110:
+                   "Sword hits make the monsters bounce back a
+                   substantial amount.  Special attacks do double that
+                   bounce back amount.").  Crit sits between normal
+                   and special. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                /* +50% knockback across the board (v2.3.15) -- the
-                   prior numbers (30/14/6 + 4) read as a polite tap;
-                   45/21/9 + 6 makes hits feel like they actually
-                   send the monster. */
-                var kbForce = S._specialAttack ? 45 : isCrit ? 21 : 9;
+                var kbForce = S._specialAttack ? 60 : isCrit ? 45 : 30;
                 /* Collision adds extra knockback */
                 var collisionKb = collisionResult ? 6 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
@@ -9983,7 +9988,7 @@ export var BroTown = function BroTown(_ref0) {
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
             var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : { element1: null, element2: null };
-            var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg.power || 0, activeWpn.tierMult || 1) : 10;
+            var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg || {}, activeWpn.tierMult || 1) : 10;
             /* Derive element/type early so kill logic can use them */
             var projElem = a.element || (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1);
             var isStaffProj = (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) === 'staff' || a.isSpecial && ((_S$rpg15 = S.rpg) === null || _S$rpg15 === void 0 ? void 0 : _S$rpg15.activeSlot) === 'staff';
@@ -11097,7 +11102,7 @@ export var BroTown = function BroTown(_ref0) {
     S._hasDodged = true;
     /* Hit on arrival — reduced damage, applies element_1 status (setup). */
     var activeWpn = getActiveWeapon(R);
-    var pDmg = calcWeaponDmg(activeWpn.type || 'sword', R.power || 0, activeWpn.tierMult || 1);
+    var pDmg = calcWeaponDmg(activeWpn.type || 'sword', R || {}, activeWpn.tierMult || 1);
     var lDmg = Math.max(1, Math.round(pDmg * (LUNGE_DAMAGE_MULT || 0.6)));
     setTimeout(function () {
       if (!lt.alive) return;
@@ -11140,7 +11145,7 @@ export var BroTown = function BroTown(_ref0) {
     var P = S.player;
     var aimAng = Math.atan2(lt.y - P.y, lt.x - P.x);
     var activeWpn = getActiveWeapon(R);
-    var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R.power || 0, activeWpn.tierMult || 1);
+    var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R || {}, activeWpn.tierMult || 1);
     var shotDmg = Math.max(1, Math.round(pDmg * (RETREAT_SHOT_DAMAGE_MULT || 0.5)));
     var slot = R.activeSlot || 'ranged';
     var isStaff = slot === 'staff';
@@ -11328,7 +11333,7 @@ export var BroTown = function BroTown(_ref0) {
          arrow alive after each hit so it travels through every monster
          it overlaps -- hitIds prevents double-hits on the same target. */
       if (!S.arrows) S.arrows = [];
-      var wpnDmg = calcWeaponDmg(activeWpn.type, R.power, activeWpn.tierMult);
+      var wpnDmg = calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult);
       S.arrows.push({
         ang: aimAng,
         dist: 14,
@@ -11350,7 +11355,7 @@ export var BroTown = function BroTown(_ref0) {
          the hit handler picks the 'spell' popup icon (vs 'arrow' for
          bows) and the projectile renders as magic, not a physical arrow. */
       if (!S.arrows) S.arrows = [];
-      var _wpnDmg = calcWeaponDmg(activeWpn.type, R.power, activeWpn.tierMult);
+      var _wpnDmg = calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult);
       for (var si = -1; si <= 1; si++) {
         S.arrows.push({
           ang: aimAng + si * 0.25,
@@ -18325,7 +18330,7 @@ export var BroTown = function BroTown(_ref0) {
       marginTop: 8,
       lineHeight: 1.6
     }
-  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState.power, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.ferocity || 0) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.ferocity || 0).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
+  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.ferocity || 0) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.ferocity || 0).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setBuildingPanel(null);
@@ -26478,7 +26483,7 @@ export var BroTown = function BroTown(_ref0) {
     var wt = WEAPON_TYPES[wpn.type];
     var rt = RARITY_TIERS[wpn.tier];
     var isActive = rpgState.activeSlot === slot || slot === 'melee' && rpgState.activeSlot !== 'ranged';
-    var dmg = Math.round(calcWeaponDmg(wpn.type, rpgState.power || 0, wpn.tierMult));
+    var dmg = Math.round(calcWeaponDmg(wpn.type, rpgState || {}, wpn.tierMult));
     return /*#__PURE__*/React.createElement("div", {
       key: slot,
       style: {
@@ -26835,8 +26840,8 @@ export var BroTown = function BroTown(_ref0) {
     var srt = RARITY_TIERS[sw.tier];
     var isRanged = (swt === null || swt === void 0 ? void 0 : swt.type) === 'ranged';
     var current = isRanged ? rpgState.rangedWeapon : rpgState.weapon;
-    var stashDmg = Math.round(calcWeaponDmg(sw.type, rpgState.power || 0, sw.tierMult));
-    var curDmg = current ? Math.round(calcWeaponDmg(current.type, rpgState.power || 0, current.tierMult)) : 0;
+    var stashDmg = Math.round(calcWeaponDmg(sw.type, rpgState || {}, sw.tierMult));
+    var curDmg = current ? Math.round(calcWeaponDmg(current.type, rpgState || {}, current.tierMult)) : 0;
     var dmgDiff = stashDmg - curDmg;
     var stashSpd = (swt === null || swt === void 0 ? void 0 : swt.speed) || 1;
     var curSpd = current ? ((_WEAPON_TYPES$current = WEAPON_TYPES[current.type]) === null || _WEAPON_TYPES$current === void 0 ? void 0 : _WEAPON_TYPES$current.speed) || 1 : 1;

@@ -57,8 +57,9 @@ const readState = () => {
 const BUTTON_SIZE = 40;
 const GAP = 4;
 const PADDING = 4;
-// Pill centre lines up with the chat icon's old centre (calc(50% - 140px)).
-const PILL_CENTER_X = 'calc(50% - 140px)';
+// Pill centre.  v2.3.110: nudged right from calc(50% - 140px) to
+// calc(50% - 80px) per user feedback ("got bumped too far left").
+const PILL_CENTER_X = 'calc(50% - 80px)';
 // Sit just above the dashboard top, below the left joystick.  The
 // joystick zone bottom is at calc(var(--dash-h) + 70px) so the combined
 // buttons+readout pill needs to fit in the ~70px gap between the
@@ -163,9 +164,14 @@ export const WeaponSwapBar = () => {
         border: '1px solid rgba(255,255,255,0.18)',
         borderRadius: 16,
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-        overflow: 'hidden',
+        /* v2.3.110: was overflow: 'hidden' + button-row min width, which
+           clipped the DMG/DPS readout once the range strings got wide
+           (e.g. "DMG 99-180 · DPS 65.4").  Keep the rounded corners on
+           the button row + the readout row's own backdrop instead, and
+           let the pill grow to fit its widest child. */
         zIndex: 35,
         touchAction: 'none',
+        minWidth: 200,
       }}
     >
       {/* Buttons row */}
@@ -233,11 +239,13 @@ export const WeaponSwapBar = () => {
 
       {/* DMG / DPS row — connected beneath the buttons, single line.
           Pointer-events: none so it never blocks the buttons above or
-          the joystick beside it. */}
+          the joystick beside it.  borderBottomLeftRadius/Right round
+          the pill's bottom now that the outer container no longer
+          uses overflow: 'hidden' (was clipping wide range strings). */}
       <div
         style={{
           borderTop: '1px solid rgba(255,255,255,0.12)',
-          padding: '2px 8px 3px',
+          padding: '2px 12px 3px',
           fontFamily: 'Atkinson Hyperlegible, sans-serif',
           fontSize: 14,
           lineHeight: 1,
@@ -246,6 +254,8 @@ export const WeaponSwapBar = () => {
           textAlign: 'center',
           whiteSpace: 'nowrap',
           pointerEvents: 'none',
+          borderBottomLeftRadius: 16,
+          borderBottomRightRadius: 16,
         }}
       >
         <span style={{ color: '#8890b8' }}>DMG </span>{dmgText}

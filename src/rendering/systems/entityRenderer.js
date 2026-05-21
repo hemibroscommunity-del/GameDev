@@ -1770,10 +1770,14 @@ export class EntityRenderer {
     const { dir, mirror } = resolveDirection(facing);
     const facingIdx = SECTORS.indexOf(facing);   // 0..7: E,SE,S,SW,W,NW,N,NE
     /* Per-direction body scale.  Hit-east is 0.88 (source frames the
-       character bigger); jog/stand-NE is 1.03 (slightly smaller source). */
-    let bodyScale = 1.0;
-    if (dir === 'east' && pose === 'hit') bodyScale = 0.88;
-    else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03;
+       character bigger); jog/stand-NE is 1.03 (slightly smaller source).
+       v2.3.110: local player rendered +50% larger per user visual
+       test request -- multiplier applied uniformly so the per-direction
+       0.88 / 1.03 corrections still apply. */
+    const LOCAL_SCALE = 1.5;
+    let bodyScale = 1.0 * LOCAL_SCALE;
+    if (dir === 'east' && pose === 'hit') bodyScale = 0.88 * LOCAL_SCALE;
+    else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03 * LOCAL_SCALE;
     const spritesAvailable = hasPose(pose) || hasPose('stand');
     if (spritesAvailable) {
       const spriteBody = display._spriteBody;

@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { xpRequired } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, WEAPON_TYPES } from '../../data/gameSystems.js';
+import { skillXpRequired } from '../../data/items.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { InventoryPanel }    from './dash/InventoryPanel.jsx';
 import { SelfPanel }         from './dash/SelfPanel.jsx';
@@ -509,7 +510,10 @@ export const BottomDashboard = () => {
                 </div>
               </div>
 
-              {/* Middle column — build (5 character stats with progression). */}
+              {/* Middle column — Build (5 character stats with
+                  progression).  v2.3.110: 2x3 grid (5 stat cells + 1
+                  derived-stats cell summarising HP/MAG/RNG/MEL/STA
+                  -- the actual numbers each stat level produces). */}
               <div style={{
                 flex: 1,
                 display: 'flex',
@@ -517,25 +521,42 @@ export const BottomDashboard = () => {
                 minWidth: 0,
               }}>
                 <ColHeader>Build</ColHeader>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 2 }}>
+                <div style={{
+                  flex: 1,
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gridTemplateRows: 'repeat(3, 1fr)',
+                  gap: 4,
+                  minHeight: 0,
+                }}>
                   {CHAR_STATS.map(s => {
                     const val = R[s.key] ?? 0;
                     const prog = (R._buildProg && R._buildProg[s.key]) || 0;
                     const pct = Math.max(0, Math.min(100, (prog / buildThresh) * 100));
+                    /* Per-stat bonus text used in the tooltip -- shows
+                       the concrete number this stat is producing. */
+                    let bonusTxt = '';
+                    if (s.key === 'vitality')       bonusTxt = `${calcMaxHp(R.level || 1, val)} HP`;
+                    else if (s.key === 'endurance') bonusTxt = `${R.maxStamina || calcMaxStam(val)} STA`;
+                    else if (s.key === 'power')     bonusTxt = `+${Math.round(val * 0.8)} melee dmg`;
+                    else if (s.key === 'agility')   bonusTxt = `+${Math.round(val * 0.8)} bow dmg`;
+                    else if (s.key === 'mind')      bonusTxt = `+${Math.round(val * 0.8)} magic dmg`;
+                    const tipFull = `${s.label} ${val} → ${bonusTxt}. ${s.tip}`;
                     return (
                       <div key={s.key}
-                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(s.tip); }}
-                        title={s.tip}
+                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(tipFull); }}
+                        title={tipFull}
                         style={{
                           position: 'relative',
-                          height: 22,
-                          borderRadius: 3,
+                          borderRadius: 4,
                           background: 'rgba(255,255,255,0.04)',
                           border: '1px solid rgba(255,255,255,0.06)',
                           overflow: 'hidden',
                           cursor: 'pointer',
                           touchAction: 'none',
+                          minHeight: 0,
                         }}>
+                        {/* Inside-cell fill (existing visual) */}
                         <div style={{
                           position: 'absolute',
                           inset: 0,
@@ -543,22 +564,23 @@ export const BottomDashboard = () => {
                           background: 'linear-gradient(90deg, rgba(91,82,255,0.50), rgba(123,113,255,0.40))',
                           transition: 'width .15s linear',
                         }} />
+                        {/* Icon + value */}
                         <div style={{
                           position: 'absolute',
                           inset: 0,
+                          paddingBottom: 3,
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          padding: '0 6px',
-                          fontSize: 15,
+                          padding: '0 8px 3px',
                         }}>
                           <img
                             src={s.iconSrc}
                             alt={s.label}
                             draggable={false}
                             style={{
-                              width: 18,
-                              height: 18,
+                              width: 26,
+                              height: 26,
                               objectFit: 'contain',
                               imageRendering: s.pixelated ? 'pixelated' : 'auto',
                               pointerEvents: 'none',
@@ -566,11 +588,74 @@ export const BottomDashboard = () => {
                               flexShrink: 0,
                             }}
                           />
-                          <span style={{ color: COL.text, fontWeight: 700 }}>{val}</span>
+                          <span style={{ color: COL.text, fontWeight: 700, fontSize: 16 }}>{val}</span>
+                        </div>
+                        {/* Tiny XP-to-next-level strip at bottom */}
+                        <div style={{
+                          position: 'absolute',
+                          left: 0, right: 0, bottom: 0,
+                          height: 2,
+                          background: 'rgba(255,255,255,0.06)',
+                        }}>
+                          <div style={{
+                            width: pct + '%',
+                            height: '100%',
+                            background: 'rgba(91,82,255,0.85)',
+                            transition: 'width .15s linear',
+                          }} />
                         </div>
                       </div>
                     );
                   })}
+                  {/* Derived-stats cell — compact 5-line readout of the
+                      actual numbers each build level is producing.
+                      Used by the user to read "what does VIT 2 give me?". */}
+                  {(() => {
+                    const maxHp = R.maxHp || calcMaxHp(R.level || 1, R.vitality || 0);
+                    const maxSta = R.maxStamina || calcMaxStam(R.endurance || 0);
+                    const wMel = WEAPON_TYPES.sword;
+                    const wRng = WEAPON_TYPES.bow;
+                    const wMag = WEAPON_TYPES.staff;
+                    const melDmg = Math.round((wMel.base + (R.power || 0) * 0.8));
+                    const rngDmg = Math.round((wRng.base + (R.agility || 0) * 0.8));
+                    const magDmg = Math.round((wMag.base + (R.mind || 0) * 0.8));
+                    const rows = [
+                      { label: 'HP',  val: maxHp,   color: COL.hp },
+                      { label: 'MEL', val: melDmg,  color: COL.text },
+                      { label: 'RNG', val: rngDmg,  color: COL.text },
+                      { label: 'MAG', val: magDmg,  color: COL.text },
+                      { label: 'STA', val: maxSta,  color: COL.stam },
+                    ];
+                    return (
+                      <div key="_derived"
+                        style={{
+                          position: 'relative',
+                          borderRadius: 4,
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          padding: '2px 6px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          minHeight: 0,
+                          fontSize: 9,
+                          lineHeight: 1.05,
+                          touchAction: 'none',
+                        }}>
+                        {rows.map((r) => (
+                          <div key={r.label} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}>
+                            <span style={{ color: COL.muted, fontWeight: 700, letterSpacing: '.04em' }}>{r.label}</span>
+                            <span style={{ color: r.color, fontWeight: 800 }}>{r.val}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -590,12 +675,17 @@ export const BottomDashboard = () => {
                   gap: 2,
                 }}>
                   {LIFE_SKILLS.map(sk => {
-                    const lvl = (R.lifeSkills && R.lifeSkills[sk.key] && R.lifeSkills[sk.key].level) || 0;
+                    const sk_st = (R.lifeSkills && R.lifeSkills[sk.key]) || {};
+                    const lvl = sk_st.level || 0;
+                    const xp = sk_st.xp || 0;
+                    const need = skillXpRequired(lvl);
+                    const sPct = need > 0 ? Math.max(0, Math.min(100, (xp / need) * 100)) : 0;
                     return (
                       <div key={sk.key}
-                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${sk.label} · Lv ${lvl} — ${sk.tip.split('—').slice(1).join('—').trim()}`); }}
+                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${sk.label} · Lv ${lvl} (${Math.round(sPct)}% to next) — ${sk.tip.split('—').slice(1).join('—').trim()}`); }}
                         title={sk.tip}
                         style={{
+                          position: 'relative',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -608,9 +698,25 @@ export const BottomDashboard = () => {
                           minHeight: 0,
                           cursor: 'pointer',
                           touchAction: 'none',
+                          overflow: 'hidden',
                         }}>
                         <span style={{ fontSize: 15, lineHeight: 1 }}>{sk.icon}</span>
                         <span style={{ color: COL.muted, fontWeight: 700, fontSize: 15 }}>{lvl}</span>
+                        {/* Tiny XP-to-next-level strip at the bottom (v2.3.110). */}
+                        <div style={{
+                          position: 'absolute',
+                          left: 0, right: 0, bottom: 0,
+                          height: 2,
+                          background: 'rgba(255,255,255,0.06)',
+                          pointerEvents: 'none',
+                        }}>
+                          <div style={{
+                            width: sPct + '%',
+                            height: '100%',
+                            background: 'rgba(61,220,151,0.85)',
+                            transition: 'width .15s linear',
+                          }} />
+                        </div>
                       </div>
                     );
                   })}
