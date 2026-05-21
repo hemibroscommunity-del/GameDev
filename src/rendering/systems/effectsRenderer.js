@@ -340,7 +340,13 @@ export class EffectsRenderer {
         const t = dmg.text || '';
         let displayColor = dmg.color || '#ffffff';
         if (/^[^A-Za-z+]*-?\d+$/.test(t)) {
-          displayColor = '#ff8c1a';
+          /* v2.3.103 user request: combat damage in white reads more
+             clearly than the previous orange (#ff8c1a) against most
+             zone backgrounds.  Push sites still pass their own
+             dmg.color for crits / specials / status tints, but the
+             generic damage pattern wins here so the bulk of fight
+             popups are uniformly white. */
+          displayColor = '#ffffff';
         } else if (/^\+\d+\s*XP$/.test(t)) {
           displayColor = '#60a5fa';
         } else if (/^\+\d+\s*G$/.test(t)) {
@@ -1485,15 +1491,19 @@ export class EffectsRenderer {
       }
     }
 
-    /* Orphan sweep — anything we've rendered before that's no longer
+    /* Orphan sweep -- anything we've rendered before that's no longer
        in the active loot list (picked up, despawned by gameplay code,
-       etc.) gets its Pixi children disposed. */
-    if (this._knownLoot.size > activeLoot.size) {
-      for (const l of this._knownLoot) {
-        if (!activeLoot.has(l)) {
-          this._disposeLoot(l);
-          this._knownLoot.delete(l);
-        }
+       removed via a non-_disposeLoot path, etc.) gets its Pixi
+       children disposed.  Previously gated on
+       `_knownLoot.size > activeLoot.size`, but that gate misses the
+       common "old pile despawned, new pile spawned same tick" case --
+       the counts match so the sweep was skipped and the old sprites
+       stuck on the ground (user-reported v2.3.103 "stuck coin
+       sprite").  Cheap to iterate every frame; the set is small. */
+    for (const l of this._knownLoot) {
+      if (!activeLoot.has(l)) {
+        this._disposeLoot(l);
+        this._knownLoot.delete(l);
       }
     }
   }

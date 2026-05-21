@@ -2893,6 +2893,29 @@ export var BroTown = function BroTown(_ref0) {
                 if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (out of range)', { monsterId: payload.monsterId, dist: Math.round(_atkDist) }); } catch (e) {}
                 break;
               }
+              /* Server-side block resolution (v2.3.103+): worker fires
+                 monster_attack with blocked:true + staminaDrain when
+                 ps.blocking was set at attack time.  Show the "Blocked!"
+                 popup, push the floating stamina-cost number, skip the
+                 HP-damage path entirely.  Player_state will arrive
+                 shortly after to mirror the authoritative stamina value. */
+              if (payload.blocked) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 20,
+                  text: 'Blocked!', color: '#60a5fa', ts: Date.now()
+                });
+                var _staminaDrainBlock = typeof payload.staminaDrain === 'number' ? payload.staminaDrain : 15;
+                if (_staminaDrainBlock > 0) {
+                  S.dmgNumbers.push({
+                    x: S.player.x + 18, y: S.player.y - 4,
+                    text: '-' + _staminaDrainBlock,
+                    color: '#facc15', /* stamina yellow */
+                    ts: Date.now() + 1
+                  });
+                }
+                addBuildUse(R2, 'endurance', 3);
+                break;
+              }
               var mDmg = payload.dmg || 5;
               /* Per-variant damage multiplier + range gating.  Server
                  doesn't know about variants, so we apply the local
