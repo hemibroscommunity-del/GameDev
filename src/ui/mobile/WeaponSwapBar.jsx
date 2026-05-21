@@ -67,9 +67,8 @@ const PILL_CENTER_X = 'calc(50% - 130px)';
 // joystick zone bottom is at calc(var(--dash-h) + 70px) so the combined
 // buttons+readout pill needs to fit in the ~70px gap between the
 // dashboard's top edge and the joystick's bottom edge.
-// v2.3.114: bumped +6 px to clear the new thin XP strip pinned
-// flush above the dashboard (height 6 px).
-const PILL_BOTTOM = 'calc(var(--dash-h) + 12px)';
+// v2.3.115: XP strip grew 6 -> 8 px; pill bumped another 2 px to clear.
+const PILL_BOTTOM = 'calc(var(--dash-h) + 14px)';
 
 export const WeaponSwapBar = () => {
   const [state, setState] = useState(readState);

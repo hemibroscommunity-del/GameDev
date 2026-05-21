@@ -66,7 +66,7 @@ input{font-family:inherit}
   font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;
   -webkit-tap-highlight-color:transparent}
 .bt-emote-btn:active{background:rgba(91,82,255,.4);transform:scale(.9)}
-.bt-interact-prompt{position:fixed;left:calc(50% + 10px);bottom:calc(var(--dash-h) + 22px);transform:translateX(-50%);z-index:35;
+.bt-interact-prompt{position:fixed;left:calc(50% + 10px);bottom:calc(var(--dash-h) + 24px);transform:translateX(-50%);z-index:35;
   padding:8px 18px;background:rgba(0,0,0,.7);border:1.5px solid var(--pop);border-radius:10px;
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
@@ -208,7 +208,7 @@ input{font-family:inherit}
 /* Mining minigame — compact panel anchored bottom-centre like the
    woodchop/fishing minigames.  Stage on the left, slider on the right,
    STRIKE button below.  Sized to leave the dashboard accessible. */
-.bt-mining{position:fixed;left:50%;bottom:calc(var(--dash-h) + 56px);transform:translateX(-50%);z-index:100;background:linear-gradient(180deg,#3a3a3a 0%,#1a1a1a 100%);border:2px solid rgba(0,0,0,.55);border-radius:8px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.5);font-family:'Atkinson Hyperlegible',sans-serif;touch-action:none;padding:10px}
+.bt-mining{position:fixed;left:50%;bottom:calc(var(--dash-h) + 58px);transform:translateX(-50%);z-index:100;background:linear-gradient(180deg,#3a3a3a 0%,#1a1a1a 100%);border:2px solid rgba(0,0,0,.55);border-radius:8px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.5);font-family:'Atkinson Hyperlegible',sans-serif;touch-action:none;padding:10px}
 .bt-mining-row{display:flex;align-items:center;justify-content:center;gap:8px}
 .bt-mining-stage{position:relative;border:2px solid #6b6b6b;border-radius:6px;overflow:hidden;background:#1a1a1a;flex-shrink:0}
 .bt-mining-stage video,.bt-mining-stage img{display:block}

@@ -46,22 +46,22 @@ const COL = {
 // every browser (the bytes haven't changed -- the suffix just busts
 // the URL-based cache key).
 const BAR_IMG = {
-  hp:   '/icons/ui/bar-hp.png?v=2.3.68',
-  mp:   '/icons/ui/bar-mp.png?v=2.3.68',
-  stam: '/icons/ui/bar-stam.png?v=2.3.68',
-  xp:   '/icons/ui/bar-xp.png?v=2.3.68',
+  hp:   '/icons/ui/bar-hp.png?v=2.3.115',
+  mp:   '/icons/ui/bar-mp.png?v=2.3.115',
+  stam: '/icons/ui/bar-stam.png?v=2.3.115',
+  xp:   '/icons/ui/bar-xp.png?v=2.3.115',
 };
 
 // Toolbar icon source.  Each glyph is a separate PNG sliced from the
 // user-supplied mockup screenshots by tools/slice_toolbar_icons.py
 // (first batch) and tools/slice_more_icons.py (second batch).
 const ICON_SRC = {
-  inventory: '/icons/ui/bag.png?v=2.3.68',
-  friends:   '/icons/ui/friends.png?v=2.3.68',
-  codex:     '/icons/ui/codex.png?v=2.3.68',
-  journey:   '/icons/ui/journey.png?v=2.3.68',
-  map:       '/icons/ui/map.png?v=2.3.68',
-  more:      '/icons/ui/more.png?v=2.3.68',
+  inventory: '/icons/ui/bag.png?v=2.3.115',
+  friends:   '/icons/ui/friends.png?v=2.3.115',
+  codex:     '/icons/ui/codex.png?v=2.3.115',
+  journey:   '/icons/ui/journey.png?v=2.3.115',
+  map:       '/icons/ui/map.png?v=2.3.115',
+  more:      '/icons/ui/more.png?v=2.3.115',
 };
 
 // 5 Tier-1 character stats shown in the middle dashboard column.
@@ -371,10 +371,13 @@ export const BottomDashboard = () => {
         position: 'fixed',
         left: 0, right: 0,
         bottom: 'var(--dash-h)',
-        height: 6,
+        /* v2.3.115: height 6 -> 8 + inner shadow so the XP strip reads
+           as a deliberate UI element rather than a thin trim line. */
+        height: 8,
         background: 'rgba(0,0,0,0.55)',
         borderTop: '1px solid rgba(255,255,255,0.08)',
         borderBottom: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: 'inset 0 -1px 2px rgba(0,0,0,0.35)',
         zIndex: 29,
         pointerEvents: 'none',
         boxSizing: 'border-box',
