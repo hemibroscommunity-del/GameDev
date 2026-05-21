@@ -98,8 +98,9 @@ const LIFE_SKILLS = [
 // columns.  Centered above its column.
 const ColHeader = ({ children }) => (
   <div style={{
-    fontSize: 15,
-    color: '#8890b8',
+    /* v2.3.114: -1 fontSize + white text per "everything white". */
+    fontSize: 14,
+    color: '#E8EAF8',
     letterSpacing: '.08em',
     textTransform: 'uppercase',
     padding: '0 2px 2px',
@@ -265,8 +266,9 @@ const IconButton = ({ glyph, label, active, onClick }) => {
         }}
       />
       <span style={{
-        fontSize: 15,
-        color: active ? '#a8a4ff' : COL.muted,
+        /* v2.3.114: -1 fontSize + inactive labels white. */
+        fontSize: 14,
+        color: active ? '#a8a4ff' : COL.text,
         letterSpacing: '.04em',
       }}>{label}</span>
     </button>
@@ -354,9 +356,36 @@ export const BottomDashboard = () => {
 
   const Active = active?.Component;
 
+  /* v2.3.114: thin XP strip pinned across the screen flush above the
+     bottom dashboard.  Replaces the XP Bar that used to live in the
+     bottom-left column so the column can fully host the derived
+     combat stats.  zIndex 29 keeps it under the interact-prompt (35)
+     and the WeaponSwapBar (35) so it's purely decorative. */
+  const xpPct = xpNeeded > 0 ? Math.max(0, Math.min(100, (xp / xpNeeded) * 100)) : 0;
+
   return (
     <>
       <Tooltip text={tooltip} onClose={() => setTooltip('')} />
+
+      <div style={{
+        position: 'fixed',
+        left: 0, right: 0,
+        bottom: 'var(--dash-h)',
+        height: 6,
+        background: 'rgba(0,0,0,0.55)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 29,
+        pointerEvents: 'none',
+        boxSizing: 'border-box',
+      }}>
+        <div style={{
+          width: xpPct + '%',
+          height: '100%',
+          background: 'linear-gradient(90deg, #3ddc97, #5be3aa)',
+          transition: 'width .15s linear',
+        }} />
+      </div>
 
       {/* Gold HUD — pinned to upper-right.  Always visible, even when
           a panel is open. */}
@@ -499,14 +528,15 @@ export const BottomDashboard = () => {
                   const melDmg = Math.round((wMel.base + (R.power || 0) * 0.8));
                   const rngDmg = Math.round((wRng.base + (R.agility || 0) * 0.8));
                   const magDmg = Math.round((wMag.base + (R.mind || 0) * 0.8));
+                  /* v2.3.114: full-word labels per user request.
+                     White label + white value (STA dropped its gold
+                     accent since the user wants everything white). */
                   const rows = [
-                    /* v2.3.112: HP value renders white (was COL.hp red,
-                       which read as a low-HP warning even at full pool). */
-                    { label: 'HP',  val: maxHp,   color: COL.text, tip: `Max HP at Vitality ${R.vitality || 0}.` },
-                    { label: 'MEL', val: melDmg,  color: COL.text, tip: `Melee weapon base damage = sword.base + Power x 0.8.  Current POW ${R.power || 0}.` },
-                    { label: 'RNG', val: rngDmg,  color: COL.text, tip: `Bow weapon base damage = bow.base + Agility x 0.8.  Current AGI ${R.agility || 0}.` },
-                    { label: 'MAG', val: magDmg,  color: COL.text, tip: `Staff weapon base damage = staff.base + Mind x 0.8.  Current MIN ${R.mind || 0}.` },
-                    { label: 'STA', val: maxSta,  color: COL.stam, tip: `Max Stamina at Endurance ${R.endurance || 0}.` },
+                    { label: 'Hitpoints', val: maxHp,  tip: `Max HP at Vitality ${R.vitality || 0}.` },
+                    { label: 'Melee Dmg', val: melDmg, tip: `Melee base damage = sword.base + Power x 0.8.  POW ${R.power || 0}.` },
+                    { label: 'Bow Dmg',   val: rngDmg, tip: `Bow base damage = bow.base + Agility x 0.8.  AGI ${R.agility || 0}.` },
+                    { label: 'Magic Dmg', val: magDmg, tip: `Staff base damage = staff.base + Mind x 0.8.  MIN ${R.mind || 0}.` },
+                    { label: 'Endurance', val: maxSta, tip: `Max Stamina at Endurance ${R.endurance || 0}.` },
                   ];
                   return (
                     <div style={{
@@ -530,19 +560,16 @@ export const BottomDashboard = () => {
                             cursor: 'pointer',
                             touchAction: 'none',
                           }}>
-                          <span style={{ color: COL.muted, fontWeight: 700, fontSize: 13, letterSpacing: '.04em' }}>{r.label}</span>
-                          <span style={{ color: r.color, fontWeight: 800, fontSize: 16 }}>{r.val}</span>
+                          <span style={{ color: COL.text, fontWeight: 700, fontSize: 12 }}>{r.label}</span>
+                          <span style={{ color: COL.text, fontWeight: 800, fontSize: 15 }}>{r.val}</span>
                         </div>
                       ))}
                     </div>
                   );
                 })()}
-                {/* XP bar still anchors the bottom of the column. */}
-                <div style={{ flexShrink: 0 }}>
-                  <Bar label="XP" cur={xp} max={xpNeeded} kind="xp"
-                    tip={`XP — combat experience. Fill to ${xpNeeded.toLocaleString()} to reach level ${level + 1}.`}
-                    onTip={setTooltip} />
-                </div>
+                {/* v2.3.114: XP Bar removed from the column -- it's now
+                    a thin strip pinned across the full screen above
+                    the dashboard band (see top of the return). */}
               </div>
 
               {/* Middle column — Build (5 character stats with
@@ -624,7 +651,7 @@ export const BottomDashboard = () => {
                               flexShrink: 0,
                             }}
                           />
-                          <span style={{ color: COL.text, fontWeight: 700, fontSize: 16 }}>{val}</span>
+                          <span style={{ color: COL.text, fontWeight: 700, fontSize: 15 }}>{val}</span>
                         </div>
                         {/* Tiny XP-to-next-level strip at bottom */}
                         <div style={{
@@ -702,8 +729,10 @@ export const BottomDashboard = () => {
                           touchAction: 'none',
                           overflow: 'hidden',
                         }}>
-                        <span style={{ fontSize: 15, lineHeight: 1 }}>{sk.icon}</span>
-                        <span style={{ color: COL.muted, fontWeight: 700, fontSize: 15 }}>{lvl}</span>
+                        <span style={{ fontSize: 14, lineHeight: 1 }}>{sk.icon}</span>
+                        {/* v2.3.114: white level number per user
+                            "Life Skills font to white". */}
+                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 14 }}>{lvl}</span>
                         {/* Tiny XP-to-next-level strip at the bottom (v2.3.110). */}
                         <div style={{
                           position: 'absolute',
