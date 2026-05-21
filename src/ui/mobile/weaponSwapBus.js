@@ -14,6 +14,13 @@ export const weaponSwapBus = {
     this.activeSlot = slot;
     const g = window._gameState && window._gameState.current;
     if (g && g.rpg) g.rpg.activeSlot = slot;
+    /* Mirror to the worker -- v2.3.98 bug: any subsequent player_state
+       (kill / loot credit / etc.) carries the worker's persisted
+       activeSlot and was reverting the client's local cycle.  Now the
+       worker stores the player's choice the moment it changes. */
+    if (g && g.channel) {
+      try { g.channel.send({ type: 'set_active_slot', payload: { slot } }); } catch (e) {}
+    }
     for (const fn of listeners) fn(slot);
   },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },

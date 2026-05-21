@@ -11792,6 +11792,14 @@ export var BroTown = function BroTown(_ref0) {
     var curIdx = slots.indexOf(S2.rpg.activeSlot || 'melee');
     var nextSlot = slots[(curIdx + 1) % slots.length];
     S2.rpg.activeSlot = nextSlot;
+    /* Tell the worker about the slot change so the next player_state
+       (which fires on every loot/kill/credit event and re-mirrors
+       persisted rpg fields) doesn't revert activeSlot to the stale
+       server value -- the v2.3.97 user-reported bug where killing with
+       bow snapped back to sword. */
+    if (S2.channel) {
+      try { S2.channel.send({ type: 'set_active_slot', payload: { slot: nextSlot } }); } catch (e) {}
+    }
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = nextSlot === 'melee' ? (_S2$rpg$weapon = S2.rpg.weapon) === null || _S2$rpg$weapon === void 0 ? void 0 : _S2$rpg$weapon.name : nextSlot === 'ranged' ? (_S2$rpg$rangedWeapon = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon === void 0 ? void 0 : _S2$rpg$rangedWeapon.name : 'Staff';
     S2.dmgNumbers.push({
