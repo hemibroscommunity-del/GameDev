@@ -331,9 +331,6 @@ export const BottomDashboard = () => {
   const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   const R = (S && S.rpg) || {};
 
-  const hp = R.hp ?? 0, maxHp = R.maxHp || 1;
-  const mp = R.mana ?? 0, maxMp = R.maxMana || 1;
-  const stam = R.stamina ?? 0, maxStam = R.maxStamina || 1;
   const level = R.level || 1;
   const xp = R.xp || 0;
   // Use the canonical xpRequired curve so the dashboard's bar agrees
@@ -355,87 +352,40 @@ export const BottomDashboard = () => {
     <>
       <Tooltip text={tooltip} onClose={() => setTooltip('')} />
 
-      {/* Top dashboard band (v2.3.105) -- 25/50/25 split: empty | live
-          combat bars (HP/Mana/Energy) | gold readout.  Combat bars
-          moved up here so they stay visible above the left thumb that
-          would otherwise cover the lower-left dashboard column. */}
+      {/* Gold HUD — pinned to upper-right.  Always visible, even when
+          a panel is open. */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
         style={{
           position: 'fixed',
-          top: 0, left: 0, right: 0,
-          height: 'var(--dash-top-h)',
-          background: COL.bg,
-          borderBottom: `1px solid ${COL.border}`,
-          color: COL.text,
-          fontFamily: 'Atkinson Hyperlegible, sans-serif',
+          top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
+          right: 'calc(env(safe-area-inset-right, 0px) + 6px)',
           zIndex: 30,
+          background: COL.bg,
+          border: `1px solid ${COL.border}`,
+          borderRadius: 8,
+          padding: '4px 10px',
+          color: '#f5c542',
+          fontFamily: 'Atkinson Hyperlegible, sans-serif',
+          fontSize: 18,
+          fontWeight: 700,
+          letterSpacing: '.04em',
+          touchAction: 'none',
           display: 'flex',
           alignItems: 'center',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingLeft: 'env(safe-area-inset-left, 0px)',
-          paddingRight: 'env(safe-area-inset-right, 0px)',
-          touchAction: 'none',
-          boxSizing: 'border-box',
+          gap: 4,
         }}>
-        {/* 25% left -- empty for the user to fill later. */}
-        <div style={{ flex: 1 }} />
-        {/* 50% center -- HP / Mana / Energy in one horizontal row.
-            Each Bar stretches to fill its flex:1 slot; bar height stays
-            at the artwork's 28 px so it sits cleanly in the 64 px band. */}
-        <div style={{
-          flex: 2,
-          display: 'flex',
-          flexDirection: 'row',
-          gap: 8,
-          padding: '0 8px',
-          minWidth: 0,
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Bar label="HP" cur={hp} max={maxHp} kind="hp"
-              tip="Hit Points — your health pool. Hits zero and you fall."
-              onTip={setTooltip} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Bar label="Mana" cur={mp} max={maxMp} kind="mp"
-              tip="Mana — fuels staff (magic) attacks and special abilities."
-              onTip={setTooltip} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Bar label="Energy" cur={stam} max={maxStam} kind="stam"
-              tip="Energy — sprint, dodge-roll, and shield-block all draw from this. Regenerates while idle."
-              onTip={setTooltip} />
-          </div>
-        </div>
-        {/* 25% right -- gold readout pulled out of its old floating
-            top-right HUD into this slot. */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', paddingRight: 8 }}>
-          <div style={{
-            background: COL.bg,
-            border: `1px solid ${COL.border}`,
-            borderRadius: 8,
-            padding: '4px 10px',
-            color: '#f5c542',
-            fontSize: 18,
-            fontWeight: 700,
-            letterSpacing: '.04em',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}>
-            <img
-              src="/icons/popups/gold.png"
-              alt=""
-              style={{
-                width: 18,
-                height: 18,
-                imageRendering: 'pixelated',
-                display: 'block',
-              }}
-            />
-            {Number(gold).toLocaleString()}
-          </div>
-        </div>
+        <img
+          src="/icons/popups/gold.png"
+          alt=""
+          style={{
+            width: 18,
+            height: 18,
+            imageRendering: 'pixelated',
+            display: 'block',
+          }}
+        />
+        {Number(gold).toLocaleString()}
       </div>
 
     <div

@@ -310,6 +310,34 @@ function createPlayerDisplay() {
   nameText.y = -38;
   container.addChild(nameText);
 
+  /* Combat-bar HUD anchored above the head (v2.3.106).  Three
+     stacked bars (HP nearest head, Mana middle, Energy top) over
+     a single dark backdrop cutout.  Each bar's alpha is driven
+     by _updatePlayerHud: fades in when its resource drops below
+     max, lingers for HOLD_MS at full, then fades out.  Children
+     of the player container so they translate with the sprite. */
+  const hudBg = new Graphics();
+  hudBg.alpha = 0;
+  container.addChild(hudBg);
+  const hudHpBg = new Graphics();
+  hudHpBg.alpha = 0;
+  container.addChild(hudHpBg);
+  const hudHpFill = new Graphics();
+  hudHpFill.alpha = 0;
+  container.addChild(hudHpFill);
+  const hudMpBg = new Graphics();
+  hudMpBg.alpha = 0;
+  container.addChild(hudMpBg);
+  const hudMpFill = new Graphics();
+  hudMpFill.alpha = 0;
+  container.addChild(hudMpFill);
+  const hudStamBg = new Graphics();
+  hudStamBg.alpha = 0;
+  container.addChild(hudStamBg);
+  const hudStamFill = new Graphics();
+  hudStamFill.alpha = 0;
+  container.addChild(hudStamFill);
+
   container._body = body;
   container._spriteBody = spriteBody;
   container._nftFront = nftFront;
@@ -322,6 +350,13 @@ function createPlayerDisplay() {
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
   container._nameText = nameText;
+  container._hudBg = hudBg;
+  container._hudHpBg = hudHpBg;
+  container._hudHpFill = hudHpFill;
+  container._hudMpBg = hudMpBg;
+  container._hudMpFill = hudMpFill;
+  container._hudStamBg = hudStamBg;
+  container._hudStamFill = hudStamFill;
   /* Animation cache — track last (pose, dir, frameIdx) so we only
      reassign texture when it actually changes. */
   container._animPose = null;
@@ -416,6 +451,7 @@ export class EntityRenderer {
     this._updatePlayer(S, now);
     this._updateNPCs(S, now);
     this._updatePet(S, now);
+    this._updatePlayerHud(S, now);
   }
 
   _updateMonsters(S, now) {
@@ -2380,6 +2416,56 @@ export class EntityRenderer {
         this.npcDisplays.delete(id);
       }
     }
+  }
+
+  /* Combat-bar HUD above the player sprite (v2.3.106).  Three stacked
+     bars in fixed order, closest-to-head first: HP, then Mana, then
+     Energy on top.  Each bar fades in when its resource drops below
+     max, lingers HOLD_MS after the last change, then fades out.  A
+     single dark backdrop spans the stack while any bar is visible.
+     Coordinates are container-local; the player container's transform
+     keeps the strip glued to the sprite. */
+  _updatePlayerHud(S, now) {
+    const R = S && S.rpg;
+    const d = this.playerDisplay;
+    if (!R || !d || !d._hudHpFill) return;
+
+    const W = 44, H = 4;
+    const HOLD_MS = 2500;
+    const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
+    /* HP closest to head (y=-50), Mana middle (-58), Energy top (-66).
+       nameText sits at -38 so the HUD floats above the name plate. */
+    const bars = [
+      { fill: d._hudHpFill,   bg: d._hudHpBg,   cur: R.hp,      max: R.maxHp,      color: 0xff5e6c, y: -50 },
+      { fill: d._hudMpFill,   bg: d._hudMpBg,   cur: R.mana,    max: R.maxMana,    color: 0x3b82f6, y: -58 },
+      { fill: d._hudStamFill, bg: d._hudStamBg, cur: R.stamina, max: R.maxStamina, color: 0xf5c542, y: -66 },
+    ];
+    let anyVisible = false;
+    for (const b of bars) {
+      const max = b.max || 1;
+      const cur = Math.max(0, Math.min(max, b.cur || 0));
+      const full = cur >= max - 0.01;
+      if (!full) b.fill._lastNotFullAt = now;
+      const sinceChange = now - (b.fill._lastNotFullAt || 0);
+      const targetAlpha = (!full || sinceChange < HOLD_MS) ? 1 : 0;
+      const a = (b.fill.alpha != null) ? b.fill.alpha : 0;
+      const delta = targetAlpha - a;
+      const newAlpha = a + Math.max(-FADE_STEP, Math.min(FADE_STEP, delta));
+      b.fill.alpha = b.bg.alpha = newAlpha;
+      if (newAlpha > 0.02) anyVisible = true;
+
+      b.bg.clear();
+      b.bg.rect(-W / 2, b.y, W, H);
+      b.bg.fill({ color: 0x000000, alpha: 0.4 });
+
+      b.fill.clear();
+      b.fill.rect(-W / 2, b.y, W * (cur / max), H);
+      b.fill.fill({ color: b.color });
+    }
+    d._hudBg.clear();
+    d._hudBg.rect(-W / 2 - 3, -68, W + 6, 22);
+    d._hudBg.fill({ color: 0x000000, alpha: 0.55 });
+    d._hudBg.alpha = anyVisible ? 0.55 : 0;
   }
 
   clear() {
