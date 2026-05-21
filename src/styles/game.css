@@ -5,6 +5,9 @@
   /* Bottom dashboard band height.  Single source of truth — JS-side
      code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */
   --dash-h:   28vh;
+  /* Top dashboard band height (v2.3.105) — combat bars + gold live up
+     here so they stay visible above the left thumb's resting position. */
+  --dash-top-h: 64px;
   --ink:      #0b0c14;
   --ink2:     #12141f;
   --ink3:     #1a1d2e;
