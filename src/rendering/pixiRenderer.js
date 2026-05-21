@@ -242,5 +242,16 @@ export async function initPixiRenderer(canvas) {
     app.destroy(false, { children: true });
   }
 
-  return { app, canvas: app.canvas, update, onZoneChange, destroy };
+  return {
+    app,
+    canvas: app.canvas,
+    update,
+    onZoneChange,
+    destroy,
+    /* v2.3.113: expose immediate-dispose for a single loot pile.
+       BroTown's loot_credit / loot_despawn handlers call this so
+       the Pixi children tear down the same tick the pile is
+       claimed, instead of waiting one frame for the orphan sweep. */
+    disposeLootById: (lootId) => effectsRenderer.disposeLootById(lootId),
+  };
 }

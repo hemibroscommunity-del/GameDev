@@ -60,9 +60,9 @@ const PADDING = 4;
 // Pill centre.  Tuning history:
 //   pre-v2.3.110: calc(50% - 140px)
 //   v2.3.110:     calc(50% - 80px)   -- user "got bumped too far left"
-//   v2.3.112:     calc(50% - 150px)  -- user "overlapping contextual
-//                                       interact menu, move left"
-const PILL_CENTER_X = 'calc(50% - 150px)';
+//   v2.3.112:     calc(50% - 150px)  -- user "overlapping interact menu"
+//   v2.3.113:     calc(50% - 130px)  -- user "smidge right"
+const PILL_CENTER_X = 'calc(50% - 130px)';
 // Sit just above the dashboard top, below the left joystick.  The
 // joystick zone bottom is at calc(var(--dash-h) + 70px) so the combined
 // buttons+readout pill needs to fit in the ~70px gap between the

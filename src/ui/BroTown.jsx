@@ -198,7 +198,10 @@ function addBuildProg(R, stat, amount) {
   if (R._statLocks && R._statLocks[stat]) return;
   if (!R._buildProg) R._buildProg = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
   R._buildProg[stat] = (R._buildProg[stat] || 0) + amount;
-  var thresh = Math.max(50, Math.floor(xpRequired(R.level) / 5));
+  /* v2.3.113: bumped 5x slower per user feedback ("leveling way too
+     quickly").  Was Math.max(50, floor(xpRequired/5)) -- now uses
+     full xpRequired with a 200 floor. */
+  var thresh = Math.max(200, Math.floor(xpRequired(R.level)));
   while (R._buildProg[stat] >= thresh) {
     R._buildProg[stat] -= thresh;
     R[stat] = (R[stat] || 0) + 1;
@@ -2480,7 +2483,10 @@ export var BroTown = function BroTown(_ref0) {
         try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
         /* Despawn the picker's local copy of the pile -- they're done
            with it.  Other recipients keep their copy until their own
-           credit / despawn arrives. */
+           credit / despawn arrives.  v2.3.113: also immediate-dispose
+           the pile's Pixi children so a frame doesn't slip between
+           "_expired set" and "orphan sweep runs" -- intermittently
+           that gap left mummy/skeleton coin sprites visible. */
         if (payload.lootId && S.groundLoot) {
           for (var _glci = 0; _glci < S.groundLoot.length; _glci++) {
             if (S.groundLoot[_glci].lootId === payload.lootId) {
@@ -2488,6 +2494,11 @@ export var BroTown = function BroTown(_ref0) {
               break;
             }
           }
+          try {
+            if (pixiRef.current && pixiRef.current.disposeLootById) {
+              pixiRef.current.disposeLootById(payload.lootId);
+            }
+          } catch (_e) {}
         }
       }
 
@@ -2532,7 +2543,9 @@ export var BroTown = function BroTown(_ref0) {
             {
               /* Server says the pile is done -- last recipient claimed
                  or 60 s expiry hit.  Mark expired so renderer + filter
-                 clear it. */
+                 clear it.  v2.3.113: also immediate-dispose so a frame
+                 of latency between _expired and the orphan sweep can't
+                 leave a stale coin sprite (mummy / skeleton bug). */
               if (!payload || !payload.lootId || !S.groundLoot) break;
               for (var _lde = 0; _lde < S.groundLoot.length; _lde++) {
                 if (S.groundLoot[_lde].lootId === payload.lootId) {
@@ -2540,6 +2553,11 @@ export var BroTown = function BroTown(_ref0) {
                   break;
                 }
               }
+              try {
+                if (pixiRef.current && pixiRef.current.disposeLootById) {
+                  pixiRef.current.disposeLootById(payload.lootId);
+                }
+              } catch (_e) {}
               break;
             }
           case 'chat':

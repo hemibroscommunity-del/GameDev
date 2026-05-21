@@ -1119,6 +1119,24 @@ export class EffectsRenderer {
    * Texts are pooled per loot — created lazily, hidden when not
    *  applicable, destroyed when the loot expires/splices.
    */
+  /* v2.3.113: immediate-dispose lookup by lootId.  Called from
+     BroTown's loot_credit / loot_despawn handlers so a picked-up pile
+     is torn down the same tick instead of lingering until the next
+     orphan-sweep frame.  Mummy / skeleton kills were intermittently
+     leaving a coin sprite on screen because of a race between the
+     server's contribution-split despawn event and the renderer's
+     per-frame sweep. */
+  disposeLootById(lootId) {
+    if (!this._knownLoot || !lootId) return;
+    for (const l of this._knownLoot) {
+      if (l && l.lootId === lootId) {
+        this._disposeLoot(l);
+        this._knownLoot.delete(l);
+        break;
+      }
+    }
+  }
+
   _disposeLoot(l) {
     if (l._pixiSprite && !l._pixiSprite.destroyed) l._pixiSprite.destroy();
     if (l._pixiLabel && !l._pixiLabel.destroyed) l._pixiLabel.destroy();

@@ -340,8 +340,10 @@ export const BottomDashboard = () => {
   // Use the canonical xpRequired curve so the dashboard's bar agrees
   // with the game-loop level-up threshold.
   const xpNeeded = xpRequired(level);
-  // Use-trained build threshold per GDD §1.4 (5 T1 points per level).
-  const buildThresh = Math.max(50, Math.floor(xpNeeded / 5));
+  // Use-trained build threshold (v2.3.113: 5x slower; must mirror
+  // BroTown.jsx's threshold formula so the progress fill matches the
+  // actual level-up trigger).
+  const buildThresh = Math.max(200, Math.floor(xpNeeded));
 
   // Gold readout — moved from the bag panel into the top-right HUD so
   // the inventory grid has full vertical room.  Use the same fallback
@@ -475,6 +477,12 @@ export const BottomDashboard = () => {
                 flexDirection: 'column',
                 minWidth: 0,
                 gap: 4,
+                /* v2.3.113: column frame -- subtle border + tint so the
+                   three dashboard columns read as discrete sections. */
+                padding: 4,
+                borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.025)',
               }}>
                 <ColHeader>{S?.myName || 'Anon'} · Lv {level}</ColHeader>
                 {/* v2.3.111: derived stats list moved here from the
@@ -546,6 +554,11 @@ export const BottomDashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
+                /* v2.3.113: column frame -- subtle border + tint. */
+                padding: 4,
+                borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.025)',
               }}>
                 <ColHeader>Build</ColHeader>
                 <div style={{
@@ -583,14 +596,10 @@ export const BottomDashboard = () => {
                           touchAction: 'none',
                           minHeight: 0,
                         }}>
-                        {/* Inside-cell fill (existing visual) */}
-                        <div style={{
-                          position: 'absolute',
-                          inset: 0,
-                          width: pct + '%',
-                          background: 'linear-gradient(90deg, rgba(91,82,255,0.50), rgba(123,113,255,0.40))',
-                          transition: 'width .15s linear',
-                        }} />
+                        {/* v2.3.113: inside-cell linear-gradient fill
+                            removed -- progress now reads from the
+                            tiny strip at the bottom only.  Matches
+                            the Life Skill cells' indicator style. */}
                         {/* Icon + value */}
                         <div style={{
                           position: 'absolute',
@@ -653,6 +662,11 @@ export const BottomDashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
+                /* v2.3.113: column frame -- subtle border + tint. */
+                padding: 4,
+                borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.025)',
               }}>
                 <ColHeader>Life Skills</ColHeader>
                 <div style={{
