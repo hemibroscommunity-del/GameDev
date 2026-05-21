@@ -333,6 +333,9 @@ function createPlayerDisplay() {
      directly on the game canvas.  Alpha is driven by
      _updatePlayerHud (fade in below max, hold at full for
      HOLD_MS, then fade out). */
+  const _hudNumStyleFull  = { fontFamily: 'Atkinson Hyperlegible, sans-serif', fontSize: 7, fontWeight: '700', fill: '#ffffff', align: 'center' };
+  const _hudNumStyleEmpty = { fontFamily: 'Atkinson Hyperlegible, sans-serif', fontSize: 7, fontWeight: '700', fill: '#ff4444', align: 'center' };
+
   const hudHpSprite = new Sprite();
   hudHpSprite.anchor.set(0.5, 0.5);
   hudHpSprite.alpha = 0;
@@ -340,6 +343,10 @@ function createPlayerDisplay() {
   const hudHpEmpty = new Graphics();
   hudHpEmpty.alpha = 0;
   container.addChild(hudHpEmpty);
+  const hudHpTextFull  = new Text({ text: '', style: _hudNumStyleFull });
+  const hudHpTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
+  hudHpTextFull.anchor.set(0.5, 0.5);  hudHpTextFull.alpha = 0;  container.addChild(hudHpTextFull);
+  hudHpTextEmpty.anchor.set(0.5, 0.5); hudHpTextEmpty.alpha = 0; container.addChild(hudHpTextEmpty);
 
   const hudMpSprite = new Sprite();
   hudMpSprite.anchor.set(0.5, 0.5);
@@ -348,6 +355,10 @@ function createPlayerDisplay() {
   const hudMpEmpty = new Graphics();
   hudMpEmpty.alpha = 0;
   container.addChild(hudMpEmpty);
+  const hudMpTextFull  = new Text({ text: '', style: _hudNumStyleFull });
+  const hudMpTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
+  hudMpTextFull.anchor.set(0.5, 0.5);  hudMpTextFull.alpha = 0;  container.addChild(hudMpTextFull);
+  hudMpTextEmpty.anchor.set(0.5, 0.5); hudMpTextEmpty.alpha = 0; container.addChild(hudMpTextEmpty);
 
   const hudStamSprite = new Sprite();
   hudStamSprite.anchor.set(0.5, 0.5);
@@ -356,6 +367,10 @@ function createPlayerDisplay() {
   const hudStamEmpty = new Graphics();
   hudStamEmpty.alpha = 0;
   container.addChild(hudStamEmpty);
+  const hudStamTextFull  = new Text({ text: '', style: _hudNumStyleFull });
+  const hudStamTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
+  hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  container.addChild(hudStamTextFull);
+  hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -371,10 +386,16 @@ function createPlayerDisplay() {
   container._nameText = nameText;
   container._hudHpSprite = hudHpSprite;
   container._hudHpEmpty = hudHpEmpty;
+  container._hudHpTextFull = hudHpTextFull;
+  container._hudHpTextEmpty = hudHpTextEmpty;
   container._hudMpSprite = hudMpSprite;
   container._hudMpEmpty = hudMpEmpty;
+  container._hudMpTextFull = hudMpTextFull;
+  container._hudMpTextEmpty = hudMpTextEmpty;
   container._hudStamSprite = hudStamSprite;
   container._hudStamEmpty = hudStamEmpty;
+  container._hudStamTextFull = hudStamTextFull;
+  container._hudStamTextEmpty = hudStamTextEmpty;
   /* Animation cache — track last (pose, dir, frameIdx) so we only
      reassign texture when it actually changes. */
   container._animPose = null;
@@ -2456,15 +2477,16 @@ export class EntityRenderer {
     if (_hudBarTex.mp   && d._hudMpSprite.texture   !== _hudBarTex.mp)   d._hudMpSprite.texture   = _hudBarTex.mp;
     if (_hudBarTex.stam && d._hudStamSprite.texture !== _hudBarTex.stam) d._hudStamSprite.texture = _hudBarTex.stam;
 
-    const W = 56, H = 8;
+    const W = 64, H = 10;
+    const MIN_LABEL_W = 14; /* hide the value-number if its section is narrower */
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
-    /* HP closest to head (y=-50), Mana middle (-60), Energy top (-70).
+    /* HP closest to head (y=-50), Mana middle (-62), Energy top (-74).
        nameText sits at -38 so the HUD floats above the name plate. */
     const bars = [
-      { sprite: d._hudHpSprite,   empty: d._hudHpEmpty,   cur: R.hp,      max: R.maxHp,      y: -50 },
-      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   cur: R.mana,    max: R.maxMana,    y: -60 },
-      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, cur: R.stamina, max: R.maxStamina, y: -70 },
+      { sprite: d._hudHpSprite,   empty: d._hudHpEmpty,   tFull: d._hudHpTextFull,   tEmpty: d._hudHpTextEmpty,   cur: R.hp,      max: R.maxHp,      y: -50 },
+      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   tFull: d._hudMpTextFull,   tEmpty: d._hudMpTextEmpty,   cur: R.mana,    max: R.maxMana,    y: -62 },
+      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -74 },
     ];
     for (const b of bars) {
       const max = b.max || 1;
@@ -2489,11 +2511,32 @@ export class EntityRenderer {
       /* Dim overlay on the unfilled (right) portion.  Width shrinks
          to zero when the bar is full; no overlay drawn at 0 width. */
       b.empty.clear();
-      const emptyW = W * (1 - pct);
+      const filledW = W * pct;
+      const emptyW = W - filledW;
       if (emptyW > 0.5) {
-        b.empty.rect(-W / 2 + W * pct, b.y - H / 2, emptyW, H);
+        b.empty.rect(-W / 2 + filledW, b.y - H / 2, emptyW, H);
         b.empty.fill({ color: 0x000000, alpha: 0.55 });
       }
+
+      /* Numeric overlays: current value centered on the filled
+         section (white), missing value centered on the empty
+         section (red).  Hidden when the section is narrower than
+         MIN_LABEL_W so a near-empty / near-full pill doesn't
+         render an illegible smear. */
+      const curStr = String(Math.ceil(cur));
+      const missStr = String(Math.ceil(max - cur));
+      if (b.tFull.text !== curStr) b.tFull.text = curStr;
+      if (b.tEmpty.text !== missStr) b.tEmpty.text = missStr;
+      b.tFull.x = -W / 2 + filledW / 2;
+      b.tFull.y = b.y;
+      b.tEmpty.x = -W / 2 + filledW + emptyW / 2;
+      b.tEmpty.y = b.y;
+      const fullVisible = filledW >= MIN_LABEL_W && newAlpha > 0.02;
+      const emptyVisible = emptyW >= MIN_LABEL_W && newAlpha > 0.02;
+      b.tFull.alpha = fullVisible ? newAlpha : 0;
+      b.tEmpty.alpha = emptyVisible ? newAlpha : 0;
+      b.tFull.visible = fullVisible;
+      b.tEmpty.visible = emptyVisible;
     }
   }
 

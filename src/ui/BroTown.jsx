@@ -8020,7 +8020,10 @@ export var BroTown = function BroTown(_ref0) {
                 S.arrows.push({
                   ang: arrAngle,
                   dist: 14,
-                  dmg: Math.round(pDmg * (isStaff ? 1.0 : 0.7)),
+                  /* v2.3.109: bow's 0.7x flat now lives inside
+                     calcWeaponDmg as the 0.6x-0.8x range, so no
+                     per-projectile multiplier is needed here. */
+                  dmg: Math.round(pDmg),
                   life: isStaff ? 90 : 120,
                   maxLife: isStaff ? 90 : 120,
                   hitIds: new Set(),
@@ -8215,12 +8218,7 @@ export var BroTown = function BroTown(_ref0) {
                 var _expectedDmg = Math.round(_pDmgBase * specialMult);
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
-                /* Variant armor (see monsterVariants.incomingDmgScalar).
-                   Server's HP is base-archetype scale, so the scaling here
-                   keeps local + server in sync -- both deplete by the same
-                   reduced amount per hit. */
-                var _resist = incomingDmgScalarFor(m);
-                if (_resist !== 1) dmg = Math.max(1, Math.round(dmg * _resist));
+                /* v2.3.109: variant incomingDmgScalar removed (WYSIWYG). */
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
                 /* Server-authoritative zones: HP only flows from server
                    monster_hit ticks.  Local decrement would race the
@@ -10070,11 +10068,9 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 var _hpBefore = m.curHp;
-                /* Variant armor (see monsterVariants.incomingDmgScalar) --
-                   arrows scale the same as melee so the variant's hit
-                   count is consistent across weapon types. */
-                var _arrowResist = incomingDmgScalarFor(m);
-                var _arrowDmg = _arrowResist !== 1 ? Math.max(1, Math.round(a.dmg * _arrowResist)) : a.dmg;
+                /* v2.3.109: variant incomingDmgScalar removed (WYSIWYG)
+                   -- arrow damage lands at its displayed value. */
+                var _arrowDmg = a.dmg;
                 if (!S._serverMonsters) m.curHp -= _arrowDmg;
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.

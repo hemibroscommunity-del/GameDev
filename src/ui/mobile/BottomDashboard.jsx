@@ -67,11 +67,11 @@ const ICON_SRC = {
 // Tooltip phrasing per GDD §1.2 — describes both the effect and the
 // specific training source so the player knows what to do.
 const CHAR_STATS = [
-  { key: 'power',     label: 'Power',     short: 'POW', tip: 'Power — base weapon damage scaling. Trains by landing damage with melee or ranged weapons.' },
-  { key: 'vitality',  label: 'Vitality',  short: 'VIT', tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
-  { key: 'agility',   label: 'Agility',   short: 'AGI', tip: 'Agility — move speed, dodge distance, and attack speed. Trains by successful dodges and movement under threat.' },
-  { key: 'mind',      label: 'Mind',      short: 'MIN', tip: 'Mind — mana pool size and magic strength. Trains by spending mana on staff bolts and absorbing collision restores.' },
+  { key: 'power',     label: 'Power',     short: 'POW', iconSrc: '/icons/popups/sword.png?v=2.3.109',                       pixelated: false, tip: 'Power — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
+  { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.109',                       pixelated: true,  tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/sprites/shields/wood-shield-front.png?v=2.1.23',         pixelated: false, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'agility',   label: 'Agility',   short: 'AGI', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                       pixelated: false, tip: 'Agility — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
+  { key: 'mind',      label: 'Mind',      short: 'MIN', iconSrc: '/icons/popups/spell.png?v=2.3.109',                       pixelated: false, tip: 'Mind — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
 ];
 
 // 10 life skills — names match the canonical labels in BroTown.jsx
@@ -462,9 +462,11 @@ export const BottomDashboard = () => {
               {/* Left column — character portrait stacked over the
                   XP bar (v2.3.107).  HP / Mana / Energy now render as
                   the above-player Pixi HUD (v2.3.106), so this slot is
-                  reserved for player identity + XP progression. */}
+                  reserved for player identity + XP progression.
+                  flex 1/1/1 v2.3.109 -- all three columns share equal
+                  width per user request. */}
               <div style={{
-                flex: 5,
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -509,7 +511,7 @@ export const BottomDashboard = () => {
 
               {/* Middle column — build (5 character stats with progression). */}
               <div style={{
-                flex: 2,
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -550,7 +552,20 @@ export const BottomDashboard = () => {
                           padding: '0 6px',
                           fontSize: 15,
                         }}>
-                          <span style={{ color: COL.text, letterSpacing: '.04em', fontWeight: 700 }}>{s.short}</span>
+                          <img
+                            src={s.iconSrc}
+                            alt={s.label}
+                            draggable={false}
+                            style={{
+                              width: 18,
+                              height: 18,
+                              objectFit: 'contain',
+                              imageRendering: s.pixelated ? 'pixelated' : 'auto',
+                              pointerEvents: 'none',
+                              userSelect: 'none',
+                              flexShrink: 0,
+                            }}
+                          />
                           <span style={{ color: COL.text, fontWeight: 700 }}>{val}</span>
                         </div>
                       </div>
@@ -561,7 +576,7 @@ export const BottomDashboard = () => {
 
               {/* Right column — 10 life skills with xp progression. */}
               <div style={{
-                flex: 3,
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,

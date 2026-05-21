@@ -3297,7 +3297,12 @@ export function setupGameLoop(ctx) {
                 S.arrows.push({
                   ang: arrAngle,
                   dist: 14,
-                  dmg: Math.round(pDmg * (isStaff ? 1.0 : 0.7)),
+                  /* v2.3.109: bow's 0.7x flat now lives inside
+                     calcWeaponDmg as the 0.6x-0.8x range, so no
+                     per-projectile multiplier is needed here.  Staff
+                     stays at 1.0x; its own 0.5x-1.5x range comes from
+                     calcWeaponDmg. */
+                  dmg: Math.round(pDmg),
                   life: isStaff ? 90 : 120,
                   maxLife: isStaff ? 90 : 120,
                   hitIds: new Set(),
@@ -3441,12 +3446,10 @@ export function setupGameLoop(ctx) {
                 var _expectedDmg = Math.round(_pDmgBase * specialMult);
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
-                /* Variant armor (see monsterVariants.incomingDmgScalar).
-                   Server's HP is base-archetype scale, so the scaling here
-                   keeps local + server in sync -- both deplete by the same
-                   reduced amount per hit. */
-                var _resist = incomingDmgScalarFor(m);
-                if (_resist !== 1) dmg = Math.max(1, Math.round(dmg * _resist));
+                /* v2.3.109: variant incomingDmgScalar removed -- weapon
+                   damage is WYSIWYG to the player, so the displayed
+                   range lands exactly on every enemy (mummy / skeleton /
+                   fireGoblin etc no longer halve / quarter incoming). */
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
                 var _hpBefore = m.curHp;
                 m.curHp -= dmg;

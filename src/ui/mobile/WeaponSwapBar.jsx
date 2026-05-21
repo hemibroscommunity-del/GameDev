@@ -24,16 +24,26 @@ const readState = () => {
   const wpn = rpg ? getActiveWeapon(rpg) : null;
   const w = wpn && WEAPON_TYPES[wpn.type];
   if (!rpg || !w) return { slot, dmgMin: 0, dmgMax: 0, dps: '0.0' };
-  const base = (w.base + (rpg.power || 0) * 0.8) * (wpn.tierMult || 1);
+  /* v2.3.109: stat-driver mirrors EQUIP_STAT_MAP (POW for melee, AGI
+     for bow, MIND for staff) so the readout reflects actual
+     stat-scaled damage instead of always using rpg.power. */
+  const statVal = (slot === 'ranged') ? (rpg.agility || 0)
+                : (slot === 'staff')  ? (rpg.mind || 0)
+                : (rpg.power || 0);
+  const base = (w.base + statVal * 0.8) * (wpn.tierMult || 1);
   let dmgMin, dmgMax, cdMs = SWING_COOLDOWN;
+  /* v2.3.109: damage ranges mirror calcWeaponDmg (staff 0.5x-1.5x,
+     melee 0.75x-1.25x, bow 0.6x-0.8x). */
   if (slot === 'ranged') {
-    dmgMin = dmgMax = base * 0.7;
+    dmgMin = base * 0.6;
+    dmgMax = base * 0.8;
   } else if (slot === 'staff') {
     dmgMin = base * 0.5;
-    dmgMax = base * 1.3;
+    dmgMax = base * 1.5;
     cdMs += 300;
   } else {
-    dmgMin = dmgMax = base;
+    dmgMin = base * 0.75;
+    dmgMax = base * 1.25;
   }
   const avg = (dmgMin + dmgMax) / 2;
   return {

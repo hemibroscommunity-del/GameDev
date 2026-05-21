@@ -288,15 +288,14 @@ export const BLACKSMITH_TIERS = {
   }
 };
 
-/* Stat required to EQUIP gear by weapon type */
+/* Stat that drives weapon damage by weapon type (v2.3.109+).
+   POW scales melee (sword + greatsword), AGI scales bow,
+   MIND scales staff. */
 export const EQUIP_STAT_MAP = {
   greatsword: 'power',
-  /* Heavy hitter */
-  sword: 'agility',
-  /* Fast pressure */
+  sword: 'power',     /* v2.3.109: was 'agility'; consolidates all melee onto POW */
   bow: 'agility',
-  /* Ranged precision */
-  staff: 'mind' /* Mana-dependent caster */
+  staff: 'mind'
 };
 export const SHIELD_EQUIP_STAT = 'endurance';
 export const ARMOR_EQUIP_STAT = 'vitality';
@@ -4482,11 +4481,19 @@ export function calcMaxMana(mind) {
 }
 
 /* §4.4 Weapon Damage */
-export function calcWeaponDmg(weaponType, power, tierMult) {
+export function calcWeaponDmg(weaponType, statVal, tierMult) {
   var w = WEAPON_TYPES[weaponType];
-  var base = (w.base + power * 0.8) * tierMult;
-  if (weaponType === 'staff') return base * (0.5 + Math.random() * 0.8); /* wide variance, lower avg DPS */
-  return base;
+  var base = (w.base + statVal * 0.8) * tierMult;
+  /* v2.3.109: every weapon now rolls inside a damage range.  Variance
+     decreases from magic -> melee -> archery per user request:
+       staff (magic):   0.5x – 1.5x   range 1.0  (widest)
+       sword/greatsword:0.75x – 1.25x range 0.5  (mid)
+       bow (archery):   0.6x – 0.8x   range 0.2  (tightest; same
+                                     avg 0.7x as the prior flat 0.7x
+                                     bow multiplier in gameLoop). */
+  if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.0);
+  if (weaponType === 'bow')    return base * (0.6  + Math.random() * 0.2);
+  return base * (0.75 + Math.random() * 0.5);
 }
 
 /* §2.1 Crit */
