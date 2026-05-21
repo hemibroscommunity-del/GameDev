@@ -1841,6 +1841,24 @@ export var BroTown = function BroTown(_ref0) {
                         localM._snowmanDeathStart = null;
                         localM._lootDropped = false;
                         localM._deathSfxPlayed = false;
+                        /* Revert any mid-fight variant transform.  A
+                           desert mummy that died as a skeleton needs to
+                           come back as a mummy so the first 50% HP
+                           still triggers the bandage-shred animation
+                           next life.  Server already resets m.variant
+                           on its side but doesn't broadcast that field
+                           per tick, so the client uses the spawn
+                           archetype it stashed at state_sync time. */
+                        if (localM._spawnArchetype && localM.archetype !== localM._spawnArchetype) {
+                          localM.archetype = localM._spawnArchetype;
+                          localM.type = localM._spawnArchetype;
+                          if (localM.arch !== undefined) localM.arch = localM._spawnArchetype;
+                          localM._transformStart = null;
+                          localM._transformHoldMs = 0;
+                          localM._transformFromArch = null;
+                          var _sv = MONSTER_VARIANTS[localM._spawnArchetype];
+                          if (_sv && _sv.spd != null) localM.spd = _sv.spd;
+                        }
                       }
                       if (!md.alive && localM.alive) {
                         /* Monster died (from another player's kill or
@@ -1927,7 +1945,15 @@ export var BroTown = function BroTown(_ref0) {
                      Maps ember fodder -> fireGoblin so the renderer + AI
                      route to the variant sheets without any inline
                      zone/archetype check elsewhere in the codebase. */
-                  return applyZoneVariant(local, S.currentZone);
+                  applyZoneVariant(local, S.currentZone);
+                  /* Remember the post-variant archetype so the respawn
+                     branch in the tick handler can revert a transformed
+                     monster (mummy -> skeleton) back to its spawn form.
+                     Server resets m.variant on respawn but doesn't
+                     broadcast that field per tick, so the client needs
+                     its own source of truth here. */
+                  local._spawnArchetype = local.archetype;
+                  return local;
                 });
               } else {
                 S._serverMonsters = false;
@@ -2294,7 +2320,12 @@ export var BroTown = function BroTown(_ref0) {
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
                   });
-                  return applyZoneVariant(local, S.currentZone);
+                  applyZoneVariant(local, S.currentZone);
+                  /* See state_sync handler -- mirror the same spawn
+                     archetype stash so respawn can revert a transformed
+                     monster back to the zone's spawn variant. */
+                  local._spawnArchetype = local.archetype;
+                  return local;
                 });
               } else {
                 var _prevSrvFlag = S._serverMonsters;
