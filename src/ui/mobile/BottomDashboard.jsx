@@ -459,17 +459,48 @@ export const BottomDashboard = () => {
             minHeight: 0,
           }}>
             <div style={{ flex: 1, display: 'flex', gap: 8, minHeight: 0 }}>
-              {/* Left column — name + level + XP bar only.
-                  HP / Mana / Energy moved to the top dashboard band
-                  (v2.3.105) so they stay visible above the joystick. */}
+              {/* Left column — character portrait stacked over the
+                  XP bar (v2.3.107).  HP / Mana / Energy now render as
+                  the above-player Pixi HUD (v2.3.106), so this slot is
+                  reserved for player identity + XP progression. */}
               <div style={{
                 flex: 5,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
+                gap: 4,
               }}>
                 <ColHeader>{S?.myName || 'Anon'} · Lv {level}</ColHeader>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                {/* Portrait -- fills the remaining vertical space
+                    above the XP bar.  Pixel-art so use crisp
+                    nearest-neighbor scaling. */}
+                <div style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 0,
+                  overflow: 'hidden',
+                }}>
+                  <img
+                    src="/icons/ui/profile.webp"
+                    alt="Profile"
+                    draggable={false}
+                    style={{
+                      maxHeight: '100%',
+                      maxWidth: '100%',
+                      aspectRatio: '1 / 1',
+                      objectFit: 'contain',
+                      imageRendering: 'pixelated',
+                      borderRadius: 8,
+                      border: `1px solid ${COL.border}`,
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    }}
+                  />
+                </div>
+                {/* XP bar sits beneath the portrait. */}
+                <div style={{ flexShrink: 0 }}>
                   <Bar label="XP" cur={xp} max={xpNeeded} kind="xp"
                     tip={`XP — combat experience. Fill to ${xpNeeded.toLocaleString()} to reach level ${level + 1}.`}
                     onTip={setTooltip} />
