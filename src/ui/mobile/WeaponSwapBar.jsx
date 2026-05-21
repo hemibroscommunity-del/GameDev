@@ -164,14 +164,14 @@ export const WeaponSwapBar = () => {
         border: '1px solid rgba(255,255,255,0.18)',
         borderRadius: 16,
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-        /* v2.3.110: was overflow: 'hidden' + button-row min width, which
-           clipped the DMG/DPS readout once the range strings got wide
-           (e.g. "DMG 99-180 · DPS 65.4").  Keep the rounded corners on
-           the button row + the readout row's own backdrop instead, and
-           let the pill grow to fit its widest child. */
+        /* v2.3.111: restored compact pill (v2.3.110 had min-width 200
+           which crowded the contextual menu).  overflow:'hidden' is
+           back so the readout pill stays tight to the buttons; the
+           DMG range readout now uses a smaller fontSize (see below)
+           to fit without clipping. */
+        overflow: 'hidden',
         zIndex: 35,
         touchAction: 'none',
-        minWidth: 200,
       }}
     >
       {/* Buttons row */}
@@ -239,23 +239,21 @@ export const WeaponSwapBar = () => {
 
       {/* DMG / DPS row — connected beneath the buttons, single line.
           Pointer-events: none so it never blocks the buttons above or
-          the joystick beside it.  borderBottomLeftRadius/Right round
-          the pill's bottom now that the outer container no longer
-          uses overflow: 'hidden' (was clipping wide range strings). */}
+          the joystick beside it.
+          v2.3.111: fontSize 14 -> 11 + tighter letter-spacing so the
+          range text fits without clipping inside the compact pill. */}
       <div
         style={{
           borderTop: '1px solid rgba(255,255,255,0.12)',
-          padding: '2px 12px 3px',
+          padding: '2px 8px 3px',
           fontFamily: 'Atkinson Hyperlegible, sans-serif',
-          fontSize: 14,
+          fontSize: 11,
           lineHeight: 1,
           color: '#E8EAF8',
-          letterSpacing: '.03em',
+          letterSpacing: '.02em',
           textAlign: 'center',
           whiteSpace: 'nowrap',
           pointerEvents: 'none',
-          borderBottomLeftRadius: 16,
-          borderBottomRightRadius: 16,
         }}
       >
         <span style={{ color: '#8890b8' }}>DMG </span>{dmgText}

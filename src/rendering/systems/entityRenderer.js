@@ -1771,10 +1771,10 @@ export class EntityRenderer {
     const facingIdx = SECTORS.indexOf(facing);   // 0..7: E,SE,S,SW,W,NW,N,NE
     /* Per-direction body scale.  Hit-east is 0.88 (source frames the
        character bigger); jog/stand-NE is 1.03 (slightly smaller source).
-       v2.3.110: local player rendered +50% larger per user visual
-       test request -- multiplier applied uniformly so the per-direction
-       0.88 / 1.03 corrections still apply. */
-    const LOCAL_SCALE = 1.5;
+       v2.3.111: local player scale dialled back from 1.5 -> 1.125
+       (reduced ~25% from v2.3.110's 1.5x per user "bigger was good but
+       that's too big"). */
+    const LOCAL_SCALE = 1.125;
     let bodyScale = 1.0 * LOCAL_SCALE;
     if (dir === 'east' && pose === 'hit') bodyScale = 0.88 * LOCAL_SCALE;
     else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03 * LOCAL_SCALE;

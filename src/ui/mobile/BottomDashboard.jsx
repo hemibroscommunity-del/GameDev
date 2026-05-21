@@ -474,35 +474,57 @@ export const BottomDashboard = () => {
                 gap: 4,
               }}>
                 <ColHeader>{S?.myName || 'Anon'} · Lv {level}</ColHeader>
-                {/* Portrait -- fills the remaining vertical space
-                    above the XP bar.  Pixel-art so use crisp
-                    nearest-neighbor scaling. */}
-                <div style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: 0,
-                  overflow: 'hidden',
-                }}>
-                  <img
-                    src="/icons/ui/profile.webp"
-                    alt="Profile"
-                    draggable={false}
-                    style={{
-                      maxHeight: '100%',
-                      maxWidth: '100%',
-                      aspectRatio: '1 / 1',
-                      objectFit: 'contain',
-                      imageRendering: 'pixelated',
-                      borderRadius: 8,
-                      border: `1px solid ${COL.border}`,
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    }}
-                  />
-                </div>
-                {/* XP bar sits beneath the portrait. */}
+                {/* v2.3.111: derived stats list moved here from the
+                    Build column's bottom-right slot (where it was
+                    squished into a small cell).  Full column height
+                    + larger font reads cleanly.  Profile picture
+                    relocated to the freed Build cell below. */}
+                {(() => {
+                  const maxHp = R.maxHp || calcMaxHp(R.level || 1, R.vitality || 0);
+                  const maxSta = R.maxStamina || calcMaxStam(R.endurance || 0);
+                  const wMel = WEAPON_TYPES.sword;
+                  const wRng = WEAPON_TYPES.bow;
+                  const wMag = WEAPON_TYPES.staff;
+                  const melDmg = Math.round((wMel.base + (R.power || 0) * 0.8));
+                  const rngDmg = Math.round((wRng.base + (R.agility || 0) * 0.8));
+                  const magDmg = Math.round((wMag.base + (R.mind || 0) * 0.8));
+                  const rows = [
+                    { label: 'HP',  val: maxHp,   color: COL.hp,   tip: `Max HP at Vitality ${R.vitality || 0}.` },
+                    { label: 'MEL', val: melDmg,  color: COL.text, tip: `Melee weapon base damage = sword.base + Power x 0.8.  Current POW ${R.power || 0}.` },
+                    { label: 'RNG', val: rngDmg,  color: COL.text, tip: `Bow weapon base damage = bow.base + Agility x 0.8.  Current AGI ${R.agility || 0}.` },
+                    { label: 'MAG', val: magDmg,  color: COL.text, tip: `Staff weapon base damage = staff.base + Mind x 0.8.  Current MIN ${R.mind || 0}.` },
+                    { label: 'STA', val: maxSta,  color: COL.stam, tip: `Max Stamina at Endurance ${R.endurance || 0}.` },
+                  ];
+                  return (
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: 2,
+                      minHeight: 0,
+                      padding: '2px 4px',
+                    }}>
+                      {rows.map((r) => (
+                        <div key={r.label}
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(r.tip); }}
+                          title={r.tip}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 6,
+                            cursor: 'pointer',
+                            touchAction: 'none',
+                          }}>
+                          <span style={{ color: COL.muted, fontWeight: 700, fontSize: 13, letterSpacing: '.04em' }}>{r.label}</span>
+                          <span style={{ color: r.color, fontWeight: 800, fontSize: 16 }}>{r.val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+                {/* XP bar still anchors the bottom of the column. */}
                 <div style={{ flexShrink: 0 }}>
                   <Bar label="XP" cur={xp} max={xpNeeded} kind="xp"
                     tip={`XP — combat experience. Fill to ${xpNeeded.toLocaleString()} to reach level ${level + 1}.`}
@@ -607,55 +629,36 @@ export const BottomDashboard = () => {
                       </div>
                     );
                   })}
-                  {/* Derived-stats cell — compact 5-line readout of the
-                      actual numbers each build level is producing.
-                      Used by the user to read "what does VIT 2 give me?". */}
-                  {(() => {
-                    const maxHp = R.maxHp || calcMaxHp(R.level || 1, R.vitality || 0);
-                    const maxSta = R.maxStamina || calcMaxStam(R.endurance || 0);
-                    const wMel = WEAPON_TYPES.sword;
-                    const wRng = WEAPON_TYPES.bow;
-                    const wMag = WEAPON_TYPES.staff;
-                    const melDmg = Math.round((wMel.base + (R.power || 0) * 0.8));
-                    const rngDmg = Math.round((wRng.base + (R.agility || 0) * 0.8));
-                    const magDmg = Math.round((wMag.base + (R.mind || 0) * 0.8));
-                    const rows = [
-                      { label: 'HP',  val: maxHp,   color: COL.hp },
-                      { label: 'MEL', val: melDmg,  color: COL.text },
-                      { label: 'RNG', val: rngDmg,  color: COL.text },
-                      { label: 'MAG', val: magDmg,  color: COL.text },
-                      { label: 'STA', val: maxSta,  color: COL.stam },
-                    ];
-                    return (
-                      <div key="_derived"
-                        style={{
-                          position: 'relative',
-                          borderRadius: 4,
-                          background: 'rgba(255,255,255,0.04)',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                          padding: '2px 6px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          minHeight: 0,
-                          fontSize: 9,
-                          lineHeight: 1.05,
-                          touchAction: 'none',
-                        }}>
-                        {rows.map((r) => (
-                          <div key={r.label} style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            gap: 4,
-                          }}>
-                            <span style={{ color: COL.muted, fontWeight: 700, letterSpacing: '.04em' }}>{r.label}</span>
-                            <span style={{ color: r.color, fontWeight: 800 }}>{r.val}</span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
+                  {/* v2.3.111: 6th Build cell holds the profile
+                      portrait (moved here from the bottom-left column,
+                      whose space is now used by the derived-stats
+                      readout). */}
+                  <div key="_portrait" style={{
+                    position: 'relative',
+                    borderRadius: 4,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    minHeight: 0,
+                  }}>
+                    <img
+                      src="/icons/ui/profile.webp"
+                      alt="Profile"
+                      draggable={false}
+                      style={{
+                        maxHeight: '100%',
+                        maxWidth: '100%',
+                        aspectRatio: '1 / 1',
+                        objectFit: 'contain',
+                        imageRendering: 'pixelated',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
