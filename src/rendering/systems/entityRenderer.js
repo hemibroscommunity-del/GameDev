@@ -2,7 +2,7 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
-import { Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
@@ -19,6 +19,20 @@ import { getNftTextures } from '../nftAvatars.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
+
+/* Above-player HUD bar textures (v2.3.107).  Three pill-shaped PNGs
+   the DOM dashboard also uses -- reuse the same `?v=` cache key so
+   the browser hits the warm cache instead of issuing a fresh request. */
+const HUD_BAR_VER = '2.3.68';
+const _hudBarTex = { hp: null, mp: null, stam: null };
+let _hudBarLoadStarted = false;
+function _ensureHudBarTextures() {
+  if (_hudBarLoadStarted) return;
+  _hudBarLoadStarted = true;
+  Assets.load(`/icons/ui/bar-hp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-mp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-stam.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
+}
 
 /* Module-scope SECTORS array — shared by local + other player update
  * paths.  Was previously allocated as a `const` inside each per-frame
@@ -310,33 +324,38 @@ function createPlayerDisplay() {
   nameText.y = -38;
   container.addChild(nameText);
 
-  /* Combat-bar HUD anchored above the head (v2.3.106).  Three
-     stacked bars (HP nearest head, Mana middle, Energy top) over
-     a single dark backdrop cutout.  Each bar's alpha is driven
-     by _updatePlayerHud: fades in when its resource drops below
-     max, lingers for HOLD_MS at full, then fades out.  Children
-     of the player container so they translate with the sprite. */
-  const hudBg = new Graphics();
-  hudBg.alpha = 0;
-  container.addChild(hudBg);
-  const hudHpBg = new Graphics();
-  hudHpBg.alpha = 0;
-  container.addChild(hudHpBg);
-  const hudHpFill = new Graphics();
-  hudHpFill.alpha = 0;
-  container.addChild(hudHpFill);
-  const hudMpBg = new Graphics();
-  hudMpBg.alpha = 0;
-  container.addChild(hudMpBg);
-  const hudMpFill = new Graphics();
-  hudMpFill.alpha = 0;
-  container.addChild(hudMpFill);
-  const hudStamBg = new Graphics();
-  hudStamBg.alpha = 0;
-  container.addChild(hudStamBg);
-  const hudStamFill = new Graphics();
-  hudStamFill.alpha = 0;
-  container.addChild(hudStamFill);
+  /* Combat-bar HUD anchored above the head (v2.3.107).  Each bar
+     is a pill-shaped Sprite using the same /icons/ui/bar-*.png
+     artwork the bottom dashboard's XP bar uses, so the in-world
+     readout matches the dashboard chrome exactly.  A dim overlay
+     Graphics sits on top of the right (empty) portion of each bar
+     to indicate the current fill.  No backdrop -- the pills float
+     directly on the game canvas.  Alpha is driven by
+     _updatePlayerHud (fade in below max, hold at full for
+     HOLD_MS, then fade out). */
+  const hudHpSprite = new Sprite();
+  hudHpSprite.anchor.set(0.5, 0.5);
+  hudHpSprite.alpha = 0;
+  container.addChild(hudHpSprite);
+  const hudHpEmpty = new Graphics();
+  hudHpEmpty.alpha = 0;
+  container.addChild(hudHpEmpty);
+
+  const hudMpSprite = new Sprite();
+  hudMpSprite.anchor.set(0.5, 0.5);
+  hudMpSprite.alpha = 0;
+  container.addChild(hudMpSprite);
+  const hudMpEmpty = new Graphics();
+  hudMpEmpty.alpha = 0;
+  container.addChild(hudMpEmpty);
+
+  const hudStamSprite = new Sprite();
+  hudStamSprite.anchor.set(0.5, 0.5);
+  hudStamSprite.alpha = 0;
+  container.addChild(hudStamSprite);
+  const hudStamEmpty = new Graphics();
+  hudStamEmpty.alpha = 0;
+  container.addChild(hudStamEmpty);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -350,13 +369,12 @@ function createPlayerDisplay() {
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
   container._nameText = nameText;
-  container._hudBg = hudBg;
-  container._hudHpBg = hudHpBg;
-  container._hudHpFill = hudHpFill;
-  container._hudMpBg = hudMpBg;
-  container._hudMpFill = hudMpFill;
-  container._hudStamBg = hudStamBg;
-  container._hudStamFill = hudStamFill;
+  container._hudHpSprite = hudHpSprite;
+  container._hudHpEmpty = hudHpEmpty;
+  container._hudMpSprite = hudMpSprite;
+  container._hudMpEmpty = hudMpEmpty;
+  container._hudStamSprite = hudStamSprite;
+  container._hudStamEmpty = hudStamEmpty;
   /* Animation cache — track last (pose, dir, frameIdx) so we only
      reassign texture when it actually changes. */
   container._animPose = null;
@@ -2418,54 +2436,65 @@ export class EntityRenderer {
     }
   }
 
-  /* Combat-bar HUD above the player sprite (v2.3.106).  Three stacked
-     bars in fixed order, closest-to-head first: HP, then Mana, then
-     Energy on top.  Each bar fades in when its resource drops below
-     max, lingers HOLD_MS after the last change, then fades out.  A
-     single dark backdrop spans the stack while any bar is visible.
-     Coordinates are container-local; the player container's transform
-     keeps the strip glued to the sprite. */
+  /* Combat-bar HUD above the player sprite (v2.3.107).  Three
+     pill-shaped Sprites stacked closest-to-head first: HP, Mana,
+     Energy on top.  Each one reuses the dashboard's bar artwork
+     (/icons/ui/bar-hp.png etc) so the in-world readout matches the
+     XP bar in the dashboard.  A small dim overlay on the right
+     portion of each pill shows the unfilled fraction.  No backdrop
+     -- the pills float directly on the canvas.
+     Visibility: each bar fades in when its resource is below max,
+     holds for HOLD_MS at full, then fades out. */
   _updatePlayerHud(S, now) {
     const R = S && S.rpg;
     const d = this.playerDisplay;
-    if (!R || !d || !d._hudHpFill) return;
+    if (!R || !d || !d._hudHpSprite) return;
 
-    const W = 44, H = 4;
+    _ensureHudBarTextures();
+    /* Bind textures the first time they resolve. */
+    if (_hudBarTex.hp   && d._hudHpSprite.texture   !== _hudBarTex.hp)   d._hudHpSprite.texture   = _hudBarTex.hp;
+    if (_hudBarTex.mp   && d._hudMpSprite.texture   !== _hudBarTex.mp)   d._hudMpSprite.texture   = _hudBarTex.mp;
+    if (_hudBarTex.stam && d._hudStamSprite.texture !== _hudBarTex.stam) d._hudStamSprite.texture = _hudBarTex.stam;
+
+    const W = 56, H = 8;
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
-    /* HP closest to head (y=-50), Mana middle (-58), Energy top (-66).
+    /* HP closest to head (y=-50), Mana middle (-60), Energy top (-70).
        nameText sits at -38 so the HUD floats above the name plate. */
     const bars = [
-      { fill: d._hudHpFill,   bg: d._hudHpBg,   cur: R.hp,      max: R.maxHp,      color: 0xff5e6c, y: -50 },
-      { fill: d._hudMpFill,   bg: d._hudMpBg,   cur: R.mana,    max: R.maxMana,    color: 0x3b82f6, y: -58 },
-      { fill: d._hudStamFill, bg: d._hudStamBg, cur: R.stamina, max: R.maxStamina, color: 0xf5c542, y: -66 },
+      { sprite: d._hudHpSprite,   empty: d._hudHpEmpty,   cur: R.hp,      max: R.maxHp,      y: -50 },
+      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   cur: R.mana,    max: R.maxMana,    y: -60 },
+      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, cur: R.stamina, max: R.maxStamina, y: -70 },
     ];
-    let anyVisible = false;
     for (const b of bars) {
       const max = b.max || 1;
       const cur = Math.max(0, Math.min(max, b.cur || 0));
+      const pct = cur / max;
       const full = cur >= max - 0.01;
-      if (!full) b.fill._lastNotFullAt = now;
-      const sinceChange = now - (b.fill._lastNotFullAt || 0);
+      if (!full) b.sprite._lastNotFullAt = now;
+      const sinceChange = now - (b.sprite._lastNotFullAt || 0);
       const targetAlpha = (!full || sinceChange < HOLD_MS) ? 1 : 0;
-      const a = (b.fill.alpha != null) ? b.fill.alpha : 0;
+      const a = (b.sprite.alpha != null) ? b.sprite.alpha : 0;
       const delta = targetAlpha - a;
       const newAlpha = a + Math.max(-FADE_STEP, Math.min(FADE_STEP, delta));
-      b.fill.alpha = b.bg.alpha = newAlpha;
-      if (newAlpha > 0.02) anyVisible = true;
+      b.sprite.alpha = b.empty.alpha = newAlpha;
 
-      b.bg.clear();
-      b.bg.rect(-W / 2, b.y, W, H);
-      b.bg.fill({ color: 0x000000, alpha: 0.4 });
-
-      b.fill.clear();
-      b.fill.rect(-W / 2, b.y, W * (cur / max), H);
-      b.fill.fill({ color: b.color });
+      /* Size + position the pill sprite once a texture is bound. */
+      if (b.sprite.texture && b.sprite.texture.width > 0) {
+        b.sprite.width = W;
+        b.sprite.height = H;
+        b.sprite.x = 0;
+        b.sprite.y = b.y;
+      }
+      /* Dim overlay on the unfilled (right) portion.  Width shrinks
+         to zero when the bar is full; no overlay drawn at 0 width. */
+      b.empty.clear();
+      const emptyW = W * (1 - pct);
+      if (emptyW > 0.5) {
+        b.empty.rect(-W / 2 + W * pct, b.y - H / 2, emptyW, H);
+        b.empty.fill({ color: 0x000000, alpha: 0.55 });
+      }
     }
-    d._hudBg.clear();
-    d._hudBg.rect(-W / 2 - 3, -68, W + 6, 22);
-    d._hudBg.fill({ color: 0x000000, alpha: 0.55 });
-    d._hudBg.alpha = anyVisible ? 0.55 : 0;
   }
 
   clear() {
