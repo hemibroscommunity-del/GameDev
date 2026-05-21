@@ -2068,7 +2068,17 @@ export var BroTown = function BroTown(_ref0) {
               if ('weapon' in msg.payload) S.rpg.weapon = msg.payload.weapon;
               if ('rangedWeapon' in msg.payload) S.rpg.rangedWeapon = msg.payload.rangedWeapon;
               if ('staffWeapon' in msg.payload) S.rpg.staffWeapon = msg.payload.staffWeapon;
-              if (typeof msg.payload.activeSlot === 'string') S.rpg.activeSlot = msg.payload.activeSlot;
+              /* activeSlot: server's value applies only when the user
+                 hasn't explicitly cycled in this session.  Without this
+                 guard, ANY stale persisted activeSlot on the worker
+                 (e.g., set_active_slot lost to a race or pipeline hop)
+                 reverts the player's cycled slot the moment a combat
+                 kill / loot pickup / credit event fires player_state.
+                 Client trusts itself once the user has touched the
+                 cycle gesture. */
+              if (typeof msg.payload.activeSlot === 'string' && !S._userCycledSlot) {
+                S.rpg.activeSlot = msg.payload.activeSlot;
+              }
               if ('armor' in msg.payload) S.rpg.armor = msg.payload.armor;
               if ('shield' in msg.payload) S.rpg.shield = msg.payload.shield;
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
@@ -11796,11 +11806,13 @@ export var BroTown = function BroTown(_ref0) {
     var curIdx = slots.indexOf(S2.rpg.activeSlot || 'melee');
     var nextSlot = slots[(curIdx + 1) % slots.length];
     S2.rpg.activeSlot = nextSlot;
-    /* Tell the worker about the slot change so the next player_state
-       (which fires on every loot/kill/credit event and re-mirrors
-       persisted rpg fields) doesn't revert activeSlot to the stale
-       server value -- the v2.3.97 user-reported bug where killing with
-       bow snapped back to sword. */
+    /* Mark the session as having an explicit cycle so the player_state
+       handler stops accepting the server's persisted activeSlot
+       (defense in depth: if set_active_slot never reaches the worker
+       due to a transient drop, client at least doesn't revert). */
+    S2._userCycledSlot = true;
+    /* Tell the worker about the slot change so the persisted value
+       is fresh on the next reconnect / fresh session. */
     if (S2.channel) {
       try { S2.channel.send({ type: 'set_active_slot', payload: { slot: nextSlot } }); } catch (e) {}
     }
