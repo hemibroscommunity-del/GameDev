@@ -431,13 +431,12 @@ export class EntityRenderer {
 
     for (const m of monsters) {
       /* Mid-fight variant transform check (currently just mummy ->
-         skeleton at HP <= transformAt).  Idempotent and cheap; the
-         renderer is the natural place since it already touches every
-         live monster per frame.  Returns true on the single tick the
-         swap fires, which we use to flip _spriteBody.visible off
-         briefly so the new archetype's sprite isn't drawn under stale
-         dimensions. */
-      maybeTransformMonster(m);
+         skeleton at HP <= transformAt).  Server is authoritative for
+         this when S._serverMonsters is true -- the worker detects the
+         threshold + emits a monster_transform event that BroTown.jsx
+         applies in _processGameEvent.  This local fallback runs only
+         in SP / dungeon mode where the worker doesn't model the zone. */
+      if (!S._serverMonsters) maybeTransformMonster(m);
       const arch = m.archetype || m.type;
       const isFodder = arch === 'fodder';
       const variantKey = MONSTER_VARIANTS[arch] ? arch : null;
@@ -620,8 +619,14 @@ export class EntityRenderer {
          turns idle slimes into zero-dirty after the first frame.
          Matches the dirty-flag idiom already used for HP / level /
          dynGfx redraws elsewhere in this file. */
-      if (display.x !== m.x) display.x = m.x;
-      if (display.y !== m.y) display.y = m.y;
+      /* Use renderX/renderY (smoothed toward m.x by the MP interp
+         loop in BroTown.jsx) when available so server-driven monsters
+         glide between ticks instead of teleporting per tick.  SP
+         monsters never set renderX, so fall back to m.x. */
+      const rx = m.renderX != null ? m.renderX : m.x;
+      const ry = m.renderY != null ? m.renderY : m.y;
+      if (display.x !== rx) display.x = rx;
+      if (display.y !== ry) display.y = ry;
       if (display.visible !== m.alive) display.visible = m.alive;
 
       const size = display._size;
@@ -656,47 +661,110 @@ export class EntityRenderer {
            gets two matches in a row, so it can't swap the sprite.
            First-ever observation commits immediately so a fresh
            server-spawned monster doesn't stay 'south' for 200 ms. */
-        const dx = m.x - (display._lastX != null ? display._lastX : m.x);
-        const dy = m.y - (display._lastY != null ? display._lastY : m.y);
-        const moving = dx * dx + dy * dy > 0.04;
+        /* Track deltas on the smoothed render position rather than the
+           raw server-tick position.  rx/ry come from m.renderX/renderY
+           (interpolated every frame by BroTown.jsx's MP loop) when
+           available, so slow server-driven monsters (e.g. mummy at
+           0.4 spd) read as moving on every frame between ticks
+           instead of alternating moving/idle.  SP monsters update
+           m.x every frame so the rx==m.x fallback works there too. */
+        const dx = rx - (display._lastX != null ? display._lastX : rx);
+        const dy = ry - (display._lastY != null ? display._lastY : ry);
+        /* Two movement signals OR'd together:
+           1. Frame-local renderX/renderY delta -- works whenever the
+              interp loop is actively advancing the smoothed position.
+           2. Server-side stamp m._lastPosChangeAt -- set in the WS
+              handler whenever the server's rounded position differs
+              from our cached x/y.  Slow server-driven variants (mummy
+              0.4 spd) only hit dx > 0 on ~1 in 3 render frames (the
+              rounded integer x bumps every ~44 ms, interp catches up
+              in one frame, then dx=0 until the next bump), which
+              caused isIdle to flicker on between bumps.  The server
+              stamp gives a fresh-within-300ms continuous "the
+              monster is moving" signal even when this frame's
+              renderX delta happens to be 0. */
+        const POS_FRESH_MS = 300;
+        const recentServerMove = m._lastPosChangeAt != null
+          && (now - m._lastPosChangeAt) < POS_FRESH_MS;
+        const hasFrameDelta = dx * dx + dy * dy > 0.04;
+        const moving = hasFrameDelta || recentServerMove;
         let facing = display._lastFacing || 'south';
         if (moving) {
-          const ang = Math.atan2(dy, dx);
+          display._lastMovedAt = now;
+        }
+        /* Accumulated visual displacement -- drives the walk frame
+           index below.  We add the sqrt of every actual rendered
+           dx/dy step regardless of whether it crosses the "moving"
+           threshold, so even sub-pixel easing increments contribute.
+           When the monster truly stops (no rx/ry change at all for
+           many frames) the value plateaus and the frame index
+           freezes naturally -- no isIdle gate needed. */
+        const stepLen = Math.sqrt(dx * dx + dy * dy);
+        display._walkDist = (display._walkDist || 0) + stepLen;
+        if (stepLen > 0.001) display._lastDistGrowAt = now;
+        /* Direction is derived from ACCUMULATED displacement vector
+           rather than per-frame dx/dy.  Slow passive wanderers (mummy
+           at 0.12 px/tick in idle wander mode = ~5.4 px/sec) have very
+           small dy + tiny floating-point + integer-rounding jitter in
+           dx, so atan2 on the per-frame delta returns wildly different
+           sectors frame-to-frame (a mummy walking north can show east
+           or west because atan2(-0.2, 0.001) lands in a wholly
+           different sector than atan2(-0.2, -0.001)).
+
+           Reference-point pattern: stash the rx/ry from the last time
+           we committed a direction, and only recompute when the
+           monster has displaced >= DIR_REF_DIST from that anchor.
+           The vector over 2 px of accumulated motion is far more
+           stable than the vector over a single sub-pixel frame
+           delta, so the direction it implies is reliable.  Anchor
+           resets after each recompute so direction stays current as
+           the monster turns. */
+        if (display._dirRefX == null) {
+          display._dirRefX = rx;
+          display._dirRefY = ry;
+        }
+        const ddx = rx - display._dirRefX;
+        const ddy = ry - display._dirRefY;
+        const ddist2 = ddx * ddx + ddy * ddy;
+        const DIR_REF_DIST = 2;
+        if (ddist2 >= DIR_REF_DIST * DIR_REF_DIST) {
+          const ang = Math.atan2(ddy, ddx);
           const sector = Math.round(ang / (Math.PI / 4));
           const candidate = SECTORS[((sector % 8) + 8) % 8];
-          display._lastMovedAt = now;
-          if (candidate !== facing) {
+          if (!display._lastFacing) {
+            /* First committed direction -- snap immediately so the
+               sprite isn't stuck on the default 'south'. */
+            facing = candidate;
+            display._lastFacing = candidate;
+            display._facingCommittedAt = now;
+          } else if (candidate !== facing) {
             const prevCandidate = display._lastCandidate;
-            if (!display._lastFacing) {
-              /* First movement -- commit immediately so the sprite
-                 isn't stuck on the default 'south' for a tick. */
+            /* Two consecutive recomputes (each over 2 px of motion)
+               must agree on the new sector before we swap, so
+               occasional straddle-the-boundary anchors can't flip
+               the sprite. */
+            if (prevCandidate === candidate) {
               facing = candidate;
               display._lastFacing = candidate;
-            } else if (prevCandidate === candidate) {
-              /* Two ticks in a row at the same new direction --
-                 confident enough to swap. */
-              facing = candidate;
-              display._lastFacing = candidate;
+              display._facingCommittedAt = now;
             }
           }
           display._lastCandidate = candidate;
+          display._dirRefX = rx;
+          display._dirRefY = ry;
         }
-        /* Idle pose -- when the monster hasn't moved for the idle
-           window, hold a single frame of the last-facing walk strip
-           instead of cycling.  Avoids "moonwalking on the spot" while
-           the AI is in cooldown / out of range, and the user wants
-           the static directional pose when the mummy isn't moving.
-
-           Per-source threshold:
-           - clientSideMovement variants (fireGoblin / skeleton) update
-             m.x every frame so true stops register quickly -- 150 ms.
-           - server-driven variants (mummy) get position updates only
-             at the server tick rate, so gaps between ticks routinely
-             exceed 150 ms even while the monster is "moving" -- need
-             a longer window (500 ms) so active movement still reads
-             as moving but a real stop still triggers the idle pose. */
-        const idleAfterMs = variant.clientSideMovement ? 150 : 500;
-        const isIdle = !moving && (now - (display._lastMovedAt || 0)) > idleAfterMs;
+        /* Idle pose -- when the monster's visual position has not
+           changed for IDLE_AFTER_MS, freeze on a static frame.  We
+           track "_walkDist last grew" instead of "moved this frame"
+           because the rx-delta moving signal is too noisy for slow
+           server-driven variants (1-px catch-ups every ~55 ms with
+           dx=0 between bumps).  As long as renderX is creeping along,
+           _lastDistGrowAt keeps refreshing and the walk loop plays.
+           When the monster truly stops, _walkDist plateaus, the
+           refresh stalls, and after IDLE_AFTER_MS the idle pose
+           kicks in. */
+        const IDLE_AFTER_MS = 600;
+        const isIdle = (now - (display._lastDistGrowAt || 0)) > IDLE_AFTER_MS;
 
         /* Priority chain: transform > hit recoil > attack wind-up >
            idle pose > walk loop.  The transform branch plays a
@@ -761,10 +829,21 @@ export class EntityRenderer {
              still better than mid-stride frames. */
           frame = variantSprites.walk.get(facing, 0);
         } else {
+          /* Walk loop frame index is driven by ACCUMULATED VISUAL
+             displacement rather than wall-clock time.  This guarantees
+             the animation only advances when the sprite is actually
+             moving on-screen, regardless of how fast or how slowly --
+             slow mummies cycle slowly, fast skeletons cycle quickly,
+             stopped monsters freeze.  variant.walkDistPerFrame
+             controls the px-of-displacement per frame increment
+             (default 1.5 -- tuned so a fodder-speed monster cycles
+             every ~0.8 s at its natural pace). */
           const fc = variantSprites.walk.count(facing);
-          const phaseOff = ((m.spawnX || 0) | 0) % 800;
-          const stepMs = variant.walkFrameMs || 100;
-          const frameIdx = fc > 0 ? Math.floor((now + phaseOff) / stepMs) % fc : 0;
+          const DIST_PER_FRAME = variant.walkDistPerFrame || 1.5;
+          const phaseOff = ((m.spawnX || 0) | 0) % (fc * 100);
+          const frameIdx = fc > 0
+            ? Math.floor(((display._walkDist || 0) + phaseOff) / DIST_PER_FRAME) % fc
+            : 0;
           frame = variantSprites.walk.get(facing, frameIdx);
         }
         if (frame && frame.tex) {
@@ -796,8 +875,8 @@ export class EntityRenderer {
           if (spriteBody.visible) spriteBody.visible = false;
           if (!display._body.visible) display._body.visible = true;
         }
-        display._lastX = m.x;
-        display._lastY = m.y;
+        display._lastX = rx;
+        display._lastY = ry;
       } else if (display._isFodder && display._spriteBody) {
         const spriteBody = display._spriteBody;
         const hittingNow = m._hitAnimEnd && now < m._hitAnimEnd && hasSlimeState('hit');

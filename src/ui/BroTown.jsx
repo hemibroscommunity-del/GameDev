@@ -40,6 +40,7 @@ const COOKED_HEAL_BY_KEY = {
 import { cookingBus } from './mobile/cookingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { weaponSwapBus } from './mobile/weaponSwapBus.js';
+import { blockRingBus } from './mobile/blockRingBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
 import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
@@ -1809,6 +1810,19 @@ export var BroTown = function BroTown(_ref0) {
                          keep their locally-simulated position; server
                          position is ignored.  HP / alive still sync. */
                       if (!usesClientSideMovement(localM)) {
+                        /* Stamp _lastPosChangeAt whenever the server's
+                           rounded position differs from our cached
+                           x/y.  Slow server-driven variants (mummy at
+                           0.4 spd) only see integer x changes every
+                           ~44 ms (round-trips below the 0.5-px interp
+                           threshold), so renderX-delta detection in
+                           the renderer is sparse + drops moving=false
+                           between bumps.  This stamp gives the
+                           renderer a direct "server pushed a new
+                           position this recently" signal. */
+                        if (md.x !== localM.x || md.y !== localM.y) {
+                          localM._lastPosChangeAt = Date.now();
+                        }
                         localM.x = md.x;
                         localM.y = md.y;
                       }
@@ -2556,6 +2570,30 @@ export var BroTown = function BroTown(_ref0) {
                 S.others[payload.id]._shieldUp = payload.up;
                 S.others[payload.id]._shieldTs = Date.now();
               }
+              break;
+            }
+          case 'monster_transform':
+            {
+              /* Server-driven variant transform (currently just
+                 mummy -> skeleton at HP <= 50%).  Worker detects the
+                 threshold + emits this event for every client in the
+                 zone, so every screen plays the shred animation at
+                 the same tick.  Replaces the per-client
+                 maybeTransformMonster() trigger in entityRenderer.js
+                 -- that local path is now gated on !S._serverMonsters
+                 (dungeon / SP only). */
+              if (!payload || !S.monsters) break;
+              var tm = S.monsters.find(function (mm) { return mm.id === payload.id; });
+              if (!tm) break;
+              var fromV = MONSTER_VARIANTS[payload.fromVariant];
+              tm._transformStart = Date.now();
+              tm._transformHoldMs = (fromV && fromV.transformHoldMs) || 480;
+              tm._transformFromArch = payload.fromVariant;
+              tm.archetype = payload.toVariant;
+              tm.type = payload.toVariant;
+              if (tm.arch !== undefined) tm.arch = payload.toVariant;
+              var toV = MONSTER_VARIANTS[payload.toVariant];
+              if (toV && toV.spd != null) tm.spd = toV.spd;
               break;
             }
           case 'monster_hit':
@@ -6904,16 +6942,30 @@ export var BroTown = function BroTown(_ref0) {
                their AI locally so per-archetype spdMult takes effect
                even in MP. */
             if (S._serverMonsters && !usesClientSideMovement(m)) {
-              /* Only run render interpolation — smooth monster position toward server position */
+              /* Continuous exponential easing toward server position.
+                 The previous "jump up to 3 px when gap > 0.5" pattern
+                 made slow server-driven variants (mummy at 0.4 spd)
+                 stutter visibly: server rounds m.x/m.y to integer
+                 before broadcasting, so the integer x bumps by 1 only
+                 every ~44 ms.  The interp caught up in one frame then
+                 sat for ~3 frames -- 1-frame-of-motion / 3-frames-of-
+                 standstill is what the user means by "movement
+                 calculation and server tick sync" looking wrong.
+                 25 % per frame at 60 fps gives smooth sub-pixel motion
+                 every frame: a 1 px jump from a server bump catches
+                 up over ~5 frames (~80 ms), which matches the natural
+                 ~44 ms bump cadence + a small lag.  Snap on huge
+                 jumps (zone change / respawn) stays. */
               if (m.renderX === undefined) { m.renderX = m.x; m.renderY = m.y; }
               var mInterpDx = m.x - m.renderX;
               var mInterpDy = m.y - m.renderY;
               var mInterpDist = Math.sqrt(mInterpDx * mInterpDx + mInterpDy * mInterpDy);
-              if (mInterpDist > 80) { m.renderX = m.x; m.renderY = m.y; }
-              else if (mInterpDist > 0.5) {
-                var mStep = Math.min(mInterpDist, 3.0);
-                m.renderX += (mInterpDx / mInterpDist) * mStep;
-                m.renderY += (mInterpDy / mInterpDist) * mStep;
+              if (mInterpDist > 80) {
+                m.renderX = m.x;
+                m.renderY = m.y;
+              } else if (mInterpDist > 0.05) {
+                m.renderX += mInterpDx * 0.25;
+                m.renderY += mInterpDy * 0.25;
               }
               return; /* skip all local AI below */
             }
@@ -7045,8 +7097,17 @@ export var BroTown = function BroTown(_ref0) {
                   if (chDist < 30 && Math.random() < 0.01) m._sentinelPause = 800; /* wind-up pause */
                 }
               } else {
-                /* Fodder + Brute: direct chase */
-                if (chDist > 15) {
+                /* Fodder + Brute: direct chase.  Stop at 55 px to give
+                   the player room to face the monster and raise their
+                   directional shield before the swing connects -- this
+                   is the SAME perimeter the worker uses for server-
+                   driven monsters (see brotown-server _tickMonsters,
+                   ATTACK_RANGE = 55).  Lives here too because variants
+                   with clientSideMovement:true (fireGoblin / skeleton)
+                   override the server position and run THIS AI locally;
+                   without the matching threshold those variants would
+                   still chase right onto the player. */
+                if (chDist > 55) {
                   m.x += chDx / chDist * m.spd * moveMult;
                   m.y += chDy / chDist * m.spd * moveMult;
                 }
@@ -9729,6 +9790,11 @@ export var BroTown = function BroTown(_ref0) {
             S._shieldUp = false;
             S._shieldCdUntil = Date.now() + 2000;
             S.shieldEnd = 0;
+            /* Flag the active double-tap-hold gesture as auto-released
+               so the right-joystick handler doesn't fire a second
+               endBlock + broadcast on the eventual touch-end. */
+            S._shieldAutoReleased = true;
+            try { blockRingBus.endBlock(); } catch (e) {}
             if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: false }});
           }
         } else {
@@ -11783,6 +11849,21 @@ export var BroTown = function BroTown(_ref0) {
   var shieldTouchId = useRef(null);
   var shieldJoyActive = useRef(false);
   var lTrail = useRef([]);
+  /* Double-tap gesture state for the joysticks (v2.3.97+).
+     Right joystick: tap, then tap-and-hold within DOUBLE_TAP_WINDOW_MS
+     activates shield -- the second touch becomes the shield drag handle
+     and rotates the block arc; release drops the shield.  Left joystick:
+     two quick taps within the window cycles the active weapon slot.
+     Each tap (single-tap classification: no movement + brief duration)
+     opens a preview window that renders an icon inside the joystick
+     disc; the window auto-closes when the timer expires. */
+  var rJoyPreviewRef = useRef(null);
+  var lJoyPreviewRef = useRef(null);
+  var rTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
+  var lTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
+  var rShieldGesture = useRef(false);
+  var rPreviewTimer = useRef(null);
+  var lPreviewTimer = useRef(null);
   var handleJoystickMove = useCallback(function (clientX, clientY) {
     var base = joystickRef.current;
     if (!base) return;
@@ -11927,12 +12008,42 @@ export var BroTown = function BroTown(_ref0) {
       for (var i = 0; i < tl.length; i++) if (tl[i].identifier === id) return tl[i];
       return null;
     };
+    /* Left joystick double-tap = cycle weapon (melee -> ranged -> staff).
+       Constants shared with the right joystick at the head of this
+       useEffect so both gestures use the same tap-vs-drag classifier.
+       v2.3.98: window tightened from 350->220 ms after user feedback
+       that a quick re-press to start moving after a swap was being
+       counted as a second tap and double-cycling the weapon. */
+    var DOUBLE_TAP_WINDOW_MS = 220;
+    var TAP_MAX_DURATION_MS = 200;
+    var TAP_MAX_MOVE_SQ_PX = 100; /* 10 px squared */
+    var DOUBLE_TAP_MAX_DIST_SQ_PX = 2500; /* 50 px squared */
+    var PREVIEW_HOLD_MS = 350;
+    var SLOT_ICON = { melee: 'sword', ranged: 'bow', staff: 'staff' };
+    var getNextWeaponSlot = function () {
+      var S2 = stateRef.current;
+      if (!S2 || !S2.rpg) return 'melee';
+      var slots = ['melee', 'ranged'];
+      if (S2.rpg.staffWeapon) slots.push('staff');
+      var curIdx = slots.indexOf(S2.rpg.activeSlot || 'melee');
+      return slots[(curIdx + 1) % slots.length];
+    };
     var lS = function lS(e) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
+      var nowMs = Date.now();
+      var lts = lTapState.current;
       lTouchId.current = t.identifier;
       joystickActive.current = true;
+      lts.startAt = nowMs;
+      lts.startX = t.clientX;
+      lts.startY = t.clientY;
+      lts.moved = false;
+      /* No cycle fire on touchstart -- v2.3.98 moved the trigger to
+         touchend so a quick re-press to start moving after a single
+         tap is correctly classified as a drag and does NOT count as
+         the second tap of a double-tap cycle. */
       handleJoystickMove(t.clientX, t.clientY);
     };
     var lM = function lM(e) {
@@ -11940,6 +12051,10 @@ export var BroTown = function BroTown(_ref0) {
       var t = findT(e.touches, lTouchId.current);
       if (t) {
         e.preventDefault();
+        var lts = lTapState.current;
+        var dxs = t.clientX - lts.startX;
+        var dys = t.clientY - lts.startY;
+        if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) lts.moved = true;
         handleJoystickMove(t.clientX, t.clientY);
       }
     };
@@ -11947,8 +12062,48 @@ export var BroTown = function BroTown(_ref0) {
       if (lTouchId.current === null) return;
       var t = findT(e.changedTouches, lTouchId.current);
       if (t) {
+        var lts = lTapState.current;
+        var endT = Date.now();
+        var wasTap = !lts.moved && (endT - lts.startAt) < TAP_MAX_DURATION_MS;
         lTouchId.current = null;
         handleJoystickEnd();
+        if (wasTap) {
+          /* Did this tap COMPLETE a double-tap with a recent prior
+             tap?  Check the prior tap's end-time + position against
+             this tap-end.  If yes -> cycle weapon and consume.  If no
+             -> start a new preview window. */
+          var dxPrev = t.clientX - lts.lastX;
+          var dyPrev = t.clientY - lts.lastY;
+          var isSecondTap = lts.lastEndAt > 0
+            && (endT - lts.lastEndAt) < DOUBLE_TAP_WINDOW_MS
+            && (dxPrev * dxPrev + dyPrev * dyPrev) < DOUBLE_TAP_MAX_DIST_SQ_PX;
+          if (isSecondTap) {
+            lts.lastEndAt = 0;
+            if (lPreviewTimer.current) { clearTimeout(lPreviewTimer.current); lPreviewTimer.current = null; }
+            if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+            try { _desktopCycleWeapon(); } catch (err) {}
+          } else {
+            lts.lastEndAt = endT;
+            lts.lastX = t.clientX;
+            lts.lastY = t.clientY;
+            /* Show the NEXT weapon slot as a preview inside the disc
+               so the player can confirm the swap target before
+               committing to the second tap.  Window auto-closes
+               after PREVIEW_HOLD_MS. */
+            if (lJoyPreviewRef.current) {
+              var nextSlot = getNextWeaponSlot();
+              lJoyPreviewRef.current.textContent = SLOT_ICON[nextSlot] || 'sword';
+              lJoyPreviewRef.current.style.display = 'flex';
+              if (lPreviewTimer.current) clearTimeout(lPreviewTimer.current);
+              lPreviewTimer.current = setTimeout(function () {
+                if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+              }, PREVIEW_HOLD_MS);
+            }
+          }
+        } else {
+          /* Drag/long-press cancels any pending double-tap. */
+          lts.lastEndAt = 0;
+        }
       }
     };
     /* Right-joystick swipe-to-special.  Track start (sx/sy/st) on touch
@@ -11960,13 +12115,49 @@ export var BroTown = function BroTown(_ref0) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
+      var nowMs = Date.now();
+      var rts = rTapState.current;
+      var dxLast = t.clientX - rts.lastX;
+      var dyLast = t.clientY - rts.lastY;
+      var isDoubleTap = rts.lastEndAt > 0
+        && (nowMs - rts.lastEndAt) < DOUBLE_TAP_WINDOW_MS
+        && (dxLast * dxLast + dyLast * dyLast) < DOUBLE_TAP_MAX_DIST_SQ_PX;
       rTouchId.current = t.identifier;
       rJoyActive.current = true;
+      rts.startAt = nowMs;
+      rts.startX = t.clientX;
+      rts.startY = t.clientY;
+      rts.moved = false;
+      if (isDoubleTap) {
+        /* Second tap of the double-tap-hold gesture: this touch is the
+           shield drag.  Suppress auto-attack/swing for this hold so the
+           player isn't fighting and blocking at once (per v2.3.97 user
+           choice), point the shield arc at the current touch location,
+           and activate the shield via the same path the dedicated
+           handler used. */
+        rts.lastEndAt = 0;
+        rShieldGesture.current = true;
+        if (rPreviewTimer.current) { clearTimeout(rPreviewTimer.current); rPreviewTimer.current = null; }
+        if (rJoyPreviewRef.current) rJoyPreviewRef.current.style.display = 'none';
+        var rect = rJoyRef.current ? rJoyRef.current.getBoundingClientRect() : null;
+        if (rect) {
+          var bcx = rect.left + rect.width / 2;
+          var bcy = rect.top + rect.height / 2;
+          var ang = Math.atan2(t.clientY - bcy, t.clientX - bcx);
+          var S2 = stateRef.current;
+          S2._aimAngle = ang;
+          S2._shieldAngle = ang;
+        }
+        try { doShield(); } catch (err) {}
+        try { blockRingBus.beginBlock(); } catch (err) {}
+        return;
+      }
+      /* Normal swing/auto-attack path */
       setAutoAttack(true);
       stateRef.current.autoAttack = true;
       rSwipe.sx = t.clientX;
       rSwipe.sy = t.clientY;
-      rSwipe.st = Date.now();
+      rSwipe.st = nowMs;
       rSwipe.lx = 0;
       rSwipe.ly = 0;
       rSwipe.lt = 0;
@@ -11978,6 +12169,27 @@ export var BroTown = function BroTown(_ref0) {
       var t = findT(e.touches, rTouchId.current);
       if (t) {
         e.preventDefault();
+        if (rShieldGesture.current) {
+          /* Shield-mode drag: update the block arc angle from the touch
+             position relative to the right joystick centre.  Don't call
+             handleRJoyMove -- that re-asserts auto-attack which the
+             shield gesture explicitly suppresses. */
+          var rect2 = rJoyRef.current ? rJoyRef.current.getBoundingClientRect() : null;
+          if (rect2) {
+            var bcx2 = rect2.left + rect2.width / 2;
+            var bcy2 = rect2.top + rect2.height / 2;
+            var ang2 = Math.atan2(t.clientY - bcy2, t.clientX - bcx2);
+            var Ssh = stateRef.current;
+            Ssh._aimAngle = ang2;
+            Ssh._aiming = true;
+            Ssh._shieldAngle = ang2;
+          }
+          return;
+        }
+        var rts2 = rTapState.current;
+        var dxs = t.clientX - rts2.startX;
+        var dys = t.clientY - rts2.startY;
+        if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) rts2.moved = true;
         handleRJoyMove(t.clientX, t.clientY);
         rSwipe.lx = t.clientX;
         rSwipe.ly = t.clientY;
@@ -11988,7 +12200,28 @@ export var BroTown = function BroTown(_ref0) {
       if (rTouchId.current === null) return;
       var t = findT(e.changedTouches, rTouchId.current);
       if (t) {
-        /* Flick detection — last-leg speed (recent burst) OR
+        if (rShieldGesture.current) {
+          /* Release shield on the gesture-touch end.  Mirrors what
+             BlockRing.endBlock did when the orbiting glyph was the
+             touch target.  If the shield already auto-released due to
+             stamina depletion, skip the redundant broadcast + UI
+             update -- the game loop already handled it. */
+          rShieldGesture.current = false;
+          var Send = stateRef.current;
+          if (Send && !Send._shieldAutoReleased) {
+            Send._shieldUp = false;
+            if (Send.channel) {
+              try { Send.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: Send.myId, up: false } }); } catch (err) {}
+            }
+            try { setShieldUp(false); } catch (err) {}
+            try { blockRingBus.endBlock(); } catch (err) {}
+          }
+          if (Send) Send._shieldAutoReleased = false;
+          rTouchId.current = null;
+          handleRJoyEnd();
+          return;
+        }
+        /* Flick detection -- last-leg speed (recent burst) OR
            total-distance/total-duration speed (slow but committed). */
         var refX = rSwipe.lx || rSwipe.sx;
         var refY = rSwipe.ly || rSwipe.sy;
@@ -12004,16 +12237,36 @@ export var BroTown = function BroTown(_ref0) {
         var isFlick = (spd > 0.15 && dist > 8 && dur < 400)
           || (totalSpd > 0.2 && totalDist > 15 && totalDur < 500);
         if (isFlick) {
-          var S2 = stateRef.current;
-          S2._hasUsedSwipe = true;
+          var Sfk = stateRef.current;
+          Sfk._hasUsedSwipe = true;
           var useDx = totalDist > dist ? totalDx : dx;
           var useDy = totalDist > dist ? totalDy : dy;
           var flickAng = Math.atan2(useDy, useDx);
-          S2._aimAngle = flickAng;
-          S2._facing = Math.abs(useDx) > Math.abs(useDy)
+          Sfk._aimAngle = flickAng;
+          Sfk._facing = Math.abs(useDx) > Math.abs(useDy)
             ? (useDx > 0 ? 'right' : 'left')
             : (useDy > 0 ? 'down' : 'up');
           doSpecialAttack();
+        }
+        /* Tap classification for the next double-tap detection.  A tap
+           opens the shield preview window inside the right joystick
+           disc; the preview auto-hides after PREVIEW_HOLD_MS. */
+        var rts3 = rTapState.current;
+        var endT = Date.now();
+        var wasTap = !rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS && !isFlick;
+        if (wasTap) {
+          rts3.lastEndAt = endT;
+          rts3.lastX = t.clientX;
+          rts3.lastY = t.clientY;
+          if (rJoyPreviewRef.current) {
+            rJoyPreviewRef.current.style.display = 'flex';
+            if (rPreviewTimer.current) clearTimeout(rPreviewTimer.current);
+            rPreviewTimer.current = setTimeout(function () {
+              if (rJoyPreviewRef.current) rJoyPreviewRef.current.style.display = 'none';
+            }, PREVIEW_HOLD_MS);
+          }
+        } else {
+          rts3.lastEndAt = 0;
         }
         rTouchId.current = null;
         handleRJoyEnd();
@@ -31079,6 +31332,28 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       zIndex: 1
     }
+  }), /*#__PURE__*/React.createElement("div", {
+    /* Left-joystick weapon-swap preview overlay (v2.3.97).  Hidden by
+       default; shown for PREVIEW_HOLD_MS ms after a single tap so the
+       player can confirm the NEXT slot before committing to the
+       second tap.  The lE handler stamps a slot label via
+       innerText. */
+    ref: lJoyPreviewRef,
+    style: {
+      position: 'absolute',
+      inset: 0,
+      display: 'none',
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'none',
+      zIndex: 2,
+      fontSize: isLandscape ? 18 : 16,
+      fontWeight: 800,
+      color: 'rgba(255,235,160,0.95)',
+      textShadow: '0 1px 3px rgba(0,0,0,0.7), 0 0 6px rgba(255,200,80,0.5)',
+      letterSpacing: '0.05em',
+      textTransform: 'uppercase',
+    }
   }))), /*#__PURE__*/React.createElement("div", {
     className: "bt-desktop-hide",
     style: {
@@ -31209,7 +31484,30 @@ export var BroTown = function BroTown(_ref0) {
       pointerEvents: 'none',
       textShadow: '0 1px 2px rgba(0,0,0,0.7)',
     }
-  }, /* Knob left blank — active weapon is shown in WeaponSwapBar instead. */ null))), /*#__PURE__*/React.createElement("div", {
+  }, /* Knob left blank — active weapon is shown in WeaponSwapBar instead. */ null), /*#__PURE__*/React.createElement("div", {
+    /* Right-joystick shield preview overlay (v2.3.97).  Hidden by
+       default; shown for PREVIEW_HOLD_MS ms after a single tap as a
+       visual cue that "another tap-and-hold here activates shield."
+       The orbiting BlockRing glyph stays hidden until shield is
+       actually engaged (per user request: it serves as the active
+       arc indicator, not a static button). */
+    ref: rJoyPreviewRef,
+    style: {
+      position: 'absolute',
+      inset: 0,
+      display: 'none',
+      alignItems: 'center',
+      justifyContent: 'center',
+      pointerEvents: 'none',
+      zIndex: 2,
+      fontSize: isLandscape ? 16 : 14,
+      fontWeight: 800,
+      color: 'rgba(150,200,255,0.95)',
+      textShadow: '0 1px 3px rgba(0,0,0,0.7), 0 0 6px rgba(80,140,255,0.5)',
+      letterSpacing: '0.05em',
+      textTransform: 'uppercase',
+    }
+  }, 'shield'))), /*#__PURE__*/React.createElement("div", {
     ref: shieldJoyRef,
     className: "bt-desktop-hide bt-legacy-shield-removed",
     style: {

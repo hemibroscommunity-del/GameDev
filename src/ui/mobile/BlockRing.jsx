@@ -198,6 +198,13 @@ export const BlockRing = () => {
   const size = ringOuter * 2;
   const blocking = blockRingBus.state.blocking;
   const shieldAng = shieldAngleRef.current;
+  /* v2.3.97: orbiting shield glyph is hidden unless shield is actually
+     active.  Shield activation is now driven by the right-joystick
+     double-tap-and-hold gesture (BroTown.jsx rS handler); the glyph
+     serves only as a visual aid for the block arc while held.  Skip
+     rendering entirely when not blocking so the right joystick is
+     unobstructed for normal swing/aim. */
+  if (!blocking) return null;
 
   const sx = ringOuter + Math.cos(shieldAng) * ((ringInner + ringOuter) / 2);
   const sy = ringOuter + Math.sin(shieldAng) * ((ringInner + ringOuter) / 2);

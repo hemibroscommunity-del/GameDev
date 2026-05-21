@@ -99,8 +99,12 @@ export const MONSTER_VARIANTS = {
     deathScalePx: 144,
     remnantsScalePx: 48,
     spd: 1.4,                 /* charges the player vs fodder's 0.5 */
-    clientSideMovement: true, /* same trick as fireGoblin: local AI
-                                 chase since server only knows fodder */
+    /* Movement is server-authoritative.  The worker applies
+       skeleton's spd via _variantSpeed when the mummy -> skeleton
+       transform fires server-side (see _tickMonsters); a
+       monster_transform event tells the client to swap visuals +
+       play the shred animation.  No clientSideMovement override
+       needed -- server position is the source of truth. */
     /* Skeleton inherits the no-projectile flag from the mummy form
        so the slime-orb fire doesn't re-arm after the transform.
        v2.3.61: dropped noFodderRemnants -- the skeleton now has its
@@ -137,8 +141,17 @@ export const MONSTER_VARIANTS = {
     /* 66 ms/frame -- the v2.3.2 33 ms read too frantic; halved the
        speed (50% slower) per user feedback.  8-frame loop now
        completes in ~528 ms, still snappier than the original 100 ms
-       baseline but no longer running. */
+       baseline but no longer running.  (Time-based legacy; the walk
+       loop is now driven by walkDistPerFrame below.) */
     walkFrameMs: 66,
+    /* v2.3.93+ walk frame index is distance-driven.  fireGoblin's
+       fast spd (67.5 px/sec at chase) combined with its short
+       walkFrameMs source pacing makes the legacy cycle frantic.
+       Bumped to 6.0 (was 3.0) so each frame holds for ~90 ms of
+       actual travel, halving the on-screen cycle rate again per
+       v2.3.96 user feedback ("his run animation needs to be slowed
+       down by 2x from here"). */
+    walkDistPerFrame: 6.0,
     /* Attack strip plays at a fixed frame rate (8 frames * 50 ms = 400 ms)
        then the renderer holds the last frame until _shootAnimEnd.  Earlier
        v2.3.23 spread the strip across the full telegraph window (480 ms),
@@ -157,15 +170,14 @@ export const MONSTER_VARIANTS = {
     /* Fireball on-screen size.  16 px was a bit small to read against
        the bright zone -- 50% bump per user (v2.3.13). */
     projectileScalePx: 24,
-    /* Client-authoritative movement.  The server only knows the base
-       fodder archetype, so server-driven positions would advance at
-       fodder speed regardless of ARCHETYPES.fireGoblin.spdMult.  With
-       this flag set, BroTown.jsx skips the server-position override
-       and lets each client's local AI run -- the goblin actually
-       chases at the bumped spdMult.  Trade-off: position diverges
-       slightly between players' views; damage / death / loot stay
-       authoritative via monster id, not coordinates. */
-    clientSideMovement: true,
+    /* Movement is now server-authoritative.  The worker mirrors
+       fireGoblin's spd (1.5) via _variantSpeed in
+       brotown-server/src/index.js so server-driven positions move
+       at the correct variant pace -- no more clientSideMovement
+       escape hatch.  Two players viewing the same fireGoblin now
+       see identical positions (closes the v2.3.62-era
+       "position diverges slightly between players' views"
+       trade-off). */
     /* m.spd to write when applyZoneVariant remaps a server monster.
        Matches createMonster's formula: 0.5 * spdMult.  Without this,
        server-spawned goblins inherit fodder's 0.5 spd and local AI
