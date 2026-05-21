@@ -3757,6 +3757,10 @@ export var BroTown = function BroTown(_ref0) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        if (msg.type === 'set_active_slot') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'broadcast' && msg.event) {
           if (msg.event === 'move') {
             // Movement: overwrite pending (only latest position matters)
