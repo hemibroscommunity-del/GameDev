@@ -68,11 +68,14 @@ const ICON_SRC = {
 // Tooltip phrasing per GDD §1.2 — describes both the effect and the
 // specific training source so the player knows what to do.
 const CHAR_STATS = [
-  { key: 'power',     label: 'Power',     short: 'POW', iconSrc: '/icons/popups/sword.png?v=2.3.109',                       pixelated: false, tip: 'Power — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.109',                       pixelated: true,  tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/sprites/shields/wood-shield-front.png?v=2.1.23',         pixelated: false, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
-  { key: 'agility',   label: 'Agility',   short: 'AGI', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                       pixelated: false, tip: 'Agility — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
-  { key: 'mind',      label: 'Mind',      short: 'MIN', iconSrc: '/icons/popups/spell.png?v=2.3.109',                       pixelated: false, tip: 'Mind — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
+  { key: 'power',     label: 'Power',     short: 'POW', iconSrc: '/icons/popups/sword.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Power — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
+  /* v2.3.112: heart icon scaled 1.4x because the heart artwork still
+     reads ~70% the footprint of the other icons even after the tighter
+     ffmpeg crop.  Cache-bust bumped so browsers reload the cropped png. */
+  { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.112',                       pixelated: true,  iconScale: 1.4, tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/sprites/shields/wood-shield-front.png?v=2.1.23',         pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'agility',   label: 'Agility',   short: 'AGI', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Agility — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
+  { key: 'mind',      label: 'Mind',      short: 'MIN', iconSrc: '/icons/popups/spell.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Mind — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
 ];
 
 // 10 life skills — names match the canonical labels in BroTown.jsx
@@ -489,7 +492,9 @@ export const BottomDashboard = () => {
                   const rngDmg = Math.round((wRng.base + (R.agility || 0) * 0.8));
                   const magDmg = Math.round((wMag.base + (R.mind || 0) * 0.8));
                   const rows = [
-                    { label: 'HP',  val: maxHp,   color: COL.hp,   tip: `Max HP at Vitality ${R.vitality || 0}.` },
+                    /* v2.3.112: HP value renders white (was COL.hp red,
+                       which read as a low-HP warning even at full pool). */
+                    { label: 'HP',  val: maxHp,   color: COL.text, tip: `Max HP at Vitality ${R.vitality || 0}.` },
                     { label: 'MEL', val: melDmg,  color: COL.text, tip: `Melee weapon base damage = sword.base + Power x 0.8.  Current POW ${R.power || 0}.` },
                     { label: 'RNG', val: rngDmg,  color: COL.text, tip: `Bow weapon base damage = bow.base + Agility x 0.8.  Current AGI ${R.agility || 0}.` },
                     { label: 'MAG', val: magDmg,  color: COL.text, tip: `Staff weapon base damage = staff.base + Mind x 0.8.  Current MIN ${R.mind || 0}.` },
@@ -601,8 +606,8 @@ export const BottomDashboard = () => {
                             alt={s.label}
                             draggable={false}
                             style={{
-                              width: 26,
-                              height: 26,
+                              width: 26 * (s.iconScale || 1),
+                              height: 26 * (s.iconScale || 1),
                               objectFit: 'contain',
                               imageRendering: s.pixelated ? 'pixelated' : 'auto',
                               pointerEvents: 'none',
@@ -629,36 +634,16 @@ export const BottomDashboard = () => {
                       </div>
                     );
                   })}
-                  {/* v2.3.111: 6th Build cell holds the profile
-                      portrait (moved here from the bottom-left column,
-                      whose space is now used by the derived-stats
-                      readout). */}
-                  <div key="_portrait" style={{
-                    position: 'relative',
+                  {/* v2.3.112: 6th Build cell intentionally blank.
+                      v2.3.111 hosted the profile portrait here; user
+                      requested removal -- portrait is duplicated by the
+                      in-world player sprite anyway. */}
+                  <div key="_blank" style={{
                     borderRadius: 4,
                     background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(255,255,255,0.06)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
                     minHeight: 0,
-                  }}>
-                    <img
-                      src="/icons/ui/profile.webp"
-                      alt="Profile"
-                      draggable={false}
-                      style={{
-                        maxHeight: '100%',
-                        maxWidth: '100%',
-                        aspectRatio: '1 / 1',
-                        objectFit: 'contain',
-                        imageRendering: 'pixelated',
-                        pointerEvents: 'none',
-                        userSelect: 'none',
-                      }}
-                    />
-                  </div>
+                  }} />
                 </div>
               </div>
 

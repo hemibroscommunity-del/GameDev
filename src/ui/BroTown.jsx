@@ -12077,6 +12077,40 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, []);
 
+  /* iOS Safari left-edge swipe absorber (v2.3.112).  iOS treats a
+     touchstart within ~20 px of the screen's left edge as the
+     browser's back-history gesture, which on this game manifests as
+     "the whole game screen scrolls when I swipe from the outer
+     edge".  Sit a 18 px tall transparent strip down the left edge
+     and preventDefault any touchstart that lands inside it.  Best
+     effort -- Safari sometimes overrules; if it persists the user
+     can reflag for a PWA / fullscreen path. */
+  useEffect(function () {
+    if (showNameModal || showLogin) return;
+    var guard = document.createElement('div');
+    guard.style.cssText = [
+      'position: fixed',
+      'left: 0',
+      'top: 0',
+      'width: 18px',
+      'height: 100%',
+      'z-index: 40',
+      'background: transparent',
+      'pointer-events: auto',
+      'touch-action: none',
+    ].join(';');
+    var onTouchStart = function (e) {
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
+    };
+    guard.addEventListener('touchstart', onTouchStart, { passive: false });
+    document.body.appendChild(guard);
+    return function () {
+      try { guard.removeEventListener('touchstart', onTouchStart); } catch (_) {}
+      try { document.body.removeChild(guard); } catch (_) {}
+    };
+  }, [showNameModal, showLogin]);
+
   /* Dual joystick — each finger tracked independently */
   useEffect(function () {
     if (showNameModal || showLogin) return;
