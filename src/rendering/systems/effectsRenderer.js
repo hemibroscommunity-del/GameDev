@@ -373,16 +373,40 @@ export class EffectsRenderer {
         }
         dmg._stackOffset = hasNeighbor ? (lowestY + SPACING) - dmg.y : 0;
         const baseFontSize = dmg.crit ? 27 : 21;
-        /* Special-attack hits render at 2x so the heavy hit reads clearly. */
-        const fontSize = dmg.special ? baseFontSize * 2 : baseFontSize;
+        /* Special-attack hits used to render at 2x to read as "heavy", but
+           that crowded the screen and hid the normal-hit cadence. They now
+           match normal size and instead get a bright outer glow (see
+           dropShadow below) to mark them as specials. */
+        const fontSize = baseFontSize;
+        const textStyle = { ...baseStyle, fontSize, fill: displayColor };
+        if (dmg.special) {
+          /* distance:0 + high blur = even halo on all sides. Warm yellow
+             matches the special-projectile yellow halo. */
+          textStyle.dropShadow = {
+            color: '#ffe066',
+            alpha: 0.95,
+            blur: 8,
+            distance: 0,
+            angle: 0,
+          };
+        }
         const text = new Text({
           text: dmg.text,
-          style: { ...baseStyle, fontSize, fill: displayColor },
+          style: textStyle,
         });
         /* Pixi v8 TextStyle stores fields privately; the spread above may drop
            overrides. Set fill and fontSize explicitly to guarantee they apply. */
         text.style.fill = displayColor;
         text.style.fontSize = fontSize;
+        if (dmg.special) {
+          text.style.dropShadow = {
+            color: '#ffe066',
+            alpha: 0.95,
+            blur: 8,
+            distance: 0,
+            angle: 0,
+          };
+        }
         text.anchor.set(0.5, 0.5);
         this.dmgLayer.addChild(text);
         this.dmgTexts.push(text);
@@ -398,10 +422,6 @@ export class EffectsRenderer {
           const tex = POPUP_ICONS[iconKey];
           const icon = new Sprite(tex);
           icon.anchor.set(0, 0.5);
-          /* Cap icon height at 22 px regardless of fontSize.  At the
-             previous fontSize-tied scale, special-crit hits put a
-             54 px icon next to a single-digit number, eating most of
-             the popup width. */
           const targetH = Math.min(fontSize, 22);
           icon.scale.set(targetH / tex.height);
           this.dmgLayer.addChild(icon);
@@ -446,11 +466,10 @@ export class EffectsRenderer {
       if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
         /* Place icon flush to the right of the text. Text anchor is
            (0.5, 0.5), so the right edge sits at text.x + text.width/2.
-           Gap scales with fontSize because special-attack popups render
-           at 2x.  Min 10 px because the prior 4 px floor still let the
-           magic icon clip the last digit on fire-goblin hits ("32"
-           reading as "3[magic]").  Stroked text extends a few px past
-           text.width on iOS canvas rendering. */
+           Gap scales with fontSize.  Min 10 px because the prior 4 px
+           floor still let the magic icon clip the last digit on
+           fire-goblin hits ("32" reading as "3[magic]").  Stroked text
+           extends a few px past text.width on iOS canvas rendering. */
         const _iconGap = Math.max(10, (text.style.fontSize || 21) * 0.35);
         dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
         dmg._pixiIcon.y = text.y;
