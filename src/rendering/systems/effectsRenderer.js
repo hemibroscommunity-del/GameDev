@@ -1131,15 +1131,25 @@ export class EffectsRenderer {
   }
 
   _disposeLoot(l) {
-    if (l._pixiSprite && !l._pixiSprite.destroyed) l._pixiSprite.destroy();
-    if (l._pixiLabel && !l._pixiLabel.destroyed) l._pixiLabel.destroy();
-    if (l._pixiTimer && !l._pixiTimer.destroyed) l._pixiTimer.destroy();
-    if (l._pixiCount && !l._pixiCount.destroyed) l._pixiCount.destroy();
-    if (l._pixiIcon && !l._pixiIcon.destroyed) l._pixiIcon.destroy();
-    if (l._pixiCoinSprite && !l._pixiCoinSprite.destroyed) l._pixiCoinSprite.destroy();
-    if (l._pixiCoinLabel && !l._pixiCoinLabel.destroyed) l._pixiCoinLabel.destroy();
-    if (l._pixiShardSprite && !l._pixiShardSprite.destroyed) l._pixiShardSprite.destroy();
-    if (l._pixiOwnerLabel && !l._pixiOwnerLabel.destroyed) l._pixiOwnerLabel.destroy();
+    /* Explicit removeFromParent before destroy: same Pixi v8 edge case
+       _disposeNode documents -- destroy() doesn't always unparent in
+       this project, leaving a coin sprite visible on lootLayer after
+       pickup. User-reported "coins dropped from monsters sometimes
+       don't disappear from the ground". */
+    const kill = (obj) => {
+      if (!obj || obj.destroyed) return;
+      if (obj.parent) obj.parent.removeChild(obj);
+      obj.destroy();
+    };
+    kill(l._pixiSprite);
+    kill(l._pixiLabel);
+    kill(l._pixiTimer);
+    kill(l._pixiCount);
+    kill(l._pixiIcon);
+    kill(l._pixiCoinSprite);
+    kill(l._pixiCoinLabel);
+    kill(l._pixiShardSprite);
+    kill(l._pixiOwnerLabel);
     l._pixiSprite = l._pixiLabel = l._pixiTimer = l._pixiCount = l._pixiIcon = null;
     l._pixiCoinSprite = l._pixiCoinLabel = l._pixiShardSprite = l._pixiOwnerLabel = null;
   }
