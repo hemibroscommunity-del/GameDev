@@ -394,11 +394,10 @@ export const BottomDashboard = () => {
         }} />
       </div>
 
-      {/* Upper-right player card — single framed window holding the
-          portrait + name + level on top, then a divider, then the gold
-          readout.  v2.3.127 merged the previously-separate portrait
-          and gold pills into one identity panel; the freed left
-          dashboard column drops its name/level header. */}
+      {/* Upper-right player card — portrait stacked above gold.
+          v2.3.128: name + level row removed per user request so the
+          card shrinks to the natural width of its content (portrait
+          + 4-5 digit gold value). */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
         style={{
@@ -413,70 +412,38 @@ export const BottomDashboard = () => {
           padding: '4px 6px',
           display: 'flex',
           flexDirection: 'column',
+          alignItems: 'center',
           gap: 3,
           touchAction: 'none',
-          minWidth: 120,
         }}>
-        {/* Identity row — portrait + name (top) + level (bottom). */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{
-            width: 40,
-            height: 40,
-            background: 'rgba(0,0,0,0.25)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 6,
-            padding: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <img
-              src="/icons/ui/profile.webp?v=2.3.127"
-              alt="Portrait"
-              draggable={false}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                imageRendering: 'pixelated',
-                borderRadius: 4,
-                userSelect: 'none',
-                pointerEvents: 'none',
-              }}
-            />
-          </div>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            lineHeight: 1.1,
-            minWidth: 0,
-          }}>
-            <span style={{
-              color: COL.text,
-              fontFamily: 'Source Sans 3, sans-serif',
-              fontWeight: 700,
-              fontSize: 13,
-              letterSpacing: '.02em',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: 110,
-            }}>{S?.myName || 'Anon'}</span>
-            <span style={{
-              color: COL.muted,
-              fontFamily: 'Source Sans 3, sans-serif',
-              fontWeight: 700,
-              fontSize: 10,
-              letterSpacing: '.08em',
-              textTransform: 'uppercase',
-            }}>Lvl {level}</span>
-          </div>
+        {/* Portrait frame — 40x40, centered. */}
+        <div style={{
+          width: 40,
+          height: 40,
+          background: 'rgba(0,0,0,0.25)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 6,
+          padding: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <img
+            src="/icons/ui/profile.webp?v=2.3.128"
+            alt="Portrait"
+            draggable={false}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              imageRendering: 'pixelated',
+              borderRadius: 4,
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+          />
         </div>
-        {/* Divider between identity and gold sections. */}
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.10)' }} />
-        {/* Gold row — same icon + value styling as the v2.3.126 gold pill. */}
+        {/* Gold row — icon + value, centered under the portrait. */}
         <div style={{
           color: '#f5c542',
           fontFamily: 'Source Sans 3, sans-serif',
@@ -485,8 +452,8 @@ export const BottomDashboard = () => {
           letterSpacing: '.04em',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: 4,
-          padding: '0 2px',
         }}>
           <img
             src="/icons/popups/gold.png"
