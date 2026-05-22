@@ -25,11 +25,13 @@ OUT_DIR = os.path.join(REPO, 'public', 'sprites', 'joystick')
 
 # UUIDs from upload commit dbce3d7.  Verified visually: 52311F3D = base,
 # 6622F049 = stick (vertical orientation), 50DDDCE5 = knob.
-SRC_BASE  = os.path.join(REPO, '52311F3D-E717-4B92-89AF-1E981EAE94F2.png')
+# v2.3.102: replaced base + knob with the cleaner uploads.
+#   base: 52311F3D (worn metal w/ scratches)  -> F159F452 (smooth dark ring)
+#   knob: A0399828 (dark concave button v1)   -> 6FDE6842 (dark concave v2,
+#                                                 cleaner texture + edge)
+SRC_BASE  = os.path.join(REPO, 'F159F452-61BC-4E42-BA49-6E7778CB6A35.png')
 SRC_STICK = os.path.join(REPO, '6622F049-991E-40C0-9C5B-A0144CA0E043.png')
-# v2.3.101: replaced the previous chrome sphere knob (50DDDCE5) with
-# the dark concave button the user uploaded (A0399828).
-SRC_KNOB  = os.path.join(REPO, 'A0399828-675D-4D4B-887D-7DAFC64BB681.png')
+SRC_KNOB  = os.path.join(REPO, '6FDE6842-621C-4BB0-B2AB-41EC0ADC3DA2.png')
 
 CELL = 256
 KEY = np.array([255, 0, 255], dtype=np.int16)

@@ -31283,7 +31283,7 @@ export var BroTown = function BroTown(_ref0) {
          game.css with the metal-ring + center-hole art the user uploaded.
          No overflow:hidden -- the stick + knob layer on top and don't
          need clipping, the sprite art handles its own rim. */
-      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.101)',
+      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31305,7 +31305,7 @@ export var BroTown = function BroTown(_ref0) {
       marginTop: -11,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.101)',
+      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31323,7 +31323,7 @@ export var BroTown = function BroTown(_ref0) {
          knob much larger relative to the outer ring (user request). */
       width: isLandscape ? 52 : 44,
       height: isLandscape ? 52 : 44,
-      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.101)',
+      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31378,7 +31378,7 @@ export var BroTown = function BroTown(_ref0) {
          separate red-ring overlay rendered below.  borderRadius kept
          so the hit-test shape stays circular. */
       borderRadius: '50%',
-      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.101)',
+      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31440,7 +31440,7 @@ export var BroTown = function BroTown(_ref0) {
       marginTop: -11,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.101)',
+      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31461,7 +31461,7 @@ export var BroTown = function BroTown(_ref0) {
       transform: 'translate(-50%,-50%)',
       width: isLandscape ? 52 : 44,
       height: isLandscape ? 52 : 44,
-      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.101)',
+      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
