@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
-import { Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Assets, ColorMatrixFilter, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
@@ -19,6 +19,20 @@ import { getNftTextures } from '../nftAvatars.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
+
+/* Above-player HUD bar textures (v2.3.107).  Three pill-shaped PNGs
+   the DOM dashboard also uses -- reuse the same `?v=` cache key so
+   the browser hits the warm cache instead of issuing a fresh request. */
+const HUD_BAR_VER = '2.3.68';
+const _hudBarTex = { hp: null, mp: null, stam: null };
+let _hudBarLoadStarted = false;
+function _ensureHudBarTextures() {
+  if (_hudBarLoadStarted) return;
+  _hudBarLoadStarted = true;
+  Assets.load(`/icons/ui/bar-hp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-mp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-stam.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
+}
 
 /* Module-scope SECTORS array — shared by local + other player update
  * paths.  Was previously allocated as a `const` inside each per-frame
@@ -107,7 +121,7 @@ function hideNft(display) {
 }
 
 const NAME_STYLE = new TextStyle({
-  fontFamily: 'VT323, monospace',
+  fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 10,
   fontWeight: '700',
   fill: '#ffffff',
@@ -115,8 +129,11 @@ const NAME_STYLE = new TextStyle({
   dropShadow: { color: '#000000', blur: 2, distance: 1 },
 });
 
-const HP_BAR_W = 24;
-const HP_BAR_H = 3;
+/* v2.3.118: bumped 24x3 -> 32x5 so the bar-hp.png pill artwork
+   reads as pill-shaped at this scale.  Monster HP bar now reuses
+   the same Sprite the player HUD's HP bar uses. */
+const HP_BAR_W = 32;
+const HP_BAR_H = 5;
 
 function getMonsterSize(archetype) {
   /* Slime/fodder stays small (renders as a 50-px sprite, the 8-px
@@ -181,13 +198,23 @@ function createMonsterDisplay(monster) {
     container.addChild(spriteBody);
   }
 
-  const hpBg = new Graphics();
-  hpBg.rect(-HP_BAR_W / 2, -size - 10, HP_BAR_W, HP_BAR_H);
-  hpBg.fill({ color: 0x000000, alpha: 0.5 });
-  container.addChild(hpBg);
+  /* v2.3.118: monster HP bar uses the bar-hp.png pill texture (same
+     artwork the player's above-character HP pill uses) + a dim
+     overlay covering the empty portion -- consistent visual language
+     across player and monsters.
+     v2.3.119: ColorMatrixFilter applied so the same red art
+     hue-shifts to yellow (>25% HP) / green (>50% HP) without needing
+     separate sprite PNGs. */
+  const hpSprite = new Sprite();
+  hpSprite.anchor.set(0.5, 0.5);
+  hpSprite.alpha = 0;
+  const hpFilter = new ColorMatrixFilter();
+  hpSprite.filters = [hpFilter];
+  container.addChild(hpSprite);
 
-  const hpFill = new Graphics();
-  container.addChild(hpFill);
+  const hpEmpty = new Graphics();
+  hpEmpty.alpha = 0;
+  container.addChild(hpEmpty);
 
   const lvlText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 8 } });
   lvlText.anchor.set(0.5, 1);
@@ -205,8 +232,10 @@ function createMonsterDisplay(monster) {
   container._isFodder = isFodder;
   container._variantKey = variantKey;
   container._isSnowman = isSnowman;
-  container._hpFill = hpFill;
-  container._hpBg = hpBg;
+  container._hpSprite = hpSprite;
+  container._hpEmpty = hpEmpty;
+  container._hpFilter = hpFilter;
+  container._hpHue = 0;
   container._lvlText = lvlText;
   container._dynGfx = dynGfx;
   container._size = size;
@@ -310,6 +339,79 @@ function createPlayerDisplay() {
   nameText.y = -38;
   container.addChild(nameText);
 
+  /* Combat-bar HUD anchored above the head (v2.3.107).  Each bar
+     is a pill-shaped Sprite using the same /icons/ui/bar-*.png
+     artwork the bottom dashboard's XP bar uses, so the in-world
+     readout matches the dashboard chrome exactly.  A dim overlay
+     Graphics sits on top of the right (empty) portion of each bar
+     to indicate the current fill.  No backdrop -- the pills float
+     directly on the game canvas.  Alpha is driven by
+     _updatePlayerHud (fade in below max, hold at full for
+     HOLD_MS, then fade out). */
+  /* v2.3.121: stroke + drop shadow added so the HUD numbers stay
+     readable on bright bar backgrounds (white "100" on the green HP
+     pill was washing out completely).  Stroke gives crisp dark
+     outline; dropShadow adds offset so the stroke reads at any
+     orientation. */
+  const _hudNumStyleFull = {
+    fontFamily: 'Source Sans 3, sans-serif',
+    fontSize: 8,
+    fontWeight: '800',
+    fill: '#ffffff',
+    stroke: { color: '#000000', width: 2 },
+    dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
+    align: 'center',
+  };
+  const _hudNumStyleEmpty = {
+    fontFamily: 'Source Sans 3, sans-serif',
+    fontSize: 8,
+    fontWeight: '800',
+    fill: '#ff8888',
+    stroke: { color: '#000000', width: 2 },
+    dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
+    align: 'center',
+  };
+
+  const hudHpSprite = new Sprite();
+  hudHpSprite.anchor.set(0.5, 0.5);
+  hudHpSprite.alpha = 0;
+  /* v2.3.119: same hue-shift filter as monster HP bar so the player's
+     HP pill goes green->yellow->red by threshold. */
+  const hudHpFilter = new ColorMatrixFilter();
+  hudHpSprite.filters = [hudHpFilter];
+  container.addChild(hudHpSprite);
+  const hudHpEmpty = new Graphics();
+  hudHpEmpty.alpha = 0;
+  container.addChild(hudHpEmpty);
+  const hudHpTextFull  = new Text({ text: '', style: _hudNumStyleFull });
+  const hudHpTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
+  hudHpTextFull.anchor.set(0.5, 0.5);  hudHpTextFull.alpha = 0;  container.addChild(hudHpTextFull);
+  hudHpTextEmpty.anchor.set(0.5, 0.5); hudHpTextEmpty.alpha = 0; container.addChild(hudHpTextEmpty);
+
+  const hudMpSprite = new Sprite();
+  hudMpSprite.anchor.set(0.5, 0.5);
+  hudMpSprite.alpha = 0;
+  container.addChild(hudMpSprite);
+  const hudMpEmpty = new Graphics();
+  hudMpEmpty.alpha = 0;
+  container.addChild(hudMpEmpty);
+  const hudMpTextFull  = new Text({ text: '', style: _hudNumStyleFull });
+  const hudMpTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
+  hudMpTextFull.anchor.set(0.5, 0.5);  hudMpTextFull.alpha = 0;  container.addChild(hudMpTextFull);
+  hudMpTextEmpty.anchor.set(0.5, 0.5); hudMpTextEmpty.alpha = 0; container.addChild(hudMpTextEmpty);
+
+  const hudStamSprite = new Sprite();
+  hudStamSprite.anchor.set(0.5, 0.5);
+  hudStamSprite.alpha = 0;
+  container.addChild(hudStamSprite);
+  const hudStamEmpty = new Graphics();
+  hudStamEmpty.alpha = 0;
+  container.addChild(hudStamEmpty);
+  const hudStamTextFull  = new Text({ text: '', style: _hudNumStyleFull });
+  const hudStamTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
+  hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  container.addChild(hudStamTextFull);
+  hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
+
   container._body = body;
   container._spriteBody = spriteBody;
   container._nftFront = nftFront;
@@ -322,6 +424,20 @@ function createPlayerDisplay() {
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
   container._nameText = nameText;
+  container._hudHpSprite = hudHpSprite;
+  container._hudHpEmpty = hudHpEmpty;
+  container._hudHpFilter = hudHpFilter;
+  container._hudHpHue = 0;
+  container._hudHpTextFull = hudHpTextFull;
+  container._hudHpTextEmpty = hudHpTextEmpty;
+  container._hudMpSprite = hudMpSprite;
+  container._hudMpEmpty = hudMpEmpty;
+  container._hudMpTextFull = hudMpTextFull;
+  container._hudMpTextEmpty = hudMpTextEmpty;
+  container._hudStamSprite = hudStamSprite;
+  container._hudStamEmpty = hudStamEmpty;
+  container._hudStamTextFull = hudStamTextFull;
+  container._hudStamTextEmpty = hudStamTextEmpty;
   /* Animation cache — track last (pose, dir, frameIdx) so we only
      reassign texture when it actually changes. */
   container._animPose = null;
@@ -416,6 +532,7 @@ export class EntityRenderer {
     this._updatePlayer(S, now);
     this._updateNPCs(S, now);
     this._updatePet(S, now);
+    this._updatePlayerHud(S, now);
   }
 
   _updateMonsters(S, now) {
@@ -517,8 +634,8 @@ export class EntityRenderer {
                half-full over a corpse (v2.3.17 bug report).  Set
                _lastHpPct = 1 so the post-respawn redraw triggers
                cleanly on the first damage tick. */
-            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
-            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            if (display._hpSprite && !display._hpSprite.destroyed) display._hpSprite.alpha = 0;
+            if (display._hpEmpty && !display._hpEmpty.destroyed) { display._hpEmpty.clear(); display._hpEmpty.alpha = 0; }
             display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
@@ -551,8 +668,8 @@ export class EntityRenderer {
             display._body.visible = false;
             /* Clear HP bar -- see variant death branch for context;
                same problem applies to raw fodder slime kills. */
-            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
-            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            if (display._hpSprite && !display._hpSprite.destroyed) display._hpSprite.alpha = 0;
+            if (display._hpEmpty && !display._hpEmpty.destroyed) { display._hpEmpty.clear(); display._hpEmpty.alpha = 0; }
             display._lastHpPct = 1;
             /* Clear any leftover dynamic content (aggro arrow, status
                icons) so it doesn't linger on the death frame. */
@@ -588,8 +705,8 @@ export class EntityRenderer {
             display.visible = true;
             display._body.visible = false;
             /* Clear HP bar -- same fix as slime / variant death branches. */
-            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
-            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            if (display._hpSprite && !display._hpSprite.destroyed) display._hpSprite.alpha = 0;
+            if (display._hpEmpty && !display._hpEmpty.destroyed) { display._hpEmpty.clear(); display._hpEmpty.alpha = 0; }
             display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
@@ -1042,26 +1159,50 @@ export class EntityRenderer {
         display._emoji.visible = true;
       }
 
-      // HP bar — only redraw when the % changed (>0.01 movement).
-      // Use maxHp as the denominator so the bar survives server
-      // respawns (the kill handler used to zero m.hp, which broke
-      // every monster's bar on its 2nd life).
+      // HP bar (v2.3.118) -- uses the shared bar-hp.png pill texture +
+      // a dim overlay covering the empty portion.  Same artwork the
+      // player HUD's HP bar uses, so player and monsters read in the
+      // same visual language.  Hidden entirely at full HP (existing
+      // behaviour).
       const curHp = m.curHp != null ? m.curHp : m.hp;
       const maxHpDenom = m.maxHp || m.hp || 1;
-      const hpPct = Math.max(0, curHp / maxHpDenom);
-      if (Math.abs(hpPct - display._lastHpPct) > 0.01) {
-        display._lastHpPct = hpPct;
-        const hpFill = display._hpFill;
-        hpFill.clear();
-        if (hpPct < 1) {
-          const hpColor = hpPct > 0.5 ? 0x3dd497 : hpPct > 0.25 ? 0xf5c542 : 0xff5e6c;
-          hpFill.rect(-HP_BAR_W / 2, -size - 10, HP_BAR_W * hpPct, HP_BAR_H);
-          hpFill.fill({ color: hpColor });
-          display._hpBg.visible = true;
-        } else {
-          display._hpBg.visible = false;
+      const hpPct = Math.max(0, Math.min(1, curHp / maxHpDenom));
+      _ensureHudBarTextures();
+      const hpTex = _hudBarTex.hp;
+      if (hpTex && display._hpSprite.texture !== hpTex) {
+        display._hpSprite.texture = hpTex;
+      }
+      if (hpTex && hpTex.width > 0) {
+        display._hpSprite.width = HP_BAR_W;
+        display._hpSprite.height = HP_BAR_H;
+        display._hpSprite.x = 0;
+        display._hpSprite.y = -size - 10;
+      }
+      if (hpPct >= 0.999) {
+        display._hpSprite.alpha = 0;
+        display._hpEmpty.clear();
+        display._hpEmpty.alpha = 0;
+      } else {
+        display._hpSprite.alpha = 1;
+        display._hpEmpty.alpha = 1;
+        display._hpEmpty.clear();
+        const emptyW = HP_BAR_W * (1 - hpPct);
+        if (emptyW > 0.5) {
+          display._hpEmpty.rect(-HP_BAR_W / 2 + HP_BAR_W * hpPct, -size - 10 - HP_BAR_H / 2, emptyW, HP_BAR_H);
+          display._hpEmpty.fill({ color: 0x000000, alpha: 0.6 });
+        }
+        /* v2.3.119: hue-shift the red bar-hp.png pill to yellow / green
+           via ColorMatrixFilter based on HP %.  Only mutate the filter
+           when the threshold band changes (cheap to assign, slightly
+           less cheap to reset+hue every frame). */
+        const targetHue = hpPct > 0.5 ? 120 : hpPct > 0.25 ? 60 : 0;
+        if (display._hpHue !== targetHue) {
+          display._hpFilter.reset();
+          if (targetHue !== 0) display._hpFilter.hue(targetHue, false);
+          display._hpHue = targetHue;
         }
       }
+      display._lastHpPct = hpPct;
 
       // Level text — only update when level changes.
       if (m.level !== display._lastLvl) {
@@ -1695,10 +1836,14 @@ export class EntityRenderer {
     const { dir, mirror } = resolveDirection(facing);
     const facingIdx = SECTORS.indexOf(facing);   // 0..7: E,SE,S,SW,W,NW,N,NE
     /* Per-direction body scale.  Hit-east is 0.88 (source frames the
-       character bigger); jog/stand-NE is 1.03 (slightly smaller source). */
-    let bodyScale = 1.0;
-    if (dir === 'east' && pose === 'hit') bodyScale = 0.88;
-    else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03;
+       character bigger); jog/stand-NE is 1.03 (slightly smaller source).
+       v2.3.111: local player scale dialled back from 1.5 -> 1.125
+       (reduced ~25% from v2.3.110's 1.5x per user "bigger was good but
+       that's too big"). */
+    const LOCAL_SCALE = 1.125;
+    let bodyScale = 1.0 * LOCAL_SCALE;
+    if (dir === 'east' && pose === 'hit') bodyScale = 0.88 * LOCAL_SCALE;
+    else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03 * LOCAL_SCALE;
     const spritesAvailable = hasPose(pose) || hasPose('stand');
     if (spritesAvailable) {
       const spriteBody = display._spriteBody;
@@ -2379,6 +2524,105 @@ export class EntityRenderer {
         display.destroy({ children: true });
         this.npcDisplays.delete(id);
       }
+    }
+  }
+
+  /* Combat-bar HUD above the player sprite (v2.3.107).  Three
+     pill-shaped Sprites stacked closest-to-head first: HP, Mana,
+     Energy on top.  Each one reuses the dashboard's bar artwork
+     (/icons/ui/bar-hp.png etc) so the in-world readout matches the
+     XP bar in the dashboard.  A small dim overlay on the right
+     portion of each pill shows the unfilled fraction.  No backdrop
+     -- the pills float directly on the canvas.
+     Visibility: each bar fades in when its resource is below max,
+     holds for HOLD_MS at full, then fades out. */
+  _updatePlayerHud(S, now) {
+    const R = S && S.rpg;
+    const d = this.playerDisplay;
+    if (!R || !d || !d._hudHpSprite) return;
+
+    _ensureHudBarTextures();
+    /* Bind textures the first time they resolve. */
+    if (_hudBarTex.hp   && d._hudHpSprite.texture   !== _hudBarTex.hp)   d._hudHpSprite.texture   = _hudBarTex.hp;
+    if (_hudBarTex.mp   && d._hudMpSprite.texture   !== _hudBarTex.mp)   d._hudMpSprite.texture   = _hudBarTex.mp;
+    if (_hudBarTex.stam && d._hudStamSprite.texture !== _hudBarTex.stam) d._hudStamSprite.texture = _hudBarTex.stam;
+
+    const W = 64, H = 10;
+    const MIN_LABEL_W = 14; /* hide the value-number if its section is narrower */
+    const HOLD_MS = 2500;
+    const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
+    /* HP closest to head (y=-50), Mana middle (-62), Energy top (-74).
+       nameText sits at -38 so the HUD floats above the name plate. */
+    /* v2.3.121: HP bar pulled further down to y=+38 so it clears the
+       player's legs entirely (v2.3.120's +12 was sitting over them).
+       Mana / Energy still above the head. */
+    const bars = [
+      { sprite: d._hudHpSprite,   empty: d._hudHpEmpty,   tFull: d._hudHpTextFull,   tEmpty: d._hudHpTextEmpty,   cur: R.hp,      max: R.maxHp,      y:  38 },
+      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   tFull: d._hudMpTextFull,   tEmpty: d._hudMpTextEmpty,   cur: R.mana,    max: R.maxMana,    y: -50 },
+      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -62 },
+    ];
+    for (const b of bars) {
+      const max = b.max || 1;
+      const cur = Math.max(0, Math.min(max, b.cur || 0));
+      const pct = cur / max;
+      const full = cur >= max - 0.01;
+      if (!full) b.sprite._lastNotFullAt = now;
+      const sinceChange = now - (b.sprite._lastNotFullAt || 0);
+      const targetAlpha = (!full || sinceChange < HOLD_MS) ? 1 : 0;
+      const a = (b.sprite.alpha != null) ? b.sprite.alpha : 0;
+      const delta = targetAlpha - a;
+      const newAlpha = a + Math.max(-FADE_STEP, Math.min(FADE_STEP, delta));
+      b.sprite.alpha = b.empty.alpha = newAlpha;
+
+      /* Size + position the pill sprite once a texture is bound. */
+      if (b.sprite.texture && b.sprite.texture.width > 0) {
+        b.sprite.width = W;
+        b.sprite.height = H;
+        b.sprite.x = 0;
+        b.sprite.y = b.y;
+      }
+      /* Dim overlay on the unfilled (right) portion.  Width shrinks
+         to zero when the bar is full; no overlay drawn at 0 width. */
+      b.empty.clear();
+      const filledW = W * pct;
+      const emptyW = W - filledW;
+      if (emptyW > 0.5) {
+        b.empty.rect(-W / 2 + filledW, b.y - H / 2, emptyW, H);
+        b.empty.fill({ color: 0x000000, alpha: 0.55 });
+      }
+
+      /* v2.3.119: HP pill hue-shifts green (>50%) -> yellow (>25%) -> red.
+         Only the HP bar gets thresholded; Mana / Energy stay their
+         native colors (the bar-mp.png / bar-stam.png PNGs already
+         carry the intended color). */
+      if (b.sprite === d._hudHpSprite && d._hudHpFilter) {
+        const targetHue = pct > 0.5 ? 120 : pct > 0.25 ? 60 : 0;
+        if (d._hudHpHue !== targetHue) {
+          d._hudHpFilter.reset();
+          if (targetHue !== 0) d._hudHpFilter.hue(targetHue, false);
+          d._hudHpHue = targetHue;
+        }
+      }
+
+      /* Numeric overlays: current value centered on the filled
+         section (white), missing value centered on the empty
+         section (red).  Hidden when the section is narrower than
+         MIN_LABEL_W so a near-empty / near-full pill doesn't
+         render an illegible smear. */
+      const curStr = String(Math.ceil(cur));
+      const missStr = String(Math.ceil(max - cur));
+      if (b.tFull.text !== curStr) b.tFull.text = curStr;
+      if (b.tEmpty.text !== missStr) b.tEmpty.text = missStr;
+      b.tFull.x = -W / 2 + filledW / 2;
+      b.tFull.y = b.y;
+      b.tEmpty.x = -W / 2 + filledW + emptyW / 2;
+      b.tEmpty.y = b.y;
+      const fullVisible = filledW >= MIN_LABEL_W && newAlpha > 0.02;
+      const emptyVisible = emptyW >= MIN_LABEL_W && newAlpha > 0.02;
+      b.tFull.alpha = fullVisible ? newAlpha : 0;
+      b.tEmpty.alpha = emptyVisible ? newAlpha : 0;
+      b.tFull.visible = fullVisible;
+      b.tEmpty.visible = emptyVisible;
     }
   }
 

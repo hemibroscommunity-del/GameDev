@@ -1,4 +1,4 @@
-// Inventory color and typography canon (spec §8).
+﻿// Inventory color and typography canon (spec §8).
 
 export const INV = {
   bg:        '#1A1A1A',
@@ -38,9 +38,9 @@ export const INV = {
 };
 
 export const FONT = {
-  serif: '"EB Garamond", "Cormorant", Georgia, serif',
-  sans:  'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-  mono:  'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace',
+  serif: '"Source Sans 3", sans-serif',
+  sans:  '"Source Sans 3", sans-serif',
+  mono:  '"Source Sans 3", sans-serif',
 };
 
 // Quality / rarity tints (Elite + Godly tile borders).

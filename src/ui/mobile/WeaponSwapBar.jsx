@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { weaponSwapBus } from './weaponSwapBus.js';
 import { WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon } from '../../data/gameSystems.js';
 
@@ -24,16 +24,26 @@ const readState = () => {
   const wpn = rpg ? getActiveWeapon(rpg) : null;
   const w = wpn && WEAPON_TYPES[wpn.type];
   if (!rpg || !w) return { slot, dmgMin: 0, dmgMax: 0, dps: '0.0' };
-  const base = (w.base + (rpg.power || 0) * 0.8) * (wpn.tierMult || 1);
+  /* v2.3.109: stat-driver mirrors EQUIP_STAT_MAP (POW for melee, AGI
+     for bow, MIND for staff) so the readout reflects actual
+     stat-scaled damage instead of always using rpg.power. */
+  const statVal = (slot === 'ranged') ? (rpg.agility || 0)
+                : (slot === 'staff')  ? (rpg.mind || 0)
+                : (rpg.power || 0);
+  const base = (w.base + statVal * 0.8) * (wpn.tierMult || 1);
   let dmgMin, dmgMax, cdMs = SWING_COOLDOWN;
+  /* v2.3.109: damage ranges mirror calcWeaponDmg (staff 0.5x-1.5x,
+     melee 0.75x-1.25x, bow 0.6x-0.8x). */
   if (slot === 'ranged') {
-    dmgMin = dmgMax = base * 0.7;
+    dmgMin = base * 0.6;
+    dmgMax = base * 0.8;
   } else if (slot === 'staff') {
     dmgMin = base * 0.5;
-    dmgMax = base * 1.3;
+    dmgMax = base * 1.5;
     cdMs += 300;
   } else {
-    dmgMin = dmgMax = base;
+    dmgMin = base * 0.75;
+    dmgMax = base * 1.25;
   }
   const avg = (dmgMin + dmgMax) / 2;
   return {
@@ -47,13 +57,18 @@ const readState = () => {
 const BUTTON_SIZE = 40;
 const GAP = 4;
 const PADDING = 4;
-// Pill centre lines up with the chat icon's old centre (calc(50% - 140px)).
-const PILL_CENTER_X = 'calc(50% - 140px)';
+// Pill centre.  Tuning history:
+//   pre-v2.3.110: calc(50% - 140px)
+//   v2.3.110:     calc(50% - 80px)   -- user "got bumped too far left"
+//   v2.3.112:     calc(50% - 150px)  -- user "overlapping interact menu"
+//   v2.3.113:     calc(50% - 130px)  -- user "smidge right"
+const PILL_CENTER_X = 'calc(50% - 130px)';
 // Sit just above the dashboard top, below the left joystick.  The
 // joystick zone bottom is at calc(var(--dash-h) + 70px) so the combined
 // buttons+readout pill needs to fit in the ~70px gap between the
 // dashboard's top edge and the joystick's bottom edge.
-const PILL_BOTTOM = 'calc(var(--dash-h) + 6px)';
+// v2.3.115: XP strip grew 6 -> 8 px; pill bumped another 2 px to clear.
+const PILL_BOTTOM = 'calc(var(--dash-h) + 14px)';
 
 export const WeaponSwapBar = () => {
   const [state, setState] = useState(readState);
@@ -153,6 +168,11 @@ export const WeaponSwapBar = () => {
         border: '1px solid rgba(255,255,255,0.18)',
         borderRadius: 16,
         boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        /* v2.3.111: restored compact pill (v2.3.110 had min-width 200
+           which crowded the contextual menu).  overflow:'hidden' is
+           back so the readout pill stays tight to the buttons; the
+           DMG range readout now uses a smaller fontSize (see below)
+           to fit without clipping. */
         overflow: 'hidden',
         zIndex: 35,
         touchAction: 'none',
@@ -223,23 +243,25 @@ export const WeaponSwapBar = () => {
 
       {/* DMG / DPS row — connected beneath the buttons, single line.
           Pointer-events: none so it never blocks the buttons above or
-          the joystick beside it. */}
+          the joystick beside it.
+          v2.3.111: fontSize 14 -> 11 + tighter letter-spacing so the
+          range text fits without clipping inside the compact pill. */}
       <div
         style={{
           borderTop: '1px solid rgba(255,255,255,0.12)',
           padding: '2px 8px 3px',
-          fontFamily: 'VT323, monospace',
-          fontSize: 14,
+          fontFamily: 'Source Sans 3, sans-serif',
+          fontSize: 11,
           lineHeight: 1,
           color: '#E8EAF8',
-          letterSpacing: '.03em',
+          letterSpacing: '.02em',
           textAlign: 'center',
           whiteSpace: 'nowrap',
           pointerEvents: 'none',
         }}
       >
-        <span style={{ color: '#8890b8' }}>DMG </span>{dmgText}
-        <span style={{ color: '#8890b8' }}>  ·  DPS </span>{state.dps}
+        <span style={{ color: '#E8EAF8' }}>DMG </span>{dmgText}
+        <span style={{ color: '#E8EAF8' }}>  ·  DPS </span>{state.dps}
       </div>
     </div>
   );

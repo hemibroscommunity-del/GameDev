@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { FishingMinigame } from './FishingMinigame.jsx';
 import { WoodChopMinigame } from './WoodChopMinigame.jsx';
 import { CookingMinigame } from './CookingMinigame.jsx';
@@ -198,7 +198,10 @@ function addBuildProg(R, stat, amount) {
   if (R._statLocks && R._statLocks[stat]) return;
   if (!R._buildProg) R._buildProg = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
   R._buildProg[stat] = (R._buildProg[stat] || 0) + amount;
-  var thresh = Math.max(50, Math.floor(xpRequired(R.level) / 5));
+  /* v2.3.113: bumped 5x slower per user feedback ("leveling way too
+     quickly").  Was Math.max(50, floor(xpRequired/5)) -- now uses
+     full xpRequired with a 200 floor. */
+  var thresh = Math.max(200, Math.floor(xpRequired(R.level)));
   while (R._buildProg[stat] >= thresh) {
     R._buildProg[stat] -= thresh;
     R[stat] = (R[stat] || 0) + 1;
@@ -1841,6 +1844,24 @@ export var BroTown = function BroTown(_ref0) {
                         localM._snowmanDeathStart = null;
                         localM._lootDropped = false;
                         localM._deathSfxPlayed = false;
+                        /* Revert any mid-fight variant transform.  A
+                           desert mummy that died as a skeleton needs to
+                           come back as a mummy so the first 50% HP
+                           still triggers the bandage-shred animation
+                           next life.  Server already resets m.variant
+                           on its side but doesn't broadcast that field
+                           per tick, so the client uses the spawn
+                           archetype it stashed at state_sync time. */
+                        if (localM._spawnArchetype && localM.archetype !== localM._spawnArchetype) {
+                          localM.archetype = localM._spawnArchetype;
+                          localM.type = localM._spawnArchetype;
+                          if (localM.arch !== undefined) localM.arch = localM._spawnArchetype;
+                          localM._transformStart = null;
+                          localM._transformHoldMs = 0;
+                          localM._transformFromArch = null;
+                          var _sv = MONSTER_VARIANTS[localM._spawnArchetype];
+                          if (_sv && _sv.spd != null) localM.spd = _sv.spd;
+                        }
                       }
                       if (!md.alive && localM.alive) {
                         /* Monster died (from another player's kill or
@@ -1927,7 +1948,15 @@ export var BroTown = function BroTown(_ref0) {
                      Maps ember fodder -> fireGoblin so the renderer + AI
                      route to the variant sheets without any inline
                      zone/archetype check elsewhere in the codebase. */
-                  return applyZoneVariant(local, S.currentZone);
+                  applyZoneVariant(local, S.currentZone);
+                  /* Remember the post-variant archetype so the respawn
+                     branch in the tick handler can revert a transformed
+                     monster (mummy -> skeleton) back to its spawn form.
+                     Server resets m.variant on respawn but doesn't
+                     broadcast that field per tick, so the client needs
+                     its own source of truth here. */
+                  local._spawnArchetype = local.archetype;
+                  return local;
                 });
               } else {
                 S._serverMonsters = false;
@@ -2068,7 +2097,17 @@ export var BroTown = function BroTown(_ref0) {
               if ('weapon' in msg.payload) S.rpg.weapon = msg.payload.weapon;
               if ('rangedWeapon' in msg.payload) S.rpg.rangedWeapon = msg.payload.rangedWeapon;
               if ('staffWeapon' in msg.payload) S.rpg.staffWeapon = msg.payload.staffWeapon;
-              if (typeof msg.payload.activeSlot === 'string') S.rpg.activeSlot = msg.payload.activeSlot;
+              /* activeSlot: server's value applies only when the user
+                 hasn't explicitly cycled in this session.  Without this
+                 guard, ANY stale persisted activeSlot on the worker
+                 (e.g., set_active_slot lost to a race or pipeline hop)
+                 reverts the player's cycled slot the moment a combat
+                 kill / loot pickup / credit event fires player_state.
+                 Client trusts itself once the user has touched the
+                 cycle gesture. */
+              if (typeof msg.payload.activeSlot === 'string' && !S._userCycledSlot) {
+                S.rpg.activeSlot = msg.payload.activeSlot;
+              }
               if ('armor' in msg.payload) S.rpg.armor = msg.payload.armor;
               if ('shield' in msg.payload) S.rpg.shield = msg.payload.shield;
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
@@ -2284,7 +2323,12 @@ export var BroTown = function BroTown(_ref0) {
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
                   });
-                  return applyZoneVariant(local, S.currentZone);
+                  applyZoneVariant(local, S.currentZone);
+                  /* See state_sync handler -- mirror the same spawn
+                     archetype stash so respawn can revert a transformed
+                     monster back to the zone's spawn variant. */
+                  local._spawnArchetype = local.archetype;
+                  return local;
                 });
               } else {
                 var _prevSrvFlag = S._serverMonsters;
@@ -2439,7 +2483,10 @@ export var BroTown = function BroTown(_ref0) {
         try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
         /* Despawn the picker's local copy of the pile -- they're done
            with it.  Other recipients keep their copy until their own
-           credit / despawn arrives. */
+           credit / despawn arrives.  v2.3.113: also immediate-dispose
+           the pile's Pixi children so a frame doesn't slip between
+           "_expired set" and "orphan sweep runs" -- intermittently
+           that gap left mummy/skeleton coin sprites visible. */
         if (payload.lootId && S.groundLoot) {
           for (var _glci = 0; _glci < S.groundLoot.length; _glci++) {
             if (S.groundLoot[_glci].lootId === payload.lootId) {
@@ -2447,6 +2494,11 @@ export var BroTown = function BroTown(_ref0) {
               break;
             }
           }
+          try {
+            if (pixiRef.current && pixiRef.current.disposeLootById) {
+              pixiRef.current.disposeLootById(payload.lootId);
+            }
+          } catch (_e) {}
         }
       }
 
@@ -2491,7 +2543,9 @@ export var BroTown = function BroTown(_ref0) {
             {
               /* Server says the pile is done -- last recipient claimed
                  or 60 s expiry hit.  Mark expired so renderer + filter
-                 clear it. */
+                 clear it.  v2.3.113: also immediate-dispose so a frame
+                 of latency between _expired and the orphan sweep can't
+                 leave a stale coin sprite (mummy / skeleton bug). */
               if (!payload || !payload.lootId || !S.groundLoot) break;
               for (var _lde = 0; _lde < S.groundLoot.length; _lde++) {
                 if (S.groundLoot[_lde].lootId === payload.lootId) {
@@ -2499,6 +2553,11 @@ export var BroTown = function BroTown(_ref0) {
                   break;
                 }
               }
+              try {
+                if (pixiRef.current && pixiRef.current.disposeLootById) {
+                  pixiRef.current.disposeLootById(payload.lootId);
+                }
+              } catch (_e) {}
               break;
             }
           case 'chat':
@@ -2852,6 +2911,29 @@ export var BroTown = function BroTown(_ref0) {
                 if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (out of range)', { monsterId: payload.monsterId, dist: Math.round(_atkDist) }); } catch (e) {}
                 break;
               }
+              /* Server-side block resolution (v2.3.103+): worker fires
+                 monster_attack with blocked:true + staminaDrain when
+                 ps.blocking was set at attack time.  Show the "Blocked!"
+                 popup, push the floating stamina-cost number, skip the
+                 HP-damage path entirely.  Player_state will arrive
+                 shortly after to mirror the authoritative stamina value. */
+              if (payload.blocked) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 20,
+                  text: 'Blocked!', color: '#60a5fa', ts: Date.now()
+                });
+                var _staminaDrainBlock = typeof payload.staminaDrain === 'number' ? payload.staminaDrain : 15;
+                if (_staminaDrainBlock > 0) {
+                  S.dmgNumbers.push({
+                    x: S.player.x + 18, y: S.player.y - 4,
+                    text: '-' + _staminaDrainBlock,
+                    color: '#facc15', /* stamina yellow */
+                    ts: Date.now() + 1
+                  });
+                }
+                addBuildUse(R2, 'endurance', 3);
+                break;
+              }
               var mDmg = payload.dmg || 5;
               /* Per-variant damage multiplier + range gating.  Server
                  doesn't know about variants, so we apply the local
@@ -2928,7 +3010,11 @@ export var BroTown = function BroTown(_ref0) {
               } catch (e) {}
               S.dmgNumbers.push({
                 x: S.player.x, y: S.player.y - 20,
-                text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c', ts: Date.now()
+                text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c',
+                /* v2.3.110: heart glyph alongside "-N" popup so the
+                   loss-of-HP intent reads instantly. */
+                iconKey: 'heart',
+                ts: Date.now()
               });
               for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
                 x: S.player.x, y: S.player.y,
@@ -3754,6 +3840,10 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
         if (msg.type === 'quest_turn_in') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'set_active_slot') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -6625,7 +6715,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* attack at 40px range */
                 /* Pet deals 15% of player weapon damage, scales with pet level */
                 var petLvl = pet.level || 1;
-                var pDmgBase = S.rpg ? calcWeaponDmg((activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) || 'greatsword', S.rpg.power || 0, (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.tierMult) || 1) : 5;
+                var pDmgBase = S.rpg ? calcWeaponDmg((activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) || 'greatsword', S.rpg || {}, (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.tierMult) || 1) : 5;
                 var petDmg = Math.max(1, Math.ceil(pDmgBase * 0.15 * (1 + petLvl * 0.02)));
                 nearestM.curHp -= petDmg;
                 S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
@@ -6771,7 +6861,7 @@ export var BroTown = function BroTown(_ref0) {
           /* §4.4 Weapon Damage — uses new stat system */
           var _activeWpn = getActiveWeapon(_R6);
           var wpnType = WEAPON_TYPES[_activeWpn.type] || WEAPON_TYPES.greatsword;
-          var pDmg = calcWeaponDmg(_activeWpn.type, _R6.power, _activeWpn.tierMult);
+          var pDmg = calcWeaponDmg(_activeWpn.type, _R6 || {}, _activeWpn.tierMult);
           /* Snapshot the un-modified base — the "block N" popup compares
              the final dmg against this so any negative modifier (curse,
              level-diff scaling, future debuffs) shows up without needing
@@ -7667,6 +7757,7 @@ export var BroTown = function BroTown(_ref0) {
                         y: P.y - 30,
                         text: '-' + dmgTaken,
                         color: '#ff5e6c',
+                        iconKey: 'heart',
                         ts: Date.now()
                       });
                     }
@@ -7952,7 +8043,10 @@ export var BroTown = function BroTown(_ref0) {
                 S.arrows.push({
                   ang: arrAngle,
                   dist: 14,
-                  dmg: Math.round(pDmg * (isStaff ? 1.0 : 0.7)),
+                  /* v2.3.109: bow's 0.7x flat now lives inside
+                     calcWeaponDmg as the 0.6x-0.8x range, so no
+                     per-projectile multiplier is needed here. */
+                  dmg: Math.round(pDmg),
                   life: isStaff ? 90 : 120,
                   maxLife: isStaff ? 90 : 120,
                   hitIds: new Set(),
@@ -8147,12 +8241,7 @@ export var BroTown = function BroTown(_ref0) {
                 var _expectedDmg = Math.round(_pDmgBase * specialMult);
                 var lvlDiff = (m.level || 1) - (_R6.level || 1);
                 if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
-                /* Variant armor (see monsterVariants.incomingDmgScalar).
-                   Server's HP is base-archetype scale, so the scaling here
-                   keeps local + server in sync -- both deplete by the same
-                   reduced amount per hit. */
-                var _resist = incomingDmgScalarFor(m);
-                if (_resist !== 1) dmg = Math.max(1, Math.round(dmg * _resist));
+                /* v2.3.109: variant incomingDmgScalar removed (WYSIWYG). */
                 var _mitigated = Math.max(0, _expectedDmg - dmg);
                 /* Server-authoritative zones: HP only flows from server
                    monster_hit ticks.  Local decrement would race the
@@ -8390,13 +8479,13 @@ export var BroTown = function BroTown(_ref0) {
                   S._hitStop = Date.now() + 25;
                 }
                 /* Knockback — §Creative Vision: proportional to hit weight.
-                   Special attacks knock back ~3x (10 → 30) for the heavy-hit feel. */
+                   Special attacks knock back ~2x (per user v2.3.110:
+                   "Sword hits make the monsters bounce back a
+                   substantial amount.  Special attacks do double that
+                   bounce back amount.").  Crit sits between normal
+                   and special. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                /* +50% knockback across the board (v2.3.15) -- the
-                   prior numbers (30/14/6 + 4) read as a polite tap;
-                   45/21/9 + 6 makes hits feel like they actually
-                   send the monster. */
-                var kbForce = S._specialAttack ? 45 : isCrit ? 21 : 9;
+                var kbForce = S._specialAttack ? 60 : isCrit ? 45 : 30;
                 /* Collision adds extra knockback */
                 var collisionKb = collisionResult ? 6 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
@@ -9917,7 +10006,7 @@ export var BroTown = function BroTown(_ref0) {
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
             var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : { element1: null, element2: null };
-            var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg.power || 0, activeWpn.tierMult || 1) : 10;
+            var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg || {}, activeWpn.tierMult || 1) : 10;
             /* Derive element/type early so kill logic can use them */
             var projElem = a.element || (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1);
             var isStaffProj = (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) === 'staff' || a.isSpecial && ((_S$rpg15 = S.rpg) === null || _S$rpg15 === void 0 ? void 0 : _S$rpg15.activeSlot) === 'staff';
@@ -10002,11 +10091,9 @@ export var BroTown = function BroTown(_ref0) {
                   return;
                 }
                 var _hpBefore = m.curHp;
-                /* Variant armor (see monsterVariants.incomingDmgScalar) --
-                   arrows scale the same as melee so the variant's hit
-                   count is consistent across weapon types. */
-                var _arrowResist = incomingDmgScalarFor(m);
-                var _arrowDmg = _arrowResist !== 1 ? Math.max(1, Math.round(a.dmg * _arrowResist)) : a.dmg;
+                /* v2.3.109: variant incomingDmgScalar removed (WYSIWYG)
+                   -- arrow damage lands at its displayed value. */
+                var _arrowDmg = a.dmg;
                 if (!S._serverMonsters) m.curHp -= _arrowDmg;
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
@@ -11033,7 +11120,7 @@ export var BroTown = function BroTown(_ref0) {
     S._hasDodged = true;
     /* Hit on arrival — reduced damage, applies element_1 status (setup). */
     var activeWpn = getActiveWeapon(R);
-    var pDmg = calcWeaponDmg(activeWpn.type || 'sword', R.power || 0, activeWpn.tierMult || 1);
+    var pDmg = calcWeaponDmg(activeWpn.type || 'sword', R || {}, activeWpn.tierMult || 1);
     var lDmg = Math.max(1, Math.round(pDmg * (LUNGE_DAMAGE_MULT || 0.6)));
     setTimeout(function () {
       if (!lt.alive) return;
@@ -11076,7 +11163,7 @@ export var BroTown = function BroTown(_ref0) {
     var P = S.player;
     var aimAng = Math.atan2(lt.y - P.y, lt.x - P.x);
     var activeWpn = getActiveWeapon(R);
-    var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R.power || 0, activeWpn.tierMult || 1);
+    var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R || {}, activeWpn.tierMult || 1);
     var shotDmg = Math.max(1, Math.round(pDmg * (RETREAT_SHOT_DAMAGE_MULT || 0.5)));
     var slot = R.activeSlot || 'ranged';
     var isStaff = slot === 'staff';
@@ -11264,7 +11351,7 @@ export var BroTown = function BroTown(_ref0) {
          arrow alive after each hit so it travels through every monster
          it overlaps -- hitIds prevents double-hits on the same target. */
       if (!S.arrows) S.arrows = [];
-      var wpnDmg = calcWeaponDmg(activeWpn.type, R.power, activeWpn.tierMult);
+      var wpnDmg = calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult);
       S.arrows.push({
         ang: aimAng,
         dist: 14,
@@ -11286,7 +11373,7 @@ export var BroTown = function BroTown(_ref0) {
          the hit handler picks the 'spell' popup icon (vs 'arrow' for
          bows) and the projectile renders as magic, not a physical arrow. */
       if (!S.arrows) S.arrows = [];
-      var _wpnDmg = calcWeaponDmg(activeWpn.type, R.power, activeWpn.tierMult);
+      var _wpnDmg = calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult);
       for (var si = -1; si <= 1; si++) {
         S.arrows.push({
           ang: aimAng + si * 0.25,
@@ -11792,6 +11879,16 @@ export var BroTown = function BroTown(_ref0) {
     var curIdx = slots.indexOf(S2.rpg.activeSlot || 'melee');
     var nextSlot = slots[(curIdx + 1) % slots.length];
     S2.rpg.activeSlot = nextSlot;
+    /* Mark the session as having an explicit cycle so the player_state
+       handler stops accepting the server's persisted activeSlot
+       (defense in depth: if set_active_slot never reaches the worker
+       due to a transient drop, client at least doesn't revert). */
+    S2._userCycledSlot = true;
+    /* Tell the worker about the slot change so the persisted value
+       is fresh on the next reconnect / fresh session. */
+    if (S2.channel) {
+      try { S2.channel.send({ type: 'set_active_slot', payload: { slot: nextSlot } }); } catch (e) {}
+    }
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = nextSlot === 'melee' ? (_S2$rpg$weapon = S2.rpg.weapon) === null || _S2$rpg$weapon === void 0 ? void 0 : _S2$rpg$weapon.name : nextSlot === 'ranged' ? (_S2$rpg$rangedWeapon = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon === void 0 ? void 0 : _S2$rpg$rangedWeapon.name : 'Staff';
     S2.dmgNumbers.push({
@@ -11997,6 +12094,40 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current._shieldAngle = Math.atan2(dy2, dx2);
     }
   }, []);
+
+  /* iOS Safari left-edge swipe absorber (v2.3.112).  iOS treats a
+     touchstart within ~20 px of the screen's left edge as the
+     browser's back-history gesture, which on this game manifests as
+     "the whole game screen scrolls when I swipe from the outer
+     edge".  Sit a 18 px tall transparent strip down the left edge
+     and preventDefault any touchstart that lands inside it.  Best
+     effort -- Safari sometimes overrules; if it persists the user
+     can reflag for a PWA / fullscreen path. */
+  useEffect(function () {
+    if (showNameModal || showLogin) return;
+    var guard = document.createElement('div');
+    guard.style.cssText = [
+      'position: fixed',
+      'left: 0',
+      'top: 0',
+      'width: 18px',
+      'height: 100%',
+      'z-index: 40',
+      'background: transparent',
+      'pointer-events: auto',
+      'touch-action: none',
+    ].join(';');
+    var onTouchStart = function (e) {
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
+    };
+    guard.addEventListener('touchstart', onTouchStart, { passive: false });
+    document.body.appendChild(guard);
+    return function () {
+      try { guard.removeEventListener('touchstart', onTouchStart); } catch (_) {}
+      try { document.body.removeChild(guard); } catch (_) {}
+    };
+  }, [showNameModal, showLogin]);
 
   /* Dual joystick — each finger tracked independently */
   useEffect(function () {
@@ -12489,7 +12620,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 22,
       fontWeight: 800,
       color: 'var(--txt)',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       letterSpacing: '.06em'
     }
   }, "HEMI BROS"), /*#__PURE__*/React.createElement("div", {
@@ -12503,7 +12634,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       fontSize: 9,
       color: 'var(--txt3)',
-      fontFamily: '"Space Mono", monospace',
+      fontFamily: 'Source Sans 3, sans-serif',
       letterSpacing: '.05em',
       marginBottom: 12,
     }
@@ -12576,7 +12707,7 @@ export var BroTown = function BroTown(_ref0) {
       color: 'var(--txt3)',
       textAlign: 'center',
       marginBottom: 8,
-      fontFamily: '"Space Mono", monospace'
+      fontFamily: 'Source Sans 3, sans-serif'
     }
   }, "Leave blank to auto-join the next open room"), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
@@ -12590,7 +12721,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 14,
       fontWeight: 800,
       cursor: 'pointer',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       letterSpacing: '.08em',
       width: '100%'
     }
@@ -13075,7 +13206,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 10,
         fontWeight: 800,
         color: timeLeft < 120 ? '#ff5e6c' : 'rgba(255,255,255,.5)',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Source Sans 3,sans-serif'
       }
     }, mins, ":", secs < 10 ? '0' + secs : secs), !inWarZone && /*#__PURE__*/React.createElement("div", {
       style: {
@@ -13636,7 +13767,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 12,
         fontWeight: 900,
         color: timeLeft < 10 ? '#ff5e6c' : '#f5c542',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Source Sans 3,sans-serif'
       }
     }, timeLeft.toFixed(1), "s"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -16089,7 +16220,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 14,
         fontWeight: 900,
         color: timeLeft < 5000 ? '#ff5e6c' : '#f5c542',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Source Sans 3,sans-serif'
       }
     }, timeLeftSec, "s"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -18251,7 +18382,7 @@ export var BroTown = function BroTown(_ref0) {
       marginTop: 8,
       lineHeight: 1.6
     }
-  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState.power, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.ferocity || 0) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.ferocity || 0).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
+  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.ferocity || 0) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.ferocity || 0).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setBuildingPanel(null);
@@ -20564,7 +20695,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#f5c542',
       fontSize: 11,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -20741,7 +20872,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#f5c542',
       fontSize: 10,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -20986,7 +21117,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#f5c542',
       fontSize: 10,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -21481,7 +21612,7 @@ export var BroTown = function BroTown(_ref0) {
         color: '#f5c542',
         fontSize: 10,
         fontWeight: 800,
-        fontFamily: 'Space Mono,monospace',
+        fontFamily: 'Source Sans 3,sans-serif',
         textAlign: 'right',
         outline: 'none'
       }
@@ -21838,7 +21969,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#f5c542',
       fontSize: 11,
       fontWeight: 800,
-      fontFamily: 'Space Mono,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       textAlign: 'right',
       outline: 'none'
     }
@@ -24212,7 +24343,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       fontWeight: 800,
       color: '#3dd497',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Source Sans 3,sans-serif'
     }
   }, "\uD83C\uDFE1 Your Farm", ((_stateRef$current19 = stateRef.current) === null || _stateRef$current19 === void 0 || (_stateRef$current19 = _stateRef$current19.rpg) === null || _stateRef$current19 === void 0 ? void 0 : _stateRef$current19._wellRestedUntil) && Date.now() < stateRef.current.rpg._wellRestedUntil && /*#__PURE__*/React.createElement("span", {
     style: {
@@ -24276,7 +24407,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       fontWeight: 800,
       color: '#ff5e6c',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Source Sans 3,sans-serif'
     }
   }, "\u2620\uFE0F LAWLESS LAND \u2014 ALL items drop on death")), ((_stateRef$current22 = stateRef.current) === null || _stateRef$current22 === void 0 ? void 0 : _stateRef$current22._fenceClimb) && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -24336,7 +24467,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       fontWeight: 800,
       color: '#3dd497',
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Source Sans 3,sans-serif'
     }
   }, "\uD83C\uDFE1 Your Farm \u2014 Safe Zone")), ((_stateRef$current24 = stateRef.current) === null || _stateRef$current24 === void 0 ? void 0 : _stateRef$current24._sleeping) && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -26404,7 +26535,7 @@ export var BroTown = function BroTown(_ref0) {
     var wt = WEAPON_TYPES[wpn.type];
     var rt = RARITY_TIERS[wpn.tier];
     var isActive = rpgState.activeSlot === slot || slot === 'melee' && rpgState.activeSlot !== 'ranged';
-    var dmg = Math.round(calcWeaponDmg(wpn.type, rpgState.power || 0, wpn.tierMult));
+    var dmg = Math.round(calcWeaponDmg(wpn.type, rpgState || {}, wpn.tierMult));
     return /*#__PURE__*/React.createElement("div", {
       key: slot,
       style: {
@@ -26761,8 +26892,8 @@ export var BroTown = function BroTown(_ref0) {
     var srt = RARITY_TIERS[sw.tier];
     var isRanged = (swt === null || swt === void 0 ? void 0 : swt.type) === 'ranged';
     var current = isRanged ? rpgState.rangedWeapon : rpgState.weapon;
-    var stashDmg = Math.round(calcWeaponDmg(sw.type, rpgState.power || 0, sw.tierMult));
-    var curDmg = current ? Math.round(calcWeaponDmg(current.type, rpgState.power || 0, current.tierMult)) : 0;
+    var stashDmg = Math.round(calcWeaponDmg(sw.type, rpgState || {}, sw.tierMult));
+    var curDmg = current ? Math.round(calcWeaponDmg(current.type, rpgState || {}, current.tierMult)) : 0;
     var dmgDiff = stashDmg - curDmg;
     var stashSpd = (swt === null || swt === void 0 ? void 0 : swt.speed) || 1;
     var curSpd = current ? ((_WEAPON_TYPES$current = WEAPON_TYPES[current.type]) === null || _WEAPON_TYPES$current === void 0 ? void 0 : _WEAPON_TYPES$current.speed) || 1 : 1;
@@ -27729,7 +27860,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 11,
       fontWeight: 700,
       color: '#fff',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       letterSpacing: '.03em',
       paddingRight: 16
     }
@@ -27771,7 +27902,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       fontSize: 40,
       fontWeight: 900,
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       color: '#f5c542',
       textShadow: '0 0 30px rgba(245,197,66,.8), 0 0 60px rgba(245,197,66,.4), 0 2px 4px rgba(0,0,0,.6)',
       letterSpacing: '.15em'
@@ -27955,7 +28086,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 14,
       fontWeight: 800,
       letterSpacing: '.08em',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       color: function (_stateRef$current32, _ELEMENTS$z$element4) {
         var z = ZONES[((_stateRef$current32 = stateRef.current) === null || _stateRef$current32 === void 0 ? void 0 : _stateRef$current32.currentZone) || 'town'];
         return z !== null && z !== void 0 && z.element ? (_ELEMENTS$z$element4 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element4 === void 0 ? void 0 : _ELEMENTS$z$element4.color : '#e8eaf8';
@@ -27994,7 +28125,7 @@ export var BroTown = function BroTown(_ref0) {
         zIndex: 18,
         fontSize: 9,
         fontWeight: 700,
-        fontFamily: 'VT323,monospace',
+        fontFamily: 'Source Sans 3,sans-serif',
         background: 'rgba(234,88,12,.25)',
         padding: '3px 12px',
         borderRadius: 6,
@@ -28024,7 +28155,7 @@ export var BroTown = function BroTown(_ref0) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        fontFamily: 'VT323,monospace',
+        fontFamily: 'Source Sans 3,sans-serif',
         color: '#f5c542',
         marginBottom: 2
       }
@@ -29358,7 +29489,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 10,
         fontWeight: 700,
         cursor: 'pointer',
-        fontFamily: 'VT323,monospace',
+        fontFamily: 'Source Sans 3,sans-serif',
         letterSpacing: '.05em'
       },
       onTouchStart: function onTouchStart(ev) {
@@ -29908,7 +30039,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       color: 'var(--txt)',
       marginBottom: 6,
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Source Sans 3,sans-serif'
     }
   }, gatherMini.skill === 'woodcutting' ? '🪓' : gatherMini.skill === 'fishing' ? '🎣' : '⛏️', " TAP when the bar hits the green zone!"), function (_gatherMini$node) {
     var elapsed = (Date.now() - gatherMini.started) / 1000;
@@ -30133,7 +30264,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 800,
       cursor: 'pointer',
       width: '100%',
-      fontFamily: 'VT323,monospace',
+      fontFamily: 'Source Sans 3,sans-serif',
       letterSpacing: '.05em'
     }
   }, "\u26A1 STRIKE!")), fishingMini && /*#__PURE__*/React.createElement(FishingMinigame, {
@@ -31251,7 +31382,7 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 8,
         fontWeight: 700,
         color: 'rgba(255,255,255,.6)',
-        fontFamily: 'Space Mono,monospace'
+        fontFamily: 'Source Sans 3,sans-serif'
       }
     }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || slot), elemCol && React.createElement('span', {
       style: {
@@ -31756,7 +31887,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 700,
       cursor: 'pointer',
       flexShrink: 0,
-      fontFamily: 'VT323,monospace'
+      fontFamily: 'Source Sans 3,sans-serif'
     }
   }, "Send")));
 };

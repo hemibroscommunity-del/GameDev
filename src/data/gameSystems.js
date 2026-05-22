@@ -288,15 +288,14 @@ export const BLACKSMITH_TIERS = {
   }
 };
 
-/* Stat required to EQUIP gear by weapon type */
+/* Stat that drives weapon damage by weapon type (v2.3.109+).
+   POW scales melee (sword + greatsword), AGI scales bow,
+   MIND scales staff. */
 export const EQUIP_STAT_MAP = {
   greatsword: 'power',
-  /* Heavy hitter */
-  sword: 'agility',
-  /* Fast pressure */
+  sword: 'power',     /* v2.3.109: was 'agility'; consolidates all melee onto POW */
   bow: 'agility',
-  /* Ranged precision */
-  staff: 'mind' /* Mana-dependent caster */
+  staff: 'mind'
 };
 export const SHIELD_EQUIP_STAT = 'endurance';
 export const ARMOR_EQUIP_STAT = 'vitality';
@@ -4481,12 +4480,30 @@ export function calcMaxMana(mind) {
   return 100 + mind * 3.5;
 }
 
-/* §4.4 Weapon Damage */
-export function calcWeaponDmg(weaponType, power, tierMult) {
+/* §4.4 Weapon Damage.  Second arg accepts either:
+   - a number (the legacy stat value -- treated as raw input), OR
+   - an rpg object (preferred) -- function picks the correct stat
+     for weaponType via EQUIP_STAT_MAP (POW melee, AGI bow, MIND staff).
+   v2.3.110: object form added because every legacy caller was passing
+   rpg.power regardless of weapon type, which left bow + staff scaling
+   off POW even after v2.3.109 mapped them to AGI/MIND in
+   EQUIP_STAT_MAP.  Special attacks reading the wrong stat is what
+   caused staff specials to land below the WeaponSwapBar's displayed
+   range. */
+export function calcWeaponDmg(weaponType, statValOrRpg, tierMult) {
   var w = WEAPON_TYPES[weaponType];
-  var base = (w.base + power * 0.8) * tierMult;
-  if (weaponType === 'staff') return base * (0.5 + Math.random() * 0.8); /* wide variance, lower avg DPS */
-  return base;
+  var statVal;
+  if (statValOrRpg && typeof statValOrRpg === 'object') {
+    var statKey = EQUIP_STAT_MAP[weaponType] || 'power';
+    statVal = statValOrRpg[statKey] || 0;
+  } else {
+    statVal = statValOrRpg || 0;
+  }
+  var base = (w.base + statVal * 0.8) * tierMult;
+  /* Per-type variance: staff widest, melee mid, bow tightest. */
+  if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.0);
+  if (weaponType === 'bow')    return base * (0.6  + Math.random() * 0.2);
+  return base * (0.75 + Math.random() * 0.5);
 }
 
 /* §2.1 Crit */

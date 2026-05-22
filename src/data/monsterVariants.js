@@ -85,9 +85,13 @@ export const MONSTER_VARIANTS = {
                                  so the toughness bump rides on the
                                  client-side damage scalar instead. */
     liveScalePx: 96,
-    walkFrameMs: 110,         /* 50 % slower per user request (was 55).
-                                 Strip duration ~ 880 ms across 8 frames,
-                                 reads as a more deliberate charge. */
+    walkFrameMs: 110,         /* Legacy time-based pacing -- no longer
+                                 read by the v2.3.93 distance-driven
+                                 walk loop; kept for documentation. */
+    /* v2.3.116: explicit walkDistPerFrame doubles the default 1.5 so
+       skeleton's chase animation cycles ~0.8 s instead of ~0.4 s --
+       50% slower per user feedback ("too frantic"). */
+    walkDistPerFrame: 3.0,
     deathMs: 1200,            /* 16-frame death sheet at ~75 ms/frame =
                                  1.2 s total -- crumble -> dust ->
                                  bone pile settling on the ground. */

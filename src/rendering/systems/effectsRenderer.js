@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Effects Renderer — particles, damage numbers, screen flashes, atmosphere,
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
@@ -16,7 +16,7 @@ import { ZONE_SHARDS } from '../../data/shards.js';
    type). Loaded async — entries appear in the registry once each PNG is
    ready. Until then, popups render text-only and the icon is skipped. */
 const POPUP_ICONS = {};
-const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell'];
+const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
 Promise.all(POPUP_ICON_KEYS.map((k) =>
   Assets.load('/icons/popups/' + k + '.png').then((tex) => { POPUP_ICONS[k] = tex; })
 )).catch((err) => console.warn('[popup-icons] load failed', err));
@@ -49,7 +49,7 @@ Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
 )).catch((err) => console.warn('[node-sprites] load failed', err));
 
 const DMG_STYLE = new TextStyle({
-  fontFamily: 'VT323, monospace',
+  fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 14,
   fontWeight: '800',
   fill: '#ffffff',
@@ -64,7 +64,7 @@ const DMG_STYLE = new TextStyle({
    through to the system emoji font (Apple Color Emoji on iOS)
    sidesteps the WebGL texture path that crashes. */
 const DMG_STYLE_EMOJI = new TextStyle({
-  fontFamily: '"Apple Color Emoji","Segoe UI Emoji",VT323,monospace',
+  fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Source Sans 3",sans-serif',
   fontSize: 14,
   fontWeight: '800',
   fill: '#ffffff',
@@ -82,7 +82,7 @@ function isAsciiOnly(s) {
 }
 
 const LABEL_STYLE = new TextStyle({
-  fontFamily: 'VT323, monospace',
+  fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 11,
   fill: '#ffffff',
   align: 'center',
@@ -94,7 +94,7 @@ const LABEL_STYLE = new TextStyle({
    crash class as DMG_STYLE_EMOJI — stripping the dropShadow and
    falling through to the system emoji font sidesteps the bad path. */
 const LABEL_STYLE_EMOJI = new TextStyle({
-  fontFamily: '"Apple Color Emoji","Segoe UI Emoji",VT323,monospace',
+  fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Source Sans 3",sans-serif',
   fontSize: 11,
   fill: '#ffffff',
   align: 'center',
@@ -340,7 +340,13 @@ export class EffectsRenderer {
         const t = dmg.text || '';
         let displayColor = dmg.color || '#ffffff';
         if (/^[^A-Za-z+]*-?\d+$/.test(t)) {
-          displayColor = '#ff8c1a';
+          /* v2.3.103 user request: combat damage in white reads more
+             clearly than the previous orange (#ff8c1a) against most
+             zone backgrounds.  Push sites still pass their own
+             dmg.color for crits / specials / status tints, but the
+             generic damage pattern wins here so the bulk of fight
+             popups are uniformly white. */
+          displayColor = '#ffffff';
         } else if (/^\+\d+\s*XP$/.test(t)) {
           displayColor = '#60a5fa';
         } else if (/^\+\d+\s*G$/.test(t)) {
@@ -961,18 +967,11 @@ export class EffectsRenderer {
       gfx.stroke({ color: 0x3498db, width: 3, alpha: 0.6 });
     }
 
-    // Player level badge
-    if (S.rpg) {
-      const P = S.player;
-      if (!this._levelText) {
-        this._levelText = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 8 } });
-        this._levelText.anchor.set(0.5, 0.5);
-        this.overlayLayer.addChild(this._levelText);
-      }
-      this._levelText.text = 'Lv' + (S.rpg.level || 1);
-      this._levelText.x = P.x;
-      this._levelText.y = P.y + 24;
-    }
+    /* v2.3.120: player Lv badge removed below the sprite per user
+       request -- name floats above the head, level lives in the
+       bottom-left dashboard column header.  The destroy path at the
+       bottom of this file still guards on null so old _levelText
+       references are safe. */
 
     // Chat bubbles
     this._updateChatBubbles(S, now);
@@ -1113,6 +1112,24 @@ export class EffectsRenderer {
    * Texts are pooled per loot — created lazily, hidden when not
    *  applicable, destroyed when the loot expires/splices.
    */
+  /* v2.3.113: immediate-dispose lookup by lootId.  Called from
+     BroTown's loot_credit / loot_despawn handlers so a picked-up pile
+     is torn down the same tick instead of lingering until the next
+     orphan-sweep frame.  Mummy / skeleton kills were intermittently
+     leaving a coin sprite on screen because of a race between the
+     server's contribution-split despawn event and the renderer's
+     per-frame sweep. */
+  disposeLootById(lootId) {
+    if (!this._knownLoot || !lootId) return;
+    for (const l of this._knownLoot) {
+      if (l && l.lootId === lootId) {
+        this._disposeLoot(l);
+        this._knownLoot.delete(l);
+        break;
+      }
+    }
+  }
+
   _disposeLoot(l) {
     if (l._pixiSprite && !l._pixiSprite.destroyed) l._pixiSprite.destroy();
     if (l._pixiLabel && !l._pixiLabel.destroyed) l._pixiLabel.destroy();
@@ -1143,7 +1160,7 @@ export class EffectsRenderer {
       l._pixiOwnerLabel = new Text({
         text: '',
         style: {
-          fontFamily: 'VT323, monospace',
+          fontFamily: 'Source Sans 3, sans-serif',
           fontSize: 12,
           fontWeight: '700',
           fill: '#ffffff',
@@ -1485,15 +1502,19 @@ export class EffectsRenderer {
       }
     }
 
-    /* Orphan sweep — anything we've rendered before that's no longer
+    /* Orphan sweep -- anything we've rendered before that's no longer
        in the active loot list (picked up, despawned by gameplay code,
-       etc.) gets its Pixi children disposed. */
-    if (this._knownLoot.size > activeLoot.size) {
-      for (const l of this._knownLoot) {
-        if (!activeLoot.has(l)) {
-          this._disposeLoot(l);
-          this._knownLoot.delete(l);
-        }
+       removed via a non-_disposeLoot path, etc.) gets its Pixi
+       children disposed.  Previously gated on
+       `_knownLoot.size > activeLoot.size`, but that gate misses the
+       common "old pile despawned, new pile spawned same tick" case --
+       the counts match so the sweep was skipped and the old sprites
+       stuck on the ground (user-reported v2.3.103 "stuck coin
+       sprite").  Cheap to iterate every frame; the set is small. */
+    for (const l of this._knownLoot) {
+      if (!activeLoot.has(l)) {
+        this._disposeLoot(l);
+        this._knownLoot.delete(l);
       }
     }
   }
@@ -1620,7 +1641,7 @@ export class EffectsRenderer {
       if (!node._pixiTier || node._pixiTier.destroyed) {
         node._pixiTier = new Text({
           text: '',
-          style: { fontFamily: 'VT323, monospace', fontSize: 8, fontWeight: '700',
+          style: { fontFamily: 'Source Sans 3, sans-serif', fontSize: 8, fontWeight: '700',
                    fill: '#ffffff', align: 'center' },
         });
         node._pixiTier.anchor.set(0.5, 0.5);
@@ -1663,7 +1684,7 @@ export class EffectsRenderer {
           if (!t || t.destroyed) {
             t = new Text({
               text: '',
-              style: { fontFamily: 'VT323, monospace', fontSize: 7, fontWeight: '700',
+              style: { fontFamily: 'Source Sans 3, sans-serif', fontSize: 7, fontWeight: '700',
                        fill: color, align: 'center' },
             });
             t.anchor.set(0.5, 0);
