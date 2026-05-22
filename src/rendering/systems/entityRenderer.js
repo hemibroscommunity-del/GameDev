@@ -2,7 +2,7 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
-import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Assets, ColorMatrixFilter, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
@@ -198,13 +198,18 @@ function createMonsterDisplay(monster) {
     container.addChild(spriteBody);
   }
 
-  /* v2.3.118: monster HP bar now uses the bar-hp.png pill texture
-     (same artwork the player's above-character HP pill uses) +
-     a dim overlay covering the empty portion -- consistent visual
-     language across player and monsters. */
+  /* v2.3.118: monster HP bar uses the bar-hp.png pill texture (same
+     artwork the player's above-character HP pill uses) + a dim
+     overlay covering the empty portion -- consistent visual language
+     across player and monsters.
+     v2.3.119: ColorMatrixFilter applied so the same red art
+     hue-shifts to yellow (>25% HP) / green (>50% HP) without needing
+     separate sprite PNGs. */
   const hpSprite = new Sprite();
   hpSprite.anchor.set(0.5, 0.5);
   hpSprite.alpha = 0;
+  const hpFilter = new ColorMatrixFilter();
+  hpSprite.filters = [hpFilter];
   container.addChild(hpSprite);
 
   const hpEmpty = new Graphics();
@@ -229,6 +234,8 @@ function createMonsterDisplay(monster) {
   container._isSnowman = isSnowman;
   container._hpSprite = hpSprite;
   container._hpEmpty = hpEmpty;
+  container._hpFilter = hpFilter;
+  container._hpHue = 0;
   container._lvlText = lvlText;
   container._dynGfx = dynGfx;
   container._size = size;
@@ -347,6 +354,10 @@ function createPlayerDisplay() {
   const hudHpSprite = new Sprite();
   hudHpSprite.anchor.set(0.5, 0.5);
   hudHpSprite.alpha = 0;
+  /* v2.3.119: same hue-shift filter as monster HP bar so the player's
+     HP pill goes green->yellow->red by threshold. */
+  const hudHpFilter = new ColorMatrixFilter();
+  hudHpSprite.filters = [hudHpFilter];
   container.addChild(hudHpSprite);
   const hudHpEmpty = new Graphics();
   hudHpEmpty.alpha = 0;
@@ -394,6 +405,8 @@ function createPlayerDisplay() {
   container._nameText = nameText;
   container._hudHpSprite = hudHpSprite;
   container._hudHpEmpty = hudHpEmpty;
+  container._hudHpFilter = hudHpFilter;
+  container._hudHpHue = 0;
   container._hudHpTextFull = hudHpTextFull;
   container._hudHpTextEmpty = hudHpTextEmpty;
   container._hudMpSprite = hudMpSprite;
@@ -1156,6 +1169,16 @@ export class EntityRenderer {
         if (emptyW > 0.5) {
           display._hpEmpty.rect(-HP_BAR_W / 2 + HP_BAR_W * hpPct, -size - 10 - HP_BAR_H / 2, emptyW, HP_BAR_H);
           display._hpEmpty.fill({ color: 0x000000, alpha: 0.6 });
+        }
+        /* v2.3.119: hue-shift the red bar-hp.png pill to yellow / green
+           via ColorMatrixFilter based on HP %.  Only mutate the filter
+           when the threshold band changes (cheap to assign, slightly
+           less cheap to reset+hue every frame). */
+        const targetHue = hpPct > 0.5 ? 120 : hpPct > 0.25 ? 60 : 0;
+        if (display._hpHue !== targetHue) {
+          display._hpFilter.reset();
+          if (targetHue !== 0) display._hpFilter.hue(targetHue, false);
+          display._hpHue = targetHue;
         }
       }
       display._lastHpPct = hpPct;
@@ -2542,6 +2565,19 @@ export class EntityRenderer {
       if (emptyW > 0.5) {
         b.empty.rect(-W / 2 + filledW, b.y - H / 2, emptyW, H);
         b.empty.fill({ color: 0x000000, alpha: 0.55 });
+      }
+
+      /* v2.3.119: HP pill hue-shifts green (>50%) -> yellow (>25%) -> red.
+         Only the HP bar gets thresholded; Mana / Energy stay their
+         native colors (the bar-mp.png / bar-stam.png PNGs already
+         carry the intended color). */
+      if (b.sprite === d._hudHpSprite && d._hudHpFilter) {
+        const targetHue = pct > 0.5 ? 120 : pct > 0.25 ? 60 : 0;
+        if (d._hudHpHue !== targetHue) {
+          d._hudHpFilter.reset();
+          if (targetHue !== 0) d._hudHpFilter.hue(targetHue, false);
+          d._hudHpHue = targetHue;
+        }
       }
 
       /* Numeric overlays: current value centered on the filled
