@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
@@ -121,7 +121,7 @@ function hideNft(display) {
 }
 
 const NAME_STYLE = new TextStyle({
-  fontFamily: 'Atkinson Hyperlegible, sans-serif',
+  fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 10,
   fontWeight: '700',
   fill: '#ffffff',
@@ -333,8 +333,8 @@ function createPlayerDisplay() {
      directly on the game canvas.  Alpha is driven by
      _updatePlayerHud (fade in below max, hold at full for
      HOLD_MS, then fade out). */
-  const _hudNumStyleFull  = { fontFamily: 'Atkinson Hyperlegible, sans-serif', fontSize: 7, fontWeight: '700', fill: '#ffffff', align: 'center' };
-  const _hudNumStyleEmpty = { fontFamily: 'Atkinson Hyperlegible, sans-serif', fontSize: 7, fontWeight: '700', fill: '#ff4444', align: 'center' };
+  const _hudNumStyleFull  = { fontFamily: 'Source Sans 3, sans-serif', fontSize: 7, fontWeight: '700', fill: '#ffffff', align: 'center' };
+  const _hudNumStyleEmpty = { fontFamily: 'Source Sans 3, sans-serif', fontSize: 7, fontWeight: '700', fill: '#ff4444', align: 'center' };
 
   const hudHpSprite = new Sprite();
   hudHpSprite.anchor.set(0.5, 0.5);

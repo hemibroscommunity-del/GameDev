@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Effects Renderer — particles, damage numbers, screen flashes, atmosphere,
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
@@ -49,7 +49,7 @@ Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
 )).catch((err) => console.warn('[node-sprites] load failed', err));
 
 const DMG_STYLE = new TextStyle({
-  fontFamily: 'Atkinson Hyperlegible, sans-serif',
+  fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 14,
   fontWeight: '800',
   fill: '#ffffff',
@@ -64,7 +64,7 @@ const DMG_STYLE = new TextStyle({
    through to the system emoji font (Apple Color Emoji on iOS)
    sidesteps the WebGL texture path that crashes. */
 const DMG_STYLE_EMOJI = new TextStyle({
-  fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Atkinson Hyperlegible",sans-serif',
+  fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Source Sans 3",sans-serif',
   fontSize: 14,
   fontWeight: '800',
   fill: '#ffffff',
@@ -82,7 +82,7 @@ function isAsciiOnly(s) {
 }
 
 const LABEL_STYLE = new TextStyle({
-  fontFamily: 'Atkinson Hyperlegible, sans-serif',
+  fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 11,
   fill: '#ffffff',
   align: 'center',
@@ -94,7 +94,7 @@ const LABEL_STYLE = new TextStyle({
    crash class as DMG_STYLE_EMOJI — stripping the dropShadow and
    falling through to the system emoji font sidesteps the bad path. */
 const LABEL_STYLE_EMOJI = new TextStyle({
-  fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Atkinson Hyperlegible",sans-serif',
+  fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Source Sans 3",sans-serif',
   fontSize: 11,
   fill: '#ffffff',
   align: 'center',
@@ -1167,7 +1167,7 @@ export class EffectsRenderer {
       l._pixiOwnerLabel = new Text({
         text: '',
         style: {
-          fontFamily: 'Atkinson Hyperlegible, sans-serif',
+          fontFamily: 'Source Sans 3, sans-serif',
           fontSize: 12,
           fontWeight: '700',
           fill: '#ffffff',
@@ -1648,7 +1648,7 @@ export class EffectsRenderer {
       if (!node._pixiTier || node._pixiTier.destroyed) {
         node._pixiTier = new Text({
           text: '',
-          style: { fontFamily: 'Atkinson Hyperlegible, sans-serif', fontSize: 8, fontWeight: '700',
+          style: { fontFamily: 'Source Sans 3, sans-serif', fontSize: 8, fontWeight: '700',
                    fill: '#ffffff', align: 'center' },
         });
         node._pixiTier.anchor.set(0.5, 0.5);
@@ -1691,7 +1691,7 @@ export class EffectsRenderer {
           if (!t || t.destroyed) {
             t = new Text({
               text: '',
-              style: { fontFamily: 'Atkinson Hyperlegible, sans-serif', fontSize: 7, fontWeight: '700',
+              style: { fontFamily: 'Source Sans 3, sans-serif', fontSize: 7, fontWeight: '700',
                        fill: color, align: 'center' },
             });
             t.anchor.set(0.5, 0);

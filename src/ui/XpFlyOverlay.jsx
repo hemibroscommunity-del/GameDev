@@ -75,7 +75,7 @@ const XpFly = ({ fly, cx, cy }) => {
         transform: 'translate(-50%, -50%) scale(' + (arrived ? 0.6 : 1.0) + ')',
         opacity: arrived ? 0 : 1,
         color: '#3ddc97',
-        fontFamily: 'Atkinson Hyperlegible, sans-serif',
+        fontFamily: 'Source Sans 3, sans-serif',
         fontWeight: 700,
         fontSize: 22,
         textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 4px rgba(61,220,151,.55)',

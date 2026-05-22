@@ -466,7 +466,7 @@ export const FishingMinigame = ({ node, skill, fishSheetSrc, onComplete, onCance
     overflow: 'hidden',
     touchAction: 'none',
     boxShadow: '0 6px 16px rgba(0,0,0,0.5)',
-    fontFamily: 'Atkinson Hyperlegible, sans-serif',
+    fontFamily: 'Source Sans 3, sans-serif',
     color: '#fff',
   };
 

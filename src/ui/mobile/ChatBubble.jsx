@@ -86,7 +86,7 @@ export const ChatBubble = () => {
           borderRadius: 10,
           boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
           color: '#fff',
-          fontFamily: 'Atkinson Hyperlegible, sans-serif',
+          fontFamily: 'Source Sans 3, sans-serif',
         }}
       >
         <input

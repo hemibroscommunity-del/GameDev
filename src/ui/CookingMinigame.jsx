@@ -175,7 +175,7 @@ export const CookingMinigame = ({ fishKey, panSheetSrc, onComplete, onCancel }) 
     overflow: 'hidden',
     touchAction: 'none',
     boxShadow: '0 6px 16px rgba(0,0,0,0.55)',
-    fontFamily: 'Atkinson Hyperlegible, sans-serif',
+    fontFamily: 'Source Sans 3, sans-serif',
     color: '#fff',
   };
 

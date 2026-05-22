@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Tile Map Renderer — renders zone tiles using PixiJS Sprites from tileset assets.
  * Falls back to colored rectangles for tile types without sprite assets.
  */
@@ -10,7 +10,7 @@ import { TOWN_EXITS } from '@/data/effects.js';
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 
 const ZONE_LABEL_STYLE = new TextStyle({
-  fontFamily: 'Atkinson Hyperlegible, sans-serif',
+  fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 28,
   fontWeight: '700',
   fill: '#ffffff',

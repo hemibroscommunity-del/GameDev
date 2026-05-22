@@ -38,7 +38,7 @@ export const panelStyle = {
   touchAction: 'pan-y',
   padding: '8px 12px 10px',
   color: COL.text,
-  fontFamily: 'Atkinson Hyperlegible, sans-serif',
+  fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 15,
 };
 

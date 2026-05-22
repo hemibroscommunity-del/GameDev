@@ -250,7 +250,7 @@ export const WeaponSwapBar = () => {
         style={{
           borderTop: '1px solid rgba(255,255,255,0.12)',
           padding: '2px 8px 3px',
-          fontFamily: 'Atkinson Hyperlegible, sans-serif',
+          fontFamily: 'Source Sans 3, sans-serif',
           fontSize: 11,
           lineHeight: 1,
           color: '#E8EAF8',

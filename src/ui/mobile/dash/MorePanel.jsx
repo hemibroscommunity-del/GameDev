@@ -31,7 +31,7 @@ export const MorePanel = () => (
             borderRadius: 6,
             padding: '6px 4px',
             color: COL.text,
-            fontFamily: 'Atkinson Hyperlegible, sans-serif',
+            fontFamily: 'Source Sans 3, sans-serif',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',

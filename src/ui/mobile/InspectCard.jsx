@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { inspectCardBus } from './inspectCardBus.js';
 import { ItemArt } from './ItemArt.jsx';
 
@@ -35,9 +35,9 @@ const POLE_HALO = {
 };
 
 const FONT = {
-  serif: '"Atkinson Hyperlegible", sans-serif',
-  sans:  '"Atkinson Hyperlegible", sans-serif',
-  mono:  '"Atkinson Hyperlegible", sans-serif',
+  serif: '"Source Sans 3", sans-serif',
+  sans:  '"Source Sans 3", sans-serif',
+  mono:  '"Source Sans 3", sans-serif',
 };
 
 const STAT_KEYS = ['power', 'vitality', 'endurance', 'agility', 'mind'];
