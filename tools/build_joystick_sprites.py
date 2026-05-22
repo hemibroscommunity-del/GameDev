@@ -35,14 +35,19 @@ SIM = 95
 
 
 def chroma_key(img):
+    """Strict solid-distance-only key.  The magenta-dominant fallback used
+    by the monster pipeline catches h.264 compression spill on video
+    sources, but these joystick assets are PNG so there's no spill --
+    and the base sprite's cool-grey metal has pixels where B > G slightly,
+    which the magenta-dominant test was false-positive eating (visible
+    as speckled holes in the chroma-keyed base, user reported v2.3.99).
+    Just the solid distance < SIM check leaves the figure intact. """
     arr = np.asarray(img.convert('RGBA'), dtype=np.int16)
     rgb = arr[..., :3]
     dist = np.sqrt(((rgb - KEY) ** 2).sum(axis=-1))
     solid = dist < SIM
-    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
-    magenta_dom = (r > g + 30) & (b > g + 30) & ((r + b) > (2 * g + 80))
     alpha = arr[..., 3]
-    alpha[solid | magenta_dom] = 0
+    alpha[solid] = 0
     arr[..., 3] = alpha
     return Image.fromarray(arr.astype(np.uint8), 'RGBA')
 
@@ -63,7 +68,12 @@ def bbox_of(img):
 
 def fit_in_cell(keyed, size=CELL, margin_px=4):
     """Crop to figure bbox, scale uniformly to fit (margin on all sides),
-       center in the size x size cell."""
+       center in the size x size cell.  Alpha is binarized AFTER resize
+       (alpha > 128 -> 255, else 0) so LANCZOS averaging at the chroma-
+       key boundary doesn't leave semi-transparent speckles inside the
+       figure body (user reported v2.3.99: 15 % of figure pixels were
+       alpha < 200, reading as bright holes when composited over the
+       dark game background)."""
     bb = bbox_of(keyed)
     if bb is None:
         return Image.new('RGBA', (size, size), (0, 0, 0, 0))
@@ -75,6 +85,10 @@ def fit_in_cell(keyed, size=CELL, margin_px=4):
     new_w = max(1, int(round(fw * scale)))
     new_h = max(1, int(round(fh * scale)))
     resized = cropped.resize((new_w, new_h), Image.LANCZOS)
+    # Binary alpha threshold.
+    arr = np.asarray(resized).copy()
+    arr[..., 3] = np.where(arr[..., 3] > 128, 255, 0).astype(np.uint8)
+    resized = Image.fromarray(arr, 'RGBA')
     out = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     pad_x = (size - new_w) // 2
     pad_y = (size - new_h) // 2

@@ -31283,7 +31283,7 @@ export var BroTown = function BroTown(_ref0) {
          game.css with the metal-ring + center-hole art the user uploaded.
          No overflow:hidden -- the stick + knob layer on top and don't
          need clipping, the sprite art handles its own rim. */
-      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.99)',
+      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.100)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31292,19 +31292,20 @@ export var BroTown = function BroTown(_ref0) {
     /* Analog "stick" — anchored at joystick centre, grows toward the
        knob when dragged.  transform-origin at left-centre so rotation
        pivots at the disc centre; width set dynamically by
-       handleJoystickMove.  v2.3.99: sprite-backed (cylindrical shaft),
-       height bumped 6 -> 14 so the cylinder texture reads at scale. */
+       handleJoystickMove.  v2.3.100: sprite height bumped 14 -> 22
+       so the rod reads thicker relative to the outer ring (user
+       request: "knob + rod much larger relative to the outer ring"). */
     ref: lStickRef,
     style: {
       position: 'absolute',
       left: '50%',
       top: '50%',
       width: 0,
-      height: 14,
-      marginTop: -7,
+      height: 22,
+      marginTop: -11,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.99)',
+      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.100)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31317,9 +31318,12 @@ export var BroTown = function BroTown(_ref0) {
     ref: knobRef,
     style: {
       zIndex: 1,
-      /* v2.3.99: sprite-backed knob (metal sphere).  Overrides the
-         radial-gradient + box-shadow in game.css. */
-      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.99)',
+      /* v2.3.100: sprite-backed knob.  Size override below + the
+         CSS .bt-joystick-knob 24->44 px bump in game.css makes the
+         knob much larger relative to the outer ring (user request). */
+      width: isLandscape ? 52 : 44,
+      height: isLandscape ? 52 : 44,
+      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.100)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31374,7 +31378,7 @@ export var BroTown = function BroTown(_ref0) {
          separate red-ring overlay rendered below.  borderRadius kept
          so the hit-test shape stays circular. */
       borderRadius: '50%',
-      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.99)',
+      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.100)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31423,19 +31427,20 @@ export var BroTown = function BroTown(_ref0) {
   }()), /* Mana text removed — shown contextually above the player. */
   null, /*#__PURE__*/React.createElement("div", {
     /* Analog "stick" for the right joystick — mirrors lStickRef.  Width
-       and rotation are driven by handleRJoyMove.  v2.3.99: sprite-
-       backed, height bumped 6 -> 14 to match the left joystick. */
+       and rotation are driven by handleRJoyMove.  v2.3.100: height
+       bumped 14 -> 22 to match the left joystick (user request:
+       "knob + rod much larger relative to the outer ring"). */
     ref: rStickRef,
     style: {
       position: 'absolute',
       left: '50%',
       top: '50%',
       width: 0,
-      height: 14,
-      marginTop: -7,
+      height: 22,
+      marginTop: -11,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.99)',
+      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.100)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -31446,17 +31451,17 @@ export var BroTown = function BroTown(_ref0) {
   }), /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
     style: {
-      /* v2.3.99: sprite-backed metal sphere knob.  Replaces the
-         previous radial-gradient + box-shadow disc.  Same drag math
-         (translate from joystick center to clamped finger pos) so no
-         handleRJoyMove changes needed. */
+      /* v2.3.100: sprite-backed knob, bumped 24 -> 44 px so it reads
+         much larger relative to the outer ring (user request).  Same
+         drag math (translate from joystick center to clamped finger
+         pos) so no handleRJoyMove changes needed. */
       position: 'absolute',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      width: isLandscape ? 28 : 24,
-      height: isLandscape ? 28 : 24,
-      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.99)',
+      width: isLandscape ? 52 : 44,
+      height: isLandscape ? 52 : 44,
+      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.100)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',

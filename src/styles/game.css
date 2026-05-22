@@ -176,10 +176,11 @@ input{font-family:inherit}
 }
 /* Left-joystick centre — beveled blue button matching the right joystick,
    but without an icon.  Hints "this is interactable". */
-/* v2.3.99: knob gradient + border + box-shadow dropped -- inline JSX
-   now paints a sphere sprite background. */
+/* v2.3.100: knob bumped 24 -> 44 px so it reads much larger relative
+   to the outer ring (user request).  Sprite background painted inline
+   in JSX overrides the gradient that used to live here. */
 .bt-joystick-knob{
-  width:24px;height:24px;
+  width:44px;height:44px;
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   border-radius:50%;
   pointer-events:none;
