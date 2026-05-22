@@ -1,28 +1,24 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-/* XpFlyOverlay — reads S._xpFlies entries pushed by the kill-reward path
-   in BroTown.jsx and renders each as a fixed-position floating "+N XP"
-   that arcs from the kill location toward the dashboard's XP bar.
-   Mirrors the fish-to-bag animation in FishingMinigame.jsx but for the
-   kill-XP feedback loop. Each entry self-removes after FLY_MS. */
+/* HudPopupOverlay — small "+N XP" / "+N G" popups anchored to HUD
+   elements rather than to a world position.  Reads entries pushed to
+   S._hudPopups by the combat-XP and gold-drop paths in BroTown.jsx.
+   Each entry has { id, target, text, color, ts }.
+   target = 'xpBar' anchors above the full-width XP strip that sits
+   flush above the bottom dashboard.
+   target = 'goldIcon' anchors just under the top-right gold pill.
+   No arc — popups appear in place, drift up slightly, fade out.
+   (Previously this file did an arc animation from the kill site to a
+   stale 17vw/12vh target that pre-dated the full-width XP strip; the
+   in-place HUD popup is what the user actually asked for.) */
 
-const FLY_MS = 700;
-const ENTRY_LIFETIME_MS = FLY_MS + 200;
-
-// XP bar approximate target — sits in the left column of the dashboard,
-// at the bottom of the four-bar stack (HP, Mana, Energy, XP).  Dashboard
-// height is var(--dash-h) ~ 28vh, icon row consumes ~30% of that, and the
-// XP bar is the bottom-most bar in the stack above the icon row.
-const TARGET_LEFT = '17vw';     // horizontal centre of the left column
-const TARGET_BOTTOM = '12vh';   // approximately the XP bar's vertical centre
+const LIFE_MS = 1100;
+const ENTRY_LIFETIME_MS = LIFE_MS + 100;
+const STACK_SPACING_PX = 22;
 
 export const XpFlyOverlay = () => {
   const [, force] = useState(0);
 
-  // Tick every 80ms so newly-pushed entries get rendered promptly and
-  // expired ones get culled.  rAF would be smoother but the entries
-  // animate via CSS transition on the elements themselves; we just need
-  // to mount/unmount them in time.
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 80);
     return () => clearInterval(id);
@@ -30,61 +26,87 @@ export const XpFlyOverlay = () => {
 
   const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   if (!S) return null;
-  const flies = S._xpFlies || [];
+  const pops = S._hudPopups || [];
   const now = Date.now();
 
-  // Cull expired entries in-place so we don't accumulate forever.
-  for (let i = flies.length - 1; i >= 0; i--) {
-    if (now - flies[i].ts > ENTRY_LIFETIME_MS) flies.splice(i, 1);
+  for (let i = pops.length - 1; i >= 0; i--) {
+    if (now - pops[i].ts > ENTRY_LIFETIME_MS) pops.splice(i, 1);
   }
-  if (!flies.length) return null;
+  if (!pops.length) return null;
 
-  const cx = (S.camera && S.camera.x) || 0;
-  const cy = (S.camera && S.camera.y) || 0;
-
+  /* Per-target stack indices so concurrent pops don't overlap. */
+  const stackByTarget = {};
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 90 }}>
-      {flies.map(f => <XpFly key={f.id} fly={f} cx={cx} cy={cy} />)}
+      {pops.map(p => {
+        const k = p.target || 'xpBar';
+        const idx = stackByTarget[k] || 0;
+        stackByTarget[k] = idx + 1;
+        return <HudPopup key={p.id} pop={p} stackIdx={idx} />;
+      })}
     </div>
   );
 };
 
-// Each XpFly mounts at the kill's CSS coords, then on the next frame
-// flips to the target coords so the CSS transition fires.  Removes
-// itself from S._xpFlies on transitionend (parent re-render culls it).
-const XpFly = ({ fly, cx, cy }) => {
-  const [arrived, setArrived] = useState(false);
-
+const HudPopup = ({ pop, stackIdx }) => {
+  const [phase, setPhase] = useState(0); /* 0 = mounted, 1 = drifted */
   useEffect(() => {
-    const id = requestAnimationFrame(() => setArrived(true));
+    const id = requestAnimationFrame(() => setPhase(1));
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Start position in CSS pixels: world → css conversion is 1:1 in the
-  // active Canvas 2D path (setTransform(dpr, 0, 0, dpr), no Y compression).
-  const startLeft = (fly.worldX - cx) + 'px';
-  const startTop = (fly.worldY - cy) + 'px';
+  const isGold = pop.target === 'goldIcon';
+  /* Anchor styles per target.  Gold pill is at top:6 right:6, ~32 px
+     tall — popups fall just under it on the right edge.  XP strip is
+     8 px tall and pinned to bottom: var(--dash-h) — popups float just
+     above it on the right edge so they don't fight the dashboard. */
+  const base = isGold
+    ? {
+        position: 'fixed',
+        right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 44px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
+        textAlign: 'right',
+      }
+    : {
+        position: 'fixed',
+        right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
+        bottom: 'calc(var(--dash-h) + 14px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
+        textAlign: 'right',
+      };
+
+  /* Phase 1 drift: gold sinks down 8 px, xp rises up 8 px. Both fade out. */
+  const driftY = phase === 1 ? (isGold ? 8 : -8) : 0;
 
   return (
     <div
       style={{
-        position: 'fixed',
-        left: arrived ? TARGET_LEFT : startLeft,
-        top: arrived ? 'auto' : startTop,
-        bottom: arrived ? TARGET_BOTTOM : 'auto',
-        transform: 'translate(-50%, -50%) scale(' + (arrived ? 0.6 : 1.0) + ')',
-        opacity: arrived ? 0 : 1,
-        color: '#3ddc97',
+        ...base,
+        transform: 'translateY(' + driftY + 'px)',
+        opacity: phase === 1 ? 0 : 1,
+        color: pop.color || (isGold ? '#f5c542' : '#3ddc97'),
         fontFamily: 'Source Sans 3, sans-serif',
         fontWeight: 700,
-        fontSize: 22,
-        textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 4px rgba(61,220,151,.55)',
-        transition: 'left ' + FLY_MS + 'ms cubic-bezier(.25,.6,.4,1), top ' + FLY_MS + 'ms cubic-bezier(.25,.6,.4,1), bottom ' + FLY_MS + 'ms cubic-bezier(.25,.6,.4,1), transform ' + FLY_MS + 'ms ease-out, opacity ' + FLY_MS + 'ms ease-in 200ms',
+        fontSize: 20,
+        textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 4px rgba(0,0,0,.5)',
+        transition: 'transform ' + LIFE_MS + 'ms ease-out, opacity ' + LIFE_MS + 'ms ease-in',
         pointerEvents: 'none',
         whiteSpace: 'nowrap',
       }}
     >
-      +{fly.value} XP
+      {pop.text}
     </div>
   );
 };
+
+/* Helper used by BroTown.jsx to enqueue a HUD-anchored popup. */
+export function pushHudPopup(S, opts) {
+  if (!S) return;
+  if (!S._hudPopups) S._hudPopups = [];
+  S._hudPopups.push({
+    id: 'hp_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+    target: opts.target || 'xpBar',
+    text: opts.text || '',
+    color: opts.color || null,
+    ts: Date.now(),
+  });
+}
