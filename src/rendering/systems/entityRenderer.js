@@ -129,8 +129,11 @@ const NAME_STYLE = new TextStyle({
   dropShadow: { color: '#000000', blur: 2, distance: 1 },
 });
 
-const HP_BAR_W = 24;
-const HP_BAR_H = 3;
+/* v2.3.118: bumped 24x3 -> 32x5 so the bar-hp.png pill artwork
+   reads as pill-shaped at this scale.  Monster HP bar now reuses
+   the same Sprite the player HUD's HP bar uses. */
+const HP_BAR_W = 32;
+const HP_BAR_H = 5;
 
 function getMonsterSize(archetype) {
   /* Slime/fodder stays small (renders as a 50-px sprite, the 8-px
@@ -195,13 +198,18 @@ function createMonsterDisplay(monster) {
     container.addChild(spriteBody);
   }
 
-  const hpBg = new Graphics();
-  hpBg.rect(-HP_BAR_W / 2, -size - 10, HP_BAR_W, HP_BAR_H);
-  hpBg.fill({ color: 0x000000, alpha: 0.5 });
-  container.addChild(hpBg);
+  /* v2.3.118: monster HP bar now uses the bar-hp.png pill texture
+     (same artwork the player's above-character HP pill uses) +
+     a dim overlay covering the empty portion -- consistent visual
+     language across player and monsters. */
+  const hpSprite = new Sprite();
+  hpSprite.anchor.set(0.5, 0.5);
+  hpSprite.alpha = 0;
+  container.addChild(hpSprite);
 
-  const hpFill = new Graphics();
-  container.addChild(hpFill);
+  const hpEmpty = new Graphics();
+  hpEmpty.alpha = 0;
+  container.addChild(hpEmpty);
 
   const lvlText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 8 } });
   lvlText.anchor.set(0.5, 1);
@@ -219,8 +227,8 @@ function createMonsterDisplay(monster) {
   container._isFodder = isFodder;
   container._variantKey = variantKey;
   container._isSnowman = isSnowman;
-  container._hpFill = hpFill;
-  container._hpBg = hpBg;
+  container._hpSprite = hpSprite;
+  container._hpEmpty = hpEmpty;
   container._lvlText = lvlText;
   container._dynGfx = dynGfx;
   container._size = size;
@@ -592,8 +600,8 @@ export class EntityRenderer {
                half-full over a corpse (v2.3.17 bug report).  Set
                _lastHpPct = 1 so the post-respawn redraw triggers
                cleanly on the first damage tick. */
-            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
-            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            if (display._hpSprite && !display._hpSprite.destroyed) display._hpSprite.alpha = 0;
+            if (display._hpEmpty && !display._hpEmpty.destroyed) { display._hpEmpty.clear(); display._hpEmpty.alpha = 0; }
             display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
@@ -626,8 +634,8 @@ export class EntityRenderer {
             display._body.visible = false;
             /* Clear HP bar -- see variant death branch for context;
                same problem applies to raw fodder slime kills. */
-            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
-            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            if (display._hpSprite && !display._hpSprite.destroyed) display._hpSprite.alpha = 0;
+            if (display._hpEmpty && !display._hpEmpty.destroyed) { display._hpEmpty.clear(); display._hpEmpty.alpha = 0; }
             display._lastHpPct = 1;
             /* Clear any leftover dynamic content (aggro arrow, status
                icons) so it doesn't linger on the death frame. */
@@ -663,8 +671,8 @@ export class EntityRenderer {
             display.visible = true;
             display._body.visible = false;
             /* Clear HP bar -- same fix as slime / variant death branches. */
-            if (display._hpFill && !display._hpFill.destroyed) display._hpFill.clear();
-            if (display._hpBg && !display._hpBg.destroyed) display._hpBg.visible = false;
+            if (display._hpSprite && !display._hpSprite.destroyed) display._hpSprite.alpha = 0;
+            if (display._hpEmpty && !display._hpEmpty.destroyed) { display._hpEmpty.clear(); display._hpEmpty.alpha = 0; }
             display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
@@ -1117,26 +1125,40 @@ export class EntityRenderer {
         display._emoji.visible = true;
       }
 
-      // HP bar — only redraw when the % changed (>0.01 movement).
-      // Use maxHp as the denominator so the bar survives server
-      // respawns (the kill handler used to zero m.hp, which broke
-      // every monster's bar on its 2nd life).
+      // HP bar (v2.3.118) -- uses the shared bar-hp.png pill texture +
+      // a dim overlay covering the empty portion.  Same artwork the
+      // player HUD's HP bar uses, so player and monsters read in the
+      // same visual language.  Hidden entirely at full HP (existing
+      // behaviour).
       const curHp = m.curHp != null ? m.curHp : m.hp;
       const maxHpDenom = m.maxHp || m.hp || 1;
-      const hpPct = Math.max(0, curHp / maxHpDenom);
-      if (Math.abs(hpPct - display._lastHpPct) > 0.01) {
-        display._lastHpPct = hpPct;
-        const hpFill = display._hpFill;
-        hpFill.clear();
-        if (hpPct < 1) {
-          const hpColor = hpPct > 0.5 ? 0x3dd497 : hpPct > 0.25 ? 0xf5c542 : 0xff5e6c;
-          hpFill.rect(-HP_BAR_W / 2, -size - 10, HP_BAR_W * hpPct, HP_BAR_H);
-          hpFill.fill({ color: hpColor });
-          display._hpBg.visible = true;
-        } else {
-          display._hpBg.visible = false;
+      const hpPct = Math.max(0, Math.min(1, curHp / maxHpDenom));
+      _ensureHudBarTextures();
+      const hpTex = _hudBarTex.hp;
+      if (hpTex && display._hpSprite.texture !== hpTex) {
+        display._hpSprite.texture = hpTex;
+      }
+      if (hpTex && hpTex.width > 0) {
+        display._hpSprite.width = HP_BAR_W;
+        display._hpSprite.height = HP_BAR_H;
+        display._hpSprite.x = 0;
+        display._hpSprite.y = -size - 10;
+      }
+      if (hpPct >= 0.999) {
+        display._hpSprite.alpha = 0;
+        display._hpEmpty.clear();
+        display._hpEmpty.alpha = 0;
+      } else {
+        display._hpSprite.alpha = 1;
+        display._hpEmpty.alpha = 1;
+        display._hpEmpty.clear();
+        const emptyW = HP_BAR_W * (1 - hpPct);
+        if (emptyW > 0.5) {
+          display._hpEmpty.rect(-HP_BAR_W / 2 + HP_BAR_W * hpPct, -size - 10 - HP_BAR_H / 2, emptyW, HP_BAR_H);
+          display._hpEmpty.fill({ color: 0x000000, alpha: 0.6 });
         }
       }
+      display._lastHpPct = hpPct;
 
       // Level text — only update when level changes.
       if (m.level !== display._lastLvl) {
