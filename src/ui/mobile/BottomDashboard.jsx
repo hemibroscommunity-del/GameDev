@@ -433,7 +433,10 @@ export const BottomDashboard = () => {
         position: 'fixed',
         left: 0, right: 0, bottom: 0,
         height: 'var(--dash-h)',
-        background: COL.bg,
+        /* v2.3.122: dark bluish-gray vertical gradient behind the
+           three column panels so the sections pop against a slightly
+           lifted backdrop instead of a flat near-black field. */
+        background: 'linear-gradient(180deg, #1e2436 0%, #141826 55%, #0c0f18 100%)',
         borderTop: `1px solid ${COL.border}`,
         color: COL.text,
         fontFamily: 'Source Sans 3, sans-serif',
