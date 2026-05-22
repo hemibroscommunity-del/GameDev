@@ -348,8 +348,29 @@ function createPlayerDisplay() {
      directly on the game canvas.  Alpha is driven by
      _updatePlayerHud (fade in below max, hold at full for
      HOLD_MS, then fade out). */
-  const _hudNumStyleFull  = { fontFamily: 'Source Sans 3, sans-serif', fontSize: 7, fontWeight: '700', fill: '#ffffff', align: 'center' };
-  const _hudNumStyleEmpty = { fontFamily: 'Source Sans 3, sans-serif', fontSize: 7, fontWeight: '700', fill: '#ff4444', align: 'center' };
+  /* v2.3.121: stroke + drop shadow added so the HUD numbers stay
+     readable on bright bar backgrounds (white "100" on the green HP
+     pill was washing out completely).  Stroke gives crisp dark
+     outline; dropShadow adds offset so the stroke reads at any
+     orientation. */
+  const _hudNumStyleFull = {
+    fontFamily: 'Source Sans 3, sans-serif',
+    fontSize: 8,
+    fontWeight: '800',
+    fill: '#ffffff',
+    stroke: { color: '#000000', width: 2 },
+    dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
+    align: 'center',
+  };
+  const _hudNumStyleEmpty = {
+    fontFamily: 'Source Sans 3, sans-serif',
+    fontSize: 8,
+    fontWeight: '800',
+    fill: '#ff8888',
+    stroke: { color: '#000000', width: 2 },
+    dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
+    align: 'center',
+  };
 
   const hudHpSprite = new Sprite();
   hudHpSprite.anchor.set(0.5, 0.5);
@@ -2532,13 +2553,11 @@ export class EntityRenderer {
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
     /* HP closest to head (y=-50), Mana middle (-62), Energy top (-74).
        nameText sits at -38 so the HUD floats above the name plate. */
-    /* v2.3.120: HP bar moved BENEATH the player (y=+12 below the
-       sprite center / roughly at the feet line) per user request --
-       the most-critical resource floats off the head and into the
-       foreground.  Mana / Energy stay above, with Mana shifted down
-       to where HP used to live so the above-head stack stays tight. */
+    /* v2.3.121: HP bar pulled further down to y=+38 so it clears the
+       player's legs entirely (v2.3.120's +12 was sitting over them).
+       Mana / Energy still above the head. */
     const bars = [
-      { sprite: d._hudHpSprite,   empty: d._hudHpEmpty,   tFull: d._hudHpTextFull,   tEmpty: d._hudHpTextEmpty,   cur: R.hp,      max: R.maxHp,      y:  12 },
+      { sprite: d._hudHpSprite,   empty: d._hudHpEmpty,   tFull: d._hudHpTextFull,   tEmpty: d._hudHpTextEmpty,   cur: R.hp,      max: R.maxHp,      y:  38 },
       { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   tFull: d._hudMpTextFull,   tEmpty: d._hudMpTextEmpty,   cur: R.mana,    max: R.maxMana,    y: -50 },
       { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -62 },
     ];
