@@ -31269,15 +31269,15 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 'calc(var(--dash-h) + 70px)',
       left: isLandscape ? 16 : 12,
       zIndex: 30,
-      width: isLandscape ? 130 : 110,
-      height: isLandscape ? 130 : 110
+      width: isLandscape ? 65 : 55,
+      height: isLandscape ? 65 : 55
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-base",
     ref: joystickRef,
     style: {
-      width: isLandscape ? 120 : 100,
-      height: isLandscape ? 120 : 100,
+      width: isLandscape ? 60 : 50,
+      height: isLandscape ? 60 : 50,
       position: 'relative',
       /* v2.3.99: sprite-backed base.  Overrides the rgba bg + border in
          game.css with the metal-ring + center-hole art the user uploaded.
@@ -31301,8 +31301,8 @@ export var BroTown = function BroTown(_ref0) {
       left: '50%',
       top: '50%',
       width: 0,
-      height: 44,
-      marginTop: -22,
+      height: 22,
+      marginTop: -11,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
       backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.102)',
@@ -31321,8 +31321,8 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.100: sprite-backed knob.  Size override below + the
          CSS .bt-joystick-knob 24->44 px bump in game.css makes the
          knob much larger relative to the outer ring (user request). */
-      width: isLandscape ? 64 : 56,
-      height: isLandscape ? 64 : 56,
+      width: isLandscape ? 32 : 28,
+      height: isLandscape ? 32 : 28,
       backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
@@ -31360,15 +31360,15 @@ export var BroTown = function BroTown(_ref0) {
       // with a small buffer.
       right: isLandscape ? 50 : 50,
       zIndex: 30,
-      width: isLandscape ? 130 : 110,
-      height: isLandscape ? 130 : 110
+      width: isLandscape ? 65 : 55,
+      height: isLandscape ? 65 : 55
     }
   }, /*#__PURE__*/React.createElement("div", {
     ref: rJoyRef,
     className: "bt-rjoy-base",
     style: {
-      width: isLandscape ? 120 : 100,
-      height: isLandscape ? 120 : 100,
+      width: isLandscape ? 60 : 50,
+      height: isLandscape ? 60 : 50,
       position: 'absolute',
       left: '50%',
       top: '50%',
@@ -31436,8 +31436,8 @@ export var BroTown = function BroTown(_ref0) {
       left: '50%',
       top: '50%',
       width: 0,
-      height: 44,
-      marginTop: -22,
+      height: 22,
+      marginTop: -11,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
       backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.102)',
@@ -31459,8 +31459,8 @@ export var BroTown = function BroTown(_ref0) {
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      width: isLandscape ? 64 : 56,
-      height: isLandscape ? 64 : 56,
+      width: isLandscape ? 32 : 28,
+      height: isLandscape ? 32 : 28,
       backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
