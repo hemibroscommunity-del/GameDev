@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcMoveSpeed, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
+import { ZONES } from '../../data/zones.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { weaponSwapBus } from './weaponSwapBus.js';
 import { InventoryPanel }    from './dash/InventoryPanel.jsx';
@@ -70,10 +71,12 @@ const ICON_SRC = {
 // specific training source so the player knows what to do.
 const CHAR_STATS = [
   { key: 'power',     label: 'Power',     short: 'POW', iconSrc: '/icons/popups/sword.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Power — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  /* v2.3.112: heart icon scaled 1.4x because the heart artwork still
-     reads ~70% the footprint of the other icons even after the tighter
-     ffmpeg crop.  Cache-bust bumped so browsers reload the cropped png. */
-  { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.112',                       pixelated: true,  iconScale: 1.4, tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
+  /* v2.3.112 applied iconScale 1.4 to compensate for the heart's
+     padded crop in the old 2-col Build grid.  v2.3.126: the merged
+     3x5 grid cells are ~33% column width, so the 1.4x heart overflowed
+     and pushed its value text off-center.  Back to 1.0 — the cell
+     layout below now centers the value regardless of icon size. */
+  { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.112',                       pixelated: true,  iconScale: 1.0, tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
   { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/sprites/shields/wood-shield-front.png?v=2.1.23',         pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
   { key: 'agility',   label: 'Agility',   short: 'AGI', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Agility — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
   { key: 'mind',      label: 'Mind',      short: 'MIN', iconSrc: '/icons/popups/spell.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Mind — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
@@ -391,8 +394,11 @@ export const BottomDashboard = () => {
         }} />
       </div>
 
-      {/* Gold HUD — pinned to upper-right.  Always visible, even when
-          a panel is open. */}
+      {/* Upper-right HUD cluster — portrait pill + gold pill, side by
+          side.  Right edge stays anchored to the gold value (whose
+          width varies with coin count); the portrait sits on its left.
+          v2.3.126: portrait moved here from the bottom-left dashboard
+          column so the left column can host more useful data. */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
         style={{
@@ -400,6 +406,44 @@ export const BottomDashboard = () => {
           top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
           right: 'calc(env(safe-area-inset-right, 0px) + 6px)',
           zIndex: 30,
+          display: 'flex',
+          alignItems: 'stretch',
+          gap: 6,
+          touchAction: 'none',
+        }}>
+        {/* Portrait pill — 40 px square, framed to read as a peer of
+            the gold badge.  Inner radius 6 inside an 8-radius frame
+            gives the "framed plaque" look the user asked for. */}
+        <div style={{
+          width: 40,
+          height: 40,
+          background: COL.bg,
+          border: `1px solid ${COL.border}`,
+          borderRadius: 8,
+          padding: 2,
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <img
+            src="/icons/ui/profile.webp?v=2.3.126"
+            alt="Portrait"
+            draggable={false}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              imageRendering: 'pixelated',
+              borderRadius: 6,
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+          />
+        </div>
+        {/* Gold pill — unchanged from prior layout. */}
+        <div style={{
           background: COL.bg,
           border: `1px solid ${COL.border}`,
           borderRadius: 8,
@@ -409,22 +453,22 @@ export const BottomDashboard = () => {
           fontSize: 18,
           fontWeight: 700,
           letterSpacing: '.04em',
-          touchAction: 'none',
           display: 'flex',
           alignItems: 'center',
           gap: 4,
         }}>
-        <img
-          src="/icons/popups/gold.png"
-          alt=""
-          style={{
-            width: 18,
-            height: 18,
-            imageRendering: 'pixelated',
-            display: 'block',
-          }}
-        />
-        {Number(gold).toLocaleString()}
+          <img
+            src="/icons/popups/gold.png"
+            alt=""
+            style={{
+              width: 18,
+              height: 18,
+              imageRendering: 'pixelated',
+              display: 'block',
+            }}
+          />
+          {Number(gold).toLocaleString()}
+        </div>
       </div>
 
     <div
@@ -501,13 +545,13 @@ export const BottomDashboard = () => {
             minHeight: 0,
           }}>
             <div style={{ flex: 1, display: 'flex', gap: 8, minHeight: 0 }}>
-              {/* ── Left column — character portrait + max-stat chips.
-                  v2.3.125: replaced the old derived-stats list (Hitpoints
-                  / Melee / Bow / Magic / Endurance) with the profile
-                  portrait + a compact HP/MP/END chip block per the
-                  redesigned dashboard wireframe. */}
+              {/* ── Left column — hybrid card: HP/MP/END chip row +
+                  Crit/Move derived stats + session summary (Zone, Kills,
+                  Playtime).  v2.3.126: portrait migrated to the top-right
+                  HUD; this column narrowed (flex 0.85) so Loadout
+                  (flex 1.35) gets the slack. */}
               <div style={{
-                flex: 1,
+                flex: 0.85,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -522,89 +566,135 @@ export const BottomDashboard = () => {
                   const maxHp  = R.maxHp     || calcMaxHp(R.level || 1, R.vitality || 0);
                   const maxMp  = R.maxMana   || calcMaxMana(R.mind || 0);
                   const maxSta = R.maxStamina || calcMaxStam(R.endurance || 0);
+                  /* Derived combat stats — calcCritChance returns a 0..1
+                     fraction, so x100 for the % display.  calcMoveSpeed
+                     returns tiles/sec including the agility bonus. */
+                  const critPct = Math.round(calcCritChance(R.ferocity || 0) * 100);
+                  const moveSpd = calcMoveSpeed(R.agility || 0).toFixed(1);
+                  /* Session summary — zone name lookup is safe-guarded so
+                     a missing currentZone or a zone removed from ZONES
+                     never crashes the dashboard.  _compStats may be
+                     absent on older save shapes. */
+                  const zoneId = (S && S.currentZone) || 'town';
+                  const zoneName = (ZONES[zoneId] && ZONES[zoneId].name) || zoneId;
+                  const cs = R._compStats || {};
+                  const kills = cs.monstersKilled || 0;
+                  const pts = cs.playtimeSeconds || 0;
+                  const pth = Math.floor(pts / 3600);
+                  const ptm = Math.floor((pts % 3600) / 60);
+                  const ptText = pth > 0 ? `${pth}h ${ptm}m` : `${ptm}m`;
+                  const chipStyle = {
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 4,
+                    padding: '1px 5px',
+                    borderRadius: 3,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    cursor: 'pointer',
+                    touchAction: 'none',
+                    minWidth: 0,
+                  };
+                  const rowStyle = {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 6,
+                    padding: '1px 4px',
+                    cursor: 'pointer',
+                    touchAction: 'none',
+                  };
+                  const rowLabel = {
+                    color: COL.muted,
+                    fontWeight: 700,
+                    fontSize: 11,
+                    textTransform: 'uppercase',
+                    letterSpacing: '.05em',
+                  };
+                  const rowVal = { color: COL.text, fontWeight: 700, fontSize: 13 };
                   return (
                     <div style={{
                       flex: 1,
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 4,
+                      gap: 3,
                       minHeight: 0,
                       padding: '2px 2px 0',
                     }}>
-                      {/* Portrait — square, fills column width.  Pixel-art
-                         WebP from /icons/ui/profile.webp (added v2.3.108). */}
-                      <div style={{
-                        flex: 1,
-                        minHeight: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 4,
-                        background: 'rgba(0,0,0,0.25)',
-                        border: '1px solid rgba(255,255,255,0.06)',
-                        overflow: 'hidden',
-                      }}>
-                        <img
-                          src="/icons/ui/profile.webp?v=2.3.125"
-                          alt="Portrait"
-                          draggable={false}
-                          style={{
-                            maxWidth: '100%',
-                            maxHeight: '100%',
-                            objectFit: 'contain',
-                            imageRendering: 'pixelated',
-                            userSelect: 'none',
-                            pointerEvents: 'none',
-                          }}
-                        />
+                      {/* HP / MP / END chip row — three chips on a single
+                         line, label-colored to match the resource bars. */}
+                      <div style={{ display: 'flex', gap: 3 }}>
+                        {[
+                          { label: 'HP',  val: maxHp,  color: COL.hp,   tip: `Max HP at Vitality ${R.vitality || 0}.` },
+                          { label: 'MP',  val: maxMp,  color: COL.mp,   tip: `Max Mana at Mind ${R.mind || 0}.` },
+                          { label: 'END', val: maxSta, color: COL.stam, tip: `Max Stamina at Endurance ${R.endurance || 0}.` },
+                        ].map((c) => (
+                          <div key={c.label}
+                            onPointerUp={(e) => { e.stopPropagation(); setTooltip(c.tip); }}
+                            title={c.tip}
+                            style={chipStyle}>
+                            <span style={{ color: c.color, fontWeight: 800, fontSize: 9, letterSpacing: '.05em' }}>{c.label}</span>
+                            <span style={{ color: COL.text, fontWeight: 800, fontSize: 12 }}>{c.val}</span>
+                          </div>
+                        ))}
                       </div>
-                      {/* Chips — single-line label-on-left value-on-right
-                         rows, mirroring the visual style of the Life Skill
-                         and Build cells so the column reads as one piece. */}
-                      {[
-                        { label: 'HP',  val: maxHp,  color: COL.hp,   tip: `Max HP at Vitality ${R.vitality || 0}.` },
-                        { label: 'MP',  val: maxMp,  color: COL.mp,   tip: `Max Mana at Mind ${R.mind || 0}.` },
-                        { label: 'END', val: maxSta, color: COL.stam, tip: `Max Stamina at Endurance ${R.endurance || 0}.` },
-                      ].map((c) => (
-                        <div key={c.label}
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(c.tip); }}
-                          title={c.tip}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: 6,
-                            padding: '1px 6px',
-                            borderRadius: 3,
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            cursor: 'pointer',
-                            touchAction: 'none',
-                          }}>
-                          <span style={{
-                            color: c.color,
-                            fontWeight: 800,
-                            fontSize: 11,
-                            letterSpacing: '.06em',
-                          }}>{c.label}</span>
-                          <span style={{ color: COL.text, fontWeight: 800, fontSize: 14 }}>{c.val}</span>
+                      {/* Derived stats — Crit + Move.  1px divider above
+                         to mark the section break. */}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 2 }}>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — derived from Ferocity (${R.ferocity || 0}).  Diminishing returns past 300.`); }}
+                          title="Crit chance from Ferocity"
+                          style={rowStyle}>
+                          <span style={rowLabel}>Crit</span>
+                          <span style={rowVal}>{critPct}%</span>
                         </div>
-                      ))}
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Move speed — 5.0 tiles/sec base + up to 60% from Agility (${R.agility || 0}).`); }}
+                          title="Move speed from Agility"
+                          style={rowStyle}>
+                          <span style={rowLabel}>Move</span>
+                          <span style={rowVal}>{moveSpd}/s</span>
+                        </div>
+                      </div>
+                      {/* Session summary — Zone / Kills / Playtime. */}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 2, flex: 1, minHeight: 0 }}>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Current zone: ${zoneName} (${zoneId}).`); }}
+                          title={`Current zone: ${zoneName}`}
+                          style={rowStyle}>
+                          <span style={rowLabel}>Zone</span>
+                          <span style={{ ...rowVal, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60%' }}>{zoneName}</span>
+                        </div>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Lifetime monsters killed: ${kills.toLocaleString()}.`); }}
+                          title="Lifetime monsters killed"
+                          style={rowStyle}>
+                          <span style={rowLabel}>Kills</span>
+                          <span style={rowVal}>{kills.toLocaleString()}</span>
+                        </div>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Total playtime: ${ptText}.`); }}
+                          title="Total playtime"
+                          style={rowStyle}>
+                          <span style={rowLabel}>Time</span>
+                          <span style={rowVal}>{ptText}</span>
+                        </div>
+                      </div>
                     </div>
                   );
                 })()}
               </div>
 
               {/* ── Middle column — Loadout.
-                  v2.3.125: replaced the 2x3 Build grid (now merged into
-                  the right column) with the active-weapon DMG/DPS line
-                  + a 3-then-2 equip-slot grid (weapon, chest, legs,
-                  amulet, shield).  The floating WeaponSwapBar was
-                  removed from GameApp the same release; the weapon
-                  slot here cycles activeSlot on tap to keep direct
-                  weapon-swap UX. */}
+                  v2.3.125 introduced the DMG/DPS line + 3-then-2 equip
+                  grid.  v2.3.126 widened to flex 1.35 (was 1) using the
+                  slack freed by the left column shrinking to 0.85.
+                  Weapon slot still cycles activeSlot on tap (the
+                  floating WeaponSwapBar was unmounted in v2.3.125). */}
               <div style={{
-                flex: 1,
+                flex: 1.35,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -677,8 +767,8 @@ export const BottomDashboard = () => {
                           alt={label}
                           draggable={false}
                           style={{
-                            width: '78%',
-                            height: '78%',
+                            width: '85%',
+                            height: '85%',
                             objectFit: 'contain',
                             imageRendering: 'pixelated',
                             opacity: equipped === false ? 0.35 : 1,
@@ -807,7 +897,6 @@ export const BottomDashboard = () => {
                           position: 'relative',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
                           gap: 3,
                           padding: '0 4px',
                           borderRadius: 3,
@@ -832,7 +921,12 @@ export const BottomDashboard = () => {
                             flexShrink: 0,
                           }}
                         />
-                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 13 }}>{val}</span>
+                        {/* v2.3.126: flex:1 + textAlign:center so the value
+                            sits in the cell's remaining horizontal space.
+                            Previously justify-content:space-between pinned
+                            the value to the right edge, which read as
+                            crowded when icons were wide (heart at 1.4x). */}
+                        <span style={{ flex: 1, textAlign: 'center', color: COL.text, fontWeight: 700, fontSize: 13 }}>{val}</span>
                         <div style={{
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
@@ -864,7 +958,6 @@ export const BottomDashboard = () => {
                           position: 'relative',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
                           gap: 3,
                           padding: '0 4px',
                           borderRadius: 3,
@@ -876,8 +969,11 @@ export const BottomDashboard = () => {
                           touchAction: 'none',
                           overflow: 'hidden',
                         }}>
-                        <span style={{ fontSize: 13, lineHeight: 1 }}>{sk.icon}</span>
-                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 13 }}>{lvl}</span>
+                        <span style={{ fontSize: 13, lineHeight: 1, flexShrink: 0 }}>{sk.icon}</span>
+                        {/* v2.3.126: matches Build cell — flex:1 + center
+                            so the level number stays centered regardless
+                            of glyph width variance between emoji. */}
+                        <span style={{ flex: 1, textAlign: 'center', color: COL.text, fontWeight: 700, fontSize: 13 }}>{lvl}</span>
                         <div style={{
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
