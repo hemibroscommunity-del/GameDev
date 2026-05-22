@@ -518,7 +518,7 @@ export const BottomDashboard = () => {
                 background: 'rgba(255,100,100,0.04)',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
               }}>
-                <ColHeader>{S?.myName || 'Anon'} · Lv {level}</ColHeader>
+                <ColHeader>{S?.myName || 'Anon'} · LVL {level}</ColHeader>
                 {/* v2.3.111: derived stats list moved here from the
                     Build column's bottom-right slot (where it was
                     squished into a small cell).  Full column height

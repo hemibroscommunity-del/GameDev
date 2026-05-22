@@ -2532,10 +2532,15 @@ export class EntityRenderer {
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
     /* HP closest to head (y=-50), Mana middle (-62), Energy top (-74).
        nameText sits at -38 so the HUD floats above the name plate. */
+    /* v2.3.120: HP bar moved BENEATH the player (y=+12 below the
+       sprite center / roughly at the feet line) per user request --
+       the most-critical resource floats off the head and into the
+       foreground.  Mana / Energy stay above, with Mana shifted down
+       to where HP used to live so the above-head stack stays tight. */
     const bars = [
-      { sprite: d._hudHpSprite,   empty: d._hudHpEmpty,   tFull: d._hudHpTextFull,   tEmpty: d._hudHpTextEmpty,   cur: R.hp,      max: R.maxHp,      y: -50 },
-      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   tFull: d._hudMpTextFull,   tEmpty: d._hudMpTextEmpty,   cur: R.mana,    max: R.maxMana,    y: -62 },
-      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -74 },
+      { sprite: d._hudHpSprite,   empty: d._hudHpEmpty,   tFull: d._hudHpTextFull,   tEmpty: d._hudHpTextEmpty,   cur: R.hp,      max: R.maxHp,      y:  12 },
+      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   tFull: d._hudMpTextFull,   tEmpty: d._hudMpTextEmpty,   cur: R.mana,    max: R.maxMana,    y: -50 },
+      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -62 },
     ];
     for (const b of bars) {
       const max = b.max || 1;

@@ -967,18 +967,11 @@ export class EffectsRenderer {
       gfx.stroke({ color: 0x3498db, width: 3, alpha: 0.6 });
     }
 
-    // Player level badge
-    if (S.rpg) {
-      const P = S.player;
-      if (!this._levelText) {
-        this._levelText = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 8 } });
-        this._levelText.anchor.set(0.5, 0.5);
-        this.overlayLayer.addChild(this._levelText);
-      }
-      this._levelText.text = 'Lv' + (S.rpg.level || 1);
-      this._levelText.x = P.x;
-      this._levelText.y = P.y + 24;
-    }
+    /* v2.3.120: player Lv badge removed below the sprite per user
+       request -- name floats above the head, level lives in the
+       bottom-left dashboard column header.  The destroy path at the
+       bottom of this file still guards on null so old _levelText
+       references are safe. */
 
     // Chat bubbles
     this._updateChatBubbles(S, now);
