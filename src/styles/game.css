@@ -157,12 +157,11 @@ input{font-family:inherit}
 
 /* Joystick base — outer ring filled with a light transparent gray so
    it sits over the game world like a subtle puck. */
+/* v2.3.105: bumped 1.5x from v2.3.104's halved size.  Default 90 px;
+   inline JSX brings it to 75/90 portrait/landscape. */
 .bt-joystick-base{
-  width:120px;height:120px;position:relative;touch-action:none;
+  width:90px;height:90px;position:relative;touch-action:none;
   border-radius:50%;
-  background:rgba(255,255,255,0.10);
-  border:1px solid rgba(255,255,255,0.18);
-  box-shadow:0 1px 4px rgba(0,0,0,0.35);
 }
 /* Left-joystick double-tap window indicator — pulses white between the
    first tap and either the second tap or the window expiry.  Class is
@@ -176,20 +175,12 @@ input{font-family:inherit}
 }
 /* Left-joystick centre — beveled blue button matching the right joystick,
    but without an icon.  Hints "this is interactable". */
+/* v2.3.105: knob default 42 px (1.5x v2.3.104's 28).  Inline JSX
+   styles bring it to 42/48 portrait/landscape. */
 .bt-joystick-knob{
-  width:24px;height:24px;
+  width:42px;height:42px;
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   border-radius:50%;
-  background:radial-gradient(circle at 50% 35%,
-    rgba(170,170,170,1) 0%,
-    rgba(85,85,85,1) 55%,
-    rgba(30,30,30,1) 100%);
-  border:1.5px solid rgba(170,170,170,0.85);
-  box-shadow:
-    inset 0 2px 3px rgba(255,255,255,0.35),
-    inset 0 -3px 4px rgba(0,0,0,0.6),
-    inset 0 0 6px rgba(0,0,0,0.35),
-    0 1px 3px rgba(0,0,0,0.5);
   pointer-events:none;
 }
 .bt-name-modal{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}

@@ -31400,59 +31400,46 @@ export var BroTown = function BroTown(_ref0) {
       bottom: 'calc(var(--dash-h) + 70px)',
       left: isLandscape ? 16 : 12,
       zIndex: 30,
-      width: isLandscape ? 130 : 110,
-      height: isLandscape ? 130 : 110
+      width: isLandscape ? 98 : 83,
+      height: isLandscape ? 98 : 83
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-base",
     ref: joystickRef,
     style: {
-      width: isLandscape ? 120 : 100,
-      height: isLandscape ? 120 : 100,
+      width: isLandscape ? 90 : 75,
+      height: isLandscape ? 90 : 75,
       position: 'relative',
-      overflow: 'hidden'
+      /* v2.3.99: sprite-backed base.  Overrides the rgba bg + border in
+         game.css with the metal-ring + center-hole art the user uploaded.
+         No overflow:hidden -- the stick + knob layer on top and don't
+         need clipping, the sprite art handles its own rim. */
+      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.102)',
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
     }
-  }, /*#__PURE__*/React.createElement("svg", {
-    /* 8 directional arrows arranged around the inner ring.  viewBox is
-       100×100 so positions are easy to reason about — centre at (50,50),
-       arrowheads sit on a 38-px-radius circle pointing outward. */
-    viewBox: '0 0 100 100',
-    style: {
-      position: 'absolute',
-      inset: 0,
-      width: '100%',
-      height: '100%',
-      pointerEvents: 'none',
-    }
-  }, [0, 45, 90, 135, 180, 225, 270, 315].map(function (deg) {
-    return React.createElement('g', {
-      key: deg,
-      transform: 'rotate(' + deg + ' 50 50)',
-    }, React.createElement('path', {
-      /* Triangle tip pointing away from centre. */
-      d: 'M 50 12 L 46 20 L 54 20 Z',
-      fill: 'rgba(170,210,255,1)',
-      stroke: 'rgba(91,165,255,1)',
-      strokeWidth: 0.6,
-      strokeLinejoin: 'round',
-    }));
-  })), /*#__PURE__*/React.createElement("div", {
-    /* Analog "stick" line — anchored at joystick centre, grows toward the
-       knob when dragged.  transform-origin at left-centre so rotation pivots
-       at the disc centre; width set dynamically by handleJoystickMove. */
+  }, /*#__PURE__*/React.createElement("div", {
+    /* Analog "stick" — anchored at joystick centre, grows toward the
+       knob when dragged.  transform-origin at left-centre so rotation
+       pivots at the disc centre; width set dynamically by
+       handleJoystickMove.  v2.3.100: sprite height bumped 14 -> 22
+       so the rod reads thicker relative to the outer ring (user
+       request: "knob + rod much larger relative to the outer ring"). */
     ref: lStickRef,
     style: {
       position: 'absolute',
       left: '50%',
       top: '50%',
       width: 0,
-      height: 6,
-      marginTop: -3,
+      height: 33,
+      marginTop: -16,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      background: 'linear-gradient(90deg, rgba(170,210,255,1), rgba(91,165,255,1))',
-      borderRadius: 3,
-      boxShadow: '0 0 4px rgba(91,165,255,0.6)',
+      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.102)',
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
@@ -31461,7 +31448,16 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-joystick-knob",
     ref: knobRef,
     style: {
-      zIndex: 1
+      zIndex: 1,
+      /* v2.3.100: sprite-backed knob.  Size override below + the
+         CSS .bt-joystick-knob 24->44 px bump in game.css makes the
+         knob much larger relative to the outer ring (user request). */
+      width: isLandscape ? 48 : 42,
+      height: isLandscape ? 48 : 42,
+      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.102)',
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
     }
   }), /*#__PURE__*/React.createElement("div", {
     /* Left-joystick weapon-swap preview overlay (v2.3.97).  Hidden by
@@ -31495,52 +31491,45 @@ export var BroTown = function BroTown(_ref0) {
       // with a small buffer.
       right: isLandscape ? 50 : 50,
       zIndex: 30,
-      width: isLandscape ? 130 : 110,
-      height: isLandscape ? 130 : 110
+      width: isLandscape ? 98 : 83,
+      height: isLandscape ? 98 : 83
     }
   }, /*#__PURE__*/React.createElement("div", {
     ref: rJoyRef,
     className: "bt-rjoy-base",
     style: {
-      // Outer ring filled with a light transparent gray puck.
-      width: isLandscape ? 120 : 100,
-      height: isLandscape ? 120 : 100,
+      width: isLandscape ? 90 : 75,
+      height: isLandscape ? 90 : 75,
       position: 'absolute',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
+      /* v2.3.99: sprite-backed base.  The previous rgba bg + dynamic
+         autoAttack border/shadow are gone; auto-attack signal is now a
+         separate red-ring overlay rendered below.  borderRadius kept
+         so the hit-test shape stays circular. */
       borderRadius: '50%',
-      background: 'rgba(255,255,255,0.10)',
-      border: '1px solid ' + (autoAttack ? 'rgba(255,120,120,0.8)' : 'rgba(255,255,255,0.18)'),
-      boxShadow: autoAttack
-        ? '0 0 12px rgba(255,80,80,0.45)'
-        : '0 1px 4px rgba(0,0,0,0.35)',
+      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.102)',
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
       touchAction: 'none',
-      overflow: 'hidden'
     }
-  }, /*#__PURE__*/React.createElement("svg", {
-    /* 8 directional arrows mirroring the left joystick.  Same viewBox
-       conventions: centre at (50,50), arrowheads on a 38-px-radius circle. */
-    viewBox: '0 0 100 100',
+  }, autoAttack && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.99: auto-attack indicator.  Replaces the dynamic
+       border/box-shadow recoloring we used to do on .bt-rjoy-base
+       (which we can't do anymore now that the base is a fixed sprite).
+       Thin red ring sits flush on top of the base sprite. */
     style: {
       position: 'absolute',
       inset: 0,
-      width: '100%',
-      height: '100%',
+      borderRadius: '50%',
+      border: '2px solid rgba(255,80,80,0.85)',
+      boxShadow: '0 0 12px rgba(255,80,80,0.55)',
       pointerEvents: 'none',
+      zIndex: 2,
     }
-  }, [0, 45, 90, 135, 180, 225, 270, 315].map(function (deg) {
-    return React.createElement('g', {
-      key: deg,
-      transform: 'rotate(' + deg + ' 50 50)',
-    }, React.createElement('path', {
-      d: 'M 50 12 L 46 20 L 54 20 Z',
-      fill: 'rgba(170,210,255,1)',
-      stroke: 'rgba(91,165,255,1)',
-      strokeWidth: 0.6,
-      strokeLinejoin: 'round',
-    }));
-  })), /*#__PURE__*/React.createElement("svg", {
+  }), /*#__PURE__*/React.createElement("svg", {
     style: {
       position: 'absolute',
       inset: 0,
@@ -31568,21 +31557,24 @@ export var BroTown = function BroTown(_ref0) {
     return null;
   }()), /* Mana text removed — shown contextually above the player. */
   null, /*#__PURE__*/React.createElement("div", {
-    /* Analog "stick" line for the right joystick — mirrors lStickRef.
-       Width and rotation are driven by handleRJoyMove. */
+    /* Analog "stick" for the right joystick — mirrors lStickRef.  Width
+       and rotation are driven by handleRJoyMove.  v2.3.100: height
+       bumped 14 -> 22 to match the left joystick (user request:
+       "knob + rod much larger relative to the outer ring"). */
     ref: rStickRef,
     style: {
       position: 'absolute',
       left: '50%',
       top: '50%',
       width: 0,
-      height: 6,
-      marginTop: -3,
+      height: 33,
+      marginTop: -16,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      background: 'linear-gradient(90deg, rgba(170,210,255,1), rgba(91,165,255,1))',
-      borderRadius: 3,
-      boxShadow: '0 0 4px rgba(91,165,255,0.6)',
+      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.102)',
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
@@ -31590,30 +31582,21 @@ export var BroTown = function BroTown(_ref0) {
   }), /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
     style: {
-      // Beveled translucent-blue disc — the bevel hints "this is a
-      // tappable button" (double-tap toggles auto-attack).  Highlight
-      // ring at the top, shadow ring at the bottom, faint inset glow.
+      /* v2.3.100: sprite-backed knob, bumped 24 -> 44 px so it reads
+         much larger relative to the outer ring (user request).  Same
+         drag math (translate from joystick center to clamped finger
+         pos) so no handleRJoyMove changes needed. */
       position: 'absolute',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      width: isLandscape ? 28 : 24,
-      height: isLandscape ? 28 : 24,
-      borderRadius: '50%',
-      background: 'radial-gradient(circle at 50% 35%, rgba(170,170,170,1) 0%, rgba(85,85,85,1) 55%, rgba(30,30,30,1) 100%)',
-      border: '1.5px solid rgba(170,170,170,0.85)',
-      boxShadow:
-        'inset 0 2px 3px rgba(255,255,255,0.35),' +
-        'inset 0 -3px 4px rgba(0,0,0,0.6),' +
-        'inset 0 0 6px rgba(0,0,0,0.35),' +
-        '0 1px 3px rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: isLandscape ? 14 : 12,
-      lineHeight: 1,
+      width: isLandscape ? 48 : 42,
+      height: isLandscape ? 48 : 42,
+      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.102)',
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
       pointerEvents: 'none',
-      textShadow: '0 1px 2px rgba(0,0,0,0.7)',
     }
   }, /* Knob left blank — active weapon is shown in WeaponSwapBar instead. */ null), /*#__PURE__*/React.createElement("div", {
     /* Right-joystick shield preview overlay (v2.3.97).  Hidden by

@@ -8,10 +8,13 @@ const C = {
 
 // Ring track is invisible — only the shield icon is shown. RING_BAND still
 // determines how far out the icon orbits from the joystick edge.
-const RING_BAND = 36;
-const RING_GAP  = 7;
-const SHIELD_ICON_W = 73;
-const SHIELD_ICON_H = 73;
+// v2.3.105: 1.5x from v2.3.104's halved sizes -- shield ring scales
+// with the joystick assembly which the user re-tuned to 0.75x of the
+// pre-halving baseline.
+const RING_BAND = 27;
+const RING_GAP  = 6;
+const SHIELD_ICON_W = 54;
+const SHIELD_ICON_H = 54;
 const COMMITMENT_GAP_MS = 75;
 
 // Wood-shield sprite URLs — match the version used by the Pixi loader so the
