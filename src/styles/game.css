@@ -157,10 +157,10 @@ input{font-family:inherit}
 
 /* Joystick base — outer ring filled with a light transparent gray so
    it sits over the game world like a subtle puck. */
-/* v2.3.104: assembly halved (user request).  Default 120 -> 60 px;
-   inline JSX styles bring it to 50/60 portrait/landscape. */
+/* v2.3.105: bumped 1.5x from v2.3.104's halved size.  Default 90 px;
+   inline JSX brings it to 75/90 portrait/landscape. */
 .bt-joystick-base{
-  width:60px;height:60px;position:relative;touch-action:none;
+  width:90px;height:90px;position:relative;touch-action:none;
   border-radius:50%;
 }
 /* Left-joystick double-tap window indicator — pulses white between the
@@ -175,10 +175,10 @@ input{font-family:inherit}
 }
 /* Left-joystick centre — beveled blue button matching the right joystick,
    but without an icon.  Hints "this is interactable". */
-/* v2.3.104: assembly halved -- knob default 56 -> 28 px; inline
-   JSX styles bring it to 28/32 portrait/landscape. */
+/* v2.3.105: knob default 42 px (1.5x v2.3.104's 28).  Inline JSX
+   styles bring it to 42/48 portrait/landscape. */
 .bt-joystick-knob{
-  width:28px;height:28px;
+  width:42px;height:42px;
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   border-radius:50%;
   pointer-events:none;
