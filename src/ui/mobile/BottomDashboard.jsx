@@ -1,7 +1,8 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { xpRequired, calcMaxHp, calcMaxStam, WEAPON_TYPES } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
+import { weaponSwapBus } from './weaponSwapBus.js';
 import { InventoryPanel }    from './dash/InventoryPanel.jsx';
 import { SelfPanel }         from './dash/SelfPanel.jsx';
 import { JourneyPanel }      from './dash/JourneyPanel.jsx';
@@ -500,21 +501,16 @@ export const BottomDashboard = () => {
             minHeight: 0,
           }}>
             <div style={{ flex: 1, display: 'flex', gap: 8, minHeight: 0 }}>
-              {/* Left column — character portrait stacked over the
-                  XP bar (v2.3.107).  HP / Mana / Energy now render as
-                  the above-player Pixi HUD (v2.3.106), so this slot is
-                  reserved for player identity + XP progression.
-                  flex 1/1/1 v2.3.109 -- all three columns share equal
-                  width per user request. */}
+              {/* ── Left column — character portrait + max-stat chips.
+                  v2.3.125: replaced the old derived-stats list (Hitpoints
+                  / Melee / Bow / Magic / Endurance) with the profile
+                  portrait + a compact HP/MP/END chip block per the
+                  redesigned dashboard wireframe. */}
               <div style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
-                gap: 4,
-                /* v2.3.116: stronger column frame with subtle red tint
-                   to color-code the combat-stats section + inner shadow
-                   for elevation. */
                 padding: 4,
                 borderRadius: 6,
                 border: '1px solid rgba(255,255,255,0.14)',
@@ -522,107 +518,280 @@ export const BottomDashboard = () => {
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
               }}>
                 <ColHeader>{S?.myName || 'Anon'} · LVL {level}</ColHeader>
-                {/* v2.3.111: derived stats list moved here from the
-                    Build column's bottom-right slot (where it was
-                    squished into a small cell).  Full column height
-                    + larger font reads cleanly.  Profile picture
-                    relocated to the freed Build cell below. */}
                 {(() => {
-                  const maxHp = R.maxHp || calcMaxHp(R.level || 1, R.vitality || 0);
+                  const maxHp  = R.maxHp     || calcMaxHp(R.level || 1, R.vitality || 0);
+                  const maxMp  = R.maxMana   || calcMaxMana(R.mind || 0);
                   const maxSta = R.maxStamina || calcMaxStam(R.endurance || 0);
-                  const wMel = WEAPON_TYPES.sword;
-                  const wRng = WEAPON_TYPES.bow;
-                  const wMag = WEAPON_TYPES.staff;
-                  const melDmg = Math.round((wMel.base + (R.power || 0) * 0.8));
-                  const rngDmg = Math.round((wRng.base + (R.agility || 0) * 0.8));
-                  const magDmg = Math.round((wMag.base + (R.mind || 0) * 0.8));
-                  /* v2.3.114: full-word labels per user request.
-                     White label + white value (STA dropped its gold
-                     accent since the user wants everything white). */
-                  const rows = [
-                    { label: 'Hitpoints', val: maxHp,  tip: `Max HP at Vitality ${R.vitality || 0}.` },
-                    { label: 'Melee Dmg', val: melDmg, tip: `Melee base damage = sword.base + Power x 0.8.  POW ${R.power || 0}.` },
-                    { label: 'Bow Dmg',   val: rngDmg, tip: `Bow base damage = bow.base + Agility x 0.8.  AGI ${R.agility || 0}.` },
-                    { label: 'Magic Dmg', val: magDmg, tip: `Staff base damage = staff.base + Mind x 0.8.  MIN ${R.mind || 0}.` },
-                    { label: 'Endurance', val: maxSta, tip: `Max Stamina at Endurance ${R.endurance || 0}.` },
-                  ];
                   return (
                     <div style={{
                       flex: 1,
                       display: 'flex',
                       flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      gap: 2,
+                      gap: 4,
                       minHeight: 0,
-                      padding: '2px 4px',
+                      padding: '2px 2px 0',
                     }}>
-                      {rows.map((r) => (
-                        <div key={r.label}
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(r.tip); }}
-                          title={r.tip}
+                      {/* Portrait — square, fills column width.  Pixel-art
+                         WebP from /icons/ui/profile.webp (added v2.3.108). */}
+                      <div style={{
+                        flex: 1,
+                        minHeight: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 4,
+                        background: 'rgba(0,0,0,0.25)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        overflow: 'hidden',
+                      }}>
+                        <img
+                          src="/icons/ui/profile.webp?v=2.3.125"
+                          alt="Portrait"
+                          draggable={false}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '100%',
+                            objectFit: 'contain',
+                            imageRendering: 'pixelated',
+                            userSelect: 'none',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      </div>
+                      {/* Chips — single-line label-on-left value-on-right
+                         rows, mirroring the visual style of the Life Skill
+                         and Build cells so the column reads as one piece. */}
+                      {[
+                        { label: 'HP',  val: maxHp,  color: COL.hp,   tip: `Max HP at Vitality ${R.vitality || 0}.` },
+                        { label: 'MP',  val: maxMp,  color: COL.mp,   tip: `Max Mana at Mind ${R.mind || 0}.` },
+                        { label: 'END', val: maxSta, color: COL.stam, tip: `Max Stamina at Endurance ${R.endurance || 0}.` },
+                      ].map((c) => (
+                        <div key={c.label}
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(c.tip); }}
+                          title={c.tip}
                           style={{
                             display: 'flex',
-                            justifyContent: 'space-between',
                             alignItems: 'center',
+                            justifyContent: 'space-between',
                             gap: 6,
+                            padding: '1px 6px',
+                            borderRadius: 3,
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.06)',
                             cursor: 'pointer',
                             touchAction: 'none',
                           }}>
-                          {/* v2.3.116: stat label normalized to match
-                              column header styling -- uppercase +
-                              letter-spaced + muted, so the section
-                              reads as a single coherent stat sheet
-                              instead of a paragraph. */}
                           <span style={{
-                            color: COL.muted,
-                            fontWeight: 700,
+                            color: c.color,
+                            fontWeight: 800,
                             fontSize: 11,
-                            textTransform: 'uppercase',
                             letterSpacing: '.06em',
-                          }}>{r.label}</span>
-                          <span style={{ color: COL.text, fontWeight: 800, fontSize: 15 }}>{r.val}</span>
+                          }}>{c.label}</span>
+                          <span style={{ color: COL.text, fontWeight: 800, fontSize: 14 }}>{c.val}</span>
                         </div>
                       ))}
                     </div>
                   );
                 })()}
-                {/* v2.3.114: XP Bar removed from the column -- it's now
-                    a thin strip pinned across the full screen above
-                    the dashboard band (see top of the return). */}
               </div>
 
-              {/* Middle column — Build (5 character stats with
-                  progression).  v2.3.110: 2x3 grid (5 stat cells + 1
-                  derived-stats cell summarising HP/MAG/RNG/MEL/STA
-                  -- the actual numbers each stat level produces). */}
+              {/* ── Middle column — Loadout.
+                  v2.3.125: replaced the 2x3 Build grid (now merged into
+                  the right column) with the active-weapon DMG/DPS line
+                  + a 3-then-2 equip-slot grid (weapon, chest, legs,
+                  amulet, shield).  The floating WeaponSwapBar was
+                  removed from GameApp the same release; the weapon
+                  slot here cycles activeSlot on tap to keep direct
+                  weapon-swap UX. */}
               <div style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
-                /* v2.3.116: stronger frame + subtle purple tint for the
-                   Build section + inner shadow for elevation. */
                 padding: 4,
                 borderRadius: 6,
                 border: '1px solid rgba(255,255,255,0.14)',
                 background: 'rgba(120,110,255,0.04)',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
               }}>
-                <ColHeader>Build</ColHeader>
+                <ColHeader>Loadout</ColHeader>
+                {(() => {
+                  /* DMG/DPS calc — mirrors WeaponSwapBar.readState() so the
+                     numbers match what combat actually rolls.  Stat driver
+                     follows EQUIP_STAT_MAP: POW for melee, AGI for bow,
+                     MIND for staff.  Damage ranges + staff cooldown penalty
+                     mirror calcWeaponDmg in gameLoop.js. */
+                  const slot = R.activeSlot || 'melee';
+                  const wpn = (S && R) ? getActiveWeapon(R) : null;
+                  const wType = wpn && WEAPON_TYPES[wpn.type];
+                  const slotLabel = slot === 'ranged' ? 'Ranged'
+                                   : slot === 'staff' ? 'Staff' : 'Melee';
+                  const slotIconSrc = slot === 'ranged' ? '/icons/popups/arrow.png?v=2.3.125'
+                                     : slot === 'staff' ? '/icons/popups/spell.png?v=2.3.125'
+                                     : '/icons/popups/sword.png?v=2.3.125';
+                  let dmgText = '0', dpsText = '0.0';
+                  if (wType) {
+                    const statVal = (slot === 'ranged') ? (R.agility || 0)
+                                  : (slot === 'staff')  ? (R.mind || 0)
+                                  : (R.power || 0);
+                    const base = (wType.base + statVal * 0.8) * (wpn.tierMult || 1);
+                    let dmgMin, dmgMax, cdMs = SWING_COOLDOWN;
+                    if (slot === 'ranged')      { dmgMin = base * 0.6;  dmgMax = base * 0.8;  }
+                    else if (slot === 'staff')  { dmgMin = base * 0.5;  dmgMax = base * 1.5;  cdMs += 300; }
+                    else                        { dmgMin = base * 0.75; dmgMax = base * 1.25; }
+                    dmgMin = Math.round(dmgMin); dmgMax = Math.round(dmgMax);
+                    dmgText = (dmgMin === dmgMax) ? String(dmgMin) : `${dmgMin}-${dmgMax}`;
+                    dpsText = ((dmgMin + dmgMax) / 2 / (cdMs / 1000)).toFixed(1);
+                  }
+                  /* Equip slot list — order matches the user's wireframe.
+                     Row 1: weapon (active), chest armor, leg armor.
+                     Row 2: amulet, shield.  Leg & amulet have no PNG art
+                     yet; placeholders render a short label inside the cell. */
+                  const shieldSrc = R.shield ? '/sprites/shields/wood-shield-front.png?v=2.1.23' : null;
+                  const armorSrc = null; /* No chest-armor PNG sprite yet. */
+                  /* Plain function (not a React component) so React doesn't
+                     see a fresh component-type identity on every render and
+                     remount the cells.  Called as slotCell({...}) below. */
+                  const slotCell = ({ k, label, iconSrc, onTap, active, equipped }) => (
+                    <div key={k}
+                      onPointerUp={onTap ? (e) => { e.stopPropagation(); onTap(); } : undefined}
+                      title={label}
+                      style={{
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 4,
+                        background: active ? 'rgba(245,199,70,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: active ? '1px solid rgba(245,199,70,0.7)' : '1px solid rgba(255,255,255,0.08)',
+                        boxShadow: active ? 'inset 0 0 6px rgba(245,199,70,0.3)' : 'none',
+                        cursor: onTap ? 'pointer' : 'default',
+                        touchAction: 'none',
+                        minWidth: 0,
+                        minHeight: 0,
+                        aspectRatio: '1 / 1',
+                      }}>
+                      {iconSrc ? (
+                        <img
+                          src={iconSrc}
+                          alt={label}
+                          draggable={false}
+                          style={{
+                            width: '78%',
+                            height: '78%',
+                            objectFit: 'contain',
+                            imageRendering: 'pixelated',
+                            opacity: equipped === false ? 0.35 : 1,
+                            userSelect: 'none',
+                            pointerEvents: 'none',
+                          }}
+                        />
+                      ) : (
+                        <span style={{
+                          color: COL.muted,
+                          fontWeight: 700,
+                          fontSize: 9,
+                          letterSpacing: '.06em',
+                        }}>{label}</span>
+                      )}
+                    </div>
+                  );
+                  const onCycleWeapon = () => {
+                    const order = ['melee', 'ranged', 'staff'];
+                    const i = order.indexOf(slot);
+                    const next = order[(i + 1) % order.length];
+                    weaponSwapBus.setSlot(next);
+                  };
+                  return (
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      minHeight: 0,
+                      padding: '2px 2px 0',
+                    }}>
+                      {/* DMG / DPS readout — single centered line. */}
+                      <div
+                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
+                        title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
+                        style={{
+                          fontSize: 11,
+                          color: COL.text,
+                          letterSpacing: '.02em',
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          cursor: 'pointer',
+                          touchAction: 'none',
+                        }}>
+                        <span style={{ color: COL.muted }}>DMG </span>{dmgText}
+                        <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
+                      </div>
+                      {/* Row 1 — weapon (active, tappable), chest, legs. */}
+                      <div style={{
+                        flex: 1,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: 3,
+                        minHeight: 0,
+                      }}>
+                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: true, onTap: onCycleWeapon })}
+                        {slotCell({ k: 'chest',  label: 'CHEST',  iconSrc: armorSrc,  equipped: !!R.armor })}
+                        {slotCell({ k: 'legs',   label: 'LEGS',   iconSrc: null })}
+                      </div>
+                      {/* Row 2 — amulet, shield (centered via empty side cells). */}
+                      <div style={{
+                        flex: 1,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gap: 3,
+                        minHeight: 0,
+                      }}>
+                        <div />
+                        {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null,      equipped: !!R.amulet })}
+                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, equipped: !!R.shield })}
+                        <div />
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* ── Right column — Stats + Life Skills merged.
+                  v2.3.125: Build (5 char stats) and Life Skills (10) now
+                  share one column as a 3-sub-col x 5-row grid.  Build
+                  occupies sub-col 1; Life Skills fills sub-cols 2 and 3
+                  (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 0,
+                padding: 4,
+                borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(80,200,130,0.04)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
+              }}>
+                <ColHeader>Stats · Skills</ColHeader>
                 <div style={{
                   flex: 1,
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gridTemplateRows: 'repeat(3, 1fr)',
-                  gap: 4,
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gridTemplateRows: 'repeat(5, 1fr)',
+                  gap: 2,
+                  /* gridAutoFlow column so the first 5 cells (Build) stack
+                     vertically in sub-column 1, then Life Skills fill
+                     sub-cols 2 and 3 in row-major order. */
+                  gridAutoFlow: 'column',
                   minHeight: 0,
                 }}>
                   {CHAR_STATS.map(s => {
                     const val = R[s.key] ?? 0;
                     const prog = (R._buildProg && R._buildProg[s.key]) || 0;
                     const pct = Math.max(0, Math.min(100, (prog / buildThresh) * 100));
-                    /* Per-stat bonus text used in the tooltip -- shows
-                       the concrete number this stat is producing. */
                     let bonusTxt = '';
                     if (s.key === 'vitality')       bonusTxt = `${calcMaxHp(R.level || 1, val)} HP`;
                     else if (s.key === 'endurance') bonusTxt = `${R.maxStamina || calcMaxStam(val)} STA`;
@@ -631,55 +800,45 @@ export const BottomDashboard = () => {
                     else if (s.key === 'mind')      bonusTxt = `+${Math.round(val * 0.8)} magic dmg`;
                     const tipFull = `${s.label} ${val} → ${bonusTxt}. ${s.tip}`;
                     return (
-                      <div key={s.key}
+                      <div key={'b_' + s.key}
                         onPointerUp={(e) => { e.stopPropagation(); setTooltip(tipFull); }}
                         title={tipFull}
                         style={{
                           position: 'relative',
-                          borderRadius: 4,
-                          background: 'rgba(255,255,255,0.04)',
-                          border: '1px solid rgba(255,255,255,0.06)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 3,
+                          padding: '0 4px',
+                          borderRadius: 3,
+                          background: 'rgba(91,82,255,0.06)',
+                          border: '1px solid rgba(91,82,255,0.18)',
                           overflow: 'hidden',
                           cursor: 'pointer',
                           touchAction: 'none',
                           minHeight: 0,
                         }}>
-                        {/* v2.3.113: inside-cell linear-gradient fill
-                            removed -- progress now reads from the
-                            tiny strip at the bottom only.  Matches
-                            the Life Skill cells' indicator style. */}
-                        {/* Icon + value */}
-                        <div style={{
-                          position: 'absolute',
-                          inset: 0,
-                          paddingBottom: 3,
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '0 8px 3px',
-                        }}>
-                          <img
-                            src={s.iconSrc}
-                            alt={s.label}
-                            draggable={false}
-                            style={{
-                              width: 26 * (s.iconScale || 1),
-                              height: 26 * (s.iconScale || 1),
-                              objectFit: 'contain',
-                              imageRendering: s.pixelated ? 'pixelated' : 'auto',
-                              pointerEvents: 'none',
-                              userSelect: 'none',
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span style={{ color: COL.text, fontWeight: 700, fontSize: 15 }}>{val}</span>
-                        </div>
-                        {/* Tiny XP-to-next-level strip at bottom */}
+                        <img
+                          src={s.iconSrc}
+                          alt={s.label}
+                          draggable={false}
+                          style={{
+                            width: 18 * (s.iconScale || 1),
+                            height: 18 * (s.iconScale || 1),
+                            objectFit: 'contain',
+                            imageRendering: s.pixelated ? 'pixelated' : 'auto',
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 13 }}>{val}</span>
                         <div style={{
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
                           height: 2,
                           background: 'rgba(255,255,255,0.06)',
+                          pointerEvents: 'none',
                         }}>
                           <div style={{
                             width: pct + '%',
@@ -691,41 +850,6 @@ export const BottomDashboard = () => {
                       </div>
                     );
                   })}
-                  {/* v2.3.112: 6th Build cell intentionally blank.
-                      v2.3.111 hosted the profile portrait here; user
-                      requested removal -- portrait is duplicated by the
-                      in-world player sprite anyway. */}
-                  <div key="_blank" style={{
-                    borderRadius: 4,
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    minHeight: 0,
-                  }} />
-                </div>
-              </div>
-
-              {/* Right column — 10 life skills with xp progression. */}
-              <div style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                minWidth: 0,
-                /* v2.3.116: stronger frame + subtle green tint for the
-                   Life Skills section + inner shadow for elevation. */
-                padding: 4,
-                borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.14)',
-                background: 'rgba(80,200,130,0.04)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
-              }}>
-                <ColHeader>Life Skills</ColHeader>
-                <div style={{
-                  flex: 1,
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gridTemplateRows: 'repeat(5, 1fr)',
-                  gap: 2,
-                }}>
                   {LIFE_SKILLS.map(sk => {
                     const sk_st = (R.lifeSkills && R.lifeSkills[sk.key]) || {};
                     const lvl = sk_st.level || 0;
@@ -733,7 +857,7 @@ export const BottomDashboard = () => {
                     const need = skillXpRequired(lvl);
                     const sPct = need > 0 ? Math.max(0, Math.min(100, (xp / need) * 100)) : 0;
                     return (
-                      <div key={sk.key}
+                      <div key={'s_' + sk.key}
                         onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${sk.label} · Lv ${lvl} (${Math.round(sPct)}% to next) — ${sk.tip.split('—').slice(1).join('—').trim()}`); }}
                         title={sk.tip}
                         style={{
@@ -752,11 +876,8 @@ export const BottomDashboard = () => {
                           touchAction: 'none',
                           overflow: 'hidden',
                         }}>
-                        <span style={{ fontSize: 14, lineHeight: 1 }}>{sk.icon}</span>
-                        {/* v2.3.114: white level number per user
-                            "Life Skills font to white". */}
-                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 14 }}>{lvl}</span>
-                        {/* Tiny XP-to-next-level strip at the bottom (v2.3.110). */}
+                        <span style={{ fontSize: 13, lineHeight: 1 }}>{sk.icon}</span>
+                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 13 }}>{lvl}</span>
                         <div style={{
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
