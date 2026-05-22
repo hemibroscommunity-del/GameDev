@@ -27,7 +27,9 @@ OUT_DIR = os.path.join(REPO, 'public', 'sprites', 'joystick')
 # 6622F049 = stick (vertical orientation), 50DDDCE5 = knob.
 SRC_BASE  = os.path.join(REPO, '52311F3D-E717-4B92-89AF-1E981EAE94F2.png')
 SRC_STICK = os.path.join(REPO, '6622F049-991E-40C0-9C5B-A0144CA0E043.png')
-SRC_KNOB  = os.path.join(REPO, '50DDDCE5-7477-4C2C-95BD-C99453F4AC12.png')
+# v2.3.101: replaced the previous chrome sphere knob (50DDDCE5) with
+# the dark concave button the user uploaded (A0399828).
+SRC_KNOB  = os.path.join(REPO, 'A0399828-675D-4D4B-887D-7DAFC64BB681.png')
 
 CELL = 256
 KEY = np.array([255, 0, 255], dtype=np.int16)
