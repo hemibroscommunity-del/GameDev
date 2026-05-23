@@ -39,11 +39,14 @@ function _ensureHudBarTextures() {
    curHp < maxHp (or within HOLD_MS of last hp change for the player).
    Replaces the prior pill-shaped HP bar.  Number is centered on the
    heart with a heavy black stroke so it reads on any background.
-   Player heart is larger (red, fits 3-digit HP); monster heart is
-   smaller + black-tinted so a crowd of mobs around the player still
-   visually parses as "those are monster HPs, mine is the red one." */
-const PLAYER_HEART_SIZE = 66;
-const MONSTER_HEART_SIZE = 52;
+   Both hearts use the same sprite asset and the same size; the
+   monster's is tinted 0x000000 (black) so a crowd of mobs around
+   the player still visually parses as "those are monster HPs, mine
+   is the red one."  v2.3.139 shrunk the player heart to 40 (3-digit
+   fit); v2.3.141 matched the monster heart to the same size + sprite
+   per user request. */
+const PLAYER_HEART_SIZE = 40;
+const MONSTER_HEART_SIZE = 40;
 const PLAYER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 18,
@@ -2647,16 +2650,18 @@ export class EntityRenderer {
         heart.width = PLAYER_HEART_SIZE;
         heart.height = PLAYER_HEART_SIZE;
         heart.x = 0;
-        /* Heart hugs the head: with HEART=66 and radius 33, center
-           at y=-66 puts the bottom edge at y=-33 -- the player
-           sprite's head sits around y=-32, so the heart sits right
-           on top of it.  Mana/stam pills moved up to y=-112/-124
-           to clear the heart's top edge (~y=-99). */
-        heart.y = -66;
+        /* Heart sits just above the head: head top is around y=-33
+           (player sprite radius). Putting heart's bottom edge at -33
+           means center y = -(SIZE/2 + 33).  This stays correct for
+           any heart size -- previously hard-coded y=-HEART worked
+           only because SIZE/2 happened to equal 33 (v2.3.131 with
+           HEART=66); shrinking to 40 broke that coincidence and the
+           bottom overlapped the head until this formula. */
+        heart.y = -(PLAYER_HEART_SIZE / 2 + 33);
         heartText.x = 0;
         /* Nudge the number up into the heart's widest section (~12%
            above the geometric center) so it doesn't ride the bottom V. */
-        heartText.y = -66 - PLAYER_HEART_SIZE * 0.12;
+        heartText.y = heart.y - PLAYER_HEART_SIZE * 0.12;
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
