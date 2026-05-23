@@ -1199,17 +1199,21 @@ export class EntityRenderer {
           visualTopY = -size;
         }
         /* lvlText sits at y=-size-12 with anchor (0.5, 1) — occupies
-           y=[-size-22, -size-12].  Push heart above both the sprite
-           top and the level text band so neither occludes it. */
+           y=[-size-22, -size-12].  Heart hugs whichever is higher
+           (sprite top or lvl text band) with a 2 px gap. */
         const lvlTopY = -size - 22;
         const topY = Math.min(visualTopY, lvlTopY);
-        const heartY = topY - 6 - MONSTER_HEART_SIZE / 2;
+        const heartY = topY - 2 - MONSTER_HEART_SIZE / 2;
         display._hpHeart.width = MONSTER_HEART_SIZE;
         display._hpHeart.height = MONSTER_HEART_SIZE;
         display._hpHeart.x = 0;
         display._hpHeart.y = heartY;
+        /* Heart asset tapers to a V at the bottom; the widest section
+           sits ~12% above the geometric center.  Shift the number up
+           by that fraction so it lands in the meaty part instead of
+           riding the V. */
         display._hpText.x = 0;
-        display._hpText.y = heartY + 1;
+        display._hpText.y = heartY - MONSTER_HEART_SIZE * 0.12;
       }
       if (hpPct >= 0.999) {
         display._hpHeart.alpha = 0;
@@ -2650,7 +2654,9 @@ export class EntityRenderer {
            to clear the heart's top edge (~y=-99). */
         heart.y = -66;
         heartText.x = 0;
-        heartText.y = -65;
+        /* Nudge the number up into the heart's widest section (~12%
+           above the geometric center) so it doesn't ride the bottom V. */
+        heartText.y = -66 - PLAYER_HEART_SIZE * 0.12;
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
