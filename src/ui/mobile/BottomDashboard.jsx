@@ -394,10 +394,9 @@ export const BottomDashboard = () => {
         }} />
       </div>
 
-      {/* Upper-right player card — portrait stacked above gold.
-          v2.3.128: name + level row removed per user request so the
-          card shrinks to the natural width of its content (portrait
-          + 4-5 digit gold value). */}
+      {/* Upper-right player card — portrait, name + level, gold.
+          Name plate moved here from above the player's head so the
+          new HP heart has unobstructed space right above the head. */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
         style={{
@@ -442,6 +441,25 @@ export const BottomDashboard = () => {
               pointerEvents: 'none',
             }}
           />
+        </div>
+        {/* Name + level row, centered under the portrait. */}
+        <div style={{
+          color: '#e8eaf8',
+          fontFamily: 'Source Sans 3, sans-serif',
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: '.02em',
+          textAlign: 'center',
+          lineHeight: 1.15,
+          maxWidth: 96,
+          textShadow: '0 1px 2px rgba(0,0,0,.85)',
+        }}>
+          <div style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>{(S && S.myName) || 'Anon'}</div>
+          <div style={{ color: '#a0a8c0', fontSize: 11 }}>Lv {level}</div>
         </div>
         {/* Gold row — icon + value, centered under the portrait. */}
         <div style={{

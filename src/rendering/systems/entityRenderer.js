@@ -2,7 +2,7 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
-import { Assets, ColorMatrixFilter, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
@@ -24,7 +24,7 @@ const COLLISION_GLOW_RANGE_PX = 80;
    the DOM dashboard also uses -- reuse the same `?v=` cache key so
    the browser hits the warm cache instead of issuing a fresh request. */
 const HUD_BAR_VER = '2.3.68';
-const _hudBarTex = { hp: null, mp: null, stam: null };
+const _hudBarTex = { hp: null, mp: null, stam: null, heart: null };
 let _hudBarLoadStarted = false;
 function _ensureHudBarTextures() {
   if (_hudBarLoadStarted) return;
@@ -32,7 +32,35 @@ function _ensureHudBarTextures() {
   Assets.load(`/icons/ui/bar-hp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
   Assets.load(`/icons/ui/bar-mp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
   Assets.load(`/icons/ui/bar-stam.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
+  Assets.load(`/icons/popups/heart.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heart = t; }).catch(() => {});
 }
+
+/* Heart-icon HUD: drawn above the head of player + monsters whenever
+   curHp < maxHp (or within HOLD_MS of last hp change for the player).
+   Replaces the prior pill-shaped HP bar.  Number is centered on the
+   heart with a heavy black stroke so it reads on any background.
+   Player heart is larger (red, fits 3-digit HP); monster heart is
+   smaller + black-tinted so a crowd of mobs around the player still
+   visually parses as "those are monster HPs, mine is the red one." */
+const PLAYER_HEART_SIZE = 66;
+const MONSTER_HEART_SIZE = 52;
+const PLAYER_HP_NUM_STYLE = {
+  fontFamily: 'Source Sans 3, sans-serif',
+  fontSize: 18,
+  fontWeight: '800',
+  fill: '#ffffff',
+  stroke: { color: '#000000', width: 3 },
+  dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
+  align: 'center',
+};
+const MONSTER_HP_NUM_STYLE = {
+  fontFamily: 'Source Sans 3, sans-serif',
+  fontSize: 17,
+  fontWeight: '800',
+  fill: '#ffffff',
+  stroke: { color: '#000000', width: 3 },
+  align: 'center',
+};
 
 /* Module-scope SECTORS array — shared by local + other player update
  * paths.  Was previously allocated as a `const` inside each per-frame
@@ -129,12 +157,6 @@ const NAME_STYLE = new TextStyle({
   dropShadow: { color: '#000000', blur: 2, distance: 1 },
 });
 
-/* v2.3.118: bumped 24x3 -> 32x5 so the bar-hp.png pill artwork
-   reads as pill-shaped at this scale.  Monster HP bar now reuses
-   the same Sprite the player HUD's HP bar uses. */
-const HP_BAR_W = 32;
-const HP_BAR_H = 5;
-
 function getMonsterSize(archetype) {
   /* Slime/fodder stays small (renders as a 50-px sprite, the 8-px
      circle is the procedural fallback / hitbox anchor).  Snowman
@@ -198,24 +220,6 @@ function createMonsterDisplay(monster) {
     container.addChild(spriteBody);
   }
 
-  /* v2.3.118: monster HP bar uses the bar-hp.png pill texture (same
-     artwork the player's above-character HP pill uses) + a dim
-     overlay covering the empty portion -- consistent visual language
-     across player and monsters.
-     v2.3.119: ColorMatrixFilter applied so the same red art
-     hue-shifts to yellow (>25% HP) / green (>50% HP) without needing
-     separate sprite PNGs. */
-  const hpSprite = new Sprite();
-  hpSprite.anchor.set(0.5, 0.5);
-  hpSprite.alpha = 0;
-  const hpFilter = new ColorMatrixFilter();
-  hpSprite.filters = [hpFilter];
-  container.addChild(hpSprite);
-
-  const hpEmpty = new Graphics();
-  hpEmpty.alpha = 0;
-  container.addChild(hpEmpty);
-
   const lvlText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 8 } });
   lvlText.anchor.set(0.5, 1);
   lvlText.y = -size - 12;
@@ -227,15 +231,28 @@ function createMonsterDisplay(monster) {
   const dynGfx = new Graphics();
   container.addChild(dynGfx);
 
+  /* Above-head HP indicator: black-tinted heart with current HP number
+     centered on it.  Added last so it draws on top of body + sprite +
+     lvlText + dynGfx (status icons).  Tint = 0x000000 distinguishes
+     monster HP from the player's red heart when the field is crowded. */
+  const hpHeart = new Sprite();
+  hpHeart.anchor.set(0.5, 0.5);
+  hpHeart.alpha = 0;
+  hpHeart.tint = 0x000000;
+  container.addChild(hpHeart);
+
+  const hpText = new Text({ text: '', style: MONSTER_HP_NUM_STYLE });
+  hpText.anchor.set(0.5, 0.5);
+  hpText.alpha = 0;
+  container.addChild(hpText);
+
   container._body = body;
   container._spriteBody = spriteBody;
   container._isFodder = isFodder;
   container._variantKey = variantKey;
   container._isSnowman = isSnowman;
-  container._hpSprite = hpSprite;
-  container._hpEmpty = hpEmpty;
-  container._hpFilter = hpFilter;
-  container._hpHue = 0;
+  container._hpHeart = hpHeart;
+  container._hpText = hpText;
   container._lvlText = lvlText;
   container._dynGfx = dynGfx;
   container._size = size;
@@ -372,22 +389,6 @@ function createPlayerDisplay() {
     align: 'center',
   };
 
-  const hudHpSprite = new Sprite();
-  hudHpSprite.anchor.set(0.5, 0.5);
-  hudHpSprite.alpha = 0;
-  /* v2.3.119: same hue-shift filter as monster HP bar so the player's
-     HP pill goes green->yellow->red by threshold. */
-  const hudHpFilter = new ColorMatrixFilter();
-  hudHpSprite.filters = [hudHpFilter];
-  container.addChild(hudHpSprite);
-  const hudHpEmpty = new Graphics();
-  hudHpEmpty.alpha = 0;
-  container.addChild(hudHpEmpty);
-  const hudHpTextFull  = new Text({ text: '', style: _hudNumStyleFull });
-  const hudHpTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
-  hudHpTextFull.anchor.set(0.5, 0.5);  hudHpTextFull.alpha = 0;  container.addChild(hudHpTextFull);
-  hudHpTextEmpty.anchor.set(0.5, 0.5); hudHpTextEmpty.alpha = 0; container.addChild(hudHpTextEmpty);
-
   const hudMpSprite = new Sprite();
   hudMpSprite.anchor.set(0.5, 0.5);
   hudMpSprite.alpha = 0;
@@ -412,6 +413,20 @@ function createPlayerDisplay() {
   hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  container.addChild(hudStamTextFull);
   hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
 
+  /* Above-head HP indicator: red heart with the current HP number
+     centered on it.  Added LAST so it draws on top of every other
+     overlay (nameText, mana/energy pills, weapon, shield, etc.).
+     Sized larger than the monster heart and uses a larger font so
+     3-digit HP fits comfortably inside the heart silhouette. */
+  const hudHpHeart = new Sprite();
+  hudHpHeart.anchor.set(0.5, 0.5);
+  hudHpHeart.alpha = 0;
+  container.addChild(hudHpHeart);
+  const hudHpText = new Text({ text: '', style: PLAYER_HP_NUM_STYLE });
+  hudHpText.anchor.set(0.5, 0.5);
+  hudHpText.alpha = 0;
+  container.addChild(hudHpText);
+
   container._body = body;
   container._spriteBody = spriteBody;
   container._nftFront = nftFront;
@@ -424,12 +439,8 @@ function createPlayerDisplay() {
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
   container._nameText = nameText;
-  container._hudHpSprite = hudHpSprite;
-  container._hudHpEmpty = hudHpEmpty;
-  container._hudHpFilter = hudHpFilter;
-  container._hudHpHue = 0;
-  container._hudHpTextFull = hudHpTextFull;
-  container._hudHpTextEmpty = hudHpTextEmpty;
+  container._hudHpHeart = hudHpHeart;
+  container._hudHpText = hudHpText;
   container._hudMpSprite = hudMpSprite;
   container._hudMpEmpty = hudMpEmpty;
   container._hudMpTextFull = hudMpTextFull;
@@ -634,8 +645,8 @@ export class EntityRenderer {
                half-full over a corpse (v2.3.17 bug report).  Set
                _lastHpPct = 1 so the post-respawn redraw triggers
                cleanly on the first damage tick. */
-            if (display._hpSprite && !display._hpSprite.destroyed) display._hpSprite.alpha = 0;
-            if (display._hpEmpty && !display._hpEmpty.destroyed) { display._hpEmpty.clear(); display._hpEmpty.alpha = 0; }
+            if (display._hpHeart && !display._hpHeart.destroyed) display._hpHeart.alpha = 0;
+            if (display._hpText && !display._hpText.destroyed) display._hpText.alpha = 0;
             display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
@@ -668,8 +679,8 @@ export class EntityRenderer {
             display._body.visible = false;
             /* Clear HP bar -- see variant death branch for context;
                same problem applies to raw fodder slime kills. */
-            if (display._hpSprite && !display._hpSprite.destroyed) display._hpSprite.alpha = 0;
-            if (display._hpEmpty && !display._hpEmpty.destroyed) { display._hpEmpty.clear(); display._hpEmpty.alpha = 0; }
+            if (display._hpHeart && !display._hpHeart.destroyed) display._hpHeart.alpha = 0;
+            if (display._hpText && !display._hpText.destroyed) display._hpText.alpha = 0;
             display._lastHpPct = 1;
             /* Clear any leftover dynamic content (aggro arrow, status
                icons) so it doesn't linger on the death frame. */
@@ -705,8 +716,8 @@ export class EntityRenderer {
             display.visible = true;
             display._body.visible = false;
             /* Clear HP bar -- same fix as slime / variant death branches. */
-            if (display._hpSprite && !display._hpSprite.destroyed) display._hpSprite.alpha = 0;
-            if (display._hpEmpty && !display._hpEmpty.destroyed) { display._hpEmpty.clear(); display._hpEmpty.alpha = 0; }
+            if (display._hpHeart && !display._hpHeart.destroyed) display._hpHeart.alpha = 0;
+            if (display._hpText && !display._hpText.destroyed) display._hpText.alpha = 0;
             display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
@@ -1159,48 +1170,59 @@ export class EntityRenderer {
         display._emoji.visible = true;
       }
 
-      // HP bar (v2.3.118) -- uses the shared bar-hp.png pill texture +
-      // a dim overlay covering the empty portion.  Same artwork the
-      // player HUD's HP bar uses, so player and monsters read in the
-      // same visual language.  Hidden entirely at full HP (existing
-      // behaviour).
+      /* Above-head HP: black-tinted heart icon with the current HP
+         number centered on it.  Visible only when the monster has
+         taken damage (curHp < maxHp); hidden at full HP.
+         Position has to clear the actual sprite top (not the procedural
+         circle's size) for slime / snowman / variant monsters — their
+         sprites render 64-96 px tall while display._size stays at 8,
+         so a naive y=-size-18 lands behind the sprite. */
       const curHp = m.curHp != null ? m.curHp : m.hp;
       const maxHpDenom = m.maxHp || m.hp || 1;
       const hpPct = Math.max(0, Math.min(1, curHp / maxHpDenom));
       _ensureHudBarTextures();
-      const hpTex = _hudBarTex.hp;
-      if (hpTex && display._hpSprite.texture !== hpTex) {
-        display._hpSprite.texture = hpTex;
+      const heartTex = _hudBarTex.heart;
+      if (heartTex && display._hpHeart.texture !== heartTex) {
+        display._hpHeart.texture = heartTex;
       }
-      if (hpTex && hpTex.width > 0) {
-        display._hpSprite.width = HP_BAR_W;
-        display._hpSprite.height = HP_BAR_H;
-        display._hpSprite.x = 0;
-        display._hpSprite.y = -size - 10;
+      if (heartTex && heartTex.width > 0) {
+        const spriteVisible = display._spriteBody && display._spriteBody.visible;
+        let visualTopY;
+        if (display._variantKey && spriteVisible) {
+          const variantCfg = MONSTER_VARIANTS[display._variantKey];
+          visualTopY = display._size - ((variantCfg && variantCfg.liveScalePx) || 64);
+        } else if (display._isSnowman && spriteVisible) {
+          visualTopY = display._size - 64;
+        } else if (display._isFodder && spriteVisible) {
+          visualTopY = display._size - 96;
+        } else {
+          visualTopY = -size;
+        }
+        /* lvlText sits at y=-size-12 with anchor (0.5, 1) — occupies
+           y=[-size-22, -size-12].  Heart hugs whichever is higher
+           (sprite top or lvl text band) with a 2 px gap. */
+        const lvlTopY = -size - 22;
+        const topY = Math.min(visualTopY, lvlTopY);
+        const heartY = topY - 2 - MONSTER_HEART_SIZE / 2;
+        display._hpHeart.width = MONSTER_HEART_SIZE;
+        display._hpHeart.height = MONSTER_HEART_SIZE;
+        display._hpHeart.x = 0;
+        display._hpHeart.y = heartY;
+        /* Heart asset tapers to a V at the bottom; the widest section
+           sits ~12% above the geometric center.  Shift the number up
+           by that fraction so it lands in the meaty part instead of
+           riding the V. */
+        display._hpText.x = 0;
+        display._hpText.y = heartY - MONSTER_HEART_SIZE * 0.12;
       }
       if (hpPct >= 0.999) {
-        display._hpSprite.alpha = 0;
-        display._hpEmpty.clear();
-        display._hpEmpty.alpha = 0;
+        display._hpHeart.alpha = 0;
+        display._hpText.alpha = 0;
       } else {
-        display._hpSprite.alpha = 1;
-        display._hpEmpty.alpha = 1;
-        display._hpEmpty.clear();
-        const emptyW = HP_BAR_W * (1 - hpPct);
-        if (emptyW > 0.5) {
-          display._hpEmpty.rect(-HP_BAR_W / 2 + HP_BAR_W * hpPct, -size - 10 - HP_BAR_H / 2, emptyW, HP_BAR_H);
-          display._hpEmpty.fill({ color: 0x000000, alpha: 0.6 });
-        }
-        /* v2.3.119: hue-shift the red bar-hp.png pill to yellow / green
-           via ColorMatrixFilter based on HP %.  Only mutate the filter
-           when the threshold band changes (cheap to assign, slightly
-           less cheap to reset+hue every frame). */
-        const targetHue = hpPct > 0.5 ? 120 : hpPct > 0.25 ? 60 : 0;
-        if (display._hpHue !== targetHue) {
-          display._hpFilter.reset();
-          if (targetHue !== 0) display._hpFilter.hue(targetHue, false);
-          display._hpHue = targetHue;
-        }
+        display._hpHeart.alpha = 1;
+        display._hpText.alpha = 1;
+        const hpStr = String(Math.max(0, Math.ceil(curHp)));
+        if (display._hpText.text !== hpStr) display._hpText.text = hpStr;
       }
       display._lastHpPct = hpPct;
 
@@ -2340,8 +2362,10 @@ export class EntityRenderer {
       comboText.alpha = 0;
     }
 
-    // Name
-    display._nameText.text = S.myName || 'You';
+    /* Local player's name + level now live in the top-right player card
+       (BottomDashboard.jsx).  Hide the above-head plate so it doesn't
+       sit redundantly on top of the new HP heart. */
+    if (display._nameText.visible) display._nameText.visible = false;
 
     // Death / invuln
     if (S.rpg && S.rpg.hp <= 0) {
@@ -2539,27 +2563,24 @@ export class EntityRenderer {
   _updatePlayerHud(S, now) {
     const R = S && S.rpg;
     const d = this.playerDisplay;
-    if (!R || !d || !d._hudHpSprite) return;
+    if (!R || !d || !d._hudMpSprite) return;
 
     _ensureHudBarTextures();
     /* Bind textures the first time they resolve. */
-    if (_hudBarTex.hp   && d._hudHpSprite.texture   !== _hudBarTex.hp)   d._hudHpSprite.texture   = _hudBarTex.hp;
-    if (_hudBarTex.mp   && d._hudMpSprite.texture   !== _hudBarTex.mp)   d._hudMpSprite.texture   = _hudBarTex.mp;
-    if (_hudBarTex.stam && d._hudStamSprite.texture !== _hudBarTex.stam) d._hudStamSprite.texture = _hudBarTex.stam;
+    if (_hudBarTex.mp    && d._hudMpSprite.texture   !== _hudBarTex.mp)    d._hudMpSprite.texture   = _hudBarTex.mp;
+    if (_hudBarTex.stam  && d._hudStamSprite.texture !== _hudBarTex.stam)  d._hudStamSprite.texture = _hudBarTex.stam;
+    if (_hudBarTex.heart && d._hudHpHeart.texture    !== _hudBarTex.heart) d._hudHpHeart.texture    = _hudBarTex.heart;
 
     const W = 64, H = 10;
     const MIN_LABEL_W = 14; /* hide the value-number if its section is narrower */
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
-    /* HP closest to head (y=-50), Mana middle (-62), Energy top (-74).
-       nameText sits at -38 so the HUD floats above the name plate. */
-    /* v2.3.121: HP bar pulled further down to y=+38 so it clears the
-       player's legs entirely (v2.3.120's +12 was sitting over them).
-       Mana / Energy still above the head. */
+
+    /* Mana / Energy pills sit above the HP heart (heart now hugs the
+       player's head, so the pills moved up to clear it). */
     const bars = [
-      { sprite: d._hudHpSprite,   empty: d._hudHpEmpty,   tFull: d._hudHpTextFull,   tEmpty: d._hudHpTextEmpty,   cur: R.hp,      max: R.maxHp,      y:  38 },
-      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   tFull: d._hudMpTextFull,   tEmpty: d._hudMpTextEmpty,   cur: R.mana,    max: R.maxMana,    y: -50 },
-      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -62 },
+      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   tFull: d._hudMpTextFull,   tEmpty: d._hudMpTextEmpty,   cur: R.mana,    max: R.maxMana,    y: -112 },
+      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -124 },
     ];
     for (const b of bars) {
       const max = b.max || 1;
@@ -2574,15 +2595,12 @@ export class EntityRenderer {
       const newAlpha = a + Math.max(-FADE_STEP, Math.min(FADE_STEP, delta));
       b.sprite.alpha = b.empty.alpha = newAlpha;
 
-      /* Size + position the pill sprite once a texture is bound. */
       if (b.sprite.texture && b.sprite.texture.width > 0) {
         b.sprite.width = W;
         b.sprite.height = H;
         b.sprite.x = 0;
         b.sprite.y = b.y;
       }
-      /* Dim overlay on the unfilled (right) portion.  Width shrinks
-         to zero when the bar is full; no overlay drawn at 0 width. */
       b.empty.clear();
       const filledW = W * pct;
       const emptyW = W - filledW;
@@ -2591,24 +2609,6 @@ export class EntityRenderer {
         b.empty.fill({ color: 0x000000, alpha: 0.55 });
       }
 
-      /* v2.3.119: HP pill hue-shifts green (>50%) -> yellow (>25%) -> red.
-         Only the HP bar gets thresholded; Mana / Energy stay their
-         native colors (the bar-mp.png / bar-stam.png PNGs already
-         carry the intended color). */
-      if (b.sprite === d._hudHpSprite && d._hudHpFilter) {
-        const targetHue = pct > 0.5 ? 120 : pct > 0.25 ? 60 : 0;
-        if (d._hudHpHue !== targetHue) {
-          d._hudHpFilter.reset();
-          if (targetHue !== 0) d._hudHpFilter.hue(targetHue, false);
-          d._hudHpHue = targetHue;
-        }
-      }
-
-      /* Numeric overlays: current value centered on the filled
-         section (white), missing value centered on the empty
-         section (red).  Hidden when the section is narrower than
-         MIN_LABEL_W so a near-empty / near-full pill doesn't
-         render an illegible smear. */
       const curStr = String(Math.ceil(cur));
       const missStr = String(Math.ceil(max - cur));
       if (b.tFull.text !== curStr) b.tFull.text = curStr;
@@ -2623,6 +2623,43 @@ export class EntityRenderer {
       b.tEmpty.alpha = emptyVisible ? newAlpha : 0;
       b.tFull.visible = fullVisible;
       b.tEmpty.visible = emptyVisible;
+    }
+
+    /* HP: red heart icon with the current HP number centered.  Same
+       fade behavior as the pills (visible while below max, hold for
+       HOLD_MS at full, then fade out).  Sits above the mana/energy
+       stack, well clear of the player's head. */
+    const heart = d._hudHpHeart;
+    const heartText = d._hudHpText;
+    if (heart && heartText) {
+      const hpMax = R.maxHp || 1;
+      const hpCur = Math.max(0, Math.min(hpMax, R.hp || 0));
+      const hpFull = hpCur >= hpMax - 0.01;
+      if (!hpFull) heart._lastNotFullAt = now;
+      const hpSinceFull = now - (heart._lastNotFullAt || 0);
+      const hpTargetAlpha = (!hpFull || hpSinceFull < HOLD_MS) ? 1 : 0;
+      const hpA = (heart.alpha != null) ? heart.alpha : 0;
+      const hpDelta = hpTargetAlpha - hpA;
+      const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
+      heart.alpha = hpNewAlpha;
+      heartText.alpha = hpNewAlpha;
+      if (heart.texture && heart.texture.width > 0) {
+        heart.width = PLAYER_HEART_SIZE;
+        heart.height = PLAYER_HEART_SIZE;
+        heart.x = 0;
+        /* Heart hugs the head: with HEART=66 and radius 33, center
+           at y=-66 puts the bottom edge at y=-33 -- the player
+           sprite's head sits around y=-32, so the heart sits right
+           on top of it.  Mana/stam pills moved up to y=-112/-124
+           to clear the heart's top edge (~y=-99). */
+        heart.y = -66;
+        heartText.x = 0;
+        /* Nudge the number up into the heart's widest section (~12%
+           above the geometric center) so it doesn't ride the bottom V. */
+        heartText.y = -66 - PLAYER_HEART_SIZE * 0.12;
+      }
+      const hpStr = String(Math.ceil(hpCur));
+      if (heartText.text !== hpStr) heartText.text = hpStr;
     }
   }
 
