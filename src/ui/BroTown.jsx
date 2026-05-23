@@ -5121,6 +5121,8 @@ export var BroTown = function BroTown(_ref0) {
            the corpse stays put until the respawn setTimeout fires. */
         var _playerDead = !!S._dying || !!(S.rpg && S.rpg.hp <= 0);
         var playerStunned = _realStunned || _hitLockActive;
+        /* Loot pickup freeze — locks movement + faces camera for 0.5s on pickup */
+        var _playerLootFrozen = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
 
         /* Movement — analog joystick + keyboard fallback */
         /* Dodge roll — cancelled mid-roll if the player just died. */
@@ -5141,11 +5143,11 @@ export var BroTown = function BroTown(_ref0) {
            sprite + screen shake + particles still play; the player
            just keeps their dodge ability mid-hit.
            Death also freezes — no walking around as a corpse. */
-        var dx = (_realStunned || _playerDead) ? 0 : S.stickX,
-          dy = (_realStunned || _playerDead) ? 0 : S.stickY;
+        var dx = (_realStunned || _playerDead || _playerLootFrozen) ? 0 : S.stickX,
+          dy = (_realStunned || _playerDead || _playerLootFrozen) ? 0 : S.stickY;
         /* Keyboard overrides if no stick input — same gating:
-           real stuns + death block, hit-react lockout does not. */
-        if (!_realStunned && !_playerDead && dx === 0 && dy === 0) {
+           real stuns + death + loot-pickup freeze block, hit-react lockout does not. */
+        if (!_realStunned && !_playerDead && !_playerLootFrozen && dx === 0 && dy === 0) {
           if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
           if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
           if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
@@ -5157,8 +5159,10 @@ export var BroTown = function BroTown(_ref0) {
             dy /= len;
           }
         }
-        /* Direction for name tag / facing */
-        if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+        /* Direction for name tag / facing — locked to 'down' (camera-facing) during loot freeze */
+        if (_playerLootFrozen) {
+          P.dir = 'down';
+        } else if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
           if (Math.abs(dx) > Math.abs(dy)) P.dir = dx > 0 ? 'right' : 'left';else P.dir = dy > 0 ? 'down' : 'up';
         }
 
@@ -9354,6 +9358,9 @@ export var BroTown = function BroTown(_ref0) {
               return true;
             }
             if (lDist < 20) {
+              /* Pickup freeze — 0.5s lock + face camera, immersion + lets pet vacuum nearby loot */
+              S._lootFreezeUntil = Date.now() + 500;
+              P.dir = 'down';
               /* §4.6 Weapon drop pickup — equip if better, stash otherwise */
               if (loot.isWeapon && loot.weapon) {
                 var _WEAPON_TYPES$drop$ty2, _WEAPON_TYPES2;
