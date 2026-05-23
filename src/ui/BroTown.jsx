@@ -2137,9 +2137,21 @@ export var BroTown = function BroTown(_ref0) {
                  ability costs, shield drain, regen, level-up + respawn
                  resets.  Client OVERWRITES on every player_state so a
                  DevTools R.hp/stamina/mana = 99999 cheat gets stomped
-                 on the next sync. */
+                 on the next sync.
+                 LIFESTEAL TEST MODE (companion to the v2.3.132 client
+                 regen pause): only let HP go DOWN from server. This
+                 stops server-side regen ticks from undoing the C1
+                 melee-kill heal (which is applied client-side, so the
+                 next player_state would otherwise stomp it back down).
+                 Also-stops in-combat / OOC regen for the same reason.
+                 Trade-off: server-side heal sources (cooking, level-up
+                 full restore, respawn) are blocked until the player
+                 next takes damage, at which point HP resyncs. */
               if (typeof msg.payload.hp === 'number') {
-                S.rpg.hp = msg.payload.hp;
+                var _isRespawnHp = (S.rpg.hp || 0) <= 0 && msg.payload.hp > 0;
+                if (msg.payload.hp < (S.rpg.hp || 0) || _isRespawnHp) {
+                  S.rpg.hp = msg.payload.hp;
+                }
               }
               if (typeof msg.payload.maxHp === 'number') {
                 S.rpg.maxHp = msg.payload.maxHp;
@@ -2547,6 +2559,12 @@ export var BroTown = function BroTown(_ref0) {
       function _applyLootCredit(payload, S) {
         if (!S.rpg) return;
         var R = S.rpg;
+        /* Server-loot path equivalent of the local pickup freeze in the
+           groundLoot.filter at line ~9362. Sets the same gate variable
+           so the movement gate, renderer facing override, and auto-swing
+           suppression all kick in for MP loot too. Without this, the
+           freeze only fired for single-player loot. */
+        S._lootFreezeUntil = Date.now() + 500;
         if (payload.coins && payload.coins > 0) {
           if (R._compStats) R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + payload.coins;
           pushHudPopup(S, { target: 'goldIcon', text: '+' + payload.coins + ' G', color: '#f5c542' });
