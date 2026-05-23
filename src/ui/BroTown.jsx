@@ -5,6 +5,7 @@ import { CookingMinigame } from './CookingMinigame.jsx';
 import { IntroVideo } from './IntroVideo.jsx';
 import { MiningMinigame } from './MiningMinigame.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
+import { pushHudPopup } from './XpFlyOverlay.jsx';
 
 /* Per-tier fish sprite map.  FishingMinigame defaults to fish-08
    (yellow tang) when no fishSheetSrc is passed.  Add an entry here
@@ -2457,11 +2458,7 @@ export var BroTown = function BroTown(_ref0) {
         var R = S.rpg;
         if (payload.coins && payload.coins > 0) {
           if (R._compStats) R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + payload.coins;
-          S.dmgNumbers.push({
-            x: S.player.x + 12, y: S.player.y - 8,
-            text: '+' + payload.coins + 'G',
-            color: '#f5c542', ts: Date.now(),
-          });
+          pushHudPopup(S, { target: 'goldIcon', text: '+' + payload.coins + ' G', color: '#f5c542' });
         }
         if (payload.shard) {
           var _pickedShard = shardByKey(payload.shard);
@@ -2818,11 +2815,7 @@ export var BroTown = function BroTown(_ref0) {
                      UX.  The actual R.xp update arrives via
                      player_state shortly after; combat_credit handles
                      the level-up popup + SFX. */
-                  S.dmgNumbers.push({
-                    x: S.player.x, y: S.player.y - 30,
-                    text: '+' + killXp + 'XP',
-                    color: '#60a5fa', ts: Date.now()
-                  });
+                  pushHudPopup(S, { target: 'xpBar', text: '+' + killXp + ' XP', color: '#60a5fa' });
                   /* Local R.xp += / level-up loop runs only when the
                      worker doesn't own combat XP for this kill (i.e.
                      when _serverMonsters is false -- dungeons / SP).
@@ -6666,13 +6659,7 @@ export var BroTown = function BroTown(_ref0) {
                     }
                   } else {
                     S.rpg.coins += loot.coins || 0;
-                    S.dmgNumbers.push({
-                      x: S._petX,
-                      y: S._petY - 15,
-                      text: pet.emoji + ' +' + (loot.coins || 0) + 'G',
-                      color: '#f5c542',
-                      ts: Date.now()
-                    });
+                    pushHudPopup(S, { target: 'goldIcon', text: '+' + (loot.coins || 0) + ' G', color: '#f5c542' });
                   }
                   /* Pet hands the elemental shard over too -- otherwise
                      auto-looted piles silently lose the shard since this
@@ -8536,8 +8523,7 @@ export var BroTown = function BroTown(_ref0) {
                   maxR: isCrit ? 30 : collisionResult ? 25 : 16,
                   duration: isCrit ? 250 : 150
                 });
-                /* Damage number — scaled by significance.  Tag with
-                   special:true so the renderer can render it 2x larger. */
+                /* Damage number — scaled by crit/normal in the renderer. */
                 var _isSpecialDmg = !!S._specialAttack;
                 if (isCrit && collisionResult) {
                   S.dmgNumbers.push({
@@ -8801,13 +8787,7 @@ export var BroTown = function BroTown(_ref0) {
                   var killXp = Math.ceil((isRare ? m.xp * 3 : m.xp) * _wrMult * xpMultFor(m));
                   var killGold = Math.ceil(isRare ? m.gold * 10 : m.gold);
                   _R6.xp += killXp;
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 25,
-                    text: '+' + killXp + 'XP',
-                    color: '#60a5fa',
-                    ts: Date.now()
-                  });
+                  pushHudPopup(S, { target: 'xpBar', text: '+' + killXp + ' XP', color: '#60a5fa' });
                   var lootCount = isGrandSlam ? 3 : 1;
                   /* One shard roll per kill, attached to the primary pile
                      (li === 0) so grand-slam kills don't compound into
@@ -9130,13 +9110,7 @@ export var BroTown = function BroTown(_ref0) {
                       ts: Date.now()
                     });
                     S.rpg.xp += 5;
-                    S.dmgNumbers.push({
-                      x: npc.x,
-                      y: npc.y - 35,
-                      text: '+5XP',
-                      color: '#60a5fa',
-                      ts: Date.now()
-                    });
+                    pushHudPopup(S, { target: 'xpBar', text: '+5 XP', color: '#60a5fa' });
                   }
                 }
               });
@@ -9436,13 +9410,7 @@ export var BroTown = function BroTown(_ref0) {
                 if (!S.rpg.skulls) S.rpg.skulls = {};
                 S.rpg.skulls[loot.skull] = (S.rpg.skulls[loot.skull] || 0) + 1;
               }
-              if (loot.coins) S.dmgNumbers.push({
-                x: loot.x + 12,
-                y: loot.y - 8,
-                text: '+' + loot.coins + 'G',
-                color: '#f5c542',
-                ts: Date.now()
-              });
+              if (loot.coins) pushHudPopup(S, { target: 'goldIcon', text: '+' + loot.coins + ' G', color: '#f5c542' });
               BT_AUDIO.beep(500, 0.06, 0.1, 'sine');
               /* ═══ LOOT PICKUP SPARKLE — gold/blue particles burst upward ═══ */
               for (var lsp = 0; lsp < 8; lsp++) {
@@ -10340,16 +10308,8 @@ export var BroTown = function BroTown(_ref0) {
                     if (_R9._compStats) {
                       _R9._compStats.monstersKilled = (_R9._compStats.monstersKilled || 0) + 1;
                     }
-                    /* +XP floater + fly-to-bar so the player sees the XP
-                       arc into the bar (mirror of the fish-to-bag animation). */
-                    S.dmgNumbers.push({ x: m.x, y: m.y - 25, text: '+' + _killXpR + 'XP', color: '#3ddc97', ts: Date.now() });
-                    if (!S._xpFlies) S._xpFlies = [];
-                    S._xpFlies.push({
-                      id: 'xpf_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-                      worldX: m.x, worldY: m.y - 25,
-                      value: _killXpR,
-                      ts: Date.now(),
-                    });
+                    /* +XP popup anchored next to the XP bar (HudPopupOverlay). */
+                    pushHudPopup(S, { target: 'xpBar', text: '+' + _killXpR + ' XP', color: '#3ddc97' });
                     distributeKillXpToBuild(_R9, _killXpR);
                     while (_R9.xp >= xpRequired(_R9.level)) {
                       _R9.xp -= xpRequired(_R9.level);
