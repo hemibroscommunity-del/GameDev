@@ -6213,7 +6213,7 @@ export function renderBroTownUI(uiCtx) {
         }
       });
       S.gatherNodes = [];
-      S.groundLoot = [];
+      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
       S.hitParticles = [];
       S.deathExplosions = [];
       S.arrows = [];
@@ -12520,7 +12520,7 @@ export function renderBroTownUI(uiCtx) {
       var wz = ZONES.wasteland;
       S.player.x = Math.floor(wz.w / 2) * TILE;
       S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = [];
+      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
       S.hitParticles = [];
       S.deathExplosions = [];
       S.arrows = [];
@@ -14076,7 +14076,7 @@ export function renderBroTownUI(uiCtx) {
       var wz = ZONES.wasteland;
       S.player.x = Math.floor(wz.w / 2) * TILE;
       S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = [];
+      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
       S.hitParticles = [];
       S.deathExplosions = [];
       S.arrows = [];

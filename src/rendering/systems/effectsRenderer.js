@@ -1149,6 +1149,20 @@ export class EffectsRenderer {
     }
   }
 
+  /* v2.3.130: nuke every tracked loot pile immediately.  Counterpart
+     to disposeLootById, called from any site that wipes S.groundLoot
+     wholesale (player respawn, zone transition, dungeon enter/exit,
+     reset paths).  The per-frame orphan sweep also catches these, but
+     a wipe followed by an immediate spawn-new-loot tick can read the
+     stale sprite for one frame before the sweep runs — observed as
+     slime remnants and coin piles "sticking" after meadow kills.
+     Cheap to iterate; the set is small. */
+  flushAllLoot() {
+    if (!this._knownLoot) return;
+    for (const l of this._knownLoot) this._disposeLoot(l);
+    this._knownLoot.clear();
+  }
+
   _disposeLoot(l) {
     /* Explicit removeFromParent before destroy: same Pixi v8 edge case
        _disposeNode documents -- destroy() doesn't always unparent in
