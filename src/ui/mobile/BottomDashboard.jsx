@@ -394,115 +394,10 @@ export const BottomDashboard = () => {
         }} />
       </div>
 
-      {/* Upper-LEFT identity card — 80px portrait + HP/MP/Energy pills.
-          v2.3.130: replaces the dashboard's far-left vitals column.
-          Pills show current/max live so the player tracks their
-          combat resources without scanning the bottom band. */}
-      {(() => {
-        const hp     = Math.round(R.hp      || 0);
-        const maxHp  = R.maxHp     || calcMaxHp(R.level || 1, R.vitality || 0);
-        const mana   = Math.round(R.mana    || 0);
-        const maxMp  = R.maxMana   || calcMaxMana(R.mind || 0);
-        const sta    = Math.round(R.stamina || 0);
-        const maxSta = R.maxStamina || calcMaxStam(R.endurance || 0);
-        const pills = [
-          { key: 'hp',  label: 'HP', cur: hp,   max: maxHp,  color: COL.hp,   tip: `HP — pool grows with Vitality (${R.vitality || 0}).` },
-          { key: 'mp',  label: 'MP', cur: mana, max: maxMp,  color: COL.mp,   tip: `Mana — pool grows with Mind (${R.mind || 0}).` },
-          { key: 'en',  label: 'EN', cur: sta,  max: maxSta, color: COL.stam, tip: `Energy (Stamina) — pool grows with Endurance (${R.endurance || 0}).` },
-        ];
-        return (
-          <div
-            onPointerDown={(e) => e.stopPropagation()}
-            style={{
-              position: 'fixed',
-              top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
-              left: 'calc(env(safe-area-inset-left, 0px) + 6px)',
-              zIndex: 30,
-              background: COL.bg,
-              border: `1px solid ${COL.border}`,
-              borderRadius: 8,
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
-              padding: '4px 6px 5px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 4,
-              touchAction: 'none',
-            }}>
-            {/* Portrait frame — 80x80, centered. */}
-            <div style={{
-              width: 80,
-              height: 80,
-              background: 'rgba(0,0,0,0.25)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 6,
-              padding: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <img
-                src="/icons/ui/profile.webp?v=2.3.128"
-                alt="Portrait"
-                draggable={false}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  imageRendering: 'pixelated',
-                  borderRadius: 4,
-                  userSelect: 'none',
-                  pointerEvents: 'none',
-                }}
-              />
-            </div>
-            {/* Pills row — HP / MP / EN, current/max live values. */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: 3,
-              width: '100%',
-            }}>
-              {pills.map(p => (
-                <div key={p.key}
-                  onPointerUp={(e) => { e.stopPropagation(); setTooltip(p.tip); }}
-                  title={p.tip}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 3,
-                    padding: '2px 4px',
-                    borderRadius: 4,
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    cursor: 'pointer',
-                    touchAction: 'none',
-                    whiteSpace: 'nowrap',
-                  }}>
-                  <span style={{
-                    color: p.color,
-                    fontWeight: 800,
-                    fontSize: 10,
-                    letterSpacing: '.04em',
-                  }}>{p.label}</span>
-                  <span style={{
-                    color: COL.text,
-                    fontWeight: 700,
-                    fontSize: 11,
-                    letterSpacing: '.02em',
-                  }}>{p.cur}/{p.max}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Upper-RIGHT gold card.  v2.3.130: portrait moved to a
-          dedicated top-left identity card; this card is now gold-only
-          so the right corner reads as the "currency" surface. */}
+      {/* Upper-right player card — portrait stacked above gold.
+          v2.3.128: name + level row removed per user request so the
+          card shrinks to the natural width of its content (portrait
+          + 4-5 digit gold value). */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
         style={{
@@ -514,28 +409,64 @@ export const BottomDashboard = () => {
           border: `1px solid ${COL.border}`,
           borderRadius: 8,
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
-          padding: '4px 10px',
+          padding: '4px 6px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 3,
+          touchAction: 'none',
+        }}>
+        {/* Portrait frame — 40x40, centered. */}
+        <div style={{
+          width: 40,
+          height: 40,
+          background: 'rgba(0,0,0,0.25)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 6,
+          padding: 2,
           display: 'flex',
           alignItems: 'center',
-          gap: 4,
+          justifyContent: 'center',
+        }}>
+          <img
+            src="/icons/ui/profile.webp?v=2.3.128"
+            alt="Portrait"
+            draggable={false}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              imageRendering: 'pixelated',
+              borderRadius: 4,
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+          />
+        </div>
+        {/* Gold row — icon + value, centered under the portrait. */}
+        <div style={{
           color: '#f5c542',
           fontFamily: 'Source Sans 3, sans-serif',
           fontSize: 16,
           fontWeight: 700,
           letterSpacing: '.04em',
-          touchAction: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
         }}>
-        <img
-          src="/icons/popups/gold.png"
-          alt=""
-          style={{
-            width: 16,
-            height: 16,
-            imageRendering: 'pixelated',
-            display: 'block',
-          }}
-        />
-        {Number(gold).toLocaleString()}
+          <img
+            src="/icons/popups/gold.png"
+            alt=""
+            style={{
+              width: 16,
+              height: 16,
+              imageRendering: 'pixelated',
+              display: 'block',
+            }}
+          />
+          {Number(gold).toLocaleString()}
+        </div>
       </div>
 
     <div
@@ -612,18 +543,166 @@ export const BottomDashboard = () => {
             minHeight: 0,
           }}>
             <div style={{ flex: 1, display: 'flex', gap: 8, minHeight: 0 }}>
-              {/* v2.3.130: far-left vitals column removed.  HP/MP/EN
-                  pills now live in the top-left identity card; the
-                  Crit/Block/Zone/Kills/Time readouts are hidden (still
-                  computed in R._compStats / calcCritChance etc. for
-                  any future details panel). */}
-
-              {/* ── Left column — Loadout.  v2.3.130: moved from middle
-                  into the spot vacated by the vitals column so weapon
-                  + armor sit at the natural thumb-reach side.  Stats +
-                  Skills (flex: 2) gets the rest of the band width. */}
+              {/* ── Left column — hybrid card: HP/MP/END chip row +
+                  Crit/Move derived stats + session summary (Zone, Kills,
+                  Playtime).  v2.3.126: portrait migrated to the top-right
+                  HUD; this column narrowed (flex 0.85) so Loadout
+                  (flex 1.35) gets the slack. */}
               <div style={{
-                flex: 1,
+                flex: 0.85,
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 0,
+                padding: 4,
+                borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(255,100,100,0.04)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
+                /* v2.3.129: clip overflow so the Kills row (and any other
+                   session-summary row) doesn't bleed past the column's
+                   bottom border at narrow heights. */
+                overflow: 'hidden',
+              }}>
+                {/* v2.3.127: ColHeader removed — player name + level
+                    now live in the top-right player card.  Removing the
+                    header reclaims vertical space so the chip + derived
+                    + session sections breathe. */}
+                {(() => {
+                  const maxHp  = R.maxHp     || calcMaxHp(R.level || 1, R.vitality || 0);
+                  const maxMp  = R.maxMana   || calcMaxMana(R.mind || 0);
+                  const maxSta = R.maxStamina || calcMaxStam(R.endurance || 0);
+                  /* Derived combat stats — calcCritChance and
+                     calcBlockReduction both return 0..1 fractions;
+                     multiply by 100 + round for the % display. */
+                  const critPct  = Math.round(calcCritChance(R.ferocity || 0) * 100);
+                  const blockPct = Math.round(calcBlockReduction(R.fortification || 0, R.shield) * 100);
+                  /* Session summary — zone name lookup is safe-guarded so
+                     a missing currentZone or a zone removed from ZONES
+                     never crashes the dashboard.  _compStats may be
+                     absent on older save shapes. */
+                  const zoneId = (S && S.currentZone) || 'town';
+                  const zoneName = (ZONES[zoneId] && ZONES[zoneId].name) || zoneId;
+                  const cs = R._compStats || {};
+                  const kills = cs.monstersKilled || 0;
+                  const pts = cs.playtimeSeconds || 0;
+                  const pth = Math.floor(pts / 3600);
+                  const ptm = Math.floor((pts % 3600) / 60);
+                  const ptText = pth > 0 ? `${pth}h ${ptm}m` : `${ptm}m`;
+                  const rowStyle = {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 6,
+                    padding: '1px 4px',
+                    cursor: 'pointer',
+                    touchAction: 'none',
+                  };
+                  const rowLabel = {
+                    color: COL.muted,
+                    fontWeight: 700,
+                    fontSize: 11,
+                    textTransform: 'uppercase',
+                    letterSpacing: '.05em',
+                  };
+                  const rowVal = { color: COL.text, fontWeight: 700, fontSize: 13 };
+                  /* Stat-tinted chip row used for HP / MP / END.  Label
+                     adopts the resource-bar color (red/blue/gold) so the
+                     three rows read as a quick durability sheet. */
+                  const chipRow = (label, val, color, tip) => ({
+                    label, val, color, tip,
+                  });
+                  const statChips = [
+                    chipRow('HP',  maxHp,  COL.hp,   `Max HP at Vitality ${R.vitality || 0}.`),
+                    chipRow('MP',  maxMp,  COL.mp,   `Max Mana at Mind ${R.mind || 0}.`),
+                    chipRow('END', maxSta, COL.stam, `Max Stamina at Endurance ${R.endurance || 0}.`),
+                  ];
+                  return (
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      minHeight: 0,
+                      padding: '2px 2px 0',
+                    }}>
+                      {/* HP / MP / END — vertical chips, full column
+                         width so labels and values both fit cleanly. */}
+                      {statChips.map((c) => (
+                        <div key={c.label}
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(c.tip); }}
+                          title={c.tip}
+                          style={{
+                            ...rowStyle,
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            borderRadius: 3,
+                            padding: '1px 6px',
+                          }}>
+                          <span style={{
+                            color: c.color,
+                            fontWeight: 800,
+                            fontSize: 11,
+                            letterSpacing: '.06em',
+                          }}>{c.label}</span>
+                          <span style={rowVal}>{c.val}</span>
+                        </div>
+                      ))}
+                      {/* Derived stats — Crit + Block.  Block % pairs
+                         offense/defense with Crit and rises when the
+                         player equips a shield or trains Fortification. */}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 2 }}>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — derived from Ferocity (${R.ferocity || 0}).  Diminishing returns past 300.`); }}
+                          title="Crit chance from Ferocity"
+                          style={rowStyle}>
+                          <span style={rowLabel}>Crit</span>
+                          <span style={rowVal}>{critPct}%</span>
+                        </div>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Block reduction — 25% base + Fortification (${R.fortification || 0}) and shield bonus.  Capped at 75%.`); }}
+                          title="Block reduction from Fortification + shield"
+                          style={rowStyle}>
+                          <span style={rowLabel}>Block</span>
+                          <span style={rowVal}>{blockPct}%</span>
+                        </div>
+                      </div>
+                      {/* Session summary — Zone / Kills / Playtime. */}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 2, flex: 1, minHeight: 0 }}>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Current zone: ${zoneName} (${zoneId}).`); }}
+                          title={`Current zone: ${zoneName}`}
+                          style={rowStyle}>
+                          <span style={rowLabel}>Zone</span>
+                          <span style={{ ...rowVal, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60%' }}>{zoneName}</span>
+                        </div>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Lifetime monsters killed: ${kills.toLocaleString()}.`); }}
+                          title="Lifetime monsters killed"
+                          style={rowStyle}>
+                          <span style={rowLabel}>Kills</span>
+                          <span style={rowVal}>{kills.toLocaleString()}</span>
+                        </div>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Total playtime: ${ptText}.`); }}
+                          title="Total playtime"
+                          style={rowStyle}>
+                          <span style={rowLabel}>Time</span>
+                          <span style={rowVal}>{ptText}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* ── Middle column — Loadout.
+                  v2.3.125 introduced the DMG/DPS line + 3-then-2 equip
+                  grid.  v2.3.126 widened to flex 1.35 (was 1) using the
+                  slack freed by the left column shrinking to 0.85.
+                  Weapon slot still cycles activeSlot on tap (the
+                  floating WeaponSwapBar was unmounted in v2.3.125). */}
+              <div style={{
+                flex: 1.35,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -789,14 +868,12 @@ export const BottomDashboard = () => {
               </div>
 
               {/* ── Right column — Stats + Life Skills merged.
-                  v2.3.130: flex 1 -> 2 (consumes the slack vacated by
-                  the deleted vitals column).  Grid flipped to 5 cols x
-                  3 rows with default row-major flow: life skills fill
-                  rows 1-2, build / combat stats fill row 3.  Each cell
-                  is now noticeably wider since the col is 5 across
-                  instead of 3. */}
+                  v2.3.125: Build (5 char stats) and Life Skills (10) now
+                  share one column as a 3-sub-col x 5-row grid.  Build
+                  occupies sub-col 1; Life Skills fills sub-cols 2 and 3
+                  (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
               <div style={{
-                flex: 2,
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -806,58 +883,19 @@ export const BottomDashboard = () => {
                 background: 'rgba(80,200,130,0.04)',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
               }}>
+                <ColHeader>Stats · Skills</ColHeader>
                 <div style={{
                   flex: 1,
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(5, 1fr)',
-                  gridTemplateRows: 'repeat(3, 1fr)',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gridTemplateRows: 'repeat(5, 1fr)',
                   gap: 2,
+                  /* gridAutoFlow column so the first 5 cells (Build) stack
+                     vertically in sub-column 1, then Life Skills fill
+                     sub-cols 2 and 3 in row-major order. */
+                  gridAutoFlow: 'column',
                   minHeight: 0,
                 }}>
-                  {LIFE_SKILLS.map(sk => {
-                    const sk_st = (R.lifeSkills && R.lifeSkills[sk.key]) || {};
-                    const lvl = sk_st.level || 0;
-                    const xp = sk_st.xp || 0;
-                    const need = skillXpRequired(lvl);
-                    const sPct = need > 0 ? Math.max(0, Math.min(100, (xp / need) * 100)) : 0;
-                    return (
-                      <div key={'s_' + sk.key}
-                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${sk.label} · Lv ${lvl} (${Math.round(sPct)}% to next) — ${sk.tip.split('—').slice(1).join('—').trim()}`); }}
-                        title={sk.tip}
-                        style={{
-                          position: 'relative',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 3,
-                          padding: '0 4px',
-                          borderRadius: 3,
-                          background: 'rgba(255,255,255,0.04)',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                          fontSize: 11,
-                          minHeight: 0,
-                          cursor: 'pointer',
-                          touchAction: 'none',
-                          overflow: 'hidden',
-                        }}>
-                        <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>{sk.icon}</span>
-                        <span style={{ flex: 1, textAlign: 'center', color: COL.text, fontWeight: 700, fontSize: 14 }}>{lvl}</span>
-                        <div style={{
-                          position: 'absolute',
-                          left: 0, right: 0, bottom: 0,
-                          height: 2,
-                          background: 'rgba(255,255,255,0.06)',
-                          pointerEvents: 'none',
-                        }}>
-                          <div style={{
-                            width: sPct + '%',
-                            height: '100%',
-                            background: 'rgba(61,220,151,0.85)',
-                            transition: 'width .15s linear',
-                          }} />
-                        </div>
-                      </div>
-                    );
-                  })}
                   {CHAR_STATS.map(s => {
                     const val = R[s.key] ?? 0;
                     const prog = (R._buildProg && R._buildProg[s.key]) || 0;
@@ -918,6 +956,53 @@ export const BottomDashboard = () => {
                             width: pct + '%',
                             height: '100%',
                             background: 'rgba(91,82,255,0.85)',
+                            transition: 'width .15s linear',
+                          }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {LIFE_SKILLS.map(sk => {
+                    const sk_st = (R.lifeSkills && R.lifeSkills[sk.key]) || {};
+                    const lvl = sk_st.level || 0;
+                    const xp = sk_st.xp || 0;
+                    const need = skillXpRequired(lvl);
+                    const sPct = need > 0 ? Math.max(0, Math.min(100, (xp / need) * 100)) : 0;
+                    return (
+                      <div key={'s_' + sk.key}
+                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${sk.label} · Lv ${lvl} (${Math.round(sPct)}% to next) — ${sk.tip.split('—').slice(1).join('—').trim()}`); }}
+                        title={sk.tip}
+                        style={{
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          padding: '0 4px',
+                          borderRadius: 3,
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          fontSize: 11,
+                          minHeight: 0,
+                          cursor: 'pointer',
+                          touchAction: 'none',
+                          overflow: 'hidden',
+                        }}>
+                        <span style={{ fontSize: 13, lineHeight: 1, flexShrink: 0 }}>{sk.icon}</span>
+                        {/* v2.3.126: matches Build cell — flex:1 + center
+                            so the level number stays centered regardless
+                            of glyph width variance between emoji. */}
+                        <span style={{ flex: 1, textAlign: 'center', color: COL.text, fontWeight: 700, fontSize: 13 }}>{lvl}</span>
+                        <div style={{
+                          position: 'absolute',
+                          left: 0, right: 0, bottom: 0,
+                          height: 2,
+                          background: 'rgba(255,255,255,0.06)',
+                          pointerEvents: 'none',
+                        }}>
+                          <div style={{
+                            width: sPct + '%',
+                            height: '100%',
+                            background: 'rgba(61,220,151,0.85)',
                             transition: 'width .15s linear',
                           }} />
                         </div>
