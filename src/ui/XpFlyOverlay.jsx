@@ -56,32 +56,37 @@ const HudPopup = ({ pop, stackIdx }) => {
   }, []);
 
   const isGold = pop.target === 'goldIcon';
-  /* Anchor styles per target.  Gold pill is at top:6 right:6, ~32 px
-     tall — popups fall just under it on the right edge.  XP strip is
-     8 px tall and pinned to bottom: var(--dash-h) — popups float just
-     above it on the right edge so they don't fight the dashboard. */
+  /* Anchor styles per target.  Gold pill (portrait + gold row) is
+     ~80 px tall at top:6 right:6 — popups sit below it so they don't
+     cover the coin sprite, and the gold readout animates the count
+     up in BottomDashboard.  XP strip is 8 px tall pinned to
+     bottom: var(--dash-h) — popups appear centered above the strip
+     while the bar fill grows to the new total. */
   const base = isGold
     ? {
         position: 'fixed',
         right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
-        top: 'calc(env(safe-area-inset-top, 0px) + 44px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 92px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
         textAlign: 'right',
       }
     : {
         position: 'fixed',
-        right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
+        left: '50%',
         bottom: 'calc(var(--dash-h) + 14px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
-        textAlign: 'right',
+        textAlign: 'center',
       };
 
   /* Phase 1 drift: gold sinks down 8 px, xp rises up 8 px. Both fade out. */
   const driftY = phase === 1 ? (isGold ? 8 : -8) : 0;
+  const transformVal = isGold
+    ? 'translateY(' + driftY + 'px)'
+    : 'translate(-50%, ' + driftY + 'px)';
 
   return (
     <div
       style={{
         ...base,
-        transform: 'translateY(' + driftY + 'px)',
+        transform: transformVal,
         opacity: phase === 1 ? 0 : 1,
         color: pop.color || (isGold ? '#f5c542' : '#3ddc97'),
         fontFamily: 'Source Sans 3, sans-serif',

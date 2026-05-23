@@ -358,6 +358,29 @@ export const BottomDashboard = () => {
     (R._compStats && (R._compStats.totalGoldEarned || R._compStats.goldEarnedTotal)) ||
     R.goldEarned || R.coins || R.gold || 0;
 
+  /* v2.3.131: smoothly count the gold readout up to the new total
+     instead of snapping.  Pickup popup shows "+N G" below the pill
+     while the number visibly ticks toward `gold`.  RAF stops as soon
+     as the displayed value reaches the target. */
+  const [displayGold, setDisplayGold] = useState(gold);
+  const displayGoldRef = useRef(gold);
+  useEffect(() => {
+    if (gold === displayGoldRef.current) return undefined;
+    let raf = 0;
+    const tick = () => {
+      const cur = displayGoldRef.current;
+      if (cur === gold) return;
+      const diff = gold - cur;
+      const step = Math.sign(diff) * Math.max(1, Math.ceil(Math.abs(diff) * 0.3));
+      const next = Math.abs(step) >= Math.abs(diff) ? gold : cur + step;
+      displayGoldRef.current = next;
+      setDisplayGold(next);
+      if (next !== gold) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [gold]);
+
   const Active = active?.Component;
 
   /* v2.3.114: thin XP strip pinned across the screen flush above the
@@ -390,7 +413,9 @@ export const BottomDashboard = () => {
           width: xpPct + '%',
           height: '100%',
           background: 'linear-gradient(90deg, #3ddc97, #5be3aa)',
-          transition: 'width .15s linear',
+          /* v2.3.131: longer ease-out so XP gains visibly count up
+             into the bar instead of snapping in 150ms. */
+          transition: 'width .4s ease-out',
         }} />
       </div>
 
@@ -465,7 +490,7 @@ export const BottomDashboard = () => {
               display: 'block',
             }}
           />
-          {Number(gold).toLocaleString()}
+          {Number(displayGold).toLocaleString()}
         </div>
       </div>
 
