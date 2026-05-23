@@ -839,7 +839,7 @@ export function setupGameLoop(ctx) {
             S.dmgNumbers.push({
               x: P.x,
               y: P.y - 20,
-              text: '❄️+1 snow',
+              text: '+1 snow',
               color: '#a0d8f0',
               ts: Date.now()
             });
@@ -883,7 +883,7 @@ export function setupGameLoop(ctx) {
             S.dmgNumbers.push({
               x: P.x,
               y: P.y - 30,
-              text: '💤 Resting... (3s)',
+              text: 'Resting... (3s)',
               color: '#a0a0ff',
               ts: Date.now()
             });
@@ -900,14 +900,14 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 40,
-                text: '✨ Fully Rested!',
+                text: 'Fully Rested!',
                 color: '#3dd497',
                 ts: Date.now()
               });
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 25,
-                text: '🌟 +10% XP for 30 min',
+                text: '+10% XP for 30 min',
                 color: '#f5c542',
                 ts: Date.now()
               });
@@ -1119,7 +1119,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 40,
-                text: zn.name + ' — ' + nextDepth.toUpperCase(),
+                text: zn.name + ' - ' + nextDepth.toUpperCase(),
                 color: ((_ELEMENTS$zn$element = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element === void 0 ? void 0 : _ELEMENTS$zn$element.color) || '#fff',
                 ts: Date.now()
               });
@@ -1212,7 +1212,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 40,
-                text: '⚔️ DUNGEON: Wave 1/' + S._dungeonMaxWaves,
+                text: 'DUNGEON: Wave 1/' + S._dungeonMaxWaves,
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -1280,7 +1280,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 30,
-                text: '🧗 Climbing fence... (2s)',
+                text: 'Climbing fence... (2s)',
                 color: '#f5c542',
                 ts: Date.now()
               });
@@ -1308,7 +1308,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 30,
-                text: '☠️ LAWLESS ZONE — All items at risk!',
+                text: 'LAWLESS ZONE - All items at risk!',
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -1321,7 +1321,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 30,
-                text: '🏠 Safe zone! Walk south to return to town.',
+                text: 'Safe zone! Walk south to return to town.',
                 color: '#3dd497',
                 ts: Date.now()
               });
@@ -1379,7 +1379,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: _m.x,
                       y: _m.y - 20,
-                      text: '❄️' + Math.round(dmg),
+                      text: String(Math.round(dmg)),
                       color: '#a0d8f0',
                       ts: Date.now()
                     });
@@ -1423,7 +1423,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: sm.x,
                 y: sm.y - 20,
-                text: '⛄ Melted!',
+                text: 'Melted!',
                 color: '#a0d8f0',
                 ts: Date.now()
               });
@@ -1480,7 +1480,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '🛷' + sledDmg,
+                    text: 'SLED ' + sledDmg,
                     color: '#60a5fa',
                     ts: Date.now()
                   });
@@ -1504,7 +1504,7 @@ export function setupGameLoop(ctx) {
             S.dmgNumbers.push({
               x: P.x,
               y: P.y - 30,
-              text: '🛷 Sled stopped',
+              text: 'Sled stopped',
               color: '#a0d8f0',
               ts: Date.now()
             });
@@ -1538,7 +1538,7 @@ export function setupGameLoop(ctx) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 20,
-                  text: '🫧 -' + DIVE_DAMAGE_RATE + ' (drowning!)',
+                  text: '-' + DIVE_DAMAGE_RATE + ' (drowning!)',
                   color: '#3498DB',
                   ts: Date.now()
                 });
@@ -1547,7 +1547,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 40,
-                    text: '💀 Drowned!',
+                    text: 'Drowned!',
                     color: '#ff5e6c',
                     ts: Date.now()
                   });
@@ -1563,7 +1563,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: P.x + Math.random() * 30 - 15,
                 y: P.y - 30,
-                text: '🏴‍☠️ +' + treasureGold + 'G treasure!',
+                text: '+' + treasureGold + 'G treasure!',
                 color: '#f5c542',
                 ts: Date.now()
               });
@@ -1598,7 +1598,7 @@ export function setupGameLoop(ctx) {
           S.dmgNumbers.push({
             x: P.x,
             y: P.y - 30,
-            text: '🔥 Torch burned out!',
+            text: 'Torch burned out!',
             color: '#ea580c',
             ts: Date.now()
           });
@@ -1651,7 +1651,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 50,
-                    text: '🐉 BOSS FIGHT!',
+                    text: 'BOSS FIGHT!',
                     color: '#ff5e6c',
                     ts: Date.now()
                   });
@@ -1663,7 +1663,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 50,
-                    text: '🏆 DUNGEON CLEARED!',
+                    text: 'DUNGEON CLEARED!',
                     color: '#f5c542',
                     ts: Date.now()
                   });
@@ -1740,7 +1740,7 @@ export function setupGameLoop(ctx) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 50,
-                  text: '🐉 BOSS FIGHT!',
+                  text: 'BOSS FIGHT!',
                   color: '#ff5e6c',
                   ts: Date.now()
                 });
@@ -1770,7 +1770,7 @@ export function setupGameLoop(ctx) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 60,
-                  text: '🏆 DUNGEON CLEARED!',
+                  text: 'DUNGEON CLEARED!',
                   color: '#f5c542',
                   ts: Date.now()
                 });
@@ -1833,7 +1833,7 @@ export function setupGameLoop(ctx) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 60,
-                  text: '🏆 DUNGEON CLEARED!',
+                  text: 'DUNGEON CLEARED!',
                   color: '#f5c542',
                   ts: Date.now()
                 });
@@ -1856,7 +1856,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 15,
-                    text: '✦ Shadow & Radiant zones revealed!',
+                    text: 'Shadow & Radiant zones revealed!',
                     color: '#F1C40F',
                     ts: Date.now()
                   });
@@ -1898,7 +1898,7 @@ export function setupGameLoop(ctx) {
                   st.dmgNumbers.push({
                     x: st.player.x,
                     y: st.player.y - 40,
-                    text: zn.name + ' — ' + _nextDepth3.toUpperCase(),
+                    text: zn.name + ' - ' + _nextDepth3.toUpperCase(),
                     color: ((_ELEMENTS$zn$element2 = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element2 === void 0 ? void 0 : _ELEMENTS$zn$element2.color) || '#fff',
                     ts: Date.now()
                   });
@@ -1959,7 +1959,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 40,
-                text: '⚔️ Wave ' + (S._dungeonWave + 1) + '/' + S._dungeonMaxWaves,
+                text: 'Wave ' + (S._dungeonWave + 1) + '/' + S._dungeonMaxWaves,
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -2136,7 +2136,7 @@ export function setupGameLoop(ctx) {
                       S.dmgNumbers.push({
                         x: S._petX,
                         y: S._petY - 15,
-                        text: pet.emoji + ' → 🗡️' + drop.name,
+                        text: 'PET -> ' + drop.name,
                         color: loot.tierColor || '#fff',
                         ts: Date.now()
                       });
@@ -2147,7 +2147,7 @@ export function setupGameLoop(ctx) {
                         S.dmgNumbers.push({
                           x: S._petX,
                           y: S._petY - 15,
-                          text: pet.emoji + ' → 📦' + drop.name,
+                          text: 'PET -> ' + drop.name,
                           color: '#8890b8',
                           ts: Date.now()
                         });
@@ -2156,7 +2156,7 @@ export function setupGameLoop(ctx) {
                         S.dmgNumbers.push({
                           x: S._petX,
                           y: S._petY - 15,
-                          text: pet.emoji + ' → sold',
+                          text: 'PET -> sold',
                           color: '#f5c542',
                           ts: Date.now()
                         });
@@ -2310,7 +2310,7 @@ export function setupGameLoop(ctx) {
                 /* If NPC has available quest, hint at it */
                 if (npcQuest && npcQuest.status === 'available' && distToPlayer < 100) {
                   npc.chatBubble = {
-                    text: '❗ I have a task for you! Tap me.',
+                    text: 'I have a task for you! Tap me.',
                     ts: Date.now(),
                     isQuest: true
                   };
@@ -2455,7 +2455,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: m.x,
                 y: m.y - 30,
-                text: '☠️',
+                text: 'KO',
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -2642,7 +2642,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 40,
-                    text: '⚠️ ' + m._currentAttack.toUpperCase() + '!',
+                    text: m._currentAttack.toUpperCase() + '!',
                     color: '#fbbf24',
                     ts: Date.now()
                   });
@@ -2664,7 +2664,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '💥 SLAM!',
+                      text: 'SLAM!',
                       color: '#f5c542',
                       ts: Date.now()
                     });
@@ -2699,7 +2699,7 @@ export function setupGameLoop(ctx) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: blocked ? '🛡️ Blocked! -' + finalDmg : '-' + finalDmg,
+                        text: blocked ? 'BLOCK -' + finalDmg : '-' + finalDmg,
                         color: '#f5c542',
                         ts: Date.now()
                       });
@@ -2709,7 +2709,7 @@ export function setupGameLoop(ctx) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: '💨 Dodged!',
+                        text: 'Dodged!',
                         color: '#3dd497',
                         ts: Date.now()
                       });
@@ -2722,7 +2722,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '🐂 CHARGE!',
+                      text: 'CHARGE!',
                       color: '#ea580c',
                       ts: Date.now()
                     });
@@ -2734,7 +2734,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '🌀 SWEEP!',
+                      text: 'SWEEP!',
                       color: '#a855f7',
                       ts: Date.now()
                     });
@@ -2758,7 +2758,7 @@ export function setupGameLoop(ctx) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: _blocked ? '🛡️ -' + _finalDmg : '-' + _finalDmg,
+                        text: _blocked ? 'BLOCK -' + _finalDmg : '-' + _finalDmg,
                         color: '#a855f7',
                         ts: Date.now()
                       });
@@ -2786,7 +2786,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '👥 Summon!',
+                      text: 'Summon!',
                       color: '#9333ea',
                       ts: Date.now()
                     });
@@ -2799,7 +2799,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '😡 ENRAGED!',
+                      text: 'ENRAGED!',
                       color: '#ff2020',
                       ts: Date.now()
                     });
@@ -2815,7 +2815,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 30,
-                    text: '💫 EXPOSED!',
+                    text: 'EXPOSED!',
                     color: '#3dd497',
                     ts: Date.now()
                   });
@@ -2841,7 +2841,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 20,
-                    text: '💨 -' + _finalDmg2,
+                    text: '-' + _finalDmg2,
                     color: '#ea580c',
                     ts: Date.now()
                   });
@@ -2913,7 +2913,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 20,
-                      text: '💥BOOM -' + explodeDmg,
+                      text: 'BOOM -' + explodeDmg,
                       color: '#ea580c',
                       ts: Date.now()
                     });
@@ -2953,7 +2953,7 @@ export function setupGameLoop(ctx) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: '🔮 Cursed!',
+                        text: 'Cursed!',
                         color: '#8E44AD',
                         ts: Date.now()
                       });
@@ -3005,7 +3005,7 @@ export function setupGameLoop(ctx) {
                         S.dmgNumbers.push({
                           x: P.x,
                           y: P.y - 40,
-                          text: '💀 CRIT -' + critDmg,
+                          text: 'CRIT -' + critDmg,
                           color: '#ff5e6c',
                           ts: Date.now()
                         });
@@ -3017,7 +3017,7 @@ export function setupGameLoop(ctx) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 30,
-                        text: '🛡️ -' + dmgTaken,
+                        text: 'BLOCK -' + dmgTaken,
                         color: '#60a5fa',
                         ts: Date.now()
                       });
@@ -3072,7 +3072,7 @@ export function setupGameLoop(ctx) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 50,
-                        text: '🛡️ DEATH SAVE!',
+                        text: 'DEATH SAVE!',
                         color: '#5b52ff',
                         ts: Date.now()
                       });
@@ -3191,7 +3191,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: P.x,
                       y: P.y - 50,
-                      text: '💀 YOU DIED',
+                      text: 'YOU DIED',
                       color: '#ff5e6c',
                       ts: Date.now()
                     });
@@ -3401,7 +3401,7 @@ export function setupGameLoop(ctx) {
                         S.dmgNumbers.push({
                           x: m.x + 12,
                           y: m.y - 10,
-                          text: '▲',
+                          text: 'UP',
                           color: '#3dd497',
                           ts: Date.now()
                         });
@@ -3411,7 +3411,7 @@ export function setupGameLoop(ctx) {
                         S.dmgNumbers.push({
                           x: m.x + 12,
                           y: m.y - 10,
-                          text: '▼',
+                          text: 'DN',
                           color: '#ff5e6c',
                           ts: Date.now()
                         });
@@ -3473,7 +3473,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: m.x + 8,
                     y: m.y - 35,
-                    text: '💥' + collisionResult.damage + ' ' + coll.name,
+                    text: String(collisionResult.damage) + ' ' + coll.name,
                     color: elemColor,
                     ts: Date.now()
                   });
@@ -3506,7 +3506,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: P.x,
                       y: P.y - 65,
-                      text: '📖 NEW: ' + coll.name + '!',
+                      text: 'NEW: ' + coll.name + '!',
                       color: '#f5c542',
                       ts: Date.now()
                     });
@@ -3602,7 +3602,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '💥⚡ ' + dmg,
+                    text: 'ZAP ' + dmg,
                     color: '#f5c542',
                     iconKey: 'sword',
                     special: _isSpecialDmg,
@@ -3612,7 +3612,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '💥 ' + dmg,
+                    text: String(dmg),
                     color: '#f5c542',
                     iconKey: 'sword',
                     special: _isSpecialDmg,
@@ -3667,7 +3667,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 90,
-                      text: '📖 New Bestiary Entry!',
+                      text: 'New Bestiary Entry!',
                       color: '#00d4b8',
                       ts: Date.now()
                     });
@@ -3877,7 +3877,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 50,
-                      text: '⭐ RARE DROP!',
+                      text: 'RARE DROP!',
                       color: '#f5c542',
                       ts: Date.now()
                     });
@@ -3973,7 +3973,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 60,
-                      text: '🗡️ ' + tierLabel + ' ' + dropName + '!',
+                      text: tierLabel + ' ' + dropName + '!',
                       color: tierColor,
                       ts: Date.now()
                     });
@@ -3998,7 +3998,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 65,
-                      text: '💎 Raw ' + gemName + '!',
+                      text: 'Raw ' + gemName + '!',
                       color: gemCol,
                       ts: Date.now()
                     });
@@ -4010,7 +4010,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 75,
-                      text: '✨ Gold Nugget!',
+                      text: 'Gold Nugget!',
                       color: '#f5c542',
                       ts: Date.now()
                     });
@@ -4227,7 +4227,7 @@ export function setupGameLoop(ctx) {
                 S.dmgNumbers.push({
                   x: o.x,
                   y: o.y - 20,
-                  text: '⚔️',
+                  text: 'HIT',
                   color: '#fff',
                   ts: Date.now()
                 });
@@ -4265,6 +4265,12 @@ export function setupGameLoop(ctx) {
             if (loot.isDeathDrop && loot.expiry && Date.now() > loot.expiry) return false;
             if (loot._expired) return false;
             if (!loot.isDeathDrop && Date.now() - loot.ts > 60000) return false;
+            /* Drop loot with non-finite position — NaN x/y makes lDist NaN, so
+               the distance check never fires and the coin sits forever. Happens
+               when a monster's m.x/m.y is NaN at spawn time (rare; usually a
+               malformed server payload). Better to lose one drop than leave it
+               stuck on the ground. */
+            if (!isFinite(loot.x) || !isFinite(loot.y)) return false;
             var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(P.y - loot.y, 2));
 
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
@@ -4302,7 +4308,7 @@ export function setupGameLoop(ctx) {
                   S.dmgNumbers.push({
                     x: loot.x,
                     y: loot.y - 20,
-                    text: '🗡️ EQUIPPED: ' + drop.name,
+                    text: 'EQUIPPED: ' + drop.name,
                     color: loot.tierColor || '#fff',
                     ts: Date.now()
                   });
@@ -4324,7 +4330,7 @@ export function setupGameLoop(ctx) {
                     S.dmgNumbers.push({
                       x: loot.x,
                       y: loot.y - 20,
-                      text: '📦 STASHED: ' + drop.name,
+                      text: 'STASHED: ' + drop.name,
                       color: '#8890b8',
                       ts: Date.now()
                     });
@@ -4361,7 +4367,7 @@ export function setupGameLoop(ctx) {
                 S.dmgNumbers.push({
                   x: loot.x,
                   y: loot.y - 20,
-                  text: '📦 RECOVERED ' + recoveredCount + ' items!',
+                  text: 'RECOVERED ' + recoveredCount + ' items!',
                   color: '#3dd497',
                   ts: Date.now()
                 });
@@ -4448,7 +4454,7 @@ export function setupGameLoop(ctx) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 50,
-                  text: '⬆️ LEVEL ' + S.rpg.level + '!',
+                  text: 'LEVEL ' + S.rpg.level + '!',
                   color: '#f5c542',
                   ts: Date.now()
                 });
@@ -4603,7 +4609,7 @@ export function setupGameLoop(ctx) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 70,
-                text: '🌟 MVP! +' + CLAN_WAR_REWARDS.mvp.gold + 'G +' + CLAN_WAR_REWARDS.mvp.ap + 'AP',
+                text: 'MVP! +' + CLAN_WAR_REWARDS.mvp.gold + 'G +' + CLAN_WAR_REWARDS.mvp.ap + 'AP',
                 color: '#f5c542',
                 ts: Date.now()
               });
@@ -4612,7 +4618,7 @@ export function setupGameLoop(ctx) {
           S.dmgNumbers.push({
             x: P.x,
             y: P.y - 55,
-            text: cWin === 'tie' ? '⚔️ War ended in a TIE!' : isWinner ? '🏆 WAR WON!' : '💀 War lost...',
+            text: cWin === 'tie' ? 'War ended in a TIE!' : isWinner ? 'WAR WON!' : 'War lost...',
             color: isWinner ? '#f5c542' : '#ff5e6c',
             ts: Date.now()
           });
