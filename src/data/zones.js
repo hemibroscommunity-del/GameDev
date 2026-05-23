@@ -63,7 +63,7 @@ export const ZONES = {
     palette: { ground: '#3a3a3a', path: '#5a5a5a', accent: '#6a5a4a' },
     spawns: [{ arch: 'brute', count: 4 }, { arch: 'sentinel', count: 3 }, { arch: 'swarm', count: 4 }],
     atmosphere: { tint: 'rgba(80,70,50,0.06)', vignette: 'rgba(30,25,15,0.18)' },
-    enemyEmoji: { fodder: '🪨', brute: '🦏', swarm: '🦂', volatile: '💎', hexer: '⚱️' }
+    enemyEmoji: { fodder: 'rubble', brute: 'rock', swarm: 'scorp', volatile: 'gem', hexer: 'urn' }
   },
   sky: {
     id: 'sky', name: 'Desert Winds', w: 32, h: 32,

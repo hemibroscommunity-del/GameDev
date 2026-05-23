@@ -1970,13 +1970,24 @@ export var BroTown = function BroTown(_ref0) {
               if (msg.nodes) {
                 S._serverGatherNodes = true;
                 var _nzone = msg.monsterZone || S.currentZone;
-                S.gatherNodes = msg.nodes.map(function (n) {
-                  var local = createGatherNode(_nzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
-                  local.id = n.id;
-                  local.alive = !!n.alive;
-                  local.respawnAt = n.respawnAt || 0;
-                  return local;
-                });
+                var _curZoneCfgN = ZONES[S.currentZone];
+                /* Safe zones (town, farm) never have resource nodes --
+                   ignore any server-sent set regardless of source so
+                   stale snapshots can't leak trees/ores into town
+                   (v2.3.136 bug report). */
+                if (_curZoneCfgN && _curZoneCfgN.safe) {
+                  S.gatherNodes = [];
+                } else if (_nzone && _nzone !== S.currentZone) {
+                  /* Stale snapshot for a different zone -- ignore. */
+                } else {
+                  S.gatherNodes = msg.nodes.map(function (n) {
+                    var local = createGatherNode(_nzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
+                    local.id = n.id;
+                    local.alive = !!n.alive;
+                    local.respawnAt = n.respawnAt || 0;
+                    return local;
+                  });
+                }
               }
               /* Server-authoritative ground loot — server now owns the
                  pile list, validates pickups, and emits private
@@ -1985,7 +1996,17 @@ export var BroTown = function BroTown(_ref0) {
                  loot push in the monster_kill handler. */
               if (msg.loot) {
                 S._serverLoot = true;
-                S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
+                var _curZoneCfgL = ZONES[S.currentZone];
+                var _lzone = msg.zone || msg.monsterZone;
+                if (_curZoneCfgL && _curZoneCfgL.safe) {
+                  /* Safe zones never have loot piles -- drop stale
+                     payloads from previous-zone fights (v2.3.136). */
+                  S.groundLoot = [];
+                } else if (_lzone && _lzone !== S.currentZone) {
+                  /* Stale loot for a different zone -- ignore. */
+                } else {
+                  S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
+                }
               }
               break;
             }
@@ -1995,7 +2016,15 @@ export var BroTown = function BroTown(_ref0) {
                  zone's authoritative pile list. */
               if (msg.loot) {
                 S._serverLoot = true;
-                S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
+                var _curZoneCfgZL = ZONES[S.currentZone];
+                var _zlzone = msg.zone;
+                if (_curZoneCfgZL && _curZoneCfgZL.safe) {
+                  S.groundLoot = [];
+                } else if (_zlzone && _zlzone !== S.currentZone) {
+                  /* Stale zone_loot for a different zone -- ignore. */
+                } else {
+                  S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
+                }
               }
               break;
             }
@@ -2295,13 +2324,22 @@ export var BroTown = function BroTown(_ref0) {
               if (msg.nodes) {
                 S._serverGatherNodes = true;
                 var _zzone = msg.zone || S.currentZone;
-                S.gatherNodes = msg.nodes.map(function (n) {
-                  var local = createGatherNode(_zzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
-                  local.id = n.id;
-                  local.alive = !!n.alive;
-                  local.respawnAt = n.respawnAt || 0;
-                  return local;
-                });
+                var _curZoneCfgZN = ZONES[S.currentZone];
+                if (_curZoneCfgZN && _curZoneCfgZN.safe) {
+                  /* Safe zone -- never accept server resource nodes
+                     (v2.3.136). */
+                  S.gatherNodes = [];
+                } else if (_zzone && _zzone !== S.currentZone) {
+                  /* Stale snapshot for a different zone -- ignore. */
+                } else {
+                  S.gatherNodes = msg.nodes.map(function (n) {
+                    var local = createGatherNode(_zzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
+                    local.id = n.id;
+                    local.alive = !!n.alive;
+                    local.respawnAt = n.respawnAt || 0;
+                    return local;
+                  });
+                }
               }
               break;
             }
@@ -9246,9 +9284,15 @@ export var BroTown = function BroTown(_ref0) {
                case meant remnants got vacuumed up on the same frame
                they spawned -- the fireGoblin debris bug in v2.3.7. */
             var _isFodderRemnant = isRemnantSkull(loot.skull);
+            /* MP: only magnetize loot the player can actually pick up.
+               Previously every pile within 50 px got pulled toward the
+               player, then sat stuck at ~20 px because the recipient
+               gate below blocked pickup -- looked like own-coin pickup
+               was broken (v2.3.136 bug report). */
+            var _amPileRecipient = !loot.recipients || loot.recipients.includes(S.myId);
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
             var magnetRange = 50;
-            if (!_isFodderRemnant && lDist < magnetRange && lDist > 20) {
+            if (!_isFodderRemnant && _amPileRecipient && lDist < magnetRange && lDist > 20) {
               var pullStrength = (1 - lDist / magnetRange) * 3;
               var pullAngle = Math.atan2(P.y - loot.y, P.x - loot.x);
               loot.x += Math.cos(pullAngle) * pullStrength;
@@ -9259,6 +9303,12 @@ export var BroTown = function BroTown(_ref0) {
                up — otherwise the player walks over the spot during the
                death anim and the invisible loot vanishes silently. */
             if (_isFodderRemnant && Date.now() - (loot.ts || 0) < 100) return true;
+            /* Safe zones never legitimately have loot piles -- if a
+               stale pile leaked through (cross-zone server snapshot),
+               drop it silently rather than beeping at the player every
+               time they walk past (v2.3.136 town-loot bug report). */
+            var _curZoneCfgPK = ZONES[S.currentZone];
+            if (_curZoneCfgPK && _curZoneCfgPK.safe) return false;
             /* Multiplayer recipient gate: monster_kill loot piles carry a
                `recipients` list of player ids who can claim the drop.
                Non-recipients walk over without picking up; the pile stays
@@ -9278,8 +9328,16 @@ export var BroTown = function BroTown(_ref0) {
                _applyLootCredit).  Keep the pile visible until then so
                there's no ghost-state if the request fails. */
             if (lDist < 20 && loot._serverLoot && loot.lootId) {
+              /* Watchdog: if the server never replied with loot_credit
+                 (network drop, bot rejection, etc.), the pile would sit
+                 forever with _pickupPending=true. After 5 s clear the
+                 flag so the next within-range tick can re-send. */
+              if (loot._pickupPending && loot._pickupSentAt && Date.now() - loot._pickupSentAt > 5000) {
+                loot._pickupPending = false;
+              }
               if (!loot._pickupPending) {
                 loot._pickupPending = true;
+                loot._pickupSentAt = Date.now();
                 if (S.channel) {
                   try { S.channel.send({ type: 'loot_pickup', payload: { lootId: loot.lootId, zone: S.currentZone } }); } catch (e) {}
                 }

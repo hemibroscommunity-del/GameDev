@@ -200,6 +200,13 @@ export const MONSTER_VARIANTS = {
     liveScalePx: 96,
     spd: 0.5,
   },
+  /* Rockmonster -- Deep Hollows brute skin.  Same still-pose pattern
+     as fishman. */
+  rockmonster: {
+    baseArchetype: 'brute',
+    liveScalePx: 96,
+    spd: 0.5,
+  },
 };
 
 /* Per-zone overrides — when a monster of base archetype X spawns in
@@ -208,6 +215,7 @@ export const MONSTER_VARIANTS = {
 export const ZONE_VARIANT_MAP = {
   ember: { fodder: 'fireGoblin' },
   tidal: { brute: 'fishman' },
+  hollows: { brute: 'rockmonster' },
   /* sky / Desert Winds: every server archetype remaps to 'mummy' so
      MP players see mummies regardless of whether the server seeds
      fodder or stalker/hexer/volatile/etc.  Server AI keeps running
