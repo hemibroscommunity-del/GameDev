@@ -535,6 +535,12 @@ export class EntityRenderer {
     this.playerDisplay = null;
     this.npcDisplays = new Map();
     this.petDisplay = null;
+    /* Melee aim-aid line — short gold line drawn from player toward
+       current aim direction.  Only visible when melee equipped + right
+       stick deflected; gives sword/shield builds a clear forward sense
+       (ranged weapons already get it from the projectile trail). */
+    this.playerAimAid = null;
+    this._aimAidAlpha = 0;
   }
 
   update(S, now) {
@@ -544,6 +550,45 @@ export class EntityRenderer {
     this._updateNPCs(S, now);
     this._updatePet(S, now);
     this._updatePlayerHud(S, now);
+    this._updatePlayerAimAid(S, now);
+  }
+
+  _updatePlayerAimAid(S, now) {
+    if (!S || !S.player) return;
+    if (!this.playerAimAid || this.playerAimAid.destroyed) {
+      this.playerAimAid = new Graphics();
+      /* Sit beneath the player sprite layer in z-order so the line
+         reads as an aim affordance, not a weapon swing. */
+      this.playerAimAid.zIndex = -1;
+      this.playerLayer.addChild(this.playerAimAid);
+    } else if (this.playerAimAid.parent !== this.playerLayer) {
+      this.playerLayer.addChild(this.playerAimAid);
+    }
+    const slot = (S.rpg && S.rpg.activeSlot) || 'melee';
+    const visible = slot === 'melee'
+      && !!S._aiming
+      && typeof S._aimAngle === 'number'
+      && !(S.rpg && S.rpg.hp <= 0)
+      && !S._shieldUp; /* shield direction has its own glyph; don't double up */
+    /* Smooth fade in/out so the line doesn't pop on every tap. */
+    const target = visible ? 0.55 : 0;
+    this._aimAidAlpha += (target - this._aimAidAlpha) * 0.25;
+    if (this._aimAidAlpha < 0.01 && !visible) {
+      this.playerAimAid.visible = false;
+      return;
+    }
+    this.playerAimAid.visible = true;
+    this.playerAimAid.alpha = this._aimAidAlpha;
+    /* Redraw each frame — Graphics primitives are cheap and the
+       length/angle change every input frame anyway. */
+    const len = 50;
+    this.playerAimAid.clear();
+    this.playerAimAid.moveTo(0, 0)
+      .lineTo(len, 0)
+      .stroke({ color: 0xf5c542, width: 2, alpha: 1, cap: 'round' });
+    this.playerAimAid.x = S.player.x;
+    this.playerAimAid.y = S.player.y;
+    this.playerAimAid.rotation = S._aimAngle || 0;
   }
 
   _updateMonsters(S, now) {
