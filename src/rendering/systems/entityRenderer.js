@@ -41,8 +41,11 @@ function _ensureHudBarTextures() {
    heart with a heavy black stroke so it reads on any background.
    Player heart is larger (red, fits 3-digit HP); monster heart is
    smaller + black-tinted so a crowd of mobs around the player still
-   visually parses as "those are monster HPs, mine is the red one." */
-const PLAYER_HEART_SIZE = 66;
+   visually parses as "those are monster HPs, mine is the red one."
+   v2.3.139: shrunk player heart from 66 -> 40 so it's just wide
+   enough for a 3-digit HP number at its widest section, not bigger
+   (user request). */
+const PLAYER_HEART_SIZE = 40;
 const MONSTER_HEART_SIZE = 52;
 const PLAYER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
@@ -2647,16 +2650,16 @@ export class EntityRenderer {
         heart.width = PLAYER_HEART_SIZE;
         heart.height = PLAYER_HEART_SIZE;
         heart.x = 0;
-        /* Heart hugs the head: with HEART=66 and radius 33, center
-           at y=-66 puts the bottom edge at y=-33 -- the player
-           sprite's head sits around y=-32, so the heart sits right
-           on top of it.  Mana/stam pills moved up to y=-112/-124
-           to clear the heart's top edge (~y=-99). */
-        heart.y = -66;
+        /* Heart hugs the head: center y = -HEART_SIZE puts the bottom
+           edge at -HEART_SIZE/2, where the player sprite's head sits
+           (around y=-32 with the current sprite). Tied to the
+           constant so resizing the heart keeps it hugging the head
+           without separate position tuning. */
+        heart.y = -PLAYER_HEART_SIZE;
         heartText.x = 0;
         /* Nudge the number up into the heart's widest section (~12%
            above the geometric center) so it doesn't ride the bottom V. */
-        heartText.y = -66 - PLAYER_HEART_SIZE * 0.12;
+        heartText.y = -PLAYER_HEART_SIZE - PLAYER_HEART_SIZE * 0.12;
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
