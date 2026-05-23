@@ -253,6 +253,14 @@ export async function initPixiRenderer(canvas) {
        the Pixi children tear down the same tick the pile is
        claimed, instead of waiting one frame for the orphan sweep. */
     disposeLootById: (lootId) => effectsRenderer.disposeLootById(lootId),
+    /* v2.3.138: dispose a single loot pile by direct object reference.
+       Local SP pickups don't always set lootId (legacy melee/bow/DoT
+       push paths) so disposeLootById can't reach them. The pickup
+       filter returns false to remove from S.groundLoot but the orphan
+       sweep was intermittently missing the cleanup, leaving the coin
+       sprite stuck after gold was credited. This direct-ref dispose
+       removes any uncertainty about ID matching. */
+    disposeLootRef: (loot) => effectsRenderer.disposeLootRef(loot),
     /* v2.3.130: wholesale flush.  Sites that do `S.groundLoot = []`
        (player respawn, zone transition, dungeon enter, etc.) call
        this first so all sprites tear down the same tick, closing the

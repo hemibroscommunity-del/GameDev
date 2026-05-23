@@ -1149,6 +1149,18 @@ export class EffectsRenderer {
     }
   }
 
+  /* v2.3.138: dispose by direct object reference. Local SP pickup
+     paths don't set lootId so the ID-based disposeLootById can't
+     reach those piles. Called from the pickup filter the same tick
+     it returns false so the Pixi children tear down without waiting
+     for the orphan sweep -- closes a race where the sweep
+     intermittently missed the cleanup and the coin sprite stuck. */
+  disposeLootRef(loot) {
+    if (!loot) return;
+    this._disposeLoot(loot);
+    if (this._knownLoot) this._knownLoot.delete(loot);
+  }
+
   /* v2.3.130: nuke every tracked loot pile immediately.  Counterpart
      to disposeLootById, called from any site that wipes S.groundLoot
      wholesale (player respawn, zone transition, dungeon enter/exit,

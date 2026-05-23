@@ -9416,6 +9416,11 @@ export var BroTown = function BroTown(_ref0) {
                 try {
                   localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
                 } catch (e) {}
+                try {
+                  if (pixiRef.current && pixiRef.current.disposeLootRef) {
+                    pixiRef.current.disposeLootRef(loot);
+                  }
+                } catch (_e) {}
                 return false;
               }
 
@@ -9448,6 +9453,11 @@ export var BroTown = function BroTown(_ref0) {
                 try {
                   localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
                 } catch (e) {}
+                try {
+                  if (pixiRef.current && pixiRef.current.disposeLootRef) {
+                    pixiRef.current.disposeLootRef(loot);
+                  }
+                } catch (_e) {}
                 return false;
               }
 
@@ -9561,6 +9571,17 @@ export var BroTown = function BroTown(_ref0) {
               try {
                 localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
               } catch (e) {}
+              /* v2.3.138: explicit Pixi dispose for the picked-up pile.
+                 The orphan sweep would catch this next frame, but
+                 intermittently the coin sprite was sticking on the
+                 ground after the gold was credited (user-reported on
+                 desert-winds mummy drops). Direct ref-dispose closes
+                 that race regardless of whether the pile has a lootId. */
+              try {
+                if (pixiRef.current && pixiRef.current.disposeLootRef) {
+                  pixiRef.current.disposeLootRef(loot);
+                }
+              } catch (_e) {}
               return false; /* remove loot */
             }
             return true;
