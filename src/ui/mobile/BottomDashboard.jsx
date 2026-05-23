@@ -558,6 +558,10 @@ export const BottomDashboard = () => {
                 border: '1px solid rgba(255,255,255,0.14)',
                 background: 'rgba(255,100,100,0.04)',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
+                /* v2.3.129: clip overflow so the Kills row (and any other
+                   session-summary row) doesn't bleed past the column's
+                   bottom border at narrow heights. */
+                overflow: 'hidden',
               }}>
                 {/* v2.3.127: ColHeader removed — player name + level
                     now live in the top-right player card.  Removing the
@@ -720,9 +724,14 @@ export const BottomDashboard = () => {
                   const wType = wpn && WEAPON_TYPES[wpn.type];
                   const slotLabel = slot === 'ranged' ? 'Ranged'
                                    : slot === 'staff' ? 'Staff' : 'Melee';
-                  const slotIconSrc = slot === 'ranged' ? '/icons/popups/arrow.png?v=2.3.125'
-                                     : slot === 'staff' ? '/icons/popups/spell.png?v=2.3.125'
-                                     : '/icons/popups/sword.png?v=2.3.125';
+                  /* v2.3.129: loadout slot uses the real in-world weapon
+                     sprite (same artwork the player sees swinging) instead
+                     of the small popup-icon placeholder.  URLs mirror
+                     rendering/weaponSprites.js so the dashboard and the
+                     Pixi scene stay in sync. */
+                  const slotIconSrc = slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.1.24'
+                                     : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.png?v=2.1.24'
+                                     : '/sprites/weapons/swords/Sword1.png?v=2.1.24';
                   let dmgText = '0', dpsText = '0.0';
                   if (wType) {
                     const statVal = (slot === 'ranged') ? (R.agility || 0)
@@ -837,15 +846,18 @@ export const BottomDashboard = () => {
                         {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null,      equipped: !!R.amulet })}
                         {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: true, onTap: onCycleWeapon })}
                       </div>
-                      {/* Row 2 — Chest · Legs (centered via empty side cells). */}
+                      {/* Row 2 — Chest · Legs.  v2.3.129: row reuses the
+                          same 3-column track as Row 1 so chest + legs
+                          cells render at the same width as shield /
+                          amulet / weapon above.  Third slot is left
+                          empty (no third armor piece). */}
                       <div style={{
                         flex: 1,
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
                         gap: 3,
                         minHeight: 0,
                       }}>
-                        <div />
                         {slotCell({ k: 'chest', label: 'CHEST', iconSrc: armorSrc, equipped: !!R.armor })}
                         {slotCell({ k: 'legs',  label: 'LEGS',  iconSrc: null })}
                         <div />
