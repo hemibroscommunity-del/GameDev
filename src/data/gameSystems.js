@@ -5592,6 +5592,26 @@ BT_AUDIO.unlock = function () {
 };
 BT_AUDIO.play = function (key, opts) {
   if (this.muted || !this.ctx) return null;
+  /* v2.3.130: iOS Safari suspends the AudioContext on tab-switch,
+     phone call, screen lock, and sometimes spuriously after memory
+     pressure.  unlock() resumes the ctx once on the first gesture,
+     but if it suspends mid-session every subsequent createBufferSource
+     call produces no sound — matching a user report that combat SFX
+     "pop in then go silent".  Resume defensively here so any single
+     play() call self-heals.  Also log once per resume-cycle to the
+     in-game debug overlay so we can confirm this is the cause in
+     the field. */
+  if (this.ctx.state === 'suspended') {
+    if (this.ctx.resume) { try { this.ctx.resume(); } catch (e) {} }
+    if (!this._suspendLogged && typeof window !== 'undefined' && window.debug && window.debug.pushLog) {
+      try { window.debug.pushLog('warn', ['BT_AUDIO ctx was suspended (key=' + key + '); resuming']); } catch (e) {}
+      this._suspendLogged = true;
+    }
+  } else if (this.ctx.state === 'running') {
+    /* Reset the once-per-cycle guard so we'd log again if the ctx
+       gets suspended a second time. */
+    this._suspendLogged = false;
+  }
   var buf = this._samples[key];
   if (!buf) {
     // Lazily load on first miss so a sound is at least cached for next time.

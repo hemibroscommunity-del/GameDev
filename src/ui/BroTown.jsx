@@ -4029,6 +4029,10 @@ export var BroTown = function BroTown(_ref0) {
     if (!pixiRef.current) {
       initPixiRenderer(canvas).then(function(renderer) {
         pixiRef.current = renderer;
+        /* v2.3.130: also publish to window so module-distant code
+           (gameLoop, panels, ws handlers) can call renderer methods
+           like flushAllLoot without ref plumbing.  Mirrors __pixiActive. */
+        window._pixiRenderer = renderer;
         window.__pixiActive = true;
       }).catch(function(err) {
         console.error('[pixi-init] FAILED:', err);
@@ -5007,7 +5011,7 @@ export var BroTown = function BroTown(_ref0) {
             S.respawnTimer = Date.now() + 3000;
             S._dying = false;
             S._deathStart = 0;
-            S.groundLoot = [];
+            S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
             S.arrows = [];
             S._ambientParticles = [];
@@ -5447,7 +5451,7 @@ export var BroTown = function BroTown(_ref0) {
                 ts: Date.now()
               });
               S.npcs = null;
-              S.groundLoot = [];
+              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
@@ -5521,7 +5525,7 @@ export var BroTown = function BroTown(_ref0) {
               ts: Date.now()
             });
             S.npcs = null;
-            S.groundLoot = [];
+            S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
             S.deathExplosions = [];
             S.arrows = [];
@@ -5571,7 +5575,7 @@ export var BroTown = function BroTown(_ref0) {
               if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, nextDepth);
               P.x = zn.w / 2 * TILE;
               P.y = (zn.h - 3) * TILE;
-              S.groundLoot = [];
+              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
@@ -5650,7 +5654,7 @@ export var BroTown = function BroTown(_ref0) {
               globalThis.ROWS = dH;
               S.monsters = [];
               S.gatherNodes = [];
-              S.groundLoot = [];
+              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
@@ -5704,7 +5708,7 @@ export var BroTown = function BroTown(_ref0) {
             globalThis.ROWS = _zn.h;
             if(!S._serverMonsters) S.monsters = spawnMonstersForZone(_zn, (_dc2 === null || _dc2 === void 0 ? void 0 : _dc2.levelMod) || 0);
             if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, depth);
-            S.groundLoot = [];
+            S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
             S.deathExplosions = [];
             S.arrows = [];
@@ -7944,7 +7948,7 @@ export var BroTown = function BroTown(_ref0) {
                          retriggers the renderer's death timeline from
                          frame 0 rather than reading a stale _selfElapsed. */
                       S._deathStart = 0;
-                      S.groundLoot = [];
+                      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
                       S.hitParticles = [];
                       S.arrows = [];
                       S._ambientParticles = [];
@@ -10790,7 +10794,7 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
-      if (pixiRef.current) { pixiRef.current.destroy(); pixiRef.current = null; }
+      if (pixiRef.current) { pixiRef.current.destroy(); pixiRef.current = null; window._pixiRenderer = null; }
     };
     return function () {
       cancelAnimationFrame(frameRef.current);
@@ -17916,7 +17920,7 @@ export var BroTown = function BroTown(_ref0) {
         }
       });
       S.gatherNodes = [];
-      S.groundLoot = [];
+      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
       S.hitParticles = [];
       S.deathExplosions = [];
       S.arrows = [];
@@ -24250,7 +24254,7 @@ export var BroTown = function BroTown(_ref0) {
       var wz = ZONES.wasteland;
       S.player.x = Math.floor(wz.w / 2) * TILE;
       S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = [];
+      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
       S.hitParticles = [];
       S.deathExplosions = [];
       S.arrows = [];
@@ -25828,7 +25832,7 @@ export var BroTown = function BroTown(_ref0) {
       var wz = ZONES.wasteland;
       S.player.x = Math.floor(wz.w / 2) * TILE;
       S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = [];
+      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
       S.hitParticles = [];
       S.deathExplosions = [];
       S.arrows = [];

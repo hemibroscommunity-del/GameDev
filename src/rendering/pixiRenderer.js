@@ -253,5 +253,11 @@ export async function initPixiRenderer(canvas) {
        the Pixi children tear down the same tick the pile is
        claimed, instead of waiting one frame for the orphan sweep. */
     disposeLootById: (lootId) => effectsRenderer.disposeLootById(lootId),
+    /* v2.3.130: wholesale flush.  Sites that do `S.groundLoot = []`
+       (player respawn, zone transition, dungeon enter, etc.) call
+       this first so all sprites tear down the same tick, closing the
+       window where the orphan sweep hadn't yet run and stale slime
+       remnants or coin piles could still render. */
+    flushAllLoot: () => effectsRenderer.flushAllLoot(),
   };
 }

@@ -123,6 +123,28 @@ export const GameApp = () => {
     };
   }, []);
 
+  /* v2.3.130: re-resume the AudioContext whenever the tab regains
+     focus.  iOS Safari suspends the ctx on tab-switch / phone call /
+     screen lock; the one-time unlock() above runs once per session
+     and won't fire again when the tab comes back.  Without this,
+     SFX appears to "pop in then go silent" because the first source
+     started before suspension finished, and every later play() call
+     creates a BufferSource that never produces audio.  The play()
+     method has a defensive resume too; this listener is the
+     proactive one so the first hit after returning isn't silent. */
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible'
+          && BT_AUDIO && BT_AUDIO.ctx
+          && BT_AUDIO.ctx.state === 'suspended'
+          && BT_AUDIO.ctx.resume) {
+        try { BT_AUDIO.ctx.resume(); } catch (e) {}
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
+
   useEffect(() => {
     fetch(NFT_CSV_URL)
       .then(r => r.text())

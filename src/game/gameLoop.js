@@ -1014,7 +1014,7 @@ export function setupGameLoop(ctx) {
                 ts: Date.now()
               });
               S.npcs = null;
-              S.groundLoot = [];
+              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
@@ -1067,7 +1067,7 @@ export function setupGameLoop(ctx) {
               ts: Date.now()
             });
             S.npcs = null;
-            S.groundLoot = [];
+            S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
             S.deathExplosions = [];
             S.arrows = [];
@@ -1109,7 +1109,7 @@ export function setupGameLoop(ctx) {
               S.gatherNodes = spawnGatherNodes(S.currentZone, nextDepth);
               P.x = zn.w / 2 * TILE;
               P.y = (zn.h - 3) * TILE;
-              S.groundLoot = [];
+              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
@@ -1188,7 +1188,7 @@ export function setupGameLoop(ctx) {
               ROWS = dH;
               S.monsters = [];
               S.gatherNodes = [];
-              S.groundLoot = [];
+              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
@@ -1242,7 +1242,7 @@ export function setupGameLoop(ctx) {
             ROWS = _zn.h;
             if(!S._serverMonsters) S.monsters = spawnMonstersForZone(_zn, (_dc2 === null || _dc2 === void 0 ? void 0 : _dc2.levelMod) || 0);
             S.gatherNodes = spawnGatherNodes(S.currentZone, depth);
-            S.groundLoot = [];
+            S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
             S.deathExplosions = [];
             S.arrows = [];
@@ -3216,7 +3216,7 @@ export function setupGameLoop(ctx) {
                       color: '#ea580c',
                       ts: Date.now()
                     });
-                    S.groundLoot = [];
+                    S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
                     S.hitParticles = [];
                     S.arrows = [];
                     S._ambientParticles = [];
