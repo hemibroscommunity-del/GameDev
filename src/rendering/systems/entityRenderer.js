@@ -39,14 +39,14 @@ function _ensureHudBarTextures() {
    curHp < maxHp (or within HOLD_MS of last hp change for the player).
    Replaces the prior pill-shaped HP bar.  Number is centered on the
    heart with a heavy black stroke so it reads on any background.
-   Player heart is larger (red, fits 3-digit HP); monster heart is
-   smaller + black-tinted so a crowd of mobs around the player still
-   visually parses as "those are monster HPs, mine is the red one."
-   v2.3.139: shrunk player heart from 66 -> 40 so it's just wide
-   enough for a 3-digit HP number at its widest section, not bigger
-   (user request). */
+   Both hearts use the same sprite asset and the same size; the
+   monster's is tinted 0x000000 (black) so a crowd of mobs around
+   the player still visually parses as "those are monster HPs, mine
+   is the red one."  v2.3.139 shrunk the player heart to 40 (3-digit
+   fit); v2.3.141 matched the monster heart to the same size + sprite
+   per user request. */
 const PLAYER_HEART_SIZE = 40;
-const MONSTER_HEART_SIZE = 52;
+const MONSTER_HEART_SIZE = 40;
 const PLAYER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 18,
