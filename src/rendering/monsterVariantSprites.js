@@ -50,6 +50,13 @@ import {
   getRemnantsTexture as skRemnants,
 } from './skeletonSprites.js';
 
+import {
+  loadFishmanSprites,
+  getFrame as fhWalkFrame,
+  hasFrames as fhHasWalk,
+  frameCount as fhWalkCount,
+} from './fishmanSprites.js';
+
 export const VARIANT_SPRITES = {
   fireGoblin: {
     load: loadFireGoblinSprites,
@@ -89,6 +96,13 @@ export const VARIANT_SPRITES = {
        so the fodder branch picks up this texture instead of falling
        through to the slime splat. */
     remnants: { get: skRemnants },
+  },
+  fishman: {
+    load: loadFishmanSprites,
+    /* Single still pose; renderer dwells on the only frame while the
+       entity translates around the map.  No attack/hit/death sheets --
+       falls through to the brute generic paths. */
+    walk: { get: fhWalkFrame, has: fhHasWalk, count: fhWalkCount },
   },
 };
 

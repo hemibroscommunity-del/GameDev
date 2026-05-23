@@ -86,7 +86,7 @@ export const ZONES = {
     palette: { ground: '#2a4a5a', path: '#4a6a7a', accent: '#2a6a9a' },
     spawns: [{ arch: 'swarm', count: 4 }, { arch: 'hexer', count: 4 }, { arch: 'brute', count: 3 }],
     atmosphere: { tint: 'rgba(30,80,120,0.05)', vignette: 'rgba(10,40,80,0.12)' },
-    enemyEmoji: { fodder: '🐟', brute: '🦀', swarm: '🐙', volatile: '🫧', stalker: '🦈', hexer: '🌊', sentinel: '🐚' }
+    enemyEmoji: { fodder: 'fish', brute: 'fishman', swarm: 'octo', volatile: 'bubble', stalker: 'shark', hexer: 'wave', sentinel: 'shell' }
   },
   shadow: {
     id: 'shadow', name: 'Shadow Sanctum', w: 40, h: 40,

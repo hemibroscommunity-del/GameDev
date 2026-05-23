@@ -192,6 +192,14 @@ export const MONSTER_VARIANTS = {
        receipt because goblins take 3-4 hits vs slimes' 1 hit. */
     xpMult: 2,
   },
+  /* Fishman -- Tidal Caves brute skin.  Single still pose, no walk
+     cycle; the renderer dwells on the only frame while the entity
+     translates around the map. */
+  fishman: {
+    baseArchetype: 'brute',
+    liveScalePx: 96,
+    spd: 0.5,
+  },
 };
 
 /* Per-zone overrides — when a monster of base archetype X spawns in
@@ -199,6 +207,7 @@ export const MONSTER_VARIANTS = {
      ZONE_VARIANT_MAP[zoneId] = { [baseArchetype]: variantKey } */
 export const ZONE_VARIANT_MAP = {
   ember: { fodder: 'fireGoblin' },
+  tidal: { brute: 'fishman' },
   /* sky / Desert Winds: every server archetype remaps to 'mummy' so
      MP players see mummies regardless of whether the server seeds
      fodder or stalker/hexer/volatile/etc.  Server AI keeps running
@@ -342,8 +351,12 @@ export function maybeTransformMonster(m) {
   if (!v || !v.transformsTo) return false;
   const maxHp = m.maxHp || m.hp || 1;
   const curHp = m.curHp != null ? m.curHp : m.hp;
-  if (curHp == null || curHp <= 0) return false;
-  if (curHp / maxHp > v.transformAt) return false;
+  if (curHp == null) return false;
+  /* Allow the transform to fire on the death tick (curHp <= 0) so an
+     overkill hit from above transformAt doesn't skip the skeleton phase
+     entirely -- without this, mummies that get one-shotted from full
+     HP have no death sheet of their own and just pop out (v2.3.135). */
+  if (curHp > 0 && curHp / maxHp > v.transformAt) return false;
   /* Trigger -- stamp the start time so the renderer plays the
      transform strip, then swap archetype/spd to the new form. */
   m._transformStart = Date.now();

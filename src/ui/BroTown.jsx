@@ -49,7 +49,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
-import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS } from '@/data/monsterVariants.js';
+import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
@@ -2163,7 +2163,7 @@ export var BroTown = function BroTown(_ref0) {
               S.screenShake = 10;
               S.dmgNumbers.push({
                 x: S.player.x, y: S.player.y - 40,
-                text: '💀 YOU DIED', color: '#ff5e6c', ts: Date.now()
+                text: 'YOU DIED', color: '#ff5e6c', ts: Date.now()
               });
               if (_goldLost3 > 0) S.dmgNumbers.push({
                 x: S.player.x, y: S.player.y - 55,
@@ -2429,7 +2429,7 @@ export var BroTown = function BroTown(_ref0) {
         var myShare = (p.shares && typeof p.shares[myId] === 'number') ? p.shares[myId] : 0;
         return {
           lootId: p.lootId,
-          x: p.x, y: p.y,
+          x: isFinite(p.x) ? p.x : 0, y: isFinite(p.y) ? p.y : 0,
           coins: Math.round((p.coins || 0) * myShare),
           xp: 0,
           skull: p.skull || null,
@@ -2711,8 +2711,13 @@ export var BroTown = function BroTown(_ref0) {
                      tick handler) -- v2.3.17 fix: the previous _wasAlive
                      gate fired false-negative when the tick handler
                      arrived first and set alive=false silently. */
-                  deadM.alive = false;
+                  /* Mummy -> skeleton on overkill (v2.3.135): MP kill events
+                     can arrive before any damage tick, so curHp may still be
+                     full client-side. Force curHp to 0 so the transform
+                     check fires regardless of the cached HP fraction. */
                   deadM.curHp = 0;
+                  maybeTransformMonster(deadM);
+                  deadM.alive = false;
                   /* Loot drop: push the pile on every client so two screens
                      show the same drop at the same position.  Each client
                      stores its own per-share coin amount on the pile (coin
@@ -3052,7 +3057,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.screenShake = 10;
                 S.dmgNumbers.push({
                   x: S.player.x, y: S.player.y - 40,
-                  text: '💀 YOU DIED', color: '#ff5e6c', ts: Date.now()
+                  text: 'YOU DIED', color: '#ff5e6c', ts: Date.now()
                 });
                 if (goldLost2 > 0) S.dmgNumbers.push({
                   x: S.player.x, y: S.player.y - 55,
@@ -3154,7 +3159,7 @@ export var BroTown = function BroTown(_ref0) {
               }
               S.dmgNumbers.push({
                 x: dthX, y: dthY - 40,
-                text: '💀',
+                text: 'KO',
                 color: '#ff5e6c',
                 ts: Date.now(),
                 ttl: 2.0
@@ -3198,7 +3203,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: S.player.x,
                   y: S.player.y - 40,
-                  text: '⚔️ [' + war.challenger.tag + '] declared WAR!',
+                  text: '[' + war.challenger.tag + '] declared WAR!',
                   color: '#ff5e6c',
                   ts: Date.now()
                 });
@@ -3229,7 +3234,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: S.player.x,
                 y: S.player.y - 50,
-                text: '⚔️ ' + payload.kill.killer + ' → ' + payload.kill.victim,
+                text: payload.kill.killer + ' -> ' + payload.kill.victim,
                 color: 'rgba(255,255,255,.4)',
                 ts: Date.now()
               });
@@ -3250,7 +3255,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: S.player.x,
                 y: S.player.y - 50,
-                text: isWinner ? '🏆 WAR WON!' : '💀 War lost...',
+                text: isWinner ? 'WAR WON!' : 'War lost...',
                 color: isWinner ? '#f5c542' : '#ff5e6c',
                 ts: Date.now()
               });
@@ -3554,7 +3559,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: S.player.x,
                     y: S.player.y - 65,
-                    text: '⚔️ +' + points + ' war points!',
+                    text: '+' + points + ' war points!',
                     color: '#ff5e6c',
                     ts: Date.now()
                   });
@@ -3592,7 +3597,7 @@ export var BroTown = function BroTown(_ref0) {
                         S.dmgNumbers.push({
                           x: S.player.x,
                           y: S.player.y - 80,
-                          text: '🏆 GLADIATOR CHAMPION!',
+                          text: 'GLADIATOR CHAMPION!',
                           color: '#f5c542',
                           ts: Date.now()
                         });
@@ -3612,7 +3617,7 @@ export var BroTown = function BroTown(_ref0) {
                         S.dmgNumbers.push({
                           x: S.player.x,
                           y: S.player.y - 80,
-                          text: '🏟️ Arena win! Round ' + ((_d$tournament = d.tournament) === null || _d$tournament === void 0 ? void 0 : _d$tournament.round),
+                          text: 'Arena win! Round ' + ((_d$tournament = d.tournament) === null || _d$tournament === void 0 ? void 0 : _d$tournament.round),
                           color: '#3dd497',
                           ts: Date.now()
                         });
@@ -4977,7 +4982,7 @@ export var BroTown = function BroTown(_ref0) {
           var _defGoldLost = Math.floor((S.rpg.coins || 0) * DEATH_GOLD_PENALTY);
           S.rpg.coins = Math.max(0, (S.rpg.coins || 0) - _defGoldLost);
           /* Popup (skip if a rich handler already pushed one this tick). */
-          S.dmgNumbers.push({ x: P.x, y: P.y - 50, text: '💀 YOU DIED', color: '#ff5e6c', ts: Date.now() });
+          S.dmgNumbers.push({ x: P.x, y: P.y - 50, text: 'YOU DIED', color: '#ff5e6c', ts: Date.now() });
           if (_defGoldLost > 0) S.dmgNumbers.push({ x: P.x, y: P.y - 35, text: '-' + _defGoldLost + 'G', color: '#ff5e6c', ts: Date.now() });
           S.screenShake = Math.max(S.screenShake || 0, 10);
           S._deathFlash = Date.now();
@@ -5187,7 +5192,7 @@ export var BroTown = function BroTown(_ref0) {
             S.dmgNumbers.push({
               x: P.x,
               y: P.y - 30,
-              text: '💤 Resting... (3s)',
+              text: 'Resting... (3s)',
               color: '#a0a0ff',
               ts: Date.now()
             });
@@ -5204,14 +5209,14 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 40,
-                text: '✨ Fully Rested!',
+                text: 'Fully Rested!',
                 color: '#3dd497',
                 ts: Date.now()
               });
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 25,
-                text: '🌟 +10% XP for 30 min',
+                text: '+10% XP for 30 min',
                 color: '#f5c542',
                 ts: Date.now()
               });
@@ -5576,7 +5581,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 40,
-                text: zn.name + ' — ' + nextDepth.toUpperCase(),
+                text: zn.name + ' - ' + nextDepth.toUpperCase(),
                 color: ((_ELEMENTS$zn$element = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element === void 0 ? void 0 : _ELEMENTS$zn$element.color) || '#fff',
                 ts: Date.now()
               });
@@ -5669,7 +5674,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 40,
-                text: '⚔️ DUNGEON: Wave 1/' + S._dungeonMaxWaves,
+                text: 'DUNGEON: Wave 1/' + S._dungeonMaxWaves,
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -5742,7 +5747,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 30,
-                text: '🧗 Climbing fence... (2s)',
+                text: 'Climbing fence... (2s)',
                 color: '#f5c542',
                 ts: Date.now()
               });
@@ -5770,7 +5775,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 30,
-                text: '☠️ LAWLESS ZONE — All items at risk!',
+                text: 'LAWLESS ZONE - All items at risk!',
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -5783,7 +5788,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 30,
-                text: '🏠 Safe zone! Walk south to return to town.',
+                text: 'Safe zone! Walk south to return to town.',
                 color: '#3dd497',
                 ts: Date.now()
               });
@@ -5841,7 +5846,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: _m.x,
                       y: _m.y - 20,
-                      text: '❄️' + Math.round(dmg),
+                      text: String(Math.round(dmg)),
                       color: '#a0d8f0',
                       ts: Date.now()
                     });
@@ -5885,7 +5890,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: sm.x,
                 y: sm.y - 20,
-                text: '⛄ Melted!',
+                text: 'Melted!',
                 color: '#a0d8f0',
                 ts: Date.now()
               });
@@ -5942,7 +5947,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '🛷' + sledDmg,
+                    text: 'SLED ' + sledDmg,
                     color: '#60a5fa',
                     ts: Date.now()
                   });
@@ -5966,7 +5971,7 @@ export var BroTown = function BroTown(_ref0) {
             S.dmgNumbers.push({
               x: P.x,
               y: P.y - 30,
-              text: '🛷 Sled stopped',
+              text: 'Sled stopped',
               color: '#a0d8f0',
               ts: Date.now()
             });
@@ -6001,7 +6006,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 20,
-                  text: '🫧 -' + DIVE_DAMAGE_RATE + ' (drowning!)',
+                  text: '-' + DIVE_DAMAGE_RATE + ' (drowning!)',
                   color: '#3498DB',
                   ts: Date.now()
                 });
@@ -6010,7 +6015,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 40,
-                    text: '💀 Drowned!',
+                    text: 'Drowned!',
                     color: '#ff5e6c',
                     ts: Date.now()
                   });
@@ -6026,7 +6031,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: P.x + Math.random() * 30 - 15,
                 y: P.y - 30,
-                text: '🏴‍☠️ +' + treasureGold + 'G treasure!',
+                text: '+' + treasureGold + 'G treasure!',
                 color: '#f5c542',
                 ts: Date.now()
               });
@@ -6061,7 +6066,7 @@ export var BroTown = function BroTown(_ref0) {
           S.dmgNumbers.push({
             x: P.x,
             y: P.y - 30,
-            text: '🔥 Torch burned out!',
+            text: 'Torch burned out!',
             color: '#ea580c',
             ts: Date.now()
           });
@@ -6114,7 +6119,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 50,
-                    text: '🐉 BOSS FIGHT!',
+                    text: 'BOSS FIGHT!',
                     color: '#ff5e6c',
                     ts: Date.now()
                   });
@@ -6126,7 +6131,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 50,
-                    text: '🏆 DUNGEON CLEARED!',
+                    text: 'DUNGEON CLEARED!',
                     color: '#f5c542',
                     ts: Date.now()
                   });
@@ -6203,7 +6208,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 50,
-                  text: '🐉 BOSS FIGHT!',
+                  text: 'BOSS FIGHT!',
                   color: '#ff5e6c',
                   ts: Date.now()
                 });
@@ -6233,7 +6238,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 60,
-                  text: '🏆 DUNGEON CLEARED!',
+                  text: 'DUNGEON CLEARED!',
                   color: '#f5c542',
                   ts: Date.now()
                 });
@@ -6296,7 +6301,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 60,
-                  text: '🏆 DUNGEON CLEARED!',
+                  text: 'DUNGEON CLEARED!',
                   color: '#f5c542',
                   ts: Date.now()
                 });
@@ -6319,7 +6324,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 15,
-                    text: '✦ Shadow & Radiant zones revealed!',
+                    text: 'Shadow & Radiant zones revealed!',
                     color: '#F1C40F',
                     ts: Date.now()
                   });
@@ -6361,7 +6366,7 @@ export var BroTown = function BroTown(_ref0) {
                   st.dmgNumbers.push({
                     x: st.player.x,
                     y: st.player.y - 40,
-                    text: zn.name + ' — ' + _nextDepth3.toUpperCase(),
+                    text: zn.name + ' - ' + _nextDepth3.toUpperCase(),
                     color: ((_ELEMENTS$zn$element2 = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element2 === void 0 ? void 0 : _ELEMENTS$zn$element2.color) || '#fff',
                     ts: Date.now()
                   });
@@ -6422,7 +6427,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 40,
-                text: '⚔️ Wave ' + (S._dungeonWave + 1) + '/' + S._dungeonMaxWaves,
+                text: 'Wave ' + (S._dungeonWave + 1) + '/' + S._dungeonMaxWaves,
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -6631,7 +6636,7 @@ export var BroTown = function BroTown(_ref0) {
                       S.dmgNumbers.push({
                         x: S._petX,
                         y: S._petY - 15,
-                        text: pet.emoji + ' → 🗡️' + drop.name,
+                        text: 'PET -> ' + drop.name,
                         color: loot.tierColor || '#fff',
                         ts: Date.now()
                       });
@@ -6642,7 +6647,7 @@ export var BroTown = function BroTown(_ref0) {
                         S.dmgNumbers.push({
                           x: S._petX,
                           y: S._petY - 15,
-                          text: pet.emoji + ' → 📦' + drop.name,
+                          text: 'PET -> ' + drop.name,
                           color: '#8890b8',
                           ts: Date.now()
                         });
@@ -6651,7 +6656,7 @@ export var BroTown = function BroTown(_ref0) {
                         S.dmgNumbers.push({
                           x: S._petX,
                           y: S._petY - 15,
-                          text: pet.emoji + ' → sold',
+                          text: 'PET -> sold',
                           color: '#f5c542',
                           ts: Date.now()
                         });
@@ -6813,7 +6818,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* If NPC has available quest, hint at it */
                 if (npcQuest && npcQuest.status === 'available' && distToPlayer < 100) {
                   npc.chatBubble = {
-                    text: '❗ I have a task for you! Tap me.',
+                    text: 'I have a task for you! Tap me.',
                     ts: Date.now(),
                     isQuest: true
                   };
@@ -6956,6 +6961,10 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 return;
               }
+              /* Mummy -> skeleton on overkill: fire the transform before
+                 setting alive=false so the renderer picks up the skeleton
+                 death sheet instead of popping a mummy with no death art. */
+              maybeTransformMonster(m);
               m.alive = false;
               m.respawnAt = Date.now() + 30000;
               m.statuses = {};
@@ -6969,7 +6978,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: m.x,
                 y: m.y - 30,
-                text: '☠️',
+                text: 'KO',
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -7205,7 +7214,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 40,
-                    text: '⚠️ ' + m._currentAttack.toUpperCase() + '!',
+                    text: m._currentAttack.toUpperCase() + '!',
                     color: '#fbbf24',
                     ts: Date.now()
                   });
@@ -7227,7 +7236,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '💥 SLAM!',
+                      text: 'SLAM!',
                       color: '#f5c542',
                       ts: Date.now()
                     });
@@ -7263,7 +7272,7 @@ export var BroTown = function BroTown(_ref0) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: blocked ? '🛡️ Blocked!' : '-' + finalDmg,
+                        text: blocked ? 'BLOCK' : '-' + finalDmg,
                         color: '#f5c542',
                         ts: Date.now()
                       });
@@ -7280,7 +7289,7 @@ export var BroTown = function BroTown(_ref0) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: '💨 Dodged!',
+                        text: 'Dodged!',
                         color: '#3dd497',
                         ts: Date.now()
                       });
@@ -7293,7 +7302,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '🐂 CHARGE!',
+                      text: 'CHARGE!',
                       color: '#ea580c',
                       ts: Date.now()
                     });
@@ -7305,7 +7314,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '🌀 SWEEP!',
+                      text: 'SWEEP!',
                       color: '#a855f7',
                       ts: Date.now()
                     });
@@ -7330,7 +7339,7 @@ export var BroTown = function BroTown(_ref0) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: _blocked ? '🛡️ Blocked!' : '-' + _finalDmg,
+                        text: _blocked ? 'BLOCK' : '-' + _finalDmg,
                         color: '#a855f7',
                         ts: Date.now()
                       });
@@ -7365,7 +7374,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '👥 Summon!',
+                      text: 'Summon!',
                       color: '#9333ea',
                       ts: Date.now()
                     });
@@ -7378,7 +7387,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 30,
-                      text: '😡 ENRAGED!',
+                      text: 'ENRAGED!',
                       color: '#ff2020',
                       ts: Date.now()
                     });
@@ -7394,7 +7403,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 30,
-                    text: '💫 EXPOSED!',
+                    text: 'EXPOSED!',
                     color: '#3dd497',
                     ts: Date.now()
                   });
@@ -7421,7 +7430,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 20,
-                    text: '💨 -' + _finalDmg2,
+                    text: '-' + _finalDmg2,
                     color: '#ea580c',
                     ts: Date.now()
                   });
@@ -7584,7 +7593,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 20,
-                      text: '💥BOOM -' + explodeDmg,
+                      text: 'BOOM -' + explodeDmg,
                       color: '#ea580c',
                       ts: Date.now()
                     });
@@ -7634,7 +7643,7 @@ export var BroTown = function BroTown(_ref0) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 20,
-                        text: '🔮 Cursed!',
+                        text: 'Cursed!',
                         color: '#8E44AD',
                         ts: Date.now()
                       });
@@ -7689,7 +7698,7 @@ export var BroTown = function BroTown(_ref0) {
                         S.dmgNumbers.push({
                           x: P.x,
                           y: P.y - 40,
-                          text: '💀 CRIT -' + critDmg,
+                          text: 'CRIT -' + critDmg,
                           color: '#ff5e6c',
                           ts: Date.now()
                         });
@@ -7707,7 +7716,7 @@ export var BroTown = function BroTown(_ref0) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 30,
-                        text: '🛡️ Blocked!',
+                        text: 'BLOCK',
                         color: '#60a5fa',
                         ts: Date.now()
                       });
@@ -7757,7 +7766,7 @@ export var BroTown = function BroTown(_ref0) {
                       S.dmgNumbers.push({
                         x: P.x,
                         y: P.y - 50,
-                        text: '🛡️ DEATH SAVE!',
+                        text: 'DEATH SAVE!',
                         color: '#5b52ff',
                         ts: Date.now()
                       });
@@ -7882,7 +7891,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: P.x,
                       y: P.y - 50,
-                      text: '💀 YOU DIED',
+                      text: 'YOU DIED',
                       color: '#ff5e6c',
                       ts: Date.now()
                     });
@@ -8143,7 +8152,7 @@ export var BroTown = function BroTown(_ref0) {
                       m.statuses[statusId].remaining *= _extMul;
                       m.statuses[statusId].maxDur = Math.max(m.statuses[statusId].maxDur || 0, m.statuses[statusId].remaining);
                       S.combo.nextExtended = false;
-                      S.dmgNumbers.push({ x: m.x, y: m.y - 28, text: '✚ ext', color: '#f5c542', ts: Date.now() });
+                      S.dmgNumbers.push({ x: m.x, y: m.y - 28, text: 'ext', color: '#f5c542', ts: Date.now() });
                     }
                     var elemDef = ELEMENTS[hitElement];
                     /* §Stage 2: "Brief bright pop on first application. Then ambient." */
@@ -8181,7 +8190,7 @@ export var BroTown = function BroTown(_ref0) {
                         S.dmgNumbers.push({
                           x: m.x + 12,
                           y: m.y - 10,
-                          text: '▲',
+                          text: 'UP',
                           color: '#3dd497',
                           ts: Date.now()
                         });
@@ -8191,7 +8200,7 @@ export var BroTown = function BroTown(_ref0) {
                         S.dmgNumbers.push({
                           x: m.x + 12,
                           y: m.y - 10,
-                          text: '▼',
+                          text: 'DN',
                           color: '#ff5e6c',
                           ts: Date.now()
                         });
@@ -8347,7 +8356,7 @@ export var BroTown = function BroTown(_ref0) {
                         _spTarget.statuses[_spStatusId].remaining = _spRem;
                       }
                       var _spElCol = (ELEMENTS[collisionResult.setupElement] || {}).color || '#fff';
-                      S.dmgNumbers.push({ x: _spTarget.x, y: _spTarget.y - 18, text: '↻ spread', color: _spElCol, ts: Date.now() });
+                      S.dmgNumbers.push({ x: _spTarget.x, y: _spTarget.y - 18, text: 'spread', color: _spElCol, ts: Date.now() });
                     }
                   }
                   /* §5.9.6 Combo "Next" (count 3) — flag the player so the
@@ -8362,9 +8371,9 @@ export var BroTown = function BroTown(_ref0) {
                      with a 🎯 marker when the consumed status was inside
                      its resonance window. Tag a +N% burst readout at peak. */
                   var _bColor = elemColor;
-                  var _bPrefix = '💥';
+                  var _bPrefix = '';
                   if (collisionResult.resonating) {
-                    _bPrefix = '🎯💥';
+                    _bPrefix = 'CRIT ';
                     _bColor = '#fffbb0'; /* near-white shimmer per §5.7.3 */
                   }
                   /* Collision burst damage number */
@@ -8421,7 +8430,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: P.x,
                       y: P.y - 65,
-                      text: '📖 NEW: ' + coll.name + '!',
+                      text: 'NEW: ' + coll.name + '!',
                       color: '#f5c542',
                       ts: Date.now()
                     });
@@ -8529,7 +8538,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '💥⚡ ' + dmg,
+                    text: 'ZAP ' + dmg,
                     color: '#f5c542',
                     iconKey: 'sword',
                     special: _isSpecialDmg,
@@ -8539,7 +8548,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: m.x,
                     y: m.y - 20,
-                    text: '💥 ' + dmg,
+                    text: String(dmg),
                     color: '#f5c542',
                     iconKey: 'sword',
                     special: _isSpecialDmg,
@@ -8566,6 +8575,8 @@ export var BroTown = function BroTown(_ref0) {
                 }
                 if (m.curHp <= 0) {
                   var _ELEMENTS$splatElem, _ZONES$S$currentZone6;
+                  /* Mummy -> skeleton on overkill (v2.3.135). */
+                  maybeTransformMonster(m);
                   m.alive = false;
                   m.respawnAt = Date.now() + 30000;
                   m.statuses = {};
@@ -8601,7 +8612,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 90,
-                      text: '📖 New Bestiary Entry!',
+                      text: 'New Bestiary Entry!',
                       color: '#00d4b8',
                       ts: Date.now()
                     });
@@ -8812,7 +8823,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 50,
-                      text: '⭐ RARE DROP!',
+                      text: 'RARE DROP!',
                       color: '#f5c542',
                       ts: Date.now()
                     });
@@ -8908,7 +8919,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 60,
-                      text: '🗡️ ' + tierLabel + ' ' + dropName + '!',
+                      text: tierLabel + ' ' + dropName + '!',
                       color: tierColor,
                       ts: Date.now()
                     });
@@ -8933,7 +8944,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 65,
-                      text: '💎 Raw ' + gemName + '!',
+                      text: 'Raw ' + gemName + '!',
                       color: gemCol,
                       ts: Date.now()
                     });
@@ -8945,7 +8956,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: m.x,
                       y: m.y - 75,
-                      text: '✨ Gold Nugget!',
+                      text: 'Gold Nugget!',
                       color: '#f5c542',
                       ts: Date.now()
                     });
@@ -9181,7 +9192,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: o.x,
                   y: o.y - 20,
-                  text: '⚔️',
+                  text: 'HIT',
                   color: '#fff',
                   ts: Date.now()
                 });
@@ -9298,7 +9309,7 @@ export var BroTown = function BroTown(_ref0) {
                   S.dmgNumbers.push({
                     x: loot.x,
                     y: loot.y - 20,
-                    text: '🗡️ EQUIPPED: ' + drop.name,
+                    text: 'EQUIPPED: ' + drop.name,
                     color: loot.tierColor || '#fff',
                     ts: Date.now()
                   });
@@ -9320,7 +9331,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.dmgNumbers.push({
                       x: loot.x,
                       y: loot.y - 20,
-                      text: '📦 STASHED: ' + drop.name,
+                      text: 'STASHED: ' + drop.name,
                       color: '#8890b8',
                       ts: Date.now()
                     });
@@ -9357,7 +9368,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: loot.x,
                   y: loot.y - 20,
-                  text: '📦 RECOVERED ' + recoveredCount + ' items!',
+                  text: 'RECOVERED ' + recoveredCount + ' items!',
                   color: '#3dd497',
                   ts: Date.now()
                 });
@@ -9461,7 +9472,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: P.x,
                   y: P.y - 50,
-                  text: '⬆️ LEVEL ' + S.rpg.level + '!',
+                  text: 'LEVEL ' + S.rpg.level + '!',
                   color: '#f5c542',
                   ts: Date.now()
                 });
@@ -9620,7 +9631,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: P.x,
                 y: P.y - 70,
-                text: '🌟 MVP! +' + CLAN_WAR_REWARDS.mvp.gold + 'G +' + CLAN_WAR_REWARDS.mvp.ap + 'AP',
+                text: 'MVP! +' + CLAN_WAR_REWARDS.mvp.gold + 'G +' + CLAN_WAR_REWARDS.mvp.ap + 'AP',
                 color: '#f5c542',
                 ts: Date.now()
               });
@@ -9629,7 +9640,7 @@ export var BroTown = function BroTown(_ref0) {
           S.dmgNumbers.push({
             x: P.x,
             y: P.y - 55,
-            text: cWin === 'tie' ? '⚔️ War ended in a TIE!' : isWinner ? '🏆 WAR WON!' : '💀 War lost...',
+            text: cWin === 'tie' ? 'War ended in a TIE!' : isWinner ? 'WAR WON!' : 'War lost...',
             color: isWinner ? '#f5c542' : '#ff5e6c',
             ts: Date.now()
           });
@@ -10045,7 +10056,7 @@ export var BroTown = function BroTown(_ref0) {
                       m.statuses[statusId].remaining *= _extMulR;
                       m.statuses[statusId].maxDur = Math.max(m.statuses[statusId].maxDur || 0, m.statuses[statusId].remaining);
                       S.combo.nextExtended = false;
-                      S.dmgNumbers.push({ x: m.x, y: m.y - 28, text: '✚ ext', color: '#f5c542', ts: Date.now() });
+                      S.dmgNumbers.push({ x: m.x, y: m.y - 28, text: 'ext', color: '#f5c542', ts: Date.now() });
                     }
                   }
                 }
@@ -10138,7 +10149,7 @@ export var BroTown = function BroTown(_ref0) {
                   BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
                   var isNew = discoverCollision(coll.id);
                   if (isNew) {
-                    S.dmgNumbers.push({ x: P.x, y: P.y - 60, text: '📖 NEW: ' + coll.name + '!', color: '#f5c542', ts: Date.now() });
+                    S.dmgNumbers.push({ x: P.x, y: P.y - 60, text: 'NEW: ' + coll.name + '!', color: '#f5c542', ts: Date.now() });
                     BT_AUDIO.collect();
                   }
                 }
@@ -10285,6 +10296,8 @@ export var BroTown = function BroTown(_ref0) {
                     }
                     return;
                   }
+                  /* Mummy -> skeleton on overkill (v2.3.135). */
+                  maybeTransformMonster(m);
                   m.alive = false;
                   m.respawnAt = Date.now() + 30000;
                   m.statuses = {};
@@ -10383,7 +10396,7 @@ export var BroTown = function BroTown(_ref0) {
                       var tierMult = RARITY_TIERS[dropTier].mult;
                       if (dropTier === 'common') dropName = WEAPON_TYPES[dropType].label; else if (dropTier === 'elemental') dropName = dropE1.charAt(0).toUpperCase() + dropE1.slice(1) + ' ' + WEAPON_TYPES[dropType].label; else if (dropTier === 'fusion') dropName = dropE1.charAt(0).toUpperCase() + dropE1.slice(1) + (dropE2.charAt(0).toUpperCase() + dropE2.slice(1)) + ' ' + WEAPON_TYPES[dropType].label; else dropName = 'Prismatic ' + WEAPON_TYPES[dropType].label;
                       S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 20, y: m.y + (Math.random() - 0.5) * 20, ts: Date.now(), isWeapon: true, weapon: { type: dropType, tier: dropTier, tierMult: tierMult, element1: dropE1, element2: dropE2, name: dropName, isVolatile: dropVolatile }, tierColor: RARITY_TIERS[dropTier].color });
-                      S.dmgNumbers.push({ x: m.x, y: m.y - 40, text: '🗡️ ' + dropName + '!', color: RARITY_TIERS[dropTier].color, ts: Date.now() });
+                      S.dmgNumbers.push({ x: m.x, y: m.y - 40, text: dropName + '!', color: RARITY_TIERS[dropTier].color, ts: Date.now() });
                     }
                     setRpgState(_objectSpread({}, _R9));
                     try { localStorage.setItem('bt_rpg', JSON.stringify(_R9)); } catch (e) {}
@@ -10448,7 +10461,7 @@ export var BroTown = function BroTown(_ref0) {
               try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
               S.dmgNumbers.push({
                 x: P.x, y: P.y - 20,
-                text: '🛡️ Blocked!',
+                text: 'BLOCK',
                 color: '#60a5fa',
                 ts: Date.now(),
               });
@@ -10916,7 +10929,7 @@ export var BroTown = function BroTown(_ref0) {
               S3.dmgNumbers.push({
                 x: S3.player.x,
                 y: S3.player.y - 50,
-                text: '🏟️ ARENA MATCH! vs ' + opp,
+                text: 'ARENA MATCH! vs ' + opp,
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -10958,7 +10971,7 @@ export var BroTown = function BroTown(_ref0) {
                 S3.dmgNumbers.push({
                   x: S3.player.x,
                   y: S3.player.y - 60,
-                  text: '🎲 BET WON! +' + totalWon + 'G',
+                  text: 'BET WON! +' + totalWon + 'G',
                   color: '#f5c542',
                   ts: Date.now()
                 });
@@ -10967,7 +10980,7 @@ export var BroTown = function BroTown(_ref0) {
                 S3.dmgNumbers.push({
                   x: S3.player.x,
                   y: S3.player.y - 60,
-                  text: '🎲 Bet lost (-' + totalLost + 'G)',
+                  text: 'Bet lost (-' + totalLost + 'G)',
                   color: 'rgba(255,255,255,.4)',
                   ts: Date.now()
                 });
@@ -11090,7 +11103,7 @@ export var BroTown = function BroTown(_ref0) {
         var sid = (ELEMENTS[hitEl] || {}).status;
         if (sid) applyStatus(lt, sid, S.player, Date.now());
       }
-      S.dmgNumbers.push({ x: lt.x, y: lt.y - 18, text: '↯ ' + lDmg, color: '#fffbb0', ts: Date.now() });
+      S.dmgNumbers.push({ x: lt.x, y: lt.y - 18, text: String(lDmg), color: '#fffbb0', ts: Date.now() });
       BT_AUDIO.swordHit({ vol: 0.5 });
       /* Combo treats a lunge hit as an auto-attack hit on the lock-on target. */
       if (!S.combo) S.combo = { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 };
@@ -11446,7 +11459,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current.dmgNumbers.push({
         x: stateRef.current.player.x,
         y: stateRef.current.player.y - 30,
-        text: '🔒 ' + msg,
+        text: msg,
         color: '#f5c542',
         ts: Date.now()
       });
@@ -11471,14 +11484,14 @@ export var BroTown = function BroTown(_ref0) {
     S2.dmgNumbers.push({
       x: S2.player.x,
       y: S2.player.y - 40,
-      text: '😴 Zzz... Stats restored!',
+      text: 'Zzz... Stats restored!',
       color: '#3dd497',
       ts: Date.now()
     });
     S2.dmgNumbers.push({
       x: S2.player.x,
       y: S2.player.y - 25,
-      text: '✨ Well Rested +10% XP (30min)',
+      text: 'Well Rested +10% XP (30min)',
       color: '#f5c542',
       ts: Date.now()
     });
@@ -11597,10 +11610,10 @@ export var BroTown = function BroTown(_ref0) {
     /* Floating numbers near the node (deterministic; safe to predict
        client-side regardless of who owns the state). */
     S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: node.emoji + ' ' + baseName + (yieldQty > 1 ? ' ×' + yieldQty : ''), color: node.color, ts: Date.now() });
+    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), color: node.color, ts: Date.now() });
     S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Fishing XP', color: '#00d4b8', ts: Date.now() });
     if (leveled) {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: '🎣 Fishing Level ' + R.lifeSkills.fishing.level + '!', color: '#f5c542', ts: Date.now() });
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Fishing Level ' + R.lifeSkills.fishing.level + '!', color: '#f5c542', ts: Date.now() });
       BT_AUDIO.collect();
     }
     setRpgState(_objectSpread({}, R));
@@ -11641,7 +11654,7 @@ export var BroTown = function BroTown(_ref0) {
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
       S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '+' + actual + ' HP', color: '#3dd497', ts: Date.now() });
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: '🍽 Ate cooked fish', color: '#f5c542', ts: Date.now() });
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: 'Ate cooked fish', color: '#f5c542', ts: Date.now() });
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -11661,10 +11674,10 @@ export var BroTown = function BroTown(_ref0) {
        + cooking XP gain go through the server when the channel is open;
        fallback to local apply otherwise (SP / disconnected). */
     if (kind === 'cooked') {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '🍳 Cooked!', color: '#f5c542', ts: Date.now() });
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'Cooked!', color: '#f5c542', ts: Date.now() });
       S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: '+8 Cooking XP', color: '#00d4b8', ts: Date.now() });
     } else {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '🔥 Burnt!', color: '#ff5e6c', ts: Date.now() });
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'Burnt!', color: '#ff5e6c', ts: Date.now() });
     }
     if (S.channel) {
       /* Server-mediated path: cook_request lets the worker validate
@@ -11736,10 +11749,10 @@ export var BroTown = function BroTown(_ref0) {
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.treesFelled = (R._compStats.treesFelled || 0) + 1;
     S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: '🪓 ' + baseName + (yieldQty > 1 ? ' ×' + yieldQty : ''), color: node.color, ts: Date.now() });
+    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), color: node.color, ts: Date.now() });
     S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Woodcutting XP', color: '#00d4b8', ts: Date.now() });
     if (leveled) {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: '🪓 Woodcutting Level ' + R.lifeSkills.woodcutting.level + '!', color: '#f5c542', ts: Date.now() });
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Woodcutting Level ' + R.lifeSkills.woodcutting.level + '!', color: '#f5c542', ts: Date.now() });
       BT_AUDIO.collect();
     }
     setRpgState(_objectSpread({}, R));
@@ -11796,10 +11809,10 @@ export var BroTown = function BroTown(_ref0) {
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.oresMined = (R._compStats.oresMined || 0) + 1;
     S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: '⛏ ' + baseName + (yieldQty > 1 ? ' ×' + yieldQty : ''), color: node.color, ts: Date.now() });
+    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), color: node.color, ts: Date.now() });
     S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Mining XP', color: '#00d4b8', ts: Date.now() });
     if (leveled) {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: '⛏ Mining Level ' + R.lifeSkills.mining.level + '!', color: '#f5c542', ts: Date.now() });
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Mining Level ' + R.lifeSkills.mining.level + '!', color: '#f5c542', ts: Date.now() });
       BT_AUDIO.collect();
     }
     setRpgState(_objectSpread({}, R));
@@ -11854,7 +11867,7 @@ export var BroTown = function BroTown(_ref0) {
     S2.dmgNumbers.push({
       x: S2.player.x,
       y: S2.player.y - 40,
-      text: '🔄 ' + wpnName,
+      text: wpnName,
       color: '#f5c542',
       ts: Date.now()
     });
@@ -11874,7 +11887,7 @@ export var BroTown = function BroTown(_ref0) {
     S2.dmgNumbers.push({
       x: S2.player.x,
       y: S2.player.y - 40,
-      text: '🔄 ' + wpnName,
+      text: wpnName,
       color: '#f5c542',
       ts: Date.now()
     });
@@ -13450,7 +13463,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current.dmgNumbers.push({
         x: stateRef.current.player.x,
         y: stateRef.current.player.y - 40,
-        text: '🏴 OG Bro Cape claimed!',
+        text: 'OG Bro Cape claimed!',
         color: '#f5c542',
         ts: Date.now()
       });
@@ -13676,7 +13689,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current.dmgNumbers.push({
         x: stateRef.current.player.x,
         y: stateRef.current.player.y - 30,
-        text: '🎮 +' + reward + 'G! Score: ' + minigameScore,
+        text: '+' + reward + 'G! Score: ' + minigameScore,
         color: mg.color,
         ts: Date.now()
       });
@@ -14110,7 +14123,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 40,
-          text: '🏛️ ' + quest.title + ' complete!',
+          text: quest.title + ' complete!',
           color: g.color,
           ts: Date.now()
         });
@@ -14762,7 +14775,7 @@ export var BroTown = function BroTown(_ref0) {
             S.dmgNumbers.push({
               x: S.player.x,
               y: S.player.y - 30,
-              text: '📝 Feedback submitted!',
+              text: 'Feedback submitted!',
               color: '#5b52ff',
               ts: Date.now()
             });
@@ -15929,7 +15942,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current.dmgNumbers.push({
         x: stateRef.current.player.x,
         y: stateRef.current.player.y - 40,
-        text: '🏴 ' + anniversaryDrop.name + ' claimed!',
+        text: anniversaryDrop.name + ' claimed!',
         color: '#f5c542',
         ts: Date.now()
       });
@@ -16105,7 +16118,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current.dmgNumbers.push({
         x: stateRef.current.player.x,
         y: stateRef.current.player.y - 40,
-        text: '🎮 Score: ' + minigameScore + ' · +' + goldReward + 'G +' + apReward + 'AP',
+        text: 'Score: ' + minigameScore + ' +' + goldReward + 'G +' + apReward + 'AP',
         color: (game === null || game === void 0 ? void 0 : game.color) || '#a855f7',
         ts: Date.now()
       });
@@ -16235,7 +16248,7 @@ export var BroTown = function BroTown(_ref0) {
               stateRef.current.dmgNumbers.push({
                 x: stateRef.current.player.x,
                 y: stateRef.current.player.y - 20,
-                text: '❌ Decoy! -5',
+                text: 'Decoy! -5',
                 color: '#ff5e6c',
                 ts: Date.now()
               });
@@ -16713,7 +16726,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 40,
-          text: '🧬 ' + evolved.name + ' evolved!',
+          text: evolved.name + ' evolved!',
           color: '#ea580c',
           ts: Date.now()
         });
@@ -16840,7 +16853,7 @@ export var BroTown = function BroTown(_ref0) {
             stateRef.current.dmgNumbers.push({
               x: stateRef.current.player.x,
               y: stateRef.current.player.y - 30,
-              text: '✨ ' + key + ' enchanted!',
+              text: key + ' enchanted!',
               color: el.color,
               ts: Date.now()
             });
@@ -17611,7 +17624,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🛒 Pack purchased!',
+        text: 'Pack purchased!',
         color: '#3dd497',
         ts: Date.now()
       });
@@ -17810,7 +17823,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '💾 Dungeon saved!',
+        text: 'Dungeon saved!',
         color: '#3dd497',
         ts: Date.now()
       });
@@ -17913,7 +17926,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: P.x,
         y: P.y - 50,
-        text: '⚔️ ' + config.name,
+        text: config.name,
         color: '#a070e0',
         ts: Date.now()
       });
@@ -18741,14 +18754,14 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '✨ ' + elem + ' enchanted!',
+            text: elem + ' enchanted!',
             color: edef.color,
             ts: Date.now()
           });
           if (leveled) stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 50,
-            text: '✨ Enchanting Lv' + sk.enchanting.level + '!',
+            text: 'Enchanting Lv' + sk.enchanting.level + '!',
             color: '#f5c542',
             ts: Date.now()
           });
@@ -18850,7 +18863,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '📿 ' + gemStat.label + ' +' + previewVal + gemStat.unit,
+          text: gemStat.label + ' +' + previewVal + gemStat.unit,
           color: edef.color,
           ts: Date.now()
         });
@@ -18951,7 +18964,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🛡️ ' + gemStat.label + ' +' + previewVal + gemStat.unit,
+          text: gemStat.label + ' +' + previewVal + gemStat.unit,
           color: edef.color,
           ts: Date.now()
         });
@@ -19088,14 +19101,14 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '🍳 Cooked ' + cookMinigame.fishName + '!',
+            text: 'Cooked ' + cookMinigame.fishName + '!',
             color: '#3dd497',
             ts: Date.now()
           });
           if (leveled) stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 45,
-            text: '🍳 Cooking Lv' + sk.cooking.level + '!',
+            text: 'Cooking Lv' + sk.cooking.level + '!',
             color: '#f5c542',
             ts: Date.now()
           });
@@ -19111,7 +19124,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '🔥 Burnt! Fish wasted.',
+            text: 'Burnt! Fish wasted.',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -19329,7 +19342,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '🍽️ +' + healed + ' HP',
+            text: '+' + healed + ' HP',
             color: '#3dd497',
             ts: Date.now()
           });
@@ -19480,14 +19493,14 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 30,
-          text: '🍳 ' + recipe.name + '!',
+          text: recipe.name + '!',
           color: '#ea580c',
           ts: Date.now()
         });
         if (leveled) S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 50,
-          text: '🍳 Cooking Lv' + sk.cooking.level + '!',
+          text: 'Cooking Lv' + sk.cooking.level + '!',
           color: '#f5c542',
           ts: Date.now()
         });
@@ -19545,7 +19558,7 @@ export var BroTown = function BroTown(_ref0) {
       S2.dmgNumbers.push({
         x: P2.x,
         y: P2.y - 40,
-        text: '🏡 Your Farm',
+        text: 'Your Farm',
         color: '#3dd497',
         ts: Date.now()
       });
@@ -19635,7 +19648,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🌾 Harvested ' + p.name + '!',
+          text: 'Harvested ' + p.name + '!',
           color: '#3dd497',
           ts: Date.now()
         });
@@ -19793,7 +19806,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '🌱 Planted ' + seed.name,
+            text: 'Planted ' + seed.name,
             color: '#3dd497',
             ts: Date.now()
           });
@@ -19916,7 +19929,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🎉 +' + winnings + 'g!',
+          text: '+' + winnings + 'g!',
           color: '#3dd497',
           ts: Date.now()
         });
@@ -19935,7 +19948,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '💸 -' + wager + 'g',
+          text: '-' + wager + 'g',
           color: '#ff5e6c',
           ts: Date.now()
         });
@@ -20015,7 +20028,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🏆 Deposited ' + amt + 'g to jackpot',
+          text: 'Deposited ' + amt + 'g to jackpot',
           color: '#f5c542',
           ts: Date.now()
         });
@@ -20174,7 +20187,7 @@ export var BroTown = function BroTown(_ref0) {
             S.dmgNumbers.push({
               x: S.player.x,
               y: S.player.y - 30,
-              text: '🏟️ Entered arena queue!',
+              text: 'Entered arena queue!',
               color: '#ff5e6c',
               ts: Date.now()
             });
@@ -20692,7 +20705,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🎲 Bet ' + arenaBetAmount + 'G on ' + targetName + '!',
+        text: 'Bet ' + arenaBetAmount + 'G on ' + targetName + '!',
         color: '#f5c542',
         ts: Date.now()
       });
@@ -20894,7 +20907,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🎲 Bet ' + arenaBetAmount + 'G on ' + bet.targetName + '!',
+        text: 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName + '!',
         color: '#f5c542',
         ts: Date.now()
       });
@@ -20971,7 +20984,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 60,
-          text: '🎲 Bet WON! +' + payout + 'G',
+          text: 'Bet WON! +' + payout + 'G',
           color: '#f5c542',
           ts: Date.now()
         });
@@ -20980,7 +20993,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 60,
-          text: '🎲 Bet lost (-' + bet.amount + 'G)',
+          text: 'Bet lost (-' + bet.amount + 'G)',
           color: '#ff5e6c',
           ts: Date.now()
         });
@@ -21151,7 +21164,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🎲 Bet ' + arenaBetAmount + 'G on ' + bet.targetName,
+        text: 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName,
         color: '#f5c542',
         ts: Date.now()
       });
@@ -21214,7 +21227,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 60,
-          text: '🎲 BET WON! +' + payout + 'G',
+          text: 'BET WON! +' + payout + 'G',
           color: '#f5c542',
           ts: Date.now()
         });
@@ -21227,7 +21240,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 60,
-          text: '🎲 Bet lost (-' + myBet.amount + 'G)',
+          text: 'Bet lost (-' + myBet.amount + 'G)',
           color: '#ff5e6c',
           ts: Date.now()
         });
@@ -21356,7 +21369,7 @@ export var BroTown = function BroTown(_ref0) {
         S2.dmgNumbers.push({
           x: S2.player.x,
           y: S2.player.y - 30,
-          text: '🎲 Bet ' + arenaBetAmount + 'G on ' + ((_remaining$find2 = remaining.find(function (p) {
+          text: 'Bet ' + arenaBetAmount + 'G on ' + ((_remaining$find2 = remaining.find(function (p) {
             return p.id === arenaBetTarget;
           })) === null || _remaining$find2 === void 0 ? void 0 : _remaining$find2.name),
           color: '#f5c542',
@@ -21403,7 +21416,7 @@ export var BroTown = function BroTown(_ref0) {
             S.dmgNumbers.push({
               x: S.player.x,
               y: S.player.y - 50,
-              text: '🎲 BET WON! +' + payout + 'G',
+              text: 'BET WON! +' + payout + 'G',
               color: '#3dd497',
               ts: Date.now()
             });
@@ -21412,7 +21425,7 @@ export var BroTown = function BroTown(_ref0) {
             S.dmgNumbers.push({
               x: S.player.x,
               y: S.player.y - 50,
-              text: '🎲 Bet lost (-' + lastBet.amount + 'G)',
+              text: 'Bet lost (-' + lastBet.amount + 'G)',
               color: '#ff5e6c',
               ts: Date.now()
             });
@@ -21653,7 +21666,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 30,
-          text: '🎲 Bet ' + amt + 'G on ' + bet.targetName,
+          text: 'Bet ' + amt + 'G on ' + bet.targetName,
           color: '#f5c542',
           ts: Date.now()
         });
@@ -22102,7 +22115,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: S.player.x,
                   y: S.player.y - 30,
-                  text: '🤝 Bought for ' + execPrice + 'G!',
+                  text: 'Bought for ' + execPrice + 'G!',
                   color: '#3dd497',
                   ts: Date.now()
                 });
@@ -22112,7 +22125,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.dmgNumbers.push({
                   x: S.player.x,
                   y: S.player.y - 30,
-                  text: '🤝 Sold for ' + execPrice + 'G!',
+                  text: 'Sold for ' + execPrice + 'G!',
                   color: '#3dd497',
                   ts: Date.now()
                 });
@@ -22122,7 +22135,7 @@ export var BroTown = function BroTown(_ref0) {
               S.dmgNumbers.push({
                 x: S.player.x,
                 y: S.player.y - 30,
-                text: mktMode === 'buy' ? '🛒 Buy order placed!' : '💰 Listed for sale!',
+                text: mktMode === 'buy' ? 'Buy order placed!' : 'Listed for sale!',
                 color: '#5b52ff',
                 ts: Date.now()
               });
@@ -22682,7 +22695,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🔨 Forged ' + bt.label + ' ' + WEAPON_TYPES[wpnType].label + '!',
+          text: 'Forged ' + bt.label + ' ' + WEAPON_TYPES[wpnType].label + '!',
           color: '#b0b0b0',
           ts: Date.now()
         });
@@ -22696,7 +22709,7 @@ export var BroTown = function BroTown(_ref0) {
         if (leveled) stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 54,
-          text: '🔨 Blacksmithing Lv' + R.lifeSkills.blacksmithing.level + '!',
+          text: 'Blacksmithing Lv' + R.lifeSkills.blacksmithing.level + '!',
           color: '#f5c542',
           ts: Date.now()
         });
@@ -22769,7 +22782,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: 'Need ' + reforgeCost + '× ore + ' + reforgeGold + 'g',
+            text: 'Need ' + reforgeCost + 'x ore + ' + reforgeGold + 'g',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -22784,7 +22797,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🔧 Reforged! ' + bonus.label + ' +' + bonus.value + bonus.unit,
+          text: 'Reforged! ' + bonus.label + ' +' + bonus.value + bonus.unit,
           color: '#a78bfa',
           ts: Date.now()
         });
@@ -22836,7 +22849,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: 'Need ' + hardenCost + '× ore + ' + hardenGold + 'g',
+            text: 'Need ' + hardenCost + 'x ore + ' + hardenGold + 'g',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -22857,7 +22870,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '⚒️ HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit,
+            text: 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit,
             color: '#f5c542',
             ts: Date.now()
           });
@@ -22874,7 +22887,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '💔 BROKE! ' + oldName + ' lost all bonuses',
+            text: 'BROKE! ' + oldName + ' lost all bonuses',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -22933,7 +22946,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current.dmgNumbers.push({
         x: stateRef.current.player.x,
         y: stateRef.current.player.y - 30,
-        text: '🪙 Smelted Gold Bar!',
+        text: 'Smelted Gold Bar!',
         color: '#f5c542',
         ts: Date.now()
       });
@@ -23022,7 +23035,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '📿 Crafted ' + at.label + ' Amulet!',
+          text: 'Crafted ' + at.label + ' Amulet!',
           color: '#f5c542',
           ts: Date.now()
         });
@@ -23151,7 +23164,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🛡️ Forged ' + bt.label + ' Shield!',
+          text: 'Forged ' + bt.label + ' Shield!',
           color: '#5b52ff',
           ts: Date.now()
         });
@@ -23232,7 +23245,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🔧 ' + R.shield.reforgeBonus.label + ' +' + R.shield.reforgeBonus.value + R.shield.reforgeBonus.unit,
+          text: R.shield.reforgeBonus.label + ' +' + R.shield.reforgeBonus.value + R.shield.reforgeBonus.unit,
           color: '#a78bfa',
           ts: Date.now()
         });
@@ -23271,7 +23284,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '⚒️ HARDENED! +' + bonus.label,
+            text: 'HARDENED! +' + bonus.label,
             color: '#f5c542',
             ts: Date.now()
           });
@@ -23282,7 +23295,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '💔 Shield bonuses lost!',
+            text: 'Shield bonuses lost!',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -23396,7 +23409,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '💎 Extracted ' + R.amulet.gem + ' gem',
+            text: 'Extracted ' + R.amulet.gem + ' gem',
             color: '#a78bfa',
             ts: Date.now()
           });
@@ -23408,7 +23421,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '💎 Extracted ' + R.shield.gem + ' gem',
+            text: 'Extracted ' + R.shield.gem + ' gem',
             color: '#a78bfa',
             ts: Date.now()
           });
@@ -23425,7 +23438,7 @@ export var BroTown = function BroTown(_ref0) {
             stateRef.current.dmgNumbers.push({
               x: stateRef.current.player.x,
               y: stateRef.current.player.y - 30,
-              text: '💎 Extracted ' + wpn.element1 + ' gem',
+              text: 'Extracted ' + wpn.element1 + ' gem',
               color: '#a78bfa',
               ts: Date.now()
             });
@@ -23436,7 +23449,7 @@ export var BroTown = function BroTown(_ref0) {
             stateRef.current.dmgNumbers.push({
               x: stateRef.current.player.x,
               y: stateRef.current.player.y - 45,
-              text: '💎 Extracted ' + wpn.element2 + ' gem',
+              text: 'Extracted ' + wpn.element2 + ' gem',
               color: '#a78bfa',
               ts: Date.now()
             });
@@ -23494,7 +23507,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '♻️ Salvaged! ' + returnText,
+          text: 'Salvaged! ' + returnText,
           color: '#ff5e6c',
           ts: Date.now()
         });
@@ -23609,7 +23622,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '♻️ Salvaged stash item',
+          text: 'Salvaged stash item',
           color: '#ff5e6c',
           ts: Date.now()
         });
@@ -23792,7 +23805,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🪚 Crafted ' + wt.label + ' ' + WEAPON_TYPES[wpnType].label + '!',
+          text: 'Crafted ' + wt.label + ' ' + WEAPON_TYPES[wpnType].label + '!',
           color: '#8B6914',
           ts: Date.now()
         });
@@ -23806,7 +23819,7 @@ export var BroTown = function BroTown(_ref0) {
         if (leveled) stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 54,
-          text: '🪚 Woodworking Lv' + R.lifeSkills.woodworking.level + '!',
+          text: 'Woodworking Lv' + R.lifeSkills.woodworking.level + '!',
           color: '#f5c542',
           ts: Date.now()
         });
@@ -23882,7 +23895,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: 'Need ' + reforgeCost + '× wood + ' + reforgeGold + 'g',
+            text: 'Need ' + reforgeCost + 'x wood + ' + reforgeGold + 'g',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -23897,7 +23910,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 30,
-          text: '🔧 Reforged! ' + bonus.label + ' +' + bonus.value + bonus.unit,
+          text: 'Reforged! ' + bonus.label + ' +' + bonus.value + bonus.unit,
           color: '#d4a020',
           ts: Date.now()
         });
@@ -23946,7 +23959,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: 'Need ' + hardenCost + '× wood + ' + hardenGold + 'g',
+            text: 'Need ' + hardenCost + 'x wood + ' + hardenGold + 'g',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -23965,7 +23978,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '⚒️ HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit,
+            text: 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit,
             color: '#f5c542',
             ts: Date.now()
           });
@@ -23978,7 +23991,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '💔 BROKE! ' + oldName + ' lost all bonuses',
+            text: 'BROKE! ' + oldName + ' lost all bonuses',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -24084,7 +24097,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '💎 Polished ' + gemName + '!',
+            text: 'Polished ' + gemName + '!',
             color: gemCol,
             ts: Date.now()
           });
@@ -24093,7 +24106,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '💔 Gem shattered!',
+            text: 'Gem shattered!',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -24103,7 +24116,7 @@ export var BroTown = function BroTown(_ref0) {
         if (leveled) stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 50,
-          text: '💎 Gem Cutting Lv' + sk.gemCutting.level + '!',
+          text: 'Gem Cutting Lv' + sk.gemCutting.level + '!',
           color: '#f5c542',
           ts: Date.now()
         });
@@ -24247,7 +24260,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 40,
-        text: '☠️ The Lawless Land',
+        text: 'The Lawless Land',
         color: '#ff5e6c',
         ts: Date.now()
       });
@@ -24921,7 +24934,7 @@ export var BroTown = function BroTown(_ref0) {
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,
           y: stateRef.current.player.y - 40,
-          text: '🏰 Clan [' + tag + '] Created!',
+          text: 'Clan [' + tag + '] Created!',
           color: '#a78bfa',
           ts: Date.now()
         });
@@ -25156,7 +25169,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current.dmgNumbers.push({
         x: stateRef.current.player.x,
         y: stateRef.current.player.y - 30,
-        text: '🏰 Logo saved!',
+        text: 'Logo saved!',
         color: '#a78bfa',
         ts: Date.now()
       });
@@ -25410,7 +25423,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 40,
-        text: '⚔️ WAR DECLARED vs [' + target.tag + ']!',
+        text: 'WAR DECLARED vs [' + target.tag + ']!',
         color: '#ff5e6c',
         ts: Date.now()
       });
@@ -25676,7 +25689,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current.dmgNumbers.push({
         x: stateRef.current.player.x,
         y: stateRef.current.player.y - 40,
-        text: '📜 Quest Accepted: ' + questPanel.quest.title,
+        text: 'Quest Accepted: ' + questPanel.quest.title,
         color: '#5b52ff',
         ts: Date.now()
       });
@@ -25727,7 +25740,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef.current.dmgNumbers.push({
         x: stateRef.current.player.x,
         y: stateRef.current.player.y - 40,
-        text: '🏆 Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP',
+        text: 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP',
         color: '#f5c542',
         ts: Date.now()
       });
@@ -25824,7 +25837,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 40,
-        text: '💀 The Lawless Land',
+        text: 'The Lawless Land',
         color: '#ff5e6c',
         ts: Date.now()
       });
@@ -25939,7 +25952,7 @@ export var BroTown = function BroTown(_ref0) {
       S2.dmgNumbers.push({
         x: S2.player.x,
         y: S2.player.y - 40,
-        text: '⚔️ DUEL!',
+        text: 'DUEL!',
         color: '#a78bfa',
         ts: Date.now()
       });
@@ -26106,7 +26119,7 @@ export var BroTown = function BroTown(_ref0) {
       S2.dmgNumbers.push({
         x: S2.player.x,
         y: S2.player.y - 30,
-        text: '⚔️ Guards dispatched!',
+        text: 'Guards dispatched!',
         color: '#3dd497',
         ts: Date.now()
       });
@@ -26289,7 +26302,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 30,
-          text: '📨 Trade sent!',
+          text: 'Trade sent!',
           color: '#3dd497',
           ts: Date.now()
         });
@@ -26414,7 +26427,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '✅ Trade accepted!',
+        text: 'Trade accepted!',
         color: '#3dd497',
         ts: Date.now()
       });
@@ -26813,7 +26826,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '🍽️ +' + healed + ' HP',
+            text: '+' + healed + ' HP',
             color: '#3dd497',
             ts: Date.now()
           });
@@ -28477,7 +28490,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '⚔️ Duel sent',
+        text: 'Duel sent',
         color: '#a78bfa',
         ts: Date.now()
       });
@@ -28519,7 +28532,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '💀 Threat issued!',
+        text: 'Threat issued!',
         color: '#ff5e6c',
         ts: Date.now()
       });
@@ -28555,7 +28568,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🏰 Clan invite sent',
+        text: 'Clan invite sent',
         color: '#a78bfa',
         ts: Date.now()
       });
@@ -28613,7 +28626,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '💚 Added friend!',
+            text: 'Added friend!',
             color: '#3dd497',
             ts: Date.now()
           });
@@ -28660,7 +28673,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '🔇 Muted',
+            text: 'Muted',
             color: '#f5c542',
             ts: Date.now()
           });
@@ -28718,7 +28731,7 @@ export var BroTown = function BroTown(_ref0) {
           stateRef.current.dmgNumbers.push({
             x: stateRef.current.player.x,
             y: stateRef.current.player.y - 30,
-            text: '🚫 Blocked — no interactions',
+            text: 'Blocked - no interactions',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -28800,7 +28813,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '⛄ Snowman placed!',
+        text: 'Snowman placed!',
         color: '#a0d8f0',
         ts: Date.now()
       });
@@ -28862,7 +28875,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🛷 SLED!',
+        text: 'SLED!',
         color: '#60a5fa',
         ts: Date.now()
       });
@@ -28941,7 +28954,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🚣 Raft built! Sail across water.',
+        text: 'Raft built! Sail across water.',
         color: '#3498DB',
         ts: Date.now()
       });
@@ -29023,7 +29036,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🔥 Torch lit! (2 min)',
+        text: 'Torch lit! (2 min)',
         color: '#ea580c',
         ts: Date.now()
       });
@@ -29133,7 +29146,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '⛄ Snowman built!',
+        text: 'Snowman built!',
         color: '#a0d8f0',
         ts: Date.now()
       });
@@ -29196,7 +29209,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 30,
-          text: '🛷 Sled crafted!',
+          text: 'Sled crafted!',
           color: '#60a5fa',
           ts: Date.now()
         });
@@ -29213,7 +29226,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 30,
-          text: '🛷 WHOOSH!',
+          text: 'WHOOSH!',
           color: '#60a5fa',
           ts: Date.now()
         });
@@ -29305,7 +29318,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🚣 Raft built!',
+        text: 'Raft built!',
         color: '#3498DB',
         ts: Date.now()
       });
@@ -29403,7 +29416,7 @@ export var BroTown = function BroTown(_ref0) {
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 30,
-        text: '🔥 Torch lit!',
+        text: 'Torch lit!',
         color: '#ea580c',
         ts: Date.now()
       });
@@ -29641,7 +29654,7 @@ export var BroTown = function BroTown(_ref0) {
           S.dmgNumbers.push({
             x: S.player.x,
             y: S.player.y - 30,
-            text: '💚 +30HP',
+            text: '+30HP',
             color: '#3dd497',
             ts: Date.now()
           });
@@ -29683,7 +29696,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 30,
-          text: '💰 +' + total + 'G',
+          text: '+' + total + 'G',
           color: '#f5c542',
           ts: Date.now()
         });
@@ -29731,14 +29744,14 @@ export var BroTown = function BroTown(_ref0) {
       S2.dmgNumbers.push({
         x: S2.player.x,
         y: S2.player.y - 40,
-        text: '😴 Zzz... Stats restored!',
+        text: 'Zzz... Stats restored!',
         color: '#3dd497',
         ts: Date.now()
       });
       S2.dmgNumbers.push({
         x: S2.player.x,
         y: S2.player.y - 25,
-        text: '✨ Well Rested +10% XP (30min)',
+        text: 'Well Rested +10% XP (30min)',
         color: '#f5c542',
         ts: Date.now()
       });
@@ -30128,7 +30141,7 @@ export var BroTown = function BroTown(_ref0) {
           S.dmgNumbers.push({
             x: node.x + 12,
             y: node.y - 42,
-            text: '💎 ' + gemName + '!',
+            text: gemName + '!',
             color: gemCol,
             ts: Date.now()
           });
@@ -30139,7 +30152,7 @@ export var BroTown = function BroTown(_ref0) {
           S.dmgNumbers.push({
             x: node.x,
             y: node.y - 55,
-            text: '✨ Gold Nugget!',
+            text: 'Gold Nugget!',
             color: '#f5c542',
             ts: Date.now()
           });
@@ -30165,7 +30178,7 @@ export var BroTown = function BroTown(_ref0) {
           S.dmgNumbers.push({
             x: node.x,
             y: node.y - 75,
-            text: '📖 New Material Entry!',
+            text: 'New Material Entry!',
             color: '#00d4b8',
             ts: Date.now()
           });
@@ -30181,7 +30194,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: node.x,
           y: node.y - 20,
-          text: node.emoji + ' ' + baseName + (yieldQty > 1 ? ' ×' + yieldQty : ''),
+          text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''),
           color: node.color,
           ts: Date.now()
         });
@@ -30327,7 +30340,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 30,
-          text: '🔥 ' + best.name + '!',
+          text: best.name + '!',
           color: '#ea580c',
           ts: Date.now()
         });
@@ -30411,7 +30424,7 @@ export var BroTown = function BroTown(_ref0) {
           S.dmgNumbers.push({
             x: S.player.x,
             y: S.player.y - 30,
-            text: '⛄ Snowman placed!',
+            text: 'Snowman placed!',
             color: '#a0d8f0',
             ts: Date.now()
           });
@@ -30467,7 +30480,7 @@ export var BroTown = function BroTown(_ref0) {
           S.dmgNumbers.push({
             x: S.player.x,
             y: S.player.y - 30,
-            text: '🛷 SLED!',
+            text: 'SLED!',
             color: '#60a5fa',
             ts: Date.now()
           });
@@ -30534,7 +30547,7 @@ export var BroTown = function BroTown(_ref0) {
             S.dmgNumbers.push({
               x: S.player.x,
               y: S.player.y - 30,
-              text: '🚣 Raft built! You can cross water.',
+              text: 'Raft built! You can cross water.',
               color: '#d4a020',
               ts: Date.now()
             });
@@ -30604,7 +30617,7 @@ export var BroTown = function BroTown(_ref0) {
             S.dmgNumbers.push({
               x: S.player.x,
               y: S.player.y - 30,
-              text: '🔥 Torch lit! (2min)',
+              text: 'Torch lit! (2min)',
               color: '#ea580c',
               ts: Date.now()
             });
@@ -30984,7 +30997,7 @@ export var BroTown = function BroTown(_ref0) {
           S.dmgNumbers.push({
             x: m.x,
             y: m.y - 25,
-            text: '🪤 Escaped!',
+            text: 'Escaped!',
             color: '#ff5e6c',
             ts: Date.now()
           });
@@ -31001,7 +31014,7 @@ export var BroTown = function BroTown(_ref0) {
         S.dmgNumbers.push({
           x: m.x,
           y: m.y - 20,
-          text: '🪤 Captured ' + pet.name + '!',
+          text: 'Captured ' + pet.name + '!',
           color: '#3dd497',
           ts: Date.now()
         });
@@ -31015,7 +31028,7 @@ export var BroTown = function BroTown(_ref0) {
         if (leveled) S.dmgNumbers.push({
           x: S.player.x,
           y: S.player.y - 50,
-          text: '🪤 Trapping Lv' + sk.trapping.level + '!',
+          text: 'Trapping Lv' + sk.trapping.level + '!',
           color: '#f5c542',
           ts: Date.now()
         });
