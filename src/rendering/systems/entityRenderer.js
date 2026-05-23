@@ -2650,16 +2650,18 @@ export class EntityRenderer {
         heart.width = PLAYER_HEART_SIZE;
         heart.height = PLAYER_HEART_SIZE;
         heart.x = 0;
-        /* Heart hugs the head: center y = -HEART_SIZE puts the bottom
-           edge at -HEART_SIZE/2, where the player sprite's head sits
-           (around y=-32 with the current sprite). Tied to the
-           constant so resizing the heart keeps it hugging the head
-           without separate position tuning. */
-        heart.y = -PLAYER_HEART_SIZE;
+        /* Heart sits just above the head: head top is around y=-33
+           (player sprite radius). Putting heart's bottom edge at -33
+           means center y = -(SIZE/2 + 33).  This stays correct for
+           any heart size -- previously hard-coded y=-HEART worked
+           only because SIZE/2 happened to equal 33 (v2.3.131 with
+           HEART=66); shrinking to 40 broke that coincidence and the
+           bottom overlapped the head until this formula. */
+        heart.y = -(PLAYER_HEART_SIZE / 2 + 33);
         heartText.x = 0;
         /* Nudge the number up into the heart's widest section (~12%
            above the geometric center) so it doesn't ride the bottom V. */
-        heartText.y = -PLAYER_HEART_SIZE - PLAYER_HEART_SIZE * 0.12;
+        heartText.y = heart.y - PLAYER_HEART_SIZE * 0.12;
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
