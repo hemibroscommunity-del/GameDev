@@ -257,6 +257,13 @@ function applyMeleeLifesteal(S, R, m) {
   var maxHp = R.maxHp || R.hp || 1;
   R.hp = Math.min(maxHp, (R.hp || 0) + refund);
   delete S._dmgFromMonster[m.id];
+  /* Lock out server HP overrides for ~1.5s so the next player_state
+     event (which carries the server's pre-lifesteal HP and would
+     otherwise stomp the heal back down) is ignored. After the window
+     elapses, server takes authority back. Testing-mode coupling with
+     the v2.3.144 HP-rise gate -- both go away together when server
+     learns about lifesteal natively. */
+  S._lifestealLockUntil = Date.now() + 1500;
   if (S.dmgNumbers && S.player) {
     S.dmgNumbers.push({
       x: S.player.x, y: S.player.y - 40,
@@ -2149,7 +2156,15 @@ export var BroTown = function BroTown(_ref0) {
                  next takes damage, at which point HP resyncs. */
               if (typeof msg.payload.hp === 'number') {
                 var _isRespawnHp = (S.rpg.hp || 0) <= 0 && msg.payload.hp > 0;
-                if (msg.payload.hp < (S.rpg.hp || 0) || _isRespawnHp) {
+                var _inLifestealLock = S._lifestealLockUntil && Date.now() < S._lifestealLockUntil;
+                /* Respawn always applies (HP=0 -> >0 is unambiguous).
+                   Otherwise: ignore server HP entirely during the
+                   lifesteal lockout (~1.5s) so the client heal sticks
+                   visibly. Outside the window, only accept decreases
+                   (damage) -- regen rises stay blocked per v2.3.144. */
+                if (_isRespawnHp) {
+                  S.rpg.hp = msg.payload.hp;
+                } else if (!_inLifestealLock && msg.payload.hp < (S.rpg.hp || 0)) {
                   S.rpg.hp = msg.payload.hp;
                 }
               }
