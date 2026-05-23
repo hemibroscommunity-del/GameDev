@@ -269,14 +269,24 @@ function applyMeleeLifesteal(S, R, m) {
 function distributeKillXpToBuild(R, killXp) {
   if (!R || !killXp || killXp <= 0) return;
   if (!R._buildUse) R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
+  var activeSlot = R.activeSlot || 'melee';
+  /* Bow/magic stat separation — bow kills must not train mind, magic
+     kills must not train agility. Zero the incompatible stat's usage
+     before the proportional split so a player who briefly cast a
+     mana-cost ability mid-bow-fight doesn't get cross-stat training
+     when they kill with the bow. */
+  if (activeSlot === 'ranged') R._buildUse.mind = 0;
+  else if (activeSlot === 'staff') R._buildUse.agility = 0;
   var keys = ['power', 'vitality', 'endurance', 'agility', 'mind'];
   var total = 0;
   keys.forEach(function (k) { total += R._buildUse[k] || 0; });
   if (total <= 0) {
     /* No tracked usage — fallback by weapon type so the bar at least
        moves on a fresh character. */
-    var slot = R.activeSlot || 'melee';
-    addBuildProg(R, slot === 'staff' ? 'mind' : 'power', killXp);
+    var fallbackStat = activeSlot === 'staff'
+      ? 'mind'
+      : (activeSlot === 'ranged' ? 'agility' : 'power');
+    addBuildProg(R, fallbackStat, killXp);
   } else {
     keys.forEach(function (k) {
       var share = (R._buildUse[k] || 0) / total;
@@ -287,7 +297,6 @@ function distributeKillXpToBuild(R, killXp) {
      vitality at 25% rate even when they never get hit. Suppressed when
      vitality is locked (GDD §1.5 pure build). Melee builds vit the
      normal way (damage-taken weights _buildUse.vitality). */
-  var activeSlot = R.activeSlot || 'melee';
   if ((activeSlot === 'ranged' || activeSlot === 'staff')
       && !(R._statLocks && R._statLocks.vitality)) {
     addBuildProg(R, 'vitality', killXp * 0.25);
@@ -8120,7 +8129,10 @@ export var BroTown = function BroTown(_ref0) {
              is always in the past). */
           var _staffCdExtra = (S.rpg && S.rpg.activeSlot === 'staff') ? 300 : 0;
           if (S.autoAttack && S.rpg && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
-            if (!(S._playerStunUntil && Date.now() < S._playerStunUntil)) {
+            /* Loot pickup freeze suppresses auto-swing — keeps the
+               0.5s pickup animation clean instead of mid-swing. */
+            var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
+            if (!_lootSwingBlock && !(S._playerStunUntil && Date.now() < S._playerStunUntil)) {
               var _S$rpg0, _S$rpg1;
               if (((_S$rpg0 = S.rpg) === null || _S$rpg0 === void 0 ? void 0 : _S$rpg0.activeSlot) === 'ranged' || ((_S$rpg1 = S.rpg) === null || _S$rpg1 === void 0 ? void 0 : _S$rpg1.activeSlot) === 'staff') {
                 var _S$rpg10;
@@ -9639,13 +9651,15 @@ export var BroTown = function BroTown(_ref0) {
           var hasHpBuff = S._hpBuff && Date.now() < S._hpBuff;
           var hasManaBuff = S._manaBuff && Date.now() < S._manaBuff;
           var regenMult = hasRegenBuff ? 1.3 : 1.0;
+          /* HP regen disabled while testing C1 lifesteal — kill-refunds
+             should be the sole HP recovery source so the heal-on-kill is
+             obvious instead of masked by passive ticks. Stamina and mana
+             regen stay on (the gate below). Re-enable by uncommenting. */
+          /*
           if (_R7.hp < _R7.maxHp) {
             if (!S._regenTimer) S._regenTimer = 0;
             S._regenTimer++;
             var restMult = 1 + (_R7.restoration || 0) * 0.001;
-            /* In MP the worker runs HP regen on its own tick (_tickPlayerRegen)
-               and pushes the new value via player_state.  Skip the local
-               mutation so dual regen doesn't race the server snapshot. */
             if (S._regenTimer % 4 === 0 && !S._serverMonsters) {
               var healAmt = Math.max(1, Math.ceil(_R7.maxHp * 0.001 * restMult * regenMult));
               var effectiveMax = hasHpBuff ? Math.floor(_R7.maxHp * 1.25) : _R7.maxHp;
@@ -9653,6 +9667,7 @@ export var BroTown = function BroTown(_ref0) {
               setRpgState(_objectSpread({}, _R7));
             }
           }
+          */
           /* Stamina regen — 10/s base (10 sec full recharge) × Restoration */
           if (_R7.stamina < _R7.maxStamina && !S._serverMonsters) {
             var _R7$_amuletBonus;
@@ -9669,10 +9684,11 @@ export var BroTown = function BroTown(_ref0) {
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
           var _R8 = S.rpg;
+          /* In-combat HP regen disabled too (see C1 testing note above). */
+          /*
           if (_R8.hp < _R8.maxHp) {
             if (!S._regenTimer) S._regenTimer = 0;
             S._regenTimer++;
-            /* MP: worker runs in-combat HP regen too -- skip local. */
             if (S._regenTimer % 10 === 0 && !S._serverMonsters) {
               var _R8$_amuletBonus;
               var _healAmt = Math.max(1, Math.ceil(_R8.maxHp * 0.0005));
@@ -9680,6 +9696,7 @@ export var BroTown = function BroTown(_ref0) {
               _R8.hp = Math.min(_R8.maxHp, _R8.hp + _healAmt);
             }
           }
+          */
           /* Stamina always regens — 10/sec */
           if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
             _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60);

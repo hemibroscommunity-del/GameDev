@@ -921,19 +921,26 @@ export class EffectsRenderer {
       }
     }
 
-    /* Bow / staff line of sight — a beam-shaped ribbon (filled
-       polygon) running along the aim direction, drawn while the
-       bow/staff is the active slot AND the player is aiming, locked
-       on, or auto-attacking.  The two long edges are sine-wavy and
-       the wave PHASE shifts with `now`, so the borders shimmer +
-       drift along the beam — reads like a flowing energy stream
-       rather than a hard hitscan line.  Top and bottom edges run
-       180° out of phase so the beam pulses width-wise. */
+    /* Bow / staff / melee line of sight — a beam-shaped ribbon (filled
+       polygon) running along the aim direction, drawn while a weapon is
+       equipped AND the player is aiming, locked on, or auto-attacking.
+       The two long edges are sine-wavy and the wave PHASE shifts with
+       `now`, so the borders shimmer + drift along the beam — reads like
+       a flowing energy stream rather than a hard hitscan line.  Top and
+       bottom edges run 180° out of phase so the beam pulses width-wise.
+       Melee uses the same shape, shorter length (sword/shield needed a
+       forward-sense affordance per user request — same visual language
+       as bow/staff, just compressed to roughly the attack range). */
     {
       const slot = S.rpg && S.rpg.activeSlot;
       const isRanged = slot === 'ranged' || slot === 'staff';
+      const isMelee = !isRanged; /* covers explicit 'melee' + legacy unset slot */
       const isLocked = !!(S.lockedTarget && S.lockedTarget.ref);
-      if (isRanged && (S._aiming || isLocked || S.autoAttack) && S.player) {
+      const shouldDraw = (isRanged || isMelee)
+        && (S._aiming || isLocked || S.autoAttack)
+        && S.player
+        && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
+      if (shouldDraw) {
         const P = S.player;
         let aimA;
         if (isLocked) {
@@ -944,7 +951,9 @@ export class EffectsRenderer {
         } else {
           aimA = 0;
         }
-        const lineLen = 280;
+        /* Melee at ~1/3 ranged length so the line reads as "short
+           reach indicator" not "you can hit this far." */
+        const lineLen = isRanged ? 280 : 95;
         const halfW = 2;          // half-width of beam at neutral
         const waveAmp = 1.6;      // edge wave amplitude in px
         const waveLen = 42;       // px per wave cycle along the beam
