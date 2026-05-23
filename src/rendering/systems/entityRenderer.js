@@ -38,15 +38,27 @@ function _ensureHudBarTextures() {
 /* Heart-icon HUD: drawn above the head of player + monsters whenever
    curHp < maxHp (or within HOLD_MS of last hp change for the player).
    Replaces the prior pill-shaped HP bar.  Number is centered on the
-   heart with a heavy black stroke so it reads on any background. */
-const HP_HEART_SIZE = 28;
-const HP_NUM_STYLE = {
+   heart with a heavy black stroke so it reads on any background.
+   Player heart is larger (red, fits 3-digit HP); monster heart is
+   smaller + black-tinted so a crowd of mobs around the player still
+   visually parses as "those are monster HPs, mine is the red one." */
+const PLAYER_HEART_SIZE = 44;
+const MONSTER_HEART_SIZE = 26;
+const PLAYER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
-  fontSize: 13,
+  fontSize: 18,
   fontWeight: '800',
   fill: '#ffffff',
   stroke: { color: '#000000', width: 3 },
   dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
+  align: 'center',
+};
+const MONSTER_HP_NUM_STYLE = {
+  fontFamily: 'Source Sans 3, sans-serif',
+  fontSize: 11,
+  fontWeight: '800',
+  fill: '#ffffff',
+  stroke: { color: '#000000', width: 2 },
   align: 'center',
 };
 
@@ -208,20 +220,6 @@ function createMonsterDisplay(monster) {
     container.addChild(spriteBody);
   }
 
-  /* Above-head HP indicator: red heart icon with current-HP number
-     centered on it.  Appears whenever the monster is below max HP and
-     fades out shortly after returning to full.  Replaces the prior
-     pill-shaped HP bar (v2.3.118). */
-  const hpHeart = new Sprite();
-  hpHeart.anchor.set(0.5, 0.5);
-  hpHeart.alpha = 0;
-  container.addChild(hpHeart);
-
-  const hpText = new Text({ text: '', style: HP_NUM_STYLE });
-  hpText.anchor.set(0.5, 0.5);
-  hpText.alpha = 0;
-  container.addChild(hpText);
-
   const lvlText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 8 } });
   lvlText.anchor.set(0.5, 1);
   lvlText.y = -size - 12;
@@ -232,6 +230,21 @@ function createMonsterDisplay(monster) {
      One clear + redraw per monster instead of three. */
   const dynGfx = new Graphics();
   container.addChild(dynGfx);
+
+  /* Above-head HP indicator: black-tinted heart with current HP number
+     centered on it.  Added last so it draws on top of body + sprite +
+     lvlText + dynGfx (status icons).  Tint = 0x000000 distinguishes
+     monster HP from the player's red heart when the field is crowded. */
+  const hpHeart = new Sprite();
+  hpHeart.anchor.set(0.5, 0.5);
+  hpHeart.alpha = 0;
+  hpHeart.tint = 0x000000;
+  container.addChild(hpHeart);
+
+  const hpText = new Text({ text: '', style: MONSTER_HP_NUM_STYLE });
+  hpText.anchor.set(0.5, 0.5);
+  hpText.alpha = 0;
+  container.addChild(hpText);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -376,19 +389,6 @@ function createPlayerDisplay() {
     align: 'center',
   };
 
-  /* Above-head HP indicator: red heart icon with the current HP number
-     centered on it.  Appears when the player is below max HP, holds
-     briefly at full after a heal, then fades out.  Replaces the prior
-     above-head HP pill (v2.3.107). */
-  const hudHpHeart = new Sprite();
-  hudHpHeart.anchor.set(0.5, 0.5);
-  hudHpHeart.alpha = 0;
-  container.addChild(hudHpHeart);
-  const hudHpText = new Text({ text: '', style: HP_NUM_STYLE });
-  hudHpText.anchor.set(0.5, 0.5);
-  hudHpText.alpha = 0;
-  container.addChild(hudHpText);
-
   const hudMpSprite = new Sprite();
   hudMpSprite.anchor.set(0.5, 0.5);
   hudMpSprite.alpha = 0;
@@ -412,6 +412,20 @@ function createPlayerDisplay() {
   const hudStamTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
   hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  container.addChild(hudStamTextFull);
   hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
+
+  /* Above-head HP indicator: red heart with the current HP number
+     centered on it.  Added LAST so it draws on top of every other
+     overlay (nameText, mana/energy pills, weapon, shield, etc.).
+     Sized larger than the monster heart and uses a larger font so
+     3-digit HP fits comfortably inside the heart silhouette. */
+  const hudHpHeart = new Sprite();
+  hudHpHeart.anchor.set(0.5, 0.5);
+  hudHpHeart.alpha = 0;
+  container.addChild(hudHpHeart);
+  const hudHpText = new Text({ text: '', style: PLAYER_HP_NUM_STYLE });
+  hudHpText.anchor.set(0.5, 0.5);
+  hudHpText.alpha = 0;
+  container.addChild(hudHpText);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -1156,9 +1170,13 @@ export class EntityRenderer {
         display._emoji.visible = true;
       }
 
-      /* Above-head HP: red heart icon with the current HP number
-         centered on it.  Visible only when the monster has taken
-         damage (curHp < maxHp); hidden at full HP. */
+      /* Above-head HP: black-tinted heart icon with the current HP
+         number centered on it.  Visible only when the monster has
+         taken damage (curHp < maxHp); hidden at full HP.
+         Position has to clear the actual sprite top (not the procedural
+         circle's size) for slime / snowman / variant monsters — their
+         sprites render 64-96 px tall while display._size stays at 8,
+         so a naive y=-size-18 lands behind the sprite. */
       const curHp = m.curHp != null ? m.curHp : m.hp;
       const maxHpDenom = m.maxHp || m.hp || 1;
       const hpPct = Math.max(0, Math.min(1, curHp / maxHpDenom));
@@ -1168,12 +1186,30 @@ export class EntityRenderer {
         display._hpHeart.texture = heartTex;
       }
       if (heartTex && heartTex.width > 0) {
-        display._hpHeart.width = HP_HEART_SIZE;
-        display._hpHeart.height = HP_HEART_SIZE;
+        const spriteVisible = display._spriteBody && display._spriteBody.visible;
+        let visualTopY;
+        if (display._variantKey && spriteVisible) {
+          const variantCfg = MONSTER_VARIANTS[display._variantKey];
+          visualTopY = display._size - ((variantCfg && variantCfg.liveScalePx) || 64);
+        } else if (display._isSnowman && spriteVisible) {
+          visualTopY = display._size - 64;
+        } else if (display._isFodder && spriteVisible) {
+          visualTopY = display._size - 96;
+        } else {
+          visualTopY = -size;
+        }
+        /* lvlText sits at y=-size-12 with anchor (0.5, 1) — occupies
+           y=[-size-22, -size-12].  Push heart above both the sprite
+           top and the level text band so neither occludes it. */
+        const lvlTopY = -size - 22;
+        const topY = Math.min(visualTopY, lvlTopY);
+        const heartY = topY - 6 - MONSTER_HEART_SIZE / 2;
+        display._hpHeart.width = MONSTER_HEART_SIZE;
+        display._hpHeart.height = MONSTER_HEART_SIZE;
         display._hpHeart.x = 0;
-        display._hpHeart.y = -size - 18;
+        display._hpHeart.y = heartY;
         display._hpText.x = 0;
-        display._hpText.y = -size - 17; /* nudged 1 px down to center on the heart shape */
+        display._hpText.y = heartY + 1;
       }
       if (hpPct >= 0.999) {
         display._hpHeart.alpha = 0;
@@ -2601,12 +2637,15 @@ export class EntityRenderer {
       heart.alpha = hpNewAlpha;
       heartText.alpha = hpNewAlpha;
       if (heart.texture && heart.texture.width > 0) {
-        heart.width = HP_HEART_SIZE;
-        heart.height = HP_HEART_SIZE;
+        heart.width = PLAYER_HEART_SIZE;
+        heart.height = PLAYER_HEART_SIZE;
         heart.x = 0;
-        heart.y = -82;
+        /* Y placed so the heart's bottom edge clears the energy pill
+           (top of stam at y=-62-H/2=-67); heart radius is HEART/2=22,
+           so center at y=-92 puts the heart's bottom at y=-70. */
+        heart.y = -92;
         heartText.x = 0;
-        heartText.y = -81;
+        heartText.y = -91;
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
