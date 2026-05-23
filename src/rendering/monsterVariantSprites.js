@@ -57,6 +57,13 @@ import {
   frameCount as fhWalkCount,
 } from './fishmanSprites.js';
 
+import {
+  loadRockmonsterSprites,
+  getFrame as rmWalkFrame,
+  hasFrames as rmHasWalk,
+  frameCount as rmWalkCount,
+} from './rockmonsterSprites.js';
+
 export const VARIANT_SPRITES = {
   fireGoblin: {
     load: loadFireGoblinSprites,
@@ -103,6 +110,12 @@ export const VARIANT_SPRITES = {
        entity translates around the map.  No attack/hit/death sheets --
        falls through to the brute generic paths. */
     walk: { get: fhWalkFrame, has: fhHasWalk, count: fhWalkCount },
+  },
+  rockmonster: {
+    load: loadRockmonsterSprites,
+    /* Same still-pose pattern as fishman -- one frame per direction,
+       no attack/hit/death sheets, falls through to brute generic. */
+    walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
   },
 };
 
