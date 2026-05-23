@@ -31462,6 +31462,7 @@ export var BroTown = function BroTown(_ref0) {
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }, /*#__PURE__*/React.createElement("div", {
     /* Analog "stick" — anchored at joystick centre, grows toward the
@@ -31487,6 +31488,7 @@ export var BroTown = function BroTown(_ref0) {
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
@@ -31502,6 +31504,7 @@ export var BroTown = function BroTown(_ref0) {
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }), /*#__PURE__*/React.createElement("div", {
     /* Left-joystick weapon-swap preview overlay (v2.3.97).  Hidden by
@@ -31558,6 +31561,7 @@ export var BroTown = function BroTown(_ref0) {
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
       touchAction: 'none',
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }, autoAttack && /*#__PURE__*/React.createElement("div", {
     /* v2.3.99: auto-attack indicator.  Replaces the dynamic
@@ -31622,6 +31626,7 @@ export var BroTown = function BroTown(_ref0) {
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }), /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
@@ -31641,6 +31646,7 @@ export var BroTown = function BroTown(_ref0) {
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
       pointerEvents: 'none',
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }, /* Knob left blank — active weapon is shown in WeaponSwapBar instead. */ null), /*#__PURE__*/React.createElement("div", {
     /* Right-joystick shield preview overlay (v2.3.97).  Hidden by
