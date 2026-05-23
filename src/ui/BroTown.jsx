@@ -248,6 +248,15 @@ function distributeKillXpToBuild(R, killXp) {
       if (share > 0) addBuildProg(R, k, killXp * share);
     });
   }
+  /* Magic and bow kills passively train HP — glass cannons still build
+     vitality at 25% rate even when they never get hit. Suppressed when
+     vitality is locked (GDD §1.5 pure build). Melee builds vit the
+     normal way (damage-taken weights _buildUse.vitality). */
+  var activeSlot = R.activeSlot || 'melee';
+  if ((activeSlot === 'ranged' || activeSlot === 'staff')
+      && !(R._statLocks && R._statLocks.vitality)) {
+    addBuildProg(R, 'vitality', killXp * 0.25);
+  }
   /* Reset usage tally for the next encounter — each kill's
      distribution reflects activity since the last kill. */
   R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
