@@ -42,8 +42,8 @@ function _ensureHudBarTextures() {
    Player heart is larger (red, fits 3-digit HP); monster heart is
    smaller + black-tinted so a crowd of mobs around the player still
    visually parses as "those are monster HPs, mine is the red one." */
-const PLAYER_HEART_SIZE = 44;
-const MONSTER_HEART_SIZE = 26;
+const PLAYER_HEART_SIZE = 66;
+const MONSTER_HEART_SIZE = 52;
 const PLAYER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 18,
@@ -55,10 +55,10 @@ const PLAYER_HP_NUM_STYLE = {
 };
 const MONSTER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
-  fontSize: 11,
+  fontSize: 17,
   fontWeight: '800',
   fill: '#ffffff',
-  stroke: { color: '#000000', width: 2 },
+  stroke: { color: '#000000', width: 3 },
   align: 'center',
 };
 
@@ -2358,8 +2358,10 @@ export class EntityRenderer {
       comboText.alpha = 0;
     }
 
-    // Name
-    display._nameText.text = S.myName || 'You';
+    /* Local player's name + level now live in the top-right player card
+       (BottomDashboard.jsx).  Hide the above-head plate so it doesn't
+       sit redundantly on top of the new HP heart. */
+    if (display._nameText.visible) display._nameText.visible = false;
 
     // Death / invuln
     if (S.rpg && S.rpg.hp <= 0) {
@@ -2570,10 +2572,11 @@ export class EntityRenderer {
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
 
-    /* Mana / Energy pills stay as horizontal bars above the head. */
+    /* Mana / Energy pills sit above the HP heart (heart now hugs the
+       player's head, so the pills moved up to clear it). */
     const bars = [
-      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   tFull: d._hudMpTextFull,   tEmpty: d._hudMpTextEmpty,   cur: R.mana,    max: R.maxMana,    y: -50 },
-      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -62 },
+      { sprite: d._hudMpSprite,   empty: d._hudMpEmpty,   tFull: d._hudMpTextFull,   tEmpty: d._hudMpTextEmpty,   cur: R.mana,    max: R.maxMana,    y: -112 },
+      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -124 },
     ];
     for (const b of bars) {
       const max = b.max || 1;
@@ -2640,12 +2643,14 @@ export class EntityRenderer {
         heart.width = PLAYER_HEART_SIZE;
         heart.height = PLAYER_HEART_SIZE;
         heart.x = 0;
-        /* Y placed so the heart's bottom edge clears the energy pill
-           (top of stam at y=-62-H/2=-67); heart radius is HEART/2=22,
-           so center at y=-92 puts the heart's bottom at y=-70. */
-        heart.y = -92;
+        /* Heart hugs the head: with HEART=66 and radius 33, center
+           at y=-66 puts the bottom edge at y=-33 -- the player
+           sprite's head sits around y=-32, so the heart sits right
+           on top of it.  Mana/stam pills moved up to y=-112/-124
+           to clear the heart's top edge (~y=-99). */
+        heart.y = -66;
         heartText.x = 0;
-        heartText.y = -91;
+        heartText.y = -65;
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
