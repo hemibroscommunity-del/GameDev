@@ -231,6 +231,41 @@ function isAttackInShieldArc(S, ax, ay) {
   return Math.abs(d) <= Math.PI / 3;
 }
 
+/* Melee-kill lifesteal — tracks per-monster damage dealt to the player,
+   then on a melee kill refunds 90% of the net damage that specific
+   monster cost. Note from user: "killing monsters melee heals you no
+   regen. 90% of the damage received from the monster (net)."
+   - Self-balancing: heal scales with what the fight cost, not absolute numbers
+   - Rewards engaging tougher monsters (more dmg taken -> more heal-back)
+   - Glass cannons get less back (less hp taken = less heal-back)
+   - Skipped when activeSlot is ranged/staff (only melee kills refund)
+   Ranged kills get the v2.3.127 vitality side-train instead, so they're
+   not double-rewarded. */
+function trackMonsterDamage(S, monsterId, amount) {
+  if (!S || monsterId == null || !amount || amount <= 0) return;
+  if (!S._dmgFromMonster) S._dmgFromMonster = {};
+  S._dmgFromMonster[monsterId] = (S._dmgFromMonster[monsterId] || 0) + amount;
+}
+
+function applyMeleeLifesteal(S, R, m) {
+  if (!S || !R || !m || m.id == null) return;
+  if ((R.activeSlot || 'melee') !== 'melee') return;
+  if (!S._dmgFromMonster) return;
+  var taken = S._dmgFromMonster[m.id] || 0;
+  if (taken <= 0) return;
+  var refund = Math.ceil(taken * 0.9);
+  var maxHp = R.maxHp || R.hp || 1;
+  R.hp = Math.min(maxHp, (R.hp || 0) + refund);
+  delete S._dmgFromMonster[m.id];
+  if (S.dmgNumbers && S.player) {
+    S.dmgNumbers.push({
+      x: S.player.x, y: S.player.y - 40,
+      text: '+' + refund + ' HP',
+      color: '#3dd497', ts: Date.now(),
+    });
+  }
+}
+
 function distributeKillXpToBuild(R, killXp) {
   if (!R || !killXp || killXp <= 0) return;
   if (!R._buildUse) R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
@@ -2862,6 +2897,9 @@ export var BroTown = function BroTown(_ref0) {
                      client-side; T2 (xp/level/unspentT2) is server-
                      authoritative when S._serverMonsters is true. */
                   distributeKillXpToBuild(R, killXp);
+                  /* Melee lifesteal — refund 90% of damage this monster
+                     dealt to us, but only if we currently have melee equipped. */
+                  applyMeleeLifesteal(S, R, deadM);
                   /* "+N XP" popup -- client-predicted from
                      payload.xp * shares[myId] * killVarMult for snappy
                      UX.  The actual R.xp update arrives via
@@ -7323,6 +7361,7 @@ export var BroTown = function BroTown(_ref0) {
                       var slamDmg = Math.ceil(m.dmg * 1.5);
                       var finalDmg = blocked ? 0 : slamDmg;
                       _R6.hp -= finalDmg;
+                      trackMonsterDamage(S, m.id, finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-slam', { amt: finalDmg, archetype: m.archetype || m.type, blocked: blocked }); } catch (e) {}
                       S.dmgNumbers.push({
                         x: P.x,
@@ -7390,6 +7429,7 @@ export var BroTown = function BroTown(_ref0) {
                       var sweepDmg = Math.ceil(m.dmg * 1.2);
                       var _finalDmg = _blocked ? 0 : sweepDmg;
                       _R6.hp -= _finalDmg;
+                      trackMonsterDamage(S, m.id, _finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-sweep', { amt: _finalDmg, archetype: m.archetype || m.type, blocked: _blocked }); } catch (e) {}
                       S.dmgNumbers.push({
                         x: P.x,
@@ -7481,6 +7521,7 @@ export var BroTown = function BroTown(_ref0) {
                   var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
                   var _finalDmg2 = _blocked2 ? Math.max(1, Math.ceil(chargeDmg * (1 - calcBlockReduction(_R6.fortification, _R6.shield)))) : chargeDmg;
                   _R6.hp -= _finalDmg2;
+                  trackMonsterDamage(S, m.id, _finalDmg2);
                   if (window.__dmgLog) try { console.log('[dmg] boss-charge', { amt: _finalDmg2, archetype: m.archetype || m.type, blocked: _blocked2 }); } catch (e) {}
                   S.dmgNumbers.push({
                     x: P.x,
@@ -7639,6 +7680,7 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.monsterDeath(m && m.archetype);
                     var explodeDmg = Math.round(m.dmg * 2);
                     _R6.hp -= shielded ? 0 : explodeDmg;
+                    trackMonsterDamage(S, m.id, shielded ? 0 : explodeDmg);
                     if (window.__dmgLog) try { console.log('[dmg] volatile-explode', { amt: explodeDmg, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y } }); } catch (e) {}
                     if (!shielded) {
                       S._hitFlash = Date.now();
@@ -7678,6 +7720,7 @@ export var BroTown = function BroTown(_ref0) {
                     });
                   } else {
                     _R6.hp -= dmgTaken;
+                    trackMonsterDamage(S, m.id, dmgTaken);
                     if (window.__dmgLog) try { console.log('[dmg] monster-melee', { amt: dmgTaken, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y }, dist: Math.round(Math.sqrt((m.x - P.x) ** 2 + (m.y - P.y) ** 2)) }); } catch (e) {}
                     if (shielded) {
                       try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
@@ -7734,6 +7777,7 @@ export var BroTown = function BroTown(_ref0) {
                       var pierceDmg = Math.max(0, Math.floor(rawDmg * blockReduc * 0.5));
                       if (pierceDmg > 0) {
                         _R6.hp -= pierceDmg;
+                        trackMonsterDamage(S, m.id, pierceDmg);
                         if (window.__dmgLog) try { console.log('[dmg] sentinel-pierce', pierceDmg); } catch (e) {}
                         S.dmgNumbers.push({
                           x: P.x + 10,
@@ -7749,6 +7793,7 @@ export var BroTown = function BroTown(_ref0) {
                       if (m._stalkPhase === 'dash' && Math.random() < 0.4) {
                         var critDmg = Math.ceil(dmgTaken * 0.5);
                         _R6.hp -= critDmg;
+                        trackMonsterDamage(S, m.id, critDmg);
                         if (window.__dmgLog) try { console.log('[dmg] stalker-crit', critDmg); } catch (e) {}
                         S.dmgNumbers.push({
                           x: P.x,
@@ -9036,6 +9081,9 @@ export var BroTown = function BroTown(_ref0) {
                      kill (incremented at each combat action via
                      addBuildUse).  Total stat XP per kill = monster XP. */
                   distributeKillXpToBuild(_R6, killXp);
+                  /* Melee lifesteal — single-player melee kill path,
+                     refund 90% of damage taken from this monster. */
+                  applyMeleeLifesteal(S, _R6, m);
 
                   /* Check level up — §6.2 tri-phase XP curve.  T1 is
                      use-trained; T2 still allocated, +5 unspent per level. */
@@ -10402,6 +10450,10 @@ export var BroTown = function BroTown(_ref0) {
                     /* +XP popup anchored next to the XP bar (HudPopupOverlay). */
                     pushHudPopup(S, { target: 'xpBar', text: '+' + _killXpR + ' XP', color: '#3ddc97' });
                     distributeKillXpToBuild(_R9, _killXpR);
+                    /* Lifesteal helper is melee-only; calling it on a
+                       ranged/staff kill is a no-op (activeSlot gate),
+                       but we still clear the per-monster damage entry. */
+                    applyMeleeLifesteal(S, _R9, m);
                     while (_R9.xp >= xpRequired(_R9.level)) {
                       _R9.xp -= xpRequired(_R9.level);
                       _R9.level++;
@@ -10565,6 +10617,7 @@ export var BroTown = function BroTown(_ref0) {
               return false;
             }
             _R6P.hp -= proj.rawDmg;
+            trackMonsterDamage(S, proj.ownerId, proj.rawDmg);
             if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: proj.rawDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
             try { BT_AUDIO.play('slime-projectile-hit', { vol: 0.7 }); } catch (e) {}
             S.lastDamageTaken = Date.now();
