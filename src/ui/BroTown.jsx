@@ -9686,20 +9686,12 @@ export var BroTown = function BroTown(_ref0) {
           var hasHpBuff = S._hpBuff && Date.now() < S._hpBuff;
           var hasManaBuff = S._manaBuff && Date.now() < S._manaBuff;
           var regenMult = hasRegenBuff ? 1.3 : 1.0;
-          if (_R7.hp < _R7.maxHp) {
-            if (!S._regenTimer) S._regenTimer = 0;
-            S._regenTimer++;
-            var restMult = 1 + (_R7.restoration || 0) * 0.001;
-            /* In MP the worker runs HP regen on its own tick (_tickPlayerRegen)
-               and pushes the new value via player_state.  Skip the local
-               mutation so dual regen doesn't race the server snapshot. */
-            if (S._regenTimer % 4 === 0 && !S._serverMonsters) {
-              var healAmt = Math.max(1, Math.ceil(_R7.maxHp * 0.001 * restMult * regenMult));
-              var effectiveMax = hasHpBuff ? Math.floor(_R7.maxHp * 1.25) : _R7.maxHp;
-              _R7.hp = Math.min(effectiveMax, _R7.hp + healAmt);
-              setRpgState(_objectSpread({}, _R7));
-            }
-          }
+          /* §3.2 OOC HP regen disabled (v2.3.149) -- melee-kill lifesteal
+             is now the only HP recovery source per design. Stamina + mana
+             regen below stay on. Worker counterpart in
+             docs/specs/disable-hp-regen-server.md.
+             Restoration coefficient + regen-buff multiplier left intact in
+             case food-buff or amulet design adds HP heals back later. */
           /* Stamina regen — 10/s base (10 sec full recharge) × Restoration */
           if (_R7.stamina < _R7.maxStamina && !S._serverMonsters) {
             var _R7$_amuletBonus;
@@ -9716,17 +9708,7 @@ export var BroTown = function BroTown(_ref0) {
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
           var _R8 = S.rpg;
-          if (_R8.hp < _R8.maxHp) {
-            if (!S._regenTimer) S._regenTimer = 0;
-            S._regenTimer++;
-            /* MP: worker runs in-combat HP regen too -- skip local. */
-            if (S._regenTimer % 10 === 0 && !S._serverMonsters) {
-              var _R8$_amuletBonus;
-              var _healAmt = Math.max(1, Math.ceil(_R8.maxHp * 0.0005));
-              if (((_R8$_amuletBonus = _R8._amuletBonus) === null || _R8$_amuletBonus === void 0 ? void 0 : _R8$_amuletBonus.stat) === 'hpRegen') _healAmt = Math.ceil(_healAmt * (1 + _R8._amuletBonus.value));
-              _R8.hp = Math.min(_R8.maxHp, _R8.hp + _healAmt);
-            }
-          }
+          /* In-combat HP regen disabled (v2.3.149) -- see OOC block above. */
           /* Stamina always regens — 10/sec */
           if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
             _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60);
