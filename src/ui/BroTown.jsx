@@ -232,6 +232,18 @@ function addBuildProg(R, stat, amount) {
        these have ticked since the last level. Counts crossings in any
        T1 stat, mirrors the per-level budget. */
     R._buildPointsThisLvl = (R._buildPointsThisLvl || 0) + 1;
+    /* v2.3.154: tell the worker about the build-point tick so its
+       MP-side BP gate (build-points-gate-server.md) can count toward
+       its own level-up. No-op in SP / pre-worker-update sessions
+       (S.channel may be null). Server doesn't need to echo back --
+       its level-up will arrive via the existing combat_credit +
+       player_state events. */
+    try {
+      var _S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+      if (_S && _S.channel && typeof _S.channel.send === 'function') {
+        _S.channel.send({ type: 'build_point_earned' });
+      }
+    } catch (e) {}
     var beforeMax = { hp: R.maxHp, mp: R.maxMana, stam: R.maxStamina };
     if (typeof recalcDerived === 'function') recalcDerived(R);
     pushStatIncreaseNotice(R, stat, beforeMax);
@@ -2175,21 +2187,13 @@ export var BroTown = function BroTown(_ref0) {
                  applies on monster_kill (and persists), client mirrors
                  here.  A modified client that sets R.xp = 999999 will
                  get stomped on the next kill's player_state.
-
-                 v2.3.153 -- A1 transition gate: the worker still uses
-                 the old XP-based level rule (build-points-gate-server
-                 spec not yet deployed). If we accept its level updates
-                 verbatim, the client BP-driven level we track locally
-                 gets stomped, and the top-right LV display ticks up
-                 every few kills instead of every 5 BP. Workaround:
-                 only accept the server level on the FIRST player_state
-                 of the session (bootstrap from save). After that the
-                 client owns level until the worker has the BP gate. */
+                 v2.3.154: the worker now uses the BP gate (per the
+                 build-points-gate-server spec), so its level updates
+                 only arrive after the player has earned 5 BP. Safe to
+                 accept verbatim again; the v2.3.153 bootstrap-only
+                 workaround came out. */
               if (typeof msg.payload.level === 'number') {
-                if (!S._levelBootstrapped) {
-                  S.rpg.level = msg.payload.level;
-                  S._levelBootstrapped = true;
-                }
+                S.rpg.level = msg.payload.level;
               }
               if (typeof msg.payload.xp === 'number') {
                 S.rpg.xp = msg.payload.xp;

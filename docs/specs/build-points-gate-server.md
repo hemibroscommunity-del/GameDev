@@ -131,17 +131,9 @@ If steps 3 + 5 + 6 all match — gate works.
 
 ---
 
-## Client TODO
+## Client TODO — DONE (v2.3.154)
 
-After the worker ships this, **add the `build_point_earned` dispatch on the client side** in `BroTown.jsx addBuildProg`, right after `R._buildPointsThisLvl++`:
-
-```js
-if (typeof window !== 'undefined' && window._gameState && window._gameState.current && window._gameState.current.channel) {
-  try { window._gameState.current.channel.send({ type: 'build_point_earned' }); } catch (e) {}
-}
-```
-
-(Or wire `S` through to `addBuildProg` more cleanly — the current signature is `addBuildProg(R, stat, amount)` so it has no direct handle on `S`. Quick fix: read it through the existing `window._gameState.current` pattern that other parts of BroTown.jsx use.)
+`build_point_earned` dispatch landed in `addBuildProg` immediately after `R._buildPointsThisLvl++`. Uses the `window._gameState.current.channel` pattern. Also dropped the v2.3.153 bootstrap-only R.level gate at the same time — the worker is now the source of truth for level in MP, so its player_state updates pass through verbatim again.
 
 ---
 
