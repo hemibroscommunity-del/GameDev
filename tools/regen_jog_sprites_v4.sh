@@ -53,13 +53,15 @@ for d in north south northeast southwest east; do
     "/tmp/jog-v4-$d-strip-magenta.png" \
     --lum 200 --sat 30
 
-  # 4. PIL nearest-neighbor downscale + exact-magenta kill, all in
-  #    Python.  Replaces ffmpeg's colorkey/scale chain, which was
-  #    introducing sub-pixel color shifts between filters and leaving
-  #    purplish AA fringe along the figure edge that an exact-match
-  #    chroma-key couldn't catch.  Python pipeline guarantees every
-  #    output pixel is one input pixel and magenta is matched exactly.
-  python tools/downscale_and_key.py \
+  # 4. Outline-aware nearest-neighbor downscale + exact-magenta kill.
+  #    Per-block: if ANY native pixel in the destination cell's source
+  #    block is outline (dark), the output picks the darkest pixel
+  #    from the block so the outline is guaranteed to survive the
+  #    downscale.  Otherwise standard nearest-neighbor.  Then exact
+  #    (255,0,255) -> (0,0,0,0) clears the magenta bg.  Replaces the
+  #    plain PIL nearest-neighbor downscale that was leaving outline
+  #    gaps in v2.3.155.
+  python tools/outline_aware_downscale.py \
     "/tmp/jog-v4-$d-strip-magenta.png" \
-    "public/sprites/player/jog-$d.png" --height 64
+    "public/sprites/player/jog-$d.png" --height 64 --outline-lum 100
 done
