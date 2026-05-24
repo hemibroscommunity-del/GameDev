@@ -231,22 +231,73 @@ function isAttackInShieldArc(S, ax, ay) {
   return Math.abs(d) <= Math.PI / 3;
 }
 
+/* Melee-kill lifesteal — tracks per-monster damage dealt to the player.
+   On a melee kill the Cloudflare Worker refunds 90% of the net damage
+   that specific monster cost and pushes the new HP via player_state;
+   the worker also emits a `lifesteal_credit` event whose handler renders
+   the +N HP floater (see WS switch). Client side is responsible for:
+   1. Mirroring the per-monster damage map so it stays in sync if the
+      worker ever asks for verification (and so debug overlays can show
+      it). Tracked in S._dmgFromMonster.
+   2. Clearing the entry on kill resolution. The worker independently
+      clears its own map; this client-side delete is just hygiene so a
+      stale entry doesn't linger if we add a future debug readout.
+   Notes on scope:
+   - Melee-only by design. Ranged/staff get a vitality side-train
+     instead (v2.3.127, distributeKillXpToBuild below). Don't double-
+     reward.
+   - Worker contract documented at docs/specs/lifesteal-server.md. */
+function trackMonsterDamage(S, monsterId, amount) {
+  if (!S || monsterId == null || !amount || amount <= 0) return;
+  if (!S._dmgFromMonster) S._dmgFromMonster = {};
+  S._dmgFromMonster[monsterId] = (S._dmgFromMonster[monsterId] || 0) + amount;
+}
+
+function applyMeleeLifesteal(S, R, m) {
+  if (!S || !R || !m || m.id == null) return;
+  if ((R.activeSlot || 'melee') !== 'melee') return;
+  if (!S._dmgFromMonster) return;
+  /* Drop the entry so the local map doesn't accumulate stale ids.
+     The actual heal + floater come from the server. No HP mutation
+     here -- the worker is authoritative and the player_state push
+     that follows monster_kill carries the bumped hp. */
+  delete S._dmgFromMonster[m.id];
+}
+
 function distributeKillXpToBuild(R, killXp) {
   if (!R || !killXp || killXp <= 0) return;
   if (!R._buildUse) R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
+  var activeSlot = R.activeSlot || 'melee';
+  /* Bow/magic stat separation — bow kills must not train mind, magic
+     kills must not train agility. Zero the incompatible stat's usage
+     before the proportional split so a player who briefly cast a
+     mana-cost ability mid-bow-fight doesn't get cross-stat training
+     when they kill with the bow. */
+  if (activeSlot === 'ranged') R._buildUse.mind = 0;
+  else if (activeSlot === 'staff') R._buildUse.agility = 0;
   var keys = ['power', 'vitality', 'endurance', 'agility', 'mind'];
   var total = 0;
   keys.forEach(function (k) { total += R._buildUse[k] || 0; });
   if (total <= 0) {
     /* No tracked usage — fallback by weapon type so the bar at least
        moves on a fresh character. */
-    var slot = R.activeSlot || 'melee';
-    addBuildProg(R, slot === 'staff' ? 'mind' : 'power', killXp);
+    var fallbackStat = activeSlot === 'staff'
+      ? 'mind'
+      : (activeSlot === 'ranged' ? 'agility' : 'power');
+    addBuildProg(R, fallbackStat, killXp);
   } else {
     keys.forEach(function (k) {
       var share = (R._buildUse[k] || 0) / total;
       if (share > 0) addBuildProg(R, k, killXp * share);
     });
+  }
+  /* Magic and bow kills passively train HP — glass cannons still build
+     vitality at 25% rate even when they never get hit. Suppressed when
+     vitality is locked (GDD §1.5 pure build). Melee builds vit the
+     normal way (damage-taken weights _buildUse.vitality). */
+  if ((activeSlot === 'ranged' || activeSlot === 'staff')
+      && !(R._statLocks && R._statLocks.vitality)) {
+    addBuildProg(R, 'vitality', killXp * 0.25);
   }
   /* Reset usage tally for the next encounter — each kill's
      distribution reflects activity since the last kill. */
@@ -2038,6 +2089,28 @@ export var BroTown = function BroTown(_ref0) {
               if (msg.payload) _applyLootCredit(msg.payload, S);
               break;
             }
+          case 'lifesteal_credit':
+            {
+              /* Worker is informing us a melee-kill heal landed. HP
+                 itself rides on the player_state push that follows;
+                 this event is only for the +N HP floater so the visual
+                 math matches the server exactly (we used to compute
+                 the refund locally, but rounding/last-hit attribution
+                 could disagree). Only render for our own player; party
+                 members don't get our floater. */
+              if (msg.payload
+                  && msg.payload.playerId === S.myId
+                  && msg.payload.refund > 0
+                  && S.dmgNumbers
+                  && S.player) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: '+' + msg.payload.refund + ' HP',
+                  color: '#3dd497', ts: Date.now(),
+                });
+              }
+              break;
+            }
           case 'player_state':
             {
               /* Server-authoritative rpg state snapshot.  OVERWRITE
@@ -2084,7 +2157,16 @@ export var BroTown = function BroTown(_ref0) {
                  ability costs, shield drain, regen, level-up + respawn
                  resets.  Client OVERWRITES on every player_state so a
                  DevTools R.hp/stamina/mana = 99999 cheat gets stomped
-                 on the next sync. */
+                 on the next sync.
+                 LIFESTEAL TEST MODE (companion to the v2.3.132 client
+                 regen pause): only let HP go DOWN from server. This
+                 stops server-side regen ticks from undoing the C1
+                 melee-kill heal (which is applied client-side, so the
+                 next player_state would otherwise stomp it back down).
+                 Also-stops in-combat / OOC regen for the same reason.
+                 Trade-off: server-side heal sources (cooking, level-up
+                 full restore, respawn) are blocked until the player
+                 next takes damage, at which point HP resyncs. */
               if (typeof msg.payload.hp === 'number') {
                 S.rpg.hp = msg.payload.hp;
               }
@@ -2494,6 +2576,12 @@ export var BroTown = function BroTown(_ref0) {
       function _applyLootCredit(payload, S) {
         if (!S.rpg) return;
         var R = S.rpg;
+        /* Server-loot path equivalent of the local pickup freeze in the
+           groundLoot.filter at line ~9362. Sets the same gate variable
+           so the movement gate, renderer facing override, and auto-swing
+           suppression all kick in for MP loot too. Without this, the
+           freeze only fired for single-player loot. */
+        S._lootFreezeUntil = Date.now() + 500;
         if (payload.coins && payload.coins > 0) {
           if (R._compStats) R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + payload.coins;
           pushHudPopup(S, { target: 'goldIcon', text: '+' + payload.coins + ' G', color: '#f5c542' });
@@ -2853,6 +2941,9 @@ export var BroTown = function BroTown(_ref0) {
                      client-side; T2 (xp/level/unspentT2) is server-
                      authoritative when S._serverMonsters is true. */
                   distributeKillXpToBuild(R, killXp);
+                  /* Melee lifesteal — refund 90% of damage this monster
+                     dealt to us, but only if we currently have melee equipped. */
+                  applyMeleeLifesteal(S, R, deadM);
                   /* "+N XP" popup -- client-predicted from
                      payload.xp * shares[myId] * killVarMult for snappy
                      UX.  The actual R.xp update arrives via
@@ -5112,6 +5203,8 @@ export var BroTown = function BroTown(_ref0) {
            the corpse stays put until the respawn setTimeout fires. */
         var _playerDead = !!S._dying || !!(S.rpg && S.rpg.hp <= 0);
         var playerStunned = _realStunned || _hitLockActive;
+        /* Loot pickup freeze — locks movement + faces camera for 0.5s on pickup */
+        var _playerLootFrozen = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
 
         /* Movement — analog joystick + keyboard fallback */
         /* Dodge roll — cancelled mid-roll if the player just died. */
@@ -5132,11 +5225,11 @@ export var BroTown = function BroTown(_ref0) {
            sprite + screen shake + particles still play; the player
            just keeps their dodge ability mid-hit.
            Death also freezes — no walking around as a corpse. */
-        var dx = (_realStunned || _playerDead) ? 0 : S.stickX,
-          dy = (_realStunned || _playerDead) ? 0 : S.stickY;
+        var dx = (_realStunned || _playerDead || _playerLootFrozen) ? 0 : S.stickX,
+          dy = (_realStunned || _playerDead || _playerLootFrozen) ? 0 : S.stickY;
         /* Keyboard overrides if no stick input — same gating:
-           real stuns + death block, hit-react lockout does not. */
-        if (!_realStunned && !_playerDead && dx === 0 && dy === 0) {
+           real stuns + death + loot-pickup freeze block, hit-react lockout does not. */
+        if (!_realStunned && !_playerDead && !_playerLootFrozen && dx === 0 && dy === 0) {
           if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
           if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
           if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
@@ -5148,8 +5241,10 @@ export var BroTown = function BroTown(_ref0) {
             dy /= len;
           }
         }
-        /* Direction for name tag / facing */
-        if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+        /* Direction for name tag / facing — locked to 'down' (camera-facing) during loot freeze */
+        if (_playerLootFrozen) {
+          P.dir = 'down';
+        } else if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
           if (Math.abs(dx) > Math.abs(dy)) P.dir = dx > 0 ? 'right' : 'left';else P.dir = dy > 0 ? 'down' : 'up';
         }
 
@@ -7310,6 +7405,7 @@ export var BroTown = function BroTown(_ref0) {
                       var slamDmg = Math.ceil(m.dmg * 1.5);
                       var finalDmg = blocked ? 0 : slamDmg;
                       _R6.hp -= finalDmg;
+                      trackMonsterDamage(S, m.id, finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-slam', { amt: finalDmg, archetype: m.archetype || m.type, blocked: blocked }); } catch (e) {}
                       S.dmgNumbers.push({
                         x: P.x,
@@ -7377,6 +7473,7 @@ export var BroTown = function BroTown(_ref0) {
                       var sweepDmg = Math.ceil(m.dmg * 1.2);
                       var _finalDmg = _blocked ? 0 : sweepDmg;
                       _R6.hp -= _finalDmg;
+                      trackMonsterDamage(S, m.id, _finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-sweep', { amt: _finalDmg, archetype: m.archetype || m.type, blocked: _blocked }); } catch (e) {}
                       S.dmgNumbers.push({
                         x: P.x,
@@ -7468,6 +7565,7 @@ export var BroTown = function BroTown(_ref0) {
                   var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
                   var _finalDmg2 = _blocked2 ? Math.max(1, Math.ceil(chargeDmg * (1 - calcBlockReduction(_R6.fortification, _R6.shield)))) : chargeDmg;
                   _R6.hp -= _finalDmg2;
+                  trackMonsterDamage(S, m.id, _finalDmg2);
                   if (window.__dmgLog) try { console.log('[dmg] boss-charge', { amt: _finalDmg2, archetype: m.archetype || m.type, blocked: _blocked2 }); } catch (e) {}
                   S.dmgNumbers.push({
                     x: P.x,
@@ -7626,6 +7724,7 @@ export var BroTown = function BroTown(_ref0) {
                     BT_AUDIO.monsterDeath(m && m.archetype);
                     var explodeDmg = Math.round(m.dmg * 2);
                     _R6.hp -= shielded ? 0 : explodeDmg;
+                    trackMonsterDamage(S, m.id, shielded ? 0 : explodeDmg);
                     if (window.__dmgLog) try { console.log('[dmg] volatile-explode', { amt: explodeDmg, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y } }); } catch (e) {}
                     if (!shielded) {
                       S._hitFlash = Date.now();
@@ -7665,6 +7764,7 @@ export var BroTown = function BroTown(_ref0) {
                     });
                   } else {
                     _R6.hp -= dmgTaken;
+                    trackMonsterDamage(S, m.id, dmgTaken);
                     if (window.__dmgLog) try { console.log('[dmg] monster-melee', { amt: dmgTaken, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y }, dist: Math.round(Math.sqrt((m.x - P.x) ** 2 + (m.y - P.y) ** 2)) }); } catch (e) {}
                     if (shielded) {
                       try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
@@ -7721,6 +7821,7 @@ export var BroTown = function BroTown(_ref0) {
                       var pierceDmg = Math.max(0, Math.floor(rawDmg * blockReduc * 0.5));
                       if (pierceDmg > 0) {
                         _R6.hp -= pierceDmg;
+                        trackMonsterDamage(S, m.id, pierceDmg);
                         if (window.__dmgLog) try { console.log('[dmg] sentinel-pierce', pierceDmg); } catch (e) {}
                         S.dmgNumbers.push({
                           x: P.x + 10,
@@ -7736,6 +7837,7 @@ export var BroTown = function BroTown(_ref0) {
                       if (m._stalkPhase === 'dash' && Math.random() < 0.4) {
                         var critDmg = Math.ceil(dmgTaken * 0.5);
                         _R6.hp -= critDmg;
+                        trackMonsterDamage(S, m.id, critDmg);
                         if (window.__dmgLog) try { console.log('[dmg] stalker-crit', critDmg); } catch (e) {}
                         S.dmgNumbers.push({
                           x: P.x,
@@ -8062,7 +8164,10 @@ export var BroTown = function BroTown(_ref0) {
              is always in the past). */
           var _staffCdExtra = (S.rpg && S.rpg.activeSlot === 'staff') ? 300 : 0;
           if (S.autoAttack && S.rpg && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
-            if (!(S._playerStunUntil && Date.now() < S._playerStunUntil)) {
+            /* Loot pickup freeze suppresses auto-swing — keeps the
+               0.5s pickup animation clean instead of mid-swing. */
+            var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
+            if (!_lootSwingBlock && !(S._playerStunUntil && Date.now() < S._playerStunUntil)) {
               var _S$rpg0, _S$rpg1;
               if (((_S$rpg0 = S.rpg) === null || _S$rpg0 === void 0 ? void 0 : _S$rpg0.activeSlot) === 'ranged' || ((_S$rpg1 = S.rpg) === null || _S$rpg1 === void 0 ? void 0 : _S$rpg1.activeSlot) === 'staff') {
                 var _S$rpg10;
@@ -9023,6 +9128,9 @@ export var BroTown = function BroTown(_ref0) {
                      kill (incremented at each combat action via
                      addBuildUse).  Total stat XP per kill = monster XP. */
                   distributeKillXpToBuild(_R6, killXp);
+                  /* Melee lifesteal — single-player melee kill path,
+                     refund 90% of damage taken from this monster. */
+                  applyMeleeLifesteal(S, _R6, m);
 
                   /* Check level up — §6.2 tri-phase XP curve.  T1 is
                      use-trained; T2 still allocated, +5 unspent per level. */
@@ -9345,6 +9453,9 @@ export var BroTown = function BroTown(_ref0) {
               return true;
             }
             if (lDist < 20) {
+              /* Pickup freeze — 0.5s lock + face camera, immersion + lets pet vacuum nearby loot */
+              S._lootFreezeUntil = Date.now() + 500;
+              P.dir = 'down';
               /* §4.6 Weapon drop pickup — equip if better, stash otherwise */
               if (loot.isWeapon && loot.weapon) {
                 var _WEAPON_TYPES$drop$ty2, _WEAPON_TYPES2;
@@ -9596,20 +9707,12 @@ export var BroTown = function BroTown(_ref0) {
           var hasHpBuff = S._hpBuff && Date.now() < S._hpBuff;
           var hasManaBuff = S._manaBuff && Date.now() < S._manaBuff;
           var regenMult = hasRegenBuff ? 1.3 : 1.0;
-          if (_R7.hp < _R7.maxHp) {
-            if (!S._regenTimer) S._regenTimer = 0;
-            S._regenTimer++;
-            var restMult = 1 + (_R7.restoration || 0) * 0.001;
-            /* In MP the worker runs HP regen on its own tick (_tickPlayerRegen)
-               and pushes the new value via player_state.  Skip the local
-               mutation so dual regen doesn't race the server snapshot. */
-            if (S._regenTimer % 4 === 0 && !S._serverMonsters) {
-              var healAmt = Math.max(1, Math.ceil(_R7.maxHp * 0.001 * restMult * regenMult));
-              var effectiveMax = hasHpBuff ? Math.floor(_R7.maxHp * 1.25) : _R7.maxHp;
-              _R7.hp = Math.min(effectiveMax, _R7.hp + healAmt);
-              setRpgState(_objectSpread({}, _R7));
-            }
-          }
+          /* §3.2 OOC HP regen disabled (v2.3.149) -- melee-kill lifesteal
+             is now the only HP recovery source per design. Stamina + mana
+             regen below stay on. Worker counterpart in
+             docs/specs/disable-hp-regen-server.md.
+             Restoration coefficient + regen-buff multiplier left intact in
+             case food-buff or amulet design adds HP heals back later. */
           /* Stamina regen — 10/s base (10 sec full recharge) × Restoration */
           if (_R7.stamina < _R7.maxStamina && !S._serverMonsters) {
             var _R7$_amuletBonus;
@@ -9626,17 +9729,7 @@ export var BroTown = function BroTown(_ref0) {
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
           var _R8 = S.rpg;
-          if (_R8.hp < _R8.maxHp) {
-            if (!S._regenTimer) S._regenTimer = 0;
-            S._regenTimer++;
-            /* MP: worker runs in-combat HP regen too -- skip local. */
-            if (S._regenTimer % 10 === 0 && !S._serverMonsters) {
-              var _R8$_amuletBonus;
-              var _healAmt = Math.max(1, Math.ceil(_R8.maxHp * 0.0005));
-              if (((_R8$_amuletBonus = _R8._amuletBonus) === null || _R8$_amuletBonus === void 0 ? void 0 : _R8$_amuletBonus.stat) === 'hpRegen') _healAmt = Math.ceil(_healAmt * (1 + _R8._amuletBonus.value));
-              _R8.hp = Math.min(_R8.maxHp, _R8.hp + _healAmt);
-            }
-          }
+          /* In-combat HP regen disabled (v2.3.149) -- see OOC block above. */
           /* Stamina always regens — 10/sec */
           if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
             _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60);
@@ -10407,6 +10500,10 @@ export var BroTown = function BroTown(_ref0) {
                     /* +XP popup anchored next to the XP bar (HudPopupOverlay). */
                     pushHudPopup(S, { target: 'xpBar', text: '+' + _killXpR + ' XP', color: '#3ddc97' });
                     distributeKillXpToBuild(_R9, _killXpR);
+                    /* Lifesteal helper is melee-only; calling it on a
+                       ranged/staff kill is a no-op (activeSlot gate),
+                       but we still clear the per-monster damage entry. */
+                    applyMeleeLifesteal(S, _R9, m);
                     while (_R9.xp >= xpRequired(_R9.level)) {
                       _R9.xp -= xpRequired(_R9.level);
                       _R9.level++;
@@ -10570,6 +10667,7 @@ export var BroTown = function BroTown(_ref0) {
               return false;
             }
             _R6P.hp -= proj.rawDmg;
+            trackMonsterDamage(S, proj.ownerId, proj.rawDmg);
             if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: proj.rawDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
             try { BT_AUDIO.play('slime-projectile-hit', { vol: 0.7 }); } catch (e) {}
             S.lastDamageTaken = Date.now();
@@ -31474,6 +31572,7 @@ export var BroTown = function BroTown(_ref0) {
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }, /*#__PURE__*/React.createElement("div", {
     /* Analog "stick" — anchored at joystick centre, grows toward the
@@ -31499,6 +31598,7 @@ export var BroTown = function BroTown(_ref0) {
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
@@ -31514,6 +31614,7 @@ export var BroTown = function BroTown(_ref0) {
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }), /*#__PURE__*/React.createElement("div", {
     /* Left-joystick weapon-swap preview overlay (v2.3.97).  Hidden by
@@ -31570,6 +31671,7 @@ export var BroTown = function BroTown(_ref0) {
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
       touchAction: 'none',
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }, autoAttack && /*#__PURE__*/React.createElement("div", {
     /* v2.3.99: auto-attack indicator.  Replaces the dynamic
@@ -31634,6 +31736,7 @@ export var BroTown = function BroTown(_ref0) {
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }), /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
@@ -31653,6 +31756,7 @@ export var BroTown = function BroTown(_ref0) {
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
       pointerEvents: 'none',
+      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
   }, /* Knob left blank — active weapon is shown in WeaponSwapBar instead. */ null), /*#__PURE__*/React.createElement("div", {
     /* Right-joystick shield preview overlay (v2.3.97).  Hidden by

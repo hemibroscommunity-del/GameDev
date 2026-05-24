@@ -1831,8 +1831,14 @@ export class EntityRenderer {
     const stickY = S.stickY || 0;
     const stickActive = stickX !== 0 || stickY !== 0;
 
+    /* Loot pickup freeze — override all other facing logic and face
+       the camera so the pickup animation reads. Highest priority so
+       autoAttack / shield / aim don't leak through during the 0.5s. */
+    const lootFrozen = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
     let facing;
-    if (isShielding && S._shieldAngle != null) {
+    if (lootFrozen) {
+      facing = 'south';
+    } else if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8];
     } else if (aimAttackActive) {
