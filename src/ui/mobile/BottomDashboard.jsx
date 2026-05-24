@@ -4,7 +4,7 @@ import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { weaponSwapBus } from './weaponSwapBus.js';
-import { InventoryPanel }    from './dash/InventoryPanel.jsx';
+import { InventoryPanel, ItemTile }    from './dash/InventoryPanel.jsx';
 import { SelfPanel }         from './dash/SelfPanel.jsx';
 import { JourneyPanel }      from './dash/JourneyPanel.jsx';
 import { MapPanel }          from './dash/MapPanel.jsx';
@@ -282,6 +282,109 @@ const IconButton = ({ glyph, label, active, onClick }) => {
 // Map of panel id → { title, Component }.  Children pushed onto the stack
 // from MorePanel use the same registry, which is why MorePanel doesn't
 // hard-code its child component refs.
+/* v2.3.155: compact inventory preview that lives in the bottom-left
+   column of the dashboard (replacing the HP/MP/END chip card). Shows
+   the N most-recent inventory items in a small grid; tap empty space
+   anywhere in the card to open the full Bag panel. Tile interactions
+   (cook raw fish, eat cooked fish) still work via the shared ItemTile.
+   Recents-tracking mirrors InventoryPanel.jsx so the same item ordering
+   logic shows up here. */
+const InventoryPreview = () => {
+  const recentRef = useRef([]);
+  const prevCountRef = useRef({});
+  const [, force] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => force(v => v + 1), 400);
+    return () => clearInterval(id);
+  }, []);
+  const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+  const inv = (S && S.rpg && S.rpg.inventory) || {};
+  /* Bubble keys whose count increased since last frame to the front. */
+  const prev = prevCountRef.current;
+  const recents = recentRef.current.slice();
+  for (const k of Object.keys(inv)) {
+    const n = inv[k];
+    if ((prev[k] || 0) < n) {
+      const idx = recents.indexOf(k);
+      if (idx >= 0) recents.splice(idx, 1);
+      recents.unshift(k);
+    }
+  }
+  for (const k of Object.keys(inv)) {
+    if (!recents.includes(k)) recents.push(k);
+  }
+  const visible = recents.filter(k => (inv[k] || 0) > 0);
+  recentRef.current = visible;
+  prevCountRef.current = { ...inv };
+  /* 2-col x 3-row grid (6 tiles). v2.3.159 capped at 4 because 6
+     square tiles overflowed; v2.3.160 keeps 6 but constrains the grid
+     to fill the column's available height and wraps each tile in a
+     square sized to the smaller of cell width or cell height. Tiles
+     stay square; they just scale down when row height < column width
+     / 2 so the whole grid fits the column's overflow:hidden clip. */
+  const tiles = visible.slice(0, 6);
+  const openFullBag = (e) => {
+    if (e) e.stopPropagation();
+    dashboardPanelBus.toggle('inventory');
+  };
+  return (
+    <div
+      onPointerUp={openFullBag}
+      style={{
+        /* v2.3.162: zero inner padding + zero flex gap. The only outer
+           whitespace around the tile grid is the column wrapper's
+           padding:4. Matching the grid's gap:4 below makes every gap
+           in the preview the same: cell-to-cell, cell-to-edge. The
+           Bag label header from v2.3.155 came out for the same reason
+           (its margin broke the top-edge uniformity); the whole card
+           is tappable so the label was redundant anyway. */
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        cursor: 'pointer',
+      }}
+      title="Tap to open Bag"
+    >
+      {tiles.length === 0 ? (
+        <div style={{
+          flex: 1,
+          color: COL.muted,
+          fontSize: 11,
+          textAlign: 'center',
+          padding: '14px 4px 0',
+          opacity: 0.7,
+        }}>
+          Bag<br /><br />Empty.<br />Tap to open.
+        </div>
+      ) : (
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gap: 4,
+        }}>
+          {tiles.map(k => (
+            <ItemTile
+              key={k}
+              ikey={k}
+              count={inv[k]}
+              style={{
+                /* Drop the hardcoded 1:1 aspect ratio so the tile fits
+                   whatever shape the grid cell is. */
+                aspectRatio: 'auto',
+                height: '100%',
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const PANELS = {
   inventory:    { title: 'Bag',         Component: InventoryPanel },
   self:         { title: 'Self',        Component: SelfPanel },
@@ -609,11 +712,14 @@ export const BottomDashboard = () => {
                    bottom border at narrow heights. */
                 overflow: 'hidden',
               }}>
-                {/* v2.3.127: ColHeader removed — player name + level
-                    now live in the top-right player card.  Removing the
-                    header reclaims vertical space so the chip + derived
-                    + session sections breathe. */}
-                {(() => {
+                {/* v2.3.155: hybrid HP/MP/END card replaced with a
+                    compact inventory preview. The derived stats it used
+                    to show (Crit / Block / Zone / Kills / Time) are
+                    available in the Stats and Journey panels. Original
+                    IIFE was kept below the swap as a `false &&` block
+                    so the v2.3.127 layout is one revert away. */}
+                <InventoryPreview />
+                {false && (() => {
                   const maxHp  = R.maxHp     || calcMaxHp(R.level || 1, R.vitality || 0);
                   const maxMp  = R.maxMana   || calcMaxMana(R.mind || 0);
                   const maxSta = R.maxStamina || calcMaxStam(R.endurance || 0);
