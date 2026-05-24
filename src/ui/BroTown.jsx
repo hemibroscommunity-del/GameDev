@@ -156,9 +156,23 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
    by relative usage frequency — matches the user's request and GDD
    invariant. */
 
+/* v2.3.153: relabel the T1 stats to the weapon-class names the user
+   talks about (Power -> Melee, Agility -> Archery, Mind -> Magic).
+   Vitality / Endurance keep their existing names since they don't
+   correspond to a weapon. Used by both the dmgNumbers floater
+   (pushStatIncreaseNotice) and the LEVEL UP banner (levelUpMsg). */
 var BUILD_LABELS = {
-  power: 'Power', vitality: 'Vitality', endurance: 'Endurance',
-  agility: 'Agility', mind: 'Mind',
+  power: 'Melee', vitality: 'Vitality', endurance: 'Endurance',
+  agility: 'Archery', mind: 'Magic',
+};
+/* Icon for each stat's level-up banner. Combat falls through to
+   '/icons/popups/xp.png' in the banner render itself. */
+var BUILD_ICONS = {
+  power:     '/icons/popups/sword.png',
+  vitality:  '/icons/popups/heart.png',
+  endurance: '/icons/ui/bar-stam.png',
+  agility:   '/icons/popups/arrow.png',
+  mind:      '/icons/popups/spell.png',
 };
 
 function pushStatIncreaseNotice(R, stat, beforeMax) {
@@ -172,12 +186,14 @@ function pushStatIncreaseNotice(R, stat, beforeMax) {
   else if (stat === 'endurance') benefit = '+' + Math.max(0, (R.maxStamina || 0) - (beforeMax.stam || 0)) + ' stamina';
   else if (stat === 'power')     benefit = '+0.8 base damage';
   else if (stat === 'agility')   benefit = 'speed +0.12%';
-  /* Title (blue) — appears above the player. */
+  /* Small in-world floater (silver as of v2.3.153 -- matches the
+     banner color so the two pieces of feedback read as the same
+     event). */
   S.dmgNumbers.push({
     x: S.player.x,
     y: S.player.y - 70,
     text: label + ' level ' + newVal + '!',
-    color: '#60a5fa',
+    color: '#c0c0c0',
     ts: Date.now(),
   });
   /* Benefit (green) — sits just under the title. */
@@ -191,6 +207,12 @@ function pushStatIncreaseNotice(R, stat, beforeMax) {
     });
   }
   try { if (typeof BT_AUDIO !== 'undefined' && BT_AUDIO.beep) BT_AUDIO.beep(900, 0.06, 0.10, 'sine'); } catch (e) {}
+  /* Fire the big banner with kind=stat so it renders in silver with
+     the weapon icon. window._setLevelUpMsg is exposed inside the
+     BroTown component each render. */
+  if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
+    window._setLevelUpMsg({ kind: stat, level: newVal, ts: Date.now() });
+  }
 }
 
 function addBuildProg(R, stat, amount) {
@@ -1131,6 +1153,11 @@ export var BroTown = function BroTown(_ref0) {
     _useState184 = _slicedToArray(_useState183, 2),
     levelUpMsg = _useState184[0],
     setLevelUpMsg = _useState184[1];
+  /* v2.3.153: expose the setter to module-scope helpers
+     (pushStatIncreaseNotice, addBuildProg) so they can fire the big
+     LEVEL UP banner with kind=stat for build-stat ticks. Setter ref
+     is stable across renders for useState so this is idempotent. */
+  if (typeof window !== 'undefined') window._setLevelUpMsg = setLevelUpMsg;
   var _useState185 = useState(1),
     _useState186 = _slicedToArray(_useState185, 2),
     playerCount = _useState186[0],
@@ -2147,9 +2174,22 @@ export var BroTown = function BroTown(_ref0) {
               /* Combat XP / level / unspent T2 stat points -- worker
                  applies on monster_kill (and persists), client mirrors
                  here.  A modified client that sets R.xp = 999999 will
-                 get stomped on the next kill's player_state. */
+                 get stomped on the next kill's player_state.
+
+                 v2.3.153 -- A1 transition gate: the worker still uses
+                 the old XP-based level rule (build-points-gate-server
+                 spec not yet deployed). If we accept its level updates
+                 verbatim, the client BP-driven level we track locally
+                 gets stomped, and the top-right LV display ticks up
+                 every few kills instead of every 5 BP. Workaround:
+                 only accept the server level on the FIRST player_state
+                 of the session (bootstrap from save). After that the
+                 client owns level until the worker has the BP gate. */
               if (typeof msg.payload.level === 'number') {
-                S.rpg.level = msg.payload.level;
+                if (!S._levelBootstrapped) {
+                  S.rpg.level = msg.payload.level;
+                  S._levelBootstrapped = true;
+                }
               }
               if (typeof msg.payload.xp === 'number') {
                 S.rpg.xp = msg.payload.xp;
@@ -2364,7 +2404,7 @@ export var BroTown = function BroTown(_ref0) {
               if (!msg.payload || !S.rpg) break;
               var cc = msg.payload;
               if (cc.leveled) {
-                setLevelUpMsg({ level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
+                setLevelUpMsg({ kind: 'combat', level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
                 try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
                 /* Pool restore on level-up: worker resets hp/stamina/mana
                    = max inside _addCombatXp and emits player_state alongside
@@ -2972,7 +3012,7 @@ export var BroTown = function BroTown(_ref0) {
                       R.unspentT2 = (R.unspentT2 || 0) + 5;
                       recalcDerived(R);
                       R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
-                      setLevelUpMsg({ level: R.level, ts: Date.now() });
+                      setLevelUpMsg({ kind: 'combat', level: R.level, ts: Date.now() });
                       BT_AUDIO.levelUp();
                     }
                   }
@@ -9151,6 +9191,7 @@ export var BroTown = function BroTown(_ref0) {
                     _R6.stamina = _R6.maxStamina;
                     _R6.mana = _R6.maxMana;
                     setLevelUpMsg({
+                      kind: 'combat',
                       level: _R6.level,
                       ts: Date.now()
                     });
@@ -9630,6 +9671,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.rpg.stamina = S.rpg.maxStamina;
                 S.rpg.mana = S.rpg.maxMana;
                 setLevelUpMsg({
+                  kind: 'combat',
                   level: S.rpg.level,
                   ts: Date.now()
                 });
@@ -10501,7 +10543,7 @@ export var BroTown = function BroTown(_ref0) {
                       _R9.hp = _R9.maxHp;
                       _R9.stamina = _R9.maxStamina;
                       _R9.mana = _R9.maxMana;
-                      setLevelUpMsg({ level: _R9.level, ts: Date.now() });
+                      setLevelUpMsg({ kind: 'combat', level: _R9.level, ts: Date.now() });
                       try { BT_AUDIO.levelUp(); } catch (e) {}
                     }
                     var isCrit = a.dmg > pDmg;
