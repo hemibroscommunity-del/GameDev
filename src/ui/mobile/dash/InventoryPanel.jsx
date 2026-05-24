@@ -5,7 +5,7 @@ import { eatBus } from '../eatBus.js';
 
 // Category filter chips — icon-only.  "All" comes first so the player
 // always opens the bag with everything visible.
-const CATEGORIES = [
+export const CATEGORIES = [
   { id: 'all',      glyph: '◎', label: 'All' },
   { id: 'weapon',   glyph: '⚔', label: 'Weapon' },
   { id: 'armor',    glyph: '🛡', label: 'Armor' },
@@ -17,7 +17,7 @@ const CATEGORIES = [
 // category filters.  Items the heuristic doesn't recognise fall through
 // to "crafting" since most pickup keys (wood_oak, fish_salmon, ore_iron,
 // monster bones, etc.) are crafting materials.
-const classify = (key) => {
+export const classify = (key) => {
   const k = (key || '').toLowerCase();
   if (/sword|bow|staff|spear|axe|dagger|hammer|wand|gauntlet/.test(k)) return 'weapon';
   if (/helm|cuirass|armor|shield|robe|cape|boots|gloves|mail|plate/.test(k)) return 'armor';
@@ -58,7 +58,7 @@ const FISHING_POLE_THUMB = '/icons/tools/fishing-pole.png';
    shard_ember, ...).  thumbFor() takes the shard_ prefix branch
    below so any zone we add later just needs the PNG dropped in --
    no new code in the inventory panel. */
-const thumbFor = (key) => {
+export const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
   if (COOKED_FISH_THUMBS[k])        return COOKED_FISH_THUMBS[k];
   if (k.startsWith('cooked_fish_')) return COOKED_FISH_THUMB_DEFAULT;
@@ -80,7 +80,7 @@ const thumbFor = (key) => {
 // Friendly icon for a key — looks up by simple pattern.  Falls back to
 // a tier-coloured ◇.  We keep things lightweight: the bag is a dashboard
 // glance tool, not a crafting deep-dive.
-const iconFor = (key) => {
+export const iconFor = (key) => {
   const k = (key || '').toLowerCase();
   if (/sword/.test(k))   return '⚔';
   if (/bow/.test(k))     return '🏹';
@@ -96,7 +96,7 @@ const iconFor = (key) => {
   return '◇';
 };
 
-const ItemTile = ({ ikey, count }) => {
+export const ItemTile = ({ ikey, count }) => {
   const cat = classify(ikey);
   const color = TIER_COLOR[cat === 'weapon' ? 'rare' : cat === 'armor' ? 'uncommon' : 'common'] || COL.muted;
   // Tap on a raw fish_* tile launches the cooking minigame; tap on a
