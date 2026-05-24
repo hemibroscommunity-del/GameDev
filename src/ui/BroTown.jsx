@@ -206,6 +206,10 @@ function addBuildProg(R, stat, amount) {
   while (R._buildProg[stat] >= thresh) {
     R._buildProg[stat] -= thresh;
     R[stat] = (R[stat] || 0) + 1;
+    /* A1 gate accumulator -- combat level-up is blocked until 5 of
+       these have ticked since the last level. Counts crossings in any
+       T1 stat, mirrors the per-level budget. */
+    R._buildPointsThisLvl = (R._buildPointsThisLvl || 0) + 1;
     var beforeMax = { hp: R.maxHp, mp: R.maxMana, stam: R.maxStamina };
     if (typeof recalcDerived === 'function') recalcDerived(R);
     pushStatIncreaseNotice(R, stat, beforeMax);
@@ -2959,8 +2963,12 @@ export var BroTown = function BroTown(_ref0) {
                      player_state (authoritative totals). */
                   if (!S._serverMonsters) {
                     R.xp = (R.xp || 0) + killXp;
-                    while (R.xp >= xpRequired(R.level)) {
+                    /* A1: combat level only ticks when 5 build points
+                       have been earned since the last level-up. Excess
+                       XP sits on R.xp until the build points catch up. */
+                    while (R.xp >= xpRequired(R.level) && (R._buildPointsThisLvl || 0) >= 5) {
                       R.xp -= xpRequired(R.level);
+                      R._buildPointsThisLvl -= 5;
                       R.level++;
                       R.unspentT2 = (R.unspentT2 || 0) + 5;
                       recalcDerived(R);
@@ -9133,9 +9141,11 @@ export var BroTown = function BroTown(_ref0) {
                   applyMeleeLifesteal(S, _R6, m);
 
                   /* Check level up — §6.2 tri-phase XP curve.  T1 is
-                     use-trained; T2 still allocated, +5 unspent per level. */
-                  while (_R6.xp >= xpRequired(_R6.level)) {
+                     use-trained; T2 still allocated, +5 unspent per level.
+                     A1 gate: requires 5 build points earned since last level. */
+                  while (_R6.xp >= xpRequired(_R6.level) && (_R6._buildPointsThisLvl || 0) >= 5) {
                     _R6.xp -= xpRequired(_R6.level);
+                    _R6._buildPointsThisLvl -= 5;
                     _R6.level++;
                     _R6.unspentT2 = (_R6.unspentT2 || 0) + 5;
                     recalcDerived(_R6);
@@ -9611,9 +9621,11 @@ export var BroTown = function BroTown(_ref0) {
               }
               /* Check level up — §6.2 tri-phase.  T1 is use-trained
                  via addBuildProg() at combat callsites; T2 still
-                 allocated via the Stats menu (5 points per level). */
-              while (S.rpg.xp >= xpRequired(S.rpg.level)) {
+                 allocated via the Stats menu (5 points per level).
+                 A1 gate: requires 5 build points earned since last level. */
+              while (S.rpg.xp >= xpRequired(S.rpg.level) && (S.rpg._buildPointsThisLvl || 0) >= 5) {
                 S.rpg.xp -= xpRequired(S.rpg.level);
+                S.rpg._buildPointsThisLvl -= 5;
                 S.rpg.level++;
                 S.rpg.unspentT2 = (S.rpg.unspentT2 || 0) + 5;
                 recalcDerived(S.rpg);
@@ -10483,8 +10495,10 @@ export var BroTown = function BroTown(_ref0) {
                        ranged/staff kill is a no-op (activeSlot gate),
                        but we still clear the per-monster damage entry. */
                     applyMeleeLifesteal(S, _R9, m);
-                    while (_R9.xp >= xpRequired(_R9.level)) {
+                    /* A1 gate: 5 build points needed for combat level. */
+                    while (_R9.xp >= xpRequired(_R9.level) && (_R9._buildPointsThisLvl || 0) >= 5) {
                       _R9.xp -= xpRequired(_R9.level);
+                      _R9._buildPointsThisLvl -= 5;
                       _R9.level++;
                       _R9.unspentT2 = (_R9.unspentT2 || 0) + 5;
                       recalcDerived(_R9);
