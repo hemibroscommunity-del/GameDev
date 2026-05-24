@@ -240,7 +240,19 @@ function isAttackInShieldArc(S, ax, ay) {
    - Glass cannons get less back (less hp taken = less heal-back)
    - Skipped when activeSlot is ranged/staff (only melee kills refund)
    Ranged kills get the v2.3.127 vitality side-train instead, so they're
-   not double-rewarded. */
+   not double-rewarded.
+
+   CAVEAT — MP server-authority bypass. The HP this function writes is
+   stomped on the next player_state event because the Cloudflare Worker
+   (wss://brotown-server.hemibroscommunity.workers.dev) is authoritative
+   for HP and doesn't know about lifesteal. The damage tracking + the
+   +N HP floater still fire client-side, but R.hp won't persist until
+   the worker is updated. To make this actually heal in MP, the worker
+   needs to:
+   1. Track per-monster damage taken (same map this function maintains)
+   2. On monster_kill event, if killer's activeSlot is melee, add
+      0.9 * damageTaken[monsterId] to player HP and push player_state.
+   See §16 server-authority progress in MEMORY for the migration plan. */
 function trackMonsterDamage(S, monsterId, amount) {
   if (!S || monsterId == null || !amount || amount <= 0) return;
   if (!S._dmgFromMonster) S._dmgFromMonster = {};
@@ -257,13 +269,6 @@ function applyMeleeLifesteal(S, R, m) {
   var maxHp = R.maxHp || R.hp || 1;
   R.hp = Math.min(maxHp, (R.hp || 0) + refund);
   delete S._dmgFromMonster[m.id];
-  /* Lock out server HP overrides for ~1.5s so the next player_state
-     event (which carries the server's pre-lifesteal HP and would
-     otherwise stomp the heal back down) is ignored. After the window
-     elapses, server takes authority back. Testing-mode coupling with
-     the v2.3.144 HP-rise gate -- both go away together when server
-     learns about lifesteal natively. */
-  S._lifestealLockUntil = Date.now() + 1500;
   if (S.dmgNumbers && S.player) {
     S.dmgNumbers.push({
       x: S.player.x, y: S.player.y - 40,
@@ -2155,18 +2160,7 @@ export var BroTown = function BroTown(_ref0) {
                  full restore, respawn) are blocked until the player
                  next takes damage, at which point HP resyncs. */
               if (typeof msg.payload.hp === 'number') {
-                var _isRespawnHp = (S.rpg.hp || 0) <= 0 && msg.payload.hp > 0;
-                var _inLifestealLock = S._lifestealLockUntil && Date.now() < S._lifestealLockUntil;
-                /* Respawn always applies (HP=0 -> >0 is unambiguous).
-                   Otherwise: ignore server HP entirely during the
-                   lifesteal lockout (~1.5s) so the client heal sticks
-                   visibly. Outside the window, only accept decreases
-                   (damage) -- regen rises stay blocked per v2.3.144. */
-                if (_isRespawnHp) {
-                  S.rpg.hp = msg.payload.hp;
-                } else if (!_inLifestealLock && msg.payload.hp < (S.rpg.hp || 0)) {
-                  S.rpg.hp = msg.payload.hp;
-                }
+                S.rpg.hp = msg.payload.hp;
               }
               if (typeof msg.payload.maxHp === 'number') {
                 S.rpg.maxHp = msg.payload.maxHp;
@@ -9684,15 +9678,13 @@ export var BroTown = function BroTown(_ref0) {
           var hasHpBuff = S._hpBuff && Date.now() < S._hpBuff;
           var hasManaBuff = S._manaBuff && Date.now() < S._manaBuff;
           var regenMult = hasRegenBuff ? 1.3 : 1.0;
-          /* HP regen disabled while testing C1 lifesteal — kill-refunds
-             should be the sole HP recovery source so the heal-on-kill is
-             obvious instead of masked by passive ticks. Stamina and mana
-             regen stay on (the gate below). Re-enable by uncommenting. */
-          /*
           if (_R7.hp < _R7.maxHp) {
             if (!S._regenTimer) S._regenTimer = 0;
             S._regenTimer++;
             var restMult = 1 + (_R7.restoration || 0) * 0.001;
+            /* In MP the worker runs HP regen on its own tick (_tickPlayerRegen)
+               and pushes the new value via player_state.  Skip the local
+               mutation so dual regen doesn't race the server snapshot. */
             if (S._regenTimer % 4 === 0 && !S._serverMonsters) {
               var healAmt = Math.max(1, Math.ceil(_R7.maxHp * 0.001 * restMult * regenMult));
               var effectiveMax = hasHpBuff ? Math.floor(_R7.maxHp * 1.25) : _R7.maxHp;
@@ -9700,7 +9692,6 @@ export var BroTown = function BroTown(_ref0) {
               setRpgState(_objectSpread({}, _R7));
             }
           }
-          */
           /* Stamina regen — 10/s base (10 sec full recharge) × Restoration */
           if (_R7.stamina < _R7.maxStamina && !S._serverMonsters) {
             var _R7$_amuletBonus;
@@ -9717,11 +9708,10 @@ export var BroTown = function BroTown(_ref0) {
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
           var _R8 = S.rpg;
-          /* In-combat HP regen disabled too (see C1 testing note above). */
-          /*
           if (_R8.hp < _R8.maxHp) {
             if (!S._regenTimer) S._regenTimer = 0;
             S._regenTimer++;
+            /* MP: worker runs in-combat HP regen too -- skip local. */
             if (S._regenTimer % 10 === 0 && !S._serverMonsters) {
               var _R8$_amuletBonus;
               var _healAmt = Math.max(1, Math.ceil(_R8.maxHp * 0.0005));
@@ -9729,7 +9719,6 @@ export var BroTown = function BroTown(_ref0) {
               _R8.hp = Math.min(_R8.maxHp, _R8.hp + _healAmt);
             }
           }
-          */
           /* Stamina always regens — 10/sec */
           if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
             _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60);
