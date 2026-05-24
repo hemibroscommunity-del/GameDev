@@ -231,28 +231,22 @@ function isAttackInShieldArc(S, ax, ay) {
   return Math.abs(d) <= Math.PI / 3;
 }
 
-/* Melee-kill lifesteal — tracks per-monster damage dealt to the player,
-   then on a melee kill refunds 90% of the net damage that specific
-   monster cost. Note from user: "killing monsters melee heals you no
-   regen. 90% of the damage received from the monster (net)."
-   - Self-balancing: heal scales with what the fight cost, not absolute numbers
-   - Rewards engaging tougher monsters (more dmg taken -> more heal-back)
-   - Glass cannons get less back (less hp taken = less heal-back)
-   - Skipped when activeSlot is ranged/staff (only melee kills refund)
-   Ranged kills get the v2.3.127 vitality side-train instead, so they're
-   not double-rewarded.
-
-   CAVEAT — MP server-authority bypass. The HP this function writes is
-   stomped on the next player_state event because the Cloudflare Worker
-   (wss://brotown-server.hemibroscommunity.workers.dev) is authoritative
-   for HP and doesn't know about lifesteal. The damage tracking + the
-   +N HP floater still fire client-side, but R.hp won't persist until
-   the worker is updated. To make this actually heal in MP, the worker
-   needs to:
-   1. Track per-monster damage taken (same map this function maintains)
-   2. On monster_kill event, if killer's activeSlot is melee, add
-      0.9 * damageTaken[monsterId] to player HP and push player_state.
-   See §16 server-authority progress in MEMORY for the migration plan. */
+/* Melee-kill lifesteal — tracks per-monster damage dealt to the player.
+   On a melee kill the Cloudflare Worker refunds 90% of the net damage
+   that specific monster cost and pushes the new HP via player_state;
+   the worker also emits a `lifesteal_credit` event whose handler renders
+   the +N HP floater (see WS switch). Client side is responsible for:
+   1. Mirroring the per-monster damage map so it stays in sync if the
+      worker ever asks for verification (and so debug overlays can show
+      it). Tracked in S._dmgFromMonster.
+   2. Clearing the entry on kill resolution. The worker independently
+      clears its own map; this client-side delete is just hygiene so a
+      stale entry doesn't linger if we add a future debug readout.
+   Notes on scope:
+   - Melee-only by design. Ranged/staff get a vitality side-train
+     instead (v2.3.127, distributeKillXpToBuild below). Don't double-
+     reward.
+   - Worker contract documented at docs/specs/lifesteal-server.md. */
 function trackMonsterDamage(S, monsterId, amount) {
   if (!S || monsterId == null || !amount || amount <= 0) return;
   if (!S._dmgFromMonster) S._dmgFromMonster = {};
@@ -263,19 +257,11 @@ function applyMeleeLifesteal(S, R, m) {
   if (!S || !R || !m || m.id == null) return;
   if ((R.activeSlot || 'melee') !== 'melee') return;
   if (!S._dmgFromMonster) return;
-  var taken = S._dmgFromMonster[m.id] || 0;
-  if (taken <= 0) return;
-  var refund = Math.ceil(taken * 0.9);
-  var maxHp = R.maxHp || R.hp || 1;
-  R.hp = Math.min(maxHp, (R.hp || 0) + refund);
+  /* Drop the entry so the local map doesn't accumulate stale ids.
+     The actual heal + floater come from the server. No HP mutation
+     here -- the worker is authoritative and the player_state push
+     that follows monster_kill carries the bumped hp. */
   delete S._dmgFromMonster[m.id];
-  if (S.dmgNumbers && S.player) {
-    S.dmgNumbers.push({
-      x: S.player.x, y: S.player.y - 40,
-      text: '+' + refund + ' HP',
-      color: '#3dd497', ts: Date.now(),
-    });
-  }
 }
 
 function distributeKillXpToBuild(R, killXp) {
@@ -2101,6 +2087,28 @@ export var BroTown = function BroTown(_ref0) {
                  despawn.  The actual coin/inventory mutation rides on
                  the player_state event that immediately follows. */
               if (msg.payload) _applyLootCredit(msg.payload, S);
+              break;
+            }
+          case 'lifesteal_credit':
+            {
+              /* Worker is informing us a melee-kill heal landed. HP
+                 itself rides on the player_state push that follows;
+                 this event is only for the +N HP floater so the visual
+                 math matches the server exactly (we used to compute
+                 the refund locally, but rounding/last-hit attribution
+                 could disagree). Only render for our own player; party
+                 members don't get our floater. */
+              if (msg.payload
+                  && msg.payload.playerId === S.myId
+                  && msg.payload.refund > 0
+                  && S.dmgNumbers
+                  && S.player) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: '+' + msg.payload.refund + ' HP',
+                  color: '#3dd497', ts: Date.now(),
+                });
+              }
               break;
             }
           case 'player_state':
