@@ -384,11 +384,14 @@ export const BottomDashboard = () => {
   const Active = active?.Component;
 
   /* v2.3.114: thin XP strip pinned across the screen flush above the
-     bottom dashboard.  Replaces the XP Bar that used to live in the
-     bottom-left column so the column can fully host the derived
-     combat stats.  zIndex 29 keeps it under the interact-prompt (35)
-     and the WeaponSwapBar (35) so it's purely decorative. */
-  const xpPct = xpNeeded > 0 ? Math.max(0, Math.min(100, (xp / xpNeeded) * 100)) : 0;
+     bottom dashboard. v2.3.152: repurposed to show build-points-to-
+     next-level since combat level is now a pure function of BP (A1).
+     Bar fills 0 -> 100% as buildPointsThisLvl goes 0 -> 5; resets on
+     level-up. The original xpPct path is kept commented as a quick
+     revert path if BP-progress turns out to feel wrong. */
+  // const xpPct = xpNeeded > 0 ? Math.max(0, Math.min(100, (xp / xpNeeded) * 100)) : 0;
+  const bp = R._buildPointsThisLvl || 0;
+  const xpPct = Math.max(0, Math.min(100, (bp / 5) * 100));
 
   return (
     <>
