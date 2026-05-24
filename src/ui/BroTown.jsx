@@ -156,9 +156,23 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
    by relative usage frequency — matches the user's request and GDD
    invariant. */
 
+/* v2.3.153: relabel the T1 stats to the weapon-class names the user
+   talks about (Power -> Melee, Agility -> Archery, Mind -> Magic).
+   Vitality / Endurance keep their existing names since they don't
+   correspond to a weapon. Used by both the dmgNumbers floater
+   (pushStatIncreaseNotice) and the LEVEL UP banner (levelUpMsg). */
 var BUILD_LABELS = {
-  power: 'Power', vitality: 'Vitality', endurance: 'Endurance',
-  agility: 'Agility', mind: 'Mind',
+  power: 'Melee', vitality: 'Vitality', endurance: 'Endurance',
+  agility: 'Archery', mind: 'Magic',
+};
+/* Icon for each stat's level-up banner. Combat falls through to
+   '/icons/popups/xp.png' in the banner render itself. */
+var BUILD_ICONS = {
+  power:     '/icons/popups/sword.png',
+  vitality:  '/icons/popups/heart.png',
+  endurance: '/icons/ui/bar-stam.png',
+  agility:   '/icons/popups/arrow.png',
+  mind:      '/icons/popups/spell.png',
 };
 
 function pushStatIncreaseNotice(R, stat, beforeMax) {
@@ -172,12 +186,14 @@ function pushStatIncreaseNotice(R, stat, beforeMax) {
   else if (stat === 'endurance') benefit = '+' + Math.max(0, (R.maxStamina || 0) - (beforeMax.stam || 0)) + ' stamina';
   else if (stat === 'power')     benefit = '+0.8 base damage';
   else if (stat === 'agility')   benefit = 'speed +0.12%';
-  /* Title (blue) — appears above the player. */
+  /* Small in-world floater (silver as of v2.3.153 -- matches the
+     banner color so the two pieces of feedback read as the same
+     event). */
   S.dmgNumbers.push({
     x: S.player.x,
     y: S.player.y - 70,
     text: label + ' level ' + newVal + '!',
-    color: '#60a5fa',
+    color: '#c0c0c0',
     ts: Date.now(),
   });
   /* Benefit (green) — sits just under the title. */
@@ -191,6 +207,12 @@ function pushStatIncreaseNotice(R, stat, beforeMax) {
     });
   }
   try { if (typeof BT_AUDIO !== 'undefined' && BT_AUDIO.beep) BT_AUDIO.beep(900, 0.06, 0.10, 'sine'); } catch (e) {}
+  /* Fire the big banner with kind=stat so it renders in silver with
+     the weapon icon. window._setLevelUpMsg is exposed inside the
+     BroTown component each render. */
+  if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
+    window._setLevelUpMsg({ kind: stat, level: newVal, ts: Date.now() });
+  }
 }
 
 function addBuildProg(R, stat, amount) {
@@ -206,6 +228,22 @@ function addBuildProg(R, stat, amount) {
   while (R._buildProg[stat] >= thresh) {
     R._buildProg[stat] -= thresh;
     R[stat] = (R[stat] || 0) + 1;
+    /* A1 gate accumulator -- combat level-up is blocked until 5 of
+       these have ticked since the last level. Counts crossings in any
+       T1 stat, mirrors the per-level budget. */
+    R._buildPointsThisLvl = (R._buildPointsThisLvl || 0) + 1;
+    /* v2.3.154: tell the worker about the build-point tick so its
+       MP-side BP gate (build-points-gate-server.md) can count toward
+       its own level-up. No-op in SP / pre-worker-update sessions
+       (S.channel may be null). Server doesn't need to echo back --
+       its level-up will arrive via the existing combat_credit +
+       player_state events. */
+    try {
+      var _S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+      if (_S && _S.channel && typeof _S.channel.send === 'function') {
+        _S.channel.send({ type: 'build_point_earned' });
+      }
+    } catch (e) {}
     var beforeMax = { hp: R.maxHp, mp: R.maxMana, stam: R.maxStamina };
     if (typeof recalcDerived === 'function') recalcDerived(R);
     pushStatIncreaseNotice(R, stat, beforeMax);
@@ -1127,6 +1165,11 @@ export var BroTown = function BroTown(_ref0) {
     _useState184 = _slicedToArray(_useState183, 2),
     levelUpMsg = _useState184[0],
     setLevelUpMsg = _useState184[1];
+  /* v2.3.153: expose the setter to module-scope helpers
+     (pushStatIncreaseNotice, addBuildProg) so they can fire the big
+     LEVEL UP banner with kind=stat for build-stat ticks. Setter ref
+     is stable across renders for useState so this is idempotent. */
+  if (typeof window !== 'undefined') window._setLevelUpMsg = setLevelUpMsg;
   var _useState185 = useState(1),
     _useState186 = _slicedToArray(_useState185, 2),
     playerCount = _useState186[0],
@@ -2143,7 +2186,12 @@ export var BroTown = function BroTown(_ref0) {
               /* Combat XP / level / unspent T2 stat points -- worker
                  applies on monster_kill (and persists), client mirrors
                  here.  A modified client that sets R.xp = 999999 will
-                 get stomped on the next kill's player_state. */
+                 get stomped on the next kill's player_state.
+                 v2.3.154: the worker now uses the BP gate (per the
+                 build-points-gate-server spec), so its level updates
+                 only arrive after the player has earned 5 BP. Safe to
+                 accept verbatim again; the v2.3.153 bootstrap-only
+                 workaround came out. */
               if (typeof msg.payload.level === 'number') {
                 S.rpg.level = msg.payload.level;
               }
@@ -2360,7 +2408,7 @@ export var BroTown = function BroTown(_ref0) {
               if (!msg.payload || !S.rpg) break;
               var cc = msg.payload;
               if (cc.leveled) {
-                setLevelUpMsg({ level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
+                setLevelUpMsg({ kind: 'combat', level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
                 try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
                 /* Pool restore on level-up: worker resets hp/stamina/mana
                    = max inside _addCombatXp and emits player_state alongside
@@ -2959,13 +3007,16 @@ export var BroTown = function BroTown(_ref0) {
                      player_state (authoritative totals). */
                   if (!S._serverMonsters) {
                     R.xp = (R.xp || 0) + killXp;
-                    while (R.xp >= xpRequired(R.level)) {
-                      R.xp -= xpRequired(R.level);
+                    /* A1: combat level is determined PURELY by build
+                       points -- 5 BP = 1 level. killXp accumulates on
+                       R.xp for the bar UI but no longer gates anything. */
+                    while ((R._buildPointsThisLvl || 0) >= 5) {
+                      R._buildPointsThisLvl -= 5;
                       R.level++;
                       R.unspentT2 = (R.unspentT2 || 0) + 5;
                       recalcDerived(R);
                       R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
-                      setLevelUpMsg({ level: R.level, ts: Date.now() });
+                      setLevelUpMsg({ kind: 'combat', level: R.level, ts: Date.now() });
                       BT_AUDIO.levelUp();
                     }
                   }
@@ -9133,9 +9184,10 @@ export var BroTown = function BroTown(_ref0) {
                   applyMeleeLifesteal(S, _R6, m);
 
                   /* Check level up — §6.2 tri-phase XP curve.  T1 is
-                     use-trained; T2 still allocated, +5 unspent per level. */
-                  while (_R6.xp >= xpRequired(_R6.level)) {
-                    _R6.xp -= xpRequired(_R6.level);
+                     use-trained; T2 still allocated, +5 unspent per level.
+                     A1 gate: requires 5 build points earned since last level. */
+                  while ((_R6._buildPointsThisLvl || 0) >= 5) {
+                    _R6._buildPointsThisLvl -= 5;
                     _R6.level++;
                     _R6.unspentT2 = (_R6.unspentT2 || 0) + 5;
                     recalcDerived(_R6);
@@ -9143,6 +9195,7 @@ export var BroTown = function BroTown(_ref0) {
                     _R6.stamina = _R6.maxStamina;
                     _R6.mana = _R6.maxMana;
                     setLevelUpMsg({
+                      kind: 'combat',
                       level: _R6.level,
                       ts: Date.now()
                     });
@@ -9621,9 +9674,10 @@ export var BroTown = function BroTown(_ref0) {
               }
               /* Check level up — §6.2 tri-phase.  T1 is use-trained
                  via addBuildProg() at combat callsites; T2 still
-                 allocated via the Stats menu (5 points per level). */
-              while (S.rpg.xp >= xpRequired(S.rpg.level)) {
-                S.rpg.xp -= xpRequired(S.rpg.level);
+                 allocated via the Stats menu (5 points per level).
+                 A1 gate: requires 5 build points earned since last level. */
+              while ((S.rpg._buildPointsThisLvl || 0) >= 5) {
+                S.rpg._buildPointsThisLvl -= 5;
                 S.rpg.level++;
                 S.rpg.unspentT2 = (S.rpg.unspentT2 || 0) + 5;
                 recalcDerived(S.rpg);
@@ -9631,6 +9685,7 @@ export var BroTown = function BroTown(_ref0) {
                 S.rpg.stamina = S.rpg.maxStamina;
                 S.rpg.mana = S.rpg.maxMana;
                 setLevelUpMsg({
+                  kind: 'combat',
                   level: S.rpg.level,
                   ts: Date.now()
                 });
@@ -10504,15 +10559,16 @@ export var BroTown = function BroTown(_ref0) {
                        ranged/staff kill is a no-op (activeSlot gate),
                        but we still clear the per-monster damage entry. */
                     applyMeleeLifesteal(S, _R9, m);
-                    while (_R9.xp >= xpRequired(_R9.level)) {
-                      _R9.xp -= xpRequired(_R9.level);
+                    /* A1 gate: 5 build points needed for combat level. */
+                    while ((_R9._buildPointsThisLvl || 0) >= 5) {
+                      _R9._buildPointsThisLvl -= 5;
                       _R9.level++;
                       _R9.unspentT2 = (_R9.unspentT2 || 0) + 5;
                       recalcDerived(_R9);
                       _R9.hp = _R9.maxHp;
                       _R9.stamina = _R9.maxStamina;
                       _R9.mana = _R9.maxMana;
-                      setLevelUpMsg({ level: _R9.level, ts: Date.now() });
+                      setLevelUpMsg({ kind: 'combat', level: _R9.level, ts: Date.now() });
                       try { BT_AUDIO.levelUp(); } catch (e) {}
                     }
                     var isCrit = a.dmg > pDmg;

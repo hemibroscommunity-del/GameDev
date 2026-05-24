@@ -4572,6 +4572,13 @@ export function createDefaultRpg() {
     /* GDD §1.5 stat locks.  Locked T1 stats freeze in place; their
        share of per-level T1 budget is burned, not redistributed. */
     _statLocks: { power: false, vitality: false, endurance: false, agility: false, mind: false },
+    /* Build points earned since last combat level-up.  Combat level
+       only rises when >= 5 (A1 gate).  Each +1 to any T1 stat in
+       addBuildProg increments this; level-up loop subtracts 5 so any
+       excess carries over to the next level. Existing saves with this
+       undefined default to 0 via `|| 0` in the gate; their first new
+       build point materialises the field. */
+    _buildPointsThisLvl: 0,
     /* Tier 2 — still allocation-based until use-training is hooked
        up for them in a follow-up ship. */
     ferocity: 0,
