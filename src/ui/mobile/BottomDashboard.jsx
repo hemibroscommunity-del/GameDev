@@ -331,24 +331,21 @@ const InventoryPreview = () => {
     <div
       onPointerUp={openFullBag}
       style={{
+        /* v2.3.162: zero inner padding + zero flex gap. The only outer
+           whitespace around the tile grid is the column wrapper's
+           padding:4. Matching the grid's gap:4 below makes every gap
+           in the preview the same: cell-to-cell, cell-to-edge. The
+           Bag label header from v2.3.155 came out for the same reason
+           (its margin broke the top-edge uniformity); the whole card
+           is tappable so the label was redundant anyway. */
         flex: 1,
         minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
-        gap: 4,
-        padding: '2px 2px 0',
         cursor: 'pointer',
       }}
       title="Tap to open Bag"
     >
-      <div style={{
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: '.08em',
-        color: COL.muted,
-        textTransform: 'uppercase',
-        textAlign: 'center',
-      }}>Bag</div>
       {tiles.length === 0 ? (
         <div style={{
           flex: 1,
@@ -358,36 +355,30 @@ const InventoryPreview = () => {
           padding: '14px 4px 0',
           opacity: 0.7,
         }}>
-          Empty.<br />Tap to open Bag.
+          Bag<br /><br />Empty.<br />Tap to open.
         </div>
       ) : (
         <div style={{
-          /* Outer flex centers the aspect-locked grid in whatever
-             leftover space the column gives us. */
           flex: 1,
           minHeight: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(3, 1fr)',
+          gap: 4,
         }}>
-          <div style={{
-            /* aspect-ratio 2:3 makes the grid itself wider:taller
-               match the 2-col x 3-row layout, so each grid cell is
-               a square -- ItemTile fills its cell exactly and the
-               visible gap between tiles is the literal `gap: 3` in
-               both axes (no centering whitespace from wrappers). */
-            aspectRatio: '2 / 3',
-            maxWidth: '100%',
-            maxHeight: '100%',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gridTemplateRows: 'repeat(3, 1fr)',
-            gap: 3,
-          }}>
-            {tiles.map(k => (
-              <ItemTile key={k} ikey={k} count={inv[k]} />
-            ))}
-          </div>
+          {tiles.map(k => (
+            <ItemTile
+              key={k}
+              ikey={k}
+              count={inv[k]}
+              style={{
+                /* Drop the hardcoded 1:1 aspect ratio so the tile fits
+                   whatever shape the grid cell is. */
+                aspectRatio: 'auto',
+                height: '100%',
+              }}
+            />
+          ))}
         </div>
       )}
     </div>
