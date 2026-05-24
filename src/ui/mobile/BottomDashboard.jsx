@@ -316,12 +316,13 @@ const InventoryPreview = () => {
   const visible = recents.filter(k => (inv[k] || 0) > 0);
   recentRef.current = visible;
   prevCountRef.current = { ...inv };
-  /* 2-col x 2-row grid (4 tiles). v2.3.158's 2x3 layout overflowed
-     the column's overflow:hidden clip (3 rows of square tiles is
-     taller than the dashboard band). 2x2 fits cleanly and keeps the
-     bigger tile size. Empty-state shows a hint pointing players at
-     the full Bag via the toolbar. */
-  const tiles = visible.slice(0, 4);
+  /* 2-col x 3-row grid (6 tiles). v2.3.159 capped at 4 because 6
+     square tiles overflowed; v2.3.160 keeps 6 but constrains the grid
+     to fill the column's available height and wraps each tile in a
+     square sized to the smaller of cell width or cell height. Tiles
+     stay square; they just scale down when row height < column width
+     / 2 so the whole grid fits the column's overflow:hidden clip. */
+  const tiles = visible.slice(0, 6);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
@@ -361,13 +362,35 @@ const InventoryPreview = () => {
         </div>
       ) : (
         <div style={{
+          flex: 1,
+          minHeight: 0,
           display: 'grid',
           gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateRows: 'repeat(3, 1fr)',
           gap: 3,
-          alignContent: 'start',
         }}>
           {tiles.map(k => (
-            <ItemTile key={k} ikey={k} count={inv[k]} />
+            <div key={k} style={{
+              minWidth: 0,
+              minHeight: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              {/* Square wrapper sized to the smaller of cell width or
+                 cell height. ItemTile's own width:100% + aspectRatio:1
+                 fills the wrapper. Without this, tiles would size
+                 themselves to cell width and overflow vertically when
+                 cell height is the binding constraint. */}
+              <div style={{
+                height: '100%',
+                aspectRatio: '1 / 1',
+                maxWidth: '100%',
+                maxHeight: '100%',
+              }}>
+                <ItemTile ikey={k} count={inv[k]} />
+              </div>
+            </div>
           ))}
         </div>
       )}
