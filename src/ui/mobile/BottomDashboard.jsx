@@ -316,9 +316,11 @@ const InventoryPreview = () => {
   const visible = recents.filter(k => (inv[k] || 0) > 0);
   recentRef.current = visible;
   prevCountRef.current = { ...inv };
-  /* 3-col grid; cap at 6 tiles (2 rows) so each tile reads at a
-     comfortable size in the narrow left column. Empty-state shows
-     a hint pointing players at the full Bag via the toolbar. */
+  /* 2-col grid, 6 tiles (3 rows). v2.3.156 capped at 6 in a 3-col
+     grid but tile width is column/3 so tiles read tiny; dropping a
+     column makes each tile ~50% wider (and taller via 1:1 aspect
+     ratio). Empty-state shows a hint pointing players at the full
+     Bag via the toolbar. */
   const tiles = visible.slice(0, 6);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
