@@ -316,12 +316,12 @@ const InventoryPreview = () => {
   const visible = recents.filter(k => (inv[k] || 0) > 0);
   recentRef.current = visible;
   prevCountRef.current = { ...inv };
-  /* 2-col grid, 6 tiles (3 rows). v2.3.156 capped at 6 in a 3-col
-     grid but tile width is column/3 so tiles read tiny; dropping a
-     column makes each tile ~50% wider (and taller via 1:1 aspect
-     ratio). Empty-state shows a hint pointing players at the full
-     Bag via the toolbar. */
-  const tiles = visible.slice(0, 6);
+  /* 2-col x 2-row grid (4 tiles). v2.3.158's 2x3 layout overflowed
+     the column's overflow:hidden clip (3 rows of square tiles is
+     taller than the dashboard band). 2x2 fits cleanly and keeps the
+     bigger tile size. Empty-state shows a hint pointing players at
+     the full Bag via the toolbar. */
+  const tiles = visible.slice(0, 4);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
