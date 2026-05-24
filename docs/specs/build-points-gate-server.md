@@ -9,11 +9,11 @@
 
 User's 2am note: *"Combat levels should only go up based on how many build points have been achieved each level. Every 5."*
 
-The build-points use-training system already exists. The system bumps a T1 stat (power / vitality / endurance / agility / mind) each time the player accumulates enough activity to cross a threshold. Today, combat level ticks up independently — purely from killXp. The gate inverts that direction: combat level is *earned* by also having done the build-point work since the last level.
+The build-points use-training system already exists — it bumps a T1 stat (power / vitality / endurance / agility / mind) each time the player accumulates enough activity to cross a threshold. The intent: **combat level is a pure consequence of build-point progression. killXp is no longer relevant to leveling at all** — it still feeds build progression via `distributeKillXpToBuild → addBuildProg`, but the `R.xp >= xpRequired(R.level)` comparison plays no role in level-up.
 
-Effect: a player who farms killXp but never engages with combat in a way that builds stats stops gaining levels. They can't power-level past their actual stat investment. XP overflows; it sits there until build points catch up; then both consume together (one level for every 5 build points + 1 full XP threshold).
+User-decided semantics: **5 build points = 1 combat level**, any T1 stat counts (not per-stat). Stat lock burns the share (doesn't deflect to another stat), so a heavily-locked build will take longer to level — feature, not bug.
 
-User-decided semantics: **5 build points total since last combat level**, any T1 stat counts (not per-stat). Stat lock burns the share (doesn't deflect to another stat), so a heavily-locked build will take longer to level — feature, not bug.
+Initial attempt (v2.3.150) gated on both XP and BP. User correctly identified that the dual gate creates situations where a player earns 5 BP but is locked out of leveling because XP hasn't kept pace (locked-stat or low-XP-monster scenarios). v2.3.151 drops the XP condition entirely.
 
 ---
 
@@ -61,7 +61,7 @@ case 'build_point_earned': {
 }
 ```
 
-### 3. Gate the worker's level-up loop
+### 3. Replace the worker's XP-based level-up loop with a pure-BP loop
 
 Find wherever the worker runs its own version of:
 
@@ -73,19 +73,19 @@ while (playerState.xp >= xpRequired(playerState.level)) {
 }
 ```
 
-Gate it the same way the client does:
+Replace with the pure-BP version:
 
 ```js
-while (playerState.xp >= xpRequired(playerState.level)
-    && (playerState.buildPointsThisLvl || 0) >= 5) {
-  playerState.xp -= xpRequired(playerState.level);
+while ((playerState.buildPointsThisLvl || 0) >= 5) {
   playerState.buildPointsThisLvl -= 5;
   playerState.level += 1;
   // ... unspentT2 += 5, HP/stamina/mana restore, etc.
 }
 ```
 
-Note: `xpRequired` lives in `src/data/gameSystems.js` on the client. If the worker doesn't import that, copy the function over (it's tri-phase and small — ~10 lines, search for `function xpRequired` in that file).
+Note that **the XP comparison is gone entirely**, and the loop no longer subtracts from `playerState.xp`. killXp still accumulates onto `playerState.xp` for the bar UI and analytics, but it's not consumed on level-up.
+
+`xpRequired` is no longer needed in this loop. The worker can still use it elsewhere (e.g. the per-stat build threshold in `addBuildProg`-equivalent server code, which is `Math.max(200, Math.floor(xpRequired(level)))` on the client). Don't remove `xpRequired` entirely — just from the level-up gate.
 
 ### 4. Echo via `player_state` (optional but recommended)
 
@@ -107,25 +107,27 @@ Client receives this in the `player_state` switch case (`BroTown.jsx ~2094`) and
 
 | Case | Expected behavior |
 |---|---|
-| Player has lots of XP overflow, then earns 5 build points | Worker's level-up loop fires, consumes 1 xpRequired worth + 5 build points, level += 1. If they earned >5 build points and have XP for multiple levels, the while loop bumps multiple levels until either condition fails. |
-| Player earns build points faster than XP | Build points sit waiting. Level only ticks when both conditions hit. Excess build points carry over via `-= 5` (no waste). |
-| Player has stat locks on most stats | Burn rate is faster (fewer eligible stats means fewer crossings, slower build points). Level gating naturally slows accordingly. Matches design intent — pure builds are a deliberate slow track. |
-| Existing save with no `buildPointsThisLvl` field | Defaults to 0, level-ups blocked until first 5 build points earned post-deploy. Earned XP doesn't disappear — just queues. |
+| Player earns 5 build points | Level += 1, BP counter `-= 5`. If they happened to earn 10 in one event (multi-stat threshold crossing), the loop fires twice. |
+| Player has stat locks on most stats | Burn rate is faster (locked stats consume the share without contributing). Slower build progression → slower combat leveling. Matches design intent — pure builds are deliberately slow. |
+| Existing save with no `buildPointsThisLvl` field | Defaults to 0, level-ups blocked until first 5 build points earned post-deploy. |
 | Disconnect / reconnect | Worker should persist `buildPointsThisLvl` alongside other per-player state. If not, players lose progress toward the next level (annoying but not data loss). |
-| Race: build_point_earned arrives after monster_kill | XP gets queued (passes the `xp >= xpRequired` check), build point arrives next, condition fully met on next monster_kill (or next tick where the worker re-checks). Acceptable — at most one kill of latency. |
+| Race: build_point_earned arrives after monster_kill | Build point ticks on the worker; loop fires on the next worker tick (or on the next monster_kill resolution). At most one tick of latency. |
+| Race: same WS message arrives twice | `buildPointsThisLvl` over-counts. Acceptable for v1; if it becomes a problem, add a monotonic event ID and dedupe. |
 
 ---
 
 ## Verification
 
-1. Wipe a test character to level 1, 0 XP, 0 build points.
+1. Wipe a test character to level 1, 0 build points.
 2. Kill monsters with melee only (so build_use weights power).
-3. Watch XP rise. Notice level stays at 1 even when XP crosses `xpRequired(1)`.
+3. Watch XP rise on the bar. Notice level stays at 1 even when XP crosses `xpRequired(1)`. XP is no longer the gate.
 4. After enough kills, power crosses its threshold and `_buildPointsThisLvl` ticks to 1. Repeat 4 more times for 5.
 5. On the kill that ticks the 5th build point: combat level should rise.
-6. XP should decrease by `xpRequired(1)` and `_buildPointsThisLvl` should drop back to 0 (or whatever excess remained).
+6. `_buildPointsThisLvl` should drop back to 0 (or whatever excess remained). R.xp is untouched by the level-up.
 
 If steps 3 + 5 + 6 all match — gate works.
+
+**Lock-build sanity test:** Lock vitality, endurance, mind. Equip bow. Kill low-XP monsters. Build points should still tick (from agility weights and power from melee swings while drawing bow — depending on per-action weighting). Combat level should rise on the 5th tick regardless of how much killXp has accumulated. This is the case that exposed the v2.3.150 bug.
 
 ---
 
@@ -147,5 +149,6 @@ if (typeof window !== 'undefined' && window._gameState && window._gameState.curr
 
 - Plan: `~/.claude/plans/these-are-notes-i-shimmering-firefly.md` → A1
 - Decision: 5 build points total per level (any T1 stat counts)
-- Client commit: v2.3.150 — `addBuildProg` increments + 4 client loops gated
+- Client commit: v2.3.150 — `addBuildProg` increments + 4 client loops gated (XP + BP)
+- Client commit: v2.3.151 — dropped the XP condition entirely; pure BP gate
 - This worker spec exists to complete the design for MP mode

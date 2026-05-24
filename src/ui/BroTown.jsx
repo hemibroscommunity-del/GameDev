@@ -2963,11 +2963,10 @@ export var BroTown = function BroTown(_ref0) {
                      player_state (authoritative totals). */
                   if (!S._serverMonsters) {
                     R.xp = (R.xp || 0) + killXp;
-                    /* A1: combat level only ticks when 5 build points
-                       have been earned since the last level-up. Excess
-                       XP sits on R.xp until the build points catch up. */
-                    while (R.xp >= xpRequired(R.level) && (R._buildPointsThisLvl || 0) >= 5) {
-                      R.xp -= xpRequired(R.level);
+                    /* A1: combat level is determined PURELY by build
+                       points -- 5 BP = 1 level. killXp accumulates on
+                       R.xp for the bar UI but no longer gates anything. */
+                    while ((R._buildPointsThisLvl || 0) >= 5) {
                       R._buildPointsThisLvl -= 5;
                       R.level++;
                       R.unspentT2 = (R.unspentT2 || 0) + 5;
@@ -9143,8 +9142,7 @@ export var BroTown = function BroTown(_ref0) {
                   /* Check level up — §6.2 tri-phase XP curve.  T1 is
                      use-trained; T2 still allocated, +5 unspent per level.
                      A1 gate: requires 5 build points earned since last level. */
-                  while (_R6.xp >= xpRequired(_R6.level) && (_R6._buildPointsThisLvl || 0) >= 5) {
-                    _R6.xp -= xpRequired(_R6.level);
+                  while ((_R6._buildPointsThisLvl || 0) >= 5) {
                     _R6._buildPointsThisLvl -= 5;
                     _R6.level++;
                     _R6.unspentT2 = (_R6.unspentT2 || 0) + 5;
@@ -9623,8 +9621,7 @@ export var BroTown = function BroTown(_ref0) {
                  via addBuildProg() at combat callsites; T2 still
                  allocated via the Stats menu (5 points per level).
                  A1 gate: requires 5 build points earned since last level. */
-              while (S.rpg.xp >= xpRequired(S.rpg.level) && (S.rpg._buildPointsThisLvl || 0) >= 5) {
-                S.rpg.xp -= xpRequired(S.rpg.level);
+              while ((S.rpg._buildPointsThisLvl || 0) >= 5) {
                 S.rpg._buildPointsThisLvl -= 5;
                 S.rpg.level++;
                 S.rpg.unspentT2 = (S.rpg.unspentT2 || 0) + 5;
@@ -10496,8 +10493,7 @@ export var BroTown = function BroTown(_ref0) {
                        but we still clear the per-monster damage entry. */
                     applyMeleeLifesteal(S, _R9, m);
                     /* A1 gate: 5 build points needed for combat level. */
-                    while (_R9.xp >= xpRequired(_R9.level) && (_R9._buildPointsThisLvl || 0) >= 5) {
-                      _R9.xp -= xpRequired(_R9.level);
+                    while ((_R9._buildPointsThisLvl || 0) >= 5) {
                       _R9._buildPointsThisLvl -= 5;
                       _R9.level++;
                       _R9.unspentT2 = (_R9.unspentT2 || 0) + 5;
