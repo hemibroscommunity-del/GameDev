@@ -362,7 +362,7 @@ const InventoryPreview = () => {
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           gap: 3,
           alignContent: 'start',
         }}>
