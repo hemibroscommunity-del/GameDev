@@ -362,36 +362,32 @@ const InventoryPreview = () => {
         </div>
       ) : (
         <div style={{
+          /* Outer flex centers the aspect-locked grid in whatever
+             leftover space the column gives us. */
           flex: 1,
           minHeight: 0,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridTemplateRows: 'repeat(3, 1fr)',
-          gap: 3,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
-          {tiles.map(k => (
-            <div key={k} style={{
-              minWidth: 0,
-              minHeight: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              {/* Square wrapper sized to the smaller of cell width or
-                 cell height. ItemTile's own width:100% + aspectRatio:1
-                 fills the wrapper. Without this, tiles would size
-                 themselves to cell width and overflow vertically when
-                 cell height is the binding constraint. */}
-              <div style={{
-                height: '100%',
-                aspectRatio: '1 / 1',
-                maxWidth: '100%',
-                maxHeight: '100%',
-              }}>
-                <ItemTile ikey={k} count={inv[k]} />
-              </div>
-            </div>
-          ))}
+          <div style={{
+            /* aspect-ratio 2:3 makes the grid itself wider:taller
+               match the 2-col x 3-row layout, so each grid cell is
+               a square -- ItemTile fills its cell exactly and the
+               visible gap between tiles is the literal `gap: 3` in
+               both axes (no centering whitespace from wrappers). */
+            aspectRatio: '2 / 3',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gridTemplateRows: 'repeat(3, 1fr)',
+            gap: 3,
+          }}>
+            {tiles.map(k => (
+              <ItemTile key={k} ikey={k} count={inv[k]} />
+            ))}
+          </div>
         </div>
       )}
     </div>
