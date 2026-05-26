@@ -2404,7 +2404,13 @@ export class EntityRenderer {
         const sheathed = !isInCombat;
         const inFrontInHand = isShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
-          : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
+          /* v2.3.192: SW joined the in-front set per user request --
+             weapon now layers above the body for SW so the bamboo
+             reads in front of the hand instead of being occluded by
+             it. Hand-cap stays gated to 0/1/2/7 (NOT SW) per the
+             earlier v2.3.186 fix, so the hand doesn't stamp back
+             on top of the weapon either. */
+          : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 3 || facingIdx === 7);
         const inFront = sheathed ? !inFrontInHand : inFrontInHand;
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
