@@ -2416,6 +2416,16 @@ export class EntityRenderer {
             armMask.moveTo(shoulderX, shoulderY);
             armMask.lineTo(midArmX, midArmY);
             armMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+            /* v2.3.201: small extra cap at the BACK-shoulder area
+               so the back-arm sliver visible behind the shield at
+               the backswing frame also renders in front of the
+               shield. The forward-arm capsule above only covers
+               shoulder -> the weapon-holding hand's mid-arm; the
+               back arm has no anchor so we hardcode a 7-px circle
+               in the back-shoulder region. This sits below weapon
+               in z-order so the bamboo blade is still on top. */
+            armMask.circle(-5, -17, 7);
+            armMask.fill({ color: 0xffffff });
           } else if (handArm) {
             handArm.visible = false;
           }
