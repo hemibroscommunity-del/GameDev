@@ -1238,7 +1238,8 @@ export class EffectsRenderer {
     const txt = l.killerName + "'s loot";
     if (l._pixiOwnerLabel.text !== txt) l._pixiOwnerLabel.text = txt;
     l._pixiOwnerLabel.x = l.x;
-    l._pixiOwnerLabel.y = l.y - 22;
+    /* v2.3.190: +8 to match the visual PILE_Y_OFFSET in _updateGroundLoot. */
+    l._pixiOwnerLabel.y = l.y - 22 + 8;
     l._pixiOwnerLabel.alpha = alpha;
     l._pixiOwnerLabel.visible = true;
   }
@@ -1334,7 +1335,13 @@ export class EffectsRenderer {
       this._knownLoot.add(l);
       /* Fodder + variant loot has no bob; it's a settled puddle/pile. */
       const isFodder = l.skull === 'fodder' || !!MONSTER_VARIANTS[l.skull];
-      const bob = isFodder ? 0 : Math.sin(age * 3) * 2;
+      /* v2.3.190: visual pile offset.  Shifts every l.y+bob reference
+         (gold glow, icon, count, etc) down by 8 px so the pile reads
+         at the player's feet instead of at the body center.  Pickup
+         hit detection in BroTown is unaffected -- this is purely a
+         visual offset. */
+      const PILE_Y_OFFSET = 8;
+      const bob = (isFodder ? 0 : Math.sin(age * 3) * 2) + PILE_Y_OFFSET;
       const alpha = age > 25 ? (30 - age) / 5 : 1;
 
       if (l.isDeathDrop) {
@@ -1481,14 +1488,17 @@ export class EffectsRenderer {
           l._pixiSprite = sp;
         }
         l._pixiSprite.x = l.x;
-        l._pixiSprite.y = l.y;
+        /* v2.3.190: +8 to match the PILE_Y_OFFSET in the non-snowman
+           branch.  Snowman wrecks don't use `bob` so the offset has
+           to be applied explicitly. */
+        l._pixiSprite.y = l.y + 8;
         l._pixiSprite.alpha = 1;
         l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14, alpha, snOwn);
-        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14), alpha);
+        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + 8, alpha, snOwn);
+        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + 8, alpha);
         this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }
