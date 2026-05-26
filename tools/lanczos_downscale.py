@@ -85,6 +85,16 @@ def main():
                         "strip, run flood per-frame so bg doesn't leak "
                         "across frame boundaries.  Defaults to whole "
                         "image (one frame).")
+    p.add_argument("--head-region-pct", type=float, default=0.40,
+                   help="with --bg-flood-from-edge: rows ABOVE this "
+                        "fraction of frame height (default 0.40 = top "
+                        "40%%) use pure flood-fill so interior bg-"
+                        "colored islands (eye whites) survive.  Rows "
+                        "BELOW this fraction also kill bg-passable "
+                        "pixels per-pixel, so interior pockets like "
+                        "the arm-torso gap during a run cycle get "
+                        "zeroed.  Set to 1.0 to disable (flood-only "
+                        "everywhere) or 0.0 to kill everywhere.")
     args = p.parse_args()
 
     img = Image.open(args.in_path).convert("RGBA")
@@ -110,6 +120,15 @@ def main():
             x1 = min(x0 + fw, W)
             frame_passable = bg_passable[:, x0:x1]
             is_bg[:, x0:x1] = flood_from_edges(frame_passable)
+        # Below the head region, kill ALL bg-passable pixels per-pixel
+        # (not just flood-reached).  This catches interior pockets like
+        # the arm-torso gap during a run cycle.  Above the head row,
+        # flood-only behavior preserves eye whites.
+        head_row = int(H * args.head_region_pct)
+        if 0 < head_row < H:
+            below_head = np.zeros_like(bg_passable)
+            below_head[head_row:, :] = True
+            is_bg = is_bg | (bg_passable & below_head)
     else:
         is_bg = bg_passable
 

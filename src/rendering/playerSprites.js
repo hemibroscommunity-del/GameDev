@@ -55,7 +55,7 @@ const HIT_DURATION_MS = 250;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 45; /* v2.3.168: bumped to invalidate cached 256-px sheets after the eye-white flood-fill regen */
+const VERSION = 46; /* v2.3.169: bumped after below-head interior bg kill (arm-gap fix) */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
