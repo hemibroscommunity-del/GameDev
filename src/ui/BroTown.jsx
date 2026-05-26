@@ -2595,6 +2595,7 @@ export var BroTown = function BroTown(_ref0) {
          to the dim "[killer]'s loot" view via the recipients gate. */
       function _buildServerPile(p, myId) {
         var myShare = (p.shares && typeof p.shares[myId] === 'number') ? p.shares[myId] : 0;
+        var isDeath = !!p.isDeathDrop;
         return {
           lootId: p.lootId,
           x: isFinite(p.x) ? p.x : 0, y: isFinite(p.y) ? p.y : 0,
@@ -2603,10 +2604,18 @@ export var BroTown = function BroTown(_ref0) {
           skull: p.skull || null,
           skullEmoji: p.skull ? '🦴' : null,
           shard: p.shard || null,
-          recipients: p.recipients || [],
+          /* Preserve null recipients for death drops -- the magnetism
+             + bounce-back gates downstream check `loot.recipients` truthy,
+             so null lets anyone walk over and trigger pickup. */
+          recipients: p.recipients == null ? null : p.recipients,
           killerName: p.killerName || 'Player',
           ts: p.ts || Date.now(),
           inventoryClaimed: !!p.inventoryClaimed,
+          /* Death-drop fields -- effectsRenderer renders aura/timer
+             when isDeathDrop is set; expiry drives the urgency pulse. */
+          isDeathDrop: isDeath,
+          deathItems: isDeath ? (p.deathItems || []) : null,
+          expiry: isDeath ? (p.expiry || null) : null,
           _serverLoot: true,
         };
       }
@@ -2649,6 +2658,21 @@ export var BroTown = function BroTown(_ref0) {
              doesn't replicate it. */
           if (!R.skulls) R.skulls = {};
           R.skulls[payload.skull] = (R.skulls[payload.skull] || 0) + 1;
+        }
+        /* Death-drop pickup: server bundles the dead player's whole
+           general inventory under payload.items.  Authoritative R.inventory
+           write rides on the player_state that follows; we only render
+           the popup + recovered-count floater here. */
+        if (payload.isDeathDrop && Array.isArray(payload.items) && payload.items.length > 0) {
+          var _recovered = 0;
+          payload.items.forEach(function (it) { _recovered += (it && it.qty) || 0; });
+          if (_recovered > 0) {
+            S.dmgNumbers.push({
+              x: S.player.x, y: S.player.y - 20,
+              text: 'RECOVERED ' + _recovered + ' items!',
+              color: '#3dd497', ts: Date.now(),
+            });
+          }
         }
         BT_AUDIO.beep(500, 0.06, 0.1, 'sine');
         try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
