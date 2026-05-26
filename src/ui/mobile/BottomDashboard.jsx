@@ -5,6 +5,9 @@ import { ZONES } from '../../data/zones.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { weaponSwapBus } from './weaponSwapBus.js';
 import { InventoryPanel, ItemTile }    from './dash/InventoryPanel.jsx';
+import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
+import { itemDetailBus }               from './dash/itemDetailBus.js';
+import { lockedKeysInOrder as invLockedKeysInOrder, subscribe as subscribeInvLocks } from './dash/inventoryLocks.js';
 import { SelfPanel }         from './dash/SelfPanel.jsx';
 import { JourneyPanel }      from './dash/JourneyPanel.jsx';
 import { MapPanel }          from './dash/MapPanel.jsx';
@@ -297,6 +300,10 @@ const InventoryPreview = () => {
     const id = setInterval(() => force(v => v + 1), 400);
     return () => clearInterval(id);
   }, []);
+  /* v2.3.177 (F3): re-render whenever a lock toggles so the locked-
+     first sort below picks up the change without waiting for the
+     400ms timer. */
+  useEffect(() => subscribeInvLocks(() => force(v => v + 1)), []);
   const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   const inv = (S && S.rpg && S.rpg.inventory) || {};
   /* Bubble keys whose count increased since last frame to the front. */
@@ -313,9 +320,14 @@ const InventoryPreview = () => {
   for (const k of Object.keys(inv)) {
     if (!recents.includes(k)) recents.push(k);
   }
-  const visible = recents.filter(k => (inv[k] || 0) > 0);
+  let visible = recents.filter(k => (inv[k] || 0) > 0);
   recentRef.current = visible;
   prevCountRef.current = { ...inv };
+  /* Sort: locked keys first (in lock-order so the oldest lock pins
+     to the top-left), then the recents order for the rest. */
+  const lockedOrder = invLockedKeysInOrder().filter(k => visible.includes(k));
+  const unlockedRest = visible.filter(k => !lockedOrder.includes(k));
+  visible = lockedOrder.concat(unlockedRest);
   /* 2-col x 3-row grid (6 tiles). v2.3.159 capped at 4 because 6
      square tiles overflowed; v2.3.160 keeps 6 but constrains the grid
      to fill the column's available height and wraps each tile in a
@@ -498,6 +510,10 @@ export const BottomDashboard = () => {
 
   return (
     <>
+      {/* v2.3.177 (F3): item-detail popup mounts here so it inherits the
+          dashboard's React tree but its position:fixed inset:0 makes it
+          float above the entire app at zIndex 50. */}
+      <ItemDetailPopup />
       <Tooltip text={tooltip} onClose={() => setTooltip('')} />
 
       <div style={{

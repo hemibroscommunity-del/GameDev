@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { COL, TIER_COLOR, panelStyle, getState } from './common.js';
 import { cookingBus } from '../cookingBus.js';
 import { eatBus } from '../eatBus.js';
+import { itemDetailBus } from './itemDetailBus.js';
+import { isLocked as itemIsLocked } from './inventoryLocks.js';
 
 // Category filter chips — icon-only.  "All" comes first so the player
 // always opens the bag with everything visible.
@@ -99,18 +101,15 @@ export const iconFor = (key) => {
 export const ItemTile = ({ ikey, count, style: styleOverride }) => {
   const cat = classify(ikey);
   const color = TIER_COLOR[cat === 'weapon' ? 'rare' : cat === 'armor' ? 'uncommon' : 'common'] || COL.muted;
-  // Tap on a raw fish_* tile launches the cooking minigame; tap on a
-  // cooked_fish_* tile eats it for HP. Burnt tiles are inert.
-  const hasStock = (count || 0) > 0;
-  const isRawFish = hasStock && /^fish_/.test(ikey || '');
-  const isCookedFish = hasStock && /^cooked_fish_/.test(ikey || '');
-  const isInteractive = isRawFish || isCookedFish;
+  /* v2.3.177 (F3): every tile opens the ItemDetailPopup -- cook /
+     eat / lock all flow through the popup's action buttons now,
+     so the inline tap handlers for fish are deprecated. The popup
+     decides what actions are valid for the item. */
   const handleTap = (e) => {
-    if (!isInteractive) return;
     e.stopPropagation();
-    if (isRawFish) cookingBus.open(ikey);
-    else if (isCookedFish) eatBus.open(ikey);
+    itemDetailBus.open({ kind: 'inventory', key: ikey, count: count || 0 });
   };
+  const locked = itemIsLocked(ikey);
   return (
     <div onPointerUp={handleTap} style={{
       width: '100%', aspectRatio: '1 / 1',
@@ -122,12 +121,12 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
       justifyContent: 'center',
       fontSize: 18,
       position: 'relative',
-      cursor: isInteractive ? 'pointer' : 'default',
-      touchAction: isInteractive ? 'manipulation' : 'auto',
+      cursor: 'pointer',
+      touchAction: 'manipulation',
       /* v2.3.162: caller can override sizing (e.g. drop aspectRatio so
          tiles fill non-square cells in the dashboard inventory preview). */
       ...(styleOverride || {}),
-    }} title={isRawFish ? 'Tap to cook' : isCookedFish ? ('Tap to eat (+' + (ikey === 'cooked_fish_clownfish' ? 50 : 30) + ' HP)') : ikey}>
+    }} title={ikey}>
       {(() => {
         const thumb = thumbFor(ikey);
         return thumb
@@ -141,6 +140,21 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
           fontSize: 15, color: COL.text,
           textShadow: '0 0 2px #000',
         }}>{count}</span>
+      )}
+      {locked && (
+        /* v2.3.177: lock glyph in the upper-right corner of locked
+           tiles. Matches the popup's lock-glyph styling. */
+        <span style={{
+          position: 'absolute', top: 1, right: 1,
+          width: 12, height: 12,
+          background: 'rgba(15,17,26,0.92)',
+          border: '1px solid #f5c542',
+          borderRadius: 3,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 9, color: '#f5c542',
+          fontWeight: 900,
+          lineHeight: 1,
+        }}>L</span>
       )}
     </div>
   );
