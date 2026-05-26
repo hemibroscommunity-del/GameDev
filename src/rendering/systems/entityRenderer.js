@@ -2312,9 +2312,18 @@ export class EntityRenderer {
           const handCap = display._handCapSprite;
           const handMask = display._handCapMask;
           const _bodyRef = display._spriteBody;
+          /* v2.3.186: hand-cap only fires when the weapon's z-order
+             puts it IN FRONT of the body. The same forward-facing
+             set used by the z-order block below. For back-side
+             facings (SW/W/NW/N) the weapon already renders behind
+             the body, so adding a hand cap on top of the weapon
+             would stamp a redundant second copy of the hand and look
+             wrong (user reported SW). */
+          const _weaponInFront = (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
           const handCapEligible = handCap && handMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
-            && !swingActive && isInCombat;
+            && !swingActive && isInCombat
+            && _weaponInFront;
           if (handCapEligible) {
             handCap.texture = _bodyRef.texture;
             handCap.x = _bodyRef.x;
