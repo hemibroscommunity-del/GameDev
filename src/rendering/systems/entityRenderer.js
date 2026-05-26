@@ -328,6 +328,23 @@ function createPlayerDisplay() {
   weaponSprite.visible = false;
   weaponContainer.addChild(weaponSprite);
 
+  /* v2.3.185 hand-over-grip layering: a body sprite clone, circularly
+     masked to a small region around the hand anchor, drawn ON TOP of
+     the weapon container. The clone shares the body's texture and
+     transform each frame, so the only thing we actually render here
+     are the body's pixels inside the mask circle -- the hand. Result:
+     the hand visually wraps the weapon's grip without splitting the
+     player sprite. Added AFTER weaponContainer so the hand renders
+     above the weapon; the body renders below, weapon between. */
+  const handCapSprite = new Sprite();
+  handCapSprite.anchor.set(0.5, 0.5);
+  handCapSprite.visible = false;
+  const handCapMask = new Graphics();
+  handCapMask.visible = true;
+  handCapSprite.mask = handCapMask;
+  container.addChild(handCapMask);
+  container.addChild(handCapSprite);
+
   /* Wood-shield sprite — replaces the procedural cyan arc when the
      PNGs have loaded.  Anchored at center-bottom so it pivots
      around the grip and rotates into position naturally; we hide
@@ -438,6 +455,8 @@ function createPlayerDisplay() {
   container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
   container._weaponSprite = weaponSprite;
+  container._handCapSprite = handCapSprite;
+  container._handCapMask = handCapMask;
   container._shieldSprite = shieldSprite;
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
@@ -1803,6 +1822,7 @@ export class EntityRenderer {
       }
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
+      if (display._handCapSprite) display._handCapSprite.visible = false;
       if (display._nftFront) display._nftFront.visible = false;
       if (display._nftBack) display._nftBack.visible = false;
       return;
@@ -2279,8 +2299,42 @@ export class EntityRenderer {
           weaponSprite.scale.y = fitScale;
           weaponSprite.tint = 0xffffff;
           weaponSprite.visible = true;
+          /* v2.3.185 hand-over-grip: stamp the body's hand pixels on
+             top of the weapon. handCap is a Sprite that shares the
+             body texture + transform; handMask is a small circle at
+             the hand anchor that clips the clone to just the hand
+             region. Result: the body's hand pixels render above the
+             weapon, so the hand visually wraps the grip without
+             splitting the player sprite. Skipped during swings (the
+             sword rotates fast enough that a static cap would lag)
+             and during sheathed mode (weapon's on the back, no grip
+             to cover). */
+          const handCap = display._handCapSprite;
+          const handMask = display._handCapMask;
+          const _bodyRef = display._spriteBody;
+          const handCapEligible = handCap && handMask && _bodyRef
+            && _bodyRef.visible && _bodyRef.texture
+            && !swingActive && isInCombat;
+          if (handCapEligible) {
+            handCap.texture = _bodyRef.texture;
+            handCap.x = _bodyRef.x;
+            handCap.y = _bodyRef.y;
+            handCap.scale.x = _bodyRef.scale.x;
+            handCap.scale.y = _bodyRef.scale.y;
+            handCap.tint = _bodyRef.tint;
+            handCap.visible = true;
+            /* Mask circle covers a ~10px radius around the hand pixel
+               in display coords. Big enough to catch finger wraps but
+               small enough not to expose more body. */
+            handMask.clear();
+            handMask.circle(weaponSprite.x, weaponSprite.y, 10);
+            handMask.fill({ color: 0xffffff });
+          } else if (handCap) {
+            handCap.visible = false;
+          }
         } else {
           weaponSprite.visible = false;
+          if (display._handCapSprite) display._handCapSprite.visible = false;
           /* Procedural fallback — abstract line / arc / orb. */
           if (wpn.type === 'bow') {
             // Bow arc
@@ -2315,6 +2369,7 @@ export class EntityRenderer {
            so a stale icon doesn't linger from a previous loadout (or
            render on top of the shield arc during a block). */
         if (display._weaponSprite) display._weaponSprite.visible = false;
+        if (display._handCapSprite) display._handCapSprite.visible = false;
       }
       /* Z-order: weapon in front of body for forward facings (idx 0..3
          = E/SE/S/SW), weapon behind body for back facings (idx 4..7 =
