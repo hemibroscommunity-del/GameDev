@@ -2264,8 +2264,13 @@ export class EntityRenderer {
                user calls them out. */
             const isWoodSwordNudge = wpn.type === 'sword' && wpn.gearBase === 'wood';
             /* facingIdx: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE */
-            const WOOD_NUDGE_X = [-8, 0, -8, 3, 8, 8, 0, -8];
-            const wpnNudgeX = isWoodSwordNudge ? (WOOD_NUDGE_X[facingIdx] || 0) : 0;
+            const WOOD_NUDGE_X = [-8, 0, -8, 0, 8, 8, 0, -8];
+            /* v2.3.204: SW idle only -- bamboo grip reads slightly
+               left of the hand on the SW idle sprite. Jog already
+               looks correct so we keep that at 0 and add the +3
+               only when the player is standing still. */
+            const SW_IDLE_NUDGE = (facingIdx === 3 && pose === 'idle') ? 3 : 0;
+            const wpnNudgeX = isWoodSwordNudge ? ((WOOD_NUDGE_X[facingIdx] || 0) + SW_IDLE_NUDGE) : 0;
             weaponSprite.x = wpnX + wpnNudgeX;
             weaponSprite.y = wpnY;
           } else {
