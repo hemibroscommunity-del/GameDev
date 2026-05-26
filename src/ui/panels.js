@@ -16076,48 +16076,104 @@ export function renderBroTownUI(uiCtx) {
       alignItems: 'center',
       justifyContent: 'center'
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      left: '50%',
-      top: '55%',
-      transform: 'translate(-50%,-50%)',
-      width: 220,
-      height: 220,
-      borderRadius: '50%',
-      background: 'radial-gradient(circle, rgba(245,197,66,.35) 0%, transparent 70%)',
-      opacity: Math.max(0, 1 - (Date.now() - levelUpMsg.ts) / 3500)
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: 'center',
-      transform: "translateY(".concat(Math.max(0, 30 - (Date.now() - levelUpMsg.ts) / 1000 * 40), "px) scale(").concat(Math.min(1.1, 0.8 + (Date.now() - levelUpMsg.ts) / 3000), ")"),
-      opacity: Date.now() - levelUpMsg.ts < 3500 ? Math.min(1, (Date.now() - levelUpMsg.ts) / 400) * Math.max(0, 1 - (Date.now() - levelUpMsg.ts) / 3500) : 0
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 40,
-      fontWeight: 900,
-      fontFamily: 'Source Sans 3,sans-serif',
-      color: '#f5c542',
-      textShadow: '0 0 30px rgba(245,197,66,.8), 0 0 60px rgba(245,197,66,.4), 0 2px 4px rgba(0,0,0,.6)',
-      letterSpacing: '.15em'
-    }
-  }, "LEVEL UP!"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 20,
-      fontWeight: 700,
-      color: '#fff',
-      textShadow: '0 2px 8px rgba(0,0,0,.7)',
-      marginTop: 6
-    }
-  }, "Level ", levelUpMsg.level), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: 'rgba(255,255,255,.6)',
-      marginTop: 4
-    }
-  }, "+5 Capacity \xB7 +5 Technique"))), rpgState && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/(function () {
+    /* v2.3.153: banner now renders by levelUpMsg.kind. 'combat' keeps
+       the original gold heading; any T1 stat (power / vitality /
+       endurance / agility / mind) renders in silver with a per-stat
+       label + icon. Maps are inlined here so panels.js stays
+       independent of BroTown.jsx exports. */
+    var kind = (levelUpMsg && levelUpMsg.kind) || 'combat';
+    var isCombat = kind === 'combat';
+    var labels = {
+      power: 'Melee', vitality: 'Vitality', endurance: 'Endurance',
+      agility: 'Archery', mind: 'Magic',
+    };
+    var icons = {
+      power:     '/icons/popups/sword.png',
+      vitality:  '/icons/popups/heart.png',
+      endurance: '/icons/ui/bar-stam.png',
+      agility:   '/icons/popups/arrow.png',
+      mind:      '/icons/popups/spell.png',
+    };
+    var accent     = isCombat ? '#f5c542'           : '#c0c0c0';
+    var accentRgba = isCombat ? '245,197,66'        : '192,192,192';
+    var heading    = isCombat ? 'LEVEL UP!'
+                              : ((labels[kind] || kind).toUpperCase() + ' LEVEL UP!');
+    var iconSrc    = isCombat ? '/icons/popups/xp.png' : (icons[kind] || null);
+    var subline    = isCombat ? '+5 Capacity \xB7 +5 Technique' : null;
+    var ageMs = Date.now() - levelUpMsg.ts;
+    return [
+      /*#__PURE__*/React.createElement("div", {
+        key: 'glow',
+        style: {
+          position: 'absolute',
+          left: '50%',
+          top: '55%',
+          transform: 'translate(-50%,-50%)',
+          width: 220,
+          height: 220,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(' + accentRgba + ',.35) 0%, transparent 70%)',
+          opacity: Math.max(0, 1 - ageMs / 3500)
+        }
+      }),
+      /*#__PURE__*/React.createElement("div", {
+        key: 'card',
+        style: {
+          textAlign: 'center',
+          transform: 'translateY(' + Math.max(0, 30 - ageMs / 1000 * 40) + 'px) scale(' + Math.min(1.1, 0.8 + ageMs / 3000) + ')',
+          opacity: ageMs < 3500 ? Math.min(1, ageMs / 400) * Math.max(0, 1 - ageMs / 3500) : 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        }
+      },
+        iconSrc && /*#__PURE__*/React.createElement("img", {
+          key: 'icon',
+          src: iconSrc,
+          alt: '',
+          draggable: false,
+          style: {
+            width: 48,
+            height: 48,
+            marginBottom: 4,
+            imageRendering: 'pixelated',
+            filter: 'drop-shadow(0 0 8px rgba(' + accentRgba + ',.7)) drop-shadow(0 2px 4px rgba(0,0,0,.6))',
+            userSelect: 'none',
+          }
+        }),
+        /*#__PURE__*/React.createElement("div", {
+          key: 'heading',
+          style: {
+            fontSize: 40,
+            fontWeight: 900,
+            fontFamily: 'Source Sans 3,sans-serif',
+            color: accent,
+            textShadow: '0 0 30px rgba(' + accentRgba + ',.8), 0 0 60px rgba(' + accentRgba + ',.4), 0 2px 4px rgba(0,0,0,.6)',
+            letterSpacing: '.15em'
+          }
+        }, heading),
+        /*#__PURE__*/React.createElement("div", {
+          key: 'level',
+          style: {
+            fontSize: 20,
+            fontWeight: 700,
+            color: '#fff',
+            textShadow: '0 2px 8px rgba(0,0,0,.7)',
+            marginTop: 6
+          }
+        }, "Level ", levelUpMsg.level),
+        subline && /*#__PURE__*/React.createElement("div", {
+          key: 'sub',
+          style: {
+            fontSize: 12,
+            color: 'rgba(255,255,255,.6)',
+            marginTop: 4
+          }
+        }, subline)
+      )
+    ];
+  })()), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 44,
