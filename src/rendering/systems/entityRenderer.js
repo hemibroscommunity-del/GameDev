@@ -2455,10 +2455,21 @@ export class EntityRenderer {
         const handCapIdx = display._handCapSprite
           ? display.getChildIndex(display._handCapSprite)
           : -1;
+        /* v2.3.194: for E (idx 0) specifically, the user wants the
+           hand-cap (= arm pixels) layered ABOVE the shield -- the arm
+           swings over the shield during the east run cycle and should
+           occlude it. NE (idx 7) is the inverse case from v2.3.190
+           where shield needs to stay above the cap. Per-facing flag. */
+        const handCapAboveShield = (facingIdx === 0);
         let targetShIdx;
         if (shieldBehind) {
           targetShIdx = shIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1);
+        } else if (handCapIdx >= 0 && handCapAboveShield) {
+          /* Shield goes BELOW handCap (= immediately before it in
+             child order). Arm pixels render on top of the shield. */
+          targetShIdx = shIdx > handCapIdx ? handCapIdx : Math.max(0, handCapIdx - 1);
         } else if (handCapIdx >= 0) {
+          /* Shield goes ABOVE handCap (= NE and default in-front rule). */
           targetShIdx = shIdx > handCapIdx ? handCapIdx + 1 : handCapIdx;
         } else {
           targetShIdx = shIdx > bodyIdx ? bodyIdx + 1 : bodyIdx;

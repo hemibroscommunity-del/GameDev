@@ -80,7 +80,7 @@ const CHAR_STATS = [
      and pushed its value text off-center.  Back to 1.0 — the cell
      layout below now centers the value regardless of icon size. */
   { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.112',                       pixelated: true,  iconScale: 1.0, tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/sprites/shields/wood-shield-front.png?v=2.1.23',         pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/sprites/shields/wood-shield-front.png?v=2.3.194',         pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
   { key: 'agility',   label: 'Agility',   short: 'AGI', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Agility — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
   { key: 'mind',      label: 'Mind',      short: 'MIN', iconSrc: '/icons/popups/spell.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Mind — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
 ];
@@ -926,7 +926,7 @@ export const BottomDashboard = () => {
                      position (top-right) while defense-y slots flank it.
                      Row 2: Chest · Legs.  Leg & amulet still placeholder
                      text since there's no PNG art yet. */
-                  const shieldSrc = R.shield ? '/sprites/shields/wood-shield-front.png?v=2.1.23' : null;
+                  const shieldSrc = R.shield ? '/sprites/shields/wood-shield-front.png?v=2.3.194' : null;
                   const armorSrc = null; /* No chest-armor PNG sprite yet. */
                   /* Plain function (not a React component) so React doesn't
                      see a fresh component-type identity on every render and

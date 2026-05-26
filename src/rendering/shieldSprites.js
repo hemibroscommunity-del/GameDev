@@ -10,7 +10,7 @@
 
 import { Assets } from 'pixi.js';
 
-const SPRITE_VERSION = '2.1.23';
+const SPRITE_VERSION = '2.3.194';
 
 const SHEETS = {
   front: { url: `/sprites/shields/wood-shield-front.png?v=${SPRITE_VERSION}`, tex: null },
