@@ -2411,7 +2411,7 @@ export class EntityRenderer {
           const useArmCapsule = handArm && armMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
-            && ((facingIdx === 0 || facingIdx === 7) && pose === 'jog');
+            && (facingIdx === 0 && pose === 'jog');
           if (useArmCapsule) {
             handArm.texture = _bodyRef.texture;
             handArm.x = _bodyRef.x;
@@ -2562,10 +2562,9 @@ export class EntityRenderer {
         /* v2.3.194: for E (idx 0) specifically, the user wants the
            hand-cap (= arm pixels) layered ABOVE the shield -- the arm
            swings over the shield during the east run cycle and should
-           occlude it. v2.3.210: NE (idx 7) joins the same set so the
-           right-arm swing reads in front of the shield on the NE jog
-           cycle too -- symmetric to E, useArmCapsule extended below. */
-        const handCapAboveShield = (facingIdx === 0 || facingIdx === 7);
+           occlude it. NE (idx 7) is the inverse case from v2.3.190
+           where shield needs to stay above the cap. Per-facing flag. */
+        const handCapAboveShield = (facingIdx === 0);
         let targetShIdx;
         if (shieldBehind) {
           targetShIdx = shIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1);
