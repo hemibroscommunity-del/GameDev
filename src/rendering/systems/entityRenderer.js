@@ -1515,8 +1515,8 @@ export class EntityRenderer {
         if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.3125;
         else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.3125;
           /* v2.3.164: matching per-direction stand-pose bumps from the
-             local player path. */
-          if (pose === 'stand') {
+             local player path.  v2.3.167: extended to jog too. */
+          if (pose === 'stand' || pose === 'jog') {
             if (dir === 'north' || dir === 'south' || dir === 'east') sizeMul *= 1.10;
             else if (dir === 'northeast') sizeMul *= 1.05;
           }
@@ -1899,11 +1899,11 @@ export class EntityRenderer {
     let bodyScale = 1.0 * LOCAL_SCALE;
     if (dir === 'east' && pose === 'hit') bodyScale = 0.88 * LOCAL_SCALE;
     else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03 * LOCAL_SCALE;
-    /* v2.3.164: per-direction stand-pose size bumps.  Idle figures
-       on the new 128-px sources read slightly small relative to the
-       jog pose; user request: N/S/E (covers W via mirror) +10%,
-       NE (covers NW) +5%, SW unchanged. */
-    if (pose === 'stand') {
+    /* v2.3.164: per-direction stand-pose size bumps.
+       v2.3.167: also apply to jog (user wanted the same bumps on run
+       animations).  N/S/E (covers W via mirror) +10%,
+       NE (covers NW) +5%, SW unchanged.  Hit stays unbumped. */
+    if (pose === 'stand' || pose === 'jog') {
       if (dir === 'north' || dir === 'south' || dir === 'east') bodyScale *= 1.10;
       else if (dir === 'northeast') bodyScale *= 1.05;
     }

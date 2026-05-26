@@ -23,6 +23,10 @@
 
 set -euo pipefail
 
+# Skin target: matches the east source's median tan.  v2.3.167 unified
+# every direction to this value (was per-direction varying).
+SKIN_TARGET="198 128 72"
+
 for d in north south northeast southwest east; do
   echo "=== $d ==="
   rm -rf "/tmp/jog-frames-v7-$d"
@@ -38,7 +42,20 @@ for d in north south northeast southwest east; do
   ffmpeg -y -i "/tmp/jog-frames-v7-$d/%03d.png" -vf "tile=${N}x1" \
     -frames:v 1 -an "/tmp/jog-v7-$d-strip-native.png" 2>/dev/null
 
+  # NE source has an AI-drawn floor-shadow under the feet that the
+  # bg-detection threshold misses.  --scrub-floor zeros medium-gray
+  # low-sat pixels in the bottom 40% of the strip before Lanczos.
+  scrub_flag=""
+  if [ "$d" = "northeast" ]; then
+    scrub_flag="--scrub-floor"
+  fi
+
   python tools/lanczos_downscale.py \
     "/tmp/jog-v7-$d-strip-native.png" \
-    "public/sprites/player/jog-$d.png" --height 256
+    "public/sprites/player/jog-$d.png" --height 256 $scrub_flag
+
+  # Unify skin tone across directions to the east-reference target.
+  python tools/match_skin.py \
+    "public/sprites/player/jog-$d.png" \
+    "public/sprites/player/jog-$d.png" --target $SKIN_TARGET
 done

@@ -36,6 +36,11 @@ def main():
                    help="min max-channel for bg detection")
     p.add_argument("--bg-sat", type=int, default=30,
                    help="max channel range for bg detection")
+    p.add_argument("--scrub-floor", action="store_true",
+                   help="zero medium-gray low-sat pixels in the bottom "
+                        "40%% of each frame (use for sources with an AI-"
+                        "drawn ground-shadow under the figure's feet "
+                        "that the bg-detect threshold misses)")
     args = p.parse_args()
 
     img = Image.open(args.in_path).convert("RGBA")
@@ -51,6 +56,24 @@ def main():
     is_bg = (max_ch >= args.bg_lum) & ((max_ch - min_ch) <= args.bg_sat)
     arr[..., 3] = np.where(is_bg, 0, arr[..., 3])
     bg_count = int(is_bg.sum())
+
+    # 1b. Optional floor-shadow scrub.  Targets medium-gray (lum 80-200),
+    # very-low-saturation pixels in the bottom 40% of the image only.
+    # Skin (high R, lower G/B = saturated) and dark outline (lum < 80)
+    # are NOT touched.  Strip layout is N frames tiled horizontally;
+    # bottom 40% of the strip == bottom 40% of every frame since they
+    # share the same y-axis.
+    floor_count = 0
+    if args.scrub_floor:
+        floor_y0 = int(H * 0.6)
+        lum = (299 * r + 587 * g + 114 * b) // 1000
+        sat = max_ch - min_ch
+        # Construct a row mask so we only act on the bottom portion.
+        row_mask = np.zeros((H, W), dtype=bool)
+        row_mask[floor_y0:, :] = True
+        is_floor = row_mask & (lum >= 80) & (lum <= 200) & (sat <= 15)
+        arr[..., 3] = np.where(is_floor, 0, arr[..., 3])
+        floor_count = int(is_floor.sum())
 
     # 2. Premultiply alpha (float math for precision).
     arr_f = arr.astype(np.float32) / 255.0
@@ -77,9 +100,10 @@ def main():
     out_arr = (unpremul * 255).astype(np.uint8)
 
     Image.fromarray(out_arr).save(args.out_path)
+    extra = f", {floor_count} floor-shadow pixels scrubbed" if args.scrub_floor else ""
     print(f"{args.in_path} -> {args.out_path}: "
           f"{W}x{H} -> {new_W}x{new_H} (LANCZOS premul), "
-          f"{bg_count} native bg pixels alpha-zeroed")
+          f"{bg_count} native bg pixels alpha-zeroed{extra}")
 
 
 if __name__ == "__main__":
