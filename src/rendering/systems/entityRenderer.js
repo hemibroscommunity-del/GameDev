@@ -2214,7 +2214,13 @@ export class EntityRenderer {
             const handle = getWeaponHandle(wpn.type, wpn.gearBase);
             if (handle) weaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
             else weaponSprite.anchor.set(0.5, 1.0);
-            weaponSprite.x = wpnX;
+            /* v2.3.181: per-weapon screen-space nudge. Bamboo's grip in
+               its 1254px source isn't dead-on the user's mark; nudging
+               the rendered sprite left by 8px aligns the visible hilt
+               with the hand pixel without re-annotating handles.json. */
+            const isWoodSwordNudge = wpn.type === 'sword' && wpn.gearBase === 'wood';
+            const wpnNudgeX = isWoodSwordNudge ? -8 : 0;
+            weaponSprite.x = wpnX + wpnNudgeX;
             weaponSprite.y = wpnY;
           } else {
             /* Sheathed (F4) — center the sprite over the upper torso
@@ -2234,10 +2240,12 @@ export class EntityRenderer {
              at the chrome-sword scale. Per-tier tuning could be
              extended further once more tier sprites land. */
           const isWoodSword = wpn.type === 'sword' && wpn.gearBase === 'wood';
+          /* v2.3.181: bamboo shrunk 60 -> 45 (~25% smaller) per user
+             tuning. Chrome sword stays at 26. */
           const targetH = wpn.type === 'greatsword' ? 36
                          : wpn.type === 'staff'      ? 34
                          : wpn.type === 'bow'        ? 28
-                         : isWoodSword                ? 60
+                         : isWoodSword                ? 45
                          :                              26;
           const fitScale = targetH / Math.max(8, th);
           /* During an idle pose, mirror the blade horizontally for
