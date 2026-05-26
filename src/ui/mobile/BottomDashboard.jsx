@@ -886,10 +886,10 @@ export const BottomDashboard = () => {
                      in-world. Mirrors the SHEETS table in
                      src/rendering/weaponSprites.js. */
                   const isWoodSword = slot === 'melee' && wpn && wpn.gearBase === 'wood';
-                  const slotIconSrc = slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.3.172'
-                                     : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.png?v=2.3.172'
-                                     : isWoodSword     ? '/sprites/weapons/swords/Bamboo.png?v=2.3.172'
-                                     :                    '/sprites/weapons/swords/Sword1.png?v=2.3.172';
+                  const slotIconSrc = slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.3.173'
+                                     : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.png?v=2.3.173'
+                                     : isWoodSword     ? '/sprites/weapons/swords/Bamboo.png?v=2.3.173'
+                                     :                    '/sprites/weapons/swords/Sword1.png?v=2.3.173';
                   let dmgText = '0', dpsText = '0.0';
                   if (wType) {
                     const statVal = (slot === 'ranged') ? (R.agility || 0)

@@ -2203,10 +2203,16 @@ export class EntityRenderer {
           weaponSprite.y = wpnY;
           /* Tuned per-weapon target heights so the icon reads at the
              same apparent size as the 64-px sprite body's hand area.
-             Greatsword is the longest, staff next, sword/bow shorter. */
+             Greatsword is the longest, staff next, sword/bow shorter.
+             v2.3.173: wood-tier swords (bamboo) get a bigger target
+             height because their sprite art reads thinner / shorter
+             at the chrome-sword scale. Per-tier tuning could be
+             extended further once more tier sprites land. */
+          const isWoodSword = wpn.type === 'sword' && wpn.gearBase === 'wood';
           const targetH = wpn.type === 'greatsword' ? 36
                          : wpn.type === 'staff'      ? 34
                          : wpn.type === 'bow'        ? 28
+                         : isWoodSword                ? 60
                          :                              26;
           const fitScale = targetH / Math.max(8, th);
           /* During an idle pose, mirror the blade horizontally for
