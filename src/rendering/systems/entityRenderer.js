@@ -2429,13 +2429,16 @@ export class EntityRenderer {
          other facing it stays in front (its default order, since it
          was added after spriteBody). */
       if (display._shieldSprite && display._shieldSprite.visible && display._spriteBody) {
-        /* v2.3.176 (F4): shield z-order inverts when sheathed-on-back.
-           In-hand rule: behind body for NW/N/NE (5/6/7). Sheathed
-           rule: behind body for everything EXCEPT NW/N/NE -- those
-           are back facings where the shield-on-back is toward camera. */
-        const shieldBehind = isInCombat
-          ? (facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
-          : !(facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+        /* v2.3.187: discriminator is "is the shield on the back"
+           (= shield equipped but not raised), not combat state.
+           In-hand rule (raised): behind body for NW/N/NE (5/6/7).
+           On-back rule: behind body for everything EXCEPT NW/N/NE
+           -- those are back facings where the shield-on-back is
+           toward the camera and should layer in front of the body. */
+        const shieldOnBack = !isShielding;
+        const shieldBehind = shieldOnBack
+          ? !(facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
+          : (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const shIdx   = display.getChildIndex(display._shieldSprite);
         const targetShIdx = shieldBehind
@@ -2527,17 +2530,28 @@ export class EntityRenderer {
             weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.9 });
           }
         }
-      } else if (!isInCombat && S.rpg && S.rpg.shield && display._shieldSprite) {
-        /* v2.3.176 (F4): shield equipped but not raised and player is
-           out of combat -> show on back. Uses the front-view shield
-           texture, centered on upper torso, no rotation. Smaller than
-           the in-hand size so it reads as "stowed". */
-        const shieldFrame = getShieldFrame(0); // 0 angle -> front view
+      } else if (S.rpg && S.rpg.shield && display._shieldSprite) {
+        /* v2.3.187: shield equipped but not raised -> always on back,
+           regardless of combat state. (v2.3.176 limited this to
+           !isInCombat; user now wants it as the persistent default.)
+           The outward face of a shield on the player's back points
+           opposite the player's facing, so feed shieldAng = facing+PI
+           into getShieldFrame for view selection -- e.g. facing N
+           (player back to camera) -> shieldAng = S -> front view,
+           facing E -> shieldAng = W -> side view (mirrored). */
+        const facingAng = facingIdx * Math.PI / 4;
+        const shieldAng = facingAng + Math.PI;
+        const shieldFrame = getShieldFrame(shieldAng);
         const shieldSprite = display._shieldSprite;
         if (shieldFrame) {
           if (shieldSprite.texture !== shieldFrame.tex) shieldSprite.texture = shieldFrame.tex;
-          shieldSprite.x = 0;
-          shieldSprite.y = -6;
+          /* Position on upper torso, displaced opposite the facing
+             direction so the shield reads as resting on the back. Y
+             offset (-10) lifts it from feet-anchored player center to
+             roughly upper-back height. */
+          const backR = 4;
+          shieldSprite.x = -Math.cos(facingAng) * backR;
+          shieldSprite.y = -Math.sin(facingAng) * backR - 10;
           const sheathedScale = 40 / 64;
           shieldSprite.scale.x = sheathedScale * (shieldFrame.mirror ? -1 : 1);
           shieldSprite.scale.y = sheathedScale;
