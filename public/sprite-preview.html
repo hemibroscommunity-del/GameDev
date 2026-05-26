@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Player Sprite Preview</title>
+<style>
+  body { background:#222; color:#eee; font:14px/1.4 system-ui,sans-serif; margin:0; padding:24px; }
+  h1 { font-size:18px; font-weight:600; margin:0 0 6px; }
+  h2 { font-size:14px; font-weight:600; margin:24px 0 8px; color:#ffd54f; }
+  .note { color:#aaa; font-size:12px; margin-bottom:16px; max-width:720px; }
+  .row { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-end; }
+  .cell { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .label { font-size:12px; color:#aaa; }
+  .label b { color:#fff; }
+  img { image-rendering: pixelated; image-rendering: crisp-edges; background:#444; }
+  .stand img { width:192px; height:192px; }      /* 64x64 source, 3x scale */
+  .jog img    { height:192px; }                    /* full strip, 3x scale */
+  .jog        { width:100%; }
+  .jog .label { align-self:flex-start; }
+  hr { border:0; border-top:1px solid #444; margin:24px 0; }
+  code { background:#333; padding:1px 5px; border-radius:3px; font-size:12px; }
+</style>
+</head>
+<body>
+  <h1>Player Sprite Preview &mdash; v2.3.157 (v6 Lanczos + outline overlay)</h1>
+  <p class="note">
+    Pixel-perfect rendering, 3&times; upscale. If any direction is mislabeled, tell me which UUID slot
+    should go where and I'll swap. Engine sources NE, mirrors NE&rarr;NW; mirrors E&rarr;W; mirrors SW&rarr;SE.
+  </p>
+
+  <h2>Stand-south candidate (NOT integrated) &mdash; nearest-downscale from new pixel-art source</h2>
+  <p class="note">
+    Side-by-side of the new candidate vs the currently-live stand-south.png.
+    The candidate came from a 1254&times;1254 pixel-art source downscaled to 64&times;64 with
+    plain nearest-neighbor (no Lanczos needed because the source is already pixelated).
+    Verdict on whether to integrate is yours.
+  </p>
+  <div class="row">
+    <div class="cell stand">
+      <img src="/sprite-preview-candidates/stand-south-new.png" />
+      <span class="label"><b>candidate</b><br>(new, 64&times;64 nearest)</span>
+    </div>
+    <div class="cell stand">
+      <img src="/sprites/player/stand-south.png" />
+      <span class="label"><b>current live</b><br>stand-south.png</span>
+    </div>
+  </div>
+
+  <hr />
+
+  <h2>Stand (idle) &mdash; 5 directions, 64&times;64 source</h2>
+  <div class="row">
+    <div class="cell stand"><img src="/sprites/player/stand-north.png"     /><span class="label"><b>north</b></span></div>
+    <div class="cell stand"><img src="/sprites/player/stand-northeast.png" /><span class="label"><b>northeast</b><br>(flipped from NW)</span></div>
+    <div class="cell stand"><img src="/sprites/player/stand-east.png"      /><span class="label"><b>east</b></span></div>
+    <div class="cell stand"><img src="/sprites/player/stand-south.png"     /><span class="label"><b>south</b></span></div>
+    <div class="cell stand"><img src="/sprites/player/stand-southwest.png" /><span class="label"><b>southwest</b></span></div>
+  </div>
+
+  <hr />
+
+  <h2>Jog (run) &mdash; 5 directions, 64&times;64 frames in horizontal strips</h2>
+  <div class="row jog">
+    <div class="cell"><span class="label"><b>north</b></span><img src="/sprites/player/jog-north.png" /></div>
+  </div>
+  <div class="row jog">
+    <div class="cell"><span class="label"><b>northeast</b> (flipped source)</span><img src="/sprites/player/jog-northeast.png" /></div>
+  </div>
+  <div class="row jog">
+    <div class="cell"><span class="label"><b>east</b></span><img src="/sprites/player/jog-east.png" /></div>
+  </div>
+  <div class="row jog">
+    <div class="cell"><span class="label"><b>south</b></span><img src="/sprites/player/jog-south.png" /></div>
+  </div>
+  <div class="row jog">
+    <div class="cell"><span class="label"><b>southwest</b> (flipped source)</span><img src="/sprites/player/jog-southwest.png" /></div>
+  </div>
+
+  <hr />
+
+  <h2>Existing other sheets (for color/style cross-reference)</h2>
+  <div class="row">
+    <div class="cell stand"><img src="/sprites/player/hit-south.png" /><span class="label">hit-south</span></div>
+  </div>
+
+  <p class="note">
+    UUID mapping used this build (post-swap):
+    <br>&bull; <code>5B1CD467</code> &rarr; stand-north (was stand-southwest; user-swapped v2.3.152)
+    <br>&bull; <code>B1D7F27E</code> &rarr; stand-east
+    <br>&bull; <code>CD94902F</code> &rarr; stand-northeast (flipped)
+    <br>&bull; <code>CF30EE57</code> &rarr; stand-south
+    <br>&bull; <code>DA018E7C</code> &rarr; stand-southwest (was stand-north; user-swapped v2.3.152)
+    <br>Run: jog-southwest.png flipped horizontally (v2.3.152) so engine SE/SW renders swap correctly.
+  </p>
+</body>
+</html>

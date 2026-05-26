@@ -20,8 +20,12 @@
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
 
-const FRAME_W = 64;
-const FRAME_H = 64;
+/* v2.3.166: bumped from 128 to 256 per user request.  256 source +
+   plain Lanczos (no outline overlay) gives a more naturally-rendered
+   outline (the 128 + outline-overlay path was "over processed").
+   Hit sheets nearest-upscaled 128 -> 256 to match. */
+const FRAME_W = 256;
+const FRAME_H = 256;
 /* JOG sheets now have VARIABLE frame counts per direction (north 24,
    south 31, northeast 25, southwest 35, east 24-ish).  Frame count is
    detected from the loaded texture width (sheet width / FRAME_W).
@@ -38,15 +42,20 @@ const JOG_DURATION_MS = 1000;
 const JOG_DURATION_BY_DIR = {
   north: 1400,
   south: 1400,
-  northeast: 750,
-  east: 1333, /* new east source is 32 frames @ 24 fps = 1333 ms */
+  /* v2.3.168: NE 750 -> 938 (25% slower) per user pacing pass. */
+  northeast: 938,
+  /* v2.3.167: east 1333 -> 900 (1.5x faster), southwest 1000 -> 2000
+     (2x slower) per user pacing feedback.  Mirror dirs share the
+     same cycle: W from E, SE from SW. */
+  east: 900,
+  southwest: 2000,
 };
 const HIT_DURATION_MS = 250;
 
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 41; /* matches the cache-buster on the Canvas 2D loader */
+const VERSION = 46; /* v2.3.169: bumped after below-head interior bg kill (arm-gap fix) */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
@@ -79,6 +88,13 @@ async function loadSheet(pose, dir) {
   try {
     const tex = await Assets.load(url);
     if (!tex || !tex.source) return;
+    /* v2.3.163: switch the texture-source sampler to LINEAR and
+       enable mipmaps so the 128-px source downscales smoothly to the
+       64-ish display target.  Without this, PIXI's default NEAREST
+       sampler produces blocky half-rate output and the higher-res
+       source is wasted. */
+    tex.source.scaleMode = 'linear';
+    tex.source.autoGenerateMipmaps = true;
     const frames = deriveFrameCount(pose, tex);
     const out = [];
     for (let i = 0; i < frames; i++) {
