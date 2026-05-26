@@ -42,7 +42,8 @@ const JOG_DURATION_MS = 1000;
 const JOG_DURATION_BY_DIR = {
   north: 1400,
   south: 1400,
-  northeast: 750,
+  /* v2.3.168: NE 750 -> 938 (25% slower) per user pacing pass. */
+  northeast: 938,
   /* v2.3.167: east 1333 -> 900 (1.5x faster), southwest 1000 -> 2000
      (2x slower) per user pacing feedback.  Mirror dirs share the
      same cycle: W from E, SE from SW. */
@@ -54,7 +55,7 @@ const HIT_DURATION_MS = 250;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 44; /* v2.3.167: bumped to invalidate cached 256-px sheets after the skin-unify + NE floor-scrub regen */
+const VERSION = 45; /* v2.3.168: bumped to invalidate cached 256-px sheets after the eye-white flood-fill regen */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }

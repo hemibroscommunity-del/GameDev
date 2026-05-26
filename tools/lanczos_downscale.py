@@ -27,6 +27,40 @@ import numpy as np
 from PIL import Image
 
 
+def flood_from_edges(passable):
+    """Return a boolean mask: True where `passable` AND reachable from
+    any image edge via 4-connected flood-fill through other passable
+    pixels.  Interior passable islands (surrounded by non-passable)
+    return False -- they get preserved by the caller."""
+    H, W = passable.shape
+    reached = np.zeros_like(passable, dtype=bool)
+    # BFS seed = passable edge pixels
+    from collections import deque
+    q = deque()
+    for x in range(W):
+        if passable[0, x]:
+            reached[0, x] = True
+            q.append((0, x))
+        if passable[H - 1, x]:
+            reached[H - 1, x] = True
+            q.append((H - 1, x))
+    for y in range(H):
+        if passable[y, 0]:
+            reached[y, 0] = True
+            q.append((y, 0))
+        if passable[y, W - 1]:
+            reached[y, W - 1] = True
+            q.append((y, W - 1))
+    while q:
+        y, x = q.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < H and 0 <= nx < W and passable[ny, nx] and not reached[ny, nx]:
+                reached[ny, nx] = True
+                q.append((ny, nx))
+    return reached
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("in_path")
@@ -41,6 +75,16 @@ def main():
                         "40%% of each frame (use for sources with an AI-"
                         "drawn ground-shadow under the figure's feet "
                         "that the bg-detect threshold misses)")
+    p.add_argument("--bg-flood-from-edge", action="store_true",
+                   help="restrict bg removal to pixels reachable from "
+                        "the frame edge via 4-connected flood-fill "
+                        "through bg-passable pixels.  Interior bg-"
+                        "colored islands (eye whites, etc.) survive.")
+    p.add_argument("--frame-w", type=int, default=0,
+                   help="if --bg-flood-from-edge is set on a tiled "
+                        "strip, run flood per-frame so bg doesn't leak "
+                        "across frame boundaries.  Defaults to whole "
+                        "image (one frame).")
     args = p.parse_args()
 
     img = Image.open(args.in_path).convert("RGBA")
@@ -53,7 +97,22 @@ def main():
     b = arr[..., 2].astype(np.int32)
     max_ch = np.maximum(np.maximum(r, g), b)
     min_ch = np.minimum(np.minimum(r, g), b)
-    is_bg = (max_ch >= args.bg_lum) & ((max_ch - min_ch) <= args.bg_sat)
+    bg_passable = (max_ch >= args.bg_lum) & ((max_ch - min_ch) <= args.bg_sat)
+
+    if args.bg_flood_from_edge:
+        # Flood per-frame.  Each frame's slice is processed independently
+        # so frame-N bg cannot reach frame-N+1 interior pockets via the
+        # shared border column.  Default frame width = image height
+        # (square frames) when caller doesn't pass --frame-w.
+        fw = args.frame_w if args.frame_w > 0 else H
+        is_bg = np.zeros_like(bg_passable)
+        for x0 in range(0, W, fw):
+            x1 = min(x0 + fw, W)
+            frame_passable = bg_passable[:, x0:x1]
+            is_bg[:, x0:x1] = flood_from_edges(frame_passable)
+    else:
+        is_bg = bg_passable
+
     arr[..., 3] = np.where(is_bg, 0, arr[..., 3])
     bg_count = int(is_bg.sum())
 

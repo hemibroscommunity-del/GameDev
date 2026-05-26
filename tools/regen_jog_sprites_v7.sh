@@ -50,9 +50,14 @@ for d in north south northeast southwest east; do
     scrub_flag="--scrub-floor"
   fi
 
+  # --bg-flood-from-edge restricts bg removal to pixels reachable
+  # from the frame edge (per-frame); interior bg-colored islands like
+  # the white of the character's eyes survive.  --frame-w defaults
+  # to image height (square frames) for tiled strips.
   python tools/lanczos_downscale.py \
     "/tmp/jog-v7-$d-strip-native.png" \
-    "public/sprites/player/jog-$d.png" --height 256 $scrub_flag
+    "public/sprites/player/jog-$d.png" --height 256 \
+    --bg-flood-from-edge $scrub_flag
 
   # Unify skin tone across directions to the east-reference target.
   python tools/match_skin.py \

@@ -1520,6 +1520,10 @@ export class EntityRenderer {
             if (dir === 'north' || dir === 'south' || dir === 'east') sizeMul *= 1.10;
             else if (dir === 'northeast') sizeMul *= 1.05;
           }
+          /* v2.3.168: additional jog-only +5% for E and NE. */
+          if (pose === 'jog' && (dir === 'east' || dir === 'northeast')) {
+            sizeMul *= 1.05;
+          }
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
           spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
@@ -1906,6 +1910,12 @@ export class EntityRenderer {
     if (pose === 'stand' || pose === 'jog') {
       if (dir === 'north' || dir === 'south' || dir === 'east') bodyScale *= 1.10;
       else if (dir === 'northeast') bodyScale *= 1.05;
+    }
+    /* v2.3.168: additional jog-only +5% for E (covers W) and NE
+       (covers NW) per user pacing pass.  Stand stays at the v2.3.167
+       values. */
+    if (pose === 'jog' && (dir === 'east' || dir === 'northeast')) {
+      bodyScale *= 1.05;
     }
     const spritesAvailable = hasPose(pose) || hasPose('stand');
     if (spritesAvailable) {
