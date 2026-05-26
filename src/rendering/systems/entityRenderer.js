@@ -2214,12 +2214,16 @@ export class EntityRenderer {
             const handle = getWeaponHandle(wpn.type, wpn.gearBase);
             if (handle) weaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
             else weaponSprite.anchor.set(0.5, 1.0);
-            /* v2.3.181: per-weapon screen-space nudge. Bamboo's grip in
-               its 1254px source isn't dead-on the user's mark; nudging
-               the rendered sprite left by 8px aligns the visible hilt
-               with the hand pixel without re-annotating handles.json. */
+            /* v2.3.181/182: per-weapon screen-space nudge. Bamboo's
+               grip in its 1254px source isn't dead-on the user's mark;
+               nudging the rendered sprite by 8px aligns the visible
+               hilt with the hand pixel. v2.3.182: the sign of the
+               nudge flips with the mirror flag -- the sprite is drawn
+               flipped for W/NW/SE facings (mirror=true) so the
+               offset that was "left" on east-facing reads as "right"
+               on west-facing. mirror ? +8 : -8. */
             const isWoodSwordNudge = wpn.type === 'sword' && wpn.gearBase === 'wood';
-            const wpnNudgeX = isWoodSwordNudge ? -8 : 0;
+            const wpnNudgeX = isWoodSwordNudge ? (mirror ? 8 : -8) : 0;
             weaponSprite.x = wpnX + wpnNudgeX;
             weaponSprite.y = wpnY;
           } else {

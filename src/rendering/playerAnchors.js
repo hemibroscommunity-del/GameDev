@@ -37,7 +37,7 @@
  */
 
 const ANCHORS_URL = '/sprites/player/anchors.json?v=5';
-const HANDLES_URL = '/sprites/weapons/handles.json?v=4';
+const HANDLES_URL = '/sprites/weapons/handles.json?v=5';
 
 /* v2.3.174: session-2 sprite pipeline shipped 256-px frames and the
    per-direction size bumps meant the old 64-px anchor JSON no longer
