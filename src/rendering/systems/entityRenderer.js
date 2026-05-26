@@ -2320,10 +2320,18 @@ export class EntityRenderer {
              would stamp a redundant second copy of the hand and look
              wrong (user reported SW). */
           const _weaponInFront = (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
+          /* v2.3.197: SE (idx 1) jog skips the hand-cap entirely --
+             user reported the cap was stamping body pixels at the
+             swinging-arm position, making the bamboo read as behind
+             the upper arm. With the cap off for SE jog, bamboo stays
+             fully in front. SE idle still gets a cap but with a
+             smaller radius below. */
+          const _seJogSkipCap = (facingIdx === 1 && pose === 'jog');
           const handCapEligible = handCap && handMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
-            && _weaponInFront;
+            && _weaponInFront
+            && !_seJogSkipCap;
           if (handCapEligible) {
             handCap.texture = _bodyRef.texture;
             handCap.x = _bodyRef.x;
@@ -2346,7 +2354,14 @@ export class EntityRenderer {
                gets the bigger arm coverage; everything else keeps
                the v2.3.185 hand-only coverage. */
             handMask.clear();
-            handMask.circle(weaponSprite.x, weaponSprite.y, 10);
+            /* v2.3.197: per-facing base radius. SE (idx 1) shrinks
+               from 10 -> 6 because the hand pixel can sit closer to
+               the waist on SE idle and a 10-px circle was covering
+               a large area of the bamboo near the player's torso.
+               Everything else keeps the v2.3.185 default of 10. */
+            const HAND_CAP_RADIUS = [10, 6, 10, 10, 10, 10, 10, 10];
+            const capRadius = HAND_CAP_RADIUS[facingIdx] || 10;
+            handMask.circle(weaponSprite.x, weaponSprite.y, capRadius);
             handMask.fill({ color: 0xffffff });
             const useArmCapsule = (facingIdx === 0 && pose === 'jog');
             if (useArmCapsule) {
