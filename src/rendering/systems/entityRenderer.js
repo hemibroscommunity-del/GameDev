@@ -2552,7 +2552,11 @@ export class EntityRenderer {
           const backR = 4;
           shieldSprite.x = -Math.cos(facingAng) * backR;
           shieldSprite.y = -Math.sin(facingAng) * backR - 10;
-          const sheathedScale = 40 / 64;
+          /* v2.3.189: bumped scale 40/64 -> 56/64 so the on-back
+             shield matches the in-hand block size. Both paths use
+             the same wood-shield PNG triplet -- this aligns the
+             apparent size too. */
+          const sheathedScale = 56 / 64;
           shieldSprite.scale.x = sheathedScale * (shieldFrame.mirror ? -1 : 1);
           shieldSprite.scale.y = sheathedScale;
           shieldSprite.tint = 0xffffff;

@@ -2269,7 +2269,14 @@ export var BroTown = function BroTown(_ref0) {
                 S.rpg.activeSlot = msg.payload.activeSlot;
               }
               if ('armor' in msg.payload) S.rpg.armor = msg.payload.armor;
-              if ('shield' in msg.payload) S.rpg.shield = msg.payload.shield;
+              /* v2.3.189: never let the server stomp the default wood
+                 shield. Pre-v2.3.188 saves on the worker may have
+                 shield=null, which would erase the client default
+                 added in the load-time migration. If the server's
+                 value is falsy, keep whatever the client has. */
+              if ('shield' in msg.payload && msg.payload.shield) {
+                S.rpg.shield = msg.payload.shield;
+              }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
               /* Quest state mirror (slice 17).  Worker is authoritative
