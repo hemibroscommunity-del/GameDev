@@ -2332,22 +2332,30 @@ export class EntityRenderer {
             handCap.scale.y = _bodyRef.scale.y;
             handCap.tint = _bodyRef.tint;
             handCap.visible = true;
-            /* v2.3.195: capsule mask covering shoulder -> hand so the
-               whole arm (upper arm + forearm + hand) stamps over the
-               weapon, not just the hand. Previous 10-px circle only
-               caught the forearm tip. Capsule is a thick stroked line
-               with rounded caps; the round caps cover the shoulder
-               and hand ends naturally. Shoulder is approximated at
-               (0, -22) -- upper torso, center-x in display coords --
-               since we don't annotate per-frame shoulder anchors.
-               If a facing reads wrong the capsule width / shoulder
-               offset are the knobs. */
-            const shoulderX = 0;
-            const shoulderY = -22;
+            /* v2.3.196: layered mask. Base is the original 10-px
+               circle at the hand (handles all forward facings, no
+               impalement of the bamboo blade). For E + jog only,
+               ALSO draw a capsule from shoulder to hand so the upper
+               arm covers the shield during the back-swing of the
+               east run cycle. Capsule uses butt cap (perpendicular
+               slice at hand) instead of round cap so it doesn't
+               extend past the hand in the blade's direction --
+               v2.3.195's round cap was bleeding into the blade base
+               and the user saw the bamboo "impaling" the player on
+               S / SE / E idle and run. With this rule, only E run
+               gets the bigger arm coverage; everything else keeps
+               the v2.3.185 hand-only coverage. */
             handMask.clear();
-            handMask.moveTo(shoulderX, shoulderY);
-            handMask.lineTo(weaponSprite.x, weaponSprite.y);
-            handMask.stroke({ color: 0xffffff, width: 20, cap: 'round' });
+            handMask.circle(weaponSprite.x, weaponSprite.y, 10);
+            handMask.fill({ color: 0xffffff });
+            const useArmCapsule = (facingIdx === 0 && pose === 'jog');
+            if (useArmCapsule) {
+              const shoulderX = 0;
+              const shoulderY = -22;
+              handMask.moveTo(shoulderX, shoulderY);
+              handMask.lineTo(weaponSprite.x, weaponSprite.y);
+              handMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+            }
           } else if (handCap) {
             handCap.visible = false;
           }
