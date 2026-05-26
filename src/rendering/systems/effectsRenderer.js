@@ -1239,7 +1239,7 @@ export class EffectsRenderer {
     if (l._pixiOwnerLabel.text !== txt) l._pixiOwnerLabel.text = txt;
     l._pixiOwnerLabel.x = l.x;
     /* v2.3.191: +18 to match the visual PILE_Y_OFFSET in _updateGroundLoot. */
-    l._pixiOwnerLabel.y = l.y - 22 + 18;
+    l._pixiOwnerLabel.y = l.y - 22 + 28;
     l._pixiOwnerLabel.alpha = alpha;
     l._pixiOwnerLabel.visible = true;
   }
@@ -1341,7 +1341,7 @@ export class EffectsRenderer {
          so the pile reads at the player's feet instead of at the body
          center.  Pickup hit detection in BroTown is unaffected --
          this is purely a visual offset. */
-      const PILE_Y_OFFSET = 18;
+      const PILE_Y_OFFSET = 28;
       const bob = (isFodder ? 0 : Math.sin(age * 3) * 2) + PILE_Y_OFFSET;
       const alpha = age > 25 ? (30 - age) / 5 : 1;
 
@@ -1426,7 +1426,7 @@ export class EffectsRenderer {
         if (l._pixiLabel.text !== (l.weapon.name || '')) l._pixiLabel.text = l.weapon.name || '';
         l._pixiLabel.style.fill = l.tierColor || '#8890b8';
         l._pixiLabel.x = l.x;
-        l._pixiLabel.y = l.y + 18 + bob;
+        l._pixiLabel.y = l.y + 28 + bob;
         l._pixiLabel.alpha = alpha;
         continue;
       }
@@ -1492,14 +1492,14 @@ export class EffectsRenderer {
         /* v2.3.191: +18 to match the PILE_Y_OFFSET in the non-snowman
            branch.  Snowman wrecks don't use `bob` so the offset has
            to be applied explicitly. */
-        l._pixiSprite.y = l.y + 18;
+        l._pixiSprite.y = l.y + 28;
         l._pixiSprite.alpha = 1;
         l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + 18, alpha, snOwn);
-        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + 18, alpha);
+        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + 28, alpha, snOwn);
+        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + 28, alpha);
         this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }
@@ -1753,7 +1753,7 @@ export class EffectsRenderer {
         const skillLvl = (S.rpg && S.rpg.lifeSkills && S.rpg.lifeSkills[skill]?.level) || 1;
         const verb = skill === 'woodcutting' ? 'Chop' : skill === 'fishing' ? 'Fish' : 'Mine';
 
-        const yBase = node.y + 18 + tierStep * 2;
+        const yBase = node.y + 28 + tierStep * 2;
         const ensureTip = (key, text, color, dy) => {
           let t = node[key];
           if (!t || t.destroyed) {
