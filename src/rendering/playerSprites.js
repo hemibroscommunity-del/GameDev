@@ -51,11 +51,15 @@ const JOG_DURATION_BY_DIR = {
   southwest: 2000,
 };
 const HIT_DURATION_MS = 250;
+/* v2.3.188: pickup pose plays during the 0.5 s loot-pickup freeze.
+   One sheet, south-only (facing is force-locked to 'down' during the
+   freeze, see BroTown.jsx:5297). */
+const PICKUP_DURATION_MS = 500;
 
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
-const POSES = ['stand', 'jog', 'hit'];
+const POSES = ['stand', 'jog', 'hit', 'pickup'];
 
-const VERSION = 46; /* v2.3.169: bumped after below-head interior bg kill (arm-gap fix) */
+const VERSION = 47; /* v2.3.188: bumped to invalidate caches after pickup sheet add */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
@@ -64,7 +68,7 @@ const VERSION = 46; /* v2.3.169: bumped after below-head interior bg kill (arm-g
  * Graphics until the manifest populates.
  */
 const manifest = {
-  stand: {}, jog: {}, hit: {},
+  stand: {}, jog: {}, hit: {}, pickup: {},
 };
 
 let loadPromise = null;
@@ -78,7 +82,7 @@ function spriteUrl(pose, dir) {
    so we can't hardcode.  Falls back to fixed counts for stand/hit. */
 function deriveFrameCount(pose, tex) {
   const width = (tex && tex.source && tex.source.width) || 0;
-  if (pose === 'jog') return Math.max(1, Math.floor(width / FRAME_W));
+  if (pose === 'jog' || pose === 'pickup') return Math.max(1, Math.floor(width / FRAME_W));
   if (pose === 'hit') return HIT_FRAMES;
   return STAND_FRAMES;
 }
@@ -116,6 +120,10 @@ export function loadPlayerSprites() {
   const tasks = [];
   for (const pose of POSES) {
     for (const dir of SOURCE_DIRS) {
+      /* pickup is south-only -- facing locks to 'down' during the
+         loot-pickup freeze, so we only ship one sheet and skip the
+         other dir slots to avoid 404s. */
+      if (pose === 'pickup' && dir !== 'south') continue;
       tasks.push(loadSheet(pose, dir));
     }
   }
@@ -165,6 +173,7 @@ export function getFrame(pose, dir, frameIdx) {
 export function cycleMs(pose, dir) {
   if (pose === 'jog') return JOG_DURATION_BY_DIR[dir] || JOG_DURATION_MS;
   if (pose === 'hit') return HIT_DURATION_MS;
+  if (pose === 'pickup') return PICKUP_DURATION_MS;
   return 1000;
 }
 
