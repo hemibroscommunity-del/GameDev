@@ -39,5 +39,5 @@ for d in north south northeast southwest east; do
 
   python tools/lanczos_with_outline.py \
     "/tmp/jog-v6-$d-strip-native.png" \
-    "public/sprites/player/jog-$d.png" --height 64
+    "public/sprites/player/jog-$d.png" --height 128
 done

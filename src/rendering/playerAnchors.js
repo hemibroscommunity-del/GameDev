@@ -12,8 +12,12 @@
  * Anchor file shape (legacy — right-hand only):
  *   { 'jog-east': [[x, y], [x, y], ...], ... }
  *
- * Both shapes are accepted.  Coordinates are in 64×64 source-sprite
- * space.  Per-direction frame counts vary (24 / 25 / 31 / 32 / 34);
+ * Both shapes are accepted.  Coordinates in the JSON are stored in
+ * 64×64 sprite space (legacy).  v2.3.163 bumped player sheets to
+ * 128×128 per frame; rather than re-key every entry in the JSON, the
+ * getAnchor function multiplies by ANCHOR_SCALE on return so the
+ * caller sees coords in the current 128-px space.
+ * Per-direction frame counts vary (24 / 25 / 31 / 32 / 34);
  * requesting an out-of-range frame clamps to the last available entry.
  *
  * Why two hands per frame: with a single anchor, mirroring a sprite
@@ -35,6 +39,11 @@
 const ANCHORS_URL = '/sprites/player/anchors.json?v=3';
 const HANDLES_URL = '/sprites/weapons/handles.json?v=3';
 
+/* v2.3.163: JSON is in 64-px legacy space; player sheets are now
+   128-px.  Multiply on return so callers always see current-space
+   coords without having to rewrite the JSON. */
+const ANCHOR_SCALE = 2;
+
 let anchors = null;
 let weaponHandles = null;
 let loadPromise = null;
@@ -48,8 +57,13 @@ export function loadPlayerAnchors() {
   return loadPromise;
 }
 
-/** Returns [x, y] in 64×64 sprite space, or null if no anchor for this
- *  pose+dir or no data loaded yet.  Frame index clamped to list length.
+/** Returns [x, y] in CURRENT sprite-frame space (128×128 as of
+ *  v2.3.163), or null if no anchor for this pose+dir or no data
+ *  loaded yet.  Frame index clamped to list length.
+ *
+ *  JSON values are stored in legacy 64×64 space; this function
+ *  multiplies by ANCHOR_SCALE on return so callers always work in
+ *  the current sheet's coordinate space.
  *
  *  When `mirror` is true, returns the LEFT hand position (which after
  *  the body's mirrored render lands on the visual right-hand side).
@@ -63,15 +77,18 @@ export function getAnchor(pose, dir, frame, mirror) {
   const idx = Math.min(frame, list.length - 1);
   const entry = list[idx];
   if (!entry) return null;
+  let raw = null;
   // Legacy shape: bare [x, y] — treat as right hand only.
-  if (Array.isArray(entry)) return entry.length === 2 ? entry : null;
-  // New shape: { r: [x,y], l: [x,y] }.
-  if (typeof entry === 'object') {
-    if (mirror && entry.l && entry.l.length === 2) return entry.l;
-    if (entry.r && entry.r.length === 2) return entry.r;
-    if (mirror && entry.r && entry.r.length === 2) return entry.r;
+  if (Array.isArray(entry)) {
+    raw = entry.length === 2 ? entry : null;
+  } else if (typeof entry === 'object') {
+    // New shape: { r: [x,y], l: [x,y] }.
+    if (mirror && entry.l && entry.l.length === 2) raw = entry.l;
+    else if (entry.r && entry.r.length === 2) raw = entry.r;
+    else if (mirror && entry.r && entry.r.length === 2) raw = entry.r;
   }
-  return null;
+  if (!raw) return null;
+  return [raw[0] * ANCHOR_SCALE, raw[1] * ANCHOR_SCALE];
 }
 
 /** Returns [hx, hy] in the weapon icon's own pixel space, or null. */

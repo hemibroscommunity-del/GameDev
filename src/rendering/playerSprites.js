@@ -20,8 +20,14 @@
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
 
-const FRAME_W = 64;
-const FRAME_H = 64;
+/* v2.3.163: player sheets are now stored at 128x128 per frame; the
+   GPU downscales to the on-screen display size with LINEAR + mipmaps
+   (see loadSheet below).  Storing higher-res source preserves outline
+   + figure detail through the downscale and gives the engine room to
+   zoom in cleanly.  Hit sheets were nearest-upscaled from their
+   former 64x64 to keep dimensions consistent (no visual change). */
+const FRAME_W = 128;
+const FRAME_H = 128;
 /* JOG sheets now have VARIABLE frame counts per direction (north 24,
    south 31, northeast 25, southwest 35, east 24-ish).  Frame count is
    detected from the loaded texture width (sheet width / FRAME_W).
@@ -46,7 +52,7 @@ const HIT_DURATION_MS = 250;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 41; /* matches the cache-buster on the Canvas 2D loader */
+const VERSION = 42; /* v2.3.163: bumped to invalidate cached 64-px sheets after the 128-px regen */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
@@ -79,6 +85,13 @@ async function loadSheet(pose, dir) {
   try {
     const tex = await Assets.load(url);
     if (!tex || !tex.source) return;
+    /* v2.3.163: switch the texture-source sampler to LINEAR and
+       enable mipmaps so the 128-px source downscales smoothly to the
+       64-ish display target.  Without this, PIXI's default NEAREST
+       sampler produces blocky half-rate output and the higher-res
+       source is wasted. */
+    tex.source.scaleMode = 'linear';
+    tex.source.autoGenerateMipmaps = true;
     const frames = deriveFrameCount(pose, tex);
     const out = [];
     for (let i = 0; i < frames; i++) {
