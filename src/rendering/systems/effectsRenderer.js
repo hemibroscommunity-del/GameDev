@@ -1312,19 +1312,6 @@ export class EffectsRenderer {
     const gfx = this.lootGfx;
     gfx.clear();
 
-    /* v2.3.195 debug overlay: draw the player's pickup-trigger zone
-       on the ground.  Center is (P.x, P.y - 15) per the BroTown
-       pickup filter (v2.3.189), radius 20.  Cyan fill + dashed-ish
-       ring so it reads against any tile.  Comment out to disable. */
-    if (S.player) {
-      const px = S.player.x;
-      const py = S.player.y - 15;
-      gfx.circle(px, py, 20);
-      gfx.fill({ color: 0x00e0ff, alpha: 0.25 });
-      gfx.circle(px, py, 20);
-      gfx.stroke({ color: 0x00e0ff, width: 1, alpha: 0.9 });
-    }
-
     const loot = S.groundLoot || [];
     /* Track which loot entries we've created Pixi children for so we
        can dispose orphans.  When the player picks loot up, BroTown
