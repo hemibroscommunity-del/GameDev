@@ -2265,11 +2265,8 @@ export class EntityRenderer {
             const isWoodSwordNudge = wpn.type === 'sword' && wpn.gearBase === 'wood';
             /* facingIdx: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE */
             const WOOD_NUDGE_X = [-8, 0, -8, 0, 8, 8, 0, -8];
-            /* v2.3.207: SW idle only. The pose string for standing
-               is 'stand', not 'idle' -- previous gate never fired
-               and the nudge bumps from v2.3.205/206 had no effect.
-               Total SW idle offset 3 + 4 + 5 = 12 px right. */
-            const SW_IDLE_NUDGE = (facingIdx === 3 && pose === 'stand') ? 12 : 0;
+            /* v2.3.208: SW idle only, +3 px right (user reset). */
+            const SW_IDLE_NUDGE = (facingIdx === 3 && pose === 'stand') ? 3 : 0;
             const wpnNudgeX = isWoodSwordNudge ? ((WOOD_NUDGE_X[facingIdx] || 0) + SW_IDLE_NUDGE) : 0;
             weaponSprite.x = wpnX + wpnNudgeX;
             weaponSprite.y = wpnY;
