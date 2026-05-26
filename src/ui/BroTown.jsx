@@ -2612,10 +2612,13 @@ export var BroTown = function BroTown(_ref0) {
           ts: p.ts || Date.now(),
           inventoryClaimed: !!p.inventoryClaimed,
           /* Death-drop fields -- effectsRenderer renders aura/timer
-             when isDeathDrop is set; expiry drives the urgency pulse. */
+             when isDeathDrop is set; expiry drives the urgency pulse.
+             ownerOnlyUntil = wall-clock ms; after that the pile flips
+             to free-for-all (anyone in zone can grab) until expiry. */
           isDeathDrop: isDeath,
           deathItems: isDeath ? (p.deathItems || []) : null,
           expiry: isDeath ? (p.expiry || null) : null,
+          ownerOnlyUntil: isDeath ? (p.ownerOnlyUntil || null) : null,
           _serverLoot: true,
         };
       }
@@ -9474,7 +9477,12 @@ export var BroTown = function BroTown(_ref0) {
                player, then sat stuck at ~20 px because the recipient
                gate below blocked pickup -- looked like own-coin pickup
                was broken (v2.3.136 bug report). */
-            var _amPileRecipient = !loot.recipients || loot.recipients.includes(S.myId);
+            /* Death drops: owner-only until ownerOnlyUntil, then anyone
+               in zone may claim until expiry.  Flip the recipient check
+               to true once the free-for-all window opens so non-owners
+               get magnetism + skip the bounce-back. */
+            var _deathFFA = loot.isDeathDrop && loot.ownerOnlyUntil && Date.now() > loot.ownerOnlyUntil;
+            var _amPileRecipient = _deathFFA || !loot.recipients || loot.recipients.includes(S.myId);
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
             var magnetRange = 50;
             if (!_isFodderRemnant && _amPileRecipient && lDist < magnetRange && lDist > 20) {
@@ -9499,7 +9507,7 @@ export var BroTown = function BroTown(_ref0) {
                Non-recipients walk over without picking up; the pile stays
                on screen so the rightful owner can come grab it.  Plays a
                soft "not yours" beep once per pile per player. */
-            if (lDist < 20 && loot.recipients && !loot.recipients.includes(S.myId)) {
+            if (lDist < 20 && !_deathFFA && loot.recipients && !loot.recipients.includes(S.myId)) {
               if (!loot._notYoursBeeped) {
                 loot._notYoursBeeped = true;
                 try { BT_AUDIO.beep(220, 0.04, 0.05, 'sine'); } catch (e) {}
