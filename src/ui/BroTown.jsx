@@ -4349,7 +4349,17 @@ export var BroTown = function BroTown(_ref0) {
       };
       if (S.rpg.shield === undefined) S.rpg.shield = null;
       if (!S.rpg.amulet) S.rpg.amulet = null; /* {tier, gem, name} */
-      if (!S.rpg.shield) S.rpg.shield = null; /* {gearBase, gem, name, reforgeBonus, hardenBonus} */
+      /* v2.3.188: existing saves with no shield get the starter wood
+         shield so the always-on-back render has something to draw.
+         Matches the default in createDefaultRpg. If a player intentionally
+         unequips, the popup's Unequip path can clear shield to null
+         AGAIN -- that path doesn't re-default. */
+      if (!S.rpg.shield) S.rpg.shield = {
+        tier: 'common',
+        tierMult: 1.0,
+        gearBase: 'wood',
+        name: 'Wood Shield',
+      };
       if (S.rpg.goldNuggets === undefined) S.rpg.goldNuggets = 0;
       if (S.rpg.goldBars === undefined) S.rpg.goldBars = 0;
       if (S.rpg.achievementPoints === undefined) S.rpg.achievementPoints = 0;
