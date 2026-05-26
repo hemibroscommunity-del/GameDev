@@ -13,14 +13,24 @@ import { Assets } from 'pixi.js';
 
 /* Bump on every weapon-art change so URL-keyed browser/CDN caches
    refetch instead of serving the previous PNG. */
-const SPRITE_VERSION = '2.1.24';
+const SPRITE_VERSION = '2.3.172';
 
+/* v2.3.172: per-gearBase variants. Keys are `${type}:${gearBase}`;
+   the bare type key is the fallback for any unmapped gearBase. wood-
+   tier swords pick the Bamboo art; higher tiers fall through to
+   Sword1.png. Same pattern can be extended per BLACKSMITH_TIERS. */
 const SHEETS = {
-  sword:      { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
-  greatsword: { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
-  bow:        { url: `/sprites/weapons/bows/Bow2.png?v=${SPRITE_VERSION}`,              tex: null },
-  staff:      { url: `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${SPRITE_VERSION}`, tex: null },
+  sword:        { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
+  'sword:wood': { url: `/sprites/weapons/swords/Bamboo.png?v=${SPRITE_VERSION}`,          tex: null },
+  greatsword:   { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
+  bow:          { url: `/sprites/weapons/bows/Bow2.png?v=${SPRITE_VERSION}`,              tex: null },
+  staff:        { url: `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${SPRITE_VERSION}`, tex: null },
 };
+
+function keyFor(type, gearBase) {
+  if (gearBase && SHEETS[`${type}:${gearBase}`]) return `${type}:${gearBase}`;
+  return type;
+}
 
 let loadPromise = null;
 
@@ -62,13 +72,17 @@ export function loadWeaponSprites() {
   return loadPromise;
 }
 
-/** Return the loaded texture for a weapon type, or null if not yet
- *  loaded.  Caller falls back to procedural drawing when null. */
-export function getWeaponTexture(type) {
-  const entry = SHEETS[type];
+/** Return the loaded texture for a weapon type (+ optional gearBase),
+ *  or null if not yet loaded.  Caller falls back to procedural drawing
+ *  when null.  Passing gearBase picks a tier-specific variant when one
+ *  is registered (e.g. sword:wood -> Bamboo); otherwise falls back to
+ *  the bare-type entry. */
+export function getWeaponTexture(type, gearBase) {
+  const entry = SHEETS[keyFor(type, gearBase)];
   return (entry && entry.tex) || null;
 }
 
-export function hasWeapon(type) {
-  return !!(SHEETS[type] && SHEETS[type].tex);
+export function hasWeapon(type, gearBase) {
+  const k = keyFor(type, gearBase);
+  return !!(SHEETS[k] && SHEETS[k].tex);
 }

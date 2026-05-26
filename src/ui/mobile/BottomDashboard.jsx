@@ -881,9 +881,15 @@ export const BottomDashboard = () => {
                      of the small popup-icon placeholder.  URLs mirror
                      rendering/weaponSprites.js so the dashboard and the
                      Pixi scene stay in sync. */
-                  const slotIconSrc = slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.1.24'
-                                     : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.png?v=2.1.24'
-                                     : '/sprites/weapons/swords/Sword1.png?v=2.1.24';
+                  /* v2.3.172: wood-tier swords pick the bamboo art so
+                     the Loadout slot icon matches what the player sees
+                     in-world. Mirrors the SHEETS table in
+                     src/rendering/weaponSprites.js. */
+                  const isWoodSword = slot === 'melee' && wpn && wpn.gearBase === 'wood';
+                  const slotIconSrc = slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.3.172'
+                                     : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.png?v=2.3.172'
+                                     : isWoodSword     ? '/sprites/weapons/swords/Bamboo.png?v=2.3.172'
+                                     :                    '/sprites/weapons/swords/Sword1.png?v=2.3.172';
                   let dmgText = '0', dpsText = '0.0';
                   if (wType) {
                     const statVal = (slot === 'ranged') ? (R.agility || 0)

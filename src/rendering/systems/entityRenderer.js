@@ -2184,16 +2184,17 @@ export class EntityRenderer {
 
         /* Weapon icon — prefer the loaded PNG (sword/bow/staff)
            rendered as a Sprite, fall back to the procedural shapes
-           below if the texture isn't loaded yet. */
+           below if the texture isn't loaded yet. v2.3.172 passes
+           wpn.gearBase so wood-tier swords pick the bamboo variant. */
         const weaponSprite = display._weaponSprite;
-        const wpnIconTex = hasWeapon(wpn.type) ? getWeaponTexture(wpn.type) : null;
+        const wpnIconTex = hasWeapon(wpn.type, wpn.gearBase) ? getWeaponTexture(wpn.type, wpn.gearBase) : null;
         if (wpnIconTex) {
           if (weaponSprite.texture !== wpnIconTex) weaponSprite.texture = wpnIconTex;
           /* Pin the weapon's grip pixel to the hand pixel by setting
              the Sprite anchor to handles.json's grip coordinate.
              Falls back to (0.5, bottom) if no handle data — same as
              the Canvas 2D default `[srcW/2, srcH]`. */
-          const handle = getWeaponHandle(wpn.type);
+          const handle = getWeaponHandle(wpn.type, wpn.gearBase);
           const tw = wpnIconTex.width || 64;
           const th = wpnIconTex.height || 64;
           if (handle) weaponSprite.anchor.set(handle[0] / tw, handle[1] / th);

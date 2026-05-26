@@ -37,7 +37,7 @@
  */
 
 const ANCHORS_URL = '/sprites/player/anchors.json?v=3';
-const HANDLES_URL = '/sprites/weapons/handles.json?v=3';
+const HANDLES_URL = '/sprites/weapons/handles.json?v=4';
 
 /* v2.3.166: JSON is in 64-px legacy space; player sheets are now
    256-px.  Multiply on return so callers always see current-space
@@ -91,8 +91,14 @@ export function getAnchor(pose, dir, frame, mirror) {
   return [raw[0] * ANCHOR_SCALE, raw[1] * ANCHOR_SCALE];
 }
 
-/** Returns [hx, hy] in the weapon icon's own pixel space, or null. */
-export function getWeaponHandle(type) {
+/** Returns [hx, hy] in the weapon icon's own pixel space, or null.
+ *  v2.3.172: optional gearBase picks a tier-specific grip when one is
+ *  registered (e.g. sword:wood). Falls back to the bare-type entry. */
+export function getWeaponHandle(type, gearBase) {
   if (!weaponHandles) return null;
+  if (gearBase) {
+    const variantKey = `${type}:${gearBase}`;
+    if (weaponHandles[variantKey]) return weaponHandles[variantKey];
+  }
   return weaponHandles[type] || null;
 }
