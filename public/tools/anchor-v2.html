@@ -201,7 +201,7 @@ const frameCounts = {};
 const anchors = {};   // 'jog-east' -> [{ r: [x,y], l: [x,y] }, ...]
 let queue = [];
 let cursor = 0;
-let scale = 6;
+let scale = 1; /* autoFitScale() below overrides; initial value just in case */
 let currentHand = 'r';   // 'r' (right) or 'l' (left)
 
 const stage   = document.getElementById('stage');
@@ -221,14 +221,14 @@ markerL.style.display = 'none';
 stage.appendChild(markerL);
 
 function autoFitScale() {
-  /* v2.3.176: 256px frames + scale=2 produced a 512px canvas that
-     overflowed iPhone-class viewports, leaving the user staring at
-     just the head. Now default to whichever scale fits the full
-     frame inside the viewport with a small margin. iPhone (390px) →
-     scale 1 (256px canvas, whole player visible). Desktop (1024+) →
-     scale 3-4. User can still bump up via the + button for precision. */
-  const usable = Math.max(FRAME_W, window.innerWidth - 40);
-  scale = Math.max(1, Math.floor(usable / FRAME_W));
+  /* v2.3.178: hard cap at scale=1. Frame is 256 so canvas is 256px.
+     Fits ANY viewport with margin. User bumps up via + for precision
+     clicks. Earlier attempts kept getting overzoomed because the
+     viewport-driven multiplier didn't account for cached old code
+     where FRAME_W=64 was paired with scale=6+ -- that combo sliced
+     only the top-left of a 256px frame (a piece of the head!).
+     Defaulting to 1 sidesteps all of that. */
+  scale = 1;
 }
 autoFitScale();
 window.addEventListener('resize', () => { autoFitScale(); applyScale(); render(); });
@@ -419,7 +419,7 @@ document.getElementById('toggleBtn').onclick = () => {
 };
 
 document.getElementById('zoomIn').onclick  = () => { scale = Math.min(12, scale + 1); applyScale(); render(); };
-document.getElementById('zoomOut').onclick = () => { scale = Math.max(3,  scale - 1); applyScale(); render(); };
+document.getElementById('zoomOut').onclick = () => { scale = Math.max(1,  scale - 1); applyScale(); render(); };
 
 let toastTimer = null;
 function toast(msg) {
