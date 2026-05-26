@@ -11511,7 +11511,11 @@ export var BroTown = function BroTown(_ref0) {
     /* §4.5 Swipe cooldown check */
     if (now - (S._lastSwipe || 0) < 1500) return;
 
-    /* §4.5 Mana cost */
+    /* §4.5 Mana cost.
+       v2.3.172: cost = floor(maxMana / 5) so the 5-segment MP bar
+       drains exactly one segment per special.  Tier still affects
+       damage via SPECIAL_ATK_MULT downstream; it no longer affects
+       cost.  Old formula was `15 + tierIdx * 3` (15-24). */
     var activeWpn = getActiveWeapon(R);
     var tierIdx = {
       common: 0,
@@ -11519,7 +11523,7 @@ export var BroTown = function BroTown(_ref0) {
       fusion: 2,
       shift: 3
     }[activeWpn.tier] || 0;
-    var manaCost = 15 + tierIdx * 3;
+    var manaCost = Math.floor((R.maxMana || 100) / 5);
     /* During tutorial step 4, make swipe free so player can learn */
     var isTutorialSwipe = (stateRef.current._tutorialStep || 0) === 4;
     if (!isTutorialSwipe && (R.mana || 0) < manaCost) {
