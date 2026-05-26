@@ -2269,7 +2269,7 @@ export class EntityRenderer {
                left of the hand on the SW idle sprite. Jog already
                looks correct so we keep that at 0 and add the +3
                only when the player is standing still. */
-            const SW_IDLE_NUDGE = (facingIdx === 3 && pose === 'idle') ? 3 : 0;
+            const SW_IDLE_NUDGE = (facingIdx === 3 && pose === 'idle') ? 7 : 0;
             const wpnNudgeX = isWoodSwordNudge ? ((WOOD_NUDGE_X[facingIdx] || 0) + SW_IDLE_NUDGE) : 0;
             weaponSprite.x = wpnX + wpnNudgeX;
             weaponSprite.y = wpnY;
