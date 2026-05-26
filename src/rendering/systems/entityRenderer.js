@@ -2497,10 +2497,18 @@ export class EntityRenderer {
         let targetShIdx;
         if (shieldBehind) {
           targetShIdx = shIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1);
-        } else if (handCapIdx >= 0 && handCapAboveShield) {
-          /* Shield goes BELOW handCap (= immediately before it in
-             child order). Arm pixels render on top of the shield. */
-          targetShIdx = shIdx > handCapIdx ? handCapIdx : Math.max(0, handCapIdx - 1);
+        } else if (handCapAboveShield) {
+          /* v2.3.198: place shield BELOW weaponContainer (immediately
+             before it in child order). Result for E: body, shield,
+             weapon, handCap -- bamboo overlaps shield, arm (handCap)
+             still overlaps everything. The v2.3.194 fix put shield
+             below handCap but ABOVE weapon, which made the bamboo
+             read as falling behind the shield during the E run swing.
+             Putting shield below weapon keeps the arm-over-shield
+             behavior (handCap is still last) while letting the bamboo
+             stay in front of the shield except at the hand area. */
+          const wcIdxForSh = display.getChildIndex(display._weaponContainer);
+          targetShIdx = shIdx > wcIdxForSh ? wcIdxForSh : Math.max(0, wcIdxForSh - 1);
         } else if (handCapIdx >= 0) {
           /* Shield goes ABOVE handCap (= NE and default in-front rule). */
           targetShIdx = shIdx > handCapIdx ? handCapIdx + 1 : handCapIdx;
