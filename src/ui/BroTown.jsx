@@ -8540,7 +8540,12 @@ export var BroTown = function BroTown(_ref0) {
                   var totalDmg = dmg;
                   if (collisionResult) totalDmg += collisionResult.damage;
                   S.channel.send({ type: 'monster_damage', payload: {
-                    monsterId: m.id, zone: S.currentZone, dmg: totalDmg, isCrit: isCrit, element: activeWpn.element1
+                    monsterId: m.id, zone: S.currentZone, dmg: totalDmg, isCrit: isCrit, element: activeWpn.element1,
+                    /* slot=melee tells the worker this hit was a real
+                       melee swing, so the lifesteal gate fires even if
+                       the persisted activeSlot drifted (desktop slot UI
+                       skips set_active_slot). */
+                    slot: 'melee'
                   }});
                 }
 
@@ -10369,7 +10374,10 @@ export var BroTown = function BroTown(_ref0) {
                   var arrowTotalDmg = _arrowDmg;
                   if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
                   S.channel.send({ type: 'monster_damage', payload: {
-                    monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null
+                    monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null,
+                    /* Arrow path = ranged; worker uses this to deny the
+                       melee-only lifesteal even if activeSlot drifted. */
+                    slot: isStaffProj ? 'staff' : 'ranged'
                   }});
                 }
                 if (arrowCollision) {
