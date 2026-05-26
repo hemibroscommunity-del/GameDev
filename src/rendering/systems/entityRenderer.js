@@ -1919,7 +1919,9 @@ export class EntityRenderer {
       facing = S._facing || 'south';
     }
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
-    const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
+    /* v2.3.188: pickup pose during the loot-pickup freeze.  Takes
+       priority over hit because the freeze already blocks combat. */
+    const pose = lootFrozen ? 'pickup' : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'));
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
@@ -1980,6 +1982,14 @@ export class EntityRenderer {
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;
         frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
+      } else if (pose === 'pickup') {
+        /* v2.3.188: play through the pickup strip once over the 0.5 s
+           freeze window.  Clamp to last frame at the end so we don't
+           loop back to frame 0. */
+        const fc = playerFrameCount('pickup', 'south') || 24;
+        const cycle = cycleMs('pickup', 'south');
+        const elapsed = Math.max(0, now - ((S._lootFreezeUntil || now) - cycle));
+        frameIdx = Math.max(0, Math.min(fc - 1, Math.floor((elapsed / cycle) * fc)));
       }
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
