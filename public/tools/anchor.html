@@ -187,7 +187,10 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const FRAME_W = 64;
+/* v2.3.174: bumped from 64 to 256 to match the session-2 player sprite
+   pipeline (256px per frame). Output JSON now stores coords in 256px
+   space; playerAnchors.js ANCHOR_SCALE was set to 1 to match. */
+const FRAME_W = 256;
 const SHEET_VER = Date.now();
 const DIRS  = ['east','north','northeast','south','southwest'];
 const POSES = ['jog','stand'];
@@ -218,11 +221,11 @@ markerL.style.display = 'none';
 stage.appendChild(markerL);
 
 function autoFitScale() {
-  /* Floor of 8 for default zoom — gives a 512px canvas which on a
-     390px iPhone screen will overflow horizontally (page scrolls).
-     User can zoom out with the − button if they want to see the
-     whole frame at once.  Cap at 12 for big screens. */
-  scale = Math.max(8, Math.min(12, Math.floor(window.innerWidth / FRAME_W)));
+  /* v2.3.174: rescale for 256px frames. scale=2 -> 512px canvas
+     (fits a 390px iPhone with a little horizontal scroll). scale=3-4
+     on bigger screens. User can still zoom in with the + button for
+     pixel-precise clicks. */
+  scale = Math.max(2, Math.min(4, Math.floor(window.innerWidth / FRAME_W)));
 }
 autoFitScale();
 window.addEventListener('resize', () => { autoFitScale(); applyScale(); render(); });

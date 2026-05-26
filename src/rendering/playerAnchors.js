@@ -36,13 +36,17 @@
  *   express this directly as anchor.set(hx/srcW, hy/srcH).
  */
 
-const ANCHORS_URL = '/sprites/player/anchors.json?v=3';
+const ANCHORS_URL = '/sprites/player/anchors.json?v=4';
 const HANDLES_URL = '/sprites/weapons/handles.json?v=4';
 
-/* v2.3.166: JSON is in 64-px legacy space; player sheets are now
-   256-px.  Multiply on return so callers always see current-space
-   coords without having to rewrite the JSON. */
-const ANCHOR_SCALE = 4;
+/* v2.3.174: session-2 sprite pipeline shipped 256-px frames and the
+   per-direction size bumps meant the old 64-px anchor JSON no longer
+   tracks the new hand positions even after the 4x scale-up. The
+   anchor.html tool was bumped to FRAME_W=256 so it now writes coords
+   directly in 256-px space -- no multiplication needed here. Any
+   legacy 64-px JSON that hasn't been replaced will misalign by 4x
+   until re-annotated. */
+const ANCHOR_SCALE = 1;
 
 let anchors = null;
 let weaponHandles = null;
