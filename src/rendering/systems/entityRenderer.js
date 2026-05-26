@@ -345,6 +345,22 @@ function createPlayerDisplay() {
   container.addChild(handCapMask);
   container.addChild(handCapSprite);
 
+  /* v2.3.200: second body-clone for the upper-arm capsule. Added
+     BEFORE weaponContainer in the build order so it can be z-ordered
+     between shield and weapon at frame time (E + jog only). Splitting
+     the arm capsule onto its own sprite means body pixels can show
+     in front of the shield (good) without also showing in front of
+     the bamboo blade (which v2.3.199's single-sprite handCap was
+     doing, producing "bamboo behind arm" during the E backswing). */
+  const handArmSprite = new Sprite();
+  handArmSprite.anchor.set(0.5, 0.5);
+  handArmSprite.visible = false;
+  const handArmMask = new Graphics();
+  handArmMask.visible = true;
+  handArmSprite.mask = handArmMask;
+  container.addChild(handArmMask);
+  container.addChild(handArmSprite);
+
   /* Wood-shield sprite — replaces the procedural cyan arc when the
      PNGs have loaded.  Anchored at center-bottom so it pivots
      around the grip and rotates into position naturally; we hide
@@ -457,6 +473,8 @@ function createPlayerDisplay() {
   container._weaponSprite = weaponSprite;
   container._handCapSprite = handCapSprite;
   container._handCapMask = handCapMask;
+  container._handArmSprite = handArmSprite;
+  container._handArmMask = handArmMask;
   container._shieldSprite = shieldSprite;
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
@@ -1823,6 +1841,7 @@ export class EntityRenderer {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
       if (display._handCapSprite) display._handCapSprite.visible = false;
+      if (display._handArmSprite) display._handArmSprite.visible = false;
       if (display._nftFront) display._nftFront.visible = false;
       if (display._nftBack) display._nftBack.visible = false;
       return;
@@ -2311,6 +2330,8 @@ export class EntityRenderer {
              to cover). */
           const handCap = display._handCapSprite;
           const handMask = display._handCapMask;
+          const handArm = display._handArmSprite;
+          const armMask = display._handArmMask;
           const _bodyRef = display._spriteBody;
           /* v2.3.186: hand-cap only fires when the weapon's z-order
              puts it IN FRONT of the body. The same forward-facing
@@ -2363,34 +2384,45 @@ export class EntityRenderer {
             const capRadius = HAND_CAP_RADIUS[facingIdx] || 10;
             handMask.circle(weaponSprite.x, weaponSprite.y, capRadius);
             handMask.fill({ color: 0xffffff });
-            const useArmCapsule = (facingIdx === 0 && pose === 'jog');
-            if (useArmCapsule) {
-              /* v2.3.199: capsule now ends at the MID-arm point
-                 (halfway between shoulder and hand) instead of
-                 reaching all the way to the hand. The base circle
-                 above already covers the hand + grip area. The full
-                 shoulder->hand capsule passed across the torso
-                 during the E backswing -- the mask revealed torso
-                 pixels above the bamboo blade where the blade
-                 crossed the torso, reading as "holes" in the
-                 bamboo. Ending the capsule at mid-arm keeps the
-                 upper-arm-over-shield coverage (shield sits in the
-                 upper-arm region) but stops the mask before it
-                 reaches the torso/blade overlap. */
-              const shoulderX = 0;
-              const shoulderY = -22;
-              const midArmX = weaponSprite.x * 0.5;
-              const midArmY = (shoulderY + weaponSprite.y) * 0.5;
-              handMask.moveTo(shoulderX, shoulderY);
-              handMask.lineTo(midArmX, midArmY);
-              handMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
-            }
           } else if (handCap) {
             handCap.visible = false;
+          }
+          /* v2.3.200: arm capsule lives on a SEPARATE body-clone
+             (handArmSprite) so it can be z-ordered BELOW weapon at
+             frame time. Result for E + jog: arm pixels still cover
+             the shield (shield sits below the arm-clone in child
+             order), but the bamboo blade renders ABOVE the arm
+             clone so it doesn't pick up body pixels through the
+             mask anymore. v2.3.199's single-sprite approach put
+             the capsule above weapon, which the user reported as
+             "bamboo behind arm" during the backswing. */
+          const useArmCapsule = handArm && armMask && _bodyRef
+            && _bodyRef.visible && _bodyRef.texture
+            && !swingActive && isInCombat
+            && (facingIdx === 0 && pose === 'jog');
+          if (useArmCapsule) {
+            handArm.texture = _bodyRef.texture;
+            handArm.x = _bodyRef.x;
+            handArm.y = _bodyRef.y;
+            handArm.scale.x = _bodyRef.scale.x;
+            handArm.scale.y = _bodyRef.scale.y;
+            handArm.tint = _bodyRef.tint;
+            handArm.visible = true;
+            armMask.clear();
+            const shoulderX = 0;
+            const shoulderY = -22;
+            const midArmX = weaponSprite.x * 0.5;
+            const midArmY = (shoulderY + weaponSprite.y) * 0.5;
+            armMask.moveTo(shoulderX, shoulderY);
+            armMask.lineTo(midArmX, midArmY);
+            armMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+          } else if (handArm) {
+            handArm.visible = false;
           }
         } else {
           weaponSprite.visible = false;
           if (display._handCapSprite) display._handCapSprite.visible = false;
+          if (display._handArmSprite) display._handArmSprite.visible = false;
           /* Procedural fallback — abstract line / arc / orb. */
           if (wpn.type === 'bow') {
             // Bow arc
@@ -2426,6 +2458,7 @@ export class EntityRenderer {
            render on top of the shield arc during a block). */
         if (display._weaponSprite) display._weaponSprite.visible = false;
         if (display._handCapSprite) display._handCapSprite.visible = false;
+        if (display._handArmSprite) display._handArmSprite.visible = false;
       }
       /* Z-order: weapon in front of body for forward facings (idx 0..3
          = E/SE/S/SW), weapon behind body for back facings (idx 4..7 =
@@ -2532,6 +2565,21 @@ export class EntityRenderer {
         }
         if (shIdx !== targetShIdx) {
           display.setChildIndex(display._shieldSprite, targetShIdx);
+        }
+      }
+
+      /* v2.3.200: place handArmSprite right BEFORE weaponContainer so
+         it sits between shield (below) and weapon (above). Result for
+         E + jog: body, shield, handArm, weaponContainer, handCap --
+         the arm clone covers the shield where the capsule mask is
+         drawn (good), but the bamboo blade renders above the arm
+         clone (so the user no longer sees "bamboo behind arm"). */
+      if (display._handArmSprite && display._handArmSprite.visible && display._weaponContainer) {
+        const wcIdxArm = display.getChildIndex(display._weaponContainer);
+        const haIdx    = display.getChildIndex(display._handArmSprite);
+        const targetArmIdx = haIdx > wcIdxArm ? wcIdxArm : Math.max(0, wcIdxArm - 1);
+        if (haIdx !== targetArmIdx) {
+          display.setChildIndex(display._handArmSprite, targetArmIdx);
         }
       }
 
