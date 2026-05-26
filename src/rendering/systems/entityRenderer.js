@@ -1842,11 +1842,17 @@ export class EntityRenderer {
        locked onto a monster, holding the shield up, or hit within the
        last 5 seconds. The damage-window keeps the player "drawn"
        during brief lulls between hits so the weapon doesn't sheathe
-       mid-fight just because they paused for half a second. */
-    const isInCombat = !!S.autoAttack
-                    || !!S.lockedTarget
-                    || isShielding
-                    || (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000);
+       mid-fight just because they paused for half a second.
+
+       v2.3.180: SHEATHED_DEFAULT_ENABLED flag. User wants to evaluate
+       "always carry in hand" vs the F4 sheathed default. Flip to true
+       to bring back the on-back render. */
+    const SHEATHED_DEFAULT_ENABLED = false;
+    const _combatTriggers = !!S.autoAttack
+                         || !!S.lockedTarget
+                         || isShielding
+                         || (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000);
+    const isInCombat = !SHEATHED_DEFAULT_ENABLED || _combatTriggers;
     const aimAttackActive = S._aimAngle != null && (S._backpedaling || (!isMoving && S.autoAttack));
     /* useAimDirection drives the slowed + reverse jog animation —
        still want it true during a swing window so the legs stay in
