@@ -2527,6 +2527,10 @@ export class EntityRenderer {
           const baseScale = 56 / 64;
           shieldSprite.scale.x = baseScale * (shieldFrame.mirror ? -1 : 1);
           shieldSprite.scale.y = baseScale;
+          /* v2.3.193: reset rotation in the in-hand path -- otherwise
+             a running-lean rotation from the on-back path could stick
+             when the player flips into a block mid-stride. */
+          shieldSprite.rotation = 0;
           /* Brief brightness pop on a successful block. */
           const pulseTint = blockPulse > 0 ? 0xffffff : 0xffffff;
           shieldSprite.tint = pulseTint;
@@ -2581,6 +2585,18 @@ export class EntityRenderer {
           const _shNudgeY = SHIELD_NUDGE_Y[facingIdx] || 0;
           shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX;
           shieldSprite.y = -Math.sin(facingAng) * backR - 10 + _shNudgeY;
+          /* v2.3.193: running-lean. The player sprite art shows a
+             slight forward lean during jog, but the shield on back
+             stayed bolt-upright -- read as the shield disconnected
+             from the body. Apply a small rotation when pose === 'jog'
+             proportional to cos(facingAng) so the lean is strongest
+             on E/W (visible side-to-side tilt) and zero on N/S where
+             the lean is in/out of the screen plane and doesn't show
+             in 2D anyway. */
+          const RUN_LEAN = 0.15; // rad ~= 8.6°
+          shieldSprite.rotation = pose === 'jog'
+            ? RUN_LEAN * Math.cos(facingAng)
+            : 0;
           /* v2.3.189: bumped scale 40/64 -> 56/64 so the on-back
              shield matches the in-hand block size. Both paths use
              the same wood-shield PNG triplet -- this aligns the
