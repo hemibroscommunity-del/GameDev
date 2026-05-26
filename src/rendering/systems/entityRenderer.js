@@ -2214,16 +2214,19 @@ export class EntityRenderer {
             const handle = getWeaponHandle(wpn.type, wpn.gearBase);
             if (handle) weaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
             else weaponSprite.anchor.set(0.5, 1.0);
-            /* v2.3.181/182: per-weapon screen-space nudge. Bamboo's
-               grip in its 1254px source isn't dead-on the user's mark;
-               nudging the rendered sprite by 8px aligns the visible
-               hilt with the hand pixel. v2.3.182: the sign of the
-               nudge flips with the mirror flag -- the sprite is drawn
-               flipped for W/NW/SE facings (mirror=true) so the
-               offset that was "left" on east-facing reads as "right"
-               on west-facing. mirror ? +8 : -8. */
+            /* v2.3.183: per-facing nudge table for bamboo. The simpler
+               mirror-based rule worked for E/W but the user reported
+               N/SE/SW were all off in directions the mirror flag
+               couldn't capture -- bamboo's apparent grip offset isn't
+               symmetric across all 5 sprite sheets. Per-facingIdx
+               lookup: E (0) and W (4) keep the ±8 that worked; the
+               three reported-bad facings drop to 0; the unreported
+               diagonals stay at the mirror-based defaults until the
+               user calls them out. */
             const isWoodSwordNudge = wpn.type === 'sword' && wpn.gearBase === 'wood';
-            const wpnNudgeX = isWoodSwordNudge ? (mirror ? 8 : -8) : 0;
+            /* facingIdx: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE */
+            const WOOD_NUDGE_X = [-8, 0, -8, 0, 8, 8, 0, -8];
+            const wpnNudgeX = isWoodSwordNudge ? (WOOD_NUDGE_X[facingIdx] || 0) : 0;
             weaponSprite.x = wpnX + wpnNudgeX;
             weaponSprite.y = wpnY;
           } else {
