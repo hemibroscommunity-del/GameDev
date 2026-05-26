@@ -1506,10 +1506,12 @@ export class EntityRenderer {
           /* Same east-direction size compensation as the local player —
              keeps every player rendered at the same visual scale.
              v2.3.163: baseline halved from 1.0 -> 0.5 because the
-             sprite source bumped from 64 to 128 px per frame. */
-          let sizeMul = 0.5;
-        if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.5;
-        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.5;
+             sprite source bumped from 64 to 128 px per frame.
+             v2.3.165: bumped 25% (0.5 -> 0.625) to match the local
+             player's v2.3.165 +25% change. */
+          let sizeMul = 0.625;
+        if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.625;
+        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.625;
           /* v2.3.164: matching per-direction stand-pose bumps from the
              local player path. */
           if (pose === 'stand') {
@@ -1885,8 +1887,10 @@ export class EntityRenderer {
        that's too big").
        v2.3.163: sprite source bumped from 64-px to 128-px per frame;
        halved LOCAL_SCALE (1.125 -> 0.5625) so on-screen size stays
-       identical while the GPU downscales the higher-res source. */
-    const LOCAL_SCALE = 0.5625;
+       identical while the GPU downscales the higher-res source.
+       v2.3.165: bumped 25% (0.5625 -> 0.703125) per user "want to see
+       the player sprite 25% larger everywhere". */
+    const LOCAL_SCALE = 0.703125;
     let bodyScale = 1.0 * LOCAL_SCALE;
     if (dir === 'east' && pose === 'hit') bodyScale = 0.88 * LOCAL_SCALE;
     else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03 * LOCAL_SCALE;
