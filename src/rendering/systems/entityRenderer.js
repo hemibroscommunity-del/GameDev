@@ -345,6 +345,22 @@ function createPlayerDisplay() {
   container.addChild(handCapMask);
   container.addChild(handCapSprite);
 
+  /* v2.3.200: second body-clone for the upper-arm capsule. Added
+     BEFORE weaponContainer in the build order so it can be z-ordered
+     between shield and weapon at frame time (E + jog only). Splitting
+     the arm capsule onto its own sprite means body pixels can show
+     in front of the shield (good) without also showing in front of
+     the bamboo blade (which v2.3.199's single-sprite handCap was
+     doing, producing "bamboo behind arm" during the E backswing). */
+  const handArmSprite = new Sprite();
+  handArmSprite.anchor.set(0.5, 0.5);
+  handArmSprite.visible = false;
+  const handArmMask = new Graphics();
+  handArmMask.visible = true;
+  handArmSprite.mask = handArmMask;
+  container.addChild(handArmMask);
+  container.addChild(handArmSprite);
+
   /* Wood-shield sprite — replaces the procedural cyan arc when the
      PNGs have loaded.  Anchored at center-bottom so it pivots
      around the grip and rotates into position naturally; we hide
@@ -457,6 +473,8 @@ function createPlayerDisplay() {
   container._weaponSprite = weaponSprite;
   container._handCapSprite = handCapSprite;
   container._handCapMask = handCapMask;
+  container._handArmSprite = handArmSprite;
+  container._handArmMask = handArmMask;
   container._shieldSprite = shieldSprite;
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
@@ -1823,6 +1841,7 @@ export class EntityRenderer {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
       if (display._handCapSprite) display._handCapSprite.visible = false;
+      if (display._handArmSprite) display._handArmSprite.visible = false;
       if (display._nftFront) display._nftFront.visible = false;
       if (display._nftBack) display._nftBack.visible = false;
       return;
@@ -2246,7 +2265,9 @@ export class EntityRenderer {
             const isWoodSwordNudge = wpn.type === 'sword' && wpn.gearBase === 'wood';
             /* facingIdx: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE */
             const WOOD_NUDGE_X = [-8, 0, -8, 0, 8, 8, 0, -8];
-            const wpnNudgeX = isWoodSwordNudge ? (WOOD_NUDGE_X[facingIdx] || 0) : 0;
+            /* v2.3.208: SW idle only, +3 px right (user reset). */
+            const SW_IDLE_NUDGE = (facingIdx === 3 && pose === 'stand') ? 3 : 0;
+            const wpnNudgeX = isWoodSwordNudge ? ((WOOD_NUDGE_X[facingIdx] || 0) + SW_IDLE_NUDGE) : 0;
             weaponSprite.x = wpnX + wpnNudgeX;
             weaponSprite.y = wpnY;
           } else {
@@ -2311,6 +2332,8 @@ export class EntityRenderer {
              to cover). */
           const handCap = display._handCapSprite;
           const handMask = display._handCapMask;
+          const handArm = display._handArmSprite;
+          const armMask = display._handArmMask;
           const _bodyRef = display._spriteBody;
           /* v2.3.186: hand-cap only fires when the weapon's z-order
              puts it IN FRONT of the body. The same forward-facing
@@ -2320,10 +2343,18 @@ export class EntityRenderer {
              would stamp a redundant second copy of the hand and look
              wrong (user reported SW). */
           const _weaponInFront = (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
+          /* v2.3.197: SE (idx 1) jog skips the hand-cap entirely --
+             user reported the cap was stamping body pixels at the
+             swinging-arm position, making the bamboo read as behind
+             the upper arm. With the cap off for SE jog, bamboo stays
+             fully in front. SE idle still gets a cap but with a
+             smaller radius below. */
+          const _seJogSkipCap = (facingIdx === 1 && pose === 'jog');
           const handCapEligible = handCap && handMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
-            && _weaponInFront;
+            && _weaponInFront
+            && !_seJogSkipCap;
           if (handCapEligible) {
             handCap.texture = _bodyRef.texture;
             handCap.x = _bodyRef.x;
@@ -2332,18 +2363,79 @@ export class EntityRenderer {
             handCap.scale.y = _bodyRef.scale.y;
             handCap.tint = _bodyRef.tint;
             handCap.visible = true;
-            /* Mask circle covers a ~10px radius around the hand pixel
-               in display coords. Big enough to catch finger wraps but
-               small enough not to expose more body. */
+            /* v2.3.196: layered mask. Base is the original 10-px
+               circle at the hand (handles all forward facings, no
+               impalement of the bamboo blade). For E + jog only,
+               ALSO draw a capsule from shoulder to hand so the upper
+               arm covers the shield during the back-swing of the
+               east run cycle. Capsule uses butt cap (perpendicular
+               slice at hand) instead of round cap so it doesn't
+               extend past the hand in the blade's direction --
+               v2.3.195's round cap was bleeding into the blade base
+               and the user saw the bamboo "impaling" the player on
+               S / SE / E idle and run. With this rule, only E run
+               gets the bigger arm coverage; everything else keeps
+               the v2.3.185 hand-only coverage. */
             handMask.clear();
-            handMask.circle(weaponSprite.x, weaponSprite.y, 10);
+            /* v2.3.197: per-facing base radius. SE (idx 1) shrinks
+               from 10 -> 6 because the hand pixel can sit closer to
+               the waist on SE idle and a 10-px circle was covering
+               a large area of the bamboo near the player's torso.
+               Everything else keeps the v2.3.185 default of 10. */
+            const HAND_CAP_RADIUS = [10, 6, 10, 10, 10, 10, 10, 10];
+            const capRadius = HAND_CAP_RADIUS[facingIdx] || 10;
+            handMask.circle(weaponSprite.x, weaponSprite.y, capRadius);
             handMask.fill({ color: 0xffffff });
           } else if (handCap) {
             handCap.visible = false;
           }
+          /* v2.3.200: arm capsule lives on a SEPARATE body-clone
+             (handArmSprite) so it can be z-ordered BELOW weapon at
+             frame time. Result for E + jog: arm pixels still cover
+             the shield (shield sits below the arm-clone in child
+             order), but the bamboo blade renders ABOVE the arm
+             clone so it doesn't pick up body pixels through the
+             mask anymore. v2.3.199's single-sprite approach put
+             the capsule above weapon, which the user reported as
+             "bamboo behind arm" during the backswing. */
+          const useArmCapsule = handArm && armMask && _bodyRef
+            && _bodyRef.visible && _bodyRef.texture
+            && !swingActive && isInCombat
+            && (facingIdx === 0 && pose === 'jog');
+          if (useArmCapsule) {
+            handArm.texture = _bodyRef.texture;
+            handArm.x = _bodyRef.x;
+            handArm.y = _bodyRef.y;
+            handArm.scale.x = _bodyRef.scale.x;
+            handArm.scale.y = _bodyRef.scale.y;
+            handArm.tint = _bodyRef.tint;
+            handArm.visible = true;
+            armMask.clear();
+            /* v2.3.202: capsule restored to full shoulder -> hand
+               coverage (v2.3.199 had clipped it at mid-arm to
+               protect the bamboo blade from being occluded by
+               torso pixels). v2.3.200 moved handArm BELOW weapon
+               in z-order so the mask now only affects what sits
+               under the bamboo (= shield). With that protection,
+               the mid-arm clip is no longer needed and the user
+               was seeing the lower forearm still behind the shield
+               during the backswing -- restoring full reach covers
+               the whole right arm. The v2.3.201 back-shoulder
+               circle was also removed: it ended up revealing the
+               LEFT arm above the shield, which the user wants to
+               stay hidden behind. */
+            const shoulderX = 0;
+            const shoulderY = -22;
+            armMask.moveTo(shoulderX, shoulderY);
+            armMask.lineTo(weaponSprite.x, weaponSprite.y);
+            armMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+          } else if (handArm) {
+            handArm.visible = false;
+          }
         } else {
           weaponSprite.visible = false;
           if (display._handCapSprite) display._handCapSprite.visible = false;
+          if (display._handArmSprite) display._handArmSprite.visible = false;
           /* Procedural fallback — abstract line / arc / orb. */
           if (wpn.type === 'bow') {
             // Bow arc
@@ -2379,6 +2471,7 @@ export class EntityRenderer {
            render on top of the shield arc during a block). */
         if (display._weaponSprite) display._weaponSprite.visible = false;
         if (display._handCapSprite) display._handCapSprite.visible = false;
+        if (display._handArmSprite) display._handArmSprite.visible = false;
       }
       /* Z-order: weapon in front of body for forward facings (idx 0..3
          = E/SE/S/SW), weapon behind body for back facings (idx 4..7 =
@@ -2404,6 +2497,13 @@ export class EntityRenderer {
         const sheathed = !isInCombat;
         const inFrontInHand = isShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
+          /* v2.3.199: SW dropped from the in-front set. v2.3.192 had
+             added SW because user wanted bamboo above the hand, but
+             that put the whole blade above the body silhouette and
+             read as the bamboo floating over the torso. User now
+             wants SW bamboo behind the body. The bamboo extends west
+             from the hand on SW (mirror=true) so the blade tip still
+             passes past the body and stays visible. */
           : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
         const inFront = sheathed ? !inFrontInHand : inFrontInHand;
         const bodyIdx = display.getChildIndex(display._spriteBody);
@@ -2429,20 +2529,70 @@ export class EntityRenderer {
          other facing it stays in front (its default order, since it
          was added after spriteBody). */
       if (display._shieldSprite && display._shieldSprite.visible && display._spriteBody) {
-        /* v2.3.176 (F4): shield z-order inverts when sheathed-on-back.
-           In-hand rule: behind body for NW/N/NE (5/6/7). Sheathed
-           rule: behind body for everything EXCEPT NW/N/NE -- those
-           are back facings where the shield-on-back is toward camera. */
-        const shieldBehind = isInCombat
-          ? (facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
-          : !(facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+        /* v2.3.190: shield z-order rules.
+           In-hand (raised): behind body for NW/N/NE (5/6/7).
+           On-back rule: in front of body for E (0) + N-half (5/6/7);
+           behind body for SE/S/SW/W (1/2/3/4). E joined the in-front
+           set per user request -- with shield behind body on E, only
+           a sliver was visible past the silhouette. */
+        const shieldOnBack = !isShielding;
+        const shieldBehind = shieldOnBack
+          ? !(facingIdx === 0 || facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
+          : (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const shIdx   = display.getChildIndex(display._shieldSprite);
-        const targetShIdx = shieldBehind
-          ? (shIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1))   // before spriteBody
-          : (shIdx > bodyIdx ? bodyIdx + 1 : bodyIdx);               // after spriteBody
+        /* For in-front mode, shield needs to render ABOVE the hand-cap
+           (handCapSprite, added after weaponContainer in v2.3.185).
+           Without this, the hand-cap pixels were drawing over the
+           shield on forward facings where both were visible (user
+           reported NE / E). Target index = right after handCapSprite. */
+        const handCapIdx = display._handCapSprite
+          ? display.getChildIndex(display._handCapSprite)
+          : -1;
+        /* v2.3.194: for E (idx 0) specifically, the user wants the
+           hand-cap (= arm pixels) layered ABOVE the shield -- the arm
+           swings over the shield during the east run cycle and should
+           occlude it. NE (idx 7) is the inverse case from v2.3.190
+           where shield needs to stay above the cap. Per-facing flag. */
+        const handCapAboveShield = (facingIdx === 0);
+        let targetShIdx;
+        if (shieldBehind) {
+          targetShIdx = shIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1);
+        } else if (handCapAboveShield) {
+          /* v2.3.198: place shield BELOW weaponContainer (immediately
+             before it in child order). Result for E: body, shield,
+             weapon, handCap -- bamboo overlaps shield, arm (handCap)
+             still overlaps everything. The v2.3.194 fix put shield
+             below handCap but ABOVE weapon, which made the bamboo
+             read as falling behind the shield during the E run swing.
+             Putting shield below weapon keeps the arm-over-shield
+             behavior (handCap is still last) while letting the bamboo
+             stay in front of the shield except at the hand area. */
+          const wcIdxForSh = display.getChildIndex(display._weaponContainer);
+          targetShIdx = shIdx > wcIdxForSh ? wcIdxForSh : Math.max(0, wcIdxForSh - 1);
+        } else if (handCapIdx >= 0) {
+          /* Shield goes ABOVE handCap (= NE and default in-front rule). */
+          targetShIdx = shIdx > handCapIdx ? handCapIdx + 1 : handCapIdx;
+        } else {
+          targetShIdx = shIdx > bodyIdx ? bodyIdx + 1 : bodyIdx;
+        }
         if (shIdx !== targetShIdx) {
           display.setChildIndex(display._shieldSprite, targetShIdx);
+        }
+      }
+
+      /* v2.3.200: place handArmSprite right BEFORE weaponContainer so
+         it sits between shield (below) and weapon (above). Result for
+         E + jog: body, shield, handArm, weaponContainer, handCap --
+         the arm clone covers the shield where the capsule mask is
+         drawn (good), but the bamboo blade renders above the arm
+         clone (so the user no longer sees "bamboo behind arm"). */
+      if (display._handArmSprite && display._handArmSprite.visible && display._weaponContainer) {
+        const wcIdxArm = display.getChildIndex(display._weaponContainer);
+        const haIdx    = display.getChildIndex(display._handArmSprite);
+        const targetArmIdx = haIdx > wcIdxArm ? wcIdxArm : Math.max(0, wcIdxArm - 1);
+        if (haIdx !== targetArmIdx) {
+          display.setChildIndex(display._handArmSprite, targetArmIdx);
         }
       }
 
@@ -2505,6 +2655,10 @@ export class EntityRenderer {
           const baseScale = 56 / 64;
           shieldSprite.scale.x = baseScale * (shieldFrame.mirror ? -1 : 1);
           shieldSprite.scale.y = baseScale;
+          /* v2.3.193: reset rotation in the in-hand path -- otherwise
+             a running-lean rotation from the on-back path could stick
+             when the player flips into a block mid-stride. */
+          shieldSprite.rotation = 0;
           /* Brief brightness pop on a successful block. */
           const pulseTint = blockPulse > 0 ? 0xffffff : 0xffffff;
           shieldSprite.tint = pulseTint;
@@ -2527,18 +2681,55 @@ export class EntityRenderer {
             weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.9 });
           }
         }
-      } else if (!isInCombat && S.rpg && S.rpg.shield && display._shieldSprite) {
-        /* v2.3.176 (F4): shield equipped but not raised and player is
-           out of combat -> show on back. Uses the front-view shield
-           texture, centered on upper torso, no rotation. Smaller than
-           the in-hand size so it reads as "stowed". */
-        const shieldFrame = getShieldFrame(0); // 0 angle -> front view
+      } else if (S.rpg && S.rpg.shield && display._shieldSprite) {
+        /* v2.3.187: shield equipped but not raised -> always on back,
+           regardless of combat state. (v2.3.176 limited this to
+           !isInCombat; user now wants it as the persistent default.)
+           The outward face of a shield on the player's back points
+           opposite the player's facing, so feed shieldAng = facing+PI
+           into getShieldFrame for view selection -- e.g. facing N
+           (player back to camera) -> shieldAng = S -> front view,
+           facing E -> shieldAng = W -> side view (mirrored). */
+        const facingAng = facingIdx * Math.PI / 4;
+        const shieldAng = facingAng + Math.PI;
+        const shieldFrame = getShieldFrame(shieldAng);
         const shieldSprite = display._shieldSprite;
         if (shieldFrame) {
           if (shieldSprite.texture !== shieldFrame.tex) shieldSprite.texture = shieldFrame.tex;
-          shieldSprite.x = 0;
-          shieldSprite.y = -6;
-          const sheathedScale = 40 / 64;
+          /* Position on upper torso, displaced opposite the facing
+             direction so the shield reads as resting on the back. Y
+             offset (-10) lifts it from feet-anchored player center to
+             roughly upper-back height. */
+          const backR = 4;
+          /* v2.3.191: per-facing nudge tables for fine-tuning shield
+             position. Same pattern as the bamboo WOOD_NUDGE_X table
+             in the weapon block above -- screen-space offsets applied
+             on top of the geometric backR position. Tell the user
+             which facing is off and we add a slot. */
+          /* facingIdx: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE */
+          const SHIELD_NUDGE_X = [-5, 0, 0, 0, 0, 0, 0, 0];
+          const SHIELD_NUDGE_Y = [ 0, 0, 0, 0, 0, 0, 0, 0];
+          const _shNudgeX = SHIELD_NUDGE_X[facingIdx] || 0;
+          const _shNudgeY = SHIELD_NUDGE_Y[facingIdx] || 0;
+          shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX;
+          shieldSprite.y = -Math.sin(facingAng) * backR - 10 + _shNudgeY;
+          /* v2.3.193: running-lean. The player sprite art shows a
+             slight forward lean during jog, but the shield on back
+             stayed bolt-upright -- read as the shield disconnected
+             from the body. Apply a small rotation when pose === 'jog'
+             proportional to cos(facingAng) so the lean is strongest
+             on E/W (visible side-to-side tilt) and zero on N/S where
+             the lean is in/out of the screen plane and doesn't show
+             in 2D anyway. */
+          const RUN_LEAN = 0.15; // rad ~= 8.6°
+          shieldSprite.rotation = pose === 'jog'
+            ? RUN_LEAN * Math.cos(facingAng)
+            : 0;
+          /* v2.3.189: bumped scale 40/64 -> 56/64 so the on-back
+             shield matches the in-hand block size. Both paths use
+             the same wood-shield PNG triplet -- this aligns the
+             apparent size too. */
+          const sheathedScale = 56 / 64;
           shieldSprite.scale.x = sheathedScale * (shieldFrame.mirror ? -1 : 1);
           shieldSprite.scale.y = sheathedScale;
           shieldSprite.tint = 0xffffff;

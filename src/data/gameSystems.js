@@ -4633,7 +4633,17 @@ export function createDefaultRpg() {
       name: 'Leather Armor',
       gearBase: 'wood'
     },
-    shield: null,
+    /* v2.3.188: default wood shield matches the other starter gear
+       (bamboo stick, wood bow, wood staff, leather armor) so the
+       v2.3.187 shield-on-back render has something to draw without
+       requiring a pickup. Existing saves with shield=null get the
+       same default via the migration in BroTown.jsx ~4352. */
+    shield: {
+      tier: 'common',
+      tierMult: 1.0,
+      gearBase: 'wood',
+      name: 'Wood Shield',
+    },
     /* {tier, tierMult, gearBase, gem, name, reforgeBonus, hardenBonus} */
     /* Active weapon slot: 'melee' or 'ranged' */
     activeSlot: 'melee'

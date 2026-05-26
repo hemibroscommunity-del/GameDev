@@ -20,7 +20,7 @@ const COMMITMENT_GAP_MS = 75;
 // Wood-shield sprite URLs — match the version used by the Pixi loader so the
 // browser cache is shared with the in-game shield. When equip slots exist, the
 // `equippedShield` lookup should swap these out.
-const SHIELD_SPRITE_VERSION = '2.1.23';
+const SHIELD_SPRITE_VERSION = '2.3.198';
 const SHIELD_SPRITES = {
   front: `/sprites/shields/wood-shield-front.png?v=${SHIELD_SPRITE_VERSION}`,
   '3q':  `/sprites/shields/wood-shield-3q.png?v=${SHIELD_SPRITE_VERSION}`,

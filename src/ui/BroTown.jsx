@@ -2269,7 +2269,14 @@ export var BroTown = function BroTown(_ref0) {
                 S.rpg.activeSlot = msg.payload.activeSlot;
               }
               if ('armor' in msg.payload) S.rpg.armor = msg.payload.armor;
-              if ('shield' in msg.payload) S.rpg.shield = msg.payload.shield;
+              /* v2.3.189: never let the server stomp the default wood
+                 shield. Pre-v2.3.188 saves on the worker may have
+                 shield=null, which would erase the client default
+                 added in the load-time migration. If the server's
+                 value is falsy, keep whatever the client has. */
+              if ('shield' in msg.payload && msg.payload.shield) {
+                S.rpg.shield = msg.payload.shield;
+              }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
               /* Quest state mirror (slice 17).  Worker is authoritative
@@ -4349,7 +4356,17 @@ export var BroTown = function BroTown(_ref0) {
       };
       if (S.rpg.shield === undefined) S.rpg.shield = null;
       if (!S.rpg.amulet) S.rpg.amulet = null; /* {tier, gem, name} */
-      if (!S.rpg.shield) S.rpg.shield = null; /* {gearBase, gem, name, reforgeBonus, hardenBonus} */
+      /* v2.3.188: existing saves with no shield get the starter wood
+         shield so the always-on-back render has something to draw.
+         Matches the default in createDefaultRpg. If a player intentionally
+         unequips, the popup's Unequip path can clear shield to null
+         AGAIN -- that path doesn't re-default. */
+      if (!S.rpg.shield) S.rpg.shield = {
+        tier: 'common',
+        tierMult: 1.0,
+        gearBase: 'wood',
+        name: 'Wood Shield',
+      };
       if (S.rpg.goldNuggets === undefined) S.rpg.goldNuggets = 0;
       if (S.rpg.goldBars === undefined) S.rpg.goldBars = 0;
       if (S.rpg.achievementPoints === undefined) S.rpg.achievementPoints = 0;
@@ -8540,7 +8557,12 @@ export var BroTown = function BroTown(_ref0) {
                   var totalDmg = dmg;
                   if (collisionResult) totalDmg += collisionResult.damage;
                   S.channel.send({ type: 'monster_damage', payload: {
-                    monsterId: m.id, zone: S.currentZone, dmg: totalDmg, isCrit: isCrit, element: activeWpn.element1
+                    monsterId: m.id, zone: S.currentZone, dmg: totalDmg, isCrit: isCrit, element: activeWpn.element1,
+                    /* slot=melee tells the worker this hit was a real
+                       melee swing, so the lifesteal gate fires even if
+                       the persisted activeSlot drifted (desktop slot UI
+                       skips set_active_slot). */
+                    slot: 'melee'
                   }});
                 }
 
@@ -10369,7 +10391,10 @@ export var BroTown = function BroTown(_ref0) {
                   var arrowTotalDmg = _arrowDmg;
                   if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
                   S.channel.send({ type: 'monster_damage', payload: {
-                    monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null
+                    monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null,
+                    /* Arrow path = ranged; worker uses this to deny the
+                       melee-only lifesteal even if activeSlot drifted. */
+                    slot: isStaffProj ? 'staff' : 'ranged'
                   }});
                 }
                 if (arrowCollision) {
