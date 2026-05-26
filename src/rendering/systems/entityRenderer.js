@@ -1508,10 +1508,12 @@ export class EntityRenderer {
              v2.3.163: baseline halved from 1.0 -> 0.5 because the
              sprite source bumped from 64 to 128 px per frame.
              v2.3.165: bumped 25% (0.5 -> 0.625) to match the local
-             player's v2.3.165 +25% change. */
-          let sizeMul = 0.625;
-        if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.625;
-        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.625;
+             player's v2.3.165 +25% change.
+             v2.3.166: halved again (0.625 -> 0.3125) for 128 -> 256
+             source bump.  Net visible scale unchanged from v2.3.165. */
+          let sizeMul = 0.3125;
+        if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.3125;
+        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.3125;
           /* v2.3.164: matching per-direction stand-pose bumps from the
              local player path. */
           if (pose === 'stand') {
@@ -1621,7 +1623,7 @@ export class EntityRenderer {
           else oWeaponSprite.anchor.set(0.5, 1.0);
 
           /* Per-frame hand anchor — same math as local. */
-          const SHEET_W = 128;
+          const SHEET_W = 256;
           const { dir, mirror } = resolveDirection(facing);
           /* v2.3.163: baseline halved from 1.0 -> 0.5 to match the
              spriteBody scale change above (also 0.5).  Keeps the
@@ -1889,8 +1891,11 @@ export class EntityRenderer {
        halved LOCAL_SCALE (1.125 -> 0.5625) so on-screen size stays
        identical while the GPU downscales the higher-res source.
        v2.3.165: bumped 25% (0.5625 -> 0.703125) per user "want to see
-       the player sprite 25% larger everywhere". */
-    const LOCAL_SCALE = 0.703125;
+       the player sprite 25% larger everywhere".
+       v2.3.166: sprite source bumped 128 -> 256; halved again
+       (0.703125 -> 0.3515625) so on-screen size stays identical.
+       Net visible scale vs v2.3.110 baseline: still +25%. */
+    const LOCAL_SCALE = 0.3515625;
     let bodyScale = 1.0 * LOCAL_SCALE;
     if (dir === 'east' && pose === 'hit') bodyScale = 0.88 * LOCAL_SCALE;
     else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03 * LOCAL_SCALE;
@@ -2031,7 +2036,7 @@ export class EntityRenderer {
       /* v2.3.163: player sheets bumped to 128x128 per frame.  Anchors
          returned from getAnchor are now in 128-px space (scaled at
          load time inside playerAnchors.js), so SHEET_W matches. */
-      const SHEET_W = 128;
+      const SHEET_W = 256;
       const animFrame = display._animFrame || 0;
       /* Pass `mirror` so getAnchor returns the LEFT hand on mirrored
          facings (W/NW/SE) — the left anchor flipped via the body's

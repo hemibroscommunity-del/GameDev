@@ -39,10 +39,10 @@
 const ANCHORS_URL = '/sprites/player/anchors.json?v=3';
 const HANDLES_URL = '/sprites/weapons/handles.json?v=3';
 
-/* v2.3.163: JSON is in 64-px legacy space; player sheets are now
-   128-px.  Multiply on return so callers always see current-space
+/* v2.3.166: JSON is in 64-px legacy space; player sheets are now
+   256-px.  Multiply on return so callers always see current-space
    coords without having to rewrite the JSON. */
-const ANCHOR_SCALE = 2;
+const ANCHOR_SCALE = 4;
 
 let anchors = null;
 let weaponHandles = null;

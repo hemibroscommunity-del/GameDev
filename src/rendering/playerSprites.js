@@ -20,14 +20,12 @@
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
 
-/* v2.3.163: player sheets are now stored at 128x128 per frame; the
-   GPU downscales to the on-screen display size with LINEAR + mipmaps
-   (see loadSheet below).  Storing higher-res source preserves outline
-   + figure detail through the downscale and gives the engine room to
-   zoom in cleanly.  Hit sheets were nearest-upscaled from their
-   former 64x64 to keep dimensions consistent (no visual change). */
-const FRAME_W = 128;
-const FRAME_H = 128;
+/* v2.3.166: bumped from 128 to 256 per user request.  256 source +
+   plain Lanczos (no outline overlay) gives a more naturally-rendered
+   outline (the 128 + outline-overlay path was "over processed").
+   Hit sheets nearest-upscaled 128 -> 256 to match. */
+const FRAME_W = 256;
+const FRAME_H = 256;
 /* JOG sheets now have VARIABLE frame counts per direction (north 24,
    south 31, northeast 25, southwest 35, east 24-ish).  Frame count is
    detected from the loaded texture width (sheet width / FRAME_W).
@@ -52,7 +50,7 @@ const HIT_DURATION_MS = 250;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit'];
 
-const VERSION = 42; /* v2.3.163: bumped to invalidate cached 64-px sheets after the 128-px regen */
+const VERSION = 43; /* v2.3.166: bumped to invalidate cached 128-px sheets after the 256-px regen */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
