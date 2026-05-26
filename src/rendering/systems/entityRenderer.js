@@ -2563,8 +2563,18 @@ export class EntityRenderer {
              offset (-10) lifts it from feet-anchored player center to
              roughly upper-back height. */
           const backR = 4;
-          shieldSprite.x = -Math.cos(facingAng) * backR;
-          shieldSprite.y = -Math.sin(facingAng) * backR - 10;
+          /* v2.3.191: per-facing nudge tables for fine-tuning shield
+             position. Same pattern as the bamboo WOOD_NUDGE_X table
+             in the weapon block above -- screen-space offsets applied
+             on top of the geometric backR position. Tell the user
+             which facing is off and we add a slot. */
+          /* facingIdx: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE */
+          const SHIELD_NUDGE_X = [-5, 0, 0, 0, 0, 0, 0, 0];
+          const SHIELD_NUDGE_Y = [ 0, 0, 0, 0, 0, 0, 0, 0];
+          const _shNudgeX = SHIELD_NUDGE_X[facingIdx] || 0;
+          const _shNudgeY = SHIELD_NUDGE_Y[facingIdx] || 0;
+          shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX;
+          shieldSprite.y = -Math.sin(facingAng) * backR - 10 + _shNudgeY;
           /* v2.3.189: bumped scale 40/64 -> 56/64 so the on-back
              shield matches the in-hand block size. Both paths use
              the same wood-shield PNG triplet -- this aligns the
