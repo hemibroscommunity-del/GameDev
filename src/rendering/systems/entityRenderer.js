@@ -2332,12 +2332,22 @@ export class EntityRenderer {
             handCap.scale.y = _bodyRef.scale.y;
             handCap.tint = _bodyRef.tint;
             handCap.visible = true;
-            /* Mask circle covers a ~10px radius around the hand pixel
-               in display coords. Big enough to catch finger wraps but
-               small enough not to expose more body. */
+            /* v2.3.195: capsule mask covering shoulder -> hand so the
+               whole arm (upper arm + forearm + hand) stamps over the
+               weapon, not just the hand. Previous 10-px circle only
+               caught the forearm tip. Capsule is a thick stroked line
+               with rounded caps; the round caps cover the shoulder
+               and hand ends naturally. Shoulder is approximated at
+               (0, -22) -- upper torso, center-x in display coords --
+               since we don't annotate per-frame shoulder anchors.
+               If a facing reads wrong the capsule width / shoulder
+               offset are the knobs. */
+            const shoulderX = 0;
+            const shoulderY = -22;
             handMask.clear();
-            handMask.circle(weaponSprite.x, weaponSprite.y, 10);
-            handMask.fill({ color: 0xffffff });
+            handMask.moveTo(shoulderX, shoulderY);
+            handMask.lineTo(weaponSprite.x, weaponSprite.y);
+            handMask.stroke({ color: 0xffffff, width: 20, cap: 'round' });
           } else if (handCap) {
             handCap.visible = false;
           }
