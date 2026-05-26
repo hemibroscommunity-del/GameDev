@@ -1520,9 +1520,11 @@ export class EntityRenderer {
             if (dir === 'north' || dir === 'south' || dir === 'east') sizeMul *= 1.10;
             else if (dir === 'northeast') sizeMul *= 1.05;
           }
-          /* v2.3.168: additional jog-only +5% for E and NE. */
-          if (pose === 'jog' && (dir === 'east' || dir === 'northeast')) {
-            sizeMul *= 1.05;
+          /* v2.3.168: additional jog-only +5% for E and NE.
+             v2.3.170: bumped E to +10% per user east-run pass. */
+          if (pose === 'jog') {
+            if (dir === 'east') sizeMul *= 1.10;
+            else if (dir === 'northeast') sizeMul *= 1.05;
           }
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
           spriteBody.scale.y = sizeMul;
@@ -1913,9 +1915,11 @@ export class EntityRenderer {
     }
     /* v2.3.168: additional jog-only +5% for E (covers W) and NE
        (covers NW) per user pacing pass.  Stand stays at the v2.3.167
-       values. */
-    if (pose === 'jog' && (dir === 'east' || dir === 'northeast')) {
-      bodyScale *= 1.05;
+       values.  v2.3.170: bumped E (covers W) to +10% (extra 5% on
+       top of v2.3.168) per user "make east run 5% larger". */
+    if (pose === 'jog') {
+      if (dir === 'east') bodyScale *= 1.10;
+      else if (dir === 'northeast') bodyScale *= 1.05;
     }
     const spritesAvailable = hasPose(pose) || hasPose('stand');
     if (spritesAvailable) {
