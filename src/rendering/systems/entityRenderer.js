@@ -1836,6 +1836,17 @@ export class EntityRenderer {
        released, because S._aiming had stale state in some flows. */
     const swingActive = S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWING_ANIM_MS;
     const isShielding = !!S._shieldUp;
+    /* v2.3.176 (F4): "in combat" predicate -- when false, weapon and
+       shield render on the player's back instead of in the hand /
+       front of the body. Triggers: actively aiming (right stick),
+       locked onto a monster, holding the shield up, or hit within the
+       last 5 seconds. The damage-window keeps the player "drawn"
+       during brief lulls between hits so the weapon doesn't sheathe
+       mid-fight just because they paused for half a second. */
+    const isInCombat = !!S.autoAttack
+                    || !!S.lockedTarget
+                    || isShielding
+                    || (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000);
     const aimAttackActive = S._aimAngle != null && (S._backpedaling || (!isMoving && S.autoAttack));
     /* useAimDirection drives the slowed + reverse jog animation —
        still want it true during a swing window so the legs stay in
@@ -2190,17 +2201,25 @@ export class EntityRenderer {
         const wpnIconTex = hasWeapon(wpn.type, wpn.gearBase) ? getWeaponTexture(wpn.type, wpn.gearBase) : null;
         if (wpnIconTex) {
           if (weaponSprite.texture !== wpnIconTex) weaponSprite.texture = wpnIconTex;
-          /* Pin the weapon's grip pixel to the hand pixel by setting
-             the Sprite anchor to handles.json's grip coordinate.
-             Falls back to (0.5, bottom) if no handle data — same as
-             the Canvas 2D default `[srcW/2, srcH]`. */
-          const handle = getWeaponHandle(wpn.type, wpn.gearBase);
           const tw = wpnIconTex.width || 64;
           const th = wpnIconTex.height || 64;
-          if (handle) weaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
-          else weaponSprite.anchor.set(0.5, 1.0);
-          weaponSprite.x = wpnX;
-          weaponSprite.y = wpnY;
+          if (isInCombat) {
+            /* In combat — pin grip to hand (existing behavior). */
+            const handle = getWeaponHandle(wpn.type, wpn.gearBase);
+            if (handle) weaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
+            else weaponSprite.anchor.set(0.5, 1.0);
+            weaponSprite.x = wpnX;
+            weaponSprite.y = wpnY;
+          } else {
+            /* Sheathed (F4) — center the sprite over the upper torso
+               and angle it diagonally across the back. Anchor at the
+               center of the image so positioning is by center, not
+               grip. Slight horizontal offset so the weapon reads as
+               worn on one shoulder rather than dead-centered. */
+            weaponSprite.anchor.set(0.5, 0.5);
+            weaponSprite.x = mirror ? 4 : -4;
+            weaponSprite.y = -10;
+          }
           /* Tuned per-weapon target heights so the icon reads at the
              same apparent size as the 64-px sprite body's hand area.
              Greatsword is the longest, staff next, sword/bow shorter.
@@ -2220,10 +2239,17 @@ export class EntityRenderer {
              a swing, rotation alone positions the blade — disable
              mirror, set rotation = swingAng (relative to the sprite's
              rest orientation, around the grip pivot which is the
-             anchor). */
+             anchor). v2.3.176: sheathed mode rotates the blade
+             diagonally across the player's back. */
           if (swingActive) {
             weaponSprite.rotation = swingAng;
             weaponSprite.scale.x = fitScale;
+          } else if (!isInCombat) {
+            /* Sheathed — diagonal across back, hilt high on one
+               shoulder, blade tip low on opposite hip. Mirror flips
+               which shoulder. */
+            weaponSprite.rotation = mirror ? -Math.PI * 0.3 : Math.PI * 0.3;
+            weaponSprite.scale.x = (mirror ? -1 : 1) * fitScale;
           } else {
             weaponSprite.rotation = 0;
             const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
@@ -2285,9 +2311,16 @@ export class EntityRenderer {
              shield's wide frontal wedge reads as a guard pose for
              toward-camera angles and is occluded by the back for
              away-from-camera angles. */
-        const inFront = isShielding
+        /* v2.3.176 (F4): when sheathed, weapon is on player's BACK,
+           so the z-order inverts vs in-hand. Forward facings (player
+           facing camera) -> weapon is behind body (their back is away
+           from us). Back facings -> weapon visible in front (their
+           back is toward us). */
+        const sheathed = !isInCombat;
+        const inFrontInHand = isShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
           : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
+        const inFront = sheathed ? !inFrontInHand : inFrontInHand;
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* Pixi setChildIndex removes the child, then inserts at the
@@ -2311,7 +2344,13 @@ export class EntityRenderer {
          other facing it stays in front (its default order, since it
          was added after spriteBody). */
       if (display._shieldSprite && display._shieldSprite.visible && display._spriteBody) {
-        const shieldBehind = (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+        /* v2.3.176 (F4): shield z-order inverts when sheathed-on-back.
+           In-hand rule: behind body for NW/N/NE (5/6/7). Sheathed
+           rule: behind body for everything EXCEPT NW/N/NE -- those
+           are back facings where the shield-on-back is toward camera. */
+        const shieldBehind = isInCombat
+          ? (facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
+          : !(facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const shIdx   = display.getChildIndex(display._shieldSprite);
         const targetShIdx = shieldBehind
@@ -2402,6 +2441,26 @@ export class EntityRenderer {
             weaponGfx.arc(0, bobY, 20, startA, endA);
             weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.9 });
           }
+        }
+      } else if (!isInCombat && S.rpg && S.rpg.shield && display._shieldSprite) {
+        /* v2.3.176 (F4): shield equipped but not raised and player is
+           out of combat -> show on back. Uses the front-view shield
+           texture, centered on upper torso, no rotation. Smaller than
+           the in-hand size so it reads as "stowed". */
+        const shieldFrame = getShieldFrame(0); // 0 angle -> front view
+        const shieldSprite = display._shieldSprite;
+        if (shieldFrame) {
+          if (shieldSprite.texture !== shieldFrame.tex) shieldSprite.texture = shieldFrame.tex;
+          shieldSprite.x = 0;
+          shieldSprite.y = -6;
+          const sheathedScale = 40 / 64;
+          shieldSprite.scale.x = sheathedScale * (shieldFrame.mirror ? -1 : 1);
+          shieldSprite.scale.y = sheathedScale;
+          shieldSprite.tint = 0xffffff;
+          shieldSprite.alpha = 0.95;
+          shieldSprite.visible = true;
+        } else {
+          shieldSprite.visible = false;
         }
       } else if (display._shieldSprite) {
         display._shieldSprite.visible = false;

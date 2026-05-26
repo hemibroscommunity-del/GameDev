@@ -221,11 +221,14 @@ markerL.style.display = 'none';
 stage.appendChild(markerL);
 
 function autoFitScale() {
-  /* v2.3.174: rescale for 256px frames. scale=2 -> 512px canvas
-     (fits a 390px iPhone with a little horizontal scroll). scale=3-4
-     on bigger screens. User can still zoom in with the + button for
-     pixel-precise clicks. */
-  scale = Math.max(2, Math.min(4, Math.floor(window.innerWidth / FRAME_W)));
+  /* v2.3.176: 256px frames + scale=2 produced a 512px canvas that
+     overflowed iPhone-class viewports, leaving the user staring at
+     just the head. Now default to whichever scale fits the full
+     frame inside the viewport with a small margin. iPhone (390px) →
+     scale 1 (256px canvas, whole player visible). Desktop (1024+) →
+     scale 3-4. User can still bump up via the + button for precision. */
+  const usable = Math.max(FRAME_W, window.innerWidth - 40);
+  scale = Math.max(1, Math.floor(usable / FRAME_W));
 }
 autoFitScale();
 window.addEventListener('resize', () => { autoFitScale(); applyScale(); render(); });
