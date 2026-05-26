@@ -2680,23 +2680,18 @@ export var BroTown = function BroTown(_ref0) {
         BT_AUDIO.beep(500, 0.06, 0.1, 'sine');
         try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
         /* Despawn the picker's local copy of the pile -- they're done
-           with it.  Other recipients keep their copy until their own
-           credit / despawn arrives.  v2.3.113: also immediate-dispose
-           the pile's Pixi children so a frame doesn't slip between
-           "_expired set" and "orphan sweep runs" -- intermittently
-           that gap left mummy/skeleton coin sprites visible. */
+           with it.  v2.3.189: delay the actual despawn by 0.75 s so
+           the pile remains visible while the pickup animation plays.
+           The top-of-filter check in the pickup loop fires the dispose
+           when Date.now() > _despawnAt. */
         if (payload.lootId && S.groundLoot) {
           for (var _glci = 0; _glci < S.groundLoot.length; _glci++) {
             if (S.groundLoot[_glci].lootId === payload.lootId) {
-              S.groundLoot[_glci]._expired = true;
+              S.groundLoot[_glci]._collected = true;
+              S.groundLoot[_glci]._despawnAt = Date.now() + 750;
               break;
             }
           }
-          try {
-            if (pixiRef.current && pixiRef.current.disposeLootById) {
-              pixiRef.current.disposeLootById(payload.lootId);
-            }
-          } catch (_e) {}
         }
       }
 
@@ -9462,8 +9457,19 @@ export var BroTown = function BroTown(_ref0) {
                shouldn't lose them to a 60 s clock). */
             if (loot.isDeathDrop && loot.expiry && Date.now() > loot.expiry) return false;
             if (loot._expired) return false;
+            /* v2.3.189: post-pickup despawn delay -- pile remains visible
+               for 0.75 s after the pickup fires so the player's pickup
+               animation has time to play before the pile pops out. */
+            if (loot._collected && loot._despawnAt && Date.now() > loot._despawnAt) {
+              try { if (pixiRef.current && pixiRef.current.disposeLootRef) pixiRef.current.disposeLootRef(loot); } catch (_e) {}
+              return false;
+            }
             if (!loot.isDeathDrop && !isRemnantSkull(loot.skull) && Date.now() - loot.ts > 60000) return false;
-            var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(P.y - loot.y, 2));
+            /* v2.3.189: pickup origin 15 px above the player center so the
+               trigger zone reads as "around the body" instead of "at the
+               feet" (user said the area felt 15 px too low). */
+            var _pickupOriginY = P.y - 15;
+            var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(_pickupOriginY - loot.y, 2));
 
             /* Fodder slime + variant remnants: skip magnetism + add a
                brief pickup delay so the splat/pile actually lands on
@@ -9485,7 +9491,7 @@ export var BroTown = function BroTown(_ref0) {
             var _amPileRecipient = _deathFFA || !loot.recipients || loot.recipients.includes(S.myId);
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
             var magnetRange = 50;
-            if (!_isFodderRemnant && _amPileRecipient && lDist < magnetRange && lDist > 20) {
+            if (!_isFodderRemnant && _amPileRecipient && !loot._collected && lDist < magnetRange && lDist > 20) {
               var pullStrength = (1 - lDist / magnetRange) * 3;
               var pullAngle = Math.atan2(P.y - loot.y, P.x - loot.x);
               loot.x += Math.cos(pullAngle) * pullStrength;
@@ -9537,7 +9543,7 @@ export var BroTown = function BroTown(_ref0) {
               }
               return true;
             }
-            if (lDist < 20) {
+            if (lDist < 20 && !loot._collected) {
               /* Pickup freeze — 0.5s lock + face camera, immersion + lets pet vacuum nearby loot */
               S._lootFreezeUntil = Date.now() + 500;
               P.dir = 'down';
@@ -9612,12 +9618,13 @@ export var BroTown = function BroTown(_ref0) {
                 try {
                   localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
                 } catch (e) {}
-                try {
-                  if (pixiRef.current && pixiRef.current.disposeLootRef) {
-                    pixiRef.current.disposeLootRef(loot);
-                  }
-                } catch (_e) {}
-                return false;
+                /* v2.3.189: mark for delayed despawn instead of
+                   immediate dispose; the top-of-filter check fires
+                   the dispose after 0.75 s so the pickup animation
+                   has time to play. */
+                loot._collected = true;
+                loot._despawnAt = Date.now() + 750;
+                return true;
               }
 
               /* §5.5 Death drop recovery — pick up scattered inventory items */
@@ -9649,12 +9656,13 @@ export var BroTown = function BroTown(_ref0) {
                 try {
                   localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
                 } catch (e) {}
-                try {
-                  if (pixiRef.current && pixiRef.current.disposeLootRef) {
-                    pixiRef.current.disposeLootRef(loot);
-                  }
-                } catch (_e) {}
-                return false;
+                /* v2.3.189: mark for delayed despawn instead of
+                   immediate dispose; the top-of-filter check fires
+                   the dispose after 0.75 s so the pickup animation
+                   has time to play. */
+                loot._collected = true;
+                loot._despawnAt = Date.now() + 750;
+                return true;
               }
 
               /* Legacy local-pickup path -- runs for dungeons / SP /
@@ -9775,12 +9783,10 @@ export var BroTown = function BroTown(_ref0) {
                  ground after the gold was credited (user-reported on
                  desert-winds mummy drops). Direct ref-dispose closes
                  that race regardless of whether the pile has a lootId. */
-              try {
-                if (pixiRef.current && pixiRef.current.disposeLootRef) {
-                  pixiRef.current.disposeLootRef(loot);
-                }
-              } catch (_e) {}
-              return false; /* remove loot */
+              /* v2.3.189: delayed despawn; see top-of-filter dispose. */
+              loot._collected = true;
+              loot._despawnAt = Date.now() + 750;
+              return true; /* keep visible for 0.75 s after pickup */
             }
             return true;
           });
