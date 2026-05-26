@@ -2429,21 +2429,34 @@ export class EntityRenderer {
          other facing it stays in front (its default order, since it
          was added after spriteBody). */
       if (display._shieldSprite && display._shieldSprite.visible && display._spriteBody) {
-        /* v2.3.187: discriminator is "is the shield on the back"
-           (= shield equipped but not raised), not combat state.
-           In-hand rule (raised): behind body for NW/N/NE (5/6/7).
-           On-back rule: behind body for everything EXCEPT NW/N/NE
-           -- those are back facings where the shield-on-back is
-           toward the camera and should layer in front of the body. */
+        /* v2.3.190: shield z-order rules.
+           In-hand (raised): behind body for NW/N/NE (5/6/7).
+           On-back rule: in front of body for E (0) + N-half (5/6/7);
+           behind body for SE/S/SW/W (1/2/3/4). E joined the in-front
+           set per user request -- with shield behind body on E, only
+           a sliver was visible past the silhouette. */
         const shieldOnBack = !isShielding;
         const shieldBehind = shieldOnBack
-          ? !(facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
+          ? !(facingIdx === 0 || facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
           : (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const shIdx   = display.getChildIndex(display._shieldSprite);
-        const targetShIdx = shieldBehind
-          ? (shIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1))   // before spriteBody
-          : (shIdx > bodyIdx ? bodyIdx + 1 : bodyIdx);               // after spriteBody
+        /* For in-front mode, shield needs to render ABOVE the hand-cap
+           (handCapSprite, added after weaponContainer in v2.3.185).
+           Without this, the hand-cap pixels were drawing over the
+           shield on forward facings where both were visible (user
+           reported NE / E). Target index = right after handCapSprite. */
+        const handCapIdx = display._handCapSprite
+          ? display.getChildIndex(display._handCapSprite)
+          : -1;
+        let targetShIdx;
+        if (shieldBehind) {
+          targetShIdx = shIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1);
+        } else if (handCapIdx >= 0) {
+          targetShIdx = shIdx > handCapIdx ? handCapIdx + 1 : handCapIdx;
+        } else {
+          targetShIdx = shIdx > bodyIdx ? bodyIdx + 1 : bodyIdx;
+        }
         if (shIdx !== targetShIdx) {
           display.setChildIndex(display._shieldSprite, targetShIdx);
         }
