@@ -4419,11 +4419,15 @@ export var BroTown = function BroTown(_ref0) {
       if (!S.rpg._deathTimestamps) S.rpg._deathTimestamps = [];
       if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
       if (S.rpg.achievementPoints === undefined) S.rpg.achievementPoints = 0;
-      /* v2.3.229: existing saves cached maxHp from before armor->HP
+      /* v2.3.230: existing saves cached maxHp from before armor->HP
          shipped (Phase 1, v2.3.227).  Recompute so the armor HP bonus
-         actually lands instead of being frozen at the stored value. */
+         actually lands; nudge current HP by the maxHp delta so the
+         player isn't stuck at 100/120 right after loading. */
+      var _oldMaxHpAtLoad = S.rpg.maxHp || 100;
       recalcDerived(S.rpg);
-      S.rpg.hp = Math.min(S.rpg.hp || S.rpg.maxHp, S.rpg.maxHp);
+      var _maxHpDeltaAtLoad = (S.rpg.maxHp || 100) - _oldMaxHpAtLoad;
+      var _curHp = S.rpg.hp || S.rpg.maxHp;
+      S.rpg.hp = Math.max(1, Math.min(S.rpg.maxHp, _curHp + _maxHpDeltaAtLoad));
       S.rpg.stamina = S.rpg.stamina || S.rpg.maxStamina;
       S.rpg.mana = S.rpg.mana || S.rpg.maxMana;
       S.respawnTimer = Date.now();
