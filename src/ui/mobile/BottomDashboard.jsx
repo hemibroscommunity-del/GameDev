@@ -21,6 +21,7 @@ import { LeaderboardPanel }  from './dash/LeaderboardPanel.jsx';
 import { ClanPanel }         from './dash/ClanPanel.jsx';
 import { FeedbackPanel }     from './dash/FeedbackPanel.jsx';
 import { SettingsPanel }     from './dash/SettingsPanel.jsx';
+import { T2Panel }           from './dash/T2Panel.jsx';
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
 // When idle it renders character stats + a 7-icon row.  When the user
@@ -412,6 +413,8 @@ const PANELS = {
   clan:         { title: 'Clan',        Component: ClanPanel },
   feedback:     { title: 'Feedback',    Component: FeedbackPanel },
   settings:     { title: 'Settings',    Component: SettingsPanel },
+  /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
+  t2:           { title: 'Specs',       Component: T2Panel },
 };
 
 export const BottomDashboard = () => {
