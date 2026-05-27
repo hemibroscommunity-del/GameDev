@@ -16,15 +16,23 @@ Mapping (per visual inspection):
 Output: public/sprites/player/attack-<dir>.png  (5 files, 512x256 each)
 """
 import os
-from PIL import Image
+from PIL import Image, ImageOps
 import numpy as np
+from scipy.ndimage import label as cc_label
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(REPO, 'public', 'sprites', 'player')
 FRAME = 256
 TARGET_H = 230            # how tall the character should be inside a 256 frame
 BOTTOM_PAD = 8            # gap between character feet and bottom of frame
-WHITE_THRESH = 235        # rgb >= this → treat as background, drop alpha to 0
+WHITE_THRESH = 235        # rgb >= this → candidate background
+
+# Direction whose source PNGs were drawn facing the OPPOSITE diagonal
+# (user uploaded SE-facing art into the SW slot).  Each source frame is
+# mirrored horizontally before composition so the SW direction renders
+# a true SW pose, and the SE direction (SW-mirrored at runtime) renders
+# the original SE pose.
+MIRROR_BEFORE = {'southwest'}
 
 PAIRS = {
     'east':      ('0D068A9C-DFC7-4AFC-8A7F-A89C381B7946',
@@ -44,14 +52,30 @@ PAIRS = {
 
 
 def key_and_trim(uuid):
+    """White-key the background while preserving interior white regions
+    (eyes, teeth highlights).  A pixel is set transparent only if it is
+    near-white AND connected to one of the image edges — internal white
+    blobs are surrounded by the character silhouette and stay opaque."""
     img = Image.open(os.path.join(REPO, uuid + '.png')).convert('RGBA')
     arr = np.array(img)
-    mask = (
+    h, w = arr.shape[:2]
+    white_mask = (
         (arr[..., 0] >= WHITE_THRESH)
         & (arr[..., 1] >= WHITE_THRESH)
         & (arr[..., 2] >= WHITE_THRESH)
     )
-    arr[mask, 3] = 0
+    # Connected components of white pixels.  Components whose label
+    # appears on any image edge are "outside" the character and become
+    # transparent; the rest (eyes) keep their alpha.
+    labeled, _ = cc_label(white_mask)
+    edge_labels = set()
+    edge_labels.update(np.unique(labeled[0, :]).tolist())
+    edge_labels.update(np.unique(labeled[-1, :]).tolist())
+    edge_labels.update(np.unique(labeled[:, 0]).tolist())
+    edge_labels.update(np.unique(labeled[:, -1]).tolist())
+    edge_labels.discard(0)
+    outside = np.isin(labeled, list(edge_labels))
+    arr[outside, 3] = 0
     img = Image.fromarray(arr, 'RGBA')
     bbox = img.getbbox()
     if not bbox:
@@ -79,6 +103,8 @@ def main():
             new_w = max(1, round(frame.width * scale))
             new_h = max(1, round(frame.height * scale))
             scaled = frame.resize((new_w, new_h), Image.LANCZOS)
+            if direction in MIRROR_BEFORE:
+                scaled = ImageOps.mirror(scaled)
             ox = i * FRAME + (FRAME - new_w) // 2
             oy = FRAME - new_h - BOTTOM_PAD
             sheet.paste(scaled, (ox, oy), scaled)
