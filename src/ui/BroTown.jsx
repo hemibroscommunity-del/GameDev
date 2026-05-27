@@ -1695,11 +1695,42 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
 
     /* ═══ DURABLE OBJECTS WEBSOCKET CLIENT ═══ */
-    var WS_URL = (window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev') + '/ws?room=brotown';
+    /* Room selection: ?room=X URL query first (escape hatch for
+       testing / friend rendezvous), then GET /api/lobby for the
+       worker's auto-pick (first room under soft cap, mint fresh if
+       all full), else fall back to brotown-1 if the lobby fetch
+       fails.  Resolved once on initial connect, cached for reconnects
+       so we don't bounce between rooms mid-session. */
+    var WS_BASE = window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev';
+    var API_BASE = WS_BASE.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
+    var WS_URL = null;
+    async function resolveRoom() {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        var urlRoom = (p.get('room') || '').trim();
+        if (urlRoom) return urlRoom;
+      } catch (e) {}
+      try {
+        var res = await fetch(API_BASE + '/api/lobby');
+        if (res.ok) {
+          var j = await res.json();
+          if (j && j.room) return j.room;
+        }
+      } catch (e) {}
+      return 'brotown-1';
+    }
     var ws = null;
     var reconnectTimer = null;
     var reconnectDelay = 1000;
     function connect() {
+      if (!WS_URL) {
+        resolveRoom().then(function (room) {
+          WS_URL = WS_BASE + '/ws?room=' + encodeURIComponent(room);
+          S._currentRoom = room;
+          connect();
+        });
+        return;
+      }
       try {
         ws = new WebSocket(WS_URL);
       } catch (e) {
@@ -12951,40 +12982,7 @@ export var BroTown = function BroTown(_ref0) {
       marginBottom: 8,
       boxSizing: 'border-box'
     }
-  }), /*#__PURE__*/React.createElement("input", {
-    value: roomInput,
-    onChange: function onChangeRoom(e) {
-      return setRoomInput(e.target.value);
-    },
-    onKeyDown: function onKeyDownRoom(e) {
-      return e.key === 'Enter' && joinTown();
-    },
-    placeholder: "Room code (optional)",
-    maxLength: 32,
-    style: {
-      width: '100%',
-      padding: '8px 12px',
-      background: 'var(--ink3)',
-      border: '1px solid var(--line)',
-      borderRadius: 8,
-      color: 'var(--txt2)',
-      fontSize: 12,
-      fontWeight: 500,
-      outline: 'none',
-      textAlign: 'center',
-      marginBottom: 4,
-      boxSizing: 'border-box',
-      opacity: 0.85
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'var(--txt3)',
-      textAlign: 'center',
-      marginBottom: 8,
-      fontFamily: 'Source Sans 3, sans-serif'
-    }
-  }, "Leave blank to auto-join the next open room"), /*#__PURE__*/React.createElement("button", {
+  }), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
       marginTop: 12,
