@@ -19,17 +19,14 @@ const polar = (cx, cy, r, deg) => {
   return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
 };
 
-const donutWedge = (cx, cy, rIn, rOut, startDeg, endDeg) => {
-  const [x1, y1] = polar(cx, cy, rOut, startDeg);
-  const [x2, y2] = polar(cx, cy, rOut, endDeg);
-  const [x3, y3] = polar(cx, cy, rIn,  endDeg);
-  const [x4, y4] = polar(cx, cy, rIn,  startDeg);
+const pieWedge = (cx, cy, r, startDeg, endDeg) => {
+  const [x1, y1] = polar(cx, cy, r, startDeg);
+  const [x2, y2] = polar(cx, cy, r, endDeg);
   const large = endDeg - startDeg > 180 ? 1 : 0;
   return (
-    'M' + x1 + ',' + y1 +
-    ' A' + rOut + ',' + rOut + ' 0 ' + large + ' 1 ' + x2 + ',' + y2 +
-    ' L' + x3 + ',' + y3 +
-    ' A' + rIn + ',' + rIn + ' 0 ' + large + ' 0 ' + x4 + ',' + y4 +
+    'M' + cx + ',' + cy +
+    ' L' + x1 + ',' + y1 +
+    ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + x2 + ',' + y2 +
     ' Z'
   );
 };
@@ -85,11 +82,10 @@ export const SpecialChargePie = () => {
      size = 83 (portrait) / 98 (landscape).  Pie sits centered above
      it with an 8 px gap. */
   const joyW = isLandscape ? 98 : 83;
-  const size = 60;
+  const size = 64;
   const cx = size / 2;
   const cy = size / 2;
-  const rOut = 28;
-  const rIn  = 15;
+  const rOut = 30;
   const bottomVal = 'calc(var(--dash-h) + ' + (70 + joyW + 8) + 'px)';
   const rightVal  = (50 + (joyW - size) / 2) + 'px';
 
@@ -100,7 +96,7 @@ export const SpecialChargePie = () => {
   let numberPos = null;
   if (!isFull) {
     const sliceCenterDeg = -90 + (fullCharges + 0.5) * SEG_DEG;
-    const rMid = (rIn + rOut) / 2;
+    const rMid = rOut * 0.62;
     const [nx, ny] = polar(cx, cy, rMid, sliceCenterDeg);
     numberPos = { x: nx, y: ny };
   }
@@ -122,27 +118,25 @@ export const SpecialChargePie = () => {
           const sDeg = -90 + i * SEG_DEG;
           const eDeg = -90 + (i + 1) * SEG_DEG;
           if (i < fullCharges) {
-            return <path key={i} d={donutWedge(cx, cy, rIn, rOut, sDeg, eDeg)} fill={FILL} />;
+            return <path key={i} d={pieWedge(cx, cy, rOut, sDeg, eDeg)} fill={FILL} />;
           }
           if (i === fullCharges && partialFrac > 0) {
             const midDeg = sDeg + SEG_DEG * partialFrac;
             return (
               <g key={i}>
-                <path d={donutWedge(cx, cy, rIn, rOut, sDeg, eDeg)} fill={EMPTY} />
-                <path d={donutWedge(cx, cy, rIn, rOut, sDeg, midDeg)} fill={FILL} />
+                <path d={pieWedge(cx, cy, rOut, sDeg, eDeg)} fill={EMPTY} />
+                <path d={pieWedge(cx, cy, rOut, sDeg, midDeg)} fill={FILL} />
               </g>
             );
           }
-          return <path key={i} d={donutWedge(cx, cy, rIn, rOut, sDeg, eDeg)} fill={EMPTY} />;
+          return <path key={i} d={pieWedge(cx, cy, rOut, sDeg, eDeg)} fill={EMPTY} />;
         })}
         {Array.from({ length: SEGMENTS }).map((_, i) => {
           const a = -90 + i * SEG_DEG;
-          const [x1, y1] = polar(cx, cy, rIn, a);
           const [x2, y2] = polar(cx, cy, rOut, a);
-          return <line key={'d' + i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={DIVIDER} strokeWidth={1.5} />;
+          return <line key={'d' + i} x1={cx} y1={cy} x2={x2} y2={y2} stroke={DIVIDER} strokeWidth={1.5} />;
         })}
         <circle cx={cx} cy={cy} r={rOut} fill="none" stroke={DIVIDER} strokeWidth={1.5} />
-        <circle cx={cx} cy={cy} r={rIn}  fill="none" stroke={DIVIDER} strokeWidth={1.5} />
         {numberPos && (
           <text
             x={numberPos.x}
@@ -151,10 +145,10 @@ export const SpecialChargePie = () => {
             dominantBaseline="central"
             fontFamily="Source Sans 3, sans-serif"
             fontWeight={800}
-            fontSize={12}
+            fontSize={20}
             fill="#ffffff"
-            stroke="rgba(0,0,0,0.8)"
-            strokeWidth={2.5}
+            stroke="rgba(0,0,0,0.85)"
+            strokeWidth={3}
             paintOrder="stroke"
           >
             {fullCharges}
