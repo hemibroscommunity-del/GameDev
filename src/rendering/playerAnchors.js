@@ -36,7 +36,7 @@
  *   express this directly as anchor.set(hx/srcW, hy/srcH).
  */
 
-const ANCHORS_URL = '/sprites/player/anchors.json?v=8';
+const ANCHORS_URL = '/sprites/player/anchors.json?v=9';
 const HANDLES_URL = '/sprites/weapons/handles.json?v=5';
 
 /* v2.3.174: session-2 sprite pipeline shipped 256-px frames and the
