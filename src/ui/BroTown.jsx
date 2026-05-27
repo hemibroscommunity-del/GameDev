@@ -2227,11 +2227,10 @@ export var BroTown = function BroTown(_ref0) {
                  Trade-off: server-side heal sources (cooking, level-up
                  full restore, respawn) are blocked until the player
                  next takes damage, at which point HP resyncs. */
-              /* v2.3.236: worker's _calcMaxHp now folds armor HP in
-                 via _armorHp (Phase 1 server-side).  The +_armorBonus
-                 shim that used to live here was double-counting --
-                 dropped per the T1/T2 stat-redesign spec's "client-side
-                 cleanup" note.  Server's value is authoritative. */
+              /* v2.3.237: worker now mirrors getArmorHp() per the
+                 t1-t2-stat-redesign-server spec.  The v2.3.231 client
+                 fold is retired -- server's hp / maxHp are authoritative
+                 and already include the armor bonus. */
               if (typeof msg.payload.hp === 'number') {
                 S.rpg.hp = msg.payload.hp;
               }
