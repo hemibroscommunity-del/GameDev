@@ -32,6 +32,7 @@ const FRAME_H = 256;
    stand/hit stay fixed since their sheets have known shapes. */
 const STAND_FRAMES = 1;
 const HIT_FRAMES = 6;
+const ATTACK_FRAMES = 2;
 
 /* Base 1 s jog cycle.  Per-direction overrides reflect the cadence
    the user dialed in: north / south slowed so the legs don't blur,
@@ -55,11 +56,17 @@ const HIT_DURATION_MS = 250;
    One sheet, south-only (facing is force-locked to 'down' during the
    freeze, see BroTown.jsx:5297). */
 const PICKUP_DURATION_MS = 500;
+/* v2.3.236: 2-frame raised-fist + punch-out attack sheet per dir.
+   Cycle is the full windup→strike read: ~100 ms hold on the windup
+   (frame 0), ~120 ms on the strike (frame 1), so the whole pose
+   reads in ~220 ms.  Renderer freezes the player at frame 0 during
+   windup and frame 1 during the strike. */
+const ATTACK_DURATION_MS = 220;
 
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
-const POSES = ['stand', 'jog', 'hit', 'pickup'];
+const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
-const VERSION = 47; /* v2.3.188: bumped to invalidate caches after pickup sheet add */
+const VERSION = 48; /* v2.3.236: bumped to invalidate caches after attack sheets land */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
@@ -68,7 +75,7 @@ const VERSION = 47; /* v2.3.188: bumped to invalidate caches after pickup sheet 
  * Graphics until the manifest populates.
  */
 const manifest = {
-  stand: {}, jog: {}, hit: {}, pickup: {},
+  stand: {}, jog: {}, hit: {}, pickup: {}, attack: {},
 };
 
 let loadPromise = null;
@@ -84,6 +91,7 @@ function deriveFrameCount(pose, tex) {
   const width = (tex && tex.source && tex.source.width) || 0;
   if (pose === 'jog' || pose === 'pickup') return Math.max(1, Math.floor(width / FRAME_W));
   if (pose === 'hit') return HIT_FRAMES;
+  if (pose === 'attack') return ATTACK_FRAMES;
   return STAND_FRAMES;
 }
 
@@ -174,6 +182,7 @@ export function cycleMs(pose, dir) {
   if (pose === 'jog') return JOG_DURATION_BY_DIR[dir] || JOG_DURATION_MS;
   if (pose === 'hit') return HIT_DURATION_MS;
   if (pose === 'pickup') return PICKUP_DURATION_MS;
+  if (pose === 'attack') return ATTACK_DURATION_MS;
   return 1000;
 }
 
