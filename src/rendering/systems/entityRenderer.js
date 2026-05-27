@@ -49,7 +49,7 @@ function _ensureHudBarTextures() {
    is the red one."  v2.3.139 shrunk the player heart to 40 (3-digit
    fit); v2.3.141 matched the monster heart to the same size + sprite
    per user request. */
-const PLAYER_HEART_SIZE = 40;
+const PLAYER_HEART_SIZE = 46;
 const MONSTER_HEART_SIZE = 40;
 const PLAYER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
