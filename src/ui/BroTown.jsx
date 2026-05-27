@@ -4414,6 +4414,8 @@ export var BroTown = function BroTown(_ref0) {
       if (!S.rpg.weaponStash) S.rpg.weaponStash = [];
       /* v2.3.210: stash bag for unequipped shields, mirror of weaponStash. */
       if (!S.rpg.shieldStash) S.rpg.shieldStash = [];
+      /* v2.3.228: stash bag for unequipped armor. */
+      if (!S.rpg.armorStash) S.rpg.armorStash = [];
       if (!S.rpg._deathTimestamps) S.rpg._deathTimestamps = [];
       if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
       if (S.rpg.achievementPoints === undefined) S.rpg.achievementPoints = 0;

@@ -16,6 +16,8 @@ import {
   BLACKSMITH_TIERS,
   WOODWORKING_TIERS,
   getFishHealAmount,
+  getArmorHp,
+  recalcDerived,
 } from '../../../data/gameSystems.js';
 
 /* Stat-free damage range + DPS for a weapon. */
@@ -145,6 +147,39 @@ function resolveTarget(target) {
       name: sh.name || 'Shield',
       info: 'Hold to block',
       desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
+      actions: { equip: true },
+    };
+  }
+  if (target.kind === 'armor') {
+    const ar = target.armor;
+    if (!ar) return null;
+    /* v2.3.228: HP contribution at the player's current Vitality. */
+    const S = getState();
+    const vit = (S && S.rpg && S.rpg.vitality) || 0;
+    const hp = getArmorHp(ar, vit);
+    return {
+      lockKey: 'armor',
+      thumb: null,
+      glyph: '\u{1F9BA}',
+      name: ar.name || 'Armor',
+      info: '+' + hp + ' Max HP',
+      desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest',
+      actions: { unequip: true },
+    };
+  }
+  if (target.kind === 'stashArmor') {
+    const ar = target.armor;
+    if (!ar) return null;
+    const S = getState();
+    const vit = (S && S.rpg && S.rpg.vitality) || 0;
+    const hp = getArmorHp(ar, vit);
+    return {
+      lockKey: 'stashArmor_' + (target.index || 0),
+      thumb: null,
+      glyph: '\u{1F9BA}',
+      name: ar.name || 'Armor',
+      info: '+' + hp + ' Max HP',
+      desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest',
       actions: { equip: true },
     };
   }
@@ -323,6 +358,34 @@ export const ItemDetailPopup = () => {
     persist(R);
     itemDetailBus.close();
   };
+  /* v2.3.228: armor unequip / equip.  Recompute derived stats so the
+     HP cap follows the armor swap immediately. */
+  const onUnequipArmor = () => {
+    const S = getState();
+    if (!S || !S.rpg) return;
+    const R = S.rpg;
+    if (!R.armor) { itemDetailBus.close(); return; }
+    if (!R.armorStash) R.armorStash = [];
+    R.armorStash.push(R.armor);
+    R.armor = null;
+    recalcDerived(R);
+    if (R.hp > R.maxHp) R.hp = R.maxHp;
+    persist(R);
+    itemDetailBus.close();
+  };
+  const onEquipStashArmor = () => {
+    const S = getState();
+    if (!S || !S.rpg || !target.armor) return;
+    const R = S.rpg;
+    if (!R.armorStash) R.armorStash = [];
+    const idx = R.armorStash.indexOf(target.armor);
+    if (idx >= 0) R.armorStash.splice(idx, 1);
+    if (R.armor) R.armorStash.push(R.armor);
+    R.armor = target.armor;
+    recalcDerived(R);
+    persist(R);
+    itemDetailBus.close();
+  };
   const onToggleLock = () => {
     if (locked) unlockItem(lockKey);
     else        lockItem(lockKey);
@@ -331,12 +394,14 @@ export const ItemDetailPopup = () => {
 
   /* Final unequip handler: dispatch on target.kind. */
   const onUnequip = () => {
-    if (target.kind === 'shield') onUnequipShield();
-    else                          onUnequipWeapon();
+    if (target.kind === 'shield')      onUnequipShield();
+    else if (target.kind === 'armor')  onUnequipArmor();
+    else                                onUnequipWeapon();
   };
   const onEquip = () => {
-    if (target.kind === 'stashShield') onEquipStashShield();
-    else                                onEquipStashWeapon();
+    if (target.kind === 'stashShield')      onEquipStashShield();
+    else if (target.kind === 'stashArmor')  onEquipStashArmor();
+    else                                     onEquipStashWeapon();
   };
 
   return (

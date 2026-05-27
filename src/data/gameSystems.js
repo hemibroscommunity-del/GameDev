@@ -4651,6 +4651,9 @@ export function createDefaultRpg() {
       name: 'Wood Shield',
     },
     /* {tier, tierMult, gearBase, gem, name, reforgeBonus, hardenBonus} */
+    /* v2.3.228: armor stash mirrors weaponStash/shieldStash so the
+       chest slot supports equip/unequip via the item-detail popup. */
+    armorStash: [],
     /* Active weapon slot: 'melee' or 'ranged' */
     activeSlot: 'melee'
   };
