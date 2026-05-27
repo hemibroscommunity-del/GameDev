@@ -890,8 +890,10 @@ export const BottomDashboard = () => {
                   const slot = R.activeSlot || 'melee';
                   const wpn = (S && R) ? getActiveWeapon(R) : null;
                   const wType = wpn && WEAPON_TYPES[wpn.type];
-                  const slotLabel = slot === 'ranged' ? 'Ranged'
-                                   : slot === 'staff' ? 'Staff' : 'Melee';
+                  /* v2.3.227: uppercased to match the other loadout
+                     labels (SHIELD / AMULET / CHEST / LEGS). */
+                  const slotLabel = slot === 'ranged' ? 'RANGED'
+                                   : slot === 'staff' ? 'STAFF' : 'MELEE';
                   /* v2.3.129: loadout slot uses the real in-world weapon
                      sprite (same artwork the player sees swinging) instead
                      of the small popup-icon placeholder.  URLs mirror
@@ -1037,9 +1039,14 @@ export const BottomDashboard = () => {
                         gap: 3,
                         minHeight: 0,
                       }}>
-                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, equipped: !!R.shield, onTap: R.shield ? onTapShield : undefined })}
-                        {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null,      equipped: !!R.amulet })}
-                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: true, onTap: onTapWeapon })}
+                        {/* v2.3.227: highlight (active) reflects equipped
+                            state for every slot, not just the weapon. The
+                            weapon was always active; now it highlights only
+                            when a weapon is actually equipped (UNARMED ->
+                            default coloring). */}
+                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: R.shield ? onTapShield : undefined })}
+                        {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null,      active: !!R.amulet, equipped: !!R.amulet })}
+                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: !!wpn,    onTap: onTapWeapon })}
                       </div>
                       {/* Row 2 — Chest · Legs.  v2.3.129: row reuses the
                           same 3-column track as Row 1 so chest + legs
@@ -1053,8 +1060,8 @@ export const BottomDashboard = () => {
                         gap: 3,
                         minHeight: 0,
                       }}>
-                        {slotCell({ k: 'chest', label: 'CHEST', iconSrc: armorSrc, equipped: !!R.armor })}
-                        {slotCell({ k: 'legs',  label: 'LEGS',  iconSrc: null })}
+                        {slotCell({ k: 'chest', label: 'CHEST', iconSrc: armorSrc, active: !!R.armor, equipped: !!R.armor })}
+                        {slotCell({ k: 'legs',  label: 'LEGS',  iconSrc: null,      active: !!R.legs })}
                         <div />
                       </div>
                     </div>
