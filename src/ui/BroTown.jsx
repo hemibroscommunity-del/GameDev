@@ -11958,6 +11958,18 @@ export var BroTown = function BroTown(_ref0) {
       status: 'waiting',
       swipeSamples: [],
     };
+    /* v2.3.230: tell the server we started so it can validate the
+       eventual node_strike's timing against the same computeOpenDelay
+       window we just rolled.  Server treats missing extraction_start
+       as a permissive fallback (no rejection), so this is the latency
+       anti-cheat hook, not a hard gate. */
+    if (S.channel) {
+      try {
+        S.channel.send({ type: 'extraction_start', payload: {
+          nodeId: node.id, zone: S.currentZone, skill: skill,
+        }});
+      } catch (e) {}
+    }
     try { BT_AUDIO.beep(440, 0.03, 0.04, 'sine'); } catch (e) {}
   }, []);
 
