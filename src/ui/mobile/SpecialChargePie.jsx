@@ -67,11 +67,11 @@ export const SpecialChargePie = () => {
      size = 83 (portrait) / 98 (landscape).  Indicator sits centered
      above it with an 8 px gap. */
   const joyW = isLandscape ? 98 : 83;
-  const size = 64;
+  const size = 80;
   const cx = size / 2;
   const cy = size / 2;
-  const ringR = 27;
-  const strokeW = 3.5;
+  const ringR = 36;
+  const strokeW = 4;
   const diskR = ringR - strokeW / 2 - 1;
   const C = 2 * Math.PI * ringR;
   const bottomVal = 'calc(var(--dash-h) + ' + (70 + joyW + 8) + 'px)';
@@ -115,10 +115,10 @@ export const SpecialChargePie = () => {
           dominantBaseline="central"
           fontFamily="Source Sans 3, sans-serif"
           fontWeight={800}
-          fontSize={30}
+          fontSize={22}
           fill="#ffffff"
           stroke="rgba(0,0,0,0.85)"
-          strokeWidth={3.5}
+          strokeWidth={3}
           paintOrder="stroke"
         >
           {fullCharges}
