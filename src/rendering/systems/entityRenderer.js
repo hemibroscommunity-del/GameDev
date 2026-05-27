@@ -24,7 +24,7 @@ const COLLISION_GLOW_RANGE_PX = 80;
    the DOM dashboard also uses -- reuse the same `?v=` cache key so
    the browser hits the warm cache instead of issuing a fresh request. */
 const HUD_BAR_VER = '2.3.68';
-const _hudBarTex = { hp: null, mp: null, stam: null, heart: null };
+const _hudBarTex = { hp: null, mp: null, stam: null, heart: null, heartWhite: null };
 let _hudBarLoadStarted = false;
 function _ensureHudBarTextures() {
   if (_hudBarLoadStarted) return;
@@ -33,6 +33,10 @@ function _ensureHudBarTextures() {
   Assets.load(`/icons/ui/bar-mp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
   Assets.load(`/icons/ui/bar-stam.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
   Assets.load(`/icons/popups/heart.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heart = t; }).catch(() => {});
+  /* v2.3.214: white-fill heart for the player HP indicator so we can
+     tint by HP tier (red asset can't be tinted to green/yellow because
+     tint multiplies). */
+  Assets.load(`/icons/popups/heart-white.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
 }
 
 /* Heart-icon HUD: drawn above the head of player + monsters whenever
@@ -449,11 +453,10 @@ function createPlayerDisplay() {
   hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  container.addChild(hudStamTextFull);
   hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
 
-  /* Above-head HP indicator: red heart with the current HP number
-     centered on it.  Added LAST so it draws on top of every other
-     overlay (nameText, mana/energy pills, weapon, shield, etc.).
-     Sized larger than the monster heart and uses a larger font so
-     3-digit HP fits comfortably inside the heart silhouette. */
+  /* Above-head HP indicator: heart with the current HP number centered.
+     v2.3.216: reverted to whole-heart tier tint (green/amber/red) +
+     smooth low-HP pulse.  The right-to-left wipe was tried in v2.3.215
+     and rolled back. */
   const hudHpHeart = new Sprite();
   hudHpHeart.anchor.set(0.5, 0.5);
   hudHpHeart.alpha = 0;
@@ -2981,7 +2984,10 @@ export class EntityRenderer {
     /* Bind textures the first time they resolve. */
     if (_hudBarTex.mp    && d._hudMpSprite.texture   !== _hudBarTex.mp)    d._hudMpSprite.texture   = _hudBarTex.mp;
     if (_hudBarTex.stam  && d._hudStamSprite.texture !== _hudBarTex.stam)  d._hudStamSprite.texture = _hudBarTex.stam;
-    if (_hudBarTex.heart && d._hudHpHeart.texture    !== _hudBarTex.heart) d._hudHpHeart.texture    = _hudBarTex.heart;
+    /* v2.3.214: prefer white-fill heart so we can tint by HP tier;
+       fall back to the red one until heart-white resolves. */
+    const _heartTex = _hudBarTex.heartWhite || _hudBarTex.heart;
+    if (_heartTex && d._hudHpHeart.texture !== _heartTex) d._hudHpHeart.texture = _heartTex;
 
     const W = 64, H = 10;
     const MIN_LABEL_W = 14; /* hide the value-number if its section is narrower */
@@ -3098,18 +3104,34 @@ export class EntityRenderer {
       const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
       heart.alpha = hpNewAlpha;
       heartText.alpha = hpNewAlpha;
+      /* v2.3.214: traffic-light HP tier on the heart fill.
+         >50% green, 25-50% yellow, <25% red.  <10% pulses between
+         the red tint and a brighter highlight so the player notices. */
+      const hpFrac = hpCur / hpMax;
+      let hpTint;
+      if (hpFrac > 0.50)      hpTint = 0x3ec27a; /* green */
+      else if (hpFrac > 0.25) hpTint = 0xf5c542; /* amber */
+      else                    hpTint = 0xe34646; /* red   */
+      if (hpFrac <= 0.10 && hpFrac > 0) {
+        /* 4 Hz pulse: blend toward a hot pink-red highlight. */
+        const pulse = 0.5 + 0.5 * Math.sin(now / 1000 * Math.PI * 4);
+        const hi = 0xff8a8a;
+        const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+        const r = lerp((hpTint >> 16) & 0xff, (hi >> 16) & 0xff, pulse);
+        const g = lerp((hpTint >> 8)  & 0xff, (hi >> 8)  & 0xff, pulse);
+        const b2 = lerp(hpTint & 0xff,        hi & 0xff,        pulse);
+        hpTint = (r << 16) | (g << 8) | b2;
+      }
+      heart.tint = hpTint;
       if (heart.texture && heart.texture.width > 0) {
         heart.width = PLAYER_HEART_SIZE;
         heart.height = PLAYER_HEART_SIZE;
         heart.x = 0;
         /* Heart sits just above the head: head top is around y=-33
            (player sprite radius). Putting heart's bottom edge at -33
-           means center y = -(SIZE/2 + 33).  This stays correct for
-           any heart size -- previously hard-coded y=-HEART worked
-           only because SIZE/2 happened to equal 33 (v2.3.131 with
-           HEART=66); shrinking to 40 broke that coincidence and the
-           bottom overlapped the head until this formula. */
-        heart.y = -(PLAYER_HEART_SIZE / 2 + 33);
+           means center y = -(SIZE/2 + 33).  v2.3.220: lift another
+           5px so the heart floats a little clearer of the head. */
+        heart.y = -(PLAYER_HEART_SIZE / 2 + 38);
         heartText.x = 0;
         /* Nudge the number up into the heart's widest section (~12%
            above the geometric center) so it doesn't ride the bottom V. */
