@@ -2432,6 +2432,37 @@ export const MINIGAME_REWARDS = {
   }
 };
 
+/* ═══ EXTRACTION (v2.3.229+) ═══
+   Replaces the modal minigames with an in-world windowed-swipe loop.
+   Variable open delay creates the dynamic event window; high-level
+   players see it compress, low-level players see it stretch. Jitter
+   keeps the exact ms non-deterministic so the loop can't be cleanly
+   timed by a bot. */
+export const EXTRACT_WINDOW_MS = 1500;       /* swipe window once cue appears */
+export const EXTRACT_CANCEL_R  = 90;         /* px from node before walk-away cancel */
+export const EXTRACT_OPEN_MIN  = 2000;       /* floor at fully over-leveled */
+export const EXTRACT_OPEN_MAX  = 10000;      /* ceiling at very under-leveled */
+export const EXTRACT_OPEN_BASE = 4000;       /* level == tier */
+export const EXTRACT_JITTER    = 0.15;       /* ±15% jitter on each open delay */
+
+export function computeOpenDelay(skillLevel, nodeTier) {
+  var lvl = Number(skillLevel) || 0;
+  var tier = Number(nodeTier) || 1;
+  var gap = tier - lvl;
+  var base;
+  if (gap > 0) {
+    base = EXTRACT_OPEN_BASE + gap * 1200;
+  } else if (gap < 0) {
+    base = EXTRACT_OPEN_BASE + gap * 250;
+  } else {
+    base = EXTRACT_OPEN_BASE;
+  }
+  if (base < EXTRACT_OPEN_MIN) base = EXTRACT_OPEN_MIN;
+  if (base > EXTRACT_OPEN_MAX) base = EXTRACT_OPEN_MAX;
+  var j = 1 + (Math.random() * 2 - 1) * EXTRACT_JITTER;
+  return Math.round(base * j);
+}
+
 /* Award life skill XP */
 export function awardSkillXp(skills, skillName, amount) {
   var skill = skills[skillName];

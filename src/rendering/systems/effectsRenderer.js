@@ -185,6 +185,7 @@ export class EffectsRenderer {
     this._updateGroundLoot(S, now);
     this._updateGroundSplatter(S);
     this._updateGatherNodes(S, now);
+    this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
     this._updateTelegraphs(S, now);
     this._updateOverlays(S, now);
@@ -1811,6 +1812,71 @@ export class EffectsRenderer {
         if (node._pixiTip3) node._pixiTip3.visible = false;
       }
     }
+  }
+
+  /* ── Extraction cue (v2.3.229) ──
+   * Renders the "ready to extract" cue at the active node when
+   * S._extraction.status === 'ready'. Procedural shapes for v1; swap
+   * to pre-baked PNGs later. The cue pulses to attract the eye, and a
+   * small countdown ring around it shows how much of the swipe window
+   * remains. Nothing is drawn during the 'waiting' phase. */
+  _updateExtractionCue(S, now) {
+    const ex = S && S._extraction;
+    if (!ex || ex.status !== 'ready' || !S.gatherNodes) return;
+    const node = S.gatherNodes.find(n => n.id === ex.nodeId);
+    if (!node) return;
+    const gfx = this.nodeGfx;
+    const x = node.x;
+    /* Anchor cue above the node so it doesn't sit on top of the
+       sprite. Trees are tallest so they get the largest offset. */
+    const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
+    const y = node.y - yOff;
+    /* Pulse for eye-grab. */
+    const pulse = 1 + Math.sin(now / 80) * 0.15;
+    /* Window-remaining ring (0..1). */
+    const windowDur = Math.max(1, ex.windowClosesAt - ex.windowOpensAt);
+    const remaining = Math.max(0, (ex.windowClosesAt - now) / windowDur);
+    const ringR = 18 * pulse;
+    /* Background dim disc so the cue reads against bright zones. */
+    gfx.circle(x, y, ringR + 4);
+    gfx.fill({ color: 0x000000, alpha: 0.35 });
+    /* Skill-specific shape. */
+    if (ex.skill === 'fishing') {
+      /* Shadow-fish silhouette: dark blue ellipse with a tail wedge. */
+      gfx.ellipse(x, y, 14 * pulse, 8 * pulse);
+      gfx.fill({ color: 0x1a3a5a, alpha: 0.9 });
+      gfx.moveTo(x - 14 * pulse, y);
+      gfx.lineTo(x - 22 * pulse, y - 6 * pulse);
+      gfx.lineTo(x - 22 * pulse, y + 6 * pulse);
+      gfx.fill({ color: 0x1a3a5a, alpha: 0.9 });
+      /* Eye dot. */
+      gfx.circle(x + 8 * pulse, y - 2, 1.4);
+      gfx.fill({ color: 0xffffff, alpha: 0.9 });
+    } else if (ex.skill === 'woodcutting') {
+      /* Axe icon: brown handle + grey head. */
+      gfx.rect(x - 2, y - 12 * pulse, 4, 24 * pulse);
+      gfx.fill({ color: 0x6a4830, alpha: 0.95 });
+      gfx.moveTo(x - 2, y - 8 * pulse);
+      gfx.lineTo(x - 14 * pulse, y - 4 * pulse);
+      gfx.lineTo(x - 14 * pulse, y + 6 * pulse);
+      gfx.lineTo(x - 2, y + 2 * pulse);
+      gfx.fill({ color: 0xb0b0b0, alpha: 0.95 });
+    } else {
+      /* Mining: pickaxe — same handle, curved double-tip head. */
+      gfx.rect(x - 2, y - 12 * pulse, 4, 24 * pulse);
+      gfx.fill({ color: 0x6a4830, alpha: 0.95 });
+      gfx.moveTo(x - 14 * pulse, y - 8 * pulse);
+      gfx.lineTo(x + 14 * pulse, y - 8 * pulse);
+      gfx.lineTo(x + 10 * pulse, y - 4 * pulse);
+      gfx.lineTo(x - 10 * pulse, y - 4 * pulse);
+      gfx.fill({ color: 0x8a8a8a, alpha: 0.95 });
+    }
+    /* Outer countdown ring -- shrinks as the window closes. */
+    gfx.arc(x, y, ringR + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remaining);
+    gfx.stroke({ color: 0xf5c542, width: 2.5, alpha: 0.9 });
+    /* Steady outer ring so the cue silhouette is always visible. */
+    gfx.circle(x, y, ringR + 6);
+    gfx.stroke({ color: 0xfff2a8, width: 1, alpha: 0.4 });
   }
 
   clear() {

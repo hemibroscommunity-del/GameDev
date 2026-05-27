@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { FishingMinigame } from './FishingMinigame.jsx';
 import { WoodChopMinigame } from './WoodChopMinigame.jsx';
+import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 import { CookingMinigame } from './CookingMinigame.jsx';
 import { IntroVideo } from './IntroVideo.jsx';
 import { MiningMinigame } from './MiningMinigame.jsx';
@@ -123,6 +124,7 @@ const {
   MKT_TIERS, MKT_WOOD_TIERS, createMktOrder, matchMktOrders, estimateMktPrice,
   hasDungeonClear, getMaxDepth,
   discoveredCollisions, discoveredMonsters, discoveredMaterials, visitedZones,
+  computeOpenDelay, EXTRACT_WINDOW_MS, EXTRACT_CANCEL_R,
 } = DATA;
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
@@ -6758,6 +6760,48 @@ export var BroTown = function BroTown(_ref0) {
           });
         }
 
+        /* v2.3.229: extraction state machine tick. Replaces the modal
+           minigames. Transitions waiting -> ready when the variable
+           open delay elapses; ready -> missed when the swipe window
+           closes; cancels silently if the player walks beyond
+           EXTRACT_CANCEL_R. Success is fired from the swipe handler
+           in ExtractionSwipeLayer (Phase 3). */
+        if (S._extraction) {
+          var _ex = S._extraction;
+          var _exNow = Date.now();
+          var _exNode = S.gatherNodes && S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; });
+          if (!_exNode || !_exNode.alive) {
+            /* Node disappeared (server depleted, zone changed) — silent cancel. */
+            S._extraction = null;
+          } else {
+            var _exDx = _exNode.x - P.x, _exDy = _exNode.y - P.y;
+            var _exDist = Math.sqrt(_exDx * _exDx + _exDy * _exDy);
+            if (_exDist > EXTRACT_CANCEL_R) {
+              /* Walk-away cancel — no XP, no node damage, no popup. */
+              S._extraction = null;
+            } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
+              _ex.status = 'ready';
+              try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
+            } else if (_ex.status === 'ready' && _exNow >= _ex.windowClosesAt) {
+              /* Window closed without a swipe — fish swims off, axe vanishes.
+                 Node depletes locally + via server in MP so it respawns on
+                 its normal timer. No XP, no inventory. */
+              _exNode.alive = false;
+              _exNode.respawnAt = _exNow + (_exNode.respawnTime || 30000);
+              if (S._serverGatherNodes && S.channel) {
+                try { S.channel.send({ type: 'node_strike', payload: { id: _exNode.id, zone: S.currentZone, accuracy: 'miss' } }); } catch (e) {}
+              }
+              S.dmgNumbers.push({
+                x: _exNode.x, y: _exNode.y - 10,
+                text: _ex.skill === 'fishing' ? 'Fish escaped' : _ex.skill === 'woodcutting' ? 'Missed' : 'Missed',
+                color: '#ff5e6c', ts: _exNow,
+              });
+              try { BT_AUDIO.beep(200, 0.06, 0.08, 'sawtooth'); } catch (e) {}
+              S._extraction = null;
+            }
+          }
+        }
+
         /* §KB — Detect nearest interactable NPC (for E-key on desktop) */
         S._nearNpc = null;
         if (S.npcs && S.currentZone === 'town') {
@@ -11860,19 +11904,21 @@ export var BroTown = function BroTown(_ref0) {
       BT_AUDIO.beep(200, 0.05, 0.08, 'square');
       return;
     }
+    /* v2.3.229: modal minigames replaced by the windowed-swipe
+       extraction loop. _startExtraction sets up the state machine;
+       the game-tick (search _extraction) drives waiting -> ready ->
+       missed, and the ExtractionSwipeLayer pointer handlers fire
+       _succeedExtraction on a valid swipe. */
     if (node.nodeType === 'fishSpot') {
-      setFishingMini({ node: node, skill: 'fishing', fishSheetSrc: FISH_SPRITE_BY_TIER[node.baseName] || null });
-      BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
+      _startExtraction(node, 'fishing');
       return;
     }
     if (node.nodeType === 'tree') {
-      setWoodChopMini({ node: node, skill: 'woodcutting' });
-      BT_AUDIO.beep(500, 0.03, 0.04, 'sine');
+      _startExtraction(node, 'woodcutting');
       return;
     }
     if (node.nodeType === 'oreVein') {
-      setMiningMini({ node: node, skill: 'mining' });
-      BT_AUDIO.beep(400, 0.03, 0.04, 'sine');
+      _startExtraction(node, 'mining');
       return;
     }
     var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
@@ -11886,6 +11932,50 @@ export var BroTown = function BroTown(_ref0) {
       result: null
     });
     BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
+  }, []);
+
+  /* v2.3.229: extraction-loop entry. Tapping a node funnels through
+     here instead of opening one of the three modal minigames. The
+     game-tick state machine (search _extraction in this file) handles
+     waiting -> ready -> missed transitions; success is fired from
+     the swipe handler. */
+  var _startExtraction = useCallback(function (node, skill) {
+    var S = stateRef.current;
+    if (!S || !node) return;
+    /* One extraction at a time -- tapping a new node cancels the old. */
+    if (S._extraction) S._extraction = null;
+    var R = S.rpg;
+    var skillLvl = (R && R.lifeSkills && R.lifeSkills[skill] && R.lifeSkills[skill].level) || 0;
+    var nodeTier = node.gatherLvl || 1;
+    var openDelay = computeOpenDelay(skillLvl, nodeTier);
+    var now = Date.now();
+    S._extraction = {
+      nodeId: node.id,
+      skill: skill,
+      startedAt: now,
+      windowOpensAt: now + openDelay,
+      windowClosesAt: now + openDelay + EXTRACT_WINDOW_MS,
+      status: 'waiting',
+      swipeSamples: [],
+    };
+    try { BT_AUDIO.beep(440, 0.03, 0.04, 'sine'); } catch (e) {}
+  }, []);
+
+  /* Called from the swipe handler when a valid swipe lands during the
+     'ready' window. Routes to the existing per-skill reward applier
+     so XP + inventory + server node_strike all run unchanged. */
+  var _succeedExtraction = useCallback(function () {
+    var S = stateRef.current;
+    if (!S || !S._extraction || S._extraction.status !== 'ready') return false;
+    var _ex = S._extraction;
+    var node = S.gatherNodes && S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; });
+    if (!node) { S._extraction = null; return false; }
+    var result = { accuracy: 'good' };
+    if (_ex.skill === 'fishing')      _applyFishingReward(node, result);
+    else if (_ex.skill === 'woodcutting') _applyWoodReward(node, result);
+    else if (_ex.skill === 'mining')      _applyMiningReward(node, result);
+    S._extraction = null;
+    return true;
   }, []);
 
   /* applyFishingReward — called when the fishing minigame's reel-up phase
@@ -11907,7 +11997,15 @@ export var BroTown = function BroTown(_ref0) {
        mutation above stays as a client-prediction so the player sees the
        node disappear immediately; the tick delta reconciles on arrival. */
     if (S._serverGatherNodes && S.channel) {
-      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone, accuracy: accuracy } }); } catch (e) {}
+      try {
+        /* v2.3.229: attach extraction swipe fingerprint when present
+           so the server's anomaly tracker (per the v2.3.229 hand-off
+           note) can flag suspicious sessions. Field is optional. */
+        var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
+        var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
+        if (_swipeFp) _np.swipeFp = _swipeFp;
+        S.channel.send({ type: 'node_strike', payload: _np });
+      } catch (e) {}
     }
     /* Inventory grant for the resource itself (fish_clownfish, etc.).
        When the server owns gather nodes the worker's _handleNodeStrike
@@ -12055,7 +12153,15 @@ export var BroTown = function BroTown(_ref0) {
        mutation above stays as a client-prediction so the player sees the
        node disappear immediately; the tick delta reconciles on arrival. */
     if (S._serverGatherNodes && S.channel) {
-      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone, accuracy: accuracy } }); } catch (e) {}
+      try {
+        /* v2.3.229: attach extraction swipe fingerprint when present
+           so the server's anomaly tracker (per the v2.3.229 hand-off
+           note) can flag suspicious sessions. Field is optional. */
+        var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
+        var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
+        if (_swipeFp) _np.swipeFp = _swipeFp;
+        S.channel.send({ type: 'node_strike', payload: _np });
+      } catch (e) {}
     }
     /* Resource inventory grant on the worker when authoritative;
        local fallback for dungeon / SP. */
@@ -12116,7 +12222,15 @@ export var BroTown = function BroTown(_ref0) {
        mutation above stays as a client-prediction so the player sees the
        node disappear immediately; the tick delta reconciles on arrival. */
     if (S._serverGatherNodes && S.channel) {
-      try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone, accuracy: accuracy } }); } catch (e) {}
+      try {
+        /* v2.3.229: attach extraction swipe fingerprint when present
+           so the server's anomaly tracker (per the v2.3.229 hand-off
+           note) can flag suspicious sessions. Field is optional. */
+        var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
+        var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
+        if (_swipeFp) _np.swipeFp = _swipeFp;
+        S.channel.send({ type: 'node_strike', payload: _np });
+      } catch (e) {}
     }
     /* Resource inventory grant on the worker when authoritative;
        local fallback for dungeon / SP. */
@@ -30202,22 +30316,10 @@ export var BroTown = function BroTown(_ref0) {
         BT_AUDIO.beep(200, 0.05, 0.08, 'square');
         return;
       }
-      /* fishSpot / tree route to dedicated minigames instead of the timing bar */
-      if (node.nodeType === 'fishSpot') {
-        setFishingMini({ node: node, skill: 'fishing', fishSheetSrc: FISH_SPRITE_BY_TIER[node.baseName] || null });
-        BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
-        return;
-      }
-      if (node.nodeType === 'tree') {
-        setWoodChopMini({ node: node, skill: 'woodcutting' });
-        BT_AUDIO.beep(500, 0.03, 0.04, 'sine');
-        return;
-      }
-      if (node.nodeType === 'oreVein') {
-        setMiningMini({ node: node, skill: 'mining' });
-        BT_AUDIO.beep(400, 0.03, 0.04, 'sine');
-        return;
-      }
+      /* v2.3.229: windowed-swipe extraction loop replaces the modals. */
+      if (node.nodeType === 'fishSpot')  { _startExtraction(node, 'fishing');     return; }
+      if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
+      if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
       /* Launch timing bar minigame — green zone width scales with skill level */
       var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004); /* 12%–40% of bar */
       var target = 0.2 + Math.random() * 0.6; /* random position 20%–80% */
@@ -30252,21 +30354,10 @@ export var BroTown = function BroTown(_ref0) {
         BT_AUDIO.beep(200, 0.05, 0.08, 'square');
         return;
       }
-      if (node.nodeType === 'fishSpot') {
-        setFishingMini({ node: node, skill: 'fishing', fishSheetSrc: FISH_SPRITE_BY_TIER[node.baseName] || null });
-        BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
-        return;
-      }
-      if (node.nodeType === 'tree') {
-        setWoodChopMini({ node: node, skill: 'woodcutting' });
-        BT_AUDIO.beep(500, 0.03, 0.04, 'sine');
-        return;
-      }
-      if (node.nodeType === 'oreVein') {
-        setMiningMini({ node: node, skill: 'mining' });
-        BT_AUDIO.beep(400, 0.03, 0.04, 'sine');
-        return;
-      }
+      /* v2.3.229: windowed-swipe extraction loop replaces the modals. */
+      if (node.nodeType === 'fishSpot')  { _startExtraction(node, 'fishing');     return; }
+      if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
+      if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
       var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
       var target = 0.2 + Math.random() * 0.6;
       setGatherMini({
@@ -30542,7 +30633,10 @@ export var BroTown = function BroTown(_ref0) {
       fontFamily: 'Source Sans 3,sans-serif',
       letterSpacing: '.05em'
     }
-  }, "\u26A1 STRIKE!")), fishingMini && /*#__PURE__*/React.createElement(FishingMinigame, {
+  }, "\u26A1 STRIKE!")), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
+    stateRef: stateRef,
+    onSuccess: _succeedExtraction
+  }), fishingMini && /*#__PURE__*/React.createElement(FishingMinigame, {
     node: fishingMini.node,
     skill: fishingMini.skill,
     fishSheetSrc: fishingMini.fishSheetSrc,
