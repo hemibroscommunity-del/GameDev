@@ -59,7 +59,7 @@ const PICKUP_DURATION_MS = 500;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup'];
 
-const VERSION = 47; /* v2.3.188: bumped to invalidate caches after pickup sheet add */
+const VERSION = 48; /* v2.3.233: regen hit sheets from new MOV uploads */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
