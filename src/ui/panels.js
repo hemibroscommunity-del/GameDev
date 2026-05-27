@@ -17397,8 +17397,12 @@ export function renderBroTownUI(uiCtx) {
       alignItems: 'center',
       justifyContent: 'center'
     },
-    title: 'Build Snowman (' + SNOWMAN_SNOW_COST + ' snow)',
+    title: 'Build Snowman (disabled)',
     onClick: function onClick() {
+      /* v2.3.224: snow auto-collection retired; button is a no-op
+         until a non-placeholder resource is wired in. */
+      return;
+      // eslint-disable-next-line no-unreachable
       var _R$inventory;
       var S = stateRef.current,
         R = S.rpg;
