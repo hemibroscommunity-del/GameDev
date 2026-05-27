@@ -2268,7 +2268,8 @@ export var BroTown = function BroTown(_ref0) {
               if (typeof msg.payload.activeSlot === 'string' && !S._userCycledSlot) {
                 S.rpg.activeSlot = msg.payload.activeSlot;
               }
-              if ('armor' in msg.payload) S.rpg.armor = msg.payload.armor;
+              var _armorChanged = false;
+              if ('armor' in msg.payload) { S.rpg.armor = msg.payload.armor; _armorChanged = true; }
               /* v2.3.189: never let the server stomp the default wood
                  shield. Pre-v2.3.188 saves on the worker may have
                  shield=null, which would erase the client default
@@ -2278,6 +2279,10 @@ export var BroTown = function BroTown(_ref0) {
                 S.rpg.shield = msg.payload.shield;
               }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
+              /* v2.3.227 (Phase 1): armor swaps change maxHp via
+                 getArmorHp() in recalcDerived.  Recompute so HP stays
+                 consistent after server-echoed equipment changes. */
+              if (_armorChanged) recalcDerived(S.rpg);
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
               /* Quest state mirror (slice 17).  Worker is authoritative
                  for chain progression + reward grants.  Quest completion
@@ -4137,8 +4142,12 @@ export var BroTown = function BroTown(_ref0) {
     if (!rpgState) return;
     var S = stateRef.current;
     if (!S || !S.channel) return;
-    var armorTier = (rpgState.armor && typeof rpgState.armor.tierMult === 'number') ? rpgState.armor.tierMult : 1;
-    var def = (rpgState.endurance || 0) * 0.5 + armorTier * 3;
+    /* v2.3.227 (Phase 1): the old `def` damage-reduction formula is
+       retired.  Armor now contributes flat HP via getArmorHp() inside
+       recalcDerived(), so the stats payload no longer carries def.
+       Send 0 on the wire to keep any older worker that still reads
+       def from crashing on a missing field. */
+    var def = 0;
     var amuBon = rpgState._amuletBonus || null;
     var amuletHpRegen = (amuBon && amuBon.stat === 'hpRegen') ? (amuBon.value || 0) : 0;
     var amuletStaminaRegen = (amuBon && amuBon.stat === 'staminaRegen') ? (amuBon.value || 0) : 0;

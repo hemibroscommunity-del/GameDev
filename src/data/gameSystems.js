@@ -4480,6 +4480,16 @@ export function calcMaxMana(mind) {
   return 100 + mind * 3.5;
 }
 
+/* v2.3.227 (Phase 1 stat redesign): armor now contributes flat HP.
+   Damage-reduction `def` retires.  Each tier's tierMult scales the
+   20 HP base, and Vitality acts as a 1%/point multiplier on top. */
+export const ARMOR_HP_BASE = 20;
+export function getArmorHp(armor, vitality) {
+  if (!armor) return 0;
+  var tm = (typeof armor.tierMult === 'number') ? armor.tierMult : 1.0;
+  return Math.floor(ARMOR_HP_BASE * tm * (1 + (vitality || 0) * 0.01));
+}
+
 /* §4.4 Weapon Damage.  Second arg accepts either:
    - a number (the legacy stat value -- treated as raw input), OR
    - an rpg object (preferred) -- function picks the correct stat
@@ -4653,6 +4663,8 @@ export function createDefaultRpg() {
 /* Recalculate derived stats from allocations */
 export function recalcDerived(rpg) {
   rpg.maxHp = calcMaxHp(rpg.level, rpg.vitality);
+  /* v2.3.227: armor contributes flat HP scaled by Vitality (1% per pt). */
+  rpg.maxHp += getArmorHp(rpg.armor, rpg.vitality);
   rpg.maxStamina = calcMaxStam(rpg.endurance);
   rpg.maxMana = calcMaxMana(rpg.mind);
 
