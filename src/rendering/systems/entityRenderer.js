@@ -2988,49 +2988,17 @@ export class EntityRenderer {
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
 
-    /* v2.3.172: MP bar redesigned as a 5-segment charge meter.
-       Each lit segment = one special attack ready (cost = maxMana/5
-       per BroTown.jsx:doSpecialAttack).  Currently-filling segment
-       shows analog progress to the next charge; segments beyond it
-       are dim.  Implemented by reusing the existing _hudMpEmpty
-       Graphics node and hiding the legacy sprite + 2 text nodes. */
+    /* v2.3.214: in-world MP segment bar replaced by SpecialChargePie
+       anchored above the right joystick (src/ui/mobile/SpecialChargePie).
+       Keep the Graphics node hidden + legacy sprite/text nodes off so
+       no HUD pixels render above the player.  Pickup-pose / death paths
+       still reference _hudMpEmpty so we leave the field in place. */
     {
-      const cur = Math.max(0, Math.min(R.maxMana || 1, R.mana || 0));
-      const max = R.maxMana || 1;
-      const isFull = cur >= max - 0.01;
-      if (!isFull) d._hudMpEmpty._lastNotFullAt = now;
-      const sinceChange = now - (d._hudMpEmpty._lastNotFullAt || 0);
-      const targetAlpha = (!isFull || sinceChange < HOLD_MS) ? 1 : 0;
-      const a = d._hudMpEmpty.alpha != null ? d._hudMpEmpty.alpha : 0;
-      const delta = targetAlpha - a;
-      const newAlpha = a + Math.max(-FADE_STEP, Math.min(FADE_STEP, delta));
-      d._hudMpEmpty.alpha = newAlpha;
-      /* Hide legacy sprite + numeric text; segments replace them. */
+      d._hudMpEmpty.clear();
+      d._hudMpEmpty.alpha = 0;
       if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
       if (d._hudMpTextFull && d._hudMpTextFull.visible) d._hudMpTextFull.visible = false;
       if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
-      /* Draw 5 segments. */
-      const SEGMENTS = 5;
-      const GAP_PX = 1;
-      const segH = 6;
-      const segW = (W - GAP_PX * (SEGMENTS - 1)) / SEGMENTS;
-      const segY0 = -112 - segH / 2;
-      const fillFront = (cur / max) * SEGMENTS;
-      d._hudMpEmpty.clear();
-      for (let i = 0; i < SEGMENTS; i++) {
-        const sx = -W / 2 + i * (segW + GAP_PX);
-        d._hudMpEmpty.rect(sx, segY0, segW, segH);
-        d._hudMpEmpty.fill({ color: 0x222a3a, alpha: 0.85 });
-        if (fillFront >= i + 1) {
-          d._hudMpEmpty.rect(sx, segY0, segW, segH);
-          d._hudMpEmpty.fill({ color: 0x4aa3ff, alpha: 0.95 });
-        } else if (fillFront > i) {
-          d._hudMpEmpty.rect(sx, segY0, segW * (fillFront - i), segH);
-          d._hudMpEmpty.fill({ color: 0x4aa3ff, alpha: 0.95 });
-        }
-        d._hudMpEmpty.rect(sx, segY0, segW, segH);
-        d._hudMpEmpty.stroke({ color: 0x000000, width: 1, alpha: 0.6 });
-      }
     }
 
     /* Stamina pill (legacy single-bar style; unchanged). */
