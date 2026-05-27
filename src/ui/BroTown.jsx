@@ -4419,6 +4419,10 @@ export var BroTown = function BroTown(_ref0) {
       if (!S.rpg._deathTimestamps) S.rpg._deathTimestamps = [];
       if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
       if (S.rpg.achievementPoints === undefined) S.rpg.achievementPoints = 0;
+      /* v2.3.229: existing saves cached maxHp from before armor->HP
+         shipped (Phase 1, v2.3.227).  Recompute so the armor HP bonus
+         actually lands instead of being frozen at the stored value. */
+      recalcDerived(S.rpg);
       S.rpg.hp = Math.min(S.rpg.hp || S.rpg.maxHp, S.rpg.maxHp);
       S.rpg.stamina = S.rpg.stamina || S.rpg.maxStamina;
       S.rpg.mana = S.rpg.mana || S.rpg.maxMana;

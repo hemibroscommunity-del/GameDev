@@ -358,18 +358,22 @@ export const ItemDetailPopup = () => {
     persist(R);
     itemDetailBus.close();
   };
-  /* v2.3.228: armor unequip / equip.  Recompute derived stats so the
-     HP cap follows the armor swap immediately. */
+  /* v2.3.229: armor unequip / equip.  Recompute derived stats so the
+     HP cap follows the armor swap immediately, AND adjust current HP
+     by the maxHp delta so the heart visibly responds to the swap.
+     (Equipping armor heals you for the bonus; unequipping drops you
+     by the same amount, floored at 1 so you don't die from undressing.) */
   const onUnequipArmor = () => {
     const S = getState();
     if (!S || !S.rpg) return;
     const R = S.rpg;
     if (!R.armor) { itemDetailBus.close(); return; }
     if (!R.armorStash) R.armorStash = [];
+    const oldMax = R.maxHp;
     R.armorStash.push(R.armor);
     R.armor = null;
     recalcDerived(R);
-    if (R.hp > R.maxHp) R.hp = R.maxHp;
+    R.hp = Math.max(1, Math.min(R.maxHp, R.hp + (R.maxHp - oldMax)));
     persist(R);
     itemDetailBus.close();
   };
@@ -381,8 +385,10 @@ export const ItemDetailPopup = () => {
     const idx = R.armorStash.indexOf(target.armor);
     if (idx >= 0) R.armorStash.splice(idx, 1);
     if (R.armor) R.armorStash.push(R.armor);
+    const oldMax = R.maxHp;
     R.armor = target.armor;
     recalcDerived(R);
+    R.hp = Math.max(1, Math.min(R.maxHp, R.hp + (R.maxHp - oldMax)));
     persist(R);
     itemDetailBus.close();
   };
