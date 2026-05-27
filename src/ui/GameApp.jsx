@@ -13,6 +13,7 @@ import { InspectCard } from './mobile/InspectCard.jsx';
 import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
 import { BlockRing } from './mobile/BlockRing.jsx';
+import { SpecialChargePie } from './mobile/SpecialChargePie.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { MoreOverlay, moreOverlay } from './mobile/MoreOverlay.jsx';
 import { MasteryNotification } from './mobile/MasteryNotification.jsx';
@@ -438,6 +439,7 @@ export const GameApp = () => {
       {/* the bottom dashboard nests their content inside the --dash-h band. */}
       {/* Their buses still exist and are exercised by debug commands.      */}
       <BlockRing />
+      <SpecialChargePie />
       <XpFlyOverlay />
       <MasteryNotification />
       <DebugOverlay />

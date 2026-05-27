@@ -1021,11 +1021,21 @@ export class EffectsRenderer {
       const container = new Container();
       const bg = new Graphics();
       container.addChild(bg);
-      const baseStyle = hasEmoji ? LABEL_STYLE_EMOJI : LABEL_STYLE;
+      /* v2.3.219: pure black, no drop shadow, no inherited LABEL_STYLE
+         effects.  Spec defined inline so nothing leaks in from
+         LABEL_STYLE (which carries a 2 px black blur). */
       const txt = new Text({
         text: '',
-        style: { ...baseStyle, fontSize: 11, fill: '#1a1428',
-                 wordWrap: true, wordWrapWidth: 140 },
+        style: {
+          fontFamily: hasEmoji
+            ? '"Apple Color Emoji","Segoe UI Emoji","Source Sans 3",sans-serif'
+            : 'Source Sans 3, sans-serif',
+          fontSize: 11,
+          fill: '#000000',
+          align: 'center',
+          wordWrap: true,
+          wordWrapWidth: 140,
+        },
       });
       txt.anchor.set(0.5, 0);
       container.addChild(txt);
