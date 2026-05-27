@@ -78,20 +78,19 @@ PAIRS = {
 
 def key_and_trim(uuid):
     """White-key the background while preserving interior white regions
-    (eyes, teeth highlights).  A pixel is set transparent only if it is
-    near-white AND connected to one of the image edges — internal white
-    blobs are surrounded by the character silhouette and stay opaque."""
+    that look like eyes (small + in the upper part of the figure).
+    Edge-connected whites and interior whites below the head line are
+    both dropped — the latter removes the armpit / under-arm gaps that
+    used to bleed white when the character had a raised fist."""
     img = Image.open(os.path.join(REPO, uuid + '.png')).convert('RGBA')
     arr = np.array(img)
-    h, w = arr.shape[:2]
     white_mask = (
         (arr[..., 0] >= WHITE_THRESH)
         & (arr[..., 1] >= WHITE_THRESH)
         & (arr[..., 2] >= WHITE_THRESH)
     )
-    # Connected components of white pixels.  Components whose label
-    # appears on any image edge are "outside" the character and become
-    # transparent; the rest (eyes) keep their alpha.
+
+    # Pass 1: edge-connected white → outside.
     labeled, _ = cc_label(white_mask)
     edge_labels = set()
     edge_labels.update(np.unique(labeled[0, :]).tolist())
@@ -101,11 +100,74 @@ def key_and_trim(uuid):
     edge_labels.discard(0)
     outside = np.isin(labeled, list(edge_labels))
     arr[outside, 3] = 0
+
+    # Pass 2: kill any remaining interior white below the head line.
+    # The head is the upper ~35 % of the character's vertical extent;
+    # eyes live there.  Anything below that height is armpit / hand-
+    # gap / clothing crevice and should be transparent too.
+    nonzero_ys = np.where(arr[..., 3] > 0)[0]
+    if nonzero_ys.size:
+        top = int(nonzero_ys.min())
+        bottom = int(nonzero_ys.max())
+        head_line = top + int((bottom - top) * 0.35)
+        remaining = white_mask & (arr[..., 3] > 0)
+        if remaining.any():
+            rem_lab, _ = cc_label(remaining)
+            for blob_id in np.unique(rem_lab):
+                if blob_id == 0:
+                    continue
+                ys = np.where(rem_lab == blob_id)[0]
+                if ys.size == 0:
+                    continue
+                if int(ys.mean()) > head_line:
+                    arr[rem_lab == blob_id, 3] = 0
+
     img = Image.fromarray(arr, 'RGBA')
     bbox = img.getbbox()
     if not bbox:
         return None, None
     return img.crop(bbox), bbox
+
+
+# Skin retint: match the stand/jog skin mean so the attack sheets read
+# as the same character.  Same TARGET + classifier used by
+# tools/retint_hit_skin.py.
+SKIN_TARGET = np.array([192, 124, 70], dtype=float)
+
+
+def _skin_mask(rgb_int, alpha):
+    R, G, B = rgb_int[..., 0], rgb_int[..., 1], rgb_int[..., 2]
+    return (
+        (alpha > 200)
+        & (R > G) & (G > B)
+        & (R > 120) & (R < 240)
+        & (G > 70) & (G < 180)
+    )
+
+
+def retint_skin_inplace(sheet_img):
+    """Per-frame skin retint of a horizontal 2-frame attack sheet.
+    Each 256-wide column gets its own delta so a single frame whose
+    skin happened to ship lighter than the rest is brought into line
+    independently."""
+    arr = np.array(sheet_img)
+    h, w = arr.shape[:2]
+    n_frames = max(1, w // h)
+    rgb = arr[..., :3].astype(float)
+    alpha = arr[..., 3]
+    for i in range(n_frames):
+        x0, x1 = i * h, (i + 1) * h
+        sub_rgb = rgb[:, x0:x1]
+        sub_alpha = alpha[:, x0:x1]
+        mask = _skin_mask(sub_rgb.astype(int), sub_alpha)
+        if mask.sum() < 50:
+            continue
+        cur_mean = sub_rgb[mask].mean(axis=0)
+        sub_rgb[mask] += SKIN_TARGET - cur_mean
+        np.clip(sub_rgb, 0, 255, out=sub_rgb)
+        rgb[:, x0:x1] = sub_rgb
+    arr[..., :3] = rgb.astype(np.uint8)
+    return Image.fromarray(arr, 'RGBA')
 
 
 def main():
@@ -139,6 +201,7 @@ def main():
             oy = FRAME - new_h - BOTTOM_PAD
             sheet.paste(scaled, (ox, oy), scaled)
 
+        sheet = retint_skin_inplace(sheet)
         out = os.path.join(OUT_DIR, f'attack-{direction}.png')
         sheet.save(out, optimize=True)
         print(f'WROTE {out}  (scale={scale:.3f}, union_h={union_h})')
