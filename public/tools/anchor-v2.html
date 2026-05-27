@@ -193,7 +193,10 @@
 const FRAME_W = 256;
 const SHEET_VER = Date.now();
 const DIRS  = ['east','north','northeast','south','southwest'];
-const POSES = ['jog','stand'];
+const POSES = ['attack']; /* v2.3.243: limit walk-through to the 10 attack
+  frames so re-annotating doesn't have to scroll past the 100+ jog/stand
+  frames.  Swap back to ['jog','stand','attack'] when you need to retag
+  the older poses. */
 
 // State.
 const sheets = {};
