@@ -8343,6 +8343,10 @@ export var BroTown = function BroTown(_ref0) {
             var _comboPreCount = S.combo.count;
             var _comboBurst = (S._specialAttack && _comboPreCount > 0) ? (1 + (COMBO_BURST_BONUS || 0.15)) : 1;
             var _swingHitTarget = null;
+            /* v2.3.222: sword special covers a full half-circle at 2x
+               reach. Regular swing keeps the v2.3 SWING_RANGE / SWING_ARC. */
+            var _swingRange = S._specialAttack ? SWING_RANGE * 2 : SWING_RANGE;
+            var _swingArc   = S._specialAttack ? Math.PI         : SWING_ARC;
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
@@ -8376,12 +8380,12 @@ export var BroTown = function BroTown(_ref0) {
                           _archHit === 'mummy' || _archHit === 'skeleton' ? 40 :
                           0;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
-              if (mDist > SWING_RANGE) return;
+              if (mDist > _swingRange) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
               var angleDiff = mAngle - baseAngle;
               while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
               while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-              if (Math.abs(angleDiff) < SWING_ARC / 2) {
+              if (Math.abs(angleDiff) < _swingArc / 2) {
                 var _ELEMENTS$collisionRe2;
                 m._hitThisSwing = true;
                 if (!_swingHitTarget) _swingHitTarget = m;
@@ -8740,7 +8744,7 @@ export var BroTown = function BroTown(_ref0) {
                    bounce back amount.").  Crit sits between normal
                    and special. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                var kbForce = S._specialAttack ? 60 : isCrit ? 45 : 30;
+                var kbForce = S._specialAttack ? 180 : isCrit ? 45 : 30;
                 /* Collision adds extra knockback */
                 var collisionKb = collisionResult ? 6 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
@@ -10350,6 +10354,8 @@ export var BroTown = function BroTown(_ref0) {
                 _mProjY = m.y - 48;
                 _hitR = a.isStaff ? 50 : 40;
               }
+              /* v2.3.222: special arrow has 3x damage radius. */
+              if (a.isSpecial) _hitR *= 3;
               if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
                 a.hitIds.add(m.id);
                 var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;

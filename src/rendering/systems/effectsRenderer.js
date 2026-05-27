@@ -635,14 +635,16 @@ export class EffectsRenderer {
         /* Heavy bow shot — draw the arrow normally with a bright
            element-tinted halo around it.  Reads as a powered shot
            (clearly distinct from a regular arrow) without hiding the
-           arrow itself in an orb. */
-        gfx.circle(a._renderX, a._renderY, 13);
+           arrow itself in an orb.  v2.3.222: 3x scale per user
+           request so the special bow shot reads as much heavier and
+           its damage radius matches the visual. */
+        gfx.circle(a._renderX, a._renderY, 39);
         gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.25 });
-        gfx.circle(a._renderX, a._renderY, 9);
+        gfx.circle(a._renderX, a._renderY, 27);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.45 });
-        gfx.circle(a._renderX, a._renderY, 5);
+        gfx.circle(a._renderX, a._renderY, 15);
         gfx.fill({ color: 0xfff2a8, alpha: fadeA * 0.55 });
-        this._drawArrow(gfx, a._renderX, a._renderY, a.ang + bend, elemColor, fadeA);
+        this._drawArrow(gfx, a._renderX, a._renderY, a.ang + bend, elemColor, fadeA, 3);
       } else if (a.isSpecial || a.ice) {
         /* Staff special / ice — bigger yellow glow ring so specials
            read as distinct from regular projectiles. Three concentric
@@ -827,9 +829,12 @@ export class EffectsRenderer {
    *  strip + brown arrowhead + brown fletching.  Matches the stuck-
    *  arrow rendering so a live arrow and a stuck one read as the
    *  same wooden missile. */
-  _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha) {
+  _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha, scale) {
     const c = Math.cos(ang), s = Math.sin(ang);
-    const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
+    /* v2.3.222: optional scale param for the special-bow path so the
+       arrow grows along with its halo + damage radius. Default 1. */
+    const k = scale || 1;
+    const pt = (lx, ly) => ({ x: cx + lx * k * c - ly * k * s, y: cy + lx * k * s + ly * k * c });
     /* Shaft 16 px long, 3 px wide — dark brown wood. */
     this._fillPoly(gfx, [pt(-8, -1.5), pt(8, -1.5), pt(8, 1.5), pt(-8, 1.5)], 0x3a2210, alpha);
     /* Highlight strip across the top half of the shaft for relief —
