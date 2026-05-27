@@ -12895,7 +12895,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "Action RPG"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
-      color: 'var(--txt3)',
+      color: '#ffffff',
       fontFamily: 'Source Sans 3, sans-serif',
       letterSpacing: '.05em',
       marginBottom: 12,
