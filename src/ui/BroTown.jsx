@@ -5332,7 +5332,13 @@ export var BroTown = function BroTown(_ref0) {
         /* Dodge roll — cancelled mid-roll if the player just died. */
         if (S._dodgeRoll && !_playerDead) {
           var rollAge = Date.now() - S._dodgeRoll.startTime;
-          if (rollAge < 200) {
+          /* v2.3.232 (Phase 2): Endurance lengthens the dodge i-frame
+             window with diminishing returns.  Base 250ms, +1ms per
+             Endurance up to 500ms.  Damage sites read truthiness of
+             _dodgeRoll for invuln, so this directly stretches the
+             invuln window in sync with the movement window. */
+          var _dodgeMs = 250 + Math.min(((S.rpg && S.rpg.endurance) || 0), 250);
+          if (rollAge < _dodgeMs) {
             S.player.x += Math.cos(S._dodgeRoll.angle) * 6;
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
           } else S._dodgeRoll = null;
@@ -7683,14 +7689,17 @@ export var BroTown = function BroTown(_ref0) {
                 if (distToP < 20 && !invuln) {
                   var chargeDmg = Math.ceil(m.dmg * 1.5);
                   var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
-                  var _finalDmg2 = _blocked2 ? Math.max(1, Math.ceil(chargeDmg * (1 - calcBlockReduction(_R6.fortification, _R6.shield)))) : chargeDmg;
+                  /* v2.3.232 (Phase 2): block is full negation now; the
+                     old partial-block reduction via calcBlockReduction
+                     was the last site reading the Fortification scale. */
+                  var _finalDmg2 = _blocked2 ? 0 : chargeDmg;
                   _R6.hp -= _finalDmg2;
                   trackMonsterDamage(S, m.id, _finalDmg2);
                   if (window.__dmgLog) try { console.log('[dmg] boss-charge', { amt: _finalDmg2, archetype: m.archetype || m.type, blocked: _blocked2 }); } catch (e) {}
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 20,
-                    text: '-' + _finalDmg2,
+                    text: _blocked2 ? 'BLOCK' : '-' + _finalDmg2,
                     color: '#ea580c',
                     ts: Date.now()
                   });
@@ -9869,12 +9878,15 @@ export var BroTown = function BroTown(_ref0) {
              docs/specs/disable-hp-regen-server.md.
              Restoration coefficient + regen-buff multiplier left intact in
              case food-buff or amulet design adds HP heals back later. */
-          /* Stamina regen — 10/s base (10 sec full recharge) × Restoration */
+          /* Stamina regen — 10/s base (10 sec full recharge) × Restoration.
+             v2.3.232 (Phase 2): Endurance also multiplies the regen rate.
+             0.2% per point up to 2x at E=500, on top of Restoration. */
           if (_R7.stamina < _R7.maxStamina && !S._serverMonsters) {
             var _R7$_amuletBonus;
             var stRestMult = 1 + (_R7.restoration || 0) * 0.001;
+            var stEndMult = 1 + (_R7.endurance || 0) * 0.002;
             var stAmuletMult = ((_R7$_amuletBonus = _R7._amuletBonus) === null || _R7$_amuletBonus === void 0 ? void 0 : _R7$_amuletBonus.stat) === 'staminaRegen' ? 1 + _R7._amuletBonus.value / 100 : 1;
-            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stRestMult * regenMult * stAmuletMult);
+            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stRestMult * stEndMult * regenMult * stAmuletMult);
           }
           /* Mana regen — §3.4: OOC 2.5%/s after 2s × Restoration */
           if (_R7.mana < _R7.maxMana && Date.now() - S.lastDamageTaken > 2000 && !S._serverMonsters) {
@@ -9886,9 +9898,11 @@ export var BroTown = function BroTown(_ref0) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
           var _R8 = S.rpg;
           /* In-combat HP regen disabled (v2.3.149) -- see OOC block above. */
-          /* Stamina always regens — 10/sec */
+          /* Stamina always regens — 10/sec.
+             v2.3.232 (Phase 2): Endurance multiplies combat regen too. */
           if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
-            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60);
+            var _stEndMult8 = 1 + (_R8.endurance || 0) * 0.002;
+            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8);
           }
           /* Slow mana regen in combat — 1%/s */
           if (_R8.mana < _R8.maxMana && !S._serverMonsters) {
