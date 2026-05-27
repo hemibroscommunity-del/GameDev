@@ -55,8 +55,8 @@ function weaponThumb(wpn) {
 }
 
 function shieldThumb(shield) {
-  const v = '2.3.210';
-  if (shield && shield.gearBase === 'wood') return `/sprites/weapons/shields/Wood.png?v=${v}`;
+  const v = '2.3.211';
+  if (shield && shield.gearBase === 'wood') return `/sprites/shields/wood-shield-front.png?v=${v}`;
   return null; /* no metal-shield art slot yet; popup falls back to glyph */
 }
 

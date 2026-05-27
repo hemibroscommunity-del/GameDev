@@ -902,7 +902,11 @@ export const BottomDashboard = () => {
                      in-world. Mirrors the SHEETS table in
                      src/rendering/weaponSprites.js. */
                   const isWoodSword = slot === 'melee' && wpn && wpn.gearBase === 'wood';
-                  const slotIconSrc = slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.3.173'
+                  /* v2.3.211: gate icon on having a weapon equipped --
+                     after Unequip, R[slot] is null so wpn is null and
+                     the cell should show no icon (UNARMED). */
+                  const slotIconSrc = !wpn ? null
+                                     : slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.3.173'
                                      : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.png?v=2.3.173'
                                      : isWoodSword     ? '/sprites/weapons/swords/Bamboo.png?v=2.3.173'
                                      :                    '/sprites/weapons/swords/Sword1.png?v=2.3.173';

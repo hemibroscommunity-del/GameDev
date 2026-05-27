@@ -294,9 +294,9 @@ const StashTile = ({ kind, obj, index }) => {
       itemDetailBus.open({ kind: 'stashWeapon', wpn: obj, index, anchor });
     }
   };
-  const v = '2.3.210';
+  const v = '2.3.211';
   const thumb = kind === 'stashShield'
-    ? (obj && obj.gearBase === 'wood' ? `/sprites/weapons/shields/Wood.png?v=${v}` : null)
+    ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.png?v=${v}` : null)
     : obj && obj.type === 'bow'   ? `/sprites/weapons/bows/Bow2.png?v=${v}`
     : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${v}`
     : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/Bamboo.png?v=${v}`
