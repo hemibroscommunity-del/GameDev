@@ -41,9 +41,14 @@ WHITE_THRESH = 235        # rgb >= this → candidate background
 #   - 7475A0C4 was labelled SW2 but actually depicts a W pose:
 #     mirrored to become the E strike.
 PAIRS = {
+    # v2.3.240: east + SW mirrors flipped per user feedback (in-game E
+    # and SE were reading flipped).  SW source pair is what produces
+    # SE at runtime (resolveDirection mirrors the SW sheet for SE), so
+    # flipping the build-time flags on the SW pair changes how both
+    # the SW and SE directions render.
     'east': (
-        ('0D068A9C-DFC7-4AFC-8A7F-A89C381B7946', False),
-        ('7475A0C4-4C37-402B-A469-8F29CD3A1BDA', True),
+        ('0D068A9C-DFC7-4AFC-8A7F-A89C381B7946', True),
+        ('7475A0C4-4C37-402B-A469-8F29CD3A1BDA', False),
     ),
     'north': (
         ('9C78C86C-4C3C-48BD-8AC1-F2F0B059A6AB', False),
@@ -58,8 +63,8 @@ PAIRS = {
         ('4F61C7E9-F143-466E-868F-828D177DD4FE', False),
     ),
     'southwest': (
-        ('B9D7D86E-AEB8-4E35-B0E3-385AAE463EEC', True),
-        ('1E265426-853D-4AB2-B50D-C9A8E2F25963', False),
+        ('B9D7D86E-AEB8-4E35-B0E3-385AAE463EEC', False),
+        ('1E265426-853D-4AB2-B50D-C9A8E2F25963', True),
     ),
 }
 
