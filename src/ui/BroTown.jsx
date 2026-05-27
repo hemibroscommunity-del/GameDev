@@ -1195,14 +1195,6 @@ export var BroTown = function BroTown(_ref0) {
     _useState192 = _slicedToArray(_useState191, 2),
     nameInput = _useState192[0],
     setNameInput = _useState192[1];
-  /* Optional room code -- pre-seeded from localStorage so a returning
-     player who pinned a friend's room sees it on next load. */
-  var _useStateRoom = useState(function () {
-    try { return (localStorage.getItem('bt_room_code') || '').trim(); } catch (e) { return ''; }
-  });
-  var _useStateRoomArr = _slicedToArray(_useStateRoom, 2);
-  var roomInput = _useStateRoomArr[0];
-  var setRoomInput = _useStateRoomArr[1];
   var _useState193 = useState(null),
     _useState194 = _slicedToArray(_useState193, 2),
     selectedAvatar = _useState194[0],
@@ -4321,6 +4313,12 @@ export var BroTown = function BroTown(_ref0) {
       if (savedRpg && savedRpg.power !== undefined) {
         /* New stat system — load directly */
         S.rpg = savedRpg;
+        /* v2.3.224: retire the legacy "snow" inventory placeholder
+           from any save written before the auto-collection was
+           removed, so the bag no longer renders a ◇ for it. */
+        if (S.rpg.inventory && S.rpg.inventory.snow != null) {
+          delete S.rpg.inventory.snow;
+        }
         recalcDerived(S.rpg);
       } else {
         /* Either no save or old system — create fresh with new system */
@@ -5358,18 +5356,9 @@ export var BroTown = function BroTown(_ref0) {
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost') terrainSlide = 0.92; /* ice: adds momentum/slide */
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'venom' && footTile === 0) terrainMult *= 0.85; /* swamp: heavy on grass */
 
-        /* Frost zone: walking on sand (snow drifts) silently adds snow
-           to inventory (used by the snowman ability).  The "+1 snow"
-           floater was removed per user request -- the inventory
-           addition still happens so snowballs/snowmen remain craftable,
-           but the popup spam is gone. */
-        if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost' && footTile === 6 && S.rpg) {
-          if (!S._lastSnowCollect || Date.now() - S._lastSnowCollect > 2000) {
-            S._lastSnowCollect = Date.now();
-            if (!S.rpg.inventory) S.rpg.inventory = {};
-            S.rpg.inventory.snow = (S.rpg.inventory.snow || 0) + 1;
-          }
-        }
+        /* v2.3.224: frost-zone snow auto-collection removed.  The
+           "snow" inventory key was a placeholder item with no thumb
+           art and was retired alongside the Snowman build button. */
 
         /* Agility-based movement speed */
         var baseSpd = S.rpg ? calcMoveSpeed(S.rpg.agility || 0) / 5.0 * SPEED : SPEED;
@@ -12870,17 +12859,12 @@ export var BroTown = function BroTown(_ref0) {
       localStorage.removeItem('bt_codex');
       localStorage.removeItem('bt_player');
       /* Room state -- always clear sticky on a fresh PLAY click so we
-         re-pick / re-resolve.  The code field is set fresh below from
-         the welcome-modal input (or cleared if left blank). */
+         auto-route to the next open room.  v2.3.222 removed the room
+         code input field; bt_room_code stays cleared so wsClient never
+         locks to a specific room. */
       localStorage.removeItem('bt_room');
       localStorage.removeItem('bt_room_code');
     } catch (e) {}
-    /* Persist optional room code from the welcome modal -- wsClient
-       picks it up on connect and locks to that room (no auto-route). */
-    var _roomCodeTrim = (roomInput || '').trim();
-    if (_roomCodeTrim) {
-      try { localStorage.setItem('bt_room_code', _roomCodeTrim); } catch (e) {}
-    }
     /* Fresh RPG state for all players */
     S.rpg = createDefaultRpg();
     recalcDerived(S.rpg);
@@ -12953,7 +12937,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "Action RPG"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
-      color: 'var(--txt3)',
+      color: '#ffffff',
       fontFamily: 'Source Sans 3, sans-serif',
       letterSpacing: '.05em',
       marginBottom: 12,
@@ -29431,8 +29415,12 @@ export var BroTown = function BroTown(_ref0) {
       alignItems: 'center',
       justifyContent: 'center'
     },
-    title: 'Build Snowman (' + SNOWMAN_SNOW_COST + ' snow)',
+    title: 'Build Snowman (disabled)',
     onClick: function onClick() {
+      /* v2.3.224: snow auto-collection retired; button is a no-op
+         until a non-placeholder resource is wired in. */
+      return;
+      // eslint-disable-next-line no-unreachable
       var _R$inventory;
       var S = stateRef.current,
         R = S.rpg;

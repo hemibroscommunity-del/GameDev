@@ -830,21 +830,9 @@ export function setupGameLoop(ctx) {
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost') terrainSlide = 0.92; /* ice: adds momentum/slide */
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'venom' && footTile === 0) terrainMult *= 0.85; /* swamp: heavy on grass */
 
-        /* Frost zone: walking on sand (snow drifts) collects snow */
-        if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost' && footTile === 6 && S.rpg) {
-          if (!S._lastSnowCollect || Date.now() - S._lastSnowCollect > 2000) {
-            S._lastSnowCollect = Date.now();
-            if (!S.rpg.inventory) S.rpg.inventory = {};
-            S.rpg.inventory.snow = (S.rpg.inventory.snow || 0) + 1;
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 20,
-              text: '+1 snow',
-              color: '#a0d8f0',
-              ts: Date.now()
-            });
-          }
-        }
+        /* v2.3.224: frost-zone snow auto-collection removed.  The
+           "snow" inventory key was a placeholder item with no thumb
+           art and was retired alongside the Snowman build button. */
 
         /* Agility-based movement speed */
         var baseSpd = S.rpg ? calcMoveSpeed(S.rpg.agility || 0) / 5.0 * SPEED : SPEED;
