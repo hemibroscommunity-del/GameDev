@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { controlsTutorialBus } from './controlsTutorialBus.js';
 
 // "More" overlay: opened by the wheel's 6 o'clock slot. Surfaces every
 // legacy panel that doesn't have a dedicated wheel slot, so hiding the
@@ -13,6 +14,9 @@ const COL = {
 };
 
 const ITEMS = [
+  /* v2.3.224: Controls at the top so the help entry is always
+     visible in short preview windows. */
+  { e: '?',  label: 'Controls',     bus: 'controlsTutorial' },
   { e: '⚔️', label: 'Stats',        legacy: 'stats' },
   { e: '📊', label: 'Skills',       legacy: 'skills' },
   { e: '📖', label: 'Encyclopedia', legacy: 'encyclopedia' },
@@ -42,6 +46,7 @@ export const MoreOverlay = () => {
 
   const tap = (item) => {
     moreOverlay.close();
+    if (item.bus === 'controlsTutorial') { controlsTutorialBus.open(); return; }
     const fn = window.__broLegacyUI?.[item.legacy];
     if (fn) fn();
     else console.log('[more] no handler for', item.legacy);
