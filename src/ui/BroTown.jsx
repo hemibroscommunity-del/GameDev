@@ -2227,18 +2227,16 @@ export var BroTown = function BroTown(_ref0) {
                  Trade-off: server-side heal sources (cooking, level-up
                  full restore, respawn) are blocked until the player
                  next takes damage, at which point HP resyncs. */
-              /* v2.3.231: server's maxHp formula doesn't yet include
-                 armor HP (Phase 1 client-only).  Fold the armor bonus
-                 in so the player sees the equipped HP.  Both hp and
-                 maxHp get the bonus so the bar fills correctly.  In
-                 MP, server still drives damage events; the bonus is
-                 effectively a client-side "armor buffer". */
-              var _armorBonus = getArmorHp(S.rpg.armor, S.rpg.vitality);
+              /* v2.3.236: worker's _calcMaxHp now folds armor HP in
+                 via _armorHp (Phase 1 server-side).  The +_armorBonus
+                 shim that used to live here was double-counting --
+                 dropped per the T1/T2 stat-redesign spec's "client-side
+                 cleanup" note.  Server's value is authoritative. */
               if (typeof msg.payload.hp === 'number') {
-                S.rpg.hp = msg.payload.hp + _armorBonus;
+                S.rpg.hp = msg.payload.hp;
               }
               if (typeof msg.payload.maxHp === 'number') {
-                S.rpg.maxHp = msg.payload.maxHp + _armorBonus;
+                S.rpg.maxHp = msg.payload.maxHp;
               }
               if (typeof msg.payload.stamina === 'number') {
                 S.rpg.stamina = msg.payload.stamina;
@@ -4177,6 +4175,10 @@ export var BroTown = function BroTown(_ref0) {
       rpgState.agility || 0, rpgState.mind || 0, rpgState.ferocity || 0,
       rpgState.elementalMastery || 0, rpgState.fortification || 0,
       rpgState.restoration || 0, rpgState.influence || 0,
+      /* v2.3.236: include armor in the dedupe so armor swaps trigger
+         a fresh stats_update -- otherwise the worker's view of armor
+         goes stale and its echoed player_state silently re-equips. */
+      rpgState.armor ? JSON.stringify(rpgState.armor) : 'noarmor',
     ].join('|');
     if (S._lastStatsUpdateSig === _sig) return;
     S._lastStatsUpdateSig = _sig;
@@ -4191,11 +4193,16 @@ export var BroTown = function BroTown(_ref0) {
           maxHp: rpgState.maxHp || 100,
           maxStamina: rpgState.maxStamina || 100,
           maxMana: rpgState.maxMana || 100,
-          /* Equipment-derived (still client-trusted because amulet/armor
-             stores aren't server-migrated yet). */
+          /* Equipment-derived (still client-trusted because amulet
+             store isn't server-migrated yet). */
           def: def,
           amuletHpRegen: amuletHpRegen,
           amuletStaminaRegen: amuletStaminaRegen,
+          /* v2.3.236: armor object (or null on unequip) -- worker
+             clamps tierMult + recomputes maxHp via _armorHp.  Without
+             this the armorStash flow is purely local and the worker's
+             ps.armor stays stale. */
+          armor: rpgState.armor || null,
           /* Raw stats — worker clamps each to level * 10 + 20.  Cheater
              pushing R.vitality = 99999 gets clamped on the server,
              which then recomputes maxHp from the clamped value.  T1

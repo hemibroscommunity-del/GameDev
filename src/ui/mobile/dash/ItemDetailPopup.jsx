@@ -358,23 +358,55 @@ export const ItemDetailPopup = () => {
     persist(R);
     itemDetailBus.close();
   };
-  /* v2.3.229: armor unequip / equip.  Recompute derived stats so the
-     HP cap follows the armor swap immediately, AND adjust current HP
-     by the maxHp delta so the heart visibly responds to the swap.
-     (Equipping armor heals you for the bonus; unequipping drops you
-     by the same amount, floored at 1 so you don't die from undressing.) */
+  /* v2.3.236: armor swap is HP-neutral.  Recompute maxHp from the
+     new armor; only CAP current HP to the new max (no delta-add or
+     delta-subtract).  Unequipping no longer secretly costs HP and
+     equipping no longer secretly heals -- matches the user's mental
+     model and stops the visible 120 -> 80 -> 100 hp drift on a
+     local-only armor cycle.
+     Also pushes the armor change into React state via the helper on
+     window._gameState (set by BroTown) so the stats_update useEffect
+     fires and the worker's ps.armor stays in sync.  Without that,
+     the worker's next player_state echo re-applies the old armor and
+     the local unequip silently undoes itself. */
+  const _syncArmorChange = (R) => {
+    /* Direct stats_update push -- popup mutates S.rpg without going
+       through setRpgState, so the React-driven stats_update useEffect
+       in BroTown doesn't fire on its own.  Send the armor change
+       (with current raw stats so the server has everything it needs
+       to recompute maxes correctly) explicitly here. */
+    const S = getState();
+    if (S && S.channel) {
+      try {
+        S.channel.send({ type: 'stats_update', payload: {
+          armor: R.armor || null,
+          maxHp: R.maxHp || 100,
+          vitality: R.vitality || 0,
+          power: R.power || 0,
+          endurance: R.endurance || 0,
+          agility: R.agility || 0,
+          mind: R.mind || 0,
+          ferocity: R.ferocity || 0,
+          elementalMastery: R.elementalMastery || 0,
+          fortification: R.fortification || 0,
+          restoration: R.restoration || 0,
+          influence: R.influence || 0,
+        }});
+      } catch (e) {}
+    }
+  };
   const onUnequipArmor = () => {
     const S = getState();
     if (!S || !S.rpg) return;
     const R = S.rpg;
     if (!R.armor) { itemDetailBus.close(); return; }
     if (!R.armorStash) R.armorStash = [];
-    const oldMax = R.maxHp;
     R.armorStash.push(R.armor);
     R.armor = null;
     recalcDerived(R);
-    R.hp = Math.max(1, Math.min(R.maxHp, R.hp + (R.maxHp - oldMax)));
+    R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-subtract
     persist(R);
+    _syncArmorChange(R);
     itemDetailBus.close();
   };
   const onEquipStashArmor = () => {
@@ -385,11 +417,11 @@ export const ItemDetailPopup = () => {
     const idx = R.armorStash.indexOf(target.armor);
     if (idx >= 0) R.armorStash.splice(idx, 1);
     if (R.armor) R.armorStash.push(R.armor);
-    const oldMax = R.maxHp;
     R.armor = target.armor;
     recalcDerived(R);
-    R.hp = Math.max(1, Math.min(R.maxHp, R.hp + (R.maxHp - oldMax)));
+    R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-heal
     persist(R);
+    _syncArmorChange(R);
     itemDetailBus.close();
   };
   const onToggleLock = () => {
