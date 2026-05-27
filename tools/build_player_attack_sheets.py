@@ -47,9 +47,11 @@ PAIRS = {
     # mirror flag on the strike frame (or windup, mutatis mutandis)
     # matches what the user labelled as correct on the source-frame
     # review.
+    # v2.3.243: east strike mirror flipped back off per user — frame 1
+    # (windup) is correct; frame 2 (strike) reads better unmirrored.
     'east': (
         ('0D068A9C-DFC7-4AFC-8A7F-A89C381B7946', False),
-        ('7475A0C4-4C37-402B-A469-8F29CD3A1BDA', True),
+        ('7475A0C4-4C37-402B-A469-8F29CD3A1BDA', False),
     ),
     'north': (
         ('9C78C86C-4C3C-48BD-8AC1-F2F0B059A6AB', False),
