@@ -2164,7 +2164,9 @@ export class EntityRenderer {
       if (swingActive && wpn) {
         swingProgress = (now - S.swingTimer) / SWING_ANIM_MS;
         const eased = 1 - (1 - swingProgress) * (1 - swingProgress);
-        swingOffset = -SWING_FULL_ARC / 2 + eased * SWING_FULL_ARC;
+        /* v2.3.222: special-swing visual sweeps a full half-circle. */
+        const swingArcSpan = S._specialAttack ? Math.PI : SWING_FULL_ARC;
+        swingOffset = -swingArcSpan / 2 + eased * swingArcSpan;
         const restAng = REST_ANG[wpn.type] != null ? REST_ANG[wpn.type] : 0;
         swingAng = (aimAngleForSwing - restAng) + swingOffset;
       }
@@ -2618,8 +2620,13 @@ export class EntityRenderer {
          noticeable than a normal swing. */
       if (swingActive) {
         const isSpecialSwing = !!S._specialAttack;
-        const trailReach = isSpecialSwing ? 64 : 42;
-        const startAng = aimAngleForSwing - SWING_FULL_ARC / 2;
+        /* v2.3.222: special swing 2x reach (matches the doubled
+           SWING_RANGE in BroTown.jsx) and a full half-circle visual
+           arc (matches the doubled damage arc). Regular swing
+           unchanged. */
+        const trailReach = isSpecialSwing ? 84 : 42;
+        const visualArc  = isSpecialSwing ? Math.PI : SWING_FULL_ARC;
+        const startAng = aimAngleForSwing - visualArc / 2;
         const endAng   = aimAngleForSwing + swingOffset;
         const baseAlpha = (1 - swingProgress) * 0.35;
         const trailAlpha = isSpecialSwing ? baseAlpha * 1.6 : baseAlpha;

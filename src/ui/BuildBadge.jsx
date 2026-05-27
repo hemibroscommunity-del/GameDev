@@ -19,7 +19,7 @@ export const BuildBadge = () => (
       left: 90,
       padding: '2px 6px',
       background: 'rgba(0,0,0,0.55)',
-      color: '#cfd8dc',
+      color: '#ffffff',
       fontFamily: 'Source Sans 3, sans-serif',
       fontSize: 10,
       lineHeight: '14px',

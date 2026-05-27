@@ -1195,14 +1195,6 @@ export var BroTown = function BroTown(_ref0) {
     _useState192 = _slicedToArray(_useState191, 2),
     nameInput = _useState192[0],
     setNameInput = _useState192[1];
-  /* Optional room code -- pre-seeded from localStorage so a returning
-     player who pinned a friend's room sees it on next load. */
-  var _useStateRoom = useState(function () {
-    try { return (localStorage.getItem('bt_room_code') || '').trim(); } catch (e) { return ''; }
-  });
-  var _useStateRoomArr = _slicedToArray(_useStateRoom, 2);
-  var roomInput = _useStateRoomArr[0];
-  var setRoomInput = _useStateRoomArr[1];
   var _useState193 = useState(null),
     _useState194 = _slicedToArray(_useState193, 2),
     selectedAvatar = _useState194[0],
@@ -1695,11 +1687,42 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
 
     /* ═══ DURABLE OBJECTS WEBSOCKET CLIENT ═══ */
-    var WS_URL = (window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev') + '/ws?room=brotown';
+    /* Room selection: ?room=X URL query first (escape hatch for
+       testing / friend rendezvous), then GET /api/lobby for the
+       worker's auto-pick (first room under soft cap, mint fresh if
+       all full), else fall back to brotown-1 if the lobby fetch
+       fails.  Resolved once on initial connect, cached for reconnects
+       so we don't bounce between rooms mid-session. */
+    var WS_BASE = window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev';
+    var API_BASE = WS_BASE.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
+    var WS_URL = null;
+    async function resolveRoom() {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        var urlRoom = (p.get('room') || '').trim();
+        if (urlRoom) return urlRoom;
+      } catch (e) {}
+      try {
+        var res = await fetch(API_BASE + '/api/lobby');
+        if (res.ok) {
+          var j = await res.json();
+          if (j && j.room) return j.room;
+        }
+      } catch (e) {}
+      return 'brotown-1';
+    }
     var ws = null;
     var reconnectTimer = null;
     var reconnectDelay = 1000;
     function connect() {
+      if (!WS_URL) {
+        resolveRoom().then(function (room) {
+          WS_URL = WS_BASE + '/ws?room=' + encodeURIComponent(room);
+          S._currentRoom = room;
+          connect();
+        });
+        return;
+      }
       try {
         ws = new WebSocket(WS_URL);
       } catch (e) {
@@ -1906,8 +1929,13 @@ export var BroTown = function BroTown(_ref0) {
                     if (localM) {
                       /* Client-authoritative variants (e.g. fireGoblin)
                          keep their locally-simulated position; server
-                         position is ignored.  HP / alive still sync. */
-                      if (!usesClientSideMovement(localM)) {
+                         position is ignored.  HP / alive still sync.
+                         v2.3.223: also skip while local knockback is
+                         active so the visual bump on server-driven
+                         variants (mummy / skeleton) doesn't get
+                         instantly stomped by the next server tick. */
+                      var _kbActive = localM._kbUntil && Date.now() < localM._kbUntil;
+                      if (!usesClientSideMovement(localM) && !_kbActive) {
                         /* Stamp _lastPosChangeAt whenever the server's
                            rounded position differs from our cached
                            x/y.  Slow server-driven variants (mummy at
@@ -4294,6 +4322,12 @@ export var BroTown = function BroTown(_ref0) {
       if (savedRpg && savedRpg.power !== undefined) {
         /* New stat system — load directly */
         S.rpg = savedRpg;
+        /* v2.3.224: retire the legacy "snow" inventory placeholder
+           from any save written before the auto-collection was
+           removed, so the bag no longer renders a ◇ for it. */
+        if (S.rpg.inventory && S.rpg.inventory.snow != null) {
+          delete S.rpg.inventory.snow;
+        }
         recalcDerived(S.rpg);
       } else {
         /* Either no save or old system — create fresh with new system */
@@ -5331,18 +5365,9 @@ export var BroTown = function BroTown(_ref0) {
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost') terrainSlide = 0.92; /* ice: adds momentum/slide */
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'venom' && footTile === 0) terrainMult *= 0.85; /* swamp: heavy on grass */
 
-        /* Frost zone: walking on sand (snow drifts) silently adds snow
-           to inventory (used by the snowman ability).  The "+1 snow"
-           floater was removed per user request -- the inventory
-           addition still happens so snowballs/snowmen remain craftable,
-           but the popup spam is gone. */
-        if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost' && footTile === 6 && S.rpg) {
-          if (!S._lastSnowCollect || Date.now() - S._lastSnowCollect > 2000) {
-            S._lastSnowCollect = Date.now();
-            if (!S.rpg.inventory) S.rpg.inventory = {};
-            S.rpg.inventory.snow = (S.rpg.inventory.snow || 0) + 1;
-          }
-        }
+        /* v2.3.224: frost-zone snow auto-collection removed.  The
+           "snow" inventory key was a placeholder item with no thumb
+           art and was retired alongside the Snowman build button. */
 
         /* Agility-based movement speed */
         var baseSpd = S.rpg ? calcMoveSpeed(S.rpg.agility || 0) / 5.0 * SPEED : SPEED;
@@ -8321,6 +8346,10 @@ export var BroTown = function BroTown(_ref0) {
             var _comboPreCount = S.combo.count;
             var _comboBurst = (S._specialAttack && _comboPreCount > 0) ? (1 + (COMBO_BURST_BONUS || 0.15)) : 1;
             var _swingHitTarget = null;
+            /* v2.3.222: sword special covers a full half-circle at 2x
+               reach. Regular swing keeps the v2.3 SWING_RANGE / SWING_ARC. */
+            var _swingRange = S._specialAttack ? SWING_RANGE * 2 : SWING_RANGE;
+            var _swingArc   = S._specialAttack ? Math.PI         : SWING_ARC;
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
@@ -8354,12 +8383,12 @@ export var BroTown = function BroTown(_ref0) {
                           _archHit === 'mummy' || _archHit === 'skeleton' ? 40 :
                           0;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
-              if (mDist > SWING_RANGE) return;
+              if (mDist > _swingRange) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
               var angleDiff = mAngle - baseAngle;
               while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
               while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-              if (Math.abs(angleDiff) < SWING_ARC / 2) {
+              if (Math.abs(angleDiff) < _swingArc / 2) {
                 var _ELEMENTS$collisionRe2;
                 m._hitThisSwing = true;
                 if (!_swingHitTarget) _swingHitTarget = m;
@@ -8718,7 +8747,7 @@ export var BroTown = function BroTown(_ref0) {
                    bounce back amount.").  Crit sits between normal
                    and special. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                var kbForce = S._specialAttack ? 60 : isCrit ? 45 : 30;
+                var kbForce = S._specialAttack ? 180 : isCrit ? 45 : 30;
                 /* Collision adds extra knockback */
                 var collisionKb = collisionResult ? 6 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
@@ -10328,6 +10357,8 @@ export var BroTown = function BroTown(_ref0) {
                 _mProjY = m.y - 48;
                 _hitR = a.isStaff ? 50 : 40;
               }
+              /* v2.3.222: special arrow has 3x damage radius. */
+              if (a.isSpecial) _hitR *= 3;
               if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
                 a.hitIds.add(m.id);
                 var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
@@ -11899,10 +11930,11 @@ export var BroTown = function BroTown(_ref0) {
       var baseKey = (node.resourceType || 'fish') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
       R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
     }
-    /* Elemental shard + lifeSkill XP -- server-applied in MP (worker's
-       _handleNodeStrike rolls the shard + grants XP + emits
-       harvest_credit for the popup).  Local path stays as the SP /
-       dungeon fallback. */
+    /* Elemental shard is server-rolled in MP (worker's _handleNodeStrike
+       owns the RNG and emits harvest_credit).  Skill XP is now applied
+       LOCALLY in both modes as a client-side prediction so the skill
+       level moves up immediately on harvest; the server's player_state
+       push reconciles with authoritative xp/level on arrival. v2.3.224. */
     var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
     var leveled = false;
     if (!S._serverGatherNodes) {
@@ -11912,9 +11944,9 @@ export var BroTown = function BroTown(_ref0) {
         var _shardDesc1 = shardByKey(_shardF1);
         S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc1 ? _shardDesc1.label : 'Shard'), color: (_shardDesc1 && _shardDesc1.color) || '#cce6ff', ts: Date.now() });
       }
-      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      leveled = addLifeSkillXp(R.lifeSkills, 'fishing', xpAmt);
     }
+    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+    leveled = addLifeSkillXp(R.lifeSkills, 'fishing', xpAmt);
     /* Counters (client-side; not part of the rpg cheat surface). */
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.fishCaught = (R._compStats.fishCaught || 0) + 1;
@@ -12043,8 +12075,9 @@ export var BroTown = function BroTown(_ref0) {
       var baseKeyW = (node.resourceType || 'wood') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
       R.inventory[baseKeyW] = (R.inventory[baseKeyW] || 0) + yieldQty;
     }
-    /* Shard + XP server-applied in MP (see harvest_credit popup
-       handler).  Local path stays for SP / dungeons. */
+    /* v2.3.224: skill XP applied locally in both SP and MP for instant
+       feedback; server's player_state reconciles. Shard roll is still
+       MP-server-only (non-deterministic RNG). */
     var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
     var leveled = false;
     if (!S._serverGatherNodes) {
@@ -12054,9 +12087,9 @@ export var BroTown = function BroTown(_ref0) {
         var _shardDesc2 = shardByKey(_shardF2);
         S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc2 ? _shardDesc2.label : 'Shard'), color: (_shardDesc2 && _shardDesc2.color) || '#cce6ff', ts: Date.now() });
       }
-      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      leveled = addLifeSkillXp(R.lifeSkills, 'woodcutting', xpAmt);
     }
+    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+    leveled = addLifeSkillXp(R.lifeSkills, 'woodcutting', xpAmt);
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.treesFelled = (R._compStats.treesFelled || 0) + 1;
     S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
@@ -12103,8 +12136,9 @@ export var BroTown = function BroTown(_ref0) {
       var baseKeyM = (node.resourceType || 'ore') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
       R.inventory[baseKeyM] = (R.inventory[baseKeyM] || 0) + yieldQty;
     }
-    /* Shard + XP server-applied in MP (see harvest_credit popup
-       handler).  Local path stays for SP / dungeons. */
+    /* v2.3.224: skill XP applied locally in both SP and MP for instant
+       feedback; server's player_state reconciles. Shard roll is still
+       MP-server-only (non-deterministic RNG). */
     var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
     var leveled = false;
     if (!S._serverGatherNodes) {
@@ -12114,9 +12148,9 @@ export var BroTown = function BroTown(_ref0) {
         var _shardDesc3 = shardByKey(_shardF3);
         S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc3 ? _shardDesc3.label : 'Shard'), color: (_shardDesc3 && _shardDesc3.color) || '#cce6ff', ts: Date.now() });
       }
-      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      leveled = addLifeSkillXp(R.lifeSkills, 'mining', xpAmt);
     }
+    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
+    leveled = addLifeSkillXp(R.lifeSkills, 'mining', xpAmt);
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.oresMined = (R._compStats.oresMined || 0) + 1;
     S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
@@ -12834,17 +12868,12 @@ export var BroTown = function BroTown(_ref0) {
       localStorage.removeItem('bt_codex');
       localStorage.removeItem('bt_player');
       /* Room state -- always clear sticky on a fresh PLAY click so we
-         re-pick / re-resolve.  The code field is set fresh below from
-         the welcome-modal input (or cleared if left blank). */
+         auto-route to the next open room.  v2.3.222 removed the room
+         code input field; bt_room_code stays cleared so wsClient never
+         locks to a specific room. */
       localStorage.removeItem('bt_room');
       localStorage.removeItem('bt_room_code');
     } catch (e) {}
-    /* Persist optional room code from the welcome modal -- wsClient
-       picks it up on connect and locks to that room (no auto-route). */
-    var _roomCodeTrim = (roomInput || '').trim();
-    if (_roomCodeTrim) {
-      try { localStorage.setItem('bt_room_code', _roomCodeTrim); } catch (e) {}
-    }
     /* Fresh RPG state for all players */
     S.rpg = createDefaultRpg();
     recalcDerived(S.rpg);
@@ -12917,7 +12946,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "Action RPG"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
-      color: 'var(--txt3)',
+      color: '#ffffff',
       fontFamily: 'Source Sans 3, sans-serif',
       letterSpacing: '.05em',
       marginBottom: 12,
@@ -12960,40 +12989,7 @@ export var BroTown = function BroTown(_ref0) {
       marginBottom: 8,
       boxSizing: 'border-box'
     }
-  }), /*#__PURE__*/React.createElement("input", {
-    value: roomInput,
-    onChange: function onChangeRoom(e) {
-      return setRoomInput(e.target.value);
-    },
-    onKeyDown: function onKeyDownRoom(e) {
-      return e.key === 'Enter' && joinTown();
-    },
-    placeholder: "Room code (optional)",
-    maxLength: 32,
-    style: {
-      width: '100%',
-      padding: '8px 12px',
-      background: 'var(--ink3)',
-      border: '1px solid var(--line)',
-      borderRadius: 8,
-      color: 'var(--txt2)',
-      fontSize: 12,
-      fontWeight: 500,
-      outline: 'none',
-      textAlign: 'center',
-      marginBottom: 4,
-      boxSizing: 'border-box',
-      opacity: 0.85
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'var(--txt3)',
-      textAlign: 'center',
-      marginBottom: 8,
-      fontFamily: 'Source Sans 3, sans-serif'
-    }
-  }, "Leave blank to auto-join the next open room"), /*#__PURE__*/React.createElement("button", {
+  }), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
       marginTop: 12,
@@ -29428,8 +29424,12 @@ export var BroTown = function BroTown(_ref0) {
       alignItems: 'center',
       justifyContent: 'center'
     },
-    title: 'Build Snowman (' + SNOWMAN_SNOW_COST + ' snow)',
+    title: 'Build Snowman (disabled)',
     onClick: function onClick() {
+      /* v2.3.224: snow auto-collection retired; button is a no-op
+         until a non-placeholder resource is wired in. */
+      return;
+      // eslint-disable-next-line no-unreachable
       var _R$inventory;
       var S = stateRef.current,
         R = S.rpg;
