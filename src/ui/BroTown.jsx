@@ -2146,22 +2146,25 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'lifesteal_credit':
             {
-              /* Worker is informing us a melee-kill heal landed. HP
-                 itself rides on the player_state push that follows;
-                 this event is only for the +N HP floater so the visual
-                 math matches the server exactly (we used to compute
-                 the refund locally, but rounding/last-hit attribution
-                 could disagree). Only render for our own player; party
-                 members don't get our floater. */
-              if (msg.payload
-                  && msg.payload.playerId === S.myId
-                  && msg.payload.refund > 0
-                  && S.dmgNumbers
-                  && S.player) {
+              /* Worker is informing us a melee-kill heal happened (or
+                 was attempted).  Floats +N HP green popup on success;
+                 floats a small grey reason popup on refund=0 so the
+                 user can SEE why no heal fired (was 'no-this-mon' /
+                 'not-melee' / etc.) instead of guessing.  Console-logs
+                 every event for browser DevTools too. */
+              if (!msg.payload || msg.payload.playerId !== S.myId) break;
+              try { console.log('[lifesteal_credit]', msg.payload); } catch (e) {}
+              if (msg.payload.refund > 0 && S.dmgNumbers && S.player) {
                 S.dmgNumbers.push({
                   x: S.player.x, y: S.player.y - 40,
                   text: '+' + msg.payload.refund + ' HP',
                   color: '#3dd497', ts: Date.now(),
+                });
+              } else if (msg.payload.reason && msg.payload.reason !== 'ok' && S.dmgNumbers && S.player) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: 'no heal (' + msg.payload.reason + ')',
+                  color: '#8890b8', ts: Date.now(),
                 });
               }
               break;
@@ -4383,12 +4386,13 @@ export var BroTown = function BroTown(_ref0) {
         isVolatile: false
       };
       if (!S.rpg.activeSlot) S.rpg.activeSlot = 'melee';
-      if (!S.rpg.armor) S.rpg.armor = {
-        tier: 'common',
-        tierMult: 1.0,
-        attunement: null,
-        name: 'Leather Armor'
-      };
+      /* v2.3.247: armor unequipped by default per user request -- HP
+         starts at 100 and only goes up to 120 when armor is equipped.
+         Pre-existing saves keep whatever armor they had.  The starter
+         Leather Armor is in armorStash for first-time players (see
+         createDefaultRpg). */
+      if (S.rpg.armor === undefined) S.rpg.armor = null;
+      if (!S.rpg.armorStash) S.rpg.armorStash = [];
       if (S.rpg.shield === undefined) S.rpg.shield = null;
       if (!S.rpg.amulet) S.rpg.amulet = null; /* {tier, gem, name} */
       /* v2.3.188: existing saves with no shield get the starter wood

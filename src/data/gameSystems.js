@@ -4699,13 +4699,18 @@ export function createDefaultRpg() {
       isVolatile: false,
       gearBase: 'wood'
     },
-    armor: {
+    /* v2.3.247: armor unequipped by default per user request -- HP
+       starts at base 100 and only goes up to 120 when armor is
+       equipped.  Old default (leather armor) is in the stash so the
+       player can equip it from the inventory panel. */
+    armor: null,
+    armorStash: [{
       tier: 'common',
       tierMult: 1.0,
       attunement: null,
       name: 'Leather Armor',
       gearBase: 'wood'
-    },
+    }],
     /* v2.3.188: default wood shield matches the other starter gear
        (bamboo stick, wood bow, wood staff, leather armor) so the
        v2.3.187 shield-on-back render has something to draw without
