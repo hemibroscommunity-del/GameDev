@@ -247,7 +247,11 @@ export const InventoryPanel = () => {
         const stashShields = (filter === 'all' || filter === 'armor')
           ? ((S?.rpg?.shieldStash) || [])
           : [];
-        const totalTiles = stashWpns.length + stashShields.length + filtered.length;
+        /* v2.3.228: armor stash tiles. */
+        const stashArmors = (filter === 'all' || filter === 'armor')
+          ? ((S?.rpg?.armorStash) || [])
+          : [];
+        const totalTiles = stashWpns.length + stashShields.length + stashArmors.length + filtered.length;
         if (totalTiles === 0) {
           return (
             <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
@@ -267,7 +271,10 @@ export const InventoryPanel = () => {
             {stashShields.map((sh, i) => (
               <StashTile key={`ss-${i}`} kind="stashShield" obj={sh} index={i} />
             ))}
-            {filtered.slice(0, 32 - stashWpns.length - stashShields.length).map(k => (
+            {stashArmors.map((ar, i) => (
+              <StashTile key={`sa-${i}`} kind="stashArmor" obj={ar} index={i} />
+            ))}
+            {filtered.slice(0, 32 - stashWpns.length - stashShields.length - stashArmors.length).map(k => (
               <ItemTile key={k} ikey={k} count={inv[k]} />
             ))}
           </div>
@@ -290,18 +297,26 @@ const StashTile = ({ kind, obj, index }) => {
     } catch (_e) {}
     if (kind === 'stashShield') {
       itemDetailBus.open({ kind: 'stashShield', shield: obj, index, anchor });
+    } else if (kind === 'stashArmor') {
+      /* v2.3.228: armor stash tile -> popup with Equip action. */
+      itemDetailBus.open({ kind: 'stashArmor', armor: obj, index, anchor });
     } else {
       itemDetailBus.open({ kind: 'stashWeapon', wpn: obj, index, anchor });
     }
   };
   const v = '2.3.211';
-  const thumb = kind === 'stashShield'
+  const thumb = kind === 'stashArmor'
+    ? null /* no armor sprites yet -- glyph fallback below */
+    : kind === 'stashShield'
     ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.png?v=${v}` : null)
     : obj && obj.type === 'bow'   ? `/sprites/weapons/bows/Bow2.png?v=${v}`
     : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${v}`
     : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/Bamboo.png?v=${v}`
     : `/sprites/weapons/swords/Sword1.png?v=${v}`;
   const color = TIER_COLOR.rare;
+  const fallbackGlyph = kind === 'stashShield' ? '\u{1F6E1}'
+                      : kind === 'stashArmor'  ? '\u{1F9BA}'
+                      :                          '⚔';
   return (
     <div onPointerUp={handleTap} style={{
       width: '100%', aspectRatio: '1 / 1',
@@ -312,11 +327,11 @@ const StashTile = ({ kind, obj, index }) => {
       position: 'relative',
       cursor: 'pointer',
       touchAction: 'manipulation',
-    }} title={(obj && obj.name) || (kind === 'stashShield' ? 'Shield' : 'Weapon')}>
+    }} title={(obj && obj.name) || (kind === 'stashShield' ? 'Shield' : kind === 'stashArmor' ? 'Armor' : 'Weapon')}>
       {thumb
         ? <img src={thumb} alt="" draggable={false}
             style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
-        : <span style={{ fontSize: 18 }}>{kind === 'stashShield' ? '\u{1F6E1}' : '⚔'}</span>}
+        : <span style={{ fontSize: 18 }}>{fallbackGlyph}</span>}
     </div>
   );
 };

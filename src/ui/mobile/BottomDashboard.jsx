@@ -21,6 +21,7 @@ import { LeaderboardPanel }  from './dash/LeaderboardPanel.jsx';
 import { ClanPanel }         from './dash/ClanPanel.jsx';
 import { FeedbackPanel }     from './dash/FeedbackPanel.jsx';
 import { SettingsPanel }     from './dash/SettingsPanel.jsx';
+import { T2Panel }           from './dash/T2Panel.jsx';
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
 // When idle it renders character stats + a 7-icon row.  When the user
@@ -412,6 +413,8 @@ const PANELS = {
   clan:         { title: 'Clan',        Component: ClanPanel },
   feedback:     { title: 'Feedback',    Component: FeedbackPanel },
   settings:     { title: 'Settings',    Component: SettingsPanel },
+  /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
+  t2:           { title: 'Specs',       Component: T2Panel },
 };
 
 export const BottomDashboard = () => {
@@ -742,7 +745,8 @@ export const BottomDashboard = () => {
                   /* Derived combat stats — calcCritChance and
                      calcBlockReduction both return 0..1 fractions;
                      multiply by 100 + round for the % display. */
-                  const critPct  = Math.round(calcCritChance(R.ferocity || 0) * 100);
+                  /* v2.3.233 (Phase 3): crit reads (power, ferocity). */
+                  const critPct  = Math.round(calcCritChance(R.power || 0, R.ferocity || 0) * 100);
                   const blockPct = Math.round(calcBlockReduction(R.fortification || 0, R.shield) * 100);
                   /* Session summary — zone name lookup is safe-guarded so
                      a missing currentZone or a zone removed from ZONES
@@ -937,7 +941,7 @@ export const BottomDashboard = () => {
                   /* Plain function (not a React component) so React doesn't
                      see a fresh component-type identity on every render and
                      remount the cells.  Called as slotCell({...}) below. */
-                  const slotCell = ({ k, label, iconSrc, onTap, active, equipped }) => (
+                  const slotCell = ({ k, label, iconSrc, onTap, active, equipped, equippedGlyph }) => (
                     <div key={k}
                       onPointerUp={onTap ? (e) => {
                         e.stopPropagation();
@@ -979,6 +983,16 @@ export const BottomDashboard = () => {
                             pointerEvents: 'none',
                           }}
                         />
+                      ) : equipped && equippedGlyph ? (
+                        /* v2.3.228: fallback when an item is equipped but
+                           has no sprite (e.g. armor).  Renders the glyph
+                           bold so the slot doesn't read as "empty". */
+                        <span style={{
+                          fontSize: 22,
+                          lineHeight: 1,
+                          userSelect: 'none',
+                          pointerEvents: 'none',
+                        }}>{equippedGlyph}</span>
                       ) : (
                         <span style={{
                           color: COL.muted,
@@ -1003,6 +1017,11 @@ export const BottomDashboard = () => {
                   const onTapShield = (anchor) => {
                     if (!R.shield) return;
                     itemDetailBus.open({ kind: 'shield', shield: R.shield, anchor });
+                  };
+                  /* v2.3.228: armor slot tap opens the same popup. */
+                  const onTapArmor = (anchor) => {
+                    if (!R.armor) return;
+                    itemDetailBus.open({ kind: 'armor', armor: R.armor, anchor });
                   };
                   return (
                     <div style={{
@@ -1060,14 +1079,21 @@ export const BottomDashboard = () => {
                         gap: 3,
                         minHeight: 0,
                       }}>
-                        {/* v2.3.228: chest highlight gated on having a
-                            visible icon, not on R.armor existing. The
-                            default RPG seeds a 'Leather Armor' object
-                            with no PNG, which lit the cell up despite
-                            the user reading the slot as empty. Auto-
-                            picks back up when an armor sprite ships. */}
-                        {slotCell({ k: 'chest', label: 'CHEST', iconSrc: armorSrc, active: !!armorSrc, equipped: !!armorSrc })}
-                        {slotCell({ k: 'legs',  label: 'LEGS',  iconSrc: null,      active: !!R.legs })}
+                        {/* Chest slot: armor swap via tap-tooltip
+                            (session-2 v2.3.228) + iconSrc-gated active
+                            highlight (main v2.3.228 polish).  Empty-icon
+                            fallback shows the vest glyph so an equipped
+                            armor without a sprite still reads as filled. */}
+                        {slotCell({
+                          k: 'chest',
+                          label: 'CHEST',
+                          iconSrc: armorSrc,
+                          equipped: !!R.armor,
+                          equippedGlyph: '\u{1F9BA}',
+                          active: !!armorSrc,
+                          onTap: R.armor ? onTapArmor : undefined,
+                        })}
+                        {slotCell({ k: 'legs',  label: 'LEGS',  iconSrc: null, active: !!R.legs })}
                         <div />
                       </div>
                     </div>

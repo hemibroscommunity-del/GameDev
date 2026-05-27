@@ -51,7 +51,8 @@ const {
   CLAN_COLORS, CLAN_CREATE_COST, CLAN_MAX_MEMBERS, CLAN_LOGO_SIZE, CLAN_TAG_MAX, CLAN_NAME_MAX,
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
   recalcDerived, getActiveWeapon, calcWeaponDmg, calcCritChance, calcCritMult,
-  calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction,
+  calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
+  calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
   applyStatus, tickStatuses, getOldestStatusElement,
   lookupCollision, resolveCollision, getEffectiveness,
@@ -2226,11 +2227,18 @@ export var BroTown = function BroTown(_ref0) {
                  Trade-off: server-side heal sources (cooking, level-up
                  full restore, respawn) are blocked until the player
                  next takes damage, at which point HP resyncs. */
+              /* v2.3.231: server's maxHp formula doesn't yet include
+                 armor HP (Phase 1 client-only).  Fold the armor bonus
+                 in so the player sees the equipped HP.  Both hp and
+                 maxHp get the bonus so the bar fills correctly.  In
+                 MP, server still drives damage events; the bonus is
+                 effectively a client-side "armor buffer". */
+              var _armorBonus = getArmorHp(S.rpg.armor, S.rpg.vitality);
               if (typeof msg.payload.hp === 'number') {
-                S.rpg.hp = msg.payload.hp;
+                S.rpg.hp = msg.payload.hp + _armorBonus;
               }
               if (typeof msg.payload.maxHp === 'number') {
-                S.rpg.maxHp = msg.payload.maxHp;
+                S.rpg.maxHp = msg.payload.maxHp + _armorBonus;
               }
               if (typeof msg.payload.stamina === 'number') {
                 S.rpg.stamina = msg.payload.stamina;
@@ -2279,7 +2287,8 @@ export var BroTown = function BroTown(_ref0) {
               if (typeof msg.payload.activeSlot === 'string' && !S._userCycledSlot) {
                 S.rpg.activeSlot = msg.payload.activeSlot;
               }
-              if ('armor' in msg.payload) S.rpg.armor = msg.payload.armor;
+              var _armorChanged = false;
+              if ('armor' in msg.payload) { S.rpg.armor = msg.payload.armor; _armorChanged = true; }
               /* v2.3.189: never let the server stomp the default wood
                  shield. Pre-v2.3.188 saves on the worker may have
                  shield=null, which would erase the client default
@@ -2289,6 +2298,10 @@ export var BroTown = function BroTown(_ref0) {
                 S.rpg.shield = msg.payload.shield;
               }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
+              /* v2.3.227 (Phase 1): armor swaps change maxHp via
+                 getArmorHp() in recalcDerived.  Recompute so HP stays
+                 consistent after server-echoed equipment changes. */
+              if (_armorChanged) recalcDerived(S.rpg);
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
               /* Quest state mirror (slice 17).  Worker is authoritative
                  for chain progression + reward grants.  Quest completion
@@ -4148,8 +4161,12 @@ export var BroTown = function BroTown(_ref0) {
     if (!rpgState) return;
     var S = stateRef.current;
     if (!S || !S.channel) return;
-    var armorTier = (rpgState.armor && typeof rpgState.armor.tierMult === 'number') ? rpgState.armor.tierMult : 1;
-    var def = (rpgState.endurance || 0) * 0.5 + armorTier * 3;
+    /* v2.3.227 (Phase 1): the old `def` damage-reduction formula is
+       retired.  Armor now contributes flat HP via getArmorHp() inside
+       recalcDerived(), so the stats payload no longer carries def.
+       Send 0 on the wire to keep any older worker that still reads
+       def from crashing on a missing field. */
+    var def = 0;
     var amuBon = rpgState._amuletBonus || null;
     var amuletHpRegen = (amuBon && amuBon.stat === 'hpRegen') ? (amuBon.value || 0) : 0;
     var amuletStaminaRegen = (amuBon && amuBon.stat === 'staminaRegen') ? (amuBon.value || 0) : 0;
@@ -4388,10 +4405,20 @@ export var BroTown = function BroTown(_ref0) {
       if (!S.rpg.weaponStash) S.rpg.weaponStash = [];
       /* v2.3.210: stash bag for unequipped shields, mirror of weaponStash. */
       if (!S.rpg.shieldStash) S.rpg.shieldStash = [];
+      /* v2.3.228: stash bag for unequipped armor. */
+      if (!S.rpg.armorStash) S.rpg.armorStash = [];
       if (!S.rpg._deathTimestamps) S.rpg._deathTimestamps = [];
       if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
       if (S.rpg.achievementPoints === undefined) S.rpg.achievementPoints = 0;
-      S.rpg.hp = Math.min(S.rpg.hp || S.rpg.maxHp, S.rpg.maxHp);
+      /* v2.3.230: existing saves cached maxHp from before armor->HP
+         shipped (Phase 1, v2.3.227).  Recompute so the armor HP bonus
+         actually lands; nudge current HP by the maxHp delta so the
+         player isn't stuck at 100/120 right after loading. */
+      var _oldMaxHpAtLoad = S.rpg.maxHp || 100;
+      recalcDerived(S.rpg);
+      var _maxHpDeltaAtLoad = (S.rpg.maxHp || 100) - _oldMaxHpAtLoad;
+      var _curHp = S.rpg.hp || S.rpg.maxHp;
+      S.rpg.hp = Math.max(1, Math.min(S.rpg.maxHp, _curHp + _maxHpDeltaAtLoad));
       S.rpg.stamina = S.rpg.stamina || S.rpg.maxStamina;
       S.rpg.mana = S.rpg.mana || S.rpg.maxMana;
       S.respawnTimer = Date.now();
@@ -5289,7 +5316,13 @@ export var BroTown = function BroTown(_ref0) {
         /* Dodge roll — cancelled mid-roll if the player just died. */
         if (S._dodgeRoll && !_playerDead) {
           var rollAge = Date.now() - S._dodgeRoll.startTime;
-          if (rollAge < 200) {
+          /* v2.3.232 (Phase 2): Endurance lengthens the dodge i-frame
+             window with diminishing returns.  Base 250ms, +1ms per
+             Endurance up to 500ms.  Damage sites read truthiness of
+             _dodgeRoll for invuln, so this directly stretches the
+             invuln window in sync with the movement window. */
+          var _dodgeMs = 250 + Math.min(((S.rpg && S.rpg.endurance) || 0), 250);
+          if (rollAge < _dodgeMs) {
             S.player.x += Math.cos(S._dodgeRoll.angle) * 6;
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
           } else S._dodgeRoll = null;
@@ -7127,8 +7160,9 @@ export var BroTown = function BroTown(_ref0) {
              never fires in any new save. Old saves with leftover
              _bleedUntil will simply have it ignored. */
           /* §2.1 Crit from Ferocity */
-          var critChance = calcCritChance(_R6.ferocity);
-          var critMult = calcCritMult(_R6.ferocity);
+          /* v2.3.233 (Phase 3): Power is the T1 crit source, Ferocity amps. */
+          var critChance = calcCritChance(_R6.power, _R6.ferocity);
+          var critMult = calcCritMult(_R6.power, _R6.ferocity);
           /* Baseline floor: at zero ferocity, calcCritChance returns 0%, which
              meant a brand-new player could never grand-slam. Floor at 8% so a
              grand slam is reachable from the first swing. Applied before the
@@ -7682,14 +7716,17 @@ export var BroTown = function BroTown(_ref0) {
                 if (distToP < 20 && !invuln) {
                   var chargeDmg = Math.ceil(m.dmg * 1.5);
                   var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
-                  var _finalDmg2 = _blocked2 ? Math.max(1, Math.ceil(chargeDmg * (1 - calcBlockReduction(_R6.fortification, _R6.shield)))) : chargeDmg;
+                  /* v2.3.232 (Phase 2): block is full negation now; the
+                     old partial-block reduction via calcBlockReduction
+                     was the last site reading the Fortification scale. */
+                  var _finalDmg2 = _blocked2 ? 0 : chargeDmg;
                   _R6.hp -= _finalDmg2;
                   trackMonsterDamage(S, m.id, _finalDmg2);
                   if (window.__dmgLog) try { console.log('[dmg] boss-charge', { amt: _finalDmg2, archetype: m.archetype || m.type, blocked: _blocked2 }); } catch (e) {}
                   S.dmgNumbers.push({
                     x: P.x,
                     y: P.y - 20,
-                    text: '-' + _finalDmg2,
+                    text: _blocked2 ? 'BLOCK' : '-' + _finalDmg2,
                     color: '#ea580c',
                     ts: Date.now()
                   });
@@ -7761,7 +7798,17 @@ export var BroTown = function BroTown(_ref0) {
                      with a Math.max(1) floor, which always let at least
                      1 hp through even with 75% block).  Player request
                      is "the damage gets blocked," so 0 across the board. */
-                  var dmgTaken = shielded ? 0 : rawDmg;
+                  /* v2.3.234 (Phase 4): Agility passive dodge -- a roll
+                     before the hit lands; on dodge, full negation +
+                     a cyan popup so the player can see it happened. */
+                  var _passiveDodge = !shielded && rollPassiveDodge(_R6.agility);
+                  if (_passiveDodge) {
+                    S.dmgNumbers.push({
+                      x: P.x, y: P.y - 18, text: 'Dodge!',
+                      color: '#00d4ff', ts: Date.now(),
+                    });
+                  }
+                  var dmgTaken = (shielded || _passiveDodge) ? 0 : rawDmg;
                   /* ═══ FODDER SLIMES — RANGED PROJECTILE ATTACK ═══
                      Spawn a slime-orb projectile aimed at the player's
                      position right now. Damage isn't applied here — it
@@ -8491,7 +8538,13 @@ export var BroTown = function BroTown(_ref0) {
                 if (hitElement) {
                   collisionResult = resolveCollision(m, hitElement, S.player, _R6, Date.now());
                 }
-                var dmg = Math.round((isCrit ? pDmg * critMult : pDmg) * specialMult * _comboBurst);
+                /* v2.3.234 (Phase 4): special-attack damage scales with
+                   Mind instead of the weapon stat.  Normal swings still
+                   use pDmg (Power-based for melee).  Variance is rolled
+                   per-hit so different monsters in a sweep can take
+                   slightly different damage. */
+                var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult) : pDmg;
+                var dmg = Math.round((isCrit ? _specBase * critMult : _specBase) * specialMult * _comboBurst);
                 /* §12.2 cert — first time the combo-burst multiplier (>1) actually lands. */
                 if (_comboBurst > 1) masteryEarnCert('first-combo-burst');
                 /* Boss invulnerability — can only be damaged during recovery phase */
@@ -9868,30 +9921,40 @@ export var BroTown = function BroTown(_ref0) {
              docs/specs/disable-hp-regen-server.md.
              Restoration coefficient + regen-buff multiplier left intact in
              case food-buff or amulet design adds HP heals back later. */
-          /* Stamina regen — 10/s base (10 sec full recharge) × Restoration */
+          /* Stamina regen — 10/s base (10 sec full recharge) × Restoration.
+             v2.3.232 (Phase 2): Endurance also multiplies the regen rate.
+             0.2% per point up to 2x at E=500, on top of Restoration. */
           if (_R7.stamina < _R7.maxStamina && !S._serverMonsters) {
             var _R7$_amuletBonus;
             var stRestMult = 1 + (_R7.restoration || 0) * 0.001;
+            var stEndMult = 1 + (_R7.endurance || 0) * 0.002;
             var stAmuletMult = ((_R7$_amuletBonus = _R7._amuletBonus) === null || _R7$_amuletBonus === void 0 ? void 0 : _R7$_amuletBonus.stat) === 'staminaRegen' ? 1 + _R7._amuletBonus.value / 100 : 1;
-            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stRestMult * regenMult * stAmuletMult);
+            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stRestMult * stEndMult * regenMult * stAmuletMult);
           }
-          /* Mana regen — §3.4: OOC 2.5%/s after 2s × Restoration */
+          /* Mana regen — §3.4: OOC 2.5%/s after 2s × Restoration × Mind.
+             v2.3.234 (Phase 4): Mind speeds up the recharge alongside
+             governing mana pool size + special-attack damage. */
           if (_R7.mana < _R7.maxMana && Date.now() - S.lastDamageTaken > 2000 && !S._serverMonsters) {
             var mRestMult = 1 + (_R7.restoration || 0) * 0.001;
+            var mMindMult = 1 + (_R7.mind || 0) * 0.001;
             var manaRegenMult = hasManaBuff ? 1.3 : 1.0;
-            _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mRestMult * manaRegenMult);
+            _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mRestMult * mMindMult * manaRegenMult);
           }
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
           var _R8 = S.rpg;
           /* In-combat HP regen disabled (v2.3.149) -- see OOC block above. */
-          /* Stamina always regens — 10/sec */
+          /* Stamina always regens — 10/sec.
+             v2.3.232 (Phase 2): Endurance multiplies combat regen too. */
           if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
-            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60);
+            var _stEndMult8 = 1 + (_R8.endurance || 0) * 0.002;
+            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8);
           }
-          /* Slow mana regen in combat — 1%/s */
+          /* Slow mana regen in combat — 1%/s × Mind.
+             v2.3.234 (Phase 4): Mind multiplies combat regen too. */
           if (_R8.mana < _R8.maxMana && !S._serverMonsters) {
-            _R8.mana = Math.min(_R8.maxMana, _R8.mana + _R8.maxMana * 0.00017);
+            var _mMindMult8 = 1 + (_R8.mind || 0) * 0.001;
+            _R8.mana = Math.min(_R8.maxMana, _R8.mana + _R8.maxMana * 0.00017 * _mMindMult8);
           }
         }
 
@@ -10829,6 +10892,15 @@ export var BroTown = function BroTown(_ref0) {
               }
               return false;
             }
+            /* v2.3.234 (Phase 4): Agility passive dodge on projectiles too. */
+            var _projDodge = rollPassiveDodge(_R6P.agility);
+            if (_projDodge) {
+              S.dmgNumbers.push({
+                x: P.x, y: P.y - 18, text: 'Dodge!',
+                color: '#00d4ff', ts: Date.now(),
+              });
+              return false;
+            }
             _R6P.hp -= proj.rawDmg;
             trackMonsterDamage(S, proj.ownerId, proj.rawDmg);
             if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: proj.rawDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
@@ -11680,7 +11752,8 @@ export var BroTown = function BroTown(_ref0) {
          arrow alive after each hit so it travels through every monster
          it overlaps -- hitIds prevents double-hits on the same target. */
       if (!S.arrows) S.arrows = [];
-      var wpnDmg = calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult);
+      /* v2.3.234 (Phase 4): specials scale with Mind, not weapon stat. */
+      var wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult);
       S.arrows.push({
         ang: aimAng,
         dist: 14,
@@ -11702,7 +11775,8 @@ export var BroTown = function BroTown(_ref0) {
          the hit handler picks the 'spell' popup icon (vs 'arrow' for
          bows) and the projectile renders as magic, not a physical arrow. */
       if (!S.arrows) S.arrows = [];
-      var _wpnDmg = calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult);
+      /* v2.3.234 (Phase 4): staff special damage scales with Mind. */
+      var _wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult);
       for (var si = -1; si <= 1; si++) {
         S.arrows.push({
           ang: aimAng + si * 0.25,

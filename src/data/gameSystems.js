@@ -4507,6 +4507,16 @@ export function calcMaxMana(mind) {
   return 100 + mind * 3.5;
 }
 
+/* v2.3.227 (Phase 1 stat redesign): armor now contributes flat HP.
+   Damage-reduction `def` retires.  Each tier's tierMult scales the
+   20 HP base, and Vitality acts as a 1%/point multiplier on top. */
+export const ARMOR_HP_BASE = 20;
+export function getArmorHp(armor, vitality) {
+  if (!armor) return 0;
+  var tm = (typeof armor.tierMult === 'number') ? armor.tierMult : 1.0;
+  return Math.floor(ARMOR_HP_BASE * tm * (1 + (vitality || 0) * 0.01));
+}
+
 /* §4.4 Weapon Damage.  Second arg accepts either:
    - a number (the legacy stat value -- treated as raw input), OR
    - an rpg object (preferred) -- function picks the correct stat
@@ -4533,15 +4543,28 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult) {
   return base * (0.75 + Math.random() * 0.5);
 }
 
-/* §2.1 Crit */
-export function calcCritChance(ferocity) {
-  if (ferocity <= 300) return 60 * ferocity / (ferocity + 120) / 100;
-  var baseAt300 = 60 * 300 / (300 + 120) / 100;
-  var excess = ferocity - 300;
-  return baseAt300 + 8 * excess / (excess + 200) / 100;
+/* §2.1 Crit
+   v2.3.233 (Phase 3): Power owns the baseline crit identity; Ferocity
+   stacks additively on top as a T2 amplifier.  Old signatures took
+   (ferocity) only -- new signatures accept (power, ferocity) but tolerate
+   a single-arg legacy call by treating it as Ferocity alone, which is the
+   safer fallback (slightly lower crit than before, never higher). */
+export function calcCritChance(power, ferocity) {
+  /* Single-arg legacy support: caller passed Ferocity only. */
+  if (arguments.length < 2) { ferocity = power || 0; power = 0; }
+  var pow = power || 0;
+  var fer = ferocity || 0;
+  /* Power baseline: 40 * P / (P + 200).  0->0%, P100->13.3%, P500->28.6%. */
+  var pCrit = 40 * pow / (pow + 200) / 100;
+  /* Ferocity additive amp: 30 * F / (F + 250).  0->0%, F100->8.6%, F500->20%. */
+  var fCrit = 30 * fer / (fer + 250) / 100;
+  return Math.max(0, Math.min(1, pCrit + fCrit));
 }
-export function calcCritMult(ferocity) {
-  return 1.75 + ferocity * 0.0008;
+export function calcCritMult(power, ferocity) {
+  if (arguments.length < 2) { ferocity = power || 0; power = 0; }
+  /* Power: 1.5x at 0, +0.001 per pt (2.0x at 500).
+     Ferocity: +0.0008 per pt amp (additive). */
+  return 1.5 + (power || 0) * 0.001 + (ferocity || 0) * 0.0008;
 }
 
 /* §2.3 Block */
@@ -4558,6 +4581,29 @@ export function calcBlockReduction(fortification, shield) {
 /* §2.5 Movement */
 export function calcMoveSpeed(agility) {
   return 5.0 * (1 + Math.min(agility * 0.0012, 0.60));
+}
+
+/* v2.3.234 (Phase 4): all special attacks scale with Mind regardless of
+   the equipped weapon type.  Keeps the weapon's base + tier as the
+   anchor; Mind drives the linear scale.  Variance per weapon stays the
+   same so staff specials still feel high-variance vs bow tight + sword
+   medium. */
+export function calcSpecialDmg(weaponType, rpg, tierMult) {
+  var w = WEAPON_TYPES[weaponType];
+  if (!w) return 0;
+  var mind = (rpg && rpg.mind) || 0;
+  var base = (w.base + mind * 0.8) * (tierMult || 1);
+  if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.0);
+  if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
+  return base * (0.75 + Math.random() * 0.5);
+}
+
+/* v2.3.234 (Phase 4): passive dodge chance.  Returns true if the
+   incoming hit should be evaded entirely (0 dmg).  Cap at 30% so even
+   pure-Agility builds still take some hits. */
+export function rollPassiveDodge(agility) {
+  var pct = Math.min((agility || 0) * 0.0008, 0.30);
+  return Math.random() < pct;
 }
 
 /* §6.2 XP Required — tri-phase */
@@ -4672,6 +4718,9 @@ export function createDefaultRpg() {
       name: 'Wood Shield',
     },
     /* {tier, tierMult, gearBase, gem, name, reforgeBonus, hardenBonus} */
+    /* v2.3.228: armor stash mirrors weaponStash/shieldStash so the
+       chest slot supports equip/unequip via the item-detail popup. */
+    armorStash: [],
     /* Active weapon slot: 'melee' or 'ranged' */
     activeSlot: 'melee'
   };
@@ -4680,6 +4729,8 @@ export function createDefaultRpg() {
 /* Recalculate derived stats from allocations */
 export function recalcDerived(rpg) {
   rpg.maxHp = calcMaxHp(rpg.level, rpg.vitality);
+  /* v2.3.227: armor contributes flat HP scaled by Vitality (1% per pt). */
+  rpg.maxHp += getArmorHp(rpg.armor, rpg.vitality);
   rpg.maxStamina = calcMaxStam(rpg.endurance);
   rpg.maxMana = calcMaxMana(rpg.mind);
 
