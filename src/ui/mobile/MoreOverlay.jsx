@@ -14,6 +14,9 @@ const COL = {
 };
 
 const ITEMS = [
+  /* v2.3.224: Controls at the top so the help entry is always
+     visible in short preview windows. */
+  { e: '?',  label: 'Controls',     bus: 'controlsTutorial' },
   { e: '⚔️', label: 'Stats',        legacy: 'stats' },
   { e: '📊', label: 'Skills',       legacy: 'skills' },
   { e: '📖', label: 'Encyclopedia', legacy: 'encyclopedia' },
@@ -23,9 +26,6 @@ const ITEMS = [
   { e: '👥', label: 'Friends',      legacy: 'social' },
   { e: '📝', label: 'Feedback',     legacy: 'feedback' },
   { e: '💬', label: 'Chat',         legacy: 'chat' },
-  /* v2.3.222: opens the annotated controls tutorial via its own bus,
-     not the legacy window callback registry. */
-  { e: '?',  label: 'Controls',     bus: 'controlsTutorial' },
 ];
 
 let _open = false;
