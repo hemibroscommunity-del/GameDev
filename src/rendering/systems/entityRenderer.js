@@ -2641,11 +2641,10 @@ export class EntityRenderer {
       // S._aimAngle, else facingAngle).  Drawn as a translucent
       // wedge fill plus a thicker rim so it reads as an actual
       // barrier.  Pulses brighter when a hit was just blocked.
-      // Renders whenever S._shieldUp — doesn't gate on the shield
-      // item being equipped, since the shield-up input is what
-      // matters here visually (gameplay determines whether the
-      // block actually mitigates damage).
-      if (isShielding) {
+      // v2.3.212: now gated on R.shield being equipped (was previously
+      // shield-up input only).  Unequipped players can't visually
+      // raise a shield they don't have.
+      if (isShielding && S.rpg && S.rpg.shield) {
         const shieldAng = (S._shieldAngle != null)
           ? S._shieldAngle
           : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
