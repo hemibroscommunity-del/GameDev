@@ -67,12 +67,14 @@ export const SpecialChargePie = () => {
      size = 83 (portrait) / 98 (landscape).  Indicator sits centered
      above it with an 8 px gap. */
   const joyW = isLandscape ? 98 : 83;
-  const size = 80;
+  const size = 40;
   const cx = size / 2;
   const cy = size / 2;
-  const ringR = 36;
-  const strokeW = 4;
-  const diskR = ringR - strokeW / 2 - 1;
+  /* 40 px overall.  Ring annulus is half the radius (10 px wide),
+     leaving a 20 px-diameter dark center for the number. */
+  const ringR = 15;
+  const strokeW = 10;
+  const diskR = ringR - strokeW / 2;
   const C = 2 * Math.PI * ringR;
   const bottomVal = 'calc(var(--dash-h) + ' + (70 + joyW + 8) + 'px)';
   const rightVal  = (50 + (joyW - size) / 2) + 'px';
@@ -115,10 +117,10 @@ export const SpecialChargePie = () => {
           dominantBaseline="central"
           fontFamily="Source Sans 3, sans-serif"
           fontWeight={800}
-          fontSize={22}
+          fontSize={15}
           fill="#ffffff"
           stroke="rgba(0,0,0,0.85)"
-          strokeWidth={3}
+          strokeWidth={2}
           paintOrder="stroke"
         >
           {fullCharges}
