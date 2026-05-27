@@ -1937,8 +1937,13 @@ export var BroTown = function BroTown(_ref0) {
                     if (localM) {
                       /* Client-authoritative variants (e.g. fireGoblin)
                          keep their locally-simulated position; server
-                         position is ignored.  HP / alive still sync. */
-                      if (!usesClientSideMovement(localM)) {
+                         position is ignored.  HP / alive still sync.
+                         v2.3.223: also skip while local knockback is
+                         active so the visual bump on server-driven
+                         variants (mummy / skeleton) doesn't get
+                         instantly stomped by the next server tick. */
+                      var _kbActive = localM._kbUntil && Date.now() < localM._kbUntil;
+                      if (!usesClientSideMovement(localM) && !_kbActive) {
                         /* Stamp _lastPosChangeAt whenever the server's
                            rounded position differs from our cached
                            x/y.  Slow server-driven variants (mummy at
