@@ -7079,8 +7079,15 @@ export var BroTown = function BroTown(_ref0) {
           var _R6 = S.rpg;
           /* §2.6 Tag player with Influence for status duration scaling */
           S.player._rpgInfluence = _R6.influence || 0;
-          /* §4.4 Weapon Damage — uses new stat system */
-          var _activeWpn = getActiveWeapon(_R6);
+          /* §4.4 Weapon Damage — uses new stat system.
+             v2.3.213: fall back to a zero-damage "Unarmed" object when
+             nothing is equipped so per-frame reads of .type/.tierMult
+             don't crash.  Auto-attack is gated separately and won't
+             fire without a real weapon. */
+          var _activeWpn = getActiveWeapon(_R6) || {
+            type: 'greatsword', tier: 'common', tierMult: 0,
+            element1: null, element2: null, name: 'Unarmed'
+          };
           var wpnType = WEAPON_TYPES[_activeWpn.type] || WEAPON_TYPES.greatsword;
           var pDmg = calcWeaponDmg(_activeWpn.type, _R6 || {}, _activeWpn.tierMult);
           /* Snapshot the un-modified base — the "block N" popup compares
@@ -10284,7 +10291,9 @@ export var BroTown = function BroTown(_ref0) {
           }
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
-            var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : { element1: null, element2: null };
+            /* v2.3.213: fall back to inert object when unarmed so
+               arrow tick doesn't crash on .type/.tierMult reads. */
+            var activeWpn = (S.rpg && getActiveWeapon(S.rpg)) || { element1: null, element2: null };
             var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg || {}, activeWpn.tierMult || 1) : 10;
             /* Derive element/type early so kill logic can use them */
             var projElem = a.element || (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1);
@@ -11377,6 +11386,8 @@ export var BroTown = function BroTown(_ref0) {
     if (!S.respawnTimer || Date.now() > S.respawnTimer) S.respawnTimer = Date.now() + 400;
   };
   var doLunge = function (S, R, ang) {
+    /* v2.3.213: no melee weapon -> fall back to a plain dodge. */
+    if (!R.weapon) return doStandardDodge(S, R, ang);
     var lungeCost = Math.ceil((R.maxStamina || 100) * (LUNGE_STAMINA_FRACTION || 0.25));
     if ((R.stamina || 0) < lungeCost) return doStandardDodge(S, R, ang);
     var lt = S.lockedTarget && S.lockedTarget.ref;
@@ -11422,6 +11433,10 @@ export var BroTown = function BroTown(_ref0) {
     }, 160);
   };
   var doRetreatShot = function (S, R, ang) {
+    /* v2.3.213: no ranged weapon in active slot -> plain dodge. */
+    var _rwSlot = R.activeSlot || 'ranged';
+    var _rwEq = _rwSlot === 'staff' ? R.staffWeapon : R.rangedWeapon;
+    if (!_rwEq) return doStandardDodge(S, R, ang);
     var retCost = Math.ceil((R.maxStamina || 100) * (RETREAT_SHOT_STAMINA_FRACTION || 0.20));
     if ((R.stamina || 0) < retCost) return doStandardDodge(S, R, ang);
     var lt = S.lockedTarget && S.lockedTarget.ref;
