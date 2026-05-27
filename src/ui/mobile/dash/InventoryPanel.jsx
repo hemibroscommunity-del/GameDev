@@ -107,7 +107,14 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
      decides what actions are valid for the item. */
   const handleTap = (e) => {
     e.stopPropagation();
-    itemDetailBus.open({ kind: 'inventory', key: ikey, count: count || 0 });
+    /* v2.3.210: capture tile rect so the popup can anchor itself
+       beside the tapped cell instead of centering on the viewport. */
+    let anchor = null;
+    try {
+      const rect = e.currentTarget.getBoundingClientRect();
+      anchor = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+    } catch (_e) {}
+    itemDetailBus.open({ kind: 'inventory', key: ikey, count: count || 0, anchor });
   };
   const locked = itemIsLocked(ikey);
   return (
@@ -231,21 +238,85 @@ export const InventoryPanel = () => {
         })}
       </div>
 
-      {filtered.length === 0 ? (
-        <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
-          {filter === 'all' ? 'Bag is empty.' : 'No items in this category.'}
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(8, 1fr)',
-          gap: 6,
-        }}>
-          {filtered.slice(0, 32).map(k => (
-            <ItemTile key={k} ikey={k} count={inv[k]} />
-          ))}
-        </div>
-      )}
+      {(() => {
+        /* v2.3.210: surface stash weapons + shields in the bag grid
+           so the popup's Equip action has somewhere to come from. */
+        const stashWpns = (filter === 'all' || filter === 'weapon')
+          ? ((S?.rpg?.weaponStash) || [])
+          : [];
+        const stashShields = (filter === 'all' || filter === 'armor')
+          ? ((S?.rpg?.shieldStash) || [])
+          : [];
+        const totalTiles = stashWpns.length + stashShields.length + filtered.length;
+        if (totalTiles === 0) {
+          return (
+            <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
+              {filter === 'all' ? 'Bag is empty.' : 'No items in this category.'}
+            </div>
+          );
+        }
+        return (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(8, 1fr)',
+            gap: 6,
+          }}>
+            {stashWpns.map((wpn, i) => (
+              <StashTile key={`sw-${i}`} kind="stashWeapon" obj={wpn} index={i} />
+            ))}
+            {stashShields.map((sh, i) => (
+              <StashTile key={`ss-${i}`} kind="stashShield" obj={sh} index={i} />
+            ))}
+            {filtered.slice(0, 32 - stashWpns.length - stashShields.length).map(k => (
+              <ItemTile key={k} ikey={k} count={inv[k]} />
+            ))}
+          </div>
+        );
+      })()}
+    </div>
+  );
+};
+
+/* Stash tile for an unequipped weapon or shield.  Opens the popup
+   with the stashWeapon / stashShield kind so the Equip action wires
+   it back into the matching loadout slot. */
+const StashTile = ({ kind, obj, index }) => {
+  const handleTap = (e) => {
+    e.stopPropagation();
+    let anchor = null;
+    try {
+      const rect = e.currentTarget.getBoundingClientRect();
+      anchor = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+    } catch (_e) {}
+    if (kind === 'stashShield') {
+      itemDetailBus.open({ kind: 'stashShield', shield: obj, index, anchor });
+    } else {
+      itemDetailBus.open({ kind: 'stashWeapon', wpn: obj, index, anchor });
+    }
+  };
+  const v = '2.3.211';
+  const thumb = kind === 'stashShield'
+    ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.png?v=${v}` : null)
+    : obj && obj.type === 'bow'   ? `/sprites/weapons/bows/Bow2.png?v=${v}`
+    : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${v}`
+    : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/Bamboo.png?v=${v}`
+    : `/sprites/weapons/swords/Sword1.png?v=${v}`;
+  const color = TIER_COLOR.rare;
+  return (
+    <div onPointerUp={handleTap} style={{
+      width: '100%', aspectRatio: '1 / 1',
+      background: COL.tile,
+      border: `1.5px solid ${color}`,
+      borderRadius: 6,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      position: 'relative',
+      cursor: 'pointer',
+      touchAction: 'manipulation',
+    }} title={(obj && obj.name) || (kind === 'stashShield' ? 'Shield' : 'Weapon')}>
+      {thumb
+        ? <img src={thumb} alt="" draggable={false}
+            style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
+        : <span style={{ fontSize: 18 }}>{kind === 'stashShield' ? '\u{1F6E1}' : '⚔'}</span>}
     </div>
   );
 };

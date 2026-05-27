@@ -4369,6 +4369,8 @@ export var BroTown = function BroTown(_ref0) {
       if (!S.rpg._threatCooldownUntil) S.rpg._threatCooldownUntil = 0;
       if (!S.rpg._guardConfiscateUntil) S.rpg._guardConfiscateUntil = 0;
       if (!S.rpg.weaponStash) S.rpg.weaponStash = [];
+      /* v2.3.210: stash bag for unequipped shields, mirror of weaponStash. */
+      if (!S.rpg.shieldStash) S.rpg.shieldStash = [];
       if (!S.rpg._deathTimestamps) S.rpg._deathTimestamps = [];
       if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
       if (S.rpg.achievementPoints === undefined) S.rpg.achievementPoints = 0;
@@ -7077,8 +7079,15 @@ export var BroTown = function BroTown(_ref0) {
           var _R6 = S.rpg;
           /* §2.6 Tag player with Influence for status duration scaling */
           S.player._rpgInfluence = _R6.influence || 0;
-          /* §4.4 Weapon Damage — uses new stat system */
-          var _activeWpn = getActiveWeapon(_R6);
+          /* §4.4 Weapon Damage — uses new stat system.
+             v2.3.213: fall back to a zero-damage "Unarmed" object when
+             nothing is equipped so per-frame reads of .type/.tierMult
+             don't crash.  Auto-attack is gated separately and won't
+             fire without a real weapon. */
+          var _activeWpn = getActiveWeapon(_R6) || {
+            type: 'greatsword', tier: 'common', tierMult: 0,
+            element1: null, element2: null, name: 'Unarmed'
+          };
           var wpnType = WEAPON_TYPES[_activeWpn.type] || WEAPON_TYPES.greatsword;
           var pDmg = calcWeaponDmg(_activeWpn.type, _R6 || {}, _activeWpn.tierMult);
           /* Snapshot the un-modified base — the "block N" popup compares
@@ -8253,7 +8262,14 @@ export var BroTown = function BroTown(_ref0) {
              magic cast since downstream render code assumed swingTimer
              is always in the past). */
           var _staffCdExtra = (S.rpg && S.rpg.activeSlot === 'staff') ? 300 : 0;
-          if (S.autoAttack && S.rpg && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
+          /* v2.3.212: no weapon in active slot -> auto-attack disabled.
+             Slot fallback to melee mirrors getActiveWeapon's default. */
+          var _aSlot = (S.rpg && S.rpg.activeSlot) || 'melee';
+          var _eqWpn = !S.rpg ? null
+                     : _aSlot === 'ranged' ? S.rpg.rangedWeapon
+                     : _aSlot === 'staff'  ? S.rpg.staffWeapon
+                     :                       S.rpg.weapon;
+          if (S.autoAttack && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
@@ -10275,7 +10291,9 @@ export var BroTown = function BroTown(_ref0) {
           }
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
-            var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : { element1: null, element2: null };
+            /* v2.3.213: fall back to inert object when unarmed so
+               arrow tick doesn't crash on .type/.tierMult reads. */
+            var activeWpn = (S.rpg && getActiveWeapon(S.rpg)) || { element1: null, element2: null };
             var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg || {}, activeWpn.tierMult || 1) : 10;
             /* Derive element/type early so kill logic can use them */
             var projElem = a.element || (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1);
@@ -11368,6 +11386,8 @@ export var BroTown = function BroTown(_ref0) {
     if (!S.respawnTimer || Date.now() > S.respawnTimer) S.respawnTimer = Date.now() + 400;
   };
   var doLunge = function (S, R, ang) {
+    /* v2.3.213: no melee weapon -> fall back to a plain dodge. */
+    if (!R.weapon) return doStandardDodge(S, R, ang);
     var lungeCost = Math.ceil((R.maxStamina || 100) * (LUNGE_STAMINA_FRACTION || 0.25));
     if ((R.stamina || 0) < lungeCost) return doStandardDodge(S, R, ang);
     var lt = S.lockedTarget && S.lockedTarget.ref;
@@ -11413,6 +11433,10 @@ export var BroTown = function BroTown(_ref0) {
     }, 160);
   };
   var doRetreatShot = function (S, R, ang) {
+    /* v2.3.213: no ranged weapon in active slot -> plain dodge. */
+    var _rwSlot = R.activeSlot || 'ranged';
+    var _rwEq = _rwSlot === 'staff' ? R.staffWeapon : R.rangedWeapon;
+    if (!_rwEq) return doStandardDodge(S, R, ang);
     var retCost = Math.ceil((R.maxStamina || 100) * (RETREAT_SHOT_STAMINA_FRACTION || 0.20));
     if ((R.stamina || 0) < retCost) return doStandardDodge(S, R, ang);
     var lt = S.lockedTarget && S.lockedTarget.ref;
@@ -11580,6 +11604,8 @@ export var BroTown = function BroTown(_ref0) {
        damage via SPECIAL_ATK_MULT downstream; it no longer affects
        cost.  Old formula was `15 + tierIdx * 3` (15-24). */
     var activeWpn = getActiveWeapon(R);
+    /* v2.3.212: no weapon equipped in active slot -> special disabled. */
+    if (!activeWpn) return;
     var tierIdx = {
       common: 0,
       elemental: 1,
@@ -11696,6 +11722,8 @@ export var BroTown = function BroTown(_ref0) {
     var now = Date.now();
     if (S._shieldCdUntil && now < S._shieldCdUntil) return;
     if ((S._shieldStamina || 3000) <= 0) return;
+    /* v2.3.212: no shield equipped -> block is disabled. */
+    if (!S.rpg || !S.rpg.shield) return;
     S._shieldUp = true;
     setShieldUp(true);
     S.shieldActive = now;
