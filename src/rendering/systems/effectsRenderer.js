@@ -1638,6 +1638,21 @@ export class EffectsRenderer {
     gfx.clear();
 
     const nodes = S.gatherNodes || [];
+
+    /* v2.3.216: dispose orphaned sprites from the previous zone.
+       _disposeNode only fires for nodes that are STILL in the array
+       but flipped !alive -- when S.gatherNodes is replaced wholesale
+       on a zone transition (e.g. meadow -> town), the previous
+       zone's nodes vanish from the array but their _pixiSprite /
+       _pixiTier / _pixiEmoji / _pixiTip* children stay parented in
+       nodeLayer and keep rendering. Track which nodes had sprites
+       on the last frame and dispose any that disappeared. */
+    if (!this._renderedNodes) this._renderedNodes = new Set();
+    const currentSet = new Set(nodes);
+    for (const oldNode of this._renderedNodes) {
+      if (!currentSet.has(oldNode)) this._disposeNode(oldNode);
+    }
+    this._renderedNodes = currentSet;
     /* Player position for proximity-tooltip distance test. */
     const px = S.player ? S.player.x : 0;
     const py = S.player ? S.player.y : 0;
