@@ -63,8 +63,12 @@ PAIRS = {
         ('982972E3-BD88-40FD-B212-8013B1B3F0FD', False),
         ('4F61C7E9-F143-466E-868F-828D177DD4FE', False),
     ),
+    # Per user: only east/west uses the build-time mirror trick.
+    # SW source frames go in unmodified — if the SE direction looks
+    # wrong, that's a code-level "don't mirror SW for SE" change, not
+    # a build-time flip.
     'southwest': (
-        ('B9D7D86E-AEB8-4E35-B0E3-385AAE463EEC', True),
+        ('B9D7D86E-AEB8-4E35-B0E3-385AAE463EEC', False),
         ('1E265426-853D-4AB2-B50D-C9A8E2F25963', False),
     ),
 }
