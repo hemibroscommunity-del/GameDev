@@ -8255,7 +8255,14 @@ export var BroTown = function BroTown(_ref0) {
              magic cast since downstream render code assumed swingTimer
              is always in the past). */
           var _staffCdExtra = (S.rpg && S.rpg.activeSlot === 'staff') ? 300 : 0;
-          if (S.autoAttack && S.rpg && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
+          /* v2.3.212: no weapon in active slot -> auto-attack disabled.
+             Slot fallback to melee mirrors getActiveWeapon's default. */
+          var _aSlot = (S.rpg && S.rpg.activeSlot) || 'melee';
+          var _eqWpn = !S.rpg ? null
+                     : _aSlot === 'ranged' ? S.rpg.rangedWeapon
+                     : _aSlot === 'staff'  ? S.rpg.staffWeapon
+                     :                       S.rpg.weapon;
+          if (S.autoAttack && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
@@ -11582,6 +11589,8 @@ export var BroTown = function BroTown(_ref0) {
        damage via SPECIAL_ATK_MULT downstream; it no longer affects
        cost.  Old formula was `15 + tierIdx * 3` (15-24). */
     var activeWpn = getActiveWeapon(R);
+    /* v2.3.212: no weapon equipped in active slot -> special disabled. */
+    if (!activeWpn) return;
     var tierIdx = {
       common: 0,
       elemental: 1,
@@ -11698,6 +11707,8 @@ export var BroTown = function BroTown(_ref0) {
     var now = Date.now();
     if (S._shieldCdUntil && now < S._shieldCdUntil) return;
     if ((S._shieldStamina || 3000) <= 0) return;
+    /* v2.3.212: no shield equipped -> block is disabled. */
+    if (!S.rpg || !S.rpg.shield) return;
     S._shieldUp = true;
     setShieldUp(true);
     S.shieldActive = now;
