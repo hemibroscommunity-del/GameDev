@@ -4464,27 +4464,14 @@ export var BroTown = function BroTown(_ref0) {
     /* Initialize NPCs — only in town, and only when the Tiled brotown
        map isn't authoring its own town content. */
     if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
-      S.npcs = NPC_DATA.map(function (npc, i) {
-        return _objectSpread(_objectSpread({}, npc), {}, {
-          id: 'npc-' + i,
-          hp: 30,
-          maxHp: 30,
-          alive: true,
-          respawnAt: 0,
-          x: npc.spawnX,
-          y: npc.spawnY,
-          targetX: npc.spawnX,
-          targetY: npc.spawnY,
-          moveTimer: Math.random() * 3000,
-          chatTimer: 5000 + Math.random() * 10000,
-          chatBubble: null,
-          /* {text, ts} */
-          dir: 'down',
-          _facing: 'down',
-          renderX: npc.spawnX,
-          renderY: npc.spawnY
-        });
-      });
+      /* v2.3.214: NPC spawn disabled -- user is re-introducing NPCs
+         one at a time. To re-enable, filter NPC_DATA to the names
+         you want, e.g.
+           const ACTIVE_NPCS = ['Mayor Bro'];
+           S.npcs = NPC_DATA.filter(n => ACTIVE_NPCS.includes(n.name))
+             .map((npc, i) => _objectSpread(...));
+         NPC_DATA in src/data/gameSystems.js still has all entries. */
+      S.npcs = [];
     }
 
     /* Loaded avatar images cache */
@@ -5247,26 +5234,9 @@ export var BroTown = function BroTown(_ref0) {
 
         /* Re-initialize NPCs when entering town (they get nulled on zone transitions) */
         if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
-          S.npcs = NPC_DATA.map(function (npc, i) {
-            return _objectSpread(_objectSpread({}, npc), {}, {
-              id: 'npc-' + i,
-              hp: 30,
-              maxHp: 30,
-              alive: true,
-              respawnAt: 0,
-              x: npc.spawnX,
-              y: npc.spawnY,
-              targetX: npc.spawnX,
-              targetY: npc.spawnY,
-              moveTimer: Math.random() * 3000,
-              chatTimer: 5000 + Math.random() * 10000,
-              chatBubble: null,
-              dir: 'down',
-              _facing: 'down',
-              renderX: npc.spawnX,
-              renderY: npc.spawnY
-            });
-          });
+          /* v2.3.214: NPC spawn disabled (see init-block comment near
+             line 4467 for the re-enable recipe). */
+          S.npcs = [];
         }
         /* Active weapon — available to all render/combat sections */
         var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : {

@@ -25,7 +25,11 @@ export const ZONES = {
     /* Variant: ember fodder renders as fireGoblin (see monsterVariants.js
        ZONE_VARIANT_MAP).  zones.js stays in base-archetype terms; the
        variant layer rewires the skin without touching this file. */
-    spawns: [{ arch: 'fodder', count: 6 }, { arch: 'brute', count: 3 }, { arch: 'volatile', count: 4 }],
+    /* v2.3.214: emoji-only archetypes (brute, volatile) removed from
+       ember spawns -- user clearing placeholders before authoring
+       sprite-backed monsters one at a time. Only fodder remains
+       because it variants to fireGoblin (sprite-backed) here. */
+    spawns: [{ arch: 'fodder', count: 6 }],
     atmosphere: { tint: 'rgba(180,60,20,0.06)', vignette: 'rgba(120,30,0,0.12)' },
     enemyEmoji: { fodder: '🔥', brute: '🌋', swarm: '🦎', volatile: '💣', hexer: '🧙', sentinel: '⚔️' }
   },
@@ -34,7 +38,10 @@ export const ZONES = {
     /* Elemental zone 1 — see ember note. */
     element: 'venom', secondary: 'wind', level: [1, 2], music: 'mist', safe: false,
     palette: { ground: '#2a4a2a', path: '#5a6a45', accent: '#3a5a30' },
-    spawns: [{ arch: 'swarm', count: 5 }, { arch: 'stalker', count: 3 }, { arch: 'hexer', count: 3 }],
+    /* v2.3.214: all 3 spawn archetypes (swarm/stalker/hexer) were
+       emoji-only; zone now spawns nothing until a sprite-backed
+       monster is added for Mistwood. */
+    spawns: [],
     atmosphere: { tint: 'rgba(30,90,30,0.05)', vignette: 'rgba(10,50,10,0.15)' },
     enemyEmoji: { fodder: '🍄', brute: '🌿', swarm: '🪲', hexer: '🧪', sentinel: '🪵' }
   },
@@ -52,7 +59,9 @@ export const ZONES = {
     /* Elemental zone 1 — see ember note. */
     element: 'storm', secondary: 'flame', level: [1, 2], music: 'thunder', safe: false,
     palette: { ground: '#4a4a5a', path: '#6a6a7a', accent: '#7a5aaa' },
-    spawns: [{ arch: 'fodder', count: 6 }, { arch: 'volatile', count: 4 }, { arch: 'stalker', count: 3 }],
+    /* v2.3.214: dropped volatile + stalker (emoji-only). Slime
+       (fodder) still spawns in Thunder Peaks. */
+    spawns: [{ arch: 'fodder', count: 6 }],
     atmosphere: { tint: 'rgba(100,70,170,0.05)', vignette: 'rgba(50,30,100,0.12)' },
     enemyEmoji: { fodder: '⚡', brute: '🗿', swarm: '🦇', hexer: '🌩️', sentinel: '⛰️' }
   },
@@ -61,7 +70,9 @@ export const ZONES = {
     /* Elemental zone 1 — see ember note. */
     element: 'stone', secondary: 'venom', level: [1, 2], music: 'hollows', safe: false,
     palette: { ground: '#3a3a3a', path: '#5a5a5a', accent: '#6a5a4a' },
-    spawns: [{ arch: 'brute', count: 4 }, { arch: 'sentinel', count: 3 }, { arch: 'swarm', count: 4 }],
+    /* v2.3.214: dropped sentinel + swarm (emoji-only). brute is
+       sprite-backed here via rockmonster variant. */
+    spawns: [{ arch: 'brute', count: 4 }],
     atmosphere: { tint: 'rgba(80,70,50,0.06)', vignette: 'rgba(30,25,15,0.18)' },
     enemyEmoji: { fodder: 'rubble', brute: 'rock', swarm: 'scorp', volatile: 'gem', hexer: 'urn' }
   },
@@ -84,7 +95,9 @@ export const ZONES = {
     /* Elemental zone 1 — see ember note. */
     element: 'water', secondary: 'venom', level: [1, 2], music: 'tidal', safe: false,
     palette: { ground: '#2a4a5a', path: '#4a6a7a', accent: '#2a6a9a' },
-    spawns: [{ arch: 'swarm', count: 4 }, { arch: 'hexer', count: 4 }, { arch: 'brute', count: 3 }],
+    /* v2.3.214: dropped swarm + hexer (emoji-only). brute is
+       sprite-backed here via fishman variant. */
+    spawns: [{ arch: 'brute', count: 3 }],
     atmosphere: { tint: 'rgba(30,80,120,0.05)', vignette: 'rgba(10,40,80,0.12)' },
     enemyEmoji: { fodder: 'fish', brute: 'fishman', swarm: 'octo', volatile: 'bubble', stalker: 'shark', hexer: 'wave', sentinel: 'shell' }
   },
@@ -92,7 +105,8 @@ export const ZONES = {
     id: 'shadow', name: 'Shadow Sanctum', w: 40, h: 40,
     element: 'dark', secondary: null, level: [81, 100], music: 'shadow', safe: false, endgame: true,
     palette: { ground: '#1a1a2a', path: '#2a2a3a', accent: '#3a2a4a' },
-    spawns: [{ arch: 'hexer', count: 4 }, { arch: 'sentinel', count: 3 }, { arch: 'stalker', count: 4 }],
+    /* v2.3.214: all 3 spawn archetypes were emoji-only. */
+    spawns: [],
     atmosphere: { tint: 'rgba(20,10,40,0.10)', vignette: 'rgba(0,0,20,0.25)' },
     enemyEmoji: { fodder: '👤', brute: '👹', swarm: '🦇', volatile: '💀', hexer: '🔮', sentinel: '⚰️' }
   },
@@ -100,7 +114,10 @@ export const ZONES = {
     id: 'radiant', name: 'Radiant Heights', w: 40, h: 40,
     element: 'light', secondary: null, level: [81, 100], music: 'radiant', safe: false, endgame: true,
     palette: { ground: '#6a6a4a', path: '#aaa870', accent: '#ccc060' },
-    spawns: [{ arch: 'brute', count: 4 }, { arch: 'swarm', count: 4 }, { arch: 'volatile', count: 3 }],
+    /* v2.3.214: all 3 spawn archetypes were emoji-only here (raw
+       brute has no sprite variant in radiant; swarm + volatile are
+       always emoji). */
+    spawns: [],
     atmosphere: { tint: 'rgba(240,200,60,0.04)', vignette: 'rgba(200,180,40,0.06)' },
     enemyEmoji: { fodder: '✨', brute: '🦁', swarm: '🐝', volatile: '☀️', stalker: '🦅', hexer: '🌟', sentinel: '🏛️' }
   },
