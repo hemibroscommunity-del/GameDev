@@ -742,7 +742,8 @@ export const BottomDashboard = () => {
                   /* Derived combat stats — calcCritChance and
                      calcBlockReduction both return 0..1 fractions;
                      multiply by 100 + round for the % display. */
-                  const critPct  = Math.round(calcCritChance(R.ferocity || 0) * 100);
+                  /* v2.3.233 (Phase 3): crit reads (power, ferocity). */
+                  const critPct  = Math.round(calcCritChance(R.power || 0, R.ferocity || 0) * 100);
                   const blockPct = Math.round(calcBlockReduction(R.fortification || 0, R.shield) * 100);
                   /* Session summary — zone name lookup is safe-guarded so
                      a missing currentZone or a zone removed from ZONES

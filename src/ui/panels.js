@@ -6670,7 +6670,7 @@ export function renderBroTownUI(uiCtx) {
       marginTop: 8,
       lineHeight: 1.6
     }
-  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState.power, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.ferocity || 0) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.ferocity || 0).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
+  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState.power, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, rpgState.ferocity || 0) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, rpgState.ferocity || 0).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setBuildingPanel(null);

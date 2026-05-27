@@ -4512,15 +4512,28 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult) {
   return base * (0.75 + Math.random() * 0.5);
 }
 
-/* §2.1 Crit */
-export function calcCritChance(ferocity) {
-  if (ferocity <= 300) return 60 * ferocity / (ferocity + 120) / 100;
-  var baseAt300 = 60 * 300 / (300 + 120) / 100;
-  var excess = ferocity - 300;
-  return baseAt300 + 8 * excess / (excess + 200) / 100;
+/* §2.1 Crit
+   v2.3.233 (Phase 3): Power owns the baseline crit identity; Ferocity
+   stacks additively on top as a T2 amplifier.  Old signatures took
+   (ferocity) only -- new signatures accept (power, ferocity) but tolerate
+   a single-arg legacy call by treating it as Ferocity alone, which is the
+   safer fallback (slightly lower crit than before, never higher). */
+export function calcCritChance(power, ferocity) {
+  /* Single-arg legacy support: caller passed Ferocity only. */
+  if (arguments.length < 2) { ferocity = power || 0; power = 0; }
+  var pow = power || 0;
+  var fer = ferocity || 0;
+  /* Power baseline: 40 * P / (P + 200).  0->0%, P100->13.3%, P500->28.6%. */
+  var pCrit = 40 * pow / (pow + 200) / 100;
+  /* Ferocity additive amp: 30 * F / (F + 250).  0->0%, F100->8.6%, F500->20%. */
+  var fCrit = 30 * fer / (fer + 250) / 100;
+  return Math.max(0, Math.min(1, pCrit + fCrit));
 }
-export function calcCritMult(ferocity) {
-  return 1.75 + ferocity * 0.0008;
+export function calcCritMult(power, ferocity) {
+  if (arguments.length < 2) { ferocity = power || 0; power = 0; }
+  /* Power: 1.5x at 0, +0.001 per pt (2.0x at 500).
+     Ferocity: +0.0008 per pt amp (additive). */
+  return 1.5 + (power || 0) * 0.001 + (ferocity || 0) * 0.0008;
 }
 
 /* §2.3 Block */

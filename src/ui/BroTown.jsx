@@ -7134,8 +7134,9 @@ export var BroTown = function BroTown(_ref0) {
              never fires in any new save. Old saves with leftover
              _bleedUntil will simply have it ignored. */
           /* §2.1 Crit from Ferocity */
-          var critChance = calcCritChance(_R6.ferocity);
-          var critMult = calcCritMult(_R6.ferocity);
+          /* v2.3.233 (Phase 3): Power is the T1 crit source, Ferocity amps. */
+          var critChance = calcCritChance(_R6.power, _R6.ferocity);
+          var critMult = calcCritMult(_R6.power, _R6.ferocity);
           /* Baseline floor: at zero ferocity, calcCritChance returns 0%, which
              meant a brand-new player could never grand-slam. Floor at 8% so a
              grand slam is reachable from the first swing. Applied before the
