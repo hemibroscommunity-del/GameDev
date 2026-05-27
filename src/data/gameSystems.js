@@ -4552,6 +4552,29 @@ export function calcMoveSpeed(agility) {
   return 5.0 * (1 + Math.min(agility * 0.0012, 0.60));
 }
 
+/* v2.3.234 (Phase 4): all special attacks scale with Mind regardless of
+   the equipped weapon type.  Keeps the weapon's base + tier as the
+   anchor; Mind drives the linear scale.  Variance per weapon stays the
+   same so staff specials still feel high-variance vs bow tight + sword
+   medium. */
+export function calcSpecialDmg(weaponType, rpg, tierMult) {
+  var w = WEAPON_TYPES[weaponType];
+  if (!w) return 0;
+  var mind = (rpg && rpg.mind) || 0;
+  var base = (w.base + mind * 0.8) * (tierMult || 1);
+  if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.0);
+  if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
+  return base * (0.75 + Math.random() * 0.5);
+}
+
+/* v2.3.234 (Phase 4): passive dodge chance.  Returns true if the
+   incoming hit should be evaded entirely (0 dmg).  Cap at 30% so even
+   pure-Agility builds still take some hits. */
+export function rollPassiveDodge(agility) {
+  var pct = Math.min((agility || 0) * 0.0008, 0.30);
+  return Math.random() < pct;
+}
+
 /* §6.2 XP Required — tri-phase */
 export function xpRequired(level) {
   if (level <= 30) return Math.ceil(500 * Math.pow(1.10, level - 1));

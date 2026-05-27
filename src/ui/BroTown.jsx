@@ -69,6 +69,7 @@ const {
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
   recalcDerived, getActiveWeapon, calcWeaponDmg, calcCritChance, calcCritMult,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
+  calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
   applyStatus, tickStatuses, getOldestStatusElement,
   lookupCollision, resolveCollision, getEffectiveness,
@@ -7772,7 +7773,17 @@ export var BroTown = function BroTown(_ref0) {
                      with a Math.max(1) floor, which always let at least
                      1 hp through even with 75% block).  Player request
                      is "the damage gets blocked," so 0 across the board. */
-                  var dmgTaken = shielded ? 0 : rawDmg;
+                  /* v2.3.234 (Phase 4): Agility passive dodge -- a roll
+                     before the hit lands; on dodge, full negation +
+                     a cyan popup so the player can see it happened. */
+                  var _passiveDodge = !shielded && rollPassiveDodge(_R6.agility);
+                  if (_passiveDodge) {
+                    S.dmgNumbers.push({
+                      x: P.x, y: P.y - 18, text: 'Dodge!',
+                      color: '#00d4ff', ts: Date.now(),
+                    });
+                  }
+                  var dmgTaken = (shielded || _passiveDodge) ? 0 : rawDmg;
                   /* ═══ FODDER SLIMES — RANGED PROJECTILE ATTACK ═══
                      Spawn a slime-orb projectile aimed at the player's
                      position right now. Damage isn't applied here — it
@@ -8502,7 +8513,13 @@ export var BroTown = function BroTown(_ref0) {
                 if (hitElement) {
                   collisionResult = resolveCollision(m, hitElement, S.player, _R6, Date.now());
                 }
-                var dmg = Math.round((isCrit ? pDmg * critMult : pDmg) * specialMult * _comboBurst);
+                /* v2.3.234 (Phase 4): special-attack damage scales with
+                   Mind instead of the weapon stat.  Normal swings still
+                   use pDmg (Power-based for melee).  Variance is rolled
+                   per-hit so different monsters in a sweep can take
+                   slightly different damage. */
+                var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult) : pDmg;
+                var dmg = Math.round((isCrit ? _specBase * critMult : _specBase) * specialMult * _comboBurst);
                 /* §12.2 cert — first time the combo-burst multiplier (>1) actually lands. */
                 if (_comboBurst > 1) masteryEarnCert('first-combo-burst');
                 /* Boss invulnerability — can only be damaged during recovery phase */
@@ -9889,11 +9906,14 @@ export var BroTown = function BroTown(_ref0) {
             var stAmuletMult = ((_R7$_amuletBonus = _R7._amuletBonus) === null || _R7$_amuletBonus === void 0 ? void 0 : _R7$_amuletBonus.stat) === 'staminaRegen' ? 1 + _R7._amuletBonus.value / 100 : 1;
             _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stRestMult * stEndMult * regenMult * stAmuletMult);
           }
-          /* Mana regen — §3.4: OOC 2.5%/s after 2s × Restoration */
+          /* Mana regen — §3.4: OOC 2.5%/s after 2s × Restoration × Mind.
+             v2.3.234 (Phase 4): Mind speeds up the recharge alongside
+             governing mana pool size + special-attack damage. */
           if (_R7.mana < _R7.maxMana && Date.now() - S.lastDamageTaken > 2000 && !S._serverMonsters) {
             var mRestMult = 1 + (_R7.restoration || 0) * 0.001;
+            var mMindMult = 1 + (_R7.mind || 0) * 0.001;
             var manaRegenMult = hasManaBuff ? 1.3 : 1.0;
-            _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mRestMult * manaRegenMult);
+            _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mRestMult * mMindMult * manaRegenMult);
           }
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
@@ -9905,9 +9925,11 @@ export var BroTown = function BroTown(_ref0) {
             var _stEndMult8 = 1 + (_R8.endurance || 0) * 0.002;
             _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8);
           }
-          /* Slow mana regen in combat — 1%/s */
+          /* Slow mana regen in combat — 1%/s × Mind.
+             v2.3.234 (Phase 4): Mind multiplies combat regen too. */
           if (_R8.mana < _R8.maxMana && !S._serverMonsters) {
-            _R8.mana = Math.min(_R8.maxMana, _R8.mana + _R8.maxMana * 0.00017);
+            var _mMindMult8 = 1 + (_R8.mind || 0) * 0.001;
+            _R8.mana = Math.min(_R8.maxMana, _R8.mana + _R8.maxMana * 0.00017 * _mMindMult8);
           }
         }
 
@@ -10845,6 +10867,15 @@ export var BroTown = function BroTown(_ref0) {
               }
               return false;
             }
+            /* v2.3.234 (Phase 4): Agility passive dodge on projectiles too. */
+            var _projDodge = rollPassiveDodge(_R6P.agility);
+            if (_projDodge) {
+              S.dmgNumbers.push({
+                x: P.x, y: P.y - 18, text: 'Dodge!',
+                color: '#00d4ff', ts: Date.now(),
+              });
+              return false;
+            }
             _R6P.hp -= proj.rawDmg;
             trackMonsterDamage(S, proj.ownerId, proj.rawDmg);
             if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: proj.rawDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
@@ -11696,7 +11727,8 @@ export var BroTown = function BroTown(_ref0) {
          arrow alive after each hit so it travels through every monster
          it overlaps -- hitIds prevents double-hits on the same target. */
       if (!S.arrows) S.arrows = [];
-      var wpnDmg = calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult);
+      /* v2.3.234 (Phase 4): specials scale with Mind, not weapon stat. */
+      var wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult);
       S.arrows.push({
         ang: aimAng,
         dist: 14,
@@ -11718,7 +11750,8 @@ export var BroTown = function BroTown(_ref0) {
          the hit handler picks the 'spell' popup icon (vs 'arrow' for
          bows) and the projectile renders as magic, not a physical arrow. */
       if (!S.arrows) S.arrows = [];
-      var _wpnDmg = calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult);
+      /* v2.3.234 (Phase 4): staff special damage scales with Mind. */
+      var _wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult);
       for (var si = -1; si <= 1; si++) {
         S.arrows.push({
           ang: aimAng + si * 0.25,
