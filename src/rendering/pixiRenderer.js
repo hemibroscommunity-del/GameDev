@@ -29,7 +29,9 @@ export async function initPixiRenderer(canvas) {
   const tileRenderer = new TileRenderer(layers.tiles, app);
   const entityRenderer = new EntityRenderer(layers.entities, layers.player);
   const effectsRenderer = new EffectsRenderer(layers);
-  const fpsOverlay = new FpsOverlay();
+  /* v2.3.221: FPS counter only mounts with ?dev=1. */
+  const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
+  const fpsOverlay = _devUI ? new FpsOverlay() : null;
 
   // Load tile sprite assets (non-blocking — tiles render procedurally until loaded)
   loadTileAssets()
@@ -195,7 +197,7 @@ export async function initPixiRenderer(canvas) {
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
 
-    fpsOverlay.update(now);
+    if (fpsOverlay) fpsOverlay.update(now);
     const _t4 = performance.now();
     update._lastStages.fpsMs = _t4 - _t3;
 
@@ -238,7 +240,7 @@ export async function initPixiRenderer(canvas) {
     tileRenderer.destroy();
     entityRenderer.clear();
     effectsRenderer.clear();
-    fpsOverlay.destroy();
+    if (fpsOverlay) fpsOverlay.destroy();
     app.destroy(false, { children: true });
   }
 

@@ -442,8 +442,15 @@ export const GameApp = () => {
       <SpecialChargePie />
       <XpFlyOverlay />
       <MasteryNotification />
-      <DebugOverlay />
-      <BuildBadge />
+      {/* v2.3.221: dev-tooling overlays gated on ?dev=1 URL param so
+          the player-facing build doesn't show the D button, version
+          badge, or FPS counter. */}
+      {typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search) && (
+        <>
+          <DebugOverlay />
+          <BuildBadge />
+        </>
+      )}
     </>
   );
 };
