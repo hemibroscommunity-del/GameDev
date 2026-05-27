@@ -3129,12 +3129,9 @@ export class EntityRenderer {
         heart.x = 0;
         /* Heart sits just above the head: head top is around y=-33
            (player sprite radius). Putting heart's bottom edge at -33
-           means center y = -(SIZE/2 + 33).  This stays correct for
-           any heart size -- previously hard-coded y=-HEART worked
-           only because SIZE/2 happened to equal 33 (v2.3.131 with
-           HEART=66); shrinking to 40 broke that coincidence and the
-           bottom overlapped the head until this formula. */
-        heart.y = -(PLAYER_HEART_SIZE / 2 + 33);
+           means center y = -(SIZE/2 + 33).  v2.3.220: lift another
+           5px so the heart floats a little clearer of the head. */
+        heart.y = -(PLAYER_HEART_SIZE / 2 + 38);
         heartText.x = 0;
         /* Nudge the number up into the heart's widest section (~12%
            above the geometric center) so it doesn't ride the bottom V. */
