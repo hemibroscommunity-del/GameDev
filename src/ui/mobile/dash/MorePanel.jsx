@@ -1,5 +1,6 @@
 ﻿import React from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { controlsTutorialBus } from '../controlsTutorialBus.js';
 import { COL, panelStyle } from './common.js';
 
 // Sliced from public/icons/ui/dashboard-mockup-new0.jpg via
@@ -12,6 +13,9 @@ const TILES = [
   { id: 'guild',       src: '/icons/ui/guild.png',       label: 'Guild',    glyph: '⚒' },
   { id: 'feedback',    src: '/icons/ui/feedback.png',    label: 'Feedback', glyph: '💬' },
   { id: 'settings',    src: '/icons/ui/settings.png',    label: 'Settings', glyph: '⚙' },
+  /* v2.3.225: opens the annotated controls tutorial via its bus
+     instead of pushing a dashboard panel. */
+  { id: 'controls',    src: null,                        label: 'Controls', glyph: '?' },
 ];
 
 export const MorePanel = () => (
@@ -24,7 +28,11 @@ export const MorePanel = () => (
       {TILES.map(t => (
         <button
           key={t.id}
-          onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.push(t.id); }}
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            if (t.id === 'controls') controlsTutorialBus.open();
+            else dashboardPanelBus.push(t.id);
+          }}
           style={{
             background: COL.tile,
             border: `1px solid ${COL.tileBor}`,
