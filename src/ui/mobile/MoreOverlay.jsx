@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { controlsTutorialBus } from './controlsTutorialBus.js';
 
 // "More" overlay: opened by the wheel's 6 o'clock slot. Surfaces every
 // legacy panel that doesn't have a dedicated wheel slot, so hiding the
@@ -22,6 +23,9 @@ const ITEMS = [
   { e: '👥', label: 'Friends',      legacy: 'social' },
   { e: '📝', label: 'Feedback',     legacy: 'feedback' },
   { e: '💬', label: 'Chat',         legacy: 'chat' },
+  /* v2.3.222: opens the annotated controls tutorial via its own bus,
+     not the legacy window callback registry. */
+  { e: '?',  label: 'Controls',     bus: 'controlsTutorial' },
 ];
 
 let _open = false;
@@ -42,6 +46,7 @@ export const MoreOverlay = () => {
 
   const tap = (item) => {
     moreOverlay.close();
+    if (item.bus === 'controlsTutorial') { controlsTutorialBus.open(); return; }
     const fn = window.__broLegacyUI?.[item.legacy];
     if (fn) fn();
     else console.log('[more] no handler for', item.legacy);

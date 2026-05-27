@@ -16,6 +16,7 @@ import { BlockRing } from './mobile/BlockRing.jsx';
 import { SpecialChargePie } from './mobile/SpecialChargePie.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { MoreOverlay, moreOverlay } from './mobile/MoreOverlay.jsx';
+import { ControlsTutorial } from './mobile/ControlsTutorial.jsx';
 import { MasteryNotification } from './mobile/MasteryNotification.jsx';
 import { advanceMastery, earnCertification } from '../game/mastery.js';
 import { debugBus } from '../debug/debugBus.js';
@@ -442,6 +443,7 @@ export const GameApp = () => {
       <SpecialChargePie />
       <XpFlyOverlay />
       <MasteryNotification />
+      <ControlsTutorial />
       {/* v2.3.221: dev-tooling overlays gated on ?dev=1 URL param so
           the player-facing build doesn't show the D button, version
           badge, or FPS counter. */}
