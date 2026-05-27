@@ -49,7 +49,7 @@ function _ensureHudBarTextures() {
    is the red one."  v2.3.139 shrunk the player heart to 40 (3-digit
    fit); v2.3.141 matched the monster heart to the same size + sprite
    per user request. */
-const PLAYER_HEART_SIZE = 46;
+const PLAYER_HEART_SIZE = 40;
 const MONSTER_HEART_SIZE = 40;
 const PLAYER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
@@ -3136,9 +3136,9 @@ export class EntityRenderer {
            bottom overlapped the head until this formula. */
         heart.y = -(PLAYER_HEART_SIZE / 2 + 33);
         heartText.x = 0;
-        /* v2.3.218: nudge less aggressive (was -12%, now -4%) so the
-           top of the digit doesn't kiss the heart outline at size 46. */
-        heartText.y = heart.y - PLAYER_HEART_SIZE * 0.04;
+        /* Nudge the number up into the heart's widest section (~12%
+           above the geometric center) so it doesn't ride the bottom V. */
+        heartText.y = heart.y - PLAYER_HEART_SIZE * 0.12;
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
