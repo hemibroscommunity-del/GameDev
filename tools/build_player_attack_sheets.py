@@ -129,27 +129,39 @@ def key_and_trim(uuid):
     return img.crop(bbox), bbox
 
 
-# Skin retint: match the stand/jog skin mean so the attack sheets read
-# as the same character.  Same TARGET + classifier used by
-# tools/retint_hit_skin.py.
-SKIN_TARGET = np.array([192, 124, 70], dtype=float)
+# Skin retint: match the stand-south skin distribution (mean + std)
+# so the attack sheets read as the same character.  Wider classifier
+# than tools/retint_hit_skin.py's because the attack source pushed
+# some highlight pixels past R≥240 — those used to escape the shift
+# and kept the post-retint skin reading too bright.
+SKIN_TARGET_MEAN = np.array([193, 125, 69], dtype=float)
+SKIN_TARGET_STD  = np.array([16, 10, 6],   dtype=float)
 
 
 def _skin_mask(rgb_int, alpha):
+    """Skin classifier — R > G > B with R in 120..252 and G in 70..180.
+    The upper bound was 240 originally; bumped to 252 so the brightest
+    highlights also get shifted (otherwise they bypass the retint and
+    keep south reading too warm)."""
     R, G, B = rgb_int[..., 0], rgb_int[..., 1], rgb_int[..., 2]
     return (
         (alpha > 200)
         & (R > G) & (G > B)
-        & (R > 120) & (R < 240)
+        & (R > 120) & (R < 252)
         & (G > 70) & (G < 180)
     )
 
 
 def retint_skin_inplace(sheet_img):
-    """Per-frame skin retint of a horizontal 2-frame attack sheet.
-    Each 256-wide column gets its own delta so a single frame whose
-    skin happened to ship lighter than the rest is brought into line
-    independently."""
+    """Iterative per-frame skin retint.  Each pass classifies the
+    current skin pixels, computes the mean delta to SKIN_TARGET_MEAN,
+    and shifts the masked pixels by that delta.  After the shift some
+    formerly-classified pixels fall below the R>120 cutoff and stop
+    being counted toward the mean, which leaves the visible bright
+    highlights still warmer than target.  Running the shift 3 times
+    converges the post-classification mean onto the target so the
+    visible skin actually matches stand/jog.  Conservative classifier
+    (R>120, R<252, G>70, G<180) keeps olive pants out of the mask."""
     arr = np.array(sheet_img)
     h, w = arr.shape[:2]
     n_frames = max(1, w // h)
@@ -159,12 +171,13 @@ def retint_skin_inplace(sheet_img):
         x0, x1 = i * h, (i + 1) * h
         sub_rgb = rgb[:, x0:x1]
         sub_alpha = alpha[:, x0:x1]
-        mask = _skin_mask(sub_rgb.astype(int), sub_alpha)
-        if mask.sum() < 50:
-            continue
-        cur_mean = sub_rgb[mask].mean(axis=0)
-        sub_rgb[mask] += SKIN_TARGET - cur_mean
-        np.clip(sub_rgb, 0, 255, out=sub_rgb)
+        for _pass in range(3):
+            mask = _skin_mask(sub_rgb.astype(int), sub_alpha)
+            if mask.sum() < 50:
+                break
+            cur_mean = sub_rgb[mask].mean(axis=0)
+            sub_rgb[mask] += SKIN_TARGET_MEAN - cur_mean
+            np.clip(sub_rgb, 0, 255, out=sub_rgb)
         rgb[:, x0:x1] = sub_rgb
     arr[..., :3] = rgb.astype(np.uint8)
     return Image.fromarray(arr, 'RGBA')
