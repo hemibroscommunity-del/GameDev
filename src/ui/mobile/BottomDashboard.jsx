@@ -933,7 +933,15 @@ export const BottomDashboard = () => {
                      remount the cells.  Called as slotCell({...}) below. */
                   const slotCell = ({ k, label, iconSrc, onTap, active, equipped }) => (
                     <div key={k}
-                      onPointerUp={onTap ? (e) => { e.stopPropagation(); onTap(); } : undefined}
+                      onPointerUp={onTap ? (e) => {
+                        e.stopPropagation();
+                        let anchor = null;
+                        try {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          anchor = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+                        } catch (_e) {}
+                        onTap(anchor);
+                      } : undefined}
                       title={label}
                       style={{
                         position: 'relative',
@@ -975,11 +983,20 @@ export const BottomDashboard = () => {
                       )}
                     </div>
                   );
-                  const onCycleWeapon = () => {
-                    const order = ['melee', 'ranged', 'staff'];
-                    const i = order.indexOf(slot);
-                    const next = order[(i + 1) % order.length];
-                    weaponSwapBus.setSlot(next);
+                  /* v2.3.210: tapping the weapon slot now opens the
+                     ItemDetailPopup for the currently-active weapon
+                     instead of cycling melee/ranged/staff. */
+                  const onTapWeapon = (anchor) => {
+                    const slotKey = slot === 'ranged' ? 'rangedWeapon'
+                                  : slot === 'staff'  ? 'staffWeapon'
+                                  : 'weapon';
+                    const wpn = R[slotKey];
+                    if (!wpn) return;
+                    itemDetailBus.open({ kind: 'weapon', slot, wpn, anchor });
+                  };
+                  const onTapShield = (anchor) => {
+                    if (!R.shield) return;
+                    itemDetailBus.open({ kind: 'shield', shield: R.shield, anchor });
                   };
                   return (
                     <div style={{
@@ -1016,9 +1033,9 @@ export const BottomDashboard = () => {
                         gap: 3,
                         minHeight: 0,
                       }}>
-                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, equipped: !!R.shield })}
+                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, equipped: !!R.shield, onTap: R.shield ? onTapShield : undefined })}
                         {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null,      equipped: !!R.amulet })}
-                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: true, onTap: onCycleWeapon })}
+                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: true, onTap: onTapWeapon })}
                       </div>
                       {/* Row 2 — Chest · Legs.  v2.3.129: row reuses the
                           same 3-column track as Row 1 so chest + legs
