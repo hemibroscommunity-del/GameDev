@@ -3136,9 +3136,9 @@ export class EntityRenderer {
            bottom overlapped the head until this formula. */
         heart.y = -(PLAYER_HEART_SIZE / 2 + 33);
         heartText.x = 0;
-        /* Nudge the number up into the heart's widest section (~12%
-           above the geometric center) so it doesn't ride the bottom V. */
-        heartText.y = heart.y - PLAYER_HEART_SIZE * 0.12;
+        /* v2.3.218: nudge less aggressive (was -12%, now -4%) so the
+           top of the digit doesn't kiss the heart outline at size 46. */
+        heartText.y = heart.y - PLAYER_HEART_SIZE * 0.04;
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
