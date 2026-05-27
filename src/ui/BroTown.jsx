@@ -68,7 +68,7 @@ const {
   CLAN_COLORS, CLAN_CREATE_COST, CLAN_MAX_MEMBERS, CLAN_LOGO_SIZE, CLAN_TAG_MAX, CLAN_NAME_MAX,
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
   recalcDerived, getActiveWeapon, calcWeaponDmg, calcCritChance, calcCritMult,
-  calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction,
+  calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   xpRequired, monsterStat, createDefaultCompStats,
   applyStatus, tickStatuses, getOldestStatusElement,
   lookupCollision, resolveCollision, getEffectiveness,
@@ -2243,11 +2243,18 @@ export var BroTown = function BroTown(_ref0) {
                  Trade-off: server-side heal sources (cooking, level-up
                  full restore, respawn) are blocked until the player
                  next takes damage, at which point HP resyncs. */
+              /* v2.3.231: server's maxHp formula doesn't yet include
+                 armor HP (Phase 1 client-only).  Fold the armor bonus
+                 in so the player sees the equipped HP.  Both hp and
+                 maxHp get the bonus so the bar fills correctly.  In
+                 MP, server still drives damage events; the bonus is
+                 effectively a client-side "armor buffer". */
+              var _armorBonus = getArmorHp(S.rpg.armor, S.rpg.vitality);
               if (typeof msg.payload.hp === 'number') {
-                S.rpg.hp = msg.payload.hp;
+                S.rpg.hp = msg.payload.hp + _armorBonus;
               }
               if (typeof msg.payload.maxHp === 'number') {
-                S.rpg.maxHp = msg.payload.maxHp;
+                S.rpg.maxHp = msg.payload.maxHp + _armorBonus;
               }
               if (typeof msg.payload.stamina === 'number') {
                 S.rpg.stamina = msg.payload.stamina;
