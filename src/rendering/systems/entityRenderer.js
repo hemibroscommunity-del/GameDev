@@ -454,22 +454,13 @@ function createPlayerDisplay() {
   hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
 
   /* Above-head HP indicator: heart with the current HP number centered.
-     v2.3.215: the colored fill is masked to a left-anchored rectangle
-     whose width = hpFrac * heartSize, so the heart "drains" right-to-
-     left as HP drops.  A dim background heart shows the drained
-     portion.  Z-order: bg first (drawn first), then fill, then text. */
-  const hudHpHeartBg = new Sprite();
-  hudHpHeartBg.anchor.set(0.5, 0.5);
-  hudHpHeartBg.alpha = 0;
-  hudHpHeartBg.tint = 0x2a2a2a; /* dim gray for the drained portion */
-  container.addChild(hudHpHeartBg);
+     v2.3.216: reverted to whole-heart tier tint (green/amber/red) +
+     smooth low-HP pulse.  The right-to-left wipe was tried in v2.3.215
+     and rolled back. */
   const hudHpHeart = new Sprite();
   hudHpHeart.anchor.set(0.5, 0.5);
   hudHpHeart.alpha = 0;
   container.addChild(hudHpHeart);
-  const hudHpHeartMask = new Graphics();
-  container.addChild(hudHpHeartMask);
-  hudHpHeart.mask = hudHpHeartMask;
   const hudHpText = new Text({ text: '', style: PLAYER_HP_NUM_STYLE });
   hudHpText.anchor.set(0.5, 0.5);
   hudHpText.alpha = 0;
@@ -492,8 +483,6 @@ function createPlayerDisplay() {
   container._stunTimerText = stunTimerText;
   container._nameText = nameText;
   container._hudHpHeart = hudHpHeart;
-  container._hudHpHeartBg = hudHpHeartBg;
-  container._hudHpHeartMask = hudHpHeartMask;
   container._hudHpText = hudHpText;
   container._hudMpSprite = hudMpSprite;
   container._hudMpEmpty = hudMpEmpty;
@@ -2999,7 +2988,6 @@ export class EntityRenderer {
        fall back to the red one until heart-white resolves. */
     const _heartTex = _hudBarTex.heartWhite || _hudBarTex.heart;
     if (_heartTex && d._hudHpHeart.texture !== _heartTex) d._hudHpHeart.texture = _heartTex;
-    if (_heartTex && d._hudHpHeartBg && d._hudHpHeartBg.texture !== _heartTex) d._hudHpHeartBg.texture = _heartTex;
 
     const W = 64, H = 10;
     const MIN_LABEL_W = 14; /* hide the value-number if its section is narrower */
@@ -3114,26 +3102,27 @@ export class EntityRenderer {
       const hpA = (heart.alpha != null) ? heart.alpha : 0;
       const hpDelta = hpTargetAlpha - hpA;
       const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
+      heart.alpha = hpNewAlpha;
       heartText.alpha = hpNewAlpha;
-      /* v2.3.215: traffic-light tier + left-anchored fill that drains
-         right-to-left.  The colored fill sprite is masked to a
-         rectangle of width hpFrac * size; a dim bg sprite shows the
-         drained portion.  <10% HP toggles the fill on/off in a binary
-         blink (no smooth pulse) so the danger reads instantly. */
+      /* v2.3.214: traffic-light HP tier on the heart fill.
+         >50% green, 25-50% yellow, <25% red.  <10% pulses between
+         the red tint and a brighter highlight so the player notices. */
       const hpFrac = hpCur / hpMax;
       let hpTint;
       if (hpFrac > 0.50)      hpTint = 0x3ec27a; /* green */
       else if (hpFrac > 0.25) hpTint = 0xf5c542; /* amber */
       else                    hpTint = 0xe34646; /* red   */
-      heart.tint = hpTint;
-      /* 4 Hz on/off blink under 10% HP -> alpha goes to 0 on the off
-         beat, letting the dim bg show through. */
-      let fillAlpha = hpNewAlpha;
       if (hpFrac <= 0.10 && hpFrac > 0) {
-        const blinkOn = Math.floor(now / 125) % 2 === 0;
-        if (!blinkOn) fillAlpha = 0;
+        /* 4 Hz pulse: blend toward a hot pink-red highlight. */
+        const pulse = 0.5 + 0.5 * Math.sin(now / 1000 * Math.PI * 4);
+        const hi = 0xff8a8a;
+        const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+        const r = lerp((hpTint >> 16) & 0xff, (hi >> 16) & 0xff, pulse);
+        const g = lerp((hpTint >> 8)  & 0xff, (hi >> 8)  & 0xff, pulse);
+        const b2 = lerp(hpTint & 0xff,        hi & 0xff,        pulse);
+        hpTint = (r << 16) | (g << 8) | b2;
       }
-      heart.alpha = fillAlpha;
+      heart.tint = hpTint;
       if (heart.texture && heart.texture.width > 0) {
         heart.width = PLAYER_HEART_SIZE;
         heart.height = PLAYER_HEART_SIZE;
@@ -3150,26 +3139,6 @@ export class EntityRenderer {
         /* Nudge the number up into the heart's widest section (~12%
            above the geometric center) so it doesn't ride the bottom V. */
         heartText.y = heart.y - PLAYER_HEART_SIZE * 0.12;
-        /* v2.3.215: keep bg heart in lockstep with the fill heart. */
-        const heartBg = d._hudHpHeartBg;
-        if (heartBg) {
-          heartBg.width = PLAYER_HEART_SIZE;
-          heartBg.height = PLAYER_HEART_SIZE;
-          heartBg.x = heart.x;
-          heartBg.y = heart.y;
-          heartBg.alpha = hpNewAlpha * 0.55;
-        }
-        /* v2.3.215: mask rect width follows hpFrac, anchored to the
-           heart's left edge so the fill drains right-to-left. */
-        const mask = d._hudHpHeartMask;
-        if (mask) {
-          mask.clear();
-          const fillW = PLAYER_HEART_SIZE * Math.max(0, Math.min(1, hpFrac));
-          if (fillW > 0) {
-            mask.rect(heart.x - PLAYER_HEART_SIZE / 2, heart.y - PLAYER_HEART_SIZE / 2, fillW, PLAYER_HEART_SIZE);
-            mask.fill(0xffffff);
-          }
-        }
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
