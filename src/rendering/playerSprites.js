@@ -66,7 +66,7 @@ const ATTACK_DURATION_MS = 220;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
-const VERSION = 48; /* v2.3.236: bumped to invalidate caches after attack sheets land */
+const VERSION = 49; /* v2.3.239: bumped after attack-sheet direction remap */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }

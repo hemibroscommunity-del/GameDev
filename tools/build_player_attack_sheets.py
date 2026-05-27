@@ -27,27 +27,40 @@ TARGET_H = 230            # how tall the character should be inside a 256 frame
 BOTTOM_PAD = 8            # gap between character feet and bottom of frame
 WHITE_THRESH = 235        # rgb >= this → candidate background
 
-# Direction whose source PNGs were drawn facing the OPPOSITE diagonal
-# (user uploaded SE-facing art into the SW slot).  Each source frame is
-# mirrored horizontally before composition so the SW direction renders
-# a true SW pose, and the SE direction (SW-mirrored at runtime) renders
-# the original SE pose.
-MIRROR_BEFORE = {'southwest'}
-
+# Each direction's pair is (windup, strike) where each entry is
+# (uuid, mirror) — mirror=True flips the source frame horizontally
+# before composition.  This lets us pull a mirror-axis source (e.g. a
+# West-facing PNG) into the East slot by flipping it, rather than
+# requiring the artist to deliver E and W separately.
+#
+# Mapping notes from the user's frame-by-frame labelling:
+#   - 1E265426 was labelled E2 but actually depicts a SW pose:
+#     used as the SW strike unchanged.
+#   - B9D7D86E was labelled SW1 but actually depicts a SE pose:
+#     mirrored to become the SW windup.
+#   - 7475A0C4 was labelled SW2 but actually depicts a W pose:
+#     mirrored to become the E strike.
 PAIRS = {
-    'east':      ('0D068A9C-DFC7-4AFC-8A7F-A89C381B7946',
-                  '1E265426-853D-4AB2-B50D-C9A8E2F25963'),
-    'north':     ('9C78C86C-4C3C-48BD-8AC1-F2F0B059A6AB',
-                  'CB2B66CA-05D0-4AA4-8556-B7FD7657F460'),
-    'south':     ('982972E3-BD88-40FD-B212-8013B1B3F0FD',
-                  '4F61C7E9-F143-466E-868F-828D177DD4FE'),
-    # NE = back-3/4 view (figure facing away+right); SW = front-3/4
-    # view (figure facing toward+right).  Windup-strike pairs are
-    # selected so both frames share the same body angle.
-    'northeast': ('A0DC47BC-B078-4629-84A2-0701E3175B26',
-                  '2F74AC8E-8F87-424E-92B1-EC2B7A0760F7'),
-    'southwest': ('B9D7D86E-AEB8-4E35-B0E3-385AAE463EEC',
-                  '7475A0C4-4C37-402B-A469-8F29CD3A1BDA'),
+    'east': (
+        ('0D068A9C-DFC7-4AFC-8A7F-A89C381B7946', False),
+        ('7475A0C4-4C37-402B-A469-8F29CD3A1BDA', True),
+    ),
+    'north': (
+        ('9C78C86C-4C3C-48BD-8AC1-F2F0B059A6AB', False),
+        ('CB2B66CA-05D0-4AA4-8556-B7FD7657F460', False),
+    ),
+    'northeast': (
+        ('A0DC47BC-B078-4629-84A2-0701E3175B26', False),
+        ('2F74AC8E-8F87-424E-92B1-EC2B7A0760F7', False),
+    ),
+    'south': (
+        ('982972E3-BD88-40FD-B212-8013B1B3F0FD', False),
+        ('4F61C7E9-F143-466E-868F-828D177DD4FE', False),
+    ),
+    'southwest': (
+        ('B9D7D86E-AEB8-4E35-B0E3-385AAE463EEC', True),
+        ('1E265426-853D-4AB2-B50D-C9A8E2F25963', False),
+    ),
 }
 
 
@@ -85,26 +98,31 @@ def key_and_trim(uuid):
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-    for direction, (windup_id, strike_id) in PAIRS.items():
-        windup, w_box = key_and_trim(windup_id)
-        strike, s_box = key_and_trim(strike_id)
-        if windup is None or strike is None:
+    for direction, entries in PAIRS.items():
+        processed = []
+        for uuid, mirror in entries:
+            img, box = key_and_trim(uuid)
+            if img is None:
+                processed.append((None, None, mirror))
+                continue
+            if mirror:
+                img = ImageOps.mirror(img)
+            processed.append((img, box, mirror))
+        if any(p[0] is None for p in processed):
             print(f'SKIP {direction}: missing source after key')
             continue
 
         # Scale both frames by the same factor so the windup and strike
         # poses read at a consistent character size.  Use the taller of
         # the two bboxes as the reference so the bigger pose fits 230 px.
-        union_h = max(w_box[3] - w_box[1], s_box[3] - s_box[1])
+        union_h = max(p[1][3] - p[1][1] for p in processed)
         scale = TARGET_H / union_h
 
         sheet = Image.new('RGBA', (FRAME * 2, FRAME), (0, 0, 0, 0))
-        for i, frame in enumerate((windup, strike)):
+        for i, (frame, _box, _mirror) in enumerate(processed):
             new_w = max(1, round(frame.width * scale))
             new_h = max(1, round(frame.height * scale))
             scaled = frame.resize((new_w, new_h), Image.LANCZOS)
-            if direction in MIRROR_BEFORE:
-                scaled = ImageOps.mirror(scaled)
             ox = i * FRAME + (FRAME - new_w) // 2
             oy = FRAME - new_h - BOTTOM_PAD
             sheet.paste(scaled, (ox, oy), scaled)
