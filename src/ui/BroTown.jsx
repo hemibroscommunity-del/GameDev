@@ -1,27 +1,9 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { FishingMinigame } from './FishingMinigame.jsx';
-import { WoodChopMinigame } from './WoodChopMinigame.jsx';
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 import { CookingMinigame } from './CookingMinigame.jsx';
 import { IntroVideo } from './IntroVideo.jsx';
-import { MiningMinigame } from './MiningMinigame.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
-
-/* Per-tier fish sprite map.  FishingMinigame defaults to fish-08
-   (yellow tang) when no fishSheetSrc is passed.  Add an entry here
-   when wiring a new fish tier with its own swim strip. */
-const FISH_SPRITE_BY_TIER = {
-  /* -v3 cleans up the white halo around the sprite + water ripples.
-     v2 had alpha=0 on those background pixels but their RGB was still
-     (243,243,243), which the canvas bled into the visible silhouette
-     when scaling — the user reported it as a "white halo around the
-     fish and water ripples". tools/dehalo_outside.py zeros RGB on
-     every alpha=0 pixel so there's nothing bright left to bleed.
-     FishingMinigame still skips its runtime dehalo for -v[23] paths
-     so the clownfish's interior white stripes survive. */
-  Clownfish: '/sprites/fish/fish-02-v3.png',
-};
 
 /* Per-fish cooking pan map.  CookingMinigame defaults to pan.png
    (yellow tang) when no panSheetSrc is passed.  Keys are inventory
@@ -1050,9 +1032,8 @@ export var BroTown = function BroTown(_ref0) {
     _useState142 = _slicedToArray(_useState141, 2),
     gatherMini = _useState142[0],
     setGatherMini = _useState142[1]; /* {node, skill, started, result} — timing bar minigame */
-  var [fishingMini, setFishingMini] = useState(null); /* {node, skill} — fishSpot swim/strike/reel minigame */
-  var [woodChopMini, setWoodChopMini] = useState(null); /* {node, skill} — tree chop/fell/log-to-bag minigame */
-  var [miningMini, setMiningMini] = useState(null); /* {node, skill} — slider + extract video minigame */
+  /* v2.3.232: legacy modal minigame state removed -- the windowed-swipe
+     extraction loop (v2.3.229) is the live path for fishSpot/tree/oreVein. */
   var [cookingMini, setCookingMini] = useState(null);   /* {fishKey} — pan/slider/flip cooking minigame */
   var _useState143 = useState(0),
     _useState144 = _slicedToArray(_useState143, 2),
@@ -30296,7 +30277,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       marginRight: 4
     }
-  }, "E"), "\uD83C\uDFAE Minigame Arena"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && !gatherMini && !fishingMini && !woodChopMini && /*#__PURE__*/React.createElement("button", {
+  }, "E"), "\uD83C\uDFAE Minigame Arena"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && !gatherMini && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     style: {
       /* Inline 'bottom: 140' was hiding this button behind the 25vh
@@ -30648,22 +30629,6 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A1 STRIKE!")), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
     stateRef: stateRef,
     onSuccess: _succeedExtraction
-  }), fishingMini && /*#__PURE__*/React.createElement(FishingMinigame, {
-    node: fishingMini.node,
-    skill: fishingMini.skill,
-    fishSheetSrc: fishingMini.fishSheetSrc,
-    onComplete: function (result) { _applyFishingReward(fishingMini.node, result); setFishingMini(null); },
-    onCancel: function () { setFishingMini(null); }
-  }), woodChopMini && /*#__PURE__*/React.createElement(WoodChopMinigame, {
-    node: woodChopMini.node,
-    skill: woodChopMini.skill,
-    onComplete: function (result) { _applyWoodReward(woodChopMini.node, result); setWoodChopMini(null); },
-    onCancel: function () { setWoodChopMini(null); }
-  }), miningMini && /*#__PURE__*/React.createElement(MiningMinigame, {
-    node: miningMini.node,
-    skill: miningMini.skill,
-    onComplete: function (result) { _applyMiningReward(miningMini.node, result); setMiningMini(null); },
-    onCancel: function () { setMiningMini(null); }
   }), cookingMini && /*#__PURE__*/React.createElement(CookingMinigame, {
     fishKey: cookingMini.fishKey,
     panSheetSrc: cookingMini.panSheetSrc,
