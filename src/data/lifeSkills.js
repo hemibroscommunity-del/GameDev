@@ -168,6 +168,16 @@ export function createGatherNode(zoneId, depth, x, y, nodeType, forcedTierLvl) {
    depth config inadvertently bumps the count.  v2.3.54. */
 const MAX_NODES_PER_ZONE = 6;
 
+/* Per-zone resource specialization -- mirrors the server's
+   _getZoneNodeConfig in src/index.js.  Only the named zones get nodes;
+   every other zone returns an empty list.  Keep in sync if zones
+   change resource type on the server. */
+const ZONE_NODE_CONFIG = {
+  meadow:  { treeCt: 0, fishCt: 6, oreCt: 0 },
+  hollows: { treeCt: 0, fishCt: 0, oreCt: 6 },
+  frost:   { treeCt: 6, fishCt: 0, oreCt: 0 },
+};
+
 export function spawnGatherNodes(zoneId, depth) {
   const zone = ZONES[zoneId];
   /* Defensive: never spawn nodes in town (already filtered via
@@ -175,28 +185,29 @@ export function spawnGatherNodes(zoneId, depth) {
      zone.safe check has been here since the original spawn logic;
      keep both for belt + suspenders. */
   if (!zone || zone.safe || zoneId === 'town') return [];
-  const dc = DEPTH_CONFIG[depth || 'shallow'];
+  const cfg = ZONE_NODE_CONFIG[zoneId];
+  if (!cfg) return []; // zone not specialized -- spawn nothing locally
   const nodes = [];
   const W = zone.w * TILE, H = zone.h * TILE;
   /* 8-tile inset from every edge so harvestable resources stay
      comfortably inside the playable map and never appear in the
      out-of-bounds black border. */
   const margin = 8 * TILE;
-  const totalNodes = Math.min(MAX_NODES_PER_ZONE, dc.nodeCount);
-  const treeCt = Math.ceil(totalNodes * 0.4);
-  const fishCt = Math.ceil(totalNodes * 0.25);
-  const oreCt = Math.max(1, totalNodes - treeCt - fishCt);
 
   const placeNode = (type, tierBias) => {
     const yCenter = H - margin - tierBias * (H - margin * 2);
     const y = Math.max(margin, Math.min(H - margin, yCenter + (Math.random() - 0.5) * TILE * 6));
     const x = margin + Math.random() * (W - margin * 2);
-    nodes.push(createGatherNode(zoneId, depth || 'shallow', x, y, type));
+    /* Pin tier 1 to match the server's _spawnZoneNodes (entry-level
+       zones are all tier 1 today).  Without the force, createGatherNode
+       random-rolls the shallow tier set and a brief flash of the wrong
+       tier appears before the server's zone_nodes replaces. */
+    nodes.push(createGatherNode(zoneId, depth || 'shallow', x, y, type, 1));
   };
 
-  for (let i = 0; i < treeCt; i++) placeNode('tree', i / Math.max(1, treeCt - 1));
-  for (let i = 0; i < fishCt; i++) placeNode('fishSpot', i / Math.max(1, fishCt - 1));
-  for (let i = 0; i < oreCt; i++) placeNode('oreVein', i / Math.max(1, oreCt - 1));
+  for (let i = 0; i < cfg.treeCt; i++) placeNode('tree', i / Math.max(1, cfg.treeCt - 1));
+  for (let i = 0; i < cfg.fishCt; i++) placeNode('fishSpot', i / Math.max(1, cfg.fishCt - 1));
+  for (let i = 0; i < cfg.oreCt; i++) placeNode('oreVein', i / Math.max(1, cfg.oreCt - 1));
   return nodes;
 }
 
