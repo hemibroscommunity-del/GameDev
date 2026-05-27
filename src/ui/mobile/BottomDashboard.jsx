@@ -1060,7 +1060,13 @@ export const BottomDashboard = () => {
                         gap: 3,
                         minHeight: 0,
                       }}>
-                        {slotCell({ k: 'chest', label: 'CHEST', iconSrc: armorSrc, active: !!R.armor, equipped: !!R.armor })}
+                        {/* v2.3.228: chest highlight gated on having a
+                            visible icon, not on R.armor existing. The
+                            default RPG seeds a 'Leather Armor' object
+                            with no PNG, which lit the cell up despite
+                            the user reading the slot as empty. Auto-
+                            picks back up when an armor sprite ships. */}
+                        {slotCell({ k: 'chest', label: 'CHEST', iconSrc: armorSrc, active: !!armorSrc, equipped: !!armorSrc })}
                         {slotCell({ k: 'legs',  label: 'LEGS',  iconSrc: null,      active: !!R.legs })}
                         <div />
                       </div>
