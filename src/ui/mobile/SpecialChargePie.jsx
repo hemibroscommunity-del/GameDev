@@ -1,35 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-/* SpecialChargePie — 5-segment pie indicator anchored above the right
-   joystick.  Replaces the in-world MP segment bar that previously sat
-   above the player sprite (entityRenderer.js).  Each filled wedge =
-   one special-attack charge.  The currently-empty slice sweeps
-   clockwise as mana regenerates toward the next charge; the integer
-   in that slice shows the count of charges currently ready.  Once all
-   5 are full, the pie fades out and stays hidden until the next
-   special is used.  See BroTown.jsx:doSpecialAttack for the
-   maxMana/5-per-cast cost the visualization mirrors. */
+/* SpecialChargePie — big-number + thin progress ring above the right
+   joystick.  Replaces the in-world MP segment bar that used to float
+   above the player sprite (entityRenderer.js).
+   - Center number = special-attack charges currently ready.
+   - Ring around it sweeps clockwise from 12 o'clock to show how
+     close the next charge is.  When the ring completes, the number
+     ticks up by 1 and the ring resets.
+   - Fades out once charges hit max (R.mana >= R.maxMana) so the HUD
+     stays clean during full-charge play; reappears the moment a
+     special is fired and mana drops below full.
+   See BroTown.jsx:doSpecialAttack for the per-cast mana cost
+   (floor(maxMana / 5)) the visualization mirrors. */
 
 const SEGMENTS = 5;
-const SEG_DEG = 360 / SEGMENTS;
 const FADE_MS = 300;
-
-const polar = (cx, cy, r, deg) => {
-  const rad = (deg * Math.PI) / 180;
-  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
-};
-
-const pieWedge = (cx, cy, r, startDeg, endDeg) => {
-  const [x1, y1] = polar(cx, cy, r, startDeg);
-  const [x2, y2] = polar(cx, cy, r, endDeg);
-  const large = endDeg - startDeg > 180 ? 1 : 0;
-  return (
-    'M' + cx + ',' + cy +
-    ' L' + x1 + ',' + y1 +
-    ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + x2 + ',' + y2 +
-    ' Z'
-  );
-};
 
 export const SpecialChargePie = () => {
   const [, force] = useState(0);
@@ -79,27 +64,23 @@ export const SpecialChargePie = () => {
   if (opacity <= 0.001) return null;
 
   /* Joystick footprint: bottom = var(--dash-h) + 70px, right = 50px,
-     size = 83 (portrait) / 98 (landscape).  Pie sits centered above
-     it with an 8 px gap. */
+     size = 83 (portrait) / 98 (landscape).  Indicator sits centered
+     above it with an 8 px gap. */
   const joyW = isLandscape ? 98 : 83;
   const size = 64;
   const cx = size / 2;
   const cy = size / 2;
-  const rOut = 30;
+  const ringR = 27;
+  const strokeW = 3.5;
+  const diskR = ringR - strokeW / 2 - 1;
+  const C = 2 * Math.PI * ringR;
   const bottomVal = 'calc(var(--dash-h) + ' + (70 + joyW + 8) + 'px)';
   const rightVal  = (50 + (joyW - size) / 2) + 'px';
 
-  const FILL    = '#4aa3ff';
-  const EMPTY   = 'rgba(34, 42, 58, 0.85)';
-  const DIVIDER = 'rgba(0, 0, 0, 0.7)';
-
-  let numberPos = null;
-  if (!isFull) {
-    const sliceCenterDeg = -90 + (fullCharges + 0.5) * SEG_DEG;
-    const rMid = rOut * 0.62;
-    const [nx, ny] = polar(cx, cy, rMid, sliceCenterDeg);
-    numberPos = { x: nx, y: ny };
-  }
+  const RING_FG   = '#4aa3ff';
+  const RING_BG   = 'rgba(34, 42, 58, 0.9)';
+  const DISK_FILL = 'rgba(15, 19, 30, 0.78)';
+  const DISK_EDGE = 'rgba(0, 0, 0, 0.6)';
 
   return (
     <div style={{
@@ -114,46 +95,34 @@ export const SpecialChargePie = () => {
       filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))',
     }}>
       <svg viewBox={'0 0 ' + size + ' ' + size} width={size} height={size}>
-        {Array.from({ length: SEGMENTS }).map((_, i) => {
-          const sDeg = -90 + i * SEG_DEG;
-          const eDeg = -90 + (i + 1) * SEG_DEG;
-          if (i < fullCharges) {
-            return <path key={i} d={pieWedge(cx, cy, rOut, sDeg, eDeg)} fill={FILL} />;
-          }
-          if (i === fullCharges && partialFrac > 0) {
-            const midDeg = sDeg + SEG_DEG * partialFrac;
-            return (
-              <g key={i}>
-                <path d={pieWedge(cx, cy, rOut, sDeg, eDeg)} fill={EMPTY} />
-                <path d={pieWedge(cx, cy, rOut, sDeg, midDeg)} fill={FILL} />
-              </g>
-            );
-          }
-          return <path key={i} d={pieWedge(cx, cy, rOut, sDeg, eDeg)} fill={EMPTY} />;
-        })}
-        {Array.from({ length: SEGMENTS }).map((_, i) => {
-          const a = -90 + i * SEG_DEG;
-          const [x2, y2] = polar(cx, cy, rOut, a);
-          return <line key={'d' + i} x1={cx} y1={cy} x2={x2} y2={y2} stroke={DIVIDER} strokeWidth={1.5} />;
-        })}
-        <circle cx={cx} cy={cy} r={rOut} fill="none" stroke={DIVIDER} strokeWidth={1.5} />
-        {numberPos && (
-          <text
-            x={numberPos.x}
-            y={numberPos.y}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontFamily="Source Sans 3, sans-serif"
-            fontWeight={800}
-            fontSize={20}
-            fill="#ffffff"
-            stroke="rgba(0,0,0,0.85)"
-            strokeWidth={3}
-            paintOrder="stroke"
-          >
-            {fullCharges}
-          </text>
-        )}
+        <circle cx={cx} cy={cy} r={diskR} fill={DISK_FILL} stroke={DISK_EDGE} strokeWidth={1} />
+        <circle cx={cx} cy={cy} r={ringR} fill="none" stroke={RING_BG} strokeWidth={strokeW} />
+        <circle
+          cx={cx}
+          cy={cy}
+          r={ringR}
+          fill="none"
+          stroke={RING_FG}
+          strokeWidth={strokeW}
+          strokeLinecap="butt"
+          strokeDasharray={(partialFrac * C) + ' ' + C}
+          transform={'rotate(-90 ' + cx + ' ' + cy + ')'}
+        />
+        <text
+          x={cx}
+          y={cy}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontFamily="Source Sans 3, sans-serif"
+          fontWeight={800}
+          fontSize={30}
+          fill="#ffffff"
+          stroke="rgba(0,0,0,0.85)"
+          strokeWidth={3.5}
+          paintOrder="stroke"
+        >
+          {fullCharges}
+        </text>
       </svg>
     </div>
   );
