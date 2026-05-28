@@ -2147,10 +2147,13 @@ export var BroTown = function BroTown(_ref0) {
           case 'lifesteal_credit':
             {
               /* Worker is informing us a melee-kill heal happened (or
-                 was attempted).  Floats +N HP green popup on success;
-                 the gray "no heal (reason)" diagnostic popup was
-                 retired in v2.3.252 -- console.log still fires for
-                 DevTools when refund=0 so debug context survives. */
+                 was attempted).  v2.3.257: gray "no heal (reason)"
+                 floater restored at user request -- repeated reports
+                 of "lifesteal not working" need an in-game signal of
+                 which gate is firing (not-melee / no-this-mon /
+                 no-damage / no-ps).  console.log still fires for
+                 DevTools.  Drop the gray floater again once the cause
+                 is identified. */
               if (!msg.payload || msg.payload.playerId !== S.myId) break;
               try { console.log('[lifesteal_credit]', msg.payload); } catch (e) {}
               if (msg.payload.refund > 0 && S.dmgNumbers && S.player) {
@@ -2158,6 +2161,12 @@ export var BroTown = function BroTown(_ref0) {
                   x: S.player.x, y: S.player.y - 40,
                   text: '+' + msg.payload.refund + ' HP',
                   color: '#3dd497', ts: Date.now(),
+                });
+              } else if (msg.payload.reason && msg.payload.reason !== 'ok' && S.dmgNumbers && S.player) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: 'no heal (' + msg.payload.reason + ')',
+                  color: '#8890b8', ts: Date.now(),
                 });
               }
               break;
