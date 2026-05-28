@@ -2091,14 +2091,11 @@ export class EntityRenderer {
       }
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
-      /* v2.3.264: when stand-pose AND a mannequin texture for this
-         direction is loaded, use the mannequin instead of the default
-         body sheet.  The default body has a baked-in face that shows
-         through the trait overlay; the mannequin is faceless so the
-         NFT trait owns the head. */
-      if (pose === 'stand' && _mannequinTex[dir]) {
-        tex = _mannequinTex[dir];
-      }
+      /* v2.3.265: mannequin swap retired in favor of standalone-item
+         stickers (no body swap needed; items just composite at their
+         anchor points).  Code left dormant until per-item sticker
+         pipeline is wired. */
+      // if (pose === 'stand' && _mannequinTex[dir]) tex = _mannequinTex[dir];
       if (tex) {
         /* Always assign the texture — the cache-only-on-change pattern
            was leaving spriteBody with a stale / invalidated texture
@@ -2137,14 +2134,14 @@ export class EntityRenderer {
            may have been drawn at a slightly different frame position
            than the baseline, but we snap it to where the body's head
            actually is regardless. */
-        _ensureTraitTextures();
+        /* v2.3.265: disabled while the standalone-item sticker pipeline
+           is being wired.  The previous full-face overlay (test-1) had
+           AI-drift alignment issues that bbox snapping couldn't fully
+           hide.  Per-item stickers will replace it. */
+        const traitCanRender = false;
         const traitFace = display._traitFace;
-        const traitTex = _traitTex[dir];
-        const traitInfo = _traitMeta && _traitMeta[dir];
-        /* v2.3.264: only render trait in stand pose for now.  jog / hit /
-           pickup don't have faceless body variants, so the trait would
-           sit above a visible default face -- looks like two heads. */
-        const traitCanRender = pose === 'stand';
+        const traitTex = null;
+        const traitInfo = null;
         if (traitCanRender && traitFace && traitTex && traitInfo && traitInfo.anchor) {
           if (traitFace.texture !== traitTex) traitFace.texture = traitTex;
           /* Anchor the trait sprite on its bbox center (in trait pixel space). */
