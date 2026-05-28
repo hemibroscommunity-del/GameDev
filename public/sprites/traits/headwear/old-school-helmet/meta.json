@@ -1,0 +1,16 @@
+{
+  "southwest": {
+    "size": [
+      70,
+      61
+    ],
+    "anchor": [
+      35,
+      60
+    ],
+    "anchorOffset": [
+      0,
+      -8
+    ]
+  }
+}

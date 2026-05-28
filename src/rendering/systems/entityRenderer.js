@@ -45,7 +45,40 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.264';
+const TRAIT_VER = '2.3.266';
+
+/* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
+   headwear/old-school-helmet) is a small transparent PNG with a
+   per-direction anchor that maps onto a body anchor (currently always
+   the head).  Items composite at the body's per-frame head anchor.
+   meta.json schema per direction:
+     { size: [w, h], anchor: [ax, ay], anchorOffset: [dx, dy] }
+   - anchor is the pixel in the trait's own image space that should
+     land on the body anchor (typically bottom-center for headwear).
+   - anchorOffset shifts the body anchor in frame coords (head-center
+     -> head-top via [0, -8] for example). */
+const HEADWEAR_ID = 'old-school-helmet';
+const _headwearTex = { east: null, north: null, northeast: null, south: null, southwest: null };
+let _headwearMeta = null;
+let _headwearLoadStarted = false;
+function _ensureHeadwearTextures() {
+  if (_headwearLoadStarted) return;
+  _headwearLoadStarted = true;
+  fetch(`/sprites/traits/headwear/${HEADWEAR_ID}/meta.json?v=${TRAIT_VER}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) _headwearMeta = j; })
+    .catch(() => {});
+  for (const dir of Object.keys(_headwearTex)) {
+    Assets.load(`/sprites/traits/headwear/${HEADWEAR_ID}/${dir}.png?v=${TRAIT_VER}`)
+      .then(t => {
+        _headwearTex[dir] = t;
+        if (t && t.source) {
+          t.source.scaleMode = 'nearest';  // pixel-art crisp
+        }
+      })
+      .catch(() => {});  // expected for directions that don't exist yet
+  }
+}
 const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 /* v2.3.264: faceless mannequin textures used as the stand-pose body
    when a trait is active.  The default player body has baked-in face
@@ -356,6 +389,13 @@ function createPlayerDisplay() {
   traitFace.visible = false;
   container.addChild(traitFace);
 
+  /* v2.3.266: standalone-item sticker layer.  One sprite for headwear
+     (helmet / hat / hood / etc.); future: glasses, beard, etc. each
+     get their own.  Anchor + position set per-frame from meta.json. */
+  const headwearSprite = new Sprite();
+  headwearSprite.visible = false;
+  container.addChild(headwearSprite);
+
   /* NFT 360° avatar pair — front/back sprites cross-faded by facing
      angle, with shear + horizontal compression to fake a "3D rotation"
      look (mirrors the Canvas 2D drawNft360 path).  Both invisible
@@ -537,6 +577,7 @@ function createPlayerDisplay() {
   container._weaponGfx = weaponGfx;
   container._weaponSprite = weaponSprite;
   container._traitFace = traitFace;
+  container._headwearSprite = headwearSprite;
   container._handCapSprite = handCapSprite;
   container._handCapMask = handCapMask;
   container._handArmSprite = handArmSprite;
@@ -2134,10 +2175,54 @@ export class EntityRenderer {
            may have been drawn at a slightly different frame position
            than the baseline, but we snap it to where the body's head
            actually is regardless. */
-        /* v2.3.265: disabled while the standalone-item sticker pipeline
-           is being wired.  The previous full-face overlay (test-1) had
-           AI-drift alignment issues that bbox snapping couldn't fully
-           hide.  Per-item stickers will replace it. */
+        /* v2.3.266: standalone-item sticker layer.  Headwear (helmet /
+           hat / etc.) composites at the body's head anchor, scaled to
+           match body.  Item's own anchor + offset come from meta.json.
+           Renders in every pose (jog/stand/hit) -- the small per-frame
+           head anchor noise is invisible at this sprite size. */
+        _ensureHeadwearTextures();
+        const headwear = display._headwearSprite;
+        const headwearTex = _headwearTex[dir];
+        const headwearInfo = _headwearMeta && _headwearMeta[dir];
+        if (headwear && headwearTex && headwearInfo && headwearInfo.anchor) {
+          if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
+          const itemW = headwearInfo.size ? headwearInfo.size[0] : headwearTex.width;
+          const itemH = headwearInfo.size ? headwearInfo.size[1] : headwearTex.height;
+          /* Anchor on the trait's own pixel grid -> normalized 0..1. */
+          headwear.anchor.set(headwearInfo.anchor[0] / itemW, headwearInfo.anchor[1] / itemH);
+          /* Position: body head anchor for this pose+dir+frame, plus
+             meta's anchorOffset (head-center -> head-top, etc.). */
+          const headAnchor = getHeadAnchor(pose, dir, frameIdx, mirror);
+          let frameHeadX, frameHeadY;
+          if (headAnchor) {
+            frameHeadX = headAnchor[0];
+            frameHeadY = headAnchor[1];
+          } else {
+            /* Fallback: stand-pose head anchor. */
+            const fallback = getHeadAnchor('stand', dir, 0, mirror);
+            if (fallback) { frameHeadX = fallback[0]; frameHeadY = fallback[1]; }
+            else          { frameHeadX = 128; frameHeadY = 90;  /* center-ish */ }
+          }
+          /* Apply meta-provided offset (positive y = down in frame space). */
+          const offX = (headwearInfo.anchorOffset && headwearInfo.anchorOffset[0]) || 0;
+          const offY = (headwearInfo.anchorOffset && headwearInfo.anchorOffset[1]) || 0;
+          /* Mirror x-offset too so it shifts in world the correct direction. */
+          frameHeadX += mirror ? -offX : offX;
+          frameHeadY += offY;
+          /* Convert frame coords to world offset from body center (anchor 0.5,0.5). */
+          const W = 256;
+          const absScale = Math.abs(bodyScale);
+          headwear.x = spriteBody.x + (frameHeadX - W / 2) * absScale * (mirror ? -1 : 1);
+          headwear.y = spriteBody.y + (frameHeadY - W / 2) * absScale;
+          headwear.scale.x = (mirror ? -1 : 1) * absScale;
+          headwear.scale.y = absScale;
+          headwear.visible = true;
+        } else if (headwear) {
+          headwear.visible = false;
+        }
+
+        /* v2.3.265: combined-trait overlay disabled while sticker
+           pipeline is being wired. */
         const traitCanRender = false;
         const traitFace = display._traitFace;
         const traitTex = null;
@@ -2176,6 +2261,7 @@ export class EntityRenderer {
         spriteBody.visible = false;
         body.visible = true;
         if (display._traitFace) display._traitFace.visible = false;
+        if (display._headwearSprite) display._headwearSprite.visible = false;
       }
     } else {
       display._spriteBody.visible = false;
