@@ -70,8 +70,12 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def load_rgba(path: str) -> np.ndarray:
+def load_rgba(path: str, target_size: tuple | None = None) -> np.ndarray:
     img = Image.open(path).convert("RGBA")
+    if target_size is not None and img.size != target_size:
+        # Lanczos to match the base; trait pixels stay aligned to the
+        # body without forcing the user to pre-downscale ChatGPT outputs.
+        img = img.resize(target_size, Image.LANCZOS)
     return np.array(img, dtype=np.int16)  # int16 to allow signed delta
 
 
@@ -136,12 +140,15 @@ def main() -> None:
     args = parse_args()
 
     base = load_rgba(args.base)
-    applied = load_rgba(args.applied)
+    # Resize applied to match base if needed -- ChatGPT outputs are 1254x1254,
+    # baseline is 256x256.
+    target = (base.shape[1], base.shape[0])  # PIL is (w, h)
+    applied = load_rgba(args.applied, target)
 
     if base.shape != applied.shape:
         sys.exit(
-            f"Image dimensions differ.  base={base.shape}, "
-            f"applied={applied.shape}.  Crop both to the same size first."
+            f"Image dimensions still differ after resize.  base={base.shape}, "
+            f"applied={applied.shape}."
         )
 
     mask = compute_diff_mask(base, applied, args.tolerance)
