@@ -456,14 +456,8 @@ function createPlayerDisplay() {
 
   /* Above-head HP indicator: heart with the current HP number centered.
      v2.3.216: reverted to whole-heart tier tint (green/amber/red) +
-     smooth low-HP pulse.  The right-to-left wipe was tried in v2.3.215
-     and rolled back.
-     v2.3.249: thin radial ring wraps the heart and drains clockwise
-     from 12 o'clock as HP depletes -- keeps the heart silhouette
-     intact while giving per-frame granularity. */
-  const hudHpRing = new Graphics();
-  hudHpRing.alpha = 0;
-  container.addChild(hudHpRing);
+     smooth low-HP pulse.  The right-to-left wipe (v2.3.215) and the
+     radial ring (v2.3.249) were both tried and rolled back. */
   const hudHpHeart = new Sprite();
   hudHpHeart.anchor.set(0.5, 0.5);
   hudHpHeart.alpha = 0;
@@ -490,7 +484,6 @@ function createPlayerDisplay() {
   container._stunTimerText = stunTimerText;
   container._nameText = nameText;
   container._hudHpHeart = hudHpHeart;
-  container._hudHpRing = hudHpRing;
   container._hudHpText = hudHpText;
   container._hudMpSprite = hudMpSprite;
   container._hudMpEmpty = hudMpEmpty;
@@ -3140,34 +3133,6 @@ export class EntityRenderer {
       }
       const hpStr = String(Math.ceil(hpCur));
       if (heartText.text !== hpStr) heartText.text = hpStr;
-      /* v2.3.249: radial ring around the heart drains clockwise from
-         12 o'clock as HP depletes.  Dim track shows the drained arc;
-         lit arc uses the same tier tint as the heart so colour cues
-         stay consistent.  Hidden on the same fade as the heart so
-         the ring doesn't linger after HP returns to full. */
-      const ring = d._hudHpRing;
-      if (ring) {
-        ring.alpha = hpNewAlpha;
-        ring.clear();
-        if (hpNewAlpha > 0.02) {
-          const cx = 0;
-          const cy = -(PLAYER_HEART_SIZE / 2 + 38);
-          const radius = PLAYER_HEART_SIZE * 0.62;
-          const lineW = 2.5;
-          /* Dim full-circle track */
-          ring.circle(cx, cy, radius);
-          ring.stroke({ color: 0x000000, width: lineW + 1, alpha: 0.55 });
-          ring.circle(cx, cy, radius);
-          ring.stroke({ color: 0x202833, width: lineW, alpha: 0.85 });
-          /* Lit drain arc, clockwise from -pi/2 */
-          if (hpFrac > 0) {
-            const start = -Math.PI / 2;
-            const end = start + Math.max(0.001, hpFrac) * Math.PI * 2;
-            ring.arc(cx, cy, radius, start, end, false);
-            ring.stroke({ color: hpTint, width: lineW, alpha: 1 });
-          }
-        }
-      }
     }
   }
 
