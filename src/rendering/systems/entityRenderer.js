@@ -456,8 +456,8 @@ function createPlayerDisplay() {
 
   /* Above-head HP indicator: heart with the current HP number centered.
      v2.3.216: reverted to whole-heart tier tint (green/amber/red) +
-     smooth low-HP pulse.  The right-to-left wipe was tried in v2.3.215
-     and rolled back. */
+     smooth low-HP pulse.  The right-to-left wipe (v2.3.215) and the
+     radial ring (v2.3.249) were both tried and rolled back. */
   const hudHpHeart = new Sprite();
   hudHpHeart.anchor.set(0.5, 0.5);
   hudHpHeart.alpha = 0;
