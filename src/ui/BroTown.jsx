@@ -6805,7 +6805,12 @@ export var BroTown = function BroTown(_ref0) {
         if (S._extraction) {
           var _ex = S._extraction;
           var _exNow = Date.now();
-          var _exNode = S.gatherNodes && S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; });
+          /* v2.3.253: prefer the stored node reference, fall back to
+             id lookup for server-replaced node arrays. */
+          var _exNode = (_ex.nodeRef && _ex.nodeRef.alive) ? _ex.nodeRef
+                       : (S.gatherNodes && _ex.nodeId
+                          ? S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; })
+                          : null);
           if (!_exNode || !_exNode.alive) {
             /* Node disappeared (server depleted, zone changed) — silent cancel. */
             S._extraction = null;
@@ -12028,6 +12033,10 @@ export var BroTown = function BroTown(_ref0) {
     var now = Date.now();
     S._extraction = {
       nodeId: node.id,
+      /* v2.3.253: keep the node reference too so the tick can find it
+         even when nodes lack ids (SP locally-spawned nodes were
+         missing the id field, which silently broke the loop). */
+      nodeRef: node,
       skill: skill,
       startedAt: now,
       windowOpensAt: now + openDelay,
@@ -12057,7 +12066,10 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     if (!S || !S._extraction || S._extraction.status !== 'ready') return false;
     var _ex = S._extraction;
-    var node = S.gatherNodes && S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; });
+    var node = (_ex.nodeRef && _ex.nodeRef.alive) ? _ex.nodeRef
+              : (S.gatherNodes && _ex.nodeId
+                 ? S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; })
+                 : null);
     if (!node) { S._extraction = null; return false; }
     var result = { accuracy: 'good' };
     if (_ex.skill === 'fishing')      _applyFishingReward(node, result);

@@ -202,7 +202,15 @@ export function spawnGatherNodes(zoneId, depth) {
        zones are all tier 1 today).  Without the force, createGatherNode
        random-rolls the shallow tier set and a brief flash of the wrong
        tier appears before the server's zone_nodes replaces. */
-    nodes.push(createGatherNode(zoneId, depth || 'shallow', x, y, type, 1));
+    const _n = createGatherNode(zoneId, depth || 'shallow', x, y, type, 1);
+    /* v2.3.253: assign a stable id so _startExtraction and the
+       extraction tick can find this node again. Server-spawned nodes
+       carry their own id; local-spawn nodes were missing it, which
+       broke the v2.3.229 extraction loop in SP (the tick's
+       find(n => n.id === undefined) matched node[0], not the tapped
+       node, and the walk-away cancel fired instantly). */
+    _n.id = `${zoneId}-${type}-${nodes.length}`;
+    nodes.push(_n);
   };
 
   for (let i = 0; i < cfg.treeCt; i++) placeNode('tree', i / Math.max(1, cfg.treeCt - 1));

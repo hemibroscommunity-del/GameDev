@@ -1822,8 +1822,12 @@ export class EffectsRenderer {
    * remains. Nothing is drawn during the 'waiting' phase. */
   _updateExtractionCue(S, now) {
     const ex = S && S._extraction;
-    if (!ex || ex.status !== 'ready' || !S.gatherNodes) return;
-    const node = S.gatherNodes.find(n => n.id === ex.nodeId);
+    if (!ex || ex.status !== 'ready') return;
+    /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
+    const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
+               : (S.gatherNodes && ex.nodeId
+                  ? S.gatherNodes.find(n => n.id === ex.nodeId)
+                  : null);
     if (!node) return;
     const gfx = this.nodeGfx;
     const x = node.x;

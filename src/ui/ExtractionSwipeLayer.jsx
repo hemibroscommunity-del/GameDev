@@ -73,8 +73,12 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
 
     const cueScreenPos = () => {
       const S = stateRef && stateRef.current;
-      if (!S || !S._extraction || !S.gatherNodes || !S.camera) return null;
-      const node = S.gatherNodes.find(n => n.id === S._extraction.nodeId);
+      if (!S || !S._extraction || !S.camera) return null;
+      const ex = S._extraction;
+      const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
+                 : (S.gatherNodes && ex.nodeId
+                    ? S.gatherNodes.find(n => n.id === ex.nodeId)
+                    : null);
       if (!node) return null;
       const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
       return {
