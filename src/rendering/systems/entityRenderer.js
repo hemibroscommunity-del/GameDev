@@ -56,7 +56,8 @@ const PLAYER_HP_NUM_STYLE = {
   fontSize: 18,
   fontWeight: '800',
   fill: '#ffffff',
-  stroke: { color: '#000000', width: 3 },
+  /* v2.3.247: half-thickness outline for the HP number. */
+  stroke: { color: '#000000', width: 1.5 },
   dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
   align: 'center',
 };
