@@ -4765,6 +4765,16 @@ export function getActiveWeapon(rpg) {
   return rpg.weapon;
 }
 
+/* v2.3.254: which swing SFX to play for the current melee weapon.
+   Wood-tier sword (the bamboo stick) gets its own airier 'bamboo-swing'
+   sample; everything else falls back to the canonical 'sword-swing'. */
+export function meleeSwingSfx(rpg) {
+  if (!rpg) return 'sword-swing';
+  const wpn = getActiveWeapon(rpg);
+  if (wpn && wpn.type === 'sword' && wpn.gearBase === 'wood') return 'bamboo-swing';
+  return 'sword-swing';
+}
+
 /* ═══ LEGACY COMPAT — kept temporarily so existing render/UI code doesn't break ═══ */
 /* Legacy constants removed — weapon system uses WEAPON_TYPES + RARITY_TIERS */
 /* Monster system uses createMonster() with ARCHETYPES */
@@ -5588,6 +5598,9 @@ BT_AUDIO._unlocked = false;
 BT_AUDIO._loadedManifest = false;
 BT_AUDIO.SFX_MANIFEST = {
   'sword-swing':   '/sfx/sword/sword-swing.wav',
+  /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
+     SFX -- airier whoosh sourced from the user-uploaded mov. */
+  'bamboo-swing':  '/sfx/sword/bamboo-swing.wav',
   'sword-hit':     '/sfx/sword/sword-hit.wav',   /* reserved for grand-slam hits only */
   'sword-hit2':    '/sfx/sword/sword-hit2.flac', /* regular hit alternation */
   'sword-hit3':    '/sfx/sword/sword-hit3.wav',  /* regular hit alternation */

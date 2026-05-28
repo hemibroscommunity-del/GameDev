@@ -31,7 +31,7 @@ const {
   QUEST_CHAINS, QUEST_STATUS, CLAN_COLORS, CLAN_CREATE_COST,
   CLAN_MAX_MEMBERS, CLAN_LOGO_SIZE, REPUTATION,
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
-  recalcDerived, getActiveWeapon, calcWeaponDmg, calcCritChance, calcCritMult,
+  recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction,
   xpRequired, monsterStat,
   applyStatus, tickStatuses, getOldestStatusElement,
@@ -3310,7 +3310,7 @@ export function setupGameLoop(ctx) {
                 S.swingTimer = Date.now();
                 S.isSwinging = true;
                 S._specialAttack = false;
-                BT_AUDIO.play('sword-swing', { vol: 0.55 });
+                BT_AUDIO.play(meleeSwingSfx(S.rpg), { vol: 0.55 });
                 /* Broadcast swing to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: Date.now() } });
               }
