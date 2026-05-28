@@ -45,8 +45,15 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.263';
+const TRAIT_VER = '2.3.264';
 const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
+/* v2.3.264: faceless mannequin textures used as the stand-pose body
+   when a trait is active.  The default player body has baked-in face
+   features that show through any trait overlay; swapping to the
+   mannequin gives the trait a faceless head to land on.  Only stand
+   pose has mannequin assets so far -- jog/hit/pickup still use the
+   default body sheets. */
+const _mannequinTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 /* Per-direction trait metadata: bbox + bbox-center anchor.  Computed
    by Python at extract time; the renderer uses anchor / 256 to place
    the trait's center on the body's head anchor regardless of AI
@@ -64,6 +71,15 @@ function _ensureTraitTextures() {
     Assets.load(`/sprites/traits/nft/${TRAIT_NFT_ID}/${dir}.png?v=${TRAIT_VER}`)
       .then(t => {
         _traitTex[dir] = t;
+        if (t && t.source) {
+          t.source.scaleMode = 'linear';
+          t.source.autoGenerateMipmaps = true;
+        }
+      })
+      .catch(() => {});
+    Assets.load(`/sprites/player-naked/stand-${dir}.png?v=${TRAIT_VER}`)
+      .then(t => {
+        _mannequinTex[dir] = t;
         if (t && t.source) {
           t.source.scaleMode = 'linear';
           t.source.autoGenerateMipmaps = true;
@@ -2075,6 +2091,14 @@ export class EntityRenderer {
       }
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
+      /* v2.3.264: when stand-pose AND a mannequin texture for this
+         direction is loaded, use the mannequin instead of the default
+         body sheet.  The default body has a baked-in face that shows
+         through the trait overlay; the mannequin is faceless so the
+         NFT trait owns the head. */
+      if (pose === 'stand' && _mannequinTex[dir]) {
+        tex = _mannequinTex[dir];
+      }
       if (tex) {
         /* Always assign the texture — the cache-only-on-change pattern
            was leaving spriteBody with a stale / invalidated texture
@@ -2117,7 +2141,11 @@ export class EntityRenderer {
         const traitFace = display._traitFace;
         const traitTex = _traitTex[dir];
         const traitInfo = _traitMeta && _traitMeta[dir];
-        if (traitFace && traitTex && traitInfo && traitInfo.anchor) {
+        /* v2.3.264: only render trait in stand pose for now.  jog / hit /
+           pickup don't have faceless body variants, so the trait would
+           sit above a visible default face -- looks like two heads. */
+        const traitCanRender = pose === 'stand';
+        if (traitCanRender && traitFace && traitTex && traitInfo && traitInfo.anchor) {
           if (traitFace.texture !== traitTex) traitFace.texture = traitTex;
           /* Anchor the trait sprite on its bbox center (in trait pixel space). */
           const W = 256;
