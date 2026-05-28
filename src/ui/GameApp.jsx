@@ -135,16 +135,27 @@ export const GameApp = () => {
      method has a defensive resume too; this listener is the
      proactive one so the first hit after returning isn't silent. */
   useEffect(() => {
-    const onVis = () => {
-      if (document.visibilityState === 'visible'
-          && BT_AUDIO && BT_AUDIO.ctx
-          && BT_AUDIO.ctx.state === 'suspended'
-          && BT_AUDIO.ctx.resume) {
-        try { BT_AUDIO.ctx.resume(); } catch (e) {}
-      }
+    const onResume = () => {
+      if (!BT_AUDIO || !BT_AUDIO.ctx) return;
+      /* v2.3.254: resume ctx AND re-kick the zone music if it was
+         playing.  ctx.resume() by itself doesn't restart a stopped
+         BufferSource -- iOS Safari can stop the source during long
+         backgrounds, leaving the game silent on return. */
+      try { BT_AUDIO.resumeFromBackground(); } catch (e) {}
     };
+    const onVis = () => { if (document.visibilityState === 'visible') onResume(); };
     document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
+    /* pageshow fires on iOS Safari when restoring from the bfcache
+       (back/forward navigation or returning from a backgrounded tab
+       that the browser unloaded).  visibilitychange does not always
+       fire in that case. */
+    window.addEventListener('pageshow', onResume);
+    window.addEventListener('focus', onResume);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('pageshow', onResume);
+      window.removeEventListener('focus', onResume);
+    };
   }, []);
 
   useEffect(() => {
