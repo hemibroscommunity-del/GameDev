@@ -151,7 +151,7 @@
 </head>
 <body>
 
-<h1>Sprite Anchor Annotator (hands + head)</h1>
+<h1>Sprite Anchor Annotator (head, with hands as fallback)</h1>
 <div class="label">
   <b id="frameLabel">Loading…</b><br>
   <span id="counter">0 / ?</span> · now tapping <span id="handLabel" class="hand-r">RIGHT</span> · <span class="coords" id="lastCoord">—</span>
@@ -178,9 +178,9 @@
 </div>
 
 <div class="help">
-  Per frame: tap the <span class="hand-r">right hand</span> (yellow), then the <span class="hand-l">left hand</span> (cyan), then the <span class="hand-head">head center</span> (green), then auto-advance.<br>
-  The renderer uses left-hand for mirrored facings (W / NW / SE) so the sword stays in the visual right hand of the mirrored character. Head anchor is used by the NFT trait composition layer (eyes / mouth / headwear).<br>
-  Cycle Anchor button redoes any of the three anchors on the current frame. − / + buttons adjust zoom. Append <code>?pose=jog,stand</code> to the URL to restrict the walk-through.<br>
+  <b>Default (this page):</b> tap the <span class="hand-head">head center</span> (green) on each frame; auto-advances after one tap. Existing right/left hand anchors are loaded automatically and left alone.<br>
+  <b>Other modes:</b> append <code>?mode=full</code> for r → l → head (new pose bootstrap), or <code>?mode=hands</code> for the original r → l only.<br>
+  Append <code>?pose=jog,stand</code> to scope the walk-through to specific poses. − / + buttons adjust zoom.<br>
   When done, <b>Copy JSON</b> and paste it to your assistant, or <b>Download</b> and commit it as
   <code>public/sprites/player/anchors.json</code>.
 </div>
@@ -204,9 +204,16 @@ const POSES = POSE_OVERRIDE
   ? POSE_OVERRIDE.split(',').map(s => s.trim()).filter(Boolean)
   : ALL_POSES;
 
-/* v2.3.257: anchor cycle now r -> l -> head -> next frame.  Markers
-   render with distinct hues; saved JSON keys match `r`, `l`, `head`. */
-const ANCHOR_CYCLE = ['r', 'l', 'head'];
+/* v2.3.258: head-only is the new default.  Hands won't change pose-
+   to-pose for the existing sheets and re-tagging them was painful.
+   Override with ?mode=full (r/l/head) or ?mode=hands (r/l only).
+   Head mode also auto-loads anchors.json so the existing r/l data
+   is preserved without needing ?resume=1. */
+const MODE = (new URLSearchParams(window.location.search).get('mode') || 'head').toLowerCase();
+const ANCHOR_CYCLE = MODE === 'hands' ? ['r', 'l']
+                   : MODE === 'full'  ? ['r', 'l', 'head']
+                   :                     ['head'];
+const AUTO_RESUME = MODE === 'head';
 
 // State.
 const sheets = {};
@@ -506,7 +513,9 @@ function finish() {
 // in to the pre-load behavior.
 Promise.all(pending).then(async () => {
   buildQueue();
-  const wantResume = new URLSearchParams(window.location.search).get('resume') === '1';
+  /* v2.3.258: head-mode auto-loads existing anchors.json so r/l data
+     is preserved without touching it.  Other modes opt in via ?resume=1. */
+  const wantResume = AUTO_RESUME || new URLSearchParams(window.location.search).get('resume') === '1';
   if (wantResume) {
     try {
       const r = await fetch('/sprites/player/anchors.json?v=' + SHEET_VER);
@@ -522,7 +531,7 @@ Promise.all(pending).then(async () => {
       }
     } catch (_) {}
   }
-  setActiveHand('r');
+  setActiveHand(ANCHOR_CYCLE[0]);
   render();
 });
 </script>
