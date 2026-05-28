@@ -8579,16 +8579,12 @@ export var BroTown = function BroTown(_ref0) {
                   BT_AUDIO.beep(200, 0.03, 0.04, 'square');
                   return;
                 }
-                /* Level-difference scaling — hard to kill monsters much higher level.
-                   _expectedDmg is the would-have-been hit if no debuffs
-                   or scaling fired (base × specialMult, no crit/curse/lvlDiff).
-                   The "block N" popup floats _mitigated = expected − actual,
-                   clamped at 0 so crits/buffs don't render a negative gap. */
-                var _expectedDmg = Math.round(_pDmgBase * specialMult);
-                var lvlDiff = (m.level || 1) - (_R6.level || 1);
-                if (lvlDiff > 3) dmg = Math.max(1, Math.round(dmg * Math.max(0.1, 1 - lvlDiff * 0.08)));
-                /* v2.3.109: variant incomingDmgScalar removed (WYSIWYG). */
-                var _mitigated = Math.max(0, _expectedDmg - dmg);
+                /* v2.3.254: level-difference scaling removed -- monsters
+                   always take full weapon damage, matching the v2.3.109
+                   WYSIWYG decision for variant incomingDmgScalar.  The
+                   "block N" subText below relied on _mitigated and is
+                   gone too -- it was firing on every higher-level slime
+                   hit and reading as a defensive block from the slime. */
                 /* Server-authoritative zones: HP only flows from server
                    monster_hit ticks.  Local decrement would race the
                    server's view and cause double-credit on the kill
@@ -8920,14 +8916,8 @@ export var BroTown = function BroTown(_ref0) {
                     ts: Date.now()
                   });
                 }
-                /* Mitigated-damage indicator — when level-diff scaling
-                   shaved part of the hit (e.g. a 25-base hit on a
-                   higher-level monster lands as 11), tack "block 14"
-                   onto the same popup in muted gray via subText so the
-                   player sees one combined line instead of two. */
-                if (_mitigated > 0 && S.dmgNumbers.length > 0) {
-                  S.dmgNumbers[S.dmgNumbers.length - 1].subText = 'block ' + _mitigated;
-                }
+                /* v2.3.254: "block N" mitigation indicator removed
+                   alongside the level-diff scaling above. */
                 if (m.curHp <= 0) {
                   var _ELEMENTS$splatElem, _ZONES$S$currentZone6;
                   /* Mummy -> skeleton on overkill (v2.3.135). */
