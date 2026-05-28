@@ -1949,13 +1949,15 @@ export class EntityRenderer {
        (which takes priority so a getting-hit cancel still reads)
        and jog/stand, so the body sprite freezes through the swing
        even if the player keeps moving. */
+    /* v2.3.253: reverted v2.3.236's 'attack' pose for melee swings.
+       Procedural bamboo swing arc reads cleaner than the static
+       windup-strike frames; body stays in jog/stand during the
+       250 ms swing window and the weapon overlay handles the motion. */
     const pose = lootFrozen
       ? 'pickup'
       : (isHit
           ? 'hit'
-          : (swingActive
-              ? 'attack'
-              : (isMoving ? 'jog' : 'stand')));
+          : (isMoving ? 'jog' : 'stand'));
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
@@ -1983,7 +1985,7 @@ export class EntityRenderer {
        v2.3.167: also apply to jog (user wanted the same bumps on run
        animations).  N/S/E (covers W via mirror) +10%,
        NE (covers NW) +5%, SW unchanged.  Hit stays unbumped. */
-    if (pose === 'stand' || pose === 'jog' || pose === 'attack') {
+    if (pose === 'stand' || pose === 'jog') {
       if (dir === 'north' || dir === 'south' || dir === 'east') bodyScale *= 1.10;
       else if (dir === 'northeast') bodyScale *= 1.05;
     }
@@ -2024,13 +2026,6 @@ export class EntityRenderer {
         const cycle = cycleMs('pickup', 'south');
         const elapsed = Math.max(0, now - ((S._lootFreezeUntil || now) - cycle));
         frameIdx = Math.max(0, Math.min(fc - 1, Math.floor((elapsed / cycle) * fc)));
-      } else if (pose === 'attack') {
-        /* v2.3.236: 2-frame attack — first 45% of the swing window is
-           the raised-fist windup, the rest is the punch-out strike.
-           SWING_ANIM_MS is 250 ms (see BroTown.jsx), so windup ≈ 112 ms
-           and strike ≈ 138 ms. */
-        const t = (now - (S.swingTimer || now)) / 250;
-        frameIdx = t < 0.45 ? 0 : 1;
       }
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
