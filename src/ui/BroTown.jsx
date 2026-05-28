@@ -2164,6 +2164,25 @@ export var BroTown = function BroTown(_ref0) {
               }
               break;
             }
+          case 'loot_pickup_rejected':
+            {
+              /* v2.3.260 diagnostic: server tells us why a pickup
+                 silently failed (recipient mismatch, out-of-range,
+                 already-claimed, etc.).  Renders a small floater +
+                 console.log so the user can see which gate is firing
+                 instead of guessing why a pile won't grab.  Drop once
+                 the underlying issue is identified. */
+              if (!msg.payload || !S || !S.player) break;
+              try { console.log('[loot_pickup_rejected]', msg.payload, 'myId=', S.myId); } catch (e) {}
+              if (S.dmgNumbers) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 24,
+                  text: 'pickup: ' + (msg.payload.reason || 'unknown'),
+                  color: '#f5c542', ts: Date.now(),
+                });
+              }
+              break;
+            }
           case 'player_state':
             {
               /* Server-authoritative rpg state snapshot.  OVERWRITE
