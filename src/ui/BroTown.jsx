@@ -4397,13 +4397,14 @@ export var BroTown = function BroTown(_ref0) {
         isVolatile: false
       };
       if (!S.rpg.activeSlot) S.rpg.activeSlot = 'melee';
-      /* v2.3.247: armor unequipped by default per user request -- HP
-         starts at 100 and only goes up to 120 when armor is equipped.
-         Pre-existing saves keep whatever armor they had.  The starter
-         Leather Armor is in armorStash for first-time players (see
-         createDefaultRpg). */
-      if (S.rpg.armor === undefined) S.rpg.armor = null;
+      /* v2.3.249: Leather Armor removed from the game.  Migration
+         strips it from the equipped slot AND any stash entries so
+         pre-existing saves that had it stop showing it.  Other armor
+         (forged tiers, future drops) passes through untouched. */
+      var _isLeather = function (a) { return !!(a && a.name === 'Leather Armor'); };
+      if (S.rpg.armor === undefined || _isLeather(S.rpg.armor)) S.rpg.armor = null;
       if (!S.rpg.armorStash) S.rpg.armorStash = [];
+      S.rpg.armorStash = S.rpg.armorStash.filter(function (a) { return !_isLeather(a); });
       if (S.rpg.shield === undefined) S.rpg.shield = null;
       if (!S.rpg.amulet) S.rpg.amulet = null; /* {tier, gem, name} */
       /* v2.3.188: existing saves with no shield get the starter wood
