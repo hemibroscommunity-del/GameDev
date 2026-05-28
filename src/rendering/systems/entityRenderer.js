@@ -2630,39 +2630,37 @@ export class EntityRenderer {
         }
       }
 
-      /* Swing arc trail — fading sector centered on the hand pivot,
-         sweeping from the swing's start angle through the current
-         blade position.  Drawn on weaponGfx so it z-orders with the
-         weapon sprite via the weaponContainer reorder.
-         Special-attack swings render at ~1.5x reach with a saturated
-         yellow fill so the heavy attack reads as larger and more
-         noticeable than a normal swing. */
+      /* Swing trail — chop streak (v2.3.248: applied to armed swings
+         too so the bamboo stick visualises the new top-to-bottom
+         motion the user is previewing).  Quadratic curve from
+         overhead down to the strike point in front of the player.
+         Special-attack chop is beefier (taller windup, longer reach,
+         fatter stroke, gold halo). */
       if (swingActive) {
         const isSpecialSwing = !!S._specialAttack;
-        /* v2.3.222: special swing 2x reach (matches the doubled
-           SWING_RANGE in BroTown.jsx) and a full half-circle visual
-           arc (matches the doubled damage arc). Regular swing
-           unchanged. */
-        const trailReach = isSpecialSwing ? 84 : 42;
-        const visualArc  = isSpecialSwing ? Math.PI : SWING_FULL_ARC;
-        const startAng = aimAngleForSwing - visualArc / 2;
-        const endAng   = aimAngleForSwing + swingOffset;
-        const baseAlpha = (1 - swingProgress) * 0.35;
-        const trailAlpha = isSpecialSwing ? baseAlpha * 1.6 : baseAlpha;
-        const fillColor   = isSpecialSwing ? 0xffd54a : 0xffffff;
+        const reach        = isSpecialSwing ? 64 : 34;
+        const overheadDrop = isSpecialSwing ? -68 : -44;
+        const endX = Math.cos(aimAngleForSwing) * reach;
+        const endY = Math.sin(aimAngleForSwing) * reach;
+        const baseAlpha   = (1 - swingProgress) * 0.55;
         const strokeColor = isSpecialSwing ? 0xfff2a8 : 0xfffac8;
-        const strokeWidth = isSpecialSwing ? 4 : 2;
-        weaponGfx.moveTo(wpnX, wpnY);
-        weaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
-        weaponGfx.lineTo(wpnX, wpnY);
-        weaponGfx.fill({ color: fillColor, alpha: trailAlpha });
-        weaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
-        weaponGfx.stroke({ color: strokeColor, width: strokeWidth, alpha: trailAlpha * 1.2 });
-        if (isSpecialSwing) {
-          /* Outer yellow halo ring — adds the "glow" cue beyond the arc. */
-          weaponGfx.arc(wpnX, wpnY, trailReach + 10, startAng, endAng);
-          weaponGfx.stroke({ color: 0xf5c542, width: 3, alpha: trailAlpha * 0.7 });
-        }
+        const haloColor   = isSpecialSwing ? 0xf5c542 : 0xffffff;
+        const outerW = isSpecialSwing ? 7 : 4;
+        const innerW = isSpecialSwing ? 3 : 2;
+        /* Outer streak. */
+        weaponGfx.moveTo(wpnX, wpnY + overheadDrop);
+        weaponGfx.quadraticCurveTo(
+          wpnX + endX * 0.15, wpnY + overheadDrop * 0.35,
+          wpnX + endX,        wpnY + endY,
+        );
+        weaponGfx.stroke({ color: strokeColor, width: outerW, alpha: baseAlpha });
+        /* Inner bright core. */
+        weaponGfx.moveTo(wpnX, wpnY + overheadDrop);
+        weaponGfx.quadraticCurveTo(
+          wpnX + endX * 0.15, wpnY + overheadDrop * 0.35,
+          wpnX + endX,        wpnY + endY,
+        );
+        weaponGfx.stroke({ color: haloColor, width: innerW, alpha: baseAlpha * 1.6 });
       }
 
       // Shield visual — 120° guard arc in front of the player, oriented
