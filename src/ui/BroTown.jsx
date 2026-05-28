@@ -3239,6 +3239,17 @@ export var BroTown = function BroTown(_ref0) {
                   inArc: inArc,
                 });
               } catch (e) {}
+              /* v2.3.248: player sprite hit-flash on MP server-monster
+                 hits.  SP paths (lines 7585 / 7653 / 7906 / 7950 / 10919)
+                 already set this on local hits; the MP monster_attack
+                 handler was missing it, so the renderer's
+                 isHit = S._hitFlash && (now - S._hitFlash) < 250
+                 check at entityRenderer.js:1943 never tripped and the
+                 sprite never flashed red.  Only flash when actual damage
+                 lands (block / dodge zero dmgTaken2 → no flash). */
+              if (Math.ceil(dmgTaken2) > 0) {
+                S._hitFlash = Date.now();
+              }
               S.dmgNumbers.push({
                 x: S.player.x, y: S.player.y - 20,
                 text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c',
