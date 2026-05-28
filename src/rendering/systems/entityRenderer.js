@@ -2097,30 +2097,21 @@ export class EntityRenderer {
           body.clear();
           display._procDrawn = false;
         }
-        /* v2.3.261 (Bro-NFT Phase 4): trait composite overlay.  The
-           trait PNG was extracted from the stand pose; shift it by the
-           per-frame head-anchor delta so it follows jog/hit body bobs.
-           Uses the SAME bodyScale + mirror as the body so the pixels
-           overlay 1:1. */
+        /* v2.3.262 (Bro-NFT Phase 4): trait composite overlay.  The
+           per-frame head-anchor delta from v2.3.261 was killed because
+           finger-tagged anchors are too noisy (jitter shows the body's
+           bald head peeking out around a wobbling helmet).  Lock the
+           trait to the body's center -- the trait PNG already encodes
+           the head position in stand pose, so it sits where it was
+           drawn.  Jog body-bob is small enough that a static overlay
+           reads as one stable head. */
         _ensureTraitTextures();
         const traitFace = display._traitFace;
         const traitTex = _traitTex[dir];
         if (traitFace && traitTex) {
           if (traitFace.texture !== traitTex) traitFace.texture = traitTex;
-          const standHead = getHeadAnchor('stand', dir, 0, mirror);
-          const liveHead  = getHeadAnchor(pose, dir, frameIdx, mirror);
-          let dx = 0, dy = 0;
-          if (standHead && liveHead) {
-            /* Frame-space delta scaled into screen space.  Negate x
-               on mirror so the shift moves in the same world direction
-               as the body. */
-            const fdx = liveHead[0] - standHead[0];
-            const fdy = liveHead[1] - standHead[1];
-            dx = fdx * bodyScale * (mirror ? -1 : 1);
-            dy = fdy * bodyScale;
-          }
-          traitFace.x = spriteBody.x + dx;
-          traitFace.y = spriteBody.y + dy;
+          traitFace.x = spriteBody.x;
+          traitFace.y = spriteBody.y;
           traitFace.scale.x = spriteBody.scale.x;
           traitFace.scale.y = spriteBody.scale.y;
           traitFace.visible = true;
