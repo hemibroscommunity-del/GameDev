@@ -67,6 +67,11 @@ def parse_args() -> argparse.Namespace:
                    help="Drop connected pixel groups smaller than this.")
     p.add_argument("--pad", type=int, default=0,
                    help="Transparent border around the output.")
+    p.add_argument("--max-y", type=int, default=None,
+                   help="Drop pixels with y >= max_y.  Use to keep only "
+                        "the head region for face / headwear traits.  "
+                        "Skips below-neck body noise that would otherwise "
+                        "leak into the extracted trait.")
     return p.parse_args()
 
 
@@ -154,6 +159,9 @@ def main() -> None:
     mask = compute_diff_mask(base, applied, args.tolerance)
     mask = drop_small_blobs(mask, args.min_blob)
     mask = erode(mask, args.feather)
+
+    if args.max_y is not None:
+        mask[args.max_y:, :] = False
 
     out = np.zeros_like(applied)
     # Where mask is True, copy the applied pixel verbatim.  Where False,

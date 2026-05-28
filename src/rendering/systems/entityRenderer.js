@@ -14,7 +14,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
-import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
+import { getAnchor, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -37,6 +37,31 @@ function _ensureHudBarTextures() {
      tint by HP tier (red asset can't be tinted to green/yellow because
      tint multiplies). */
   Assets.load(`/icons/popups/heart-white.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
+}
+
+/* v2.3.261 (Bro-NFT Phase 4): trait textures for the local player's
+   face/head composite layer.  One sprite per stored direction (east,
+   north, northeast, south, southwest); W / NW / SE render via mirror.
+   Currently hard-coded to the `test-1` NFT for demo; later this will
+   read the active player's NFT ID from R.nftId or similar. */
+const TRAIT_NFT_ID = 'test-1';
+const TRAIT_VER = '2.3.261';
+const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
+let _traitLoadStarted = false;
+function _ensureTraitTextures() {
+  if (_traitLoadStarted) return;
+  _traitLoadStarted = true;
+  for (const dir of Object.keys(_traitTex)) {
+    Assets.load(`/sprites/traits/nft/${TRAIT_NFT_ID}/${dir}.png?v=${TRAIT_VER}`)
+      .then(t => {
+        _traitTex[dir] = t;
+        if (t && t.source) {
+          t.source.scaleMode = 'linear';
+          t.source.autoGenerateMipmaps = true;
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 /* Heart-icon HUD: drawn above the head of player + monsters whenever
@@ -295,6 +320,17 @@ function createPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* v2.3.261 (Bro-NFT Phase 4): trait composition overlay.  Sits on
+     top of the body so the NFT's head/face features (helmet, eyes,
+     mouth, etc.) overlay the faceless mannequin.  Hidden until the
+     trait texture for the active facing has resolved.  Position
+     tracks the body's head anchor per frame so it follows pose +
+     direction. */
+  const traitFace = new Sprite();
+  traitFace.anchor.set(0.5, 0.5);
+  traitFace.visible = false;
+  container.addChild(traitFace);
+
   /* NFT 360° avatar pair — front/back sprites cross-faded by facing
      angle, with shear + horizontal compression to fake a "3D rotation"
      look (mirrors the Canvas 2D drawNft360 path).  Both invisible
@@ -475,6 +511,7 @@ function createPlayerDisplay() {
   container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
   container._weaponSprite = weaponSprite;
+  container._traitFace = traitFace;
   container._handCapSprite = handCapSprite;
   container._handCapMask = handCapMask;
   container._handArmSprite = handArmSprite;
@@ -2060,9 +2097,40 @@ export class EntityRenderer {
           body.clear();
           display._procDrawn = false;
         }
+        /* v2.3.261 (Bro-NFT Phase 4): trait composite overlay.  The
+           trait PNG was extracted from the stand pose; shift it by the
+           per-frame head-anchor delta so it follows jog/hit body bobs.
+           Uses the SAME bodyScale + mirror as the body so the pixels
+           overlay 1:1. */
+        _ensureTraitTextures();
+        const traitFace = display._traitFace;
+        const traitTex = _traitTex[dir];
+        if (traitFace && traitTex) {
+          if (traitFace.texture !== traitTex) traitFace.texture = traitTex;
+          const standHead = getHeadAnchor('stand', dir, 0, mirror);
+          const liveHead  = getHeadAnchor(pose, dir, frameIdx, mirror);
+          let dx = 0, dy = 0;
+          if (standHead && liveHead) {
+            /* Frame-space delta scaled into screen space.  Negate x
+               on mirror so the shift moves in the same world direction
+               as the body. */
+            const fdx = liveHead[0] - standHead[0];
+            const fdy = liveHead[1] - standHead[1];
+            dx = fdx * bodyScale * (mirror ? -1 : 1);
+            dy = fdy * bodyScale;
+          }
+          traitFace.x = spriteBody.x + dx;
+          traitFace.y = spriteBody.y + dy;
+          traitFace.scale.x = spriteBody.scale.x;
+          traitFace.scale.y = spriteBody.scale.y;
+          traitFace.visible = true;
+        } else if (traitFace) {
+          traitFace.visible = false;
+        }
       } else {
         spriteBody.visible = false;
         body.visible = true;
+        if (display._traitFace) display._traitFace.visible = false;
       }
     } else {
       display._spriteBody.visible = false;
