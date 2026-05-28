@@ -95,6 +95,26 @@ export function getAnchor(pose, dir, frame, mirror) {
   return [raw[0] * ANCHOR_SCALE, raw[1] * ANCHOR_SCALE];
 }
 
+/** v2.3.257 (Bro-NFT Phase 1): per-frame HEAD anchor used by the
+ *  NFT trait composition layer (eyes / mouth / headwear).  Mirrored
+ *  facings flip the x coordinate around the frame center so the
+ *  head stays aligned after the body sprite's horizontal flip.
+ *  Returns [x, y] in current sprite-frame space, or null if no
+ *  head data is tagged for this entry yet. */
+const FRAME_W_FOR_MIRROR = 256;
+export function getHeadAnchor(pose, dir, frame, mirror) {
+  if (!anchors) return null;
+  const list = anchors[pose + '-' + dir];
+  if (!list || list.length === 0) return null;
+  const idx = Math.min(frame, list.length - 1);
+  const entry = list[idx];
+  if (!entry || typeof entry !== 'object' || !entry.head || entry.head.length !== 2) return null;
+  let x = entry.head[0] * ANCHOR_SCALE;
+  const y = entry.head[1] * ANCHOR_SCALE;
+  if (mirror) x = (FRAME_W_FOR_MIRROR * ANCHOR_SCALE) - x;
+  return [x, y];
+}
+
 /** Returns [hx, hy] in the weapon icon's own pixel space, or null.
  *  v2.3.172: optional gearBase picks a tier-specific grip when one is
  *  registered (e.g. sword:wood). Falls back to the bare-type entry. */
