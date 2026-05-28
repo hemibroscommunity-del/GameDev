@@ -5683,6 +5683,24 @@ BT_AUDIO.unlock = function () {
   this._unlocked = true;
   this.loadSfxManifest();
 };
+/* v2.3.254: called from the visibilitychange handler in GameApp.jsx
+   when the tab returns to foreground.  ctx.resume() alone is not
+   enough on iOS Safari -- long backgrounding can implicitly stop
+   the zone-music BufferSource, and resume() doesn't restart it.
+   Re-kick the music for the zone we were last in. */
+BT_AUDIO.resumeFromBackground = function () {
+  if (!this.ctx) return;
+  if (this.ctx.state === 'suspended' && this.ctx.resume) {
+    try { this.ctx.resume(); } catch (e) {}
+  }
+  var zone = this._currentZoneAmbient;
+  if (!zone) return;
+  /* startZoneAmbient early-returns when _currentZoneAmbient already
+     matches the requested zone; clear the flag so it actually
+     re-runs and gets us a fresh BufferSource. */
+  this._currentZoneAmbient = null;
+  try { this.startZoneAmbient(zone); } catch (e) {}
+};
 BT_AUDIO.play = function (key, opts) {
   if (this.muted || !this.ctx) return null;
   /* v2.3.130: iOS Safari suspends the AudioContext on tab-switch,
