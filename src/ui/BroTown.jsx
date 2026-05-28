@@ -7502,10 +7502,25 @@ export var BroTown = function BroTown(_ref0) {
                    with clientSideMovement:true (fireGoblin / skeleton)
                    override the server position and run THIS AI locally;
                    without the matching threshold those variants would
-                   still chase right onto the player. */
-                if (chDist > 55) {
-                  m.x += chDx / chDist * m.spd * moveMult;
-                  m.y += chDy / chDist * m.spd * moveMult;
+                   still chase right onto the player.
+                   v2.3.256: fodder-base variants (slime / fireGoblin /
+                   mummy / skeleton) use tall sprites anchored near the
+                   feet, so m.y is well below the visible body center
+                   (see _mHitY table in the swing code).  Player P.y is
+                   the sprite center.  Without compensation, chDy =
+                   P.y - m.y stops the monster when its HEAD is at the
+                   player's center -- visually overshoots the player.
+                   Reference the monster's body center for chase so the
+                   55 px gate is measured center-to-center. */
+                var _bodyOffsetN = (arch === 'fodder') ? 40 :
+                                   (arch === 'fireGoblin') ? 28 :
+                                   (arch === 'mummy' || arch === 'skeleton') ? 48 :
+                                   0;
+                var _chDyN = P.y - (m.y - _bodyOffsetN);
+                var _chDistN = Math.sqrt(chDx * chDx + _chDyN * _chDyN);
+                if (_chDistN > 55) {
+                  m.x += chDx / _chDistN * m.spd * moveMult;
+                  m.y += _chDyN / _chDistN * m.spd * moveMult;
                 }
               }
 
