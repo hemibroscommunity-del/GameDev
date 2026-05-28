@@ -2146,27 +2146,43 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'lifesteal_credit':
             {
-              /* Worker is informing us a melee-kill heal happened (or
-                 was attempted).  v2.3.257: gray "no heal (reason)"
-                 floater restored at user request -- repeated reports
-                 of "lifesteal not working" need an in-game signal of
-                 which gate is firing (not-melee / no-this-mon /
-                 no-damage / no-ps).  console.log still fires for
-                 DevTools.  Drop the gray floater again once the cause
-                 is identified. */
-              if (!msg.payload || msg.payload.playerId !== S.myId) break;
-              try { console.log('[lifesteal_credit]', msg.payload); } catch (e) {}
-              if (msg.payload.refund > 0 && S.dmgNumbers && S.player) {
+              /* v2.3.258 diagnostic: floater fires on EVERY
+                 lifesteal_credit regardless of playerId so we can tell
+                 if the message is reaching the client at all.  If the
+                 floater still doesn't fire after this deploys, the
+                 server isn't emitting the event (kill block not firing
+                 / killerWs lookup failing).  If it does fire but says
+                 "for OTHER (xxx)", the server's session.id is drifting
+                 from the client's S.myId. */
+              try { console.log('[lifesteal_credit]', msg.payload, 'myId=', S && S.myId); } catch (e) {}
+              if (!msg.payload) {
+                if (S && S.dmgNumbers && S.player) {
+                  S.dmgNumbers.push({
+                    x: S.player.x, y: S.player.y - 40,
+                    text: 'lifesteal: no payload',
+                    color: '#ff5e6c', ts: Date.now(),
+                  });
+                }
+                break;
+              }
+              var _pidMatch = msg.payload.playerId === (S && S.myId);
+              var _refund = msg.payload.refund || 0;
+              var _reason = msg.payload.reason || 'noreason';
+              if (S && S.dmgNumbers && S.player) {
+                var _txt, _col;
+                if (!_pidMatch) {
+                  _txt = 'for OTHER (' + (msg.payload.playerId || 'null').slice(-4) + ')';
+                  _col = '#f5c542';  // yellow -- pid mismatch
+                } else if (_refund > 0) {
+                  _txt = '+' + _refund + ' HP';
+                  _col = '#3dd497';  // green -- success
+                } else {
+                  _txt = 'no heal (' + _reason + ')';
+                  _col = '#8890b8';  // gray -- gate failed
+                }
                 S.dmgNumbers.push({
                   x: S.player.x, y: S.player.y - 40,
-                  text: '+' + msg.payload.refund + ' HP',
-                  color: '#3dd497', ts: Date.now(),
-                });
-              } else if (msg.payload.reason && msg.payload.reason !== 'ok' && S.dmgNumbers && S.player) {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 40,
-                  text: 'no heal (' + msg.payload.reason + ')',
-                  color: '#8890b8', ts: Date.now(),
+                  text: _txt, color: _col, ts: Date.now(),
                 });
               }
               break;
