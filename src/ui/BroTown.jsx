@@ -9606,17 +9606,15 @@ export var BroTown = function BroTown(_ref0) {
             var _pickupOriginY = P.y - 15;
             var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(_pickupOriginY - loot.y, 2));
 
-            /* v2.3.253: narrowed the magnetism skip to actual fodder
-               (slime / fireGoblin) since they're the ones with the
-               same-frame splat-vacuum risk.  Other remnants (mummy /
-               skeleton / snowman) had magnetism turned off too, which
-               meant their coin piles never pulled toward the player
-               and the user had to walk within 20 px exactly.  Mummy-
-               area coins reportedly looked like they weren't allowing
-               pickup; this restores the pull-in.
+            /* v2.3.254: skip magnetism only for the variants with the
+               same-frame splat-vacuum risk (raw slime fodder + fireGoblin).
+               v2.3.253 tried isFodderLike here but that also matches
+               mummy / skeleton (both baseArchetype: 'fodder'), so the
+               intended pull-in for mummy-area coins never actually
+               restored -- user still had to walk within 20 px exactly.
                isRemnantSkull is still used for the 100 ms render-delay
                gate below so all splat/drop animations get to play. */
-            var _isFodder = isFodderLike(loot.skull);
+            var _isFodder = loot.skull === 'fodder' || loot.skull === 'fireGoblin';
             var _isRemnant = isRemnantSkull(loot.skull);
             /* MP: only magnetize loot the player can actually pick up.
                Previously every pile within 50 px got pulled toward the
