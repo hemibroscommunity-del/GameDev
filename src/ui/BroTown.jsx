@@ -2146,43 +2146,20 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'lifesteal_credit':
             {
-              /* v2.3.258 diagnostic: floater fires on EVERY
-                 lifesteal_credit regardless of playerId so we can tell
-                 if the message is reaching the client at all.  If the
-                 floater still doesn't fire after this deploys, the
-                 server isn't emitting the event (kill block not firing
-                 / killerWs lookup failing).  If it does fire but says
-                 "for OTHER (xxx)", the server's session.id is drifting
-                 from the client's S.myId. */
-              try { console.log('[lifesteal_credit]', msg.payload, 'myId=', S && S.myId); } catch (e) {}
-              if (!msg.payload) {
-                if (S && S.dmgNumbers && S.player) {
-                  S.dmgNumbers.push({
-                    x: S.player.x, y: S.player.y - 40,
-                    text: 'lifesteal: no payload',
-                    color: '#ff5e6c', ts: Date.now(),
-                  });
-                }
-                break;
-              }
-              var _pidMatch = msg.payload.playerId === (S && S.myId);
-              var _refund = msg.payload.refund || 0;
-              var _reason = msg.payload.reason || 'noreason';
-              if (S && S.dmgNumbers && S.player) {
-                var _txt, _col;
-                if (!_pidMatch) {
-                  _txt = 'for OTHER (' + (msg.payload.playerId || 'null').slice(-4) + ')';
-                  _col = '#f5c542';  // yellow -- pid mismatch
-                } else if (_refund > 0) {
-                  _txt = '+' + _refund + ' HP';
-                  _col = '#3dd497';  // green -- success
-                } else {
-                  _txt = 'no heal (' + _reason + ')';
-                  _col = '#8890b8';  // gray -- gate failed
-                }
+              /* Worker is informing us a melee-kill heal landed. HP
+                 itself rides on the player_state push that follows;
+                 this event is only for the +N HP floater so the visual
+                 math matches the server exactly. Only render for our
+                 own player; party members don't get our floater. */
+              if (msg.payload
+                  && msg.payload.playerId === S.myId
+                  && msg.payload.refund > 0
+                  && S.dmgNumbers
+                  && S.player) {
                 S.dmgNumbers.push({
                   x: S.player.x, y: S.player.y - 40,
-                  text: _txt, color: _col, ts: Date.now(),
+                  text: '+' + msg.payload.refund + ' HP',
+                  color: '#3dd497', ts: Date.now(),
                 });
               }
               break;
