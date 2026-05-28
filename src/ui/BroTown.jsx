@@ -9613,13 +9613,18 @@ export var BroTown = function BroTown(_ref0) {
             var _pickupOriginY = P.y - 15;
             var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(_pickupOriginY - loot.y, 2));
 
-            /* Fodder slime + variant remnants: skip magnetism + add a
-               brief pickup delay so the splat/pile actually lands on
-               the ground and is visible before the player walks over
-               it. Without this, magnetism + the kill-from-melee-range
-               case meant remnants got vacuumed up on the same frame
-               they spawned -- the fireGoblin debris bug in v2.3.7. */
-            var _isFodderRemnant = isRemnantSkull(loot.skull);
+            /* v2.3.253: narrowed the magnetism skip to actual fodder
+               (slime / fireGoblin) since they're the ones with the
+               same-frame splat-vacuum risk.  Other remnants (mummy /
+               skeleton / snowman) had magnetism turned off too, which
+               meant their coin piles never pulled toward the player
+               and the user had to walk within 20 px exactly.  Mummy-
+               area coins reportedly looked like they weren't allowing
+               pickup; this restores the pull-in.
+               isRemnantSkull is still used for the 100 ms render-delay
+               gate below so all splat/drop animations get to play. */
+            var _isFodder = isFodderLike(loot.skull);
+            var _isRemnant = isRemnantSkull(loot.skull);
             /* MP: only magnetize loot the player can actually pick up.
                Previously every pile within 50 px got pulled toward the
                player, then sat stuck at ~20 px because the recipient
@@ -9633,7 +9638,7 @@ export var BroTown = function BroTown(_ref0) {
             var _amPileRecipient = _deathFFA || !loot.recipients || loot.recipients.includes(S.myId);
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
             var magnetRange = 50;
-            if (!_isFodderRemnant && _amPileRecipient && !loot._collected && lDist < magnetRange && lDist > 20) {
+            if (!_isFodder && _amPileRecipient && !loot._collected && lDist < magnetRange && lDist > 20) {
               var pullStrength = (1 - lDist / magnetRange) * 3;
               var pullAngle = Math.atan2(P.y - loot.y, P.x - loot.x);
               loot.x += Math.cos(pullAngle) * pullStrength;
@@ -9642,8 +9647,10 @@ export var BroTown = function BroTown(_ref0) {
             /* Pickup gate matches the render delay (0.1 s) so the
                splat is on-screen and visible before it can be picked
                up — otherwise the player walks over the spot during the
-               death anim and the invisible loot vanishes silently. */
-            if (_isFodderRemnant && Date.now() - (loot.ts || 0) < 100) return true;
+               death anim and the invisible loot vanishes silently.
+               Kept on the full remnant set since mummy / skeleton drop
+               animations should also play before pickup. */
+            if (_isRemnant && Date.now() - (loot.ts || 0) < 100) return true;
             /* Safe zones never legitimately have loot piles -- if a
                stale pile leaked through (cross-zone server snapshot),
                drop it silently rather than beeping at the player every
