@@ -2,15 +2,15 @@
   "southwest": {
     "size": [
       70,
-      61
+      57
     ],
     "anchor": [
       35,
-      60
+      28
     ],
     "anchorOffset": [
       0,
-      12
+      0
     ]
   }
 }
