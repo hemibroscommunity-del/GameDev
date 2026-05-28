@@ -45,12 +45,21 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.261';
+const TRAIT_VER = '2.3.263';
 const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
+/* Per-direction trait metadata: bbox + bbox-center anchor.  Computed
+   by Python at extract time; the renderer uses anchor / 256 to place
+   the trait's center on the body's head anchor regardless of AI
+   drift in the original extraction. */
+let _traitMeta = null;
 let _traitLoadStarted = false;
 function _ensureTraitTextures() {
   if (_traitLoadStarted) return;
   _traitLoadStarted = true;
+  fetch(`/sprites/traits/nft/${TRAIT_NFT_ID}/meta.json?v=${TRAIT_VER}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) _traitMeta = j; })
+    .catch(() => {});
   for (const dir of Object.keys(_traitTex)) {
     Assets.load(`/sprites/traits/nft/${TRAIT_NFT_ID}/${dir}.png?v=${TRAIT_VER}`)
       .then(t => {
@@ -2097,23 +2106,43 @@ export class EntityRenderer {
           body.clear();
           display._procDrawn = false;
         }
-        /* v2.3.262 (Bro-NFT Phase 4): trait composite overlay.  The
-           per-frame head-anchor delta from v2.3.261 was killed because
-           finger-tagged anchors are too noisy (jitter shows the body's
-           bald head peeking out around a wobbling helmet).  Lock the
-           trait to the body's center -- the trait PNG already encodes
-           the head position in stand pose, so it sits where it was
-           drawn.  Jog body-bob is small enough that a static overlay
-           reads as one stable head. */
+        /* v2.3.263 (Bro-NFT Phase 4): trait overlay anchored on the
+           body's head.  The trait's bbox-center anchor (loaded from
+           meta.json) is positioned at the body's head anchor for the
+           current direction.  This corrects for AI drift -- the trait
+           may have been drawn at a slightly different frame position
+           than the baseline, but we snap it to where the body's head
+           actually is regardless. */
         _ensureTraitTextures();
         const traitFace = display._traitFace;
         const traitTex = _traitTex[dir];
-        if (traitFace && traitTex) {
+        const traitInfo = _traitMeta && _traitMeta[dir];
+        if (traitFace && traitTex && traitInfo && traitInfo.anchor) {
           if (traitFace.texture !== traitTex) traitFace.texture = traitTex;
-          traitFace.x = spriteBody.x;
-          traitFace.y = spriteBody.y;
-          traitFace.scale.x = spriteBody.scale.x;
-          traitFace.scale.y = spriteBody.scale.y;
+          /* Anchor the trait sprite on its bbox center (in trait pixel space). */
+          const W = 256;
+          traitFace.anchor.set(traitInfo.anchor[0] / W, traitInfo.anchor[1] / W);
+          /* Body head anchor (frame-space, mirror-flipped if needed).
+             Use stand head as a stable reference -- per-frame head
+             anchors are noisy and cause jitter. */
+          const headAnchor = getHeadAnchor('stand', dir, 0, mirror);
+          if (headAnchor) {
+            /* Frame-coord delta from body's frame center (anchor 0.5,0.5
+               at frame coord W/2,W/2) to body's head anchor, then scale
+               to world space.  bodyScale magnitude is the same for x and y. */
+            const dxFrame = headAnchor[0] - W / 2;
+            const dyFrame = headAnchor[1] - W / 2;
+            traitFace.x = spriteBody.x + dxFrame * Math.abs(bodyScale) * (mirror ? -1 : 1);
+            traitFace.y = spriteBody.y + dyFrame * Math.abs(bodyScale);
+          } else {
+            traitFace.x = spriteBody.x;
+            traitFace.y = spriteBody.y;
+          }
+          /* Match scale + mirror.  Trait sprite's anchor (set above)
+             keeps the bbox-center pixel pinned at trait.x/y regardless
+             of mirror. */
+          traitFace.scale.x = (mirror ? -1 : 1) * Math.abs(bodyScale);
+          traitFace.scale.y = Math.abs(bodyScale);
           traitFace.visible = true;
         } else if (traitFace) {
           traitFace.visible = false;
