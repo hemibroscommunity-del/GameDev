@@ -2167,11 +2167,12 @@ export class EntityRenderer {
       }
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
-      /* v2.3.265: mannequin swap retired in favor of standalone-item
-         stickers (no body swap needed; items just composite at their
-         anchor points).  Code left dormant until per-item sticker
-         pipeline is wired. */
-      // if (pose === 'stand' && _mannequinTex[dir]) tex = _mannequinTex[dir];
+      /* v2.3.289: re-enable mannequin swap for stand pose so traits
+         composite onto the SAME body silhouette they were designed to
+         attach to.  The default body has baked-in face/clothes that
+         can confuse alignment when iterating on trait position; the
+         mannequin is the source-of-truth body. */
+      if (pose === 'stand' && _mannequinTex[dir]) tex = _mannequinTex[dir];
       if (tex) {
         /* Always assign the texture — the cache-only-on-change pattern
            was leaving spriteBody with a stale / invalidated texture
