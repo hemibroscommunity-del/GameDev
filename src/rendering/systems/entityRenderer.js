@@ -15,6 +15,7 @@ import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVaria
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
+import { TRAIT_CATEGORIES, resolveBodyAnchor } from '../traitCategories.js';
 import { getNftTextures } from '../nftAvatars.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -60,6 +61,7 @@ const TRAIT_VER = '2.3.266';
 const HEADWEAR_ID = 'old-school-helmet';
 const _headwearTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 let _headwearMeta = null;
+let _bodyAnchors = null;
 let _headwearLoadStarted = false;
 function _ensureHeadwearTextures() {
   if (_headwearLoadStarted) return;
@@ -67,6 +69,14 @@ function _ensureHeadwearTextures() {
   fetch(`/sprites/traits/headwear/${HEADWEAR_ID}/meta.json?v=${TRAIT_VER}`)
     .then(r => r.ok ? r.json() : null)
     .then(j => { if (j) _headwearMeta = j; })
+    .catch(() => {});
+  /* v2.3.270: load body anchor schema (head-box per pose-dir-frame),
+     derived offline by tools/derive_body_anchors.py.  Renderer reads
+     this + the trait's category rule to position any trait sprite
+     without per-trait per-direction tuning. */
+  fetch(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) _bodyAnchors = j; })
     .catch(() => {});
   for (const dir of Object.keys(_headwearTex)) {
     Assets.load(`/sprites/traits/headwear/${HEADWEAR_ID}/${dir}.png?v=${TRAIT_VER}`)
@@ -78,6 +88,17 @@ function _ensureHeadwearTextures() {
       })
       .catch(() => {});  // expected for directions that don't exist yet
   }
+}
+
+/* Look up the head-box for the current pose/dir/frame.  Falls back to
+   stand-{dir}-0 if the requested frame has no entry. */
+function _lookupHeadBox(pose, dir, frame) {
+  if (!_bodyAnchors) return null;
+  const key = `${pose}-${dir}-${frame}`;
+  const entry = _bodyAnchors[key];
+  if (entry && entry.head) return entry.head;
+  const fallback = _bodyAnchors[`stand-${dir}-0`];
+  return (fallback && fallback.head) || null;
 }
 const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 /* v2.3.264: faceless mannequin textures used as the stand-pose body
@@ -2175,47 +2196,41 @@ export class EntityRenderer {
            may have been drawn at a slightly different frame position
            than the baseline, but we snap it to where the body's head
            actually is regardless. */
-        /* v2.3.266: standalone-item sticker layer.  Headwear (helmet /
-           hat / etc.) composites at the body's head anchor, scaled to
-           match body.  Item's own anchor + offset come from meta.json.
-           Renders in every pose (jog/stand/hit) -- the small per-frame
-           head anchor noise is invisible at this sprite size. */
+        /* v2.3.270: modular trait composition.
+           Body schema (body-anchors.json) provides the head bounding
+           box for the current pose/dir/frame.  Category rule
+           (traitCategories.js) declares HOW the trait attaches and
+           how it should be sized relative to head width.  No
+           per-trait per-direction tuning anywhere. */
         _ensureHeadwearTextures();
         const headwear = display._headwearSprite;
         const headwearTex = _headwearTex[dir];
-        const headwearInfo = _headwearMeta && _headwearMeta[dir];
-        if (headwear && headwearTex && headwearInfo && headwearInfo.anchor) {
+        const headwearCategory = (_headwearMeta && _headwearMeta.category) || 'headwear';
+        const catRule = TRAIT_CATEGORIES[headwearCategory];
+        const headBox = _lookupHeadBox(pose, dir, frameIdx);
+        if (headwear && headwearTex && catRule && headBox) {
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
-          const itemW = headwearInfo.size ? headwearInfo.size[0] : headwearTex.width;
-          const itemH = headwearInfo.size ? headwearInfo.size[1] : headwearTex.height;
-          /* Anchor on the trait's own pixel grid -> normalized 0..1. */
-          headwear.anchor.set(headwearInfo.anchor[0] / itemW, headwearInfo.anchor[1] / itemH);
-          /* Position: body head anchor for this pose+dir+frame, plus
-             meta's anchorOffset (head-center -> head-top, etc.). */
-          const headAnchor = getHeadAnchor(pose, dir, frameIdx, mirror);
-          let frameHeadX, frameHeadY;
-          if (headAnchor) {
-            frameHeadX = headAnchor[0];
-            frameHeadY = headAnchor[1];
-          } else {
-            /* Fallback: stand-pose head anchor. */
-            const fallback = getHeadAnchor('stand', dir, 0, mirror);
-            if (fallback) { frameHeadX = fallback[0]; frameHeadY = fallback[1]; }
-            else          { frameHeadX = 128; frameHeadY = 90;  /* center-ish */ }
-          }
-          /* Apply meta-provided offset (positive y = down in frame space). */
-          const offX = (headwearInfo.anchorOffset && headwearInfo.anchorOffset[0]) || 0;
-          const offY = (headwearInfo.anchorOffset && headwearInfo.anchorOffset[1]) || 0;
-          /* Mirror x-offset too so it shifts in world the correct direction. */
-          frameHeadX += mirror ? -offX : offX;
-          frameHeadY += offY;
-          /* Convert frame coords to world offset from body center (anchor 0.5,0.5). */
+          /* Sprite's own anchor (where the alignment landmark is in the
+             trait sprite's pixel grid). */
+          headwear.anchor.set(catRule.spriteAnchor[0], catRule.spriteAnchor[1]);
+          /* Resolve the body attachment point in frame coords. */
+          const bodyAnchor = resolveBodyAnchor(headBox, catRule.attachAt);
+          let frameAttachX = bodyAnchor ? bodyAnchor[0] : 128;
+          let frameAttachY = bodyAnchor ? bodyAnchor[1] : 64;
+          if (mirror) frameAttachX = 256 - frameAttachX;
+          /* Auto-scale trait to widthRatio * head width.  Both head
+             width and target width are in FRAME pixels; ratio is the
+             scale relative to the trait sprite's native pixel width. */
+          const targetFrameW = headBox.width * catRule.widthRatio;
+          const traitScale = targetFrameW / headwearTex.width;
+          const absBodyScale = Math.abs(bodyScale);
+          /* Frame-coord -> world-coord conversion is the same as for
+             the body sprite (anchor 0.5,0.5 in 256x256 frame). */
           const W = 256;
-          const absScale = Math.abs(bodyScale);
-          headwear.x = spriteBody.x + (frameHeadX - W / 2) * absScale * (mirror ? -1 : 1);
-          headwear.y = spriteBody.y + (frameHeadY - W / 2) * absScale;
-          headwear.scale.x = (mirror ? -1 : 1) * absScale;
-          headwear.scale.y = absScale;
+          headwear.x = spriteBody.x + (frameAttachX - W / 2) * absBodyScale * (mirror ? -1 : 1);
+          headwear.y = spriteBody.y + (frameAttachY - W / 2) * absBodyScale;
+          headwear.scale.x = (mirror ? -1 : 1) * traitScale * absBodyScale;
+          headwear.scale.y = traitScale * absBodyScale;
           headwear.visible = true;
         } else if (headwear) {
           headwear.visible = false;
