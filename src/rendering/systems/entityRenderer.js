@@ -46,7 +46,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.296';
+const TRAIT_VER = '2.3.297';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -62,6 +62,11 @@ const HEADWEAR_ID = 'old-school-helmet';
 const _headwearTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 let _headwearMeta = null;
 let _bodyAnchors = null;
+/* v2.3.297: body-tops.json -- per-(pose,dir,frame) topmost opaque
+   pixel [x,y] of the body sprite, derived raw (no head detection, no
+   smoothing) by tools/derive_body_tops.py.  Use this as the head pin
+   point for trait stickers -- frame-exact, no detection noise. */
+let _bodyTops = null;
 let _headwearLoadStarted = false;
 function _ensureHeadwearTextures() {
   if (_headwearLoadStarted) return;
@@ -77,6 +82,10 @@ function _ensureHeadwearTextures() {
   fetch(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`)
     .then(r => r.ok ? r.json() : null)
     .then(j => { if (j) _bodyAnchors = j; })
+    .catch(() => {});
+  fetch(`/sprites/player/body-tops.json?v=${TRAIT_VER}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) _bodyTops = j; })
     .catch(() => {});
   for (const dir of Object.keys(_headwearTex)) {
     Assets.load(`/sprites/traits/headwear/${HEADWEAR_ID}/${dir}.png?v=${TRAIT_VER}`)
@@ -127,6 +136,18 @@ function _lookupStandHeadBox(dir) {
   if (!_bodyAnchors) return null;
   const entry = _bodyAnchors[`stand-${dir}-0`];
   return (entry && entry.head) || null;
+}
+
+/* Raw topmost-opaque-pixel [x, y] for (pose, dir, frame) from
+   body-tops.json.  No head detection, no smoothing -- just the
+   actual top of the body silhouette for this frame. */
+function _lookupBodyTop(pose, dir, frame) {
+  if (!_bodyTops) return null;
+  return _bodyTops[`${pose}-${dir}-${frame}`] || _bodyTops[`stand-${dir}-0`] || null;
+}
+function _lookupStandTop(dir) {
+  if (!_bodyTops) return null;
+  return _bodyTops[`stand-${dir}-0`] || null;
 }
 const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 /* v2.3.264: faceless mannequin textures used as the stand-pose body
@@ -2242,20 +2263,19 @@ export class EntityRenderer {
         const headBox = _lookupHeadBox(pose, dir, frameIdx);
         const sizingBox = _lookupStandHeadBox(dir) || headBox;
         if (headwear && headwearTex && headwearFullFrame) {
-          /* v2.3.293: pin to head-top per frame.  body-anchors.json has
-             head.top = [center_x, topmost_y] for every (pose, dir, frame).
-             Topmost-y moves exactly with the head's vertical bob; using
-             it directly (instead of head.center) cuts out neck-detection
-             noise.  X is tracked too but only when the shift is small --
-             larger jumps come from arm-swing widening the silhouette and
-             would yank the helmet sideways. */
+          /* v2.3.297: pin to raw body-top per frame.  body-tops.json is
+             the actual topmost opaque pixel of the body sprite for
+             every (pose, dir, frame) -- no head detection, no smoothing.
+             Helmet bobs / sways with the body's crown directly.  Both X
+             and Y tracked in full. */
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
           headwear.anchor.set(0.5, 0.5);
           let dxFrame = 0, dyFrame = 0;
-          if (headBox && sizingBox && headBox.top && sizingBox.top) {
-            dyFrame = headBox.top[1] - sizingBox.top[1];
-            const dx = headBox.top[0] - sizingBox.top[0];
-            if (Math.abs(dx) <= 4) dxFrame = dx;
+          const bodyTop = _lookupBodyTop(pose, dir, frameIdx);
+          const standTop = _lookupStandTop(dir);
+          if (bodyTop && standTop) {
+            dxFrame = bodyTop[0] - standTop[0];
+            dyFrame = bodyTop[1] - standTop[1];
           }
           /* Per-direction frameOffset from meta.json -- one-time nudge
              that corrects where the AI actually drew the trait on the
