@@ -100,6 +100,16 @@ function _lookupHeadBox(pose, dir, frame) {
   const fallback = _bodyAnchors[`stand-${dir}-0`];
   return (fallback && fallback.head) || null;
 }
+
+/* Look up the STAND-pose head box for the given direction.  Used to
+   lock trait size to a consistent reference -- per-frame jog head
+   boxes vary slightly and would make the trait "breathe" with the
+   walk cycle if used for sizing. */
+function _lookupStandHeadBox(dir) {
+  if (!_bodyAnchors) return null;
+  const entry = _bodyAnchors[`stand-${dir}-0`];
+  return (entry && entry.head) || null;
+}
 const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 /* v2.3.264: faceless mannequin textures used as the stand-pose body
    when a trait is active.  The default player body has baked-in face
@@ -2208,20 +2218,23 @@ export class EntityRenderer {
         const headwearCategory = (_headwearMeta && _headwearMeta.category) || 'headwear';
         const catRule = TRAIT_CATEGORIES[headwearCategory];
         const headBox = _lookupHeadBox(pose, dir, frameIdx);
+        /* Lock SIZE to stand-pose head box -- per-frame jog head widths
+           vary enough to make the helmet visibly "breathe" if used here. */
+        const sizingBox = _lookupStandHeadBox(dir) || headBox;
         if (headwear && headwearTex && catRule && headBox) {
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
           /* Sprite's own anchor (where the alignment landmark is in the
              trait sprite's pixel grid). */
           headwear.anchor.set(catRule.spriteAnchor[0], catRule.spriteAnchor[1]);
-          /* Resolve the body attachment point in frame coords. */
+          /* Resolve the body attachment point in frame coords (uses
+             per-frame head box so the trait tracks the head as it bobs). */
           const bodyAnchor = resolveBodyAnchor(headBox, catRule.attachAt);
           let frameAttachX = bodyAnchor ? bodyAnchor[0] : 128;
           let frameAttachY = bodyAnchor ? bodyAnchor[1] : 64;
           if (mirror) frameAttachX = 256 - frameAttachX;
-          /* Auto-scale trait to widthRatio * head width.  Both head
-             width and target width are in FRAME pixels; ratio is the
-             scale relative to the trait sprite's native pixel width. */
-          const targetFrameW = headBox.width * catRule.widthRatio;
+          /* Auto-scale trait to widthRatio * stand head width (sizing
+             reference is stand pose to avoid "breathing"). */
+          const targetFrameW = sizingBox.width * catRule.widthRatio;
           const traitScale = targetFrameW / headwearTex.width;
           const absBodyScale = Math.abs(bodyScale);
           /* Frame-coord -> world-coord conversion is the same as for

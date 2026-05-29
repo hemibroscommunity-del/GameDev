@@ -18,10 +18,10 @@
  */
 export const TRAIT_CATEGORIES = {
   headwear: {
-    attachAt: 'head.top',
-    /* Helmet's bottom-rim is at the bottom of its sprite -- attaches
-       to head crown. */
-    spriteAnchor: [0.5, 1.0],
+    /* Helmet's head-cutout wraps the head -- center the trait sprite
+       on the head's center so cutout aligns with the head silhouette. */
+    attachAt: 'head.center',
+    spriteAnchor: [0.5, 0.5],
     widthRatio: 1.10,
   },
   eyes: {
