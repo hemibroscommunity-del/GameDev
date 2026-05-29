@@ -1,4 +1,12 @@
 {
   "category": "headwear",
-  "fullFrame": true
+  "fullFrame": true,
+  "bboxes": {
+    "southwest": [
+      98,
+      16,
+      61,
+      50
+    ]
+  }
 }
