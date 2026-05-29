@@ -46,6 +46,34 @@ def opaque_bbox(im):
     return [x0, y0, x1 - x0 + 1, y1 - y0 + 1]
 
 
+# Must match derive_body_tops.py so the helmet crown and the body crown
+# are measured the same way -- the renderer pins one onto the other.
+CROWN_MIN_WIDTH = 20  # ignore rows narrower than this (lone tips / antennae)
+CROWN_ALPHA = 32
+
+
+def crown_anchor(im):
+    """Return [center_x, y] of the helmet's crown: the topmost row with at
+    least CROWN_MIN_WIDTH opaque pixels, and the horizontal center of that
+    row.  This is the point the renderer pins onto the body's crown, so it
+    uses the identical logic as tools/derive_body_tops.py.  Returns None if
+    no substantial row exists (falls back to the naive bbox top in that case)."""
+    try:
+        import numpy as np
+    except ImportError:
+        return None
+    arr = np.array(im)
+    if arr.ndim < 3 or arr.shape[2] < 4:
+        return None
+    alpha = arr[..., 3] > CROWN_ALPHA
+    h = arr.shape[0]
+    for r in range(h):
+        cols = np.where(alpha[r])[0]
+        if len(cols) >= CROWN_MIN_WIDTH:
+            return [int((int(cols.min()) + int(cols.max())) // 2), r]
+    return None
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("source")
@@ -84,6 +112,16 @@ def main():
         print(f"  output bbox size:   {w}x{h}")
         print(f"  output bbox center: ({cx}, {cy})")
 
+    # Crown anchor in output coords -- the point the renderer pins onto the
+    # body's crown.  Prefer the MIN_WIDTH-filtered crown; fall back to the
+    # naive bbox top-center if no substantial row exists.
+    anchor = crown_anchor(out)
+    if anchor is None and out_bbox is not None:
+        x, y, w, h = out_bbox
+        anchor = [x + w // 2, y]
+    if anchor is not None:
+        print(f"  crown anchor:       ({anchor[0]}, {anchor[1]})  <- pin to body crown")
+
     # Write both bboxes to meta.json for the renderer + any other tools.
     try:
         import json
@@ -102,6 +140,11 @@ def main():
             meta.setdefault("bboxes_source", {})[base] = src_bbox
         if out_bbox is not None:
             meta.setdefault("bboxes", {})[base] = out_bbox
+        if anchor is not None:
+            meta.setdefault("anchors", {})[base] = anchor
+            # Ensure a crownNudge entry exists so it's obvious where to tune
+            # the "helmet crown above bare head crown" offset.  Default 0,0.
+            meta.setdefault("crownNudge", {}).setdefault(base, [0, 0])
         with open(meta_path, "w") as f:
             json.dump(meta, f, indent=2)
         print(f"\n  bboxes saved to {meta_path}")

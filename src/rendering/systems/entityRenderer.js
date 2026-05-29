@@ -46,7 +46,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.298';
+const TRAIT_VER = '2.3.299';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -144,10 +144,6 @@ function _lookupStandHeadBox(dir) {
 function _lookupBodyTop(pose, dir, frame) {
   if (!_bodyTops) return null;
   return _bodyTops[`${pose}-${dir}-${frame}`] || _bodyTops[`stand-${dir}-0`] || null;
-}
-function _lookupStandTop(dir) {
-  if (!_bodyTops) return null;
-  return _bodyTops[`stand-${dir}-0`] || null;
 }
 const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 /* v2.3.264: faceless mannequin textures used as the stand-pose body
@@ -2263,34 +2259,38 @@ export class EntityRenderer {
         const headBox = _lookupHeadBox(pose, dir, frameIdx);
         const sizingBox = _lookupStandHeadBox(dir) || headBox;
         if (headwear && headwearTex && headwearFullFrame) {
-          /* v2.3.297: pin to raw body-top per frame.  body-tops.json is
-             the actual topmost opaque pixel of the body sprite for
-             every (pose, dir, frame) -- no head detection, no smoothing.
-             Helmet bobs / sways with the body's crown directly.  Both X
-             and Y tracked in full. */
+          /* v2.3.299: crown-anchored placement -- placement-independent.
+             The helmet texture carries its OWN crown anchor (meta.anchors[dir]
+             = [x, y] of the helmet's crown in texture pixels, derived by
+             tools/downscale_trait.py with the same MIN_WIDTH crown logic as
+             body-tops).  We pin that anchor directly onto the body's crown
+             (body-tops.json, per frame) plus a small reusable crownNudge
+             ("how far the helmet crown sits above/beside the bare head crown").
+             Because we measure where the helmet actually is, it no longer
+             matters where the AI drew it on the canvas -- no per-upload
+             frameOffset tuning, and per-frame bob comes free from body-tops. */
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
-          headwear.anchor.set(0.5, 0.5);
-          let dxFrame = 0, dyFrame = 0;
           const bodyTop = _lookupBodyTop(pose, dir, frameIdx);
-          const standTop = _lookupStandTop(dir);
-          if (bodyTop && standTop) {
-            dxFrame = bodyTop[0] - standTop[0];
-            dyFrame = bodyTop[1] - standTop[1];
+          const anchorPx = (_headwearMeta && _headwearMeta.anchors && _headwearMeta.anchors[dir]) || null;
+          const nudge = (_headwearMeta && _headwearMeta.crownNudge && _headwearMeta.crownNudge[dir]) || [0, 0];
+          if (bodyTop && anchorPx) {
+            /* Anchor the helmet sprite on its own crown pixel (normalized to
+               the texture size), then place that point at the body's crown. */
+            headwear.anchor.set(anchorPx[0] / headwearTex.width, anchorPx[1] / headwearTex.height);
+            const W = 256;
+            let attachX = bodyTop[0] + nudge[0];
+            let attachY = bodyTop[1] + nudge[1];
+            if (mirror) attachX = W - attachX;
+            const absBodyScale = Math.abs(bodyScale);
+            headwear.x = spriteBody.x + (attachX - W / 2) * absBodyScale * (mirror ? -1 : 1);
+            headwear.y = spriteBody.y + (attachY - W / 2) * absBodyScale;
+            headwear.scale.x = (mirror ? -1 : 1) * absBodyScale;
+            headwear.scale.y = absBodyScale;
+            headwear.visible = true;
+          } else {
+            /* No anchor metadata for this direction yet -- don't guess. */
+            headwear.visible = false;
           }
-          /* Per-direction frameOffset from meta.json -- one-time nudge
-             that corrects where the AI actually drew the trait on the
-             canvas vs where the body's head sits. */
-          const fOff = (_headwearMeta && _headwearMeta.frameOffset && _headwearMeta.frameOffset[dir]) || null;
-          if (fOff) {
-            dxFrame += fOff[0];
-            dyFrame += fOff[1];
-          }
-          const absBodyScale = Math.abs(bodyScale);
-          headwear.x = spriteBody.x + dxFrame * absBodyScale * (mirror ? -1 : 1);
-          headwear.y = spriteBody.y + dyFrame * absBodyScale;
-          headwear.scale.x = (mirror ? -1 : 1) * absBodyScale;
-          headwear.scale.y = absBodyScale;
-          headwear.visible = true;
         } else if (headwear && headwearTex && catRule && headBox) {
           /* Sticker mode: trait is small, anchored at body's head with
              auto-scaling.  Legacy path; the cleaner full-frame mode

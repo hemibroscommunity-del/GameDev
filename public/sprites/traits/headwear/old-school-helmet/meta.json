@@ -1,8 +1,11 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "frameOffset": {
-    "southwest": [12, -6]
+  "anchors": {
+    "southwest": [117, 23]
+  },
+  "crownNudge": {
+    "southwest": [5, -4]
   },
   "bboxes": {
     "southwest": [84, 22, 60, 52]
