@@ -46,7 +46,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.299';
+const TRAIT_VER = '2.3.300';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -2278,13 +2278,23 @@ export class EntityRenderer {
                the texture size), then place that point at the body's crown. */
             headwear.anchor.set(anchorPx[0] / headwearTex.width, anchorPx[1] / headwearTex.height);
             const W = 256;
-            let attachX = bodyTop[0] + nudge[0];
-            let attachY = bodyTop[1] + nudge[1];
-            if (mirror) attachX = W - attachX;
             const absBodyScale = Math.abs(bodyScale);
-            headwear.x = spriteBody.x + (attachX - W / 2) * absBodyScale * (mirror ? -1 : 1);
-            headwear.y = spriteBody.y + (attachY - W / 2) * absBodyScale;
-            headwear.scale.x = (mirror ? -1 : 1) * absBodyScale;
+            const m = mirror ? -1 : 1;
+            /* v2.3.300: place from the body crown's SCREEN position, not by
+               mirroring the attach point.  The helmet anchor isn't frame-
+               centered, so mirroring attachX around W/2 left a residual
+               bx-dependence that drifted the helmet horizontally as the
+               crown swayed during the jog (SE run wobble; idle looked fine
+               only because stand-crown happened to sit near the mirror line).
+               Here the body crown's screen X is computed first (mirror-
+               correct), then the helmet crown is pinned to it + the nudge,
+               with only nudge X flipping under mirror.  Offset is then a
+               constant +/-nudgeX, independent of the per-frame crown X. */
+            const bodyCrownX = spriteBody.x + (bodyTop[0] - W / 2) * absBodyScale * m;
+            const bodyCrownY = spriteBody.y + (bodyTop[1] - W / 2) * absBodyScale;
+            headwear.x = bodyCrownX + nudge[0] * absBodyScale * m;
+            headwear.y = bodyCrownY + nudge[1] * absBodyScale;
+            headwear.scale.x = m * absBodyScale;
             headwear.scale.y = absBodyScale;
             headwear.visible = true;
           } else {
