@@ -2186,10 +2186,9 @@ export class EntityRenderer {
       _ensureHeadwearTextures();
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
-      /* v2.3.289: mannequin swap for stand pose -- traits were
-         generated to attach to the faceless mannequin, not the default
-         body sprite that has face/clothes baked in. */
-      if (pose === 'stand' && _mannequinTex[dir]) tex = _mannequinTex[dir];
+      /* v2.3.291: mannequin swap removed -- user wants helmet stickered
+         to the NORMAL character body as a rigid assembly.  Trait + body
+         share frame-coords so they move together pixel-perfect. */
       if (tex) {
         /* Always assign the texture — the cache-only-on-change pattern
            was leaving spriteBody with a stale / invalidated texture
@@ -2243,25 +2242,19 @@ export class EntityRenderer {
         const headBox = _lookupHeadBox(pose, dir, frameIdx);
         const sizingBox = _lookupStandHeadBox(dir) || headBox;
         if (headwear && headwearTex && headwearFullFrame) {
-          /* v2.3.278: revert to the v2.3.274 full-frame path -- user
-             prefers it over the v2.3.277 bbox auto-fit (which scaled
-             the helmet wrong).  Trait is 256x256 pixel-aligned to the
-             body's frame coords; just composite at body position with
-             body scale, with a per-frame head-delta so the helmet
-             tracks the head as it bobs through jog frames. */
+          /* v2.3.291: rigid-assembly mode.  Both sprites are 256x256
+             frames with (0.5, 0.5) anchor and identical position/scale,
+             so the helmet is glued to the body's frame coords.  When
+             the body sprite moves on screen, the helmet moves the same
+             amount -- they're one assembly.  No per-frame head-delta,
+             no mannequin swap: helmet sits at the same pixel offset
+             through every animation frame. */
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
           headwear.anchor.set(0.5, 0.5);
           let dxFrame = 0, dyFrame = 0;
-          if (headBox && sizingBox) {
-            /* v2.3.281: Y-only tracking.  Arm swings during jog make
-               the silhouette's horizontal extent jump frame-to-frame
-               so the auto-derived head center wobbles left-right.
-               Head bob is vertical; X is dropped to kill the wobble. */
-            dyFrame = headBox.center[1] - sizingBox.center[1];
-          }
-          /* v2.3.282: per-direction frameOffset from meta.json.
-             Compensates for where the AI actually drew the trait on
-             the canvas vs where the body's visual head sits. */
+          /* Per-direction frameOffset from meta.json -- one-time nudge
+             that corrects where the AI actually drew the trait on the
+             canvas vs where the body's head sits. */
           const fOff = (_headwearMeta && _headwearMeta.frameOffset && _headwearMeta.frameOffset[dir]) || null;
           if (fOff) {
             dxFrame += fOff[0];
