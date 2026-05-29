@@ -83,7 +83,11 @@ function _ensureHeadwearTextures() {
       .then(t => {
         _headwearTex[dir] = t;
         if (t && t.source) {
-          t.source.scaleMode = 'nearest';  // pixel-art crisp
+          /* v2.3.274: match body's linear scaleMode + mipmaps so
+             Lanczos downscale artifacts blend out the same way.
+             'nearest' preserved noise -> looked staticky. */
+          t.source.scaleMode = 'linear';
+          t.source.autoGenerateMipmaps = true;
         }
       })
       .catch(() => {});  // expected for directions that don't exist yet
@@ -2221,17 +2225,25 @@ export class EntityRenderer {
         const headBox = _lookupHeadBox(pose, dir, frameIdx);
         const sizingBox = _lookupStandHeadBox(dir) || headBox;
         if (headwear && headwearTex && headwearFullFrame) {
-          /* v2.3.273: full-frame mode.  Trait sprite is 256x256 and
-             pixel-aligned to the body's frame coord system.  Just
-             composite at body position with body scale -- no anchor
-             math.  This is the cleanest pipeline when the AI was given
-             a scale reference (e.g. canvas matched body's source res). */
+          /* v2.3.274: full-frame mode + per-frame head tracking.
+             Trait sprite is 256x256 pixel-aligned to the body's frame
+             coords.  Lock to body position + apply head-delta from
+             auto-derived body anchors so the helmet follows the body's
+             head as it bobs through jog/hit frames.  Silhouette-based
+             head boxes are clean (no finger-tag noise) so there's no
+             jitter. */
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
           headwear.anchor.set(0.5, 0.5);
-          headwear.x = spriteBody.x;
-          headwear.y = spriteBody.y;
-          headwear.scale.x = (mirror ? -1 : 1) * Math.abs(bodyScale);
-          headwear.scale.y = Math.abs(bodyScale);
+          let dxFrame = 0, dyFrame = 0;
+          if (headBox && sizingBox) {
+            dxFrame = headBox.center[0] - sizingBox.center[0];
+            dyFrame = headBox.center[1] - sizingBox.center[1];
+          }
+          const absBodyScale = Math.abs(bodyScale);
+          headwear.x = spriteBody.x + dxFrame * absBodyScale * (mirror ? -1 : 1);
+          headwear.y = spriteBody.y + dyFrame * absBodyScale;
+          headwear.scale.x = (mirror ? -1 : 1) * absBodyScale;
+          headwear.scale.y = absBodyScale;
           headwear.visible = true;
         } else if (headwear && headwearTex && catRule && headBox) {
           /* Sticker mode: trait is small, anchored at body's head with
