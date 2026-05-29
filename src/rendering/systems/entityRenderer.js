@@ -2242,16 +2242,22 @@ export class EntityRenderer {
         const headBox = _lookupHeadBox(pose, dir, frameIdx);
         const sizingBox = _lookupStandHeadBox(dir) || headBox;
         if (headwear && headwearTex && headwearFullFrame) {
-          /* v2.3.291: rigid-assembly mode.  Both sprites are 256x256
-             frames with (0.5, 0.5) anchor and identical position/scale,
-             so the helmet is glued to the body's frame coords.  When
-             the body sprite moves on screen, the helmet moves the same
-             amount -- they're one assembly.  No per-frame head-delta,
-             no mannequin swap: helmet sits at the same pixel offset
-             through every animation frame. */
+          /* v2.3.292: per-frame head tracking restored.  body-anchors.json
+             has the head center for every (pose, dir, frame), so the
+             helmet's frame offset is (head_now - head_stand) and the
+             helmet bobs with the head through the jog cycle.
+             Y is the meaningful axis (vertical bob).  X is also tracked
+             but only when the head center shift is small -- big jumps
+             come from arm-swing widening the silhouette and would yank
+             the helmet sideways. */
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
           headwear.anchor.set(0.5, 0.5);
           let dxFrame = 0, dyFrame = 0;
+          if (headBox && sizingBox) {
+            dyFrame = headBox.center[1] - sizingBox.center[1];
+            const dx = headBox.center[0] - sizingBox.center[0];
+            if (Math.abs(dx) <= 4) dxFrame = dx;
+          }
           /* Per-direction frameOffset from meta.json -- one-time nudge
              that corrects where the AI actually drew the trait on the
              canvas vs where the body's head sits. */
