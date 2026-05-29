@@ -2241,6 +2241,14 @@ export class EntityRenderer {
                Head bob is vertical; X is dropped to kill the wobble. */
             dyFrame = headBox.center[1] - sizingBox.center[1];
           }
+          /* v2.3.282: per-direction frameOffset from meta.json.
+             Compensates for where the AI actually drew the trait on
+             the canvas vs where the body's visual head sits. */
+          const fOff = (_headwearMeta && _headwearMeta.frameOffset && _headwearMeta.frameOffset[dir]) || null;
+          if (fOff) {
+            dxFrame += fOff[0];
+            dyFrame += fOff[1];
+          }
           const absBodyScale = Math.abs(bodyScale);
           headwear.x = spriteBody.x + dxFrame * absBodyScale * (mirror ? -1 : 1);
           headwear.y = spriteBody.y + dyFrame * absBodyScale;
