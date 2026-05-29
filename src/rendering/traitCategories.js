@@ -19,10 +19,20 @@
 export const TRAIT_CATEGORIES = {
   headwear: {
     /* Helmet's head-cutout wraps the head -- center the trait sprite
-       on the head's center so cutout aligns with the head silhouette. */
+     * on the head's center so cutout aligns with the head silhouette.
+     * v2.3.272: widthRatio dropped 1.10 -> 0.55 because user-uploaded
+     * helmet sprite was drawn ~2x larger than the source image's helmet
+     * relative to body.  This compensates at the renderer until the
+     * trait gen prompt enforces consistent scale (see below).
+     *
+     * Going forward, the AI prompt for standalone items should say
+     * something like: "draw the helmet at the same pixel scale as it
+     * appears on the original combined character image" or "helmet
+     * should be approximately {N} pixels wide".  Once that's enforced
+     * upstream, this ratio can move back toward 1.0. */
     attachAt: 'head.center',
     spriteAnchor: [0.5, 0.5],
-    widthRatio: 1.10,
+    widthRatio: 0.55,
   },
   eyes: {
     attachAt: 'head.eyes',
