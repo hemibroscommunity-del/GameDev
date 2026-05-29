@@ -2235,7 +2235,10 @@ export class EntityRenderer {
           headwear.anchor.set(0.5, 0.5);
           let dxFrame = 0, dyFrame = 0;
           if (headBox && sizingBox) {
-            dxFrame = headBox.center[0] - sizingBox.center[0];
+            /* v2.3.281: Y-only tracking.  Arm swings during jog make
+               the silhouette's horizontal extent jump frame-to-frame
+               so the auto-derived head center wobbles left-right.
+               Head bob is vertical; X is dropped to kill the wobble. */
             dyFrame = headBox.center[1] - sizingBox.center[1];
           }
           const absBodyScale = Math.abs(bodyScale);
