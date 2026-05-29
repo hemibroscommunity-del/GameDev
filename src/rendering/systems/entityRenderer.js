@@ -2224,46 +2224,25 @@ export class EntityRenderer {
         const catRule = TRAIT_CATEGORIES[headwearCategory];
         const headBox = _lookupHeadBox(pose, dir, frameIdx);
         const sizingBox = _lookupStandHeadBox(dir) || headBox;
-        if (headwear && headwearTex && headwearFullFrame && headBox && sizingBox) {
-          /* v2.3.277: full-frame + auto-fit.  The trait sprite is
-             256x256, but we no longer assume the AI placed the trait
-             at the exact frame coords matching the body's head.
-             Instead use the trait's precomputed bbox (saved at
-             downscale time) to:
-              1. Anchor on the trait's bbox center.
-              2. Scale so trait bbox width = stand head width * ratio.
-              3. Position at the body's per-frame head center.
-             Result: any reasonable AI placement still snaps to the
-             body's head, at the right size. */
+        if (headwear && headwearTex && headwearFullFrame) {
+          /* v2.3.278: revert to the v2.3.274 full-frame path -- user
+             prefers it over the v2.3.277 bbox auto-fit (which scaled
+             the helmet wrong).  Trait is 256x256 pixel-aligned to the
+             body's frame coords; just composite at body position with
+             body scale, with a per-frame head-delta so the helmet
+             tracks the head as it bobs through jog frames. */
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
-          const W = 256;
-          const bbox = (_headwearMeta && _headwearMeta.bboxes && _headwearMeta.bboxes[dir]) || null;
-          let bbCx, bbCy, bbW;
-          if (bbox) {
-            bbCx = bbox[0] + bbox[2] / 2;
-            bbCy = bbox[1] + bbox[3] / 2;
-            bbW = bbox[2];
-          } else {
-            bbCx = W / 2;
-            bbCy = W / 2;
-            bbW = W;
+          headwear.anchor.set(0.5, 0.5);
+          let dxFrame = 0, dyFrame = 0;
+          if (headBox && sizingBox) {
+            dxFrame = headBox.center[0] - sizingBox.center[0];
+            dyFrame = headBox.center[1] - sizingBox.center[1];
           }
-          /* Sprite anchor in normalized 0..1 = bbox center in trait pixel space. */
-          headwear.anchor.set(bbCx / W, bbCy / W);
-          /* Scale so trait bbox width matches a target derived from
-             stand head width (constant per dir, no breathing). */
-          const HEADWEAR_WIDTH_RATIO = 1.05;
-          const targetFrameW = sizingBox.width * HEADWEAR_WIDTH_RATIO;
-          const traitScale = targetFrameW / bbW;
-          /* Position at body head center, per-frame (smoothed). */
-          let attachX = headBox.center[0];
-          let attachY = headBox.center[1];
-          if (mirror) attachX = W - attachX;
           const absBodyScale = Math.abs(bodyScale);
-          headwear.x = spriteBody.x + (attachX - W / 2) * absBodyScale * (mirror ? -1 : 1);
-          headwear.y = spriteBody.y + (attachY - W / 2) * absBodyScale;
-          headwear.scale.x = (mirror ? -1 : 1) * traitScale * absBodyScale;
-          headwear.scale.y = traitScale * absBodyScale;
+          headwear.x = spriteBody.x + dxFrame * absBodyScale * (mirror ? -1 : 1);
+          headwear.y = spriteBody.y + dyFrame * absBodyScale;
+          headwear.scale.x = (mirror ? -1 : 1) * absBodyScale;
+          headwear.scale.y = absBodyScale;
           headwear.visible = true;
         } else if (headwear && headwearTex && catRule && headBox) {
           /* Sticker mode: trait is small, anchored at body's head with
