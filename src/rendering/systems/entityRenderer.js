@@ -2216,29 +2216,36 @@ export class EntityRenderer {
         const headwear = display._headwearSprite;
         const headwearTex = _headwearTex[dir];
         const headwearCategory = (_headwearMeta && _headwearMeta.category) || 'headwear';
+        const headwearFullFrame = !!(_headwearMeta && _headwearMeta.fullFrame);
         const catRule = TRAIT_CATEGORIES[headwearCategory];
         const headBox = _lookupHeadBox(pose, dir, frameIdx);
-        /* Lock SIZE to stand-pose head box -- per-frame jog head widths
-           vary enough to make the helmet visibly "breathe" if used here. */
         const sizingBox = _lookupStandHeadBox(dir) || headBox;
-        if (headwear && headwearTex && catRule && headBox) {
+        if (headwear && headwearTex && headwearFullFrame) {
+          /* v2.3.273: full-frame mode.  Trait sprite is 256x256 and
+             pixel-aligned to the body's frame coord system.  Just
+             composite at body position with body scale -- no anchor
+             math.  This is the cleanest pipeline when the AI was given
+             a scale reference (e.g. canvas matched body's source res). */
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
-          /* Sprite's own anchor (where the alignment landmark is in the
-             trait sprite's pixel grid). */
+          headwear.anchor.set(0.5, 0.5);
+          headwear.x = spriteBody.x;
+          headwear.y = spriteBody.y;
+          headwear.scale.x = (mirror ? -1 : 1) * Math.abs(bodyScale);
+          headwear.scale.y = Math.abs(bodyScale);
+          headwear.visible = true;
+        } else if (headwear && headwearTex && catRule && headBox) {
+          /* Sticker mode: trait is small, anchored at body's head with
+             auto-scaling.  Legacy path; the cleaner full-frame mode
+             above is preferred when scale can be controlled at gen time. */
+          if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
           headwear.anchor.set(catRule.spriteAnchor[0], catRule.spriteAnchor[1]);
-          /* Resolve the body attachment point in frame coords (uses
-             per-frame head box so the trait tracks the head as it bobs). */
           const bodyAnchor = resolveBodyAnchor(headBox, catRule.attachAt);
           let frameAttachX = bodyAnchor ? bodyAnchor[0] : 128;
           let frameAttachY = bodyAnchor ? bodyAnchor[1] : 64;
           if (mirror) frameAttachX = 256 - frameAttachX;
-          /* Auto-scale trait to widthRatio * stand head width (sizing
-             reference is stand pose to avoid "breathing"). */
           const targetFrameW = sizingBox.width * catRule.widthRatio;
           const traitScale = targetFrameW / headwearTex.width;
           const absBodyScale = Math.abs(bodyScale);
-          /* Frame-coord -> world-coord conversion is the same as for
-             the body sprite (anchor 0.5,0.5 in 256x256 frame). */
           const W = 256;
           headwear.x = spriteBody.x + (frameAttachX - W / 2) * absBodyScale * (mirror ? -1 : 1);
           headwear.y = spriteBody.y + (frameAttachY - W / 2) * absBodyScale;
