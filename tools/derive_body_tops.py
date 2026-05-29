@@ -31,23 +31,30 @@ except ImportError:
 
 FRAME_W = 256
 ALPHA_THRESHOLD = 32
+MIN_WIDTH = 20  # ignore rows narrower than this so the X anchor lands
+                # on a "settled" crown row, not whatever 1-2 pixel hair
+                # tip happens to stick up that frame.  Our character has
+                # ~24px wide crown rows in most jog frames; one frame
+                # (sw-jog 27) has a 14px lopsided top row that produced
+                # a visible helmet snap.  Threshold of 20 skips it.
 
 
 def top_xy(arr: np.ndarray):
-    """Return [center_x_of_topmost_row, topmost_y] for a single
-    256x256 RGBA frame, or None."""
+    """Return [center_x_of_topmost_substantial_row, that_row_y] for
+    a single 256x256 RGBA frame, or None.
+
+    "Substantial" = at least MIN_WIDTH opaque pixels in that row.  This
+    skips lone hair tips above the crown that would otherwise jitter X
+    frame-to-frame and produce visible helmet snaps in the jog cycle."""
     if arr.shape[0] != FRAME_W or arr.shape[1] != FRAME_W:
         return None
     alpha = arr[..., 3] > ALPHA_THRESHOLD
-    rows = np.where(alpha.any(axis=1))[0]
-    if len(rows) == 0:
-        return None
-    top = int(rows[0])
-    cols = np.where(alpha[top])[0]
-    if len(cols) == 0:
-        return None
-    cx = int((int(cols.min()) + int(cols.max())) // 2)
-    return [cx, top]
+    for r in range(FRAME_W):
+        cols = np.where(alpha[r])[0]
+        if len(cols) >= MIN_WIDTH:
+            cx = int((int(cols.min()) + int(cols.max())) // 2)
+            return [cx, r]
+    return None
 
 
 def process_sheet(path: str):
