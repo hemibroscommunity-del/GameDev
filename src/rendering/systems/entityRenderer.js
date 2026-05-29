@@ -2242,20 +2242,19 @@ export class EntityRenderer {
         const headBox = _lookupHeadBox(pose, dir, frameIdx);
         const sizingBox = _lookupStandHeadBox(dir) || headBox;
         if (headwear && headwearTex && headwearFullFrame) {
-          /* v2.3.292: per-frame head tracking restored.  body-anchors.json
-             has the head center for every (pose, dir, frame), so the
-             helmet's frame offset is (head_now - head_stand) and the
-             helmet bobs with the head through the jog cycle.
-             Y is the meaningful axis (vertical bob).  X is also tracked
-             but only when the head center shift is small -- big jumps
-             come from arm-swing widening the silhouette and would yank
-             the helmet sideways. */
+          /* v2.3.293: pin to head-top per frame.  body-anchors.json has
+             head.top = [center_x, topmost_y] for every (pose, dir, frame).
+             Topmost-y moves exactly with the head's vertical bob; using
+             it directly (instead of head.center) cuts out neck-detection
+             noise.  X is tracked too but only when the shift is small --
+             larger jumps come from arm-swing widening the silhouette and
+             would yank the helmet sideways. */
           if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
           headwear.anchor.set(0.5, 0.5);
           let dxFrame = 0, dyFrame = 0;
-          if (headBox && sizingBox) {
-            dyFrame = headBox.center[1] - sizingBox.center[1];
-            const dx = headBox.center[0] - sizingBox.center[0];
+          if (headBox && sizingBox && headBox.top && sizingBox.top) {
+            dyFrame = headBox.top[1] - sizingBox.top[1];
+            const dx = headBox.top[0] - sizingBox.top[0];
             if (Math.abs(dx) <= 4) dxFrame = dx;
           }
           /* Per-direction frameOffset from meta.json -- one-time nudge
