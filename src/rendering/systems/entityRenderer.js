@@ -91,6 +91,20 @@ function _ensureHeadwearTextures() {
         }
       })
       .catch(() => {});  // expected for directions that don't exist yet
+    /* v2.3.290: also load mannequin baselines here.  Previously gated
+       behind _ensureTraitTextures (NFT-trait path), so when a player
+       only had a headwear trait the mannequin was never loaded and
+       the stand-pose swap below silently fell back to the default
+       body sprite (with baked-in face). */
+    Assets.load(`/sprites/player-naked/stand-${dir}.png?v=${TRAIT_VER}`)
+      .then(t => {
+        _mannequinTex[dir] = t;
+        if (t && t.source) {
+          t.source.scaleMode = 'linear';
+          t.source.autoGenerateMipmaps = true;
+        }
+      })
+      .catch(() => {});
   }
 }
 
@@ -2165,13 +2179,16 @@ export class EntityRenderer {
         const elapsed = Math.max(0, now - ((S._lootFreezeUntil || now) - cycle));
         frameIdx = Math.max(0, Math.min(fc - 1, Math.floor((elapsed / cycle) * fc)));
       }
+      /* v2.3.290: kick off trait + mannequin asset load BEFORE the body
+         texture check below.  Without this, _mannequinTex[dir] is null
+         every frame because the loader only fires after the body has
+         already been textured. */
+      _ensureHeadwearTextures();
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
-      /* v2.3.289: re-enable mannequin swap for stand pose so traits
-         composite onto the SAME body silhouette they were designed to
-         attach to.  The default body has baked-in face/clothes that
-         can confuse alignment when iterating on trait position; the
-         mannequin is the source-of-truth body. */
+      /* v2.3.289: mannequin swap for stand pose -- traits were
+         generated to attach to the faceless mannequin, not the default
+         body sprite that has face/clothes baked in. */
       if (pose === 'stand' && _mannequinTex[dir]) tex = _mannequinTex[dir];
       if (tex) {
         /* Always assign the texture — the cache-only-on-change pattern
