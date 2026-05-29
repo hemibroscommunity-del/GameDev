@@ -131,6 +131,43 @@ def process_sheet(path: str, pose: str, direction: str, frame_count_hint: int | 
     return out
 
 
+def smooth_head_boxes(frames: list[dict | None], window: int = 5) -> list[dict | None]:
+    """Apply a centered moving average to head-center coords across a
+    jog cycle so per-frame silhouette noise (arms swinging in front,
+    shadow edges) doesn't jitter the trait overlay.
+
+    Width / height / extents are smoothed too -- helps prevent
+    "breathing" on subtle frame-to-frame width changes.
+
+    Window=5: each frame averaged with its 2 neighbours on each side.
+    For pose strips < window, no smoothing (degenerate)."""
+    if len(frames) < window or window < 2:
+        return frames
+    half = window // 2
+    out = []
+    keys_xy = ["top", "bottom", "left", "right", "center"]
+    for i, fr in enumerate(frames):
+        if fr is None:
+            out.append(None)
+            continue
+        # Collect neighbour windows; skip Nones.
+        lo = max(0, i - half)
+        hi = min(len(frames), i + half + 1)
+        bucket = [f for f in frames[lo:hi] if f is not None]
+        if not bucket:
+            out.append(fr)
+            continue
+        smoothed = {}
+        for k in keys_xy:
+            sx = sum(f[k][0] for f in bucket) / len(bucket)
+            sy = sum(f[k][1] for f in bucket) / len(bucket)
+            smoothed[k] = [round(sx), round(sy)]
+        smoothed["width"]  = round(sum(f["width"]  for f in bucket) / len(bucket))
+        smoothed["height"] = round(sum(f["height"] for f in bucket) / len(bucket))
+        out.append(smoothed)
+    return out
+
+
 def main():
     DIRS = ["east", "north", "northeast", "south", "southwest"]
 
@@ -159,17 +196,19 @@ def main():
 
     # Jog / hit / pickup poses use the default body sheets (no mannequin
     # variants exist for those poses).  Detection still works because
-    # silhouette is what we measure.
+    # silhouette is what we measure.  SMOOTHED with a moving average so
+    # arm-swing / shadow noise in the silhouette doesn't jitter traits.
     for pose in ["jog", "hit", "pickup"]:
         for d in DIRS:
             path = f"public/sprites/player/{pose}-{d}.png"
             if not os.path.exists(path):
                 continue
             frames = process_sheet(path, pose, d)
+            frames = smooth_head_boxes(frames, window=5)
             for i, fr in enumerate(frames):
                 key = f"{pose}-{d}-{i}"
                 body[key] = {"head": fr} if fr else None
-            print(f"{pose}-{d}: {sum(1 for fr in frames if fr)}/{len(frames)} frames")
+            print(f"{pose}-{d}: {sum(1 for fr in frames if fr)}/{len(frames)} frames (smoothed)")
 
     out_path = "public/sprites/player/body-anchors.json"
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
