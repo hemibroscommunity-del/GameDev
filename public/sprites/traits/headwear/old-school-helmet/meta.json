@@ -2,17 +2,9 @@
   "category": "headwear",
   "fullFrame": true,
   "frameOffset": {
-    "southwest": [
-      0,
-      0
-    ]
+    "southwest": [1, -65]
   },
   "bboxes": {
-    "southwest": [
-      101,
-      96,
-      54,
-      43
-    ]
+    "southwest": [101, 96, 54, 43]
   }
 }
