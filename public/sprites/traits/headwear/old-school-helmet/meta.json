@@ -11,6 +11,11 @@
       20
     ]
   },
+  "poseNudge": {
+    "stand": {
+      "south": [0, -3]
+    }
+  },
   "crownNudge": {
     "southwest": [
       5,

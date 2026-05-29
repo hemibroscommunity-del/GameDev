@@ -46,7 +46,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.302';
+const TRAIT_VER = '2.3.303';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -2273,6 +2273,12 @@ export class EntityRenderer {
           const bodyTop = _lookupBodyTop(pose, dir, frameIdx);
           const anchorPx = (_headwearMeta && _headwearMeta.anchors && _headwearMeta.anchors[dir]) || null;
           const nudge = (_headwearMeta && _headwearMeta.crownNudge && _headwearMeta.crownNudge[dir]) || [0, 0];
+          /* v2.3.303: optional pose-specific extra nudge.  The stand sheet's
+             crown can sit a few px off from the jog sheet's crowns (different
+             source art), so the shared crownNudge can land idle slightly
+             high/low vs the run.  poseNudge[pose][dir] corrects just that pose
+             without touching the others. */
+          const poseN = (_headwearMeta && _headwearMeta.poseNudge && _headwearMeta.poseNudge[pose] && _headwearMeta.poseNudge[pose][dir]) || [0, 0];
           if (bodyTop && anchorPx) {
             /* Anchor the helmet sprite on its own crown pixel (normalized to
                the texture size), then place that point at the body's crown. */
@@ -2292,8 +2298,8 @@ export class EntityRenderer {
                constant +/-nudgeX, independent of the per-frame crown X. */
             const bodyCrownX = spriteBody.x + (bodyTop[0] - W / 2) * absBodyScale * m;
             const bodyCrownY = spriteBody.y + (bodyTop[1] - W / 2) * absBodyScale;
-            headwear.x = bodyCrownX + nudge[0] * absBodyScale * m;
-            headwear.y = bodyCrownY + nudge[1] * absBodyScale;
+            headwear.x = bodyCrownX + (nudge[0] + poseN[0]) * absBodyScale * m;
+            headwear.y = bodyCrownY + (nudge[1] + poseN[1]) * absBodyScale;
             headwear.scale.x = m * absBodyScale;
             headwear.scale.y = absBodyScale;
             headwear.visible = true;
