@@ -2845,6 +2845,7 @@ export var BroTown = function BroTown(_ref0) {
             {
               if (payload.id && S.others[payload.id]) {
                 S.others[payload.id]._swingTs = Date.now();
+                S.others[payload.id]._swingSpecial = !!payload.special;
               }
               break;
             }
@@ -8439,7 +8440,6 @@ export var BroTown = function BroTown(_ref0) {
                 S.isSwinging = true;
                 S._specialAttack = false;
                 BT_AUDIO.play('sword-swing', { vol: 0.55 });
-                /* Broadcast swing to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: Date.now() } });
               }
             }
@@ -11853,6 +11853,10 @@ export var BroTown = function BroTown(_ref0) {
       S.isSwinging = true;
       S._specialAttack = true;
       if (hasElement) S._iceAttack = true;
+      /* Broadcast the special swing so peers render the wider arc +
+         gold halo.  The regular auto-swing broadcast path is skipped
+         because isSwinging is already true here. */
+      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: now, special: true } });
     }
 
     /* Power-up sound */
