@@ -1,0 +1,33 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Directional hat (SW 3/4 perspective) -- NOT symmetric, needs real per-angle art. Only southwest provided so far (renders SW + SE-mirror).",
+  "anchors": {
+    "southwest": [
+      126,
+      16
+    ]
+  },
+  "crownNudge": {
+    "southwest": [
+      0,
+      -12
+    ]
+  },
+  "bboxes": {
+    "southwest": [
+      85,
+      16,
+      72,
+      25
+    ]
+  },
+  "bboxes_source": {
+    "southwest": [
+      418,
+      80,
+      350,
+      118
+    ]
+  }
+}
