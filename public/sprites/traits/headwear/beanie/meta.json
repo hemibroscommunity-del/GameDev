@@ -102,22 +102,18 @@
       -12
     ],
     "east": [
-      -5,
+      -3,
       -12
     ],
     "northeast": [
       -5,
-      -12
-    ],
-    "west": [
-      -3,
       -12
     ]
   },
   "scale": {
     "southwest": 0.845,
     "north": 0.92,
-    "east": 0.92,
+    "east": 0.892,
     "northeast": 0.92
   }
 }
