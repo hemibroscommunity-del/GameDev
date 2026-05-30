@@ -51,7 +51,7 @@ const {
   QUEST_CHAINS, QUEST_STATUS, REPUTATION,
   CLAN_COLORS, CLAN_CREATE_COST, CLAN_MAX_MEMBERS, CLAN_LOGO_SIZE, CLAN_TAG_MAX, CLAN_NAME_MAX,
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
-  recalcDerived, getActiveWeapon, calcWeaponDmg, calcCritChance, calcCritMult,
+  recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
@@ -8449,7 +8449,8 @@ export var BroTown = function BroTown(_ref0) {
                 S.swingTimer = Date.now();
                 S.isSwinging = true;
                 S._specialAttack = false;
-                BT_AUDIO.play('sword-swing', { vol: 0.55 });
+                BT_AUDIO.play(meleeSwingSfx(S.rpg), { vol: 0.55 });
+                /* Broadcast swing to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: Date.now() } });
               }
             }
@@ -11655,7 +11656,7 @@ export var BroTown = function BroTown(_ref0) {
     S.swingTimer = Date.now();
     S.isSwinging = true;
     S._specialAttack = false;
-    BT_AUDIO.play('sword-swing', { vol: 0.55 });
+    BT_AUDIO.play(meleeSwingSfx(S.rpg), { vol: 0.55 });
   }, []);
 
   /* Special attack — 4x damage, 10s cooldown */
