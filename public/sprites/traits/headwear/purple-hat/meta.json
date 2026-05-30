@@ -125,5 +125,6 @@
   "scale": {
     "east": 0.89,
     "south": 0.86
-  }
+  },
+  "clipsHair": true
 }

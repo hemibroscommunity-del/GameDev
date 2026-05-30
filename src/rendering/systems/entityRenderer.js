@@ -49,7 +49,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.364';
+const TRAIT_VER = '2.3.368';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -3075,14 +3075,8 @@ export class EntityRenderer {
            set per user request -- with shield behind body on E, only
            a sliver was visible past the silhouette. */
         const shieldOnBack = !isShielding;
-        /* v2.3.367: W (4) joins the in-front set to MIRROR E (0).  E was
-           moved in-front (v2.3.190) for visibility but its mirror W was
-           left behind the body, so the on-back shield was nearly fully
-           occluded at west -- and the new jog bob tipped the last sliver
-           out of view.  On-back in-front for E/W + N-half; behind for
-           SE/S/SW. */
         const shieldBehind = shieldOnBack
-          ? !(facingIdx === 0 || facingIdx === 4 || facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
+          ? !(facingIdx === 0 || facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
           : (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const shIdx   = display.getChildIndex(display._shieldSprite);
@@ -3291,7 +3285,12 @@ export class EntityRenderer {
           const SHIELD_NUDGE_Y = [ 0, 0, 0, 0, 0, 0, 0, 0];
           const _shNudgeX = SHIELD_NUDGE_X[facingIdx] || 0;
           const _shNudgeY = SHIELD_NUDGE_Y[facingIdx] || 0;
-          shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX;
+          /* v2.3.368: west run only -- shift the on-back shield right 6px
+             so it peeks past the body silhouette during the jog (it sits
+             behind the body at W and was otherwise nearly fully occluded).
+             East stays as-is (already reads well). */
+          const _shWestRunX = (facingIdx === 4 && pose === 'jog') ? 6 : 0;
+          shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX + _shWestRunX;
           /* v2.3.366: add the jog bob (same bobY the weapon + held shield
              use) so the on-back shield rises/falls with the body instead
              of sitting bolt-still during the run. */

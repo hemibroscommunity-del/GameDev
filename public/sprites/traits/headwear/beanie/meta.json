@@ -120,5 +120,6 @@
     "jog": {
       "east": 0.91
     }
-  }
+  },
+  "clipsHair": true
 }

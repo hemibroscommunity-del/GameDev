@@ -80,5 +80,6 @@
   },
   "scale": {
     "east": 0.95
-  }
+  },
+  "clipsHair": true
 }
