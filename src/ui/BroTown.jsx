@@ -1738,6 +1738,7 @@ export var BroTown = function BroTown(_ref0) {
             avatar: S.myAvatar,
             bt: S.bodyTorso || '#2563eb',
             bl: S.bodyLegs || '#1e3a5f',
+            hw: getHeadwear(),
             bs: S.bodySize || 'slim',
             /* Bootstrap fields for server-authoritative coins / inventory
                / lifeSkills.  Used only on a player's FIRST connection
@@ -2034,6 +2035,7 @@ export var BroTown = function BroTown(_ref0) {
                   dir: _data.d || 'down',
                   bt: _data.bt || '#2563eb',
                   bl: _data.bl || '#1e3a5f',
+                  headwear: _data.hw || null,
                   rpgLv: _data.rpgLv || 1,
                   rpgHp: _data.rpgHp || 50,
                   rpgMaxHp: _data.rpgMaxHp || 50,
@@ -2561,6 +2563,7 @@ export var BroTown = function BroTown(_ref0) {
                 dir: ((_msg$data7 = msg.data) === null || _msg$data7 === void 0 ? void 0 : _msg$data7.d) || 'down',
                 bt: ((_msg$data8 = msg.data) === null || _msg$data8 === void 0 ? void 0 : _msg$data8.bt) || '#2563eb',
                 bl: ((_msg$data9 = msg.data) === null || _msg$data9 === void 0 ? void 0 : _msg$data9.bl) || '#1e3a5f',
+                headwear: (msg.data && msg.data.hw) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
                 rpgHp: ((_msg$data1 = msg.data) === null || _msg$data1 === void 0 ? void 0 : _msg$data1.rpgHp) || 50,
                 rpgMaxHp: ((_msg$data10 = msg.data) === null || _msg$data10 === void 0 ? void 0 : _msg$data10.rpgMaxHp) || 50,
@@ -10216,6 +10219,7 @@ export var BroTown = function BroTown(_ref0) {
                 dir: P.dir,
                 bt: S.bodyTorso,
                 bl: S.bodyLegs,
+                hw: getHeadwear(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,
                 rpgHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.hp) || 50,
                 rpgMaxHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.maxHp) || 50,
