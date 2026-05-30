@@ -2024,7 +2024,9 @@ export class EntityRenderer {
         display._lastName = nextName;
         display._nameText.text = nextName;
       }
-      display._nameText.y = -24 + bobY;
+      /* Raised from -24 to -42 so the name floats above the head
+         instead of sitting over the sprite's face. */
+      display._nameText.y = -42 + bobY;
     }
 
     for (const [id, display] of this.otherPlayerDisplays) {
