@@ -49,7 +49,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.362';
+const TRAIT_VER = '2.3.363';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -200,17 +200,40 @@ function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
 function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale) {
   _placeTrait(display._facialHairSprite, _ensureFacialHairLoaded(fhId), display, pose, dir, mirror, frameIdx, bodyScale);
 }
-/* True when the equipped headwear's meta declares it fully covers the
-   head (e.g. a helmet), so the hair should be tucked away rather than
-   poking out the sides. */
-function _headwearHidesHair(hatId) {
+/* When the equipped headwear declares `clipsHair`, clip the hair sprite to
+   the helmet's horizontal span for this direction so the hair can't poke
+   out the SIDES, while the forehead/top hair under the helmet's front
+   opening still shows (the helmet already covers the hair wherever it's
+   opaque).  Horizontal-only clip via a tall rect mask. */
+function _clipHairToHat(display, hatId, dir) {
+  const hair = display._hairSprite;
+  const mask = display._hairMask;
+  const hat = display._headwearSprite;
+  if (!hair || !mask) return;
   const entry = _ensureHeadwearLoaded(hatId);
-  return !!(entry && entry.meta && entry.meta.hidesHair);
+  const meta = entry && entry.meta;
+  const bbox = meta && meta.bboxes && meta.bboxes[dir];
+  const anchor = meta && meta.anchors && meta.anchors[dir];
+  if (!(meta && meta.clipsHair && hat && hat.visible && hair.visible && bbox && anchor)) {
+    if (hair.mask) hair.mask = null;
+    mask.visible = false;
+    return;
+  }
+  /* Helmet opaque-bbox left/right edges in container (screen-local) coords.
+     hat.scale.x carries the mirror sign, so x0/x1 may invert -> min/max. */
+  const sx = hat.scale.x;
+  const x0 = hat.x + (bbox[0] - anchor[0]) * sx;
+  const x1 = hat.x + (bbox[0] + bbox[2] - anchor[0]) * sx;
+  const left = Math.min(x0, x1), right = Math.max(x0, x1);
+  mask.clear();
+  mask.rect(left, -1000, right - left, 2000);
+  mask.fill({ color: 0xffffff });
+  mask.visible = true;
+  if (hair.mask !== mask) hair.mask = mask;
 }
 function _placeHair(display, hairId, hatId, pose, dir, mirror, frameIdx, bodyScale) {
   _placeTrait(display._hairSprite, _ensureHairLoaded(hairId), display, pose, dir, mirror, frameIdx, bodyScale);
-  /* A full-coverage hat (helmet) hides the hair entirely. */
-  if (display._hairSprite && _headwearHidesHair(hatId)) display._hairSprite.visible = false;
+  _clipHairToHat(display, hatId, dir);
 }
 
 /* v2.3.354: per-frame beard z-order.  The beard is on the face, so it
@@ -618,6 +641,9 @@ function createPlayerDisplay() {
   const hairSprite = new Sprite();
   hairSprite.visible = false;
   container.addChild(hairSprite);
+  /* v2.3.363: horizontal clip mask for hair under a `clipsHair` hat. */
+  const hairMask = new Graphics();
+  container.addChild(hairMask);
 
   /* v2.3.266: standalone-item sticker layer.  One sprite for headwear
      (helmet / hat / hood / etc.); future: glasses, beard, etc. each
@@ -802,6 +828,7 @@ function createPlayerDisplay() {
   container._spriteBody = spriteBody;
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
+  container._hairMask = hairMask;
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -862,6 +889,9 @@ function createOtherPlayerDisplay() {
   const hairSprite = new Sprite();
   hairSprite.visible = false;
   container.addChild(hairSprite);
+  /* v2.3.363: horizontal clip mask for hair under a `clipsHair` hat. */
+  const hairMask = new Graphics();
+  container.addChild(hairMask);
 
   /* v2.3.321: headwear sprite for remote players (above body, below
      weapon/NFT) so other players' hats render.  Driven by other.headwear. */
@@ -906,6 +936,7 @@ function createOtherPlayerDisplay() {
   container._spriteBody = spriteBody;
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
+  container._hairMask = hairMask;
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
