@@ -51,6 +51,13 @@ function _ensureHudBarTextures() {
 const TRAIT_NFT_ID = 'test-1';
 const TRAIT_VER = '2.3.368';
 
+/* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
+   a persistent source of per-facing z-order issues vs the body/arms/weapon/
+   hair.  Hidden by user request.  The held/raised (blocking) shield is a
+   separate path and is unaffected.  Flip to true to bring the back shield
+   back. */
+const SHOW_BACK_SHIELD = false;
+
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
    per-direction anchor that maps onto a body anchor (currently always
@@ -3255,7 +3262,7 @@ export class EntityRenderer {
             weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.9 });
           }
         }
-      } else if (S.rpg && S.rpg.shield && display._shieldSprite) {
+      } else if (SHOW_BACK_SHIELD && S.rpg && S.rpg.shield && display._shieldSprite) {
         /* v2.3.187: shield equipped but not raised -> always on back,
            regardless of combat state. (v2.3.176 limited this to
            !isInCombat; user now wants it as the persistent default.)
