@@ -3291,10 +3291,19 @@ export class EntityRenderer {
              East stays as-is (already reads well). */
           const _shWestRunX = (facingIdx === 4 && pose === 'jog') ? 6 : 0;
           shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX + _shWestRunX;
-          /* v2.3.366: add the jog bob (same bobY the weapon + held shield
-             use) so the on-back shield rises/falls with the body instead
-             of sitting bolt-still during the run. */
-          shieldSprite.y = -Math.sin(facingAng) * backR - 10 + _shNudgeY + bobY;
+          /* v2.3.369: anchor the on-back shield to the body's REAL
+             per-frame bob (the body-tops crown Y delta from the stand
+             baseline, the same signal the hair/helmet ride), instead of
+             the synthetic sine bob -- so it rises/falls exactly in sync
+             with the body during the run rather than drifting out of
+             phase (which read as "funny"). Falls back to the sine bobY if
+             body-tops haven't loaded. */
+          const _btCur = _lookupBodyTop(pose, dir, frameIdx);
+          const _btBase = _lookupBodyTop('stand', dir, 0);
+          const _bodyBobY = (_btCur && _btBase)
+            ? (_btCur[1] - _btBase[1]) * Math.abs(bodyScale)
+            : bobY;
+          shieldSprite.y = -Math.sin(facingAng) * backR - 10 + _shNudgeY + _bodyBobY;
           /* v2.3.193: running-lean. The player sprite art shows a
              slight forward lean during jog, but the shield on back
              stayed bolt-upright -- read as the shield disconnected
