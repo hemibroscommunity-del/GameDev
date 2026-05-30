@@ -14,8 +14,10 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
-import { getAnchor, getWeaponHandle } from '../playerAnchors.js';
+import { getAnchor, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
+import { TRAIT_CATEGORIES, resolveBodyAnchor } from '../traitCategories.js';
 import { getNftTextures } from '../nftAvatars.js';
+import { getHeadwear } from '../traits/headwearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -37,6 +39,198 @@ function _ensureHudBarTextures() {
      tint by HP tier (red asset can't be tinted to green/yellow because
      tint multiplies). */
   Assets.load(`/icons/popups/heart-white.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
+}
+
+/* v2.3.261 (Bro-NFT Phase 4): trait textures for the local player's
+   face/head composite layer.  One sprite per stored direction (east,
+   north, northeast, south, southwest); W / NW / SE render via mirror.
+   Currently hard-coded to the `test-1` NFT for demo; later this will
+   read the active player's NFT ID from R.nftId or similar. */
+const TRAIT_NFT_ID = 'test-1';
+const TRAIT_VER = '2.3.321';
+
+/* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
+   headwear/old-school-helmet) is a small transparent PNG with a
+   per-direction anchor that maps onto a body anchor (currently always
+   the head).  Items composite at the body's per-frame head anchor.
+   meta.json schema per direction:
+     { size: [w, h], anchor: [ax, ay], anchorOffset: [dx, dy] }
+   - anchor is the pixel in the trait's own image space that should
+     land on the body anchor (typically bottom-center for headwear).
+   - anchorOffset shifts the body anchor in frame coords (head-center
+     -> head-top via [0, -8] for example). */
+/* v2.3.321: per-PLAYER headwear so remote players show their own hats.
+   Each headwear id owns its own texture set + meta, cached by id, so many
+   different hats can render on screen at once.  The local player's id comes
+   from the login picker (getHeadwear()); remote players' ids arrive over
+   the network (other.headwear).  'none' / falsy = bareheaded. */
+const _headwearCache = {};  // id -> { tex:{east,...}, meta, loadStarted }
+function _ensureHeadwearLoaded(id) {
+  if (!id || id === 'none') return null;
+  let e = _headwearCache[id];
+  if (!e) {
+    e = _headwearCache[id] = {
+      tex: { east: null, north: null, northeast: null, south: null, southwest: null },
+      meta: null,
+      loadStarted: false,
+    };
+  }
+  if (!e.loadStarted) {
+    e.loadStarted = true;
+    fetch(`/sprites/traits/headwear/${id}/meta.json?v=${TRAIT_VER}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j) e.meta = j; })
+      .catch(() => {});
+    for (const dir of Object.keys(e.tex)) {
+      Assets.load(`/sprites/traits/headwear/${id}/${dir}.png?v=${TRAIT_VER}`)
+        .then(t => {
+          e.tex[dir] = t;
+          if (t && t.source) {
+            /* match body's linear scaleMode + mipmaps so Lanczos
+               downscale artifacts blend out the same way. */
+            t.source.scaleMode = 'linear';
+            t.source.autoGenerateMipmaps = true;
+          }
+        })
+        .catch(() => {});  // expected for directions that don't exist yet
+    }
+  }
+  return e;
+}
+
+/* Body anchor schemas, loaded once and shared by every player + hat.
+   body-tops.json: per-(pose,dir,frame) topmost opaque pixel [x,y] of the
+   body sprite -- the head pin point for trait stickers (derived raw by
+   tools/derive_body_tops.py: frame-exact, no detection noise). */
+let _bodyAnchors = null;
+let _bodyTops = null;
+let _bodyDataStarted = false;
+function _ensureBodyData() {
+  if (_bodyDataStarted) return;
+  _bodyDataStarted = true;
+  fetch(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) _bodyAnchors = j; })
+    .catch(() => {});
+  fetch(`/sprites/player/body-tops.json?v=${TRAIT_VER}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) _bodyTops = j; })
+    .catch(() => {});
+}
+
+/* Place a player's headwear sprite for this frame.  Shared by the local
+   player (_updatePlayer) and remote players (_updateOtherPlayers).
+   Crown-anchored + placement-independent: pins the hat's own crown
+   (meta.anchors[dir]) onto the body crown (body-tops, per frame) plus
+   small reusable per-dir/per-pose nudges, scaled to the body.  hatId
+   'none' / falsy, or missing art/anchor -> hat hidden. */
+function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) {
+  const headwear = display._headwearSprite;
+  if (!headwear) return;
+  _ensureBodyData();
+  const entry = _ensureHeadwearLoaded(hatId);
+  const headwearTex = entry && entry.tex[dir];
+  const meta = entry && entry.meta;
+  const spriteBody = display._spriteBody;
+  const bodyTop = _lookupBodyTop(pose, dir, frameIdx);
+  const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
+  if (!(headwearTex && meta && meta.fullFrame && spriteBody && bodyTop && anchorPx)) {
+    headwear.visible = false;
+    return;
+  }
+  const nudge = (meta.crownNudge && meta.crownNudge[dir]) || [0, 0];
+  /* poseNudge[pose][dir]: optional per-pose tweak (stand sheet crown can
+     differ from the jog sheet's, so idle vs run may need different lift). */
+  const poseN = (meta.poseNudge && meta.poseNudge[pose] && meta.poseNudge[pose][dir]) || [0, 0];
+  /* scale[dir]: optional per-direction size multiplier (default 1). */
+  const dscale = (meta.scale && meta.scale[dir]) || 1;
+  if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
+  /* Anchor the hat sprite on its own crown pixel, then pin that point to
+     the body crown's SCREEN position (mirror-correct) + the nudge, with
+     only nudge X flipping under mirror.  Offset is a constant +/-nudgeX,
+     independent of the per-frame crown sway. */
+  headwear.anchor.set(anchorPx[0] / headwearTex.width, anchorPx[1] / headwearTex.height);
+  const W = 256;
+  const absBodyScale = Math.abs(bodyScale);
+  const m = mirror ? -1 : 1;
+  const bodyCrownX = spriteBody.x + (bodyTop[0] - W / 2) * absBodyScale * m;
+  const bodyCrownY = spriteBody.y + (bodyTop[1] - W / 2) * absBodyScale;
+  headwear.x = bodyCrownX + (nudge[0] + poseN[0]) * absBodyScale * m;
+  headwear.y = bodyCrownY + (nudge[1] + poseN[1]) * absBodyScale;
+  headwear.scale.x = m * absBodyScale * dscale;
+  headwear.scale.y = absBodyScale * dscale;
+  headwear.visible = true;
+}
+
+/* Look up the head-box for the current pose/dir/frame.  Falls back to
+   stand-{dir}-0 if the requested frame has no entry. */
+function _lookupHeadBox(pose, dir, frame) {
+  if (!_bodyAnchors) return null;
+  const key = `${pose}-${dir}-${frame}`;
+  const entry = _bodyAnchors[key];
+  if (entry && entry.head) return entry.head;
+  const fallback = _bodyAnchors[`stand-${dir}-0`];
+  return (fallback && fallback.head) || null;
+}
+
+/* Look up the STAND-pose head box for the given direction.  Used to
+   lock trait size to a consistent reference -- per-frame jog head
+   boxes vary slightly and would make the trait "breathe" with the
+   walk cycle if used for sizing. */
+function _lookupStandHeadBox(dir) {
+  if (!_bodyAnchors) return null;
+  const entry = _bodyAnchors[`stand-${dir}-0`];
+  return (entry && entry.head) || null;
+}
+
+/* Raw topmost-opaque-pixel [x, y] for (pose, dir, frame) from
+   body-tops.json.  No head detection, no smoothing -- just the
+   actual top of the body silhouette for this frame. */
+function _lookupBodyTop(pose, dir, frame) {
+  if (!_bodyTops) return null;
+  return _bodyTops[`${pose}-${dir}-${frame}`] || _bodyTops[`stand-${dir}-0`] || null;
+}
+const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
+/* v2.3.264: faceless mannequin textures used as the stand-pose body
+   when a trait is active.  The default player body has baked-in face
+   features that show through any trait overlay; swapping to the
+   mannequin gives the trait a faceless head to land on.  Only stand
+   pose has mannequin assets so far -- jog/hit/pickup still use the
+   default body sheets. */
+const _mannequinTex = { east: null, north: null, northeast: null, south: null, southwest: null };
+/* Per-direction trait metadata: bbox + bbox-center anchor.  Computed
+   by Python at extract time; the renderer uses anchor / 256 to place
+   the trait's center on the body's head anchor regardless of AI
+   drift in the original extraction. */
+let _traitMeta = null;
+let _traitLoadStarted = false;
+function _ensureTraitTextures() {
+  if (_traitLoadStarted) return;
+  _traitLoadStarted = true;
+  fetch(`/sprites/traits/nft/${TRAIT_NFT_ID}/meta.json?v=${TRAIT_VER}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j) _traitMeta = j; })
+    .catch(() => {});
+  for (const dir of Object.keys(_traitTex)) {
+    Assets.load(`/sprites/traits/nft/${TRAIT_NFT_ID}/${dir}.png?v=${TRAIT_VER}`)
+      .then(t => {
+        _traitTex[dir] = t;
+        if (t && t.source) {
+          t.source.scaleMode = 'linear';
+          t.source.autoGenerateMipmaps = true;
+        }
+      })
+      .catch(() => {});
+    Assets.load(`/sprites/player-naked/stand-${dir}.png?v=${TRAIT_VER}`)
+      .then(t => {
+        _mannequinTex[dir] = t;
+        if (t && t.source) {
+          t.source.scaleMode = 'linear';
+          t.source.autoGenerateMipmaps = true;
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 /* Heart-icon HUD: drawn above the head of player + monsters whenever
@@ -295,6 +489,24 @@ function createPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* v2.3.261 (Bro-NFT Phase 4): trait composition overlay.  Sits on
+     top of the body so the NFT's head/face features (helmet, eyes,
+     mouth, etc.) overlay the faceless mannequin.  Hidden until the
+     trait texture for the active facing has resolved.  Position
+     tracks the body's head anchor per frame so it follows pose +
+     direction. */
+  const traitFace = new Sprite();
+  traitFace.anchor.set(0.5, 0.5);
+  traitFace.visible = false;
+  container.addChild(traitFace);
+
+  /* v2.3.266: standalone-item sticker layer.  One sprite for headwear
+     (helmet / hat / hood / etc.); future: glasses, beard, etc. each
+     get their own.  Anchor + position set per-frame from meta.json. */
+  const headwearSprite = new Sprite();
+  headwearSprite.visible = false;
+  container.addChild(headwearSprite);
+
   /* NFT 360° avatar pair — front/back sprites cross-faded by facing
      angle, with shear + horizontal compression to fake a "3D rotation"
      look (mirrors the Canvas 2D drawNft360 path).  Both invisible
@@ -469,12 +681,14 @@ function createPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
   container._weaponGlowGfx = weaponGlowGfx;
   container._weaponGfx = weaponGfx;
   container._weaponSprite = weaponSprite;
+  container._traitFace = traitFace;
   container._handCapSprite = handCapSprite;
   container._handCapMask = handCapMask;
   container._handArmSprite = handArmSprite;
@@ -517,6 +731,12 @@ function createOtherPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* v2.3.321: headwear sprite for remote players (above body, below
+     weapon/NFT) so other players' hats render.  Driven by other.headwear. */
+  const headwearSprite = new Sprite();
+  headwearSprite.visible = false;
+  container.addChild(headwearSprite);
+
   /* NFT 360° pair — see createPlayerDisplay for the rationale. */
   const nftFront = new Sprite();
   nftFront.anchor.set(0.5, 1);
@@ -552,6 +772,7 @@ function createOtherPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
   container._weaponContainer = weaponContainer;
@@ -1469,6 +1690,7 @@ export class EntityRenderer {
         if (display._shieldSprite) display._shieldSprite.visible = false;
         if (display._nftFront) display._nftFront.visible = false;
         if (display._nftBack) display._nftBack.visible = false;
+        if (display._headwearSprite) display._headwearSprite.visible = false;
         continue;
       }
       /* Living — restore visibility of containers that might have been
@@ -1578,13 +1800,18 @@ export class EntityRenderer {
             display._procDrawn = false;
           }
           useSprite = true;
+          /* v2.3.321: place this remote player's headwear.  other.headwear
+             is their selected hat id, broadcast over the network. */
+          _placeHeadwear(display, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
         } else {
           spriteBody.visible = false;
           body.visible = true;
+          if (display._headwearSprite) display._headwearSprite.visible = false;
         }
       } else {
         display._spriteBody.visible = false;
         body.visible = true;
+        if (display._headwearSprite) display._headwearSprite.visible = false;
       }
 
       /* NFT 360° body for the remote player — same fallback policy
@@ -2027,8 +2254,15 @@ export class EntityRenderer {
         const elapsed = Math.max(0, now - ((S._lootFreezeUntil || now) - cycle));
         frameIdx = Math.max(0, Math.min(fc - 1, Math.floor((elapsed / cycle) * fc)));
       }
+      /* Kick off body-anchor + selected-hat asset loads early so they're
+         ready by the time we place the headwear below. */
+      _ensureBodyData();
+      _ensureHeadwearLoaded(getHeadwear());
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
+      /* v2.3.291: mannequin swap removed -- user wants helmet stickered
+         to the NORMAL character body as a rigid assembly.  Trait + body
+         share frame-coords so they move together pixel-perfect. */
       if (tex) {
         /* Always assign the texture — the cache-only-on-change pattern
            was leaving spriteBody with a stale / invalidated texture
@@ -2060,9 +2294,65 @@ export class EntityRenderer {
           body.clear();
           display._procDrawn = false;
         }
+        /* v2.3.263 (Bro-NFT Phase 4): trait overlay anchored on the
+           body's head.  The trait's bbox-center anchor (loaded from
+           meta.json) is positioned at the body's head anchor for the
+           current direction.  This corrects for AI drift -- the trait
+           may have been drawn at a slightly different frame position
+           than the baseline, but we snap it to where the body's head
+           actually is regardless. */
+        /* v2.3.270: modular trait composition.
+           Body schema (body-anchors.json) provides the head bounding
+           box for the current pose/dir/frame.  Category rule
+           (traitCategories.js) declares HOW the trait attaches and
+           how it should be sized relative to head width.  No
+           per-trait per-direction tuning anywhere. */
+        /* v2.3.321: headwear placement extracted to the shared
+           _placeHeadwear helper (used by remote players too).  Local
+           player's hat id comes from the login picker. */
+        _placeHeadwear(display, getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
+
+        /* v2.3.265: combined-trait overlay disabled while sticker
+           pipeline is being wired. */
+        const traitCanRender = false;
+        const traitFace = display._traitFace;
+        const traitTex = null;
+        const traitInfo = null;
+        if (traitCanRender && traitFace && traitTex && traitInfo && traitInfo.anchor) {
+          if (traitFace.texture !== traitTex) traitFace.texture = traitTex;
+          /* Anchor the trait sprite on its bbox center (in trait pixel space). */
+          const W = 256;
+          traitFace.anchor.set(traitInfo.anchor[0] / W, traitInfo.anchor[1] / W);
+          /* Body head anchor (frame-space, mirror-flipped if needed).
+             Use stand head as a stable reference -- per-frame head
+             anchors are noisy and cause jitter. */
+          const headAnchor = getHeadAnchor('stand', dir, 0, mirror);
+          if (headAnchor) {
+            /* Frame-coord delta from body's frame center (anchor 0.5,0.5
+               at frame coord W/2,W/2) to body's head anchor, then scale
+               to world space.  bodyScale magnitude is the same for x and y. */
+            const dxFrame = headAnchor[0] - W / 2;
+            const dyFrame = headAnchor[1] - W / 2;
+            traitFace.x = spriteBody.x + dxFrame * Math.abs(bodyScale) * (mirror ? -1 : 1);
+            traitFace.y = spriteBody.y + dyFrame * Math.abs(bodyScale);
+          } else {
+            traitFace.x = spriteBody.x;
+            traitFace.y = spriteBody.y;
+          }
+          /* Match scale + mirror.  Trait sprite's anchor (set above)
+             keeps the bbox-center pixel pinned at trait.x/y regardless
+             of mirror. */
+          traitFace.scale.x = (mirror ? -1 : 1) * Math.abs(bodyScale);
+          traitFace.scale.y = Math.abs(bodyScale);
+          traitFace.visible = true;
+        } else if (traitFace) {
+          traitFace.visible = false;
+        }
       } else {
         spriteBody.visible = false;
         body.visible = true;
+        if (display._traitFace) display._traitFace.visible = false;
+        if (display._headwearSprite) display._headwearSprite.visible = false;
       }
     } else {
       display._spriteBody.visible = false;

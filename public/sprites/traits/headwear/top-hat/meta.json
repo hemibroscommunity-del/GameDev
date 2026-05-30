@@ -1,0 +1,84 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Top hat looks ~the same from all angles; one image fills all 5 base direction slots. Tall hat -> large negative crownNudge Y so the brim (not the hat top) sits at the head crown.",
+  "anchors": {
+    "east": [
+      126,
+      16
+    ],
+    "north": [
+      126,
+      16
+    ],
+    "northeast": [
+      126,
+      16
+    ],
+    "south": [
+      126,
+      16
+    ],
+    "southwest": [
+      126,
+      16
+    ]
+  },
+  "crownNudge": {
+    "east": [
+      0,
+      -18
+    ],
+    "north": [
+      0,
+      -18
+    ],
+    "northeast": [
+      0,
+      -18
+    ],
+    "south": [
+      0,
+      -18
+    ],
+    "southwest": [
+      0,
+      -18
+    ]
+  },
+  "bboxes": {
+    "east": [
+      92,
+      16,
+      70,
+      36
+    ],
+    "north": [
+      92,
+      16,
+      70,
+      36
+    ],
+    "northeast": [
+      92,
+      16,
+      70,
+      36
+    ],
+    "south": [
+      92,
+      16,
+      70,
+      36
+    ],
+    "southwest": [
+      92,
+      16,
+      70,
+      36
+    ]
+  },
+  "scale": {
+    "east": 0.95
+  }
+}

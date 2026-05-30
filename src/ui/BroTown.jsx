@@ -31,6 +31,7 @@ import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loa
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
@@ -1199,6 +1200,12 @@ export var BroTown = function BroTown(_ref0) {
     _useState202 = _slicedToArray(_useState201, 2),
     nftError = _useState202[0],
     setNftError = _useState202[1];
+  /* Headwear picker selection (login screen). Mirrors the headwearCatalog
+     store so the on-screen highlight updates; setHeadwear() persists +
+     tells the renderer to swap textures. */
+  var _hwSelState = useState(getHeadwear()),
+    headwearSel = _hwSelState[0],
+    setHeadwearSel = _hwSelState[1];
   var nftCatalogRef = useRef(null); /* cached CSV data [{ID,Image,...}] */
   var _useState203 = useState('#2563eb'),
     _useState204 = _slicedToArray(_useState203, 2),
@@ -1731,6 +1738,7 @@ export var BroTown = function BroTown(_ref0) {
             avatar: S.myAvatar,
             bt: S.bodyTorso || '#2563eb',
             bl: S.bodyLegs || '#1e3a5f',
+            hw: getHeadwear(),
             bs: S.bodySize || 'slim',
             /* Bootstrap fields for server-authoritative coins / inventory
                / lifeSkills.  Used only on a player's FIRST connection
@@ -2027,6 +2035,7 @@ export var BroTown = function BroTown(_ref0) {
                   dir: _data.d || 'down',
                   bt: _data.bt || '#2563eb',
                   bl: _data.bl || '#1e3a5f',
+                  headwear: _data.hw || null,
                   rpgLv: _data.rpgLv || 1,
                   rpgHp: _data.rpgHp || 50,
                   rpgMaxHp: _data.rpgMaxHp || 50,
@@ -2554,6 +2563,7 @@ export var BroTown = function BroTown(_ref0) {
                 dir: ((_msg$data7 = msg.data) === null || _msg$data7 === void 0 ? void 0 : _msg$data7.d) || 'down',
                 bt: ((_msg$data8 = msg.data) === null || _msg$data8 === void 0 ? void 0 : _msg$data8.bt) || '#2563eb',
                 bl: ((_msg$data9 = msg.data) === null || _msg$data9 === void 0 ? void 0 : _msg$data9.bl) || '#1e3a5f',
+                headwear: (msg.data && msg.data.hw) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
                 rpgHp: ((_msg$data1 = msg.data) === null || _msg$data1 === void 0 ? void 0 : _msg$data1.rpgHp) || 50,
                 rpgMaxHp: ((_msg$data10 = msg.data) === null || _msg$data10 === void 0 ? void 0 : _msg$data10.rpgMaxHp) || 50,
@@ -10209,6 +10219,7 @@ export var BroTown = function BroTown(_ref0) {
                 dir: P.dir,
                 bt: S.bodyTorso,
                 bl: S.bodyLegs,
+                hw: getHeadwear(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,
                 rpgHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.hp) || 50,
                 rpgMaxHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.maxHp) || 50,
@@ -13198,7 +13209,36 @@ export var BroTown = function BroTown(_ref0) {
       marginBottom: 8,
       boxSizing: 'border-box'
     }
-  }), /*#__PURE__*/React.createElement("button", {
+  }), /*#__PURE__*/React.createElement("div", {
+    style: { width: '100%', marginTop: 6, marginBottom: 2 }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { fontSize: 10, color: 'var(--pop)', fontWeight: 800, letterSpacing: '.1em', marginBottom: 6, textAlign: 'center', fontFamily: 'Source Sans 3,sans-serif' }
+  }, "HEADWEAR"), /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }
+  }, HEADWEAR_CATALOG.map(function (opt) {
+    var sel = headwearSel === opt.id;
+    return /*#__PURE__*/React.createElement("button", {
+      key: opt.id,
+      type: 'button',
+      onClick: function onClick() { setHeadwear(opt.id); setHeadwearSel(opt.id); },
+      title: opt.name,
+      style: {
+        width: 58, padding: '5px 4px 4px',
+        background: sel ? 'var(--pop)' : 'var(--ink3)',
+        border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
+        borderRadius: 9, cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3
+      }
+    }, opt.id === 'none' ? /*#__PURE__*/React.createElement("div", {
+      style: { width: 34, height: 34, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' }
+    }) : /*#__PURE__*/React.createElement("img", {
+      src: '/sprites/traits/headwear/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version,
+      alt: opt.name,
+      style: { width: 34, height: 34, objectFit: 'contain', imageRendering: 'pixelated' }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 8, color: sel ? '#fff' : 'var(--txt)', fontWeight: 700, lineHeight: 1.15, textAlign: 'center', width: '100%', whiteSpace: 'normal', wordBreak: 'break-word', fontFamily: 'Source Sans 3,sans-serif' }
+    }, opt.name));
+  }))), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
       marginTop: 12,

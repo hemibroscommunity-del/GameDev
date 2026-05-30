@@ -1,0 +1,125 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Directional hat. All 5 base dirs from per-angle art (IMG_8786=S,8791=N,8789=E,8793=NW->NE flip,8785=SW). Snapback gap above the back snaps keyed transparent (bald head shows through).",
+  "anchors": {
+    "southwest": [
+      126,
+      16
+    ],
+    "south": [
+      127,
+      12
+    ],
+    "north": [
+      127,
+      12
+    ],
+    "east": [
+      135,
+      17
+    ],
+    "northeast": [
+      128,
+      30
+    ]
+  },
+  "crownNudge": {
+    "southwest": [
+      0,
+      -7
+    ],
+    "south": [
+      0,
+      -7
+    ],
+    "north": [
+      0,
+      -7
+    ],
+    "east": [
+      0,
+      -7
+    ],
+    "northeast": [
+      0,
+      -7
+    ]
+  },
+  "bboxes": {
+    "southwest": [
+      85,
+      16,
+      72,
+      25
+    ],
+    "south": [
+      97,
+      12,
+      62,
+      29
+    ],
+    "north": [
+      105,
+      10,
+      46,
+      37
+    ],
+    "east": [
+      104,
+      17,
+      77,
+      26
+    ],
+    "northeast": [
+      107,
+      28,
+      51,
+      35
+    ]
+  },
+  "bboxes_source": {
+    "southwest": [
+      418,
+      80,
+      350,
+      118
+    ],
+    "south": [
+      475,
+      59,
+      304,
+      141
+    ],
+    "north": [
+      515,
+      52,
+      221,
+      178
+    ],
+    "east": [
+      513,
+      84,
+      370,
+      122
+    ],
+    "northeast": [
+      526,
+      139,
+      245,
+      169
+    ]
+  },
+  "poseNudge": {
+    "stand": {
+      "south": [
+        0,
+        -4
+      ]
+    }
+  },
+  "scale": {
+    "east": 0.95,
+    "south": 0.95
+  }
+}
