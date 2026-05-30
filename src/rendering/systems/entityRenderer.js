@@ -210,34 +210,46 @@ function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale)
      (correct for the toward-camera SE / S / SW angles).
    Shared by local + remote (remote displays simply lack the hand/shield
    sprites, so those are skipped). */
-function _orderFacialHair(display, facingIdx) {
+function _orderTraitsAndWeapon(display, facingIdx) {
   const beard = display._facialHairSprite;
-  if (!beard || !beard.visible || !display._spriteBody) return;
-  if (facingIdx === 0 || facingIdx === 4) {
-    /* E / W profile: the hand-cap body-clones cross the face and would
-       erase the beard, so lift the beard ABOVE those clones (+ shield).
-       But the user wants the weapon IN FRONT of the beard, so after
-       lifting the beard, push the weapon back above it.  Net order:
-       body < hand clones < beard < weapon.  (The weapon ends up above the
-       hand clones at the grip too -- the necessary trade for this view.) */
-    let ref = display.getChildIndex(display._spriteBody);
-    for (const s of [display._handCapSprite, display._handArmSprite,
-                     display._shieldSprite]) {
-      if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
+  /* --- Beard layer --- */
+  if (display._spriteBody && beard && beard.visible) {
+    if (facingIdx === 0 || facingIdx === 4) {
+      /* E / W profile: the hand-cap body-clones cross the face and would
+         erase the beard, so lift the beard ABOVE those clones (+ shield).
+         The weapon is NOT touched here -- on E it gets pushed in front of
+         the beard by the E/SE/NE block below; on W it must stay BEHIND the
+         body (west weapon is held away from camera), so we leave it. */
+      let ref = display.getChildIndex(display._spriteBody);
+      for (const s of [display._handCapSprite, display._handArmSprite,
+                       display._shieldSprite]) {
+        if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
+      }
+      const fhIdx = display.getChildIndex(beard);
+      if (fhIdx < ref) display.setChildIndex(beard, ref);
+    } else {
+      const bodyIdx = display.getChildIndex(display._spriteBody);
+      const fhIdx = display.getChildIndex(beard);
+      const target = fhIdx > bodyIdx ? bodyIdx + 1 : bodyIdx;
+      if (fhIdx !== target) display.setChildIndex(beard, target);
     }
-    let fhIdx = display.getChildIndex(beard);
-    if (fhIdx < ref) display.setChildIndex(beard, ref);
+  }
+  /* --- Weapon in front of ALL body traits on the forward-right facings
+     (E=0 / SE=1 / NE=7).  The weapon swings across the upper body there,
+     so headwear + facial hair (and any future body trait) render BEHIND
+     it.  Lift the weapon just above the highest trait sprite. */
+  if (facingIdx === 0 || facingIdx === 1 || facingIdx === 7) {
     const wc = display._weaponContainer;
     if (wc && wc.visible) {
-      fhIdx = display.getChildIndex(beard);
-      const wcIdx = display.getChildIndex(wc);
-      if (wcIdx < fhIdx) display.setChildIndex(wc, fhIdx);  // weapon in front of beard
+      let ref = -1;
+      for (const s of [display._headwearSprite, display._facialHairSprite]) {
+        if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
+      }
+      if (ref >= 0) {
+        const wcIdx = display.getChildIndex(wc);
+        if (wcIdx < ref) display.setChildIndex(wc, ref);
+      }
     }
-  } else {
-    const bodyIdx = display.getChildIndex(display._spriteBody);
-    const fhIdx = display.getChildIndex(beard);
-    const target = fhIdx > bodyIdx ? bodyIdx + 1 : bodyIdx;
-    if (fhIdx !== target) display.setChildIndex(beard, target);
   }
 }
 
@@ -2105,7 +2117,7 @@ export class EntityRenderer {
         }
       }
       /* v2.3.354: beard z-order for remote players (same rule as local). */
-      _orderFacialHair(display, facingIdx);
+      _orderTraitsAndWeapon(display, facingIdx);
 
       const nextName = other.name || 'Anon';
       if (display._lastName !== nextName) {
@@ -3034,7 +3046,7 @@ export class EntityRenderer {
 
       /* v2.3.354: beard z-order, computed AFTER the weapon / shield / arm
          swaps so it has the final say on the facial-hair layer. */
-      _orderFacialHair(display, facingIdx);
+      _orderTraitsAndWeapon(display, facingIdx);
 
       /* Swing trail.  v2.3.252: armed swings back to the legacy
          fan-shaped arc sector per user request (the bamboo stick now
