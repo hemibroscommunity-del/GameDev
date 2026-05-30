@@ -2896,11 +2896,18 @@ export class EntityRenderer {
              fully in front. SE idle still gets a cap but with a
              smaller radius below. */
           const _seJogSkipCap = (facingIdx === 1 && pose === 'jog');
+          /* v2.3.378: NE (7) jog also skips the hand-cap.  There the hand
+             rises to head height in the run cycle, so the cap's bare-body
+             clone stamped scalp pixels OVER the hair ("arm clips the hair").
+             Dropping the cap on NE jog removes that without any z-order
+             reshuffle (the grip wrap is barely visible at NE anyway). */
+          const _neJogSkipCap = (facingIdx === 7 && pose === 'jog');
           const handCapEligible = handCap && handMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
             && _weaponInFront
-            && !_seJogSkipCap;
+            && !_seJogSkipCap
+            && !_neJogSkipCap;
           if (handCapEligible) {
             handCap.texture = _bodyRef.texture;
             handCap.x = _bodyRef.x;
