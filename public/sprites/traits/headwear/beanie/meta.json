@@ -111,10 +111,10 @@
     ]
   },
   "scale": {
-    "southwest": 0.845,
-    "north": 0.92,
-    "east": 0.892,
-    "northeast": 0.92
+    "southwest": 0.887,
+    "north": 0.966,
+    "east": 0.937,
+    "northeast": 0.966
   },
   "scaleByPose": {
     "jog": {
