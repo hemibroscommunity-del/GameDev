@@ -199,6 +199,35 @@ function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale)
   _placeTrait(display._facialHairSprite, _ensureFacialHairLoaded(fhId), display, pose, dir, mirror, frameIdx, bodyScale);
 }
 
+/* v2.3.354: per-frame beard z-order.  The beard is on the face, so it
+   needs a direction-dependent layer just like the weapon + shield:
+   - E / W profiles (facingIdx 0 / 4): the hand swing crosses the face,
+     and the hand-cap body-clones (drawn for the bamboo grip) would paint
+     bare-face pixels OVER the beard -- it "disappears".  So here the beard
+     renders ABOVE the weapon + hand clones (but below the HUD).
+   - Every other facing: the beard sits just above the body and BEHIND the
+     weapon + swinging arms, so the bamboo + arms pass in front of it
+     (correct for the toward-camera SE / S / SW angles).
+   Shared by local + remote (remote displays simply lack the hand/shield
+   sprites, so those are skipped). */
+function _orderFacialHair(display, facingIdx) {
+  const beard = display._facialHairSprite;
+  if (!beard || !beard.visible || !display._spriteBody) return;
+  const fhIdx = display.getChildIndex(beard);
+  if (facingIdx === 0 || facingIdx === 4) {
+    let ref = display.getChildIndex(display._spriteBody);
+    for (const s of [display._weaponContainer, display._handCapSprite,
+                     display._handArmSprite, display._shieldSprite]) {
+      if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
+    }
+    if (fhIdx < ref) display.setChildIndex(beard, ref);
+  } else {
+    const bodyIdx = display.getChildIndex(display._spriteBody);
+    const target = fhIdx > bodyIdx ? bodyIdx + 1 : bodyIdx;
+    if (fhIdx !== target) display.setChildIndex(beard, target);
+  }
+}
+
 /* Look up the head-box for the current pose/dir/frame.  Falls back to
    stand-{dir}-0 if the requested frame has no entry. */
 function _lookupHeadBox(pose, dir, frame) {
@@ -2062,6 +2091,8 @@ export class EntityRenderer {
           display.setChildIndex(display._weaponContainer, targetIdx);
         }
       }
+      /* v2.3.354: beard z-order for remote players (same rule as local). */
+      _orderFacialHair(display, facingIdx);
 
       const nextName = other.name || 'Anon';
       if (display._lastName !== nextName) {
@@ -2987,6 +3018,10 @@ export class EntityRenderer {
           display.setChildIndex(display._handArmSprite, targetArmIdx);
         }
       }
+
+      /* v2.3.354: beard z-order, computed AFTER the weapon / shield / arm
+         swaps so it has the final say on the facial-hair layer. */
+      _orderFacialHair(display, facingIdx);
 
       /* Swing trail.  v2.3.252: armed swings back to the legacy
          fan-shaped arc sector per user request (the bamboo stick now
