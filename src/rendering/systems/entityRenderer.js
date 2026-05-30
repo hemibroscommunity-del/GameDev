@@ -213,16 +213,29 @@ function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale)
 function _orderFacialHair(display, facingIdx) {
   const beard = display._facialHairSprite;
   if (!beard || !beard.visible || !display._spriteBody) return;
-  const fhIdx = display.getChildIndex(beard);
   if (facingIdx === 0 || facingIdx === 4) {
+    /* E / W profile: the hand-cap body-clones cross the face and would
+       erase the beard, so lift the beard ABOVE those clones (+ shield).
+       But the user wants the weapon IN FRONT of the beard, so after
+       lifting the beard, push the weapon back above it.  Net order:
+       body < hand clones < beard < weapon.  (The weapon ends up above the
+       hand clones at the grip too -- the necessary trade for this view.) */
     let ref = display.getChildIndex(display._spriteBody);
-    for (const s of [display._weaponContainer, display._handCapSprite,
-                     display._handArmSprite, display._shieldSprite]) {
+    for (const s of [display._handCapSprite, display._handArmSprite,
+                     display._shieldSprite]) {
       if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
     }
+    let fhIdx = display.getChildIndex(beard);
     if (fhIdx < ref) display.setChildIndex(beard, ref);
+    const wc = display._weaponContainer;
+    if (wc && wc.visible) {
+      fhIdx = display.getChildIndex(beard);
+      const wcIdx = display.getChildIndex(wc);
+      if (wcIdx < fhIdx) display.setChildIndex(wc, fhIdx);  // weapon in front of beard
+    }
   } else {
     const bodyIdx = display.getChildIndex(display._spriteBody);
+    const fhIdx = display.getChildIndex(beard);
     const target = fhIdx > bodyIdx ? bodyIdx + 1 : bodyIdx;
     if (fhIdx !== target) display.setChildIndex(beard, target);
   }
