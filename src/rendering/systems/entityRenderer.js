@@ -118,6 +118,13 @@ function _ensureBodyData() {
     .catch(() => {});
 }
 
+/* Mirrored views (W/NW/SE) reuse the opposite sheet texture, so they
+   render with dir = E/NE/SW + mirror.  This maps that base dir back to
+   the on-screen direction so meta can carry an optional override keyed
+   by the mirrored side (e.g. crownNudge.west) without disturbing the
+   un-mirrored side. */
+const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'southeast' };
+
 /* Place a player's headwear sprite for this frame.  Shared by the local
    player (_updatePlayer) and remote players (_updateOtherPlayers).
    Crown-anchored + placement-independent: pins the hat's own crown
@@ -138,12 +145,19 @@ function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
     headwear.visible = false;
     return;
   }
-  const nudge = (meta.crownNudge && meta.crownNudge[dir]) || [0, 0];
+  /* screenDir lets meta override a mirrored side independently (e.g.
+     crownNudge.west tweaks only the west view, not east).  Falls back
+     to the base `dir` key when no per-side override exists.  Note: the
+     nudge X is still multiplied by the mirror sign below, so for a
+     mirrored side a +X screen shift needs a -X entry. */
+  const screenDir = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;
+  const _pick = (obj) => obj && (obj[screenDir] != null ? obj[screenDir] : obj[dir]);
+  const nudge = _pick(meta.crownNudge) || [0, 0];
   /* poseNudge[pose][dir]: optional per-pose tweak (stand sheet crown can
      differ from the jog sheet's, so idle vs run may need different lift). */
-  const poseN = (meta.poseNudge && meta.poseNudge[pose] && meta.poseNudge[pose][dir]) || [0, 0];
+  const poseN = _pick(meta.poseNudge && meta.poseNudge[pose]) || [0, 0];
   /* scale[dir]: optional per-direction size multiplier (default 1). */
-  const dscale = (meta.scale && meta.scale[dir]) || 1;
+  const dscale = _pick(meta.scale) || 1;
   if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
   /* Anchor the hat sprite on its own crown pixel, then pin that point to
      the body crown's SCREEN position (mirror-correct) + the nudge, with
