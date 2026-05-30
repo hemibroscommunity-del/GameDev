@@ -49,7 +49,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.363';
+const TRAIT_VER = '2.3.364';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -200,40 +200,59 @@ function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
 function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale) {
   _placeTrait(display._facialHairSprite, _ensureFacialHairLoaded(fhId), display, pose, dir, mirror, frameIdx, bodyScale);
 }
-/* When the equipped headwear declares `clipsHair`, clip the hair sprite to
-   the helmet's horizontal span for this direction so the hair can't poke
-   out the SIDES, while the forehead/top hair under the helmet's front
-   opening still shows (the helmet already covers the hair wherever it's
-   opaque).  Horizontal-only clip via a tall rect mask. */
-function _clipHairToHat(display, hatId, dir) {
+/* Per-hat silhouette masks for hair clipping (helmet's outline filled
+   downward from its top edge).  Keyed by hat id; loaded lazily. */
+const _hairMaskCache = {};
+function _ensureHairMaskLoaded(hatId) {
+  if (!hatId || hatId === 'none') return null;
+  let e = _hairMaskCache[hatId];
+  if (!e) {
+    e = _hairMaskCache[hatId] = {
+      tex: { east: null, north: null, northeast: null, south: null, southwest: null },
+      loadStarted: false,
+    };
+  }
+  if (!e.loadStarted) {
+    e.loadStarted = true;
+    for (const dir of Object.keys(e.tex)) {
+      Assets.load(`/sprites/traits/headwear/${hatId}/hairmask/${dir}.png?v=${TRAIT_VER}`)
+        .then(t => { e.tex[dir] = t; if (t && t.source) t.source.scaleMode = 'linear'; })
+        .catch(() => {});  // a hat without a hairmask just won't clip
+    }
+  }
+  return e;
+}
+
+/* When the equipped headwear declares `clipsHair`, clip the hair to the
+   helmet's silhouette so it can't poke out the top or sides, while the
+   forehead hair under the helmet's front opening still shows.  Places a
+   mask sprite (the helmet's downward-filled outline) exactly where the
+   helmet renders -- same crown anchor + nudge + scale -- and masks the
+   hair to it. */
+function _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale) {
   const hair = display._hairSprite;
-  const mask = display._hairMask;
-  const hat = display._headwearSprite;
-  if (!hair || !mask) return;
-  const entry = _ensureHeadwearLoaded(hatId);
-  const meta = entry && entry.meta;
-  const bbox = meta && meta.bboxes && meta.bboxes[dir];
-  const anchor = meta && meta.anchors && meta.anchors[dir];
-  if (!(meta && meta.clipsHair && hat && hat.visible && hair.visible && bbox && anchor)) {
+  const maskSprite = display._hairMask;
+  if (!hair || !maskSprite) return;
+  const helmet = _ensureHeadwearLoaded(hatId);
+  const meta = helmet && helmet.meta;
+  const maskEntry = (meta && meta.clipsHair) ? _ensureHairMaskLoaded(hatId) : null;
+  if (!(meta && meta.clipsHair && hair.visible && maskEntry && maskEntry.tex[dir])) {
     if (hair.mask) hair.mask = null;
-    mask.visible = false;
+    maskSprite.visible = false;
     return;
   }
-  /* Helmet opaque-bbox left/right edges in container (screen-local) coords.
-     hat.scale.x carries the mirror sign, so x0/x1 may invert -> min/max. */
-  const sx = hat.scale.x;
-  const x0 = hat.x + (bbox[0] - anchor[0]) * sx;
-  const x1 = hat.x + (bbox[0] + bbox[2] - anchor[0]) * sx;
-  const left = Math.min(x0, x1), right = Math.max(x0, x1);
-  mask.clear();
-  mask.rect(left, -1000, right - left, 2000);
-  mask.fill({ color: 0xffffff });
-  mask.visible = true;
-  if (hair.mask !== mask) hair.mask = mask;
+  /* Reuse the trait placement with the helmet's meta but the mask texture
+     so the silhouette lands exactly over the helmet. */
+  _placeTrait(maskSprite, { tex: maskEntry.tex, meta }, display, pose, dir, mirror, frameIdx, bodyScale);
+  if (maskSprite.visible) {
+    if (hair.mask !== maskSprite) hair.mask = maskSprite;
+  } else if (hair.mask) {
+    hair.mask = null;  // mask didn't place -> don't clip the hair to nothing
+  }
 }
 function _placeHair(display, hairId, hatId, pose, dir, mirror, frameIdx, bodyScale) {
   _placeTrait(display._hairSprite, _ensureHairLoaded(hairId), display, pose, dir, mirror, frameIdx, bodyScale);
-  _clipHairToHat(display, hatId, dir);
+  _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale);
 }
 
 /* v2.3.354: per-frame beard z-order.  The beard is on the face, so it
@@ -641,8 +660,11 @@ function createPlayerDisplay() {
   const hairSprite = new Sprite();
   hairSprite.visible = false;
   container.addChild(hairSprite);
-  /* v2.3.363: horizontal clip mask for hair under a `clipsHair` hat. */
-  const hairMask = new Graphics();
+  /* v2.3.364: silhouette clip mask for hair under a `clipsHair` hat --
+     a Sprite carrying the helmet's downward-filled outline, placed
+     exactly where the helmet renders. */
+  const hairMask = new Sprite();
+  hairMask.anchor.set(0.5, 0.5);
   container.addChild(hairMask);
 
   /* v2.3.266: standalone-item sticker layer.  One sprite for headwear
@@ -889,8 +911,11 @@ function createOtherPlayerDisplay() {
   const hairSprite = new Sprite();
   hairSprite.visible = false;
   container.addChild(hairSprite);
-  /* v2.3.363: horizontal clip mask for hair under a `clipsHair` hat. */
-  const hairMask = new Graphics();
+  /* v2.3.364: silhouette clip mask for hair under a `clipsHair` hat --
+     a Sprite carrying the helmet's downward-filled outline, placed
+     exactly where the helmet renders. */
+  const hairMask = new Sprite();
+  hairMask.anchor.set(0.5, 0.5);
   container.addChild(hairMask);
 
   /* v2.3.321: headwear sprite for remote players (above body, below
