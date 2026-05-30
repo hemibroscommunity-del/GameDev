@@ -307,6 +307,19 @@ function _orderTraitsAndWeapon(display, facingIdx) {
       }
     }
   }
+  /* --- NE (7): keep the hair ABOVE the hand-cap clones.  At NE the
+     swinging arm rises near the head and the hand-clone body re-stamp (a
+     copy of the bare body used for the grip wrap) would paint bare-head
+     pixels OVER the hair ("arm clipping the hair").  Hair (head) and the
+     grip don't overlap, so lifting the hair above the clones is safe. */
+  if (facingIdx === 7 && display._hairSprite && display._hairSprite.visible) {
+    let ref = display.getChildIndex(display._hairSprite);
+    for (const c of [display._handCapSprite, display._handArmSprite]) {
+      if (c && c.visible) ref = Math.max(ref, display.getChildIndex(c));
+    }
+    const hIdx = display.getChildIndex(display._hairSprite);
+    if (hIdx < ref) display.setChildIndex(display._hairSprite, ref);
+  }
 }
 
 /* Look up the head-box for the current pose/dir/frame.  Falls back to
