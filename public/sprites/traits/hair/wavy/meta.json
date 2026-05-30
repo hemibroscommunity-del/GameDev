@@ -1,0 +1,116 @@
+{
+  "category": "hair",
+  "fullFrame": true,
+  "note": "Brown wavy hair. Sources S=6CEAA381, SW=D1554F74, W=D18450C2(WHITE bg keyed -> east flip), NW=E72AE68C(-> northeast flip), N=7AC595B4. Symmetric, 5 dirs incl north (hair visible from behind). Crown-anchored like headwear. NOTE: east/west source drawn larger + more orange than the others -- scale.east tames size; color mismatch is in the source art (may need re-upload or recolor). crownNudge/scale need on-device tuning.",
+  "bboxes_source": {
+    "south": [
+      368,
+      341,
+      282,
+      234
+    ],
+    "southwest": [
+      360,
+      350,
+      298,
+      246
+    ],
+    "east": [
+      350,
+      178,
+      339,
+      292
+    ],
+    "northeast": [
+      368,
+      384,
+      257,
+      238
+    ],
+    "north": [
+      392,
+      349,
+      249,
+      234
+    ]
+  },
+  "bboxes": {
+    "south": [
+      92,
+      85,
+      71,
+      59
+    ],
+    "southwest": [
+      90,
+      87,
+      75,
+      63
+    ],
+    "east": [
+      87,
+      44,
+      86,
+      74
+    ],
+    "northeast": [
+      92,
+      95,
+      65,
+      61
+    ],
+    "north": [
+      98,
+      87,
+      63,
+      59
+    ]
+  },
+  "anchors": {
+    "south": [
+      126,
+      87
+    ],
+    "southwest": [
+      124,
+      87
+    ],
+    "east": [
+      129,
+      46
+    ],
+    "northeast": [
+      128,
+      98
+    ],
+    "north": [
+      127,
+      89
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      0
+    ],
+    "southwest": [
+      0,
+      0
+    ],
+    "east": [
+      0,
+      0
+    ],
+    "northeast": [
+      0,
+      0
+    ],
+    "north": [
+      0,
+      0
+    ]
+  },
+  "scale": {
+    "east": 0.7
+  }
+}

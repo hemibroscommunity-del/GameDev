@@ -19,6 +19,7 @@ import { TRAIT_CATEGORIES, resolveBodyAnchor } from '../traitCategories.js';
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
+import { getHair } from '../traits/hairCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -104,6 +105,7 @@ function _ensureTraitLoaded(category, id) {
 }
 function _ensureHeadwearLoaded(id) { return _ensureTraitLoaded('headwear', id); }
 function _ensureFacialHairLoaded(id) { return _ensureTraitLoaded('facialhair', id); }
+function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
 
 /* Body anchor schemas, loaded once and shared by every player + hat.
    body-tops.json: per-(pose,dir,frame) topmost opaque pixel [x,y] of the
@@ -198,6 +200,9 @@ function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
 function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale) {
   _placeTrait(display._facialHairSprite, _ensureFacialHairLoaded(fhId), display, pose, dir, mirror, frameIdx, bodyScale);
 }
+function _placeHair(display, hairId, pose, dir, mirror, frameIdx, bodyScale) {
+  _placeTrait(display._hairSprite, _ensureHairLoaded(hairId), display, pose, dir, mirror, frameIdx, bodyScale);
+}
 
 /* v2.3.354: per-frame beard z-order.  The beard is on the face, so it
    needs a direction-dependent layer just like the weapon + shield:
@@ -242,7 +247,7 @@ function _orderTraitsAndWeapon(display, facingIdx) {
     const wc = display._weaponContainer;
     if (wc && wc.visible) {
       let ref = -1;
-      for (const s of [display._headwearSprite, display._facialHairSprite]) {
+      for (const s of [display._headwearSprite, display._facialHairSprite, display._hairSprite]) {
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
       }
       if (ref >= 0) {
@@ -599,6 +604,12 @@ function createPlayerDisplay() {
   traitFace.visible = false;
   container.addChild(traitFace);
 
+  /* v2.3.357: hair layer -- crown-anchored like headwear, but rendered
+     BELOW the hat so headwear covers the hair. */
+  const hairSprite = new Sprite();
+  hairSprite.visible = false;
+  container.addChild(hairSprite);
+
   /* v2.3.266: standalone-item sticker layer.  One sprite for headwear
      (helmet / hat / hood / etc.); future: glasses, beard, etc. each
      get their own.  Anchor + position set per-frame from meta.json. */
@@ -781,6 +792,7 @@ function createPlayerDisplay() {
   container._body = body;
   container._spriteBody = spriteBody;
   container._facialHairSprite = facialHairSprite;
+  container._hairSprite = hairSprite;
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -837,6 +849,11 @@ function createOtherPlayerDisplay() {
   facialHairSprite.visible = false;
   container.addChild(facialHairSprite);
 
+  /* v2.3.357: hair sprite for remote players (below headwear). */
+  const hairSprite = new Sprite();
+  hairSprite.visible = false;
+  container.addChild(hairSprite);
+
   /* v2.3.321: headwear sprite for remote players (above body, below
      weapon/NFT) so other players' hats render.  Driven by other.headwear. */
   const headwearSprite = new Sprite();
@@ -879,6 +896,7 @@ function createOtherPlayerDisplay() {
   container._body = body;
   container._spriteBody = spriteBody;
   container._facialHairSprite = facialHairSprite;
+  container._hairSprite = hairSprite;
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -1799,6 +1817,7 @@ export class EntityRenderer {
         if (display._nftBack) display._nftBack.visible = false;
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
+        if (display._hairSprite) display._hairSprite.visible = false;
         continue;
       }
       /* Living — restore visibility of containers that might have been
@@ -1913,17 +1932,21 @@ export class EntityRenderer {
           _placeHeadwear(display, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.353: and their facial hair (other.facialhair). */
           _placeFacialHair(display, other.facialhair, pose, dir, mirror, frameIdx, sizeMul);
+          /* v2.3.357: and their hair (other.hair). */
+          _placeHair(display, other.hair, pose, dir, mirror, frameIdx, sizeMul);
         } else {
           spriteBody.visible = false;
           body.visible = true;
           if (display._headwearSprite) display._headwearSprite.visible = false;
           if (display._facialHairSprite) display._facialHairSprite.visible = false;
+          if (display._hairSprite) display._hairSprite.visible = false;
         }
       } else {
         display._spriteBody.visible = false;
         body.visible = true;
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
+        if (display._hairSprite) display._hairSprite.visible = false;
       }
 
       /* NFT 360° body for the remote player — same fallback policy
@@ -2385,6 +2408,7 @@ export class EntityRenderer {
       _ensureBodyData();
       _ensureHeadwearLoaded(getHeadwear());
       _ensureFacialHairLoaded(getFacialHair());
+      _ensureHairLoaded(getHair());
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
@@ -2439,6 +2463,7 @@ export class EntityRenderer {
            player's hat id comes from the login picker. */
         _placeHeadwear(display, getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _placeFacialHair(display, getFacialHair(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeHair(display, getHair(), pose, dir, mirror, frameIdx, bodyScale);
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
@@ -2482,6 +2507,7 @@ export class EntityRenderer {
         if (display._traitFace) display._traitFace.visible = false;
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
+        if (display._hairSprite) display._hairSprite.visible = false;
       }
     } else {
       display._spriteBody.visible = false;
