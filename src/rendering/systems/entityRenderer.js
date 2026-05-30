@@ -156,8 +156,14 @@ function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
   /* poseNudge[pose][dir]: optional per-pose tweak (stand sheet crown can
      differ from the jog sheet's, so idle vs run may need different lift). */
   const poseN = _pick(meta.poseNudge && meta.poseNudge[pose]) || [0, 0];
-  /* scale[dir]: optional per-direction size multiplier (default 1). */
-  const dscale = _pick(meta.scale) || 1;
+  /* scale[dir]: optional per-direction size multiplier (default 1).
+     scaleByPose[pose][dir]: optional per-pose MULTIPLIER on top of scale,
+     for when the body renders a different size in jog vs stand (the jog
+     sheet carries per-direction body-size bumps the hat would otherwise
+     ride).  Defaults to 1, so a hat with no scaleByPose is unchanged. */
+  const poseScaleObj = meta.scaleByPose && meta.scaleByPose[pose];
+  const poseScale = (poseScaleObj && _pick(poseScaleObj)) || 1;
+  const dscale = (_pick(meta.scale) || 1) * poseScale;
   if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
   /* Anchor the hat sprite on its own crown pixel, then pin that point to
      the body crown's SCREEN position (mirror-correct) + the nudge, with

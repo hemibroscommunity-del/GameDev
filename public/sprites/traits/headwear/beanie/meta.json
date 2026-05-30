@@ -115,5 +115,10 @@
     "north": 0.92,
     "east": 0.892,
     "northeast": 0.92
+  },
+  "scaleByPose": {
+    "jog": {
+      "east": 0.91
+    }
   }
 }
