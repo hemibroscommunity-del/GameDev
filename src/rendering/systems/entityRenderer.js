@@ -47,7 +47,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.312';
+const TRAIT_VER = '2.3.313';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -2291,6 +2291,12 @@ export class EntityRenderer {
              high/low vs the run.  poseNudge[pose][dir] corrects just that pose
              without touching the others. */
           const poseN = (_headwearMeta && _headwearMeta.poseNudge && _headwearMeta.poseNudge[pose] && _headwearMeta.poseNudge[pose][dir]) || [0, 0];
+          /* v2.3.313: optional per-direction size multiplier (default 1).
+             Lets a trait read slightly smaller/larger from certain angles
+             (e.g. top hat reads a touch big in profile E/W) without
+             re-exporting the PNG.  Scales around the crown anchor, so the
+             pin point stays put. */
+          const dscale = (_headwearMeta && _headwearMeta.scale && _headwearMeta.scale[dir]) || 1;
           if (bodyTop && anchorPx) {
             /* Anchor the helmet sprite on its own crown pixel (normalized to
                the texture size), then place that point at the body's crown. */
@@ -2312,8 +2318,8 @@ export class EntityRenderer {
             const bodyCrownY = spriteBody.y + (bodyTop[1] - W / 2) * absBodyScale;
             headwear.x = bodyCrownX + (nudge[0] + poseN[0]) * absBodyScale * m;
             headwear.y = bodyCrownY + (nudge[1] + poseN[1]) * absBodyScale;
-            headwear.scale.x = m * absBodyScale;
-            headwear.scale.y = absBodyScale;
+            headwear.scale.x = m * absBodyScale * dscale;
+            headwear.scale.y = absBodyScale * dscale;
             headwear.visible = true;
           } else {
             /* No anchor metadata for this direction yet -- don't guess. */
