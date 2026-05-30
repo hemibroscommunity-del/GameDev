@@ -18,6 +18,7 @@ import { getAnchor, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { TRAIT_CATEGORIES, resolveBodyAnchor } from '../traitCategories.js';
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
+import { getFacialHair } from '../traits/facialHairCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -64,12 +65,16 @@ const TRAIT_VER = '2.3.321';
    different hats can render on screen at once.  The local player's id comes
    from the login picker (getHeadwear()); remote players' ids arrive over
    the network (other.headwear).  'none' / falsy = bareheaded. */
-const _headwearCache = {};  // id -> { tex:{east,...}, meta, loadStarted }
-function _ensureHeadwearLoaded(id) {
+/* Trait textures cached by `${category}/${id}` so headwear, facial-hair,
+   and any future category share one loader.  Each entry owns its own
+   per-direction texture set + meta. */
+const _traitCache = {};  // `${category}/${id}` -> { tex:{east,...}, meta, loadStarted }
+function _ensureTraitLoaded(category, id) {
   if (!id || id === 'none') return null;
-  let e = _headwearCache[id];
+  const key = category + '/' + id;
+  let e = _traitCache[key];
   if (!e) {
-    e = _headwearCache[id] = {
+    e = _traitCache[key] = {
       tex: { east: null, north: null, northeast: null, south: null, southwest: null },
       meta: null,
       loadStarted: false,
@@ -77,12 +82,12 @@ function _ensureHeadwearLoaded(id) {
   }
   if (!e.loadStarted) {
     e.loadStarted = true;
-    fetch(`/sprites/traits/headwear/${id}/meta.json?v=${TRAIT_VER}`)
+    fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}`)
       .then(r => r.ok ? r.json() : null)
       .then(j => { if (j) e.meta = j; })
       .catch(() => {});
     for (const dir of Object.keys(e.tex)) {
-      Assets.load(`/sprites/traits/headwear/${id}/${dir}.png?v=${TRAIT_VER}`)
+      Assets.load(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}`)
         .then(t => {
           e.tex[dir] = t;
           if (t && t.source) {
@@ -97,6 +102,8 @@ function _ensureHeadwearLoaded(id) {
   }
   return e;
 }
+function _ensureHeadwearLoaded(id) { return _ensureTraitLoaded('headwear', id); }
+function _ensureFacialHairLoaded(id) { return _ensureTraitLoaded('facialhair', id); }
 
 /* Body anchor schemas, loaded once and shared by every player + hat.
    body-tops.json: per-(pose,dir,frame) topmost opaque pixel [x,y] of the
@@ -131,20 +138,19 @@ const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'so
    (meta.anchors[dir]) onto the body crown (body-tops, per frame) plus
    small reusable per-dir/per-pose nudges, scaled to the body.  hatId
    'none' / falsy, or missing art/anchor -> hat hidden. */
-function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) {
-  const headwear = display._headwearSprite;
-  if (!headwear) return;
+function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodyScale) {
+  if (!sprite) return;
   _ensureBodyData();
-  const entry = _ensureHeadwearLoaded(hatId);
   const headwearTex = entry && entry.tex[dir];
   const meta = entry && entry.meta;
   const spriteBody = display._spriteBody;
   const bodyTop = _lookupBodyTop(pose, dir, frameIdx);
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
   if (!(headwearTex && meta && meta.fullFrame && spriteBody && bodyTop && anchorPx)) {
-    headwear.visible = false;
+    sprite.visible = false;
     return;
   }
+  const headwear = sprite;
   /* screenDir lets meta override a mirrored side independently (e.g.
      crownNudge.west tweaks only the west view, not east).  Falls back
      to the base `dir` key when no per-side override exists.  Note: the
@@ -180,6 +186,17 @@ function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
   headwear.scale.x = m * absBodyScale * dscale;
   headwear.scale.y = absBodyScale * dscale;
   headwear.visible = true;
+}
+
+/* Headwear + facial-hair share the exact same crown-anchored placement;
+   they differ only in which sprite layer + trait cache they use.  A beard
+   is just a trait whose meta.crownNudge Y drops it from the head crown
+   down to the chin (the inverse of the top-hat's large negative lift). */
+function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) {
+  _placeTrait(display._headwearSprite, _ensureHeadwearLoaded(hatId), display, pose, dir, mirror, frameIdx, bodyScale);
+}
+function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale) {
+  _placeTrait(display._facialHairSprite, _ensureFacialHairLoaded(fhId), display, pose, dir, mirror, frameIdx, bodyScale);
 }
 
 /* Look up the head-box for the current pose/dir/frame.  Falls back to
@@ -509,6 +526,14 @@ function createPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* v2.3.353: facial-hair sticker layer (beard / moustache).  Sits above
+     the body but below headwear so a hat brim can overlap it.  Same
+     crown-anchored placement as headwear, dropped to the chin via a
+     large positive crownNudge Y in the trait's meta. */
+  const facialHairSprite = new Sprite();
+  facialHairSprite.visible = false;
+  container.addChild(facialHairSprite);
+
   /* v2.3.261 (Bro-NFT Phase 4): trait composition overlay.  Sits on
      top of the body so the NFT's head/face features (helmet, eyes,
      mouth, etc.) overlay the faceless mannequin.  Hidden until the
@@ -701,6 +726,7 @@ function createPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._facialHairSprite = facialHairSprite;
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -751,6 +777,12 @@ function createOtherPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* v2.3.353: facial-hair sprite for remote players (above body, below
+     headwear).  Driven by other.facialhair. */
+  const facialHairSprite = new Sprite();
+  facialHairSprite.visible = false;
+  container.addChild(facialHairSprite);
+
   /* v2.3.321: headwear sprite for remote players (above body, below
      weapon/NFT) so other players' hats render.  Driven by other.headwear. */
   const headwearSprite = new Sprite();
@@ -792,6 +824,7 @@ function createOtherPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._facialHairSprite = facialHairSprite;
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -1711,6 +1744,7 @@ export class EntityRenderer {
         if (display._nftFront) display._nftFront.visible = false;
         if (display._nftBack) display._nftBack.visible = false;
         if (display._headwearSprite) display._headwearSprite.visible = false;
+        if (display._facialHairSprite) display._facialHairSprite.visible = false;
         continue;
       }
       /* Living — restore visibility of containers that might have been
@@ -1823,15 +1857,19 @@ export class EntityRenderer {
           /* v2.3.321: place this remote player's headwear.  other.headwear
              is their selected hat id, broadcast over the network. */
           _placeHeadwear(display, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
+          /* v2.3.353: and their facial hair (other.facialhair). */
+          _placeFacialHair(display, other.facialhair, pose, dir, mirror, frameIdx, sizeMul);
         } else {
           spriteBody.visible = false;
           body.visible = true;
           if (display._headwearSprite) display._headwearSprite.visible = false;
+          if (display._facialHairSprite) display._facialHairSprite.visible = false;
         }
       } else {
         display._spriteBody.visible = false;
         body.visible = true;
         if (display._headwearSprite) display._headwearSprite.visible = false;
+        if (display._facialHairSprite) display._facialHairSprite.visible = false;
       }
 
       /* NFT 360° body for the remote player — same fallback policy
@@ -2290,6 +2328,7 @@ export class EntityRenderer {
          ready by the time we place the headwear below. */
       _ensureBodyData();
       _ensureHeadwearLoaded(getHeadwear());
+      _ensureFacialHairLoaded(getFacialHair());
       let tex = getFrame(pose, dir, frameIdx);
       if (!tex) tex = getFrame('stand', dir, 0);
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
@@ -2343,6 +2382,7 @@ export class EntityRenderer {
            _placeHeadwear helper (used by remote players too).  Local
            player's hat id comes from the login picker. */
         _placeHeadwear(display, getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeFacialHair(display, getFacialHair(), pose, dir, mirror, frameIdx, bodyScale);
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
@@ -2385,6 +2425,7 @@ export class EntityRenderer {
         body.visible = true;
         if (display._traitFace) display._traitFace.visible = false;
         if (display._headwearSprite) display._headwearSprite.visible = false;
+        if (display._facialHairSprite) display._facialHairSprite.visible = false;
       }
     } else {
       display._spriteBody.visible = false;

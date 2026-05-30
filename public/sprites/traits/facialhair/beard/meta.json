@@ -75,19 +75,19 @@
   "crownNudge": {
     "south": [
       0,
-      0
+      38
     ],
     "southwest": [
       0,
-      0
+      44
     ],
     "east": [
       0,
-      0
+      33
     ],
     "northeast": [
       0,
-      0
+      38
     ]
   }
 }
