@@ -31,6 +31,7 @@ import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loa
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
@@ -1199,6 +1200,12 @@ export var BroTown = function BroTown(_ref0) {
     _useState202 = _slicedToArray(_useState201, 2),
     nftError = _useState202[0],
     setNftError = _useState202[1];
+  /* Headwear picker selection (login screen). Mirrors the headwearCatalog
+     store so the on-screen highlight updates; setHeadwear() persists +
+     tells the renderer to swap textures. */
+  var _hwSelState = useState(getHeadwear()),
+    headwearSel = _hwSelState[0],
+    setHeadwearSel = _hwSelState[1];
   var nftCatalogRef = useRef(null); /* cached CSV data [{ID,Image,...}] */
   var _useState203 = useState('#2563eb'),
     _useState204 = _slicedToArray(_useState203, 2),
@@ -13198,7 +13205,36 @@ export var BroTown = function BroTown(_ref0) {
       marginBottom: 8,
       boxSizing: 'border-box'
     }
-  }), /*#__PURE__*/React.createElement("button", {
+  }), /*#__PURE__*/React.createElement("div", {
+    style: { width: '100%', marginTop: 6, marginBottom: 2 }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { fontSize: 10, color: 'var(--pop)', fontWeight: 800, letterSpacing: '.1em', marginBottom: 6, textAlign: 'center', fontFamily: 'Source Sans 3,sans-serif' }
+  }, "HEADWEAR"), /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }
+  }, HEADWEAR_CATALOG.map(function (opt) {
+    var sel = headwearSel === opt.id;
+    return /*#__PURE__*/React.createElement("button", {
+      key: opt.id,
+      type: 'button',
+      onClick: function onClick() { setHeadwear(opt.id); setHeadwearSel(opt.id); },
+      title: opt.name,
+      style: {
+        width: 58, padding: '5px 4px 4px',
+        background: sel ? 'var(--pop)' : 'var(--ink3)',
+        border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
+        borderRadius: 9, cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3
+      }
+    }, opt.id === 'none' ? /*#__PURE__*/React.createElement("div", {
+      style: { width: 34, height: 34, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' }
+    }) : /*#__PURE__*/React.createElement("img", {
+      src: '/sprites/traits/headwear/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version,
+      alt: opt.name,
+      style: { width: 34, height: 34, objectFit: 'contain', imageRendering: 'pixelated' }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 8, color: sel ? '#fff' : 'var(--txt)', fontWeight: 700, lineHeight: 1.1, textAlign: 'center', maxWidth: 52, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'Source Sans 3,sans-serif' }
+    }, opt.name));
+  }))), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
       marginTop: 12,

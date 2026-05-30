@@ -17,6 +17,7 @@ import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { TRAIT_CATEGORIES, resolveBodyAnchor } from '../traitCategories.js';
 import { getNftTextures } from '../nftAvatars.js';
+import { getHeadwear, onHeadwearChange } from '../traits/headwearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -46,7 +47,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.308';
+const TRAIT_VER = '2.3.309';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -58,7 +59,11 @@ const TRAIT_VER = '2.3.308';
      land on the body anchor (typically bottom-center for headwear).
    - anchorOffset shifts the body anchor in frame coords (head-center
      -> head-top via [0, -8] for example). */
-const HEADWEAR_ID = 'old-school-helmet';
+/* v2.3.309: headwear id is now player-selectable (login picker) via
+   headwearCatalog.  'none' = bareheaded.  When the selection changes we
+   drop the loaded textures + meta and clear the load guard so the next
+   frame's _ensureHeadwearTextures() reloads the new item. */
+let HEADWEAR_ID = getHeadwear();
 const _headwearTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 let _headwearMeta = null;
 let _bodyAnchors = null;
@@ -68,9 +73,16 @@ let _bodyAnchors = null;
    point for trait stickers -- frame-exact, no detection noise. */
 let _bodyTops = null;
 let _headwearLoadStarted = false;
+onHeadwearChange((id) => {
+  HEADWEAR_ID = id;
+  _headwearMeta = null;
+  for (const dir of Object.keys(_headwearTex)) _headwearTex[dir] = null;
+  _headwearLoadStarted = false;  // next frame reloads (or stays bare if 'none')
+});
 function _ensureHeadwearTextures() {
   if (_headwearLoadStarted) return;
   _headwearLoadStarted = true;
+  if (HEADWEAR_ID === 'none') return;  // bareheaded -- nothing to load
   fetch(`/sprites/traits/headwear/${HEADWEAR_ID}/meta.json?v=${TRAIT_VER}`)
     .then(r => r.ok ? r.json() : null)
     .then(j => { if (j) _headwearMeta = j; })
