@@ -2155,18 +2155,39 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'lifesteal_credit':
             {
-              /* Worker is informing us a melee-kill heal happened (or
-                 was attempted).  Floats +N HP green popup on success;
-                 the gray "no heal (reason)" diagnostic popup was
-                 retired in v2.3.252 -- console.log still fires for
-                 DevTools when refund=0 so debug context survives. */
-              if (!msg.payload || msg.payload.playerId !== S.myId) break;
-              try { console.log('[lifesteal_credit]', msg.payload); } catch (e) {}
-              if (msg.payload.refund > 0 && S.dmgNumbers && S.player) {
+              /* Worker is informing us a melee-kill heal landed. HP
+                 itself rides on the player_state push that follows;
+                 this event is only for the +N HP floater so the visual
+                 math matches the server exactly. Only render for our
+                 own player; party members don't get our floater. */
+              if (msg.payload
+                  && msg.payload.playerId === S.myId
+                  && msg.payload.refund > 0
+                  && S.dmgNumbers
+                  && S.player) {
                 S.dmgNumbers.push({
                   x: S.player.x, y: S.player.y - 40,
                   text: '+' + msg.payload.refund + ' HP',
                   color: '#3dd497', ts: Date.now(),
+                });
+              }
+              break;
+            }
+          case 'loot_pickup_rejected':
+            {
+              /* v2.3.260 diagnostic: server tells us why a pickup
+                 silently failed (recipient mismatch, out-of-range,
+                 already-claimed, etc.).  Renders a small floater +
+                 console.log so the user can see which gate is firing
+                 instead of guessing why a pile won't grab.  Drop once
+                 the underlying issue is identified. */
+              if (!msg.payload || !S || !S.player) break;
+              try { console.log('[loot_pickup_rejected]', msg.payload, 'myId=', S.myId); } catch (e) {}
+              if (S.dmgNumbers) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 24,
+                  text: 'pickup: ' + (msg.payload.reason || 'unknown'),
+                  color: '#f5c542', ts: Date.now(),
                 });
               }
               break;
@@ -2834,6 +2855,7 @@ export var BroTown = function BroTown(_ref0) {
             {
               if (payload.id && S.others[payload.id]) {
                 S.others[payload.id]._swingTs = Date.now();
+                S.others[payload.id]._swingSpecial = !!payload.special;
               }
               break;
             }
@@ -8428,7 +8450,6 @@ export var BroTown = function BroTown(_ref0) {
                 S.isSwinging = true;
                 S._specialAttack = false;
                 BT_AUDIO.play('sword-swing', { vol: 0.55 });
-                /* Broadcast swing to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: Date.now() } });
               }
             }
@@ -11843,6 +11864,10 @@ export var BroTown = function BroTown(_ref0) {
       S.isSwinging = true;
       S._specialAttack = true;
       if (hasElement) S._iceAttack = true;
+      /* Broadcast the special swing so peers render the wider arc +
+         gold halo.  The regular auto-swing broadcast path is skipped
+         because isSwinging is already true here. */
+      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: now, special: true } });
     }
 
     /* Power-up sound */

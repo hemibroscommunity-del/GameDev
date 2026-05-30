@@ -1877,11 +1877,13 @@ export class EntityRenderer {
       const aimAngle = facingIdx >= 0 ? facingIdx * Math.PI / 4 : 0;
       /* Swing window — same 250ms quadratic ease-out as local. */
       const oSwingActive = other._swingTs && (now - other._swingTs) < SWING_ANIM_MS;
+      const oSwingSpecial = !!other._swingSpecial;
+      const oVisualArc = oSwingSpecial ? Math.PI : SWING_FULL_ARC;
       let oSwingAng = 0, oSwingProgress = 0, oSwingOffset = 0;
       if (oSwingActive && oWpnType) {
         oSwingProgress = (now - other._swingTs) / SWING_ANIM_MS;
         const eased = 1 - (1 - oSwingProgress) * (1 - oSwingProgress);
-        oSwingOffset = -SWING_FULL_ARC / 2 + eased * SWING_FULL_ARC;
+        oSwingOffset = -oVisualArc / 2 + eased * oVisualArc;
         const restAng = REST_ANG[oWpnType] != null ? REST_ANG[oWpnType] : 0;
         oSwingAng = (aimAngle - restAng) + oSwingOffset;
       }
@@ -1940,18 +1942,28 @@ export class EntityRenderer {
           oWeaponSprite.tint = 0xffffff;
           oWeaponSprite.visible = true;
 
-          /* Swing arc trail. */
+          /* Swing arc trail.  Mirrors local at entityRenderer.js:2633 —
+             special swings get 2x reach, half-circle visual arc, gold
+             halo ring.  Regular swing unchanged. */
           if (oSwingActive) {
-            const trailReach = 42;
-            const startAng = aimAngle - SWING_FULL_ARC / 2;
+            const trailReach = oSwingSpecial ? 84 : 42;
+            const startAng = aimAngle - oVisualArc / 2;
             const endAng   = aimAngle + oSwingOffset;
-            const trailAlpha = (1 - oSwingProgress) * 0.35;
+            const baseAlpha  = (1 - oSwingProgress) * 0.35;
+            const trailAlpha = oSwingSpecial ? baseAlpha * 1.6 : baseAlpha;
+            const fillColor   = oSwingSpecial ? 0xffd54a : 0xffffff;
+            const strokeColor = oSwingSpecial ? 0xfff2a8 : 0xfffac8;
+            const strokeWidth = oSwingSpecial ? 4 : 2;
             oWeaponGfx.moveTo(wpnX, wpnY);
             oWeaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
             oWeaponGfx.lineTo(wpnX, wpnY);
-            oWeaponGfx.fill({ color: 0xffffff, alpha: trailAlpha });
+            oWeaponGfx.fill({ color: fillColor, alpha: trailAlpha });
             oWeaponGfx.arc(wpnX, wpnY, trailReach, startAng, endAng);
-            oWeaponGfx.stroke({ color: 0xfffac8, width: 2, alpha: trailAlpha * 1.2 });
+            oWeaponGfx.stroke({ color: strokeColor, width: strokeWidth, alpha: trailAlpha * 1.2 });
+            if (oSwingSpecial) {
+              oWeaponGfx.arc(wpnX, wpnY, trailReach + 10, startAng, endAng);
+              oWeaponGfx.stroke({ color: 0xf5c542, width: 3, alpha: trailAlpha * 0.7 });
+            }
           }
         } else {
           oWeaponSprite.visible = false;
