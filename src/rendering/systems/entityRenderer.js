@@ -307,19 +307,6 @@ function _orderTraitsAndWeapon(display, facingIdx) {
       }
     }
   }
-  /* --- NE (7): keep the hair ABOVE the hand-cap clones.  At NE the
-     swinging arm rises near the head and the hand-clone body re-stamp (a
-     copy of the bare body used for the grip wrap) would paint bare-head
-     pixels OVER the hair ("arm clipping the hair").  Hair (head) and the
-     grip don't overlap, so lifting the hair above the clones is safe. */
-  if (facingIdx === 7 && display._hairSprite && display._hairSprite.visible) {
-    let ref = display.getChildIndex(display._hairSprite);
-    for (const c of [display._handCapSprite, display._handArmSprite]) {
-      if (c && c.visible) ref = Math.max(ref, display.getChildIndex(c));
-    }
-    const hIdx = display.getChildIndex(display._hairSprite);
-    if (hIdx < ref) display.setChildIndex(display._hairSprite, ref);
-  }
 }
 
 /* Look up the head-box for the current pose/dir/frame.  Falls back to
@@ -3304,10 +3291,9 @@ export class EntityRenderer {
              East stays as-is (already reads well). */
           const _shWestRunX = (facingIdx === 4 && pose === 'jog') ? 6 : 0;
           shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX + _shWestRunX;
-          /* v2.3.375: reverted the body-tops shield anchor (v2.3.369-374) +
-             the west arm-clone layering per user -- too many issues.  Back
-             to the simple synthetic jog bob (v2.3.366): a small sine rise/
-             fall during movement, no body-tops coupling. */
+          /* v2.3.366: add the jog bob (same bobY the weapon + held shield
+             use) so the on-back shield rises/falls with the body instead
+             of sitting bolt-still during the run. */
           shieldSprite.y = -Math.sin(facingAng) * backR - 10 + _shNudgeY + bobY;
           /* v2.3.193: running-lean. The player sprite art shows a
              slight forward lean during jog, but the shield on back
