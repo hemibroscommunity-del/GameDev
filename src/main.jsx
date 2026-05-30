@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { GameApp } from './ui/GameApp.jsx';
 import { debugBus } from './debug/debugBus.js';
+import { installPerfHud } from './debug/perfHud.js';
 import './styles/game.css';
 
 /* Debug console intercept is handled by debugBus.initFromUrl() alone now.
@@ -13,5 +14,10 @@ import './styles/game.css';
    DebugOverlay is the user-facing surface, so the vanilla-JS banner is
    redundant.  Re-add if the React overlay regresses. */
 debugBus.initFromUrl();
+
+/* On-screen perf HUD (vanilla DOM, reads perfTracker, no console hook).
+   Activates with ?perf=1 or ?debug=1.  Survives the React overlay
+   vanishing after PLAY -- used to diagnose the reported 2x slowdown. */
+installPerfHud();
 
 createRoot(document.getElementById('root')).render(<GameApp />);
