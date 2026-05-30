@@ -3075,8 +3075,14 @@ export class EntityRenderer {
            set per user request -- with shield behind body on E, only
            a sliver was visible past the silhouette. */
         const shieldOnBack = !isShielding;
+        /* v2.3.367: W (4) joins the in-front set to MIRROR E (0).  E was
+           moved in-front (v2.3.190) for visibility but its mirror W was
+           left behind the body, so the on-back shield was nearly fully
+           occluded at west -- and the new jog bob tipped the last sliver
+           out of view.  On-back in-front for E/W + N-half; behind for
+           SE/S/SW. */
         const shieldBehind = shieldOnBack
-          ? !(facingIdx === 0 || facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
+          ? !(facingIdx === 0 || facingIdx === 4 || facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
           : (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const shIdx   = display.getChildIndex(display._shieldSprite);
