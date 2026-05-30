@@ -2937,14 +2937,10 @@ export class EntityRenderer {
              mask anymore. v2.3.199's single-sprite approach put
              the capsule above weapon, which the user reported as
              "bamboo behind arm" during the backswing. */
-          /* v2.3.372: also on WEST jog -- but there we clone the NEAR
-             (camera-side / left) arm so it passes in FRONT of the on-back
-             shield, while the far arm stays behind it.  East keeps its
-             existing weapon-arm coverage. */
           const useArmCapsule = handArm && armMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
-            && ((facingIdx === 0 || facingIdx === 4) && pose === 'jog');
+            && (facingIdx === 0 && pose === 'jog');
           if (useArmCapsule) {
             handArm.texture = _bodyRef.texture;
             handArm.x = _bodyRef.x;
@@ -2969,23 +2965,8 @@ export class EntityRenderer {
                stay hidden behind. */
             const shoulderX = 0;
             const shoulderY = -22;
-            /* East (0): mask the WEAPON arm (getAnchor's hand, used for the
-               shield-coverage role).  West (4): mask the OFF hand instead
-               -- getAnchor returns the weapon hand (renders visual-right at
-               west); the near/left arm we want is the OTHER anchor.  Pull it
-               from the frame's opposite hand and flip it for the mirrored
-               body so it lands on the visual-left side. */
-            let _armHandX = weaponSprite.x, _armHandY = weaponSprite.y;
-            if (facingIdx === 4) {
-              const _off = getAnchor(display._animPose, dir, display._animFrame || 0, false);
-              if (_off) {
-                const _oax = 256 - _off[0];
-                _armHandX = (_oax - 256 / 2) * bodyScale;
-                _armHandY = (_off[1] - 256 / 2) * bodyScale;
-              }
-            }
             armMask.moveTo(shoulderX, shoulderY);
-            armMask.lineTo(_armHandX, _armHandY);
+            armMask.lineTo(weaponSprite.x, weaponSprite.y);
             armMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
           } else if (handArm) {
             handArm.visible = false;
@@ -3151,25 +3132,6 @@ export class EntityRenderer {
         const targetArmIdx = haIdx > wcIdxArm ? wcIdxArm : Math.max(0, wcIdxArm - 1);
         if (haIdx !== targetArmIdx) {
           display.setChildIndex(display._handArmSprite, targetArmIdx);
-        }
-      }
-
-      /* v2.3.372: west-run shield between the arms.  Far (right) arm
-         BEHIND the shield, near (left) arm IN FRONT.  Put the shield just
-         in front of the body (covers the far arm) and the near-arm clone
-         (the capsule, masked to the off hand at west) just above the
-         shield.  Net: body(far arm) < shield < near arm. */
-      if (facingIdx === 4 && pose === 'jog'
-          && display._shieldSprite && display._shieldSprite.visible
-          && display._spriteBody) {
-        const _bIdx = display.getChildIndex(display._spriteBody);
-        let _sIdx = display.getChildIndex(display._shieldSprite);
-        const _shTarget = _sIdx > _bIdx ? _bIdx + 1 : _bIdx;
-        if (_sIdx !== _shTarget) display.setChildIndex(display._shieldSprite, _shTarget);
-        if (display._handArmSprite && display._handArmSprite.visible) {
-          _sIdx = display.getChildIndex(display._shieldSprite);
-          const _aIdx = display.getChildIndex(display._handArmSprite);
-          if (_aIdx < _sIdx) display.setChildIndex(display._handArmSprite, _sIdx);
         }
       }
 
