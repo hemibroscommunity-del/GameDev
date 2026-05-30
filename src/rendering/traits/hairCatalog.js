@@ -13,6 +13,7 @@
 export const HAIR_CATALOG = [
   { id: 'none', name: 'None' },
   { id: 'wavy', name: 'Wavy' },
+  { id: 'long', name: 'Long' },
 ];
 
 const STORAGE_KEY = 'bt-hair';

@@ -1,0 +1,113 @@
+{
+  "category": "hair",
+  "fullFrame": true,
+  "note": "Dark-brown long center-parted hair. Sources S=32FB0477, SW=9F060988, W=E65CA1F2(->east flip), NW=IMG_8854(1254 canvas, ->northeast flip), N=6336B110. All transparent bg. Keyed out stray warm skin/amber+cream patches on S/SW/W (binary_dilation of R>165 & R-B>50 warm mask). Symmetric, 5 dirs incl north. crownNudge/scale at defaults -- tune on-device.",
+  "bboxes_source": {
+    "south": [
+      367,
+      348,
+      298,
+      278
+    ],
+    "southwest": [
+      370,
+      348,
+      298,
+      250
+    ],
+    "east": [
+      367,
+      368,
+      243,
+      235
+    ],
+    "northeast": [
+      456,
+      143,
+      305,
+      300
+    ],
+    "north": [
+      385,
+      348,
+      261,
+      246
+    ]
+  },
+  "bboxes": {
+    "south": [
+      91,
+      87,
+      76,
+      70
+    ],
+    "southwest": [
+      92,
+      87,
+      75,
+      63
+    ],
+    "east": [
+      91,
+      91,
+      62,
+      60
+    ],
+    "northeast": [
+      93,
+      29,
+      63,
+      62
+    ],
+    "north": [
+      96,
+      87,
+      66,
+      62
+    ]
+  },
+  "anchors": {
+    "south": [
+      127,
+      87
+    ],
+    "southwest": [
+      128,
+      87
+    ],
+    "east": [
+      125,
+      92
+    ],
+    "northeast": [
+      127,
+      31
+    ],
+    "north": [
+      127,
+      87
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      0
+    ],
+    "southwest": [
+      0,
+      0
+    ],
+    "east": [
+      0,
+      0
+    ],
+    "northeast": [
+      0,
+      0
+    ],
+    "north": [
+      0,
+      0
+    ]
+  }
+}
