@@ -13256,14 +13256,12 @@ export var BroTown = function BroTown(_ref0) {
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3
       }
     }, opt.id === 'none' ? /*#__PURE__*/React.createElement("div", {
-      style: { width: 34, height: 34, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' }
+      style: { width: 40, height: 40, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' }
     }) : /*#__PURE__*/React.createElement("img", {
       src: '/sprites/traits/headwear/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version,
       alt: opt.name,
-      style: { width: 34, height: 34, objectFit: 'contain', imageRendering: 'pixelated' }
-    }), /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 8, color: sel ? '#fff' : 'var(--txt)', fontWeight: 700, lineHeight: 1.15, textAlign: 'center', width: '100%', whiteSpace: 'normal', wordBreak: 'break-word', fontFamily: 'Source Sans 3,sans-serif' }
-    }, opt.name));
+      style: { width: 40, height: 40, objectFit: 'contain', imageRendering: 'pixelated' }
+    }));
   }))), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
