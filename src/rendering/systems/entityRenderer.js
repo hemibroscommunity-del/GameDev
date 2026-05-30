@@ -239,11 +239,11 @@ function _orderTraitsAndWeapon(display, facingIdx) {
       if (fhIdx !== target) display.setChildIndex(beard, target);
     }
   }
-  /* --- Weapon in front of ALL body traits on the forward-right facings
-     (E=0 / SE=1 / NE=7).  The weapon swings across the upper body there,
-     so headwear + facial hair (and any future body trait) render BEHIND
-     it.  Lift the weapon just above the highest trait sprite. */
-  if (facingIdx === 0 || facingIdx === 1 || facingIdx === 7) {
+  /* --- Weapon in front of ALL body traits on the toward-camera facings
+     (E=0 / SE=1 / S=2 / NE=7).  The weapon swings across the upper body
+     there, so headwear + facial hair + hair (and any future body trait)
+     render BEHIND it.  Lift the weapon just above the highest trait. */
+  if (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7) {
     const wc = display._weaponContainer;
     if (wc && wc.visible) {
       let ref = -1;
