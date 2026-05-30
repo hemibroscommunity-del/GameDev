@@ -13,6 +13,7 @@ export const HEADWEAR_CATALOG = [
   { id: 'old-school-helmet', name: 'Old School Helmet' },
   { id: 'top-hat', name: 'Top Hat' },
   { id: 'purple-hat', name: 'Purple Hat' },
+  { id: 'beanie', name: 'Beanie' },
 ];
 
 const STORAGE_KEY = 'bt-headwear';

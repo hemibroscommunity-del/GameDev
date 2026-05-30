@@ -1,0 +1,113 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Red beanie. Sources: S=IMG_8818, SW=IMG_8796 (detached bottom blob removed), N=IMG_8810 (bottom ghost cleaned). East built from West=IMG_8798 flipped; northeast from Northwest=IMG_8809 flipped (beanie is left-right symmetric, renderer mirrors E/NE back to W/NW). crownNudge/scale start at defaults -- tune per direction after on-device review.",
+  "bboxes_source": {
+    "south": [
+      487,
+      52,
+      272,
+      193
+    ],
+    "southwest": [
+      469,
+      40,
+      314,
+      199
+    ],
+    "north": [
+      513,
+      99,
+      231,
+      211
+    ],
+    "east": [
+      487,
+      103,
+      266,
+      199
+    ],
+    "northeast": [
+      494,
+      105,
+      241,
+      195
+    ]
+  },
+  "bboxes": {
+    "south": [
+      99,
+      10,
+      56,
+      41
+    ],
+    "southwest": [
+      95,
+      8,
+      65,
+      41
+    ],
+    "north": [
+      104,
+      20,
+      49,
+      44
+    ],
+    "east": [
+      99,
+      21,
+      55,
+      41
+    ],
+    "northeast": [
+      100,
+      21,
+      51,
+      41
+    ]
+  },
+  "anchors": {
+    "south": [
+      128,
+      10
+    ],
+    "southwest": [
+      133,
+      8
+    ],
+    "north": [
+      132,
+      22
+    ],
+    "east": [
+      122,
+      23
+    ],
+    "northeast": [
+      119,
+      23
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      0
+    ],
+    "southwest": [
+      0,
+      0
+    ],
+    "north": [
+      0,
+      0
+    ],
+    "east": [
+      0,
+      0
+    ],
+    "northeast": [
+      0,
+      0
+    ]
+  }
+}
