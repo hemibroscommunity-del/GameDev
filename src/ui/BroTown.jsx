@@ -161,6 +161,70 @@ var BUILD_ICONS = {
   mind:      '/icons/popups/spell.png',
 };
 
+/* ─── Peer damage-number smoothing (spec: smooth-peer-damage-numbers.md) ───
+   Other players' hits arrive coalesced when the watcher's socket / main
+   thread hitches: several server ticks deliver in one JS turn, so a burst
+   of floaters all get a near-identical ts and the anti-overlap stacker
+   lays them out as a vertical column ("all at once").  These give *incoming
+   peer* numbers a tiny playback buffer (the same idea as the remote-position
+   interpolation buffer) so a burst drips out at a live cadence.  The local
+   player's own numbers stay immediate -- only attackerId !== myId entries
+   enqueue, so self-feedback keeps zero latency. */
+var PEER_DMG_MIN_SPACING_MS = 80;   /* min gap between released peer numbers per source (~live attack cadence) */
+var PEER_DMG_MAX_HOLD_MS    = 600;  /* force-release a queued number after this; bounds lag (<= 1200ms float TTL) */
+var PEER_DMG_QUEUE_CAP      = 12;   /* per-source queue cap; collapse oldest beyond this */
+
+/* Stable per-source key: monsterId when the server zone gives us one, else a
+   coarse position bucket for client-local monster_dmg_at (carries only x,y). */
+function peerDmgKey(monsterId, x, y) {
+  if (monsterId !== null && monsterId !== undefined) return 'm:' + monsterId;
+  return 'p:' + Math.round((x || 0) / 24) + ':' + Math.round((y || 0) / 24);
+}
+
+function enqueuePeerDamage(S, key, floater) {
+  if (!S._peerDmgQueue) S._peerDmgQueue = {};
+  var q = (S._peerDmgQueue[key] = S._peerDmgQueue[key] || []);
+  floater.recvTs = Date.now();
+  q.push(floater);
+  /* Bound growth: collapse the oldest if one source's queue runs away
+     (sustained arrival rate > release rate). */
+  if (q.length > PEER_DMG_QUEUE_CAP) q.splice(0, q.length - PEER_DMG_QUEUE_CAP);
+}
+
+/* Drain -- called once per frame from the main loop.  Releases at most one
+   queued number per source per frame, spaced by MIN_SPACING, force-flushing
+   any head past MAX_HOLD so heavy DPS can't build an ever-growing backlog. */
+function releasePeerDamage(S, now) {
+  var Q = S._peerDmgQueue;
+  if (!Q) return;
+  /* Zone change: drop queued numbers from the previous zone so a stale
+     position never spawns into the new one.  Centralizes the clear across
+     every zone-transition path (dmgNumbers itself is never explicitly
+     cleared either -- it ages out -- so this stays in parity, just faster). */
+  if (S._peerDmgZone !== S.currentZone) {
+    S._peerDmgQueue = {};
+    S._peerDmgLastRel = {};
+    S._peerDmgZone = S.currentZone;
+    return;
+  }
+  var L = S._peerDmgLastRel || (S._peerDmgLastRel = {});
+  for (var key in Q) {
+    var q = Q[key];
+    if (!q || !q.length) continue;
+    var last = L[key] || 0;
+    var head = q[0];
+    var held = now - head.recvTs;
+    if (now - last >= PEER_DMG_MIN_SPACING_MS || held >= PEER_DMG_MAX_HOLD_MS) {
+      head.ts = now;            /* restart the float animation from release time */
+      delete head.recvTs;
+      S.dmgNumbers.push(head);
+      q.shift();
+      L[key] = now;
+    }
+    if (!q.length) delete Q[key];
+  }
+}
+
 function pushStatIncreaseNotice(R, stat, beforeMax) {
   var S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   if (!S || !S.dmgNumbers || !S.player) return;
@@ -2917,12 +2981,14 @@ export var BroTown = function BroTown(_ref0) {
                      locked the bar percentage at 100%. */
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
                   hitM._hitFlash = Date.now();
-                  /* Show damage number (skip our own — we already show it locally) */
+                  /* Show damage number (skip our own — we already show it
+                     locally).  Peer numbers go through the smoothing queue so
+                     a coalesced burst drips out at a live cadence instead of
+                     stacking into a column. */
                   if (payload.attackerId !== S.myId) {
-                    S.dmgNumbers.push({
+                    enqueuePeerDamage(S, peerDmgKey(payload.monsterId, hitM.x || hitM.renderX, hitM.y || hitM.renderY), {
                       x: hitM.x || hitM.renderX, y: (hitM.y || hitM.renderY) - 20,
-                      text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888',
-                      ts: Date.now()
+                      text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888'
                     });
                   }
                   /* Hit particles for everyone */
@@ -3388,12 +3454,13 @@ export var BroTown = function BroTown(_ref0) {
                  zones use monster_hit instead, which the handler above
                  already covers.  Drops own echoes. */
               if (payload.id === S.myId) break;
-              S.dmgNumbers.push({
+              /* Client-local peer floater -> smoothing queue (keyed by a
+                 coarse position bucket since this carries only x,y). */
+              enqueuePeerDamage(S, peerDmgKey(null, payload.x || 0, payload.y || 0), {
                 x: payload.x || 0,
                 y: (payload.y || 0) - 20,
                 text: '-' + (payload.dmg || 0),
-                color: payload.isCrit ? '#fbbf24' : '#ff8888',
-                ts: Date.now()
+                color: payload.isCrit ? '#fbbf24' : '#ff8888'
               });
               break;
             }
@@ -8639,7 +8706,11 @@ export var BroTown = function BroTown(_ref0) {
                    monster_dmg_at broadcast still fire so the hit
                    reads instantly. */
                 if (!S._serverMonsters) m.curHp -= dmg;
-                if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: dmg, isCrit: isCrit } });
+                /* Peer floater: only in client-local zones.  In server zones
+                   the worker's monster_hit is the single source of truth, so
+                   this p2p echo would double-count (smooth-peer-damage-numbers
+                   Fix B). */
+                if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: dmg, isCrit: isCrit } });
                 /* Hit-reaction sheet plays once per non-fatal hit.  Use
                    (archetype||type) so server-synced monsters without an
                    archetype field still get the reaction.  Snowman gets a
@@ -8728,7 +8799,8 @@ export var BroTown = function BroTown(_ref0) {
                   /* §5.9.6 — combo burst applies to collision damage too. */
                   collisionResult.damage = Math.round(collisionResult.damage * _comboBurst);
                   if (!S._serverMonsters) m.curHp -= collisionResult.damage;
-                  if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: collisionResult.damage, isCrit: true } });
+                  /* Client-local zones only -- server zones use monster_hit (Fix B). */
+                  if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: collisionResult.damage, isCrit: true } });
                   /* §5.9.4 Combo spread (count 2+) — propagate the consumed
                      status to the nearest enemy that doesn't already have it.
                      Sword swipe with multiple hits only spreads from the
@@ -10023,6 +10095,9 @@ export var BroTown = function BroTown(_ref0) {
         /* Expire damage numbers — in-place compaction so we don't
            allocate a fresh array (and discard the old one for GC) every
            frame.  Date.now() is hoisted out of the inner loop. */
+        /* Release any queued peer damage numbers at a live cadence before
+           the TTL prune (smooth-peer-damage-numbers.md). */
+        releasePeerDamage(S, Date.now());
         if (S.dmgNumbers && S.dmgNumbers.length) {
           var _dn = S.dmgNumbers;
           var _dnNow = Date.now();
@@ -10535,7 +10610,8 @@ export var BroTown = function BroTown(_ref0) {
                    -- arrow damage lands at its displayed value. */
                 var _arrowDmg = a.dmg;
                 if (!S._serverMonsters) m.curHp -= _arrowDmg;
-                if (S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
+                /* Client-local zones only -- server zones use monster_hit (Fix B). */
+                if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: _arrowDmg, isCrit: false } });
                 /* Hit-reaction (ranged variant) — mirrors the melee path.
                    arrowCollision bonus damage applied below uses the
                    same anim window, no need to re-trigger. */
