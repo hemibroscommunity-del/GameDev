@@ -27,23 +27,23 @@
   "crownNudge": {
     "east": [
       0,
-      -28
+      -23
     ],
     "north": [
       0,
-      -28
+      -23
     ],
     "northeast": [
       0,
-      -28
+      -23
     ],
     "south": [
       0,
-      -28
+      -23
     ],
     "southwest": [
       0,
-      -28
+      -23
     ]
   },
   "bboxes": {
