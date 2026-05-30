@@ -3286,7 +3286,10 @@ export class EntityRenderer {
           const _shNudgeX = SHIELD_NUDGE_X[facingIdx] || 0;
           const _shNudgeY = SHIELD_NUDGE_Y[facingIdx] || 0;
           shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX;
-          shieldSprite.y = -Math.sin(facingAng) * backR - 10 + _shNudgeY;
+          /* v2.3.366: add the jog bob (same bobY the weapon + held shield
+             use) so the on-back shield rises/falls with the body instead
+             of sitting bolt-still during the run. */
+          shieldSprite.y = -Math.sin(facingAng) * backR - 10 + _shNudgeY + bobY;
           /* v2.3.193: running-lean. The player sprite art shows a
              slight forward lean during jog, but the shield on back
              stayed bolt-upright -- read as the shield disconnected
