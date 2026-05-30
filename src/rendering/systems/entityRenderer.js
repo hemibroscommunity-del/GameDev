@@ -256,20 +256,6 @@ function _orderTraitsAndWeapon(display, facingIdx) {
       }
     }
   }
-  /* --- SE (1) / SW (3): lift the arm-capsule clone above the beard so the
-     swinging arm covers it.  On SE the weapon is already lifted, so the
-     arm (placed just below the weapon) lands above the beard naturally;
-     on SW the weapon stays behind the body, so the arm needs an explicit
-     lift here. */
-  if (facingIdx === 1 || facingIdx === 3) {
-    const arm = display._handArmSprite;
-    const bd = display._facialHairSprite;
-    if (arm && arm.visible && bd && bd.visible) {
-      const haIdx = display.getChildIndex(arm);
-      const bIdx = display.getChildIndex(bd);
-      if (haIdx < bIdx) display.setChildIndex(arm, bIdx);
-    }
-  }
 }
 
 /* Look up the head-box for the current pose/dir/frame.  Falls back to
@@ -2886,16 +2872,10 @@ export class EntityRenderer {
              mask anymore. v2.3.199's single-sprite approach put
              the capsule above weapon, which the user reported as
              "bamboo behind arm" during the backswing. */
-          /* v2.3.360: arm capsule also on SE (1) + SW (3) jog so the
-             swinging arm re-stamps ABOVE the beard there (the beard is a
-             separate overlay above the body, so without this the body's
-             arm reads as behind the beard).  E (0) keeps its existing
-             shield-coverage role.  Mask is the same shoulder->hand line;
-             may need per-angle tuning. */
           const useArmCapsule = handArm && armMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
-            && ((facingIdx === 0 || facingIdx === 1 || facingIdx === 3) && pose === 'jog');
+            && (facingIdx === 0 && pose === 'jog');
           if (useArmCapsule) {
             handArm.texture = _bodyRef.texture;
             handArm.x = _bodyRef.x;
