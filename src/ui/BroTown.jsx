@@ -2757,7 +2757,7 @@ export var BroTown = function BroTown(_ref0) {
           for (var _glci = 0; _glci < S.groundLoot.length; _glci++) {
             if (S.groundLoot[_glci].lootId === payload.lootId) {
               S.groundLoot[_glci]._collected = true;
-              S.groundLoot[_glci]._despawnAt = Date.now() + 800;
+              S.groundLoot[_glci]._despawnAt = Date.now() + 500;
               break;
             }
           }
@@ -9814,7 +9814,7 @@ export var BroTown = function BroTown(_ref0) {
                    the dispose after 0.75 s so the pickup animation
                    has time to play. */
                 loot._collected = true;
-                loot._despawnAt = Date.now() + 800;
+                loot._despawnAt = Date.now() + 500;
                 return true;
               }
 
@@ -9852,7 +9852,7 @@ export var BroTown = function BroTown(_ref0) {
                    the dispose after 0.75 s so the pickup animation
                    has time to play. */
                 loot._collected = true;
-                loot._despawnAt = Date.now() + 800;
+                loot._despawnAt = Date.now() + 500;
                 return true;
               }
 
@@ -9976,7 +9976,7 @@ export var BroTown = function BroTown(_ref0) {
                  that race regardless of whether the pile has a lootId. */
               /* v2.3.189: delayed despawn; see top-of-filter dispose. */
               loot._collected = true;
-              loot._despawnAt = Date.now() + 800;
+              loot._despawnAt = Date.now() + 500;
               return true; /* keep visible for 0.75 s after pickup */
             }
             return true;
