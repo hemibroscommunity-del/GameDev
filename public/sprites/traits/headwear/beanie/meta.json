@@ -109,5 +109,11 @@
       0,
       -20
     ]
+  },
+  "scale": {
+    "southwest": 0.8,
+    "north": 0.8,
+    "east": 0.8,
+    "northeast": 0.8
   }
 }
