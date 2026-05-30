@@ -49,7 +49,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.321';
+const TRAIT_VER = '2.3.362';
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -200,8 +200,17 @@ function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
 function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale) {
   _placeTrait(display._facialHairSprite, _ensureFacialHairLoaded(fhId), display, pose, dir, mirror, frameIdx, bodyScale);
 }
-function _placeHair(display, hairId, pose, dir, mirror, frameIdx, bodyScale) {
+/* True when the equipped headwear's meta declares it fully covers the
+   head (e.g. a helmet), so the hair should be tucked away rather than
+   poking out the sides. */
+function _headwearHidesHair(hatId) {
+  const entry = _ensureHeadwearLoaded(hatId);
+  return !!(entry && entry.meta && entry.meta.hidesHair);
+}
+function _placeHair(display, hairId, hatId, pose, dir, mirror, frameIdx, bodyScale) {
   _placeTrait(display._hairSprite, _ensureHairLoaded(hairId), display, pose, dir, mirror, frameIdx, bodyScale);
+  /* A full-coverage hat (helmet) hides the hair entirely. */
+  if (display._hairSprite && _headwearHidesHair(hatId)) display._hairSprite.visible = false;
 }
 
 /* v2.3.354: per-frame beard z-order.  The beard is on the face, so it
@@ -1933,7 +1942,7 @@ export class EntityRenderer {
           /* v2.3.353: and their facial hair (other.facialhair). */
           _placeFacialHair(display, other.facialhair, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.357: and their hair (other.hair). */
-          _placeHair(display, other.hair, pose, dir, mirror, frameIdx, sizeMul);
+          _placeHair(display, other.hair, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -2463,7 +2472,7 @@ export class EntityRenderer {
            player's hat id comes from the login picker. */
         _placeHeadwear(display, getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _placeFacialHair(display, getFacialHair(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeHair(display, getHair(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeHair(display, getHair(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
