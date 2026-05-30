@@ -3304,15 +3304,16 @@ export class EntityRenderer {
              East stays as-is (already reads well). */
           const _shWestRunX = (facingIdx === 4 && pose === 'jog') ? 6 : 0;
           shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX + _shWestRunX;
-          /* v2.3.369: anchor the on-back shield to the body's REAL
-             per-frame bob (the body-tops crown Y delta from the stand
-             baseline, the same signal the hair/helmet ride), instead of
-             the synthetic sine bob -- so it rises/falls exactly in sync
-             with the body during the run rather than drifting out of
-             phase (which read as "funny"). Falls back to the sine bobY if
-             body-tops haven't loaded. */
+          /* v2.3.374: anchor the on-back shield to the body's per-frame
+             bob, measured WITHIN the current pose (vs this pose's frame 0)
+             -- NOT vs the stand frame.  The jog sprites are framed ~23px
+             lower than stand, so a stand-relative delta (v2.3.369) was a
+             constant downward shift, not a bob, and it pushed the shield
+             down behind the body until it vanished.  Same-pose frame 0
+             cancels that framing offset, leaving only the ~+/-2px cycle
+             oscillation, in phase with the body.  Stand -> delta 0. */
           const _btCur = _lookupBodyTop(pose, dir, frameIdx);
-          const _btBase = _lookupBodyTop('stand', dir, 0);
+          const _btBase = _lookupBodyTop(pose, dir, 0);
           const _bodyBobY = (_btCur && _btBase)
             ? (_btCur[1] - _btBase[1]) * Math.abs(bodyScale)
             : bobY;
