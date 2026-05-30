@@ -2937,10 +2937,16 @@ export class EntityRenderer {
              mask anymore. v2.3.199's single-sprite approach put
              the capsule above weapon, which the user reported as
              "bamboo behind arm" during the backswing. */
+          /* v2.3.370: also enable the arm capsule on WEST jog.  At west
+             the weapon hand anchor IS the near (camera-side) arm, so this
+             clones the near arm -- rendered above the on-back shield below
+             so the near arm passes in FRONT of the shield while the far
+             arm (in the body, behind the in-front shield) passes behind
+             it.  E keeps its existing shield-coverage role. */
           const useArmCapsule = handArm && armMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
-            && (facingIdx === 0 && pose === 'jog');
+            && ((facingIdx === 0 || facingIdx === 4) && pose === 'jog');
           if (useArmCapsule) {
             handArm.texture = _bodyRef.texture;
             handArm.x = _bodyRef.x;
@@ -3132,6 +3138,26 @@ export class EntityRenderer {
         const targetArmIdx = haIdx > wcIdxArm ? wcIdxArm : Math.max(0, wcIdxArm - 1);
         if (haIdx !== targetArmIdx) {
           display.setChildIndex(display._handArmSprite, targetArmIdx);
+        }
+      }
+
+      /* v2.3.370: west-run shield-between-arms order.  Goal: far (right)
+         arm BEHIND the shield, near (left/weapon) arm IN FRONT of it.
+         Since both arms live in the body sprite, we put the shield just
+         in front of the body (so it covers the far arm) and the near-arm
+         clone (the arm capsule, which at west masks the weapon=near hand)
+         just above the shield.  Net: body(far arm) < shield < near arm. */
+      if (facingIdx === 4 && pose === 'jog'
+          && display._shieldSprite && display._shieldSprite.visible
+          && display._spriteBody) {
+        const _bIdx = display.getChildIndex(display._spriteBody);
+        let _sIdx = display.getChildIndex(display._shieldSprite);
+        const _shTarget = _sIdx > _bIdx ? _bIdx + 1 : _bIdx;
+        if (_sIdx !== _shTarget) display.setChildIndex(display._shieldSprite, _shTarget);
+        if (display._handArmSprite && display._handArmSprite.visible) {
+          _sIdx = display.getChildIndex(display._shieldSprite);
+          const _aIdx = display.getChildIndex(display._handArmSprite);
+          if (_aIdx < _sIdx) display.setChildIndex(display._handArmSprite, _sIdx);
         }
       }
 
