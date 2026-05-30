@@ -1,0 +1,93 @@
+{
+  "category": "facialhair",
+  "fullFrame": true,
+  "note": "Brown full beard. Sources S=IMG_8826, SW=IMG_8827, W=IMG_8828(->east flipped), NW=48A1494D(white bg keyed, ->northeast flipped). Symmetric. NO north view (back of head hides beard). Chin-anchored overlay -- crownNudge needs a large +Y to drop the beard from head-crown to chin once render path is wired.",
+  "bboxes_source": {
+    "south": [
+      505,
+      315,
+      215,
+      225
+    ],
+    "southwest": [
+      481,
+      293,
+      228,
+      235
+    ],
+    "east": [
+      599,
+      262,
+      174,
+      250
+    ],
+    "northeast": [
+      637,
+      291,
+      97,
+      149
+    ]
+  },
+  "bboxes": {
+    "south": [
+      103,
+      64,
+      44,
+      47
+    ],
+    "southwest": [
+      98,
+      60,
+      47,
+      48
+    ],
+    "east": [
+      122,
+      53,
+      36,
+      52
+    ],
+    "northeast": [
+      130,
+      59,
+      20,
+      31
+    ]
+  },
+  "anchors": {
+    "south": [
+      126,
+      67
+    ],
+    "southwest": [
+      121,
+      61
+    ],
+    "east": [
+      137,
+      62
+    ],
+    "northeast": [
+      139,
+      76
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      0
+    ],
+    "southwest": [
+      0,
+      0
+    ],
+    "east": [
+      0,
+      0
+    ],
+    "northeast": [
+      0,
+      0
+    ]
+  }
+}
