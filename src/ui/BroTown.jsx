@@ -13232,7 +13232,7 @@ export var BroTown = function BroTown(_ref0) {
       alt: opt.name,
       style: { width: 34, height: 34, objectFit: 'contain', imageRendering: 'pixelated' }
     }), /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 8, color: sel ? '#fff' : 'var(--txt)', fontWeight: 700, lineHeight: 1.1, textAlign: 'center', maxWidth: 52, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'Source Sans 3,sans-serif' }
+      style: { fontSize: 8, color: sel ? '#fff' : 'var(--txt)', fontWeight: 700, lineHeight: 1.15, textAlign: 'center', width: '100%', whiteSpace: 'normal', wordBreak: 'break-word', fontFamily: 'Source Sans 3,sans-serif' }
     }, opt.name));
   }))), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
