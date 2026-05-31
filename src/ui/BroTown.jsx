@@ -2478,8 +2478,8 @@ export var BroTown = function BroTown(_ref0) {
               S.map = generateZoneMap(S.currentZone);
               S.monsters = [];
               S.gatherNodes = [];
-              S.player.x = 16 * TILE;
-              S.player.y = 16 * TILE;
+              S.player.x = (ZONES[S.currentZone] ? ZONES[S.currentZone].w / 2 : 16) * TILE;
+              S.player.y = (ZONES[S.currentZone] ? ZONES[S.currentZone].h / 2 : 16) * TILE;
               S.respawnTimer = Date.now() + 3000;
               S._deathStart = 0;
               S._dying = false;
@@ -3425,8 +3425,8 @@ export var BroTown = function BroTown(_ref0) {
                   S.map = generateZoneMap('town');
                   S.monsters = []; /* Town has no monsters */
                   S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
-                  S.player.x = 16 * TILE;
-                  S.player.y = 16 * TILE;
+                  S.player.x = 32 * TILE;
+                  S.player.y = 32 * TILE;
                   S.respawnTimer = Date.now() + 3000;
                   S._deathStart = 0;
                   S._dying = false;
@@ -5385,8 +5385,8 @@ export var BroTown = function BroTown(_ref0) {
             try { S.map = generateZoneMap('town'); } catch (e) {}
             S.monsters = [];
             S.gatherNodes = []; /* Town is safe -- no harvestable resources; clear stale entries from the previous zone */
-            P.x = 16 * TILE;
-            P.y = 16 * TILE;
+            P.x = 32 * TILE;
+            P.y = 32 * TILE;
             P.vx = 0; P.vy = 0;
             S.respawnTimer = Date.now() + 3000;
             S._dying = false;
@@ -5879,7 +5879,7 @@ export var BroTown = function BroTown(_ref0) {
             else if (entryDir === 'nw')    { P.x = twnWX;   P.y = twnNX;   }
             else if (entryDir === 'se')    { P.x = twnEX;   P.y = twnSX;   }
             else if (entryDir === 'sw')    { P.x = twnWX;   P.y = twnSX;   }
-            else                            { P.x = 16 * TILE; P.y = 16 * TILE; }
+            else                            { P.x = 32 * TILE; P.y = 32 * TILE; }
             S._enteredFromDir = null;
             S.dmgNumbers.push({
               x: P.x,
@@ -8393,8 +8393,8 @@ export var BroTown = function BroTown(_ref0) {
                       S.map = generateZoneMap('town');
                       S.monsters = []; /* Town has no monsters */
                       S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
-                      P.x = 16 * TILE;
-                      P.y = 16 * TILE;
+                      P.x = 32 * TILE;
+                      P.y = 32 * TILE;
                       P.vx = 0; P.vy = 0;
                       S.respawnTimer = Date.now() + respawnMs;
                       S._dying = false;

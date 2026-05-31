@@ -33,7 +33,7 @@ export const IMAGE_ZONE_MAPS = {
      is gone.  town_v8.jpg fallback for blocked-autoplay; animated
      overlay through VIDEO_ZONE_MAPS.town below.  Bump suffix on next
      change to bust browser/CDN caches. */
-  town:    '/maps/town_v10.jpg',
+  town:    '/maps/town_v11.jpg',
   frost:   '/maps/frost_v4.jpg',
   meadow:  '/maps/meadow_v5.jpg',
   thunder: '/maps/thunder_v4.jpg',

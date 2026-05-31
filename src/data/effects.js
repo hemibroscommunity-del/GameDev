@@ -253,13 +253,15 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
    Layout (clockwise from NW): Ice, Floral, Lightning, Water,
    Poison, Rock, Lava, Wind. Returning from any zone respawns
    at the same extreme. */
+/* v2.3.384: tx/ty scaled to the 64x64 town grid (mid edge 16->32, far
+   edge 31->63). */
 export const TOWN_EXITS = [
   { zoneId: 'frost',   tx: 0,  ty: 0,  dir: 'nw',    label: '↖ Frozen Shore',  color: ELEMENTS.frost.color },
-  { zoneId: 'meadow',  tx: 16, ty: 0,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
-  { zoneId: 'thunder', tx: 31, ty: 0,  dir: 'ne',    label: 'Thunder Peaks ↗', color: ELEMENTS.storm.color },
-  { zoneId: 'tidal',   tx: 31, ty: 16, dir: 'east',  label: 'Tidal Caves →',   color: ELEMENTS.water.color },
-  { zoneId: 'mist',    tx: 31, ty: 31, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
-  { zoneId: 'hollows', tx: 16, ty: 31, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
-  { zoneId: 'ember',   tx: 0,  ty: 31, dir: 'sw',    label: '↙ Ember Fields',  color: ELEMENTS.flame.color },
-  { zoneId: 'sky',     tx: 0,  ty: 16, dir: 'west',  label: '← Desert Winds',  color: ELEMENTS.wind.color },
+  { zoneId: 'meadow',  tx: 32, ty: 0,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
+  { zoneId: 'thunder', tx: 63, ty: 0,  dir: 'ne',    label: 'Thunder Peaks ↗', color: ELEMENTS.storm.color },
+  { zoneId: 'tidal',   tx: 63, ty: 32, dir: 'east',  label: 'Tidal Caves →',   color: ELEMENTS.water.color },
+  { zoneId: 'mist',    tx: 63, ty: 63, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
+  { zoneId: 'hollows', tx: 32, ty: 63, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
+  { zoneId: 'ember',   tx: 0,  ty: 63, dir: 'sw',    label: '↙ Ember Fields',  color: ELEMENTS.flame.color },
+  { zoneId: 'sky',     tx: 0,  ty: 32, dir: 'west',  label: '← Desert Winds',  color: ELEMENTS.wind.color },
 ];
