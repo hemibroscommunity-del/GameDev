@@ -34,6 +34,7 @@ import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, genera
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
+import { SKIN_CATALOG, getSkin, setSkin } from '@/rendering/playerSkins.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
@@ -1278,6 +1279,9 @@ export var BroTown = function BroTown(_ref0) {
   var _hairSelState = useState(getHair()),
     hairSel = _hairSelState[0],
     setHairSel = _hairSelState[1];
+  var _skinSelState = useState(getSkin()),
+    skinSel = _skinSelState[0],
+    setSkinSel = _skinSelState[1];
   var nftCatalogRef = useRef(null); /* cached CSV data [{ID,Image,...}] */
   var _useState203 = useState('#2563eb'),
     _useState204 = _slicedToArray(_useState203, 2),
@@ -1813,6 +1817,7 @@ export var BroTown = function BroTown(_ref0) {
             hw: getHeadwear(),
             fh: getFacialHair(),
             hr: getHair(),
+            sk: getSkin(),
             bs: S.bodySize || 'slim',
             /* Bootstrap fields for server-authoritative coins / inventory
                / lifeSkills.  Used only on a player's FIRST connection
@@ -2112,6 +2117,7 @@ export var BroTown = function BroTown(_ref0) {
                   headwear: _data.hw || null,
                   facialhair: _data.fh || null,
                   hair: _data.hr || null,
+                  skin: _data.sk || null,
                   rpgLv: _data.rpgLv || 1,
                   rpgHp: _data.rpgHp || 50,
                   rpgMaxHp: _data.rpgMaxHp || 50,
@@ -2663,6 +2669,7 @@ export var BroTown = function BroTown(_ref0) {
                 headwear: (msg.data && msg.data.hw) || null,
                 facialhair: (msg.data && msg.data.fh) || null,
                 hair: (msg.data && msg.data.hr) || null,
+                skin: (msg.data && msg.data.sk) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
                 rpgHp: ((_msg$data1 = msg.data) === null || _msg$data1 === void 0 ? void 0 : _msg$data1.rpgHp) || 50,
                 rpgMaxHp: ((_msg$data10 = msg.data) === null || _msg$data10 === void 0 ? void 0 : _msg$data10.rpgMaxHp) || 50,
@@ -10321,6 +10328,7 @@ export var BroTown = function BroTown(_ref0) {
                 hw: getHeadwear(),
                 fh: getFacialHair(),
                 hr: getHair(),
+                sk: getSkin(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,
                 rpgHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.hp) || 50,
                 rpgMaxHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.maxHp) || 50,
@@ -13395,6 +13403,29 @@ export var BroTown = function BroTown(_ref0) {
       src: '/sprites/traits/hair/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version,
       alt: opt.name,
       style: { width: 40, height: 40, objectFit: 'contain', imageRendering: 'pixelated' }
+    }));
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: { width: '100%', marginTop: 4, marginBottom: 2 }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { fontSize: 10, color: 'var(--pop)', fontWeight: 800, letterSpacing: '.1em', marginBottom: 6, textAlign: 'center', fontFamily: 'Source Sans 3,sans-serif' }
+  }, "SKIN"), /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }
+  }, SKIN_CATALOG.map(function (opt) {
+    var sel = skinSel === opt.id;
+    return /*#__PURE__*/React.createElement("button", {
+      key: opt.id,
+      type: 'button',
+      onClick: function onClick() { setSkin(opt.id); setSkinSel(opt.id); },
+      title: opt.name,
+      style: {
+        width: 58, padding: '5px 4px 4px',
+        background: sel ? 'var(--pop)' : 'var(--ink3)',
+        border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
+        borderRadius: 9, cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { width: 40, height: 40, borderRadius: '50%', background: opt.swatch, border: '2px solid var(--line)', boxSizing: 'border-box' }
     }));
   }))), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
