@@ -28,7 +28,7 @@ export function headwearIsSolid(id) {
 }
 
 const STORAGE_KEY = 'bt-headwear';
-let _active = 'old-school-helmet';
+let _active = 'none';
 try {
   const saved = typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY);
   if (saved) _active = saved;

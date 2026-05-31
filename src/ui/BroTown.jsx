@@ -1301,10 +1301,10 @@ export var BroTown = function BroTown(_ref0) {
   var _shoesSelState = useState(getShoes()),
     shoesSel = _shoesSelState[0],
     setShoesSel = _shoesSelState[1];
-  /* Which appearance category is open in the login picker. */
-  var _apTabState = useState('skin'),
-    appearanceTab = _apTabState[0],
-    setAppearanceTab = _apTabState[1];
+  /* Which appearance-picker categories are expanded (collapsed by default). */
+  var _apExpState = useState({}),
+    expanded = _apExpState[0],
+    setExpanded = _apExpState[1];
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection changes so the player sees their choices before
      pressing Play. */
@@ -1345,27 +1345,45 @@ export var BroTown = function BroTown(_ref0) {
       ? /*#__PURE__*/React.createElement("div", { style: { width: sz - 14, height: sz - 14, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
       : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }));
   };
-  /* Category pill: the category label sits on the LEFT spanning the full
-     height, and the right side stacks one or two sub-rows (style on top,
-     color underneath, split by a divider).  Both sub-rows branch off the
-     single left label.  `rows` is an array of tile-arrays (1 row for
-     color-only categories, 2 for style + color). */
-  var _apPill = function (label, rows) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: label, style: { display: 'flex', alignItems: 'stretch', width: '100%', marginBottom: 7,
-        border: '1.5px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.12)', boxSizing: 'border-box' }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: { width: 52, flex: '0 0 auto', display: 'flex', alignItems: 'center', padding: '0 8px',
-        fontSize: 10, fontWeight: 800, color: '#c2c2d2', letterSpacing: '.04em', fontFamily: 'Source Sans 3,sans-serif',
-        borderRight: '1.5px solid var(--line)', background: 'var(--ink3)' }
-    }, label), /*#__PURE__*/React.createElement("div", {
-      style: { flex: '1 1 auto', display: 'flex', flexDirection: 'column', minWidth: 0 }
-    }, rows.map(function (kids, i) {
-      return /*#__PURE__*/React.createElement("div", {
-        key: i, style: { display: 'flex', alignItems: 'center', gap: 5, overflowX: 'auto', padding: '4px 6px',
-          borderTop: i > 0 ? '1px solid var(--line)' : 'none' }
-      }, kids);
-    })));
+  /* Collapsed-pill previews (non-interactive). */
+  var _swOf = function (cat, id) { var e = cat.find(function (o) { return o.id === id; }); return (e && e.swatch) || '#888'; };
+  var _miniThumb = function (cat, id) {
+    return id === 'none'
+      ? /*#__PURE__*/React.createElement("div", { key: 'mt', style: { width: 26, height: 26, borderRadius: '50%', border: '1.5px dashed var(--line)', flex: '0 0 auto' } })
+      : /*#__PURE__*/React.createElement("img", { key: 'mt', src: '/sprites/traits/' + cat + '/' + id + '/thumb.png?v=' + BUILD_INFO.version, alt: '', style: { width: 30, height: 30, objectFit: 'contain', imageRendering: 'pixelated', flex: '0 0 auto' } });
+  };
+  var _miniSwatch = function (sw) {
+    return /*#__PURE__*/React.createElement("div", { key: 'ms', style: { width: 22, height: 22, borderRadius: 5, background: sw, border: '1px solid rgba(0,0,0,0.35)', flex: '0 0 auto' } });
+  };
+  var _chevron = function (open) {
+    return /*#__PURE__*/React.createElement("span", { key: 'cv', style: open
+      ? { width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #9090a8', flex: '0 0 auto' }
+      : { width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderLeft: '5px solid #9090a8', flex: '0 0 auto' } });
+  };
+  var _pillBox = { display: 'flex', alignItems: 'stretch', width: '100%', marginBottom: 6,
+    border: '1.5px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.12)', boxSizing: 'border-box' };
+  var _pillLabel = { width: 60, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+    padding: '0 8px', fontSize: 10, fontWeight: 800, color: '#c2c2d2', letterSpacing: '.04em', fontFamily: 'Source Sans 3,sans-serif',
+    borderRight: '1.5px solid var(--line)', background: 'var(--ink3)', textAlign: 'left' };
+  /* Category pill -- COLLAPSED by default: the right side shows the current
+     selection; tapping the pill (or its label) expands it to reveal all
+     choices (style on top, color below).  Label spans the left, full height.
+     `optionRows` = expanded-state tile-arrays; `summary` = collapsed preview. */
+  var _apPill = function (catKey, label, optionRows, summary) {
+    var open = !!expanded[catKey];
+    var toggle = function () { setExpanded(function (p) { var n = Object.assign({}, p); n[catKey] = !p[catKey]; return n; }); };
+    var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb' }, label), _chevron(open)];
+    if (open) {
+      return /*#__PURE__*/React.createElement("div", { key: catKey, style: _pillBox },
+        /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillLabel, { cursor: 'pointer', borderTop: 'none', borderBottom: 'none', borderLeft: 'none' }) }, labelKids),
+        /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', flexDirection: 'column', minWidth: 0 } },
+          optionRows.map(function (kids, i) {
+            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', gap: 5, overflowX: 'auto', padding: '4px 6px', borderTop: i > 0 ? '1px solid var(--line)' : 'none' } }, kids);
+          })));
+    }
+    return /*#__PURE__*/React.createElement("button", { key: catKey, type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0 }) },
+      /*#__PURE__*/React.createElement("div", { style: _pillLabel }, labelKids),
+      /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary));
   };
   var randomizeAppearance = function () {
     var rpick = function (c) { return c[Math.floor(Math.random() * c.length)].id; };
@@ -13459,12 +13477,12 @@ export var BroTown = function BroTown(_ref0) {
   }), /*#__PURE__*/React.createElement("div", {
     style: { width: '100%', marginTop: 8 }
   },
-  _apPill('HAT', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); })] : [])),
-  _apPill('HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [HAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : [])),
-  _apPill('BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })] : [])),
-  _apPill('SKIN', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })]),
-  _apPill('PANTS', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })]),
-  _apPill('SHOES', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })]),
+  _apPill('hat', 'HAT', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
+  _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [HAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
+  _apPill('beard', 'BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
+  _apPill('skin', 'SKIN', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
+  _apPill('pants', 'PANTS', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
+  _apPill('shoes', 'SHOES', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))]),
   /*#__PURE__*/React.createElement("button", {
     type: 'button', onClick: randomizeAppearance,
     style: { width: '100%', padding: '7px', marginTop: 6, cursor: 'pointer', borderRadius: 8,
