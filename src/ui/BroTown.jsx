@@ -1348,11 +1348,11 @@ export var BroTown = function BroTown(_ref0) {
   var _apDivider = function () {
     return /*#__PURE__*/React.createElement("div", { key: 'div', style: { width: 1, alignSelf: 'stretch', minHeight: 22, background: 'var(--line)', flex: '0 0 auto', margin: '0 3px' } });
   };
-  var _apRow = function (label, kids) {
+  var _apRow = function (label, kids, rowKey, tight) {
     return /*#__PURE__*/React.createElement("div", {
-      key: label, style: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 5 }
+      key: rowKey || label, style: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: tight ? 2 : 7 }
     }, /*#__PURE__*/React.createElement("span", {
-      style: { width: 44, flex: '0 0 auto', fontSize: 10, fontWeight: 800, color: '#9090a8', textAlign: 'left', letterSpacing: '.03em', fontFamily: 'Source Sans 3,sans-serif' }
+      style: { width: 44, flex: '0 0 auto', fontSize: 10, fontWeight: 800, color: label === 'color' ? '#6a6a7a' : '#9090a8', textAlign: 'left', letterSpacing: '.03em', fontFamily: 'Source Sans 3,sans-serif' }
     }, label), /*#__PURE__*/React.createElement("div", {
       style: { display: 'flex', alignItems: 'center', gap: 5, overflowX: 'auto', flex: '1 1 auto', padding: '2px 0' }
     }, kids));
@@ -13449,9 +13449,12 @@ export var BroTown = function BroTown(_ref0) {
   }), /*#__PURE__*/React.createElement("div", {
     style: { width: '100%', marginTop: 8 }
   },
-  _apRow('HAT', HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); }).concat(headwearSel !== 'none' ? [_apDivider()].concat(HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); })) : [])),
-  _apRow('HAIR', HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); }).concat(hairSel !== 'none' ? [_apDivider()].concat(HAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })) : [])),
-  _apRow('BEARD', FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); }).concat(facialHairSel !== 'none' ? [_apDivider()].concat(FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })) : [])),
+  _apRow('HAT', HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); }), undefined, headwearSel !== 'none'),
+  headwearSel !== 'none' && _apRow('color', HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); }), 'hatcolor'),
+  _apRow('HAIR', HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); }), undefined, hairSel !== 'none'),
+  hairSel !== 'none' && _apRow('color', HAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); }), 'haircolor'),
+  _apRow('BEARD', FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); }), undefined, facialHairSel !== 'none'),
+  facialHairSel !== 'none' && _apRow('color', FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); }), 'beardcolor'),
   _apRow('SKIN', SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })),
   _apRow('PANTS', PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })),
   _apRow('SHOES', SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })),

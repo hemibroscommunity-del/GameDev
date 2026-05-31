@@ -20,7 +20,7 @@ import { SPRITE_VERSION } from './playerSprites.js';
 
 const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
-const TRAIT_VER = '2.3.389';            // cache-bust for body-tops.json (matches entityRenderer)
+const TRAIT_VER = '2.3.403';            // cache-bust for body-tops.json (matches entityRenderer)
 
 /* ── tiny async caches ── */
 const _imgCache = new Map();            // url -> Promise<HTMLImageElement>
@@ -156,11 +156,13 @@ export async function drawCharacterPortrait(canvas, opts) {
   ]);
 
   ctx.clearRect(0, 0, FRAME, FRAME);
-  /* Zoom the whole figure ~12% (centered high so the head/hat stays in
-     frame and the boots reach the bottom) to fill the preview window
-     better -- the raw sheet leaves wide empty margins. */
+  /* Zoom the figure to fill the preview window, then shift it DOWN a touch.
+     The southwest sprite sits higher in the frame (crown ~y21 vs south's
+     ~y33), so a tall top-hat clipped the top -- a modest zoom (1.06) plus a
+     10px downward offset gives the hat headroom while the boots still show. */
   ctx.save();
-  const Z = 1.12, ZCX = FRAME / 2, ZCY = 64;
+  const Z = 1.06, ZCX = FRAME / 2, ZCY = 64, YOFF = 10;
+  ctx.translate(0, YOFF);
   ctx.translate(ZCX, ZCY);
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
@@ -186,7 +188,7 @@ export async function drawCharacterPortrait(canvas, opts) {
 
 /* Head-and-shoulders crop box (in the zoomed 256 output) for the profile
    picture -- centered on the face, tall enough to clear a top-hat. */
-const HEAD_CROP = { x: 80, y: 4, s: 96 };
+const HEAD_CROP = { x: 80, y: 16, s: 96 };
 
 /** Convenience: render a portrait to a fresh canvas and return its PNG data
  *  URL.  `headshot` returns a square head-and-shoulders crop (for the
