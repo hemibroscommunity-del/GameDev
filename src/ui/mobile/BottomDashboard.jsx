@@ -6,8 +6,9 @@ import { portraitDataUrl } from '../../rendering/characterPortrait.js';
 import { getSkin, onSkinChange } from '../../rendering/playerSkins.js';
 import { getHair, onHairChange } from '../../rendering/traits/hairCatalog.js';
 import { getHairColor, hairColorTarget, onHairColorChange } from '../../rendering/traits/hairColorCatalog.js';
+import { getHatColor, hatColorTarget, onHatColorChange } from '../../rendering/traits/hatColorCatalog.js';
 import { getFacialHair } from '../../rendering/traits/facialHairCatalog.js';
-import { getHeadwear } from '../../rendering/traits/headwearCatalog.js';
+import { getHeadwear, onHeadwearChange } from '../../rendering/traits/headwearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { weaponSwapBus } from './weaponSwapBus.js';
 import { InventoryPanel, ItemTile }    from './dash/InventoryPanel.jsx';
@@ -442,11 +443,12 @@ export const BottomDashboard = () => {
     const regen = () => {
       portraitDataUrl({
         skin: getSkin(), hair: getHair(), hairColor: hairColorTarget(getHairColor()),
-        facialHair: getFacialHair(), headwear: getHeadwear(),
+        facialHair: getFacialHair(), headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor()),
       }, true).then(url => { if (alive && url) setProfilePortrait(url); });
     };
     regen();
-    const unsubs = [onSkinChange(regen), onHairChange(regen), onHairColorChange(regen)];
+    const unsubs = [onSkinChange(regen), onHairChange(regen), onHairColorChange(regen),
+      onHeadwearChange(regen), onHatColorChange(regen)];
     return () => { alive = false; unsubs.forEach(u => u && u()); };
   }, []);
   /* Native non-passive touchmove preventDefault on the dashboard.

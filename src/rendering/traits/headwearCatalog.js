@@ -8,13 +8,24 @@
  *   2. Add one { id, name } entry to HEADWEAR_CATALOG below.
  * That's it -- the login picker and the renderer both read from here.
  */
+/* `solid: true` marks a single-color hat whose whole sprite can be
+   retinted to a chosen color without wrecking an accent (the recolor is a
+   brightness-ratio retint of every opaque pixel).  Multi-color hats
+   (top-hat's band, helmet's stripe) are left off so their accents stay
+   intact -- they show no hat-color picker. */
 export const HEADWEAR_CATALOG = [
   { id: 'none', name: 'None' },
   { id: 'old-school-helmet', name: 'Old School Helmet' },
   { id: 'top-hat', name: 'Top Hat' },
-  { id: 'purple-hat', name: 'Purple Hat' },
-  { id: 'beanie', name: 'Beanie' },
+  { id: 'purple-hat', name: 'Purple Hat', solid: true },
+  { id: 'beanie', name: 'Beanie', solid: true },
 ];
+
+/** True if the hat can be recolored (single-color design). */
+export function headwearIsSolid(id) {
+  const e = HEADWEAR_CATALOG.find(h => h.id === id);
+  return !!(e && e.solid);
+}
 
 const STORAGE_KEY = 'bt-headwear';
 let _active = 'old-school-helmet';

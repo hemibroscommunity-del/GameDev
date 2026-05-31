@@ -147,7 +147,7 @@ function renderTraitCanvas(traitImg, meta, crown) {
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, hair, hairColor, facialHair, headwear } = opts || {};
+  const { skin, hair, hairColor, facialHair, headwear, hatColor } = opts || {};
   canvas.width = FRAME; canvas.height = FRAME;
   const ctx = canvas.getContext('2d');
 
@@ -198,7 +198,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     ctx.drawImage(hairCv, 0, 0);
   }
   if (fhImg && fhMeta) placeTrait(ctx, fhImg, fhMeta, crown);
-  if (hwImg && hwMeta) placeTrait(ctx, hwImg, hwMeta, crown);
+  if (hwImg && hwMeta) placeTrait(ctx, hatColor ? recolorHairToCanvas(hwImg, hatColor) : hwImg, hwMeta, crown);
   ctx.restore();
 }
 
