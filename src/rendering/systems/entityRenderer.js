@@ -23,6 +23,7 @@ import { getHair } from '../traits/hairCatalog.js';
 import { getSkin, getSkinnedFrame } from '../playerSkins.js';
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
+import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -213,8 +214,14 @@ function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx,
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
   _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
 }
-function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale) {
-  _placeTrait(display._facialHairSprite, _ensureFacialHairLoaded(fhId), display, pose, dir, mirror, frameIdx, bodyScale);
+function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx, bodyScale) {
+  const baseEntry = _ensureFacialHairLoaded(fhId);
+  /* v2.3.395: retint the beard to the selected color (recolored textures
+     reuse the base meta; fall back to native color while they bake). */
+  let entry = baseEntry;
+  const colored = getColoredFacialHairTextures(fhId, fhColorId);
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
+  _placeTrait(display._facialHairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
 }
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
@@ -2020,7 +2027,7 @@ export class EntityRenderer {
              is their selected hat id, broadcast over the network. */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.353: and their facial hair (other.facialhair). */
-          _placeFacialHair(display, other.facialhair, pose, dir, mirror, frameIdx, sizeMul);
+          _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.357: and their hair (other.hair). */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
         } else {
@@ -2555,7 +2562,7 @@ export class EntityRenderer {
            _placeHeadwear helper (used by remote players too).  Local
            player's hat id comes from the login picker. */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeFacialHair(display, getFacialHair(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
 
         /* v2.3.265: combined-trait overlay disabled while sticker
