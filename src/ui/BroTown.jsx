@@ -5627,30 +5627,17 @@ export var BroTown = function BroTown(_ref0) {
         var ptx = Math.floor(P.x / TILE),
           pty = Math.floor(P.y / TILE);
 
-        /* In town: reaching any edge finds the nearest exit and transitions */
-        if (S.currentZone === 'town' && (pty <= 0 || pty >= _zone.h - 1 || ptx <= 0 || ptx >= _zone.w - 1)) {
-          /* Find closest town exit to player position. 8 directions:
-             cardinal (N/E/S/W) match their respective edge; diagonals
-             (NE/NW/SE/SW) match either of the two adjacent edges so
-             walking off near a corner grabs the corner exit. Distance
-             is manhattan to the exit tile. */
-          var onN = pty <= 0, onS = pty >= _zone.h - 1;
-          var onE = ptx >= _zone.w - 1, onW = ptx <= 0;
+        /* v2.3.387: town exits are PROXIMITY zones on the painted
+           path-ends (the pink markers), not the map edge.  Transition when
+           the player walks within TOWN_EXIT_R tiles (manhattan) of an exit
+           marker.  Nearest marker wins if two overlap. */
+        if (S.currentZone === 'town') {
+          var TOWN_EXIT_R = 2;
           var bestExit = null,
             bestDist = Infinity;
           TOWN_EXITS.forEach(function (ex) {
-            var edgeMatch = false;
-            if (ex.dir === 'north' && onN) edgeMatch = true;
-            if (ex.dir === 'south' && onS) edgeMatch = true;
-            if (ex.dir === 'east'  && onE) edgeMatch = true;
-            if (ex.dir === 'west'  && onW) edgeMatch = true;
-            if (ex.dir === 'ne' && (onN || onE)) edgeMatch = true;
-            if (ex.dir === 'nw' && (onN || onW)) edgeMatch = true;
-            if (ex.dir === 'se' && (onS || onE)) edgeMatch = true;
-            if (ex.dir === 'sw' && (onS || onW)) edgeMatch = true;
-            if (!edgeMatch) return;
             var d = Math.abs(ptx - ex.tx) + Math.abs(pty - ex.ty);
-            if (d < bestDist) {
+            if (d <= TOWN_EXIT_R && d < bestDist) {
               bestDist = d;
               bestExit = ex;
             }
@@ -5865,21 +5852,22 @@ export var BroTown = function BroTown(_ref0) {
             /* Spawn at the same town extreme you originally left from
                — 8 directions including diagonals so corner-exit zones
                return you to the same corner. */
+            /* v2.3.387: return to town just INSIDE the exit marker you
+               left from -- offset 4 tiles toward the hub center so you land
+               on the path clear of the proximity trigger (else you'd warp
+               straight back out). */
             var twn2 = ZONES.town;
             var entryDir = S._enteredFromDir || 'north';
-            var twnMidX = Math.floor(twn2.w / 2) * TILE;
-            var twnMidY = Math.floor(twn2.h / 2) * TILE;
-            var twnNX = TILE * 3, twnSX = (twn2.h - 3) * TILE;
-            var twnEX = (twn2.w - 3) * TILE, twnWX = TILE * 3;
-            if (entryDir === 'north')      { P.x = twnMidX; P.y = twnNX;   }
-            else if (entryDir === 'south') { P.x = twnMidX; P.y = twnSX;   }
-            else if (entryDir === 'east')  { P.x = twnEX;   P.y = twnMidY; }
-            else if (entryDir === 'west')  { P.x = twnWX;   P.y = twnMidY; }
-            else if (entryDir === 'ne')    { P.x = twnEX;   P.y = twnNX;   }
-            else if (entryDir === 'nw')    { P.x = twnWX;   P.y = twnNX;   }
-            else if (entryDir === 'se')    { P.x = twnEX;   P.y = twnSX;   }
-            else if (entryDir === 'sw')    { P.x = twnWX;   P.y = twnSX;   }
-            else                            { P.x = 24 * TILE; P.y = 24 * TILE; }
+            var _rcx = twn2.w / 2, _rcy = twn2.h / 2;
+            var _rex = TOWN_EXITS.find(function (e) { return e.dir === entryDir; });
+            if (_rex) {
+              var _rdx = _rcx - _rex.tx, _rdy = _rcy - _rex.ty;
+              var _rlen = Math.max(0.001, Math.sqrt(_rdx * _rdx + _rdy * _rdy));
+              P.x = (_rex.tx + _rdx / _rlen * 4) * TILE;
+              P.y = (_rex.ty + _rdy / _rlen * 4) * TILE;
+            } else {
+              P.x = _rcx * TILE; P.y = _rcy * TILE;
+            }
             S._enteredFromDir = null;
             S.dmgNumbers.push({
               x: P.x,

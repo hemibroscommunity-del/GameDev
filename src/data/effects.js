@@ -253,15 +253,16 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
    Layout (clockwise from NW): Ice, Floral, Lightning, Water,
    Poison, Rock, Lava, Wind. Returning from any zone respawns
    at the same extreme. */
-/* v2.3.384: tx/ty scaled to the 64x64 town grid (mid edge 16->24, far
-   edge 31->47). */
+/* v2.3.387: tx/ty are now PROXIMITY trigger tiles placed on the painted
+   path-ends (the pink markers on the town map), not edge cells -- the town
+   exit logic switched from "reach the edge" to "walk near the marker". */
 export const TOWN_EXITS = [
-  { zoneId: 'frost',   tx: 0,  ty: 0,  dir: 'nw',    label: '↖ Frozen Shore',  color: ELEMENTS.frost.color },
-  { zoneId: 'meadow',  tx: 24, ty: 0,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
-  { zoneId: 'thunder', tx: 47, ty: 0,  dir: 'ne',    label: 'Thunder Peaks ↗', color: ELEMENTS.storm.color },
-  { zoneId: 'tidal',   tx: 47, ty: 24, dir: 'east',  label: 'Tidal Caves →',   color: ELEMENTS.water.color },
-  { zoneId: 'mist',    tx: 47, ty: 47, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
-  { zoneId: 'hollows', tx: 24, ty: 47, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
-  { zoneId: 'ember',   tx: 0,  ty: 47, dir: 'sw',    label: '↙ Ember Fields',  color: ELEMENTS.flame.color },
-  { zoneId: 'sky',     tx: 0,  ty: 24, dir: 'west',  label: '← Desert Winds',  color: ELEMENTS.wind.color },
+  { zoneId: 'frost',   tx: 7,  ty: 7,  dir: 'nw',    label: '↖ Frozen Shore',  color: ELEMENTS.frost.color },
+  { zoneId: 'meadow',  tx: 25, ty: 7,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
+  { zoneId: 'thunder', tx: 41, ty: 9,  dir: 'ne',    label: 'Thunder Peaks ↗', color: ELEMENTS.storm.color },
+  { zoneId: 'tidal',   tx: 45, ty: 27, dir: 'east',  label: 'Tidal Caves →',   color: ELEMENTS.water.color },
+  { zoneId: 'mist',    tx: 40, ty: 45, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
+  { zoneId: 'hollows', tx: 22, ty: 45, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
+  { zoneId: 'ember',   tx: 3,  ty: 45, dir: 'sw',    label: '↙ Ember Fields',  color: ELEMENTS.flame.color },
+  { zoneId: 'sky',     tx: 4,  ty: 27, dir: 'west',  label: '← Desert Winds',  color: ELEMENTS.wind.color },
 ];
