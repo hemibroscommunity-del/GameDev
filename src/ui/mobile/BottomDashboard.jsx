@@ -2,6 +2,12 @@
 import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
+import { portraitDataUrl } from '../../rendering/characterPortrait.js';
+import { getSkin, onSkinChange } from '../../rendering/playerSkins.js';
+import { getHair, onHairChange } from '../../rendering/traits/hairCatalog.js';
+import { getHairColor, hairColorTarget, onHairColorChange } from '../../rendering/traits/hairColorCatalog.js';
+import { getFacialHair } from '../../rendering/traits/facialHairCatalog.js';
+import { getHeadwear } from '../../rendering/traits/headwearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { weaponSwapBus } from './weaponSwapBus.js';
 import { InventoryPanel, ItemTile }    from './dash/InventoryPanel.jsx';
@@ -426,6 +432,23 @@ export const BottomDashboard = () => {
     return () => clearInterval(id);
   }, []);
   useEffect(() => dashboardPanelBus.subscribe(() => force(v => v + 1)), []);
+  /* Player-card portrait: a head-and-shoulders render of the player's
+     chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
+     on mount (captures the login picker) and regenerated if a cosmetic
+     changes.  Falls back to the NFT avatar, then the static icon. */
+  const [profilePortrait, setProfilePortrait] = useState('');
+  useEffect(() => {
+    let alive = true;
+    const regen = () => {
+      portraitDataUrl({
+        skin: getSkin(), hair: getHair(), hairColor: hairColorTarget(getHairColor()),
+        facialHair: getFacialHair(), headwear: getHeadwear(),
+      }, true).then(url => { if (alive && url) setProfilePortrait(url); });
+    };
+    regen();
+    const unsubs = [onSkinChange(regen), onHairChange(regen), onHairColorChange(regen)];
+    return () => { alive = false; unsubs.forEach(u => u && u()); };
+  }, []);
   /* Native non-passive touchmove preventDefault on the dashboard.
      Stops iOS from interpreting an upward swipe over the bars/buttons
      as a page pan -- which previously caused the dashboard area to
@@ -578,7 +601,7 @@ export const BottomDashboard = () => {
           justifyContent: 'center',
         }}>
           <img
-            src="/icons/ui/profile.webp?v=2.3.128"
+            src={(S && S.myAvatar) || profilePortrait || '/icons/ui/profile.webp?v=2.3.128'}
             alt="Portrait"
             draggable={false}
             style={{

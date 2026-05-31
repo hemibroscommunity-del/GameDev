@@ -177,13 +177,23 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.restore();
 }
 
+/* Head-and-shoulders crop box (in the zoomed 256 output) for the profile
+   picture -- centered on the face, tall enough to clear a top-hat. */
+const HEAD_CROP = { x: 80, y: 4, s: 96 };
+
 /** Convenience: render a portrait to a fresh canvas and return its PNG data
- *  URL (for the profile picture).  Returns '' on failure. */
-export async function portraitDataUrl(opts) {
+ *  URL.  `headshot` returns a square head-and-shoulders crop (for the
+ *  top-right profile picture); otherwise the full figure.  Returns '' on
+ *  failure. */
+export async function portraitDataUrl(opts, headshot) {
   try {
     const cv = document.createElement('canvas');
     await drawCharacterPortrait(cv, opts);
-    return cv.toDataURL('image/png');
+    if (!headshot) return cv.toDataURL('image/png');
+    const out = document.createElement('canvas');
+    out.width = HEAD_CROP.s; out.height = HEAD_CROP.s;
+    out.getContext('2d').drawImage(cv, HEAD_CROP.x, HEAD_CROP.y, HEAD_CROP.s, HEAD_CROP.s, 0, 0, HEAD_CROP.s, HEAD_CROP.s);
+    return out.toDataURL('image/png');
   } catch (e) {
     return '';
   }
