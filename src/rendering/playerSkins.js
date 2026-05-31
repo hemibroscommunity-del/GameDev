@@ -101,8 +101,14 @@ const SHOES_REF = 75;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
-/* combo key `${skin}/${pants}/${shoes}` -> manifest | 'loading' | null(none) */
-const _bodyManifests = {};
+/* v2.3.407: recolor LAZILY, one sheet at a time, keyed
+   `${skin}/${pants}/${shoes}|${pose}/${dir}` -> [Texture] | 'loading'.  The
+   old version baked all ~21 sheets up front the first time a custom-appearance
+   player rendered -- a big synchronous canvas pass (each jog sheet is
+   13056x256) that froze the main thread at spawn and left the 2D procedural
+   fallback on screen.  Now only the (pose,dir) actually drawn gets recolored,
+   on demand, so cost is spread and the freeze is gone. */
+const _bodySheets = {};
 
 function _retint(d, i, target, ref) {
   const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
@@ -144,48 +150,34 @@ function loadImg(url) {
   });
 }
 
-function buildBodyManifest(key, skinT, pantsT, shoesT) {
-  _bodyManifests[key] = 'loading';
-  const man = { stand: {}, jog: {}, hit: {}, pickup: {}, attack: {} };
-  const tasks = [];
-  for (const pose of POSES) {
-    for (const dir of SOURCE_DIRS) {
-      if (pose === 'pickup' && dir !== 'south') continue;
-      tasks.push((async () => {
-        try {
-          const img = await loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}`);
-          const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT);
-          const src = Texture.from(cv).source;
-          src.scaleMode = 'linear';
-          src.autoGenerateMipmaps = true;
-          const frames = Math.max(1, Math.floor(cv.width / FRAME_W));
-          const out = [];
-          for (let i = 0; i < frames; i++) {
-            out.push(new Texture({ source: src, frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H) }));
-          }
-          man[pose][dir] = out;
-        } catch (e) { /* sheet missing -- caller falls back */ }
-      })());
+function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT) {
+  _bodySheets[sheetKey] = 'loading';
+  loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}`).then(img => {
+    const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT);
+    const src = Texture.from(cv).source;
+    src.scaleMode = 'linear';
+    src.autoGenerateMipmaps = true;
+    const frames = Math.max(1, Math.floor(cv.width / FRAME_W));
+    const out = [];
+    for (let i = 0; i < frames; i++) {
+      out.push(new Texture({ source: src, frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H) }));
     }
-  }
-  return Promise.all(tasks).then(() => { _bodyManifests[key] = man; });
+    _bodySheets[sheetKey] = out;
+  }).catch(() => { _bodySheets[sheetKey] = []; /* missing -> caller falls back */ });
 }
 
 /** Recolored body frame for (skin, pants, shoes, pose, dir, frameIdx).  Falls
- *  back to the default sheets when nothing is recolored or while a combo is
- *  still baking, so the player is never invisible.  Mirroring is handled by
- *  the caller (scale.x), same as getFrame. */
+ *  back to the default sheets when nothing is recolored or while a sheet is
+ *  still baking, so the player is never invisible.  Each (pose,dir) sheet is
+ *  recolored lazily on first use.  Mirroring is handled by the caller. */
 export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   if (!skinT && !pantsT && !shoesT) return getFrame(pose, dir, frameIdx);
-  const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default');
-  const man = _bodyManifests[key];
-  if (man === undefined) { buildBodyManifest(key, skinT, pantsT, shoesT); return getFrame(pose, dir, frameIdx); }
-  if (man === 'loading' || !man) return getFrame(pose, dir, frameIdx);
-  const set = man[pose] && man[pose][dir];
-  if (!set || set.length === 0) return getFrame(pose, dir, frameIdx);
-  const safeIdx = ((frameIdx % set.length) + set.length) % set.length;
-  return set[safeIdx];
+  const sheetKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '/' + dir;
+  const entry = _bodySheets[sheetKey];
+  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT); return getFrame(pose, dir, frameIdx); }
+  if (entry === 'loading' || !entry.length) return getFrame(pose, dir, frameIdx);
+  return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
 /** Back-compat wrapper (skin only). */
