@@ -1950,7 +1950,16 @@ export class EntityRenderer {
          the diagonal idle pose carries through (otherwise it would
          snap back to the broadcast 4-cardinal). */
       let facing;
-      if (isMoving) {
+      if (other._renderFacing) {
+        /* v2.3.396: the sender's actual rendered facing, broadcast over the
+           network -- authoritative, so a remote player faces exactly as they
+           do on their own screen (including aim / standing turns).  Previously
+           the facing was reconstructed from movement, which was wrong whenever
+           the sender's facing came from aim rather than motion -- the reported
+           "back-to-camera shows as facing-camera" mirror. */
+        facing = other._renderFacing;
+        display._lastFacing = facing;
+      } else if (isMoving) {
         const ang = Math.atan2(other._smoothVy || 0, other._smoothVx || 0);
         const sector = Math.round(ang / (Math.PI / 4));
         facing = SECTORS[((sector % 8) + 8) % 8];
@@ -1997,9 +2006,12 @@ export class EntityRenderer {
              player's v2.3.165 +25% change.
              v2.3.166: halved again (0.625 -> 0.3125) for 128 -> 256
              source bump.  Net visible scale unchanged from v2.3.165. */
-          let sizeMul = 0.3125;
-        if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.3125;
-        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.3125;
+          /* v2.3.396: match the local player's LOCAL_SCALE (0.3515625).
+             The remote base had drifted to 0.3125 (~11% smaller), so other
+             players rendered noticeably smaller than yourself. */
+          let sizeMul = 0.3515625;
+        if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.3515625;
+        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.3515625;
           /* v2.3.164: matching per-direction stand-pose bumps from the
              local player path.  v2.3.167: extended to jog too. */
           if (pose === 'stand' || pose === 'jog') {
@@ -2415,6 +2427,11 @@ export class EntityRenderer {
     } else {
       facing = S._facing || 'south';
     }
+    /* v2.3.396: publish the ACTUAL rendered facing (8-way compass) so the
+       network broadcast can send it and remote clients render the same
+       facing -- they previously reconstructed it from movement, which is
+       wrong whenever a standing player's facing came from aim, not motion. */
+    S._renderFacing = facing;
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
     /* v2.3.188: pickup pose during the loot-pickup freeze.  Takes
        priority over hit because the freeze already blocks combat.

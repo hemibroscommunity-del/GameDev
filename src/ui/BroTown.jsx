@@ -31,7 +31,7 @@ import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loa
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { HEADWEAR_CATALOG, getHeadwear, setHeadwear, headwearIsSolid } from '@/rendering/traits/headwearCatalog.js';
+import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
 import { SKIN_CATALOG, getSkin, setSkin } from '@/rendering/playerSkins.js';
@@ -2000,6 +2000,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.others[pid]._serverX = data.x;
                     S.others[pid]._serverY = data.y;
                     S.others[pid].dir = data.d;
+                    if (data.f) S.others[pid]._renderFacing = data.f;
                     S.others[pid].zone = data.z;
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
@@ -10345,8 +10346,13 @@ export var BroTown = function BroTown(_ref0) {
         /* Broadcast position — slim payload for speed */
         var now = performance.now();
         var isMoving = dx || dy || S._dodgeRoll;
-        if (now - S.lastBroadcast > 33 && isMoving) {
+        /* v2.3.396: also broadcast when the facing changes while standing
+           (turning to aim without moving) so remote clients see the turn --
+           the move payload now carries the true rendered facing (f). */
+        var _facingChanged = S._renderFacing && S._renderFacing !== S._lastBroadcastFacing;
+        if (now - S.lastBroadcast > 33 && (isMoving || _facingChanged)) {
           S.lastBroadcast = now;
+          S._lastBroadcastFacing = S._renderFacing;
           if (S.channel) {
             if (S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 33)) {
               S._lastMoveBroadcast = Date.now();
@@ -10365,6 +10371,7 @@ export var BroTown = function BroTown(_ref0) {
                   x: Math.round(P.x * 10) / 10,
                   y: Math.round(P.y * 10) / 10,
                   d: P.dir,
+                  f: S._renderFacing || null,
                   z: S.currentZone || 'town',
                   vx: Math.round(bcastVx * 100),
                   vy: Math.round(bcastVy * 100)
@@ -13415,7 +13422,7 @@ export var BroTown = function BroTown(_ref0) {
    ? /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minHeight: 58 } },
        /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' } },
          HEADWEAR_CATALOG.map(function (o) { return _apThumbBtn('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })),
-       headwearIsSolid(headwearSel) && /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, borderTop: '1px solid var(--line)', paddingTop: 8, width: '100%' } },
+       headwearSel !== 'none' && /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, borderTop: '1px solid var(--line)', paddingTop: 8, width: '100%' } },
          /*#__PURE__*/React.createElement("div", { style: { fontSize: 9, color: '#9090a8', fontWeight: 800, letterSpacing: '.12em', fontFamily: 'Source Sans 3,sans-serif' } }, "HAT COLOR"),
          /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' } },
            HAT_COLOR_CATALOG.map(function (o) { return _apSwatchBtn(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); }))))
