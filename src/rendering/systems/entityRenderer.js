@@ -1971,14 +1971,18 @@ export class EntityRenderer {
       } else {
         facing = display._lastFacing || other._facing || 'south';
       }
-      /* v2.3.400: remote facing arrives consistently inverted on the vertical
-         (back<->front) axis -- confirmed after two derivation rewrites
-         (broadcast facing, then position delta), so the inversion is intrinsic
-         to the remote data path, not the derivation.  Flip the vertical
-         component here as the direct fix; east/west are unaffected.  Body and
-         traits both read this `facing`, so they stay aligned. */
-      const _VFLIP = { north: 'south', south: 'north', northeast: 'southeast', southeast: 'northeast', northwest: 'southwest', southwest: 'northwest' };
-      facing = _VFLIP[facing] || facing;
+      /* v2.3.401: remote facing arrives fully inverted (180 deg) -- the vertical
+         flip in v2.3.400 fixed back/front, and left/right needed the same, so
+         the whole thing is rotated 180.  Map each direction to its opposite.
+         Confirmed empirically after two derivation rewrites; the inversion is
+         intrinsic to the remote data path.  Body + traits read this `facing`,
+         so they stay aligned. */
+      const _OPP = {
+        north: 'south', south: 'north', east: 'west', west: 'east',
+        northeast: 'southwest', southwest: 'northeast',
+        northwest: 'southeast', southeast: 'northwest',
+      };
+      facing = _OPP[facing] || facing;
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
       const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
