@@ -3,7 +3,7 @@ import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBl
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
-import { getSkin, onSkinChange } from '../../rendering/playerSkins.js';
+import { getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../../rendering/playerSkins.js';
 import { getHair, onHairChange } from '../../rendering/traits/hairCatalog.js';
 import { getHairColor, hairColorTarget, onHairColorChange } from '../../rendering/traits/hairColorCatalog.js';
 import { getHatColor, hatColorTarget, onHatColorChange } from '../../rendering/traits/hatColorCatalog.js';
@@ -443,14 +443,16 @@ export const BottomDashboard = () => {
     let alive = true;
     const regen = () => {
       portraitDataUrl({
-        skin: getSkin(), hair: getHair(), hairColor: hairColorTarget(getHairColor()),
+        skin: getSkin(), pants: getPants(), shoes: getShoes(),
+        hair: getHair(), hairColor: hairColorTarget(getHairColor()),
         facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
         headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor()),
       }, true).then(url => { if (alive && url) setProfilePortrait(url); });
     };
     regen();
     const unsubs = [onSkinChange(regen), onHairChange(regen), onHairColorChange(regen),
-      onHeadwearChange(regen), onHatColorChange(regen), onFacialHairColorChange(regen)];
+      onHeadwearChange(regen), onHatColorChange(regen), onFacialHairColorChange(regen),
+      onPantsChange(regen), onShoesChange(regen)];
     return () => { alive = false; unsubs.forEach(u => u && u()); };
   }, []);
   /* Native non-passive touchmove preventDefault on the dashboard.

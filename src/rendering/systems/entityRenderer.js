@@ -20,7 +20,7 @@ import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
 import { getHair } from '../traits/hairCatalog.js';
-import { getSkin, getSkinnedFrame } from '../playerSkins.js';
+import { getSkin, getPants, getShoes, getBodyFrame } from '../playerSkins.js';
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
@@ -1990,9 +1990,10 @@ export class EntityRenderer {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
         }
-        /* v2.3.389: remote players render in their own skin tone. */
-        let tex = getSkinnedFrame(other.skin, pose, dir, frameIdx);
-        if (!tex) tex = getSkinnedFrame(other.skin, 'stand', dir, 0);
+        /* v2.3.389: remote players render in their own skin tone.
+           v2.3.399: + their pants / shoes colors. */
+        let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx);
+        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0);
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
              the local player path, fixes invisible-after-zone-change. */
@@ -2529,9 +2530,10 @@ export class EntityRenderer {
       _ensureFacialHairLoaded(getFacialHair());
       _ensureHairLoaded(getHair());
       /* v2.3.389: recolor the bare skin to the selected tone (preserving
-         shading) -- falls back to the default sheets internally. */
-      let tex = getSkinnedFrame(getSkin(), pose, dir, frameIdx);
-      if (!tex) tex = getSkinnedFrame(getSkin(), 'stand', dir, 0);
+         shading) -- falls back to the default sheets internally.
+         v2.3.399: + pants / shoes colors. */
+      let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
+      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0);
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body
          share frame-coords so they move together pixel-perfect. */

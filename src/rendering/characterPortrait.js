@@ -15,7 +15,7 @@
  * sheet is hair-only, so no region isolation is needed).
  */
 
-import { skinTarget } from './playerSkins.js';
+import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import { SPRITE_VERSION } from './playerSprites.js';
 
 const FRAME = 256;
@@ -58,29 +58,9 @@ function loadBodyTops() {
   return _bodyTopsPromise;
 }
 
-/* ── recolor helpers (return a 256-canvas) ── */
-function recolorBody(img, skinId) {
-  const cv = document.createElement('canvas');
-  cv.width = img.width; cv.height = img.height;
-  const ctx = cv.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0);
-  const target = skinTarget(skinId);
-  if (!target) return cv;                 // default skin: no recolor
-  const data = ctx.getImageData(0, 0, cv.width, cv.height);
-  const d = data.data, tr = target[0], tg = target[1], tb = target[2];
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-    if (a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25) {
-      const k = (0.299 * r + 0.587 * g + 0.114 * b) / DEFAULT_LIT_LUM;
-      d[i] = Math.min(255, Math.round(tr * k));
-      d[i + 1] = Math.min(255, Math.round(tg * k));
-      d[i + 2] = Math.min(255, Math.round(tb * k));
-    }
-  }
-  ctx.putImageData(data, 0, 0);
-  return cv;
-}
-
+/* ── recolor helpers (return a 256-canvas) ──
+   Body (skin + pants + shoes) reuses playerSkins.recolorBodyToCanvas so the
+   preview matches the in-game recolor exactly. */
 export function recolorHairToCanvas(img, hairColor) {
   const cv = document.createElement('canvas');
   cv.width = img.width; cv.height = img.height;
@@ -147,7 +127,7 @@ function renderTraitCanvas(traitImg, meta, crown) {
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, hair, hairColor, facialHair, facialHairColor, headwear, hatColor } = opts || {};
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor } = opts || {};
   canvas.width = FRAME; canvas.height = FRAME;
   const ctx = canvas.getContext('2d');
 
@@ -182,7 +162,7 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.translate(ZCX, ZCY);
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
-  ctx.drawImage(recolorBody(bodyImg, skin), 0, 0);
+  ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes)), 0, 0);
   if (hairImg && hairMeta) {
     /* Render hair to its own canvas so it can be clipped to the hat's
        silhouette mask (same as the in-game _clipHairToHat) before

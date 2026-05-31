@@ -34,7 +34,7 @@ import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, genera
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
-import { SKIN_CATALOG, getSkin, setSkin } from '@/rendering/playerSkins.js';
+import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants, setPants, getShoes, setShoes } from '@/rendering/playerSkins.js';
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor, hairColorTarget } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, getHatColor, setHatColor, hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
@@ -1295,7 +1295,13 @@ export var BroTown = function BroTown(_ref0) {
   var _beardColorSelState = useState(getFacialHairColor()),
     beardColorSel = _beardColorSelState[0],
     setBeardColorSel = _beardColorSelState[1];
-  /* Which appearance tab is open in the login picker. */
+  var _pantsSelState = useState(getPants()),
+    pantsSel = _pantsSelState[0],
+    setPantsSel = _pantsSelState[1];
+  var _shoesSelState = useState(getShoes()),
+    shoesSel = _shoesSelState[0],
+    setShoesSel = _shoesSelState[1];
+  /* Which appearance category is open in the login picker. */
   var _apTabState = useState('skin'),
     appearanceTab = _apTabState[0],
     setAppearanceTab = _apTabState[1];
@@ -1306,48 +1312,53 @@ export var BroTown = function BroTown(_ref0) {
   useEffect(function () {
     if (!previewCanvasRef.current) return;
     drawCharacterPortrait(previewCanvasRef.current, {
-      skin: skinSel, hair: hairSel, hairColor: hairColorTarget(hairColorSel),
+      skin: skinSel, pants: pantsSel, shoes: shoesSel,
+      hair: hairSel, hairColor: hairColorTarget(hairColorSel),
       facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
       headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
     });
-  }, [skinSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel]);
-  /* All-in-one appearance cyclers: one compact row per attribute so every
-     selection is visible at once and you can flip through each in place
-     (prev/next) -- easier to try combinations than tabbing between them. */
-  var _apArrow = function (glyph, onClick) {
-    return /*#__PURE__*/React.createElement("button", {
-      type: 'button', onClick: onClick,
-      style: { width: 26, height: 26, flex: '0 0 auto', borderRadius: 7, cursor: 'pointer',
-        background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
-        fontSize: 14, fontWeight: 800, lineHeight: '1', padding: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center' }
-    }, glyph);
+  }, [skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel]);
+  /* Category picker: a tab per category, then a SCROLLING GRID of icon tiles
+     for that category (thumbnails for styles, color chips for colors) -- so it
+     scales to any number of items.  Style categories show their color grid as
+     a second, smaller grid in the same panel (color is part of the item, not a
+     separate top-level entry). */
+  var _apTileStyle = function (sel, size) {
+    return { width: size, height: size, flex: '0 0 auto', padding: 3, cursor: 'pointer', boxSizing: 'border-box',
+      borderRadius: 9, background: sel ? 'var(--pop)' : 'var(--ink3)',
+      border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
-  var _apCycler = function (label, catalog, curId, onSet, kind, cat) {
-    var idx = catalog.findIndex(function (o) { return o.id === curId; });
-    if (idx < 0) idx = 0;
-    var cur = catalog[idx];
-    var cycle = function (dir) { onSet(catalog[(idx + dir + catalog.length) % catalog.length].id); };
-    var valueInner = kind === 'color'
-      ? [/*#__PURE__*/React.createElement("span", { key: 's', style: { width: 16, height: 16, borderRadius: '50%', background: cur.swatch, border: '1.5px solid var(--line)', flex: '0 0 auto' } }),
-         /*#__PURE__*/React.createElement("span", { key: 'n', style: { fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' } }, cur.name)]
-      : [cur.id === 'none'
-          ? /*#__PURE__*/React.createElement("span", { key: 't', style: { width: 20, height: 20, borderRadius: '50%', border: '1.5px dashed var(--line)', flex: '0 0 auto' } })
-          : /*#__PURE__*/React.createElement("img", { key: 't', src: '/sprites/traits/' + cat + '/' + cur.id + '/thumb.png?v=' + BUILD_INFO.version, alt: cur.name, style: { width: 24, height: 24, objectFit: 'contain', imageRendering: 'pixelated', flex: '0 0 auto' } }),
-         /*#__PURE__*/React.createElement("span", { key: 'n', style: { fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' } }, cur.name)];
+  var _swatchTile = function (opt, selId, onSet, size) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: opt.id, type: 'button', title: opt.name,
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(selId === opt.id, size || 38)
+    }, /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 6, background: opt.swatch, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } }));
+  };
+  var _thumbTile = function (cat, opt, selId, onSet) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: opt.id, type: 'button', title: opt.name,
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(selId === opt.id, 54)
+    }, opt.id === 'none'
+      ? /*#__PURE__*/React.createElement("div", { style: { width: 38, height: 38, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
+      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }));
+  };
+  var _apGrid = function (children, maxH) {
     return /*#__PURE__*/React.createElement("div", {
-      key: label, style: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '3px 0' }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: { fontSize: 10, color: '#9090a8', fontWeight: 800, letterSpacing: '.06em', width: 82, flex: '0 0 auto', textAlign: 'left', fontFamily: 'Source Sans 3,sans-serif' }
-    }, label), /*#__PURE__*/React.createElement("div", {
-      style: { display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 auto', justifyContent: 'space-between' }
-    }, _apArrow('<', function () { cycle(-1); }), /*#__PURE__*/React.createElement("div", {
-      style: { display: 'flex', alignItems: 'center', gap: 7, flex: '1 1 auto', justifyContent: 'center', minWidth: 0 }
-    }, valueInner), _apArrow('>', function () { cycle(1); })));
+      style: { display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', alignContent: 'flex-start',
+        maxHeight: maxH || 130, overflowY: 'auto', width: '100%', padding: '2px 2px 4px', boxSizing: 'border-box' }
+    }, children);
+  };
+  var _apSubLabel = function (txt) {
+    return /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 9, color: '#9090a8', fontWeight: 800, letterSpacing: '.12em', fontFamily: 'Source Sans 3,sans-serif', margin: '4px 0 2px' }
+    }, txt);
   };
   var randomizeAppearance = function () {
     var rpick = function (c) { return c[Math.floor(Math.random() * c.length)].id; };
     var sk = rpick(SKIN_CATALOG); setSkin(sk); setSkinSel(sk);
+    var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt);
+    var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh);
     var hr = rpick(HAIR_CATALOG); setHair(hr); setHairSel(hr);
     var hcc = rpick(HAIR_COLOR_CATALOG); setHairColor(hcc); setHairColorSel(hcc);
     var bd = rpick(FACIALHAIR_CATALOG); setFacialHair(bd); setFacialHairSel(bd);
@@ -1894,6 +1905,8 @@ export var BroTown = function BroTown(_ref0) {
             hc: getHairColor(),
             htc: getHatColor(),
             fhc: getFacialHairColor(),
+            pt: getPants(),
+            sh: getShoes(),
             bs: S.bodySize || 'slim',
             /* Bootstrap fields for server-authoritative coins / inventory
                / lifeSkills.  Used only on a player's FIRST connection
@@ -2198,6 +2211,8 @@ export var BroTown = function BroTown(_ref0) {
                   hairColor: _data.hc || null,
                   hatColor: _data.htc || null,
                   facialHairColor: _data.fhc || null,
+                  pants: _data.pt || null,
+                  shoes: _data.sh || null,
                   rpgLv: _data.rpgLv || 1,
                   rpgHp: _data.rpgHp || 50,
                   rpgMaxHp: _data.rpgMaxHp || 50,
@@ -2753,6 +2768,8 @@ export var BroTown = function BroTown(_ref0) {
                 hairColor: (msg.data && msg.data.hc) || null,
                 hatColor: (msg.data && msg.data.htc) || null,
                 facialHairColor: (msg.data && msg.data.fhc) || null,
+                pants: (msg.data && msg.data.pt) || null,
+                shoes: (msg.data && msg.data.sh) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
                 rpgHp: ((_msg$data1 = msg.data) === null || _msg$data1 === void 0 ? void 0 : _msg$data1.rpgHp) || 50,
                 rpgMaxHp: ((_msg$data10 = msg.data) === null || _msg$data10 === void 0 ? void 0 : _msg$data10.rpgMaxHp) || 50,
@@ -10421,6 +10438,8 @@ export var BroTown = function BroTown(_ref0) {
                 hc: getHairColor(),
                 htc: getHatColor(),
                 fhc: getFacialHairColor(),
+                pt: getPants(),
+                sh: getShoes(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,
                 rpgHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.hp) || 50,
                 rpgMaxHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.maxHp) || 50,
@@ -13426,20 +13445,39 @@ export var BroTown = function BroTown(_ref0) {
     }
   }), /*#__PURE__*/React.createElement("div", {
     style: { width: '100%', marginTop: 8 }
-  }, /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', gap: 4, justifyContent: 'center', marginBottom: 8, flexWrap: 'wrap' }
+  }, [['skin', 'Skin'], ['hair', 'Hair'], ['beard', 'Beard'], ['hat', 'Hat'], ['pants', 'Pants'], ['shoes', 'Shoes']].map(function (t) {
+    var active = appearanceTab === t[0];
+    return /*#__PURE__*/React.createElement("button", {
+      key: t[0], type: 'button', onClick: function () { setAppearanceTab(t[0]); },
+      style: { padding: '5px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer',
+        background: active ? 'var(--pop)' : 'var(--ink3)', color: active ? '#fff' : 'var(--txt)',
+        border: active ? '1.5px solid #fff' : '1.5px solid var(--line)', borderRadius: 8,
+        fontFamily: 'Source Sans 3,sans-serif', letterSpacing: '.03em' }
+    }, t[1]);
+  })),
+  appearanceTab === 'skin' ? _apGrid(SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); }))
+  : appearanceTab === 'pants' ? _apGrid(PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); }))
+  : appearanceTab === 'shoes' ? _apGrid(SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); }))
+  : appearanceTab === 'hair' ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      _apGrid(HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })),
+      hairSel !== 'none' && _apSubLabel('COLOR'),
+      hairSel !== 'none' && _apGrid(HAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, 32); }), 84))
+  : appearanceTab === 'beard' ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      _apGrid(FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })),
+      facialHairSel !== 'none' && _apSubLabel('COLOR'),
+      facialHairSel !== 'none' && _apGrid(FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, 32); }), 84))
+  : /*#__PURE__*/React.createElement(React.Fragment, null,
+      _apGrid(HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })),
+      headwearSel !== 'none' && _apSubLabel('COLOR'),
+      headwearSel !== 'none' && _apGrid(HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, 32); }), 84)),
+  /*#__PURE__*/React.createElement("button", {
     type: 'button', onClick: randomizeAppearance,
-    style: { width: '100%', padding: '7px', marginBottom: 8, cursor: 'pointer', borderRadius: 8,
+    style: { width: '100%', padding: '7px', marginTop: 8, cursor: 'pointer', borderRadius: 8,
       background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       fontSize: 11, fontWeight: 800, letterSpacing: '.08em', fontFamily: 'Source Sans 3,sans-serif' }
-  }, "RANDOMIZE"),
-  _apCycler('SKIN', SKIN_CATALOG, skinSel, function (id) { setSkin(id); setSkinSel(id); }, 'color'),
-  _apCycler('HAIR', HAIR_CATALOG, hairSel, function (id) { setHair(id); setHairSel(id); }, 'thumb', 'hair'),
-  hairSel !== 'none' && _apCycler('HAIR COLOR', HAIR_COLOR_CATALOG, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, 'color'),
-  _apCycler('BEARD', FACIALHAIR_CATALOG, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }, 'thumb', 'facialhair'),
-  facialHairSel !== 'none' && _apCycler('BEARD COLOR', FACIALHAIR_COLOR_CATALOG, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, 'color'),
-  _apCycler('HAT', HEADWEAR_CATALOG, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }, 'thumb', 'headwear'),
-  headwearSel !== 'none' && _apCycler('HAT COLOR', HAT_COLOR_CATALOG, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, 'color')
-  ), /*#__PURE__*/React.createElement("button", {
+  }, "RANDOMIZE")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
       marginTop: 12,
