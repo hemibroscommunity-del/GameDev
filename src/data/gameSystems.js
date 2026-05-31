@@ -2550,40 +2550,16 @@ export function generateZoneMap(zoneId) {
         if (fx >= 0 && fx < W && fy >= 0 && fy < H && map[fy][fx] === 0) map[fy][fx] = 5;
       }
     });
-    /* Exit paths — wider paths leading to zone edges */
+    /* v2.3.388: exit portal markers (type 8) at each exit's tile -- the
+       painted path-ends marked on the town art -- for ALL 8 exits incl.
+       diagonals (previously only the 4 cardinals got a marker, placed at
+       the map edge).  A 2x2 block makes the pulsing portal glow read as a
+       circle over the path.  The procedural exit PATHS are dropped: the
+       town renders the painted image, which already shows the paths. */
     TOWN_EXITS.forEach(function (ex) {
-      if (ex.dir === 'north') for (var _y = 0; _y < MY; _y++) {
-        map[_y][ex.tx] = 1;
-        map[_y][ex.tx + 1] = 1;
-      }
-      if (ex.dir === 'south') for (var _y2 = MY; _y2 < H; _y2++) {
-        map[_y2][ex.tx] = 1;
-        map[_y2][ex.tx + 1] = 1;
-      }
-      if (ex.dir === 'east') for (var _x = MX; _x < W; _x++) {
-        map[ex.ty][_x] = 1;
-        map[ex.ty + 1][_x] = 1;
-      }
-      if (ex.dir === 'west') for (var _x2 = 0; _x2 < MX; _x2++) {
-        map[ex.ty][_x2] = 1;
-        map[ex.ty + 1][_x2] = 1;
-      }
-      /* Exit marker tile (type 8 = exit) */
-      if (ex.dir === 'north') {
-        map[0][ex.tx] = 8;
-        map[0][ex.tx + 1] = 8;
-      }
-      if (ex.dir === 'south') {
-        map[H - 1][ex.tx] = 8;
-        map[H - 1][ex.tx + 1] = 8;
-      }
-      if (ex.dir === 'east') {
-        map[ex.ty][W - 1] = 8;
-        map[ex.ty + 1][W - 1] = 8;
-      }
-      if (ex.dir === 'west') {
-        map[ex.ty][0] = 8;
-        map[ex.ty + 1][0] = 8;
+      for (var _my = -1; _my <= 0; _my++) for (var _mx = -1; _mx <= 0; _mx++) {
+        var _ry = ex.ty + _my, _rx = ex.tx + _mx;
+        if (_ry >= 0 && _ry < H && _rx >= 0 && _rx < W) map[_ry][_rx] = 8;
       }
     });
     /* Scattered trees */
