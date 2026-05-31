@@ -93,14 +93,14 @@ export function recolorHairToCanvas(img, hairColor) {
 }
 
 /* Place one trait sprite (already recolored if needed) onto ctx using the
-   stand/south meta math.  Mirrors entityRenderer._placeTrait. */
-function placeTrait(ctx, traitImg, meta, crown) {
-  if (!traitImg || !meta || !meta.fullFrame || !meta.anchors || !meta.anchors.south) return;
-  const anchor = meta.anchors.south;
-  const cn = (meta.crownNudge && meta.crownNudge.south) || [0, 0];
-  const pn = (meta.poseNudge && meta.poseNudge.stand && meta.poseNudge.stand.south) || [0, 0];
-  const sc = (meta.scale && meta.scale.south) || 1;
-  const sbp = (meta.scaleByPose && meta.scaleByPose.stand && meta.scaleByPose.stand.south) || 1;
+   stand/<dir> meta math.  Mirrors entityRenderer._placeTrait. */
+function placeTrait(ctx, traitImg, meta, crown, dir) {
+  if (!traitImg || !meta || !meta.fullFrame || !meta.anchors || !meta.anchors[dir]) return;
+  const anchor = meta.anchors[dir];
+  const cn = (meta.crownNudge && meta.crownNudge[dir]) || [0, 0];
+  const pn = (meta.poseNudge && meta.poseNudge.stand && meta.poseNudge.stand[dir]) || [0, 0];
+  const sc = (meta.scale && meta.scale[dir]) || 1;
+  const sbp = (meta.scaleByPose && meta.scaleByPose.stand && meta.scaleByPose.stand[dir]) || 1;
   const dscale = sc * sbp;
   const tx = crown[0] + cn[0] + pn[0];
   const ty = crown[1] + cn[1] + pn[1];
@@ -114,10 +114,10 @@ function placeTrait(ctx, traitImg, meta, crown) {
 
 /* Render one trait to its own native FRAME canvas (used for hair so it can
    be mask-clipped before compositing). */
-function renderTraitCanvas(traitImg, meta, crown) {
+function renderTraitCanvas(traitImg, meta, crown, dir) {
   const cv = document.createElement('canvas');
   cv.width = FRAME; cv.height = FRAME;
-  placeTrait(cv.getContext('2d'), traitImg, meta, crown);
+  placeTrait(cv.getContext('2d'), traitImg, meta, crown, dir);
   return cv;
 }
 
@@ -131,26 +131,28 @@ export async function drawCharacterPortrait(canvas, opts) {
   canvas.width = FRAME; canvas.height = FRAME;
   const ctx = canvas.getContext('2d');
 
+  /* Preview/profile angle: southwest 3/4 view (per user request). */
+  const DIR = 'southwest';
   const bodyTops = await loadBodyTops();
-  const crown = (bodyTops && bodyTops['stand-south-0']) || [FRAME / 2, 33];
+  const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
 
   /* Load everything in parallel, then draw in order. */
-  const bodyImg = await loadImage(`/sprites/player/stand-south.png?v=${SPRITE_VERSION}`);
+  const bodyImg = await loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`);
 
   const wantHair = hair && hair !== 'none';
   const wantFh = facialHair && facialHair !== 'none';
   const wantHw = headwear && headwear !== 'none';
 
   const [hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg] = await Promise.all([
-    wantHair ? loadImage(`/sprites/traits/hair/${hair}/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantHair ? loadImage(`/sprites/traits/hair/${hair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
     wantHair ? loadMeta('hair', hair) : null,
-    wantFh ? loadImage(`/sprites/traits/facialhair/${facialHair}/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantFh ? loadImage(`/sprites/traits/facialhair/${facialHair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
     wantFh ? loadMeta('facialhair', facialHair) : null,
-    wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
     wantHw ? loadMeta('headwear', headwear) : null,
     /* hat's hair-clip mask (downward-filled helmet silhouette) -- present
        only for hats with clipsHair; 404 -> null -> no clipping. */
-    wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/hairmask/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
   ]);
 
   ctx.clearRect(0, 0, FRAME, FRAME);
@@ -168,17 +170,17 @@ export async function drawCharacterPortrait(canvas, opts) {
        silhouette mask (same as the in-game _clipHairToHat) before
        compositing -- keeps long hair from poking out the top/sides of a
        helmet while the forehead hair under the brim still shows. */
-    const hairCv = renderTraitCanvas(recolorHairToCanvas(hairImg, hairColor), hairMeta, crown);
+    const hairCv = renderTraitCanvas(recolorHairToCanvas(hairImg, hairColor), hairMeta, crown, DIR);
     if (hwImg && hwMeta && hwMeta.clipsHair && maskImg) {
-      const maskCv = renderTraitCanvas(maskImg, hwMeta, crown);
+      const maskCv = renderTraitCanvas(maskImg, hwMeta, crown, DIR);
       const hctx = hairCv.getContext('2d');
       hctx.globalCompositeOperation = 'destination-in';
       hctx.drawImage(maskCv, 0, 0);
     }
     ctx.drawImage(hairCv, 0, 0);
   }
-  if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown);
-  if (hwImg && hwMeta) placeTrait(ctx, hatColor ? recolorHairToCanvas(hwImg, hatColor) : hwImg, hwMeta, crown);
+  if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
+  if (hwImg && hwMeta) placeTrait(ctx, hatColor ? recolorHairToCanvas(hwImg, hatColor) : hwImg, hwMeta, crown, DIR);
   ctx.restore();
 }
 
