@@ -21,6 +21,7 @@ import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
 import { getHair } from '../traits/hairCatalog.js';
 import { getSkin, getSkinnedFrame } from '../playerSkins.js';
+import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -258,8 +259,15 @@ function _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
     hair.mask = null;  // mask didn't place -> don't clip the hair to nothing
   }
 }
-function _placeHair(display, hairId, hatId, pose, dir, mirror, frameIdx, bodyScale) {
-  _placeTrait(display._hairSprite, _ensureHairLoaded(hairId), display, pose, dir, mirror, frameIdx, bodyScale);
+function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, frameIdx, bodyScale) {
+  const baseEntry = _ensureHairLoaded(hairId);
+  /* v2.3.391: retint the hair to the selected color.  Recolored textures
+     reuse the base meta (anchors/scale); fall back to native color while
+     they bake. */
+  let entry = baseEntry;
+  const colored = getColoredHairTextures(hairId, hairColorId);
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
+  _placeTrait(display._hairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
   _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale);
 }
 
@@ -2007,7 +2015,7 @@ export class EntityRenderer {
           /* v2.3.353: and their facial hair (other.facialhair). */
           _placeFacialHair(display, other.facialhair, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.357: and their hair (other.hair). */
-          _placeHair(display, other.hair, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
+          _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -2541,7 +2549,7 @@ export class EntityRenderer {
            player's hat id comes from the login picker. */
         _placeHeadwear(display, getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _placeFacialHair(display, getFacialHair(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeHair(display, getHair(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */

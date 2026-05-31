@@ -81,7 +81,7 @@ function recolorBody(img, skinId) {
   return cv;
 }
 
-function recolorHair(img, hairColor) {
+export function recolorHairToCanvas(img, hairColor) {
   const cv = document.createElement('canvas');
   cv.width = img.width; cv.height = img.height;
   const ctx = cv.getContext('2d', { willReadFrequently: true });
@@ -162,10 +162,19 @@ export async function drawCharacterPortrait(canvas, opts) {
   ]);
 
   ctx.clearRect(0, 0, FRAME, FRAME);
+  /* Zoom the whole figure ~12% (centered high so the head/hat stays in
+     frame and the boots reach the bottom) to fill the preview window
+     better -- the raw sheet leaves wide empty margins. */
+  ctx.save();
+  const Z = 1.12, ZCX = FRAME / 2, ZCY = 64;
+  ctx.translate(ZCX, ZCY);
+  ctx.scale(Z, Z);
+  ctx.translate(-ZCX, -ZCY);
   ctx.drawImage(recolorBody(bodyImg, skin), 0, 0);
-  if (hairImg && hairMeta) placeTrait(ctx, recolorHair(hairImg, hairColor), hairMeta, crown);
+  if (hairImg && hairMeta) placeTrait(ctx, recolorHairToCanvas(hairImg, hairColor), hairMeta, crown);
   if (fhImg && fhMeta) placeTrait(ctx, fhImg, fhMeta, crown);
   if (hwImg && hwMeta) placeTrait(ctx, hwImg, hwMeta, crown);
+  ctx.restore();
 }
 
 /** Convenience: render a portrait to a fresh canvas and return its PNG data
