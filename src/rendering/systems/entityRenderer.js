@@ -2965,10 +2965,18 @@ export class EntityRenderer {
              Dropping the cap on NE jog removes that without any z-order
              reshuffle (the grip wrap is barely visible at NE anyway). */
           const _neJogSkipCap = (facingIdx === 7 && pose === 'jog');
+          /* v2.3.406: the hand-cap exists to wrap the hand around a SWORD
+             grip.  A bow (held mid-limb, horizontal) and a staff (held low,
+             vertical) have the grip in a different spot, so the cap's body-
+             pixel circle stamped over the middle of the weapon -- the user
+             saw the bow/staff "clipped" in the south view.  Only sword-type
+             weapons get the cap. */
+          const _weaponNeedsCap = wpn.type === 'sword' || wpn.type === 'greatsword';
           const handCapEligible = handCap && handMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
             && _weaponInFront
+            && _weaponNeedsCap
             && !_seJogSkipCap
             && !_neJogSkipCap;
           if (handCapEligible) {
