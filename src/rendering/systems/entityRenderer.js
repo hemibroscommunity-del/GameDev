@@ -1950,13 +1950,17 @@ export class EntityRenderer {
          the diagonal idle pose carries through (otherwise it would
          snap back to the broadcast 4-cardinal). */
       let facing;
-      if (other._renderFacing) {
-        /* v2.3.396: the sender's actual rendered facing, broadcast over the
-           network -- authoritative, so a remote player faces exactly as they
-           do on their own screen (including aim / standing turns).  Previously
-           the facing was reconstructed from movement, which was wrong whenever
-           the sender's facing came from aim rather than motion -- the reported
-           "back-to-camera shows as facing-camera" mirror. */
+      if (other._moveFacing8) {
+        /* v2.3.398: derive remote facing from POSITION deltas (computed in the
+           interpolation loop), which are correct because remote players appear
+           in the right spots.  The previous velocity-based facing inverted
+           vertically -- the broadcast vy sign didn't survive the server relay,
+           causing the reported front/back mirror.  Holds the last value while
+           idle (= the direction they last walked), which is the right resting
+           facing. */
+        facing = other._moveFacing8;
+        display._lastFacing = facing;
+      } else if (other._renderFacing) {
         facing = other._renderFacing;
         display._lastFacing = facing;
       } else if (isMoving) {

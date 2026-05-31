@@ -10588,6 +10588,12 @@ export var BroTown = function BroTown(_ref0) {
           if (oAdx > 0.03 || oAdy > 0.03) {
             if (oAdy > oAdx) o._facing = oDy > 0 ? 'down' : 'up';
             else o._facing = oDx > 0 ? 'right' : 'left';
+            /* v2.3.398: 8-way facing from POSITION delta (which is correct --
+               remote players appear in the right spots).  The renderer uses
+               this instead of broadcast velocity, whose vy sign didn't survive
+               the server relay and produced the front/back facing mirror. */
+            var _o8 = Math.round(Math.atan2(oDy, oDx) / (Math.PI / 4));
+            o._moveFacing8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'][((_o8 % 8) + 8) % 8];
           }
         });
 
