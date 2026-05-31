@@ -132,6 +132,15 @@ function placeTrait(ctx, traitImg, meta, crown) {
   ctx.restore();
 }
 
+/* Render one trait to its own native FRAME canvas (used for hair so it can
+   be mask-clipped before compositing). */
+function renderTraitCanvas(traitImg, meta, crown) {
+  const cv = document.createElement('canvas');
+  cv.width = FRAME; cv.height = FRAME;
+  placeTrait(cv.getContext('2d'), traitImg, meta, crown);
+  return cv;
+}
+
 /** Composite the portrait into `canvas` (sized to FRAME).  Layers, in
  *  order: skin-recolored body, hair (recolored), facial hair, headwear.
  *  Unknown / 'none' / 'default' selections are skipped.  Resolves when the
@@ -152,13 +161,16 @@ export async function drawCharacterPortrait(canvas, opts) {
   const wantFh = facialHair && facialHair !== 'none';
   const wantHw = headwear && headwear !== 'none';
 
-  const [hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta] = await Promise.all([
+  const [hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg] = await Promise.all([
     wantHair ? loadImage(`/sprites/traits/hair/${hair}/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
     wantHair ? loadMeta('hair', hair) : null,
     wantFh ? loadImage(`/sprites/traits/facialhair/${facialHair}/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
     wantFh ? loadMeta('facialhair', facialHair) : null,
     wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
     wantHw ? loadMeta('headwear', headwear) : null,
+    /* hat's hair-clip mask (downward-filled helmet silhouette) -- present
+       only for hats with clipsHair; 404 -> null -> no clipping. */
+    wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/hairmask/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
   ]);
 
   ctx.clearRect(0, 0, FRAME, FRAME);
@@ -171,7 +183,20 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
   ctx.drawImage(recolorBody(bodyImg, skin), 0, 0);
-  if (hairImg && hairMeta) placeTrait(ctx, recolorHairToCanvas(hairImg, hairColor), hairMeta, crown);
+  if (hairImg && hairMeta) {
+    /* Render hair to its own canvas so it can be clipped to the hat's
+       silhouette mask (same as the in-game _clipHairToHat) before
+       compositing -- keeps long hair from poking out the top/sides of a
+       helmet while the forehead hair under the brim still shows. */
+    const hairCv = renderTraitCanvas(recolorHairToCanvas(hairImg, hairColor), hairMeta, crown);
+    if (hwImg && hwMeta && hwMeta.clipsHair && maskImg) {
+      const maskCv = renderTraitCanvas(maskImg, hwMeta, crown);
+      const hctx = hairCv.getContext('2d');
+      hctx.globalCompositeOperation = 'destination-in';
+      hctx.drawImage(maskCv, 0, 0);
+    }
+    ctx.drawImage(hairCv, 0, 0);
+  }
   if (fhImg && fhMeta) placeTrait(ctx, fhImg, fhMeta, crown);
   if (hwImg && hwMeta) placeTrait(ctx, hwImg, hwMeta, crown);
   ctx.restore();

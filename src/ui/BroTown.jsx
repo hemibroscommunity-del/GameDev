@@ -13376,24 +13376,29 @@ export var BroTown = function BroTown(_ref0) {
     style: { width: '100%', marginTop: 8 }
   }, /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', gap: 4, justifyContent: 'center', marginBottom: 8, flexWrap: 'wrap' }
-  }, [['skin', 'Skin'], ['hair', 'Hair'], ['color', 'Color'], ['beard', 'Beard'], ['hat', 'Hat']].map(function (t) {
+  }, [['skin', 'Skin'], ['hair', 'Hair'], ['beard', 'Beard'], ['hat', 'Hat']].map(function (t) {
     var active = appearanceTab === t[0];
     return /*#__PURE__*/React.createElement("button", {
       key: t[0], type: 'button',
       onClick: function () { setAppearanceTab(t[0]); },
-      style: { padding: '5px 11px', fontSize: 11, fontWeight: 800, cursor: 'pointer',
+      style: { padding: '5px 12px', fontSize: 11, fontWeight: 800, cursor: 'pointer',
         background: active ? 'var(--pop)' : 'var(--ink3)', color: active ? '#fff' : 'var(--txt)',
         border: active ? '1.5px solid #fff' : '1.5px solid var(--line)', borderRadius: 8,
         fontFamily: 'Source Sans 3,sans-serif', letterSpacing: '.04em' }
     }, t[1]);
-  })), /*#__PURE__*/React.createElement("div", {
-    style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', minHeight: 58 }
-  }, appearanceTab === 'skin' ? SKIN_CATALOG.map(function (o) { return _apSwatchBtn(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })
-   : appearanceTab === 'hair' ? HAIR_CATALOG.map(function (o) { return _apThumbBtn('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })
-   : appearanceTab === 'color' ? HAIR_COLOR_CATALOG.map(function (o) { return _apSwatchBtn(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })
-   : appearanceTab === 'beard' ? FACIALHAIR_CATALOG.map(function (o) { return _apThumbBtn('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })
-   : HEADWEAR_CATALOG.map(function (o) { return _apThumbBtn('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })
-  )), /*#__PURE__*/React.createElement("button", {
+  })), appearanceTab === 'hair'
+   ? /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minHeight: 58 } },
+       /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' } },
+         HAIR_CATALOG.map(function (o) { return _apThumbBtn('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })),
+       hairSel !== 'none' && /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, borderTop: '1px solid var(--line)', paddingTop: 8, width: '100%' } },
+         /*#__PURE__*/React.createElement("div", { style: { fontSize: 9, color: '#9090a8', fontWeight: 800, letterSpacing: '.12em', fontFamily: 'Source Sans 3,sans-serif' } }, "HAIR COLOR"),
+         /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' } },
+           HAIR_COLOR_CATALOG.map(function (o) { return _apSwatchBtn(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); }))))
+   : /*#__PURE__*/React.createElement("div", {
+       style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', minHeight: 58 }
+     }, appearanceTab === 'skin' ? SKIN_CATALOG.map(function (o) { return _apSwatchBtn(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })
+      : appearanceTab === 'beard' ? FACIALHAIR_CATALOG.map(function (o) { return _apThumbBtn('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })
+      : HEADWEAR_CATALOG.map(function (o) { return _apThumbBtn('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); }))), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
       marginTop: 12,
