@@ -1,0 +1,181 @@
+/* Character portrait compositor.
+ *
+ * Builds a south-facing standing portrait of the player from the current
+ * cosmetic selections (skin tone, hair style + color, facial hair,
+ * headwear) by compositing the same sprite layers the in-game renderer
+ * uses, with the SAME crown-anchored placement math (body-tops.json crown
+ * + per-trait meta anchors / nudges / scale).  Output is an HTMLCanvasElement
+ * the caller can show directly (login live-preview) or read as a data URL
+ * (top-right profile picture).
+ *
+ * It mirrors entityRenderer._placeTrait for the single (pose=stand,
+ * dir=south, frame=0, mirror=false) case -- see that function for the
+ * authoritative version.  Skin recolor reuses playerSkins' tone + method;
+ * hair recolor tints every opaque hair pixel by brightness ratio (the hair
+ * sheet is hair-only, so no region isolation is needed).
+ */
+
+import { skinTarget } from './playerSkins.js';
+import { SPRITE_VERSION } from './playerSprites.js';
+
+const FRAME = 256;
+const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
+const TRAIT_VER = '2.3.389';            // cache-bust for body-tops.json (matches entityRenderer)
+
+/* ── tiny async caches ── */
+const _imgCache = new Map();            // url -> Promise<HTMLImageElement>
+const _metaCache = new Map();           // 'cat/id' -> Promise<meta|null>
+let _bodyTopsPromise = null;
+
+function loadImage(url) {
+  if (_imgCache.has(url)) return _imgCache.get(url);
+  const p = new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = url;
+  });
+  _imgCache.set(url, p);
+  return p;
+}
+
+function loadMeta(cat, id) {
+  const key = cat + '/' + id;
+  if (_metaCache.has(key)) return _metaCache.get(key);
+  const p = fetch(`/sprites/traits/${cat}/${id}/meta.json?v=${TRAIT_VER}`)
+    .then(r => (r.ok ? r.json() : null))
+    .catch(() => null);
+  _metaCache.set(key, p);
+  return p;
+}
+
+function loadBodyTops() {
+  if (!_bodyTopsPromise) {
+    _bodyTopsPromise = fetch(`/sprites/player/body-tops.json?v=${TRAIT_VER}`)
+      .then(r => (r.ok ? r.json() : null))
+      .catch(() => null);
+  }
+  return _bodyTopsPromise;
+}
+
+/* ── recolor helpers (return a 256-canvas) ── */
+function recolorBody(img, skinId) {
+  const cv = document.createElement('canvas');
+  cv.width = img.width; cv.height = img.height;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const target = skinTarget(skinId);
+  if (!target) return cv;                 // default skin: no recolor
+  const data = ctx.getImageData(0, 0, cv.width, cv.height);
+  const d = data.data, tr = target[0], tg = target[1], tb = target[2];
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+    if (a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25) {
+      const k = (0.299 * r + 0.587 * g + 0.114 * b) / DEFAULT_LIT_LUM;
+      d[i] = Math.min(255, Math.round(tr * k));
+      d[i + 1] = Math.min(255, Math.round(tg * k));
+      d[i + 2] = Math.min(255, Math.round(tb * k));
+    }
+  }
+  ctx.putImageData(data, 0, 0);
+  return cv;
+}
+
+function recolorHair(img, hairColor) {
+  const cv = document.createElement('canvas');
+  cv.width = img.width; cv.height = img.height;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  if (!hairColor) return cv;
+  const data = ctx.getImageData(0, 0, cv.width, cv.height);
+  const d = data.data;
+  /* reference = ~75th-percentile luminance of the hair's own opaque pixels,
+     so the chosen color lands on the lit strands and shadows scale down. */
+  let sum = 0, n = 0, maxL = 1;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] > 30) {
+      const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      sum += l; n++; if (l > maxL) maxL = l;
+    }
+  }
+  const ref = Math.max(1, n ? (sum / n) * 1.15 : maxL);
+  const tr = hairColor[0], tg = hairColor[1], tb = hairColor[2];
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] > 30) {
+      const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
+      d[i] = Math.min(255, Math.round(tr * k));
+      d[i + 1] = Math.min(255, Math.round(tg * k));
+      d[i + 2] = Math.min(255, Math.round(tb * k));
+    }
+  }
+  ctx.putImageData(data, 0, 0);
+  return cv;
+}
+
+/* Place one trait sprite (already recolored if needed) onto ctx using the
+   stand/south meta math.  Mirrors entityRenderer._placeTrait. */
+function placeTrait(ctx, traitImg, meta, crown) {
+  if (!traitImg || !meta || !meta.fullFrame || !meta.anchors || !meta.anchors.south) return;
+  const anchor = meta.anchors.south;
+  const cn = (meta.crownNudge && meta.crownNudge.south) || [0, 0];
+  const pn = (meta.poseNudge && meta.poseNudge.stand && meta.poseNudge.stand.south) || [0, 0];
+  const sc = (meta.scale && meta.scale.south) || 1;
+  const sbp = (meta.scaleByPose && meta.scaleByPose.stand && meta.scaleByPose.stand.south) || 1;
+  const dscale = sc * sbp;
+  const tx = crown[0] + cn[0] + pn[0];
+  const ty = crown[1] + cn[1] + pn[1];
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.translate(tx, ty);
+  ctx.scale(dscale, dscale);
+  ctx.drawImage(traitImg, -anchor[0], -anchor[1]);
+  ctx.restore();
+}
+
+/** Composite the portrait into `canvas` (sized to FRAME).  Layers, in
+ *  order: skin-recolored body, hair (recolored), facial hair, headwear.
+ *  Unknown / 'none' / 'default' selections are skipped.  Resolves when the
+ *  draw completes (after async asset loads).  Safe to call repeatedly. */
+export async function drawCharacterPortrait(canvas, opts) {
+  if (!canvas) return;
+  const { skin, hair, hairColor, facialHair, headwear } = opts || {};
+  canvas.width = FRAME; canvas.height = FRAME;
+  const ctx = canvas.getContext('2d');
+
+  const bodyTops = await loadBodyTops();
+  const crown = (bodyTops && bodyTops['stand-south-0']) || [FRAME / 2, 33];
+
+  /* Load everything in parallel, then draw in order. */
+  const bodyImg = await loadImage(`/sprites/player/stand-south.png?v=${SPRITE_VERSION}`);
+
+  const wantHair = hair && hair !== 'none';
+  const wantFh = facialHair && facialHair !== 'none';
+  const wantHw = headwear && headwear !== 'none';
+
+  const [hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta] = await Promise.all([
+    wantHair ? loadImage(`/sprites/traits/hair/${hair}/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantHair ? loadMeta('hair', hair) : null,
+    wantFh ? loadImage(`/sprites/traits/facialhair/${facialHair}/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantFh ? loadMeta('facialhair', facialHair) : null,
+    wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/south.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantHw ? loadMeta('headwear', headwear) : null,
+  ]);
+
+  ctx.clearRect(0, 0, FRAME, FRAME);
+  ctx.drawImage(recolorBody(bodyImg, skin), 0, 0);
+  if (hairImg && hairMeta) placeTrait(ctx, recolorHair(hairImg, hairColor), hairMeta, crown);
+  if (fhImg && fhMeta) placeTrait(ctx, fhImg, fhMeta, crown);
+  if (hwImg && hwMeta) placeTrait(ctx, hwImg, hwMeta, crown);
+}
+
+/** Convenience: render a portrait to a fresh canvas and return its PNG data
+ *  URL (for the profile picture).  Returns '' on failure. */
+export async function portraitDataUrl(opts) {
+  try {
+    const cv = document.createElement('canvas');
+    await drawCharacterPortrait(cv, opts);
+    return cv.toDataURL('image/png');
+  } catch (e) {
+    return '';
+  }
+}

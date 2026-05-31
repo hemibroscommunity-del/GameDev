@@ -35,6 +35,7 @@ import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/h
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
 import { SKIN_CATALOG, getSkin, setSkin } from '@/rendering/playerSkins.js';
+import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
@@ -1282,6 +1283,16 @@ export var BroTown = function BroTown(_ref0) {
   var _skinSelState = useState(getSkin()),
     skinSel = _skinSelState[0],
     setSkinSel = _skinSelState[1];
+  /* Live character preview on the login screen -- redraws whenever any
+     cosmetic selection changes so the player sees their choices before
+     pressing Play. */
+  var previewCanvasRef = useRef(null);
+  useEffect(function () {
+    if (!previewCanvasRef.current) return;
+    drawCharacterPortrait(previewCanvasRef.current, {
+      skin: skinSel, hair: hairSel, facialHair: facialHairSel, headwear: headwearSel,
+    });
+  }, [skinSel, hairSel, facialHairSel, headwearSel]);
   var nftCatalogRef = useRef(null); /* cached CSV data [{ID,Image,...}] */
   var _useState203 = useState('#2563eb'),
     _useState204 = _slicedToArray(_useState203, 2),
@@ -13285,9 +13296,11 @@ export var BroTown = function BroTown(_ref0) {
       letterSpacing: '.05em',
       marginBottom: 12,
     }
-  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha), /*#__PURE__*/React.createElement("img", {
-    src: '/sprites/player/welcome-bro.png?v=2',
-    alt: 'Hemi Bro',
+  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha), /*#__PURE__*/React.createElement("canvas", {
+    ref: previewCanvasRef,
+    width: 256,
+    height: 256,
+    title: 'Live preview',
     style: {
       width: 128,
       height: 128,
@@ -13296,7 +13309,8 @@ export var BroTown = function BroTown(_ref0) {
       borderRadius: 8,
       display: 'block',
       marginLeft: 'auto',
-      marginRight: 'auto'
+      marginRight: 'auto',
+      background: 'var(--ink3)'
     }
   }), /*#__PURE__*/React.createElement("input", {
     value: nameInput,
