@@ -19,6 +19,7 @@ export const HEADWEAR_CATALOG = [
   { id: 'top-hat', name: 'Top Hat' },
   { id: 'purple-hat', name: 'Purple Hat', solid: true },
   { id: 'beanie', name: 'Beanie', solid: true },
+  { id: 'red-cap', name: 'Red Cap', solid: true },
 ];
 
 /** True if the hat can be recolored (single-color design). */
