@@ -53,7 +53,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.415';
+const TRAIT_VER = '2.3.416';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/

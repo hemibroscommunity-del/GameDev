@@ -91,7 +91,7 @@
   "crownNudge": {
     "south": [
       0,
-      0
+      -10
     ],
     "southwest": [
       0,
