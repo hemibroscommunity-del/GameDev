@@ -178,6 +178,9 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes)), 0, 0);
+  /* Beard BELOW hair so hair strands lay over the beard (per user -- the NW
+     view had the beard covering the hair). */
+  if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
   if (hairImg && hairMeta) {
     /* Render hair to its own canvas so it can be clipped to the hat's
        silhouette mask (same as the in-game _clipHairToHat) before
@@ -192,7 +195,6 @@ export async function drawCharacterPortrait(canvas, opts) {
     }
     ctx.drawImage(hairCv, 0, 0);
   }
-  if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
   if (hwImg && hwMeta) placeTrait(ctx, hatColor ? recolorHairToCanvas(hwImg, hatColor) : hwImg, hwMeta, crown, DIR);
   ctx.restore();
 }
