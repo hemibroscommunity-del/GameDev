@@ -167,9 +167,10 @@ export async function drawCharacterPortrait(canvas, opts) {
      ~y33), so a tall top-hat clipped the top -- a modest zoom (1.06) plus a
      10px downward offset gives the hat headroom while the boots still show. */
   ctx.save();
-  /* The southwest source frames the character ~10% larger than the other
-     directions, so shrink it (and its mirror, southeast) to match. */
-  const _DIRZOOM = { southwest: 0.9 };
+  /* Per-direction zoom tweaks so every angle reads at a consistent size:
+     the southwest source frames ~10% large (shrink it + its mirror SE), and
+     south / north read a touch small (bump 5%). */
+  const _DIRZOOM = { southwest: 0.9, south: 1.05, north: 1.05 };
   const Z = 1.06 * (_DIRZOOM[DIR] || 1), ZCX = FRAME / 2, ZCY = 64, YOFF = 10;
   if (_mirror) { ctx.translate(FRAME, 0); ctx.scale(-1, 1); }
   ctx.translate(0, YOFF);
