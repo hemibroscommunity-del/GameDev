@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Blue shark with white belly. Sources S=IMG_8908, SW=IMG_8909 (pectoral fin is a legit detached comp -- kept; white specks <200px removed), N=7E28325D (1024 src padded to 1254), E from W=IMG_8911 flipped, NE from NW=IMG_8913 flipped (white+black specks beneath the belly removed). Renderer mirrors E/NE back to W/NW. Despeck = drop opaque components <200px (keeps body+fin). NOT solid (blue body + white belly two-tone -- recolor would wreck the belly). scale.north 1.22 compensates the 1024->1254 pad shrink. crownNudge at defaults -- tune on-device.",
+  "note": "Blue shark with white belly. Sources S=IMG_8908, SW=IMG_8909 (pectoral fin is a legit detached comp -- kept; white specks <200px removed), N=7E28325D (1024 src padded to 1254; source was uniform light-blue w/ NO belly + lighter tone than the rest -- reprocessed: blue shifted +29,+11,-40 to match S/SW/E tone, then a grayish-white [205,208,212] underside belly painted along the bottom contour to match the other angles), E from W=IMG_8911 flipped, NE from NW=IMG_8913 flipped (white+black specks beneath the belly removed). Renderer mirrors E/NE back to W/NW. Despeck = drop opaque components <200px (keeps body+fin). NOT solid (blue body + white belly two-tone -- recolor would wreck the belly). scale.north 1.22 compensates the 1024->1254 pad shrink. crownNudge at defaults -- tune on-device.",
   "bboxes_source": {
     "south": [
       444,
