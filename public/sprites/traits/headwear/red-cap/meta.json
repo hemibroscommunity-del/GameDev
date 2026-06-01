@@ -113,5 +113,6 @@
   "scale": {
     "southwest": 1.22,
     "northeast": 1.15
-  }
+  },
+  "clipsHair": true
 }
