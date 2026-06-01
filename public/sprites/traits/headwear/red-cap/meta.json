@@ -111,6 +111,7 @@
     ]
   },
   "scale": {
-    "southwest": 1.22
+    "southwest": 1.22,
+    "northeast": 1.15
   }
 }
