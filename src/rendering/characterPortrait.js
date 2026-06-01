@@ -139,17 +139,17 @@ export async function drawCharacterPortrait(canvas, opts) {
     southwest: ['southwest', false], southeast: ['southwest', true] };
   const _dm = _DMAP[dir] || _DMAP.southwest;
   const DIR = _dm[0], _mirror = _dm[1];
-  const bodyTops = await loadBodyTops();
-  const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
-
-  /* Load everything in parallel, then draw in order. */
-  const bodyImg = await loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`);
-
   const wantHair = hair && hair !== 'none';
   const wantFh = facialHair && facialHair !== 'none';
   const wantHw = headwear && headwear !== 'none';
 
-  const [hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg] = await Promise.all([
+  /* Fire EVERY fetch concurrently.  This used to be three sequential await
+     stages (body-tops -> body sprite -> traits), so on a cold load the preview
+     sat blank-white for ~3 network round-trips; now it's one.  All loads are
+     cached after the first draw, so later redraws/rotations are instant. */
+  const [bodyTops, bodyImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg] = await Promise.all([
+    loadBodyTops(),
+    loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`),
     wantHair ? loadImage(`/sprites/traits/hair/${hair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
     wantHair ? loadMeta('hair', hair) : null,
     wantFh ? loadImage(`/sprites/traits/facialhair/${facialHair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
@@ -160,6 +160,7 @@ export async function drawCharacterPortrait(canvas, opts) {
        only for hats with clipsHair; 404 -> null -> no clipping. */
     wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
   ]);
+  const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
 
   ctx.clearRect(0, 0, FRAME, FRAME);
   /* Zoom the figure to fill the preview window, then shift it DOWN a touch.
