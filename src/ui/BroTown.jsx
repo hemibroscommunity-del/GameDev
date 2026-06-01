@@ -1306,18 +1306,29 @@ export var BroTown = function BroTown(_ref0) {
     expanded = _apExpState[0],
     setExpanded = _apExpState[1];
   /* Live character preview on the login screen -- redraws whenever any
-     cosmetic selection changes so the player sees their choices before
-     pressing Play. */
+     cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
+  /* Which of the 8 compass directions the preview faces; rotate buttons step
+     through them.  Clockwise order. */
+  var _PREVIEW_DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', 'west', 'southwest'];
+  var _previewDirState = useState('southwest'),
+    previewDir = _previewDirState[0],
+    setPreviewDir = _previewDirState[1];
+  var rotatePreview = function (step) {
+    var i = _PREVIEW_DIRS.indexOf(previewDir);
+    if (i < 0) i = 0;
+    setPreviewDir(_PREVIEW_DIRS[(i + step + _PREVIEW_DIRS.length) % _PREVIEW_DIRS.length]);
+  };
   useEffect(function () {
     if (!previewCanvasRef.current) return;
     drawCharacterPortrait(previewCanvasRef.current, {
+      dir: previewDir,
       skin: skinSel, pants: pantsSel, shoes: shoesSel,
       hair: hairSel, hairColor: hairColorTarget(hairColorSel),
       facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
       headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
     });
-  }, [skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel]);
+  }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel]);
   /* Category picker: every category is a left-labelled ROW, stacked head-to-
      toe, so the whole appearance is visible at once.  Each row is a horizontal
      strip of icon tiles (thumbnails for styles, color chips for colors) that
@@ -13433,7 +13444,15 @@ export var BroTown = function BroTown(_ref0) {
       letterSpacing: '.05em',
       marginBottom: 12,
     }
-  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha), /*#__PURE__*/React.createElement("canvas", {
+  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha), /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 12 }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
+    style: { width: 30, height: 30, flex: '0 0 auto', borderRadius: '50%', cursor: 'pointer',
+      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderRight: '7px solid currentColor' } })),
+  /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
     width: 256,
     height: 256,
@@ -13442,14 +13461,16 @@ export var BroTown = function BroTown(_ref0) {
       width: 128,
       height: 128,
       imageRendering: 'pixelated',
-      marginBottom: 12,
       borderRadius: 8,
       display: 'block',
-      marginLeft: 'auto',
-      marginRight: 'auto',
       background: '#ffffff'
     }
-  }), /*#__PURE__*/React.createElement("input", {
+  }), /*#__PURE__*/React.createElement("button", {
+    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(1); },
+    style: { width: 30, height: 30, flex: '0 0 auto', borderRadius: '50%', cursor: 'pointer',
+      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '7px solid currentColor' } }))), /*#__PURE__*/React.createElement("input", {
     value: nameInput,
     onChange: function onChange(e) {
       return setNameInput(e.target.value);

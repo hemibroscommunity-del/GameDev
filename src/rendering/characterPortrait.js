@@ -127,12 +127,18 @@ function renderTraitCanvas(traitImg, meta, crown, dir) {
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor } = opts || {};
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, dir } = opts || {};
   canvas.width = FRAME; canvas.height = FRAME;
   const ctx = canvas.getContext('2d');
 
-  /* Preview/profile angle: southwest 3/4 view (per user request). */
-  const DIR = 'southwest';
+  /* Preview angle -- any of the 8 compass directions (default southwest 3/4).
+     The 3 mirrored views (west / northwest / southeast) reuse the opposite
+     base sprite and flip the whole composite horizontally. */
+  const _DMAP = { east: ['east', false], west: ['east', true], north: ['north', false],
+    south: ['south', false], northeast: ['northeast', false], northwest: ['northeast', true],
+    southwest: ['southwest', false], southeast: ['southwest', true] };
+  const _dm = _DMAP[dir] || _DMAP.southwest;
+  const DIR = _dm[0], _mirror = _dm[1];
   const bodyTops = await loadBodyTops();
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
 
@@ -162,6 +168,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      10px downward offset gives the hat headroom while the boots still show. */
   ctx.save();
   const Z = 1.06, ZCX = FRAME / 2, ZCY = 64, YOFF = 10;
+  if (_mirror) { ctx.translate(FRAME, 0); ctx.scale(-1, 1); }
   ctx.translate(0, YOFF);
   ctx.translate(ZCX, ZCY);
   ctx.scale(Z, Z);
