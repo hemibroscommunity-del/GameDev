@@ -1329,6 +1329,16 @@ export var BroTown = function BroTown(_ref0) {
       headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
     });
   }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel]);
+  /* The long-hair sprite is ~88% pure black, so a light hair color over-
+     processes into a black band around the face (see characterPortrait recolor
+     note).  Restrict that one style to dark colors only; clamp the selection
+     back to default if a style switch or a returning player leaves it light. */
+  var LONG_HAIR_COLORS = ['default', 'black', 'brown'];
+  useEffect(function () {
+    if (hairSel === 'long' && LONG_HAIR_COLORS.indexOf(hairColorSel) === -1) {
+      setHairColor('default'); setHairColorSel('default');
+    }
+  }, [hairSel]);
   /* Category picker: every category is a left-labelled ROW, stacked head-to-
      toe, so the whole appearance is visible at once.  Each row is a horizontal
      strip of icon tiles (thumbnails for styles, color chips for colors) that
@@ -1402,7 +1412,8 @@ export var BroTown = function BroTown(_ref0) {
     var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt);
     var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh);
     var hr = rpick(HAIR_CATALOG); setHair(hr); setHairSel(hr);
-    var hcc = rpick(HAIR_COLOR_CATALOG); setHairColor(hcc); setHairColorSel(hcc);
+    var hcCat = hr === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;
+    var hcc = rpick(hcCat); setHairColor(hcc); setHairColorSel(hcc);
     var bd = rpick(FACIALHAIR_CATALOG); setFacialHair(bd); setFacialHairSel(bd);
     var bcc = rpick(FACIALHAIR_COLOR_CATALOG); setFacialHairColor(bcc); setBeardColorSel(bcc);
     var ht = rpick(HEADWEAR_CATALOG); setHeadwear(ht); setHeadwearSel(ht);
@@ -13499,7 +13510,7 @@ export var BroTown = function BroTown(_ref0) {
     style: { width: '100%', marginTop: 8 }
   },
   _apPill('hat', 'HAT', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
-  _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [HAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
+  _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
   _apPill('beard', 'BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
   _apPill('skin', 'SKIN', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
   _apPill('pants', 'PANTS', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),

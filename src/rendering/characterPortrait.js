@@ -69,29 +69,24 @@ export function recolorHairToCanvas(img, hairColor) {
   if (!hairColor) return cv;
   const data = ctx.getImageData(0, 0, cv.width, cv.height);
   const d = data.data;
-  /* Reference = 85th-percentile luminance of the trait's own opaque pixels.
-     Keying off a high percentile (not the mean) stops a thin anti-aliased rim
-     from over-brightening to clipped full-color.  Combined with the shadow
-     floor below it also stops a flat near-black silhouette (e.g. the long-hair
-     sprite is ~88% pure-black fill) from collapsing its interior to a black
-     band around the face -- the dark inner edge users saw.  Genuinely shaded
-     sprites (wavy hair, beards) keep their shading; only the deepest shadows
-     lift off pure black. */
-  const lums = [];
+  /* reference = ~mean luminance of the hair's own opaque pixels, so the chosen
+     color lands on the lit strands and shadows scale down (keeping the near-
+     black outline dark, consistent with the rest of the character's outline).
+     NOTE: this collapses very dark sprites (the long-hair sheet is ~88% pure
+     black) into a black band when given a light color -- that style restricts
+     its color picker to dark options for this reason (see BroTown hair colors). */
+  let sum = 0, n = 0, maxL = 1;
   for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] > 30) lums.push(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+    if (d[i + 3] > 30) {
+      const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      sum += l; n++; if (l > maxL) maxL = l;
+    }
   }
-  if (!lums.length) return cv;
-  lums.sort((a, b) => a - b);
-  const ref = Math.max(1, lums[Math.floor(lums.length * 0.85)]);
-  /* k maps the darkest opaque pixel to KMIN*target (a dark shade of the chosen
-     color, never black) and the lit strands to ~KMAX*target. */
-  const KMIN = 0.40, KMAX = 1.10;
+  const ref = Math.max(1, n ? (sum / n) * 1.15 : maxL);
   const tr = hairColor[0], tg = hairColor[1], tb = hairColor[2];
   for (let i = 0; i < d.length; i += 4) {
     if (d[i + 3] > 30) {
-      const t = Math.min(1, (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref);
-      const k = KMIN + (KMAX - KMIN) * t;
+      const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
       d[i] = Math.min(255, Math.round(tr * k));
       d[i + 1] = Math.min(255, Math.round(tg * k));
       d[i + 2] = Math.min(255, Math.round(tb * k));
