@@ -91,6 +91,11 @@ function build(hairId, colorId) {
 /** Recolored hair texture map for (hairId, colorId), or null for the default
  *  color / while baking (caller falls back to the native-color textures). */
 export function getColoredHairTextures(hairId, colorId) {
+  /* The long-hair sprite is ~88% pure black; recoloring it over-processes the
+     thin lit rim (a light color washes out, even "black" lifts to a brown-gray)
+     while the NATIVE sprite is the truest black.  So long hair always renders
+     native -- its picker only offers a single black swatch (see BroTown). */
+  if (hairId === 'long') return null;
   if (!hairId || hairId === 'none' || !colorId || colorId === 'default' || !hairColorTarget(colorId)) return null;
   const key = hairId + '/' + colorId;
   const e = _cache[key];

@@ -1324,7 +1324,7 @@ export var BroTown = function BroTown(_ref0) {
     drawCharacterPortrait(previewCanvasRef.current, {
       dir: previewDir,
       skin: skinSel, pants: pantsSel, shoes: shoesSel,
-      hair: hairSel, hairColor: hairColorTarget(hairColorSel),
+      hair: hairSel, hairColor: hairSel === 'long' ? null : hairColorTarget(hairColorSel),
       facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
       headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
     });
@@ -1333,10 +1333,10 @@ export var BroTown = function BroTown(_ref0) {
      processes into a black band around the face (see characterPortrait recolor
      note).  Restrict that one style to dark colors only; clamp the selection
      back to default if a style switch or a returning player leaves it light. */
-  var LONG_HAIR_COLORS = ['default', 'black'];
+  var LONG_HAIR_COLORS = ['black'];
   useEffect(function () {
     if (hairSel === 'long' && LONG_HAIR_COLORS.indexOf(hairColorSel) === -1) {
-      setHairColor('default'); setHairColorSel('default');
+      setHairColor(LONG_HAIR_COLORS[0]); setHairColorSel(LONG_HAIR_COLORS[0]);
     }
   }, [hairSel]);
   /* Category picker: every category is a left-labelled ROW, stacked head-to-
