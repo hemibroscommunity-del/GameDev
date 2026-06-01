@@ -113,6 +113,7 @@
   "scale": {
     "east": 1.22,
     "north": 1.1,
-    "northeast": 1.15
+    "northeast": 1.15,
+    "south": 0.95
   }
 }
