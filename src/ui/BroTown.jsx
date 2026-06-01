@@ -1333,7 +1333,7 @@ export var BroTown = function BroTown(_ref0) {
      processes into a black band around the face (see characterPortrait recolor
      note).  Restrict that one style to dark colors only; clamp the selection
      back to default if a style switch or a returning player leaves it light. */
-  var LONG_HAIR_COLORS = ['default', 'black', 'brown'];
+  var LONG_HAIR_COLORS = ['default', 'black'];
   useEffect(function () {
     if (hairSel === 'long' && LONG_HAIR_COLORS.indexOf(hairColorSel) === -1) {
       setHairColor('default'); setHairColorSel('default');
