@@ -447,6 +447,10 @@ const HP_RING_GAP_PX = 1.5;
 const HP_RING_TRACK = 0x202833;       /* muted slate (drained portion) */
 const HP_RING_CENTER_FILL = 0x2b303a; /* muted gray center */
 const HP_TIER_GREEN = 0x3ec27a, HP_TIER_YELLOW = 0xf5c542, HP_TIER_ORANGE = 0xe8843a, HP_TIER_RED = 0xe34646;
+const HP_RING_OUTLINE = 0x12161d;  /* dark frame under the band so it doesn't blend into the world */
+const HP_GHOST_WHITE = 0xffffff;   /* recently-lost HP trail */
+const HP_GHOST_DRAIN = 0.010;      /* ghost catches down ~0.6/sec (per ~60fps frame) */
+const HP_GHOST_HOLD_MS = 140;      /* brief hold before the white trail starts draining */
 const HP_RING_MAX_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 10,
@@ -3774,6 +3778,21 @@ export class EntityRenderer {
         hpTint = (r << 16) | (g << 8) | b2;
       }
 
+      /* White damage trail: ghostFrac lags hpFrac on damage and drains
+         clockwise toward it, so the size + speed of the white wedge show how
+         much / how fast HP dropped.  Snaps up instantly on heal. */
+      if (ring._ghostFrac == null) ring._ghostFrac = hpFrac;
+      const tookDamage = (ring._lastHpFrac != null) && (hpFrac < ring._lastHpFrac - 0.0005);
+      if (hpFrac >= ring._ghostFrac) {
+        ring._ghostFrac = hpFrac;
+      } else {
+        if (tookDamage) ring._ghostDrainAt = now + HP_GHOST_HOLD_MS;
+        if (now >= (ring._ghostDrainAt || 0)) {
+          ring._ghostFrac = Math.max(hpFrac, ring._ghostFrac - HP_GHOST_DRAIN);
+        }
+      }
+      ring._lastHpFrac = hpFrac;
+
       const cx = 0;
       const cy = -(HP_RING_OUTER_R + 49); /* ~-73: above the head, lifted 15px (v2.3.459) */
       /* Redraw only while visible (hidden at full HP, so this is cheap). */
@@ -3784,23 +3803,29 @@ export class EntityRenderer {
         const TOP = -Math.PI / 2;  /* 12 o'clock */
         const Q = Math.PI / 2;     /* quadrant span */
         const halfGap = (HP_RING_GAP_PX / HP_RING_STROKE_R) / 2;
-        /* Deplete CLOCKWISE: the empty wedge grows from 12 o'clock clockwise,
-           so the filled arc runs from fillStart clockwise back to 12. */
-        const fillStart = TOP + (1 - Math.max(0, Math.min(1, hpFrac))) * Math.PI * 2;
+        /* Deplete CLOCKWISE: empty wedge grows from 12 o'clock clockwise.
+           fillStart = current HP boundary; ghostStart = lagging (higher) HP,
+           so the white trail occupies [ghostStart, fillStart]. */
+        const clampF = (f) => Math.max(0, Math.min(1, f));
+        const fillStart  = TOP + (1 - clampF(hpFrac)) * Math.PI * 2;
+        const ghostStart = TOP + (1 - clampF(ring._ghostFrac)) * Math.PI * 2;
         /* moveTo before each arc so Pixi doesn't connect arcs with a stray
            line (the vertical line that hung below the ring). */
-        const arcSeg = (a0, a1, color, alpha) => {
+        const arcSeg = (a0, a1, color, alpha, width) => {
           ring.moveTo(cx + HP_RING_STROKE_R * Math.cos(a0), cy + HP_RING_STROKE_R * Math.sin(a0));
           ring.arc(cx, cy, HP_RING_STROKE_R, a0, a1);
-          ring.stroke({ color, width: HP_RING_BAND, cap: 'butt', alpha });
+          ring.stroke({ color, width, cap: 'butt', alpha });
         };
         for (let k = 0; k < 4; k++) {
           const qs = TOP + k * Q + halfGap;
           const qe = TOP + (k + 1) * Q - halfGap;
           if (qe <= qs) continue;
-          arcSeg(qs, qe, HP_RING_TRACK, 0.9);          /* drained track */
-          const fs = Math.max(qs, fillStart);          /* lit fill, clipped to quadrant */
-          if (fs < qe) arcSeg(fs, qe, hpTint, 1);
+          arcSeg(qs, qe, HP_RING_OUTLINE, 0.9, HP_RING_BAND + 2.5); /* dark frame (under) */
+          arcSeg(qs, qe, HP_RING_TRACK, 0.9, HP_RING_BAND);         /* drained track */
+          const ws = Math.max(qs, ghostStart), we = Math.min(qe, fillStart);
+          if (ws < we) arcSeg(ws, we, HP_GHOST_WHITE, 0.92, HP_RING_BAND); /* white trail */
+          const cs = Math.max(qs, fillStart);                      /* lit current fill */
+          if (cs < qe) arcSeg(cs, qe, hpTint, 1, HP_RING_BAND);
         }
       }
       heartText.x = cx; heartText.y = cy - 5;
