@@ -117,17 +117,82 @@ function _retint(d, i, target, ref) {
   d[i + 2] = Math.min(255, Math.round(target[2] * k));
 }
 
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT) {
+/* Pixel tests shared by the recolor loop and the torso-band pass.  Run on the
+   DEFAULT-colored source (always tan skin / green pants), so they're stable
+   regardless of the chosen skin or shirt color. */
+function _isSkin(r, g, b, a) { return a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25; }
+function _isPants(r, g, b, a) { return a > 180 && g >= r - 10 && g > b + 8 && r < 150; }
+
+/* Per-frame torso band [neckY, waistY] for the SHIRT.  Derived from the
+   frame's own pixels (no body-tops dependency): crown = topmost skin row;
+   waist = topmost pants row in the lower body; neck = where skin width jumps
+   from head-width to shoulder-width (collar sits just above the shoulders).
+   Returns one [neckY, waistY] (or null) per 256px frame in the sheet.  The
+   shirt = skin pixels inside this band -> covers torso + upper arms (sleeves),
+   stops at the waist hem and the head/neck.  Because it's keyed off each
+   frame's own body, it follows the run lean/twist automatically. */
+function _torsoBands(d, w, h, frameW, frames) {
+  const bands = new Array(frames);
+  for (let f = 0; f < frames; f++) {
+    const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
+    const skinRow = new Int16Array(h), pantsRow = new Int16Array(h);
+    let crown = -1, bottom = -1;
+    for (let y = 0; y < h; y++) {
+      let sc = 0, pc = 0, anyOp = false;
+      const base = y * w;
+      for (let x = x0; x < x1; x++) {
+        const i = (base + x) * 4;
+        const a = d[i + 3]; if (a <= 40) continue;
+        anyOp = true;
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        if (_isSkin(r, g, b, a)) sc++;
+        else if (_isPants(r, g, b, a)) pc++;
+      }
+      skinRow[y] = sc; pantsRow[y] = pc;
+      if (sc > 0 && crown < 0) crown = y;
+      if (anyOp) bottom = y;
+    }
+    if (crown < 0 || bottom <= crown) { bands[f] = null; continue; }
+    const mid = (crown + bottom) >> 1;
+    let waist = -1;
+    for (let y = mid; y < bottom; y++) { if (pantsRow[y] >= 3) { waist = y; break; } }
+    if (waist < 0) waist = Math.round(crown + 0.62 * (bottom - crown));
+    /* median skin width over the head rows */
+    const hw = [];
+    const hcap = Math.min(crown + 18, waist);
+    for (let y = crown; y < hcap; y++) if (skinRow[y] > 0) hw.push(skinRow[y]);
+    hw.sort((a, b) => a - b);
+    const hmed = hw.length ? Math.max(1, hw[hw.length >> 1]) : 1;
+    let shoulder = -1;
+    for (let y = crown + 6; y < waist; y++) { if (skinRow[y] > hmed * 1.7) { shoulder = y; break; } }
+    const neck = shoulder >= 0 ? shoulder - 2 : Math.round(crown + 0.22 * (waist - crown));
+    bands[f] = [Math.max(0, neck), waist];
+  }
+  return bands;
+}
+
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
   const cv = document.createElement('canvas');
   cv.width = img.width; cv.height = img.height;
   const ctx = cv.getContext('2d');
   ctx.drawImage(img, 0, 0);
   const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
   const d = imgData.data;
+  const w = cv.width;
+  /* Shirt = torso skin retinted to the shirt color (same lit ref as skin,
+     since it covers skin pixels).  Compute the per-frame band up front. */
+  const frames = Math.max(1, Math.floor(w / FRAME_W));
+  const bands = shirtT ? _torsoBands(d, w, cv.height, FRAME_W, frames) : null;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-    if (a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25) {
-      /* skin */ if (skinT) _retint(d, i, skinT, SKIN_REF);
+    if (_isSkin(r, g, b, a)) {
+      if (bands) {
+        const px = i >> 2;
+        const y = (px / w) | 0;
+        const bd = bands[((px % w) / FRAME_W) | 0];
+        if (bd && y >= bd[0] && y < bd[1]) { _retint(d, i, shirtT, SKIN_REF); continue; }
+      }
+      if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) {
       /* pants (green) */ if (pantsT) _retint(d, i, pantsT, PANTS_REF);
     } else if (a > 180) {
@@ -150,10 +215,10 @@ function loadImg(url) {
   });
 }
 
-function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT) {
+function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
   _bodySheets[sheetKey] = 'loading';
   loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}`).then(img => {
-    const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT);
+    const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
     src.autoGenerateMipmaps = true;
@@ -170,12 +235,13 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT) {
  *  back to the default sheets when nothing is recolored or while a sheet is
  *  still baking, so the player is never invisible.  Each (pose,dir) sheet is
  *  recolored lazily on first use.  Mirroring is handled by the caller. */
-export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx) {
+export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, shirtKey) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
-  if (!skinT && !pantsT && !shoesT) return getFrame(pose, dir, frameIdx);
-  const sheetKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '/' + dir;
+  if (!skinT && !pantsT && !shoesT && !shirtT) return getFrame(pose, dir, frameIdx);
+  const sheetKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
+    + '/' + (shirtT ? (shirtKey || 'shirt') : 'none') + '|' + pose + '/' + dir;
   const entry = _bodySheets[sheetKey];
-  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT); return getFrame(pose, dir, frameIdx); }
+  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT); return getFrame(pose, dir, frameIdx); }
   if (entry === 'loading' || !entry.length) return getFrame(pose, dir, frameIdx);
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
@@ -193,17 +259,34 @@ export function getSkinnedFrame(skinId, pose, dir, frameIdx) {
    Fires on module load (a returning player's stored combo) and whenever the
    login picker changes skin/pants/shoes -- both give plenty of lead time
    before the player presses Play and spawns. */
-export function prewarmBody(skinId, pantsId, shoesId) {
+export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
-  if (!skinT && !pantsT && !shoesT) return; /* default combo: nothing to bake */
+  if (!skinT && !pantsT && !shoesT && !shirtT) return; /* default combo: nothing to bake */
+  const shKey = shirtT ? (shirtKey || 'shirt') : 'none';
   for (const dir of SOURCE_DIRS) {
-    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|stand/' + dir;
-    if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT);
+    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/' + shKey + '|stand/' + dir;
+    if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT);
   }
 }
+/* Resolve the current shirt via dynamic import (static import would form a
+   cycle: playerSkins -> shirtColorCatalog -> characterPortrait -> playerSkins),
+   then prewarm the spawn pose with the full combo so there's no skin-torso
+   flash before the shirt bakes. */
 function _prewarmCurrent() {
-  try { prewarmBody(_skinStore.get(), _pantsStore.get(), _shoesStore.get()); } catch (e) { /* ignore */ }
+  Promise.all([import('./traits/shirtCatalog.js'), import('./traits/shirtColorCatalog.js')])
+    .then(([sc, scc]) => {
+      const shirtId = sc.getShirt(), colorId = scc.getShirtColor();
+      const shirtT = scc.shirtFill(shirtId, colorId);
+      prewarmBody(_skinStore.get(), _pantsStore.get(), _shoesStore.get(), shirtT, shirtId + '-' + colorId);
+      if (!_shirtSubscribed) {
+        _shirtSubscribed = true;
+        sc.onShirtChange(_prewarmCurrent);
+        scc.onShirtColorChange(_prewarmCurrent);
+      }
+    })
+    .catch(() => { try { prewarmBody(_skinStore.get(), _pantsStore.get(), _shoesStore.get(), null, 'none'); } catch (e) { /* ignore */ } });
 }
+let _shirtSubscribed = false;
 _skinStore.on(_prewarmCurrent);
 _pantsStore.on(_prewarmCurrent);
 _shoesStore.on(_prewarmCurrent);

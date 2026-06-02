@@ -25,7 +25,7 @@ import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
-import { getShirtColor, getColoredShirtTextures } from '../traits/shirtColorCatalog.js';
+import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -118,7 +118,6 @@ function _ensureTraitLoaded(category, id) {
 }
 function _ensureHeadwearLoaded(id) { return _ensureTraitLoaded('headwear', id); }
 function _ensureFacialHairLoaded(id) { return _ensureTraitLoaded('facialhair', id); }
-function _ensureShirtLoaded(id) { return _ensureTraitLoaded('shirt', id); }
 function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
 
 /* Body anchor schemas, loaded once and shared by every player + hat.
@@ -226,15 +225,11 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
   _placeTrait(display._facialHairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
 }
-function _placeShirt(display, shirtId, colorId, pose, dir, mirror, frameIdx, bodyScale) {
-  const baseEntry = _ensureShirtLoaded(shirtId);
-  /* Retint the shirt to the selected color (recolored textures reuse the
-     base meta; fall back to native color while they bake). */
-  let entry = baseEntry;
-  const colored = getColoredShirtTextures(shirtId, colorId);
-  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
-  _placeTrait(display._shirtSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
-}
+/* v2.3.497: the shirt is no longer an overlay sprite -- it's baked into the
+   body (torso skin retinted to the shirt color in playerSkins.getBodyFrame),
+   so it follows every pose/frame and reuses the body's own outline.  The old
+   _placeShirt / _shirtSprite path was removed; the sprite object is kept but
+   left invisible to avoid disturbing the display graph. */
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
 const _hairMaskCache = {};
@@ -2061,9 +2056,12 @@ export class EntityRenderer {
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
         }
         /* v2.3.389: remote players render in their own skin tone.
-           v2.3.399: + their pants / shoes colors. */
-        let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx);
-        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0);
+           v2.3.399: + their pants / shoes colors.
+           v2.3.497: + their baked shirt (torso-fill). */
+        const _oShirtT = shirtFill(other.shirt, other.shirtColor);
+        const _oShirtKey = _oShirtT ? (other.shirt + '-' + other.shirtColor) : 'none';
+        let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey);
+        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey);
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
              the local player path, fixes invisible-after-zone-change. */
@@ -2115,7 +2113,8 @@ export class EntityRenderer {
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.353: and their facial hair (other.facialhair). */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
-          _placeShirt(display, other.shirt, other.shirtColor, pose, dir, mirror, frameIdx, sizeMul);
+          /* shirt is baked into the body (see getBodyFrame above); no overlay. */
+          if (display._shirtSprite) display._shirtSprite.visible = false;
           /* v2.3.357: and their hair (other.hair). */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
         } else {
@@ -2601,13 +2600,17 @@ export class EntityRenderer {
       _ensureBodyData();
       _ensureHeadwearLoaded(getHeadwear());
       _ensureFacialHairLoaded(getFacialHair());
-      _ensureShirtLoaded(getShirt());
       _ensureHairLoaded(getHair());
       /* v2.3.389: recolor the bare skin to the selected tone (preserving
          shading) -- falls back to the default sheets internally.
-         v2.3.399: + pants / shoes colors. */
-      let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
-      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0);
+         v2.3.399: + pants / shoes colors.
+         v2.3.497: shirt is now BAKED into the body (torso skin retinted to the
+         shirt color, follows every pose/frame) instead of an overlay sprite. */
+      const _shId = getShirt(), _shCol = getShirtColor();
+      const _shirtT = shirtFill(_shId, _shCol);
+      const _shirtKey = _shirtT ? (_shId + '-' + _shCol) : 'none';
+      let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
+      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey);
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body
          share frame-coords so they move together pixel-perfect. */
@@ -2660,7 +2663,8 @@ export class EntityRenderer {
            player's hat id comes from the login picker. */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeShirt(display, getShirt(), getShirtColor(), pose, dir, mirror, frameIdx, bodyScale);
+        /* shirt is baked into the body (see getBodyFrame above); no overlay. */
+        if (display._shirtSprite) display._shirtSprite.visible = false;
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
 
         /* v2.3.265: combined-trait overlay disabled while sticker

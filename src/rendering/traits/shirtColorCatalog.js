@@ -32,6 +32,18 @@ export function shirtColorTarget(id) {
   return (e && e.target) || null;
 }
 
+/* The 'default' shirt color has target=null (it meant "native sprite blue" in
+   the old overlay system).  The baked/procedural shirt has no sprite, so map
+   default -> this concrete blue (== the #3a5bd0 swatch). */
+export const SHIRT_DEFAULT_RGB = [58, 91, 208];
+
+/** Resolve the LIT fill color for a shirt selection, or null when no shirt.
+ *  Used by the baked torso-fill (playerSkins) and the login preview. */
+export function shirtFill(shirtId, colorId) {
+  if (!shirtId || shirtId === 'none') return null;
+  return shirtColorTarget(colorId) || SHIRT_DEFAULT_RGB;
+}
+
 /* ── selection store (localStorage) ── */
 const STORAGE_KEY = 'bt-shirtcolor';
 let _active = 'default';
