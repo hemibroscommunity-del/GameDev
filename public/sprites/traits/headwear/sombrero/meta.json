@@ -95,7 +95,7 @@
     ],
     "southwest": [
       0,
-      -20
+      -17
     ],
     "east": [
       0,
@@ -112,7 +112,7 @@
   },
   "scale": {
     "south": 0.9,
-    "southwest": 0.9,
+    "southwest": 0.945,
     "east": 0.9,
     "northeast": 0.9,
     "north": 0.9
