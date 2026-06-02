@@ -2390,28 +2390,31 @@ export var BroTown = function BroTown(_ref0) {
                  this event is only for the +N HP floater so the visual
                  math matches the server exactly. Only render for our
                  own player; party members don't get our floater. */
-              if (msg.payload && msg.payload.playerId === S.myId) {
-                if (msg.payload.refund > 0 && S.dmgNumbers && S.player) {
+              /* v2.3.462 fix: lifesteal_credit is sent DIRECTLY to the
+                 killer's own ws (server killerWs.send), so any one we receive
+                 is ours.  The old `payload.playerId === S.myId` gate didn't
+                 match (server session.id !== client S.myId) and was silently
+                 dropping EVERY heal floater + the diagnostic -- the "no
+                 messages fire / missing an ID" symptom.  Don't gate on it;
+                 combat_credit (same direct-send path) doesn't either. */
+              if (msg.payload && S.dmgNumbers && S.player) {
+                if (msg.payload.refund > 0) {
                   S.dmgNumbers.push({
                     x: S.player.x, y: S.player.y - 40,
                     text: '+' + msg.payload.refund + ' HP',
                     color: '#3dd497', ts: Date.now(),
                   });
                 } else {
-                  /* v2.3.461 diagnostic: refund was 0 -- surface the server's
-                     gate reason (no-this-mon / not-melee / no-damage / etc.) so
-                     we can see WHY melee lifesteal isn't healing instead of
-                     guessing.  Mirrors the loot_pickup_rejected pattern; drop
-                     once the cause is identified. */
+                  /* refund 0 -- surface the server gate reason so we can see
+                     WHY no heal landed (no-this-mon / not-melee / no-damage). */
                   try { console.log('[lifesteal] no heal -- reason:', msg.payload.reason,
-                    'slot=', msg.payload.slot, 'activeSlot=', msg.payload.activeSlot); } catch (e) {}
-                  if (S.dmgNumbers && S.player) {
-                    S.dmgNumbers.push({
-                      x: S.player.x, y: S.player.y - 40,
-                      text: 'lifesteal: ' + (msg.payload.reason || '?'),
-                      color: '#f5c542', ts: Date.now(),
-                    });
-                  }
+                    'slot=', msg.payload.slot, 'activeSlot=', msg.payload.activeSlot,
+                    'pid=', msg.payload.playerId, 'myId=', S.myId); } catch (e) {}
+                  S.dmgNumbers.push({
+                    x: S.player.x, y: S.player.y - 40,
+                    text: 'lifesteal: ' + (msg.payload.reason || '?'),
+                    color: '#f5c542', ts: Date.now(),
+                  });
                 }
               }
               break;
