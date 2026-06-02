@@ -34,6 +34,11 @@ import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, genera
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
+import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants, setPants, getShoes, setShoes } from '@/rendering/playerSkins.js';
+import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
+import { HAIR_COLOR_CATALOG, getHairColor, setHairColor, hairColorTarget } from '@/rendering/traits/hairColorCatalog.js';
+import { HAT_COLOR_CATALOG, getHatColor, setHatColor, hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
+import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor, facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
@@ -1278,6 +1283,142 @@ export var BroTown = function BroTown(_ref0) {
   var _hairSelState = useState(getHair()),
     hairSel = _hairSelState[0],
     setHairSel = _hairSelState[1];
+  var _skinSelState = useState(getSkin()),
+    skinSel = _skinSelState[0],
+    setSkinSel = _skinSelState[1];
+  var _hairColorSelState = useState(getHairColor()),
+    hairColorSel = _hairColorSelState[0],
+    setHairColorSel = _hairColorSelState[1];
+  var _hatColorSelState = useState(getHatColor()),
+    hatColorSel = _hatColorSelState[0],
+    setHatColorSel = _hatColorSelState[1];
+  var _beardColorSelState = useState(getFacialHairColor()),
+    beardColorSel = _beardColorSelState[0],
+    setBeardColorSel = _beardColorSelState[1];
+  var _pantsSelState = useState(getPants()),
+    pantsSel = _pantsSelState[0],
+    setPantsSel = _pantsSelState[1];
+  var _shoesSelState = useState(getShoes()),
+    shoesSel = _shoesSelState[0],
+    setShoesSel = _shoesSelState[1];
+  /* Which appearance-picker categories are expanded (collapsed by default). */
+  var _apExpState = useState({}),
+    expanded = _apExpState[0],
+    setExpanded = _apExpState[1];
+  /* Live character preview on the login screen -- redraws whenever any
+     cosmetic selection (or the preview angle) changes. */
+  var previewCanvasRef = useRef(null);
+  /* Which of the 8 compass directions the preview faces; rotate buttons step
+     through them.  Clockwise order. */
+  var _PREVIEW_DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', 'west', 'southwest'];
+  var _previewDirState = useState('southwest'),
+    previewDir = _previewDirState[0],
+    setPreviewDir = _previewDirState[1];
+  var rotatePreview = function (step) {
+    var i = _PREVIEW_DIRS.indexOf(previewDir);
+    if (i < 0) i = 0;
+    setPreviewDir(_PREVIEW_DIRS[(i + step + _PREVIEW_DIRS.length) % _PREVIEW_DIRS.length]);
+  };
+  useEffect(function () {
+    if (!previewCanvasRef.current) return;
+    drawCharacterPortrait(previewCanvasRef.current, {
+      dir: previewDir,
+      skin: skinSel, pants: pantsSel, shoes: shoesSel,
+      hair: hairSel, hairColor: hairSel === 'long' ? null : hairColorTarget(hairColorSel),
+      facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
+      headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
+    });
+  }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel]);
+  /* The long-hair sprite is ~88% pure black, so a light hair color over-
+     processes into a black band around the face (see characterPortrait recolor
+     note).  Restrict that one style to dark colors only; clamp the selection
+     back to default if a style switch or a returning player leaves it light. */
+  var LONG_HAIR_COLORS = ['black'];
+  useEffect(function () {
+    if (hairSel === 'long' && LONG_HAIR_COLORS.indexOf(hairColorSel) === -1) {
+      setHairColor(LONG_HAIR_COLORS[0]); setHairColorSel(LONG_HAIR_COLORS[0]);
+    }
+  }, [hairSel]);
+  /* Category picker: every category is a left-labelled ROW, stacked head-to-
+     toe, so the whole appearance is visible at once.  Each row is a horizontal
+     strip of icon tiles (thumbnails for styles, color chips for colors) that
+     scrolls sideways for long catalogs; the current pick is highlighted.  Style
+     rows append their color chips after a divider in the SAME row (color is
+     part of the item, not its own row). */
+  var _apTileStyle = function (sel, size) {
+    return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
+      borderRadius: 8, background: sel ? 'var(--pop)' : 'var(--ink3)',
+      border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center' };
+  };
+  var _swatchTile = function (opt, selId, onSet, size) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: 'c_' + opt.id, type: 'button', title: opt.name,
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(selId === opt.id, size || 28)
+    }, /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 5, background: opt.swatch, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } }));
+  };
+  var _thumbTile = function (cat, opt, selId, onSet, size) {
+    var sz = size || 44;
+    return /*#__PURE__*/React.createElement("button", {
+      key: 's_' + opt.id, type: 'button', title: opt.name,
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(selId === opt.id, sz)
+    }, opt.id === 'none'
+      ? /*#__PURE__*/React.createElement("div", { style: { width: sz - 14, height: sz - 14, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
+      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }));
+  };
+  /* Collapsed-pill previews (non-interactive). */
+  var _swOf = function (cat, id) { var e = cat.find(function (o) { return o.id === id; }); return (e && e.swatch) || '#888'; };
+  var _miniThumb = function (cat, id) {
+    return id === 'none'
+      ? /*#__PURE__*/React.createElement("div", { key: 'mt', style: { width: 26, height: 26, borderRadius: '50%', border: '1.5px dashed var(--line)', flex: '0 0 auto' } })
+      : /*#__PURE__*/React.createElement("img", { key: 'mt', src: '/sprites/traits/' + cat + '/' + id + '/thumb.png?v=' + BUILD_INFO.version, alt: '', style: { width: 30, height: 30, objectFit: 'contain', imageRendering: 'pixelated', flex: '0 0 auto' } });
+  };
+  var _miniSwatch = function (sw) {
+    return /*#__PURE__*/React.createElement("div", { key: 'ms', style: { width: 22, height: 22, borderRadius: 5, background: sw, border: '1px solid rgba(0,0,0,0.35)', flex: '0 0 auto' } });
+  };
+  var _chevron = function (open) {
+    return /*#__PURE__*/React.createElement("span", { key: 'cv', style: open
+      ? { width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #9090a8', flex: '0 0 auto' }
+      : { width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderLeft: '5px solid #9090a8', flex: '0 0 auto' } });
+  };
+  var _pillBox = { display: 'flex', alignItems: 'stretch', width: '100%', marginBottom: 6,
+    border: '1.5px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.12)', boxSizing: 'border-box' };
+  var _pillLabel = { width: 60, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+    padding: '0 8px', fontSize: 10, fontWeight: 800, color: '#c2c2d2', letterSpacing: '.04em', fontFamily: 'Source Sans 3,sans-serif',
+    borderRight: '1.5px solid var(--line)', background: 'var(--ink3)', textAlign: 'left' };
+  /* Category pill -- COLLAPSED by default: the right side shows the current
+     selection; tapping the pill (or its label) expands it to reveal all
+     choices (style on top, color below).  Label spans the left, full height.
+     `optionRows` = expanded-state tile-arrays; `summary` = collapsed preview. */
+  var _apPill = function (catKey, label, optionRows, summary) {
+    var open = !!expanded[catKey];
+    var toggle = function () { setExpanded(function (p) { var n = Object.assign({}, p); n[catKey] = !p[catKey]; return n; }); };
+    var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb' }, label), _chevron(open)];
+    if (open) {
+      return /*#__PURE__*/React.createElement("div", { key: catKey, style: _pillBox },
+        /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillLabel, { cursor: 'pointer', borderTop: 'none', borderBottom: 'none', borderLeft: 'none' }) }, labelKids),
+        /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', flexDirection: 'column', minWidth: 0 } },
+          optionRows.map(function (kids, i) {
+            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', gap: 5, overflowX: 'auto', padding: '4px 6px', borderTop: i > 0 ? '1px solid var(--line)' : 'none' } }, kids);
+          })));
+    }
+    return /*#__PURE__*/React.createElement("button", { key: catKey, type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0 }) },
+      /*#__PURE__*/React.createElement("div", { style: _pillLabel }, labelKids),
+      /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary));
+  };
+  var randomizeAppearance = function () {
+    var rpick = function (c) { return c[Math.floor(Math.random() * c.length)].id; };
+    var sk = rpick(SKIN_CATALOG); setSkin(sk); setSkinSel(sk);
+    var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt);
+    var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh);
+    var hr = rpick(HAIR_CATALOG); setHair(hr); setHairSel(hr);
+    var hcCat = hr === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;
+    var hcc = rpick(hcCat); setHairColor(hcc); setHairColorSel(hcc);
+    var bd = rpick(FACIALHAIR_CATALOG); setFacialHair(bd); setFacialHairSel(bd);
+    var bcc = rpick(FACIALHAIR_COLOR_CATALOG); setFacialHairColor(bcc); setBeardColorSel(bcc);
+    var ht = rpick(HEADWEAR_CATALOG); setHeadwear(ht); setHeadwearSel(ht);
+    var htc = rpick(HAT_COLOR_CATALOG); setHatColor(htc); setHatColorSel(htc);
+  };
   var nftCatalogRef = useRef(null); /* cached CSV data [{ID,Image,...}] */
   var _useState203 = useState('#2563eb'),
     _useState204 = _slicedToArray(_useState203, 2),
@@ -1813,6 +1954,12 @@ export var BroTown = function BroTown(_ref0) {
             hw: getHeadwear(),
             fh: getFacialHair(),
             hr: getHair(),
+            sk: getSkin(),
+            hc: getHairColor(),
+            htc: getHatColor(),
+            fhc: getFacialHairColor(),
+            pt: getPants(),
+            sh: getShoes(),
             bs: S.bodySize || 'slim',
             /* Bootstrap fields for server-authoritative coins / inventory
                / lifeSkills.  Used only on a player's FIRST connection
@@ -1941,6 +2088,7 @@ export var BroTown = function BroTown(_ref0) {
                     S.others[pid]._serverX = data.x;
                     S.others[pid]._serverY = data.y;
                     S.others[pid].dir = data.d;
+                    if (data.f) S.others[pid]._renderFacing = data.f;
                     S.others[pid].zone = data.z;
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
@@ -2112,6 +2260,12 @@ export var BroTown = function BroTown(_ref0) {
                   headwear: _data.hw || null,
                   facialhair: _data.fh || null,
                   hair: _data.hr || null,
+                  skin: _data.sk || null,
+                  hairColor: _data.hc || null,
+                  hatColor: _data.htc || null,
+                  facialHairColor: _data.fhc || null,
+                  pants: _data.pt || null,
+                  shoes: _data.sh || null,
                   rpgLv: _data.rpgLv || 1,
                   rpgHp: _data.rpgHp || 50,
                   rpgMaxHp: _data.rpgMaxHp || 50,
@@ -2478,8 +2632,8 @@ export var BroTown = function BroTown(_ref0) {
               S.map = generateZoneMap(S.currentZone);
               S.monsters = [];
               S.gatherNodes = [];
-              S.player.x = 16 * TILE;
-              S.player.y = 16 * TILE;
+              S.player.x = (ZONES[S.currentZone] ? ZONES[S.currentZone].w / 2 : 16) * TILE;
+              S.player.y = (ZONES[S.currentZone] ? ZONES[S.currentZone].h / 2 : 16) * TILE;
               S.respawnTimer = Date.now() + 3000;
               S._deathStart = 0;
               S._dying = false;
@@ -2663,6 +2817,12 @@ export var BroTown = function BroTown(_ref0) {
                 headwear: (msg.data && msg.data.hw) || null,
                 facialhair: (msg.data && msg.data.fh) || null,
                 hair: (msg.data && msg.data.hr) || null,
+                skin: (msg.data && msg.data.sk) || null,
+                hairColor: (msg.data && msg.data.hc) || null,
+                hatColor: (msg.data && msg.data.htc) || null,
+                facialHairColor: (msg.data && msg.data.fhc) || null,
+                pants: (msg.data && msg.data.pt) || null,
+                shoes: (msg.data && msg.data.sh) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
                 rpgHp: ((_msg$data1 = msg.data) === null || _msg$data1 === void 0 ? void 0 : _msg$data1.rpgHp) || 50,
                 rpgMaxHp: ((_msg$data10 = msg.data) === null || _msg$data10 === void 0 ? void 0 : _msg$data10.rpgMaxHp) || 50,
@@ -3425,8 +3585,8 @@ export var BroTown = function BroTown(_ref0) {
                   S.map = generateZoneMap('town');
                   S.monsters = []; /* Town has no monsters */
                   S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
-                  S.player.x = 16 * TILE;
-                  S.player.y = 16 * TILE;
+                  S.player.x = 24 * TILE;
+                  S.player.y = 24 * TILE;
                   S.respawnTimer = Date.now() + 3000;
                   S._deathStart = 0;
                   S._dying = false;
@@ -5385,8 +5545,8 @@ export var BroTown = function BroTown(_ref0) {
             try { S.map = generateZoneMap('town'); } catch (e) {}
             S.monsters = [];
             S.gatherNodes = []; /* Town is safe -- no harvestable resources; clear stale entries from the previous zone */
-            P.x = 16 * TILE;
-            P.y = 16 * TILE;
+            P.x = 24 * TILE;
+            P.y = 24 * TILE;
             P.vx = 0; P.vy = 0;
             S.respawnTimer = Date.now() + 3000;
             S._dying = false;
@@ -5627,30 +5787,17 @@ export var BroTown = function BroTown(_ref0) {
         var ptx = Math.floor(P.x / TILE),
           pty = Math.floor(P.y / TILE);
 
-        /* In town: reaching any edge finds the nearest exit and transitions */
-        if (S.currentZone === 'town' && (pty <= 0 || pty >= _zone.h - 1 || ptx <= 0 || ptx >= _zone.w - 1)) {
-          /* Find closest town exit to player position. 8 directions:
-             cardinal (N/E/S/W) match their respective edge; diagonals
-             (NE/NW/SE/SW) match either of the two adjacent edges so
-             walking off near a corner grabs the corner exit. Distance
-             is manhattan to the exit tile. */
-          var onN = pty <= 0, onS = pty >= _zone.h - 1;
-          var onE = ptx >= _zone.w - 1, onW = ptx <= 0;
+        /* v2.3.387: town exits are PROXIMITY zones on the painted
+           path-ends (the pink markers), not the map edge.  Transition when
+           the player walks within TOWN_EXIT_R tiles (manhattan) of an exit
+           marker.  Nearest marker wins if two overlap. */
+        if (S.currentZone === 'town') {
+          var TOWN_EXIT_R = 2;
           var bestExit = null,
             bestDist = Infinity;
           TOWN_EXITS.forEach(function (ex) {
-            var edgeMatch = false;
-            if (ex.dir === 'north' && onN) edgeMatch = true;
-            if (ex.dir === 'south' && onS) edgeMatch = true;
-            if (ex.dir === 'east'  && onE) edgeMatch = true;
-            if (ex.dir === 'west'  && onW) edgeMatch = true;
-            if (ex.dir === 'ne' && (onN || onE)) edgeMatch = true;
-            if (ex.dir === 'nw' && (onN || onW)) edgeMatch = true;
-            if (ex.dir === 'se' && (onS || onE)) edgeMatch = true;
-            if (ex.dir === 'sw' && (onS || onW)) edgeMatch = true;
-            if (!edgeMatch) return;
             var d = Math.abs(ptx - ex.tx) + Math.abs(pty - ex.ty);
-            if (d < bestDist) {
+            if (d <= TOWN_EXIT_R && d < bestDist) {
               bestDist = d;
               bestExit = ex;
             }
@@ -5865,21 +6012,22 @@ export var BroTown = function BroTown(_ref0) {
             /* Spawn at the same town extreme you originally left from
                — 8 directions including diagonals so corner-exit zones
                return you to the same corner. */
+            /* v2.3.387: return to town just INSIDE the exit marker you
+               left from -- offset 4 tiles toward the hub center so you land
+               on the path clear of the proximity trigger (else you'd warp
+               straight back out). */
             var twn2 = ZONES.town;
             var entryDir = S._enteredFromDir || 'north';
-            var twnMidX = Math.floor(twn2.w / 2) * TILE;
-            var twnMidY = Math.floor(twn2.h / 2) * TILE;
-            var twnNX = TILE * 3, twnSX = (twn2.h - 3) * TILE;
-            var twnEX = (twn2.w - 3) * TILE, twnWX = TILE * 3;
-            if (entryDir === 'north')      { P.x = twnMidX; P.y = twnNX;   }
-            else if (entryDir === 'south') { P.x = twnMidX; P.y = twnSX;   }
-            else if (entryDir === 'east')  { P.x = twnEX;   P.y = twnMidY; }
-            else if (entryDir === 'west')  { P.x = twnWX;   P.y = twnMidY; }
-            else if (entryDir === 'ne')    { P.x = twnEX;   P.y = twnNX;   }
-            else if (entryDir === 'nw')    { P.x = twnWX;   P.y = twnNX;   }
-            else if (entryDir === 'se')    { P.x = twnEX;   P.y = twnSX;   }
-            else if (entryDir === 'sw')    { P.x = twnWX;   P.y = twnSX;   }
-            else                            { P.x = 16 * TILE; P.y = 16 * TILE; }
+            var _rcx = twn2.w / 2, _rcy = twn2.h / 2;
+            var _rex = TOWN_EXITS.find(function (e) { return e.dir === entryDir; });
+            if (_rex) {
+              var _rdx = _rcx - _rex.tx, _rdy = _rcy - _rex.ty;
+              var _rlen = Math.max(0.001, Math.sqrt(_rdx * _rdx + _rdy * _rdy));
+              P.x = (_rex.tx + _rdx / _rlen * 4) * TILE;
+              P.y = (_rex.ty + _rdy / _rlen * 4) * TILE;
+            } else {
+              P.x = _rcx * TILE; P.y = _rcy * TILE;
+            }
             S._enteredFromDir = null;
             S.dmgNumbers.push({
               x: P.x,
@@ -8393,8 +8541,8 @@ export var BroTown = function BroTown(_ref0) {
                       S.map = generateZoneMap('town');
                       S.monsters = []; /* Town has no monsters */
                       S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
-                      P.x = 16 * TILE;
-                      P.y = 16 * TILE;
+                      P.x = 24 * TILE;
+                      P.y = 24 * TILE;
                       P.vx = 0; P.vy = 0;
                       S.respawnTimer = Date.now() + respawnMs;
                       S._dying = false;
@@ -10294,8 +10442,13 @@ export var BroTown = function BroTown(_ref0) {
         /* Broadcast position — slim payload for speed */
         var now = performance.now();
         var isMoving = dx || dy || S._dodgeRoll;
-        if (now - S.lastBroadcast > 33 && isMoving) {
+        /* v2.3.396: also broadcast when the facing changes while standing
+           (turning to aim without moving) so remote clients see the turn --
+           the move payload now carries the true rendered facing (f). */
+        var _facingChanged = S._renderFacing && S._renderFacing !== S._lastBroadcastFacing;
+        if (now - S.lastBroadcast > 33 && (isMoving || _facingChanged)) {
           S.lastBroadcast = now;
+          S._lastBroadcastFacing = S._renderFacing;
           if (S.channel) {
             if (S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 33)) {
               S._lastMoveBroadcast = Date.now();
@@ -10314,6 +10467,7 @@ export var BroTown = function BroTown(_ref0) {
                   x: Math.round(P.x * 10) / 10,
                   y: Math.round(P.y * 10) / 10,
                   d: P.dir,
+                  f: S._renderFacing || null,
                   z: S.currentZone || 'town',
                   vx: Math.round(bcastVx * 100),
                   vy: Math.round(bcastVy * 100)
@@ -10337,6 +10491,12 @@ export var BroTown = function BroTown(_ref0) {
                 hw: getHeadwear(),
                 fh: getFacialHair(),
                 hr: getHair(),
+                sk: getSkin(),
+                hc: getHairColor(),
+                htc: getHatColor(),
+                fhc: getFacialHairColor(),
+                pt: getPants(),
+                sh: getShoes(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,
                 rpgHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.hp) || 50,
                 rpgMaxHp: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.maxHp) || 50,
@@ -10504,6 +10664,12 @@ export var BroTown = function BroTown(_ref0) {
           if (oAdx > 0.03 || oAdy > 0.03) {
             if (oAdy > oAdx) o._facing = oDy > 0 ? 'down' : 'up';
             else o._facing = oDx > 0 ? 'right' : 'left';
+            /* v2.3.398: 8-way facing from POSITION delta (which is correct --
+               remote players appear in the right spots).  The renderer uses
+               this instead of broadcast velocity, whose vy sign didn't survive
+               the server relay and produced the front/back facing mirror. */
+            var _o8 = Math.round(Math.atan2(oDy, oDx) / (Math.PI / 4));
+            o._moveFacing8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'][((_o8 % 8) + 8) % 8];
           }
         });
 
@@ -13293,20 +13459,33 @@ export var BroTown = function BroTown(_ref0) {
       letterSpacing: '.05em',
       marginBottom: 12,
     }
-  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha), /*#__PURE__*/React.createElement("img", {
-    src: '/sprites/player/welcome-bro.png?v=2',
-    alt: 'Hemi Bro',
+  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha), /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 12 }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
+    style: { width: 30, height: 30, flex: '0 0 auto', borderRadius: '50%', cursor: 'pointer',
+      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderRight: '7px solid currentColor' } })),
+  /*#__PURE__*/React.createElement("canvas", {
+    ref: previewCanvasRef,
+    width: 256,
+    height: 256,
+    title: 'Live preview',
     style: {
       width: 128,
       height: 128,
       imageRendering: 'pixelated',
-      marginBottom: 12,
       borderRadius: 8,
       display: 'block',
-      marginLeft: 'auto',
-      marginRight: 'auto'
+      background: '#ffffff'
     }
-  }), /*#__PURE__*/React.createElement("input", {
+  }), /*#__PURE__*/React.createElement("button", {
+    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(1); },
+    style: { width: 30, height: 30, flex: '0 0 auto', borderRadius: '50%', cursor: 'pointer',
+      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '7px solid currentColor' } }))), /*#__PURE__*/React.createElement("input", {
     value: nameInput,
     onChange: function onChange(e) {
       return setNameInput(e.target.value);
@@ -13332,87 +13511,20 @@ export var BroTown = function BroTown(_ref0) {
       boxSizing: 'border-box'
     }
   }), /*#__PURE__*/React.createElement("div", {
-    style: { width: '100%', marginTop: 6, marginBottom: 2 }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: { fontSize: 10, color: 'var(--pop)', fontWeight: 800, letterSpacing: '.1em', marginBottom: 6, textAlign: 'center', fontFamily: 'Source Sans 3,sans-serif' }
-  }, "HEADWEAR"), /*#__PURE__*/React.createElement("div", {
-    style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }
-  }, HEADWEAR_CATALOG.map(function (opt) {
-    var sel = headwearSel === opt.id;
-    return /*#__PURE__*/React.createElement("button", {
-      key: opt.id,
-      type: 'button',
-      onClick: function onClick() { setHeadwear(opt.id); setHeadwearSel(opt.id); },
-      title: opt.name,
-      style: {
-        width: 58, padding: '5px 4px 4px',
-        background: sel ? 'var(--pop)' : 'var(--ink3)',
-        border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
-        borderRadius: 9, cursor: 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3
-      }
-    }, opt.id === 'none' ? /*#__PURE__*/React.createElement("div", {
-      style: { width: 40, height: 40, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' }
-    }) : /*#__PURE__*/React.createElement("img", {
-      src: '/sprites/traits/headwear/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version,
-      alt: opt.name,
-      style: { width: 40, height: 40, objectFit: 'contain', imageRendering: 'pixelated' }
-    }));
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: { width: '100%', marginTop: 4, marginBottom: 2 }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: { fontSize: 10, color: 'var(--pop)', fontWeight: 800, letterSpacing: '.1em', marginBottom: 6, textAlign: 'center', fontFamily: 'Source Sans 3,sans-serif' }
-  }, "FACIAL HAIR"), /*#__PURE__*/React.createElement("div", {
-    style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }
-  }, FACIALHAIR_CATALOG.map(function (opt) {
-    var sel = facialHairSel === opt.id;
-    return /*#__PURE__*/React.createElement("button", {
-      key: opt.id,
-      type: 'button',
-      onClick: function onClick() { setFacialHair(opt.id); setFacialHairSel(opt.id); },
-      title: opt.name,
-      style: {
-        width: 58, padding: '5px 4px 4px',
-        background: sel ? 'var(--pop)' : 'var(--ink3)',
-        border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
-        borderRadius: 9, cursor: 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3
-      }
-    }, opt.id === 'none' ? /*#__PURE__*/React.createElement("div", {
-      style: { width: 40, height: 40, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' }
-    }) : /*#__PURE__*/React.createElement("img", {
-      src: '/sprites/traits/facialhair/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version,
-      alt: opt.name,
-      style: { width: 40, height: 40, objectFit: 'contain', imageRendering: 'pixelated' }
-    }));
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: { width: '100%', marginTop: 4, marginBottom: 2 }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: { fontSize: 10, color: 'var(--pop)', fontWeight: 800, letterSpacing: '.1em', marginBottom: 6, textAlign: 'center', fontFamily: 'Source Sans 3,sans-serif' }
-  }, "HAIR"), /*#__PURE__*/React.createElement("div", {
-    style: { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }
-  }, HAIR_CATALOG.map(function (opt) {
-    var sel = hairSel === opt.id;
-    return /*#__PURE__*/React.createElement("button", {
-      key: opt.id,
-      type: 'button',
-      onClick: function onClick() { setHair(opt.id); setHairSel(opt.id); },
-      title: opt.name,
-      style: {
-        width: 58, padding: '5px 4px 4px',
-        background: sel ? 'var(--pop)' : 'var(--ink3)',
-        border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
-        borderRadius: 9, cursor: 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3
-      }
-    }, opt.id === 'none' ? /*#__PURE__*/React.createElement("div", {
-      style: { width: 40, height: 40, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' }
-    }) : /*#__PURE__*/React.createElement("img", {
-      src: '/sprites/traits/hair/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version,
-      alt: opt.name,
-      style: { width: 40, height: 40, objectFit: 'contain', imageRendering: 'pixelated' }
-    }));
-  }))), /*#__PURE__*/React.createElement("button", {
+    style: { width: '100%', marginTop: 8 }
+  },
+  _apPill('hat', 'HAT', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
+  _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
+  _apPill('beard', 'BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
+  _apPill('skin', 'SKIN', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
+  _apPill('pants', 'PANTS', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
+  _apPill('shoes', 'SHOES', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))]),
+  /*#__PURE__*/React.createElement("button", {
+    type: 'button', onClick: randomizeAppearance,
+    style: { width: '100%', padding: '7px', marginTop: 6, cursor: 'pointer', borderRadius: 8,
+      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      fontSize: 11, fontWeight: 800, letterSpacing: '.08em', fontFamily: 'Source Sans 3,sans-serif' }
+  }, "RANDOMIZE")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
       marginTop: 12,

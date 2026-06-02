@@ -1,12 +1,13 @@
 /* ═══ HUB-AND-SPOKE WORLD — §14 ═══ */
 export const ZONES = {
   town: {
-    /* 32x32 tiles = 1024x1024 px world bounds.  The new pixel-art
-       town_v4.jpg is 1254x1254; the IMAGE_ZONE_MAPS sprite scales
-       it to 1024x1024 — slight downscale, no perceptible quality
-       loss at gameplay zoom.  All cells walkable (no walkability
-       JSON loaded). */
-    id: 'town', name: 'Town', w: 32, h: 32,
+    /* v2.3.386: town is 48x48 tiles = 1536x1536 px world bounds (was
+       32x32) -- 1.5x playable area per user (tried 2x/64x64 first).
+       Background art (town_v13.jpg) is 1536x1536 native to match (square
+       painterly source, gentle upscale).  All cells walkable (no
+       walkability JSON).  TOWN_EXITS / TOWN_BUILDINGS / spawn scaled x1.5
+       to suit the grid. */
+    id: 'town', name: 'Town', w: 48, h: 48,
     element: null, level: [0, 0], music: 'town', safe: true,
     palette: { ground: '#4a6741', path: '#8b7355', accent: '#5a7a50' }
   },

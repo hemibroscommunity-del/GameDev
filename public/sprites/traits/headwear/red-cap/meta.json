@@ -1,0 +1,118 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Red baseball cap. Sources S=IMG_8904, SW=D7E08C71 (black hat-hole keyed out), N=IMG_8918. East built from West=IMG_8907 flipped (black string under brim removed first); northeast from Northwest=4FDF1D69 flipped (renderer mirrors E/NE back to W/NW). 1024 sources padded to 1254 before downscale for consistent scale. crownNudge/scale start at defaults -- tune per direction after on-device review.",
+  "bboxes_source": {
+    "south": [
+      509,
+      148,
+      221,
+      115
+    ],
+    "north": [
+      523,
+      164,
+      205,
+      209
+    ],
+    "southwest": [
+      522,
+      514,
+      250,
+      143
+    ],
+    "northeast": [
+      485,
+      501,
+      238,
+      174
+    ],
+    "east": [
+      457,
+      152,
+      298,
+      165
+    ]
+  },
+  "bboxes": {
+    "south": [
+      104,
+      30,
+      45,
+      24
+    ],
+    "north": [
+      106,
+      33,
+      43,
+      44
+    ],
+    "southwest": [
+      106,
+      104,
+      52,
+      31
+    ],
+    "northeast": [
+      99,
+      102,
+      49,
+      36
+    ],
+    "east": [
+      93,
+      31,
+      62,
+      34
+    ]
+  },
+  "anchors": {
+    "south": [
+      126,
+      30
+    ],
+    "north": [
+      127,
+      33
+    ],
+    "southwest": [
+      126,
+      105
+    ],
+    "northeast": [
+      127,
+      104
+    ],
+    "east": [
+      129,
+      31
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      -7
+    ],
+    "north": [
+      0,
+      -4
+    ],
+    "southwest": [
+      0,
+      -7
+    ],
+    "northeast": [
+      0,
+      -4
+    ],
+    "east": [
+      0,
+      -4
+    ]
+  },
+  "scale": {
+    "southwest": 1.22,
+    "northeast": 1.15
+  },
+  "clipsHair": true
+}

@@ -1,0 +1,117 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Blue shark with white belly. Sources S=IMG_8908, SW=IMG_8909 (pectoral fin is a legit detached comp -- kept; white specks <200px removed), N=7E28325D (1024 src padded to 1254; source was lighter+more-saturated than the rest AND had two enclosed transparent HOLES in the lower belly (gaps between body and lower fins) that showed through the head -- reprocessed: blue shifted +29,+11,-40 to match S/SW/E tone, then the enclosed holes filled with grayish-white [206,209,213] (dilated 1px for AA) so there's no see-through and it reads as the belly), E from W=IMG_8911 flipped, NE from NW=IMG_8913 flipped (white+black specks beneath the belly removed). Renderer mirrors E/NE back to W/NW. Despeck = drop opaque components <200px (keeps body+fin). NOT solid (blue body + white belly two-tone -- recolor would wreck the belly). scale.north 1.22 compensates the 1024->1254 pad shrink. crownNudge at defaults -- tune on-device.",
+  "bboxes_source": {
+    "south": [
+      444,
+      92,
+      360,
+      319
+    ],
+    "southwest": [
+      416,
+      20,
+      450,
+      404
+    ],
+    "north": [
+      493,
+      462,
+      263,
+      280
+    ],
+    "east": [
+      334,
+      110,
+      465,
+      372
+    ],
+    "northeast": [
+      420,
+      123,
+      368,
+      378
+    ]
+  },
+  "bboxes": {
+    "south": [
+      90,
+      18,
+      75,
+      66
+    ],
+    "southwest": [
+      84,
+      4,
+      93,
+      83
+    ],
+    "north": [
+      100,
+      94,
+      55,
+      58
+    ],
+    "east": [
+      68,
+      22,
+      95,
+      77
+    ],
+    "northeast": [
+      85,
+      25,
+      76,
+      78
+    ]
+  },
+  "anchors": {
+    "south": [
+      126,
+      27
+    ],
+    "southwest": [
+      120,
+      12
+    ],
+    "north": [
+      127,
+      109
+    ],
+    "east": [
+      128,
+      30
+    ],
+    "northeast": [
+      136,
+      36
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      -18
+    ],
+    "southwest": [
+      -2,
+      -20
+    ],
+    "north": [
+      0,
+      -18
+    ],
+    "east": [
+      0,
+      -18
+    ],
+    "northeast": [
+      0,
+      -18
+    ]
+  },
+  "scale": {
+    "north": 1.22
+  },
+  "clipsHair": true
+}

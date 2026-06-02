@@ -68,8 +68,8 @@
   },
   "anchors": {
     "south": [
-      127,
-      87
+      126,
+      85
     ],
     "southwest": [
       128,
@@ -91,7 +91,7 @@
   "crownNudge": {
     "south": [
       0,
-      0
+      -7
     ],
     "southwest": [
       0,

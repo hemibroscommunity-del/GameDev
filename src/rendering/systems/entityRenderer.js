@@ -20,6 +20,10 @@ import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
 import { getHair } from '../traits/hairCatalog.js';
+import { getSkin, getPants, getShoes, getBodyFrame } from '../playerSkins.js';
+import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
+import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
+import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -49,7 +53,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.368';
+const TRAIT_VER = '2.3.448';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -201,11 +205,23 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
    they differ only in which sprite layer + trait cache they use.  A beard
    is just a trait whose meta.crownNudge Y drops it from the head crown
    down to the chin (the inverse of the top-hat's large negative lift). */
-function _placeHeadwear(display, hatId, pose, dir, mirror, frameIdx, bodyScale) {
-  _placeTrait(display._headwearSprite, _ensureHeadwearLoaded(hatId), display, pose, dir, mirror, frameIdx, bodyScale);
+function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx, bodyScale) {
+  const baseEntry = _ensureHeadwearLoaded(hatId);
+  /* v2.3.394: retint solid hats to the selected color (recolored textures
+     reuse the base meta; fall back to native color while they bake). */
+  let entry = baseEntry;
+  const colored = getColoredHatTextures(hatId, hatColorId);
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
+  _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
 }
-function _placeFacialHair(display, fhId, pose, dir, mirror, frameIdx, bodyScale) {
-  _placeTrait(display._facialHairSprite, _ensureFacialHairLoaded(fhId), display, pose, dir, mirror, frameIdx, bodyScale);
+function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx, bodyScale) {
+  const baseEntry = _ensureFacialHairLoaded(fhId);
+  /* v2.3.395: retint the beard to the selected color (recolored textures
+     reuse the base meta; fall back to native color while they bake). */
+  let entry = baseEntry;
+  const colored = getColoredFacialHairTextures(fhId, fhColorId);
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
+  _placeTrait(display._facialHairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
 }
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
@@ -257,8 +273,15 @@ function _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
     hair.mask = null;  // mask didn't place -> don't clip the hair to nothing
   }
 }
-function _placeHair(display, hairId, hatId, pose, dir, mirror, frameIdx, bodyScale) {
-  _placeTrait(display._hairSprite, _ensureHairLoaded(hairId), display, pose, dir, mirror, frameIdx, bodyScale);
+function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, frameIdx, bodyScale) {
+  const baseEntry = _ensureHairLoaded(hairId);
+  /* v2.3.391: retint the hair to the selected color.  Recolored textures
+     reuse the base meta (anchors/scale); fall back to native color while
+     they bake. */
+  let entry = baseEntry;
+  const colored = getColoredHairTextures(hairId, hairColorId);
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
+  _placeTrait(display._hairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
   _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale);
 }
 
@@ -1927,7 +1950,20 @@ export class EntityRenderer {
          the diagonal idle pose carries through (otherwise it would
          snap back to the broadcast 4-cardinal). */
       let facing;
-      if (isMoving) {
+      if (other._moveFacing8) {
+        /* v2.3.398: derive remote facing from POSITION deltas (computed in the
+           interpolation loop), which are correct because remote players appear
+           in the right spots.  The previous velocity-based facing inverted
+           vertically -- the broadcast vy sign didn't survive the server relay,
+           causing the reported front/back mirror.  Holds the last value while
+           idle (= the direction they last walked), which is the right resting
+           facing. */
+        facing = other._moveFacing8;
+        display._lastFacing = facing;
+      } else if (other._renderFacing) {
+        facing = other._renderFacing;
+        display._lastFacing = facing;
+      } else if (isMoving) {
         const ang = Math.atan2(other._smoothVy || 0, other._smoothVx || 0);
         const sector = Math.round(ang / (Math.PI / 4));
         facing = SECTORS[((sector % 8) + 8) % 8];
@@ -1935,6 +1971,18 @@ export class EntityRenderer {
       } else {
         facing = display._lastFacing || other._facing || 'south';
       }
+      /* v2.3.401: remote facing arrives fully inverted (180 deg) -- the vertical
+         flip in v2.3.400 fixed back/front, and left/right needed the same, so
+         the whole thing is rotated 180.  Map each direction to its opposite.
+         Confirmed empirically after two derivation rewrites; the inversion is
+         intrinsic to the remote data path.  Body + traits read this `facing`,
+         so they stay aligned. */
+      const _OPP = {
+        north: 'south', south: 'north', east: 'west', west: 'east',
+        northeast: 'southwest', southwest: 'northeast',
+        northwest: 'southeast', southeast: 'northwest',
+      };
+      facing = _OPP[facing] || facing;
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
       const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
@@ -1954,8 +2002,10 @@ export class EntityRenderer {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
         }
-        let tex = getFrame(pose, dir, frameIdx);
-        if (!tex) tex = getFrame('stand', dir, 0);
+        /* v2.3.389: remote players render in their own skin tone.
+           v2.3.399: + their pants / shoes colors. */
+        let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx);
+        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0);
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
              the local player path, fixes invisible-after-zone-change. */
@@ -1973,9 +2023,12 @@ export class EntityRenderer {
              player's v2.3.165 +25% change.
              v2.3.166: halved again (0.625 -> 0.3125) for 128 -> 256
              source bump.  Net visible scale unchanged from v2.3.165. */
-          let sizeMul = 0.3125;
-        if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.3125;
-        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.3125;
+          /* v2.3.396: match the local player's LOCAL_SCALE (0.3515625).
+             The remote base had drifted to 0.3125 (~11% smaller), so other
+             players rendered noticeably smaller than yourself. */
+          let sizeMul = 0.3515625;
+        if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.3515625;
+        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.3515625;
           /* v2.3.164: matching per-direction stand-pose bumps from the
              local player path.  v2.3.167: extended to jog too. */
           if (pose === 'stand' || pose === 'jog') {
@@ -2001,11 +2054,11 @@ export class EntityRenderer {
           useSprite = true;
           /* v2.3.321: place this remote player's headwear.  other.headwear
              is their selected hat id, broadcast over the network. */
-          _placeHeadwear(display, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
+          _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.353: and their facial hair (other.facialhair). */
-          _placeFacialHair(display, other.facialhair, pose, dir, mirror, frameIdx, sizeMul);
+          _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.357: and their hair (other.hair). */
-          _placeHair(display, other.hair, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
+          _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -2391,6 +2444,11 @@ export class EntityRenderer {
     } else {
       facing = S._facing || 'south';
     }
+    /* v2.3.396: publish the ACTUAL rendered facing (8-way compass) so the
+       network broadcast can send it and remote clients render the same
+       facing -- they previously reconstructed it from movement, which is
+       wrong whenever a standing player's facing came from aim, not motion. */
+    S._renderFacing = facing;
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
     /* v2.3.188: pickup pose during the loot-pickup freeze.  Takes
        priority over hit because the freeze already blocks combat.
@@ -2483,8 +2541,11 @@ export class EntityRenderer {
       _ensureHeadwearLoaded(getHeadwear());
       _ensureFacialHairLoaded(getFacialHair());
       _ensureHairLoaded(getHair());
-      let tex = getFrame(pose, dir, frameIdx);
-      if (!tex) tex = getFrame('stand', dir, 0);
+      /* v2.3.389: recolor the bare skin to the selected tone (preserving
+         shading) -- falls back to the default sheets internally.
+         v2.3.399: + pants / shoes colors. */
+      let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
+      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0);
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body
          share frame-coords so they move together pixel-perfect. */
@@ -2535,9 +2596,9 @@ export class EntityRenderer {
         /* v2.3.321: headwear placement extracted to the shared
            _placeHeadwear helper (used by remote players too).  Local
            player's hat id comes from the login picker. */
-        _placeHeadwear(display, getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeFacialHair(display, getFacialHair(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeHair(display, getHair(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
@@ -2904,10 +2965,18 @@ export class EntityRenderer {
              Dropping the cap on NE jog removes that without any z-order
              reshuffle (the grip wrap is barely visible at NE anyway). */
           const _neJogSkipCap = (facingIdx === 7 && pose === 'jog');
+          /* v2.3.406: the hand-cap exists to wrap the hand around a SWORD
+             grip.  A bow (held mid-limb, horizontal) and a staff (held low,
+             vertical) have the grip in a different spot, so the cap's body-
+             pixel circle stamped over the middle of the weapon -- the user
+             saw the bow/staff "clipped" in the south view.  Only sword-type
+             weapons get the cap. */
+          const _weaponNeedsCap = wpn.type === 'sword' || wpn.type === 'greatsword';
           const handCapEligible = handCap && handMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
             && _weaponInFront
+            && _weaponNeedsCap
             && !_seJogSkipCap
             && !_neJogSkipCap;
           if (handCapEligible) {
