@@ -1,0 +1,113 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Wide-brim sombrero (orange straw + red/green/blue woven bands). Single source E53C2A09 used for ALL 5 base dirs (radially symmetric -- same from every angle, like top-hat). 1024 src padded to 1254. NOT solid (multi-color bands). crownNudge seeded -24 (wide-brim lift so the brim sits at head level, dome above) -- tune on-device.",
+  "bboxes_source": {
+    "south": [
+      380,
+      504,
+      501,
+      170
+    ],
+    "southwest": [
+      380,
+      504,
+      501,
+      170
+    ],
+    "east": [
+      380,
+      504,
+      501,
+      170
+    ],
+    "northeast": [
+      380,
+      504,
+      501,
+      170
+    ],
+    "north": [
+      380,
+      504,
+      501,
+      170
+    ]
+  },
+  "bboxes": {
+    "south": [
+      77,
+      102,
+      103,
+      36
+    ],
+    "southwest": [
+      77,
+      102,
+      103,
+      36
+    ],
+    "east": [
+      77,
+      102,
+      103,
+      36
+    ],
+    "northeast": [
+      77,
+      102,
+      103,
+      36
+    ],
+    "north": [
+      77,
+      102,
+      103,
+      36
+    ]
+  },
+  "anchors": {
+    "south": [
+      129,
+      102
+    ],
+    "southwest": [
+      129,
+      102
+    ],
+    "east": [
+      129,
+      102
+    ],
+    "northeast": [
+      129,
+      102
+    ],
+    "north": [
+      129,
+      102
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      -24
+    ],
+    "southwest": [
+      0,
+      -24
+    ],
+    "east": [
+      0,
+      -24
+    ],
+    "northeast": [
+      0,
+      -24
+    ],
+    "north": [
+      0,
+      -24
+    ]
+  }
+}
