@@ -3775,7 +3775,7 @@ export class EntityRenderer {
       }
 
       const cx = 0;
-      const cy = -(HP_RING_OUTER_R + 34); /* same head clearance as the old heart (~-58) */
+      const cy = -(HP_RING_OUTER_R + 49); /* ~-73: above the head, lifted 15px (v2.3.459) */
       /* Redraw only while visible (hidden at full HP, so this is cheap). */
       ring.clear();
       if (hpNewAlpha > 0.02) {
@@ -3784,17 +3784,23 @@ export class EntityRenderer {
         const TOP = -Math.PI / 2;  /* 12 o'clock */
         const Q = Math.PI / 2;     /* quadrant span */
         const halfGap = (HP_RING_GAP_PX / HP_RING_STROKE_R) / 2;
-        const fillEnd = TOP + Math.max(0, Math.min(1, hpFrac)) * Math.PI * 2;
+        /* Deplete CLOCKWISE: the empty wedge grows from 12 o'clock clockwise,
+           so the filled arc runs from fillStart clockwise back to 12. */
+        const fillStart = TOP + (1 - Math.max(0, Math.min(1, hpFrac))) * Math.PI * 2;
+        /* moveTo before each arc so Pixi doesn't connect arcs with a stray
+           line (the vertical line that hung below the ring). */
+        const arcSeg = (a0, a1, color, alpha) => {
+          ring.moveTo(cx + HP_RING_STROKE_R * Math.cos(a0), cy + HP_RING_STROKE_R * Math.sin(a0));
+          ring.arc(cx, cy, HP_RING_STROKE_R, a0, a1);
+          ring.stroke({ color, width: HP_RING_BAND, cap: 'butt', alpha });
+        };
         for (let k = 0; k < 4; k++) {
           const qs = TOP + k * Q + halfGap;
           const qe = TOP + (k + 1) * Q - halfGap;
           if (qe <= qs) continue;
-          ring.arc(cx, cy, HP_RING_STROKE_R, qs, qe);
-          ring.stroke({ color: HP_RING_TRACK, width: HP_RING_BAND, cap: 'butt', alpha: 0.9 });
-          if (fillEnd > qs) {
-            ring.arc(cx, cy, HP_RING_STROKE_R, qs, Math.min(qe, fillEnd));
-            ring.stroke({ color: hpTint, width: HP_RING_BAND, cap: 'butt', alpha: 1 });
-          }
+          arcSeg(qs, qe, HP_RING_TRACK, 0.9);          /* drained track */
+          const fs = Math.max(qs, fillStart);          /* lit fill, clipped to quadrant */
+          if (fs < qe) arcSeg(fs, qe, hpTint, 1);
         }
       }
       heartText.x = cx; heartText.y = cy - 5;
