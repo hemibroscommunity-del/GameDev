@@ -1,7 +1,7 @@
 {
   "category": "shirt",
   "fullFrame": true,
-  "note": "Blue t-shirt, recolorable, WITH black outline. Placement tuned against a faithful offline mock (real body-tops.json crown per dir + exact _placeTrait math) after on-device feedback: south/north collar raised to cover shoulders, southwest lowered, east scale 1.441->1.18 (was ballooned on the side view), northeast/NW nudged up. v2.3.484: east/west nudged ~0.5px screen-left.",
+  "note": "Blue t-shirt, recolorable, WITH black outline. Placement tuned against a faithful offline mock (real body-tops.json crown per dir + exact _placeTrait math) after on-device feedback: south/north collar raised to cover shoulders, southwest lowered, east scale 1.441->1.18 (was ballooned on the side view), northeast/NW nudged up. v2.3.485: reverted 0.5px (looked messy/sub-pixel), east/west now 1 full px screen-left.",
   "anchors": {
     "south": [
       126,
@@ -34,7 +34,7 @@
       58
     ],
     "east": [
-      -5.42,
+      -6.84,
       60
     ],
     "northeast": [
@@ -46,7 +46,7 @@
       49
     ],
     "west": [
-      0.42,
+      1.84,
       60
     ]
   },
