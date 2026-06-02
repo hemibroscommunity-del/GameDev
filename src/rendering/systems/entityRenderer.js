@@ -2402,12 +2402,21 @@ export class EntityRenderer {
     /* v2.3.253: reverted v2.3.236's 'attack' pose for melee swings.
        Procedural bamboo swing arc reads cleaner than the static
        windup-strike frames; body stays in jog/stand during the
-       250 ms swing window and the weapon overlay handles the motion. */
+       250 ms swing window and the weapon overlay handles the motion.
+       v2.3.453: re-enabled the body attack pose for SOUTH only, now
+       that the south sheet is a 7-frame AI swing (not the old 2-frame
+       windup-strike).  Gated to south + sheet-loaded so other dirs
+       keep the procedural-only path; easy to widen once the rest of
+       the directions are regenerated. */
+    const wantAttackPose = swingActive && hasPose('attack')
+      && (facing === 'south' || facing === 'down');
     const pose = lootFrozen
       ? 'pickup'
       : (isHit
           ? 'hit'
-          : (isMoving ? 'jog' : 'stand'));
+          : (wantAttackPose
+              ? 'attack'
+              : (isMoving ? 'jog' : 'stand')));
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
@@ -2435,7 +2444,7 @@ export class EntityRenderer {
        v2.3.167: also apply to jog (user wanted the same bumps on run
        animations).  N/S/E (covers W via mirror) +10%,
        NE (covers NW) +5%, SW unchanged.  Hit stays unbumped. */
-    if (pose === 'stand' || pose === 'jog') {
+    if (pose === 'stand' || pose === 'jog' || pose === 'attack') {
       if (dir === 'north' || dir === 'south' || dir === 'east') bodyScale *= 1.10;
       else if (dir === 'northeast') bodyScale *= 1.05;
     }
@@ -2468,6 +2477,13 @@ export class EntityRenderer {
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;
         frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
+      } else if (pose === 'attack') {
+        /* v2.3.453: play the south swing strip once across the 250 ms
+           swing window, clamped at the last frame so it ends on the
+           follow-through instead of looping back to the windup. */
+        const fc = playerFrameCount('attack', dir) || 1;
+        const t = (now - (S.swingTimer || now)) / SWING_ANIM_MS;
+        frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
       } else if (pose === 'pickup') {
         /* v2.3.188: play through the pickup strip once over the 0.5 s
            freeze window.  Clamp to last frame at the end so we don't

@@ -66,7 +66,7 @@ const ATTACK_DURATION_MS = 220;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
-const VERSION = 56; /* v2.3.246: merge - session-1 hit regen + session-3 attack retint */
+const VERSION = 57; /* v2.3.453: south attack sheet regen (7-frame AI swing) */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
@@ -89,9 +89,12 @@ function spriteUrl(pose, dir) {
    so we can't hardcode.  Falls back to fixed counts for stand/hit. */
 function deriveFrameCount(pose, tex) {
   const width = (tex && tex.source && tex.source.width) || 0;
-  if (pose === 'jog' || pose === 'pickup') return Math.max(1, Math.floor(width / FRAME_W));
+  /* v2.3.453: attack now derives its frame count from the sheet width
+     too -- the south sheet was regenerated from a multi-frame AI swing
+     (7 frames) instead of the old fixed 2-frame raised-fist.  Other
+     dirs still ship 2-frame sheets; deriving handles both. */
+  if (pose === 'jog' || pose === 'pickup' || pose === 'attack') return Math.max(1, Math.floor(width / FRAME_W));
   if (pose === 'hit') return HIT_FRAMES;
-  if (pose === 'attack') return ATTACK_FRAMES;
   return STAND_FRAMES;
 }
 
