@@ -112,5 +112,6 @@
   },
   "scale": {
     "north": 1.22
-  }
+  },
+  "clipsHair": true
 }
