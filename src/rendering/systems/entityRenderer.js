@@ -2404,12 +2404,15 @@ export class EntityRenderer {
        windup-strike frames; body stays in jog/stand during the
        250 ms swing window and the weapon overlay handles the motion.
        v2.3.453: re-enabled the body attack pose for SOUTH only, now
-       that the south sheet is a 7-frame AI swing (not the old 2-frame
-       windup-strike).  Gated to south + sheet-loaded so other dirs
-       keep the procedural-only path; easy to widen once the rest of
-       the directions are regenerated. */
+       that the south sheet is an AI swing (not the old 2-frame
+       windup-strike).
+       v2.3.458: added SOUTHWEST (+ SOUTHEAST mirror, which resolves to
+       the southwest sheet).  Both south & southwest sheets are now
+       8-frame AI swings; the remaining dirs keep the procedural-only
+       path until they're regenerated. */
     const wantAttackPose = swingActive && hasPose('attack')
-      && (facing === 'south' || facing === 'down');
+      && (facing === 'south' || facing === 'down'
+          || facing === 'southwest' || facing === 'southeast');
     const pose = lootFrozen
       ? 'pickup'
       : (isHit

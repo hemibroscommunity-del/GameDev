@@ -66,7 +66,7 @@ const ATTACK_DURATION_MS = 220;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
-const VERSION = 57; /* v2.3.453: south attack sheet regen (7-frame AI swing) */
+const VERSION = 58; /* v2.3.458: south + southwest attack sheets (8-frame AI swings) */
 
 /* The loaded manifest:
  *   { stand: { east: [Texture], … }, jog: { east: [Texture×24], … }, hit: { east: [Texture×6], … } }
