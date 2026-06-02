@@ -1,75 +1,11 @@
 {
   "category": "shirt",
   "fullFrame": true,
-  "note": "Blue t-shirt, recolorable. Sources S=IMG_8948, SW=5B896236, N=IMG_8950, E from W=IMG_8951 flipped (white+black ghost-edge specks removed), NE from NW=IMG_8952 flipped. Crown-anchored like the beard but dropped to the chest with a large +Y crownNudge (seeded +40). keep-largest despeck on all. crownNudge/scale need on-device tuning.",
-  "bboxes_source": {
-    "south": [
-      472,
-      415,
-      302,
-      274
-    ],
-    "southwest": [
-      489,
-      479,
-      290,
-      249
-    ],
-    "east": [
-      549,
-      388,
-      171,
-      283
-    ],
-    "northeast": [
-      466,
-      389,
-      289,
-      284
-    ],
-    "north": [
-      483,
-      413,
-      288,
-      268
-    ]
-  },
-  "bboxes": {
-    "south": [
-      96,
-      84,
-      63,
-      57
-    ],
-    "southwest": [
-      99,
-      97,
-      60,
-      52
-    ],
-    "east": [
-      112,
-      79,
-      35,
-      58
-    ],
-    "northeast": [
-      95,
-      79,
-      60,
-      59
-    ],
-    "north": [
-      98,
-      84,
-      60,
-      56
-    ]
-  },
+  "note": "Blue t-shirt, recolorable, WITH black outline. Placement clean-derived from the body sprite per angle (scale = body torso width / shirt width; hem to waist; centered) -- no retained manual guesses. Outline kept; precise fit overlays it on the body outline. v2.3.473.",
   "anchors": {
     "south": [
       126,
-      87
+      86
     ],
     "southwest": [
       128,
@@ -85,34 +21,35 @@
     ],
     "north": [
       127,
-      85
+      84
     ]
   },
   "crownNudge": {
     "south": [
-      0,
-      62
+      -1,
+      59
     ],
     "southwest": [
-      4,
-      57
+      5,
+      52
     ],
     "east": [
-      0,
-      65
+      -1,
+      35
     ],
     "northeast": [
       -4,
-      55
+      58
     ],
     "north": [
-      1,
-      60
+      -1,
+      55
     ]
   },
   "scale": {
-    "southwest": 1.11,
-    "south": 0.95,
-    "north": 0.95
+    "southwest": 1.237,
+    "east": 1.441,
+    "northeast": 0.95,
+    "north": 1.017
   }
 }
