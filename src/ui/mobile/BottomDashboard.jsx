@@ -10,6 +10,8 @@ import { getHatColor, hatColorTarget, onHatColorChange } from '../../rendering/t
 import { getFacialHair } from '../../rendering/traits/facialHairCatalog.js';
 import { getFacialHairColor, facialHairColorTarget, onFacialHairColorChange } from '../../rendering/traits/facialHairColorCatalog.js';
 import { getHeadwear, onHeadwearChange } from '../../rendering/traits/headwearCatalog.js';
+import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js';
+import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { weaponSwapBus } from './weaponSwapBus.js';
 import { InventoryPanel, ItemTile }    from './dash/InventoryPanel.jsx';
@@ -447,11 +449,13 @@ export const BottomDashboard = () => {
         hair: getHair(), hairColor: hairColorTarget(getHairColor()),
         facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
         headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor()),
+        shirt: getShirt(), shirtColor: shirtColorTarget(getShirtColor()),
       }, true).then(url => { if (alive && url) setProfilePortrait(url); });
     };
     regen();
     const unsubs = [onSkinChange(regen), onHairChange(regen), onHairColorChange(regen),
       onHeadwearChange(regen), onHatColorChange(regen), onFacialHairColorChange(regen),
+      onShirtChange(regen), onShirtColorChange(regen),
       onPantsChange(regen), onShoesChange(regen)];
     return () => { alive = false; unsubs.forEach(u => u && u()); };
   }, []);

@@ -39,6 +39,8 @@ import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor, hairColorTarget } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, getHatColor, setHatColor, hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor, facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
+import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
+import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor, shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
@@ -1295,6 +1297,12 @@ export var BroTown = function BroTown(_ref0) {
   var _beardColorSelState = useState(getFacialHairColor()),
     beardColorSel = _beardColorSelState[0],
     setBeardColorSel = _beardColorSelState[1];
+  var _shirtSelState = useState(getShirt()),
+    shirtSel = _shirtSelState[0],
+    setShirtSel = _shirtSelState[1];
+  var _shirtColorSelState = useState(getShirtColor()),
+    shirtColorSel = _shirtColorSelState[0],
+    setShirtColorSel = _shirtColorSelState[1];
   var _pantsSelState = useState(getPants()),
     pantsSel = _pantsSelState[0],
     setPantsSel = _pantsSelState[1];
@@ -1327,8 +1335,9 @@ export var BroTown = function BroTown(_ref0) {
       hair: hairSel, hairColor: hairSel === 'long' ? null : hairColorTarget(hairColorSel),
       facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
       headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
+      shirt: shirtSel, shirtColor: shirtColorTarget(shirtColorSel),
     });
-  }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel]);
+  }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel]);
   /* The long-hair sprite is ~88% pure black, so a light hair color over-
      processes into a black band around the face (see characterPortrait recolor
      note).  Restrict that one style to dark colors only; clamp the selection
@@ -1431,6 +1440,8 @@ export var BroTown = function BroTown(_ref0) {
     var hcc = rpick(hcCat); setHairColor(hcc); setHairColorSel(hcc);
     var bd = rpick(FACIALHAIR_CATALOG); setFacialHair(bd); setFacialHairSel(bd);
     var bcc = rpick(FACIALHAIR_COLOR_CATALOG); setFacialHairColor(bcc); setBeardColorSel(bcc);
+    var st = rpick(SHIRT_CATALOG); setShirt(st); setShirtSel(st);
+    var stc = rpick(SHIRT_COLOR_CATALOG); setShirtColor(stc); setShirtColorSel(stc);
     var ht = rpick(HEADWEAR_CATALOG); setHeadwear(ht); setHeadwearSel(ht);
     var htc = rpick(HAT_COLOR_CATALOG); setHatColor(htc); setHatColorSel(htc);
   };
@@ -1973,6 +1984,8 @@ export var BroTown = function BroTown(_ref0) {
             hc: getHairColor(),
             htc: getHatColor(),
             fhc: getFacialHairColor(),
+            st: getShirt(),
+            stc: getShirtColor(),
             pt: getPants(),
             sh: getShoes(),
             bs: S.bodySize || 'slim',
@@ -2279,6 +2292,8 @@ export var BroTown = function BroTown(_ref0) {
                   hairColor: _data.hc || null,
                   hatColor: _data.htc || null,
                   facialHairColor: _data.fhc || null,
+                  shirt: _data.st || null,
+                  shirtColor: _data.stc || null,
                   pants: _data.pt || null,
                   shoes: _data.sh || null,
                   rpgLv: _data.rpgLv || 1,
@@ -2833,6 +2848,8 @@ export var BroTown = function BroTown(_ref0) {
                 hairColor: (msg.data && msg.data.hc) || null,
                 hatColor: (msg.data && msg.data.htc) || null,
                 facialHairColor: (msg.data && msg.data.fhc) || null,
+                shirt: (msg.data && msg.data.st) || null,
+                shirtColor: (msg.data && msg.data.stc) || null,
                 pants: (msg.data && msg.data.pt) || null,
                 shoes: (msg.data && msg.data.sh) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
@@ -10507,6 +10524,8 @@ export var BroTown = function BroTown(_ref0) {
                 hc: getHairColor(),
                 htc: getHatColor(),
                 fhc: getFacialHairColor(),
+                st: getShirt(),
+                stc: getShirtColor(),
                 pt: getPants(),
                 sh: getShoes(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,
@@ -13529,6 +13548,7 @@ export var BroTown = function BroTown(_ref0) {
   _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
   _apPill('beard', 'BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
   _apPill('skin', 'SKIN', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
+  _apPill('shirt', 'SHIRT', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : [])),
   _apPill('pants', 'PANTS', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
   _apPill('shoes', 'SHOES', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))]),
   /*#__PURE__*/React.createElement("button", {

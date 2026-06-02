@@ -24,6 +24,8 @@ import { getSkin, getPants, getShoes, getBodyFrame } from '../playerSkins.js';
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
+import { getShirt } from '../traits/shirtCatalog.js';
+import { getShirtColor, getColoredShirtTextures } from '../traits/shirtColorCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -53,7 +55,7 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.466';
+const TRAIT_VER = '2.3.467';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -116,6 +118,7 @@ function _ensureTraitLoaded(category, id) {
 }
 function _ensureHeadwearLoaded(id) { return _ensureTraitLoaded('headwear', id); }
 function _ensureFacialHairLoaded(id) { return _ensureTraitLoaded('facialhair', id); }
+function _ensureShirtLoaded(id) { return _ensureTraitLoaded('shirt', id); }
 function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
 
 /* Body anchor schemas, loaded once and shared by every player + hat.
@@ -223,6 +226,15 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
   _placeTrait(display._facialHairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
 }
+function _placeShirt(display, shirtId, colorId, pose, dir, mirror, frameIdx, bodyScale) {
+  const baseEntry = _ensureShirtLoaded(shirtId);
+  /* Retint the shirt to the selected color (recolored textures reuse the
+     base meta; fall back to native color while they bake). */
+  let entry = baseEntry;
+  const colored = getColoredShirtTextures(shirtId, colorId);
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
+  _placeTrait(display._shirtSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
+}
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
 const _hairMaskCache = {};
@@ -328,7 +340,7 @@ function _orderTraitsAndWeapon(display, facingIdx) {
     const wc = display._weaponContainer;
     if (wc && wc.visible) {
       let ref = -1;
-      for (const s of [display._headwearSprite, display._facialHairSprite, display._hairSprite]) {
+      for (const s of [display._headwearSprite, display._facialHairSprite, display._hairSprite, display._shirtSprite]) {
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
       }
       if (ref >= 0) {
@@ -693,6 +705,13 @@ function createPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* v2.3.467: shirt (torso clothing) layer.  Sits just above the body and
+     below the head traits.  Same crown-anchored placement as the beard,
+     dropped to the chest via a large positive crownNudge Y in the meta. */
+  const shirtSprite = new Sprite();
+  shirtSprite.visible = false;
+  container.addChild(shirtSprite);
+
   /* v2.3.353: facial-hair sticker layer (beard / moustache).  Sits above
      the body but below headwear so a hat brim can overlap it.  Same
      crown-anchored placement as headwear, dropped to the chin via a
@@ -907,6 +926,7 @@ function createPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._shirtSprite = shirtSprite;
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
   container._hairMask = hairMask;
@@ -960,6 +980,12 @@ function createOtherPlayerDisplay() {
   spriteBody.anchor.set(0.5, 0.5);
   spriteBody.visible = false;
   container.addChild(spriteBody);
+
+  /* v2.3.467: shirt sprite for remote players (above body, below head
+     traits).  Driven by other.shirt. */
+  const shirtSprite = new Sprite();
+  shirtSprite.visible = false;
+  container.addChild(shirtSprite);
 
   /* v2.3.353: facial-hair sprite for remote players (above body, below
      headwear).  Driven by other.facialhair. */
@@ -1019,6 +1045,7 @@ function createOtherPlayerDisplay() {
 
   container._body = body;
   container._spriteBody = spriteBody;
+  container._shirtSprite = shirtSprite;
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
   container._hairMask = hairMask;
@@ -1942,6 +1969,7 @@ export class EntityRenderer {
         if (display._nftBack) display._nftBack.visible = false;
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
+        if (display._shirtSprite) display._shirtSprite.visible = false;
         if (display._hairSprite) display._hairSprite.visible = false;
         continue;
       }
@@ -2087,6 +2115,7 @@ export class EntityRenderer {
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.353: and their facial hair (other.facialhair). */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
+          _placeShirt(display, other.shirt, other.shirtColor, pose, dir, mirror, frameIdx, sizeMul);
           /* v2.3.357: and their hair (other.hair). */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
         } else {
@@ -2094,6 +2123,7 @@ export class EntityRenderer {
           body.visible = true;
           if (display._headwearSprite) display._headwearSprite.visible = false;
           if (display._facialHairSprite) display._facialHairSprite.visible = false;
+        if (display._shirtSprite) display._shirtSprite.visible = false;
           if (display._hairSprite) display._hairSprite.visible = false;
         }
       } else {
@@ -2101,6 +2131,7 @@ export class EntityRenderer {
         body.visible = true;
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
+        if (display._shirtSprite) display._shirtSprite.visible = false;
         if (display._hairSprite) display._hairSprite.visible = false;
       }
 
@@ -2570,6 +2601,7 @@ export class EntityRenderer {
       _ensureBodyData();
       _ensureHeadwearLoaded(getHeadwear());
       _ensureFacialHairLoaded(getFacialHair());
+      _ensureShirtLoaded(getShirt());
       _ensureHairLoaded(getHair());
       /* v2.3.389: recolor the bare skin to the selected tone (preserving
          shading) -- falls back to the default sheets internally.
@@ -2628,6 +2660,7 @@ export class EntityRenderer {
            player's hat id comes from the login picker. */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeShirt(display, getShirt(), getShirtColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
 
         /* v2.3.265: combined-trait overlay disabled while sticker
@@ -2672,6 +2705,7 @@ export class EntityRenderer {
         if (display._traitFace) display._traitFace.visible = false;
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
+        if (display._shirtSprite) display._shirtSprite.visible = false;
         if (display._hairSprite) display._hairSprite.visible = false;
       }
     } else {

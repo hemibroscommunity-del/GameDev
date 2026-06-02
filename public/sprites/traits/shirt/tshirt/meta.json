@@ -1,0 +1,113 @@
+{
+  "category": "shirt",
+  "fullFrame": true,
+  "note": "Blue t-shirt, recolorable. Sources S=IMG_8948, SW=5B896236, N=IMG_8950, E from W=IMG_8951 flipped (white+black ghost-edge specks removed), NE from NW=IMG_8952 flipped. Crown-anchored like the beard but dropped to the chest with a large +Y crownNudge (seeded +40). keep-largest despeck on all. crownNudge/scale need on-device tuning.",
+  "bboxes_source": {
+    "south": [
+      467,
+      415,
+      312,
+      274
+    ],
+    "southwest": [
+      489,
+      479,
+      290,
+      249
+    ],
+    "east": [
+      549,
+      388,
+      171,
+      291
+    ],
+    "northeast": [
+      465,
+      389,
+      290,
+      290
+    ],
+    "north": [
+      481,
+      413,
+      290,
+      268
+    ]
+  },
+  "bboxes": {
+    "south": [
+      95,
+      84,
+      65,
+      57
+    ],
+    "southwest": [
+      99,
+      97,
+      60,
+      52
+    ],
+    "east": [
+      112,
+      79,
+      35,
+      60
+    ],
+    "northeast": [
+      94,
+      79,
+      61,
+      60
+    ],
+    "north": [
+      98,
+      84,
+      60,
+      56
+    ]
+  },
+  "anchors": {
+    "south": [
+      126,
+      86
+    ],
+    "southwest": [
+      128,
+      97
+    ],
+    "east": [
+      127,
+      84
+    ],
+    "northeast": [
+      120,
+      80
+    ],
+    "north": [
+      127,
+      85
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      40
+    ],
+    "southwest": [
+      0,
+      40
+    ],
+    "east": [
+      0,
+      40
+    ],
+    "northeast": [
+      0,
+      40
+    ],
+    "north": [
+      0,
+      40
+    ]
+  }
+}

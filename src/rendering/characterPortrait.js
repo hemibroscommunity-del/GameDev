@@ -20,7 +20,7 @@ import { SPRITE_VERSION } from './playerSprites.js';
 
 const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
-const TRAIT_VER = '2.3.466';            // cache-bust for body-tops.json (matches entityRenderer)
+const TRAIT_VER = '2.3.467';            // cache-bust for body-tops.json (matches entityRenderer)
 
 /* ── tiny async caches ── */
 const _imgCache = new Map();            // url -> Promise<HTMLImageElement>
@@ -131,7 +131,7 @@ function renderTraitCanvas(traitImg, meta, crown, dir) {
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, dir } = opts || {};
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir } = opts || {};
   canvas.width = FRAME; canvas.height = FRAME;
   const ctx = canvas.getContext('2d');
 
@@ -146,12 +146,13 @@ export async function drawCharacterPortrait(canvas, opts) {
   const wantHair = hair && hair !== 'none';
   const wantFh = facialHair && facialHair !== 'none';
   const wantHw = headwear && headwear !== 'none';
+  const wantShirt = shirt && shirt !== 'none';
 
   /* Fire EVERY fetch concurrently.  This used to be three sequential await
      stages (body-tops -> body sprite -> traits), so on a cold load the preview
      sat blank-white for ~3 network round-trips; now it's one.  All loads are
      cached after the first draw, so later redraws/rotations are instant. */
-  const [bodyTops, bodyImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg] = await Promise.all([
+  const [bodyTops, bodyImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, shirtImg, shirtMeta] = await Promise.all([
     loadBodyTops(),
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`),
     wantHair ? loadImage(`/sprites/traits/hair/${hair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
@@ -163,6 +164,8 @@ export async function drawCharacterPortrait(canvas, opts) {
     /* hat's hair-clip mask (downward-filled helmet silhouette) -- present
        only for hats with clipsHair; 404 -> null -> no clipping. */
     wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantShirt ? loadImage(`/sprites/traits/shirt/${shirt}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantShirt ? loadMeta('shirt', shirt) : null,
   ]);
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
 
@@ -183,6 +186,9 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes)), 0, 0);
+  /* Shirt on the torso, above the body and below the head traits (crown-
+     anchored + dropped via meta crownNudge). */
+  if (shirtImg && shirtMeta) placeTrait(ctx, shirtColor ? recolorHairToCanvas(shirtImg, shirtColor) : shirtImg, shirtMeta, crown, DIR);
   /* Beard BELOW hair so hair strands lay over the beard (per user -- the NW
      view had the beard covering the hair). */
   if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
