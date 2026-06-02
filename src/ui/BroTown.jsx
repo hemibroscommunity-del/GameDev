@@ -8788,17 +8788,21 @@ export var BroTown = function BroTown(_ref0) {
                   });
                 }
 
-                /* Report damage to server for authoritative resolution */
+                /* Report attack INTENT to server for authoritative
+                   resolution.  The worker now ROLLS the damage itself
+                   (server-computed combat, baseline-10) -- we no longer
+                   send a damage number; the local popup is prediction
+                   only.  Collision/combo damage is intentionally not sent
+                   (server has no status model yet -- follow-up slice). */
                 if (S._serverMonsters && S.channel) {
-                  var totalDmg = dmg;
-                  if (collisionResult) totalDmg += collisionResult.damage;
                   S.channel.send({ type: 'monster_damage', payload: {
-                    monsterId: m.id, zone: S.currentZone, dmg: totalDmg, isCrit: isCrit, element: activeWpn.element1,
+                    monsterId: m.id, zone: S.currentZone, element: activeWpn.element1,
                     /* slot=melee tells the worker this hit was a real
                        melee swing, so the lifesteal gate fires even if
                        the persisted activeSlot drifted (desktop slot UI
-                       skips set_active_slot). */
-                    slot: 'melee'
+                       skips set_active_slot).  special drives the Mind-
+                       scaled 2x special roll on the server. */
+                    slot: 'melee', special: !!S._specialAttack
                   }});
                 }
 
@@ -10656,13 +10660,13 @@ export var BroTown = function BroTown(_ref0) {
                    reserved for melee swing damage. */
                 if (S.rpg) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);
                 if (S._serverMonsters && S.channel) {
-                  var arrowTotalDmg = _arrowDmg;
-                  if (arrowCollision) arrowTotalDmg += arrowCollision.damage;
                   S.channel.send({ type: 'monster_damage', payload: {
-                    monsterId: m.id, zone: S.currentZone, dmg: arrowTotalDmg, isCrit: false, element: null,
+                    monsterId: m.id, zone: S.currentZone, element: null,
                     /* Arrow path = ranged; worker uses this to deny the
-                       melee-only lifesteal even if activeSlot drifted. */
-                    slot: isStaffProj ? 'staff' : 'ranged'
+                       melee-only lifesteal even if activeSlot drifted.
+                       Ranged shots are never "special" (swipe is melee),
+                       so special:false.  Server rolls the damage. */
+                    slot: isStaffProj ? 'staff' : 'ranged', special: false
                   }});
                 }
                 if (arrowCollision) {

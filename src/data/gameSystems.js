@@ -3655,7 +3655,7 @@ export function meetsStatReq(rpg, item, weaponType) {
 /* §4.2 Weapon Types */
 export const WEAPON_TYPES = {
   greatsword: {
-    base: 48,
+    base: 10,
     speed: 0.7,
     range: 50,
     type: 'melee',
@@ -3664,7 +3664,7 @@ export const WEAPON_TYPES = {
     emoji: '⚔️'
   },
   sword: {
-    base: 32,
+    base: 6.67,
     speed: 1.4,
     range: 40,
     type: 'melee',
@@ -3673,7 +3673,7 @@ export const WEAPON_TYPES = {
     emoji: '🗡️'
   },
   bow: {
-    base: 35,
+    base: 7.29,
     speed: 1.2,
     range: 200,
     type: 'ranged',
@@ -3681,7 +3681,7 @@ export const WEAPON_TYPES = {
     emoji: '🏹'
   },
   staff: {
-    base: 41,
+    base: 8.54,
     speed: 1.0,
     range: 120,
     type: 'ranged',
@@ -4462,7 +4462,7 @@ export const ARCHETYPES = {
 /* Spawn a monster instance from archetype + zone level */
 export function createMonster(id, archetype, level, x, y, element) {
   var a = ARCHETYPES[archetype];
-  var baseHp = monsterStat(60, level, 1.065, 1.035, 1.025);
+  var baseHp = monsterStat(12.5, level, 1.065, 1.035, 1.025); // baseline-10 rescale: 60 ÷ 4.8
   var baseDmg = monsterStat(12, level, 1.045, 1.025, 1.018);
   var baseXp = monsterStat(10, level, 1.045, 1.025, 1.018);
   var baseGold = monsterStat(5, level, 1.035, 1.020, 1.015);
@@ -4536,7 +4536,7 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult) {
   } else {
     statVal = statValOrRpg || 0;
   }
-  var base = (w.base + statVal * 0.8) * tierMult;
+  var base = (w.base + statVal * 0.1667) * tierMult; // baseline-10: 0.8 ÷ 4.8
   /* Per-type variance: staff widest, melee mid, bow tightest. */
   if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.0);
   if (weaponType === 'bow')    return base * (0.6  + Math.random() * 0.2);
@@ -4592,7 +4592,7 @@ export function calcSpecialDmg(weaponType, rpg, tierMult) {
   var w = WEAPON_TYPES[weaponType];
   if (!w) return 0;
   var mind = (rpg && rpg.mind) || 0;
-  var base = (w.base + mind * 0.8) * (tierMult || 1);
+  var base = (w.base + mind * 0.1667) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8
   if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.0);
   if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);
