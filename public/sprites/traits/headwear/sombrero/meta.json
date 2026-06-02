@@ -103,11 +103,18 @@
     ],
     "northeast": [
       0,
-      -24
+      -19
     ],
     "north": [
       0,
-      -24
+      -19
     ]
+  },
+  "scale": {
+    "south": 0.9,
+    "southwest": 0.9,
+    "east": 0.9,
+    "northeast": 0.9,
+    "north": 0.9
   }
 }
