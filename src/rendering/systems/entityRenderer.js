@@ -432,6 +432,29 @@ const PLAYER_HP_NUM_STYLE = {
   dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
   align: 'center',
 };
+/* HP ring widget (v2.3.458): replaces the above-head heart.  A quartile-
+   colored progress arc drains clockwise from 12 o'clock; four ~1.5px gaps
+   slice it into quadrants that land exactly on the 25/50/75% color
+   thresholds, so the arc flips color as it recedes past each gap.  Muted-
+   gray center holds the large current HP over a small muted max.  (A thin
+   ring *around* the heart was tried in v2.3.249 and reverted; this is the
+   full replacement widget.) */
+const HP_RING_OUTER_R = 24;
+const HP_RING_BAND = 5;
+const HP_RING_CENTER_R = HP_RING_OUTER_R - HP_RING_BAND - 2; /* gray center disk */
+const HP_RING_STROKE_R = HP_RING_OUTER_R - HP_RING_BAND / 2; /* arc centerline */
+const HP_RING_GAP_PX = 1.5;
+const HP_RING_TRACK = 0x202833;       /* muted slate (drained portion) */
+const HP_RING_CENTER_FILL = 0x2b303a; /* muted gray center */
+const HP_TIER_GREEN = 0x3ec27a, HP_TIER_YELLOW = 0xf5c542, HP_TIER_ORANGE = 0xe8843a, HP_TIER_RED = 0xe34646;
+const HP_RING_MAX_STYLE = {
+  fontFamily: 'Source Sans 3, sans-serif',
+  fontSize: 10,
+  fontWeight: '600',
+  fill: '#9aa0ad',
+  stroke: { color: '#000000', width: 1 },
+  align: 'center',
+};
 const MONSTER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 17,
@@ -863,18 +886,20 @@ function createPlayerDisplay() {
   hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  container.addChild(hudStamTextFull);
   hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
 
-  /* Above-head HP indicator: heart with the current HP number centered.
-     v2.3.216: reverted to whole-heart tier tint (green/amber/red) +
-     smooth low-HP pulse.  The right-to-left wipe (v2.3.215) and the
-     radial ring (v2.3.249) were both tried and rolled back. */
-  const hudHpHeart = new Sprite();
-  hudHpHeart.anchor.set(0.5, 0.5);
-  hudHpHeart.alpha = 0;
-  container.addChild(hudHpHeart);
+  /* Above-head HP indicator: quartile-colored progress RING with a muted
+     gray center holding the current HP over a small muted max (v2.3.458,
+     replaces the heart icon — see HP_RING_* constants). */
+  const hudHpRing = new Graphics();
+  hudHpRing.alpha = 0;
+  container.addChild(hudHpRing);
   const hudHpText = new Text({ text: '', style: PLAYER_HP_NUM_STYLE });
   hudHpText.anchor.set(0.5, 0.5);
   hudHpText.alpha = 0;
   container.addChild(hudHpText);
+  const hudHpMaxText = new Text({ text: '', style: HP_RING_MAX_STYLE });
+  hudHpMaxText.anchor.set(0.5, 0.5);
+  hudHpMaxText.alpha = 0;
+  container.addChild(hudHpMaxText);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -897,8 +922,9 @@ function createPlayerDisplay() {
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
   container._nameText = nameText;
-  container._hudHpHeart = hudHpHeart;
+  container._hudHpRing = hudHpRing;
   container._hudHpText = hudHpText;
+  container._hudHpMaxText = hudHpMaxText;
   container._hudMpSprite = hudMpSprite;
   container._hudMpEmpty = hudMpEmpty;
   container._hudMpTextFull = hudMpTextFull;
@@ -3641,8 +3667,6 @@ export class EntityRenderer {
     if (_hudBarTex.stam  && d._hudStamSprite.texture !== _hudBarTex.stam)  d._hudStamSprite.texture = _hudBarTex.stam;
     /* v2.3.214: prefer white-fill heart so we can tint by HP tier;
        fall back to the red one until heart-white resolves. */
-    const _heartTex = _hudBarTex.heartWhite || _hudBarTex.heart;
-    if (_heartTex && d._hudHpHeart.texture !== _heartTex) d._hudHpHeart.texture = _heartTex;
 
     const W = 64, H = 10;
     const MIN_LABEL_W = 14; /* hide the value-number if its section is narrower */
@@ -3709,34 +3733,38 @@ export class EntityRenderer {
       b.tEmpty.visible = emptyVisible;
     }
 
-    /* HP: red heart icon with the current HP number centered.  Same
-       fade behavior as the pills (visible while below max, hold for
-       HOLD_MS at full, then fade out).  Sits above the mana/energy
-       stack, well clear of the player's head. */
-    const heart = d._hudHpHeart;
+    /* HP: quartile-colored progress RING with a muted-gray center holding
+       the current HP over a small muted max.  Same fade as the pills
+       (visible below max, hold HOLD_MS at full, fade out).  Drains
+       clockwise from 12 o'clock; four ~1.5px gaps slice the ring at the
+       25/50/75% color thresholds.  (v2.3.458, replaces the heart icon.) */
+    const ring = d._hudHpRing;
     const heartText = d._hudHpText;
-    if (heart && heartText) {
+    const maxText = d._hudHpMaxText;
+    if (ring && heartText && maxText) {
       const hpMax = R.maxHp || 1;
       const hpCur = Math.max(0, Math.min(hpMax, R.hp || 0));
       const hpFull = hpCur >= hpMax - 0.01;
-      if (!hpFull) heart._lastNotFullAt = now;
-      const hpSinceFull = now - (heart._lastNotFullAt || 0);
+      if (!hpFull) ring._lastNotFullAt = now;
+      const hpSinceFull = now - (ring._lastNotFullAt || 0);
       const hpTargetAlpha = (!hpFull || hpSinceFull < HOLD_MS) ? 1 : 0;
-      const hpA = (heart.alpha != null) ? heart.alpha : 0;
+      const hpA = (ring.alpha != null) ? ring.alpha : 0;
       const hpDelta = hpTargetAlpha - hpA;
       const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
-      heart.alpha = hpNewAlpha;
+      ring.alpha = hpNewAlpha;
       heartText.alpha = hpNewAlpha;
-      /* v2.3.214: traffic-light HP tier on the heart fill.
-         >50% green, 25-50% yellow, <25% red.  <10% pulses between
-         the red tint and a brighter highlight so the player notices. */
+      maxText.alpha = hpNewAlpha;
+
+      /* Quartile tier color (gaps land on these thresholds): >=75% green,
+         50-74% yellow, 25-49% orange, <25% red.  <10% pulses toward a
+         brighter highlight so the player notices. */
       const hpFrac = hpCur / hpMax;
       let hpTint;
-      if (hpFrac > 0.50)      hpTint = 0x3ec27a; /* green */
-      else if (hpFrac > 0.25) hpTint = 0xf5c542; /* amber */
-      else                    hpTint = 0xe34646; /* red   */
+      if (hpFrac >= 0.75)      hpTint = HP_TIER_GREEN;
+      else if (hpFrac >= 0.50) hpTint = HP_TIER_YELLOW;
+      else if (hpFrac >= 0.25) hpTint = HP_TIER_ORANGE;
+      else                     hpTint = HP_TIER_RED;
       if (hpFrac <= 0.10 && hpFrac > 0) {
-        /* 4 Hz pulse: blend toward a hot pink-red highlight. */
         const pulse = 0.5 + 0.5 * Math.sin(now / 1000 * Math.PI * 4);
         const hi = 0xff8a8a;
         const lerp = (a, b, t) => Math.round(a + (b - a) * t);
@@ -3745,23 +3773,36 @@ export class EntityRenderer {
         const b2 = lerp(hpTint & 0xff,        hi & 0xff,        pulse);
         hpTint = (r << 16) | (g << 8) | b2;
       }
-      heart.tint = hpTint;
-      if (heart.texture && heart.texture.width > 0) {
-        heart.width = PLAYER_HEART_SIZE;
-        heart.height = PLAYER_HEART_SIZE;
-        heart.x = 0;
-        /* Heart sits just above the head: head top is around y=-33
-           (player sprite radius). Putting heart's bottom edge at -33
-           means center y = -(SIZE/2 + 33).  v2.3.220: lift another
-           5px so the heart floats a little clearer of the head. */
-        heart.y = -(PLAYER_HEART_SIZE / 2 + 38);
-        heartText.x = 0;
-        /* Nudge the number up into the heart's widest section (~12%
-           above the geometric center) so it doesn't ride the bottom V. */
-        heartText.y = heart.y - PLAYER_HEART_SIZE * 0.12;
+
+      const cx = 0;
+      const cy = -(HP_RING_OUTER_R + 34); /* same head clearance as the old heart (~-58) */
+      /* Redraw only while visible (hidden at full HP, so this is cheap). */
+      ring.clear();
+      if (hpNewAlpha > 0.02) {
+        ring.circle(cx, cy, HP_RING_CENTER_R);
+        ring.fill({ color: HP_RING_CENTER_FILL, alpha: 0.92 });
+        const TOP = -Math.PI / 2;  /* 12 o'clock */
+        const Q = Math.PI / 2;     /* quadrant span */
+        const halfGap = (HP_RING_GAP_PX / HP_RING_STROKE_R) / 2;
+        const fillEnd = TOP + Math.max(0, Math.min(1, hpFrac)) * Math.PI * 2;
+        for (let k = 0; k < 4; k++) {
+          const qs = TOP + k * Q + halfGap;
+          const qe = TOP + (k + 1) * Q - halfGap;
+          if (qe <= qs) continue;
+          ring.arc(cx, cy, HP_RING_STROKE_R, qs, qe);
+          ring.stroke({ color: HP_RING_TRACK, width: HP_RING_BAND, cap: 'butt', alpha: 0.9 });
+          if (fillEnd > qs) {
+            ring.arc(cx, cy, HP_RING_STROKE_R, qs, Math.min(qe, fillEnd));
+            ring.stroke({ color: hpTint, width: HP_RING_BAND, cap: 'butt', alpha: 1 });
+          }
+        }
       }
+      heartText.x = cx; heartText.y = cy - 5;
+      maxText.x = cx;   maxText.y = cy + 8;
       const hpStr = String(Math.ceil(hpCur));
+      const maxStr = String(Math.ceil(hpMax));
       if (heartText.text !== hpStr) heartText.text = hpStr;
+      if (maxText.text !== maxStr) maxText.text = maxStr;
     }
   }
 
