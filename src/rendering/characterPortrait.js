@@ -20,7 +20,7 @@ import { SPRITE_VERSION } from './playerSprites.js';
 
 const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
-const TRAIT_VER = '2.3.477';            // cache-bust for body-tops.json (matches entityRenderer)
+const TRAIT_VER = '2.3.478';            // cache-bust for body-tops.json (matches entityRenderer)
 
 /* ── tiny async caches ── */
 const _imgCache = new Map();            // url -> Promise<HTMLImageElement>
