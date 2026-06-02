@@ -1,7 +1,7 @@
 {
   "category": "shirt",
   "fullFrame": true,
-  "note": "Blue t-shirt, recolorable, WITH black outline. Placement clean-derived from the body sprite per angle (scale = body torso width / shirt width; hem to waist; centered) -- no retained manual guesses. Outline kept; precise fit overlays it on the body outline. v2.3.473.",
+  "note": "Blue t-shirt, recolorable, WITH black outline. Placement tuned against a faithful offline mock (real body-tops.json crown per dir + exact _placeTrait math) after on-device feedback: south/north collar raised to cover shoulders, southwest lowered, east scale 1.441->1.18 (was ballooned on the side view), northeast/NW nudged up. v2.3.474.",
   "anchors": {
     "south": [
       126,
@@ -27,11 +27,11 @@
   "crownNudge": {
     "south": [
       -1,
-      59
+      52
     ],
     "southwest": [
       5,
-      52
+      58
     ],
     "east": [
       -1,
@@ -39,16 +39,16 @@
     ],
     "northeast": [
       -4,
-      58
+      54
     ],
     "north": [
       -1,
-      55
+      49
     ]
   },
   "scale": {
     "southwest": 1.237,
-    "east": 1.441,
+    "east": 1.18,
     "northeast": 0.95,
     "north": 1.017
   }
