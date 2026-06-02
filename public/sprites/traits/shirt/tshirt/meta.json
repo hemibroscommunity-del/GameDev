@@ -91,23 +91,28 @@
   "crownNudge": {
     "south": [
       0,
-      40
+      50
     ],
     "southwest": [
       0,
-      40
+      50
     ],
     "east": [
       0,
-      40
+      50
     ],
     "northeast": [
       0,
-      40
+      50
     ],
     "north": [
       0,
-      40
+      50
     ]
+  },
+  "scale": {
+    "southwest": 1.11,
+    "south": 0.95,
+    "north": 0.95
   }
 }
