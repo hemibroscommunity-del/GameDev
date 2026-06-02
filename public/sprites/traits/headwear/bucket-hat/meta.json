@@ -1,0 +1,113 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Olive-drab wide-brim bucket/boonie hat. Single source DB207857 used for ALL 5 base dirs (same from every angle, like top-hat/sombrero). 1024 padded to 1254. solid:true (single olive color, recolorable). crownNudge seeded -16 (wide-brim lift) -- tune on-device.",
+  "bboxes_source": {
+    "south": [
+      367,
+      464,
+      537,
+      205
+    ],
+    "southwest": [
+      367,
+      464,
+      537,
+      205
+    ],
+    "east": [
+      367,
+      464,
+      537,
+      205
+    ],
+    "northeast": [
+      367,
+      464,
+      537,
+      205
+    ],
+    "north": [
+      367,
+      464,
+      537,
+      205
+    ]
+  },
+  "bboxes": {
+    "south": [
+      75,
+      94,
+      110,
+      43
+    ],
+    "southwest": [
+      75,
+      94,
+      110,
+      43
+    ],
+    "east": [
+      75,
+      94,
+      110,
+      43
+    ],
+    "northeast": [
+      75,
+      94,
+      110,
+      43
+    ],
+    "north": [
+      75,
+      94,
+      110,
+      43
+    ]
+  },
+  "anchors": {
+    "south": [
+      130,
+      94
+    ],
+    "southwest": [
+      130,
+      94
+    ],
+    "east": [
+      130,
+      94
+    ],
+    "northeast": [
+      130,
+      94
+    ],
+    "north": [
+      130,
+      94
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      -16
+    ],
+    "southwest": [
+      0,
+      -16
+    ],
+    "east": [
+      0,
+      -16
+    ],
+    "northeast": [
+      0,
+      -16
+    ],
+    "north": [
+      0,
+      -16
+    ]
+  }
+}
