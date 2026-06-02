@@ -184,3 +184,27 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx) {
 export function getSkinnedFrame(skinId, pose, dir, frameIdx) {
   return getBodyFrame(skinId, 'default', 'default', pose, dir, frameIdx);
 }
+
+/* Pre-warm the local player's recolored body sheets so the correct skin is
+   baked BEFORE the player first renders -- otherwise getBodyFrame falls back
+   to the default (un-recolored) frame for the first frame(s) while the async
+   recolor runs, which shows as a brief default-skin flicker on spawn.  Bakes
+   the 'stand' pose (the spawn pose) for all base dirs of the current combo.
+   Fires on module load (a returning player's stored combo) and whenever the
+   login picker changes skin/pants/shoes -- both give plenty of lead time
+   before the player presses Play and spawns. */
+export function prewarmBody(skinId, pantsId, shoesId) {
+  const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+  if (!skinT && !pantsT && !shoesT) return; /* default combo: nothing to bake */
+  for (const dir of SOURCE_DIRS) {
+    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|stand/' + dir;
+    if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT);
+  }
+}
+function _prewarmCurrent() {
+  try { prewarmBody(_skinStore.get(), _pantsStore.get(), _shoesStore.get()); } catch (e) { /* ignore */ }
+}
+_skinStore.on(_prewarmCurrent);
+_pantsStore.on(_prewarmCurrent);
+_shoesStore.on(_prewarmCurrent);
+_prewarmCurrent();

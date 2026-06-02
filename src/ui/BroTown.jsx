@@ -1352,10 +1352,18 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
   var _swatchTile = function (opt, selId, onSet, size) {
+    /* The 'default' option = keep the item's original color (no recolor).
+       Render it as a muted swatch with a diagonal slash (the universal
+       "original / no override" cue) instead of a literal color, so it
+       doesn't read as a real color choice (e.g. the hat-color default
+       swatch was #7c6cff and looked like a blue pick). */
+    var _swBg = opt.id === 'default'
+      ? 'linear-gradient(135deg, transparent 44%, #c9cdd6 44%, #c9cdd6 56%, transparent 56%), #454a55'
+      : opt.swatch;
     return /*#__PURE__*/React.createElement("button", {
-      key: 'c_' + opt.id, type: 'button', title: opt.name,
+      key: 'c_' + opt.id, type: 'button', title: opt.id === 'default' ? 'Default (original color)' : opt.name,
       onClick: function () { onSet(opt.id); }, style: _apTileStyle(selId === opt.id, size || 28)
-    }, /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 5, background: opt.swatch, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } }));
+    }, /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 5, background: _swBg, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } }));
   };
   var _thumbTile = function (cat, opt, selId, onSet, size) {
     var sz = size || 44;
@@ -1367,7 +1375,14 @@ export var BroTown = function BroTown(_ref0) {
       : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }));
   };
   /* Collapsed-pill previews (non-interactive). */
-  var _swOf = function (cat, id) { var e = cat.find(function (o) { return o.id === id; }); return (e && e.swatch) || '#888'; };
+  var _swOf = function (cat, id) {
+    /* 'default' = original color: return the same slash gradient _swatchTile
+       uses so the collapsed-pill mini preview matches the grid (not a literal
+       color like the hat-default #7c6cff). */
+    if (id === 'default') return 'linear-gradient(135deg, transparent 44%, #c9cdd6 44%, #c9cdd6 56%, transparent 56%), #454a55';
+    var e = cat.find(function (o) { return o.id === id; });
+    return (e && e.swatch) || '#888';
+  };
   var _miniThumb = function (cat, id) {
     return id === 'none'
       ? /*#__PURE__*/React.createElement("div", { key: 'mt', style: { width: 26, height: 26, borderRadius: '50%', border: '1.5px dashed var(--line)', flex: '0 0 auto' } })
