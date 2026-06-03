@@ -120,33 +120,26 @@ def base_bbox(i):
     return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
 
 def head_anchor(mask):
-    """(centre_x, top_y) of the HEAD: a blob in the top ~quarter of the bbox,
-    eroded to drop thin limbs, picking the one nearest the figure's centre-x.
-    Picking CENTRAL (not largest) keeps a swung arm that reaches into the top
-    band from being mistaken for the head (which shifted SW chest right)."""
+    """(centre_x, top_y) of the HEAD: the largest blob in the top quarter of the
+    bbox after eroding away thin limbs.  Pose-stable anchor -- unlike the bbox
+    top/centre, a raised knee or swung arm above the head doesn't move it.
+    (Tried 'most central' instead of 'largest' to dodge an arm in the top band,
+    but that broke east jog vertical on a couple frames -- largest is right for
+    every dir that was already good, so it stays.)"""
     ys = np.where(mask.any(1))[0]
     if len(ys) == 0:
         return None
     y0, h = int(ys.min()), int(ys.max()) - int(ys.min())
-    cx_all = float(np.where(mask)[1].mean())
-    top = mask.copy(); top[y0 + max(8, int(0.28 * h)):] = False
+    top = mask.copy(); top[y0 + max(8, int(0.25 * h)):] = False
     er = ndimage.binary_erosion(top, iterations=2)
     if er.sum() < 20:
         er = top                                        # tiny head: skip erosion
     lbl, num = ndimage.label(er)
     if num == 0:
         return None
-    best, bd = None, 1e18
-    for k in range(1, num + 1):
-        hy, hx = np.where(lbl == k)
-        if len(hy) < 15:
-            continue
-        d = abs(float(hx.mean()) - cx_all)              # central blob = head
-        if d < bd:
-            bd, best = d, k
-    if best is None:
-        return None
-    hy, hx = np.where(lbl == best)
+    sizes = ndimage.sum(np.ones_like(lbl), lbl, range(1, num + 1))
+    k = int(np.argmax(sizes)) + 1
+    hy, hx = np.where(lbl == k)
     return float(hx.mean()), float(hy.min())
 
 # Per-sheet scale (mannequin only).  ChatGPT redraws the figure bigger/smaller
@@ -170,11 +163,9 @@ if mannequin:
         fig_scale = float(np.median(ratios))
 
 def _raw_place(i):
-    """Raw (px, py) to drop the (scaled) armoured figure on the base body.
-    HORIZONTAL = full-figure centroid (robust to limb swing -- both masks share
-    the pose, so the limbs cancel).  VERTICAL = head top (the right reference for
-    a chest piece; centroid-y is biased low by the metal boots).  None if no
-    detection."""
+    """Raw (px, py) to drop the (scaled) armoured figure so its green head sits
+    on the base body's skin head (the v2.3.517 anchor that east/NE were good
+    with).  None if a head couldn't be found."""
     d = _det.get(i)
     if d is None:
         return None
@@ -182,18 +173,14 @@ def _raw_place(i):
     s = fig_scale * scale_mul
     bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
     cmask = content[:, :, 3] > 40
-    bcx = float(np.where(bop)[1].mean())
-    acx = float(np.where(cmask)[1].mean())
-    px = bcx - acx * s
     crgb = content[:, :, :3].astype(int)
     R, G, B = crgb[:, :, 0], crgb[:, :, 1], crgb[:, :, 2]
     cgreen = (G > R + 25) & (G > B + 25) & (G > 60) & cmask
     bh, ah = head_anchor(bop), head_anchor(cgreen)
     if bh and ah:
-        py = bh[1] - ah[1] * s
-    else:
-        py = float(base_bbox(i)[1])
-    return (px, py)
+        return (bh[0] - ah[0] * s, bh[1] - ah[1] * s)
+    bx0, by0, bx1, by1 = base_bbox(i)
+    return ((bx0 + bx1) / 2 - content.shape[1] * s / 2, float(by0))
 
 # Placement pre-pass + spike rejection.  The head anchor occasionally latches
 # onto a raised arm that swings into the top band (SW frames 1/12 jumped ~18px
