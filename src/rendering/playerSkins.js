@@ -213,15 +213,12 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
       if (neck >= 0 && y >= neck && y < colWaist[x]) inBand = true;
     }
     if (inBand) {
-      /* Flat-fill the whole shirt interior (skin AND internal contour lines) so
-         no chest/back muscle lines show through; keep only EDGE pixels (touch
-         transparent) so the shirt reuses the body's silhouette outline. */
+      /* Flat-fill only SKIN pixels (the chest/back "muscle lines" are darker
+         SKIN shading -- flattening removes them).  KEEP every dark pixel
+         (cls 2): those are the real black outlines -- the silhouette AND the
+         arm/torso seams -- so the shirt has a proper outline and the arms stay
+         distinct.  Pants (cls 3) below the per-column hem are left alone. */
       if (cls[px] === 1) { d[i] = sf0; d[i + 1] = sf1; d[i + 2] = sf2; }
-      else {
-        const edge = x === 0 || x === w - 1 || y === 0 || y === h - 1
-          || cls[px - 1] === 0 || cls[px + 1] === 0 || cls[px - w] === 0 || cls[px + w] === 0;
-        if (!edge) { d[i] = sf0; d[i + 1] = sf1; d[i + 2] = sf2; }
-      }
     } else if (_isSkin(r, g, b, a)) {
       if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) {
