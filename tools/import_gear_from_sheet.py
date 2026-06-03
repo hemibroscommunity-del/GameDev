@@ -60,6 +60,11 @@ def keyed_frame(i):
     rgb = cell.astype(int)
     dist = np.sqrt(((rgb - MAGENTA) ** 2).sum(2))
     alpha = (dist > MAG_TOL).astype(np.uint8) * 255
+    # de-spill: kill the anti-aliased magenta fringe ring -- pixels where R and B
+    # both clearly exceed G are magenta-blended (no real body pixel is purple).
+    R, G, B = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+    purple = (R - G > 32) & (B - G > 32) & (R > 105) & (B > 105)
+    alpha[purple] = 0
     fig = np.dstack([cell, alpha]).astype(np.uint8)
     small = Image.fromarray(fig, 'RGBA').resize((crop_w, crop_h), Image.LANCZOS)
     out = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))

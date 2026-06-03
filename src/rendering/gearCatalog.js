@@ -11,8 +11,8 @@ export const GEAR_SLOTS = ['legs', 'chest', 'shoulders'];
    steel vest baked from the body frames by tools/make_test_gear.py) to prove
    the layered renderer before real gear art exists. */
 export const GEAR_CATALOG = {
-  legs: [{ id: 'none', name: 'None' }],
-  chest: [{ id: 'none', name: 'None' }, { id: 'testplate', name: 'Test Plate' }],
+  legs: [{ id: 'none', name: 'None' }, { id: 'steelgreaves', name: 'Steel Greaves' }],
+  chest: [{ id: 'none', name: 'None' }, { id: 'testplate', name: 'Test Plate' }, { id: 'steelplate', name: 'Steel Plate' }],
   shoulders: [{ id: 'none', name: 'None' }],
 };
 
@@ -33,11 +33,12 @@ function makeSlotStore(slot, defId) {
   };
 }
 
-/* Default the chest to the test plate so the layered render is visible
-   immediately; legs/shoulders empty. */
+/* v2.3.506: default to the REAL extracted steel set (jog-east only for now) so
+   the pipeline result is visible in-game -- run EAST to see it; other dirs/poses
+   are bare until their sheets are generated. */
 const _stores = {
-  legs: makeSlotStore('legs', 'none'),
-  chest: makeSlotStore('chest', 'testplate'),
+  legs: makeSlotStore('legs', 'steelgreaves'),
+  chest: makeSlotStore('chest', 'steelplate'),
   shoulders: makeSlotStore('shoulders', 'none'),
 };
 
