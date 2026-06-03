@@ -38,6 +38,11 @@ dir_ = sys.argv[5]
 thresh = int(sys.argv[6]) if len(sys.argv) > 6 else 50
 ymin_frac = float(sys.argv[7]) if len(sys.argv) > 7 else 0.0
 ymax_frac = float(sys.argv[8]) if len(sys.argv) > 8 else 1.0
+# Per-frame head exclusion: chest/legs never cover the head, but ChatGPT redraws
+# the face slightly -> the diff ghosts a "second face". Drop gear above
+# crown + HEAD_FRAC*(body height) on EACH frame (auto-tracks the head bob, works
+# across dirs/poses without per-sheet tuning). 0 disables it (e.g. for helmets).
+head_frac = float(sys.argv[9]) if len(sys.argv) > 9 else 0.22
 
 meta = json.load(open(f'tools/posesheets/{pose}-{dir_}.json'))
 cols, rows = meta['cols'], meta['rows']
@@ -88,6 +93,12 @@ for i in range(n):
     gear = a_op & (~b_op | (diff > thresh))
     band = np.zeros_like(gear); band[yb0:yb1, :] = True
     gear &= band
+    # per-frame head exclusion (from the base body's crown)
+    if head_frac > 0:
+        yy = np.where(b_op.any(1))[0]
+        if len(yy):
+            hc = yy.min() + int(round(head_frac * (yy.max() - yy.min())))
+            gear[:hc, :] = False
     # despeckle
     lbl, num = ndimage.label(gear)
     if num:
