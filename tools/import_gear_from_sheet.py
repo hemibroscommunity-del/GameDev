@@ -43,6 +43,12 @@ ymax_frac = float(sys.argv[8]) if len(sys.argv) > 8 else 1.0
 # crown + HEAD_FRAC*(body height) on EACH frame (auto-tracks the head bob, works
 # across dirs/poses without per-sheet tuning). 0 disables it (e.g. for helmets).
 head_frac = float(sys.argv[9]) if len(sys.argv) > 9 else 0.22
+# Drop redrawn SKIN from the gear: the diff catches ChatGPT's repainted arms/
+# neck/face (skin), which double over the base body and blur. The gear should be
+# the ARMOUR only -- the base provides the body. Keeps steel/leather/belt, drops
+# tan skin (a 'balanced warm' tone: r>g>b with r-g ~ g-b, which excludes the
+# gold/red belt where one gap dominates). 1=on, 0=off.
+drop_skin = int(sys.argv[10]) if len(sys.argv) > 10 else 1
 
 meta = json.load(open(f'tools/posesheets/{pose}-{dir_}.json'))
 cols, rows = meta['cols'], meta['rows']
@@ -99,6 +105,15 @@ for i in range(n):
         if len(yy):
             hc = yy.min() + int(round(head_frac * (yy.max() - yy.min())))
             gear[:hc, :] = False
+    # drop redrawn skin (keep only the armour).  Dilate the skin mask a couple px
+    # so the redrawn arm's dark OUTLINE + AA fringe (which sit right at the skin
+    # edge) go with it -- otherwise they leave ghost curves where the arms were.
+    if drop_skin:
+        R, G, B = a_rgb[:, :, 0], a_rgb[:, :, 1], a_rgb[:, :, 2]
+        rg, gb = R - G, G - B
+        skin = (R > G) & (G > B) & (rg > 18) & (gb > 18) & (np.abs(rg - gb) < 38) & (R > 110)
+        skin = ndimage.binary_dilation(skin, iterations=2)
+        gear &= ~skin
     # despeckle
     lbl, num = ndimage.label(gear)
     if num:
