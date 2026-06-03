@@ -115,6 +115,26 @@ def base_bbox(i):
     ys, xs = np.where(op)
     return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
 
+def head_anchor(mask):
+    """(centre_x, top_y) of the HEAD: the largest blob in the top quarter of the
+    bbox after eroding away thin limbs.  Pose-stable anchor -- unlike the bbox
+    top/centre, a raised knee or swung arm above the head doesn't move it."""
+    ys = np.where(mask.any(1))[0]
+    if len(ys) == 0:
+        return None
+    y0, h = int(ys.min()), int(ys.max()) - int(ys.min())
+    top = mask.copy(); top[y0 + max(8, int(0.25 * h)):] = False
+    er = ndimage.binary_erosion(top, iterations=2)
+    if er.sum() < 20:
+        er = top                                        # tiny head: skip erosion
+    lbl, num = ndimage.label(er)
+    if num == 0:
+        return None
+    sizes = ndimage.sum(np.ones_like(lbl), lbl, range(1, num + 1))
+    k = int(np.argmax(sizes)) + 1
+    hy, hx = np.where(lbl == k)
+    return float(hx.mean()), float(hy.min())
+
 # Per-sheet scale (mannequin only).  ChatGPT redraws the figure bigger/smaller
 # than laid out; correct it by matching the armoured figure's HEIGHT to the base
 # body's.  base_h/fig_h is pose-independent (both share the exact pose), so it's
@@ -156,10 +176,22 @@ def keyed_frame(i):
     content, _, _, h, w = d
     nw, nh = max(1, round(w * fig_scale)), max(1, round(h * fig_scale))
     small = Image.fromarray(content, 'RGBA').resize((nw, nh), Image.LANCZOS)
-    bx0, by0, bx1, by1 = base_bbox(i)
-    px = int(round((bx0 + bx1) / 2 - nw / 2))           # centre-x on base
-    py = int(round(by0))                                # head-top on base
+    # Anchor on the HEAD (map the armoured figure's green head onto the base
+    # body's head), not the bbox -- in deep strides a raised knee/arm sits above
+    # the head and a bbox anchor drops the chest onto the head ('armour jumps
+    # off').  Green head from the armour, skin head from the base sprite.
+    bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
+    crgb = content[:, :, :3].astype(int)
+    R, G, B = crgb[:, :, 0], crgb[:, :, 1], crgb[:, :, 2]
+    cgreen = (G > R + 25) & (G > B + 25) & (G > 60) & (content[:, :, 3] > 40)
+    bh, ah = head_anchor(bop), head_anchor(cgreen)
     o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
+    if bh and ah:
+        px = int(round(bh[0] - ah[0] * fig_scale))
+        py = int(round(bh[1] - ah[1] * fig_scale))
+    else:
+        bx0, by0, bx1, by1 = base_bbox(i)
+        px = int(round((bx0 + bx1) / 2 - nw / 2)); py = int(round(by0))
     o.alpha_composite(small, (px, py))
     return np.array(o)
 
