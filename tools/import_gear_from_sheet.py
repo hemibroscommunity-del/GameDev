@@ -162,25 +162,44 @@ if mannequin:
     if ratios:
         fig_scale = float(np.median(ratios))
 
+def _overlap(sm, bop, px, py):
+    """# of pixels where the armoured mask `sm`, placed with its top-left at
+    (px,py), coincides with the base body mask `bop`."""
+    H, W = bop.shape; sh, sw = sm.shape
+    x0, y0 = max(0, px), max(0, py)
+    x1, y1 = min(W, px + sw), min(H, py + sh)
+    if x1 <= x0 or y1 <= y0:
+        return 0
+    return int((bop[y0:y1, x0:x1] & sm[y0 - py:y1 - py, x0 - px:x1 - px]).sum())
+
 def _raw_place(i):
-    """Raw (px, py) to drop the (scaled) armoured figure so its green head sits
-    on the base body's skin head (the v2.3.517 anchor that east/NE were good
-    with).  None if a head couldn't be found."""
+    """Raw (px, py): align the armoured figure's FULL silhouette to the base
+    body's by maximising mask overlap.  The armoured art shares the base pose, so
+    whole-silhouette registration is robust where any single landmark fails --
+    the head anchor drifted badly on front-3/4 dirs (SW) because the head merges
+    with a swung arm.  Seed at the centroids, then refine with a small search."""
     d = _det.get(i)
     if d is None:
         return None
     content = d[0]
     s = fig_scale * scale_mul
-    bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
     cmask = content[:, :, 3] > 40
-    crgb = content[:, :, :3].astype(int)
-    R, G, B = crgb[:, :, 0], crgb[:, :, 1], crgb[:, :, 2]
-    cgreen = (G > R + 25) & (G > B + 25) & (G > 60) & cmask
-    bh, ah = head_anchor(bop), head_anchor(cgreen)
-    if bh and ah:
-        return (bh[0] - ah[0] * s, bh[1] - ah[1] * s)
-    bx0, by0, bx1, by1 = base_bbox(i)
-    return ((bx0 + bx1) / 2 - content.shape[1] * s / 2, float(by0))
+    nw, nh = max(1, round(content.shape[1] * s)), max(1, round(content.shape[0] * s))
+    sm = np.array(Image.fromarray((cmask * 255).astype(np.uint8), 'L')
+                  .resize((nw, nh), Image.NEAREST)) > 40
+    bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
+    if not sm.any() or not bop.any():
+        bx0, by0, bx1, by1 = base_bbox(i)
+        return ((bx0 + bx1) / 2 - nw / 2, float(by0))
+    sy, sx = np.where(sm); by, bx = np.where(bop)
+    px0 = bx.mean() - sx.mean(); py0 = by.mean() - sy.mean()   # centroid seed
+    best, bestov = (px0, py0), -1
+    for dy in range(-10, 11):
+        for dx in range(-10, 11):
+            ov = _overlap(sm, bop, int(round(px0 + dx)), int(round(py0 + dy)))
+            if ov > bestov:
+                bestov, best = ov, (px0 + dx, py0 + dy)
+    return best
 
 # Placement pre-pass + spike rejection.  The head anchor occasionally latches
 # onto a raised arm that swings into the top band (SW frames 1/12 jumped ~18px
