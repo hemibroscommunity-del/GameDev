@@ -135,19 +135,28 @@ const SHIRT_NECK_FRAC = 0.48;
    any internal shading that would re-expose the body's contour lines). */
 const SHIRT_FILL_K = 0.96;
 
-/* Per-frame SHIRT geometry, derived from each 256px frame's own pixels:
-   - cls (one byte/pixel: 0 transparent, 1 skin, 2 other-opaque, 3 pants) so
-     the recolor loop can test ORIGINAL neighbour classes for the outline edge.
-   - neckByFrame[f]: collar row = crown + NECK_FRAC*(waist-crown) (crown =
-     topmost skin, waist = topmost pants in the lower body).  Stable refs, so
-     it tracks the run bob without jittering.
-   - colWaist[x]: PER-COLUMN hem = topmost pants in that column (>= mid), or the
-     frame's global waist.  Following the pants per column closes the skin
-     corners that a single straight hem leaves at the hips. */
+/* Sleeve length as a fraction of the crown->waist span below the collar.  The
+   shoulder cap covers all arm skin down to neck + SLEEVE_FRAC*(waist-neck);
+   below that only the TORSO is followed, so forearms + HANDS stay skin (a
+   t-shirt, not long sleeves that paint the hands). */
+const SHIRT_SLEEVE_FRAC = 0.42;
+
+/* Per-frame SHIRT pixel mask.  For each 256px frame:
+   - classify pixels (skin / pants / other) and find crown (topmost skin),
+     waist (topmost pants in the lower body), collar (crown+NECK_FRAC*span,
+     stable refs so it doesn't jitter), per-column hem (first pants per column,
+     closes hip skin corners), sleeve cap (collar+SLEEVE_FRAC*span).
+   - shoulder cap: mark ALL skin in [collar, sleeveCap].
+   - torso flood: from the cap's central skin run, follow the trunk DOWNWARD to
+     the per-column hem.  Arms branch off ABOVE the cap, so the downward flood
+     never enters them -> forearms/hands stay skin.
+   Returns shirtPx (1 = this skin pixel is shirt).  Keyed off each frame's body,
+   so it follows the run lean/twist/bob. */
 function _torsoBands(d, w, h, frameW, frames) {
-  const neckByFrame = new Int16Array(frames).fill(-1);
   const cls = new Uint8Array(w * h);
   const colWaist = new Int16Array(w);
+  const shirtPx = new Uint8Array(w * h);
+  const cur = new Uint8Array(frameW), nxt = new Uint8Array(frameW);
   for (let f = 0; f < frames; f++) {
     const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
     const pantsRow = new Int16Array(h);
@@ -173,15 +182,59 @@ function _torsoBands(d, w, h, frameW, frames) {
     let waist = -1;
     for (let y = mid; y < bottom; y++) { if (pantsRow[y] >= 3) { waist = y; break; } }
     if (waist < 0) waist = Math.round(crown + 0.62 * (bottom - crown));
-    neckByFrame[f] = Math.max(0, Math.round(crown + SHIRT_NECK_FRAC * (waist - crown)));
-    /* per-column hem: first pants row at/below mid in that column, else waist */
+    const collar = Math.max(0, Math.round(crown + SHIRT_NECK_FRAC * (waist - crown)));
+    const sleeveCap = Math.min(bottom, Math.round(collar + SHIRT_SLEEVE_FRAC * (waist - collar)));
+    /* per-column hem */
     for (let x = x0; x < x1; x++) {
       let cw = waist;
       for (let y = mid; y < bottom; y++) { if (cls[y * w + x] === 3) { cw = y; break; } }
       colWaist[x] = cw;
     }
+    /* shoulder cap: all skin in [collar, sleeveCap) */
+    for (let y = collar; y < sleeveCap; y++) {
+      const base = y * w;
+      for (let x = x0; x < x1; x++) if (cls[base + x] === 1 && y < colWaist[x]) shirtPx[base + x] = 1;
+    }
+    /* torso flood from the cap down.  Seed = skin run at sleeveCap containing
+       the chest centre. */
+    let cxl = 1e9, cxr = -1;
+    for (let y = collar; y < Math.min(collar + 6, sleeveCap + 1); y++)
+      for (let x = x0; x < x1; x++) if (cls[y * w + x] === 1) { if (x < cxl) cxl = x; if (x > cxr) cxr = x; }
+    let cx = cxr >= cxl ? (cxl + cxr) >> 1 : (x0 + x1) >> 1;
+    cur.fill(0);
+    let seedRow = sleeveCap;
+    if (seedRow >= bottom) seedRow = bottom - 1;
+    /* find seed x: chest centre, else nearest skin on that row */
+    let sx = -1;
+    if (cls[seedRow * w + cx] === 1) sx = cx;
+    else for (let dd = 1; dd < frameW; dd++) {
+      if (cx - dd >= x0 && cls[seedRow * w + (cx - dd)] === 1) { sx = cx - dd; break; }
+      if (cx + dd < x1 && cls[seedRow * w + (cx + dd)] === 1) { sx = cx + dd; break; }
+    }
+    if (sx >= 0) {
+      let l = sx; while (l > x0 && cls[seedRow * w + (l - 1)] === 1) l--;
+      let r = sx; while (r < x1 - 1 && cls[seedRow * w + (r + 1)] === 1) r++;
+      for (let xx = l; xx <= r; xx++) if (seedRow < colWaist[xx]) { cur[xx - x0] = 1; shirtPx[seedRow * w + xx] = 1; }
+      for (let y = seedRow + 1; y < bottom; y++) {
+        nxt.fill(0);
+        let any = false;
+        const base = y * w;
+        for (let lx = 0; lx < frameW; lx++) {
+          const x = x0 + lx;
+          if (cls[base + x] !== 1 || y >= colWaist[x]) continue;
+          if (!(cur[lx] || (lx > 0 && cur[lx - 1]) || (lx < frameW - 1 && cur[lx + 1]))) continue;
+          /* expand to the full skin run, then skip past it */
+          let l2 = lx; while (l2 > 0 && cls[base + (x0 + l2 - 1)] === 1) l2--;
+          let r2 = lx; while (r2 < frameW - 1 && cls[base + (x0 + r2 + 1)] === 1) r2++;
+          for (let k = l2; k <= r2; k++) { const xx = x0 + k; if (y < colWaist[xx]) { nxt[k] = 1; shirtPx[base + xx] = 1; any = true; } }
+          lx = r2;
+        }
+        cur.set(nxt); // nxt becomes the new frontier
+        if (!any) break;
+      }
+    }
   }
-  return { neckByFrame, cls, colWaist };
+  return shirtPx;
 }
 
 export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
@@ -193,10 +246,9 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
   const d = imgData.data;
   const w = cv.width, h = cv.height;
   const frames = Math.max(1, Math.floor(w / FRAME_W));
-  const tb = shirtT ? _torsoBands(d, w, h, FRAME_W, frames) : null;
-  const neckByFrame = tb ? tb.neckByFrame : null, cls = tb ? tb.cls : null, colWaist = tb ? tb.colWaist : null;
-  /* Flat shirt fill colour (no per-pixel shading -> no resurfacing of contour
-     lines).  Computed once. */
+  const shirtPx = shirtT ? _torsoBands(d, w, h, FRAME_W, frames) : null;
+  /* Flat shirt fill colour (no per-pixel shading -> no resurfacing of the
+     body's contour lines).  Computed once. */
   let sf0 = 0, sf1 = 0, sf2 = 0;
   if (shirtT) {
     sf0 = Math.min(255, Math.round(shirtT[0] * SHIRT_FILL_K));
@@ -205,20 +257,11 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
   }
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-    /* In the shirt region? (per-column hem, global-per-frame collar) */
-    let inBand = false, x = 0, y = 0, px = 0;
-    if (neckByFrame) {
-      px = i >> 2; x = px % w; y = (px / w) | 0;
-      const neck = neckByFrame[(x / FRAME_W) | 0];
-      if (neck >= 0 && y >= neck && y < colWaist[x]) inBand = true;
-    }
-    if (inBand) {
-      /* Flat-fill only SKIN pixels (the chest/back "muscle lines" are darker
-         SKIN shading -- flattening removes them).  KEEP every dark pixel
-         (cls 2): those are the real black outlines -- the silhouette AND the
-         arm/torso seams -- so the shirt has a proper outline and the arms stay
-         distinct.  Pants (cls 3) below the per-column hem are left alone. */
-      if (cls[px] === 1) { d[i] = sf0; d[i + 1] = sf1; d[i + 2] = sf2; }
+    if (shirtPx && shirtPx[i >> 2]) {
+      /* shirt skin -> flat fill (kills muscle shading); dark outline/seam
+         pixels are never in shirtPx, so they stay and give the shirt its
+         outline + arm definition. */
+      d[i] = sf0; d[i + 1] = sf1; d[i + 2] = sf2;
     } else if (_isSkin(r, g, b, a)) {
       if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) {
