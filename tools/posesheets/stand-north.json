@@ -1,0 +1,18 @@
+{
+  "pose": "stand",
+  "dir": "north",
+  "n": 1,
+  "cols": 1,
+  "rows": 1,
+  "cell_w": 138,
+  "cell_h": 340,
+  "pad": 10,
+  "crop": [
+    91,
+    28,
+    73,
+    198
+  ],
+  "scale": 1.6161616161616161,
+  "mannequin": true
+}

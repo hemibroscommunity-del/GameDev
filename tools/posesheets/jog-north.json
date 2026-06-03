@@ -1,0 +1,18 @@
+{
+  "pose": "jog",
+  "dir": "north",
+  "n": 25,
+  "cols": 5,
+  "rows": 5,
+  "cell_w": 176,
+  "cell_h": 320,
+  "pad": 10,
+  "crop": [
+    67,
+    17,
+    117,
+    225
+  ],
+  "scale": 1.3333333333333333,
+  "mannequin": true
+}

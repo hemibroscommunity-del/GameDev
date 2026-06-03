@@ -1,0 +1,18 @@
+{
+  "pose": "jog",
+  "dir": "southwest",
+  "n": 25,
+  "cols": 5,
+  "rows": 5,
+  "cell_w": 199,
+  "cell_h": 320,
+  "pad": 10,
+  "crop": [
+    60,
+    16,
+    140,
+    234
+  ],
+  "scale": 1.2820512820512822,
+  "mannequin": true
+}
