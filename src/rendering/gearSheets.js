@@ -17,7 +17,7 @@ import { Rectangle, Texture } from 'pixi.js';
 
 const FRAME_W = 256;
 const FRAME_H = 256;
-const GEAR_VERSION = '2.3.517';
+const GEAR_VERSION = '2.3.518';
 
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};

@@ -49,6 +49,10 @@ head_frac = float(sys.argv[9]) if len(sys.argv) > 9 else 0.22
 # tan skin (a 'balanced warm' tone: r>g>b with r-g ~ g-b, which excludes the
 # gold/red belt where one gap dominates). 1=on, 0=off.
 drop_skin = int(sys.argv[10]) if len(sys.argv) > 10 else 1
+# Extra uniform scale on the extracted armour (mannequin path).  ChatGPT
+# sometimes draws the figure slightly slimmer than the base body, so the
+# height-matched plate reads a touch narrow on some idle dirs -- nudge e.g. 1.05.
+scale_mul = float(sys.argv[11]) if len(sys.argv) > 11 else 1.0
 
 meta = json.load(open(f'tools/posesheets/{pose}-{dir_}.json'))
 cols, rows = meta['cols'], meta['rows']
@@ -116,23 +120,33 @@ def base_bbox(i):
     return int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())
 
 def head_anchor(mask):
-    """(centre_x, top_y) of the HEAD: the largest blob in the top quarter of the
-    bbox after eroding away thin limbs.  Pose-stable anchor -- unlike the bbox
-    top/centre, a raised knee or swung arm above the head doesn't move it."""
+    """(centre_x, top_y) of the HEAD: a blob in the top ~quarter of the bbox,
+    eroded to drop thin limbs, picking the one nearest the figure's centre-x.
+    Picking CENTRAL (not largest) keeps a swung arm that reaches into the top
+    band from being mistaken for the head (which shifted SW chest right)."""
     ys = np.where(mask.any(1))[0]
     if len(ys) == 0:
         return None
     y0, h = int(ys.min()), int(ys.max()) - int(ys.min())
-    top = mask.copy(); top[y0 + max(8, int(0.25 * h)):] = False
+    cx_all = float(np.where(mask)[1].mean())
+    top = mask.copy(); top[y0 + max(8, int(0.28 * h)):] = False
     er = ndimage.binary_erosion(top, iterations=2)
     if er.sum() < 20:
         er = top                                        # tiny head: skip erosion
     lbl, num = ndimage.label(er)
     if num == 0:
         return None
-    sizes = ndimage.sum(np.ones_like(lbl), lbl, range(1, num + 1))
-    k = int(np.argmax(sizes)) + 1
-    hy, hx = np.where(lbl == k)
+    best, bd = None, 1e18
+    for k in range(1, num + 1):
+        hy, hx = np.where(lbl == k)
+        if len(hy) < 15:
+            continue
+        d = abs(float(hx.mean()) - cx_all)              # central blob = head
+        if d < bd:
+            bd, best = d, k
+    if best is None:
+        return None
+    hy, hx = np.where(lbl == best)
     return float(hx.mean()), float(hy.min())
 
 # Per-sheet scale (mannequin only).  ChatGPT redraws the figure bigger/smaller
@@ -155,12 +169,57 @@ if mannequin:
     if ratios:
         fig_scale = float(np.median(ratios))
 
+def _raw_place(i):
+    """Raw (px, py) to drop the (scaled) armoured figure on the base body.
+    HORIZONTAL = full-figure centroid (robust to limb swing -- both masks share
+    the pose, so the limbs cancel).  VERTICAL = head top (the right reference for
+    a chest piece; centroid-y is biased low by the metal boots).  None if no
+    detection."""
+    d = _det.get(i)
+    if d is None:
+        return None
+    content = d[0]
+    s = fig_scale * scale_mul
+    bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
+    cmask = content[:, :, 3] > 40
+    bcx = float(np.where(bop)[1].mean())
+    acx = float(np.where(cmask)[1].mean())
+    px = bcx - acx * s
+    crgb = content[:, :, :3].astype(int)
+    R, G, B = crgb[:, :, 0], crgb[:, :, 1], crgb[:, :, 2]
+    cgreen = (G > R + 25) & (G > B + 25) & (G > 60) & cmask
+    bh, ah = head_anchor(bop), head_anchor(cgreen)
+    if bh and ah:
+        py = bh[1] - ah[1] * s
+    else:
+        py = float(base_bbox(i)[1])
+    return (px, py)
+
+# Placement pre-pass + spike rejection.  The head anchor occasionally latches
+# onto a raised arm that swings into the top band (SW frames 1/12 jumped ~18px
+# right -> 'armour shifts off the body near the end of the cycle').  The plate
+# should track the body smoothly, so replace any frame whose offset deviates
+# > SPIKE px from its neighbours' median with that median.
+_place = {}
+if mannequin:
+    raw = {i: _raw_place(i) for i in range(n)}
+    SPIKE = 6
+    for i in range(n):
+        if raw[i] is None:
+            continue
+        if n >= 3:
+            nb = [raw[j] for j in (i - 1, i, i + 1) if 0 <= j < n and raw[j] is not None]
+            mx = float(np.median([p[0] for p in nb])); my = float(np.median([p[1] for p in nb]))
+            px = mx if abs(raw[i][0] - mx) > SPIKE else raw[i][0]
+            py = my if abs(raw[i][1] - my) > SPIKE else raw[i][1]
+            _place[i] = (px, py)
+        else:
+            _place[i] = raw[i]
+
 def keyed_frame(i):
     """Armoured figure for frame i as a 256x256 RGBA: detected blob, scaled by
-    the per-sheet figure scale, aligned so its top + centre-x sit on the base
-    body's bbox (smooth per-frame anchor -> no jitter, no grid drift)."""
-    out = np.zeros((FRAME, FRAME, 4), np.uint8)
-    d = _det.get(i) if mannequin else None
+    the per-sheet figure scale, head-anchored to the base body (spike-rejected
+    placement -> no grid drift, no jitter, no arm-fooled shifts)."""
     if not mannequin:
         # legacy diff path: keep the old fixed-crop inverse map
         r, c = divmod(i, cols)
@@ -171,28 +230,15 @@ def keyed_frame(i):
         o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
         o.alpha_composite(small, (ux0, uy0))
         return np.array(o)
-    if d is None:
-        return out
+    d = _det.get(i)
+    if d is None or i not in _place:
+        return np.zeros((FRAME, FRAME, 4), np.uint8)
     content, _, _, h, w = d
-    nw, nh = max(1, round(w * fig_scale)), max(1, round(h * fig_scale))
+    s = fig_scale * scale_mul
+    nw, nh = max(1, round(w * s)), max(1, round(h * s))
     small = Image.fromarray(content, 'RGBA').resize((nw, nh), Image.LANCZOS)
-    # Anchor on the HEAD (map the armoured figure's green head onto the base
-    # body's head), not the bbox -- in deep strides a raised knee/arm sits above
-    # the head and a bbox anchor drops the chest onto the head ('armour jumps
-    # off').  Green head from the armour, skin head from the base sprite.
-    bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
-    crgb = content[:, :, :3].astype(int)
-    R, G, B = crgb[:, :, 0], crgb[:, :, 1], crgb[:, :, 2]
-    cgreen = (G > R + 25) & (G > B + 25) & (G > 60) & (content[:, :, 3] > 40)
-    bh, ah = head_anchor(bop), head_anchor(cgreen)
     o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
-    if bh and ah:
-        px = int(round(bh[0] - ah[0] * fig_scale))
-        py = int(round(bh[1] - ah[1] * fig_scale))
-    else:
-        bx0, by0, bx1, by1 = base_bbox(i)
-        px = int(round((bx0 + bx1) / 2 - nw / 2)); py = int(round(by0))
-    o.alpha_composite(small, (px, py))
+    o.alpha_composite(small, (int(round(_place[i][0])), int(round(_place[i][1]))))
     return np.array(o)
 
 os.makedirs(f'public/sprites/gear/{slot}/{item}', exist_ok=True)
