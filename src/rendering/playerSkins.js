@@ -123,32 +123,39 @@ function _retint(d, i, target, ref) {
 function _isSkin(r, g, b, a) { return a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25; }
 function _isPants(r, g, b, a) { return a > 180 && g >= r - 10 && g > b + 8 && r < 150; }
 
-/* Per-frame torso band [neckY, waistY] for the SHIRT.  Derived from the
-   frame's own pixels (no body-tops dependency): crown = topmost skin row;
-   waist = topmost pants row in the lower body; neck = where skin width jumps
-   from head-width to shoulder-width (collar sits just above the shoulders).
-   Returns one [neckY, waistY] (or null) per 256px frame in the sheet.  The
-   shirt = skin pixels inside this band -> covers torso + upper arms (sleeves),
-   stops at the waist hem and the head/neck.  Because it's keyed off each
-   frame's own body, it follows the run lean/twist automatically. */
+/* Fraction of the crown->waist span at which the shirt collar sits.  Anchored
+   to two STABLE per-frame references (crown = topmost skin; waist = topmost
+   pants) rather than a noisy shoulder-width detection, so the collar doesn't
+   jitter up/down between run frames -- it tracks the body's bob smoothly.
+   0.48 places it at the base of the neck (neck skin stays visible, no face
+   coverage, shoulders covered).  Tuned offline across stand + run, all dirs. */
+const SHIRT_NECK_FRAC = 0.48;
+
+/* Per-frame torso band [neckY, waistY, fillLum] for the SHIRT.  Derived from
+   each 256px frame's own pixels: crown = topmost skin row; waist = topmost
+   pants row in the lower body; neck = crown + NECK_FRAC*(waist-crown).
+   fillLum = mean skin luminance in the band, used to flatten the body's
+   internal contour lines (see recolor loop).  Keyed off each frame's body, so
+   it follows the run lean/twist/bob automatically. */
 function _torsoBands(d, w, h, frameW, frames) {
   const bands = new Array(frames);
   for (let f = 0; f < frames; f++) {
     const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
-    const skinRow = new Int16Array(h), pantsRow = new Int16Array(h);
+    const pantsRow = new Int16Array(h);
+    const skinLumSum = new Float64Array(h), skinCnt = new Int16Array(h);
     let crown = -1, bottom = -1;
     for (let y = 0; y < h; y++) {
-      let sc = 0, pc = 0, anyOp = false;
+      let pc = 0, anyOp = false, lumSum = 0, sc = 0;
       const base = y * w;
       for (let x = x0; x < x1; x++) {
         const i = (base + x) * 4;
         const a = d[i + 3]; if (a <= 40) continue;
         anyOp = true;
         const r = d[i], g = d[i + 1], b = d[i + 2];
-        if (_isSkin(r, g, b, a)) sc++;
+        if (_isSkin(r, g, b, a)) { sc++; lumSum += 0.299 * r + 0.587 * g + 0.114 * b; }
         else if (_isPants(r, g, b, a)) pc++;
       }
-      skinRow[y] = sc; pantsRow[y] = pc;
+      skinCnt[y] = sc; skinLumSum[y] = lumSum; pantsRow[y] = pc;
       if (sc > 0 && crown < 0) crown = y;
       if (anyOp) bottom = y;
     }
@@ -157,16 +164,11 @@ function _torsoBands(d, w, h, frameW, frames) {
     let waist = -1;
     for (let y = mid; y < bottom; y++) { if (pantsRow[y] >= 3) { waist = y; break; } }
     if (waist < 0) waist = Math.round(crown + 0.62 * (bottom - crown));
-    /* median skin width over the head rows */
-    const hw = [];
-    const hcap = Math.min(crown + 18, waist);
-    for (let y = crown; y < hcap; y++) if (skinRow[y] > 0) hw.push(skinRow[y]);
-    hw.sort((a, b) => a - b);
-    const hmed = hw.length ? Math.max(1, hw[hw.length >> 1]) : 1;
-    let shoulder = -1;
-    for (let y = crown + 6; y < waist; y++) { if (skinRow[y] > hmed * 1.7) { shoulder = y; break; } }
-    const neck = shoulder >= 0 ? shoulder - 2 : Math.round(crown + 0.22 * (waist - crown));
-    bands[f] = [Math.max(0, neck), waist];
+    const neck = Math.round(crown + SHIRT_NECK_FRAC * (waist - crown));
+    let ls = 0, lc = 0;
+    for (let y = neck; y < waist; y++) { ls += skinLumSum[y]; lc += skinCnt[y]; }
+    const fillLum = lc > 0 ? ls / lc : SKIN_REF;
+    bands[f] = [Math.max(0, neck), waist, fillLum];
   }
   return bands;
 }
@@ -178,21 +180,41 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
   ctx.drawImage(img, 0, 0);
   const imgData = ctx.getImageData(0, 0, cv.width, cv.height);
   const d = imgData.data;
-  const w = cv.width;
-  /* Shirt = torso skin retinted to the shirt color (same lit ref as skin,
-     since it covers skin pixels).  Compute the per-frame band up front. */
+  const w = cv.width, h = cv.height;
+  /* Shirt = torso region recolored to the shirt color.  Compute the per-frame
+     band up front. */
   const frames = Math.max(1, Math.floor(w / FRAME_W));
-  const bands = shirtT ? _torsoBands(d, w, cv.height, FRAME_W, frames) : null;
+  const bands = shirtT ? _torsoBands(d, w, h, FRAME_W, frames) : null;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+    /* In-band? */
+    let bd = null, y = 0;
+    if (bands) {
+      const px = i >> 2;
+      y = (px / w) | 0;
+      const cand = bands[((px % w) / FRAME_W) | 0];
+      if (cand && y >= cand[0] && y < cand[1]) bd = cand;
+    }
     if (_isSkin(r, g, b, a)) {
-      if (bands) {
-        const px = i >> 2;
-        const y = (px / w) | 0;
-        const bd = bands[((px % w) / FRAME_W) | 0];
-        if (bd && y >= bd[0] && y < bd[1]) { _retint(d, i, shirtT, SKIN_REF); continue; }
+      /* torso skin -> shirt (keep its shading via own luminance); else skin. */
+      if (bd) _retint(d, i, shirtT, SKIN_REF);
+      else if (skinT) _retint(d, i, skinT, SKIN_REF);
+    } else if (bd && a > 40) {
+      /* Non-skin opaque pixel inside the shirt: an INTERIOR one is a body
+         contour line (chest/ab/arm seam) -- flatten it to the band's mean
+         shirt tone so the shirt reads clean.  An EDGE pixel (touches
+         transparent on any side) is the silhouette outline -- leave it, so the
+         shirt reuses the body's own outline. */
+      const x = (i >> 2) % w;
+      const edge = x === 0 || x === w - 1 || y === 0 || y === h - 1
+        || d[i - 4 + 3] <= 40 || d[i + 4 + 3] <= 40
+        || d[i - w * 4 + 3] <= 40 || d[i + w * 4 + 3] <= 40;
+      if (!edge) {
+        const k = bd[2] / SKIN_REF;
+        d[i] = Math.min(255, Math.round(shirtT[0] * k));
+        d[i + 1] = Math.min(255, Math.round(shirtT[1] * k));
+        d[i + 2] = Math.min(255, Math.round(shirtT[2] * k));
       }
-      if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) {
       /* pants (green) */ if (pantsT) _retint(d, i, pantsT, PANTS_REF);
     } else if (a > 180) {
