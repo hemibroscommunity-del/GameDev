@@ -191,12 +191,27 @@ def _raw_place(i):
     if not sm.any() or not bop.any():
         bx0, by0, bx1, by1 = base_bbox(i)
         return ((bx0 + bx1) / 2 - nw / 2, float(by0))
-    sy, sx = np.where(sm); by, bx = np.where(bop)
+    # Register on the PIECE'S OWN band (chest vs legs), not the whole silhouette:
+    # a full-figure overlap is dominated by the big leg mass, so the small chest
+    # plate drifts (SW 'plate shifts right', +/-20px). Restricting to the torso
+    # band for the chest run (and the leg band for the legs run) pins each piece
+    # to the body region it actually covers.
+    def _band(mask):
+        ys = np.where(mask.any(1))[0]
+        if len(ys) == 0:
+            return mask
+        y0 = int(ys.min()); h = int(ys.max()) - y0
+        m = mask.copy(); m[:y0 + int(ymin_frac * h)] = False; m[y0 + int(ymax_frac * h):] = False
+        return m
+    smb, bopb = _band(sm), _band(bop)
+    if not smb.any() or not bopb.any():
+        smb, bopb = sm, bop
+    sy, sx = np.where(smb); by, bx = np.where(bopb)
     px0 = bx.mean() - sx.mean(); py0 = by.mean() - sy.mean()   # centroid seed
     best, bestov = (px0, py0), -1
     for dy in range(-10, 11):
         for dx in range(-10, 11):
-            ov = _overlap(sm, bop, int(round(px0 + dx)), int(round(py0 + dy)))
+            ov = _overlap(smb, bopb, int(round(px0 + dx)), int(round(py0 + dy)))
             if ov > bestov:
                 bestov, best = ov, (px0 + dx, py0 + dy)
     return best
@@ -310,6 +325,44 @@ for i in range(n):
         comp = base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)).copy()
         comp.alpha_composite(Image.fromarray(out, 'RGBA'))
         val.paste(comp, (i * FRAME, FRAME))
+
+# Chest stabilisation (horizontal, chest only).  Some source sheets draw the
+# breastplate SWINGING left-right relative to the body across the cycle (SW:
+# +-19px, crossing centre) -> the plate looks like it 'shifts right'.  Body
+# alignment can't fix it (the swing is inside the art).  Pin each frame's plate
+# to a CONSTANT offset from the base body's torso centre -- the per-sheet median,
+# so each dir keeps its own characteristic offset (east stays on its near side)
+# but the per-frame swing is removed.  Legs are left alone: greaves must track
+# the striding legs, not a fixed point.
+if mannequin and slot == 'chest':
+    gs = np.array(gear_sheet)
+    offs = [None] * n
+    for i in range(n):
+        cell = gs[:, i * FRAME:(i + 1) * FRAME, 3] > 0
+        bframe = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
+        byy = np.where(bframe.any(1))[0]
+        if not cell.any() or len(byy) == 0:
+            continue
+        y0, h = int(byy.min()), int(byy.max()) - int(byy.min())
+        tb = bframe.copy(); tb[:y0 + int(0.20 * h)] = False; tb[y0 + int(0.45 * h):] = False
+        tcx = float(np.where(tb)[1].mean()) if tb.any() else float(np.where(bframe)[1].mean())
+        offs[i] = float(np.where(cell)[1].mean()) - tcx
+    valid = [o for o in offs if o is not None]
+    if valid:
+        med = float(np.median(valid))
+        new_gs = np.zeros_like(gs)
+        for i in range(n):
+            cell = gs[:, i * FRAME:(i + 1) * FRAME]
+            if offs[i] is None:
+                new_gs[:, i * FRAME:(i + 1) * FRAME] = cell; continue
+            shift = int(round(med - offs[i]))
+            cell = np.roll(cell, shift, axis=1)
+            if shift > 0:
+                cell[:, :shift] = 0
+            elif shift < 0:
+                cell[:, shift:] = 0
+            new_gs[:, i * FRAME:(i + 1) * FRAME] = cell
+        gear_sheet = Image.fromarray(new_gs, 'RGBA')
 
 dst = f'public/sprites/gear/{slot}/{item}/{pose}-{dir_}.png'
 gear_sheet.save(dst)
