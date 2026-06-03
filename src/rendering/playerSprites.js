@@ -66,7 +66,7 @@ const ATTACK_DURATION_MS = 220;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
-const VERSION = 59; /* v2.3.511: jog dirs normalized to 25 frames (gear pipeline) */
+const VERSION = 60; /* v2.3.512: jog dirs = first full run cycle */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
