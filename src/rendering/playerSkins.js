@@ -131,14 +131,17 @@ function _isPants(r, g, b, a) { return a > 180 && g >= r - 10 && g > b + 8 && r 
    coverage, shoulders covered).  Tuned offline across stand + run, all dirs. */
 const SHIRT_NECK_FRAC = 0.48;
 
-/* Per-frame torso band [neckY, waistY, fillLum] for the SHIRT.  Derived from
-   each 256px frame's own pixels: crown = topmost skin row; waist = topmost
-   pants row in the lower body; neck = crown + NECK_FRAC*(waist-crown).
-   fillLum = mean skin luminance in the band, used to flatten the body's
-   internal contour lines (see recolor loop).  Keyed off each frame's body, so
-   it follows the run lean/twist/bob automatically. */
+/* Per-frame torso band [neckY, waistY, fillLum] + a per-pixel class map for
+   the SHIRT.  Derived from each 256px frame's own pixels: crown = topmost skin
+   row; waist = topmost pants row in the lower body; neck = crown +
+   NECK_FRAC*(waist-crown).  fillLum = mean skin luminance in the band (used to
+   flatten contour lines).  cls (one byte/pixel: 0 transparent, 1 skin, 2 other
+   opaque) lets the recolor loop test ORIGINAL neighbour classes -- needed so a
+   pixel already recolored earlier in the pass doesn't corrupt the seam test.
+   Keyed off each frame's own body, so it follows the run lean/twist/bob. */
 function _torsoBands(d, w, h, frameW, frames) {
   const bands = new Array(frames);
+  const cls = new Uint8Array(w * h);
   for (let f = 0; f < frames; f++) {
     const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
     const pantsRow = new Int16Array(h);
@@ -152,8 +155,8 @@ function _torsoBands(d, w, h, frameW, frames) {
         const a = d[i + 3]; if (a <= 40) continue;
         anyOp = true;
         const r = d[i], g = d[i + 1], b = d[i + 2];
-        if (_isSkin(r, g, b, a)) { sc++; lumSum += 0.299 * r + 0.587 * g + 0.114 * b; }
-        else if (_isPants(r, g, b, a)) pc++;
+        if (_isSkin(r, g, b, a)) { sc++; lumSum += 0.299 * r + 0.587 * g + 0.114 * b; cls[base + x] = 1; }
+        else { if (_isPants(r, g, b, a)) pc++; cls[base + x] = 2; }
       }
       skinCnt[y] = sc; skinLumSum[y] = lumSum; pantsRow[y] = pc;
       if (sc > 0 && crown < 0) crown = y;
@@ -170,7 +173,7 @@ function _torsoBands(d, w, h, frameW, frames) {
     const fillLum = lc > 0 ? ls / lc : SKIN_REF;
     bands[f] = [Math.max(0, neck), waist, fillLum];
   }
-  return bands;
+  return { bands, cls };
 }
 
 export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
@@ -184,13 +187,14 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
   /* Shirt = torso region recolored to the shirt color.  Compute the per-frame
      band up front. */
   const frames = Math.max(1, Math.floor(w / FRAME_W));
-  const bands = shirtT ? _torsoBands(d, w, h, FRAME_W, frames) : null;
+  const tb = shirtT ? _torsoBands(d, w, h, FRAME_W, frames) : null;
+  const bands = tb ? tb.bands : null, cls = tb ? tb.cls : null;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
     /* In-band? */
-    let bd = null, y = 0;
+    let bd = null, y = 0, px = 0;
     if (bands) {
-      const px = i >> 2;
+      px = i >> 2;
       y = (px / w) | 0;
       const cand = bands[((px % w) / FRAME_W) | 0];
       if (cand && y >= cand[0] && y < cand[1]) bd = cand;
@@ -200,16 +204,19 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
       if (bd) _retint(d, i, shirtT, SKIN_REF);
       else if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (bd && a > 40) {
-      /* Non-skin opaque pixel inside the shirt: an INTERIOR one is a body
-         contour line (chest/ab/arm seam) -- flatten it to the band's mean
-         shirt tone so the shirt reads clean.  An EDGE pixel (touches
-         transparent on any side) is the silhouette outline -- leave it, so the
-         shirt reuses the body's own outline. */
-      const x = (i >> 2) % w;
+      /* Non-skin opaque pixel inside the shirt.  EDGE (touches transparent on
+         any side) = silhouette outline -> keep (shirt reuses the body outline).
+         A VERTICAL dark run = the arm/torso seam that separates the sleeves
+         from the body -> keep, so the arms stay distinct.  Everything else
+         interior = a horizontal body-contour line (chest/abs) -> flatten to the
+         band's mean shirt tone so the shirt reads clean.  Neighbour classes
+         come from `cls` (original), not the half-recolored pixels. */
+      const x = px % w;
+      const up = px - w, dn = px + w;
       const edge = x === 0 || x === w - 1 || y === 0 || y === h - 1
-        || d[i - 4 + 3] <= 40 || d[i + 4 + 3] <= 40
-        || d[i - w * 4 + 3] <= 40 || d[i + w * 4 + 3] <= 40;
-      if (!edge) {
+        || cls[px - 1] === 0 || cls[px + 1] === 0 || cls[up] === 0 || cls[dn] === 0;
+      const seam = cls[up] === 2 && cls[dn] === 2; /* vertical dark run */
+      if (!edge && !seam) {
         const k = bd[2] / SKIN_REF;
         d[i] = Math.min(255, Math.round(shirtT[0] * k));
         d[i + 1] = Math.min(255, Math.round(shirtT[1] * k));
