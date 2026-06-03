@@ -1007,6 +1007,13 @@ function createOtherPlayerDisplay() {
   spriteBody.visible = false;
   container.addChild(spriteBody);
 
+  /* v2.3.504: layered gear for remote players (above body, below head traits).
+     Driven by other.equip; placement copies the body transform. */
+  const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
+  const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
+  const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
+  container._gearLegs = gearLegs; container._gearChest = gearChest; container._gearShoulders = gearShoulders;
+
   /* v2.3.467: shirt sprite for remote players (above body, below head
      traits).  Driven by other.shirt. */
   const shirtSprite = new Sprite();
@@ -2089,7 +2096,8 @@ export class EntityRenderer {
         /* v2.3.389: remote players render in their own skin tone.
            v2.3.399: + their pants / shoes colors.
            v2.3.497: + their baked shirt (torso-fill). */
-        const _oShirtT = shirtFill(other.shirt, other.shirtColor);
+        const _oChest = (other.equip && other.equip.chest) || 'none';
+        const _oShirtT = _oChest !== 'none' ? null : shirtFill(other.shirt, other.shirtColor);
         const _oShirtKey = _oShirtT ? (other.shirt + '-' + other.shirtColor) : 'none';
         let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey);
         if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey);
@@ -2139,6 +2147,9 @@ export class EntityRenderer {
             display._procDrawn = false;
           }
           useSprite = true;
+          /* v2.3.504: this remote player's layered gear (their equip is
+             broadcast over the network). */
+          _placeGear(display, other.equip, pose, dir, frameIdx);
           /* v2.3.321: place this remote player's headwear.  other.headwear
              is their selected hat id, broadcast over the network. */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);

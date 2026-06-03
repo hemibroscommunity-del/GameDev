@@ -41,6 +41,7 @@ import { HAT_COLOR_CATALOG, getHatColor, setHatColor, hatColorTarget } from '@/r
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor, facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor, shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
+import { getEquip } from '@/rendering/gearCatalog.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
@@ -1986,6 +1987,9 @@ export var BroTown = function BroTown(_ref0) {
             fhc: getFacialHairColor(),
             st: getShirt(),
             stc: getShirtColor(),
+            eqc: getEquip('chest'),
+            eql: getEquip('legs'),
+            eqs: getEquip('shoulders'),
             pt: getPants(),
             sh: getShoes(),
             bs: S.bodySize || 'slim',
@@ -2294,6 +2298,7 @@ export var BroTown = function BroTown(_ref0) {
                   facialHairColor: _data.fhc || null,
                   shirt: _data.st || null,
                   shirtColor: _data.stc || null,
+                  equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none' },
                   pants: _data.pt || null,
                   shoes: _data.sh || null,
                   rpgLv: _data.rpgLv || 1,
@@ -2850,6 +2855,7 @@ export var BroTown = function BroTown(_ref0) {
                 facialHairColor: (msg.data && msg.data.fhc) || null,
                 shirt: (msg.data && msg.data.st) || null,
                 shirtColor: (msg.data && msg.data.stc) || null,
+                equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none' },
                 pants: (msg.data && msg.data.pt) || null,
                 shoes: (msg.data && msg.data.sh) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
@@ -10526,6 +10532,9 @@ export var BroTown = function BroTown(_ref0) {
                 fhc: getFacialHairColor(),
                 st: getShirt(),
                 stc: getShirtColor(),
+                eqc: getEquip('chest'),
+                eql: getEquip('legs'),
+                eqs: getEquip('shoulders'),
                 pt: getPants(),
                 sh: getShoes(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,
