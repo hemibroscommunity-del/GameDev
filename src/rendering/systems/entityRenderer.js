@@ -26,6 +26,8 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
+import { getGearFrame } from '../gearSheets.js';
+import { getEquip } from '../gearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -230,6 +232,27 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
    so it follows every pose/frame and reuses the body's own outline.  The old
    _placeShirt / _shirtSprite path was removed; the sprite object is kept but
    left invisible to avoid disturbing the display graph. */
+
+/* v2.3.503: layered gear (paper-doll).  Each gear sheet frame is pixel-aligned
+   to the body frame, so placement is just copying the body sprite's transform
+   (which already carries mirror + bodyScale + bob).  No anchors/angles.  equip
+   = { legs, chest, shoulders } item ids.  See gear-layer-spec.md. */
+const _GEAR_SLOTS = [['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];
+function _placeGear(display, equip, pose, dir, frameIdx) {
+  const sb = display._spriteBody;
+  for (let s = 0; s < _GEAR_SLOTS.length; s++) {
+    const spr = display[_GEAR_SLOTS[s][1]];
+    if (!spr) continue;
+    const item = equip && equip[_GEAR_SLOTS[s][0]];
+    const tex = (sb && item && item !== 'none') ? getGearFrame(_GEAR_SLOTS[s][0], item, pose, dir, frameIdx) : null;
+    if (tex) {
+      if (spr.texture !== tex) spr.texture = tex;
+      spr.x = sb.x; spr.y = sb.y;
+      spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
+      if (!spr.visible) spr.visible = true;
+    } else if (spr.visible) spr.visible = false;
+  }
+}
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
 const _hairMaskCache = {};
@@ -699,6 +722,14 @@ function createPlayerDisplay() {
   spriteBody.anchor.set(0.5, 0.5);
   spriteBody.visible = false;
   container.addChild(spriteBody);
+
+  /* v2.3.503: layered gear (paper-doll).  One sprite per slot, drawn above the
+     body with the body's exact transform.  Order legs < chest < shoulders, all
+     above the body and below the head traits. */
+  const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
+  const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
+  const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
+  container._gearLegs = gearLegs; container._gearChest = gearChest; container._gearShoulders = gearShoulders;
 
   /* v2.3.467: shirt (torso clothing) layer.  Sits just above the body and
      below the head traits.  Same crown-anchored placement as the beard,
@@ -2607,7 +2638,9 @@ export class EntityRenderer {
          v2.3.497: shirt is now BAKED into the body (torso skin retinted to the
          shirt color, follows every pose/frame) instead of an overlay sprite. */
       const _shId = getShirt(), _shCol = getShirtColor();
-      const _shirtT = shirtFill(_shId, _shCol);
+      /* chest gear covers the torso -> skip the procedural shirt bake. */
+      const _chestEquipped = getEquip('chest') !== 'none';
+      const _shirtT = _chestEquipped ? null : shirtFill(_shId, _shCol);
       const _shirtKey = _shirtT ? (_shId + '-' + _shCol) : 'none';
       let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
       if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey);
@@ -2630,6 +2663,8 @@ export class EntityRenderer {
            Applied here to the sprite scale; mirror flag flips x. */
         spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale;
         spriteBody.scale.y = bodyScale;
+        /* v2.3.503: layered gear, stacked over the body with its transform. */
+        _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
         /* No tint multiply — the sprites are pre-colored.  Multiplying
            by S.bodyTorso (default #2563eb) was darkening the avatar
            because Pixi's tint is a per-channel multiply against white.
