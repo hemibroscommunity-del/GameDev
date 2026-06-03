@@ -83,6 +83,40 @@ def keyed_frame(i):
     out.alpha_composite(small, (ux0, uy0))
     return np.array(out)
 
+def _head_metrics(mask):
+    """(top_y, center_x, width) of the figure's head: widest row in the top
+    band.  Used to register the armoured figure (green head) to the base body
+    (skin head) -- corrects ChatGPT's per-sheet position + SCALE drift."""
+    rows = np.where(mask.any(1))[0]
+    if len(rows) == 0:
+        return None
+    top = int(rows.min()); bw = 0; bcx = 0.0
+    for y in range(top, min(top + 16, mask.shape[0])):
+        xs = np.where(mask[y])[0]
+        if len(xs):
+            w = int(xs.max()) - int(xs.min())
+            if w > bw:
+                bw = w; bcx = (int(xs.min()) + int(xs.max())) / 2.0
+    return (top, bcx, bw + 1) if bw > 2 else None
+
+# Registration pre-pass (mannequin only): the green head (unarmoured, same in
+# both) vs the base body head gives a per-frame translation and a per-sheet
+# scale.  ChatGPT often redraws the figure ~10% bigger / shifted, which puts the
+# armour too low; this pins it back to the body.
+reg = {}; median_s = 1.0
+if mannequin:
+    scales = []
+    for i in range(n):
+        af = keyed_frame(i); a_rgb = af[:, :, :3].astype(int)
+        R, G, B = a_rgb[:, :, 0], a_rgb[:, :, 1], a_rgb[:, :, 2]
+        green = (G > R + 25) & (G > B + 25) & (G > 60)
+        bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
+        g = _head_metrics(green); b = _head_metrics(bop)
+        if g and b:
+            reg[i] = (g, b); scales.append(b[2] / g[2])
+    if scales:
+        median_s = float(np.median(scales)); median_s = min(1.2, max(0.8, median_s))
+
 os.makedirs(f'public/sprites/gear/{slot}/{item}', exist_ok=True)
 gear_sheet = Image.new('RGBA', (n * FRAME, FRAME), (0, 0, 0, 0))
 val = Image.new('RGBA', (FRAME * min(n, 6), FRAME * 2), (50, 54, 62, 255))
@@ -131,6 +165,16 @@ for i in range(n):
         gear = np.isin(lbl, list(keep))
     out = np.zeros_like(af)
     out[gear] = af[gear]
+    # register the armour to the base body: scale by the per-sheet median, then
+    # align the green head to the base head (per frame).
+    if mannequin and i in reg:
+        (gty, gcx, _), (bty, bcx, _) = reg[i]
+        ys, xs = np.where(out[:, :, 3] > 0)
+        nxs = np.round((xs - gcx) * median_s + bcx).astype(int)
+        nys = np.round((ys - gty) * median_s + bty).astype(int)
+        v = (nys >= 0) & (nys < FRAME) & (nxs >= 0) & (nxs < FRAME)
+        sh = np.zeros_like(out); sh[nys[v], nxs[v]] = out[ys[v], xs[v]]
+        out = sh
     gear_sheet.paste(Image.fromarray(out, 'RGBA'), (i * FRAME, 0))
     if i < 6:  # validation: top=armored-placed, bottom=base+extracted-gear
         val.paste(Image.fromarray(af, 'RGBA'), (i * FRAME, 0))
