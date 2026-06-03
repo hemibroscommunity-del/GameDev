@@ -56,6 +56,7 @@ cw, ch, pad = meta['cell_w'], meta['cell_h'], meta['pad']
 ux0, uy0, crop_w, crop_h = meta['crop']
 scale = meta['scale']
 n = meta['n']
+mannequin = meta.get('mannequin', False)
 iw, ih = round(crop_w * scale), round(crop_h * scale)
 
 # ChatGPT output -> exact grid size, then slice.
@@ -89,31 +90,39 @@ val = Image.new('RGBA', (FRAME * min(n, 6), FRAME * 2), (50, 54, 62, 255))
 yb0, yb1 = int(ymin_frac * FRAME), int(ymax_frac * FRAME)
 for i in range(n):
     af = keyed_frame(i)
-    bf = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))
     a_op = af[:, :, 3] > 40
-    b_rgb = bf[:, :, :3].astype(int)
     a_rgb = af[:, :, :3].astype(int)
-    diff = np.abs(a_rgb - b_rgb).sum(2)
-    b_op = bf[:, :, 3] > 40
-    # gear = armored-opaque AND (base transparent here OR colour changed a lot)
-    gear = a_op & (~b_op | (diff > thresh))
-    band = np.zeros_like(gear); band[yb0:yb1, :] = True
-    gear &= band
-    # per-frame head exclusion (from the base body's crown)
-    if head_frac > 0:
-        yy = np.where(b_op.any(1))[0]
-        if len(yy):
-            hc = yy.min() + int(round(head_frac * (yy.max() - yy.min())))
-            gear[:hc, :] = False
-    # drop redrawn skin (keep only the armour).  Dilate the skin mask a couple px
-    # so the redrawn arm's dark OUTLINE + AA fringe (which sit right at the skin
-    # edge) go with it -- otherwise they leave ghost curves where the arms were.
-    if drop_skin:
+    band = np.zeros_like(a_op); band[yb0:yb1, :] = True
+    if mannequin:
+        # MANNEQUIN: the body is a flat green silhouette -> the armour is simply
+        # everything opaque that isn't green (magenta bg already keyed). No diff,
+        # no skin/head heuristics -> surgically clean. Dilate the green a touch to
+        # take its AA fringe with it.
         R, G, B = a_rgb[:, :, 0], a_rgb[:, :, 1], a_rgb[:, :, 2]
-        rg, gb = R - G, G - B
-        skin = (R > G) & (G > B) & (rg > 18) & (gb > 18) & (np.abs(rg - gb) < 38) & (R > 110)
-        skin = ndimage.binary_dilation(skin, iterations=2)
-        gear &= ~skin
+        green = (G > R + 25) & (G > B + 25) & (G > 60)
+        green = ndimage.binary_dilation(green, iterations=1)
+        gear = a_op & ~green & band
+    else:
+        bf = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))
+        b_rgb = bf[:, :, :3].astype(int)
+        diff = np.abs(a_rgb - b_rgb).sum(2)
+        b_op = bf[:, :, 3] > 40
+        # gear = armored-opaque AND (base transparent here OR colour changed a lot)
+        gear = a_op & (~b_op | (diff > thresh)) & band
+        # per-frame head exclusion (from the base body's crown)
+        if head_frac > 0:
+            yy = np.where(b_op.any(1))[0]
+            if len(yy):
+                hc = yy.min() + int(round(head_frac * (yy.max() - yy.min())))
+                gear[:hc, :] = False
+        # drop redrawn skin (keep only the armour); dilate so the arm's dark
+        # outline + AA fringe go with it.
+        if drop_skin:
+            R, G, B = a_rgb[:, :, 0], a_rgb[:, :, 1], a_rgb[:, :, 2]
+            rg, gb = R - G, G - B
+            skin = (R > G) & (G > B) & (rg > 18) & (gb > 18) & (np.abs(rg - gb) < 38) & (R > 110)
+            skin = ndimage.binary_dilation(skin, iterations=2)
+            gear &= ~skin
     # despeckle
     lbl, num = ndimage.label(gear)
     if num:
