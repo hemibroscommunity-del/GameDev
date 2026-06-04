@@ -12,9 +12,19 @@ export const GEAR_SLOTS = ['legs', 'chest', 'shoulders'];
    the layered renderer before real gear art exists. */
 export const GEAR_CATALOG = {
   legs: [{ id: 'none', name: 'None' }, { id: 'steelgreaves', name: 'Steel Greaves' }],
-  chest: [{ id: 'none', name: 'None' }, { id: 'testplate', name: 'Test Plate' }, { id: 'steelplate', name: 'Steel Plate' }],
+  chest: [{ id: 'none', name: 'None' }, { id: 'testplate', name: 'Test Plate' },
+          /* coversHead: the chest sheet includes a full helmet (drawn in the
+             head region of the band), so the renderer hides hair/hat/beard
+             while it's equipped -- otherwise those head traits poke through. */
+          { id: 'steelplate', name: 'Steel Plate', coversHead: true }],
   shoulders: [{ id: 'none', name: 'None' }],
 };
+
+/* True if the equipped chest item bakes a helmet (head traits should hide). */
+export function chestCoversHead(chestId) {
+  const it = GEAR_CATALOG.chest.find(c => c.id === chestId);
+  return !!(it && it.coversHead);
+}
 
 function makeSlotStore(slot, defId) {
   const key = 'bt-gear-' + slot;

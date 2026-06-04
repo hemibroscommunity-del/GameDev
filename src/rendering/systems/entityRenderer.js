@@ -27,7 +27,7 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame } from '../gearSheets.js';
-import { getEquip } from '../gearCatalog.js';
+import { getEquip, chestCoversHead } from '../gearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -2150,15 +2150,23 @@ export class EntityRenderer {
           /* v2.3.504: this remote player's layered gear (their equip is
              broadcast over the network). */
           _placeGear(display, other.equip, pose, dir, frameIdx);
-          /* v2.3.321: place this remote player's headwear.  other.headwear
-             is their selected hat id, broadcast over the network. */
-          _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
-          /* v2.3.353: and their facial hair (other.facialhair). */
-          _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
-          /* v2.3.357: and their hair (other.hair). */
-          _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
+          /* v2.3.526: a helmet-bearing chest piece (steelplate) covers the head,
+             so hide hair/hat/beard -- otherwise they poke through the helmet. */
+          if (chestCoversHead(other.equip && other.equip.chest)) {
+            if (display._headwearSprite) display._headwearSprite.visible = false;
+            if (display._facialHairSprite) display._facialHairSprite.visible = false;
+            if (display._hairSprite) display._hairSprite.visible = false;
+          } else {
+            /* v2.3.321: place this remote player's headwear.  other.headwear
+               is their selected hat id, broadcast over the network. */
+            _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
+            /* v2.3.353: and their facial hair (other.facialhair). */
+            _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
+            /* v2.3.357: and their hair (other.hair). */
+            _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
+          }
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -2707,11 +2715,19 @@ export class EntityRenderer {
         /* v2.3.321: headwear placement extracted to the shared
            _placeHeadwear helper (used by remote players too).  Local
            player's hat id comes from the login picker. */
-        _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
-        _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         /* shirt is baked into the body (see getBodyFrame above); no overlay. */
         if (display._shirtSprite) display._shirtSprite.visible = false;
-        _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
+        /* v2.3.526: a helmet-bearing chest piece (steelplate) covers the head --
+           hide hair/hat/beard so they don't poke through the helmet. */
+        if (chestCoversHead(getEquip('chest'))) {
+          if (display._headwearSprite) display._headwearSprite.visible = false;
+          if (display._facialHairSprite) display._facialHairSprite.visible = false;
+          if (display._hairSprite) display._hairSprite.visible = false;
+        } else {
+          _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
+          _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
+          _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
+        }
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
