@@ -2176,13 +2176,14 @@ export class EntityRenderer {
           /* v2.3.504: this remote player's layered gear (their equip is
              broadcast over the network). */
           _placeGear(display, other.equip, pose, dir, frameIdx);
-          /* v2.3.550: full covering set -> hide the body (continuous plate, no
-             drift peek).  Same rule as the local player; gated on the gear
-             sprites actually being placed (poses w/o gear keep the body). */
+          /* v2.3.556: full covering set -> render the body as a BLACK
+             silhouette (fills the waist/neck gaps with its own contour, no
+             flicker).  Same rule as the local player; gated on the gear sprites
+             actually being placed (poses w/o gear keep the normal body). */
           if (chestCoversHead(other.equip && other.equip.chest) && other.equip && other.equip.legs && other.equip.legs !== 'none'
               && display._gearChest && display._gearChest.visible
               && display._gearLegs && display._gearLegs.visible) {
-            spriteBody.visible = false;
+            spriteBody.tint = 0x000000;
           }
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
@@ -2710,18 +2711,19 @@ export class EntityRenderer {
            because Pixi's tint is a per-channel multiply against white.
            If body-color customisation comes back later it'll need a
            filter or per-pixel recolor pass, not raw tint. */
-        spriteBody.tint = 0xffffff;
-        /* v2.3.551: when the full covering set is worn (helmet chest + legs),
-           DON'T render the body -- the armour is a continuous silhouette (gaps
-           pre-filled by fill_gear_gaps.py) so nothing of the character renders
-           under it and the per-frame AI-drift body can't peek past the plate.
-           Must be the LAST word on visible (a stray `= true` here used to undo
-           it).  Gated on the gear actually being placed so poses with no gear
-           sheet (hit/attack/pickup) keep the body and the player never vanishes. */
+        /* v2.3.556: when the full covering set is worn (helmet chest + legs),
+           render the body as a SOLID BLACK silhouette instead of hiding it.
+           Its natural contour then fills the waist/neck gaps with black --
+           tracking the body exactly every frame (no fixed band, no flicker,
+           no background hole) -- and any AI-drift peek past the plate reads as
+           a black rim that blends with the armour outline instead of skin.
+           Gated on the gear actually being placed so poses with no gear sheet
+           (hit/attack/pickup) keep the normal body. */
         _armorHidesBody = chestCoversHead(getEquip('chest')) && getEquip('legs') !== 'none'
           && display._gearChest && display._gearChest.visible
           && display._gearLegs && display._gearLegs.visible;
-        spriteBody.visible = !_armorHidesBody;
+        spriteBody.tint = _armorHidesBody ? 0x000000 : 0xffffff;
+        spriteBody.visible = true;
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
