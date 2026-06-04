@@ -164,7 +164,13 @@ const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'so
    stays slightly smaller per the original tuning). */
 const BODY_DIR_SCALE = {
   stand: { south: 1.130, east: 1.083, north: 1.150, northeast: 1.130, southwest: 1.000 },
-  jog:   { south: 1.230, east: 1.386, north: 1.217, northeast: 1.237, southwest: 1.000 },
+  /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
+     was bigger running than standing).  Crown-to-hip over-scaled the jog
+     because a running figure leans + spreads its legs, compressing vertical
+     spans.  Re-anchored to rendered FULL height (crown-to-feet, what the eye
+     actually reads) against the user's gold standard: SW jog==idle looks
+     right, so every facing now hits SW's jog/idle render ratio (0.941). */
+  jog:   { south: 1.000, east: 1.218, north: 0.967, northeast: 1.126, southwest: 1.000 },
 };
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
