@@ -2634,6 +2634,10 @@ export class EntityRenderer {
        BODY_DIR_SCALE map (silhouette-height normalization), replacing the
        old hand-tuned bump stack. */
     const bodyScale = bodyDirScale(pose, dir) * LOCAL_SCALE;
+    /* v2.3.551: set true once the full covering set hides the body, so the
+       NFT/procedural fallbacks below don't draw a body in its place.  Declared
+       at function scope (the NFT fallback is outside the spritesAvailable block). */
+    let _armorHidesBody = false;
     const spritesAvailable = hasPose(pose) || hasPose('stand');
     if (spritesAvailable) {
       const spriteBody = display._spriteBody;
@@ -2701,23 +2705,23 @@ export class EntityRenderer {
         spriteBody.scale.y = bodyScale;
         /* v2.3.503: layered gear, stacked over the body with its transform. */
         _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
-        /* v2.3.550: when the full covering set is worn (helmet chest + legs),
-           DON'T render the body at all -- the armour is a continuous silhouette
-           (internal gaps pre-filled by fill_gear_gaps.py), so nothing of the
-           character renders under it and the per-frame AI-drift body can't peek
-           out past the plate.  Body still draws for partial/no armour, and for
-           poses with NO gear sheet (hit/attack/pickup) -- gated on the gear
-           sprites actually being placed this frame so the player never vanishes. */
-        spriteBody.visible = !(chestCoversHead(getEquip('chest')) && getEquip('legs') !== 'none'
-          && display._gearChest && display._gearChest.visible
-          && display._gearLegs && display._gearLegs.visible);
         /* No tint multiply — the sprites are pre-colored.  Multiplying
            by S.bodyTorso (default #2563eb) was darkening the avatar
            because Pixi's tint is a per-channel multiply against white.
            If body-color customisation comes back later it'll need a
            filter or per-pixel recolor pass, not raw tint. */
         spriteBody.tint = 0xffffff;
-        spriteBody.visible = true;
+        /* v2.3.551: when the full covering set is worn (helmet chest + legs),
+           DON'T render the body -- the armour is a continuous silhouette (gaps
+           pre-filled by fill_gear_gaps.py) so nothing of the character renders
+           under it and the per-frame AI-drift body can't peek past the plate.
+           Must be the LAST word on visible (a stray `= true` here used to undo
+           it).  Gated on the gear actually being placed so poses with no gear
+           sheet (hit/attack/pickup) keep the body and the player never vanishes. */
+        _armorHidesBody = chestCoversHead(getEquip('chest')) && getEquip('legs') !== 'none'
+          && display._gearChest && display._gearChest.visible
+          && display._gearLegs && display._gearLegs.visible;
+        spriteBody.visible = !_armorHidesBody;
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
@@ -2811,7 +2815,7 @@ export class EntityRenderer {
        an avatar URL with loaded textures, swap in the NFT cross-fade
        pair.  Hide the procedural body if NFT renders. */
     let nftShown = false;
-    if (!display._spriteBody.visible && S.myAvatar) {
+    if (!display._spriteBody.visible && S.myAvatar && !_armorHidesBody) {
       const nft = getNftTextures(S.myAvatar);
       if (nft) {
         const renderAng = (S._facingAngle !== undefined) ? S._facingAngle : Math.PI / 2;
