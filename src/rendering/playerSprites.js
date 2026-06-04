@@ -66,7 +66,7 @@ const ATTACK_DURATION_MS = 220;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
-const VERSION = 61; /* v2.3.515: east restored to 25-frame full cycle */
+const VERSION = 62; /* v2.3.531: NE jog rebuilt from new Grok video (alternating legs) */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
