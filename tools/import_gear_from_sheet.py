@@ -53,6 +53,13 @@ drop_skin = int(sys.argv[10]) if len(sys.argv) > 10 else 1
 # sometimes draws the figure slightly slimmer than the base body, so the
 # height-matched plate reads a touch narrow on some idle dirs -- nudge e.g. 1.05.
 scale_mul = float(sys.argv[11]) if len(sys.argv) > 11 else 1.0
+# Cover AI-drift slivers: the armour is drawn a few px off the body, so the
+# BASE body silhouette poked out just past the armour edge ('character renders
+# underneath the armour').  Extend the armour over the body pixels within
+# COVER_DRIFT px of its edge, with the nearest armour colour.  0=off.  Only
+# body-adjacent pixels are filled -> the armour's outline against the BACKGROUND
+# is unchanged (bulk preserved) and wide real gaps (waist) stay open.
+cover_drift = int(sys.argv[12]) if len(sys.argv) > 12 else 0
 
 meta = json.load(open(f'tools/posesheets/{pose}-{dir_}.json'))
 cols, rows = meta['cols'], meta['rows']
@@ -407,6 +414,25 @@ if mannequin and slot in ('chest', 'legs'):
                 cell[:, shift:] = 0
             new_gs[:, i * FRAME:(i + 1) * FRAME] = cell
         gear_sheet = Image.fromarray(new_gs, 'RGBA')
+
+if mannequin and cover_drift > 0:
+    gs = np.array(gear_sheet)
+    for i in range(n):
+        cell = gs[:, i * FRAME:(i + 1) * FRAME]
+        gop = cell[:, :, 3] > 0
+        if not gop.any():
+            continue
+        bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
+        dil = ndimage.binary_dilation(gop, iterations=cover_drift)
+        fill = dil & bop & ~gop
+        if not fill.any():
+            continue
+        # paint each fill pixel with the nearest existing armour pixel's colour
+        idx = ndimage.distance_transform_edt(~gop, return_indices=True)[1]
+        nearest = cell[idx[0], idx[1]]
+        cell[fill] = nearest[fill]
+        gs[:, i * FRAME:(i + 1) * FRAME] = cell
+    gear_sheet = Image.fromarray(gs, 'RGBA')
 
 dst = f'public/sprites/gear/{slot}/{item}/{pose}-{dir_}.png'
 gear_sheet.save(dst)
