@@ -46,13 +46,15 @@ function makeSlotStore(slot, defId) {
   };
 }
 
-/* v2.3.538: default to NO gear so the bare character shows the derived
-   per-facing body-scale normalization (v2.3.537) without armor on top.
-   Re-enable steelplate/steelgreaves defaults once the gear is re-extracted
-   at uniform bulk over the normalized body. */
+/* v2.3.546: re-enable the existing steel set (covers jog+stand all 5 dirs,
+   aligned to the current bodies) so the armored character is visible again
+   over the now size-normalized body.  Bulk still varies per direction (old
+   per-dir scale_mul) until the uniform re-extraction; alignment is already
+   good.  Key stays bt-gear-v2-* (no stale equips under it, so this default
+   wins). */
 const _stores = {
-  legs: makeSlotStore('legs', 'none'),
-  chest: makeSlotStore('chest', 'none'),
+  legs: makeSlotStore('legs', 'steelgreaves'),
+  chest: makeSlotStore('chest', 'steelplate'),
   shoulders: makeSlotStore('shoulders', 'none'),
 };
 
