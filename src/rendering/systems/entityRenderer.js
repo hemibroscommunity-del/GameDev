@@ -2176,6 +2176,14 @@ export class EntityRenderer {
           /* v2.3.504: this remote player's layered gear (their equip is
              broadcast over the network). */
           _placeGear(display, other.equip, pose, dir, frameIdx);
+          /* v2.3.550: full covering set -> hide the body (continuous plate, no
+             drift peek).  Same rule as the local player; gated on the gear
+             sprites actually being placed (poses w/o gear keep the body). */
+          if (chestCoversHead(other.equip && other.equip.chest) && other.equip && other.equip.legs && other.equip.legs !== 'none'
+              && display._gearChest && display._gearChest.visible
+              && display._gearLegs && display._gearLegs.visible) {
+            spriteBody.visible = false;
+          }
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* v2.3.526: a helmet-bearing chest piece (steelplate) covers the head,
@@ -2693,6 +2701,16 @@ export class EntityRenderer {
         spriteBody.scale.y = bodyScale;
         /* v2.3.503: layered gear, stacked over the body with its transform. */
         _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
+        /* v2.3.550: when the full covering set is worn (helmet chest + legs),
+           DON'T render the body at all -- the armour is a continuous silhouette
+           (internal gaps pre-filled by fill_gear_gaps.py), so nothing of the
+           character renders under it and the per-frame AI-drift body can't peek
+           out past the plate.  Body still draws for partial/no armour, and for
+           poses with NO gear sheet (hit/attack/pickup) -- gated on the gear
+           sprites actually being placed this frame so the player never vanishes. */
+        spriteBody.visible = !(chestCoversHead(getEquip('chest')) && getEquip('legs') !== 'none'
+          && display._gearChest && display._gearChest.visible
+          && display._gearLegs && display._gearLegs.visible);
         /* No tint multiply — the sprites are pre-colored.  Multiplying
            by S.bodyTorso (default #2563eb) was darkening the avatar
            because Pixi's tint is a per-channel multiply against white.
