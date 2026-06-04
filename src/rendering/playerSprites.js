@@ -45,13 +45,13 @@ const JOG_DURATION_BY_DIR = {
      NE/NW -50% speed (938->1876), SW/SE +15% speed (2000->1739),
      east unchanged (user: "east is perfect").  Mirror dirs share the
      same cycle: W from E, NW from NE, SE from SW. */
-  /* v2.3.541: north +10% speed (933->848), NE/NW +20% speed (1876->1563)
-     per user. */
-  north: 848,
-  south: 933,
-  northeast: 1563,
+  /* v2.3.543: north +5% (848->808), south +10% (933->848), NE/NW +10%
+     (1563->1421), SW/SE +5% (1739->1656).  east unchanged. */
+  north: 808,
+  south: 848,
+  northeast: 1421,
   east: 900,
-  southwest: 1739,
+  southwest: 1656,
 };
 const HIT_DURATION_MS = 250;
 /* v2.3.188: pickup pose plays during the 0.5 s loot-pickup freeze.
