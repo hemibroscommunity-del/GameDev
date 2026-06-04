@@ -45,9 +45,11 @@ const JOG_DURATION_BY_DIR = {
      NE/NW -50% speed (938->1876), SW/SE +15% speed (2000->1739),
      east unchanged (user: "east is perfect").  Mirror dirs share the
      same cycle: W from E, NW from NE, SE from SW. */
-  north: 933,
+  /* v2.3.541: north +10% speed (933->848), NE/NW +20% speed (1876->1563)
+     per user. */
+  north: 848,
   south: 933,
-  northeast: 1876,
+  northeast: 1563,
   east: 900,
   southwest: 1739,
 };
