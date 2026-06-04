@@ -149,6 +149,29 @@ function _ensureBodyData() {
    un-mirrored side. */
 const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'southeast' };
 
+/* v2.3.537: per-(pose,dir) body render scale, DERIVED from silhouette
+   measurement -- replaces the old hand-tuned bump stack (v2.3.164-171:
+   N/S/E *1.10, NE *1.05/*1.0815, etc).  Goal: equal on-screen character
+   HEIGHT across all 8 facings so the player doesn't grow/shrink when they
+   turn.  Reference = crown-to-hip span (pose-invariant -- it sits above the
+   swinging legs and ignores arm-swing, the two things that corrupt a raw
+   pixel count or bbox height).  Measured per facing on the real sheets,
+   normalized so every facing matches the tallest (southwest = 1.0, the
+   larger size the user dialed in as the target).  Stand and jog measured
+   separately because the run bends the legs (a deep stride is not a height
+   change).  Mirror dirs (W<-E, NW<-NE, SE<-SW) share their base value.
+   hit/pickup/attack keep the old behavior (no armor on them yet; east-hit
+   stays slightly smaller per the original tuning). */
+const BODY_DIR_SCALE = {
+  stand: { south: 1.130, east: 1.083, north: 1.150, northeast: 1.130, southwest: 1.000 },
+  jog:   { south: 1.230, east: 1.386, north: 1.217, northeast: 1.237, southwest: 1.000 },
+};
+function bodyDirScale(pose, dir) {
+  if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
+  const m = BODY_DIR_SCALE[pose];
+  return (m && m[dir]) || 1.0;
+}
+
 /* Place a player's headwear sprite for this frame.  Shared by the local
    player (_updatePlayer) and remote players (_updateOtherPlayers).
    Crown-anchored + placement-independent: pins the hat's own crown
@@ -2121,22 +2144,9 @@ export class EntityRenderer {
           /* v2.3.396: match the local player's LOCAL_SCALE (0.3515625).
              The remote base had drifted to 0.3125 (~11% smaller), so other
              players rendered noticeably smaller than yourself. */
-          let sizeMul = 0.3515625;
-        if (dir === 'east' && pose === 'hit') sizeMul = 0.88 * 0.3515625;
-        else if (dir === 'northeast' && pose !== 'hit') sizeMul = 1.03 * 0.3515625;
-          /* v2.3.164: matching per-direction stand-pose bumps from the
-             local player path.  v2.3.167: extended to jog too. */
-          if (pose === 'stand' || pose === 'jog') {
-            if (dir === 'north' || dir === 'south' || dir === 'east') sizeMul *= 1.10;
-            else if (dir === 'northeast') sizeMul *= 1.05;
-          }
-          /* v2.3.168: additional jog-only +5% for E and NE.
-             v2.3.170: bumped E to +10% per user east-run pass.
-             v2.3.171: bumped NE to 1.0815 (extra 3% on top of v2.3.168). */
-          if (pose === 'jog') {
-            if (dir === 'east') sizeMul *= 1.10;
-            else if (dir === 'northeast') sizeMul *= 1.0815;
-          }
+          /* v2.3.537: derived per-(pose,dir) scale, shared with the local
+             player path via bodyDirScale (silhouette-height normalization). */
+          const sizeMul = bodyDirScale(pose, dir) * 0.3515625;
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
           spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
@@ -2596,27 +2606,10 @@ export class EntityRenderer {
        (0.703125 -> 0.3515625) so on-screen size stays identical.
        Net visible scale vs v2.3.110 baseline: still +25%. */
     const LOCAL_SCALE = 0.3515625;
-    let bodyScale = 1.0 * LOCAL_SCALE;
-    if (dir === 'east' && pose === 'hit') bodyScale = 0.88 * LOCAL_SCALE;
-    else if (dir === 'northeast' && pose !== 'hit') bodyScale = 1.03 * LOCAL_SCALE;
-    /* v2.3.164: per-direction stand-pose size bumps.
-       v2.3.167: also apply to jog (user wanted the same bumps on run
-       animations).  N/S/E (covers W via mirror) +10%,
-       NE (covers NW) +5%, SW unchanged.  Hit stays unbumped. */
-    if (pose === 'stand' || pose === 'jog') {
-      if (dir === 'north' || dir === 'south' || dir === 'east') bodyScale *= 1.10;
-      else if (dir === 'northeast') bodyScale *= 1.05;
-    }
-    /* v2.3.168: additional jog-only +5% for E (covers W) and NE
-       (covers NW) per user pacing pass.  Stand stays at the v2.3.167
-       values.  v2.3.170: bumped E (covers W) to +10% (extra 5% on
-       top of v2.3.168) per user "make east run 5% larger".
-       v2.3.171: bumped NE (covers NW) by an extra 3% on top of
-       v2.3.168 (1.05 * 1.03 = 1.0815) per user. */
-    if (pose === 'jog') {
-      if (dir === 'east') bodyScale *= 1.10;
-      else if (dir === 'northeast') bodyScale *= 1.0815;
-    }
+    /* v2.3.537: per-(pose,dir) scale now comes from the derived
+       BODY_DIR_SCALE map (silhouette-height normalization), replacing the
+       old hand-tuned bump stack. */
+    const bodyScale = bodyDirScale(pose, dir) * LOCAL_SCALE;
     const spritesAvailable = hasPose(pose) || hasPose('stand');
     if (spritesAvailable) {
       const spriteBody = display._spriteBody;
