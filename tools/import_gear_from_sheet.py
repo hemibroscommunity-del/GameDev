@@ -142,26 +142,6 @@ def head_anchor(mask):
     hy, hx = np.where(lbl == k)
     return float(hx.mean()), float(hy.min())
 
-# Per-sheet scale (mannequin only).  ChatGPT redraws the figure bigger/smaller
-# than laid out; correct it by matching the armoured figure's HEIGHT to the base
-# body's.  base_h/fig_h is pose-independent (both share the exact pose), so it's
-# stable frame-to-frame -- median it for one clean scale (per-frame would jitter).
-_det = {}
-fig_scale = 1.0
-if mannequin:
-    ratios = []
-    for i in range(n):
-        d = detect_figure(i)
-        if d is None:
-            continue
-        _det[i] = d
-        _, _, _, fh, _ = d
-        bx0, by0, bx1, by1 = base_bbox(i)
-        if fh > 10:
-            ratios.append((by1 - by0) / fh)
-    if ratios:
-        fig_scale = float(np.median(ratios))
-
 def _overlap(sm, bop, px, py):
     """# of pixels where the armoured mask `sm`, placed with its top-left at
     (px,py), coincides with the base body mask `bop`."""
@@ -171,6 +151,55 @@ def _overlap(sm, bop, px, py):
     if x1 <= x0 or y1 <= y0:
         return 0
     return int((bop[y0:y1, x0:x1] & sm[y0 - py:y1 - py, x0 - px:x1 - px]).sum())
+
+def _scaled_mask(content, s):
+    cmask = content[:, :, 3] > 40
+    nw, nh = max(1, round(content.shape[1] * s)), max(1, round(content.shape[0] * s))
+    return np.array(Image.fromarray((cmask * 255).astype(np.uint8), 'L')
+                    .resize((nw, nh), Image.NEAREST)) > 40
+
+# Per-sheet scale (mannequin only).  ChatGPT redraws the figure bigger/smaller,
+# AND adds a helmet that inflates the HEIGHT -- so a plain base_h/figure_h ratio
+# shrinks the whole suit and the body pokes out around it ('skin halo / double
+# lines').  Instead pick the uniform scale that best MATCHES the body SILHOUETTE
+# (max total IoU, centroid-placed) -- the helmet is a small area so the fit locks
+# onto the torso/legs and the helmet just rides above.  This is the 'closest
+# silhouette' fit.
+_det = {}
+fig_scale = 1.0
+if mannequin:
+    for i in range(n):
+        d = detect_figure(i)
+        if d is not None:
+            _det[i] = d
+if mannequin and _det:
+    hr = []
+    for i, d in _det.items():
+        bx0, by0, bx1, by1 = base_bbox(i)
+        if d[3] > 10:
+            hr.append((by1 - by0) / d[3])
+    s0 = float(np.median(hr)) if hr else 1.0
+
+    def _scale_iou(s):
+        inter = union = 0
+        for i, d in _det.items():
+            sm = _scaled_mask(d[0], s)
+            bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
+            if not sm.any() or not bop.any():
+                continue
+            sy, sx = np.where(sm); by, bx = np.where(bop)
+            px = int(round(bx.mean() - sx.mean())); py = int(round(by.mean() - sy.mean()))
+            ov = _overlap(sm, bop, px, py)
+            inter += ov; union += int(sm.sum()) + int(bop.sum()) - ov
+        return inter / union if union else 0.0
+
+    best_s, best_iou, s = s0, -1.0, s0 * 0.82
+    while s <= s0 * 1.30:
+        v = _scale_iou(s)
+        if v > best_iou:
+            best_iou, best_s = v, s
+        s += s0 * 0.025
+    fig_scale = best_s
 
 def _raw_place(i):
     """Raw (px, py): align the armoured figure's FULL silhouette to the base
