@@ -226,17 +226,19 @@ def _raw_place(i):
     if not sm.any() or not bop.any():
         bx0, by0, bx1, by1 = base_bbox(i)
         return ((bx0 + bx1) / 2 - nw / 2, float(by0))
-    # Register on the PIECE'S OWN band (chest vs legs), not the whole silhouette:
-    # a full-figure overlap is dominated by the big leg mass, so the small chest
-    # plate drifts (SW 'plate shifts right', +/-20px). Restricting to the torso
-    # band for the chest run (and the leg band for the legs run) pins each piece
-    # to the body region it actually covers.
+    # ALWAYS register on the TORSO band (0.16-0.50), regardless of which piece we
+    # extract.  The figure runs IN PLACE, so torso-anchoring lands every piece's
+    # content on the body: the chest plate on the torso AND the greaves on the
+    # legs (the legs swing inside the content, not the placement).  Registering on
+    # the legs' own band instead jittered with the swinging legs -> greaves
+    # drifted +-20px off the body legs (SW 'lower armour not anchored to legs').
+    # A full-figure overlap is no good either (leg mass dominates -> chest drifts).
     def _band(mask):
         ys = np.where(mask.any(1))[0]
         if len(ys) == 0:
             return mask
         y0 = int(ys.min()); h = int(ys.max()) - y0
-        m = mask.copy(); m[:y0 + int(ymin_frac * h)] = False; m[y0 + int(ymax_frac * h):] = False
+        m = mask.copy(); m[:y0 + int(0.16 * h)] = False; m[y0 + int(0.50 * h):] = False
         return m
     smb, bopb = _band(sm), _band(bop)
     if not smb.any() or not bopb.any():
@@ -367,15 +369,16 @@ for i in range(n):
         comp.alpha_composite(Image.fromarray(out, 'RGBA'))
         val.paste(comp, (i * FRAME, FRAME))
 
-# Chest stabilisation (horizontal, chest only).  Some source sheets draw the
-# breastplate SWINGING left-right relative to the body across the cycle (SW:
-# +-19px, crossing centre) -> the plate looks like it 'shifts right'.  Body
-# alignment can't fix it (the swing is inside the art).  Pin each frame's plate
-# to a CONSTANT offset from the base body's torso centre -- the per-sheet median,
-# so each dir keeps its own characteristic offset (east stays on its near side)
-# but the per-frame swing is removed.  Legs are left alone: greaves must track
-# the striding legs, not a fixed point.
-if mannequin and slot == 'chest':
+# Horizontal stabilisation: pin each gear frame to a CONSTANT offset from the
+# BODY REGION it covers -- chest -> torso centre, legs -> LEG centre.  This kills
+# the per-frame overlap jitter at the source: the breastplate SWING baked into
+# the art (SW chest), AND the legs' +-20px drift (the overlap wobbled on the
+# swinging legs/arm so the greaves un-anchored from the legs).  Anchoring the
+# legs to the body LEG centre -- which itself follows the real stride per frame
+# -- makes the greaves TRACK the legs (offset = per-sheet median) instead of
+# jittering.  (The chest's torso centre barely moves, so the chest stays put.)
+if mannequin and slot in ('chest', 'legs'):
+    rb0, rb1 = (0.20, 0.45) if slot == 'chest' else (0.60, 0.97)
     gs = np.array(gear_sheet)
     offs = [None] * n
     for i in range(n):
@@ -385,9 +388,9 @@ if mannequin and slot == 'chest':
         if not cell.any() or len(byy) == 0:
             continue
         y0, h = int(byy.min()), int(byy.max()) - int(byy.min())
-        tb = bframe.copy(); tb[:y0 + int(0.20 * h)] = False; tb[y0 + int(0.45 * h):] = False
-        tcx = float(np.where(tb)[1].mean()) if tb.any() else float(np.where(bframe)[1].mean())
-        offs[i] = float(np.where(cell)[1].mean()) - tcx
+        rb = bframe.copy(); rb[:y0 + int(rb0 * h)] = False; rb[y0 + int(rb1 * h):] = False
+        rcx = float(np.where(rb)[1].mean()) if rb.any() else float(np.where(bframe)[1].mean())
+        offs[i] = float(np.where(cell)[1].mean()) - rcx
     valid = [o for o in offs if o is not None]
     if valid:
         med = float(np.median(valid))
