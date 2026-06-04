@@ -170,7 +170,11 @@ const BODY_DIR_SCALE = {
      spans.  Re-anchored to rendered FULL height (crown-to-feet, what the eye
      actually reads) against the user's gold standard: SW jog==idle looks
      right, so every facing now hits SW's jog/idle render ratio (0.941). */
-  jog:   { south: 1.000, east: 1.218, north: 0.967, northeast: 1.126, southwest: 1.000 },
+  /* north nudged 0.967 -> 1.05 (v2.3.540): its run has the largest leg-spread
+     of any facing, so full-height matching shrank the body to fit the spread
+     legs.  Hip-span said 1.22 (too big), full-height 0.967 (a bit small) --
+     truth sits just above the full-height end. */
+  jog:   { south: 1.000, east: 1.218, north: 1.050, northeast: 1.126, southwest: 1.000 },
 };
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
