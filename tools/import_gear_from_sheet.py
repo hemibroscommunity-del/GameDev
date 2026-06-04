@@ -200,6 +200,12 @@ if mannequin and _det:
             best_iou, best_s = v, s
         s += s0 * 0.025
     fig_scale = best_s
+    # Cap scale_mul so the TALLEST armoured figure (helmet -> feet) still fits the
+    # 256 frame.  At the user's larger scales (1.18 / 1.43) some dirs' figures
+    # exceed the frame and the helmet gets sliced off -- this trims just enough.
+    max_h = max(d[3] for d in _det.values())
+    if max_h * fig_scale > 0:
+        scale_mul = min(scale_mul, (FRAME - 6) / (max_h * fig_scale))
 
 def _raw_place(i):
     """Raw (px, py): align the armoured figure's FULL silhouette to the base
@@ -288,7 +294,13 @@ def keyed_frame(i):
     nw, nh = max(1, round(w * s)), max(1, round(h * s))
     small = Image.fromarray(content, 'RGBA').resize((nw, nh), Image.LANCZOS)
     o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
-    o.alpha_composite(small, (int(round(_place[i][0])), int(round(_place[i][1]))))
+    px = int(round(_place[i][0])); py = int(round(_place[i][1]))
+    # Fit-to-frame: at the larger scales the tall helmet can push past the frame
+    # top (helmet clipped).  Clamp the vertical placement so the whole figure
+    # stays in-frame (shift it down a few px rather than slice the helmet off).
+    if nh < FRAME:
+        py = max(1, min(py, FRAME - nh - 1))
+    o.alpha_composite(small, (px, py))
     return np.array(o)
 
 os.makedirs(f'public/sprites/gear/{slot}/{item}', exist_ok=True)

@@ -41,15 +41,15 @@ const ATTACK_FRAMES = 2;
    so it shares NE's cycle.) */
 const JOG_DURATION_MS = 1000;
 const JOG_DURATION_BY_DIR = {
-  north: 1400,
-  south: 1400,
-  /* v2.3.168: NE 750 -> 938 (25% slower) per user pacing pass. */
-  northeast: 938,
-  /* v2.3.167: east 1333 -> 900 (1.5x faster), southwest 1000 -> 2000
-     (2x slower) per user pacing feedback.  Mirror dirs share the
-     same cycle: W from E, SE from SW. */
+  /* v2.3.535 pacing pass (armored run): N/S +50% speed (1400->933),
+     NE/NW -50% speed (938->1876), SW/SE +15% speed (2000->1739),
+     east unchanged (user: "east is perfect").  Mirror dirs share the
+     same cycle: W from E, NW from NE, SE from SW. */
+  north: 933,
+  south: 933,
+  northeast: 1876,
   east: 900,
-  southwest: 2000,
+  southwest: 1739,
 };
 const HIT_DURATION_MS = 250;
 /* v2.3.188: pickup pose plays during the 0.5 s loot-pickup freeze.
