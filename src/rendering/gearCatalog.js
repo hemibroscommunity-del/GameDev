@@ -27,7 +27,10 @@ export function chestCoversHead(chestId) {
 }
 
 function makeSlotStore(slot, defId) {
-  const key = 'bt-gear-' + slot;
+  /* v2.3.538: key bumped to -v2 so any previously-saved steelplate/greaves
+     equip is ignored and the new 'none' default wins (lets the bare,
+     scale-normalized body show without stale localStorage overriding it). */
+  const key = 'bt-gear-v2-' + slot;
   let active = defId;
   try { const s = typeof localStorage !== 'undefined' && localStorage.getItem(key); if (s) active = s; } catch (e) { /* ignore */ }
   const listeners = new Set();
@@ -43,12 +46,13 @@ function makeSlotStore(slot, defId) {
   };
 }
 
-/* v2.3.506: default to the REAL extracted steel set (jog-east only for now) so
-   the pipeline result is visible in-game -- run EAST to see it; other dirs/poses
-   are bare until their sheets are generated. */
+/* v2.3.538: default to NO gear so the bare character shows the derived
+   per-facing body-scale normalization (v2.3.537) without armor on top.
+   Re-enable steelplate/steelgreaves defaults once the gear is re-extracted
+   at uniform bulk over the normalized body. */
 const _stores = {
-  legs: makeSlotStore('legs', 'steelgreaves'),
-  chest: makeSlotStore('chest', 'steelplate'),
+  legs: makeSlotStore('legs', 'none'),
+  chest: makeSlotStore('chest', 'none'),
   shoulders: makeSlotStore('shoulders', 'none'),
 };
 
