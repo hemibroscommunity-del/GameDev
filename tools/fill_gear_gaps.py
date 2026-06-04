@@ -1,15 +1,15 @@
-"""Close the armour's gaps for the body-hidden render: a chainmail BELT over the
-waist + a black fill for any other enclosed hole (neck).
+"""Close the armour's gaps for the body-hidden render: lay the user's CHAIN BELT
+sprite over the waist + black-fill any other enclosed hole (neck).
 
 The renderer hides the body under the full armour set (so AI-drift can't make
 the body peek past the plate edge).  That leaves the chest->legs WAIST gap (and
-sometimes a neck gap) as a background hole.  Fill them, baked into the chest
-sheet (which renders over the legs):
+sometimes a neck gap) as a background hole.  Baked into the chest sheet (renders
+over the legs):
 
-  * Waist: a chainmail belt across a fixed figure-relative band -- present every
-    frame regardless of leg motion (no gap-size flicker), reads as an
-    intentional belt bridging chest and greaves.
-  * Any other fully-enclosed transparent region (neck): pure black (shadowed gap).
+  * Waist: black-fill a fixed figure-relative band (covers the hole, no flicker)
+    then overlay the chain belt art (tools/posesheets/chainbelt.png), sized once
+    per direction so it doesn't pulse and positioned to track the figure's bob.
+  * Any other enclosed transparent region (neck): pure black.
 
 Usage: python tools/fill_gear_gaps.py <pose> <dir>
 """
@@ -19,22 +19,9 @@ from PIL import Image
 from scipy import ndimage
 
 FRAME = 256
-BAND0, BAND1 = 0.54, 0.67          # waist belt band as fraction of figure height
-
-
-def mail_tex(h, w):
-    """Procedural chainmail band: iron base + staggered ring-dots + top hilite +
-    downward shade, so at game scale it reads as a 3D belt, not a flat gap."""
-    t = np.empty((h, w, 3), float)
-    t[:] = (58, 58, 66)
-    yy, xx = np.mgrid[0:h, 0:w]
-    ring = ((np.cos(xx * 2.0 + (yy // 2) * 3.14159) + 1) * 0.5) * ((np.cos(yy * 2.0) + 1) * 0.5)
-    t += ring[..., None] * np.array([30, 30, 36])
-    shade = np.linspace(1.25, 0.72, h)[:, None, None]    # lit at top, dark at bottom
-    t = (t * shade)
-    t[:2] += 48                                          # bright top edge highlight
-    return t.clip(0, 255)
-
+BAND_FRAC = 0.12          # belt height as fraction of figure height
+BAND_CY = 0.555           # belt centre as fraction of figure height (from crown)
+CHAIN = Image.open('tools/posesheets/chainbelt.png').convert('RGBA')   # 706x96 strip
 
 pose, dir_ = sys.argv[1], sys.argv[2]
 chest_p = f'public/sprites/gear/chest/steelplate/{pose}-{dir_}.png'
@@ -46,31 +33,61 @@ n = chest.width // FRAME
 ca = np.array(chest)
 la = np.array(legs)
 ln = legs.width // FRAME
-TEX = mail_tex(FRAME, FRAME)
+
+# fixed belt height per direction (median figure height) so the chain never pulses
+heights = []
+for i in range(n):
+    b = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 20
+    ys = np.where(b.any(1))[0]
+    if len(ys):
+        heights.append(ys.max() - ys.min())
+medH = float(np.median(heights)) if heights else 150
+band_h = max(6, int(BAND_FRAC * medH))
+chain_s = CHAIN.resize((int(706 * band_h / 96), band_h), Image.LANCZOS)
+chain_a = np.array(chain_s)
+
 for i in range(n):
     cs = ca[:, i * FRAME:(i + 1) * FRAME]
     ls = la[:, (i % ln) * FRAME:(i % ln + 1) * FRAME]
     G = (cs[:, :, 3] > 20) | (ls[:, :, 3] > 20)
-    # 1) black-fill any enclosed transparent hole (neck, etc.)
-    free = ~G
-    lbl, num = ndimage.label(free)
-    if num:
-        border = set(lbl[0, :]) | set(lbl[-1, :]) | set(lbl[:, 0]) | set(lbl[:, -1])
-        border.discard(0)
-        interior = free & ~np.isin(lbl, list(border))
-        if interior.any():
-            cs[interior] = [0, 0, 0, 255]
-    # 2) chainmail belt over the waist band
+    # Overlay ONLY the chain belt at the waist; the black body (rendered under
+    # the armour) fills the actual gap with its natural contour, so no black
+    # band / hole fill is baked here.
     bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 20
     yy = np.where(bop.any(1))[0]
-    if len(yy):
-        y0, H = int(yy.min()), int(yy.max()) - int(yy.min())
-        band = np.zeros_like(bop)
-        band[y0 + int(BAND0 * H):y0 + int(BAND1 * H), :] = True
-        belt = band & bop & ndimage.binary_dilation(G, iterations=1)
-        cs[belt, :3] = TEX[belt].astype(np.uint8)
-        cs[belt, 3] = 255
+    if not len(yy):
+        ca[:, i * FRAME:(i + 1) * FRAME] = cs
+        continue
+    y0, H = int(yy.min()), int(yy.max()) - int(yy.min())
+    cy = y0 + int(BAND_CY * H)
+    by0, by1 = cy - band_h // 2, cy - band_h // 2 + band_h
+    Gd = ndimage.binary_dilation(G, iterations=1)
+    band = np.zeros_like(bop)
+    band[max(0, by0):min(FRAME, by1), :] = True
+    region = band & bop & Gd                       # waist region this frame
+    if not region.any():
+        ca[:, i * FRAME:(i + 1) * FRAME] = cs
+        continue
+    # overlay chain, centred on the region's x-extent, clipped to the region
+    xs = np.where(region.any(0))[0]
+    rx0, rx1 = int(xs.min()), int(xs.max())
+    rw = rx1 - rx0 + 1
+    cw = chain_a.shape[1]
+    sx = max(0, (cw - rw) // 2)
+    crop = chain_a[:, sx:sx + rw]
+    if crop.shape[1] < rw:                          # waist wider than chain: pad by tiling
+        reps = int(np.ceil(rw / cw))
+        crop = np.tile(chain_a, (1, reps, 1))[:, :rw]
+    ch_op = crop[:, :, 3] > 30
+    for dy in range(crop.shape[0]):
+        ry = max(0, by0) + dy
+        if ry < 0 or ry >= FRAME:
+            continue
+        row_mask = ch_op[dy] & region[ry, rx0:rx0 + crop.shape[1]]
+        xs_row = np.where(row_mask)[0] + rx0
+        cs[ry, xs_row, :3] = crop[dy, np.where(row_mask)[0], :3]
+        cs[ry, xs_row, 3] = 255
     ca[:, i * FRAME:(i + 1) * FRAME] = cs
 
 Image.fromarray(ca, 'RGBA').save(chest_p)
-print(f'{pose}-{dir_}: belt + holes baked into chest ({n} frames)')
+print(f'{pose}-{dir_}: chain belt + holes baked ({n} frames, belt {band_h}px)')
