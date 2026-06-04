@@ -163,8 +163,12 @@ const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'so
    hit/pickup/attack keep the old behavior (no armor on them yet; east-hit
    stays slightly smaller per the original tuning). */
 const BODY_DIR_SCALE = {
-  /* v2.3.541: south -3% (1.130->1.096), north -2% (1.150->1.127) per user. */
-  stand: { south: 1.096, east: 1.083, north: 1.127, northeast: 1.130, southwest: 1.000 },
+  /* v2.3.541: south -3% (1.130->1.096), north -2% (1.150->1.127) per user.
+     v2.3.548: NE idle 1.130->0.98 -- the armored figure (tall NE helmet +
+     pauldrons) rendered 14% bigger than the others; bare-body scale couldn't
+     account for armor height.  Brought NE down to match the armored cluster
+     (~240px) so east no longer reads small next to it. */
+  stand: { south: 1.096, east: 1.083, north: 1.127, northeast: 0.980, southwest: 1.000 },
   /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
      was bigger running than standing).  Crown-to-hip over-scaled the jog
      because a running figure leans + spreads its legs, compressing vertical
