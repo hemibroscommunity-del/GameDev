@@ -45,12 +45,10 @@ for i in range(n):
     enclosed = bop & ~G & above & below
     if not enclosed.any():
         continue
-    # nearest armour colour (sample combined: legs under chest)
-    combo = ls.copy()
-    combo[cop] = cs[cop]
-    idx = ndimage.distance_transform_edt(~G, return_indices=True)[1]
-    nearest = combo[idx[0], idx[1]]
-    cs[enclosed] = nearest[enclosed]
+    # Fill PURE BLACK (opaque).  Nearest-armour-colour fill flickered frame to
+    # frame (the sampled colour jumped as the plates moved -- visible on north
+    # jog); a constant black reads as a clean shadowed gap and never flickers.
+    cs[enclosed] = [0, 0, 0, 255]
     filled_total += int(enclosed.sum())
     ca[:, i * FRAME:(i + 1) * FRAME] = cs
 
