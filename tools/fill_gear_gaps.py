@@ -43,6 +43,20 @@ for i in range(n):
     above = np.cumsum(G, axis=0) > 0
     below = np.cumsum(G[::-1], axis=0)[::-1] > 0
     enclosed = bop & ~G & above & below
+    # Only fill THIN horizontal gaps (the waist band, the neck) -- NOT tall
+    # regions.  In a side-view run a rear leg's uncovered body is also
+    # "enclosed" (armour above, foot below) and was getting filled -> black
+    # stick-figure legs baked into the sheet.  Drop any connected gap taller
+    # than MAXGAP px; the waist/neck are short bands, leg gaps are tall.
+    MAXGAP = 22
+    lbl, num = ndimage.label(enclosed)
+    if num:
+        keep = np.zeros_like(enclosed)
+        for k in range(1, num + 1):
+            ys = np.where(lbl == k)[0]
+            if ys.max() - ys.min() + 1 < MAXGAP:
+                keep |= (lbl == k)
+        enclosed = keep
     if not enclosed.any():
         continue
     # Fill PURE BLACK (opaque).  Nearest-armour-colour fill flickered frame to
