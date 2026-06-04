@@ -46,9 +46,10 @@ const JOG_DURATION_BY_DIR = {
      east unchanged (user: "east is perfect").  Mirror dirs share the
      same cycle: W from E, NW from NE, SE from SW. */
   /* v2.3.543: north +5% (848->808), south +10% (933->848), NE/NW +10%
-     (1563->1421), SW/SE +5% (1739->1656).  east unchanged. */
+     (1563->1421), SW/SE +5% (1739->1656).  east unchanged.
+     v2.3.544: south +3% more (848->823). */
   north: 808,
-  south: 848,
+  south: 823,
   northeast: 1421,
   east: 900,
   southwest: 1656,
