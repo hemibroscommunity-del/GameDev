@@ -168,10 +168,11 @@ const BODY_DIR_SCALE = {
      pauldrons) rendered 14% bigger than the others; bare-body scale couldn't
      account for armor height.  Brought NE down to match the armored cluster
      (~240px) so east no longer reads small next to it. */
-  /* v2.3.567: user re-drew all idle sprites at correct proportions -> all the
-     scaling patches dropped (no helmet scale, no width stretch).  These scales
-     just equalize each new idle's armored height to ~240px (240 / gear height). */
-  stand: { south: 1.148, east: 0.964, north: 1.039, northeast: 0.984, southwest: 0.964 },
+  /* v2.3.568: back to the BARE-BODY normalization (crown-to-hip), the same
+     method + manual settings that matched the unarmored idle/jog -- robust
+     because the armor copies the body transform (vs. deriving from per-art gear
+     heights, which gave weird sizes).  Manual: south -3%, north -2%. */
+  stand: { south: 1.096, east: 1.083, north: 1.127, northeast: 1.130, southwest: 1.000 },
   /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
      was bigger running than standing).  Crown-to-hip over-scaled the jog
      because a running figure leans + spreads its legs, compressing vertical
