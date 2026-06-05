@@ -192,6 +192,15 @@ function bodyDirScale(pose, dir) {
   return (m && m[dir]) || 1.0;
 }
 
+/* v2.3.565: per-direction WIDTH (horizontal-only) multiplier for the IDLE pose
+   -- some idle facings are drawn too narrow, so stretch the whole armored
+   figure horizontally (the gear copies the body's scale.x, so it follows).
+   Mirror dirs share the base value (W<-E, NW<-NE, SE<-SW). */
+const STAND_WIDTH = { south: 1.10, east: 1.10, north: 1.50, northeast: 1.90, southwest: 1.00 };
+function standWidth(pose, dir) {
+  return pose === 'stand' ? (STAND_WIDTH[dir] || 1.0) : 1.0;
+}
+
 /* Place a player's headwear sprite for this frame.  Shared by the local
    player (_updatePlayer) and remote players (_updateOtherPlayers).
    Crown-anchored + placement-independent: pins the hat's own crown
@@ -2167,7 +2176,7 @@ export class EntityRenderer {
           /* v2.3.537: derived per-(pose,dir) scale, shared with the local
              player path via bodyDirScale (silhouette-height normalization). */
           const sizeMul = bodyDirScale(pose, dir) * 0.3515625;
-          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
+          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * standWidth(pose, dir);
           spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
@@ -2705,7 +2714,7 @@ export class EntityRenderer {
         display._animFrame = frameIdx;
         /* bodyScale was computed at outer scope (see comment above).
            Applied here to the sprite scale; mirror flag flips x. */
-        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale;
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir);
         spriteBody.scale.y = bodyScale;
         /* v2.3.503: layered gear, stacked over the body with its transform. */
         _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
