@@ -80,7 +80,7 @@ for i in range(n):
     interior = enclosed(G)
     if interior.any():
         cs[interior] = [0, 0, 0, 255]               # close every hole (neck etc.)
-    by0 = y0 + seam_off - 2                          # chain top ~ chest bottom
+    by0 = y0 + seam_off - 12                         # chain top ~ chest bottom, nudged up 10px
     Gd = ndimage.binary_dilation(G, iterations=1)
     band = np.zeros_like(bop)
     band[max(0, by0):min(FRAME, by0 + band_h), :] = True
