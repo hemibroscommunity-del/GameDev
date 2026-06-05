@@ -67,10 +67,14 @@ seam_off = int(np.median(offsets)) if offsets else int(0.55 * medH)
 band_h = int(BAND_FRAC * medH)
 chain_s = np.array(CHAIN.resize((int(706 * band_h / 96), band_h), Image.LANCZOS))
 
+# Bake the belt into the CHEST but ONLY where the chest is transparent (the
+# waist gap) -- so it fills the hole without ever overwriting the chest's
+# arms/hands (which are opaque), i.e. arms never get clipped, belt stays visible.
 for i in range(n):
     cs = ca[:, i * FRAME:(i + 1) * FRAME]
     ls = la[:, (i % ln) * FRAME:(i % ln + 1) * FRAME]
-    G = (cs[:, :, 3] > 20) | (ls[:, :, 3] > 20)
+    chest_op = cs[:, :, 3] > 20
+    G = chest_op | (ls[:, :, 3] > 20)
     bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 20
     yy = np.where(bop.any(1))[0]
     if not len(yy):
@@ -80,15 +84,14 @@ for i in range(n):
     interior = enclosed(G)
     if interior.any():
         cs[interior] = [0, 0, 0, 255]               # close every hole (neck etc.)
-    by0 = y0 + seam_off - 12                         # chain top ~ chest bottom, nudged up 10px
-    Gd = ndimage.binary_dilation(G, iterations=1)
+    by0 = y0 + seam_off - 22                         # chain top, nudged up 20px total
     band = np.zeros_like(bop)
     band[max(0, by0):min(FRAME, by0 + band_h), :] = True
-    region = band & bop & Gd
+    region = band & bop & ~chest_op                 # only the chest-transparent gap
     if not region.any():
         ca[:, i * FRAME:(i + 1) * FRAME] = cs
         continue
-    cs[region] = [0, 0, 0, 255]                      # black under the chain band
+    cs[region] = [0, 0, 0, 255]                      # black under the chain
     xs = np.where(region.any(0))[0]
     rx0, rw = int(xs.min()), int(xs.max()) - int(xs.min()) + 1
     cw = chain_s.shape[1]
@@ -107,4 +110,4 @@ for i in range(n):
     ca[:, i * FRAME:(i + 1) * FRAME] = cs
 
 Image.fromarray(ca, 'RGBA').save(chest_p)
-print(f'{pose}-{dir_}: belt baked (off {seam_off}, band {band_h}, {n} frames)')
+print(f'{pose}-{dir_}: belt in chest-gap (off {seam_off}, band {band_h}, {n} frames)')
