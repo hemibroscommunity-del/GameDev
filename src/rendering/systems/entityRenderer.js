@@ -2176,13 +2176,13 @@ export class EntityRenderer {
           /* v2.3.504: this remote player's layered gear (their equip is
              broadcast over the network). */
           _placeGear(display, other.equip, pose, dir, frameIdx);
-          /* v2.3.558: full covering set -> BLACK body silhouette (fills the
-             waist gap with its contour under the baked chain belt).  Same rule
-             as the local player; gated on the gear sprites actually being placed. */
+          /* v2.3.560: full covering set -> HIDE the body (no drift peek); waist
+             gap black-filled + chain belt baked over it.  Same rule as local;
+             gated on the gear sprites actually being placed. */
           if (chestCoversHead(other.equip && other.equip.chest) && other.equip && other.equip.legs && other.equip.legs !== 'none'
               && display._gearChest && display._gearChest.visible
               && display._gearLegs && display._gearLegs.visible) {
-            spriteBody.tint = 0x000000;
+            spriteBody.visible = false;
           }
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
@@ -2710,16 +2710,17 @@ export class EntityRenderer {
            because Pixi's tint is a per-channel multiply against white.
            If body-color customisation comes back later it'll need a
            filter or per-pixel recolor pass, not raw tint. */
-        /* v2.3.558: full covering set -> render the body as a BLACK silhouette.
-           Its natural contour fills the waist gap (no flicker, no hole, no
-           variable black-below-belt), and the user's chain-belt sprite is baked
-           over the waist (fill_gear_gaps.py) as the decorative cover.  Gated on
-           the gear being placed so gear-less poses keep the normal body. */
+        /* v2.3.560: full covering set -> HIDE the body entirely.  A visible
+           underbody (skin OR black) drifts past the misaligned plate edge all
+           over ("poking out everywhere"); hidden, there's nothing to peek.  The
+           enclosed waist/neck gaps are black-filled and a chain belt is laid on
+           the green-waist centroid (fill_gear_gaps.py), so hiding leaves no hole.
+           Gated on the gear being placed so gear-less poses keep the body. */
+        spriteBody.tint = 0xffffff;
         _armorHidesBody = chestCoversHead(getEquip('chest')) && getEquip('legs') !== 'none'
           && display._gearChest && display._gearChest.visible
           && display._gearLegs && display._gearLegs.visible;
-        spriteBody.tint = _armorHidesBody ? 0x000000 : 0xffffff;
-        spriteBody.visible = true;
+        spriteBody.visible = !_armorHidesBody;
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path

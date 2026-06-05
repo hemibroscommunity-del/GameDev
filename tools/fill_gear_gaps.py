@@ -1,15 +1,16 @@
-"""Close the armour's gaps for the body-hidden render: lay the user's CHAIN BELT
-sprite over the waist + black-fill any other enclosed hole (neck).
+"""Close the armour's waist for the body-hidden render and lay the chain belt on
+the green-belt (waist gap) centre.
 
-The renderer hides the body under the full armour set (so AI-drift can't make
-the body peek past the plate edge).  That leaves the chest->legs WAIST gap (and
-sometimes a neck gap) as a background hole.  Baked into the chest sheet (renders
-over the legs):
+The renderer HIDES the body under the full armour set (so AI-drift can't make
+any underbody peek past the plate edge -- the "black poking out everywhere").
+That leaves the chest->legs WAIST as an enclosed hole.  Per frame, baked into
+the chest sheet (renders over the legs):
 
-  * Waist: black-fill a fixed figure-relative band (covers the hole, no flicker)
-    then overlay the chain belt art (tools/posesheets/chainbelt.png), sized once
-    per direction so it doesn't pulse and positioned to track the figure's bob.
-  * Any other enclosed transparent region (neck): pure black.
+  * Black-fill every fully-enclosed transparent region (waist + neck) so hiding
+    the body leaves no background hole.
+  * Lay the chain belt centred on the WAIST region's centroid -- i.e. the centre
+    of the green belt the user drew (in the extracted frame that green belt IS
+    the body-area not covered by either armour piece at the waist).
 
 Usage: python tools/fill_gear_gaps.py <pose> <dir>
 """
@@ -20,7 +21,6 @@ from scipy import ndimage
 
 FRAME = 256
 BAND_FRAC = 0.12          # belt height as fraction of figure height
-BAND_CY = 0.555           # belt centre as fraction of figure height (from crown)
 CHAIN = Image.open('tools/posesheets/chainbelt.png').convert('RGBA')   # 706x96 strip
 
 pose, dir_ = sys.argv[1], sys.argv[2]
@@ -34,74 +34,72 @@ ca = np.array(chest)
 la = np.array(legs)
 ln = legs.width // FRAME
 
-# Pre-pass: belt height from median figure height (so the chain never pulses),
-# and a STABLE seam offset = median distance from the crown to the central
-# chest-plate bottom.  The waist sits a fixed length below the crown (torso
-# length is constant); the per-frame chest-bottom is noisy and the bbox-bottom
-# moves with the running feet -- the crown + median offset avoids both.
-heights, offsets = [], []
+heights = []
 for i in range(n):
     b = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 20
     ys = np.where(b.any(1))[0]
-    if not len(ys):
-        continue
-    y0 = int(ys.min())
-    heights.append(ys.max() - y0)
-    cx = int(np.median(np.where(b)[1]))
-    cb = ca[:, i * FRAME + max(0, cx - 4):i * FRAME + cx + 5, 3] > 20
-    cyr = np.where(cb.any(1))[0]
-    if len(cyr):
-        offsets.append(int(cyr.max()) - y0)
+    if len(ys):
+        heights.append(ys.max() - ys.min())
 medH = float(np.median(heights)) if heights else 150
 band_h = max(6, int(BAND_FRAC * medH))
-seam_off = int(np.median(offsets)) if offsets else int(0.55 * medH)
-chain_s = CHAIN.resize((int(706 * band_h / 96), band_h), Image.LANCZOS)
-chain_a = np.array(chain_s)
+chain_s = np.array(CHAIN.resize((int(706 * band_h / 96), band_h), Image.LANCZOS))
+
+
+def enclosed(G):
+    free = ~G
+    lbl, num = ndimage.label(free)
+    if num == 0:
+        return np.zeros_like(G)
+    border = set(lbl[0, :]) | set(lbl[-1, :]) | set(lbl[:, 0]) | set(lbl[:, -1])
+    border.discard(0)
+    return free & ~np.isin(lbl, list(border))
+
 
 for i in range(n):
     cs = ca[:, i * FRAME:(i + 1) * FRAME]
     ls = la[:, (i % ln) * FRAME:(i % ln + 1) * FRAME]
     G = (cs[:, :, 3] > 20) | (ls[:, :, 3] > 20)
-    # Overlay ONLY the chain belt at the waist; the black body (rendered under
-    # the armour) fills the actual gap with its natural contour.
     bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 20
     yy = np.where(bop.any(1))[0]
     if not len(yy):
         ca[:, i * FRAME:(i + 1) * FRAME] = cs
         continue
-    y0 = int(yy.min())
-    # ANCHOR: crown (y0) + stable median torso offset -> tracks the body's
-    # vertical bob but ignores the leg-spread and per-frame chest-edge noise.
-    seam_y = y0 + seam_off
-    by0 = seam_y - band_h // 3                      # mostly below the seam
-    by1 = by0 + band_h
+    y0, H = int(yy.min()), int(yy.max()) - int(yy.min())
+    interior = enclosed(G)
+    if interior.any():
+        cs[interior] = [0, 0, 0, 255]               # no background hole
+    # green-belt centre = centroid of the enclosed WAIST region (drop the neck)
+    waist = interior.copy()
+    waist[:y0 + int(0.40 * H)] = False
+    if waist.sum() > 15:
+        wy, wx = np.where(waist)
+        bx, byc = int(round(wx.mean())), int(round(wy.mean()))
+    else:
+        bx, byc = int(np.median(np.where(bop)[1])), y0 + int(0.56 * H)
+    by0 = byc - band_h // 2
     Gd = ndimage.binary_dilation(G, iterations=1)
     band = np.zeros_like(bop)
-    band[max(0, by0):min(FRAME, by1), :] = True
-    region = band & bop & Gd                       # waist region this frame
+    band[max(0, by0):min(FRAME, by0 + band_h), :] = True
+    region = band & bop & Gd
     if not region.any():
         ca[:, i * FRAME:(i + 1) * FRAME] = cs
         continue
-    # overlay chain, centred on the region's x-extent, clipped to the region
     xs = np.where(region.any(0))[0]
-    rx0, rx1 = int(xs.min()), int(xs.max())
-    rw = rx1 - rx0 + 1
-    cw = chain_a.shape[1]
-    sx = max(0, (cw - rw) // 2)
-    crop = chain_a[:, sx:sx + rw]
-    if crop.shape[1] < rw:                          # waist wider than chain: pad by tiling
-        reps = int(np.ceil(rw / cw))
-        crop = np.tile(chain_a, (1, reps, 1))[:, :rw]
-    ch_op = crop[:, :, 3] > 30
+    rx0, rw = int(xs.min()), int(xs.max()) - int(xs.min()) + 1
+    cw = chain_s.shape[1]
+    if rw <= cw:
+        sx = max(0, (cw - rw) // 2)
+        crop = chain_s[:, sx:sx + rw]
+    else:
+        crop = np.tile(chain_s, (1, int(np.ceil(rw / cw)), 1))[:, :rw]
     for dy in range(crop.shape[0]):
         ry = max(0, by0) + dy
         if ry < 0 or ry >= FRAME:
             continue
-        row_mask = ch_op[dy] & region[ry, rx0:rx0 + crop.shape[1]]
-        xs_row = np.where(row_mask)[0] + rx0
-        cs[ry, xs_row, :3] = crop[dy, np.where(row_mask)[0], :3]
-        cs[ry, xs_row, 3] = 255
+        cols = np.where((crop[dy, :, 3] > 30) & region[ry, rx0:rx0 + crop.shape[1]])[0]
+        cs[ry, rx0 + cols, :3] = crop[dy, cols, :3]
+        cs[ry, rx0 + cols, 3] = 255
     ca[:, i * FRAME:(i + 1) * FRAME] = cs
 
 Image.fromarray(ca, 'RGBA').save(chest_p)
-print(f'{pose}-{dir_}: chain belt + holes baked ({n} frames, belt {band_h}px)')
+print(f'{pose}-{dir_}: belt on green-waist centroid + holes filled ({n} frames)')
