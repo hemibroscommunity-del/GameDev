@@ -206,21 +206,27 @@ function bodyDirScale(pose, dir) {
    Mirror dirs share the base value (W<-E, NW<-NE, SE<-SW). */
 /* v2.3.567: all 1.0 -- the re-drawn idle sprites have correct proportions, so
    no horizontal stretch is needed (was a patch for the old narrow idles). */
-/* v2.3.576: per-direction idle WIDEN pass (user-tuned to match the jog frames'
-   bulk).  Horizontal-only stretch applied on top of the uniform height scale;
-   the gear copies scale.x so the armour follows.  Mirror dirs share the source
-   value (W<-E, NW<-NE, SE<-SW).  east/NE widened most (drawn too narrow vs jog). */
-const STAND_WIDTH = { south: 1.02, east: 1.50, north: 1.30, northeast: 1.50, southwest: 1.15 };
-function standWidth(pose, dir) {
-  return pose === 'stand' ? (STAND_WIDTH[dir] || 1.0) : 1.0;
+/* Per-direction idle WIDEN pass (user-tuned to match the jog frames' bulk).
+   Horizontal-only stretch applied on top of the uniform height scale; the gear
+   copies scale.x so the armour follows.  Mirror dirs share the source value
+   (W<-E, NW<-NE, SE<-SW), so the user's "NW"/"SE" tweaks map onto NE/SW.
+   ARMOUR-ONLY (see standWidth's `armored` gate): the bare body is left alone.
+   v2.3.576: S+2% E+50% N+30% NE+50% SW+15%.
+   v2.3.577: E +5% (1.50->1.575), N +2% (1.30->1.326), NE +5% (1.50->1.575),
+             SW +2% (1.15->1.173); south unchanged. */
+const STAND_WIDTH = { south: 1.02, east: 1.575, north: 1.326, northeast: 1.575, southwest: 1.173 };
+function standWidth(pose, dir, armored) {
+  return (pose === 'stand' && armored) ? (STAND_WIDTH[dir] || 1.0) : 1.0;
 }
-/* v2.3.576: per-direction idle SHORTEN pass (vertical-only) -- the idle frames
-   render a touch taller than the matching jog frames, so trim height per dir to
-   line them up.  Applied to scale.y only (standWidth handles x); mirror dirs
-   share the source value.  Idle-pose only -- jog keeps its own height tuning. */
-const STAND_HEIGHT = { south: 0.98, east: 0.92, north: 0.95, northeast: 0.95, southwest: 0.95 };
-function standHeight(pose, dir) {
-  return pose === 'stand' ? (STAND_HEIGHT[dir] || 1.0) : 1.0;
+/* Per-direction idle SHORTEN/TALLEN pass (vertical-only) -- trims/extends the
+   idle height per dir to line the armoured figure up with its jog frames.
+   scale.y only (standWidth handles x); mirror dirs share the source; ARMOUR-ONLY.
+   v2.3.576: S0.98 E0.92 N0.95 NE0.95 SW0.95.
+   v2.3.577: E +5% taller (0.92->0.966), NE +5% taller (0.95->0.998),
+             SW -2% shorter (0.95->0.931); N & S unchanged. */
+const STAND_HEIGHT = { south: 0.98, east: 0.966, north: 0.95, northeast: 0.998, southwest: 0.931 };
+function standHeight(pose, dir, armored) {
+  return (pose === 'stand' && armored) ? (STAND_HEIGHT[dir] || 1.0) : 1.0;
 }
 
 /* Place a player's headwear sprite for this frame.  Shared by the local
@@ -2198,8 +2204,10 @@ export class EntityRenderer {
           /* v2.3.537: derived per-(pose,dir) scale, shared with the local
              player path via bodyDirScale (silhouette-height normalization). */
           const sizeMul = bodyDirScale(pose, dir) * 0.3515625;
-          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * standWidth(pose, dir);
-          spriteBody.scale.y = sizeMul * standHeight(pose, dir);
+          /* v2.3.577: idle widen/shorten is armour-only (see local path). */
+          const _remoteArmored = chestCoversHead(other.equip && other.equip.chest) && other.equip && other.equip.legs && other.equip.legs !== 'none';
+          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * standWidth(pose, dir, _remoteArmored);
+          spriteBody.scale.y = sizeMul * standHeight(pose, dir, _remoteArmored);
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
           body.visible = false;
@@ -2734,15 +2742,20 @@ export class EntityRenderer {
         display._animPose = pose;
         display._animDir = dir;
         display._animFrame = frameIdx;
-        /* bodyScale was computed at outer scope (see comment above).
-           Applied here to the sprite scale; mirror flag flips x. */
-        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir);
-        spriteBody.scale.y = bodyScale * standHeight(pose, dir);
         /* v2.3.576: debug "show me the bare character" toggle (hotkey/HUD
            button in BroTown.jsx sets window.__btHideArmor).  Lets the user
            inspect the raw body animation (e.g. the new NE/NW jog) with the
            armour stripped off -- gear hidden, body + hair/hat shown. */
         const _hideArmor = (typeof window !== 'undefined' && !!window.__btHideArmor);
+        /* v2.3.577: the per-dir idle WIDEN/SHORTEN is an ARMOUR fit-up (the gear
+           art is mis-sized vs the jog).  The bare body is already proportioned,
+           so apply it ONLY when the full covering set is worn AND shown -- naked
+           (or armour-toggled-off) players keep the plain uniform bodyScale. */
+        const _armoredIdle = !_hideArmor && chestCoversHead(getEquip('chest')) && getEquip('legs') !== 'none';
+        /* bodyScale was computed at outer scope (see comment above).
+           Applied here to the sprite scale; mirror flag flips x. */
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _armoredIdle);
+        spriteBody.scale.y = bodyScale * standHeight(pose, dir, _armoredIdle);
         /* v2.3.503: layered gear, stacked over the body with its transform. */
         if (_hideArmor) {
           if (display._gearLegs) display._gearLegs.visible = false;
