@@ -34,15 +34,27 @@ ca = np.array(chest)
 la = np.array(legs)
 ln = legs.width // FRAME
 
-# fixed belt height per direction (median figure height) so the chain never pulses
-heights = []
+# Pre-pass: belt height from median figure height (so the chain never pulses),
+# and a STABLE seam offset = median distance from the crown to the central
+# chest-plate bottom.  The waist sits a fixed length below the crown (torso
+# length is constant); the per-frame chest-bottom is noisy and the bbox-bottom
+# moves with the running feet -- the crown + median offset avoids both.
+heights, offsets = [], []
 for i in range(n):
     b = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 20
     ys = np.where(b.any(1))[0]
-    if len(ys):
-        heights.append(ys.max() - ys.min())
+    if not len(ys):
+        continue
+    y0 = int(ys.min())
+    heights.append(ys.max() - y0)
+    cx = int(np.median(np.where(b)[1]))
+    cb = ca[:, i * FRAME + max(0, cx - 4):i * FRAME + cx + 5, 3] > 20
+    cyr = np.where(cb.any(1))[0]
+    if len(cyr):
+        offsets.append(int(cyr.max()) - y0)
 medH = float(np.median(heights)) if heights else 150
 band_h = max(6, int(BAND_FRAC * medH))
+seam_off = int(np.median(offsets)) if offsets else int(0.55 * medH)
 chain_s = CHAIN.resize((int(706 * band_h / 96), band_h), Image.LANCZOS)
 chain_a = np.array(chain_s)
 
@@ -51,16 +63,18 @@ for i in range(n):
     ls = la[:, (i % ln) * FRAME:(i % ln + 1) * FRAME]
     G = (cs[:, :, 3] > 20) | (ls[:, :, 3] > 20)
     # Overlay ONLY the chain belt at the waist; the black body (rendered under
-    # the armour) fills the actual gap with its natural contour, so no black
-    # band / hole fill is baked here.
+    # the armour) fills the actual gap with its natural contour.
     bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 20
     yy = np.where(bop.any(1))[0]
     if not len(yy):
         ca[:, i * FRAME:(i + 1) * FRAME] = cs
         continue
-    y0, H = int(yy.min()), int(yy.max()) - int(yy.min())
-    cy = y0 + int(BAND_CY * H)
-    by0, by1 = cy - band_h // 2, cy - band_h // 2 + band_h
+    y0 = int(yy.min())
+    # ANCHOR: crown (y0) + stable median torso offset -> tracks the body's
+    # vertical bob but ignores the leg-spread and per-frame chest-edge noise.
+    seam_y = y0 + seam_off
+    by0 = seam_y - band_h // 3                      # mostly below the seam
+    by1 = by0 + band_h
     Gd = ndimage.binary_dilation(G, iterations=1)
     band = np.zeros_like(bop)
     band[max(0, by0):min(FRAME, by1), :] = True
