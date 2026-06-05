@@ -45,10 +45,10 @@ for d in north south northeast southwest east; do
   # NE source has an AI-drawn floor-shadow under the feet that the
   # bg-detection threshold misses.  --scrub-floor zeros medium-gray
   # low-sat pixels in the bottom 40% of the strip before Lanczos.
+  # v2.3.574: the northeast source was replaced with a cleaner run video
+  # that has NO floor-shadow, so scrub-floor is OFF for it now (it would
+  # otherwise eat the low-sat grey shoes in the bottom 40%).
   scrub_flag=""
-  if [ "$d" = "northeast" ]; then
-    scrub_flag="--scrub-floor"
-  fi
 
   # --bg-flood-from-edge restricts bg removal to pixels reachable
   # from the frame edge (per-frame); interior bg-colored islands like
