@@ -174,11 +174,12 @@ const BODY_DIR_SCALE = {
      which couldn't see the gear's size variation).  Body WIDTH is handled
      separately in the gear (normalize_idle_width.py, helmet kept native).
      Manual tweaks baked in: south x0.97, north x0.98. */
-  /* v2.3.570: idle gear re-extracted chain-free from the re-drawn source, then
-     body WIDTH normalized to the JOG armor's bulk -- the NARROWEST jog frame
-     (jMin, arms-at-side) per dir, NOT the bare body (too thin) and NOT the jog
-     median (arm-swing-inflated on side views).  Helmet kept native; SW already
-     at jog bulk so unchanged.  Heights here are unchanged (width != height). */
+  /* v2.3.571: NO width manipulation -- idle gear is kept at the ASPECT RATIO it
+     was DRAWN at and only scaled UNIFORMLY (diagonally) to a consistent rendered
+     height (~86px) by these per-dir factors.  The earlier per-axis width passes
+     (bare-body in v2.3.569, jog-bulk in v2.3.570) distorted the drawn art and
+     made dirs read too fat/skinny -- dropped.  scale.x == scale.y (STAND_WIDTH
+     all 1.0) so the drawn proportions are preserved exactly. */
   stand: { south: 1.136, east: 0.983, north: 1.039, northeast: 1.003, southwest: 0.983 },
   /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
      was bigger running than standing).  Crown-to-hip over-scaled the jog
