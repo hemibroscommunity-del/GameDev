@@ -168,12 +168,10 @@ const BODY_DIR_SCALE = {
      pauldrons) rendered 14% bigger than the others; bare-body scale couldn't
      account for armor height.  Brought NE down to match the armored cluster
      (~240px) so east no longer reads small next to it. */
-  /* v2.3.564: idle helmets scaled up to match the jog (scale_idle_helmet.py),
-     scales re-derived to keep ~240px height.  v2.3.566: north/NE helmet enlarge
-     REVERTED (user: didn't want those helmets larger) -> their scales return to
-     the original-helmet 240px values (north 1.144, NE 0.984); S/E/SW keep the
-     helmet-scaled values. */
-  stand: { south: 1.111, east: 1.057, north: 1.144, northeast: 0.984, southwest: 0.952 },
+  /* v2.3.567: user re-drew all idle sprites at correct proportions -> all the
+     scaling patches dropped (no helmet scale, no width stretch).  These scales
+     just equalize each new idle's armored height to ~240px (240 / gear height). */
+  stand: { south: 1.148, east: 0.964, north: 1.039, northeast: 0.984, southwest: 0.964 },
   /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
      was bigger running than standing).  Crown-to-hip over-scaled the jog
      because a running figure leans + spreads its legs, compressing vertical
@@ -197,8 +195,9 @@ function bodyDirScale(pose, dir) {
    -- some idle facings are drawn too narrow, so stretch the whole armored
    figure horizontally (the gear copies the body's scale.x, so it follows).
    Mirror dirs share the base value (W<-E, NW<-NE, SE<-SW). */
-/* v2.3.566: N/NE widths reduced 33% (1.50->1.00, 1.90->1.27) per user. */
-const STAND_WIDTH = { south: 1.10, east: 1.10, north: 1.00, northeast: 1.27, southwest: 1.00 };
+/* v2.3.567: all 1.0 -- the re-drawn idle sprites have correct proportions, so
+   no horizontal stretch is needed (was a patch for the old narrow idles). */
+const STAND_WIDTH = { south: 1.00, east: 1.00, north: 1.00, northeast: 1.00, southwest: 1.00 };
 function standWidth(pose, dir) {
   return pose === 'stand' ? (STAND_WIDTH[dir] || 1.0) : 1.0;
 }
