@@ -168,11 +168,11 @@ const BODY_DIR_SCALE = {
      pauldrons) rendered 14% bigger than the others; bare-body scale couldn't
      account for armor height.  Brought NE down to match the armored cluster
      (~240px) so east no longer reads small next to it. */
-  /* v2.3.561: all idle directions re-derived to one ARMORED render height
-     (~240px) -- measured each facing's armored figure height and set
-     scale = 240 / height, so every idle reads the same size (the user asked to
-     match idle heights like the unarmored normalization). */
-  stand: { south: 1.122, east: 1.077, north: 1.144, northeast: 0.984, southwest: 0.965 },
+  /* v2.3.564: idle helmets scaled up per direction to match the jog helmet
+     proportions (scale_idle_helmet.py), then idle render scales re-derived so
+     every facing still renders at the matched ~240px height -- bigger helmet
+     AND consistent overall size. */
+  stand: { south: 1.111, east: 1.057, north: 1.111, northeast: 0.964, southwest: 0.952 },
   /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
      was bigger running than standing).  Crown-to-hip over-scaled the jog
      because a running figure leans + spreads its legs, compressing vertical
