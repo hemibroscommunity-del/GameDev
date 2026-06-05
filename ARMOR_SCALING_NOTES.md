@@ -102,9 +102,30 @@ the leg issues.
 - Patches dropped but tools remain: `scale_idle_helmet.py` (unused),
   `STAND_WIDTH` values (all 1.0 now).
 
+## v2.3.576 — idle two-axis re-tune, idle chain belt, armour-view toggle
+- **Idle scale (per user, match jog bulk).**  `BODY_DIR_SCALE.stand` is the
+  uniform base; two per-dir IDLE-ONLY axes layer on top in `entityRenderer.js`:
+  `STAND_WIDTH` (x, "wider") + new `STAND_HEIGHT` (y, "shorter").  Mirror dirs
+  share the source value (W<-E, NW<-NE, SE<-SW), so a SE tweak == southwest.
+  Values: S +2%w/-2%h, E +50%w/-8%h, NE +50%w/-5%h, N +30%w/-5%h, SW +15%w/-5%h.
+  Applied to scale.x/scale.y on BOTH the local and remote player paths.
+- **Idle chain belt** (`tools/bake_idle_belt.py`).  Lays the same `chainbelt.png`
+  over the idle waist so standing matches the jog.  Anchors on the existing
+  black-waist blob: finds the WIDEST black row in the belt zone (0.42-0.66 H —
+  avoids the narrow under-breastplate sliver and any stray low black on side
+  views), centres a 0.13 H band there, tiles the chain across the blob width,
+  paints ONLY over black (never the steel arms), and despills leftover green AA
+  in the band.  Bumped `GEAR_VERSION` -> 2.3.576.
+- **Armour-view toggle** (debug).  Hotkey **G** + on-screen button (BroTown.jsx)
+  flip `window.__btHideArmor`; the local player path in `entityRenderer.js` then
+  skips `_placeGear` and shows the bare body + hair so the raw animation (e.g. the
+  new NE/NW jog) is inspectable.  Local player only.
+
 ## Version trail (key milestones)
 - Bare-body scale normalization: v2.3.537-544.
 - Body hidden + gap handling: v2.3.550-560.
 - Chain belt (user art) tuning: v2.3.558-563.
 - User re-drew all idle sprites: v2.3.567.
-- **Automated two-axis idle normalization (current): v2.3.569.**
+- Automated two-axis idle normalization: v2.3.569.
+- Jog chain belt: black backing removed, chain kept: v2.3.575.
+- **Idle re-tune + idle chain belt + armour-view toggle (current): v2.3.576.**

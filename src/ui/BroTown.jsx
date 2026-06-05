@@ -817,6 +817,20 @@ export var BroTown = function BroTown(_ref0) {
     _useState14 = _slicedToArray(_useState13, 2),
     showInfo = _useState14[0],
     setShowInfo = _useState14[1];
+  /* v2.3.576: debug toggle -- hide the worn armour so the bare body
+     animation (e.g. the new NE/NW jog) can be inspected.  Mirrored into
+     window.__btHideArmor, which entityRenderer reads each frame. */
+  var _useStateArmor = useState(false),
+    _useStateArmor2 = _slicedToArray(_useStateArmor, 2),
+    hideArmor = _useStateArmor2[0],
+    setHideArmor = _useStateArmor2[1];
+  var toggleArmorView = useCallback(function () {
+    setHideArmor(function (v) {
+      var nv = !v;
+      if (typeof window !== 'undefined') window.__btHideArmor = nv;
+      return nv;
+    });
+  }, []);
   var _useState15 = useState([]),
     _useState16 = _slicedToArray(_useState15, 2),
     chatLog = _useState16[0],
@@ -11540,6 +11554,13 @@ export var BroTown = function BroTown(_ref0) {
         setTimeout(function() {
           if (chatInputRef.current) chatInputRef.current.focus();
         }, 50);
+        return;
+      }
+
+      /* G — toggle armour view (debug: inspect the bare body animation) */
+      if (e.code === 'KeyG' && !e.repeat) {
+        e.preventDefault();
+        toggleArmorView();
         return;
       }
 
@@ -29032,7 +29053,19 @@ export var BroTown = function BroTown(_ref0) {
         transition: 'width 0.1s linear'
       }
     })));
-  }(), showPlayerList && /*#__PURE__*/React.createElement("div", {
+  }(), /*#__PURE__*/React.createElement("button", {
+    type: 'button',
+    onClick: toggleArmorView,
+    title: 'Toggle armour (hotkey: G) -- inspect the bare body animation',
+    style: {
+      position: 'fixed', top: 60, left: 8, zIndex: 9999,
+      padding: '6px 10px', fontSize: 11, fontWeight: 700, lineHeight: 1,
+      border: '1px solid rgba(255,255,255,.35)', borderRadius: 8,
+      background: hideArmor ? 'rgba(255,94,108,.9)' : 'rgba(0,0,0,.55)',
+      color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+      touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none'
+    }
+  }, hideArmor ? 'Armor: OFF (G)' : 'Armor: ON (G)'), showPlayerList && /*#__PURE__*/React.createElement("div", {
     className: "bt-plist"
   }, playerList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {

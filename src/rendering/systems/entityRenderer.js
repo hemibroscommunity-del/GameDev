@@ -206,9 +206,21 @@ function bodyDirScale(pose, dir) {
    Mirror dirs share the base value (W<-E, NW<-NE, SE<-SW). */
 /* v2.3.567: all 1.0 -- the re-drawn idle sprites have correct proportions, so
    no horizontal stretch is needed (was a patch for the old narrow idles). */
-const STAND_WIDTH = { south: 1.00, east: 1.00, north: 1.00, northeast: 1.00, southwest: 1.00 };
+/* v2.3.576: per-direction idle WIDEN pass (user-tuned to match the jog frames'
+   bulk).  Horizontal-only stretch applied on top of the uniform height scale;
+   the gear copies scale.x so the armour follows.  Mirror dirs share the source
+   value (W<-E, NW<-NE, SE<-SW).  east/NE widened most (drawn too narrow vs jog). */
+const STAND_WIDTH = { south: 1.02, east: 1.50, north: 1.30, northeast: 1.50, southwest: 1.15 };
 function standWidth(pose, dir) {
   return pose === 'stand' ? (STAND_WIDTH[dir] || 1.0) : 1.0;
+}
+/* v2.3.576: per-direction idle SHORTEN pass (vertical-only) -- the idle frames
+   render a touch taller than the matching jog frames, so trim height per dir to
+   line them up.  Applied to scale.y only (standWidth handles x); mirror dirs
+   share the source value.  Idle-pose only -- jog keeps its own height tuning. */
+const STAND_HEIGHT = { south: 0.98, east: 0.92, north: 0.95, northeast: 0.95, southwest: 0.95 };
+function standHeight(pose, dir) {
+  return pose === 'stand' ? (STAND_HEIGHT[dir] || 1.0) : 1.0;
 }
 
 /* Place a player's headwear sprite for this frame.  Shared by the local
@@ -2187,7 +2199,7 @@ export class EntityRenderer {
              player path via bodyDirScale (silhouette-height normalization). */
           const sizeMul = bodyDirScale(pose, dir) * 0.3515625;
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * standWidth(pose, dir);
-          spriteBody.scale.y = sizeMul;
+          spriteBody.scale.y = sizeMul * standHeight(pose, dir);
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
           body.visible = false;
@@ -2725,9 +2737,20 @@ export class EntityRenderer {
         /* bodyScale was computed at outer scope (see comment above).
            Applied here to the sprite scale; mirror flag flips x. */
         spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir);
-        spriteBody.scale.y = bodyScale;
+        spriteBody.scale.y = bodyScale * standHeight(pose, dir);
+        /* v2.3.576: debug "show me the bare character" toggle (hotkey/HUD
+           button in BroTown.jsx sets window.__btHideArmor).  Lets the user
+           inspect the raw body animation (e.g. the new NE/NW jog) with the
+           armour stripped off -- gear hidden, body + hair/hat shown. */
+        const _hideArmor = (typeof window !== 'undefined' && !!window.__btHideArmor);
         /* v2.3.503: layered gear, stacked over the body with its transform. */
-        _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
+        if (_hideArmor) {
+          if (display._gearLegs) display._gearLegs.visible = false;
+          if (display._gearChest) display._gearChest.visible = false;
+          if (display._gearShoulders) display._gearShoulders.visible = false;
+        } else {
+          _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
+        }
         /* No tint multiply — the sprites are pre-colored.  Multiplying
            by S.bodyTorso (default #2563eb) was darkening the avatar
            because Pixi's tint is a per-channel multiply against white.
@@ -2740,7 +2763,7 @@ export class EntityRenderer {
            the green-waist centroid (fill_gear_gaps.py), so hiding leaves no hole.
            Gated on the gear being placed so gear-less poses keep the body. */
         spriteBody.tint = 0xffffff;
-        _armorHidesBody = chestCoversHead(getEquip('chest')) && getEquip('legs') !== 'none'
+        _armorHidesBody = !_hideArmor && chestCoversHead(getEquip('chest')) && getEquip('legs') !== 'none'
           && display._gearChest && display._gearChest.visible
           && display._gearLegs && display._gearLegs.visible;
         spriteBody.visible = !_armorHidesBody;
@@ -2772,7 +2795,7 @@ export class EntityRenderer {
         if (display._shirtSprite) display._shirtSprite.visible = false;
         /* v2.3.526: a helmet-bearing chest piece (steelplate) covers the head --
            hide hair/hat/beard so they don't poke through the helmet. */
-        if (chestCoversHead(getEquip('chest'))) {
+        if (chestCoversHead(getEquip('chest')) && !_hideArmor) {
           if (display._headwearSprite) display._headwearSprite.visible = false;
           if (display._facialHairSprite) display._facialHairSprite.visible = false;
           if (display._hairSprite) display._hairSprite.visible = false;
