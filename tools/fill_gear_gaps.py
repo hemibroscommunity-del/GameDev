@@ -27,6 +27,9 @@ BAND_FRAC = 0.13          # belt height as fraction of figure height (fixed)
 CHAIN = Image.open('tools/posesheets/chainbelt.png').convert('RGBA')   # 706x96 strip
 
 pose, dir_ = sys.argv[1], sys.argv[2]
+# --no-backing: lay ONLY the chain (no black gap-fill / no enclosed-hole fill), so
+# the background shows behind the chain instead of a black backing.
+no_backing = '--no-backing' in sys.argv
 chest_p = f'public/sprites/gear/chest/steelplate/{pose}-{dir_}.png'
 legs_p = f'public/sprites/gear/legs/steelgreaves/{pose}-{dir_}.png'
 chest = Image.open(chest_p).convert('RGBA')
@@ -82,7 +85,7 @@ for i in range(n):
         continue
     y0 = int(yy.min())
     interior = enclosed(G)
-    if interior.any():
+    if interior.any() and not no_backing:
         cs[interior] = [0, 0, 0, 255]               # close every hole (neck etc.)
     by0 = y0 + seam_off - 22                         # chain top, nudged up 20px total
     band = np.zeros_like(bop)
@@ -91,7 +94,8 @@ for i in range(n):
     if not region.any():
         ca[:, i * FRAME:(i + 1) * FRAME] = cs
         continue
-    cs[region] = [0, 0, 0, 255]                      # black under the chain
+    if not no_backing:
+        cs[region] = [0, 0, 0, 255]                  # black under the chain
     xs = np.where(region.any(0))[0]
     rx0, rw = int(xs.min()), int(xs.max()) - int(xs.min()) + 1
     cw = chain_s.shape[1]
