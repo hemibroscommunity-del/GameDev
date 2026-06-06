@@ -242,8 +242,11 @@ function standHeight(pose, dir, armored) {
    figure's rendered height per facing to the SAME ~81px target as the idles, so
    stand and run read the same size.  scale.y only; mirror dirs share the source;
    ARMOUR-ONLY, same gate as standHeight.  v2.3.585: derived by
-   tools/measure_armored.py (height-only, all equal). */
-const JOG_HEIGHT = { south: 1.052, east: 0.985, north: 0.926, northeast: 1.059, southwest: 1.028 };
+   tools/measure_armored.py (height-only, all equal).
+   v2.3.587: NE re-calibrated on the whole-cycle MEAN (not the mid frame) --
+             its raised-knee frames towered to 90px; 1.059->0.977 brings the
+             cycle mean back in line with the other facings (~80px). */
+const JOG_HEIGHT = { south: 1.052, east: 0.985, north: 0.926, northeast: 0.977, southwest: 1.028 };
 function jogHeight(pose, dir, armored) {
   return (pose === 'jog' && armored) ? (JOG_HEIGHT[dir] || 1.0) : 1.0;
 }

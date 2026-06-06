@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw
 FRAME = 256
 LOCAL = 0.3515625
 
-# --- keep in sync with src/rendering/systems/entityRenderer.js (v2.3.586) ---
+# --- keep in sync with src/rendering/systems/entityRenderer.js (v2.3.587) ---
 BODY_DIR_SCALE = {
     'stand': {'south': 1.136, 'east': 0.983, 'north': 1.039, 'northeast': 1.003, 'southwest': 0.983},
     'jog':   {'south': 1.000, 'east': 1.157, 'north': 1.050, 'northeast': 1.126, 'southwest': 1.000},
@@ -22,7 +22,7 @@ BODY_DIR_SCALE = {
 STAND_WIDTH  = {'south': 1.060, 'east': 1.7325, 'north': 1.326, 'northeast': 1.654, 'southwest': 1.232}
 STAND_HEIGHT = {'south': 0.975, 'east': 0.945, 'north': 0.964, 'northeast': 0.946, 'southwest': 0.949}
 JOG_WIDTH    = {'northeast': 0.903, 'southwest': 0.95}
-JOG_HEIGHT   = {'south': 1.052, 'east': 0.985, 'north': 0.926, 'northeast': 1.059, 'southwest': 1.028}
+JOG_HEIGHT   = {'south': 1.052, 'east': 0.985, 'north': 0.926, 'northeast': 0.977, 'southwest': 1.028}
 
 # display order (compass-ish), with each facing's source dir + whether it mirrors
 FACINGS = [
@@ -39,7 +39,7 @@ FACINGS = [
 ap = argparse.ArgumentParser()
 ap.add_argument('--zoom', type=float, default=2.2)
 ap.add_argument('--bg', default='60,64,72')
-ap.add_argument('--out', default='tools/armored-board-v2.3.586.png')
+ap.add_argument('--out', default='tools/armored-board-v2.3.587.png')
 a = ap.parse_args()
 
 
@@ -101,7 +101,7 @@ W = labelw + cellw * ncol
 H = cellh * len(poses) + 24
 out = Image.new('RGBA', (W, H), bgc + (255,))
 dr = ImageDraw.Draw(out)
-dr.text((6, 6), 'v2.3.586', fill=(255, 255, 0, 255))
+dr.text((6, 6), 'v2.3.587', fill=(255, 255, 0, 255))
 
 # column headers
 for col, (name, _src, _mir) in enumerate(FACINGS):

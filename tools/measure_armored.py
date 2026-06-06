@@ -3,7 +3,7 @@ jog, using the EXACT entityRenderer.js scale math, and report the % bump each
 needs per axis to hit a common target.  Measures the full-res composite bbox
 then multiplies by the real scale factors -> no resampling error.
 
-Keep constants in sync with src/rendering/systems/entityRenderer.js (v2.3.586).
+Keep constants in sync with src/rendering/systems/entityRenderer.js (v2.3.587).
 """
 import numpy as np
 from PIL import Image
@@ -18,7 +18,7 @@ BODY_DIR_SCALE = {
 STAND_WIDTH  = {'south': 1.060, 'east': 1.7325, 'north': 1.326, 'northeast': 1.654, 'southwest': 1.232}
 STAND_HEIGHT = {'south': 0.975, 'east': 0.945, 'north': 0.964, 'northeast': 0.946, 'southwest': 0.949}
 JOG_WIDTH    = {'northeast': 0.903, 'southwest': 0.95}
-JOG_HEIGHT   = {'south': 1.052, 'east': 0.985, 'north': 0.926, 'northeast': 1.059, 'southwest': 1.028}
+JOG_HEIGHT   = {'south': 1.052, 'east': 0.985, 'north': 0.926, 'northeast': 0.977, 'southwest': 1.028}
 
 DIRS = ['south', 'east', 'north', 'northeast', 'southwest']
 
