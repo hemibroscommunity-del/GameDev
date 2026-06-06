@@ -49,10 +49,12 @@ const JOG_DURATION_BY_DIR = {
      (1563->1421), SW/SE +5% (1739->1656).  east unchanged.
      v2.3.544: south +3% more (848->823).
      v2.3.578: NE/NW +60% speed (1421->888) — the diagonal run read too
-     slow.  NW mirrors NE, so both speed up together. */
+     slow.  NW mirrors NE, so both speed up together.
+     v2.3.589: NE/NW -50% speed (888->1776) per user — the diagonal run
+     was playing too fast.  NW mirrors NE, so both slow together. */
   north: 808,
   south: 823,
-  northeast: 888,
+  northeast: 1776,
   east: 900,
   southwest: 1656,
 };
@@ -71,7 +73,7 @@ const ATTACK_DURATION_MS = 220;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
-const VERSION = 64; /* v2.3.577: NE jog drifted final frame removed (23->22; the torso over-rotated at the end); NW mirrors it */
+const VERSION = 65; /* v2.3.589: NE jog body resampled 22->16 (stutter dedup, shipped v2.3.588 but VERSION wasn't bumped); NW mirrors it */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
