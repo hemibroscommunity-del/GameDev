@@ -229,10 +229,23 @@ function standWidth(pose, dir, armored) {
    v2.3.576: S0.98 E0.92 N0.95 NE0.95 SW0.95.
    v2.3.577: E +5% taller (0.92->0.966), NE +5% taller (0.95->0.998),
              SW -2% shorter (0.95->0.931); N & S unchanged.
-   v2.3.584: S -2% shorter (0.98->0.960); N +12% taller (0.95->1.064) per user. */
-const STAND_HEIGHT = { south: 0.960, east: 0.966, north: 1.064, northeast: 0.998, southwest: 0.931 };
+   v2.3.584: S -2% shorter (0.98->0.960); N +12% taller (0.95->1.064) per user.
+   v2.3.585: re-derived by tools/measure_armored.py to normalize EVERY armored
+             idle to one rendered height (~81px median); widths left at natural
+             perspective per user ("height-only, all equal"). */
+const STAND_HEIGHT = { south: 0.975, east: 0.945, north: 0.964, northeast: 0.946, southwest: 0.949 };
 function standHeight(pose, dir, armored) {
   return (pose === 'stand' && armored) ? (STAND_HEIGHT[dir] || 1.0) : 1.0;
+}
+
+/* Per-direction JOG height (vertical-only) multiplier -- normalizes the running
+   figure's rendered height per facing to the SAME ~81px target as the idles, so
+   stand and run read the same size.  scale.y only; mirror dirs share the source;
+   ARMOUR-ONLY, same gate as standHeight.  v2.3.585: derived by
+   tools/measure_armored.py (height-only, all equal). */
+const JOG_HEIGHT = { south: 1.052, east: 0.985, north: 0.926, northeast: 1.059, southwest: 1.028 };
+function jogHeight(pose, dir, armored) {
+  return (pose === 'jog' && armored) ? (JOG_HEIGHT[dir] || 1.0) : 1.0;
 }
 
 /* Per-direction JOG width (horizontal-only) multiplier -- trims the running
@@ -2223,7 +2236,7 @@ export class EntityRenderer {
           /* v2.3.577: idle widen/shorten is armour-only (see local path). */
           const _remoteArmored = chestCoversHead(other.equip && other.equip.chest) && other.equip && other.equip.legs && other.equip.legs !== 'none';
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * standWidth(pose, dir, _remoteArmored) * jogWidth(pose, dir, _remoteArmored);
-          spriteBody.scale.y = sizeMul * standHeight(pose, dir, _remoteArmored);
+          spriteBody.scale.y = sizeMul * standHeight(pose, dir, _remoteArmored) * jogHeight(pose, dir, _remoteArmored);
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
           body.visible = false;
@@ -2771,7 +2784,7 @@ export class EntityRenderer {
         /* bodyScale was computed at outer scope (see comment above).
            Applied here to the sprite scale; mirror flag flips x. */
         spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _armoredIdle) * jogWidth(pose, dir, _armoredIdle);
-        spriteBody.scale.y = bodyScale * standHeight(pose, dir, _armoredIdle);
+        spriteBody.scale.y = bodyScale * standHeight(pose, dir, _armoredIdle) * jogHeight(pose, dir, _armoredIdle);
         /* v2.3.503: layered gear, stacked over the body with its transform. */
         if (_hideArmor) {
           if (display._gearLegs) display._gearLegs.visible = false;
