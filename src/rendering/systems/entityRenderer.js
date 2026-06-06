@@ -252,8 +252,8 @@ function jogHeight(pose, dir, armored) {
    figure's bulk per facing to line it up against its idle.  scale.x only;
    mirror dirs share the source (W<-E, NW<-NE, SE<-SW); ARMOUR-ONLY, same gate
    as standWidth.  v2.3.584: NE -5% narrower (covers NW), SW -5% narrower
-   (covers SE) per user. */
-const JOG_WIDTH = { northeast: 0.95, southwest: 0.95 };
+   (covers SE) per user.  v2.3.586: NE -5% more (0.95->0.903) per user. */
+const JOG_WIDTH = { northeast: 0.903, southwest: 0.95 };
 function jogWidth(pose, dir, armored) {
   return (pose === 'jog' && armored) ? (JOG_WIDTH[dir] || 1.0) : 1.0;
 }
