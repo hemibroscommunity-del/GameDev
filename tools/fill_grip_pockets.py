@@ -12,11 +12,12 @@ arm<->torso: opaque on left/right but open top/bottom -> too few sides) alone.
 
 Filled regions are additionally capped at --max-pocket px (connected component)
 so the pass can never web two limbs together.  RGB is inpainted from the nearest
-opaque pixel (same as the hole fill), alpha set to 255.
+BODY-METAL pixel (opaque AND luma > --metal-luma, so the dark outline rim is not
+used as the colour source), alpha set to 255 -> the filled curl is clean steel.
 
 Usage:
   python tools/fill_grip_pockets.py [--dist N] [--sides K] [--max-pocket N]
-                                    [--dry-run] sheet.png ...
+                                    [--metal-luma L] [--dry-run] sheet.png ...
 """
 import sys
 import numpy as np
@@ -40,7 +41,8 @@ def _hits_within(op, dy, dx, dist):
     return hit
 
 
-def fill_frame(arr, dist, sides, max_pocket, max_extent=16, min_fill=0.42):
+def fill_frame(arr, dist, sides, max_pocket, max_extent=16, min_fill=0.42,
+               metal_luma=80):
     op = arr[:, :, 3] > 128
     if not op.any():
         return 0
@@ -68,27 +70,31 @@ def fill_frame(arr, dist, sides, max_pocket, max_extent=16, min_fill=0.42):
                 pocket[comp] = False
     if not pocket.any():
         return 0
-    # Inpaint from INTERIOR metal, not the dark anti-aliased rim: the nearest
-    # opaque pixel to a concave notch is the black outline, which would leave a
-    # dark smudge in the fist.  Erode the opaque mask a couple px so the colour
-    # source is body metal; fall back to the full mask if erosion leaves nothing.
-    interior = ndimage.binary_erosion(op, iterations=2)
-    if not interior.any():
-        interior = op
-    idx = ndimage.distance_transform_edt(~interior, return_distances=False, return_indices=True)
+    # Inpaint from BODY METAL, not the dark anti-aliased rim: the nearest opaque
+    # pixel to a concave notch is the black outline, which leaves a dark smudge in
+    # the fist.  Build a "metal" mask = opaque AND luma above --metal-luma (drops
+    # the outline/shadow band) and pull colour from the nearest metal pixel, so
+    # the filled curl is clean steel.  Fall back to the full opaque mask if the
+    # luma gate leaves nothing.
+    rgb = arr[:, :, :3].astype(np.float32)
+    luma = 0.299 * rgb[:, :, 0] + 0.587 * rgb[:, :, 1] + 0.114 * rgb[:, :, 2]
+    metal = op & (luma > metal_luma)
+    if not metal.any():
+        metal = op
+    idx = ndimage.distance_transform_edt(~metal, return_distances=False, return_indices=True)
     src = arr[idx[0], idx[1]]
     arr[pocket] = src[pocket]
     arr[pocket, 3] = 255
     return int(pocket.sum())
 
 
-def process(path, dist, sides, max_pocket, dry):
+def process(path, dist, sides, max_pocket, metal_luma, dry):
     im = np.array(Image.open(path).convert('RGBA'))
     n = im.shape[1] // FRAME
     total = 0; fr = []
     for i in range(n):
         sl = im[:, i * FRAME:(i + 1) * FRAME]
-        f = fill_frame(sl, dist, sides, max_pocket)
+        f = fill_frame(sl, dist, sides, max_pocket, metal_luma=metal_luma)
         if f:
             fr.append((i, f)); total += f
     print(f"{'(dry) ' if dry else ''}{path}: filled {total}px pockets  {fr}")
@@ -98,14 +104,15 @@ def process(path, dist, sides, max_pocket, dry):
 
 if __name__ == '__main__':
     a = sys.argv[1:]
-    dist = 12; sides = 6; max_pocket = 180; dry = False; paths = []
+    dist = 12; sides = 6; max_pocket = 180; metal_luma = 80; dry = False; paths = []
     i = 0
     while i < len(a):
         t = a[i]
         if t == '--dist': dist = int(a[i + 1]); i += 2
         elif t == '--sides': sides = int(a[i + 1]); i += 2
         elif t == '--max-pocket': max_pocket = int(a[i + 1]); i += 2
+        elif t == '--metal-luma': metal_luma = int(a[i + 1]); i += 2
         elif t == '--dry-run': dry = True; i += 1
         else: paths.append(t); i += 1
     for p in paths:
-        process(p, dist, sides, max_pocket, dry)
+        process(p, dist, sides, max_pocket, metal_luma, dry)
