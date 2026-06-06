@@ -214,8 +214,9 @@ function bodyDirScale(pose, dir) {
    v2.3.576: S+2% E+50% N+30% NE+50% SW+15%.
    v2.3.577: E +5% (1.50->1.575), N +2% (1.30->1.326), NE +5% (1.50->1.575),
              SW +2% (1.15->1.173); south unchanged.
-   v2.3.579: E +10% wider (1.575->1.7325), SW +5% wider (1.173->1.232). */
-const STAND_WIDTH = { south: 1.02, east: 1.7325, north: 1.326, northeast: 1.575, southwest: 1.232 };
+   v2.3.579: E +10% wider (1.575->1.7325), SW +5% wider (1.173->1.232).
+   v2.3.580: S +5% wider (1.02->1.071). */
+const STAND_WIDTH = { south: 1.071, east: 1.7325, north: 1.326, northeast: 1.575, southwest: 1.232 };
 function standWidth(pose, dir, armored) {
   return (pose === 'stand' && armored) ? (STAND_WIDTH[dir] || 1.0) : 1.0;
 }
