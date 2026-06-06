@@ -288,7 +288,8 @@ function loadImg(url) {
 
 function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
   _bodySheets[sheetKey] = 'loading';
-  loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}`).then(img => {
+  /* Returns an always-resolving promise so a full preload can await it. */
+  return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}`).then(img => {
     const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
@@ -339,6 +340,31 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
     if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT);
   }
 }
+/** Preload the recolored body for the current combo across all base dirs for
+ *  stand + jog, so an UNARMOURED player (or any moment the body shows) never
+ *  flashes the default-skin frame when first turning/jogging in a direction.
+ *  Resolves immediately for the default combo (base sheets are used as-is). */
+export function preloadBodyAll() {
+  return Promise.all([import('./traits/shirtCatalog.js'), import('./traits/shirtColorCatalog.js')])
+    .then(([sc, scc]) => {
+      const shirtId = sc.getShirt(), colorId = scc.getShirtColor();
+      const shirtT = scc.shirtFill(shirtId, colorId);
+      const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
+      const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+      if (!skinT && !pantsT && !shoesT && !shirtT) return; /* default combo: nothing to bake */
+      const shKey = shirtT ? (shirtId + '-' + colorId) : 'none';
+      const tasks = [];
+      for (const pose of ['stand', 'jog']) {
+        for (const dir of SOURCE_DIRS) {
+          const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/' + shKey + '|' + pose + '/' + dir;
+          if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT));
+        }
+      }
+      return Promise.all(tasks);
+    })
+    .catch(() => {});
+}
+
 /* Resolve the current shirt via dynamic import (static import would form a
    cycle: playerSkins -> shirtColorCatalog -> characterPortrait -> playerSkins),
    then prewarm the spawn pose with the full combo so there's no skin-torso

@@ -14,6 +14,7 @@
  */
 
 import { Rectangle, Texture } from 'pixi.js';
+import { GEAR_SLOTS, getEquip } from './gearCatalog.js';
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -33,7 +34,9 @@ function loadImg(url) {
 
 function buildSheet(key, slot, item, pose, dir) {
   _sheets[key] = 'loading';
-  loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}`).then(img => {
+  /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
+     that want to await a full preload don't hang on a 404. */
+  return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}`).then(img => {
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
     src.autoGenerateMipmaps = true;
@@ -67,4 +70,28 @@ export function prewarmGear(slot, item) {
     const key = slot + '/' + item + '/stand/' + dir;
     if (_sheets[key] === undefined) buildSheet(key, slot, item, 'stand', dir);
   }
+}
+
+/** Preload EVERY (pose, dir) sheet for the currently-equipped gear so the
+ *  armoured figure never falls back to the bare body when the player first
+ *  turns/jogs in a fresh direction (the gear sheets were previously lazy-
+ *  loaded on first use, which read as an armour->unarmoured flicker).
+ *  Returns a promise that resolves once all sheets are baked (or 404'd).
+ *  Poses limited to those the gear set actually ships (stand + jog) to avoid
+ *  spurious 404s; extend if a gear item gains hit/attack sheets. */
+export function preloadGear() {
+  const POSES = ['stand', 'jog'];
+  const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
+  const tasks = [];
+  for (const slot of GEAR_SLOTS) {
+    const item = getEquip(slot);
+    if (!item || item === 'none') continue;
+    for (const pose of POSES) {
+      for (const dir of DIRS) {
+        const key = slot + '/' + item + '/' + pose + '/' + dir;
+        if (_sheets[key] === undefined) tasks.push(buildSheet(key, slot, item, pose, dir));
+      }
+    }
+  }
+  return Promise.all(tasks);
 }

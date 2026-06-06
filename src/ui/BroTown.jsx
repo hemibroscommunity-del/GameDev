@@ -26,7 +26,7 @@ import { eatBus } from './mobile/eatBus.js';
 import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
-import { initPixiRenderer } from '@/rendering/pixiRenderer.js';
+import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
 import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
@@ -408,6 +408,11 @@ export var BroTown = function BroTown(_ref0) {
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
   var pixiRef = useRef(null);
+  /* Promise that resolves once the local player's avatar assets (body,
+     recolored skin, equipped gear for every direction, weapon, shield) are
+     fully baked.  The intro overlay holds until this settles so the player
+     never sees the armour->unarmoured flicker on first turn. */
+  var introWaitRef = useRef(null);
   /* PixiJS is the only render path now — Canvas 2D fallback was
      removed once every system finished migrating.  If Pixi fails
      to init, the game logs the error and continues without a
@@ -13484,6 +13489,9 @@ export var BroTown = function BroTown(_ref0) {
       var _p = new URLSearchParams(window.location.search);
       if (_p.get('debug') === '1') _skipIntro = true;
     } catch (e) {}
+    /* Kick off the full avatar-asset preload now (equip is finalized at this
+       point) so the intro overlay can hold until it's flicker-free. */
+    try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
     if (!_skipIntro) setShowIntro(true);
   };
 
@@ -13604,6 +13612,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "PLAY")));
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
+    waitFor: introWaitRef.current,
     onComplete: function onComplete() { return setShowIntro(false); }
   }), /*#__PURE__*/React.createElement("div", {
     className: "brotown-wrap",

@@ -17,6 +17,27 @@ import { loadAllVariantSprites } from './monsterVariantSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
 import { loadShieldSprites } from './shieldSprites.js';
 import { loadImageZoneMaps } from './tiledMaps.js';
+import { preloadGear } from './gearSheets.js';
+import { preloadBodyAll } from './playerSkins.js';
+
+/**
+ * Preload every player-avatar asset that would otherwise stream in lazily and
+ * flicker on first use — the body sheets, the recolored-skin body, the
+ * equipped gear (ALL poses + directions), weapon icons, shield, and hand
+ * anchors.  Returns a promise that settles once everything is baked, so the
+ * intro overlay can hold until the avatar is guaranteed flicker-free.
+ * Uses allSettled so a single missing asset can't stall the gate.
+ */
+export function preloadPlayerAssets() {
+  return Promise.allSettled([
+    loadPlayerSprites(),
+    loadWeaponSprites(),
+    loadShieldSprites(),
+    loadPlayerAnchors(),
+    preloadGear(),
+    preloadBodyAll(),
+  ]);
+}
 
 /**
  * Initializes the PixiJS renderer.
