@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw
 FRAME = 256
 LOCAL = 0.3515625
 
-# --- keep in sync with src/rendering/systems/entityRenderer.js (v2.3.589) ---
+# --- keep in sync with src/rendering/systems/entityRenderer.js (v2.3.590) ---
 BODY_DIR_SCALE = {
     'stand': {'south': 1.136, 'east': 0.983, 'north': 1.039, 'northeast': 1.003, 'southwest': 0.983},
     'jog':   {'south': 1.000, 'east': 1.157, 'north': 1.050, 'northeast': 1.126, 'southwest': 1.000},
@@ -39,7 +39,7 @@ FACINGS = [
 ap = argparse.ArgumentParser()
 ap.add_argument('--zoom', type=float, default=2.2)
 ap.add_argument('--bg', default='60,64,72')
-ap.add_argument('--out', default='tools/armored-board-v2.3.589.png')
+ap.add_argument('--out', default='tools/armored-board-v2.3.590.png')
 a = ap.parse_args()
 
 
@@ -101,7 +101,7 @@ W = labelw + cellw * ncol
 H = cellh * len(poses) + 24
 out = Image.new('RGBA', (W, H), bgc + (255,))
 dr = ImageDraw.Draw(out)
-dr.text((6, 6), 'v2.3.589', fill=(255, 255, 0, 255))
+dr.text((6, 6), 'v2.3.590', fill=(255, 255, 0, 255))
 
 # column headers
 for col, (name, _src, _mir) in enumerate(FACINGS):
