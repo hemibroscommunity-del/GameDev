@@ -192,7 +192,8 @@ const BODY_DIR_SCALE = {
      legs.  Hip-span said 1.22 (too big), full-height 0.967 (a bit small) --
      truth sits just above the full-height end. */
   /* east -3% (1.218->1.181, covers west via mirror) v2.3.542 per user. */
-  jog:   { south: 1.000, east: 1.181, north: 1.050, northeast: 1.126, southwest: 1.000 },
+  /* east -2% uniform (1.181->1.157) v2.3.584 per user (covers west via mirror). */
+  jog:   { south: 1.000, east: 1.157, north: 1.050, northeast: 1.126, southwest: 1.000 },
 };
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
@@ -215,8 +216,10 @@ function bodyDirScale(pose, dir) {
    v2.3.577: E +5% (1.50->1.575), N +2% (1.30->1.326), NE +5% (1.50->1.575),
              SW +2% (1.15->1.173); south unchanged.
    v2.3.579: E +10% wider (1.575->1.7325), SW +5% wider (1.173->1.232).
-   v2.3.580: S +5% wider (1.02->1.071). */
-const STAND_WIDTH = { south: 1.071, east: 1.7325, north: 1.326, northeast: 1.575, southwest: 1.232 };
+   v2.3.580: S +5% wider (1.02->1.071).
+   v2.3.584: S -1% narrower (1.071->1.060); NE +5% wider (1.575->1.654, covers
+             NW via mirror) per user. */
+const STAND_WIDTH = { south: 1.060, east: 1.7325, north: 1.326, northeast: 1.654, southwest: 1.232 };
 function standWidth(pose, dir, armored) {
   return (pose === 'stand' && armored) ? (STAND_WIDTH[dir] || 1.0) : 1.0;
 }
@@ -225,10 +228,21 @@ function standWidth(pose, dir, armored) {
    scale.y only (standWidth handles x); mirror dirs share the source; ARMOUR-ONLY.
    v2.3.576: S0.98 E0.92 N0.95 NE0.95 SW0.95.
    v2.3.577: E +5% taller (0.92->0.966), NE +5% taller (0.95->0.998),
-             SW -2% shorter (0.95->0.931); N & S unchanged. */
-const STAND_HEIGHT = { south: 0.98, east: 0.966, north: 0.95, northeast: 0.998, southwest: 0.931 };
+             SW -2% shorter (0.95->0.931); N & S unchanged.
+   v2.3.584: S -2% shorter (0.98->0.960); N +12% taller (0.95->1.064) per user. */
+const STAND_HEIGHT = { south: 0.960, east: 0.966, north: 1.064, northeast: 0.998, southwest: 0.931 };
 function standHeight(pose, dir, armored) {
   return (pose === 'stand' && armored) ? (STAND_HEIGHT[dir] || 1.0) : 1.0;
+}
+
+/* Per-direction JOG width (horizontal-only) multiplier -- trims the running
+   figure's bulk per facing to line it up against its idle.  scale.x only;
+   mirror dirs share the source (W<-E, NW<-NE, SE<-SW); ARMOUR-ONLY, same gate
+   as standWidth.  v2.3.584: NE -5% narrower (covers NW), SW -5% narrower
+   (covers SE) per user. */
+const JOG_WIDTH = { northeast: 0.95, southwest: 0.95 };
+function jogWidth(pose, dir, armored) {
+  return (pose === 'jog' && armored) ? (JOG_WIDTH[dir] || 1.0) : 1.0;
 }
 
 /* Place a player's headwear sprite for this frame.  Shared by the local
@@ -2208,7 +2222,7 @@ export class EntityRenderer {
           const sizeMul = bodyDirScale(pose, dir) * 0.3515625;
           /* v2.3.577: idle widen/shorten is armour-only (see local path). */
           const _remoteArmored = chestCoversHead(other.equip && other.equip.chest) && other.equip && other.equip.legs && other.equip.legs !== 'none';
-          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * standWidth(pose, dir, _remoteArmored);
+          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * standWidth(pose, dir, _remoteArmored) * jogWidth(pose, dir, _remoteArmored);
           spriteBody.scale.y = sizeMul * standHeight(pose, dir, _remoteArmored);
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
@@ -2756,7 +2770,7 @@ export class EntityRenderer {
         const _armoredIdle = !_hideArmor && chestCoversHead(getEquip('chest')) && getEquip('legs') !== 'none';
         /* bodyScale was computed at outer scope (see comment above).
            Applied here to the sprite scale; mirror flag flips x. */
-        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _armoredIdle);
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _armoredIdle) * jogWidth(pose, dir, _armoredIdle);
         spriteBody.scale.y = bodyScale * standHeight(pose, dir, _armoredIdle);
         /* v2.3.503: layered gear, stacked over the body with its transform. */
         if (_hideArmor) {
