@@ -293,7 +293,10 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
     const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
-    src.autoGenerateMipmaps = true;
+    /* No mipmaps: matches gearSheets.js -- the body is drawn minified, and mip
+       averaging erodes thin features (hands) toward transparent + bleeds across
+       gutter-less frame seams, causing flicker/holes while running. */
+    src.autoGenerateMipmaps = false;
     const frames = Math.max(1, Math.floor(cv.width / FRAME_W));
     const out = [];
     for (let i = 0; i < frames; i++) {

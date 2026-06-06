@@ -39,7 +39,13 @@ function buildSheet(key, slot, item, pose, dir) {
   return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}`).then(img => {
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
-    src.autoGenerateMipmaps = true;
+    /* No mipmaps: the figure is drawn heavily minified (256px frame -> ~90px on
+       screen), so a mip level would be sampled.  Mip averaging erodes the alpha
+       of thin features (fingers, the metal between knuckle gaps) toward 0 and
+       bleeds across the gutter-less frame seams, which made the hands flicker
+       with see-through holes / clipped edges while running.  Sampling full-res
+       alpha fixes it.  See gear-layer-spec.md. */
+    src.autoGenerateMipmaps = false;
     const frames = Math.max(1, Math.floor(img.width / FRAME_W));
     const out = [];
     for (let i = 0; i < frames; i++) {
