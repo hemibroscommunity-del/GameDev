@@ -2870,7 +2870,6 @@ export class EntityRenderer {
         spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _armoredIdle) * jogWidth(pose, dir, _armoredIdle);
         spriteBody.scale.y = bodyScale * standHeight(pose, dir, _armoredIdle) * jogHeight(pose, dir, _armoredIdle);
         spriteBody.tint = 0xffffff;
-        spriteBody.visible = false;
         if (_hideArmor) {
           if (display._gearLegs) display._gearLegs.visible = false;
           if (display._gearChest) display._gearChest.visible = false;
@@ -2879,12 +2878,19 @@ export class EntityRenderer {
         } else {
           _placeGear(display, { head: getEquip('head'), legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
         }
-        /* Each slot's armour hides only its own body region; an unequipped slot
-           reveals that region (helmet off -> bare head). */
+        /* v2.3.610: revert to the single full-body sprite (provably aligned -- one
+           transform, gear pixel-aligned to it).  The per-region sub-sprites kept
+           vertically misaligning in the live render, so the body is one sprite
+           again: shown unless the FULL set covers it.  An unequipped piece still
+           reveals that part of the body (helmet off -> bare head); covered parts
+           just keep the small underbody edge until per-region is reworked with the
+           preview harness. */
+        _hideBodyRegions(display);
         const _covHead = !_hideArmor && headCoversHead(getEquip('head')) && display._gearHead && display._gearHead.visible;
         const _covChest = !_hideArmor && getEquip('chest') !== 'none' && display._gearChest && display._gearChest.visible;
         const _covLegs = !_hideArmor && getEquip('legs') !== 'none' && display._gearLegs && display._gearLegs.visible;
-        _armorHidesBody = _placeBodyRegions(display, spriteBody, tex, { head: !_covHead, torso: !_covChest, legs: !_covLegs });
+        _armorHidesBody = _covHead && _covChest && _covLegs;
+        spriteBody.visible = !_armorHidesBody;
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
