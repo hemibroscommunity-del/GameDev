@@ -68,17 +68,36 @@ def frame(slot, pose, d, i, nudge=(0, 0)):
     return cell
 
 
-def composite(pose, d, i, worn, nudges):
-    """One 256 frame composited as the renderer would."""
+def composite(pose, d, i, worn, nudges, mask_dilate=5):
+    """One 256 frame composited as the renderer would.
+    v2: erase the body wherever a worn piece's silhouette (dilated by
+    mask_dilate px to swallow the per-frame AI misalignment) covers, so the
+    body never pokes past an armour edge; the body still shows in bare
+    regions.  Then the armour is drawn on top."""
+    from scipy import ndimage
     full = worn['head'] and worn['chest'] and worn['legs']
-    o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
-    if not full:
-        b = frame('body', pose, d, i)
-        if b: o.alpha_composite(b)
+    pieces = {}
     for slot in ('legs', 'chest', 'head'):
         if worn[slot]:
             f = frame(slot, pose, d, i, nudges.get(slot, (0, 0)))
-            if f: o.alpha_composite(f)
+            if f is not None:
+                pieces[slot] = np.array(f)
+    o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
+    if not full:
+        b = frame('body', pose, d, i)
+        if b is not None:
+            ba = np.array(b)
+            if pieces and mask_dilate >= 0:
+                cover = np.zeros((FRAME, FRAME), bool)
+                for arr in pieces.values():
+                    cover |= arr[:, :, 3] > 30
+                if mask_dilate > 0:
+                    cover = ndimage.binary_dilation(cover, iterations=mask_dilate)
+                ba[cover, 3] = 0           # erase body under/just-outside the armour
+            o.alpha_composite(Image.fromarray(ba))
+    for slot in ('legs', 'chest', 'head'):
+        if slot in pieces:
+            o.alpha_composite(Image.fromarray(pieces[slot]))
     return o
 
 
@@ -92,7 +111,7 @@ def fit_scale(pose, d, worn):
     return base * sw * jw, base * sh * jh
 
 
-def render_dir(pose, d, worn, nudges, zoom):
+def render_dir(pose, d, worn, nudges, zoom, mask_dilate=5):
     n = n_frames(pose, d)
     if not n:
         return None
@@ -100,7 +119,7 @@ def render_dir(pose, d, worn, nudges, zoom):
     sx *= zoom * 6; sy *= zoom * 6                 # *6 so small figures are visible
     cells = []
     for i in range(n):
-        c = composite(pose, d, i, worn, nudges)
+        c = composite(pose, d, i, worn, nudges, mask_dilate)
         cells.append(c.resize((max(1, int(FRAME * sx)), max(1, int(FRAME * sy))), Image.NEAREST))
     # shared bbox across frames so every cell is the same size + baseline
     acc = None
@@ -160,13 +179,14 @@ if __name__ == '__main__':
     ap.add_argument('--nudge-chest', nargs=2, type=int, default=[0, 0])
     ap.add_argument('--nudge-legs', nargs=2, type=int, default=[0, 0])
     ap.add_argument('--zoom', type=float, default=1.0)
+    ap.add_argument('--mask-dilate', type=int, default=4)
     ap.add_argument('--out', default='tools/armorframes-{dir}-{pose}.png')
     a = ap.parse_args()
     worn = {'head': bool(a.head), 'chest': bool(a.chest), 'legs': bool(a.legs)}
     nudges = {'head': tuple(a.nudge_head), 'chest': tuple(a.nudge_chest), 'legs': tuple(a.nudge_legs)}
     dirs = DIRS if a.dir == 'all' else [a.dir]
     for d in dirs:
-        img = render_dir(a.pose, d, worn, nudges, a.zoom)
+        img = render_dir(a.pose, d, worn, nudges, a.zoom, a.mask_dilate)
         if img:
             out = a.out.format(dir=d, pose=a.pose)
             img.save(out)

@@ -392,6 +392,47 @@ function _bodyRegionTex(bodyTex, region) {
   }
   return m[region];
 }
+/* v2.3.611: masked body.  The AI-drawn armour frames are a few px off the body
+   frames, so the body pokes past the plate edges.  Erase the body wherever the
+   worn armour (dilated by `dilate` px to swallow the misalignment) covers, so it
+   can never poke; the body still shows in bare regions.  Computed on a canvas
+   and cached per (body-frame, loadout) -- cheap, recomputed only on a cache
+   miss.  Falls back to the raw body texture if pixel access fails. */
+const _maskedBodyCache = new Map();
+function _maskedBodyFrame(bodyTex, worn, dilate) {
+  if (!bodyTex || !worn.length) return bodyTex;
+  let bres;
+  try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { bres = null; }
+  if (!bres) return bodyTex;
+  const key = (bodyTex.uid != null ? bodyTex.uid : '') + '|' + worn.map(w => w.k).join(',') + '|' + dilate;
+  const hit = _maskedBodyCache.get(key);
+  if (hit) return hit;
+  let cv;
+  try {
+    cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
+    const ctx = cv.getContext('2d');
+    const bf = bodyTex.frame;
+    ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
+    ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
+    for (const w of worn) {
+      const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
+      const gf = gt.frame;
+      for (let dx = -dilate; dx <= dilate; dx++)
+        for (let dy = -dilate; dy <= dilate; dy++)
+          ctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, dy, 256, 256);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  } catch (e) { return bodyTex; }
+  const t = Texture.from(cv);
+  _maskedBodyCache.set(key, t);
+  if (_maskedBodyCache.size > 600) {
+    const k0 = _maskedBodyCache.keys().next().value;
+    const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
+    try { old.destroy(true); } catch (e) { /* ignore */ }
+  }
+  return t;
+}
+
 const _REGION_SPR = { head: '_bodyHead', torso: '_bodyTorso', legs: '_bodyLegs' };
 /* Draw the body via its three region sprites.  `show` = {head,torso,legs}.
    v2.3.609: the regions use the SAME transform as the reference sprite `sb`
@@ -2890,6 +2931,20 @@ export class EntityRenderer {
         const _covChest = !_hideArmor && getEquip('chest') !== 'none' && display._gearChest && display._gearChest.visible;
         const _covLegs = !_hideArmor && getEquip('legs') !== 'none' && display._gearLegs && display._gearLegs.visible;
         _armorHidesBody = _covHead && _covChest && _covLegs;
+        /* v2.3.611: erase the body under the worn armour (dilated) so it never
+           pokes past the misaligned plate edges; bare regions still show. */
+        const _worn = [];
+        if (!_hideArmor) {
+          for (const _sl of ['head', 'chest', 'legs']) {
+            const _it = getEquip(_sl);
+            if (_it && _it !== 'none') {
+              const _gt = getGearFrame(_sl, _it, pose, dir, frameIdx);
+              if (_gt) _worn.push({ k: _sl + ':' + _it, tex: _gt });
+            }
+          }
+        }
+        const _bodyTex = (!_armorHidesBody && _worn.length) ? _maskedBodyFrame(tex, _worn, 4) : tex;
+        if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         spriteBody.visible = !_armorHidesBody;
         body.visible = false;
         if (display._procDrawn) {
