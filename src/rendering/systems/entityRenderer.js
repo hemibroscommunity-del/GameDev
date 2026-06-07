@@ -394,12 +394,13 @@ function _bodyRegionTex(bodyTex, region) {
 }
 const _REGION_SPR = { head: '_bodyHead', torso: '_bodyTorso', legs: '_bodyLegs' };
 /* Draw the body via its three region sprites.  `show` = {head,torso,legs}.
-   bodyTex is the full body frame; sb is the (invisible) reference sprite that
-   carries position + the ARMOUR-fit scale (the gear copies it).  Returns true
-   if no region is shown (body fully covered). */
-function _placeBodyRegions(display, sb, bodyTex, bodyScale, mirror, show) {
-  const nakedSX = (mirror ? -1 : 1) * bodyScale, nakedSY = bodyScale;
-  const baseY = sb.y + 128 * (sb.scale.y - nakedSY);   // bottom-align naked body to the gear feet
+   v2.3.609: the regions use the SAME transform as the reference sprite `sb`
+   (position + scale), so they are exactly the body in three pieces -- they
+   always reconstruct it and stay pixel-aligned with each other AND the gear
+   (which copies sb's transform).  This removes the vertical "cloning" the
+   earlier naked-scale offset caused.  Returns true if no region is shown
+   (body fully covered). */
+function _placeBodyRegions(display, sb, bodyTex, show) {
   let anyShown = false;
   for (const region of ['head', 'torso', 'legs']) {
     const spr = display[_REGION_SPR[region]];
@@ -409,9 +410,9 @@ function _placeBodyRegions(display, sb, bodyTex, bodyScale, mirror, show) {
     if (!t) { spr.visible = false; continue; }
     if (spr.texture !== t) spr.texture = t;
     const [r0, r1] = REGION_ROWS[region];
-    spr.scale.x = nakedSX; spr.scale.y = nakedSY;
+    spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
     spr.x = sb.x;
-    spr.y = baseY + ((r0 + r1) / 2 - 128) * nakedSY;
+    spr.y = sb.y + ((r0 + r1) / 2 - 128) * sb.scale.y;   // band's centre in the body's own transform
     spr.tint = sb.tint;
     spr.visible = true;
     anyShown = true;
@@ -2860,15 +2861,14 @@ export class EntityRenderer {
            inspect the raw body animation (e.g. the new NE/NW jog) with the
            armour stripped off -- gear hidden, body + hair/hat shown. */
         const _hideArmor = (typeof window !== 'undefined' && !!window.__btHideArmor);
-        /* v2.3.608: spriteBody is the INVISIBLE reference -- it carries the
-           position + the ARMOUR-fit scale the gear copies.  The visible body is
-           drawn by the region sprites (head/torso/legs) at NAKED scale, so a
-           bare region keeps naked proportions even next to a plate piece.
-           Armour-fit is used whenever any armour is worn (gear + bottom-align);
-           naked scale otherwise. */
-        const _anyArmor = !_hideArmor && (getEquip('head') !== 'none' || getEquip('chest') !== 'none' || getEquip('legs') !== 'none');
-        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _anyArmor) * jogWidth(pose, dir, _anyArmor);
-        spriteBody.scale.y = bodyScale * standHeight(pose, dir, _anyArmor) * jogHeight(pose, dir, _anyArmor);
+        /* v2.3.609: ONE transform for the whole figure.  spriteBody is the
+           invisible reference (position + scale); the visible body is the three
+           region sprites and the gear, all sharing this transform so they stay
+           pixel-aligned (no cloning).  Armour-fit scale applies when the bulk
+           pieces (chest+legs) are worn; naked/uniform otherwise. */
+        const _armoredIdle = !_hideArmor && getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _armoredIdle) * jogWidth(pose, dir, _armoredIdle);
+        spriteBody.scale.y = bodyScale * standHeight(pose, dir, _armoredIdle) * jogHeight(pose, dir, _armoredIdle);
         spriteBody.tint = 0xffffff;
         spriteBody.visible = false;
         if (_hideArmor) {
@@ -2884,7 +2884,7 @@ export class EntityRenderer {
         const _covHead = !_hideArmor && headCoversHead(getEquip('head')) && display._gearHead && display._gearHead.visible;
         const _covChest = !_hideArmor && getEquip('chest') !== 'none' && display._gearChest && display._gearChest.visible;
         const _covLegs = !_hideArmor && getEquip('legs') !== 'none' && display._gearLegs && display._gearLegs.visible;
-        _armorHidesBody = _placeBodyRegions(display, spriteBody, tex, bodyScale, mirror, { head: !_covHead, torso: !_covChest, legs: !_covLegs });
+        _armorHidesBody = _placeBodyRegions(display, spriteBody, tex, { head: !_covHead, torso: !_covChest, legs: !_covLegs });
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
