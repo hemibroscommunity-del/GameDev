@@ -8,7 +8,7 @@ import { ChatLauncher } from './mobile/ChatLauncher.jsx';
 import { XpFlyOverlay } from './XpFlyOverlay.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
-import { generateMockInventory, generateMockEquipped } from './mobile/mockItems.js';
+import { generateMockInventory, generateMockEquipped, makeItem } from './mobile/mockItems.js';
 import { InspectCard } from './mobile/InspectCard.jsx';
 import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
@@ -171,13 +171,20 @@ export const GameApp = () => {
       const it = gearItems.find(g => g.slot === slot && g.gearId === cur) || null;
       if (it && !inventoryBus.state.equipped[slot]) inventoryBus.setEquipped(slot, it);
     });
-    // make the un-equipped gear items available in the inventory list
-    const haveIds = new Set([
-      ...inventoryBus.state.items.map(i => i.id),
-      ...Object.values(inventoryBus.state.equipped).filter(Boolean).map(i => i.id),
-    ]);
-    const add = gearItems.filter(g => !haveIds.has(g.id));
-    if (add.length) inventoryBus.setItems([...inventoryBus.state.items, ...add]);
+    // First load: seed a mock inventory so the surface has things to test with
+    // (weapons/potions + extra armor in each slot that maps to real gear art).
+    if (!inventoryBus.state.items.length) {
+      const equippedIds = new Set(Object.values(inventoryBus.state.equipped).filter(Boolean).map(i => i.id));
+      const mock = generateMockInventory(24);
+      const extraArmor = [
+        makeItem('armor', { name: 'Steel Helm',     slot: 'head',  gearId: 'steelhelm' }),
+        makeItem('armor', { name: 'Steel Plate',    slot: 'chest', gearId: 'steelplate' }),
+        makeItem('armor', { name: 'Test Plate',     slot: 'chest', gearId: 'testplate' }),
+        makeItem('armor', { name: 'Steel Greaves',  slot: 'legs',  gearId: 'steelgreaves' }),
+      ];
+      const avail = [...mock, ...extraArmor, ...gearItems].filter(g => !equippedIds.has(g.id));
+      inventoryBus.setItems(avail);
+    }
     // keep the renderer's gear slots in sync with the inventory equips
     const sync = () => {
       ['head', 'chest', 'legs'].forEach((slot) => {

@@ -20,7 +20,7 @@ const id = () => `mock_${Date.now().toString(36)}_${seq++}`;
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const ri = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 
-const makeItem = (type, opts = {}) => {
+export const makeItem = (type, opts = {}) => {
   const tier = opts.tier ?? ri(1, 9);
   const quality = opts.quality ?? pick(QUALITIES);
   const stats = {};
@@ -33,9 +33,15 @@ const makeItem = (type, opts = {}) => {
     id: id(),
     type,
     subtype: type === 'weapon' ? pick(['sword', 'sword', 'bow', 'staff']) : null,
-    /* armor equips into one of the body slots (head/chest/legs). */
-    slot: type === 'armor' ? (opts.slot || pick(['head', 'chest', 'legs'])) : null,
-    gearId: opts.gearId || null,
+    /* armor equips into one of the body slots (head/chest/legs); map to a real
+       gear sheet id so equipping it actually shows on the character. */
+    ...(function () {
+      if (type !== 'armor') return { slot: null, gearId: opts.gearId || null };
+      const slot = opts.slot || pick(['head', 'chest', 'legs']);
+      const GEAR_BY_SLOT = { head: ['steelhelm'], chest: ['steelplate', 'testplate'], legs: ['steelgreaves'] };
+      const gearId = opts.gearId || pick(GEAR_BY_SLOT[slot] || ['steelplate']);
+      return { slot, gearId };
+    })(),
     name: opts.name || pick(NAMES[type] || ['Thing']),
     tier,
     quality,
