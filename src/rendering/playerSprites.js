@@ -53,10 +53,11 @@ const JOG_DURATION_BY_DIR = {
      v2.3.589: NE/NW -50% speed (888->1776) per user — the diagonal run
      was playing too fast.  NW mirrors NE, so both slow together.
      v2.3.598: NE/NW +50% speed (1776->1184) per user — 1776 read too slow;
-     1.5x quicker, between the old fast (888) and slow (1776). NW mirrors NE. */
+     1.5x quicker, between the old fast (888) and slow (1776). NW mirrors NE.
+     v2.3.601: NE/NW +35% speed (1184->877) per user. NW mirrors NE. */
   north: 808,
   south: 823,
-  northeast: 1184,
+  northeast: 877,
   east: 900,
   southwest: 1656,
 };
