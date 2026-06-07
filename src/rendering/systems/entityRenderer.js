@@ -373,27 +373,21 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
    bottom.  Covered bands are masked out so the underbody never pokes past a
    plate edge -- the reason the body was fully hidden before.  Returns whether
    the body ended up FULLY hidden (all three covered). */
-const BODY_NECK_FRAC = 0.30;
+const BODY_NECK_FRAC = 0.30;   /* (kept for reference; mask removed in v2.3.607) */
 const BODY_WAIST_FRAC = 0.585;
 function _applyBodyCoverageMask(display, sb, covHead, covChest, covLegs) {
-  const showHead = !covHead, showTorso = !covChest, showLegs = !covLegs;
-  const detach = () => { if (display._bodyMask) { display._bodyMask.visible = false; } sb.mask = null; };
-  if (showHead && showTorso && showLegs) { sb.visible = true; detach(); return false; }
-  if (!showHead && !showTorso && !showLegs) { sb.visible = false; detach(); return true; }
-  let g = display._bodyMask;
-  if (!g) { g = new Graphics(); display._bodyMask = g; if (sb.parent) sb.parent.addChild(g); }
-  else if (!g.parent && sb.parent) sb.parent.addChild(g);
-  g.visible = true;
-  const scx = Math.abs(sb.scale.x), scy = sb.scale.y;
-  const left = sb.x - 128 * scx, w = 256 * scx;
-  const rowY = (r) => sb.y + (r - 128) * scy;
-  const neck = 256 * BODY_NECK_FRAC, waist = 256 * BODY_WAIST_FRAC;
-  g.clear();
-  if (showHead)  g.rect(left, rowY(0), w, neck * scy).fill(0xffffff);
-  if (showTorso) g.rect(left, rowY(neck), w, (waist - neck) * scy).fill(0xffffff);
-  if (showLegs)  g.rect(left, rowY(waist), w, (256 - waist) * scy).fill(0xffffff);
-  sb.visible = true; sb.mask = g;
-  return false;
+  /* v2.3.607: the per-region rectangular MASK caused trouble -- its band rows
+     were measured off the JOG sheets so they cut the STAND pose at the wrong
+     place (idle distortion), and the Pixi mask object interacted badly with the
+     other layers (helmet clipping).  Drop the mask: hide the body only when the
+     FULL set is worn (the clean armoured look, no underbody poke); otherwise
+     show the whole body so an unequipped piece reveals that region.  Returns
+     whether the body was fully hidden. */
+  if (display._bodyMask) display._bodyMask.visible = false;
+  if (sb.mask) sb.mask = null;
+  const fully = covHead && covChest && covLegs;
+  sb.visible = !fully;
+  return fully;
 }
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
