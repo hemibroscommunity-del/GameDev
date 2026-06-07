@@ -69,6 +69,38 @@ def body_cx(i):
     return int(np.median(xs)) if len(xs) else FRAME // 2
 
 
+def leg_gap_xrange(i, wy0, wy1, margin=6):
+    """X-range of the transparent inter-leg GAP in the waist band, from the base
+    body.  The belt lives in this central gap; the HANDS swing LATERALLY (over or
+    beyond the legs), so clamping the reblack to this gap guarantees a low-swung
+    hand is never painted black (which is what later got it deleted).  The gap is
+    the interior-transparent RUN nearest the body centre (not the union of all
+    interior transparent columns, which could reach a lateral notch by a hand).
+    Returns (gx0, gx1) or None if the legs are together (no gap to narrow)."""
+    bop = np.array(base.crop(((i % bn) * FRAME, 0, (i % bn + 1) * FRAME, FRAME)))[:, :, 3] > 20
+    cx = body_cx(i)
+    col = bop[wy0:wy1, :].any(axis=0)
+    xs = np.where(col)[0]
+    if len(xs) == 0:
+        return None
+    xmin, xmax = int(xs.min()), int(xs.max())
+    interior = ~col
+    interior[:xmin] = False
+    interior[xmax + 1:] = False
+    xi = np.where(interior)[0]
+    if len(xi) == 0:
+        return None
+    runs, s, p = [], int(xi[0]), int(xi[0])
+    for x in xi[1:]:
+        if x == p + 1:
+            p = int(x)
+        else:
+            runs.append((s, p)); s = p = int(x)
+    runs.append((s, p))
+    g0, g1 = min(runs, key=lambda r: abs((r[0] + r[1]) / 2 - cx))
+    return max(0, g0 - margin), min(FRAME - 1, g1 + margin)
+
+
 # Pre-pass: gap widths -> fixed belt width W (20th pct = a narrow legs-together frame).
 gaps = []
 for i in range(n):
@@ -95,8 +127,15 @@ for i in range(n):
     win0, win1 = cxb - half, cxb + half
     if (x1 - x0 + 1) <= W:
         continue                                   # already narrow enough
+    # Clamp the reblack to the inter-leg GAP so a low-swinging hand outside the
+    # gap is never painted black (earlier this blackened the hand, which the
+    # belt-backing removal then deleted -> hollow fists).
+    gap = leg_gap_xrange(i, wy0, wy1)
+    if gap is None:
+        continue
+    bx0 = max(0, x0 - 2, gap[0]); bx1 = min(FRAME, x1 + 3, gap[1] + 1)
     band = np.zeros((FRAME, FRAME), bool)
-    band[y0:y1 + 1, max(0, x0 - 2):min(FRAME, x1 + 3)] = True
+    band[y0:y1 + 1, bx0:bx1] = True
     band[:, max(0, win0):min(FRAME, win1)] = False   # keep the centered belt
     mask = band & (cs[:, :, 3] > 0)
     cs[mask] = [0, 0, 0, 255]

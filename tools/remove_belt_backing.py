@@ -24,6 +24,46 @@ pose, d = sys.argv[1], sys.argv[2]
 base = Image.open(f'public/sprites/player/{pose}-{d}.png').convert('RGBA')
 bn = base.width // FRAME
 
+
+def leg_gap_xrange(bop, wy0, wy1, margin=6):
+    """X-range of the transparent inter-leg GAP in the waist band, from the base
+    body.  The belt lives in this central gap between the two legs; the HANDS
+    swing LATERALLY (over or beyond the legs), so confining belt ops to this gap
+    guarantees they never touch a hand.  Returns (gx0, gx1) or None if the legs
+    are together (no gap -> no belt backing to strip).  This guard exists because
+    earlier the waist-band op ran full-width and ate the low-swinging hands.
+
+    The gap is the interior-transparent RUN nearest the body centre -- not the
+    union of all interior transparent columns, which could otherwise stretch to a
+    lateral notch beside a hand."""
+    ys = np.where(bop.any(1))[0]
+    if not len(ys):
+        return None
+    y0, H = int(ys.min()), int(ys.max()) - int(ys.min())
+    tb = bop.copy(); tb[:y0 + int(0.28 * H)] = False; tb[y0 + int(0.46 * H):] = False
+    txs = np.where(tb)[1]
+    cx = int(np.median(txs)) if len(txs) else FRAME // 2
+    col = bop[wy0:wy1, :].any(axis=0)          # opaque columns = the two legs
+    xs = np.where(col)[0]
+    if len(xs) == 0:
+        return None
+    xmin, xmax = int(xs.min()), int(xs.max())
+    interior = ~col
+    interior[:xmin] = False
+    interior[xmax + 1:] = False                 # transparent ONLY between the legs
+    xi = np.where(interior)[0]
+    if len(xi) == 0:
+        return None
+    runs, s, p = [], int(xi[0]), int(xi[0])     # contiguous transparent runs
+    for x in xi[1:]:
+        if x == p + 1:
+            p = int(x)
+        else:
+            runs.append((s, p)); s = p = int(x)
+    runs.append((s, p))
+    g0, g1 = min(runs, key=lambda r: abs((r[0] + r[1]) / 2 - cx))   # nearest centre
+    return max(0, g0 - margin), min(FRAME - 1, g1 + margin)
+
 for slot, item in (('chest', 'steelplate'), ('legs', 'steelgreaves')):
     cp = f'public/sprites/gear/{slot}/{item}/{pose}-{d}.png'
     ca = np.array(Image.open(cp).convert('RGBA'))
@@ -40,7 +80,12 @@ for slot, item in (('chest', 'steelplate'), ('legs', 'steelgreaves')):
         blk = (cs[:, :, 0] == 0) & (cs[:, :, 1] == 0) & (cs[:, :, 2] == 0) & (cs[:, :, 3] > 0)
         # opening: solid blocks survive, thin (<=2px) outlines vanish
         solid = ndimage.binary_dilation(ndimage.binary_erosion(blk, iterations=2), iterations=2)
-        band = np.zeros_like(blk); band[wy0:wy1, :] = True
+        # Confine to the inter-leg gap ONLY: never strip black outside it (that is
+        # where the swinging hands live -- stripping there ate them, v2.3.575).
+        gap = leg_gap_xrange(bop, wy0, wy1)
+        if gap is None:
+            continue
+        band = np.zeros_like(blk); band[wy0:wy1, gap[0]:gap[1] + 1] = True
         backing = solid & blk & band
         cs[backing] = [0, 0, 0, 0]
         removed += int(backing.sum())
