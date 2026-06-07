@@ -12,7 +12,7 @@ import { generateMockInventory, generateMockEquipped } from './mobile/mockItems.
 import { InspectCard } from './mobile/InspectCard.jsx';
 import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
-import { setEquip, getEquip, GEAR_CATALOG, GEAR_SLOTS } from '@/rendering/gearCatalog.js';
+import { setEquip, getEquip, GEAR_CATALOG, GEAR_SLOTS, gearInventoryItems } from '@/rendering/gearCatalog.js';
 import { BlockRing } from './mobile/BlockRing.jsx';
 import { SpecialChargePie } from './mobile/SpecialChargePie.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
@@ -157,6 +157,37 @@ export const GameApp = () => {
       window.removeEventListener('pageshow', onResume);
       window.removeEventListener('focus', onResume);
     };
+  }, []);
+
+  /* v2.3.604: bridge the inventory's armor slots (head/chest/legs) to the gear
+     renderer.  Seed the real gear items, reflect the current equipped gear into
+     the inventory, then keep gearCatalog in sync whenever the player equips /
+     removes a piece in the EquippedTab. */
+  useEffect(() => {
+    const gearItems = gearInventoryItems();
+    // reflect current equipped gear (defaults) into the inventory equip slots
+    ['head', 'chest', 'legs'].forEach((slot) => {
+      const cur = getEquip(slot);
+      const it = gearItems.find(g => g.slot === slot && g.gearId === cur) || null;
+      if (it && !inventoryBus.state.equipped[slot]) inventoryBus.setEquipped(slot, it);
+    });
+    // make the un-equipped gear items available in the inventory list
+    const haveIds = new Set([
+      ...inventoryBus.state.items.map(i => i.id),
+      ...Object.values(inventoryBus.state.equipped).filter(Boolean).map(i => i.id),
+    ]);
+    const add = gearItems.filter(g => !haveIds.has(g.id));
+    if (add.length) inventoryBus.setItems([...inventoryBus.state.items, ...add]);
+    // keep the renderer's gear slots in sync with the inventory equips
+    const sync = () => {
+      ['head', 'chest', 'legs'].forEach((slot) => {
+        const it = inventoryBus.state.equipped[slot];
+        setEquip(slot, (it && it.gearId) || 'none');
+      });
+    };
+    sync();
+    const off = inventoryBus.subscribe(sync);
+    return off;
   }, []);
 
   useEffect(() => {

@@ -33,6 +33,9 @@ const makeItem = (type, opts = {}) => {
     id: id(),
     type,
     subtype: type === 'weapon' ? pick(['sword', 'sword', 'bow', 'staff']) : null,
+    /* armor equips into one of the body slots (head/chest/legs). */
+    slot: type === 'armor' ? (opts.slot || pick(['head', 'chest', 'legs'])) : null,
+    gearId: opts.gearId || null,
     name: opts.name || pick(NAMES[type] || ['Thing']),
     tier,
     quality,
@@ -63,7 +66,9 @@ export const generateMockInventory = (n = 30) => {
 
 export const generateMockEquipped = () => ({
   weapon: makeItem('weapon', { name: 'Iron Greatsword', tier: 4, quality: 'rare' }),
-  armor:  makeItem('armor',  { name: 'Iron Vest',       tier: 4, quality: 'normal' }),
-  pet:    makeItem('pet',    { name: 'Bramble',         tier: 3, quality: 'normal' }),
+  head:   makeItem('armor',  { name: 'Iron Helm',  tier: 4, quality: 'normal', slot: 'head' }),
+  chest:  makeItem('armor',  { name: 'Iron Vest',  tier: 4, quality: 'normal', slot: 'chest' }),
+  legs:   makeItem('armor',  { name: 'Iron Greaves', tier: 4, quality: 'normal', slot: 'legs' }),
+  pet:    makeItem('pet',    { name: 'Bramble',    tier: 3, quality: 'normal' }),
   tool:   null,
 });

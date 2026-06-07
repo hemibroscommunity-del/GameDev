@@ -23,7 +23,9 @@ const state = {
   open: false,
   activeTab: 'inventory',  // 'inventory' | 'equipped'
   items: [],               // unequipped items
-  equipped: { weapon: null, armor: null, pet: null, tool: null },
+  /* v2.3.604: armor split into head/chest/legs body slots (was a single
+     'armor').  Each maps to a gear render slot via the GameApp bridge. */
+  equipped: { weapon: null, head: null, chest: null, legs: null, pet: null, tool: null },
   shortcuts: [null, null], // 2 slots, each holds an item id (or null)
   ghosts: [null, null],    // ghost-slot state (lastItem, ts) per slot
   layers: { 1: false, 2: false, 3: false },

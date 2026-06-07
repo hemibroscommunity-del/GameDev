@@ -100,7 +100,7 @@ const Comparison = ({ item, layer2 }) => {
   const equipped = inventoryBus.state.equipped;
   let comparedTo = null;
   if (item.type === 'weapon') comparedTo = equipped.weapon;
-  else if (item.type === 'armor') comparedTo = equipped.armor;
+  else if (item.type === 'armor') comparedTo = equipped[item.slot || 'chest'];
   else if (item.type === 'pet') comparedTo = equipped.pet;
   else return null;
 
@@ -270,7 +270,7 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
 
   const onAction = (label) => {
     if (label === 'Wear') {
-      const slot = item.type === 'weapon' ? 'weapon' : item.type === 'armor' ? 'armor' : item.type === 'pet' ? 'pet' : null;
+      const slot = item.type === 'weapon' ? 'weapon' : item.type === 'armor' ? (item.slot || 'chest') : item.type === 'pet' ? 'pet' : null;
       if (slot) {
         const prev = inventoryBus.state.equipped[slot];
         const items = inventoryBus.state.items.filter(i => i.id !== item.id);
@@ -281,7 +281,7 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
       onClose();
     } else if (label === 'Take off') {
       if (isEquipped) {
-        const slot = item.type === 'weapon' ? 'weapon' : item.type === 'armor' ? 'armor' : item.type === 'pet' ? 'pet' : 'tool';
+        const slot = item.type === 'weapon' ? 'weapon' : item.type === 'armor' ? (item.slot || 'chest') : item.type === 'pet' ? 'pet' : 'tool';
         inventoryBus.setEquipped(slot, null);
         inventoryBus.setItems([...inventoryBus.state.items, item]);
       }

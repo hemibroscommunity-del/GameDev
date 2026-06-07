@@ -61,6 +61,26 @@ const _stores = {
   shoulders: makeSlotStore('shoulders', 'none'),
 };
 
+/* v2.3.604: build inventory items for the real armor gear (head/chest/legs),
+   one per catalog entry (excluding 'none').  The inventory UI shows these in
+   the head/chest/legs equip slots; equipping one calls setEquip(slot, gearId)
+   via the GameApp bridge, which the renderer reads. */
+export function gearInventoryItems() {
+  const out = [];
+  for (const slot of ['head', 'chest', 'legs']) {
+    for (const c of (GEAR_CATALOG[slot] || [])) {
+      if (c.id === 'none') continue;
+      out.push({
+        id: 'gear_' + slot + '_' + c.id, type: 'armor', slot, gearId: c.id,
+        name: c.name, tier: 1, quality: 'normal', acquiredAt: 0,
+        hardness: 0, temper: 0, count: null, gems: [], gemSlots: 0,
+        stats: { def: 5 }, isNew: false,
+      });
+    }
+  }
+  return out;
+}
+
 export function getEquip(slot) { return _stores[slot] ? _stores[slot].get() : 'none'; }
 export function setEquip(slot, id) { if (_stores[slot]) _stores[slot].set(id); }
 export function onEquipChange(slot, fn) { return _stores[slot] ? _stores[slot].on(fn) : () => {}; }
