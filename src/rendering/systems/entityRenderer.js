@@ -2174,18 +2174,14 @@ export class EntityRenderer {
       } else {
         facing = display._lastFacing || other._facing || 'south';
       }
-      /* v2.3.401: remote facing arrives fully inverted (180 deg) -- the vertical
-         flip in v2.3.400 fixed back/front, and left/right needed the same, so
-         the whole thing is rotated 180.  Map each direction to its opposite.
-         Confirmed empirically after two derivation rewrites; the inversion is
-         intrinsic to the remote data path.  Body + traits read this `facing`,
-         so they stay aligned. */
-      const _OPP = {
-        north: 'south', south: 'north', east: 'west', west: 'east',
-        northeast: 'southwest', southwest: 'northeast',
-        northwest: 'southeast', southeast: 'northwest',
-      };
-      facing = _OPP[facing] || facing;
+      /* v2.3.599: remove the old 180deg `_OPP` remap.  It was added (v2.3.400/401)
+         to undo an inversion in the THEN-current velocity-derived facing, whose
+         broadcast vy sign didn't survive the server relay.  The live facing now
+         comes from `_moveFacing8`, derived from POSITION deltas in the same
+         SECTORS convention the LOCAL player uses (atan2(dy,dx) -> east when
+         dx>0), so it is already correct.  The leftover `_OPP` therefore
+         double-inverted it -- a remote running east rendered mirrored as west.
+         Dropping it makes remote facing match local. */
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
       const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');

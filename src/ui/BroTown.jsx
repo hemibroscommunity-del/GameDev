@@ -2144,6 +2144,17 @@ export var BroTown = function BroTown(_ref0) {
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
                     S.others[pid]._lastUpdate = Date.now();
+                    /* v2.3.599: live equip -> the renderer reads other.equip
+                       (nested), so rebuild it from the broadcast eqc/eql/eqs
+                       whenever present, keeping armour on/off in sync. */
+                    if (data.eqc !== undefined || data.eql !== undefined || data.eqs !== undefined) {
+                      var _oe5 = S.others[pid].equip || { chest: 'none', legs: 'none', shoulders: 'none' };
+                      S.others[pid].equip = {
+                        chest: data.eqc !== undefined ? (data.eqc || 'none') : _oe5.chest,
+                        legs: data.eql !== undefined ? (data.eql || 'none') : _oe5.legs,
+                        shoulders: data.eqs !== undefined ? (data.eqs || 'none') : _oe5.shoulders,
+                      };
+                    }
                     /* Snapshot interpolation — buffer positions + velocity */
                     if (!S.others[pid]._posBuffer) S.others[pid]._posBuffer = [];
                     S.others[pid]._posBuffer.push({
@@ -2907,7 +2918,21 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'player_update':
             {
-              if (S.others[msg.id]) Object.assign(S.others[msg.id], msg.data);
+              if (S.others[msg.id]) {
+                Object.assign(S.others[msg.id], msg.data);
+                /* v2.3.599: track relays carry flat eqc/eql/eqs; rebuild the
+                   nested other.equip the renderer reads so armour on/off syncs
+                   (covers the standing-still case via the 2s track). */
+                var _ud = msg.data || {};
+                if (_ud.eqc !== undefined || _ud.eql !== undefined || _ud.eqs !== undefined) {
+                  var _oe6 = S.others[msg.id].equip || { chest: 'none', legs: 'none', shoulders: 'none' };
+                  S.others[msg.id].equip = {
+                    chest: _ud.eqc !== undefined ? (_ud.eqc || 'none') : _oe6.chest,
+                    legs: _ud.eql !== undefined ? (_ud.eql || 'none') : _oe6.legs,
+                    shoulders: _ud.eqs !== undefined ? (_ud.eqs || 'none') : _oe6.shoulders,
+                  };
+                }
+              }
               break;
             }
           case 'ping':
@@ -10524,7 +10549,15 @@ export var BroTown = function BroTown(_ref0) {
                   f: S._renderFacing || null,
                   z: S.currentZone || 'town',
                   vx: Math.round(bcastVx * 100),
-                  vy: Math.round(bcastVy * 100)
+                  vy: Math.round(bcastVy * 100),
+                  /* v2.3.599: carry equipped gear so remote clients reflect
+                     armour on/off live (the renderer reads other.equip; it was
+                     only set at join/state_sync, so armour removal never showed
+                     for others).  Short ids, cheap. Standing-still changes ride
+                     the 2s `track` below + the player_update remap. */
+                  eqc: getEquip('chest'),
+                  eql: getEquip('legs'),
+                  eqs: getEquip('shoulders')
                 }
               });
             }
