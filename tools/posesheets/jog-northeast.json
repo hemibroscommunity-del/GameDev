@@ -4,9 +4,9 @@
   "n": 16,
   "cols": 5,
   "rows": 4,
-  "cell_w": 255,
-  "cell_h": 320,
-  "pad": 10,
+  "cell_w": 312,
+  "cell_h": 251,
+  "pad": 0,
   "crop": [
     36,
     28,
