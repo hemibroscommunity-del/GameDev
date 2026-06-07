@@ -5,24 +5,26 @@
  * the body.  See gear-layer-spec.md.
  */
 
-export const GEAR_SLOTS = ['legs', 'chest', 'shoulders'];
+export const GEAR_SLOTS = ['head', 'legs', 'chest', 'shoulders'];
 
 /* Per-slot catalog.  v2.3.503: a single 'testplate' chest piece (an aligned
    steel vest baked from the body frames by tools/make_test_gear.py) to prove
-   the layered renderer before real gear art exists. */
+   the layered renderer before real gear art exists.
+   v2.3.602: the helmet was split out of the chest sheet into its own `head`
+   slot (tools/split_helmet.py) so helmet / chest / legs equip independently. */
 export const GEAR_CATALOG = {
+  /* coversHead: this head piece is a full helmet -> the renderer hides the
+     hair/hat/beard traits AND masks the body's head band while it's worn. */
+  head: [{ id: 'none', name: 'None' }, { id: 'steelhelm', name: 'Steel Helm', coversHead: true }],
   legs: [{ id: 'none', name: 'None' }, { id: 'steelgreaves', name: 'Steel Greaves' }],
   chest: [{ id: 'none', name: 'None' }, { id: 'testplate', name: 'Test Plate' },
-          /* coversHead: the chest sheet includes a full helmet (drawn in the
-             head region of the band), so the renderer hides hair/hat/beard
-             while it's equipped -- otherwise those head traits poke through. */
-          { id: 'steelplate', name: 'Steel Plate', coversHead: true }],
+          { id: 'steelplate', name: 'Steel Plate' }],
   shoulders: [{ id: 'none', name: 'None' }],
 };
 
-/* True if the equipped chest item bakes a helmet (head traits should hide). */
-export function chestCoversHead(chestId) {
-  const it = GEAR_CATALOG.chest.find(c => c.id === chestId);
+/* True if the equipped HEAD item is a full helmet (head traits should hide). */
+export function headCoversHead(headId) {
+  const it = GEAR_CATALOG.head.find(c => c.id === headId);
   return !!(it && it.coversHead);
 }
 
@@ -53,6 +55,7 @@ function makeSlotStore(slot, defId) {
    good.  Key stays bt-gear-v2-* (no stale equips under it, so this default
    wins). */
 const _stores = {
+  head: makeSlotStore('head', 'steelhelm'),
   legs: makeSlotStore('legs', 'steelgreaves'),
   chest: makeSlotStore('chest', 'steelplate'),
   shoulders: makeSlotStore('shoulders', 'none'),

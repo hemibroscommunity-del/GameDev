@@ -12,6 +12,7 @@ import { generateMockInventory, generateMockEquipped } from './mobile/mockItems.
 import { InspectCard } from './mobile/InspectCard.jsx';
 import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
+import { setEquip, getEquip, GEAR_CATALOG, GEAR_SLOTS } from '@/rendering/gearCatalog.js';
 import { BlockRing } from './mobile/BlockRing.jsx';
 import { SpecialChargePie } from './mobile/SpecialChargePie.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
@@ -237,6 +238,22 @@ export const GameApp = () => {
       if (sub === 'combat') { wheelBus.setInCombat(args[1] === 'on'); return `combat=${wheelBus.state.inCombat}`; }
       return 'wheel <open|close|badge <tool> <n|dot|off>|combat <on|off>>';
     }, 'wheel — toggle wheel, set badges, simulate combat');
+
+    // Armor gear slots (head/chest/legs/shoulders) — equip/unequip live.
+    // v2.3.602: helmet split into its own `head` slot; each renders independently.
+    debugBus.cmd('gear', (args) => {
+      const slot = args[0], id = args[1];
+      if (!slot) {
+        return GEAR_SLOTS.map(s => `${s}=${getEquip(s)}`).join('  ');
+      }
+      if (!GEAR_SLOTS.includes(slot)) return `unknown slot '${slot}' (use ${GEAR_SLOTS.join('/')})`;
+      if (!id) {
+        const ids = (GEAR_CATALOG[slot] || []).map(c => c.id).join('|');
+        return `${slot} = ${getEquip(slot)} (options: ${ids})`;
+      }
+      setEquip(slot, id);
+      return `${slot} = ${getEquip(slot)}`;
+    }, 'gear — equip/unequip an armor slot, e.g. `gear head none` / `gear head steelhelm`');
 
     // Inventory debug commands.
     debugBus.cmd('inv', (args) => {
