@@ -41,7 +41,7 @@ import { HAT_COLOR_CATALOG, getHatColor, setHatColor, hatColorTarget } from '@/r
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor, facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor, shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
-import { getEquip } from '@/rendering/gearCatalog.js';
+import { getEquip, setEquip } from '@/rendering/gearCatalog.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
@@ -834,6 +834,25 @@ export var BroTown = function BroTown(_ref0) {
       var nv = !v;
       if (typeof window !== 'undefined') window.__btHideArmor = nv;
       return nv;
+    });
+  }, []);
+  /* v2.3.606: per-slot armour test toggles (helmet/chest/legs) -- equip/unequip
+     each gear slot live so the slot separation + per-region body reveal can be
+     eyeballed in-game.  Mirrors gearCatalog.setEquip; default ids per slot. */
+  var GEAR_DEFAULT_ID = { head: 'steelhelm', chest: 'steelplate', legs: 'steelgreaves' };
+  var _useStateGear = useState(function () {
+    return { head: getEquip('head') !== 'none', chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none' };
+  }),
+    _useStateGear2 = _slicedToArray(_useStateGear, 2),
+    gearWorn = _useStateGear2[0],
+    setGearWorn = _useStateGear2[1];
+  var toggleGearSlot = useCallback(function (slot) {
+    setGearWorn(function (g) {
+      var worn = !g[slot];
+      setEquip(slot, worn ? GEAR_DEFAULT_ID[slot] : 'none');
+      var ng = Object.assign({}, g);
+      ng[slot] = worn;
+      return ng;
     });
   }, []);
   var _useState15 = useState([]),
@@ -29112,7 +29131,23 @@ export var BroTown = function BroTown(_ref0) {
       color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
       touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none'
     }
-  }, hideArmor ? 'Armor: OFF (G)' : 'Armor: ON (G)'), showPlayerList && /*#__PURE__*/React.createElement("div", {
+  }, hideArmor ? 'Armor: OFF (G)' : 'Armor: ON (G)'), ['head', 'chest', 'legs'].map(function (slot, si) {
+    var LABEL = { head: 'Helmet', chest: 'Chest', legs: 'Legs' };
+    var on = gearWorn[slot];
+    return /*#__PURE__*/React.createElement("button", {
+      type: 'button', key: 'gearslot-' + slot,
+      onClick: function () { toggleGearSlot(slot); },
+      title: 'Equip/unequip ' + LABEL[slot] + ' armour (test the slot separation)',
+      style: {
+        position: 'fixed', top: 88 + si * 28, left: 8, zIndex: 9999,
+        padding: '6px 10px', fontSize: 11, fontWeight: 700, lineHeight: 1,
+        border: '1px solid rgba(255,255,255,.35)', borderRadius: 8,
+        background: on ? 'rgba(0,0,0,.55)' : 'rgba(255,94,108,.9)',
+        color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+        touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none'
+      }
+    }, LABEL[slot] + ': ' + (on ? 'ON' : 'OFF'));
+  }), showPlayerList && /*#__PURE__*/React.createElement("div", {
     className: "bt-plist"
   }, playerList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
