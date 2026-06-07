@@ -61,6 +61,12 @@ const JOG_DURATION_BY_DIR = {
   east: 900,
   southwest: 1656,
 };
+/* v2.3.603: ARMOURED overrides -- when wearing the armour set the NE/NW jog
+   keeps its pre-v2.3.601 cadence (the +35% naked speed-up doesn't apply). NW
+   mirrors NE.  Dirs absent here use JOG_DURATION_BY_DIR regardless of armour. */
+const JOG_DURATION_ARMORED_BY_DIR = {
+  northeast: 1184,
+};
 const HIT_DURATION_MS = 250;
 /* v2.3.188: pickup pose plays during the 0.5 s loot-pickup freeze.
    One sheet, south-only (facing is force-locked to 'down' during the
@@ -191,8 +197,14 @@ export function getFrame(pose, dir, frameIdx) {
  *  (pose, dir).  Jog defaults to JOG_DURATION_MS with a per-direction
  *  override map (e.g. northeast plays faster); stand is a 1s
  *  placeholder; hit is 250ms. */
-export function cycleMs(pose, dir) {
-  if (pose === 'jog') return JOG_DURATION_BY_DIR[dir] || JOG_DURATION_MS;
+export function cycleMs(pose, dir, armored) {
+  if (pose === 'jog') {
+    /* v2.3.603: the NE/NW jog speed-up (v2.3.601, +35%) is for the NAKED body
+       only; the armoured figure keeps its prior (slower) cadence.  So jog
+       duration is armour-aware for the dirs in JOG_DURATION_ARMORED_BY_DIR. */
+    if (armored && JOG_DURATION_ARMORED_BY_DIR[dir] != null) return JOG_DURATION_ARMORED_BY_DIR[dir];
+    return JOG_DURATION_BY_DIR[dir] || JOG_DURATION_MS;
+  }
   if (pose === 'hit') return HIT_DURATION_MS;
   if (pose === 'pickup') return PICKUP_DURATION_MS;
   if (pose === 'attack') return ATTACK_DURATION_MS;

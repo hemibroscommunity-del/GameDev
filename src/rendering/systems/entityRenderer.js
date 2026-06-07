@@ -2230,7 +2230,10 @@ export class EntityRenderer {
              the loaded sheet width so a longer strip plays more frames
              in the same 1s cycle, giving smoother motion. */
           const fc = playerFrameCount('jog', dir) || 24;
-          frameIdx = Math.floor((now / cycleMs('jog', dir)) * fc) % fc;
+          /* v2.3.603: armoured remote keeps slower NE/NW cadence; naked = +35%. */
+          const _arm = !!(other.equip && other.equip.chest && other.equip.chest !== 'none'
+            && other.equip.legs && other.equip.legs !== 'none');
+          frameIdx = Math.floor((now / cycleMs('jog', dir, _arm)) * fc) % fc;
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
@@ -2753,7 +2756,11 @@ export class EntityRenderer {
            walking backward relative to their aim direction, reverse
            the playback so the legs trail the body. */
         const fc = playerFrameCount('jog', dir) || 24;
-        const baseCycle = cycleMs('jog', dir);
+        /* v2.3.603: armoured (chest+legs worn, armour not toggled off) keeps the
+           slower NE/NW cadence; the naked body gets the +35% speed-up. */
+        const _armCadence = !(typeof window !== 'undefined' && window.__btHideArmor)
+          && getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
+        const baseCycle = cycleMs('jog', dir, _armCadence);
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
