@@ -365,29 +365,61 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
     } else if (spr.visible) spr.visible = false;
   }
 }
-/* v2.3.602: per-region body coverage.  Helmet / chest / legs are independent
-   slots now, so instead of hiding the WHOLE body when armoured we reveal only
-   the body bands that AREN'T covered by an equipped piece (helmet off -> bare
-   head shows, etc.).  The bands are frame-row fractions measured off the sheets:
-   head = top..neck (~0.30), torso(+arms) = neck..waist (~0.585), legs = waist..
-   bottom.  Covered bands are masked out so the underbody never pokes past a
-   plate edge -- the reason the body was fully hidden before.  Returns whether
-   the body ended up FULLY hidden (all three covered). */
-const BODY_NECK_FRAC = 0.30;   /* (kept for reference; mask removed in v2.3.607) */
+/* v2.3.608: per-region body sub-sprites.  Helmet/chest/legs are independent
+   slots; the body is drawn as three region sprites (head / torso+arms / legs)
+   cut from the SAME body frame, so they always reconstruct the body exactly.
+   A region is shown only when its slot's armour is OFF (covered regions are
+   hidden -> no underbody poke, no mask).  The body regions use the NAKED scale
+   (independent lever) while the gear keeps the armour-fit scale, bottom-aligned
+   to the same feet, so a bare region reads at naked proportions even next to a
+   plate piece.  Row splits are frame fractions measured off the sheets. */
+const BODY_NECK_FRAC = 0.30;
 const BODY_WAIST_FRAC = 0.585;
-function _applyBodyCoverageMask(display, sb, covHead, covChest, covLegs) {
-  /* v2.3.607: the per-region rectangular MASK caused trouble -- its band rows
-     were measured off the JOG sheets so they cut the STAND pose at the wrong
-     place (idle distortion), and the Pixi mask object interacted badly with the
-     other layers (helmet clipping).  Drop the mask: hide the body only when the
-     FULL set is worn (the clean armoured look, no underbody poke); otherwise
-     show the whole body so an unequipped piece reveals that region.  Returns
-     whether the body was fully hidden. */
-  if (display._bodyMask) display._bodyMask.visible = false;
-  if (sb.mask) sb.mask = null;
-  const fully = covHead && covChest && covLegs;
-  sb.visible = !fully;
-  return fully;
+const REGION_ROWS = {
+  head: [0, Math.round(256 * BODY_NECK_FRAC)],
+  torso: [Math.round(256 * BODY_NECK_FRAC), Math.round(256 * BODY_WAIST_FRAC)],
+  legs: [Math.round(256 * BODY_WAIST_FRAC), 256],
+};
+const _regionTexCache = new WeakMap();
+function _bodyRegionTex(bodyTex, region) {
+  if (!bodyTex) return null;
+  let m = _regionTexCache.get(bodyTex);
+  if (!m) { m = {}; _regionTexCache.set(bodyTex, m); }
+  if (!m[region]) {
+    const f = bodyTex.frame; const [r0, r1] = REGION_ROWS[region];
+    try { m[region] = new Texture({ source: bodyTex.source, frame: new Rectangle(f.x, f.y + r0, f.width, r1 - r0) }); }
+    catch (e) { m[region] = bodyTex; }
+  }
+  return m[region];
+}
+const _REGION_SPR = { head: '_bodyHead', torso: '_bodyTorso', legs: '_bodyLegs' };
+/* Draw the body via its three region sprites.  `show` = {head,torso,legs}.
+   bodyTex is the full body frame; sb is the (invisible) reference sprite that
+   carries position + the ARMOUR-fit scale (the gear copies it).  Returns true
+   if no region is shown (body fully covered). */
+function _placeBodyRegions(display, sb, bodyTex, bodyScale, mirror, show) {
+  const nakedSX = (mirror ? -1 : 1) * bodyScale, nakedSY = bodyScale;
+  const baseY = sb.y + 128 * (sb.scale.y - nakedSY);   // bottom-align naked body to the gear feet
+  let anyShown = false;
+  for (const region of ['head', 'torso', 'legs']) {
+    const spr = display[_REGION_SPR[region]];
+    if (!spr) continue;
+    if (!show[region] || !bodyTex) { spr.visible = false; continue; }
+    const t = _bodyRegionTex(bodyTex, region);
+    if (!t) { spr.visible = false; continue; }
+    if (spr.texture !== t) spr.texture = t;
+    const [r0, r1] = REGION_ROWS[region];
+    spr.scale.x = nakedSX; spr.scale.y = nakedSY;
+    spr.x = sb.x;
+    spr.y = baseY + ((r0 + r1) / 2 - 128) * nakedSY;
+    spr.tint = sb.tint;
+    spr.visible = true;
+    anyShown = true;
+  }
+  return !anyShown;
+}
+function _hideBodyRegions(display) {
+  for (const k of ['_bodyHead', '_bodyTorso', '_bodyLegs']) if (display[k]) display[k].visible = false;
 }
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
@@ -858,6 +890,14 @@ function createPlayerDisplay() {
   spriteBody.anchor.set(0.5, 0.5);
   spriteBody.visible = false;
   container.addChild(spriteBody);
+  /* v2.3.608: per-region body sprites (head/torso/legs), drawn below the gear.
+     The body renders through these so an unequipped slot reveals just that
+     region at naked scale; spriteBody stays the (invisible) texture+transform
+     reference the gear copies. */
+  const bodyHead = new Sprite(); bodyHead.anchor.set(0.5, 0.5); bodyHead.visible = false; container.addChild(bodyHead);
+  const bodyTorso = new Sprite(); bodyTorso.anchor.set(0.5, 0.5); bodyTorso.visible = false; container.addChild(bodyTorso);
+  const bodyLegs = new Sprite(); bodyLegs.anchor.set(0.5, 0.5); bodyLegs.visible = false; container.addChild(bodyLegs);
+  container._bodyHead = bodyHead; container._bodyTorso = bodyTorso; container._bodyLegs = bodyLegs;
 
   /* v2.3.503: layered gear (paper-doll).  One sprite per slot, drawn above the
      body with the body's exact transform.  Order legs < chest < shoulders, all
@@ -1144,6 +1184,14 @@ function createOtherPlayerDisplay() {
   spriteBody.anchor.set(0.5, 0.5);
   spriteBody.visible = false;
   container.addChild(spriteBody);
+  /* v2.3.608: per-region body sprites (head/torso/legs), drawn below the gear.
+     The body renders through these so an unequipped slot reveals just that
+     region at naked scale; spriteBody stays the (invisible) texture+transform
+     reference the gear copies. */
+  const bodyHead = new Sprite(); bodyHead.anchor.set(0.5, 0.5); bodyHead.visible = false; container.addChild(bodyHead);
+  const bodyTorso = new Sprite(); bodyTorso.anchor.set(0.5, 0.5); bodyTorso.visible = false; container.addChild(bodyTorso);
+  const bodyLegs = new Sprite(); bodyLegs.anchor.set(0.5, 0.5); bodyLegs.visible = false; container.addChild(bodyLegs);
+  container._bodyHead = bodyHead; container._bodyTorso = bodyTorso; container._bodyLegs = bodyLegs;
 
   /* v2.3.504: layered gear for remote players (above body, below head traits).
      Driven by other.equip; placement copies the body transform. */
@@ -2283,7 +2331,10 @@ export class EntityRenderer {
           const _rcovHead = headCoversHead(other.equip && other.equip.head) && display._gearHead && display._gearHead.visible;
           const _rcovChest = !!(other.equip && other.equip.chest && other.equip.chest !== 'none') && display._gearChest && display._gearChest.visible;
           const _rcovLegs = !!(other.equip && other.equip.legs && other.equip.legs !== 'none') && display._gearLegs && display._gearLegs.visible;
-          _applyBodyCoverageMask(display, spriteBody, _rcovHead, _rcovChest, _rcovLegs);
+          /* v2.3.608: remote uses the simple rule (full body or hidden); the
+             per-region body sprites are local-only for now. */
+          _hideBodyRegions(display);
+          spriteBody.visible = !(_rcovHead && _rcovChest && _rcovLegs);
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* v2.3.602: the remote's HEAD slot (steelhelm) covers the head, so
@@ -2800,6 +2851,7 @@ export class EntityRenderer {
         if (spriteBody.texture !== tex) {
           spriteBody.texture = tex;
         }
+        display._spritePathRendered = true;   /* v2.3.608: body shown via region sprites */
         display._animPose = pose;
         display._animDir = dir;
         display._animFrame = frameIdx;
@@ -2808,16 +2860,17 @@ export class EntityRenderer {
            inspect the raw body animation (e.g. the new NE/NW jog) with the
            armour stripped off -- gear hidden, body + hair/hat shown. */
         const _hideArmor = (typeof window !== 'undefined' && !!window.__btHideArmor);
-        /* v2.3.577: the per-dir idle WIDEN/SHORTEN is an ARMOUR fit-up (the gear
-           art is mis-sized vs the jog).  The bare body is already proportioned,
-           so apply it ONLY when the full covering set is worn AND shown -- naked
-           (or armour-toggled-off) players keep the plain uniform bodyScale. */
-        const _armoredIdle = !_hideArmor && getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
-        /* bodyScale was computed at outer scope (see comment above).
-           Applied here to the sprite scale; mirror flag flips x. */
-        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _armoredIdle) * jogWidth(pose, dir, _armoredIdle);
-        spriteBody.scale.y = bodyScale * standHeight(pose, dir, _armoredIdle) * jogHeight(pose, dir, _armoredIdle);
-        /* v2.3.503: layered gear, stacked over the body with its transform. */
+        /* v2.3.608: spriteBody is the INVISIBLE reference -- it carries the
+           position + the ARMOUR-fit scale the gear copies.  The visible body is
+           drawn by the region sprites (head/torso/legs) at NAKED scale, so a
+           bare region keeps naked proportions even next to a plate piece.
+           Armour-fit is used whenever any armour is worn (gear + bottom-align);
+           naked scale otherwise. */
+        const _anyArmor = !_hideArmor && (getEquip('head') !== 'none' || getEquip('chest') !== 'none' || getEquip('legs') !== 'none');
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _anyArmor) * jogWidth(pose, dir, _anyArmor);
+        spriteBody.scale.y = bodyScale * standHeight(pose, dir, _anyArmor) * jogHeight(pose, dir, _anyArmor);
+        spriteBody.tint = 0xffffff;
+        spriteBody.visible = false;
         if (_hideArmor) {
           if (display._gearLegs) display._gearLegs.visible = false;
           if (display._gearChest) display._gearChest.visible = false;
@@ -2826,26 +2879,12 @@ export class EntityRenderer {
         } else {
           _placeGear(display, { head: getEquip('head'), legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
         }
-        /* No tint multiply — the sprites are pre-colored.  Multiplying
-           by S.bodyTorso (default #2563eb) was darkening the avatar
-           because Pixi's tint is a per-channel multiply against white.
-           If body-color customisation comes back later it'll need a
-           filter or per-pixel recolor pass, not raw tint. */
-        /* v2.3.560: full covering set -> HIDE the body entirely.  A visible
-           underbody (skin OR black) drifts past the misaligned plate edge all
-           over ("poking out everywhere"); hidden, there's nothing to peek.  The
-           enclosed waist/neck gaps are black-filled and a chain belt is laid on
-           the green-waist centroid (fill_gear_gaps.py), so hiding leaves no hole.
-           Gated on the gear being placed so gear-less poses keep the body. */
-        spriteBody.tint = 0xffffff;
-        /* v2.3.602: per-region coverage instead of all-or-nothing hide.  Each
-           piece hides only its own body band; an unequipped piece reveals that
-           band (helmet off -> bare head).  _armorHidesBody stays true only when
-           ALL bands are covered (body fully hidden, the old armoured look). */
+        /* Each slot's armour hides only its own body region; an unequipped slot
+           reveals that region (helmet off -> bare head). */
         const _covHead = !_hideArmor && headCoversHead(getEquip('head')) && display._gearHead && display._gearHead.visible;
         const _covChest = !_hideArmor && getEquip('chest') !== 'none' && display._gearChest && display._gearChest.visible;
         const _covLegs = !_hideArmor && getEquip('legs') !== 'none' && display._gearLegs && display._gearLegs.visible;
-        _armorHidesBody = _applyBodyCoverageMask(display, spriteBody, _covHead, _covChest, _covLegs);
+        _armorHidesBody = _placeBodyRegions(display, spriteBody, tex, bodyScale, mirror, { head: !_covHead, torso: !_covChest, legs: !_covLegs });
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
@@ -2923,6 +2962,7 @@ export class EntityRenderer {
       } else {
         spriteBody.visible = false;
         body.visible = true;
+        display._spritePathRendered = false; _hideBodyRegions(display);
         if (display._traitFace) display._traitFace.visible = false;
         if (display._headwearSprite) display._headwearSprite.visible = false;
         if (display._facialHairSprite) display._facialHairSprite.visible = false;
@@ -2932,6 +2972,7 @@ export class EntityRenderer {
     } else {
       display._spriteBody.visible = false;
       body.visible = true;
+      display._spritePathRendered = false; _hideBodyRegions(display);
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this
@@ -2939,7 +2980,7 @@ export class EntityRenderer {
        an avatar URL with loaded textures, swap in the NFT cross-fade
        pair.  Hide the procedural body if NFT renders. */
     let nftShown = false;
-    if (!display._spriteBody.visible && S.myAvatar && !_armorHidesBody) {
+    if (!display._spritePathRendered && S.myAvatar && !_armorHidesBody) {
       const nft = getNftTextures(S.myAvatar);
       if (nft) {
         const renderAng = (S._facingAngle !== undefined) ? S._facingAngle : Math.PI / 2;
