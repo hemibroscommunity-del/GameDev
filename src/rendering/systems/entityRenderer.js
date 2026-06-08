@@ -2755,8 +2755,14 @@ export class EntityRenderer {
        the camera so the pickup animation reads. Highest priority so
        autoAttack / shield / aim don't leak through during the 0.5s. */
     const lootFrozen = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
+    /* Mining gather — face the camera (south) so the mining swing reads,
+       same lock as the loot freeze.  Active for the whole extraction
+       window (waiting + ready). */
+    const mining = !!(S._extraction && S._extraction.skill === 'mining');
     let facing;
     if (lootFrozen) {
+      facing = 'south';
+    } else if (mining) {
       facing = 'south';
     } else if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
@@ -2797,9 +2803,11 @@ export class EntityRenderer {
        250 ms swing window and the weapon overlay handles the motion. */
     const pose = lootFrozen
       ? 'pickup'
-      : (isHit
-          ? 'hit'
-          : (isMoving ? 'jog' : 'stand'));
+      : (mining
+          ? 'mine'
+          : (isHit
+              ? 'hit'
+              : (isMoving ? 'jog' : 'stand')));
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
@@ -2859,6 +2867,12 @@ export class EntityRenderer {
         const cycle = cycleMs('pickup', 'south');
         const elapsed = Math.max(0, now - ((S._lootFreezeUntil || now) - cycle));
         frameIdx = Math.max(0, Math.min(fc - 1, Math.floor((elapsed / cycle) * fc)));
+      } else if (pose === 'mine') {
+        /* Mining swing loops continuously for the whole gather window
+           (raised -> strike -> raised), south-only. */
+        const fc = playerFrameCount('mine', 'south') || 14;
+        const cycle = cycleMs('mine', 'south');
+        frameIdx = Math.floor((now / cycle) * fc) % fc;
       }
       /* Kick off body-anchor + selected-hat asset loads early so they're
          ready by the time we place the headwear below. */
