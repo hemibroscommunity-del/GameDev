@@ -30,6 +30,11 @@ pose, dir_ = sys.argv[1], sys.argv[2]
 # --no-backing: lay ONLY the chain (no black gap-fill / no enclosed-hole fill), so
 # the background shows behind the chain instead of a black backing.
 no_backing = '--no-backing' in sys.argv
+# --no-enclosed: skip ONLY the enclosed-hole black-fill (keep the belt-band
+# backing).  The masked-body renderer shows the body in pockets, so black-filling
+# enclosed holes (e.g. the trailing-arm/leg armpit pocket) just paints a black
+# blob where the body should peek through.  Use this for the body-aligned sheets.
+no_enclosed = no_backing or '--no-enclosed' in sys.argv
 chest_p = f'public/sprites/gear/chest/steelplate/{pose}-{dir_}.png'
 legs_p = f'public/sprites/gear/legs/steelgreaves/{pose}-{dir_}.png'
 chest = Image.open(chest_p).convert('RGBA')
@@ -85,7 +90,7 @@ for i in range(n):
         continue
     y0 = int(yy.min())
     interior = enclosed(G)
-    if interior.any() and not no_backing:
+    if interior.any() and not no_enclosed:
         cs[interior] = [0, 0, 0, 255]               # close every hole (neck etc.)
     by0 = y0 + seam_off - 22                         # chain top, nudged up 20px total
     band = np.zeros_like(bop)

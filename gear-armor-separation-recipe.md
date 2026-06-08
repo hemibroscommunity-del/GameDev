@@ -43,14 +43,17 @@ hardest 3/4 view). Shipped in `GEAR_VERSION` 2.3.616 → 2.3.625.
    bare-hip gap at the waist. Bake the chain belt into the **chest** sheet, then
    strip the full-stride black backing:
    ```
-   python tools/fill_gear_gaps.py   jog northeast   # tile chainbelt.png + black backing
-   python tools/refit_jog_belt.py        northeast   # fixed-width centred belt
-   python tools/strip_belt_shadow.py jog northeast   # remove the inter-leg black void, keep the chain
+   python tools/fill_gear_gaps.py   jog northeast --no-enclosed  # chain + waist-band backing only
+   python tools/refit_jog_belt.py        northeast               # fixed-width centred belt
+   python tools/strip_belt_shadow.py jog northeast               # remove any inter-leg black void
    ```
    `fill_gear_gaps` lays `chainbelt.png` across the body-opaque/chest-transparent
    waist band with a black backing (so the chain reads solid, not see-through to
-   the masked-away body). `strip_belt_shadow` replaces the old
-   `remove_belt_backing` here — its erosion-2 opening missed the small enclosed
+   the masked-away body). **`--no-enclosed` is required** on the body-aligned
+   sheets: the default also black-fills *enclosed* pockets (e.g. the trailing-
+   arm/leg armpit gap), but the masked-body renderer shows the body there, so the
+   fill just paints a black blob. `strip_belt_shadow` replaces the old
+   `remove_belt_backing` — its erosion-2 opening missed the small enclosed
    triangle on the clean sheets; the new pass uses erosion-1, below the chain,
    confined to the inter-leg gap.
 
