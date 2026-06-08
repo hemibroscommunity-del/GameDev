@@ -95,7 +95,7 @@ for i in range(n):
     by0 = y0 + seam_off - 22                         # chain top, nudged up 20px total
     band = np.zeros_like(bop)
     band[max(0, by0):min(FRAME, by0 + band_h), :] = True
-    region = band & bop & ~chest_op                 # only the chest-transparent gap
+    region = band & bop & ~chest_op & ~(ls[:, :, 3] > 20)   # the gap NEITHER plate covers
     if not region.any():
         ca[:, i * FRAME:(i + 1) * FRAME] = cs
         continue
