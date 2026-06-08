@@ -79,7 +79,7 @@ medH = float(np.median(heights)) if heights else 150
 seam_off = int(np.median(offsets)) if offsets else int(0.55 * medH)
 band_h = int(BAND_FRAC * medH)
 if band_mode:
-    band_h = int(0.70 * band_h)                  # thinner single link-row for the worn-over band
+    band_h = int(0.70 * band_h) // 2             # thin worn-over band (half height, shrunk from the top)
 chain_s = np.array(CHAIN.resize((int(706 * band_h / 96), band_h), Image.LANCZOS))
 
 # Bake the belt into the CHEST but ONLY where the chest is transparent (the
@@ -103,7 +103,7 @@ for i in range(n):
     # (the seam_off anchor is dragged down to the thighs by the hanging gauntlets
     # in the chest gear).  Otherwise the legacy crown+seam offset.
     if band_mode:
-        by0 = y0 + int(0.46 * medH) - band_h // 2
+        by0 = y0 + int(0.46 * medH)              # top at the old band centre -> bottom unchanged
     else:
         by0 = y0 + seam_off - 22                     # chain top, nudged up 20px total
     band = np.zeros_like(bop)
