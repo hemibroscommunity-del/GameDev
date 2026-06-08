@@ -413,6 +413,23 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
     const ctx = cv.getContext('2d');
     const bf = bodyTex.frame;
     ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
+    /* head+neck must always stay visible -- the chest plate has a neckline
+       opening the body's neck fills.  Find the body figure's neck line (top +
+       BODY_NECK_FRAC*height) BEFORE punching so we can restore that band after;
+       otherwise the dilated collar mask closes the narrow neck gap and the head
+       floats detached above the plate (v2.3.617). */
+    let neckY = 0;
+    try {
+      const id = ctx.getImageData(0, 0, 256, 256).data;
+      let top = 256, bot = -1;
+      for (let y = 0; y < 256; y++) {
+        for (let x = 0; x < 256; x++) {
+          if (id[(y * 256 + x) * 4 + 3] > 40) { if (y < top) top = y; bot = y; break; }
+        }
+      }
+      /* 0.33 == preview_armor_frames.NECK_RESTORE_FRAC (keep in sync) */
+      if (bot > top) neckY = Math.round(top + 0.33 * (bot - top));
+    } catch (e) { neckY = 0; }
     ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
     for (const w of worn) {
       const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
@@ -422,6 +439,12 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
           ctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, dy, 256, 256);
     }
     ctx.globalCompositeOperation = 'source-over';
+    if (neckY > 0) {                                     // restore the head+neck band
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, 256, neckY); ctx.clip();
+      ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
+      ctx.restore();
+    }
   } catch (e) { return bodyTex; }
   const t = Texture.from(cv);
   _maskedBodyCache.set(key, t);

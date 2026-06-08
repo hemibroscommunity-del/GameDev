@@ -24,6 +24,10 @@ from PIL import Image, ImageDraw
 
 FRAME = 256
 LOCAL = 0.3515625
+# Fraction of the body figure height (from its top) kept ALWAYS visible (head +
+# neck) so the chest plate's neckline opening shows the neck, not a transparent
+# gap.  Keep in sync with entityRenderer._maskedBodyFrame.
+NECK_RESTORE_FRAC = 0.33
 # --- keep in sync with entityRenderer.js ---
 BODY_DIR_SCALE = {
     'stand': {'south': 1.136, 'east': 0.983, 'north': 1.039, 'northeast': 1.003, 'southwest': 0.983},
@@ -93,7 +97,18 @@ def composite(pose, d, i, worn, nudges, mask_dilate=5):
                     cover |= arr[:, :, 3] > 30
                 if mask_dilate > 0:
                     cover = ndimage.binary_dilation(cover, iterations=mask_dilate)
+                orig_alpha = ba[:, :, 3].copy()
                 ba[cover, 3] = 0           # erase body under/just-outside the armour
+                # Restore the head+neck band: the chest plate has a neckline
+                # opening that the body's neck fills.  Without this the dilated
+                # collar mask closes the narrow neck gap and the head floats
+                # detached above the plate.  Anchored to the body figure's own
+                # bbox so it tracks the bob.
+                op = orig_alpha > 40
+                ys = np.where(op.any(axis=1))[0]
+                if len(ys):
+                    neck_y = ys[0] + int(round(NECK_RESTORE_FRAC * (ys[-1] - ys[0])))
+                    ba[:neck_y, :, 3] = orig_alpha[:neck_y, :]
             o.alpha_composite(Image.fromarray(ba))
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:
