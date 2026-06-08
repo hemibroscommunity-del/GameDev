@@ -39,7 +39,22 @@ hardest 3/4 view). Shipped in `GEAR_VERSION` 2.3.616 → 2.3.625.
      --chest 1 --legs 0 --head 0 --zoom 2 --out /tmp/ne-chest.png
    ```
 
-5. **Bump `GEAR_VERSION`** (`src/rendering/gearSheets.js`) + `package.json`,
+5. **(Optional) chain belt over the waist gap.** A full chest+legs suit leaves a
+   bare-hip gap at the waist. Bake the chain belt into the **chest** sheet, then
+   strip the full-stride black backing:
+   ```
+   python tools/fill_gear_gaps.py   jog northeast   # tile chainbelt.png + black backing
+   python tools/refit_jog_belt.py        northeast   # fixed-width centred belt
+   python tools/strip_belt_shadow.py jog northeast   # remove the inter-leg black void, keep the chain
+   ```
+   `fill_gear_gaps` lays `chainbelt.png` across the body-opaque/chest-transparent
+   waist band with a black backing (so the chain reads solid, not see-through to
+   the masked-away body). `strip_belt_shadow` replaces the old
+   `remove_belt_backing` here — its erosion-2 opening missed the small enclosed
+   triangle on the clean sheets; the new pass uses erosion-1, below the chain,
+   confined to the inter-leg gap.
+
+6. **Bump `GEAR_VERSION`** (`src/rendering/gearSheets.js`) + `package.json`,
    `npm run build`, commit, push.
 
 ---
@@ -190,10 +205,10 @@ body texture at load). Patch must match.
 - **Done:** NE chest, validated across default/orange/blue+pale/white/gray/purple
   + deep/ebony skins. Head intact, gauntlets aligned, hip/fist blended to pants,
   clean boots.
-- **Next:** NE legs (same flow, `aligned=1`, band `0.40 1.0`), then roll the two
-  prompts across south/east/north/southwest and the `stand` pose.
-- **Open question:** whether to re-add the chain belt at the waist (covers the
-  hip gap) via the existing belt scripts, or leave the pants-blended look.
+- **Next:** roll the two prompts across south/east/north/southwest and the
+  `stand` pose (same flow, `aligned=1`; chest band `0.0 0.72`, legs `0.40 1.0`).
+- **Belt:** re-added over the NE waist via `fill_gear_gaps` → `refit_jog_belt` →
+  `strip_belt_shadow` (step 5). Run this per direction after ingesting chest+legs.
 
 ---
 
