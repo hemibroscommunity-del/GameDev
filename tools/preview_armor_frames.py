@@ -93,9 +93,23 @@ def _blend_ghost_hand(ba, top, bot):
         m = op.copy(); m[:max(0, y0)] = False; m[min(FRAME, y1):] = False
         return np.median(ba[m][:, :3], axis=0) if m.any() else None
     skin_ref = med(top, neck)
-    pants_ref = med(waist, waist + int(round(0.35 * fh)))
     shoes_ref = med(bot - int(round(0.18 * fh)), bot + 1)
-    if skin_ref is None or pants_ref is None or shoes_ref is None:
+    if skin_ref is None or shoes_ref is None:
+        return
+    # Pants colour: median of the upper-leg band, but EXCLUDING skin-toned pixels
+    # -- the bare hip/fist can sit inside this band and would otherwise drag the
+    # sample toward skin, making pants ~ skin so the fist test can't separate them
+    # (e.g. a big pale fist over blue pants).  Exclude by hue-alignment to skin.
+    band = op.copy(); band[:waist] = False; band[waist + int(round(0.40 * fh)):] = False
+    sn = float(np.linalg.norm(skin_ref)) or 1.0
+    pn = np.linalg.norm(px, axis=2); pn[pn == 0] = 1.0
+    cos_skin = (px[:, :, 0] * skin_ref[0] + px[:, :, 1] * skin_ref[1] + px[:, :, 2] * skin_ref[2]) / (pn * sn)
+    pm = band & (cos_skin < 0.985)
+    if pm.any():
+        pants_ref = np.median(ba[pm][:, :3], axis=0)
+    elif band.any():
+        pants_ref = np.median(ba[band][:, :3], axis=0)
+    else:
         return
 
     def score(T):
@@ -104,7 +118,10 @@ def _blend_ghost_hand(ba, top, bot):
         return dot * dot / n
     s_skin = score(skin_ref)
     low = op.copy(); low[:waist] = False
-    fist = low & (s_skin > 1.05 * score(pants_ref)) & (s_skin > 1.05 * score(shoes_ref))
+    # strict argmax (not a fixed margin): the fist is skin when skin is the MOST
+    # hue-aligned of the three refs.  A margin fails for bright/desaturated skin
+    # (pale tone scores almost as high to the grey boots as to skin).
+    fist = low & (s_skin > score(pants_ref)) & (s_skin > score(shoes_ref))
     if not fist.any():
         return
     leg = low & ~fist

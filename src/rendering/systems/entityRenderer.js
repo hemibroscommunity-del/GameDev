@@ -469,8 +469,27 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
           return [mid(rs), mid(gs), mid(bs)];
         };
         const skinRef = medRGB(figTop, neckY);
-        const pantsRef = medRGB(waistY, waistY + Math.round(0.35 * fh));
         const shoesRef = medRGB(figBot - Math.round(0.18 * fh), figBot + 1);
+        // Pants colour: median of the upper-leg band EXCLUDING skin-toned pixels
+        // -- the bare hip/fist can sit inside this band and would otherwise drag
+        // the sample toward skin, making pants ~ skin so the fist test fails to
+        // separate them (e.g. a big pale fist over blue pants).  Exclude by hue-
+        // alignment to the sampled skin.
+        let pantsRef = null;
+        if (skinRef) {
+          const sn = Math.sqrt(skinRef[0] * skinRef[0] + skinRef[1] * skinRef[1] + skinRef[2] * skinRef[2]) || 1;
+          const rs = [], gs = [], bs = [], y1 = waistY + Math.round(0.40 * fh);
+          for (let y = waistY; y < Math.min(256, y1); y++)
+            for (let x = 0; x < 256; x++) {
+              const o = (y * 256 + x) * 4; if (d[o + 3] <= 40) continue;
+              const R = d[o], G = d[o + 1], B = d[o + 2];
+              const pn = Math.sqrt(R * R + G * G + B * B) || 1;
+              const cos = (R * skinRef[0] + G * skinRef[1] + B * skinRef[2]) / (pn * sn);
+              if (cos < 0.985) { rs.push(R); gs.push(G); bs.push(B); }
+            }
+          if (rs.length) { const mid = a => { a.sort((p, q) => p - q); return a[a.length >> 1]; }; pantsRef = [mid(rs), mid(gs), mid(bs)]; }
+          else pantsRef = medRGB(waistY, waistY + Math.round(0.40 * fh));
+        }
         const score = (R, G, B, T) => { const n = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / n; };
         if (skinRef && pantsRef && shoesRef) {
           const fist = new Uint8Array(256 * 256), leg = new Uint8Array(256 * 256);
@@ -480,7 +499,10 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
               const o = (y * 256 + x) * 4; if (d[o + 3] <= 40) continue;
               const R = d[o], G = d[o + 1], B = d[o + 2];
               const sSkin = score(R, G, B, skinRef);
-              if (sSkin > 1.05 * score(R, G, B, pantsRef) && sSkin > 1.05 * score(R, G, B, shoesRef)) { fist[y * 256 + x] = 1; anyFist = true; }
+              // strict argmax (not a fixed margin): the fist is skin when skin is the
+              // MOST hue-aligned of the three refs.  A margin fails for bright/
+              // desaturated skin (pale scores almost as high to the grey boots as to skin).
+              if (sSkin > score(R, G, B, pantsRef) && sSkin > score(R, G, B, shoesRef)) { fist[y * 256 + x] = 1; anyFist = true; }
               else leg[y * 256 + x] = 1;
             }
           }
