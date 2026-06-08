@@ -45,10 +45,13 @@ hardest 3/4 view). Shipped in `GEAR_VERSION` 2.3.616 → 2.3.625.
    python tools/lower_collar.py jog <dir>
    ```
    Per frame it removes chest-gear pixels sitting over the body's head above the
-   neck base; pauldrons (at the sides) aren't over the head so they stay, and
-   frames where a raised gauntlet is correctly in front of the face are SKIPPED
-   (gear-over-head coverage > 0.45) so the arm is never cut.  Run on the freshly-
-   ingested chest, before the belt.
+   neck base, **confined to the narrow head x-range** (so it never reaches the
+   wider shoulders -- that exposed a bare skin band).  Pauldrons (at the sides)
+   aren't over the head so they stay, and frames where a raised gauntlet is
+   correctly in front of the face are SKIPPED (gear-over-head coverage > 0.45) so
+   the arm is never cut.  Default `neck_frac=0.20` (validated on SW: head sits up,
+   no shoulder-skin band); lower = trims more (collar lower), higher = trims less.
+   Run on the freshly-ingested chest, before the belt.
 
 5. **(Optional) chain belt over the waist gap.** A full chest+legs suit leaves a
    bare-hip gap at the waist. Bake the chain belt into the **chest** sheet, then
