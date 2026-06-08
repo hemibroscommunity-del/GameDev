@@ -41,8 +41,18 @@ for i in range(n):
     cov = (gop & head).sum() / head.sum()
     if cov > gauntlet_cov:
         continue                                              # raised gauntlet in front of face -> leave it
+    # x-range of the NARROW head (sampled from the upper head rows) so we trim the
+    # collar only across the head/neck, never the wider shoulders (which would
+    # expose shoulder skin).
+    htop = bop.copy(); htop[:top] = False; htop[top + int(0.18 * fh):] = False
+    hx = np.where(htop.any(0))[0]
+    if len(hx) == 0:
+        continue
+    hx0, hx1 = max(0, int(hx.min()) - 2), min(FRAME, int(hx.max()) + 3)
     collar = gop & head.copy()
     collar[top + int(neck_frac * fh):] = False                # only the part above the neck base
+    collar[:, :hx0] = False                                   # ... and only across the head width
+    collar[:, hx1:] = False
     cs[collar] = [0, 0, 0, 0]
     trimmed += int(collar.sum())
     ca[:, i * FRAME:(i + 1) * FRAME] = cs
