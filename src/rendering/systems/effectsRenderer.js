@@ -6,6 +6,7 @@
 import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
+import { TILE, MINE_SPOT_R } from '@/data/constants.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
@@ -75,6 +76,17 @@ Assets.load('/sprites/world/ore-vein-break.png?v=1').then((tex) => {
   }
   ORE_BREAK_TEX = arr;
 }).catch((err) => console.warn('[ore-break] load failed', err));
+/* User pass: shrink the break vignette 50% so it reads as a node, not a boulder. */
+const ORE_BREAK_SCALE = 0.5;
+/* Frame index where the rock visibly splits — the ore icon pops out here. */
+const ORE_BREAK_SPLIT_FRAME = 7;
+
+/* Copper ore icon (same asset the inventory uses) — floats out of the broken
+   node as a "collected" pop. All ores currently share the copper thumb. */
+let ORE_ICON_TEX = null;
+Assets.load('/icons/ore/ore-copper.png').then((tex) => {
+  if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
+}).catch((err) => console.warn('[ore-icon] load failed', err));
 
 const DMG_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
@@ -1720,6 +1732,27 @@ export class EffectsRenderer {
       }
       node._breakPlayed = false;
 
+      /* Mining "stand here" marker: ore is gathered from one tile NORTH of the
+         vein so the south-facing swing lines up over the rock. Twinkle the spot
+         when the player is nearby; turns green once they're standing on it. */
+      if (node.nodeType === 'oreVein') {
+        const sx = node.x, sy = node.y - TILE;
+        const sd2 = (px - sx) * (px - sx) + (py - sy) * (py - sy);
+        if (sd2 < 180 * 180) {
+          const tw = 0.55 + 0.45 * Math.sin(now / 200 + node.x);
+          const onSpot = sd2 < MINE_SPOT_R * MINE_SPOT_R;
+          const col = onSpot ? 0x3dd497 : 0xffe27a;
+          const r1 = 6 + 1.5 * Math.sin(now / 160);
+          gfx.moveTo(sx - r1, sy); gfx.lineTo(sx + r1, sy);
+          gfx.moveTo(sx, sy - r1); gfx.lineTo(sx, sy + r1);
+          gfx.stroke({ color: col, width: 1.5, alpha: 0.5 + 0.4 * tw });
+          gfx.circle(sx, sy, 1.6);
+          gfx.fill({ color: col, alpha: 0.7 + 0.3 * tw });
+          gfx.circle(sx, sy, 9);
+          gfx.stroke({ color: col, width: 1, alpha: 0.22 + 0.22 * tw });
+        }
+      }
+
       const tier = node._tier;
       const tierLvl = node.gatherLvl || 1;
       const tierStep = Math.min(10, Math.max(1, Math.ceil(tierLvl / 10)));
@@ -1851,6 +1884,7 @@ export class EffectsRenderer {
     }
 
     this._advanceOreBreaks(now);
+    this._advanceItemPops(now);
   }
 
   /* Spawn a one-shot ore-vein break animation at a depleted node.  Sized to
@@ -1865,11 +1899,43 @@ export class EffectsRenderer {
     sp.anchor.set(0.5, ORE_BREAK_ANCHOR_Y);
     /* Strip frame is ORE_BREAK_FRAME tall but the rock only fills part of it,
        so divide by the filled fraction to match the static sprite's size. */
-    sp.scale.set(targetH / (ORE_BREAK_FRAME * ORE_BREAK_FILL));
+    sp.scale.set((targetH / (ORE_BREAK_FRAME * ORE_BREAK_FILL)) * ORE_BREAK_SCALE);
     sp.x = node.x;
     sp.y = node.y;
     this.nodeLayer.addChild(sp);
-    this._oreBreaks.push({ sp, startedAt: now });
+    this._oreBreaks.push({ sp, startedAt: now, x: node.x, y: node.y, popped: false });
+  }
+
+  /* A small icon that floats up out of a position and fades — "collected". */
+  _spawnItemPopup(tex, x, y, now) {
+    if (!tex) return;
+    if (!this._itemPops) this._itemPops = [];
+    const sp = new Sprite(tex);
+    sp.anchor.set(0.5, 0.5);
+    sp.scale.set(22 / (tex.height || 64));
+    sp.x = x; sp.y = y;
+    this.nodeLayer.addChild(sp);
+    this._itemPops.push({ sp, startedAt: now, x, y });
+  }
+
+  /* Advance + retire floating item pops: rise ~30px and fade over ~900ms. */
+  _advanceItemPops(now) {
+    const list = this._itemPops;
+    if (!list || !list.length) return;
+    const LIFE = 900;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i];
+      const t = (now - fx.startedAt) / LIFE;
+      if (t >= 1 || fx.sp.destroyed) {
+        if (!fx.sp.destroyed) { if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp); fx.sp.destroy(); }
+        list.splice(i, 1);
+        continue;
+      }
+      fx.sp.y = fx.y - 30 * t;
+      fx.sp.alpha = t < 0.7 ? 1 : (1 - (t - 0.7) / 0.3);    /* hold then fade */
+      const pop = 1 + Math.max(0, 0.4 - t) * 1.5;            /* quick scale-in */
+      fx.sp.scale.set((22 / (fx.sp.texture.height || 64)) * pop);
+    }
   }
 
   /* Advance + retire active ore-break animations.  Plays each strip once,
@@ -1892,6 +1958,11 @@ export class EffectsRenderer {
       const idx = Math.min(ORE_BREAK_FRAMES - 1,
         Math.floor((Math.min(t, ORE_BREAK_DURATION_MS) / ORE_BREAK_DURATION_MS) * ORE_BREAK_FRAMES));
       fx.sp.texture = ORE_BREAK_TEX[idx];
+      /* Right as the rock splits, pop the collected ore icon out of it. */
+      if (!fx.popped && idx >= ORE_BREAK_SPLIT_FRAME) {
+        fx.popped = true;
+        this._spawnItemPopup(ORE_ICON_TEX, fx.x, fx.y - 6, now);
+      }
     }
   }
 
@@ -1916,44 +1987,42 @@ export class EffectsRenderer {
        sprite. Trees are tallest so they get the largest offset. */
     const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
     const y = node.y - yOff;
-    /* Pulse for eye-grab. */
-    const pulse = 1 + Math.sin(now / 80) * 0.15;
-    /* Window-remaining ring (0..1). */
-    const windowDur = Math.max(1, ex.windowClosesAt - ex.windowOpensAt);
-    const remaining = Math.max(0, (ex.windowClosesAt - now) / windowDur);
-    const ringR = 18 * pulse;
-    /* Background dim disc so the cue reads against bright zones. */
-    gfx.circle(x, y, ringR + 4);
-    gfx.fill({ color: 0x000000, alpha: 0.35 });
-    /* Skill-specific shape. */
+    /* Pulse + gentle float so the tool reads as a grabbable "pick me up". */
+    const pulse = 1 + Math.sin(now / 80) * 0.12;
+    const bob = Math.sin(now / 300) * 4;
+    const cy = y + bob;
+    /* Soft shadow + dim disc so the floating tool reads against bright zones. */
+    gfx.ellipse(x, y + 16, 10, 3);
+    gfx.fill({ color: 0x000000, alpha: 0.22 });
+    gfx.circle(x, cy, 16 * pulse);
+    gfx.fill({ color: 0x000000, alpha: 0.3 });
+    /* Floating tool icon — the grab target the finger drags from. */
     if (ex.skill === 'fishing') {
-      /* Shadow-fish silhouette: dark blue ellipse with a tail wedge. */
-      gfx.ellipse(x, y, 14 * pulse, 8 * pulse);
-      gfx.fill({ color: 0x1a3a5a, alpha: 0.9 });
-      gfx.moveTo(x - 14 * pulse, y);
-      gfx.lineTo(x - 22 * pulse, y - 6 * pulse);
-      gfx.lineTo(x - 22 * pulse, y + 6 * pulse);
-      gfx.fill({ color: 0x1a3a5a, alpha: 0.9 });
-      /* Eye dot. */
-      gfx.circle(x + 8 * pulse, y - 2, 1.4);
-      gfx.fill({ color: 0xffffff, alpha: 0.9 });
+      /* Rod: brown shaft + a thin line dangling. */
+      gfx.rect(x - 1.5, cy - 14 * pulse, 3, 26 * pulse);
+      gfx.fill({ color: 0x6a4830, alpha: 0.95 });
+      gfx.moveTo(x + 1, cy - 14 * pulse);
+      gfx.lineTo(x + 9, cy + 11 * pulse);
+      gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.6 });
+      gfx.circle(x + 9, cy + 11 * pulse, 1.6);
+      gfx.fill({ color: 0xffffff, alpha: 0.85 });
     } else if (ex.skill === 'woodcutting') {
       /* Axe icon: brown handle + grey head. */
-      gfx.rect(x - 2, y - 12 * pulse, 4, 24 * pulse);
+      gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);
       gfx.fill({ color: 0x6a4830, alpha: 0.95 });
-      gfx.moveTo(x - 2, y - 8 * pulse);
-      gfx.lineTo(x - 14 * pulse, y - 4 * pulse);
-      gfx.lineTo(x - 14 * pulse, y + 6 * pulse);
-      gfx.lineTo(x - 2, y + 2 * pulse);
+      gfx.moveTo(x - 2, cy - 8 * pulse);
+      gfx.lineTo(x - 14 * pulse, cy - 4 * pulse);
+      gfx.lineTo(x - 14 * pulse, cy + 6 * pulse);
+      gfx.lineTo(x - 2, cy + 2 * pulse);
       gfx.fill({ color: 0xb0b0b0, alpha: 0.95 });
     } else {
-      /* Mining: pickaxe — same handle, curved double-tip head. */
-      gfx.rect(x - 2, y - 12 * pulse, 4, 24 * pulse);
+      /* Mining: pickaxe — handle + curved double-tip head. */
+      gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);
       gfx.fill({ color: 0x6a4830, alpha: 0.95 });
-      gfx.moveTo(x - 14 * pulse, y - 8 * pulse);
-      gfx.lineTo(x + 14 * pulse, y - 8 * pulse);
-      gfx.lineTo(x + 10 * pulse, y - 4 * pulse);
-      gfx.lineTo(x - 10 * pulse, y - 4 * pulse);
+      gfx.moveTo(x - 14 * pulse, cy - 8 * pulse);
+      gfx.lineTo(x + 14 * pulse, cy - 8 * pulse);
+      gfx.lineTo(x + 10 * pulse, cy - 4 * pulse);
+      gfx.lineTo(x - 10 * pulse, cy - 4 * pulse);
       gfx.fill({ color: 0x8a8a8a, alpha: 0.95 });
     }
 
@@ -1968,9 +2037,12 @@ export class EffectsRenderer {
     const hintCol = 0xfff2a8;
     if (ex.skill === 'fishing') {
       /* Clockwise circular arrow — "reel". Rotates so it reads as motion. */
-      const rA = ringR + 14;
+      const rA = 30;
       const a0 = (now / 400) % (Math.PI * 2);
       const aEnd = a0 + Math.PI * 1.5;
+      /* seed the path point at the arc start so Pixi doesn't draw a stray
+         line from (0,0) to the arc (the diagonal-line bug). */
+      gfx.moveTo(x + Math.cos(a0) * rA, y + Math.sin(a0) * rA);
       gfx.arc(x, y, rA, a0, aEnd);
       gfx.stroke({ color: hintCol, width: 2, alpha: hintAlpha });
       const hx = x + Math.cos(aEnd) * rA, hy = y + Math.sin(aEnd) * rA;
@@ -2005,24 +2077,17 @@ export class EffectsRenderer {
       gfx.moveTo(ax, ay + L); gfx.lineTo(ax - 5, ay + L - 7); gfx.lineTo(ax + 5, ay + L - 7);
       gfx.fill({ color: hintCol, alpha: hintAlpha });
     }
-    /* Green progress ring (reps filled) just outside the gold time ring. */
-    if (progress > 0) {
-      gfx.arc(x, y, ringR + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
-      gfx.stroke({ color: 0x3dd497, width: 3, alpha: 0.95 });
-    }
-    /* Rep pips around the ring — fill as each rep completes. */
+    /* Progress as a horizontal pip row beneath the tool (no ring — the old
+       circling ring read as a stray diagonal line and the user prefers just
+       the arrow + floating tool). Pips fill green as each rep completes. */
+    const pipGap = 8;
+    const pipY = y + 28;
+    const px0 = x - (repsTarget - 1) * pipGap / 2;
     for (let i = 0; i < repsTarget; i++) {
-      const pa = -Math.PI / 2 + (i / repsTarget) * Math.PI * 2;
       const filled = (i + 1) <= Math.floor(reps + 1e-3);
-      gfx.circle(x + Math.cos(pa) * (ringR + 10), y + Math.sin(pa) * (ringR + 10), 2.2);
+      gfx.circle(px0 + i * pipGap, pipY, 2.6);
       gfx.fill({ color: filled ? 0x3dd497 : 0x2a3050, alpha: filled ? 1 : 0.6 });
     }
-    /* Outer countdown ring -- shrinks as the window closes. */
-    gfx.arc(x, y, ringR + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remaining);
-    gfx.stroke({ color: 0xf5c542, width: 2.5, alpha: 0.9 });
-    /* Steady outer ring so the cue silhouette is always visible. */
-    gfx.circle(x, y, ringR + 6);
-    gfx.stroke({ color: 0xfff2a8, width: 1, alpha: 0.4 });
   }
 
   clear() {

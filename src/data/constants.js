@@ -1,6 +1,11 @@
 /* ═══ CORE CONSTANTS ═══ */
 export const TILE = 32;
 
+/* Ore is mined from one tile NORTH of the vein (so the south-facing swing
+   lines up over the rock). The player must stand within MINE_SPOT_R of that
+   spot for the Mine action to be offered. Shared by the marker + the gate. */
+export const MINE_SPOT_R = 42;
+
 export const PLAYER_COLORS = ['#5b52ff', '#00d4b8', '#ff5e6c', '#f5c542', '#3dd497', '#ff8a5c', '#a78bfa', '#38bdf8', '#fb7185', '#4ade80', '#facc15', '#c084fc', '#22d3ee', '#f97316', '#e879f9', '#34d399'];
 
 /* ═══ PERSONAL FARM + HOUSE ═══ */
