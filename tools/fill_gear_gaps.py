@@ -79,7 +79,7 @@ medH = float(np.median(heights)) if heights else 150
 seam_off = int(np.median(offsets)) if offsets else int(0.55 * medH)
 band_h = int(BAND_FRAC * medH)
 if band_mode:
-    band_h = int(0.70 * band_h) // 2             # thin worn-over band (half height, shrunk from the top)
+    band_h = int(0.70 * band_h)                  # worn-over band height (cropped to bottom half below)
 chain_s = np.array(CHAIN.resize((int(706 * band_h / 96), band_h), Image.LANCZOS))
 
 # Bake the belt into the CHEST but ONLY where the chest is transparent (the
@@ -103,11 +103,15 @@ for i in range(n):
     # (the seam_off anchor is dragged down to the thighs by the hanging gauntlets
     # in the chest gear).  Otherwise the legacy crown+seam offset.
     if band_mode:
-        by0 = y0 + int(0.46 * medH)              # top at the old band centre -> bottom unchanged
+        by0 = y0 + int(0.46 * medH) - band_h // 2    # full band centred on the waist
     else:
         by0 = y0 + seam_off - 22                     # chain top, nudged up 20px total
     band = np.zeros_like(bop)
     band[max(0, by0):min(FRAME, by0 + band_h), :] = True
+    if band_mode:
+        # crop the band to its BOTTOM HALF (shrink from the top, bottom fixed) --
+        # keeps the full-size chain links, just hides the upper rows.
+        band[:max(0, by0 + band_h // 2), :] = False
     if band_mode:
         # full waist band over the body, confined to the HIP run (sampled a little
         # BELOW the band, where the body is just the legs -- not the arms/hands
