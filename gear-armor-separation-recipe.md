@@ -39,6 +39,17 @@ hardest 3/4 view). Shipped in `GEAR_VERSION` 2.3.616 → 2.3.625.
      --chest 1 --legs 0 --head 0 --zoom 2 --out /tmp/ne-chest.png
    ```
 
+4b. **(3/4 & front/back views) lower the collar** so the cuirass neckline doesn't
+   ride up over the jaw and sink the head:
+   ```
+   python tools/lower_collar.py jog <dir>
+   ```
+   Per frame it removes chest-gear pixels sitting over the body's head above the
+   neck base; pauldrons (at the sides) aren't over the head so they stay, and
+   frames where a raised gauntlet is correctly in front of the face are SKIPPED
+   (gear-over-head coverage > 0.45) so the arm is never cut.  Run on the freshly-
+   ingested chest, before the belt.
+
 5. **(Optional) chain belt over the waist gap.** A full chest+legs suit leaves a
    bare-hip gap at the waist. Bake the chain belt into the **chest** sheet, then
    strip the full-stride black backing:
