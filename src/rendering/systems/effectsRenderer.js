@@ -3,7 +3,7 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
-import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
@@ -47,6 +47,34 @@ const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   Assets.load(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
 )).catch((err) => console.warn('[node-sprites] load failed', err));
+
+/* Ore-vein break: a 14-frame 256-px horizontal strip (intact -> split
+   halves) played once when an ore node is depleted.  Carved into per-frame
+   Textures up front, same pattern as the player sheets.  See
+   docs/skill-animation-pipeline.md. */
+const ORE_BREAK_FRAMES = 14;
+const ORE_BREAK_FRAME = 256;
+const ORE_BREAK_DURATION_MS = 700;
+/* Rock fills ~45% of the 256-px frame height, so scale the strip up
+   relative to the static ore-vein target height to keep the rock the same
+   on-screen size.  Tune ORE_BREAK_FILL / ORE_BREAK_ANCHOR_Y in-game if the
+   broken rock sits high/low or large/small. */
+const ORE_BREAK_FILL = 0.45;
+const ORE_BREAK_ANCHOR_Y = 0.78;
+let ORE_BREAK_TEX = null;
+Assets.load('/sprites/world/ore-vein-break.png?v=1').then((tex) => {
+  if (!tex || !tex.source) return;
+  tex.source.scaleMode = 'linear';
+  tex.source.autoGenerateMipmaps = true;
+  const arr = [];
+  for (let i = 0; i < ORE_BREAK_FRAMES; i++) {
+    arr.push(new Texture({
+      source: tex.source,
+      frame: new Rectangle(i * ORE_BREAK_FRAME, 0, ORE_BREAK_FRAME, ORE_BREAK_FRAME),
+    }));
+  }
+  ORE_BREAK_TEX = arr;
+}).catch((err) => console.warn('[ore-break] load failed', err));
 
 const DMG_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
@@ -1679,9 +1707,18 @@ export class EffectsRenderer {
            revive loop can flip alive=true after respawnAt elapses.
            Their Pixi sprite is torn down once on the first dead frame;
            a fresh sprite is created when the node revives. */
+        /* On the first dead frame of an ore vein, kick off the one-shot
+           break animation at the node's spot (before the sprite is torn
+           down).  _breakPlayed guards against re-spawning every dead frame
+           and is cleared when the node revives. */
+        if (node.nodeType === 'oreVein' && !node._breakPlayed && ORE_BREAK_TEX) {
+          this._spawnOreBreak(node, now);
+        }
+        node._breakPlayed = true;
         this._disposeNode(node);
         continue;
       }
+      node._breakPlayed = false;
 
       const tier = node._tier;
       const tierLvl = node.gatherLvl || 1;
@@ -1811,6 +1848,50 @@ export class EffectsRenderer {
         if (node._pixiTip2) node._pixiTip2.visible = false;
         if (node._pixiTip3) node._pixiTip3.visible = false;
       }
+    }
+
+    this._advanceOreBreaks(now);
+  }
+
+  /* Spawn a one-shot ore-vein break animation at a depleted node.  Sized to
+     match the static ore-vein sprite via the same tier-scaled target height. */
+  _spawnOreBreak(node, now) {
+    if (!ORE_BREAK_TEX) return;
+    if (!this._oreBreaks) this._oreBreaks = [];
+    const tierLvl = node.gatherLvl || 1;
+    const tierStep = Math.min(10, Math.max(1, Math.ceil(tierLvl / 10)));
+    const targetH = (NODE_SPRITE_HEIGHT_BASE.oreVein ?? 88) * (1 + (tierStep - 1) * 0.15);
+    const sp = new Sprite(ORE_BREAK_TEX[0]);
+    sp.anchor.set(0.5, ORE_BREAK_ANCHOR_Y);
+    /* Strip frame is ORE_BREAK_FRAME tall but the rock only fills part of it,
+       so divide by the filled fraction to match the static sprite's size. */
+    sp.scale.set(targetH / (ORE_BREAK_FRAME * ORE_BREAK_FILL));
+    sp.x = node.x;
+    sp.y = node.y;
+    this.nodeLayer.addChild(sp);
+    this._oreBreaks.push({ sp, startedAt: now });
+  }
+
+  /* Advance + retire active ore-break animations.  Plays each strip once,
+     holds the final "split halves" frame for a short beat, then disposes. */
+  _advanceOreBreaks(now) {
+    const list = this._oreBreaks;
+    if (!list || !list.length || !ORE_BREAK_TEX) return;
+    const HOLD_MS = 250;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i];
+      const t = now - fx.startedAt;
+      if (t >= ORE_BREAK_DURATION_MS + HOLD_MS || fx.sp.destroyed) {
+        if (!fx.sp.destroyed) {
+          if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp);
+          fx.sp.destroy();
+        }
+        list.splice(i, 1);
+        continue;
+      }
+      const idx = Math.min(ORE_BREAK_FRAMES - 1,
+        Math.floor((Math.min(t, ORE_BREAK_DURATION_MS) / ORE_BREAK_DURATION_MS) * ORE_BREAK_FRAMES));
+      fx.sp.texture = ORE_BREAK_TEX[idx];
     }
   }
 
