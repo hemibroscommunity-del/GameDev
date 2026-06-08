@@ -86,7 +86,7 @@ const MINE_DURATION_MS = 650;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine'];
 
-const VERSION = 66; /* +mine pose (south-only 14-frame mining swing) */
+const VERSION = 67; /* +mine pose; v67 cleaned interior white gaps in mine-south */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;

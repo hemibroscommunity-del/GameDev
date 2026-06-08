@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { EXTRACT_REPS_TARGET, EXTRACT_REPS_DEFAULT } from '@/data/gameSystems.js';
+import { EXTRACT_REPS_TARGET, EXTRACT_REPS_DEFAULT, BT_AUDIO } from '@/data/gameSystems.js';
 
 /* v2.3.229 / v2.4 — ExtractionSwipeLayer
  *
@@ -132,6 +132,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           treewardStrokes: 0,
           treeward,
           cueX: cue.x, cueY: cue.y,
+          nodeX: node ? node.x : null, nodeY: node ? node.y : null,
           lastAngle: Math.atan2(y - cue.y, x - cue.x),
           totalAngle: 0,
           startT: performance.now(),
@@ -170,6 +171,28 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       /* woodcutting: only the tree-ward swing scores a rep (return swing is free).
          treeward 0 (tree directly above/below) -> accept either horizontal stroke. */
       if (skill === 'woodcutting' && (g.treeward === 0 || d === g.treeward)) g.treewardStrokes += 1;
+      /* mining: the DOWN half-stroke (d===1, screen y increasing) is the slam --
+         spark + clink at the ore so the hit reads. */
+      if (skill === 'mining' && d === 1) onSlam(g);
+    };
+
+    /* Spark burst + clink at the ore on a pickaxe slam. */
+    const onSlam = (g) => {
+      const S = stateRef && stateRef.current;
+      if (!S || g.nodeX == null) return;
+      if (S.hitParticles) {
+        for (let i = 0; i < 7; i++) {
+          S.hitParticles.push({
+            x: g.nodeX, y: g.nodeY,
+            vx: (Math.random() - 0.5) * 5,
+            vy: -Math.random() * 3 - 1,        /* mostly upward chips */
+            life: 0.45,
+            color: i % 2 ? '#ffd27a' : '#fff2c0',
+            size: 1.6,
+          });
+        }
+      }
+      try { if (BT_AUDIO) BT_AUDIO.beep(620, 0.045, 0.06, 'square'); } catch (e) {}
     };
 
     const onPointerMove = (e) => {
