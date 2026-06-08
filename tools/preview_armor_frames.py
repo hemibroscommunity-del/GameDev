@@ -92,8 +92,9 @@ def _blend_ghost_hand(ba, top, bot):
     def med(y0, y1):
         m = op.copy(); m[:max(0, y0)] = False; m[min(FRAME, y1):] = False
         return np.median(ba[m][:, :3], axis=0) if m.any() else None
+    shoe_top = bot - int(round(0.18 * fh))
     skin_ref = med(top, neck)
-    shoes_ref = med(bot - int(round(0.18 * fh)), bot + 1)
+    shoes_ref = med(shoe_top, bot + 1)
     if skin_ref is None or shoes_ref is None:
         return
     # Pants colour: median of the upper-leg band, but EXCLUDING skin-toned pixels
@@ -120,8 +121,16 @@ def _blend_ghost_hand(ba, top, bot):
     low = op.copy(); low[:waist] = False
     # strict argmax (not a fixed margin): the fist is skin when skin is the MOST
     # hue-aligned of the three refs.  A margin fails for bright/desaturated skin
-    # (pale tone scores almost as high to the grey boots as to skin).
-    fist = low & (s_skin > score(pants_ref)) & (s_skin > score(shoes_ref))
+    # (pale tone scores almost as high to the grey boots as to skin).  Detect ONLY
+    # between the waist and the shoe band -- the hand swings at the hip, never at
+    # the feet -- so individual grey boot pixels can't flip to skin and get a pants
+    # ring.  Then despeckle: drop tiny fist blobs (stray edge/boot misclassifs).
+    region = op.copy(); region[:waist] = False; region[shoe_top:] = False
+    fist = region & (s_skin > score(pants_ref)) & (s_skin > score(shoes_ref))
+    lbl, nn = ndimage.label(fist)
+    if nn:
+        sizes = ndimage.sum(np.ones_like(lbl), lbl, range(1, nn + 1))
+        fist = np.isin(lbl, list(np.nonzero(sizes >= 20)[0] + 1))
     if not fist.any():
         return
     leg = low & ~fist

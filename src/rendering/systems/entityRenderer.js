@@ -468,8 +468,9 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
           const mid = a => { a.sort((p, q) => p - q); return a[a.length >> 1]; };
           return [mid(rs), mid(gs), mid(bs)];
         };
+        const shoeTop = figBot - Math.round(0.18 * fh);
         const skinRef = medRGB(figTop, neckY);
-        const shoesRef = medRGB(figBot - Math.round(0.18 * fh), figBot + 1);
+        const shoesRef = medRGB(shoeTop, figBot + 1);
         // Pants colour: median of the upper-leg band EXCLUDING skin-toned pixels
         // -- the bare hip/fist can sit inside this band and would otherwise drag
         // the sample toward skin, making pants ~ skin so the fist test fails to
@@ -498,15 +499,34 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
             for (let x = 0; x < 256; x++) {
               const o = (y * 256 + x) * 4; if (d[o + 3] <= 40) continue;
               const R = d[o], G = d[o + 1], B = d[o + 2];
-              const sSkin = score(R, G, B, skinRef);
               // strict argmax (not a fixed margin): the fist is skin when skin is the
               // MOST hue-aligned of the three refs.  A margin fails for bright/
-              // desaturated skin (pale scores almost as high to the grey boots as to skin).
-              if (sSkin > score(R, G, B, pantsRef) && sSkin > score(R, G, B, shoesRef)) { fist[y * 256 + x] = 1; anyFist = true; }
+              // desaturated skin (pale scores almost as high to the grey boots as to
+              // skin).  Detect ONLY above the shoe band -- the hand swings at the
+              // hip, never at the feet -- so grey boot pixels can't flip to skin and
+              // get a pants ring.
+              const sSkin = score(R, G, B, skinRef);
+              if (y < shoeTop && sSkin > score(R, G, B, pantsRef) && sSkin > score(R, G, B, shoesRef)) { fist[y * 256 + x] = 1; anyFist = true; }
               else leg[y * 256 + x] = 1;
             }
           }
           if (anyFist) {
+            // despeckle: drop fist blobs < 20px (stray edge/boot misclassifications),
+            // 4-connectivity flood fill -- matches the preview's ndimage.label.
+            const seen = new Uint8Array(256 * 256), st = [];
+            for (let p0 = 0; p0 < 256 * 256; p0++) {
+              if (!fist[p0] || seen[p0]) continue;
+              const comp = []; st.length = 0; st.push(p0); seen[p0] = 1;
+              while (st.length) {
+                const p = st.pop(); comp.push(p);
+                const x = p % 256, y = (p / 256) | 0;
+                if (x > 0 && fist[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; st.push(p - 1); }
+                if (x < 255 && fist[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; st.push(p + 1); }
+                if (y > 0 && fist[p - 256] && !seen[p - 256]) { seen[p - 256] = 1; st.push(p - 256); }
+                if (y < 255 && fist[p + 256] && !seen[p + 256]) { seen[p + 256] = 1; st.push(p + 256); }
+              }
+              if (comp.length < 20) for (let i = 0; i < comp.length; i++) { fist[comp[i]] = 0; leg[comp[i]] = 1; }
+            }
             const sil = new Uint8Array(256 * 256);          // leg silhouette: per-row span of non-fist body, +2px
             for (let y = waistY; y < 256; y++) {
               let mn = 256, mx = -1;
