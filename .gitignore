@@ -10,3 +10,7 @@ architecture.md
 development-playbook-*.md
 CLAUDE.md
 .claude/
+
+# Python bytecode cache
+__pycache__/
+*.pyc
