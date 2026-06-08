@@ -3668,6 +3668,206 @@ export const WEAPON_TYPES = {
   }
 };
 
+/* ═══ Tier-2 per-weapon-CATEGORY builds ═══
+   Each item-level WEAPON_TYPES key maps to a category.  A category owns
+   one skill level + one point pool shared by every weapon type inside it,
+   so a fast `sword` and a heavy `greatsword` train the same Sword build
+   while keeping their own base/speed/range combat math. */
+export const WEAPON_CATEGORY = {
+  greatsword: 'sword',
+  sword: 'sword',
+  bow: 'bow',
+  staff: 'staff',
+};
+/* Stable category list for UI iteration. */
+export const WEAPON_CATEGORIES = ['sword', 'bow', 'staff'];
+export const WEAPON_CATEGORY_META = {
+  sword: { label: 'Sword', emoji: '🗡️', blurb: 'Melee blades — fast sword + heavy greatsword.' },
+  bow:   { label: 'Bow',   emoji: '🏹', blurb: 'Ranged physical — precision at distance.' },
+  staff: { label: 'Staff', emoji: '🪄', blurb: 'Magic — AoE detonation, high variance.' },
+};
+
+/* Points granted per weapon-skill level, and the per-channel cap (mirrors
+   the retired generic-T2 cap of 99). */
+export const WEAPON_PTS_PER_LEVEL = 5;
+export const WEAPON_CHANNEL_CAP = 99;
+/* Weapon skill levels are damage-driven: each point of damage dealt by a
+   weapon of the category adds this much XP to that category's skill.  1.0
+   keeps "xp == damage dealt"; tune here without touching combat code. */
+export const WEAPON_XP_PER_DMG = 1.0;
+export const WEAPON_LEVEL_CAP = 99;
+
+/* XP to go from `level` to `level+1`.  Gentle geometric curve so the first
+   few levels land within a handful of fights and later levels stretch out;
+   ~99 levels fills the full 5×99 channel budget, matching the old T2 arc.
+   Tunable in isolation. */
+export function weaponXpRequired(level) {
+  return Math.ceil(280 * Math.pow(1.16, level || 0));
+}
+
+/* Per-category channel definitions.  `role` drives the combat wiring
+   (damage/crit are LIVE this slice; the rest are `active:false` and shown
+   as "Soon" in the UI so points are never wasted on inert channels).
+   `perPt` is the live combat coefficient for the active channels.
+   `derive(v)` returns a short readout for the allocation panel. */
+export const WEAPON_CHANNELS = {
+  sword: [
+    { key: 'edge',        label: 'Sharpened Edge', role: 'damage',  active: true,  perPt: 0.12,
+      blurb: '+base damage on every swing.',
+      derive: (v) => '+' + (v * 0.12).toFixed(1) + ' base dmg' },
+    { key: 'precision',   label: 'Precision',      role: 'crit',    active: true,
+      blurb: 'Crit chance on top of Power.',
+      derive: (v) => '+' + (30 * v / (v + 250)).toFixed(1) + '% crit' },
+    { key: 'executioner', label: 'Executioner',    role: 'critDmg', active: false,
+      blurb: '+crit damage multiplier.', derive: () => 'Soon' },
+    { key: 'tempo',       label: 'Tempo',          role: 'atkspd',  active: false,
+      blurb: '+attack speed.', derive: () => 'Soon' },
+    { key: 'cleave',      label: 'Cleave',         role: 'cleave',  active: false,
+      blurb: 'Wider arc — hit adjacent foes.', derive: () => 'Soon' },
+  ],
+  bow: [
+    { key: 'drawPower',    label: 'Draw Power',    role: 'damage',  active: true,  perPt: 0.12,
+      blurb: '+base damage per shot.',
+      derive: (v) => '+' + (v * 0.12).toFixed(1) + ' base dmg' },
+    { key: 'marksmanship', label: 'Marksmanship',  role: 'crit',    active: true,
+      blurb: 'Crit chance on top of Agility.',
+      derive: (v) => '+' + (30 * v / (v + 250)).toFixed(1) + '% crit' },
+    { key: 'headshot',     label: 'Headshot',      role: 'critDmg', active: false,
+      blurb: '+crit damage multiplier.', derive: () => 'Soon' },
+    { key: 'piercing',     label: 'Piercing',      role: 'pierce',  active: false,
+      blurb: 'Arrows pass through targets.', derive: () => 'Soon' },
+    { key: 'longshot',     label: 'Longshot',      role: 'range',   active: false,
+      blurb: '+range and arrow speed.', derive: () => 'Soon' },
+  ],
+  staff: [
+    { key: 'spellPower',  label: 'Spell Power',    role: 'damage',  active: true,  perPt: 0.12,
+      blurb: '+base damage per cast.',
+      derive: (v) => '+' + (v * 0.12).toFixed(1) + ' base dmg' },
+    { key: 'overload',    label: 'Overload',       role: 'crit',    active: true,
+      blurb: 'Crit chance for magic.',
+      derive: (v) => '+' + (30 * v / (v + 250)).toFixed(1) + '% crit' },
+    { key: 'detonation',  label: 'Detonation',     role: 'aoe',     active: false,
+      blurb: '+AoE targets / cone.', derive: () => 'Soon' },
+    { key: 'attunement',  label: 'Attunement',     role: 'status',  active: false,
+      blurb: '+status & collision damage.', derive: () => 'Soon' },
+    { key: 'focus',       label: 'Focus',          role: 'variance', active: false,
+      blurb: 'Raise the low end of variance.', derive: () => 'Soon' },
+  ],
+};
+
+/* The category whose build is currently in effect (resolved from the
+   equipped weapon).  Falls back to 'sword'. */
+export function activeWeaponCategory(rpg) {
+  if (!rpg) return 'sword';
+  var wpn = getActiveWeapon(rpg);
+  return (wpn && WEAPON_CATEGORY[wpn.type]) || 'sword';
+}
+
+/* Look up the live spec point total for a channel role in a category. */
+function weaponChannelValueByRole(rpg, category, role) {
+  var defs = WEAPON_CHANNELS[category];
+  if (!defs || !rpg || !rpg.weaponSpecs || !rpg.weaponSpecs[category]) return 0;
+  for (var i = 0; i < defs.length; i++) {
+    if (defs[i].role === role && defs[i].active) {
+      return rpg.weaponSpecs[category][defs[i].key] || 0;
+    }
+  }
+  return 0;
+}
+
+/* Flat base-damage bonus from a specific weapon type's CATEGORY damage
+   channel (used inside calcWeaponDmg so per-weapon readouts are accurate). */
+export function weaponDamageBonusFor(rpg, weaponType) {
+  var cat = WEAPON_CATEGORY[weaponType] || 'sword';
+  var defs = WEAPON_CHANNELS[cat];
+  if (!defs || !rpg || !rpg.weaponSpecs || !rpg.weaponSpecs[cat]) return 0;
+  for (var i = 0; i < defs.length; i++) {
+    if (defs[i].role === 'damage' && defs[i].active) {
+      return (rpg.weaponSpecs[cat][defs[i].key] || 0) * (defs[i].perPt || 0);
+    }
+  }
+  return 0;
+}
+
+/* Flat base-damage bonus from the equipped category's damage channel. */
+export function getWeaponDamageBonus(rpg) {
+  return weaponDamageBonusFor(rpg, (getActiveWeapon(rpg) || {}).type);
+}
+
+/* Crit-channel point total for the equipped category — fed as the T2 amp
+   (2nd arg) into calcCritChance/calcCritMult, replacing the old generic
+   Ferocity stat. */
+export function getWeaponCritStat(rpg) {
+  return weaponChannelValueByRole(rpg, activeWeaponCategory(rpg), 'crit');
+}
+
+/* Award damage-proportional XP to the equipped category and resolve any
+   weapon-skill level-ups (each grants WEAPON_PTS_PER_LEVEL into that
+   category's pool).  Returns {cat, level, points} when a level-up fired,
+   else null, so callers can surface a toast. */
+export function awardWeaponXp(rpg, dmg) {
+  if (!rpg || !(dmg > 0)) return null;
+  var cat = activeWeaponCategory(rpg);
+  if (!rpg.weaponSkills) rpg.weaponSkills = {};
+  var sk = rpg.weaponSkills[cat] || (rpg.weaponSkills[cat] = { level: 0, xp: 0 });
+  if (sk.level >= WEAPON_LEVEL_CAP) return null;
+  sk.xp += dmg * WEAPON_XP_PER_DMG;
+  var gained = 0;
+  while (sk.level < WEAPON_LEVEL_CAP && sk.xp >= weaponXpRequired(sk.level)) {
+    sk.xp -= weaponXpRequired(sk.level);
+    sk.level++;
+    gained++;
+    if (!rpg.weaponUnspent) rpg.weaponUnspent = {};
+    rpg.weaponUnspent[cat] = (rpg.weaponUnspent[cat] || 0) + WEAPON_PTS_PER_LEVEL;
+  }
+  if (sk.level >= WEAPON_LEVEL_CAP) sk.xp = 0;
+  return gained > 0 ? { cat: cat, level: sk.level, points: gained * WEAPON_PTS_PER_LEVEL } : null;
+}
+
+/* Fresh per-category skill/spec/pool scaffolding for a new character. */
+export function createDefaultWeaponT2() {
+  var skills = {}, specs = {}, unspent = {};
+  WEAPON_CATEGORIES.forEach(function (cat) {
+    skills[cat] = { level: 0, xp: 0 };
+    unspent[cat] = 0;
+    var s = {};
+    WEAPON_CHANNELS[cat].forEach(function (ch) { s[ch.key] = 0; });
+    specs[cat] = s;
+  });
+  return { weaponSkills: skills, weaponSpecs: specs, weaponUnspent: unspent };
+}
+
+/* Backfill the per-category fields on an existing save and WIPE the retired
+   generic Tier-2 (per the redesign: defense/sustain/CC move to a future
+   gear track, weapons stay pure offense).  Idempotent. */
+export function migrateWeaponT2(rpg) {
+  if (!rpg) return rpg;
+  var def = createDefaultWeaponT2();
+  if (!rpg.weaponSkills)  rpg.weaponSkills  = def.weaponSkills;
+  if (!rpg.weaponSpecs)   rpg.weaponSpecs   = def.weaponSpecs;
+  if (!rpg.weaponUnspent) rpg.weaponUnspent = def.weaponUnspent;
+  /* Fill any missing per-category sub-objects / channel keys. */
+  WEAPON_CATEGORIES.forEach(function (cat) {
+    if (!rpg.weaponSkills[cat])  rpg.weaponSkills[cat]  = { level: 0, xp: 0 };
+    if (rpg.weaponUnspent[cat] == null) rpg.weaponUnspent[cat] = 0;
+    if (!rpg.weaponSpecs[cat])   rpg.weaponSpecs[cat]   = {};
+    WEAPON_CHANNELS[cat].forEach(function (ch) {
+      if (rpg.weaponSpecs[cat][ch.key] == null) rpg.weaponSpecs[cat][ch.key] = 0;
+    });
+  });
+  /* Wipe-and-reset the old generic T2 unless it has already been retired. */
+  if (!rpg._t2Retired) {
+    rpg.ferocity = 0;
+    rpg.elementalMastery = 0;
+    rpg.fortification = 0;
+    rpg.restoration = 0;
+    rpg.influence = 0;
+    rpg.unspentT2 = 0;
+    rpg._t2Retired = true;
+  }
+  return rpg;
+}
+
 /* §4.6 Rarity Tiers */
 export const RARITY_TIERS = {
   common: {
@@ -4506,13 +4706,17 @@ export function getArmorHp(armor, vitality) {
 export function calcWeaponDmg(weaponType, statValOrRpg, tierMult) {
   var w = WEAPON_TYPES[weaponType];
   var statVal;
+  var dmgChannel = 0;
   if (statValOrRpg && typeof statValOrRpg === 'object') {
     var statKey = EQUIP_STAT_MAP[weaponType] || 'power';
     statVal = statValOrRpg[statKey] || 0;
+    /* T2: add the matching CATEGORY's damage-channel bonus (resolved by
+       the passed weaponType so per-weapon readouts stay accurate). */
+    dmgChannel = weaponDamageBonusFor(statValOrRpg, weaponType);
   } else {
     statVal = statValOrRpg || 0;
   }
-  var base = (w.base + statVal * 0.1667) * tierMult; // baseline-10: 0.8 ÷ 4.8
+  var base = (w.base + statVal * 0.1667 + dmgChannel) * tierMult; // baseline-10: 0.8 ÷ 4.8
   /* Per-type variance: staff widest, melee mid, bow tightest. */
   if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.0);
   if (weaponType === 'bow')    return base * (0.6  + Math.random() * 0.2);
@@ -4628,14 +4832,18 @@ export function createDefaultRpg() {
        undefined default to 0 via `|| 0` in the gate; their first new
        build point materialises the field. */
     _buildPointsThisLvl: 0,
-    /* Tier 2 — still allocation-based until use-training is hooked
-       up for them in a follow-up ship. */
+    /* Tier 2 — RETIRED generic specs.  Kept at 0 (still read defensively
+       in a few combat sites) but no longer allocatable.  Progression now
+       lives in the per-weapon-category build below. */
     ferocity: 0,
     elementalMastery: 0,
     fortification: 0,
     restoration: 0,
     influence: 0,
-    unspentT2: 5,
+    unspentT2: 0,
+    _t2Retired: true,
+    /* Tier 2 — per-weapon-category skills / channels / point pools. */
+    ...createDefaultWeaponT2(),
     /* Derived (recalculated) */
     hp: 100,
     maxHp: 100,

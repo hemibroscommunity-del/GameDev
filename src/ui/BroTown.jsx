@@ -62,6 +62,7 @@ const {
   CLAN_COLORS, CLAN_CREATE_COST, CLAN_MAX_MEMBERS, CLAN_LOGO_SIZE, CLAN_TAG_MAX, CLAN_NAME_MAX,
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
+  getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
@@ -3432,7 +3433,7 @@ export var BroTown = function BroTown(_ref0) {
                     while ((R._buildPointsThisLvl || 0) >= 5) {
                       R._buildPointsThisLvl -= 5;
                       R.level++;
-                      R.unspentT2 = (R.unspentT2 || 0) + 5;
+                      R.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
                       recalcDerived(R);
                       R.hp = R.maxHp; R.stamina = R.maxStamina; R.mana = R.maxMana;
                       setLevelUpMsg({ kind: 'combat', level: R.level, ts: Date.now() });
@@ -4719,7 +4720,7 @@ export var BroTown = function BroTown(_ref0) {
           /* Give them points to allocate based on their old level */
           var earnedPts = (S.rpg.level - 1) * STAT_POINTS_PER_LEVEL;
           S.rpg.unspentT1 = 5 + Math.floor(earnedPts / 2);
-          S.rpg.unspentT2 = 5 + Math.floor(earnedPts / 2);
+          S.rpg.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
           recalcDerived(S.rpg);
         }
       }
@@ -4727,6 +4728,9 @@ export var BroTown = function BroTown(_ref0) {
       if (!S.rpg.lifeSkills) S.rpg.lifeSkills = createDefaultLifeSkills();
       /* Migrate old saves — adds new skills, converts gathering → mining */
       S.rpg.lifeSkills = migrateLifeSkills(S.rpg.lifeSkills);
+      /* T2 redesign: backfill per-weapon-category build fields + wipe the
+         retired generic specs (one-time, idempotent). */
+      migrateWeaponT2(S.rpg);
       if (!S.rpg._quests) S.rpg._quests = {};
       if (!S.rpg._questFlags) S.rpg._questFlags = {};
       if (!S.rpg._questKills) S.rpg._questKills = {};
@@ -7541,10 +7545,12 @@ export var BroTown = function BroTown(_ref0) {
              site at the swarm-attack branch is also disabled, so this
              never fires in any new save. Old saves with leftover
              _bleedUntil will simply have it ignored. */
-          /* §2.1 Crit from Ferocity */
-          /* v2.3.233 (Phase 3): Power is the T1 crit source, Ferocity amps. */
-          var critChance = calcCritChance(_R6.power, _R6.ferocity);
-          var critMult = calcCritMult(_R6.power, _R6.ferocity);
+          /* §2.1 Crit — T1 stat (Power) is the baseline source; the
+             equipped weapon CATEGORY's crit channel is the T2 amp (replaces
+             the retired generic Ferocity stat). */
+          var _wCrit = getWeaponCritStat(_R6);
+          var critChance = calcCritChance(_R6.power, _wCrit);
+          var critMult = calcCritMult(_R6.power, _wCrit);
           /* Baseline floor: at zero ferocity, calcCritChance returns 0%, which
              meant a brand-new player could never grand-slam. Floor at 8% so a
              grand slam is reachable from the first swing. Applied before the
@@ -9006,6 +9012,16 @@ export var BroTown = function BroTown(_ref0) {
                    Pairs with block = 3 to match the user's hits-vs-blocks
                    ratio for Endurance share of killXp. */
                 addBuildUse(_R6, 'power', 1);
+                /* T2: damage-driven weapon-skill XP for the equipped
+                   category (Sword for melee).  A level-up grants +5 into
+                   that category's build pool; surface a small toast. */
+                {
+                  var _wlM = awardWeaponXp(_R6, dmg);
+                  if (_wlM) {
+                    S.dmgNumbers.push({ x: m.x, y: m.y - 44, text: _wlM.cat.toUpperCase() + ' Lv ' + _wlM.level + ' · +' + _wlM.points + 'pt', color: '#5b52ff', ts: Date.now() });
+                    try { BT_AUDIO.levelUp(); } catch (e) {}
+                  }
+                }
                 /* Slash mark — short diagonal cut at the impact point,
                    oriented along the swing direction. Capped + cleared on
                    respawn alongside stuck arrows / burn marks. */
@@ -9722,7 +9738,7 @@ export var BroTown = function BroTown(_ref0) {
                   while ((_R6._buildPointsThisLvl || 0) >= 5) {
                     _R6._buildPointsThisLvl -= 5;
                     _R6.level++;
-                    _R6.unspentT2 = (_R6.unspentT2 || 0) + 5;
+                    _R6.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
                     recalcDerived(_R6);
                     _R6.hp = _R6.maxHp;
                     _R6.stamina = _R6.maxStamina;
@@ -10235,7 +10251,7 @@ export var BroTown = function BroTown(_ref0) {
               while ((S.rpg._buildPointsThisLvl || 0) >= 5) {
                 S.rpg._buildPointsThisLvl -= 5;
                 S.rpg.level++;
-                S.rpg.unspentT2 = (S.rpg.unspentT2 || 0) + 5;
+                S.rpg.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
                 recalcDerived(S.rpg);
                 S.rpg.hp = S.rpg.maxHp;
                 S.rpg.stamina = S.rpg.maxStamina;
@@ -10941,6 +10957,15 @@ export var BroTown = function BroTown(_ref0) {
                    distributeKillXpToBuild's share split.  Power stays
                    reserved for melee swing damage. */
                 if (S.rpg) addBuildUse(S.rpg, isStaffProj ? 'mind' : 'agility', 1);
+                /* T2: damage-driven weapon-skill XP — the equipped slot
+                   resolves to Bow or Staff at hit time. */
+                if (S.rpg) {
+                  var _wlR = awardWeaponXp(S.rpg, _arrowDmg);
+                  if (_wlR) {
+                    S.dmgNumbers.push({ x: m.x, y: m.y - 44, text: _wlR.cat.toUpperCase() + ' Lv ' + _wlR.level + ' · +' + _wlR.points + 'pt', color: '#5b52ff', ts: Date.now() });
+                    try { BT_AUDIO.levelUp(); } catch (e) {}
+                  }
+                }
                 if (S._serverMonsters && S.channel) {
                   S.channel.send({ type: 'monster_damage', payload: {
                     monsterId: m.id, zone: S.currentZone, element: null,
@@ -11174,7 +11199,7 @@ export var BroTown = function BroTown(_ref0) {
                     while ((_R9._buildPointsThisLvl || 0) >= 5) {
                       _R9._buildPointsThisLvl -= 5;
                       _R9.level++;
-                      _R9.unspentT2 = (_R9.unspentT2 || 0) + 5;
+                      _R9.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
                       recalcDerived(_R9);
                       _R9.hp = _R9.maxHp;
                       _R9.stamina = _R9.maxStamina;
@@ -19325,7 +19350,7 @@ export var BroTown = function BroTown(_ref0) {
       marginTop: 8,
       lineHeight: 1.6
     }
-  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.ferocity || 0) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.ferocity || 0).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
+  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, getWeaponCritStat(rpgState)) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, getWeaponCritStat(rpgState)).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setBuildingPanel(null);

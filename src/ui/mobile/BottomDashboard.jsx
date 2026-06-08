@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
@@ -95,6 +95,10 @@ const CHAR_STATS = [
   { key: 'agility',   label: 'Agility',   short: 'AGI', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Agility — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
   { key: 'mind',      label: 'Mind',      short: 'MIN', iconSrc: '/icons/popups/spell.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Mind — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
 ];
+
+/* Dashboard now focuses on the build/combat stats; the life-skills grid is
+   hidden behind this flag (flip to true to restore the 10-skill column). */
+const SHOW_LIFE_SKILLS = false;
 
 // 10 life skills — names match the canonical labels in BroTown.jsx
 // (Woodcutting, Fishing, Mining, Cooking, Blacksmithing, Woodworking,
@@ -424,7 +428,7 @@ const PANELS = {
   feedback:     { title: 'Feedback',    Component: FeedbackPanel },
   settings:     { title: 'Settings',    Component: SettingsPanel },
   /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
-  t2:           { title: 'Specs',       Component: T2Panel },
+  t2:           { title: 'Weapons',     Component: T2Panel },
 };
 
 export const BottomDashboard = () => {
@@ -778,8 +782,10 @@ export const BottomDashboard = () => {
                   /* Derived combat stats — calcCritChance and
                      calcBlockReduction both return 0..1 fractions;
                      multiply by 100 + round for the % display. */
-                  /* v2.3.233 (Phase 3): crit reads (power, ferocity). */
-                  const critPct  = Math.round(calcCritChance(R.power || 0, R.ferocity || 0) * 100);
+                  /* Crit = Power baseline + the equipped weapon CATEGORY's
+                     crit channel (matches the combat loop; generic Ferocity
+                     retired). */
+                  const critPct  = Math.round(calcCritChance(R.power || 0, getWeaponCritStat(R)) * 100);
                   const blockPct = Math.round(calcBlockReduction(R.fortification || 0, R.shield) * 100);
                   /* Session summary — zone name lookup is safe-guarded so
                      a missing currentZone or a zone removed from ZONES
@@ -857,8 +863,8 @@ export const BottomDashboard = () => {
                          player equips a shield or trains Fortification. */}
                       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 2 }}>
                         <div
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — derived from Ferocity (${R.ferocity || 0}).  Diminishing returns past 300.`); }}
-                          title="Crit chance from Ferocity"
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — Power baseline plus the equipped weapon's crit channel (${getWeaponCritStat(R)}).  Allocate it under Weapons.`); }}
+                          title="Crit chance from Power + weapon crit channel"
                           style={rowStyle}>
                           <span style={rowLabel}>Crit</span>
                           <span style={rowVal}>{critPct}%</span>
@@ -1150,11 +1156,11 @@ export const BottomDashboard = () => {
                 background: 'rgba(80,200,130,0.04)',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
               }}>
-                <ColHeader>Stats · Skills</ColHeader>
+                <ColHeader>{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 <div style={{
                   flex: 1,
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gridTemplateColumns: SHOW_LIFE_SKILLS ? 'repeat(3, 1fr)' : '1fr',
                   gridTemplateRows: 'repeat(5, 1fr)',
                   gap: 2,
                   /* gridAutoFlow column so the first 5 cells (Build) stack
@@ -1229,7 +1235,7 @@ export const BottomDashboard = () => {
                       </div>
                     );
                   })}
-                  {LIFE_SKILLS.map(sk => {
+                  {SHOW_LIFE_SKILLS && LIFE_SKILLS.map(sk => {
                     const sk_st = (R.lifeSkills && R.lifeSkills[sk.key]) || {};
                     const lvl = sk_st.level || 0;
                     const xp = sk_st.xp || 0;
