@@ -39,10 +39,12 @@ hardest 3/4 view). Shipped in `GEAR_VERSION` 2.3.616 → 2.3.625.
      --chest 1 --legs 0 --head 0 --zoom 2 --out /tmp/ne-chest.png
    ```
 
-4b. **(3/4 & front/back views) lower the collar** so the cuirass neckline doesn't
-   ride up over the jaw and sink the head:
+4b. **(OPT-IN, per direction) lower the collar** so the cuirass neckline doesn't
+   ride up over the jaw and sink the head.  Applied so far to **SW only**
+   (`neck_frac=0.20`); other directions are NOT processed unless you run this on
+   them — review each before applying, since it changes the head/neck look:
    ```
-   python tools/lower_collar.py jog <dir>
+   python tools/lower_collar.py jog <dir>        # default neck_frac 0.20
    ```
    Per frame it removes chest-gear pixels sitting over the body's head above the
    neck base, **confined to the narrow head x-range** (so it never reaches the

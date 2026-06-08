@@ -16,7 +16,7 @@ from PIL import Image
 
 FRAME = 256
 pose, d = sys.argv[1], sys.argv[2]
-neck_frac = float(sys.argv[3]) if len(sys.argv) > 3 else 0.20
+neck_frac = float(sys.argv[3]) if len(sys.argv) > 3 else 0.20   # SW used 0.20; opt-in per direction
 gauntlet_cov = float(sys.argv[4]) if len(sys.argv) > 4 else 0.45
 
 base = Image.open(f'public/sprites/player/{pose}-{d}.png').convert('RGBA')
