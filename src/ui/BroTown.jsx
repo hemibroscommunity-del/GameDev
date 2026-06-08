@@ -839,9 +839,9 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.606: per-slot armour test toggles (helmet/chest/legs) -- equip/unequip
      each gear slot live so the slot separation + per-region body reveal can be
      eyeballed in-game.  Mirrors gearCatalog.setEquip; default ids per slot. */
-  var GEAR_DEFAULT_ID = { head: 'steelhelm', chest: 'steelplate', legs: 'steelgreaves' };
+  var GEAR_DEFAULT_ID = { chest: 'steelplate', legs: 'steelgreaves' };
   var _useStateGear = useState(function () {
-    return { head: getEquip('head') !== 'none', chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none' };
+    return { chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none' };
   }),
     _useStateGear2 = _slicedToArray(_useStateGear, 2),
     gearWorn = _useStateGear2[0],
@@ -2025,7 +2025,6 @@ export var BroTown = function BroTown(_ref0) {
             fhc: getFacialHairColor(),
             st: getShirt(),
             stc: getShirtColor(),
-            eqh: getEquip('head'),
             eqc: getEquip('chest'),
             eql: getEquip('legs'),
             eqs: getEquip('shoulders'),
@@ -2167,10 +2166,9 @@ export var BroTown = function BroTown(_ref0) {
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
-                    if (data.eqh !== undefined || data.eqc !== undefined || data.eql !== undefined || data.eqs !== undefined) {
+                    if (data.eqc !== undefined || data.eql !== undefined || data.eqs !== undefined) {
                       var _oe5 = S.others[pid].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none' };
                       S.others[pid].equip = {
-                        head: data.eqh !== undefined ? (data.eqh || 'none') : (_oe5.head || 'none'),
                         chest: data.eqc !== undefined ? (data.eqc || 'none') : _oe5.chest,
                         legs: data.eql !== undefined ? (data.eql || 'none') : _oe5.legs,
                         shoulders: data.eqs !== undefined ? (data.eqs || 'none') : _oe5.shoulders,
@@ -2349,7 +2347,7 @@ export var BroTown = function BroTown(_ref0) {
                   facialHairColor: _data.fhc || null,
                   shirt: _data.st || null,
                   shirtColor: _data.stc || null,
-                  equip: { head: _data.eqh || 'none', chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none' },
+                  equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none' },
                   pants: _data.pt || null,
                   shoes: _data.sh || null,
                   rpgLv: _data.rpgLv || 1,
@@ -2906,7 +2904,7 @@ export var BroTown = function BroTown(_ref0) {
                 facialHairColor: (msg.data && msg.data.fhc) || null,
                 shirt: (msg.data && msg.data.st) || null,
                 shirtColor: (msg.data && msg.data.stc) || null,
-                equip: { head: (msg.data && msg.data.eqh) || 'none', chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none' },
+                equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none' },
                 pants: (msg.data && msg.data.pt) || null,
                 shoes: (msg.data && msg.data.sh) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
@@ -2945,10 +2943,9 @@ export var BroTown = function BroTown(_ref0) {
                    nested other.equip the renderer reads so armour on/off syncs
                    (covers the standing-still case via the 2s track). */
                 var _ud = msg.data || {};
-                if (_ud.eqh !== undefined || _ud.eqc !== undefined || _ud.eql !== undefined || _ud.eqs !== undefined) {
+                if (_ud.eqc !== undefined || _ud.eql !== undefined || _ud.eqs !== undefined) {
                   var _oe6 = S.others[msg.id].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none' };
                   S.others[msg.id].equip = {
-                    head: _ud.eqh !== undefined ? (_ud.eqh || 'none') : (_oe6.head || 'none'),
                     chest: _ud.eqc !== undefined ? (_ud.eqc || 'none') : _oe6.chest,
                     legs: _ud.eql !== undefined ? (_ud.eql || 'none') : _oe6.legs,
                     shoulders: _ud.eqs !== undefined ? (_ud.eqs || 'none') : _oe6.shoulders,
@@ -10577,7 +10574,6 @@ export var BroTown = function BroTown(_ref0) {
                      only set at join/state_sync, so armour removal never showed
                      for others).  Short ids, cheap. Standing-still changes ride
                      the 2s `track` below + the player_update remap. */
-                  eqh: getEquip('head'),
                   eqc: getEquip('chest'),
                   eql: getEquip('legs'),
                   eqs: getEquip('shoulders')
@@ -10607,7 +10603,6 @@ export var BroTown = function BroTown(_ref0) {
                 fhc: getFacialHairColor(),
                 st: getShirt(),
                 stc: getShirtColor(),
-                eqh: getEquip('head'),
                 eqc: getEquip('chest'),
                 eql: getEquip('legs'),
                 eqs: getEquip('shoulders'),
@@ -29131,8 +29126,8 @@ export var BroTown = function BroTown(_ref0) {
       color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
       touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none'
     }
-  }, hideArmor ? 'Armor: OFF (G)' : 'Armor: ON (G)'), ['head', 'chest', 'legs'].map(function (slot, si) {
-    var LABEL = { head: 'Helmet', chest: 'Chest', legs: 'Legs' };
+  }, hideArmor ? 'Armor: OFF (G)' : 'Armor: ON (G)'), ['chest', 'legs'].map(function (slot, si) {
+    var LABEL = { chest: 'Chest', legs: 'Legs' };
     var on = gearWorn[slot];
     return /*#__PURE__*/React.createElement("button", {
       type: 'button', key: 'gearslot-' + slot,

@@ -27,7 +27,7 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame } from '../gearSheets.js';
-import { getEquip, headCoversHead } from '../gearCatalog.js';
+import { getEquip } from '../gearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -349,7 +349,7 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
    to the body frame, so placement is just copying the body sprite's transform
    (which already carries mirror + bodyScale + bob).  No anchors/angles.  equip
    = { legs, chest, shoulders } item ids.  See gear-layer-spec.md. */
-const _GEAR_SLOTS = [['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders'], ['head', '_gearHead']];
+const _GEAR_SLOTS = [['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];
 function _placeGear(display, equip, pose, dir, frameIdx) {
   const sb = display._spriteBody;
   for (let s = 0; s < _GEAR_SLOTS.length; s++) {
@@ -2368,32 +2368,29 @@ export class EntityRenderer {
           /* v2.3.504: this remote player's layered gear (their equip is
              broadcast over the network). */
           _placeGear(display, other.equip, pose, dir, frameIdx);
-          /* v2.3.602: per-region coverage (same as local) -- each piece hides
-             only its own body band; an unequipped piece reveals it. */
-          const _rcovHead = headCoversHead(other.equip && other.equip.head) && display._gearHead && display._gearHead.visible;
-          const _rcovChest = !!(other.equip && other.equip.chest && other.equip.chest !== 'none') && display._gearChest && display._gearChest.visible;
-          const _rcovLegs = !!(other.equip && other.equip.legs && other.equip.legs !== 'none') && display._gearLegs && display._gearLegs.visible;
-          /* v2.3.608: remote uses the simple rule (full body or hidden); the
-             per-region body sprites are local-only for now. */
+          /* v2.3.613: no helmet -- head/face always shows.  Mask the body under
+             the remote's worn chest/legs plate (dilated) so it can't poke past a
+             plate edge; the head + bare regions still show. */
           _hideBodyRegions(display);
-          spriteBody.visible = !(_rcovHead && _rcovChest && _rcovLegs);
+          const _rworn = [];
+          for (const _sl of ['chest', 'legs']) {
+            const _it = other.equip && other.equip[_sl];
+            if (_it && _it !== 'none') {
+              const _gt = getGearFrame(_sl, _it, pose, dir, frameIdx);
+              if (_gt) _rworn.push({ k: _sl + ':' + _it, tex: _gt });
+            }
+          }
+          if (_rworn.length) {
+            const _mt = _maskedBodyFrame(tex, _rworn, 4);
+            if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
+          }
+          spriteBody.visible = true;
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
-          /* v2.3.602: the remote's HEAD slot (steelhelm) covers the head, so
-             hide hair/hat/beard -- otherwise they poke through the helmet. */
-          if (headCoversHead(other.equip && other.equip.head)) {
-            if (display._headwearSprite) display._headwearSprite.visible = false;
-            if (display._facialHairSprite) display._facialHairSprite.visible = false;
-            if (display._hairSprite) display._hairSprite.visible = false;
-          } else {
-            /* v2.3.321: place this remote player's headwear.  other.headwear
-               is their selected hat id, broadcast over the network. */
-            _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
-            /* v2.3.353: and their facial hair (other.facialhair). */
-            _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
-            /* v2.3.357: and their hair (other.hair). */
-            _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
-          }
+          /* always show the remote's hair/hat/beard (no helmet to hide them). */
+          _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
+          _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
+          _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -2915,27 +2912,18 @@ export class EntityRenderer {
           if (display._gearLegs) display._gearLegs.visible = false;
           if (display._gearChest) display._gearChest.visible = false;
           if (display._gearShoulders) display._gearShoulders.visible = false;
-          if (display._gearHead) display._gearHead.visible = false;
         } else {
-          _placeGear(display, { head: getEquip('head'), legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
+          _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
         }
-        /* v2.3.610: revert to the single full-body sprite (provably aligned -- one
-           transform, gear pixel-aligned to it).  The per-region sub-sprites kept
-           vertically misaligning in the live render, so the body is one sprite
-           again: shown unless the FULL set covers it.  An unequipped piece still
-           reveals that part of the body (helmet off -> bare head); covered parts
-           just keep the small underbody edge until per-region is reworked with the
-           preview harness. */
+        /* v2.3.613: no helmet -- the head/face always shows.  The body is one
+           sprite; erase the body under the worn chest/legs plate (dilated to
+           swallow the AI misalignment) so it never pokes past a plate edge,
+           while the head + any bare region still show. */
         _hideBodyRegions(display);
-        const _covHead = !_hideArmor && headCoversHead(getEquip('head')) && display._gearHead && display._gearHead.visible;
-        const _covChest = !_hideArmor && getEquip('chest') !== 'none' && display._gearChest && display._gearChest.visible;
-        const _covLegs = !_hideArmor && getEquip('legs') !== 'none' && display._gearLegs && display._gearLegs.visible;
-        _armorHidesBody = _covHead && _covChest && _covLegs;
-        /* v2.3.611: erase the body under the worn armour (dilated) so it never
-           pokes past the misaligned plate edges; bare regions still show. */
+        _armorHidesBody = false;                 // head always visible now
         const _worn = [];
         if (!_hideArmor) {
-          for (const _sl of ['head', 'chest', 'legs']) {
+          for (const _sl of ['chest', 'legs']) {
             const _it = getEquip(_sl);
             if (_it && _it !== 'none') {
               const _gt = getGearFrame(_sl, _it, pose, dir, frameIdx);
@@ -2943,9 +2931,9 @@ export class EntityRenderer {
             }
           }
         }
-        const _bodyTex = (!_armorHidesBody && _worn.length) ? _maskedBodyFrame(tex, _worn, 4) : tex;
+        const _bodyTex = _worn.length ? _maskedBodyFrame(tex, _worn, 4) : tex;
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
-        spriteBody.visible = !_armorHidesBody;
+        spriteBody.visible = true;
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
@@ -2972,17 +2960,10 @@ export class EntityRenderer {
            player's hat id comes from the login picker. */
         /* shirt is baked into the body (see getBodyFrame above); no overlay. */
         if (display._shirtSprite) display._shirtSprite.visible = false;
-        /* v2.3.602: the HEAD slot (steelhelm) covers the head -- hide
-           hair/hat/beard so they don't poke through the helmet. */
-        if (headCoversHead(getEquip('head')) && !_hideArmor) {
-          if (display._headwearSprite) display._headwearSprite.visible = false;
-          if (display._facialHairSprite) display._facialHairSprite.visible = false;
-          if (display._hairSprite) display._hairSprite.visible = false;
-        } else {
-          _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
-          _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
-          _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
-        }
+        /* v2.3.613: no helmet -- always show hair/hat/beard on the visible head. */
+        _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */

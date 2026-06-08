@@ -166,7 +166,7 @@ export const GameApp = () => {
   useEffect(() => {
     const gearItems = gearInventoryItems();
     // reflect current equipped gear (defaults) into the inventory equip slots
-    ['head', 'chest', 'legs'].forEach((slot) => {
+    ['chest', 'legs'].forEach((slot) => {
       const cur = getEquip(slot);
       const it = gearItems.find(g => g.slot === slot && g.gearId === cur) || null;
       if (it && !inventoryBus.state.equipped[slot]) inventoryBus.setEquipped(slot, it);
@@ -177,7 +177,6 @@ export const GameApp = () => {
       const equippedIds = new Set(Object.values(inventoryBus.state.equipped).filter(Boolean).map(i => i.id));
       const mock = generateMockInventory(24);
       const extraArmor = [
-        makeItem('armor', { name: 'Steel Helm',     slot: 'head',  gearId: 'steelhelm' }),
         makeItem('armor', { name: 'Steel Plate',    slot: 'chest', gearId: 'steelplate' }),
         makeItem('armor', { name: 'Test Plate',     slot: 'chest', gearId: 'testplate' }),
         makeItem('armor', { name: 'Steel Greaves',  slot: 'legs',  gearId: 'steelgreaves' }),
@@ -187,7 +186,7 @@ export const GameApp = () => {
     }
     // keep the renderer's gear slots in sync with the inventory equips
     const sync = () => {
-      ['head', 'chest', 'legs'].forEach((slot) => {
+      ['chest', 'legs'].forEach((slot) => {
         const it = inventoryBus.state.equipped[slot];
         setEquip(slot, (it && it.gearId) || 'none');
       });
@@ -291,7 +290,7 @@ export const GameApp = () => {
       }
       setEquip(slot, id);
       return `${slot} = ${getEquip(slot)}`;
-    }, 'gear — equip/unequip an armor slot, e.g. `gear head none` / `gear head steelhelm`');
+    }, 'gear — equip/unequip an armor slot, e.g. `gear chest none` / `gear legs steelgreaves`');
 
     // Inventory debug commands.
     debugBus.cmd('inv', (args) => {

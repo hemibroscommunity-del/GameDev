@@ -37,8 +37,8 @@ export const makeItem = (type, opts = {}) => {
        gear sheet id so equipping it actually shows on the character. */
     ...(function () {
       if (type !== 'armor') return { slot: null, gearId: opts.gearId || null };
-      const slot = opts.slot || pick(['head', 'chest', 'legs']);
-      const GEAR_BY_SLOT = { head: ['steelhelm'], chest: ['steelplate', 'testplate'], legs: ['steelgreaves'] };
+      const slot = opts.slot || pick(['chest', 'legs']);
+      const GEAR_BY_SLOT = { chest: ['steelplate', 'testplate'], legs: ['steelgreaves'] };
       const gearId = opts.gearId || pick(GEAR_BY_SLOT[slot] || ['steelplate']);
       return { slot, gearId };
     })(),
@@ -72,7 +72,6 @@ export const generateMockInventory = (n = 30) => {
 
 export const generateMockEquipped = () => ({
   weapon: makeItem('weapon', { name: 'Iron Greatsword', tier: 4, quality: 'rare' }),
-  head:   makeItem('armor',  { name: 'Iron Helm',  tier: 4, quality: 'normal', slot: 'head' }),
   chest:  makeItem('armor',  { name: 'Iron Vest',  tier: 4, quality: 'normal', slot: 'chest' }),
   legs:   makeItem('armor',  { name: 'Iron Greaves', tier: 4, quality: 'normal', slot: 'legs' }),
   pet:    makeItem('pet',    { name: 'Bramble',    tier: 3, quality: 'normal' }),

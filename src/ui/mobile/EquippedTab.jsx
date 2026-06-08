@@ -6,7 +6,7 @@ import { ItemArt } from './ItemArt.jsx';
 const SlotPicker = ({ slot, onPick, onCancel }) => {
   const items = inventoryBus.state.items.filter(it => {
     if (slot === 'weapon') return it.type === 'weapon';
-    if (slot === 'head' || slot === 'chest' || slot === 'legs') return it.type === 'armor' && it.slot === slot;
+    if (slot === 'chest' || slot === 'legs') return it.type === 'armor' && it.slot === slot;
     if (slot === 'pet')    return it.type === 'pet';
     if (slot === 'tool')   return it.type === 'tool';
     return false;
@@ -179,13 +179,12 @@ export const EquippedTab = ({ onItemTap }) => {
   ];
   const findItem = (id) => allItems.find(i => i?.id === id) || null;
 
-  /* v2.3.604: armor is three body slots now (head/chest/legs), stacked on the
-     right; weapon/pet/tool on the left. */
+  /* v2.3.613: armor is chest + legs (no helmet -- head/face always shown);
+     weapon/pet/tool on the left. */
   const slotConfig = [
     { slot: 'weapon', label: 'WEAPON', border: INV.slotWeaponBorder, pos: { left: 30,  top: 110 } },
-    { slot: 'head',   label: 'HELMET', border: INV.slotArmorBorder,  pos: { right: 30, top: 20  } },
-    { slot: 'chest',  label: 'CHEST',  border: INV.slotArmorBorder,  pos: { right: 30, top: 95  } },
-    { slot: 'legs',   label: 'LEGS',   border: INV.slotArmorBorder,  pos: { right: 30, top: 170 } },
+    { slot: 'chest',  label: 'CHEST',  border: INV.slotArmorBorder,  pos: { right: 30, top: 40  } },
+    { slot: 'legs',   label: 'LEGS',   border: INV.slotArmorBorder,  pos: { right: 30, top: 130 } },
     { slot: 'pet',    label: 'PET',    border: INV.slotPetBorder,    pos: { left: 30,  top: 30  } },
     { slot: 'tool',   label: 'TOOL',   border: INV.slotToolBorder,   pos: { left: 30,  top: 200 } },
   ];
