@@ -74,33 +74,49 @@ def frame(slot, pose, d, i, nudge=(0, 0)):
 
 def _blend_ghost_hand(ba, top, bot):
     """ChatGPT's armour drift leaves the body's bare FIST poking out below the
-    waist past the gauntlet.  It can't be cleanly masked (the orange fist and the
-    olive pants are both R>G>B), but skin's R-G gap (~70) is far larger than the
-    pants' (~3), so isolate it on that.  Where the fist sits OVER the leg, recolour
-    it to the pants shade (no transparent hole); where it pokes BEYOND the leg
-    outline, erase it.  Mirrors entityRenderer._maskedBodyFrame -- keep in sync."""
+    waist past the gauntlet.  Where the fist sits OVER the leg, recolour it to the
+    player's PANTS shade (no transparent hole); where it pokes BEYOND the leg
+    outline, erase it.  The pants/skin/shoe colours are SAMPLED from this body
+    (skin from the head, pants from the upper leg, shoes from the foot band) so
+    the patch matches whatever skin/pants the player picked -- versatile to any
+    colour-picker choice and to remote players.  The fist is found by hue-
+    alignment to the sampled skin, not a fixed skin colour.  Mirrors
+    entityRenderer._maskedBodyFrame -- keep in sync."""
     from scipy import ndimage
-    R = ba[:, :, 0].astype(int); G = ba[:, :, 1].astype(int); B = ba[:, :, 2].astype(int)
     op = ba[:, :, 3] > 40
     fh = bot - top
+    neck = top + int(round(0.33 * fh))
     waist = top + int(round(0.50 * fh))
-    skin = op & (R > G) & (G >= B) & ((R - G) > 35) & ((G - B) > 20)
-    skin[:waist] = False
-    if not skin.any():
+    px = ba[:, :, :3].astype(float)
+
+    def med(y0, y1):
+        m = op.copy(); m[:max(0, y0)] = False; m[min(FRAME, y1):] = False
+        return np.median(ba[m][:, :3], axis=0) if m.any() else None
+    skin_ref = med(top, neck)
+    pants_ref = med(waist, waist + int(round(0.35 * fh)))
+    shoes_ref = med(bot - int(round(0.18 * fh)), bot + 1)
+    if skin_ref is None or pants_ref is None or shoes_ref is None:
         return
-    pant = op & (R > G - 10) & (np.abs(R - G) < 22) & (G > 70) & (G > B + 15)
-    pant[:waist] = False
-    pc = (np.median(ba[pant][:, :3], axis=0).astype(int) if pant.any()
-          else np.array([120, 118, 60]))
-    leg = op.copy(); leg[:waist] = False; leg &= ~skin
+
+    def score(T):
+        T = np.asarray(T, float); n = float(T @ T) or 1.0
+        dot = px[:, :, 0] * T[0] + px[:, :, 1] * T[1] + px[:, :, 2] * T[2]
+        return dot * dot / n
+    s_skin = score(skin_ref)
+    low = op.copy(); low[:waist] = False
+    fist = low & (s_skin > 1.05 * score(pants_ref)) & (s_skin > 1.05 * score(shoes_ref))
+    if not fist.any():
+        return
+    leg = low & ~fist
     sil = np.zeros_like(leg)
     for y in range(waist, FRAME):
         xs = np.where(leg[y])[0]
         if len(xs):
             sil[y, max(0, xs.min() - 2):min(FRAME, xs.max() + 3)] = True
-    dark = op & (R < 85) & (G < 85) & (B < 85)
-    hand = skin | (dark & ndimage.binary_dilation(skin, iterations=2))
+    dark = op & (ba[:, :, 0] < 85) & (ba[:, :, 1] < 85) & (ba[:, :, 2] < 85)
+    hand = fist | (dark & ndimage.binary_dilation(fist, iterations=2))
     hand[:waist] = False
+    pc = pants_ref.astype(int)
     ins = hand & sil; out = hand & ~sil
     ba[ins, 0], ba[ins, 1], ba[ins, 2], ba[ins, 3] = int(pc[0]), int(pc[1]), int(pc[2]), 255
     ba[out, 3] = 0

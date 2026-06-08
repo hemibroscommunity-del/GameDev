@@ -445,56 +445,71 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
       ctx.restore();
     }
     /* Blend the ghost hand: ChatGPT's armour drift leaves the body's bare fist
-       poking out below the waist past the gauntlet.  It can't be cleanly masked
-       (orange fist and olive pants are both R>G>B), but skin's R-G gap (~70) is
-       far larger than the pants' (~3) so we isolate it on that.  Where the fist
-       sits OVER the leg, recolour it to the pants shade (no transparent hole);
-       where it pokes BEYOND the leg outline, erase it.  Mirrors
-       preview_armor_frames._blend_ghost_hand -- keep in sync.  v2.3.620. */
+       poking out below the waist past the gauntlet.  Where the fist sits OVER the
+       leg, recolour it to the player's PANTS shade (no transparent hole); where
+       it pokes BEYOND the leg outline, erase it.  The pants/skin/shoe colours are
+       SAMPLED from this body (skin from the head, pants from the upper leg, shoes
+       from the foot band) so the patch matches whatever skin/pants the player
+       picked -- and works for remote players' palettes too.  The fist is found by
+       hue-alignment to the sampled skin (score = (p.ref)^2/|ref|^2), not a fixed
+       skin colour.  Mirrors preview_armor_frames._blend_ghost_hand -- keep in
+       sync.  v2.3.620. */
     if (figBot > figTop && worn.some(w => w.k && w.k.indexOf('chest:') === 0)) {
       try {
-        const waistY = Math.round(figTop + 0.50 * (figBot - figTop));
+        const fh = figBot - figTop;
+        const waistY = Math.round(figTop + 0.50 * fh);
         const img = ctx.getImageData(0, 0, 256, 256);
         const d = img.data;
-        const skin = new Uint8Array(256 * 256), leg = new Uint8Array(256 * 256);
-        let pr = 0, pg = 0, pb = 0, pn = 0, anySkin = false;
-        for (let y = waistY; y < 256; y++) {
-          for (let x = 0; x < 256; x++) {
-            const o = (y * 256 + x) * 4; if (d[o + 3] <= 40) continue;
-            const R = d[o], G = d[o + 1], B = d[o + 2];
-            if (R > G && G >= B && R - G > 35 && G - B > 20) { skin[y * 256 + x] = 1; anySkin = true; }
-            else {
-              leg[y * 256 + x] = 1;
-              if (R > G - 10 && Math.abs(R - G) < 22 && G > 70 && G > B + 15) { pr += R; pg += G; pb += B; pn++; }
-            }
-          }
-        }
-        if (anySkin) {
-          const pcR = pn ? Math.round(pr / pn) : 120, pcG = pn ? Math.round(pg / pn) : 118, pcB = pn ? Math.round(pb / pn) : 60;
-          const sil = new Uint8Array(256 * 256);
-          for (let y = waistY; y < 256; y++) {
-            let mn = 256, mx = -1;
-            for (let x = 0; x < 256; x++) if (leg[y * 256 + x]) { if (x < mn) mn = x; mx = x; }
-            if (mx >= 0) { const a = Math.max(0, mn - 2), b = Math.min(255, mx + 2); for (let x = a; x <= b; x++) sil[y * 256 + x] = 1; }
-          }
+        const medRGB = (y0, y1) => {            // per-channel median of opaque pixels in [y0,y1)
+          const rs = [], gs = [], bs = [];
+          for (let y = Math.max(0, y0); y < Math.min(256, y1); y++)
+            for (let x = 0; x < 256; x++) { const o = (y * 256 + x) * 4; if (d[o + 3] > 40) { rs.push(d[o]); gs.push(d[o + 1]); bs.push(d[o + 2]); } }
+          if (!rs.length) return null;
+          const mid = a => { a.sort((p, q) => p - q); return a[a.length >> 1]; };
+          return [mid(rs), mid(gs), mid(bs)];
+        };
+        const skinRef = medRGB(figTop, neckY);
+        const pantsRef = medRGB(waistY, waistY + Math.round(0.35 * fh));
+        const shoesRef = medRGB(figBot - Math.round(0.18 * fh), figBot + 1);
+        const score = (R, G, B, T) => { const n = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / n; };
+        if (skinRef && pantsRef && shoesRef) {
+          const fist = new Uint8Array(256 * 256), leg = new Uint8Array(256 * 256);
+          let anyFist = false;
           for (let y = waistY; y < 256; y++) {
             for (let x = 0; x < 256; x++) {
-              const p = y * 256 + x, o = p * 4; if (d[o + 3] <= 40) continue;
-              let isHand = skin[p] === 1;
-              if (!isHand && d[o] < 85 && d[o + 1] < 85 && d[o + 2] < 85) { // dark outline within 2px (Manhattan) of skin
-                for (let dy = -2; dy <= 2 && !isHand; dy++)
-                  for (let dx = -2; dx <= 2; dx++) {
-                    if (Math.abs(dx) + Math.abs(dy) > 2) continue;
-                    const xx = x + dx, yy = y + dy;
-                    if (xx >= 0 && xx < 256 && yy >= 0 && yy < 256 && skin[yy * 256 + xx]) { isHand = true; break; }
-                  }
-              }
-              if (!isHand) continue;
-              if (sil[p]) { d[o] = pcR; d[o + 1] = pcG; d[o + 2] = pcB; d[o + 3] = 255; }
-              else d[o + 3] = 0;
+              const o = (y * 256 + x) * 4; if (d[o + 3] <= 40) continue;
+              const R = d[o], G = d[o + 1], B = d[o + 2];
+              const sSkin = score(R, G, B, skinRef);
+              if (sSkin > 1.05 * score(R, G, B, pantsRef) && sSkin > 1.05 * score(R, G, B, shoesRef)) { fist[y * 256 + x] = 1; anyFist = true; }
+              else leg[y * 256 + x] = 1;
             }
           }
-          ctx.putImageData(img, 0, 0);
+          if (anyFist) {
+            const sil = new Uint8Array(256 * 256);          // leg silhouette: per-row span of non-fist body, +2px
+            for (let y = waistY; y < 256; y++) {
+              let mn = 256, mx = -1;
+              for (let x = 0; x < 256; x++) if (leg[y * 256 + x]) { if (x < mn) mn = x; mx = x; }
+              if (mx >= 0) { const a = Math.max(0, mn - 2), b = Math.min(255, mx + 2); for (let x = a; x <= b; x++) sil[y * 256 + x] = 1; }
+            }
+            for (let y = waistY; y < 256; y++) {
+              for (let x = 0; x < 256; x++) {
+                const p = y * 256 + x, o = p * 4; if (d[o + 3] <= 40) continue;
+                let isHand = fist[p] === 1;
+                if (!isHand && d[o] < 85 && d[o + 1] < 85 && d[o + 2] < 85) {   // dark outline within 2px (Manhattan) of the fist
+                  for (let dy = -2; dy <= 2 && !isHand; dy++)
+                    for (let dx = -2; dx <= 2; dx++) {
+                      if (Math.abs(dx) + Math.abs(dy) > 2) continue;
+                      const xx = x + dx, yy = y + dy;
+                      if (xx >= 0 && xx < 256 && yy >= 0 && yy < 256 && fist[yy * 256 + xx]) { isHand = true; break; }
+                    }
+                }
+                if (!isHand) continue;
+                if (sil[p]) { d[o] = pantsRef[0]; d[o + 1] = pantsRef[1]; d[o + 2] = pantsRef[2]; d[o + 3] = 255; }
+                else d[o + 3] = 0;
+              }
+            }
+            ctx.putImageData(img, 0, 0);
+          }
         }
       } catch (e) { /* ghost-hand blend is best-effort */ }
     }
