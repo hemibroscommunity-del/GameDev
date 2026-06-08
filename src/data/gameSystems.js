@@ -2438,12 +2438,19 @@ export const MINIGAME_REWARDS = {
    players see it compress, low-level players see it stretch. Jitter
    keeps the exact ms non-deterministic so the loop can't be cleanly
    timed by a bot. */
-export const EXTRACT_WINDOW_MS = 1500;       /* swipe window once cue appears */
+export const EXTRACT_WINDOW_MS = 3500;       /* phase-2 gesture window once cue appears
+                                                (widened from 1500 for the sustained
+                                                "keep the motion going" meter) */
 export const EXTRACT_CANCEL_R  = 90;         /* px from node before walk-away cancel */
 export const EXTRACT_OPEN_MIN  = 2000;       /* floor at fully over-leveled */
 export const EXTRACT_OPEN_MAX  = 10000;      /* ceiling at very under-leveled */
 export const EXTRACT_OPEN_BASE = 4000;       /* level == tier */
 export const EXTRACT_JITTER    = 0.15;       /* ±15% jitter on each open delay */
+/* Phase-2 is a sustained gesture: the player repeats the skill motion to fill a
+   meter. REPS_TARGET reps complete the extraction. Per-skill so each can be tuned
+   independently (e.g. fishing reels feel right a touch shorter). */
+export const EXTRACT_REPS_TARGET = { mining: 3, woodcutting: 3, fishing: 2 };
+export const EXTRACT_REPS_DEFAULT = 3;
 
 export function computeOpenDelay(skillLevel, nodeTier) {
   var lvl = Number(skillLevel) || 0;
