@@ -60,6 +60,22 @@ scale_mul = float(sys.argv[11]) if len(sys.argv) > 11 else 1.0
 # body-adjacent pixels are filled -> the armour's outline against the BACKGROUND
 # is unchanged (bulk preserved) and wide real gaps (waist) stay open.
 cover_drift = int(sys.argv[12]) if len(sys.argv) > 12 else 0
+# Horizontal swing-stabilisation (mannequin chest/legs): rolls each frame to pin
+# the piece a CONSTANT offset from its body region centre.  Needed for the OLD
+# workflow where the art's breastplate/legs swing was baked in.  But a sheet
+# drawn directly OVER the body (the green-mannequin sheets) is already pixel-
+# aligned -- stabilising then drags the gauntlets off the swinging fists ("ghost
+# hands").  Set 0 for body-aligned sheets.  1=on (default, legacy).
+stabilize = int(sys.argv[13]) if len(sys.argv) > 13 else 1
+# Body-aligned source: a green-mannequin sheet drawn DIRECTLY over the body
+# template (make_pose_sheet output) is already pixel-aligned to the body in
+# every frame.  In that case skip the detect/scale/registration machinery
+# (which re-fits the ARMOURED silhouette rigidly to the torso and so drifts the
+# swinging extremities -- gauntlets slide off the fists) and instead map each
+# cell straight back through make_pose_sheet's crop transform (exact inverse).
+# This reproduces the body's own per-frame placement for the whole figure, so
+# the gauntlets land on the fists in EVERY frame.  Implies stabilize off.
+aligned = int(sys.argv[14]) if len(sys.argv) > 14 else 0
 
 meta = json.load(open(f'tools/posesheets/{pose}-{dir_}.json'))
 cols, rows = meta['cols'], meta['rows']
@@ -179,7 +195,7 @@ if mannequin:
         d = detect_figure(i)
         if d is not None:
             _det[i] = d
-if mannequin and _det:
+if mannequin and not aligned and _det:
     hr = []
     for i, d in _det.items():
         bx0, by0, bx1, by1 = base_bbox(i)
@@ -266,7 +282,7 @@ def _raw_place(i):
 # should track the body smoothly, so replace any frame whose offset deviates
 # > SPIKE px from its neighbours' median with that median.
 _place = {}
-if mannequin:
+if mannequin and not aligned:
     raw = {i: _raw_place(i) for i in range(n)}
     SPIKE = 6
     for i in range(n):
@@ -294,6 +310,39 @@ def keyed_frame(i):
         small = Image.fromarray(fig, 'RGBA').resize((crop_w, crop_h), Image.LANCZOS)
         o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
         o.alpha_composite(small, (ux0, uy0))
+        return np.array(o)
+    if aligned:
+        # Body-aligned mannequin: the detected figure is CONGRUENT to the body
+        # (same pose, drawn over it).  Scale it to the body's per-frame height and
+        # place it by maximising FULL-silhouette overlap with the body -- not the
+        # torso band -- so the swinging arms/hands register too and the gauntlets
+        # stay on the fists in every frame.  detect_figure already absorbs
+        # ChatGPT's per-cell drift, so this needs no global scale/spike pre-pass.
+        d = _det.get(i)
+        if d is None:
+            return np.zeros((FRAME, FRAME, 4), np.uint8)
+        content, _, _, h, w = d
+        bx0, by0, bx1, by1 = base_bbox(i)
+        s = (((by1 - by0) / h) if h else 1.0) * scale_mul
+        nw, nh = max(1, round(w * s)), max(1, round(h * s))
+        sm = np.array(Image.fromarray(((content[:, :, 3] > 40) * 255).astype(np.uint8), 'L')
+                      .resize((nw, nh), Image.NEAREST)) > 40
+        bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 40
+        o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
+        if not sm.any() or not bop.any():
+            o.alpha_composite(Image.fromarray(content, 'RGBA')
+                              .resize((nw, nh), Image.LANCZOS), (int(bx0), int(by0)))
+            return np.array(o)
+        sy, sx = np.where(sm); byy, bxx = np.where(bop)
+        px0 = bxx.mean() - sx.mean(); py0 = byy.mean() - sy.mean()
+        best, bestov = (px0, py0), -1
+        for dy in range(-8, 9):
+            for dx in range(-8, 9):
+                ov = _overlap(sm, bop, int(round(px0 + dx)), int(round(py0 + dy)))
+                if ov > bestov:
+                    bestov, best = ov, (px0 + dx, py0 + dy)
+        small = Image.fromarray(content, 'RGBA').resize((nw, nh), Image.LANCZOS)
+        o.alpha_composite(small, (int(round(best[0])), int(round(best[1]))))
         return np.array(o)
     d = _det.get(i)
     if d is None or i not in _place:
@@ -384,7 +433,7 @@ for i in range(n):
 # legs to the body LEG centre -- which itself follows the real stride per frame
 # -- makes the greaves TRACK the legs (offset = per-sheet median) instead of
 # jittering.  (The chest's torso centre barely moves, so the chest stays put.)
-if mannequin and slot in ('chest', 'legs'):
+if stabilize and not aligned and mannequin and slot in ('chest', 'legs'):
     rb0, rb1 = (0.20, 0.45) if slot == 'chest' else (0.60, 0.97)
     gs = np.array(gear_sheet)
     offs = [None] * n

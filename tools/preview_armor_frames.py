@@ -109,17 +109,6 @@ def composite(pose, d, i, worn, nudges, mask_dilate=5):
                 if len(ys):
                     neck_y = ys[0] + int(round(NECK_RESTORE_FRAC * (ys[-1] - ys[0])))
                     ba[:neck_y, :, 3] = orig_alpha[:neck_y, :]
-                    # Erase bare-skin pixels (orange: R>G>=B) below the neck line
-                    # when a chest piece (armoured arms+gauntlets) is worn -- the
-                    # body's bare hands/forearms otherwise poke out past the
-                    # gauntlets as "ghost hands" wherever the gear doesn't cover
-                    # them.  Hue-based so it tracks any skin tone and never
-                    # touches the green legs.  Mirrors entityRenderer.
-                    if worn.get('chest'):
-                        R = ba[:, :, 0].astype(int); G = ba[:, :, 1].astype(int); B = ba[:, :, 2].astype(int)
-                        skin = (ba[:, :, 3] > 40) & (R > G) & (G >= B) & (R - B > 45)
-                        skin[:neck_y, :] = False
-                        ba[skin, 3] = 0
             o.alpha_composite(Image.fromarray(ba))
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:

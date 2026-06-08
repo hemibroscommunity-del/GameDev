@@ -445,26 +445,6 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
       ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
       ctx.restore();
     }
-    /* Erase bare-skin pixels (orange: R>G>=B) below the neck line when a chest
-       piece (which carries the armoured arms+gauntlets) is worn.  The body's
-       bare hands/forearms otherwise poke out past the gauntlets as "ghost
-       hands" wherever the gear doesn't perfectly cover them -- the trailing
-       fist in particular hangs clear of any plate, too far for the dilation to
-       swallow.  Hue-based so it tracks any skin tone and never touches the
-       green legs (G>=R there).  v2.3.618. */
-    if (neckY > 0 && worn.some(w => w.k && w.k.indexOf('chest:') === 0)) {
-      try {
-        const img = ctx.getImageData(0, 0, 256, 256);
-        const d = img.data;
-        for (let y = neckY; y < 256; y++) {
-          for (let x = 0; x < 256; x++) {
-            const o = (y * 256 + x) * 4;
-            if (d[o + 3] > 40 && d[o] > d[o + 1] && d[o + 1] >= d[o + 2] && d[o] - d[o + 2] > 45) d[o + 3] = 0;
-          }
-        }
-        ctx.putImageData(img, 0, 0);
-      } catch (e) { /* skin-erase is best-effort */ }
-    }
   } catch (e) { return bodyTex; }
   const t = Texture.from(cv);
   _maskedBodyCache.set(key, t);
