@@ -418,17 +418,16 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
        BODY_NECK_FRAC*height) BEFORE punching so we can restore that band after;
        otherwise the dilated collar mask closes the narrow neck gap and the head
        floats detached above the plate (v2.3.617). */
-    let neckY = 0;
+    let neckY = 0, figTop = 256, figBot = -1;
     try {
       const id = ctx.getImageData(0, 0, 256, 256).data;
-      let top = 256, bot = -1;
       for (let y = 0; y < 256; y++) {
         for (let x = 0; x < 256; x++) {
-          if (id[(y * 256 + x) * 4 + 3] > 40) { if (y < top) top = y; bot = y; break; }
+          if (id[(y * 256 + x) * 4 + 3] > 40) { if (y < figTop) figTop = y; figBot = y; break; }
         }
       }
       /* 0.33 == preview_armor_frames.NECK_RESTORE_FRAC (keep in sync) */
-      if (bot > top) neckY = Math.round(top + 0.33 * (bot - top));
+      if (figBot > figTop) neckY = Math.round(figTop + 0.33 * (figBot - figTop));
     } catch (e) { neckY = 0; }
     ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
     for (const w of worn) {
@@ -444,6 +443,60 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
       ctx.beginPath(); ctx.rect(0, 0, 256, neckY); ctx.clip();
       ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
       ctx.restore();
+    }
+    /* Blend the ghost hand: ChatGPT's armour drift leaves the body's bare fist
+       poking out below the waist past the gauntlet.  It can't be cleanly masked
+       (orange fist and olive pants are both R>G>B), but skin's R-G gap (~70) is
+       far larger than the pants' (~3) so we isolate it on that.  Where the fist
+       sits OVER the leg, recolour it to the pants shade (no transparent hole);
+       where it pokes BEYOND the leg outline, erase it.  Mirrors
+       preview_armor_frames._blend_ghost_hand -- keep in sync.  v2.3.620. */
+    if (figBot > figTop && worn.some(w => w.k && w.k.indexOf('chest:') === 0)) {
+      try {
+        const waistY = Math.round(figTop + 0.50 * (figBot - figTop));
+        const img = ctx.getImageData(0, 0, 256, 256);
+        const d = img.data;
+        const skin = new Uint8Array(256 * 256), leg = new Uint8Array(256 * 256);
+        let pr = 0, pg = 0, pb = 0, pn = 0, anySkin = false;
+        for (let y = waistY; y < 256; y++) {
+          for (let x = 0; x < 256; x++) {
+            const o = (y * 256 + x) * 4; if (d[o + 3] <= 40) continue;
+            const R = d[o], G = d[o + 1], B = d[o + 2];
+            if (R > G && G >= B && R - G > 35 && G - B > 20) { skin[y * 256 + x] = 1; anySkin = true; }
+            else {
+              leg[y * 256 + x] = 1;
+              if (R > G - 10 && Math.abs(R - G) < 22 && G > 70 && G > B + 15) { pr += R; pg += G; pb += B; pn++; }
+            }
+          }
+        }
+        if (anySkin) {
+          const pcR = pn ? Math.round(pr / pn) : 120, pcG = pn ? Math.round(pg / pn) : 118, pcB = pn ? Math.round(pb / pn) : 60;
+          const sil = new Uint8Array(256 * 256);
+          for (let y = waistY; y < 256; y++) {
+            let mn = 256, mx = -1;
+            for (let x = 0; x < 256; x++) if (leg[y * 256 + x]) { if (x < mn) mn = x; mx = x; }
+            if (mx >= 0) { const a = Math.max(0, mn - 2), b = Math.min(255, mx + 2); for (let x = a; x <= b; x++) sil[y * 256 + x] = 1; }
+          }
+          for (let y = waistY; y < 256; y++) {
+            for (let x = 0; x < 256; x++) {
+              const p = y * 256 + x, o = p * 4; if (d[o + 3] <= 40) continue;
+              let isHand = skin[p] === 1;
+              if (!isHand && d[o] < 85 && d[o + 1] < 85 && d[o + 2] < 85) { // dark outline within 2px (Manhattan) of skin
+                for (let dy = -2; dy <= 2 && !isHand; dy++)
+                  for (let dx = -2; dx <= 2; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) > 2) continue;
+                    const xx = x + dx, yy = y + dy;
+                    if (xx >= 0 && xx < 256 && yy >= 0 && yy < 256 && skin[yy * 256 + xx]) { isHand = true; break; }
+                  }
+              }
+              if (!isHand) continue;
+              if (sil[p]) { d[o] = pcR; d[o + 1] = pcG; d[o + 2] = pcB; d[o + 3] = 255; }
+              else d[o + 3] = 0;
+            }
+          }
+          ctx.putImageData(img, 0, 0);
+        }
+      } catch (e) { /* ghost-hand blend is best-effort */ }
     }
   } catch (e) { return bodyTex; }
   const t = Texture.from(cv);

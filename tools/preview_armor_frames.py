@@ -72,6 +72,40 @@ def frame(slot, pose, d, i, nudge=(0, 0)):
     return cell
 
 
+def _blend_ghost_hand(ba, top, bot):
+    """ChatGPT's armour drift leaves the body's bare FIST poking out below the
+    waist past the gauntlet.  It can't be cleanly masked (the orange fist and the
+    olive pants are both R>G>B), but skin's R-G gap (~70) is far larger than the
+    pants' (~3), so isolate it on that.  Where the fist sits OVER the leg, recolour
+    it to the pants shade (no transparent hole); where it pokes BEYOND the leg
+    outline, erase it.  Mirrors entityRenderer._maskedBodyFrame -- keep in sync."""
+    from scipy import ndimage
+    R = ba[:, :, 0].astype(int); G = ba[:, :, 1].astype(int); B = ba[:, :, 2].astype(int)
+    op = ba[:, :, 3] > 40
+    fh = bot - top
+    waist = top + int(round(0.50 * fh))
+    skin = op & (R > G) & (G >= B) & ((R - G) > 35) & ((G - B) > 20)
+    skin[:waist] = False
+    if not skin.any():
+        return
+    pant = op & (R > G - 10) & (np.abs(R - G) < 22) & (G > 70) & (G > B + 15)
+    pant[:waist] = False
+    pc = (np.median(ba[pant][:, :3], axis=0).astype(int) if pant.any()
+          else np.array([120, 118, 60]))
+    leg = op.copy(); leg[:waist] = False; leg &= ~skin
+    sil = np.zeros_like(leg)
+    for y in range(waist, FRAME):
+        xs = np.where(leg[y])[0]
+        if len(xs):
+            sil[y, max(0, xs.min() - 2):min(FRAME, xs.max() + 3)] = True
+    dark = op & (R < 85) & (G < 85) & (B < 85)
+    hand = skin | (dark & ndimage.binary_dilation(skin, iterations=2))
+    hand[:waist] = False
+    ins = hand & sil; out = hand & ~sil
+    ba[ins, 0], ba[ins, 1], ba[ins, 2], ba[ins, 3] = int(pc[0]), int(pc[1]), int(pc[2]), 255
+    ba[out, 3] = 0
+
+
 def composite(pose, d, i, worn, nudges, mask_dilate=5):
     """One 256 frame composited as the renderer would.
     v2: erase the body wherever a worn piece's silhouette (dilated by
@@ -109,6 +143,8 @@ def composite(pose, d, i, worn, nudges, mask_dilate=5):
                 if len(ys):
                     neck_y = ys[0] + int(round(NECK_RESTORE_FRAC * (ys[-1] - ys[0])))
                     ba[:neck_y, :, 3] = orig_alpha[:neck_y, :]
+                    if worn.get('chest'):
+                        _blend_ghost_hand(ba, ys[0], ys[-1])
             o.alpha_composite(Image.fromarray(ba))
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:
