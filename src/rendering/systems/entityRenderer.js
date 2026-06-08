@@ -457,7 +457,7 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
     if (figBot > figTop && worn.some(w => w.k && w.k.indexOf('chest:') === 0)) {
       try {
         const fh = figBot - figTop;
-        const waistY = Math.round(figTop + 0.50 * fh);
+        const waistY = Math.round(figTop + 0.45 * fh);   // a bit above mid-figure so the waist/hip skin (chain-belt zone) is caught too
         const img = ctx.getImageData(0, 0, 256, 256);
         const d = img.data;
         const medRGB = (y0, y1) => {            // per-channel median of opaque pixels in [y0,y1)

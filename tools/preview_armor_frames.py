@@ -86,7 +86,7 @@ def _blend_ghost_hand(ba, top, bot):
     op = ba[:, :, 3] > 40
     fh = bot - top
     neck = top + int(round(0.33 * fh))
-    waist = top + int(round(0.50 * fh))
+    waist = top + int(round(0.45 * fh))   # a bit above mid-figure so waist/hip skin (chain-belt zone) is caught too
     px = ba[:, :, :3].astype(float)
 
     def med(y0, y1):
