@@ -57,6 +57,18 @@ hardest 3/4 view). Shipped in `GEAR_VERSION` 2.3.616 → 2.3.625.
    triangle on the clean sheets; the new pass uses erosion-1, below the chain,
    confined to the inter-leg gap.
 
+   **Front/back views (e.g. south) use `--band` instead.** There's no inter-leg
+   gap to fill — the legs are together and the waist is a thin horizontal strip —
+   so the gap-fill belt lands on the thighs or vanishes. `--band` lays the chain
+   as a full **horizontal band worn over the waist** (anchored to a fixed 0.46
+   figure-height waist fraction — *not* `seam_off`, which the hanging gauntlets
+   drag down to the thighs — and confined to the hip run sampled just below the
+   band so it never crosses the arms/hands):
+   ```
+   python tools/fill_gear_gaps.py jog south --no-enclosed --band
+   ```
+   (No `refit`/`strip` needed for `--band`.)
+
 6. **Bump `GEAR_VERSION`** (`src/rendering/gearSheets.js`) + `package.json`,
    `npm run build`, commit, push.
 

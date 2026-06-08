@@ -35,6 +35,11 @@ no_backing = '--no-backing' in sys.argv
 # enclosed holes (e.g. the trailing-arm/leg armpit pocket) just paints a black
 # blob where the body should peek through.  Use this for the body-aligned sheets.
 no_enclosed = no_backing or '--no-enclosed' in sys.argv
+# --band: lay the chain as a full-width horizontal BAND across the waist (over the
+# cuirass bottom), not just in a transparent gap.  For front-ish views there is no
+# inter-leg gap to fill -- the belt is worn over the armour as a band.  Confined
+# to the central torso run so it never crosses the arms/hands at the sides.
+band_mode = '--band' in sys.argv
 chest_p = f'public/sprites/gear/chest/steelplate/{pose}-{dir_}.png'
 legs_p = f'public/sprites/gear/legs/steelgreaves/{pose}-{dir_}.png'
 chest = Image.open(chest_p).convert('RGBA')
@@ -73,6 +78,8 @@ for i in range(n):
 medH = float(np.median(heights)) if heights else 150
 seam_off = int(np.median(offsets)) if offsets else int(0.55 * medH)
 band_h = int(BAND_FRAC * medH)
+if band_mode:
+    band_h = int(0.70 * band_h)                  # thinner single link-row for the worn-over band
 chain_s = np.array(CHAIN.resize((int(706 * band_h / 96), band_h), Image.LANCZOS))
 
 # Bake the belt into the CHEST but ONLY where the chest is transparent (the
@@ -92,10 +99,40 @@ for i in range(n):
     interior = enclosed(G)
     if interior.any() and not no_enclosed:
         cs[interior] = [0, 0, 0, 255]               # close every hole (neck etc.)
-    by0 = y0 + seam_off - 22                         # chain top, nudged up 20px total
+    # Band top: in --band mode anchor to a fixed WAIST fraction of the figure
+    # (the seam_off anchor is dragged down to the thighs by the hanging gauntlets
+    # in the chest gear).  Otherwise the legacy crown+seam offset.
+    if band_mode:
+        by0 = y0 + int(0.46 * medH) - band_h // 2
+    else:
+        by0 = y0 + seam_off - 22                     # chain top, nudged up 20px total
     band = np.zeros_like(bop)
     band[max(0, by0):min(FRAME, by0 + band_h), :] = True
-    region = band & bop & ~chest_op & ~(ls[:, :, 3] > 20)   # the gap NEITHER plate covers
+    if band_mode:
+        # full waist band over the body, confined to the HIP run (sampled a little
+        # BELOW the band, where the body is just the legs -- not the arms/hands
+        # swung out at the sides), so the belt spans the hips only.
+        cx = int(np.median(np.where(bop)[1]))
+        hiprow = min(FRAME - 1, by0 + band_h + 4)
+        rowcols = np.where(bop[hiprow, :])[0]
+        if len(rowcols) == 0:
+            rowcols = np.where(bop[max(0, by0):min(FRAME, by0 + band_h), :].any(0))[0]
+        if len(rowcols) == 0:
+            ca[:, i * FRAME:(i + 1) * FRAME] = cs
+            continue
+        runs, s, p = [], int(rowcols[0]), int(rowcols[0])
+        for x in rowcols[1:]:
+            if x == p + 1:
+                p = int(x)
+            else:
+                runs.append((s, p)); s = p = int(x)
+        runs.append((s, p))
+        rl, rr = min(runs, key=lambda r: 0 if r[0] <= cx <= r[1] else min(abs(r[0] - cx), abs(r[1] - cx)))
+        region = band & bop
+        region[:, :rl] = False
+        region[:, rr + 1:] = False
+    else:
+        region = band & bop & ~chest_op & ~(ls[:, :, 3] > 20)   # the gap NEITHER plate covers
     if not region.any():
         ca[:, i * FRAME:(i + 1) * FRAME] = cs
         continue
