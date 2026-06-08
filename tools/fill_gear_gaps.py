@@ -61,26 +61,38 @@ def enclosed(G):
     return free & ~np.isin(lbl, list(border))
 
 
-# Pre-pass: median height + stable chest-bottom offset (the waist anchor).
-heights, offsets = [], []
+# Pre-pass: median height + stable chest-bottom offset (the waist anchor) + the
+# leg-armour top offset (so --band can FIT the belt to the actual waist gap).
+heights, offsets, legtops = [], [], []
 for i in range(n):
     bop = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))[:, :, 3] > 20
     ys = np.where(bop.any(1))[0]
     if not len(ys):
         continue
-    y0 = int(ys.min())
-    heights.append(int(ys.max()) - y0)
+    y0 = int(ys.min()); hh = int(ys.max()) - y0
+    heights.append(hh)
     cx = int(np.median(np.where(bop)[1]))
     cb = ca[:, i * FRAME + max(0, cx - 4):i * FRAME + cx + 5, 3] > 20
     cyr = np.where(cb.any(1))[0]
     if len(cyr):
         offsets.append(int(cyr.max()) - y0)
+    lc = la[:, (i % ln) * FRAME + max(0, cx - 4):(i % ln) * FRAME + cx + 5, 3] > 20
+    lyr = np.where(lc.any(1))[0]
+    lyr = lyr[lyr > y0 + int(0.42 * hh)]          # leg-armour top, below the waist
+    if len(lyr):
+        legtops.append(int(lyr.min()) - y0)
 medH = float(np.median(heights)) if heights else 150
 seam_off = int(np.median(offsets)) if offsets else int(0.55 * medH)
 band_h = int(BAND_FRAC * medH)
 if band_mode:
-    band_h = int(0.70 * band_h)                  # worn-over band height (cropped to bottom half below)
-chain_s = np.array(CHAIN.resize((int(706 * band_h / 96), band_h), Image.LANCZOS))
+    # Fit the FULL chain to the waist GAP: from the waist (0.46*medH) down to the
+    # leg-armour top.  Wide gap (back/front views with leg armour low) -> tall belt;
+    # slim gap (e.g. south) -> slim belt.  No cropping/stretching of the pattern --
+    # the original chain is just scaled to the gap height.
+    waist_off = int(0.46 * medH)
+    legtop_off = int(np.median(legtops)) if legtops else waist_off + int(0.12 * medH)
+    band_h = max(6, legtop_off - waist_off + 3)
+chain_s = np.array(CHAIN.resize((max(1, int(706 * band_h / 96)), band_h), Image.LANCZOS))
 
 # Bake the belt into the CHEST but ONLY where the chest is transparent (the
 # waist gap) -- so it fills the hole without ever overwriting the chest's
@@ -103,15 +115,11 @@ for i in range(n):
     # (the seam_off anchor is dragged down to the thighs by the hanging gauntlets
     # in the chest gear).  Otherwise the legacy crown+seam offset.
     if band_mode:
-        by0 = y0 + int(0.46 * medH) - band_h // 2    # full band centred on the waist
+        by0 = y0 + int(0.46 * medH)                  # belt top at the waist; height = the gap
     else:
         by0 = y0 + seam_off - 22                     # chain top, nudged up 20px total
     band = np.zeros_like(bop)
     band[max(0, by0):min(FRAME, by0 + band_h), :] = True
-    if band_mode:
-        # crop the band to its BOTTOM HALF (shrink from the top, bottom fixed) --
-        # keeps the full-size chain links, just hides the upper rows.
-        band[:max(0, by0 + band_h // 2), :] = False
     if band_mode:
         # full waist band over the body, confined to the HIP run (sampled a little
         # BELOW the band, where the body is just the legs -- not the arms/hands

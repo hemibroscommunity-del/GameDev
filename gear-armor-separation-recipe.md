@@ -73,15 +73,18 @@ hardest 3/4 view). Shipped in `GEAR_VERSION` 2.3.616 → 2.3.625.
    triangle on the clean sheets; the new pass uses erosion-1, below the chain,
    confined to the inter-leg gap.
 
-   **Front/back views (e.g. south) use `--band` instead.** There's no inter-leg
-   gap to fill — the legs are together and the waist is a thin horizontal strip —
-   so the gap-fill belt lands on the thighs or vanishes. `--band` lays the chain
-   as a full **horizontal band worn over the waist** (anchored to a fixed 0.46
-   figure-height waist fraction — *not* `seam_off`, which the hanging gauntlets
-   drag down to the thighs — and confined to the hip run sampled just below the
-   band so it never crosses the arms/hands):
+   **Front/back views (e.g. south, north) use `--band` instead.** There's no
+   inter-leg gap to fill — the legs are together and the waist is a horizontal
+   strip — so the gap-fill belt lands on the thighs or vanishes. `--band` lays the
+   chain as a **horizontal band worn over the waist**, anchored to a fixed 0.46
+   figure-height waist fraction (*not* `seam_off`, which the hanging gauntlets drag
+   down to the thighs) and confined to the hip run (sampled just below the band so
+   it never crosses the arms/hands).  The belt height **auto-fits the waist gap**:
+   the full chain is scaled from the waist down to the leg-armour top, so a wide
+   gap (north) gets a tall belt and a slim gap (south) gets a slim one — no
+   cropping/stretching of the link pattern.
    ```
-   python tools/fill_gear_gaps.py jog south --no-enclosed --band
+   python tools/fill_gear_gaps.py jog north --no-enclosed --band
    ```
    (No `refit`/`strip` needed for `--band`.)
 
