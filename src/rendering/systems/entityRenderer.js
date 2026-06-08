@@ -221,7 +221,8 @@ function bodyDirScale(pose, dir) {
              NW via mirror) per user. */
 const STAND_WIDTH = { south: 1.060, east: 1.7325, north: 1.326, northeast: 1.654, southwest: 1.232 };
 function standWidth(pose, dir, armored) {
-  return (pose === 'stand' && armored) ? (STAND_WIDTH[dir] || 1.0) : 1.0;
+  return 1.0;   // v2.3.645: per-axis manual armour correction removed -- the aligned
+                // gear is drawn to fit, so only the uniform BODY_DIR_SCALE applies.
 }
 /* Per-direction idle SHORTEN/TALLEN pass (vertical-only) -- trims/extends the
    idle height per dir to line the armoured figure up with its jog frames.
@@ -235,7 +236,7 @@ function standWidth(pose, dir, armored) {
              perspective per user ("height-only, all equal"). */
 const STAND_HEIGHT = { south: 0.975, east: 0.945, north: 0.964, northeast: 0.946, southwest: 0.949 };
 function standHeight(pose, dir, armored) {
-  return (pose === 'stand' && armored) ? (STAND_HEIGHT[dir] || 1.0) : 1.0;
+  return 1.0;   // v2.3.645: neutralized (see standWidth)
 }
 
 /* Per-direction JOG height (vertical-only) multiplier -- normalizes the running
@@ -248,7 +249,7 @@ function standHeight(pose, dir, armored) {
              cycle mean back in line with the other facings (~80px). */
 const JOG_HEIGHT = { south: 1.052, east: 0.985, north: 0.926, northeast: 0.977, southwest: 1.028 };
 function jogHeight(pose, dir, armored) {
-  return (pose === 'jog' && armored) ? (JOG_HEIGHT[dir] || 1.0) : 1.0;
+  return 1.0;   // v2.3.645: neutralized (see standWidth)
 }
 
 /* Per-direction JOG width (horizontal-only) multiplier -- trims the running
@@ -258,7 +259,7 @@ function jogHeight(pose, dir, armored) {
    (covers SE) per user.  v2.3.586: NE -5% more (0.95->0.903) per user. */
 const JOG_WIDTH = { northeast: 0.903, southwest: 0.95 };
 function jogWidth(pose, dir, armored) {
-  return (pose === 'jog' && armored) ? (JOG_WIDTH[dir] || 1.0) : 1.0;
+  return 1.0;   // v2.3.645: neutralized (see standWidth)
 }
 
 /* Place a player's headwear sprite for this frame.  Shared by the local
