@@ -1956,6 +1956,67 @@ export class EffectsRenderer {
       gfx.lineTo(x - 10 * pulse, y - 4 * pulse);
       gfx.fill({ color: 0x8a8a8a, alpha: 0.95 });
     }
+
+    /* ── Phase-2 gesture hint + progress meter (v2.4) ──
+       The animated hint shows WHAT motion to make; the green outer ring + pips
+       show how much of the sustained gesture is done (ex.progress / ex.reps,
+       written live by ExtractionSwipeLayer). Hint fades as progress fills. */
+    const progress = Math.max(0, Math.min(1, ex.progress || 0));
+    const reps = ex.reps || 0;
+    const repsTarget = ex.repsTarget || 3;
+    const hintAlpha = 0.9 * (1 - 0.55 * progress);
+    const hintCol = 0xfff2a8;
+    if (ex.skill === 'fishing') {
+      /* Clockwise circular arrow — "reel". Rotates so it reads as motion. */
+      const rA = ringR + 14;
+      const a0 = (now / 400) % (Math.PI * 2);
+      const aEnd = a0 + Math.PI * 1.5;
+      gfx.arc(x, y, rA, a0, aEnd);
+      gfx.stroke({ color: hintCol, width: 2, alpha: hintAlpha });
+      const hx = x + Math.cos(aEnd) * rA, hy = y + Math.sin(aEnd) * rA;
+      const tx = -Math.sin(aEnd), ty = Math.cos(aEnd); /* clockwise tangent */
+      gfx.moveTo(hx, hy);
+      gfx.lineTo(hx + tx * 7 + Math.cos(aEnd) * 5, hy + ty * 7 + Math.sin(aEnd) * 5);
+      gfx.lineTo(hx + tx * 7 - Math.cos(aEnd) * 5, hy + ty * 7 - Math.sin(aEnd) * 5);
+      gfx.fill({ color: hintCol, alpha: hintAlpha });
+    } else if (ex.skill === 'woodcutting') {
+      /* Horizontal arrow pointing toward the tree, sweeping in/out. */
+      const dir = ex.treewardSign || -1;
+      const sweep = Math.sin(now / 150) * 4;
+      const ax = x + sweep * dir, ay = y + 24;
+      const L = 16;
+      gfx.moveTo(ax - dir * L, ay);
+      gfx.lineTo(ax + dir * L, ay);
+      gfx.stroke({ color: hintCol, width: 3, alpha: hintAlpha });
+      gfx.moveTo(ax + dir * L, ay);
+      gfx.lineTo(ax + dir * (L - 7), ay - 5);
+      gfx.lineTo(ax + dir * (L - 7), ay + 5);
+      gfx.fill({ color: hintCol, alpha: hintAlpha });
+    } else {
+      /* Vertical double-arrow (up + down pump), bobbing. */
+      const bob = Math.sin(now / 150) * 3;
+      const ax = x + 24, ay = y + bob;
+      const L = 14;
+      gfx.moveTo(ax, ay - L);
+      gfx.lineTo(ax, ay + L);
+      gfx.stroke({ color: hintCol, width: 3, alpha: hintAlpha });
+      gfx.moveTo(ax, ay - L); gfx.lineTo(ax - 5, ay - L + 7); gfx.lineTo(ax + 5, ay - L + 7);
+      gfx.fill({ color: hintCol, alpha: hintAlpha });
+      gfx.moveTo(ax, ay + L); gfx.lineTo(ax - 5, ay + L - 7); gfx.lineTo(ax + 5, ay + L - 7);
+      gfx.fill({ color: hintCol, alpha: hintAlpha });
+    }
+    /* Green progress ring (reps filled) just outside the gold time ring. */
+    if (progress > 0) {
+      gfx.arc(x, y, ringR + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+      gfx.stroke({ color: 0x3dd497, width: 3, alpha: 0.95 });
+    }
+    /* Rep pips around the ring — fill as each rep completes. */
+    for (let i = 0; i < repsTarget; i++) {
+      const pa = -Math.PI / 2 + (i / repsTarget) * Math.PI * 2;
+      const filled = (i + 1) <= Math.floor(reps + 1e-3);
+      gfx.circle(x + Math.cos(pa) * (ringR + 10), y + Math.sin(pa) * (ringR + 10), 2.2);
+      gfx.fill({ color: filled ? 0x3dd497 : 0x2a3050, alpha: filled ? 1 : 0.6 });
+    }
     /* Outer countdown ring -- shrinks as the window closes. */
     gfx.arc(x, y, ringR + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * remaining);
     gfx.stroke({ color: 0xf5c542, width: 2.5, alpha: 0.9 });

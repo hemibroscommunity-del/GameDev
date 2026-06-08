@@ -12482,7 +12482,7 @@ export var BroTown = function BroTown(_ref0) {
   /* Called from the swipe handler when a valid swipe lands during the
      'ready' window. Routes to the existing per-skill reward applier
      so XP + inventory + server node_strike all run unchanged. */
-  var _succeedExtraction = useCallback(function () {
+  var _succeedExtraction = useCallback(function (accuracy) {
     var S = stateRef.current;
     if (!S || !S._extraction || S._extraction.status !== 'ready') return false;
     var _ex = S._extraction;
@@ -12491,7 +12491,9 @@ export var BroTown = function BroTown(_ref0) {
                  ? S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; })
                  : null);
     if (!node) { S._extraction = null; return false; }
-    var result = { accuracy: 'good' };
+    /* accuracy comes from the phase-2 gesture grade (ExtractionSwipeLayer);
+       defaults to 'good' for any legacy caller. Keyed into MINIGAME_REWARDS. */
+    var result = { accuracy: (accuracy === 'perfect' || accuracy === 'ok') ? accuracy : 'good' };
     if (_ex.skill === 'fishing')      _applyFishingReward(node, result);
     else if (_ex.skill === 'woodcutting') _applyWoodReward(node, result);
     else if (_ex.skill === 'mining')      _applyMiningReward(node, result);
