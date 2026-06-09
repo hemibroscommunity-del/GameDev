@@ -199,6 +199,17 @@ def composite(pose, d, i, worn, nudges, mask_dilate=5):
                     ba[:neck_y, :, 3] = orig_alpha[:neck_y, :]
                     if worn.get('chest'):
                         _blend_ghost_hand(ba, ys[0], ys[-1], orig_alpha)
+                # Despeckle: drop tiny disconnected specks (ghost-body noise carved
+                # loose by the cover-mask) so nothing floats around the character.
+                # Conservative (<10px) -- the body parts are hundreds of px, so the
+                # character is never touched.  Mirrors entityRenderer._maskedBodyFrame.
+                bop2 = ba[:, :, 3] > 20
+                lblb, nnb = ndimage.label(bop2)
+                if nnb > 1:
+                    szb = ndimage.sum(np.ones_like(lblb), lblb, range(1, nnb + 1))
+                    smallb = np.nonzero(szb < 10)[0] + 1
+                    if len(smallb):
+                        ba[np.isin(lblb, smallb), 3] = 0
             o.alpha_composite(Image.fromarray(ba))
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:

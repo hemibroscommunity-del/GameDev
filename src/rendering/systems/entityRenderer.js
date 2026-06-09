@@ -575,6 +575,30 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
         }
       } catch (e) { /* ghost-hand blend is best-effort */ }
     }
+    /* Despeckle: drop tiny disconnected specks (ghost-body noise the cover-mask
+       carves loose) so nothing floats around the character.  Conservative: only
+       blobs < 10px (body parts are hundreds of px, so the character is never
+       touched).  4-connectivity flood fill.  Mirrors preview_armor_frames.
+       v2.3.676. */
+    try {
+      const id = ctx.getImageData(0, 0, 256, 256); const d = id.data;
+      const seen = new Uint8Array(256 * 256), st = [];
+      let dirty = false;
+      for (let p0 = 0; p0 < 256 * 256; p0++) {
+        if (seen[p0] || d[p0 * 4 + 3] <= 20) { seen[p0] = 1; continue; }
+        const comp = []; st.length = 0; st.push(p0); seen[p0] = 1;
+        while (st.length) {
+          const p = st.pop(); comp.push(p);
+          const x = p % 256, y = (p / 256) | 0;
+          if (x > 0 && !seen[p - 1] && d[(p - 1) * 4 + 3] > 20) { seen[p - 1] = 1; st.push(p - 1); }
+          if (x < 255 && !seen[p + 1] && d[(p + 1) * 4 + 3] > 20) { seen[p + 1] = 1; st.push(p + 1); }
+          if (y > 0 && !seen[p - 256] && d[(p - 256) * 4 + 3] > 20) { seen[p - 256] = 1; st.push(p - 256); }
+          if (y < 255 && !seen[p + 256] && d[(p + 256) * 4 + 3] > 20) { seen[p + 256] = 1; st.push(p + 256); }
+        }
+        if (comp.length < 10) { for (let i = 0; i < comp.length; i++) d[comp[i] * 4 + 3] = 0; dirty = true; }
+      }
+      if (dirty) ctx.putImageData(id, 0, 0);
+    } catch (e) { /* despeckle best-effort */ }
   } catch (e) { return bodyTex; }
   const t = Texture.from(cv);
   _maskedBodyCache.set(key, t);
