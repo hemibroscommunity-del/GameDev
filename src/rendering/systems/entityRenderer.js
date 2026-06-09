@@ -180,7 +180,12 @@ const BODY_DIR_SCALE = {
      (bare-body in v2.3.569, jog-bulk in v2.3.570) distorted the drawn art and
      made dirs read too fat/skinny -- dropped.  scale.x == scale.y (STAND_WIDTH
      all 1.0) so the drawn proportions are preserved exactly. */
-  stand: { south: 1.136, east: 0.983, north: 1.039, northeast: 1.003, southwest: 0.983 },
+  /* v2.3.684: south 1.136 -> 1.051 -- the idle popped 8% LARGER than the jog
+     when the run stopped.  v2.3.645 neutralized STAND_HEIGHT (0.975) and
+     JOG_HEIGHT (1.052) without re-deriving this map; for south those two
+     factors were what held idle == jog.  Re-measured on the armored figure:
+     stand 188px, jog mean 197.6px -> 197.6/188 = 1.051 makes them equal. */
+  stand: { south: 1.051, east: 0.983, north: 1.039, northeast: 1.003, southwest: 0.983 },
   /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
      was bigger running than standing).  Crown-to-hip over-scaled the jog
      because a running figure leans + spreads its legs, compressing vertical
@@ -641,10 +646,12 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
            backs the see-through chain belt and fills the gap with pants
            instead of background.  Allow body in the waist rows, but only
            within the gear's horizontal span per row so outline arcs at waist
-           height (beyond the gauntlets) stay dead. */
+           height (beyond the gauntlets) stay dead.
+           v2.3.684: partial wear too (chest-only: pants behind the baked-in
+           belt; legs-only: hip edges beside the thigh plates). */
         const rowMin = new Int16Array(256).fill(256), rowMax = new Int16Array(256).fill(-1);
         let w0 = 256, w1 = 256;
-        if (wornChest && wornLegs && figBot > figTop) {
+        if ((wornChest || wornLegs) && figBot > figTop) {
           const fh2 = figBot - figTop;
           w0 = Math.max(0, Math.round(figTop + 0.38 * fh2));
           w1 = Math.min(256, Math.round(figTop + 0.64 * fh2));
@@ -652,6 +659,30 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
             for (let x = 0; x < 256; x++) {
               if (gop[y * 256 + x]) { if (x < rowMin[y]) rowMin[y] = x; if (x > rowMax[y]) rowMax[y] = x; }
             }
+          }
+        }
+        /* v2.3.684 PARTIAL WEAR (chest-only / legs-only): the row-range gates
+           (gLo/gHi) are fooled by sheet accessories -- the idle chest's hanging
+           gauntlet reaches mid-thigh and the idle greaves can carry stray
+           pixels above the knee -- so whole bare-thigh/hip rows were erased
+           (floating boots under a chopped figure).  Confine per ROW instead:
+           only rows where the gear actually WRAPS the body (gear pixels >=
+           85% of the original body pixels in that row) are silhouette-
+           confined; rows crossed by a narrow accessory keep the bare body.
+           The full set keeps the original aggressive path (in profile the
+           erased thigh hides behind the stacked plates -- restoring it would
+           poke pants past the gauntlet). */
+        const partial = !(wornChest && wornLegs);
+        const covered = new Uint8Array(256);
+        if (partial && origBody) {
+          for (let y = 0; y < 256; y++) {
+            let bc = 0, gc = 0;
+            for (let x = 0; x < 256; x++) {
+              const p = y * 256 + x;
+              if (origBody[p * 4 + 3] > 40) bc++;
+              if (gop[p]) gc++;
+            }
+            covered[y] = (bc > 0 && gc >= 0.85 * bc) ? 1 : 0;
           }
         }
         const img2 = ctx.getImageData(0, 0, 256, 256); const d2 = img2.data;
@@ -663,9 +694,23 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
           const inWaist = y >= w0 && y < w1;
           for (let x = 0; x < 256; x++) {
             const p = y * 256 + x, o = p * 4;
+            if (partial && !covered[y] && !(wornLegs && y >= hi2)) {
+              /* bare row: stays whole AND gets back what the dilated cover
+                 halo ate (the hue-based pant-restore misses shirt/skin, which
+                 left a transparent band above the greaves top / around the
+                 hanging gauntlet on partial wear). */
+              if (d2[o + 3] === 0 && origBody && origBody[o + 3] > 40) {
+                d2[o] = origBody[o]; d2[o + 1] = origBody[o + 1];
+                d2[o + 2] = origBody[o + 2]; d2[o + 3] = origBody[o + 3];
+                dirty2 = true;
+              }
+              continue;
+            }
             if (d2[o + 3] === 0) continue;
             if (wornLegs && y >= hi2) { d2[o + 3] = 0; dirty2 = true; continue; }
-            if (skipBelow || skipAbove) continue;
+            if (partial) {
+              if (!covered[y]) continue;              // bare row stays whole
+            } else if (skipBelow || skipAbove) continue;
             if (inWaist && x >= rowMin[y] && x <= rowMax[y]) continue;
             if (!fill[p]) { d2[o + 3] = 0; dirty2 = true; }
           }

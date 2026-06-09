@@ -30,13 +30,15 @@ LOCAL = 0.3515625
 NECK_RESTORE_FRAC = 0.33
 # --- keep in sync with entityRenderer.js ---
 BODY_DIR_SCALE = {
-    'stand': {'south': 1.136, 'east': 0.983, 'north': 1.039, 'northeast': 1.003, 'southwest': 0.983},
+    'stand': {'south': 1.051, 'east': 0.983, 'north': 1.039, 'northeast': 1.003, 'southwest': 0.983},
     'jog':   {'south': 1.000, 'east': 1.157, 'north': 1.050, 'northeast': 1.126, 'southwest': 1.000},
 }
-STAND_WIDTH  = {'south': 1.060, 'east': 1.7325, 'north': 1.326, 'northeast': 1.654, 'southwest': 1.232}
-STAND_HEIGHT = {'south': 0.975, 'east': 0.945, 'north': 0.964, 'northeast': 0.946, 'southwest': 0.949}
-JOG_WIDTH    = {'northeast': 0.903, 'southwest': 0.95}
-JOG_HEIGHT   = {'south': 1.052, 'east': 0.985, 'north': 0.926, 'northeast': 0.977, 'southwest': 1.028}
+# v2.3.645 neutralized the per-axis armour stretches in the renderer (only the
+# uniform BODY_DIR_SCALE applies) -- mirror that here so previews match in-game.
+STAND_WIDTH  = {'south': 1.0, 'east': 1.0, 'north': 1.0, 'northeast': 1.0, 'southwest': 1.0}
+STAND_HEIGHT = {'south': 1.0, 'east': 1.0, 'north': 1.0, 'northeast': 1.0, 'southwest': 1.0}
+JOG_WIDTH    = {}
+JOG_HEIGHT   = {}
 DIRS = ['south', 'east', 'northeast', 'north', 'southwest']
 
 SHEETS = {
@@ -225,21 +227,43 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
                     # Allow body in the waist rows, but only within the gear's
                     # horizontal span per row so outline arcs at waist height
                     # (beyond the gauntlets) stay dead.
-                    if worn.get('chest') and worn.get('legs') and len(ys):
+                    if (worn.get('chest') or worn.get('legs')) and len(ys):
                         fh = int(ys[-1] - ys[0])
                         w0 = int(ys[0] + 0.38 * fh); w1 = int(ys[0] + 0.64 * fh)
                         for y in range(max(0, w0), min(FRAME, w1)):
                             gx = np.where(gop[y])[0]
                             if len(gx):
                                 outside[y, gx.min():gx.max() + 1] = False
-                    if not worn.get('chest'):
+                    # v2.3.684 PARTIAL WEAR: row-range gates are fooled by sheet
+                    # accessories (idle chest's hanging gauntlet, greaves stray
+                    # pixels above the knee) -- whole bare rows got erased.
+                    # Confine per ROW: only rows the gear WRAPS (gear pixels >=
+                    # 85% of original body pixels) are silhouette-confined.
+                    # Mirrors entityRenderer._maskedBodyFrame -- keep in sync.
+                    partial = not (worn.get('chest') and worn.get('legs'))
+                    if partial:
+                        bc = (orig_alpha > 40).sum(axis=1)
+                        gc = gop.sum(axis=1)
+                        covered = (bc > 0) & (gc >= 0.85 * bc)
+                        outside[~covered] = False          # bare row stays whole
+                    elif not worn.get('chest'):
                         outside[:lo] = False               # bare torso stays
-                    if not worn.get('legs'):
-                        outside[hi:] = False               # bare legs stay
-                    else:
+                    if worn.get('legs'):
                         hi2 = min(FRAME, hi + 8)           # boots end the figure:
                         outside[hi2:] = True               # kill under-boot shadow
+                    elif not partial:
+                        outside[hi:] = False               # bare legs stay
                     ba[outside, 3] = 0
+                    if partial:
+                        # bare rows get back what the dilated cover halo ate
+                        # (hue-based pant-restore misses shirt/skin -> a
+                        # transparent band above the greaves top / around the
+                        # hanging gauntlet).  Mirrors the renderer.
+                        res = (orig_alpha > 40) & (ba[:, :, 3] <= 20) & ~covered[:, None]
+                        res[:max(0, neck_y)] = False
+                        if worn.get('legs'):
+                            res[min(FRAME, hi + 8):] = False
+                        ba[res, 3] = orig_alpha[res]
             o.alpha_composite(Image.fromarray(ba))
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:
