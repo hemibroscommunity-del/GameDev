@@ -42,6 +42,9 @@ no_enclosed = no_backing or '--no-enclosed' in sys.argv
 band_mode = '--band' in sys.argv
 band_crop = float(sys.argv[sys.argv.index('--band-crop') + 1]) if '--band-crop' in sys.argv else 0.0
 band_extend = float(sys.argv[sys.argv.index('--band-extend') + 1]) if '--band-extend' in sys.argv else 0.0
+band_left = int(sys.argv[sys.argv.index('--band-left') + 1]) if '--band-left' in sys.argv else 0    # extend belt left edge Npx
+band_right = int(sys.argv[sys.argv.index('--band-right') + 1]) if '--band-right' in sys.argv else 0  # extend belt right edge Npx
+band_down = int(sys.argv[sys.argv.index('--band-down') + 1]) if '--band-down' in sys.argv else 0     # extend belt bottom Npx
 chest_p = f'public/sprites/gear/chest/steelplate/{pose}-{dir_}.png'
 legs_p = f'public/sprites/gear/legs/steelgreaves/{pose}-{dir_}.png'
 chest = Image.open(chest_p).convert('RGBA')
@@ -101,6 +104,9 @@ if band_mode:
         # waist) over the leg-top, keeping the PREVIOUS link size/width -- tile the
         # same chain to fill the taller window (don't enlarge or restretch links).
         band_h = round(band_h * (1 + band_extend))
+if band_mode and band_down:
+    band_h += band_down                 # extend the belt bottom Npx (top stays at the waist)
+    chain_h = band_h if band_extend == 0 else chain_h
 chain_s = np.array(CHAIN.resize((max(1, int(706 * chain_h / 96)), chain_h), Image.LANCZOS))
 if band_extend > 0 and band_h > chain_h:
     reps = int(np.ceil(band_h / chain_h))
@@ -153,6 +159,7 @@ for i in range(n):
         if half > 0:
             rl, rr = tcx - half, tcx + half
         rl, rr = rl + 1, rr - 1            # hug the waist 1px tighter on each side
+        rl, rr = rl - band_left, rr + band_right   # per-dir edge nudges
         region = band & bop & ~chest_op   # waist band, behind the arm (chest stays in front)
         if band_extend == 0:
             region &= ~(ls[:, :, 3] > 20)  # default: also behind the leg plate
