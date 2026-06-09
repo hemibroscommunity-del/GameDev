@@ -135,28 +135,17 @@ for i in range(n):
     if band_mode and band_crop > 0:                  # crop FRAC off the TOP (keep the bottom; chain bottom shows)
         band[:max(0, by0 + int(band_h * band_crop)), :] = False
     if band_mode:
-        # A belt wraps the NARROWEST part of the waist (bottom of the torso), not
-        # the wider hips -- otherwise it reads like a blanket.  Scan the waist rows
-        # (top of the band) for the slimmest body run that contains the centre.
+        # Belt width = the LEG width.  The waist body-run is unreliable here -- the
+        # shoulders/hands swung out at the sides bloat it -- so use the leg gear's
+        # x-extent (sampled at the thigh tops, below the arms) as the belt span.
         cx = int(np.median(np.where(bop)[1]))
-        rl, rr, best = None, None, 10 ** 9
-        for yy in range(max(0, by0 - 2), min(FRAME, by0 + 12)):
-            cols = np.where(bop[yy, :])[0]
-            if not len(cols):
-                continue
-            runs, s, p = [], int(cols[0]), int(cols[0])
-            for x in cols[1:]:
-                if x == p + 1:
-                    p = int(x)
-                else:
-                    runs.append((s, p)); s = p = int(x)
-            runs.append((s, p))
-            l, r = min(runs, key=lambda rn: 0 if rn[0] <= cx <= rn[1] else min(abs(rn[0] - cx), abs(rn[1] - cx)))
-            if r - l < best:
-                best = r - l; rl, rr = l, r
-        if rl is None:
+        legmask = ls[:, :, 3] > 20
+        lys = np.where(legmask.any(1))[0]
+        cols = np.where(legmask[int(lys.min()):min(FRAME, int(lys.min()) + 14), :].any(0))[0] if len(lys) else np.array([])
+        if len(cols) == 0:
             ca[:, i * FRAME:(i + 1) * FRAME] = cs
             continue
+        rl, rr = int(cols.min()), int(cols.max())
         region = band & bop & ~chest_op   # waist band, behind the arm (chest stays in front)
         if band_extend == 0:
             region &= ~(ls[:, :, 3] > 20)  # default: also behind the leg plate
