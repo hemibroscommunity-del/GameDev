@@ -194,11 +194,38 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
                 # bbox so it tracks the bob.
                 op = orig_alpha > 40
                 ys = np.where(op.any(axis=1))[0]
+                neck_y = 0
                 if len(ys):
                     neck_y = ys[0] + int(round(NECK_RESTORE_FRAC * (ys[-1] - ys[0])))
                     ba[:neck_y, :, 3] = orig_alpha[:neck_y, :]
                     if worn.get('chest'):
                         _blend_ghost_hand(ba, ys[0], ys[-1], orig_alpha)
+                # v2.3.681: erase the naked-body OUTLINE/SHADOW remnants that
+                # survive OUTSIDE the armour silhouette where the AI drawing
+                # drifted (floating arcs hugging the figure).  When armoured,
+                # the body may only show INSIDE the filled gear silhouette
+                # (+2px) -- pants in plate gaps, armpit windows -- or in the
+                # restored head band above neck_y.  Row-ranges keep partial
+                # equips intact: chest-only must not erase the bare legs etc.
+                # Runs AFTER the blend so the pant-restore can't re-open these.
+                gop = np.zeros((FRAME, FRAME), bool)
+                for arr in pieces.values():
+                    gop |= arr[:, :, 3] > 30
+                if gop.any():
+                    allowed = ndimage.binary_dilation(
+                        ndimage.binary_fill_holes(gop), iterations=2)
+                    gys = np.where(gop.any(axis=1))[0]
+                    lo = int(gys.min()); hi = int(gys.max())
+                    outside = ~allowed
+                    outside[:neck_y] = False               # head band stays
+                    if not worn.get('chest'):
+                        outside[:lo] = False               # bare torso stays
+                    if not worn.get('legs'):
+                        outside[hi:] = False               # bare legs stay
+                    else:
+                        hi2 = min(FRAME, hi + 8)           # boots end the figure:
+                        outside[hi2:] = True               # kill under-boot shadow
+                    ba[outside, 3] = 0
             o.alpha_composite(Image.fromarray(ba))
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:

@@ -580,6 +580,79 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
         }
       } catch (e) { /* ghost-hand blend is best-effort */ }
     }
+    /* v2.3.681: erase the naked-body OUTLINE/SHADOW remnants that survive
+       OUTSIDE the armour silhouette where the AI drawing drifted (floating
+       arcs hugging the figure).  When armoured, the body may only show INSIDE
+       the filled gear silhouette (+2px: pants in plate gaps, armpit windows)
+       or in the restored head band.  Row-ranges keep partial equips intact.
+       Mirrors preview_armor_frames.composite -- keep in sync. */
+    try {
+      const sc = document.createElement('canvas'); sc.width = 256; sc.height = 256;
+      const sctx = sc.getContext('2d');
+      let wornChest = false, wornLegs = false;
+      for (const w of worn) {
+        const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
+        const gf = gt.frame;
+        sctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, 0, 0, 256, 256);
+        if (w.k && w.k.indexOf('chest:') === 0) wornChest = true;
+        if (w.k && w.k.indexOf('legs:') === 0) wornLegs = true;
+      }
+      const gd = sctx.getImageData(0, 0, 256, 256).data;
+      const gop = new Uint8Array(256 * 256);
+      let gLo = 256, gHi = -1;
+      for (let p = 0; p < 256 * 256; p++) {
+        if (gd[p * 4 + 3] > 30) {
+          gop[p] = 1;
+          const y = (p / 256) | 0;
+          if (y < gLo) gLo = y; if (y > gHi) gHi = y;
+        }
+      }
+      if (gHi >= gLo) {
+        /* fill holes: flood the EMPTY space from the borders; anything empty
+           and unreached is an interior hole -> part of the silhouette. */
+        const reach = new Uint8Array(256 * 256); const st = [];
+        for (let x = 0; x < 256; x++) { st.push(x, 255 * 256 + x); }
+        for (let y = 0; y < 256; y++) { st.push(y * 256, y * 256 + 255); }
+        while (st.length) {
+          const p = st.pop();
+          if (reach[p] || gop[p]) continue;
+          reach[p] = 1;
+          const x = p % 256, y = (p / 256) | 0;
+          if (x > 0) st.push(p - 1);
+          if (x < 255) st.push(p + 1);
+          if (y > 0) st.push(p - 256);
+          if (y < 255) st.push(p + 256);
+        }
+        /* allowed = filled silhouette (gop | unreached) dilated by 2 */
+        let fill = new Uint8Array(256 * 256);
+        for (let p = 0; p < 256 * 256; p++) fill[p] = (gop[p] || !reach[p]) ? 1 : 0;
+        for (let it = 0; it < 2; it++) {
+          const nx = new Uint8Array(fill);
+          for (let p = 0; p < 256 * 256; p++) {
+            if (fill[p]) continue;
+            const x = p % 256, y = (p / 256) | 0;
+            if ((x > 0 && fill[p - 1]) || (x < 255 && fill[p + 1]) ||
+                (y > 0 && fill[p - 256]) || (y < 255 && fill[p + 256])) nx[p] = 1;
+          }
+          fill = nx;
+        }
+        const img2 = ctx.getImageData(0, 0, 256, 256); const d2 = img2.data;
+        const hi2 = wornLegs ? Math.min(256, gHi + 8) : 256;
+        let dirty2 = false;
+        for (let y = Math.max(0, neckY); y < 256; y++) {
+          const skipBelow = !wornLegs && y > gHi;     // bare legs stay
+          const skipAbove = !wornChest && y < gLo;    // bare torso stays
+          for (let x = 0; x < 256; x++) {
+            const p = y * 256 + x, o = p * 4;
+            if (d2[o + 3] === 0) continue;
+            if (wornLegs && y >= hi2) { d2[o + 3] = 0; dirty2 = true; continue; }
+            if (skipBelow || skipAbove) continue;
+            if (!fill[p]) { d2[o + 3] = 0; dirty2 = true; }
+          }
+        }
+        if (dirty2) ctx.putImageData(img2, 0, 0);
+      }
+    } catch (e) { /* silhouette confinement is best-effort */ }
   } catch (e) { return bodyTex; }
   const t = Texture.from(cv);
   _maskedBodyCache.set(key, t);
