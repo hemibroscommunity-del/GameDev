@@ -278,17 +278,26 @@ def render_dir(pose, d, worn, nudges, zoom, mask_dilate=5):
     x0, x1, y0, y1 = xs.min() - 2, xs.max() + 3, ys.min() - 2, ys.max() + 3
     cw, ch = x1 - x0, y1 - y0
     cols = min(n, 8); rows = (n + cols - 1) // cols
-    pad, lbl = 4, 14
+    # banner label per cell, sized to stay readable when the grid is shrunk
+    lbl = max(28, ch // 7)
+    from PIL import ImageFont
+    try:
+        font = ImageFont.load_default(size=int(lbl * 0.7))
+    except TypeError:                                   # older Pillow
+        font = ImageFont.load_default()
+    pad = 4
     out = Image.new('RGBA', (cols * (cw + pad) + pad, rows * (ch + lbl + pad) + pad), (38, 42, 50, 255))
     dr = ImageDraw.Draw(out)
     bg = Image.new('RGBA', (cw, ch), (70, 76, 86, 255))
+    tag = {'south': 'S', 'east': 'E', 'northeast': 'NE', 'north': 'N',
+           'southwest': 'SW', 'northwest': 'NW'}.get(d, d[:2].upper())
     for i, c in enumerate(cells):
         r, cc = divmod(i, cols)
         x = pad + cc * (cw + pad); y = pad + lbl + r * (ch + lbl + pad)
         cell = bg.copy(); cell.alpha_composite(c.crop((x0, y0, x1, y1)))
         out.alpha_composite(cell, (x, y))
-        dr.rectangle([x, y - lbl, x + 22, y], fill=(0, 0, 0, 200))
-        dr.text((x + 3, y - lbl + 2), str(i), fill=(255, 220, 0, 255))
+        dr.rectangle([x, y - lbl, x + cw, y], fill=(0, 0, 0, 220))
+        dr.text((x + 6, y - lbl + 3), f'{tag} f{i}', fill=(255, 220, 0, 255), font=font)
     return out
 
 
