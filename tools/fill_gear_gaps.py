@@ -97,12 +97,14 @@ if band_mode:
     band_h = max(6, legtop_off - waist_off + 3)
     chain_h = band_h
     if band_extend > 0:
-        # Belt too thin for a small gap: extend the window DOWN (top stays at the
-        # waist) over the leg-armour top, and render the chain at its ORIGINAL full
-        # link size CROPPED to the window -- not squished into the thin gap.
-        chain_h = int(BAND_FRAC * medH)
+        # Belt too thin for a small gap: LENGTHEN the window down (top stays at the
+        # waist) over the leg-top, keeping the PREVIOUS link size/width -- tile the
+        # same chain to fill the taller window (don't enlarge or restretch links).
         band_h = round(band_h * (1 + band_extend))
 chain_s = np.array(CHAIN.resize((max(1, int(706 * chain_h / 96)), chain_h), Image.LANCZOS))
+if band_extend > 0 and band_h > chain_h:
+    reps = int(np.ceil(band_h / chain_h))
+    chain_s = np.tile(chain_s, (reps, 1, 1))[:band_h]
 
 # Bake the belt into the CHEST but ONLY where the chest is transparent (the
 # waist gap) -- so it fills the hole without ever overwriting the chest's
