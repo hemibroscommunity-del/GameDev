@@ -685,37 +685,41 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
 
 /* v2.3.354: per-frame beard z-order.  The beard is on the face, so it
    needs a direction-dependent layer just like the weapon + shield:
-   - E / W profiles (facingIdx 0 / 4): the hand swing crosses the face,
-     and the hand-cap body-clones (drawn for the bamboo grip) would paint
-     bare-face pixels OVER the beard -- it "disappears".  So here the beard
-     renders ABOVE the weapon + hand clones (but below the HUD).
-   - Every other facing: the beard sits just above the body and BEHIND the
-     weapon + swinging arms, so the bamboo + arms pass in front of it
-     (correct for the toward-camera SE / S / SW angles).
+   - Rear facings (NW 5 / N 6 / NE 7): the beard sits BEHIND the head --
+     only the fuzz that extends past the head silhouette peeks out.  The
+     old rule put it 'just above the body', which stamped the beard sliver
+     ON the back of the head (user report, v2.3.679).
+   - Every other facing: the beard hangs over the chin and down the chest,
+     so it renders ABOVE the body AND above the worn gear (chest plate /
+     pauldrons) -- the old 'bodyIdx + 1' target predated the gear layers
+     and left the beard hidden behind the armour on S/SW/SE.  On E / W it
+     additionally goes above the hand-cap body-clones (the hand swing
+     crosses the face and the clones would erase it).  The weapon stays
+     above the beard on the toward-camera facings via the block below.
    Shared by local + remote (remote displays simply lack the hand/shield
    sprites, so those are skipped). */
 function _orderTraitsAndWeapon(display, facingIdx) {
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
-    if (facingIdx === 0 || facingIdx === 4) {
-      /* E / W profile: the hand-cap body-clones cross the face and would
-         erase the beard, so lift the beard ABOVE those clones (+ shield).
-         The weapon is NOT touched here -- on E it gets pushed in front of
-         the beard by the E/SE/NE block below; on W it must stay BEHIND the
-         body (west weapon is held away from camera), so we leave it. */
+    const rearFacing = (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+    if (rearFacing) {
+      /* Behind the head: insert just BELOW the body sprite. */
+      const bodyIdx = display.getChildIndex(display._spriteBody);
+      const fhIdx = display.getChildIndex(beard);
+      if (fhIdx > bodyIdx) display.setChildIndex(beard, bodyIdx);
+    } else {
+      /* Above body + gear (+ hand clones / shield where they cross the
+         face).  setChildIndex removes-then-inserts, so inserting at the
+         highest reference index lands the beard directly above it. */
       let ref = display.getChildIndex(display._spriteBody);
-      for (const s of [display._handCapSprite, display._handArmSprite,
+      for (const s of [display._gearLegs, display._gearChest, display._gearShoulders,
+                       display._handCapSprite, display._handArmSprite,
                        display._shieldSprite]) {
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
       }
       const fhIdx = display.getChildIndex(beard);
       if (fhIdx < ref) display.setChildIndex(beard, ref);
-    } else {
-      const bodyIdx = display.getChildIndex(display._spriteBody);
-      const fhIdx = display.getChildIndex(beard);
-      const target = fhIdx > bodyIdx ? bodyIdx + 1 : bodyIdx;
-      if (fhIdx !== target) display.setChildIndex(beard, target);
     }
   }
   /* --- Weapon in front of ALL body traits on the toward-camera facings
@@ -2792,6 +2796,7 @@ export class EntityRenderer {
 
     const P = S.player;
     const display = this.playerDisplay;
+    if (typeof window !== 'undefined' && window.__btMaskDebug) window.__playerDisplay = display;
     /* Force visibility every frame — same defensive concern as the
        parent re-attach above. */
     display.visible = true;
