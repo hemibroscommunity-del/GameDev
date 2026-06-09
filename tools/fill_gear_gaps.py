@@ -143,7 +143,7 @@ for i in range(n):
                 runs.append((s, p)); s = p = int(x)
         runs.append((s, p))
         rl, rr = min(runs, key=lambda r: 0 if r[0] <= cx <= r[1] else min(abs(r[0] - cx), abs(r[1] - cx)))
-        region = band & bop
+        region = band & bop & ~chest_op & ~(ls[:, :, 3] > 20)   # waist band, but NOT over the arm/leg plate (belt sits BEHIND them)
         region[:, :rl] = False
         region[:, rr + 1:] = False
     else:
