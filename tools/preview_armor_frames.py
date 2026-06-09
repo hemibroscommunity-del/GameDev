@@ -218,6 +218,20 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
                     lo = int(gys.min()); hi = int(gys.max())
                     outside = ~allowed
                     outside[:neck_y] = False               # head band stays
+                    # WAIST BAND: the torso-leg gap isn't always enclosed by
+                    # gear (open at the hip side in profile frames), but the
+                    # body there is legit -- it backs the see-through chain
+                    # belt and fills the gap with pants instead of background.
+                    # Allow body in the waist rows, but only within the gear's
+                    # horizontal span per row so outline arcs at waist height
+                    # (beyond the gauntlets) stay dead.
+                    if worn.get('chest') and worn.get('legs') and len(ys):
+                        fh = int(ys[-1] - ys[0])
+                        w0 = int(ys[0] + 0.38 * fh); w1 = int(ys[0] + 0.64 * fh)
+                        for y in range(max(0, w0), min(FRAME, w1)):
+                            gx = np.where(gop[y])[0]
+                            if len(gx):
+                                outside[y, gx.min():gx.max() + 1] = False
                     if not worn.get('chest'):
                         outside[:lo] = False               # bare torso stays
                     if not worn.get('legs'):

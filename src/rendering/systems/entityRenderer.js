@@ -636,17 +636,37 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
           }
           fill = nx;
         }
+        /* WAIST BAND: the torso-leg gap isn't always enclosed by gear (open at
+           the hip side in profile frames), but the body there is legit -- it
+           backs the see-through chain belt and fills the gap with pants
+           instead of background.  Allow body in the waist rows, but only
+           within the gear's horizontal span per row so outline arcs at waist
+           height (beyond the gauntlets) stay dead. */
+        const rowMin = new Int16Array(256).fill(256), rowMax = new Int16Array(256).fill(-1);
+        let w0 = 256, w1 = 256;
+        if (wornChest && wornLegs && figBot > figTop) {
+          const fh2 = figBot - figTop;
+          w0 = Math.max(0, Math.round(figTop + 0.38 * fh2));
+          w1 = Math.min(256, Math.round(figTop + 0.64 * fh2));
+          for (let y = w0; y < w1; y++) {
+            for (let x = 0; x < 256; x++) {
+              if (gop[y * 256 + x]) { if (x < rowMin[y]) rowMin[y] = x; if (x > rowMax[y]) rowMax[y] = x; }
+            }
+          }
+        }
         const img2 = ctx.getImageData(0, 0, 256, 256); const d2 = img2.data;
         const hi2 = wornLegs ? Math.min(256, gHi + 8) : 256;
         let dirty2 = false;
         for (let y = Math.max(0, neckY); y < 256; y++) {
           const skipBelow = !wornLegs && y > gHi;     // bare legs stay
           const skipAbove = !wornChest && y < gLo;    // bare torso stays
+          const inWaist = y >= w0 && y < w1;
           for (let x = 0; x < 256; x++) {
             const p = y * 256 + x, o = p * 4;
             if (d2[o + 3] === 0) continue;
             if (wornLegs && y >= hi2) { d2[o + 3] = 0; dirty2 = true; continue; }
             if (skipBelow || skipAbove) continue;
+            if (inWaist && x >= rowMin[y] && x <= rowMax[y]) continue;
             if (!fill[p]) { d2[o + 3] = 0; dirty2 = true; }
           }
         }
