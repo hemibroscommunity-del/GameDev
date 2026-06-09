@@ -72,7 +72,7 @@ def frame(slot, pose, d, i, nudge=(0, 0)):
     return cell
 
 
-def _blend_ghost_hand(ba, top, bot):
+def _blend_ghost_hand(ba, top, bot, orig_alpha=None):
     """ChatGPT's armour drift leaves the body's bare FIST poking out below the
     waist past the gauntlet.  Where the fist sits OVER the leg, recolour it to the
     player's PANTS shade (no transparent hole); where it pokes BEYOND the leg
@@ -118,6 +118,18 @@ def _blend_ghost_hand(ba, top, bot):
         dot = px[:, :, 0] * T[0] + px[:, :, 1] * T[1] + px[:, :, 2] * T[2]
         return dot * dot / n
     s_skin = score(skin_ref)
+    # Restore pants the dilated cover-mask ATE: the chest gear's 4px halo erodes
+    # the pants next to the gauntlets.  The erase only zeroed alpha (RGB intact),
+    # so re-open any erased pixel that reads as PANTS; skin/shoes stay erased so
+    # the armour still hides the torso/arms.  v2.3.650
+    if orig_alpha is not None:
+        erased = (orig_alpha > 40) & (~op)
+        erased[:neck] = False
+        s_pants = score(pants_ref)
+        restore = erased & (s_pants >= s_skin) & (s_pants >= score(shoes_ref))
+        if restore.any():
+            ba[restore, 3] = orig_alpha[restore]
+            op = ba[:, :, 3] > 40
     low = op.copy(); low[:waist] = False
     # strict argmax (not a fixed margin): the fist is skin when skin is the MOST
     # hue-aligned of the three refs.  A margin fails for bright/desaturated skin
@@ -186,7 +198,7 @@ def composite(pose, d, i, worn, nudges, mask_dilate=5):
                     neck_y = ys[0] + int(round(NECK_RESTORE_FRAC * (ys[-1] - ys[0])))
                     ba[:neck_y, :, 3] = orig_alpha[:neck_y, :]
                     if worn.get('chest'):
-                        _blend_ghost_hand(ba, ys[0], ys[-1])
+                        _blend_ghost_hand(ba, ys[0], ys[-1], orig_alpha)
             o.alpha_composite(Image.fromarray(ba))
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:

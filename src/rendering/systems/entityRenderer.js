@@ -419,9 +419,10 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
        BODY_NECK_FRAC*height) BEFORE punching so we can restore that band after;
        otherwise the dilated collar mask closes the narrow neck gap and the head
        floats detached above the plate (v2.3.617). */
-    let neckY = 0, figTop = 256, figBot = -1;
+    let neckY = 0, figTop = 256, figBot = -1, origBody = null;
     try {
-      const id = ctx.getImageData(0, 0, 256, 256).data;
+      origBody = ctx.getImageData(0, 0, 256, 256).data;   // body BEFORE the erase (for pant-restore)
+      const id = origBody;
       for (let y = 0; y < 256; y++) {
         for (let x = 0; x < 256; x++) {
           if (id[(y * 256 + x) * 4 + 3] > 40) { if (y < figTop) figTop = y; figBot = y; break; }
@@ -494,6 +495,23 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
         }
         const score = (R, G, B, T) => { const n = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / n; };
         if (skinRef && pantsRef && shoesRef) {
+          let dirty = false;
+          /* Restore pants the dilated cover-mask ATE: the chest gear's halo erodes
+             the pants next to the gauntlets.  The erase only zeroed alpha (RGB
+             intact in origBody), so re-open any erased pixel that reads as PANTS;
+             skin/shoes stay erased so the armour still hides the torso/arms.
+             Mirrors preview_armor_frames._blend_ghost_hand.  v2.3.650 */
+          if (origBody) {
+            for (let p = 0; p < 256 * 256; p++) {
+              const o = p * 4;
+              if (d[o + 3] > 40 || origBody[o + 3] <= 40 || ((p / 256) | 0) < neckY) continue;
+              const R = origBody[o], G = origBody[o + 1], B = origBody[o + 2];
+              const sP = score(R, G, B, pantsRef);
+              if (sP >= score(R, G, B, skinRef) && sP >= score(R, G, B, shoesRef)) {
+                d[o] = R; d[o + 1] = G; d[o + 2] = B; d[o + 3] = origBody[o + 3]; dirty = true;
+              }
+            }
+          }
           const fist = new Uint8Array(256 * 256), leg = new Uint8Array(256 * 256);
           let anyFist = false;
           for (let y = waistY; y < 256; y++) {
@@ -551,8 +569,9 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
                 else d[o + 3] = 0;
               }
             }
-            ctx.putImageData(img, 0, 0);
+            dirty = true;
           }
+          if (dirty) ctx.putImageData(img, 0, 0);
         }
       } catch (e) { /* ghost-hand blend is best-effort */ }
     }
