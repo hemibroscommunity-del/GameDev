@@ -160,7 +160,7 @@ def _blend_ghost_hand(ba, top, bot, orig_alpha=None):
     ba[out, 3] = 0
 
 
-def composite(pose, d, i, worn, nudges, mask_dilate=5):
+def composite(pose, d, i, worn, nudges, mask_dilate=6):
     """One 256 frame composited as the renderer would.
     v2: erase the body wherever a worn piece's silhouette (dilated by
     mask_dilate px to swallow the per-frame AI misalignment) covers, so the

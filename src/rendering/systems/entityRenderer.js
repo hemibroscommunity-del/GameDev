@@ -2543,7 +2543,7 @@ export class EntityRenderer {
             }
           }
           if (_rworn.length) {
-            const _mt = _maskedBodyFrame(tex, _rworn, 4);
+            const _mt = _maskedBodyFrame(tex, _rworn, 6);
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           spriteBody.visible = true;
@@ -3117,7 +3117,7 @@ export class EntityRenderer {
            on' bug. */
         let _bodyTex;
         try {
-          _bodyTex = _worn.length ? _maskedBodyFrame(tex, _worn, 4) : tex;
+          _bodyTex = _worn.length ? _maskedBodyFrame(tex, _worn, 6) : tex;
         } catch (e) {
           _bodyTex = tex;
         }

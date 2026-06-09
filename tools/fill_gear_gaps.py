@@ -40,6 +40,13 @@ no_enclosed = no_backing or '--no-enclosed' in sys.argv
 # inter-leg gap to fill -- the belt is worn over the armour as a band.  Confined
 # to the central torso run so it never crosses the arms/hands at the sides.
 band_mode = '--band' in sys.argv
+# --patch: consistency pass over an ALREADY-BELTED sheet.  Lays the chain at the
+# same legacy anchor rows on EVERY frame, drawing only into chest-transparent
+# pixels over the body OR the leg plate (chest renders above legs, so frames
+# where the thigh plate covered the waist gap -- which the legacy mode skipped,
+# leaving the belt to pop in/out across the cycle -- now get their chain too).
+# Existing chain pixels are chest-opaque and therefore untouched.
+patch_mode = '--patch' in sys.argv
 band_crop = float(sys.argv[sys.argv.index('--band-crop') + 1]) if '--band-crop' in sys.argv else 0.0
 band_extend = float(sys.argv[sys.argv.index('--band-extend') + 1]) if '--band-extend' in sys.argv else 0.0
 band_left = int(sys.argv[sys.argv.index('--band-left') + 1]) if '--band-left' in sys.argv else 0    # extend belt left edge Npx
@@ -165,6 +172,17 @@ for i in range(n):
         # else: --band-extend lets the belt sit OVER the leg-top (chest layer renders above legs)
         region[:, :rl] = False
         region[:, rr + 1:] = False
+    elif patch_mode:
+        # Same rows as the legacy belt; fill over body OR leg plate, x-confined
+        # to the leg-gear span at the band rows (the hips) so the chain never
+        # lands on a swinging arm at the sides.
+        legmask = ls[:, :, 3] > 20
+        region = band & (bop | legmask) & ~chest_op
+        bandrows = legmask[max(0, by0):min(FRAME, by0 + band_h), :]
+        cols = np.where(bandrows.any(0))[0]
+        if len(cols):
+            region[:, :int(cols.min())] = False
+            region[:, int(cols.max()) + 1:] = False
     else:
         region = band & bop & ~chest_op & ~(ls[:, :, 3] > 20)   # the gap NEITHER plate covers
     if not region.any():
