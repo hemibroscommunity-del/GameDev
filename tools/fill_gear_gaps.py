@@ -146,6 +146,12 @@ for i in range(n):
             ca[:, i * FRAME:(i + 1) * FRAME] = cs
             continue
         rl, rr = int(cols.min()), int(cols.max())
+        # Make the belt symmetric about the torso centre using the NARROWER side,
+        # so one wide leg/arm side can't push the belt into the armpit gap.
+        tcx = int(np.median(np.where(chest_op)[1])) if chest_op.any() else (rl + rr) // 2
+        half = min(tcx - rl, rr - tcx)
+        if half > 0:
+            rl, rr = tcx - half, tcx + half
         region = band & bop & ~chest_op   # waist band, behind the arm (chest stays in front)
         if band_extend == 0:
             region &= ~(ls[:, :, 3] > 20)  # default: also behind the leg plate
