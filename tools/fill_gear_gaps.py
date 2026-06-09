@@ -105,10 +105,9 @@ if band_mode:
         # same chain to fill the taller window (don't enlarge or restretch links).
         band_h = round(band_h * (1 + band_extend))
 if band_mode and band_down:
-    band_h += band_down                 # extend the belt bottom Npx (top stays at the waist)
-    chain_h = band_h if band_extend == 0 else chain_h
+    band_h += band_down                 # extend the belt bottom Npx (top stays; chain link size unchanged, tiled below)
 chain_s = np.array(CHAIN.resize((max(1, int(706 * chain_h / 96)), chain_h), Image.LANCZOS))
-if band_extend > 0 and band_h > chain_h:
+if band_h > chain_h:
     reps = int(np.ceil(band_h / chain_h))
     chain_s = np.tile(chain_s, (reps, 1, 1))[:band_h]
 
