@@ -152,6 +152,7 @@ for i in range(n):
         half = min(tcx - rl, rr - tcx)
         if half > 0:
             rl, rr = tcx - half, tcx + half
+        rl, rr = rl + 1, rr - 1            # hug the waist 1px tighter on each side
         region = band & bop & ~chest_op   # waist band, behind the arm (chest stays in front)
         if band_extend == 0:
             region &= ~(ls[:, :, 3] > 20)  # default: also behind the leg plate
