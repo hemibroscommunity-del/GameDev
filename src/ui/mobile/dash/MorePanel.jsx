@@ -8,8 +8,8 @@ import { COL, panelStyle } from './common.js';
 const TILES = [
   { id: 'self',        src: '/icons/ui/playercard.png',  label: 'Self',     glyph: '🪪' },
   { id: 'stats',       src: null,                        label: 'Stats',    glyph: '📊' },
-  /* v2.3.235: Tier 2 specs allocation. */
-  { id: 't2',          src: null,                        label: 'Specs',    glyph: '✦' },
+  /* v2.3.609: per-weapon-category build allocation (replaces generic specs). */
+  { id: 't2',          src: null,                        label: 'Weapons',  glyph: '⚔️' },
   { id: 'leaderboard', src: '/icons/ui/leaderboard.png', label: 'Ranks',    glyph: '🏆' },
   { id: 'clan',        src: '/icons/ui/clan.png',        label: 'Clan',     glyph: '🛡' },
   { id: 'guild',       src: '/icons/ui/guild.png',       label: 'Guild',    glyph: '⚒' },
