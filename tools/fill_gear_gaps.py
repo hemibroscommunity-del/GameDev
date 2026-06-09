@@ -40,6 +40,7 @@ no_enclosed = no_backing or '--no-enclosed' in sys.argv
 # inter-leg gap to fill -- the belt is worn over the armour as a band.  Confined
 # to the central torso run so it never crosses the arms/hands at the sides.
 band_mode = '--band' in sys.argv
+band_crop = float(sys.argv[sys.argv.index('--band-crop') + 1]) if '--band-crop' in sys.argv else 0.0
 chest_p = f'public/sprites/gear/chest/steelplate/{pose}-{dir_}.png'
 legs_p = f'public/sprites/gear/legs/steelgreaves/{pose}-{dir_}.png'
 chest = Image.open(chest_p).convert('RGBA')
@@ -120,6 +121,8 @@ for i in range(n):
         by0 = y0 + seam_off - 22                     # chain top, nudged up 20px total
     band = np.zeros_like(bop)
     band[max(0, by0):min(FRAME, by0 + band_h), :] = True
+    if band_mode and band_crop > 0:                  # crop FRAC off the TOP (keep the bottom; chain bottom shows)
+        band[:max(0, by0 + int(band_h * band_crop)), :] = False
     if band_mode:
         # full waist band over the body, confined to the HIP run (sampled a little
         # BELOW the band, where the body is just the legs -- not the arms/hands
