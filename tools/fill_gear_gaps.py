@@ -41,6 +41,7 @@ no_enclosed = no_backing or '--no-enclosed' in sys.argv
 # to the central torso run so it never crosses the arms/hands at the sides.
 band_mode = '--band' in sys.argv
 band_crop = float(sys.argv[sys.argv.index('--band-crop') + 1]) if '--band-crop' in sys.argv else 0.0
+band_extend = float(sys.argv[sys.argv.index('--band-extend') + 1]) if '--band-extend' in sys.argv else 0.0
 chest_p = f'public/sprites/gear/chest/steelplate/{pose}-{dir_}.png'
 legs_p = f'public/sprites/gear/legs/steelgreaves/{pose}-{dir_}.png'
 chest = Image.open(chest_p).convert('RGBA')
@@ -85,6 +86,7 @@ for i in range(n):
 medH = float(np.median(heights)) if heights else 150
 seam_off = int(np.median(offsets)) if offsets else int(0.55 * medH)
 band_h = int(BAND_FRAC * medH)
+chain_h = band_h
 if band_mode:
     # Fit the FULL chain to the waist GAP: from the waist (0.46*medH) down to the
     # leg-armour top.  Wide gap (back/front views with leg armour low) -> tall belt;
@@ -93,7 +95,14 @@ if band_mode:
     waist_off = int(0.46 * medH)
     legtop_off = int(np.median(legtops)) if legtops else waist_off + int(0.12 * medH)
     band_h = max(6, legtop_off - waist_off + 3)
-chain_s = np.array(CHAIN.resize((max(1, int(706 * band_h / 96)), band_h), Image.LANCZOS))
+    chain_h = band_h
+    if band_extend > 0:
+        # Belt too thin for a small gap: extend the window DOWN (top stays at the
+        # waist) over the leg-armour top, and render the chain at its ORIGINAL full
+        # link size CROPPED to the window -- not squished into the thin gap.
+        chain_h = int(BAND_FRAC * medH)
+        band_h = round(band_h * (1 + band_extend))
+chain_s = np.array(CHAIN.resize((max(1, int(706 * chain_h / 96)), chain_h), Image.LANCZOS))
 
 # Bake the belt into the CHEST but ONLY where the chest is transparent (the
 # waist gap) -- so it fills the hole without ever overwriting the chest's
@@ -143,7 +152,10 @@ for i in range(n):
                 runs.append((s, p)); s = p = int(x)
         runs.append((s, p))
         rl, rr = min(runs, key=lambda r: 0 if r[0] <= cx <= r[1] else min(abs(r[0] - cx), abs(r[1] - cx)))
-        region = band & bop & ~chest_op & ~(ls[:, :, 3] > 20)   # waist band, but NOT over the arm/leg plate (belt sits BEHIND them)
+        region = band & bop & ~chest_op   # waist band, behind the arm (chest stays in front)
+        if band_extend == 0:
+            region &= ~(ls[:, :, 3] > 20)  # default: also behind the leg plate
+        # else: --band-extend lets the belt sit OVER the leg-top (chest layer renders above legs)
         region[:, :rl] = False
         region[:, rr + 1:] = False
     else:
