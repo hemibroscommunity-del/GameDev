@@ -2,7 +2,7 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
-import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
@@ -431,6 +431,11 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
       /* 0.33 == preview_armor_frames.NECK_RESTORE_FRAC (keep in sync) */
       if (figBot > figTop) neckY = Math.round(figTop + 0.33 * (figBot - figTop));
     } catch (e) { neckY = 0; }
+    /* v2.3.678: the bake can run on a frame whose backing pixels aren't ready
+       yet (spawn) -- drawing produces an empty figure.  Caching that would
+       freeze an invisible/garbled body (headless armoured player on join), so
+       render the raw body this frame and retry the bake on a later frame. */
+    if (figBot <= figTop) return bodyTex;
     ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
     for (const w of worn) {
       const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
@@ -3098,7 +3103,19 @@ export class EntityRenderer {
             }
           }
         }
-        const _bodyTex = _worn.length ? _maskedBodyFrame(tex, _worn, 4) : tex;
+        /* v2.3.678: defensive -- a bake failure must degrade to the RAW body
+           (head visible, slight body-poke past plate edges) instead of killing
+           the whole frame update.  The un-imported Texture in _maskedBodyFrame
+           did exactly that: a per-frame ReferenceError swallowed by the game
+           loop, freezing the early procedural placeholder (color-disc head, no
+           hat/beard) on screen -- the 'invisible head when joining with armour
+           on' bug. */
+        let _bodyTex;
+        try {
+          _bodyTex = _worn.length ? _maskedBodyFrame(tex, _worn, 4) : tex;
+        } catch (e) {
+          _bodyTex = tex;
+        }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         spriteBody.visible = true;
         body.visible = false;

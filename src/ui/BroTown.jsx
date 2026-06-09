@@ -823,23 +823,13 @@ export var BroTown = function BroTown(_ref0) {
     _useState14 = _slicedToArray(_useState13, 2),
     showInfo = _useState14[0],
     setShowInfo = _useState14[1];
-  /* v2.3.576: debug toggle -- hide the worn armour so the bare body
-     animation (e.g. the new NE/NW jog) can be inspected.  Mirrored into
-     window.__btHideArmor, which entityRenderer reads each frame. */
-  var _useStateArmor = useState(false),
-    _useStateArmor2 = _slicedToArray(_useStateArmor, 2),
-    hideArmor = _useStateArmor2[0],
-    setHideArmor = _useStateArmor2[1];
-  var toggleArmorView = useCallback(function () {
-    setHideArmor(function (v) {
-      var nv = !v;
-      if (typeof window !== 'undefined') window.__btHideArmor = nv;
-      return nv;
-    });
-  }, []);
-  /* v2.3.606: per-slot armour test toggles (helmet/chest/legs) -- equip/unequip
-     each gear slot live so the slot separation + per-region body reveal can be
-     eyeballed in-game.  Mirrors gearCatalog.setEquip; default ids per slot. */
+  /* v2.3.678: the old debug toggles (Armor ON/OFF top-left button + G hotkey,
+     window.__btHideArmor) are retired -- armour visibility is now governed
+     purely by the equip slots below, surfaced as inventory items in the
+     Equipment menu. */
+  /* Per-slot armour equip state (chest/legs) -- equip/unequip each gear slot
+     live from the Equipment menu.  Mirrors gearCatalog.setEquip; default ids
+     per slot. */
   var GEAR_DEFAULT_ID = { chest: 'steelplate', legs: 'steelgreaves' };
   var _useStateGear = useState(function () {
     return { chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none' };
@@ -11619,13 +11609,6 @@ export var BroTown = function BroTown(_ref0) {
         setTimeout(function() {
           if (chatInputRef.current) chatInputRef.current.focus();
         }, 50);
-        return;
-      }
-
-      /* G — toggle armour view (debug: inspect the bare body animation) */
-      if (e.code === 'KeyG' && !e.repeat) {
-        e.preventDefault();
-        toggleArmorView();
         return;
       }
 
@@ -27594,6 +27577,71 @@ export var BroTown = function BroTown(_ref0) {
     }, "No elements")));
   }), /*#__PURE__*/React.createElement("div", {
     style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: 'rgba(255,255,255,.55)',
+      margin: '10px 0 6px',
+      letterSpacing: 0.5
+    }
+  }, "WORN ARMOUR"), /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', gap: 8, marginBottom: 8 }
+  }, [
+    { slot: 'chest', name: 'Steel Plate', sub: 'Chest', icon: '/sprites/gear/icons/steelplate.png' },
+    { slot: 'legs', name: 'Steel Greaves', sub: 'Legs', icon: '/sprites/gear/icons/steelgreaves.png' }
+  ].map(function (it) {
+    var on = gearWorn[it.slot];
+    return /*#__PURE__*/React.createElement("div", {
+      key: 'wornarmor-' + it.slot,
+      style: {
+        flex: 1,
+        padding: 8,
+        borderRadius: 10,
+        background: on ? 'rgba(61,212,151,.07)' : 'rgba(255,255,255,.03)',
+        border: "1.5px solid ".concat(on ? 'rgba(61,212,151,.35)' : 'rgba(255,255,255,.08)'),
+        textAlign: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("img", {
+      src: it.icon,
+      alt: it.name,
+      draggable: false,
+      style: {
+        width: 40,
+        height: 40,
+        imageRendering: 'pixelated',
+        filter: on ? 'none' : 'grayscale(1) brightness(.6)',
+        userSelect: 'none'
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        fontWeight: 700,
+        color: on ? '#3dd497' : 'rgba(255,255,255,.55)'
+      }
+    }, it.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8,
+        color: 'rgba(255,255,255,.35)',
+        marginBottom: 5
+      }
+    }, it.sub), /*#__PURE__*/React.createElement("button", {
+      type: 'button',
+      onClick: function onClick() { toggleGearSlot(it.slot); },
+      style: {
+        width: '100%',
+        padding: '4px 0',
+        fontSize: 9,
+        fontWeight: 700,
+        borderRadius: 7,
+        border: '1px solid rgba(255,255,255,.2)',
+        background: on ? 'rgba(255,94,108,.25)' : 'rgba(61,212,151,.25)',
+        color: '#fff',
+        cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'manipulation'
+      }
+    }, on ? 'Unequip' : 'Equip'));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
       marginBottom: 8,
       padding: 10,
       borderRadius: 10,
@@ -29132,35 +29180,7 @@ export var BroTown = function BroTown(_ref0) {
         transition: 'width 0.1s linear'
       }
     })));
-  }(), /*#__PURE__*/React.createElement("button", {
-    type: 'button',
-    onClick: toggleArmorView,
-    title: 'Toggle armour (hotkey: G) -- inspect the bare body animation',
-    style: {
-      position: 'fixed', top: 60, left: 8, zIndex: 9999,
-      padding: '6px 10px', fontSize: 11, fontWeight: 700, lineHeight: 1,
-      border: '1px solid rgba(255,255,255,.35)', borderRadius: 8,
-      background: hideArmor ? 'rgba(255,94,108,.9)' : 'rgba(0,0,0,.55)',
-      color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-      touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none'
-    }
-  }, hideArmor ? 'Armor: OFF (G)' : 'Armor: ON (G)'), ['chest', 'legs'].map(function (slot, si) {
-    var LABEL = { chest: 'Chest', legs: 'Legs' };
-    var on = gearWorn[slot];
-    return /*#__PURE__*/React.createElement("button", {
-      type: 'button', key: 'gearslot-' + slot,
-      onClick: function () { toggleGearSlot(slot); },
-      title: 'Equip/unequip ' + LABEL[slot] + ' armour (test the slot separation)',
-      style: {
-        position: 'fixed', top: 88 + si * 28, left: 8, zIndex: 9999,
-        padding: '6px 10px', fontSize: 11, fontWeight: 700, lineHeight: 1,
-        border: '1px solid rgba(255,255,255,.35)', borderRadius: 8,
-        background: on ? 'rgba(0,0,0,.55)' : 'rgba(255,94,108,.9)',
-        color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-        touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none'
-      }
-    }, LABEL[slot] + ': ' + (on ? 'ON' : 'OFF'));
-  }), showPlayerList && /*#__PURE__*/React.createElement("div", {
+  }(), showPlayerList && /*#__PURE__*/React.createElement("div", {
     className: "bt-plist"
   }, playerList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
