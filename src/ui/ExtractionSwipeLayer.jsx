@@ -1,46 +1,49 @@
 import React, { useEffect, useRef } from 'react';
+import { EXTRACT_REPS_TARGET, EXTRACT_REPS_DEFAULT, BT_AUDIO } from '@/data/gameSystems.js';
 
-/* v2.3.229 — ExtractionSwipeLayer
+/* v2.3.229 / v2.4 — ExtractionSwipeLayer
  *
- * Captures the dynamic-event swipe for the new resource extraction loop.
- * Sits above the game canvas as a transparent fixed-position layer.
- * Listens to native pointer events (passive: false) so iOS Safari
- * actually delivers preventDefault on touchmove.
+ * Captures the phase-2 ACTIVE gesture for resource extraction. Sits above the
+ * game canvas as a transparent fixed-position layer, listening to native
+ * pointer events (passive: false) so iOS Safari delivers preventDefault.
  *
  * Activation: only routes events while stateRef.current._extraction.status
- * === 'ready'. Otherwise it lets every pointer event fall through to the
- * underlying game canvas / dashboard.
+ * === 'ready'. Otherwise pointer events fall through to the game / dashboard.
  *
- * On a valid swipe (per-skill direction + length), calls onSuccess()
- * which routes to BroTown's _succeedExtraction and clears the state.
- * On invalid / no swipe, the game tick handles the miss when the
- * window closes.
+ * Phase-2 is a SUSTAINED, per-skill gesture that fills a meter (reps):
+ *   - mining:      up/down pump (vertical oscillation) -> 1 rep per full pump
+ *   - woodcutting: horizontal chops toward the tree    -> 1 rep per tree-ward stroke
+ *   - fishing:     clockwise circular reel             -> 1 rep per full turn
+ * When the meter reaches REPS_TARGET we grade the gesture (perfect/good/ok by
+ * how fast it filled) and call onSuccess(accuracy), which routes to BroTown's
+ * _succeedExtraction. Lifting early just pauses — the accumulator lives on
+ * S._extraction._gesture so a re-press resumes, and the game tick still fails
+ * the attempt when the window closes.
+ *
+ * The recognizer reads the full sampled path (not just start->end) so the
+ * oscillation/rotation shapes are detectable. Anti-bot entropy/fingerprint
+ * (swipeFp) is preserved on success.
  */
 
-const MIN_SWIPE_LEN = 30; /* px in screen space */
-const FISHING_UP_THRESHOLD = -30; /* dy must be at least this negative */
-/* Start point must be within this many pixels of the on-screen cue
-   to count as an extraction swipe. Stops joystick deflections from
-   accidentally registering as swipes (the left stick lives at the
-   bottom-left corner; an upward drag there is "move north", NOT
-   "reel in the fish"). */
+const MIN_SWIPE_LEN = 30; /* px — ignore micro-jitters before any motion counts */
+const STROKE_AMP = 40;    /* px — travel past the last turning point to count a half-stroke */
+const TWO_PI = Math.PI * 2;
+/* Start point must be within this many px of the on-screen cue to count.
+   Stops joystick deflections (the left stick lives bottom-left) registering. */
 const SWIPE_START_RADIUS = 160;
 
-function isValidSwipe(skill, dx, dy) {
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len < MIN_SWIPE_LEN) return false;
-  if (skill === 'fishing') {
-    /* Upward swipe: vertical component dominates, dy clearly negative. */
-    return dy <= FISHING_UP_THRESHOLD && Math.abs(dy) >= Math.abs(dx);
-  }
-  /* Woodcutting / mining -- any direction with enough length. */
-  return true;
+function sign(n) { return n > 0 ? 1 : n < 0 ? -1 : 0; }
+
+/* Wrap an angle delta into [-PI, PI] so cumulative rotation is continuous. */
+function wrapPi(a) {
+  while (a > Math.PI) a -= TWO_PI;
+  while (a < -Math.PI) a += TWO_PI;
+  return a;
 }
 
 function vectorEntropy(samples) {
-  /* Rough "is this a hand-drawn swipe vs a synthetic one" signal.
-     Hand swipes show varying inter-sample angles; replayed bot
-     swipes tend to be near-collinear. Returns 0..~1. */
+  /* "Is this a hand-drawn swipe vs a synthetic one" signal. Hand swipes show
+     varying inter-sample angles; replayed bot swipes tend to be near-collinear. */
   if (samples.length < 4) return 0;
   let totalAngleDelta = 0;
   let prevAng = null;
@@ -59,81 +62,185 @@ function vectorEntropy(samples) {
   return totalAngleDelta / Math.max(1, samples.length - 2);
 }
 
+/* Reps required to complete each skill's phase-2 gesture. */
+function repsTargetFor(skill) {
+  return EXTRACT_REPS_TARGET[skill] || EXTRACT_REPS_DEFAULT;
+}
+
+/* Convert the live accumulator into a rep count for the skill. */
+function repsFromGesture(skill, g) {
+  if (skill === 'fishing') return Math.max(0, g.totalAngle) / TWO_PI;
+  if (skill === 'woodcutting') return g.treewardStrokes;
+  /* mining: a full up+down pump is two half-strokes */
+  return g.halfStrokes / 2;
+}
+
+/* Map fill speed (within the open window) to a reward grade. */
+function gradeGesture(fillFrac, ent) {
+  const human = ent >= 0.04;            /* near-zero entropy => suspiciously straight */
+  if (fillFrac <= 0.45 && human) return 'perfect';
+  if (fillFrac <= 0.8) return 'good';
+  return 'ok';
+}
+
 export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
-  const swipeRef = useRef(null); /* { startX, startY, samples: [] } */
+  const swipeRef = useRef(null); /* { startX, startY, samples: [] } while pointer down */
 
   useEffect(() => {
-    /* Native listeners so we can call preventDefault on iOS Safari --
-       React's synthetic onTouchMove is silently passive there. */
     const target = window;
-    const isExtractionReady = () => {
+
+    const readyExtraction = () => {
       const S = stateRef && stateRef.current;
-      return !!(S && S._extraction && S._extraction.status === 'ready');
+      if (!(S && S._extraction && S._extraction.status === 'ready')) return null;
+      return S._extraction;
     };
 
-    const cueScreenPos = () => {
-      const S = stateRef && stateRef.current;
-      if (!S || !S._extraction || !S.camera) return null;
-      const ex = S._extraction;
-      const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
-                 : (S.gatherNodes && ex.nodeId
-                    ? S.gatherNodes.find(n => n.id === ex.nodeId)
-                    : null);
-      if (!node) return null;
+    const nodeOf = (S, ex) =>
+      (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
+        : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(n => n.id === ex.nodeId) : null);
+
+    const cueScreenPos = (S, ex) => {
+      const node = nodeOf(S, ex);
+      if (!node || !S.camera) return null;
       const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-      return {
-        x: node.x - S.camera.x,
-        y: (node.y - yOff) - S.camera.y,
-      };
+      return { x: node.x - S.camera.x, y: (node.y - yOff) - S.camera.y };
     };
 
     const onPointerDown = (e) => {
-      if (!isExtractionReady()) return;
-      const cue = cueScreenPos();
+      const ex = readyExtraction();
+      if (!ex) return;
+      const S = stateRef.current;
+      const cue = cueScreenPos(S, ex);
       if (!cue) return;
       const x = e.clientX, y = e.clientY;
-      const dx = x - cue.x, dy = y - cue.y;
-      if (Math.sqrt(dx * dx + dy * dy) > SWIPE_START_RADIUS) return;
+      if (Math.hypot(x - cue.x, y - cue.y) > SWIPE_START_RADIUS) return;
+
+      /* Tree-ward horizontal sign for woodcutting (where the tree sits relative
+         to the player). 0 if (nearly) directly above/below -> accept either. */
+      let treeward = 0;
+      const node = nodeOf(S, ex);
+      if (node && S.player) treeward = sign(node.x - S.player.x);
+
+      /* Resume the accumulator if this is a re-press within the same window,
+         otherwise start fresh. Lives on the extraction record so progress and
+         the cue meter persist across lifts. */
+      if (!ex._gesture) {
+        ex._gesture = {
+          axisRef: ex.skill === 'mining' ? y : x, /* value at last turning point */
+          dir: 0,
+          halfStrokes: 0,
+          treewardStrokes: 0,
+          treeward,
+          cueX: cue.x, cueY: cue.y,
+          nodeX: node ? node.x : null, nodeY: node ? node.y : null,
+          lastAngle: Math.atan2(y - cue.y, x - cue.x),
+          totalAngle: 0,
+          startT: performance.now(),
+        };
+        ex.progress = 0;
+        ex.reps = 0;
+        ex.repsTarget = repsTargetFor(ex.skill);
+        ex.treewardSign = treeward;
+      } else {
+        /* re-seed the per-press anchors so a resumed stroke measures cleanly */
+        ex._gesture.cueX = cue.x; ex._gesture.cueY = cue.y;
+        ex._gesture.lastAngle = Math.atan2(y - cue.y, x - cue.x);
+        ex._gesture.axisRef = ex.skill === 'mining' ? y : x;
+        ex._gesture.dir = 0;
+      }
       swipeRef.current = { startX: x, startY: y, samples: [{ x, y, t: performance.now() }] };
     };
 
-    const onPointerMove = (e) => {
-      if (!swipeRef.current) return;
-      const x = e.clientX, y = e.clientY;
-      swipeRef.current.samples.push({ x, y, t: performance.now() });
-      /* Allow scrolling to be prevented during an active swipe so
-         the page doesn't pull-to-refresh under the swipe motion. */
-      if (e.cancelable) e.preventDefault();
+    /* Oscillation counter with hysteresis: counts a half-stroke each time the
+       finger reverses past STROKE_AMP from the running extreme on the axis. */
+    const stepOscillation = (g, v, skill) => {
+      if (g.dir === 0) {
+        /* establish the first direction once moved STROKE_AMP from the anchor */
+        if (v - g.axisRef >= STROKE_AMP) { g.dir = 1; g.axisRef = v; countHalf(g, 1, skill); }
+        else if (g.axisRef - v >= STROKE_AMP) { g.dir = -1; g.axisRef = v; countHalf(g, -1, skill); }
+      } else if (g.dir === 1) {
+        if (v > g.axisRef) g.axisRef = v;                          /* still moving +, extend */
+        else if (g.axisRef - v >= STROKE_AMP) { g.dir = -1; g.axisRef = v; countHalf(g, -1, skill); }
+      } else { /* dir === -1 */
+        if (v < g.axisRef) g.axisRef = v;
+        else if (v - g.axisRef >= STROKE_AMP) { g.dir = 1; g.axisRef = v; countHalf(g, 1, skill); }
+      }
+    };
+    const countHalf = (g, d, skill) => {
+      g.halfStrokes += 1;
+      /* woodcutting: only the tree-ward swing scores a rep (return swing is free).
+         treeward 0 (tree directly above/below) -> accept either horizontal stroke. */
+      if (skill === 'woodcutting' && (g.treeward === 0 || d === g.treeward)) g.treewardStrokes += 1;
+      /* mining: the DOWN half-stroke (d===1, screen y increasing) is the slam --
+         spark + clink at the ore so the hit reads. */
+      if (skill === 'mining' && d === 1) onSlam(g);
     };
 
-    const onPointerUp = (e) => {
-      const sw = swipeRef.current;
-      swipeRef.current = null;
-      if (!sw) return;
+    /* Spark burst + clink at the ore on a pickaxe slam. */
+    const onSlam = (g) => {
       const S = stateRef && stateRef.current;
-      if (!S || !S._extraction || S._extraction.status !== 'ready') return;
-      const skill = S._extraction.skill;
-      const dx = e.clientX - sw.startX;
-      const dy = e.clientY - sw.startY;
-      if (!isValidSwipe(skill, dx, dy)) return;
-      /* Compute fingerprint features for the anti-bot payload. Stashed
-         on the extraction record so _applyXReward (or the node_strike
-         payload added in Phase 5) can pick them up. */
-      const dur = sw.samples.length
-        ? sw.samples[sw.samples.length - 1].t - sw.samples[0].t
-        : 0;
-      let pathLen = 0;
-      for (let i = 1; i < sw.samples.length; i++) {
-        const px = sw.samples[i].x - sw.samples[i - 1].x;
-        const py = sw.samples[i].y - sw.samples[i - 1].y;
-        pathLen += Math.sqrt(px * px + py * py);
+      if (!S || g.nodeX == null) return;
+      if (S.hitParticles) {
+        for (let i = 0; i < 7; i++) {
+          S.hitParticles.push({
+            x: g.nodeX, y: g.nodeY,
+            vx: (Math.random() - 0.5) * 5,
+            vy: -Math.random() * 3 - 1,        /* mostly upward chips */
+            life: 0.45,
+            color: i % 2 ? '#ffd27a' : '#fff2c0',
+            size: 1.6,
+          });
+        }
       }
-      S._extraction.swipeFp = {
-        len: Math.round(pathLen),
-        ent: Number(vectorEntropy(sw.samples).toFixed(3)),
-        dur: Math.round(dur),
-      };
-      if (typeof onSuccess === 'function') onSuccess();
+      try { if (BT_AUDIO) BT_AUDIO.beep(620, 0.045, 0.06, 'square'); } catch (e) {}
+    };
+
+    const onPointerMove = (e) => {
+      const sw = swipeRef.current;
+      if (!sw) return;
+      const ex = readyExtraction();
+      if (!ex || !ex._gesture) return;
+      const x = e.clientX, y = e.clientY;
+      sw.samples.push({ x, y, t: performance.now() });
+      if (e.cancelable) e.preventDefault();
+
+      const g = ex._gesture;
+      if (ex.skill === 'fishing') {
+        const ang = Math.atan2(y - g.cueY, x - g.cueX);
+        g.totalAngle += wrapPi(ang - g.lastAngle);   /* clockwise (screen y-down) = + */
+        g.lastAngle = ang;
+      } else {
+        stepOscillation(g, ex.skill === 'mining' ? y : x, ex.skill);
+      }
+
+      const reps = repsFromGesture(ex.skill, g);
+      const target = ex.repsTarget || repsTargetFor(ex.skill);
+      ex.reps = reps;
+      ex.progress = Math.max(0, Math.min(1, reps / target));
+
+      if (ex.progress >= 1) {
+        /* Meter full — grade, fingerprint, and fire success once. */
+        const windowDur = Math.max(1, ex.windowClosesAt - ex.windowOpensAt);
+        const fillFrac = (performance.now() - g.startT) / windowDur;
+        let pathLen = 0;
+        for (let i = 1; i < sw.samples.length; i++) {
+          pathLen += Math.hypot(sw.samples[i].x - sw.samples[i - 1].x,
+                                sw.samples[i].y - sw.samples[i - 1].y);
+        }
+        const ent = Number(vectorEntropy(sw.samples).toFixed(3));
+        const dur = sw.samples.length
+          ? sw.samples[sw.samples.length - 1].t - sw.samples[0].t : 0;
+        ex.swipeFp = { len: Math.round(pathLen), ent, dur: Math.round(dur) };
+        const accuracy = gradeGesture(fillFrac, ent);
+        swipeRef.current = null;
+        if (typeof onSuccess === 'function') onSuccess(accuracy);
+      }
+    };
+
+    const onPointerUp = () => {
+      /* Pause: drop the active press but keep ex._gesture so a re-press resumes
+         and the cue meter holds its progress. */
+      swipeRef.current = null;
     };
 
     target.addEventListener('pointerdown', onPointerDown, { passive: false });
@@ -148,8 +255,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
     };
   }, [stateRef, onSuccess]);
 
-  /* No DOM output — pointer events are captured at window level and
-     gated on extraction status. This component exists purely for the
-     useEffect lifecycle. */
+  /* No DOM output — pointer events are captured at window level, gated on
+     extraction status. Exists purely for the useEffect lifecycle. */
   return null;
 };

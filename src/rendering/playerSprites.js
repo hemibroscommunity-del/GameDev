@@ -78,11 +78,15 @@ const PICKUP_DURATION_MS = 500;
    reads in ~220 ms.  Renderer freezes the player at frame 0 during
    windup and frame 1 during the strike. */
 const ATTACK_DURATION_MS = 220;
+/* Life-skill mining swing: south-only (facing locks to 'down' while
+   gathering, same as pickup), ~14-frame loop carved from the Grok clip.
+   See docs/skill-animation-pipeline.md. */
+const MINE_DURATION_MS = 650;
 
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
-const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
+const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine'];
 
-const VERSION = 65; /* v2.3.589: NE jog body resampled 22->16 (stutter dedup, shipped v2.3.588 but VERSION wasn't bumped); NW mirrors it */
+const VERSION = 67; /* +mine pose; v67 cleaned interior white gaps in mine-south */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
@@ -94,7 +98,7 @@ export const SPRITE_VERSION = VERSION;
  * Graphics until the manifest populates.
  */
 const manifest = {
-  stand: {}, jog: {}, hit: {}, pickup: {}, attack: {},
+  stand: {}, jog: {}, hit: {}, pickup: {}, attack: {}, mine: {},
 };
 
 let loadPromise = null;
@@ -108,7 +112,7 @@ function spriteUrl(pose, dir) {
    so we can't hardcode.  Falls back to fixed counts for stand/hit. */
 function deriveFrameCount(pose, tex) {
   const width = (tex && tex.source && tex.source.width) || 0;
-  if (pose === 'jog' || pose === 'pickup') return Math.max(1, Math.floor(width / FRAME_W));
+  if (pose === 'jog' || pose === 'pickup' || pose === 'mine') return Math.max(1, Math.floor(width / FRAME_W));
   if (pose === 'hit') return HIT_FRAMES;
   if (pose === 'attack') return ATTACK_FRAMES;
   return STAND_FRAMES;
@@ -147,10 +151,10 @@ export function loadPlayerSprites() {
   const tasks = [];
   for (const pose of POSES) {
     for (const dir of SOURCE_DIRS) {
-      /* pickup is south-only -- facing locks to 'down' during the
-         loot-pickup freeze, so we only ship one sheet and skip the
-         other dir slots to avoid 404s. */
-      if (pose === 'pickup' && dir !== 'south') continue;
+      /* pickup and mine are south-only -- facing locks to 'down' during
+         the loot-pickup freeze / mining gather, so we only ship one sheet
+         and skip the other dir slots to avoid 404s. */
+      if ((pose === 'pickup' || pose === 'mine') && dir !== 'south') continue;
       tasks.push(loadSheet(pose, dir));
     }
   }
@@ -208,6 +212,7 @@ export function cycleMs(pose, dir, armored) {
   if (pose === 'hit') return HIT_DURATION_MS;
   if (pose === 'pickup') return PICKUP_DURATION_MS;
   if (pose === 'attack') return ATTACK_DURATION_MS;
+  if (pose === 'mine') return MINE_DURATION_MS;
   return 1000;
 }
 

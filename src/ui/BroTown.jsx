@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
+import { MINE_SPOT_R } from '@/data/constants.js';
 import { CookingMinigame } from './CookingMinigame.jsx';
 import { IntroVideo } from './IntroVideo.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
@@ -7136,6 +7137,13 @@ export var BroTown = function BroTown(_ref0) {
           var closestDist = Infinity;
           S.gatherNodes.forEach(function (n) {
             if (!n.alive || n.respawnAt && Date.now() < n.respawnAt) return;
+            if (n.nodeType === 'oreVein') {
+              /* Ore: only offer the Mine action when the player is standing on
+                 the spot one tile north of the vein (see _startExtraction). */
+              var _sd = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow((n.y - TILE) - P.y, 2));
+              if (_sd < MINE_SPOT_R && _sd < closestDist) { closestDist = _sd; S._nearNode = n; }
+              return;
+            }
             var _baseH = n.nodeType === 'tree' ? 112 : 88;
             var _tierStep = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
             var _spriteH = _baseH * (1 + (_tierStep - 1) * 0.15);
@@ -12444,6 +12452,14 @@ export var BroTown = function BroTown(_ref0) {
   var _startExtraction = useCallback(function (node, skill) {
     var S = stateRef.current;
     if (!S || !node) return;
+    /* Mining is done from one tile NORTH of the vein so the south-facing swing
+       lines up over the rock. Refuse to start unless the player is on that spot
+       (the marker shows where). Covers every entry path. */
+    if (skill === 'mining' && S.player) {
+      var _sx = node.x, _sy = node.y - TILE;
+      var _sdist = Math.sqrt(Math.pow(_sx - S.player.x, 2) + Math.pow(_sy - S.player.y, 2));
+      if (_sdist > MINE_SPOT_R) return;
+    }
     /* One extraction at a time -- tapping a new node cancels the old. */
     if (S._extraction) S._extraction = null;
     var R = S.rpg;
@@ -12482,7 +12498,7 @@ export var BroTown = function BroTown(_ref0) {
   /* Called from the swipe handler when a valid swipe lands during the
      'ready' window. Routes to the existing per-skill reward applier
      so XP + inventory + server node_strike all run unchanged. */
-  var _succeedExtraction = useCallback(function () {
+  var _succeedExtraction = useCallback(function (accuracy) {
     var S = stateRef.current;
     if (!S || !S._extraction || S._extraction.status !== 'ready') return false;
     var _ex = S._extraction;
@@ -12491,7 +12507,9 @@ export var BroTown = function BroTown(_ref0) {
                  ? S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; })
                  : null);
     if (!node) { S._extraction = null; return false; }
-    var result = { accuracy: 'good' };
+    /* accuracy comes from the phase-2 gesture grade (ExtractionSwipeLayer);
+       defaults to 'good' for any legacy caller. Keyed into MINIGAME_REWARDS. */
+    var result = { accuracy: (accuracy === 'perfect' || accuracy === 'ok') ? accuracy : 'good' };
     if (_ex.skill === 'fishing')      _applyFishingReward(node, result);
     else if (_ex.skill === 'woodcutting') _applyWoodReward(node, result);
     else if (_ex.skill === 'mining')      _applyMiningReward(node, result);
