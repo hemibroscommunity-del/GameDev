@@ -135,25 +135,28 @@ for i in range(n):
     if band_mode and band_crop > 0:                  # crop FRAC off the TOP (keep the bottom; chain bottom shows)
         band[:max(0, by0 + int(band_h * band_crop)), :] = False
     if band_mode:
-        # full waist band over the body, confined to the HIP run (sampled a little
-        # BELOW the band, where the body is just the legs -- not the arms/hands
-        # swung out at the sides), so the belt spans the hips only.
+        # A belt wraps the NARROWEST part of the waist (bottom of the torso), not
+        # the wider hips -- otherwise it reads like a blanket.  Scan the waist rows
+        # (top of the band) for the slimmest body run that contains the centre.
         cx = int(np.median(np.where(bop)[1]))
-        hiprow = min(FRAME - 1, by0 + band_h + 4)
-        rowcols = np.where(bop[hiprow, :])[0]
-        if len(rowcols) == 0:
-            rowcols = np.where(bop[max(0, by0):min(FRAME, by0 + band_h), :].any(0))[0]
-        if len(rowcols) == 0:
+        rl, rr, best = None, None, 10 ** 9
+        for yy in range(max(0, by0 - 2), min(FRAME, by0 + 12)):
+            cols = np.where(bop[yy, :])[0]
+            if not len(cols):
+                continue
+            runs, s, p = [], int(cols[0]), int(cols[0])
+            for x in cols[1:]:
+                if x == p + 1:
+                    p = int(x)
+                else:
+                    runs.append((s, p)); s = p = int(x)
+            runs.append((s, p))
+            l, r = min(runs, key=lambda rn: 0 if rn[0] <= cx <= rn[1] else min(abs(rn[0] - cx), abs(rn[1] - cx)))
+            if r - l < best:
+                best = r - l; rl, rr = l, r
+        if rl is None:
             ca[:, i * FRAME:(i + 1) * FRAME] = cs
             continue
-        runs, s, p = [], int(rowcols[0]), int(rowcols[0])
-        for x in rowcols[1:]:
-            if x == p + 1:
-                p = int(x)
-            else:
-                runs.append((s, p)); s = p = int(x)
-        runs.append((s, p))
-        rl, rr = min(runs, key=lambda r: 0 if r[0] <= cx <= r[1] else min(abs(r[0] - cx), abs(r[1] - cx)))
         region = band & bop & ~chest_op   # waist band, behind the arm (chest stays in front)
         if band_extend == 0:
             region &= ~(ls[:, :, 3] > 20)  # default: also behind the leg plate
