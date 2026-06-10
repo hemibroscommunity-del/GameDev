@@ -13740,20 +13740,24 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u2694\uFE0F"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'inline-block',
-      marginLeft: 6,
-      fontSize: 17,
-      fontWeight: 800,
-      color: 'var(--txt)',
-      fontFamily: 'Source Sans 3,sans-serif',
-      letterSpacing: '.06em'
+      marginLeft: 7,
+      /* v2.3.706: retro-arcade wordmark -- chunky 8-bit font + gold with a
+         hard (unblurred) offset shadow, matching the pixel-art identity.
+         'Press Start 2P' is loaded in index.html; one weight (400) only. */
+      fontFamily: "'Press Start 2P','Source Sans 3',sans-serif",
+      fontSize: 13,
+      color: 'var(--gold)',
+      textShadow: '0 2px 0 #6b4310, 0 3px 0 rgba(0,0,0,0.5)'
     }
   }, "HEMI BROS"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 9,
       color: 'var(--pop)',
-      fontWeight: 700
+      fontWeight: 700,
+      letterSpacing: '.3em',
+      marginTop: 3
     }
-  }, "Action RPG"), /*#__PURE__*/React.createElement("div", {
+  }, "ACTION RPG"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
       color: '#ffffff',
@@ -13800,17 +13804,20 @@ export var BroTown = function BroTown(_ref0) {
       background: 'repeating-conic-gradient(#f7f8fb 0% 25%, #eaecf2 0% 50%) 0 0 / 22px 22px'
     }
   }), /*#__PURE__*/React.createElement("button", {
+    /* v2.3.706: circular spin arrows replaced the triangle glyphs -- the
+       triangles read like the accordion chevrons in the rail (owner
+       feedback), and rotation is a different verb than expand/collapse. */
     type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
     style: { position: 'absolute', left: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
       background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderRight: '8px solid currentColor' } })),
+  }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↺")),
   /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(1); },
     style: { position: 'absolute', right: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
       background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '8px solid currentColor' } })))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻")))), /*#__PURE__*/React.createElement("div", {
     style: { position: 'relative', width: '100%' }
   }, /*#__PURE__*/React.createElement("input", {
     value: nameInput,
@@ -13820,7 +13827,7 @@ export var BroTown = function BroTown(_ref0) {
     onKeyDown: function onKeyDown(e) {
       return e.key === 'Enter' && joinTown();
     },
-    placeholder: "Enter your name\u2026",
+    placeholder: "Name\u2026",
     maxLength: 20,
     autoFocus: true,
     style: {
