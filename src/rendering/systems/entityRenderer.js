@@ -465,8 +465,14 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
        picked -- and works for remote players' palettes too.  The fist is found by
        hue-alignment to the sampled skin (score = (p.ref)^2/|ref|^2), not a fixed
        skin colour.  Mirrors preview_armor_frames._blend_ghost_hand -- keep in
-       sync.  v2.3.620. */
-    if (figBot > figTop && worn.some(w => w.k && w.k.indexOf('chest:') === 0)) {
+       sync.  v2.3.620.
+       v2.3.686: FULL SET ONLY.  The blend assumes any below-waist skin is the
+       ghost fist -- with chest-only wear the bare belly/hands are legit skin,
+       and the blend painted flat pants-colour smears across the belly, ate the
+       pants' top edge, and chewed the idle outlines near the hanging hands. */
+    if (figBot > figTop
+        && worn.some(w => w.k && w.k.indexOf('chest:') === 0)
+        && worn.some(w => w.k && w.k.indexOf('legs:') === 0)) {
       try {
         const fh = figBot - figTop;
         const waistY = Math.round(figTop + 0.45 * fh);   // a bit above mid-figure so the waist/hip skin (chain-belt zone) is caught too
@@ -2626,7 +2632,9 @@ export class EntityRenderer {
            v2.3.399: + their pants / shoes colors.
            v2.3.497: + their baked shirt (torso-fill). */
         const _oChest = (other.equip && other.equip.chest) || 'none';
-        const _oShirtT = _oChest !== 'none' ? null : shirtFill(other.shirt, other.shirtColor);
+        const _oLegs = (other.equip && other.equip.legs) || 'none';
+        /* v2.3.686: full set only (mirrors the local-player shirt gate). */
+        const _oShirtT = (_oChest !== 'none' && _oLegs !== 'none') ? null : shirtFill(other.shirt, other.shirtColor);
         const _oShirtKey = _oShirtT ? (other.shirt + '-' + other.shirtColor) : 'none';
         let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey);
         if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey);
@@ -3187,8 +3195,10 @@ export class EntityRenderer {
          v2.3.497: shirt is now BAKED into the body (torso skin retinted to the
          shirt color, follows every pose/frame) instead of an overlay sprite. */
       const _shId = getShirt(), _shCol = getShirtColor();
-      /* chest gear covers the torso -> skip the procedural shirt bake. */
-      const _chestEquipped = getEquip('chest') !== 'none';
+      /* Skip the procedural shirt bake only under the FULL set (torso fully
+         covered).  v2.3.686: chest-only wear exposes the belly band below the
+         cuirass -- bake the shirt so it reads as shirt under armour, not skin. */
+      const _chestEquipped = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
       const _shirtT = _chestEquipped ? null : shirtFill(_shId, _shCol);
       const _shirtKey = _shirtT ? (_shId + '-' + _shCol) : 'none';
       let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);

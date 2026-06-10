@@ -200,7 +200,10 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
                 if len(ys):
                     neck_y = ys[0] + int(round(NECK_RESTORE_FRAC * (ys[-1] - ys[0])))
                     ba[:neck_y, :, 3] = orig_alpha[:neck_y, :]
-                    if worn.get('chest'):
+                    # v2.3.686: full set only -- with chest-only wear the bare
+                    # belly/hands are legit skin, and the blend smeared/erased
+                    # them.  Mirrors the renderer.
+                    if worn.get('chest') and worn.get('legs'):
                         _blend_ghost_hand(ba, ys[0], ys[-1], orig_alpha)
                 # v2.3.681: erase the naked-body OUTLINE/SHADOW remnants that
                 # survive OUTSIDE the armour silhouette where the AI drawing
