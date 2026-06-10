@@ -20,14 +20,14 @@ import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
 import { getHair } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame } from '../playerSkins.js';
+import { getSkin, getPants, getShoes, getBodyFrame, preloadBodyVariant } from '../playerSkins.js';
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame } from '../gearSheets.js';
-import { getEquip } from '../gearCatalog.js';
+import { getEquip, onEquipChange } from '../gearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -700,7 +700,11 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
      sets (one player set + remotes); overflow just rebakes (~2ms) on the
      next sighting of an evicted frame.  Evict 2 per insert when over cap so
      a burst (gear swap mid-fight) drains back down instead of hovering. */
-  while (_maskedBodyCache.size > 256) {
+  /* v2.3.698: cap 256 -> 420 -- prewarmAltWornSets keeps THREE worn-set
+     bake families resident (full / chest-only / legs-only, ~130 frames
+     each) so armor toggles never hitch; 420 x 256KB =~ 105MB worst case,
+     still below the pre-v2.3.689 150MB ceiling. */
+  while (_maskedBodyCache.size > 420) {
     const k0 = _maskedBodyCache.keys().next().value;
     const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
     try { old.destroy(true); } catch (e) { /* ignore */ }
@@ -751,6 +755,73 @@ export async function prewarmMaskedBodyFrames() {
         }
       }
     }
+  }
+}
+
+/* v2.3.698: pre-bake the ALTERNATE worn states in the background so taking
+   armor on/off never hitches (user request).  Two costs hide behind a toggle:
+   (1) the shirt-variant body sheets -- equipping/removing the full set flips
+   the shirt bake, and the first toggle paid a 13056x256 canvas recolor on the
+   spot; (2) the masked-body bakes for the new worn set, paid per (pose, dir,
+   frame) while moving.  This warms both for all three gear states (full /
+   chest-only / legs-only; naked needs no bake), yielding generously so it
+   never competes with gameplay.  Kicked after the current-set prewarm
+   (pixiRenderer.preloadPlayerAssets) and re-kicked on equip changes. */
+let _altPrewarmSeq = 0;
+export async function prewarmAltWornSets() {
+  const seq = ++_altPrewarmSeq;
+  const chestId = getEquip('chest') !== 'none' ? getEquip('chest') : 'steelplate';
+  const legsId = getEquip('legs') !== 'none' ? getEquip('legs') : 'steelgreaves';
+  const shirtT = shirtFill(getShirt(), getShirtColor());
+  const shirtKey = shirtT ? (getShirt() + '-' + getShirtColor()) : 'none';
+  /* both shirt variants' sheets first (the big hitch) */
+  try { await preloadBodyVariant(null, 'none'); } catch (e) { /* best-effort */ }
+  try { await preloadBodyVariant(shirtT, shirtKey); } catch (e) { /* best-effort */ }
+  if (seq !== _altPrewarmSeq) return;            // superseded by a newer kick
+  const SETS = [
+    { worn: [['chest', chestId], ['legs', legsId]], full: true },
+    { worn: [['chest', chestId]], full: false },
+    { worn: [['legs', legsId]], full: false },
+  ];
+  const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  let sinceYield = 0;
+  for (const set of SETS) {
+    const sT = set.full ? null : shirtT;
+    const sK = sT ? shirtKey : 'none';
+    for (const pose of ['stand', 'jog']) {
+      for (const dir of DIRS) {
+        const fc = playerFrameCount(pose, dir) || 1;
+        for (let f = 0; f < fc; f++) {
+          if (seq !== _altPrewarmSeq) return;
+          const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK);
+          if (!tex) continue;
+          const worn = [];
+          for (const [sl, id] of set.worn) {
+            const gt = getGearFrame(sl, id, pose, dir, f);
+            if (gt) worn.push({ k: sl + ':' + id, tex: gt });
+          }
+          if (!worn.length) continue;
+          try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
+          if (++sinceYield >= 4) {
+            sinceYield = 0;
+            await new Promise((r) => setTimeout(r, 16));
+          }
+        }
+      }
+    }
+  }
+}
+/* Re-kick on equip changes so the now-current set is fully resident even
+   after cache churn (debounced; the seq counter cancels stale runs). */
+if (typeof window !== 'undefined') {
+  let _t = 0;
+  for (const sl of ['chest', 'legs']) {
+    try {
+      onEquipChange(sl, () => {
+        clearTimeout(_t);
+        _t = setTimeout(() => { prewarmAltWornSets().catch(() => {}); }, 800);
+      });
+    } catch (e) { /* ignore */ }
   }
 }
 
@@ -865,12 +936,14 @@ function _orderTraitsAndWeapon(display, facingIdx) {
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
-    /* Rear = away-from-camera: SW(3) / NW(5) / N(6).  NE(7) is a
-       toward-camera facing (same set as the weapon block below: E/SE/S/NE)
-       -- the v2.3.679 fix shipped with NE in the rear set and SW out of
-       it, which hid the beard on NE and stamped it over the back of the
-       head on SW (user report, v2.3.689). */
-    const rearFacing = (facingIdx === 3 || facingIdx === 5 || facingIdx === 6);
+    /* Rear = away-from-camera: NW(5) / N(6).  NE(7) is a toward-camera
+       facing (same set as the weapon block below: E/SE/S/NE) -- the
+       v2.3.679 fix shipped with NE in the rear set, which hid the beard
+       on NE (user report, v2.3.689).  SW(3) was then swept INTO the rear
+       set by that fix, which hid the beard entirely on southwest (user
+       report, v2.3.698) -- SW shows the face, so it belongs with the
+       toward-camera facings (beard above body + gear like S/SE). */
+    const rearFacing = (facingIdx === 5 || facingIdx === 6);
     if (rearFacing) {
       /* Behind the head: insert just BELOW the body sprite. */
       const bodyIdx = display.getChildIndex(display._spriteBody);

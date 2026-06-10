@@ -4,7 +4,7 @@
  */
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
-import { EntityRenderer, prewarmMaskedBodyFrames } from './systems/entityRenderer.js';
+import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets } from './systems/entityRenderer.js';
 import { EffectsRenderer } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadTileAssets } from './tileAssets.js';
@@ -41,7 +41,14 @@ export function preloadPlayerAssets() {
        up (needs the body + gear sheets above resolved first), so the
        silhouette-confinement cost is paid here instead of as hitches during
        the first seconds of play. */
-    prewarmMaskedBodyFrames().catch(() => {}).then(() => results)
+    prewarmMaskedBodyFrames().catch(() => {}).then(() => {
+      /* v2.3.698: warm the ALTERNATE worn states (full / chest-only /
+         legs-only + both shirt-variant sheets) in the background AFTER the
+         intro completes -- fire-and-forget, yields generously, so armor
+         toggles later never hitch. */
+      try { prewarmAltWornSets().catch(() => {}); } catch (e) { /* ignore */ }
+      return results;
+    })
   );
 }
 
