@@ -191,7 +191,13 @@ input{font-family:inherit}
    v2.3.707: backdrop is a faint radial instead of flat #000 — a drop
    shadow is invisible against pure black, and the card needs it to read
    as floating. */
-.bt-name-modal{position:fixed;inset:0;z-index:9999;background:radial-gradient(120% 90% at 50% 35%,#151930 0%,#08090f 60%,#000 100%);display:flex;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden}
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:radial-gradient(120% 90% at 50% 35%,#151930 0%,#08090f 60%,#000 100%);display:flex;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
+/* v2.3.709: iOS touch hardening -- press-and-hold was popping the text-
+   selection loupe / image save-callout and juddering held gestures.  The
+   name input opts back in to selection so typing still works; thumbnails
+   refuse the native image-drag. */
+.bt-name-modal input{user-select:text;-webkit-user-select:text}
+.bt-name-modal img{-webkit-user-drag:none;user-drag:none}
 .bt-name-box{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:320px;width:100%;text-align:center;margin:auto 0}
 /* Two-pane character-creation box.  Composes with .bt-name-box (bg/border/
    radius); the doubled selector outranks .bt-name-box so its 320px max-width
@@ -206,7 +212,7 @@ input{font-family:inherit}
 .bt-cc-left{flex:0 0 57%;min-width:0;display:flex;flex-direction:column;gap:8px}
 .bt-cc-preview{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 .bt-cc-rail{flex:1 1 43%;min-width:0;display:flex;flex-direction:column}
-.bt-cc-rail-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.bt-cc-rail-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}

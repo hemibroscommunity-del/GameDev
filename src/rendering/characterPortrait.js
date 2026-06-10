@@ -132,8 +132,16 @@ function renderTraitCanvas(traitImg, meta, crown, dir) {
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
   const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir } = opts || {};
-  canvas.width = FRAME; canvas.height = FRAME;
-  const ctx = canvas.getContext('2d');
+  /* v2.3.709: composite OFFSCREEN and blit at the end.  This used to set
+     canvas.width up front, which blanks the visible canvas synchronously --
+     then the awaits below yield at least a frame, so every rotation /
+     selection change flashed blank even with all assets cached.  The old
+     frame now stays up until the new one is ready.  `__pseq` drops stale
+     async draws that would land out of order during rapid rotation. */
+  const seq = (canvas.__pseq = (canvas.__pseq || 0) + 1);
+  const work = document.createElement('canvas');
+  work.width = FRAME; work.height = FRAME;
+  const ctx = work.getContext('2d');
 
   /* Preview angle -- any of the 8 compass directions (default southwest 3/4).
      The 3 mirrored views (west / northwest / southeast) reuse the opposite
@@ -208,6 +216,27 @@ export async function drawCharacterPortrait(canvas, opts) {
   }
   if (hwImg && hwMeta) placeTrait(ctx, hatColor ? recolorHairToCanvas(hwImg, hatColor) : hwImg, hwMeta, crown, DIR);
   ctx.restore();
+  if (canvas.__pseq !== seq) return;   /* a newer draw superseded this one */
+  canvas.width = FRAME; canvas.height = FRAME;
+  canvas.getContext('2d').drawImage(work, 0, 0);
+}
+
+/** v2.3.709: fire-and-forget warm of every preview angle's sprites for the
+ *  current selections, so the login rotate buttons / drag-to-rotate never
+ *  wait on the network.  The promise caches above make the subsequent draws
+ *  hit memory; expected misses (e.g. hairmask 404s) are harmless. */
+export function prewarmPortraitDirs(opts) {
+  const { hair, facialHair, headwear } = opts || {};
+  loadBodyTops();
+  for (const DIR of ['east', 'north', 'south', 'northeast', 'southwest']) {
+    loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`).catch(() => {});
+    if (hair && hair !== 'none') loadImage(`/sprites/traits/hair/${hair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
+    if (facialHair && facialHair !== 'none') loadImage(`/sprites/traits/facialhair/${facialHair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
+    if (headwear && headwear !== 'none') {
+      loadImage(`/sprites/traits/headwear/${headwear}/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
+      loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
+    }
+  }
 }
 
 /* Head-and-shoulders crop box (in the zoomed 256 output) for the profile

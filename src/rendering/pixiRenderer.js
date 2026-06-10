@@ -56,6 +56,23 @@ export function preloadPlayerAssets() {
   );
 }
 
+/** v2.3.709: light, network-only warm kicked while the welcome modal is up
+ *  -- that screen is otherwise dead network time.  Downloads the same sheets
+ *  the full preloadPlayerAssets() bake needs, so the intro-gated prewarm
+ *  starts from a hot cache instead of cold fetches.  Deliberately NO baking
+ *  or GPU uploads here: the modal must stay responsive on phones, and all of
+ *  these loaders cache internally, so the joinTown pass re-runs cheaply. */
+export function prewarmBaseSheets() {
+  return Promise.allSettled([
+    loadPlayerSprites(),
+    loadWeaponSprites(),
+    loadShieldSprites(),
+    loadPlayerAnchors(),
+    preloadGear(),
+    preloadBodyAll(),
+  ]);
+}
+
 /**
  * Initializes the PixiJS renderer.
  * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
