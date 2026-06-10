@@ -1,0 +1,29 @@
+name = "brotown-server"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+# Durable Objects bindings
+[[durable_objects.bindings]]
+name = "GAME_ROOM"
+class_name = "GameRoom"
+
+[[durable_objects.bindings]]
+name = "MARKETPLACE"
+class_name = "Marketplace"
+
+[[durable_objects.bindings]]
+name = "LEADERBOARD"
+class_name = "Leaderboard"
+
+[[durable_objects.bindings]]
+name = "ARENA"
+class_name = "Arena"
+
+[[durable_objects.bindings]]
+name = "FEEDBACK"
+class_name = "Feedback"
+
+# Migration — SQLite-backed Durable Objects (required for free plan)
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom", "Marketplace", "Leaderboard", "Arena", "Feedback"]
