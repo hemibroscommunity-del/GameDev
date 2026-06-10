@@ -160,16 +160,25 @@ const SHIRT_TRUNK_HALF = 10;
    centre; when the arms swung in front of the torso (south/SW jog, attack,
    hit, pickup) the seed landed on the ARM -- painting the arm to the wrist
    and leaving the chest bare with its muscle lines showing.  Now:
-   - cap band [collar, sleeveCap): paint only skin runs row-connected to the
-     COLLAR-row runs (the neck -- the one landmark that is always torso).
-     Shoulders/upper arms widen freely (sleeves); a forearm/hand raised into
-     the band but not connected to the neck stays skin.
-   - the interval is then PINCHED to neck-centre +/- SHIRT_TRUNK_HALF, so the
-     arms (which exit the cap at its outer edges) fall outside it.
-   - trunk rows grow <= SHIRT_GROW px/row; a run narrower than SHIRT_ARM_W
-     that pokes past the interval is a crossing arm and is skipped whole, so
-     it stays skin even where it overlaps the chest.
-   Verified frame-by-frame against all 21 sheets via
+   - HEAD anchor: median centre of the widest skin run per row above the
+     collar (robust to a fist raised overhead).
+   - NECK seed: first row at/below the collar with skin (the collar row can
+     land on the 1-2px chin-shadow line), taking the run UNDER the head --
+     not the widest, an outstretched arm can be wider than the neck.
+   - cap band [seed, sleeveCap): paint runs row-connected to the seed.
+     Shoulders/upper arms widen freely (sleeves); LIMB runs -- narrow with
+     >=2px gaps both sides, away from the neck centre -- stay skin (a fist
+     raised to the face).
+   - TRUNK re-anchor: widest non-limb run under the cap, clipped to its own
+     centre +/- SHIRT_TRUNK_HALF, so arms exiting the cap at its outer edges
+     fall outside the interval even in a hard forward lean.
+   - trunk rows grow <= SHIRT_GROW px/row; narrow runs poking past the
+     interval (crossing arms) and interior limb runs (a hand in front of the
+     chest) are skipped whole; up to 2 unpaintable rows are coasted over.
+   - BACKSTOP: any later row with torso skin inside the trunk window but no
+     shirt gets its non-limb runs filled -- a bare belly is structurally
+     impossible, while crossing limbs still stay skin.
+   Audited frame-by-frame against all 184 frames / 21 sheets via
    tools/preview_shirt_frames.py (--algo=v2 == this; keep them in sync).
    Returns shirtPx (1 = this skin pixel is shirt).  Keyed off each frame's
    body, so it follows the run lean/twist/bob. */
@@ -224,27 +233,72 @@ function _torsoBands(d, w, h, frameW, frames) {
       }
       return out;
     };
-    /* neck seed: the collar-row runs */
-    let fl = 1e9, fr = -1;
-    {
-      const rs = runsOf(collar);
-      const base = collar * w;
-      for (let i = 0; i < rs.length; i += 2) {
-        for (let xx = rs[i]; xx <= rs[i + 1]; xx++) shirtPx[base + xx] = 1;
-        if (rs[i] < fl) fl = rs[i];
-        if (rs[i + 1] > fr) fr = rs[i + 1];
+    /* helpers shared by the passes below */
+    const eligible = (x, y) => cls[y * w + x] === 1 && y < colWaist[x];
+    /* >= 2px of non-skin at xx+step, xx+2*step (frame edge counts as gap) */
+    const gapGe2 = (xx, step, y) => {
+      let g = 0, x = xx + step;
+      while (g < 2 && x >= x0 && x < x1) {
+        if (eligible(x, y)) return false;
+        g++; x += step;
       }
+      return true;
+    };
+    /* limb run = narrow, >=2px gaps both sides, away from the centre cx --
+       a hand/forearm in front of the body.  cx === null skips the centre
+       protection. */
+    const isLimb = (l, r, y, cx) => {
+      if (r - l + 1 > SHIRT_ARM_W) return false;
+      if (cx !== null && l - 2 <= cx && cx <= r + 2) return false;
+      return gapGe2(l, -1, y) && gapGe2(r, 1, y);
+    };
+    /* head centre: per row above the collar take the widest run; the MEDIAN
+       of their centres is the head x (robust against a fist raised above
+       the head -- the head wins by row count). */
+    const headCs = [];
+    for (let y = 0; y < collar; y++) {
+      const rs = runsOf(y);
+      if (!rs.length) continue;
+      let bi = 0;
+      for (let i = 2; i < rs.length; i += 2)
+        if (rs[i + 1] - rs[i] > rs[bi + 1] - rs[bi]) bi = i;
+      headCs.push((rs[bi] + rs[bi + 1]) >> 1);
     }
-    if (fr < 0) continue;
+    headCs.sort((a, b) => a - b);
+    const hx = headCs.length ? headCs[headCs.length >> 1] : ((x0 + x1) >> 1);
+    /* neck seed: first row at/below the collar with skin (the collar row
+       itself can land on the 1-2px chin-shadow line); the run UNDER THE
+       HEAD wins -- not the widest, a horizontally outstretched arm can be
+       wider than the neck (hit-south f3). */
+    let seedRow = -1, fl = 0, fr = -1;
+    for (let y = collar; y < Math.min(collar + 6, bottom); y++) {
+      const rs = runsOf(y);
+      if (!rs.length) continue;
+      let bi = 0, bd = Infinity;
+      for (let i = 0; i < rs.length; i += 2) {
+        const dd = (rs[i] <= hx && hx <= rs[i + 1]) ? 0
+          : Math.min(Math.abs(rs[i] - hx), Math.abs(rs[i + 1] - hx));
+        if (dd < bd) { bd = dd; bi = i; }
+      }
+      seedRow = y; fl = rs[bi]; fr = rs[bi + 1];
+      break;
+    }
+    if (seedRow < 0) continue;
     const ncx = (fl + fr) >> 1;
-    /* cap band: free growth, but only neck-connected runs (sleeves) */
-    for (let y = collar + 1; y < sleeveCap; y++) {
+    {
+      const base = seedRow * w;
+      for (let xx = fl; xx <= fr; xx++) shirtPx[base + xx] = 1;
+    }
+    /* cap band: free growth (shoulders/sleeves), neck-connected runs only,
+       hands raised to the face rejected */
+    for (let y = seedRow + 1; y < sleeveCap; y++) {
       const rs = runsOf(y);
       const base = y * w;
       let nl = 1e9, nr = -1;
       for (let i = 0; i < rs.length; i += 2) {
         const l = rs[i], r = rs[i + 1];
         if (r < fl - 1 || l > fr + 1) continue;
+        if (isLimb(l, r, y, ncx)) continue;
         for (let xx = l; xx <= r; xx++) shirtPx[base + xx] = 1;
         if (l < nl) nl = l;
         if (r > nr) nr = r;
@@ -252,11 +306,42 @@ function _torsoBands(d, w, h, frameW, frames) {
       if (nr < 0) break;
       fl = nl; fr = nr;
     }
-    /* pinch the interval back to the trunk below the sleeves */
-    fl = Math.max(fl, ncx - SHIRT_TRUNK_HALF);
-    fr = Math.min(fr, ncx + SHIRT_TRUNK_HALF);
-    /* trunk: slow growth + crossing-arm rejection */
-    for (let y = sleeveCap; y < bottom; y++) {
+    /* pinch back to the trunk below the sleeves: re-anchor on the CHEST
+       (widest non-limb run under the cap), not the neck centre -- in a hard
+       forward lean (attack/jog east) the trunk drifts out of the neck
+       window. */
+    const tStart = Math.max(sleeveCap, seedRow + 1);
+    let ty = -1, tcx = ncx;
+    for (let y = tStart; y < Math.min(tStart + 4, bottom); y++) {
+      const rs = runsOf(y);
+      let bi = -1;
+      for (let i = 0; i < rs.length; i += 2) {
+        const l = rs[i], r = rs[i + 1];
+        if (r < fl - 1 || l > fr + 1) continue;
+        if (isLimb(l, r, y, null)) continue;
+        if (bi < 0 || (r - l) > (rs[bi + 1] - rs[bi])) bi = i;
+      }
+      if (bi >= 0) {
+        ty = y;
+        tcx = (rs[bi] + rs[bi + 1]) >> 1;
+        fl = Math.max(rs[bi], tcx - SHIRT_TRUNK_HALF);
+        fr = Math.min(rs[bi + 1], tcx + SHIRT_TRUNK_HALF);
+        const base = y * w;
+        for (let xx = fl; xx <= fr; xx++) shirtPx[base + xx] = 1;
+        break;
+      }
+    }
+    if (ty < 0) {
+      /* no usable trunk row under the cap (limbs crossing everywhere) --
+         anchor the backstop window on the neck and let it fill. */
+      ty = tStart - 1;
+      fl = ncx - SHIRT_TRUNK_HALF; fr = ncx + SHIRT_TRUNK_HALF;
+    }
+    /* trunk: slow growth, crossing-arm/hand rejection, coast over up to 2
+       unpaintable rows (belt/shadow lines) */
+    let blanks = 0;
+    for (let y = ty + 1; y < bottom; y++) {
+      const fcx = (fl + fr) >> 1;
       const rs = runsOf(y);
       const base = y * w;
       let nl = 1e9, nr = -1, painted = false;
@@ -264,6 +349,7 @@ function _torsoBands(d, w, h, frameW, frames) {
         const l = rs[i], r = rs[i + 1];
         if (r < fl - 1 || l > fr + 1) continue;
         if ((r - l + 1) <= SHIRT_ARM_W && (l < fl - 1 || r > fr + 1)) continue;
+        if (l >= fl + 2 && r <= fr - 2 && isLimb(l, r, y, fcx)) continue;
         const cl = Math.max(l, fl - SHIRT_GROW), cr = Math.min(r, fr + SHIRT_GROW);
         if (cl > cr) continue;
         for (let xx = cl; xx <= cr; xx++) shirtPx[base + xx] = 1;
@@ -271,8 +357,28 @@ function _torsoBands(d, w, h, frameW, frames) {
         if (cr > nr) nr = cr;
         painted = true;
       }
-      if (!painted) break;
-      fl = nl; fr = nr;
+      if (painted) { fl = nl; fr = nr; blanks = 0; }
+      else if (++blanks > 2) break;
+    }
+    /* backstop: no bare belly.  Any row below the trunk anchor with torso
+       skin inside the trunk window but no shirt (the tracker stumbled on a
+       weird pose) gets its non-limb runs painted, clipped to the window.
+       Rows where only a crossing limb occupies the window stay skin -- the
+       belly is occluded there anyway. */
+    const wl = Math.max(x0, tcx - SHIRT_TRUNK_HALF);
+    const wr = Math.min(x1 - 1, tcx + SHIRT_TRUNK_HALF);
+    for (let y = ty + 1; y < bottom; y++) {
+      const base = y * w;
+      let has = false;
+      for (let xx = wl; xx <= wr; xx++) if (shirtPx[base + xx]) { has = true; break; }
+      if (has) continue;
+      const rs = runsOf(y);
+      for (let i = 0; i < rs.length; i += 2) {
+        const l = rs[i], r = rs[i + 1];
+        if (r < wl || l > wr) continue;
+        if (isLimb(l, r, y, null)) continue;
+        for (let xx = Math.max(l, wl); xx <= Math.min(r, wr); xx++) shirtPx[base + xx] = 1;
+      }
     }
   }
   return shirtPx;

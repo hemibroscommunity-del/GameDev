@@ -171,35 +171,78 @@ def _v1(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom, w):
 
 
 def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom):
-    """Candidate fix: torso tracked as an interval seeded at the NECK.
+    """v2.3.694 algorithm + v3 audit fixes: torso tracked as an interval
+    seeded at the NECK.
 
+    - Seed: first row in [collar, collar+5] with eligible skin (the collar
+      row itself can land on the 1-2px chin-shadow line -> whole frame used
+      to bail with no shirt).  Seed run = the widest on that row (beats a
+      raised hand).
     - Cap band [collar, sleeveCap): paint runs connected (row overlap) to the
-      neck, growing freely (shoulders widen fast).  A forearm/hand raised into
-      the band but not connected to the neck stays skin.
+      frontier, EXCEPT limb runs -- narrow (<= ARM_W) with >= 2px gaps on
+      both sides and not containing the neck centre: a fist raised to the
+      face stays skin, while sleeves (contiguous with the shoulder mass)
+      stay covered.
     - Below the cap the frontier is PINCHED back to the trunk: a window of
       +/- TRUNK_HALF around the neck centre (the one landmark that is always
       torso).  Arms emerge from the cap outside that window and stay skin.
-    - Trunk rows then grow at most GROW px/row, and a NARROW run (<= ARM_W)
-      that pokes past the interval is an arm crossing in front -- skipped
-      entirely so it stays skin even where it overlaps the chest.
+    - Trunk rows grow at most GROW px/row; limb runs are skipped (crossing
+      arm/hand stays skin even inside the chest); up to 2 consecutive
+      unpaintable rows are coasted over (belt/shadow lines) so the shirt
+      always reaches the waist instead of stopping at the belly.
     """
-    # neck seed: collar-row runs (the neck is the only skin at collar height
-    # connected upward to the crown; take all collar runs, they're narrow)
-    frontier = []
-    for (l, r) in skin_runs(cls, col_waist, collar, x0, x1):
-        frontier.append((l, r))
-        for xx in range(l, r + 1):
-            shirt.add((xx, collar))
-    if not frontier:
+    def gap_ge2(xx, step, y):
+        """>=2px of non-skin at (xx+step, xx+2*step) -- frame edge counts."""
+        g = 0
+        x = xx + step
+        while 0 <= g < 2 and x0 <= x < x1:
+            if cls[y][x] == 1 and y < col_waist[x]:
+                return False
+            g += 1
+            x += step
+        return True
+
+    def is_limb(l, r, y, ncx):
+        if (r - l + 1) > ARM_W:
+            return False
+        if ncx is not None and l - 2 <= ncx <= r + 2:
+            return False
+        return gap_ge2(l, -1, y) and gap_ge2(r, 1, y)
+
+    # head centre: per row in [crown(top skin), collar), take the widest skin
+    # run; the median of their centres is the head x (robust against a fist
+    # raised above the head -- the head wins by row count).
+    head_cs = []
+    for y in range(0, collar):
+        rs = skin_runs(cls, col_waist, y, x0, x1)
+        if rs:
+            l, r = max(rs, key=lambda lr: lr[1] - lr[0])
+            head_cs.append((l + r) >> 1)
+    hx = sorted(head_cs)[len(head_cs) // 2] if head_cs else (x0 + x1) >> 1
+    # seed: first row at/below the collar with skin; the run UNDER THE HEAD
+    # wins (not the widest -- a horizontally outstretched arm can be wider
+    # than the neck/chest).
+    seed_row, seed = -1, None
+    for y in range(collar, min(collar + 6, bottom)):
+        rs = skin_runs(cls, col_waist, y, x0, x1)
+        if rs:
+            seed_row = y
+            seed = min(rs, key=lambda lr: 0 if lr[0] <= hx <= lr[1]
+                       else min(abs(lr[0] - hx), abs(lr[1] - hx)))
+            break
+    if seed is None:
         return
-    fl = min(l for l, _ in frontier)
-    fr = max(r for _, r in frontier)
+    fl, fr = seed
     ncx = (fl + fr) >> 1
-    # cap band: free growth, but only neck-connected runs
-    for y in range(collar + 1, sleeve_cap):
+    for xx in range(fl, fr + 1):
+        shirt.add((xx, seed_row))
+    # cap band: free growth, neck-connected, hands rejected
+    for y in range(seed_row + 1, sleeve_cap):
         nl, nr = 10 ** 9, -1
         for (l, r) in skin_runs(cls, col_waist, y, x0, x1):
             if r < fl - 1 or l > fr + 1:
+                continue
+            if is_limb(l, r, y, ncx):
                 continue
             for xx in range(l, r + 1):
                 shirt.add((xx, y))
@@ -208,11 +251,33 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom):
         if nr < 0:
             break
         fl, fr = nl, nr
-    # pinch back to the trunk below the sleeves
-    fl = max(fl, ncx - TRUNK_HALF)
-    fr = min(fr, ncx + TRUNK_HALF)
-    # trunk: slow growth + arm rejection
-    for y in range(sleeve_cap, bottom):
+    # pinch back to the trunk below the sleeves: re-anchor on the CHEST (the
+    # widest non-limb run under the cap), not the neck centre -- in a hard
+    # forward lean (attack/jog east) the trunk drifts out of the neck window.
+    t_start = max(sleeve_cap, seed_row + 1)
+    ty, tseed = -1, None
+    for y in range(t_start, min(t_start + 4, bottom)):
+        cands = [(l, r) for (l, r) in skin_runs(cls, col_waist, y, x0, x1)
+                 if not (r < fl - 1 or l > fr + 1) and not is_limb(l, r, y, None)]
+        if cands:
+            tseed = max(cands, key=lambda lr: lr[1] - lr[0])
+            ty = y
+            break
+    if tseed is None:
+        # no usable trunk row under the cap (limbs crossing everywhere) --
+        # anchor the backstop window on the neck and let it do the filling.
+        tcx, ty = ncx, t_start - 1
+        fl, fr = ncx - TRUNK_HALF, ncx + TRUNK_HALF
+    else:
+        tcx = (tseed[0] + tseed[1]) >> 1
+        fl = max(tseed[0], tcx - TRUNK_HALF)
+        fr = min(tseed[1], tcx + TRUNK_HALF)
+        for xx in range(fl, fr + 1):
+            shirt.add((xx, ty))
+    # trunk: slow growth + arm rejection + coasting over blank rows
+    blanks = 0
+    for y in range(ty + 1, bottom):
+        fcx = (fl + fr) >> 1
         nl, nr = 10 ** 9, -1
         painted = False
         for (l, r) in skin_runs(cls, col_waist, y, x0, x1):
@@ -220,6 +285,8 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom):
                 continue                      # not touching the torso interval
             if (r - l + 1) <= ARM_W and (l < fl - 1 or r > fr + 1):
                 continue                      # narrow + pokes out: crossing arm
+            if l >= fl + 2 and r <= fr - 2 and is_limb(l, r, y, fcx):
+                continue                      # hand strictly inside the chest
             cl, cr = max(l, fl - GROW), min(r, fr + GROW)
             if cl > cr:
                 continue
@@ -228,9 +295,29 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom):
             nl = min(nl, cl)
             nr = max(nr, cr)
             painted = True
-        if not painted:
-            break
-        fl, fr = nl, nr
+        if painted:
+            fl, fr = nl, nr
+            blanks = 0
+        else:
+            blanks += 1
+            if blanks > 2:
+                break
+    # backstop: no bare belly.  Any row between the sleeves and the hem that
+    # has torso skin inside the trunk window but no shirt (the tracker
+    # stumbled on a weird pose) gets its non-limb runs painted, clipped to
+    # the window.  Rows where only a crossing limb occupies the window stay
+    # skin -- the belly is occluded there anyway.
+    wl, wr = tcx - TRUNK_HALF, tcx + TRUNK_HALF
+    for y in range(ty + 1, bottom):
+        if any((xx, y) in shirt for xx in range(wl, wr + 1)):
+            continue
+        for (l, r) in skin_runs(cls, col_waist, y, x0, x1):
+            if r < wl or l > wr:
+                continue
+            if is_limb(l, r, y, None):
+                continue
+            for xx in range(max(l, wl), min(r, wr) + 1):
+                shirt.add((xx, y))
 
 
 def main():
