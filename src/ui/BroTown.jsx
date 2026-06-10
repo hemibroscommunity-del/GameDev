@@ -13439,6 +13439,34 @@ export var BroTown = function BroTown(_ref0) {
     lBase.addEventListener('touchstart', lS, {
       passive: false
     });
+    /* v2.3.697: iOS rubber-band kill.  The joystick touchmove handlers below
+       only preventDefault touches they OWN (lM/rM/sM bail early for touches
+       that started near-but-not-on a base), so an unclaimed drag over the
+       game area fell through to Safari, which treated it as a document
+       scroll and elastic-bounced the whole fixed page (the dashboard
+       visibly rubber-banded).  CSS touch-action/overscroll-behavior alone
+       are not reliably honored by iOS Safari -- a non-passive global guard
+       is.  Touches inside genuinely scrollable UI (open panels, chat log:
+       overflowY auto/scroll AND actually overflowing) keep native scroll. */
+    var _scrollableUp = function _scrollableUp(el) {
+      var n = el, i = 0;
+      while (n && n !== document.body && i < 12) {
+        try {
+          var st = getComputedStyle(n);
+          if ((st.overflowY === 'auto' || st.overflowY === 'scroll') && n.scrollHeight > n.clientHeight + 1) return true;
+        } catch (_e) { return false; }
+        n = n.parentElement; i++;
+      }
+      return false;
+    };
+    var gM = function gM(e) {
+      if (!e.cancelable) return;
+      if (e.target && _scrollableUp(e.target)) return;
+      e.preventDefault();
+    };
+    window.addEventListener('touchmove', gM, {
+      passive: false
+    });
     window.addEventListener('touchmove', lM, {
       passive: false
     });
@@ -13507,6 +13535,7 @@ export var BroTown = function BroTown(_ref0) {
     }
     return function () {
       lBase.removeEventListener('touchstart', lS);
+      window.removeEventListener('touchmove', gM);
       window.removeEventListener('touchmove', lM);
       window.removeEventListener('touchend', lE);
       window.removeEventListener('touchcancel', lE);
