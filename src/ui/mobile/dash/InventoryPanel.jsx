@@ -4,6 +4,7 @@ import { cookingBus } from '../cookingBus.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
+import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 
 // Category filter chips — icon-only.  "All" comes first so the player
 // always opens the bag with everything visible.
@@ -185,6 +186,17 @@ export const InventoryPanel = () => {
 
   const S = getState();
   const inv = (S?.rpg?.inventory) || {};
+
+  /* v2.3.687: self-healing gear stash -- restore any orphaned steel piece
+     (e.g. unequipped via the Equipment menu's toggle, which predates the
+     stash) so it can always be re-equipped from the bag. */
+  if (S?.rpg) {
+    try {
+      if (reconcileGearStash(S.rpg)) {
+        localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
+      }
+    } catch (e) { /* reconcile is best-effort */ }
+  }
 
   // Diff against last frame — bubble up any key whose count increased.
   const prev = prevCountRef.current;
