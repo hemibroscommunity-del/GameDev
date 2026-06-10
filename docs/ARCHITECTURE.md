@@ -75,8 +75,8 @@ it currently feeds the Equip menu's item list.
    per tick → single `now`; ~~index.html CSS extraction~~ (done: the 1.5MB root index.html was a pre-extraction fossil, deleted v2.3.691; `src/index.html` is the real 2KB entry).
 4. **Tooling**: no lint/tests. Cheapest wins: `npx knip` for dead exports;
    eslint with `no-unused-vars` only; a smoke test that boots the game headless.
-5. **index.html slim-down**: move embedded CSS out; verify the CDN React UMD
-   tags are even used (vite bundles react already).
+5. (resolved v2.3.691) the 1.5MB root index.html was the pre-extraction
+   fossil app — deleted; `src/index.html` (2KB) is the real vite entry.
 
 ## Working agreements
 
