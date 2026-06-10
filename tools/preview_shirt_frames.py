@@ -100,7 +100,7 @@ def torso_bands(px, w, h, algo):
         if algo == 'v1':
             _v1(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom, w)
         else:
-            _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom)
+            _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom, crown)
     return shirt
 
 
@@ -170,7 +170,7 @@ def _v1(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom, w):
             break
 
 
-def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom):
+def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom, crown):
     """v2.3.694 algorithm + v3 audit fixes: torso tracked as an interval
     seeded at the NECK.
 
@@ -219,11 +219,31 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom):
             l, r = max(rs, key=lambda lr: lr[1] - lr[0])
             head_cs.append((l + r) >> 1)
     hx = sorted(head_cs)[len(head_cs) // 2] if head_cs else (x0 + x1) >> 1
-    # seed: first row at/below the collar with skin; the run UNDER THE HEAD
-    # wins (not the widest -- a horizontally outstretched arm can be wider
-    # than the neck/chest).
+    # head bottom (chin): walk down from the crown following the run that
+    # overlaps the head centre; the head ends at the chin-shadow gap or where
+    # the width pinches to the neck.  In bent poses the face dips BELOW the
+    # collar line -- without this the chin gets seeded as "neck" and painted.
+    head_bottom = crown
+    max_head_w = 0
+    for y in range(crown, min(collar + 9, bottom)):
+        hit_run = None
+        for (l, r) in skin_runs(cls, col_waist, y, x0, x1):
+            if l <= hx + 2 and r >= hx - 2:
+                hit_run = (l, r)
+                break
+        if hit_run is None:
+            break                              # chin-shadow gap
+        wid = hit_run[1] - hit_run[0] + 1
+        if max_head_w >= 10 and wid <= 0.45 * max_head_w:
+            break                              # pinched to the neck
+        max_head_w = max(max_head_w, wid)
+        head_bottom = y
+    # seed: first row below both the collar and the chin with skin; the run
+    # UNDER THE HEAD wins (not the widest -- a horizontally outstretched arm
+    # can be wider than the neck/chest).
     seed_row, seed = -1, None
-    for y in range(collar, min(collar + 6, bottom)):
+    seed_top = max(collar, head_bottom + 1)
+    for y in range(seed_top, min(seed_top + 6, bottom)):
         rs = skin_runs(cls, col_waist, y, x0, x1)
         if rs:
             seed_row = y
@@ -290,7 +310,12 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom):
             cl, cr = max(l, fl - GROW), min(r, fr + GROW)
             if cl > cr:
                 continue
-            for xx in range(cl, cr + 1):
+            # paint the WHOLE run unless it is far wider than the tracked
+            # interval (merged arm+torso): clipping every run left skin
+            # slivers along the shirt edges wherever the chest widened
+            # faster than GROW px/row -- the "holes in the shirt".
+            pl, pr = (cl, cr) if (r - l + 1) > (fr - fl + 1) + 10 else (l, r)
+            for xx in range(pl, pr + 1):
                 shirt.add((xx, y))
             nl = min(nl, cl)
             nr = max(nr, cr)
@@ -318,6 +343,21 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom):
                 continue
             for xx in range(max(l, wl), min(r, wr) + 1):
                 shirt.add((xx, y))
+    # hole fill: an eligible skin run horizontally bracketed by shirt within
+    # 2px on BOTH sides is an enclosed hole (seam fragment / clip residue)
+    # unless it is a limb (a fist in front of the chest stays skin).
+    for y in range(seed_row, bottom):
+        rs = skin_runs(cls, col_waist, y, x0, x1)
+        for (l, r) in rs:
+            if (l, y) in shirt:
+                continue
+            if is_limb(l, r, y, None):
+                continue
+            lb = any((xx, y) in shirt for xx in range(max(x0, l - 3), l))
+            rb = any((xx, y) in shirt for xx in range(r + 1, min(x1, r + 4)))
+            if lb and rb:
+                for xx in range(l, r + 1):
+                    shirt.add((xx, y))
 
 
 def main():

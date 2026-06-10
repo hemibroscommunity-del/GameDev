@@ -266,12 +266,30 @@ function _torsoBands(d, w, h, frameW, frames) {
     }
     headCs.sort((a, b) => a - b);
     const hx = headCs.length ? headCs[headCs.length >> 1] : ((x0 + x1) >> 1);
-    /* neck seed: first row at/below the collar with skin (the collar row
-       itself can land on the 1-2px chin-shadow line); the run UNDER THE
-       HEAD wins -- not the widest, a horizontally outstretched arm can be
-       wider than the neck (hit-south f3). */
+    /* head bottom (chin): walk down from the crown following the run that
+       overlaps the head centre; the head ends at the chin-shadow gap or
+       where the width pinches to the neck.  In bent poses the face dips
+       BELOW the collar line -- without this the chin was seeded as "neck"
+       and the head got painted (hit-south 3-5, pickup). */
+    let headBottom = crown, maxHeadW = 0;
+    for (let y = crown; y < Math.min(collar + 9, bottom); y++) {
+      const rs = runsOf(y);
+      let hl = -1, hr = -1;
+      for (let i = 0; i < rs.length; i += 2)
+        if (rs[i] <= hx + 2 && rs[i + 1] >= hx - 2) { hl = rs[i]; hr = rs[i + 1]; break; }
+      if (hl < 0) break;                               /* chin-shadow gap */
+      const wid = hr - hl + 1;
+      if (maxHeadW >= 10 && wid <= 0.45 * maxHeadW) break;   /* neck pinch */
+      if (wid > maxHeadW) maxHeadW = wid;
+      headBottom = y;
+    }
+    /* neck seed: first row below both the collar and the chin with skin
+       (the collar row itself can land on the 1-2px chin-shadow line); the
+       run UNDER THE HEAD wins -- not the widest, a horizontally
+       outstretched arm can be wider than the neck (hit-south f3). */
     let seedRow = -1, fl = 0, fr = -1;
-    for (let y = collar; y < Math.min(collar + 6, bottom); y++) {
+    const seedTop = Math.max(collar, headBottom + 1);
+    for (let y = seedTop; y < Math.min(seedTop + 6, bottom); y++) {
       const rs = runsOf(y);
       if (!rs.length) continue;
       let bi = 0, bd = Infinity;
@@ -352,7 +370,13 @@ function _torsoBands(d, w, h, frameW, frames) {
         if (l >= fl + 2 && r <= fr - 2 && isLimb(l, r, y, fcx)) continue;
         const cl = Math.max(l, fl - SHIRT_GROW), cr = Math.min(r, fr + SHIRT_GROW);
         if (cl > cr) continue;
-        for (let xx = cl; xx <= cr; xx++) shirtPx[base + xx] = 1;
+        /* paint the WHOLE run unless it is far wider than the tracked
+           interval (merged arm+torso): clipping every run left skin slivers
+           along the shirt edges wherever the chest widened faster than
+           SHIRT_GROW px/row -- the "holes in the shirt". */
+        const wide = (r - l + 1) > (fr - fl + 1) + 10;
+        const pl = wide ? cl : l, pr = wide ? cr : r;
+        for (let xx = pl; xx <= pr; xx++) shirtPx[base + xx] = 1;
         if (cl < nl) nl = cl;
         if (cr > nr) nr = cr;
         painted = true;
@@ -378,6 +402,23 @@ function _torsoBands(d, w, h, frameW, frames) {
         if (r < wl || l > wr) continue;
         if (isLimb(l, r, y, null)) continue;
         for (let xx = Math.max(l, wl); xx <= Math.min(r, wr); xx++) shirtPx[base + xx] = 1;
+      }
+    }
+    /* hole fill: an eligible skin run horizontally bracketed by shirt
+       within 3px on BOTH sides is an enclosed hole (seam fragment / clip
+       residue) unless it is a limb (a fist in front of the chest stays
+       skin). */
+    for (let y = seedRow; y < bottom; y++) {
+      const rs = runsOf(y);
+      const base = y * w;
+      for (let i = 0; i < rs.length; i += 2) {
+        const l = rs[i], r = rs[i + 1];
+        if (shirtPx[base + l]) continue;
+        if (isLimb(l, r, y, null)) continue;
+        let lb = false, rb = false;
+        for (let xx = Math.max(x0, l - 3); xx < l; xx++) if (shirtPx[base + xx]) { lb = true; break; }
+        for (let xx = r + 1; xx < Math.min(x1, r + 4); xx++) if (shirtPx[base + xx]) { rb = true; break; }
+        if (lb && rb) for (let xx = l; xx <= r; xx++) shirtPx[base + xx] = 1;
       }
     }
   }
