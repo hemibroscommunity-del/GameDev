@@ -81,7 +81,15 @@ const tick = () => {
     `work ${f1(work)} (sim ${f1(sim)} / render ${f1(render)})   outside ${f1(outside)} ms` +
     (outside > work ? '  <- browser-side, not our code' : '') + '\n' +
     `mon ${last.monsters || 0}  oth ${last.others || 0}  proj ${last.projectiles || 0}  ` +
-    `part ${last.hitParticles || 0}  zone ${last.zone || '?'}`;
+    `part ${last.hitParticles || 0}  zone ${last.zone || '?'}` + (() => {
+      /* armor bake spikes (entityRenderer._maskedBodyFrame cache misses)
+         accumulated since the last HUD repaint -- read + reset. */
+      const b = window.__btBakeStats;
+      if (!b || !b.count) return '';
+      const s = `\nbakes ${b.count} (${f1(b.ms)} ms since last repaint)`;
+      b.count = 0; b.ms = 0;
+      return s;
+    })();
 };
 
 export const installPerfHud = () => {

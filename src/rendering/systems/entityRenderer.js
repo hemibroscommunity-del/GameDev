@@ -351,6 +351,18 @@ function _bodyRegionTex(bodyTex, region) {
    miss.  Falls back to the raw body texture if pixel access fails. */
 const _maskedBodyCache = new Map();
 function _maskedBodyFrame(bodyTex, worn, dilate) {
+  /* v2.3.690: bake accounting for the perf HUD (?perf=1).  Cache misses are
+     the spike source -- a gear swap rebakes every frame on next sighting.
+     Read + reset by perfHud; zero cost beyond two adds per MISS. */
+  const _bt0 = (typeof performance !== 'undefined') ? performance.now() : 0;
+  const _bs = (typeof window !== 'undefined')
+    ? (window.__btBakeStats || (window.__btBakeStats = { count: 0, ms: 0 }))
+    : null;
+  try {
+    return _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs);
+  } finally { /* timing recorded inside on actual bakes only */ }
+}
+function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
   if (!bodyTex || !worn.length) return bodyTex;
   let bres;
   try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { bres = null; }
@@ -681,6 +693,7 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
   } catch (e) { return bodyTex; }
   const t = Texture.from(cv);
   _maskedBodyCache.set(key, t);
+  if (_bs && _bt0) { _bs.count++; _bs.ms += (performance.now() - _bt0); }
   /* v2.3.689: cap 600 -> 256.  Each entry is a 256x256 RGBA texture (256KB
      GPU), so the old cap allowed ~150MB of masked-body frames -- brutal on
      phones.  256 covers both poses x 5 dirs x a full jog cycle for ~1.6 worn
