@@ -13735,17 +13735,22 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'inline-block',
-      fontSize: 17
+      verticalAlign: 'middle',
+      fontSize: 16
     }
   }, "\u2694\uFE0F"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'inline-block',
-      marginLeft: 7,
+      verticalAlign: 'middle',
+      marginLeft: 8,
       /* v2.3.706: retro-arcade wordmark -- chunky 8-bit font + gold with a
          hard (unblurred) offset shadow, matching the pixel-art identity.
-         'Press Start 2P' is loaded in index.html; one weight (400) only. */
+         'Press Start 2P' is loaded in index.html; one weight (400) only.
+         v2.3.708: lineHeight 1 -- the font's tall default line box made
+         the lockup's vertical rhythm impossible to control. */
       fontFamily: "'Press Start 2P','Source Sans 3',sans-serif",
-      fontSize: 13,
+      fontSize: 14,
+      lineHeight: 1,
       color: 'var(--gold)',
       textShadow: '0 2px 0 #6b4310, 0 3px 0 rgba(0,0,0,0.5)'
     }
@@ -13754,15 +13759,23 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 9,
       color: 'var(--pop)',
       fontWeight: 700,
-      letterSpacing: '.3em',
-      marginTop: 3
+      letterSpacing: '.34em',
+      marginTop: 7
     }
   }, "ACTION RPG"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.708: gold hairline under the lockup -- ties the wordmark color
+       into the card and separates brand from metadata, fading out like a
+       nameplate engraving. */
+    style: { height: 2, marginTop: 7, borderRadius: 1, background: 'linear-gradient(90deg, rgba(245,197,66,.45), rgba(245,197,66,0) 72%)' }
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 9,
-      color: '#ffffff',
+      /* v2.3.708: version is metadata -- dim + tiny so it stops competing
+         with the wordmark. */
+      fontSize: 8,
+      color: 'var(--txt2)',
       fontFamily: 'Source Sans 3, sans-serif',
-      letterSpacing: '.05em'
+      letterSpacing: '.06em',
+      marginTop: 6
     }
   }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-preview"
