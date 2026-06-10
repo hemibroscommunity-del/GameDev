@@ -730,6 +730,43 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
    per frame; IntroVideo polls this to draw a real progress bar. */
 export const prewarmProgress = { done: 0, total: 0 };
 
+/* v2.3.701: plan the WHOLE intro workload up front so the loading bar is
+   monotonic.  Previously each pass added its own count to `total` when it
+   started, so done/total dropped (bar visibly 'reset') when the alt pass
+   registered 3x more work mid-load. */
+export function planPrewarmProgress() {
+  prewarmProgress.done = 0;
+  prewarmProgress.total = 0;
+  const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  let per = 0;
+  for (const pose of ['stand', 'jog']) {
+    for (const dir of DIRS) per += playerFrameCount(pose, dir) || 1;
+  }
+  const anyWorn = ['chest', 'legs'].some((sl) => { const it = getEquip(sl); return it && it !== 'none'; });
+  prewarmProgress.total = per * ((anyWorn ? 1 : 0) + 3);   // current set + 3 alt sets
+}
+
+/* v2.3.701: force-upload the baked masked-body textures to the GPU while the
+   intro overlay is still up.  Texture.from(canvas) uploads lazily on first
+   DRAW, so early play paid a stream of one-off upload stalls as the player
+   turned/moved through freshly-baked frames ('slowing down on a few frames
+   even after joining').  Feature-detected; harmless no-op if the renderer
+   doesn't expose an upload path. */
+export async function uploadBakedTextures(renderer) {
+  if (!renderer) return;
+  let n = 0;
+  for (const t of _maskedBodyCache.values()) {
+    try {
+      if (renderer.texture && typeof renderer.texture.initSource === 'function' && t && t.source) {
+        renderer.texture.initSource(t.source);
+      } else if (renderer.prepare && typeof renderer.prepare.upload === 'function') {
+        renderer.prepare.upload(t);
+      } else return;
+    } catch (e) { /* best-effort */ }
+    if (++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
 export async function prewarmMaskedBodyFrames() {
   const slots = ['chest', 'legs'];
   if (!slots.some((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) return;
@@ -737,11 +774,6 @@ export async function prewarmMaskedBodyFrames() {
   const shirtT = _chestEquipped ? null : shirtFill(getShirt(), getShirtColor());
   const shirtKey = shirtT ? (getShirt() + '-' + getShirtColor()) : 'none';
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
-  for (const pose of ['stand', 'jog']) {
-    for (const dir of DIRS) {
-      prewarmProgress.total += playerFrameCount(pose, dir) || 1;
-    }
-  }
   let sinceYield = 0;
   for (const pose of ['stand', 'jog']) {
     for (const dir of DIRS) {
@@ -816,13 +848,6 @@ export async function prewarmAltWornSets(opts) {
     { worn: [['legs', legsId]], full: false },
   ];
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
-  if (fast) {
-    for (const pose of ['stand', 'jog']) {
-      for (const dir of DIRS) {
-        prewarmProgress.total += (playerFrameCount(pose, dir) || 1) * SETS.length;
-      }
-    }
-  }
   let sinceYield = 0;
   for (const set of SETS) {
     const sT = set.full ? null : shirtT;

@@ -24,7 +24,10 @@ export const IntroVideo = ({ onComplete, waitFor }) => {
   useEffect(() => {
     const id = setInterval(() => {
       const p = prewarmProgress;
-      setProg(p.total > 0 ? Math.min(1, p.done / p.total) : 0);
+      const next = p.total > 0 ? Math.min(1, p.done / p.total) : 0;
+      /* v2.3.701: monotonic -- the bar may only grow (a late-registered
+         workload must never read as a reset). */
+      setProg((prev) => Math.max(prev, next));
     }, 150);
     return () => clearInterval(id);
   }, []);
