@@ -105,7 +105,7 @@ const PRIVILEGED_EVENTS = new Set([
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
   'loot_drop', 'loot_claimed', 'loot_despawn',
-  'zone_monsters', 'zone_nodes', 'zone_loot',
+  'zone_monsters', 'zone_nodes', 'zone_loot', 'zone_state',
   // Bootstrap + protocol
   'state_sync', 'tick', 'ping', 'player_count',
   'player_join', 'player_leave', 'player_update',
@@ -145,6 +145,13 @@ export class GameRoom {
     // Server-authoritative monsters
     this.monsters = {}; // zoneId -> [monster, ...]
     this.dirtyMonsters = new Set(); // zoneIds with changed monsters
+    // Protocol v2 per-entity dirty tracking.  v1 sessions still get the
+    // full dirty-zone entity list; v2 sessions get only the entities in
+    // these id sets (client merges by id).  Zone-level dirtyMonsters /
+    // dirtyNodes stay authoritative for "does this tick carry a delta
+    // at all" — the id sets only narrow the v2 payload.
+    this.dirtyMonsterIds = {}; // zoneId -> Set(monsterId)
+    this.dirtyNodeIds = {};    // zoneId -> Set(nodeId)
     this.RESPAWN_TIME = 15000; // 15s respawn
     this.MONSTER_AGGRO_RANGE = 120; // pixels
     /* Monster stop + attack distance.  Bumped 25 -> 55 over a couple
@@ -406,11 +413,26 @@ export class GameRoom {
     return monsters;
   }
 
+  // Mark a single monster / node as changed this tick.  Adds the zone
+  // to the v1 zone-level dirty set AND the entity id to the v2 per-
+  // entity set, so both protocol payloads stay in sync from one call.
+  _markMonsterDirty(zoneId, monsterId) {
+    this.dirtyMonsters.add(zoneId);
+    if (!this.dirtyMonsterIds[zoneId]) this.dirtyMonsterIds[zoneId] = new Set();
+    this.dirtyMonsterIds[zoneId].add(monsterId);
+  }
+
+  _markNodeDirty(zoneId, nodeId) {
+    this.dirtyNodes.add(zoneId);
+    if (!this.dirtyNodeIds[zoneId]) this.dirtyNodeIds[zoneId] = new Set();
+    this.dirtyNodeIds[zoneId].add(nodeId);
+  }
+
   // Ensure monsters exist for a zone (lazy spawn)
   _ensureZoneMonsters(zoneId) {
     if (!this.monsters[zoneId]) {
       this.monsters[zoneId] = this._spawnZoneMonsters(zoneId);
-      if (this.monsters[zoneId].length > 0) this.dirtyMonsters.add(zoneId);
+      for (const m of this.monsters[zoneId]) this._markMonsterDirty(zoneId, m.id);
     }
     return this.monsters[zoneId];
   }
@@ -441,8 +463,6 @@ export class GameRoom {
         }
       }
 
-      let zoneChanged = false;
-
       for (const m of monsters) {
         // Respawn check
         if (!m.alive) {
@@ -463,7 +483,7 @@ export class GameRoom {
               if (respawnSpd != null) m.spd = respawnSpd;
               else if (m.spawnSpd != null) m.spd = m.spawnSpd;
             }
-            zoneChanged = true;
+            this._markMonsterDirty(zoneId, m.id);
           }
           continue;
         }
@@ -487,7 +507,7 @@ export class GameRoom {
               type: 'monster_transform',
               payload: { id: m.id, zone: zoneId, fromVariant, toVariant },
             });
-            zoneChanged = true;
+            this._markMonsterDirty(zoneId, m.id);
           }
         }
 
@@ -583,7 +603,7 @@ export class GameRoom {
             if (dist > 0) {
               m.x += (dx / dist) * m.spd;
               m.y += (dy / dist) * m.spd;
-              zoneChanged = true;
+              this._markMonsterDirty(zoneId, m.id);
             }
           }
 
@@ -678,7 +698,7 @@ export class GameRoom {
             // position broadcast, so any client that missed the initial sync
             // never registers the monster locally — leading to "ghost hit"
             // damage reports with no visible attacker.
-            zoneChanged = true;
+            this._markMonsterDirty(zoneId, m.id);
           }
         } else {
           // Idle wander -- pick a random target ~30-80 px from the
@@ -709,7 +729,7 @@ export class GameRoom {
             const dyL = m.spawnY - m.y;
             m.x += (dxL / distSpawn) * m.spd;
             m.y += (dyL / distSpawn) * m.spd;
-            zoneChanged = true;
+            this._markMonsterDirty(zoneId, m.id);
             m._wanderTx = null;
             m._wanderTy = null;
           } else if (m._wanderPausedUntil && now < m._wanderPausedUntil) {
@@ -746,13 +766,11 @@ export class GameRoom {
             } else {
               m.x += (dxw / distw) * m.spd;
               m.y += (dyw / distw) * m.spd;
-              zoneChanged = true;
+              this._markMonsterDirty(zoneId, m.id);
             }
           }
         }
       }
-
-      if (zoneChanged) this.dirtyMonsters.add(zoneId);
     }
   }
 
@@ -827,7 +845,7 @@ export class GameRoom {
     if (zoneId === 'town' || zoneId === 'farm_home') return [];
     if (!this.nodes[zoneId]) {
       this.nodes[zoneId] = this._spawnZoneNodes(zoneId);
-      if (this.nodes[zoneId].length > 0) this.dirtyNodes.add(zoneId);
+      for (const n of this.nodes[zoneId]) this._markNodeDirty(zoneId, n.id);
     }
     return this.nodes[zoneId];
   }
@@ -840,15 +858,13 @@ export class GameRoom {
     for (const zoneId of Object.keys(this.nodes)) {
       const list = this.nodes[zoneId];
       if (!list || list.length === 0) continue;
-      let changed = false;
       for (const n of list) {
         if (!n.alive && n.respawnAt > 0 && now >= n.respawnAt) {
           n.alive = true;
           n.respawnAt = 0;
-          changed = true;
+          this._markNodeDirty(zoneId, n.id);
         }
       }
-      if (changed) this.dirtyNodes.add(zoneId);
     }
   }
 
@@ -1916,7 +1932,7 @@ export class GameRoom {
     // respawn timer either way.
     n.alive = false;
     n.respawnAt = Date.now() + this.NODE_RESPAWN_TIME;
-    this.dirtyNodes.add(zone);
+    this._markNodeDirty(zone, n.id);
 
     // Miss path: no inventory, no XP, no shard, no harvest_credit.
     // Client already knows it missed (it sent accuracy:'miss') so the
@@ -2133,9 +2149,7 @@ export class GameRoom {
     const ps = this.playerState[playerId];
     if (!ps || !ws) return;
     try {
-      ws.send(JSON.stringify({
-        type: 'player_state',
-        payload: {
+      const full = {
           coins: ps.coins || 0,
           inventory: ps.inventory || {},
           lifeSkills: ps.lifeSkills || {},
@@ -2169,8 +2183,32 @@ export class GameRoom {
           _questFlags: ps._questFlags || {},
           _questKills: ps._questKills || {},
           achievementPoints: ps.achievementPoints || 0,
-        },
-      }));
+      };
+      const session = this.sessions.get(ws);
+      let payload = full;
+      if (session && session.protocolVersion === 2) {
+        // Protocol v2 delta: send only fields changed since the last
+        // emit on this session.  The client's player_state handler
+        // already merges field-by-field (presence-gated), so a partial
+        // payload lands cleanly.  Cache holds JSON-stringified field
+        // values so nested objects (inventory / _buffs / equipment)
+        // compare by content, not identity.  First emit after join
+        // sends everything (cache starts empty); a reconnect gets a
+        // fresh session object, so the bootstrap sync stays full.
+        const cache = session.lastPlayerStateSent || (session.lastPlayerStateSent = {});
+        payload = {};
+        let changed = 0;
+        for (const k of Object.keys(full)) {
+          const s = JSON.stringify(full[k]);
+          if (cache[k] !== s) {
+            cache[k] = s;
+            payload[k] = full[k];
+            changed++;
+          }
+        }
+        if (changed === 0) return; // nothing changed -- skip the emit
+      }
+      ws.send(JSON.stringify({ type: 'player_state', payload }));
     } catch (e) {}
   }
 
@@ -3162,7 +3200,7 @@ export class GameRoom {
       }
     }
 
-    this.dirtyMonsters.add(zone);
+    this._markMonsterDirty(zone, m.id);
 
     // Push damage event for all clients to see
     this.eventBuffer.push({
@@ -3377,6 +3415,12 @@ export class GameRoom {
         session.id = msg.id;
         session.name = msg.name || 'Anon';
         session.data = msg.data || {};
+        // Protocol v2 opt-in.  v2 sessions get delta player_state emits,
+        // per-entity monster/node tick deltas, and the merged zone_state
+        // message on zone change.  Anything else (older clients) stays
+        // on v1 full payloads.
+        session.protocolVersion = msg.protocolVersion === 2 ? 2 : 1;
+        session.lastPlayerStateSent = {};
         this.playerState[msg.id] = {
           x: 0, y: 0, d: 'down', z: 'town', vx: 0, vy: 0,
           dodging: false, blocking: false, dead: false, disconnected: false,
@@ -3686,30 +3730,35 @@ export class GameRoom {
               // walk/swing as normal but the player has a moment to
               // orient before hits land.
               ps._zoneEntryGraceUntil = Date.now() + this.ZONE_ENTRY_GRACE_MS;
-              ws.send(JSON.stringify({
-                type: 'zone_monsters',
-                zone: ps.z,
-                monsters: newMonsters.map(m => ({
-                  id: m.id, arch: m.arch, level: m.level, element: m.element,
-                  x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, dmg: m.dmg,
-                  xp: m.xp, gold: m.gold, spd: m.spd, emoji: m.emoji, color: m.color,
-                  alive: m.alive,
-                })),
+              const zoneMonstersWire = newMonsters.map(m => ({
+                id: m.id, arch: m.arch, level: m.level, element: m.element,
+                x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, dmg: m.dmg,
+                xp: m.xp, gold: m.gold, spd: m.spd, emoji: m.emoji, color: m.color,
+                alive: m.alive,
               }));
               const newNodes = this._ensureZoneNodes(ps.z);
-              ws.send(JSON.stringify({
-                type: 'zone_nodes',
-                zone: ps.z,
-                nodes: newNodes.map(n => ({
-                  id: n.id, nodeType: n.nodeType, x: n.x, y: n.y,
-                  tierLvl: n.tierLvl, alive: n.alive, respawnAt: n.respawnAt,
-                })),
+              const zoneNodesWire = newNodes.map(n => ({
+                id: n.id, nodeType: n.nodeType, x: n.x, y: n.y,
+                tierLvl: n.tierLvl, alive: n.alive, respawnAt: n.respawnAt,
               }));
-              ws.send(JSON.stringify({
-                type: 'zone_loot',
-                zone: ps.z,
-                loot: this._zoneLootForWire(ps.z),
-              }));
+              const zoneLootWire = this._zoneLootForWire(ps.z);
+              if (session.protocolVersion === 2) {
+                // Protocol v2: one merged snapshot instead of three messages.
+                ws.send(JSON.stringify({
+                  type: 'zone_state', zone: ps.z,
+                  monsters: zoneMonstersWire, nodes: zoneNodesWire, loot: zoneLootWire,
+                }));
+              } else {
+                ws.send(JSON.stringify({
+                  type: 'zone_monsters', zone: ps.z, monsters: zoneMonstersWire,
+                }));
+                ws.send(JSON.stringify({
+                  type: 'zone_nodes', zone: ps.z, nodes: zoneNodesWire,
+                }));
+                ws.send(JSON.stringify({
+                  type: 'zone_loot', zone: ps.z, loot: zoneLootWire,
+                }));
+              }
             } else {
               // Safe zone (town / farm_home) -- explicitly send empty
               // state for all three so the client clears stale entries
@@ -3717,15 +3766,21 @@ export class GameRoom {
               // monsters / nodes / loot piles persist in the client's
               // S.monsters / S.gatherNodes / S.groundLoot after the
               // player crosses to town, and render on the town map.
-              ws.send(JSON.stringify({
-                type: 'zone_monsters', zone: ps.z, monsters: [],
-              }));
-              ws.send(JSON.stringify({
-                type: 'zone_nodes', zone: ps.z, nodes: [],
-              }));
-              ws.send(JSON.stringify({
-                type: 'zone_loot', zone: ps.z, loot: [],
-              }));
+              if (session.protocolVersion === 2) {
+                ws.send(JSON.stringify({
+                  type: 'zone_state', zone: ps.z, monsters: [], nodes: [], loot: [],
+                }));
+              } else {
+                ws.send(JSON.stringify({
+                  type: 'zone_monsters', zone: ps.z, monsters: [],
+                }));
+                ws.send(JSON.stringify({
+                  type: 'zone_nodes', zone: ps.z, nodes: [],
+                }));
+                ws.send(JSON.stringify({
+                  type: 'zone_loot', zone: ps.z, loot: [],
+                }));
+              }
             }
           }
         }
@@ -4180,39 +4235,84 @@ export class GameRoom {
         this.eventBuffer = [];
       }
 
-      // Monster state updates (only dirty zones, only alive + recently died)
-      if (hasMonsters) {
-        const mData = {};
-        for (const zoneId of this.dirtyMonsters) {
-          const monsters = this.monsters[zoneId];
-          if (!monsters) continue;
-          mData[zoneId] = monsters.map(m => ({
-            id: m.id, x: Math.round(m.x), y: Math.round(m.y),
-            hp: m.hp, alive: m.alive,
-          }));
-        }
-        delta.monsters = mData;
-        this.dirtyMonsters.clear();
+      // Monster + node deltas are protocol-versioned: v1 sessions get
+      // every entity in each dirty zone (legacy behavior); v2 sessions
+      // get only the entities marked dirty this tick (client merges by
+      // id, so unsent entries keep their last-known state).  Build each
+      // variant only when a session of that version is connected.
+      let hasV1 = false, hasV2 = false;
+      for (const [, s] of this.sessions) {
+        if (s.protocolVersion === 2) hasV2 = true; else hasV1 = true;
       }
 
-      // Gather-node deltas — only state-change fields (alive / respawnAt).
-      // The full node payload (type / x / y / tierLvl) is sent once at
-      // state_sync or zone_nodes; the client already has the position.
-      if (hasNodes) {
-        const nData = {};
-        for (const zoneId of this.dirtyNodes) {
-          const list = this.nodes[zoneId];
-          if (!list) continue;
-          nData[zoneId] = list.map((n) => ({
-            id: n.id, alive: n.alive, respawnAt: n.respawnAt,
-          }));
-        }
-        delta.nodes = nData;
-        this.dirtyNodes.clear();
-      }
+      const monsterWire = (m) => ({
+        id: m.id, x: Math.round(m.x), y: Math.round(m.y),
+        hp: m.hp, alive: m.alive,
+      });
+      // Gather-node deltas carry only state-change fields (alive /
+      // respawnAt).  The full node payload (type / x / y / tierLvl) is
+      // sent once at state_sync or zone change; the client already has
+      // the position.
+      const nodeWire = (n) => ({ id: n.id, alive: n.alive, respawnAt: n.respawnAt });
 
-      const msg = JSON.stringify(delta);
-      for (const [ws] of this.sessions) { try { ws.send(msg); } catch {} }
+      let msgV1 = null, msgV2 = null;
+      if (hasV1) {
+        const v1 = { ...delta };
+        if (hasMonsters) {
+          const mData = {};
+          for (const zoneId of this.dirtyMonsters) {
+            const monsters = this.monsters[zoneId];
+            if (!monsters) continue;
+            mData[zoneId] = monsters.map(monsterWire);
+          }
+          v1.monsters = mData;
+        }
+        if (hasNodes) {
+          const nData = {};
+          for (const zoneId of this.dirtyNodes) {
+            const list = this.nodes[zoneId];
+            if (!list) continue;
+            nData[zoneId] = list.map(nodeWire);
+          }
+          v1.nodes = nData;
+        }
+        msgV1 = JSON.stringify(v1);
+      }
+      if (hasV2) {
+        const v2 = { ...delta };
+        if (hasMonsters) {
+          const mData = {};
+          for (const zoneId of this.dirtyMonsters) {
+            const monsters = this.monsters[zoneId];
+            const ids = this.dirtyMonsterIds[zoneId];
+            if (!monsters || !ids) continue;
+            const changed = monsters.filter((m) => ids.has(m.id));
+            if (changed.length > 0) mData[zoneId] = changed.map(monsterWire);
+          }
+          if (Object.keys(mData).length > 0) v2.monsters = mData;
+        }
+        if (hasNodes) {
+          const nData = {};
+          for (const zoneId of this.dirtyNodes) {
+            const list = this.nodes[zoneId];
+            const ids = this.dirtyNodeIds[zoneId];
+            if (!list || !ids) continue;
+            const changed = list.filter((n) => ids.has(n.id));
+            if (changed.length > 0) nData[zoneId] = changed.map(nodeWire);
+          }
+          if (Object.keys(nData).length > 0) v2.nodes = nData;
+        }
+        msgV2 = JSON.stringify(v2);
+      }
+      this.dirtyMonsters.clear();
+      this.dirtyNodes.clear();
+      this.dirtyMonsterIds = {};
+      this.dirtyNodeIds = {};
+
+      for (const [ws, s] of this.sessions) {
+        const msg = s.protocolVersion === 2 ? msgV2 : msgV1;
+        if (msg) { try { ws.send(msg); } catch {} }
+      }
     }, this.TICK_RATE);
   }
 
