@@ -62,6 +62,54 @@ function vectorEntropy(samples) {
   return totalAngleDelta / Math.max(1, samples.length - 2);
 }
 
+/* ── Anti-bot gesture fingerprint v2 (v2.3.694) ──────────────────────────
+   Cheap scalar signals computed once at meter-full and shipped with
+   node_strike (<200 bytes total).  A human hand produces irregular sample
+   TIMING and a curved VELOCITY profile; a synthetic/replayed swipe converges
+   to near-constant timing and collinear motion.  The server accumulates the
+   DISTRIBUTION of these across a session — sophisticated agents can fake any
+   single value, but matching a human's natural variance over hundreds of
+   harvests is the hard part (see docs/ANTICHEAT-SPEC.md). */
+
+/* Variance of inter-sample dt (ms²).  Bots emitting samples on a fixed clock
+   → ~0; human input jitter → meaningfully positive. */
+function timingVariance(samples) {
+  if (samples.length < 4) return 0;
+  const dts = [];
+  for (let i = 1; i < samples.length; i++) dts.push(samples[i].t - samples[i - 1].t);
+  const mean = dts.reduce((a, b) => a + b, 0) / dts.length;
+  let v = 0;
+  for (const d of dts) v += (d - mean) * (d - mean);
+  return v / dts.length;
+}
+
+/* Curvature of the speed profile: variance of consecutive speed deltas,
+   normalised by mean speed.  Constant-velocity synthetic drags → ~0. */
+function velocityCurvature(samples) {
+  if (samples.length < 5) return 0;
+  const sp = [];
+  for (let i = 1; i < samples.length; i++) {
+    const dt = Math.max(1, samples[i].t - samples[i - 1].t);
+    sp.push(Math.hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y) / dt);
+  }
+  const mean = sp.reduce((a, b) => a + b, 0) / sp.length || 1;
+  let acc = 0;
+  for (let i = 1; i < sp.length; i++) acc += Math.abs(sp[i] - sp[i - 1]);
+  return Number(((acc / Math.max(1, sp.length - 1)) / mean).toFixed(3));
+}
+
+/* FNV-1a hash of the quantised path (8px grid) — a compact signature the
+   server dedupes against to catch EXACT replays of a recorded swipe. */
+function pathHash(samples) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < samples.length; i++) {
+    const qx = (samples[i].x >> 3) & 0xff, qy = (samples[i].y >> 3) & 0xff;
+    h ^= qx; h = Math.imul(h, 0x01000193);
+    h ^= qy; h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+
 /* Reps required to complete each skill's phase-2 gesture. */
 function repsTargetFor(skill) {
   return EXTRACT_REPS_TARGET[skill] || EXTRACT_REPS_DEFAULT;
@@ -230,7 +278,16 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         const ent = Number(vectorEntropy(sw.samples).toFixed(3));
         const dur = sw.samples.length
           ? sw.samples[sw.samples.length - 1].t - sw.samples[0].t : 0;
-        ex.swipeFp = { len: Math.round(pathLen), ent, dur: Math.round(dur) };
+        /* v2.3.694: richer fingerprint for the server's anomaly accumulator.
+           n = sample count, tv = timing variance, vc = velocity curvature,
+           h = replay-detection hash. */
+        ex.swipeFp = {
+          len: Math.round(pathLen), ent, dur: Math.round(dur),
+          n: sw.samples.length,
+          tv: Math.round(timingVariance(sw.samples)),
+          vc: velocityCurvature(sw.samples),
+          h: pathHash(sw.samples),
+        };
         const accuracy = gradeGesture(fillFrac, ent);
         swipeRef.current = null;
         if (typeof onSuccess === 'function') onSuccess(accuracy);

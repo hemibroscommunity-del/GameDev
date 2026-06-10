@@ -49,6 +49,7 @@ export const CookingMinigame = ({ fishKey, panSheetSrc, onComplete, onCancel }) 
   const startedAt = useRef(0);
   const phaseRef = useRef('cooking');           // 'cooking' | 'done'
   const flipsRef = useRef(0);                   // 0 = side 1, 1 = side 2 (flipped), 2 = cooked
+  const tapsRef = useRef([]);                   // v2.3.694: {t, frac} per flip → cook_request telemetry
 
   // Load pan sprite + dehalo isn't needed (bg is dark grey, not white).
   useEffect(() => {
@@ -80,7 +81,7 @@ export const CookingMinigame = ({ fishKey, panSheetSrc, onComplete, onCancel }) 
       // before the second flip lands, fish is burnt and we exit.
       if (progress > GOLDEN_BOT_FRAC && flipsRef.current < 2) {
         phaseRef.current = 'done';
-        setTimeout(() => onComplete && onComplete('burnt'), 120);
+        setTimeout(() => onComplete && onComplete('burnt', tapsRef.current.slice()), 120);
       }
 
       // ---- DRAW ----
@@ -152,12 +153,16 @@ export const CookingMinigame = ({ fishKey, panSheetSrc, onComplete, onCancel }) 
     if (!inGolden) return;                   // no-op outside golden
 
     flipsRef.current++;
+    /* v2.3.694: record the flip's timing so cook_request can carry it and the
+       server can re-verify both taps landed in the golden zone (rather than
+       trusting the client's claimed kind). */
+    tapsRef.current.push({ t: Math.round(elapsed), frac: Number(progress.toFixed(3)) });
     try { BT_AUDIO.beep(720, 0.06, 0.08, 'sine'); } catch {}
 
     if (flipsRef.current >= 2) {
       phaseRef.current = 'done';
       try { BT_AUDIO.collect(); } catch {}
-      setTimeout(() => onComplete && onComplete('cooked'), 160);
+      setTimeout(() => onComplete && onComplete('cooked', tapsRef.current.slice()), 160);
     }
   };
 

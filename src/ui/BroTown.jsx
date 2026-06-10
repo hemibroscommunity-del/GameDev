@@ -31,7 +31,7 @@ import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.
 import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
-import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, getDeviceNonce } from '@/networking/index.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
@@ -2010,6 +2010,9 @@ export var BroTown = function BroTown(_ref0) {
           type: 'join',
           id: S.myId,
           name: S.myName,
+          /* v2.3.694: device correlation nonce {id, env} for the server's
+             multi-account / bot-fleet anomaly tracker.  Old workers ignore it. */
+          device: getDeviceNonce(),
           /* Protocol v2 opt-in: the worker sends this session delta
              player_state emits (only changed fields), per-entity
              monster/node tick deltas, and the merged zone_state
@@ -12701,7 +12704,7 @@ export var BroTown = function BroTown(_ref0) {
      Consumes 1 raw fish from inventory and writes either
      cooked_<fishKey> (success) or burnt_dust (over-cooked).  Awards a
      small Cooking life-skill XP bump on success. */
-  var _applyCookingResult = useCallback(function (fishKey, kind) {
+  var _applyCookingResult = useCallback(function (fishKey, kind, taps) {
     var S = stateRef.current;
     var R = S && S.rpg;
     if (!R || !fishKey) return;
@@ -12721,7 +12724,10 @@ export var BroTown = function BroTown(_ref0) {
          burnt_dust + cooking XP server-side.  Authoritative inventory
          comes back via player_state.  Closes the "cook a fish you
          don't own" cheat. */
-      try { S.channel.send({ type: 'cook_request', payload: { fishKey: fishKey, kind: kind } }); } catch (e) {}
+      /* v2.3.694: carry the flip taps ({t, frac}) so the server can re-verify
+         both landed in the golden zone instead of trusting `kind`.  Old
+         server tolerates the extra field; new server validates it. */
+      try { S.channel.send({ type: 'cook_request', payload: { fishKey: fishKey, kind: kind, taps: taps || [] } }); } catch (e) {}
       return;
     }
     /* Fallback: no channel (SP / dungeon offline). */
@@ -31340,7 +31346,7 @@ export var BroTown = function BroTown(_ref0) {
   }), cookingMini && /*#__PURE__*/React.createElement(CookingMinigame, {
     fishKey: cookingMini.fishKey,
     panSheetSrc: cookingMini.panSheetSrc,
-    onComplete: function (kind) { _applyCookingResult(cookingMini.fishKey, kind); setCookingMini(null); },
+    onComplete: function (kind, taps) { _applyCookingResult(cookingMini.fishKey, kind, taps); setCookingMini(null); },
     onCancel: function () { setCookingMini(null); }
   }), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {
     var S = stateRef.current;
