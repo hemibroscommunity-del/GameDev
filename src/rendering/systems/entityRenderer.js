@@ -768,8 +768,22 @@ export async function prewarmMaskedBodyFrames() {
    never competes with gameplay.  Kicked after the current-set prewarm
    (pixiRenderer.preloadPlayerAssets) and re-kicked on equip changes. */
 let _altPrewarmSeq = 0;
+/* Yield between bake slices: prefer idle time (rIC), else a long-ish pause.
+   v2.3.699: the first trickle (4 bakes / 16ms gap =~ a third of the main
+   thread) measurably dented the frame rate right after joining -- now 2
+   bakes per slice, >=90ms apart, idle-scheduled, after a 5s grace. */
+const _idleYield = () => new Promise((r) => {
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(() => setTimeout(r, 90), { timeout: 1000 });
+  } else {
+    setTimeout(r, 120);
+  }
+});
 export async function prewarmAltWornSets() {
   const seq = ++_altPrewarmSeq;
+  /* grace period: let the join settle (zone load, first combat) first */
+  await new Promise((r) => setTimeout(r, 5000));
+  if (seq !== _altPrewarmSeq) return;
   const chestId = getEquip('chest') !== 'none' ? getEquip('chest') : 'steelplate';
   const legsId = getEquip('legs') !== 'none' ? getEquip('legs') : 'steelgreaves';
   const shirtT = shirtFill(getShirt(), getShirtColor());
@@ -802,9 +816,9 @@ export async function prewarmAltWornSets() {
           }
           if (!worn.length) continue;
           try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
-          if (++sinceYield >= 4) {
+          if (++sinceYield >= 2) {
             sinceYield = 0;
-            await new Promise((r) => setTimeout(r, 16));
+            await _idleYield();
           }
         }
       }
