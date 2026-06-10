@@ -74,3 +74,32 @@ export function gearInventoryItems() {
 export function getEquip(slot) { return _stores[slot] ? _stores[slot].get() : 'none'; }
 export function setEquip(slot, id) { if (_stores[slot]) _stores[slot].set(id); }
 export function onEquipChange(slot, fn) { return _stores[slot] ? _stores[slot].on(fn) : () => {}; }
+
+/* v2.3.687: the steel set is INDESTRUCTIBLE -- each piece exists exactly once,
+   either worn (gearCatalog slot) or in the bag (rpg.gearStash).  Unequip paths
+   that predate the stash (e.g. the Equipment menu's WORN ARMOUR toggle) just
+   set the slot to 'none', orphaning the piece: gone from the Loadout AND the
+   bag, with the unequipped state persisted.  Reconcile on load / bag render:
+   an orphaned piece is restored to the stash, a worn piece is deduped out of
+   it.  Returns true when R.gearStash was changed (caller persists). */
+const DEFAULT_GEAR_SET = [
+  { slot: 'chest', gearId: 'steelplate', name: 'Steel Plate' },
+  { slot: 'legs', gearId: 'steelgreaves', name: 'Steel Greaves' },
+];
+export function reconcileGearStash(R) {
+  if (!R) return false;
+  if (!R.gearStash) R.gearStash = [];
+  let changed = false;
+  for (const piece of DEFAULT_GEAR_SET) {
+    const wornId = getEquip(piece.slot);
+    const idx = R.gearStash.findIndex(g => g && g.slot === piece.slot && g.gearId === piece.gearId);
+    if (wornId === piece.gearId && idx >= 0) {
+      R.gearStash.splice(idx, 1);                 // worn AND bagged -> dedupe
+      changed = true;
+    } else if (wornId !== piece.gearId && idx < 0) {
+      R.gearStash.push({ ...piece });             // orphaned -> back to the bag
+      changed = true;
+    }
+  }
+  return changed;
+}

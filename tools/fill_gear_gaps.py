@@ -40,11 +40,25 @@ no_enclosed = no_backing or '--no-enclosed' in sys.argv
 # inter-leg gap to fill -- the belt is worn over the armour as a band.  Confined
 # to the central torso run so it never crosses the arms/hands at the sides.
 band_mode = '--band' in sys.argv
+# --patch: consistency pass over an ALREADY-BELTED sheet.  Lays the chain at the
+# same legacy anchor rows on EVERY frame, drawing only into chest-transparent
+# pixels over the body OR the leg plate (chest renders above legs, so frames
+# where the thigh plate covered the waist gap -- which the legacy mode skipped,
+# leaving the belt to pop in/out across the cycle -- now get their chain too).
+# Existing chain pixels are chest-opaque and therefore untouched.
+patch_mode = '--patch' in sys.argv
 band_crop = float(sys.argv[sys.argv.index('--band-crop') + 1]) if '--band-crop' in sys.argv else 0.0
 band_extend = float(sys.argv[sys.argv.index('--band-extend') + 1]) if '--band-extend' in sys.argv else 0.0
 band_left = int(sys.argv[sys.argv.index('--band-left') + 1]) if '--band-left' in sys.argv else 0    # extend belt left edge Npx
 band_right = int(sys.argv[sys.argv.index('--band-right') + 1]) if '--band-right' in sys.argv else 0  # extend belt right edge Npx
 band_down = int(sys.argv[sys.argv.index('--band-down') + 1]) if '--band-down' in sys.argv else 0     # extend belt bottom Npx
+# --frames i,j,k: only modify the listed frames (anchors still computed over the
+# whole cycle, so the patched frames stay consistent with the rest).
+only_frames = (set(int(f) for f in sys.argv[sys.argv.index('--frames') + 1].split(','))
+               if '--frames' in sys.argv else None)
+# --up N: raise the band top Npx (patch mode -- close a gap between the chain
+# and the cuirass bottom; the chain is tiled to the taller window).
+band_up = int(sys.argv[sys.argv.index('--up') + 1]) if '--up' in sys.argv else 0
 chest_p = f'public/sprites/gear/chest/steelplate/{pose}-{dir_}.png'
 legs_p = f'public/sprites/gear/legs/steelgreaves/{pose}-{dir_}.png'
 chest = Image.open(chest_p).convert('RGBA')
@@ -106,15 +120,22 @@ if band_mode:
         band_h = round(band_h * (1 + band_extend))
 if band_mode and band_down:
     band_h += band_down                 # extend the belt bottom Npx (top stays; chain link size unchanged, tiled below)
+if patch_mode and band_up:
+    band_h += band_up                   # extend the belt top Npx (bottom stays)
 chain_s = np.array(CHAIN.resize((max(1, int(706 * chain_h / 96)), chain_h), Image.LANCZOS))
 if band_h > chain_h:
     reps = int(np.ceil(band_h / chain_h))
     chain_s = np.tile(chain_s, (reps, 1, 1))[:band_h]
+if patch_mode and band_up:
+    # keep the link phase of the ORIGINAL band rows (new rows added on top wrap)
+    chain_s = np.roll(chain_s, band_up, axis=0)
 
 # Bake the belt into the CHEST but ONLY where the chest is transparent (the
 # waist gap) -- so it fills the hole without ever overwriting the chest's
 # arms/hands (which are opaque), i.e. arms never get clipped, belt stays visible.
 for i in range(n):
+    if only_frames is not None and i not in only_frames:
+        continue
     cs = ca[:, i * FRAME:(i + 1) * FRAME]
     ls = la[:, (i % ln) * FRAME:(i % ln + 1) * FRAME]
     chest_op = cs[:, :, 3] > 20
@@ -134,7 +155,7 @@ for i in range(n):
     if band_mode:
         by0 = y0 + int(0.46 * medH)                  # belt top at the waist; height = the gap
     else:
-        by0 = y0 + seam_off - 22                     # chain top, nudged up 20px total
+        by0 = y0 + seam_off - 22 - (band_up if patch_mode else 0)   # chain top, nudged up 20px total
     band = np.zeros_like(bop)
     band[max(0, by0):min(FRAME, by0 + band_h), :] = True
     if band_mode and band_crop > 0:                  # crop FRAC off the TOP (keep the bottom; chain bottom shows)
@@ -165,6 +186,17 @@ for i in range(n):
         # else: --band-extend lets the belt sit OVER the leg-top (chest layer renders above legs)
         region[:, :rl] = False
         region[:, rr + 1:] = False
+    elif patch_mode:
+        # Same rows as the legacy belt; fill over body OR leg plate, x-confined
+        # to the leg-gear span at the band rows (the hips) so the chain never
+        # lands on a swinging arm at the sides.
+        legmask = ls[:, :, 3] > 20
+        region = band & (bop | legmask) & ~chest_op
+        bandrows = legmask[max(0, by0):min(FRAME, by0 + band_h), :]
+        cols = np.where(bandrows.any(0))[0]
+        if len(cols):
+            region[:, :int(cols.min())] = False
+            region[:, int(cols.max()) + 1:] = False
     else:
         region = band & bop & ~chest_op & ~(ls[:, :, 3] > 20)   # the gap NEITHER plate covers
     if not region.any():

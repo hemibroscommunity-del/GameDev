@@ -180,7 +180,12 @@ const BODY_DIR_SCALE = {
      (bare-body in v2.3.569, jog-bulk in v2.3.570) distorted the drawn art and
      made dirs read too fat/skinny -- dropped.  scale.x == scale.y (STAND_WIDTH
      all 1.0) so the drawn proportions are preserved exactly. */
-  stand: { south: 1.136, east: 0.983, north: 1.039, northeast: 1.003, southwest: 0.983 },
+  /* v2.3.684: south 1.136 -> 1.051 -- the idle popped 8% LARGER than the jog
+     when the run stopped.  v2.3.645 neutralized STAND_HEIGHT (0.975) and
+     JOG_HEIGHT (1.052) without re-deriving this map; for south those two
+     factors were what held idle == jog.  Re-measured on the armored figure:
+     stand 188px, jog mean 197.6px -> 197.6/188 = 1.051 makes them equal. */
+  stand: { south: 1.051, east: 0.983, north: 1.039, northeast: 1.003, southwest: 0.983 },
   /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
      was bigger running than standing).  Crown-to-hip over-scaled the jog
      because a running figure leans + spreads its legs, compressing vertical
@@ -201,66 +206,11 @@ function bodyDirScale(pose, dir) {
   return (m && m[dir]) || 1.0;
 }
 
-/* v2.3.565: per-direction WIDTH (horizontal-only) multiplier for the IDLE pose
-   -- some idle facings are drawn too narrow, so stretch the whole armored
-   figure horizontally (the gear copies the body's scale.x, so it follows).
-   Mirror dirs share the base value (W<-E, NW<-NE, SE<-SW). */
-/* v2.3.567: all 1.0 -- the re-drawn idle sprites have correct proportions, so
-   no horizontal stretch is needed (was a patch for the old narrow idles). */
-/* Per-direction idle WIDEN pass (user-tuned to match the jog frames' bulk).
-   Horizontal-only stretch applied on top of the uniform height scale; the gear
-   copies scale.x so the armour follows.  Mirror dirs share the source value
-   (W<-E, NW<-NE, SE<-SW), so the user's "NW"/"SE" tweaks map onto NE/SW.
-   ARMOUR-ONLY (see standWidth's `armored` gate): the bare body is left alone.
-   v2.3.576: S+2% E+50% N+30% NE+50% SW+15%.
-   v2.3.577: E +5% (1.50->1.575), N +2% (1.30->1.326), NE +5% (1.50->1.575),
-             SW +2% (1.15->1.173); south unchanged.
-   v2.3.579: E +10% wider (1.575->1.7325), SW +5% wider (1.173->1.232).
-   v2.3.580: S +5% wider (1.02->1.071).
-   v2.3.584: S -1% narrower (1.071->1.060); NE +5% wider (1.575->1.654, covers
-             NW via mirror) per user. */
-const STAND_WIDTH = { south: 1.060, east: 1.7325, north: 1.326, northeast: 1.654, southwest: 1.232 };
-function standWidth(pose, dir, armored) {
-  return 1.0;   // v2.3.645: per-axis manual armour correction removed -- the aligned
-                // gear is drawn to fit, so only the uniform BODY_DIR_SCALE applies.
-}
-/* Per-direction idle SHORTEN/TALLEN pass (vertical-only) -- trims/extends the
-   idle height per dir to line the armoured figure up with its jog frames.
-   scale.y only (standWidth handles x); mirror dirs share the source; ARMOUR-ONLY.
-   v2.3.576: S0.98 E0.92 N0.95 NE0.95 SW0.95.
-   v2.3.577: E +5% taller (0.92->0.966), NE +5% taller (0.95->0.998),
-             SW -2% shorter (0.95->0.931); N & S unchanged.
-   v2.3.584: S -2% shorter (0.98->0.960); N +12% taller (0.95->1.064) per user.
-   v2.3.585: re-derived by tools/measure_armored.py to normalize EVERY armored
-             idle to one rendered height (~81px median); widths left at natural
-             perspective per user ("height-only, all equal"). */
-const STAND_HEIGHT = { south: 0.975, east: 0.945, north: 0.964, northeast: 0.946, southwest: 0.949 };
-function standHeight(pose, dir, armored) {
-  return 1.0;   // v2.3.645: neutralized (see standWidth)
-}
-
-/* Per-direction JOG height (vertical-only) multiplier -- normalizes the running
-   figure's rendered height per facing to the SAME ~81px target as the idles, so
-   stand and run read the same size.  scale.y only; mirror dirs share the source;
-   ARMOUR-ONLY, same gate as standHeight.  v2.3.585: derived by
-   tools/measure_armored.py (height-only, all equal).
-   v2.3.587: NE re-calibrated on the whole-cycle MEAN (not the mid frame) --
-             its raised-knee frames towered to 90px; 1.059->0.977 brings the
-             cycle mean back in line with the other facings (~80px). */
-const JOG_HEIGHT = { south: 1.052, east: 0.985, north: 0.926, northeast: 0.977, southwest: 1.028 };
-function jogHeight(pose, dir, armored) {
-  return 1.0;   // v2.3.645: neutralized (see standWidth)
-}
-
-/* Per-direction JOG width (horizontal-only) multiplier -- trims the running
-   figure's bulk per facing to line it up against its idle.  scale.x only;
-   mirror dirs share the source (W<-E, NW<-NE, SE<-SW); ARMOUR-ONLY, same gate
-   as standWidth.  v2.3.584: NE -5% narrower (covers NW), SW -5% narrower
-   (covers SE) per user.  v2.3.586: NE -5% more (0.95->0.903) per user. */
-const JOG_WIDTH = { northeast: 0.903, southwest: 0.95 };
-function jogWidth(pose, dir, armored) {
-  return 1.0;   // v2.3.645: neutralized (see standWidth)
-}
+/* v2.3.645 removed the per-axis manual armour stretches (STAND_WIDTH/
+   STAND_HEIGHT/JOG_WIDTH/JOG_HEIGHT + their accessor functions) -- the
+   aligned gear is drawn to fit, so only the uniform BODY_DIR_SCALE applies.
+   The neutralized scaffolding (functions returning 1.0 multiplied into every
+   scale) was deleted in the v2.3.688 cleanup; history has the tuned maps. */
 
 /* Place a player's headwear sprite for this frame.  Shared by the local
    player (_updatePlayer) and remote players (_updateOtherPlayers).
@@ -460,8 +410,14 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
        picked -- and works for remote players' palettes too.  The fist is found by
        hue-alignment to the sampled skin (score = (p.ref)^2/|ref|^2), not a fixed
        skin colour.  Mirrors preview_armor_frames._blend_ghost_hand -- keep in
-       sync.  v2.3.620. */
-    if (figBot > figTop && worn.some(w => w.k && w.k.indexOf('chest:') === 0)) {
+       sync.  v2.3.620.
+       v2.3.686: FULL SET ONLY.  The blend assumes any below-waist skin is the
+       ghost fist -- with chest-only wear the bare belly/hands are legit skin,
+       and the blend painted flat pants-colour smears across the belly, ate the
+       pants' top edge, and chewed the idle outlines near the hanging hands. */
+    if (figBot > figTop
+        && worn.some(w => w.k && w.k.indexOf('chest:') === 0)
+        && worn.some(w => w.k && w.k.indexOf('legs:') === 0)) {
       try {
         const fh = figBot - figTop;
         const waistY = Math.round(figTop + 0.45 * fh);   // a bit above mid-figure so the waist/hip skin (chain-belt zone) is caught too
@@ -580,6 +536,139 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
         }
       } catch (e) { /* ghost-hand blend is best-effort */ }
     }
+    /* v2.3.681: erase the naked-body OUTLINE/SHADOW remnants that survive
+       OUTSIDE the armour silhouette where the AI drawing drifted (floating
+       arcs hugging the figure).  When armoured, the body may only show INSIDE
+       the filled gear silhouette (+2px: pants in plate gaps, armpit windows)
+       or in the restored head band.  Row-ranges keep partial equips intact.
+       Mirrors preview_armor_frames.composite -- keep in sync. */
+    try {
+      const sc = document.createElement('canvas'); sc.width = 256; sc.height = 256;
+      const sctx = sc.getContext('2d');
+      let wornChest = false, wornLegs = false;
+      for (const w of worn) {
+        const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
+        const gf = gt.frame;
+        sctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, 0, 0, 256, 256);
+        if (w.k && w.k.indexOf('chest:') === 0) wornChest = true;
+        if (w.k && w.k.indexOf('legs:') === 0) wornLegs = true;
+      }
+      const gd = sctx.getImageData(0, 0, 256, 256).data;
+      const gop = new Uint8Array(256 * 256);
+      let gLo = 256, gHi = -1;
+      for (let p = 0; p < 256 * 256; p++) {
+        if (gd[p * 4 + 3] > 30) {
+          gop[p] = 1;
+          const y = (p / 256) | 0;
+          if (y < gLo) gLo = y; if (y > gHi) gHi = y;
+        }
+      }
+      if (gHi >= gLo) {
+        /* fill holes: flood the EMPTY space from the borders; anything empty
+           and unreached is an interior hole -> part of the silhouette. */
+        const reach = new Uint8Array(256 * 256); const st = [];
+        for (let x = 0; x < 256; x++) { st.push(x, 255 * 256 + x); }
+        for (let y = 0; y < 256; y++) { st.push(y * 256, y * 256 + 255); }
+        while (st.length) {
+          const p = st.pop();
+          if (reach[p] || gop[p]) continue;
+          reach[p] = 1;
+          const x = p % 256, y = (p / 256) | 0;
+          if (x > 0) st.push(p - 1);
+          if (x < 255) st.push(p + 1);
+          if (y > 0) st.push(p - 256);
+          if (y < 255) st.push(p + 256);
+        }
+        /* allowed = filled silhouette (gop | unreached) dilated by 2 */
+        let fill = new Uint8Array(256 * 256);
+        for (let p = 0; p < 256 * 256; p++) fill[p] = (gop[p] || !reach[p]) ? 1 : 0;
+        for (let it = 0; it < 2; it++) {
+          const nx = new Uint8Array(fill);
+          for (let p = 0; p < 256 * 256; p++) {
+            if (fill[p]) continue;
+            const x = p % 256, y = (p / 256) | 0;
+            if ((x > 0 && fill[p - 1]) || (x < 255 && fill[p + 1]) ||
+                (y > 0 && fill[p - 256]) || (y < 255 && fill[p + 256])) nx[p] = 1;
+          }
+          fill = nx;
+        }
+        /* WAIST BAND: the torso-leg gap isn't always enclosed by gear (open at
+           the hip side in profile frames), but the body there is legit -- it
+           backs the see-through chain belt and fills the gap with pants
+           instead of background.  Allow body in the waist rows, but only
+           within the gear's horizontal span per row so outline arcs at waist
+           height (beyond the gauntlets) stay dead.
+           v2.3.684: partial wear too (chest-only: pants behind the baked-in
+           belt; legs-only: hip edges beside the thigh plates). */
+        const rowMin = new Int16Array(256).fill(256), rowMax = new Int16Array(256).fill(-1);
+        let w0 = 256, w1 = 256;
+        if ((wornChest || wornLegs) && figBot > figTop) {
+          const fh2 = figBot - figTop;
+          w0 = Math.max(0, Math.round(figTop + 0.38 * fh2));
+          w1 = Math.min(256, Math.round(figTop + 0.64 * fh2));
+          for (let y = w0; y < w1; y++) {
+            for (let x = 0; x < 256; x++) {
+              if (gop[y * 256 + x]) { if (x < rowMin[y]) rowMin[y] = x; if (x > rowMax[y]) rowMax[y] = x; }
+            }
+          }
+        }
+        /* v2.3.684 PARTIAL WEAR (chest-only / legs-only): the row-range gates
+           (gLo/gHi) are fooled by sheet accessories -- the idle chest's hanging
+           gauntlet reaches mid-thigh and the idle greaves can carry stray
+           pixels above the knee -- so whole bare-thigh/hip rows were erased
+           (floating boots under a chopped figure).  Confine per ROW instead:
+           only rows where the gear actually WRAPS the body (gear pixels >=
+           85% of the original body pixels in that row) are silhouette-
+           confined; rows crossed by a narrow accessory keep the bare body.
+           The full set keeps the original aggressive path (in profile the
+           erased thigh hides behind the stacked plates -- restoring it would
+           poke pants past the gauntlet). */
+        const partial = !(wornChest && wornLegs);
+        const covered = new Uint8Array(256);
+        if (partial && origBody) {
+          for (let y = 0; y < 256; y++) {
+            let bc = 0, gc = 0;
+            for (let x = 0; x < 256; x++) {
+              const p = y * 256 + x;
+              if (origBody[p * 4 + 3] > 40) bc++;
+              if (gop[p]) gc++;
+            }
+            covered[y] = (bc > 0 && gc >= 0.85 * bc) ? 1 : 0;
+          }
+        }
+        const img2 = ctx.getImageData(0, 0, 256, 256); const d2 = img2.data;
+        const hi2 = wornLegs ? Math.min(256, gHi + 8) : 256;
+        let dirty2 = false;
+        for (let y = Math.max(0, neckY); y < 256; y++) {
+          const skipBelow = !wornLegs && y > gHi;     // bare legs stay
+          const skipAbove = !wornChest && y < gLo;    // bare torso stays
+          const inWaist = y >= w0 && y < w1;
+          for (let x = 0; x < 256; x++) {
+            const p = y * 256 + x, o = p * 4;
+            if (partial && !covered[y] && !(wornLegs && y >= hi2)) {
+              /* bare row: stays whole AND gets back what the dilated cover
+                 halo ate (the hue-based pant-restore misses shirt/skin, which
+                 left a transparent band above the greaves top / around the
+                 hanging gauntlet on partial wear). */
+              if (d2[o + 3] === 0 && origBody && origBody[o + 3] > 40) {
+                d2[o] = origBody[o]; d2[o + 1] = origBody[o + 1];
+                d2[o + 2] = origBody[o + 2]; d2[o + 3] = origBody[o + 3];
+                dirty2 = true;
+              }
+              continue;
+            }
+            if (d2[o + 3] === 0) continue;
+            if (wornLegs && y >= hi2) { d2[o + 3] = 0; dirty2 = true; continue; }
+            if (partial) {
+              if (!covered[y]) continue;              // bare row stays whole
+            } else if (skipBelow || skipAbove) continue;
+            if (inWaist && x >= rowMin[y] && x <= rowMax[y]) continue;
+            if (!fill[p]) { d2[o + 3] = 0; dirty2 = true; }
+          }
+        }
+        if (dirty2) ctx.putImageData(img2, 0, 0);
+      }
+    } catch (e) { /* silhouette confinement is best-effort */ }
   } catch (e) { return bodyTex; }
   const t = Texture.from(cv);
   _maskedBodyCache.set(key, t);
@@ -685,37 +774,41 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
 
 /* v2.3.354: per-frame beard z-order.  The beard is on the face, so it
    needs a direction-dependent layer just like the weapon + shield:
-   - E / W profiles (facingIdx 0 / 4): the hand swing crosses the face,
-     and the hand-cap body-clones (drawn for the bamboo grip) would paint
-     bare-face pixels OVER the beard -- it "disappears".  So here the beard
-     renders ABOVE the weapon + hand clones (but below the HUD).
-   - Every other facing: the beard sits just above the body and BEHIND the
-     weapon + swinging arms, so the bamboo + arms pass in front of it
-     (correct for the toward-camera SE / S / SW angles).
+   - Rear facings (NW 5 / N 6 / NE 7): the beard sits BEHIND the head --
+     only the fuzz that extends past the head silhouette peeks out.  The
+     old rule put it 'just above the body', which stamped the beard sliver
+     ON the back of the head (user report, v2.3.679).
+   - Every other facing: the beard hangs over the chin and down the chest,
+     so it renders ABOVE the body AND above the worn gear (chest plate /
+     pauldrons) -- the old 'bodyIdx + 1' target predated the gear layers
+     and left the beard hidden behind the armour on S/SW/SE.  On E / W it
+     additionally goes above the hand-cap body-clones (the hand swing
+     crosses the face and the clones would erase it).  The weapon stays
+     above the beard on the toward-camera facings via the block below.
    Shared by local + remote (remote displays simply lack the hand/shield
    sprites, so those are skipped). */
 function _orderTraitsAndWeapon(display, facingIdx) {
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
-    if (facingIdx === 0 || facingIdx === 4) {
-      /* E / W profile: the hand-cap body-clones cross the face and would
-         erase the beard, so lift the beard ABOVE those clones (+ shield).
-         The weapon is NOT touched here -- on E it gets pushed in front of
-         the beard by the E/SE/NE block below; on W it must stay BEHIND the
-         body (west weapon is held away from camera), so we leave it. */
+    const rearFacing = (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+    if (rearFacing) {
+      /* Behind the head: insert just BELOW the body sprite. */
+      const bodyIdx = display.getChildIndex(display._spriteBody);
+      const fhIdx = display.getChildIndex(beard);
+      if (fhIdx > bodyIdx) display.setChildIndex(beard, bodyIdx);
+    } else {
+      /* Above body + gear (+ hand clones / shield where they cross the
+         face).  setChildIndex removes-then-inserts, so inserting at the
+         highest reference index lands the beard directly above it. */
       let ref = display.getChildIndex(display._spriteBody);
-      for (const s of [display._handCapSprite, display._handArmSprite,
+      for (const s of [display._gearLegs, display._gearChest, display._gearShoulders,
+                       display._handCapSprite, display._handArmSprite,
                        display._shieldSprite]) {
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
       }
       const fhIdx = display.getChildIndex(beard);
       if (fhIdx < ref) display.setChildIndex(beard, ref);
-    } else {
-      const bodyIdx = display.getChildIndex(display._spriteBody);
-      const fhIdx = display.getChildIndex(beard);
-      const target = fhIdx > bodyIdx ? bodyIdx + 1 : bodyIdx;
-      if (fhIdx !== target) display.setChildIndex(beard, target);
     }
   }
   /* --- Weapon in front of ALL body traits on the toward-camera facings
@@ -2484,7 +2577,9 @@ export class EntityRenderer {
            v2.3.399: + their pants / shoes colors.
            v2.3.497: + their baked shirt (torso-fill). */
         const _oChest = (other.equip && other.equip.chest) || 'none';
-        const _oShirtT = _oChest !== 'none' ? null : shirtFill(other.shirt, other.shirtColor);
+        const _oLegs = (other.equip && other.equip.legs) || 'none';
+        /* v2.3.686: full set only (mirrors the local-player shirt gate). */
+        const _oShirtT = (_oChest !== 'none' && _oLegs !== 'none') ? null : shirtFill(other.shirt, other.shirtColor);
         const _oShirtKey = _oShirtT ? (other.shirt + '-' + other.shirtColor) : 'none';
         let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey);
         if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey);
@@ -2511,10 +2606,8 @@ export class EntityRenderer {
           /* v2.3.537: derived per-(pose,dir) scale, shared with the local
              player path via bodyDirScale (silhouette-height normalization). */
           const sizeMul = bodyDirScale(pose, dir) * 0.3515625;
-          /* v2.3.577: idle widen/shorten is armour-only (see local path). */
-          const _remoteArmored = other.equip && other.equip.chest && other.equip.chest !== 'none' && other.equip.legs && other.equip.legs !== 'none';
-          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * standWidth(pose, dir, _remoteArmored) * jogWidth(pose, dir, _remoteArmored);
-          spriteBody.scale.y = sizeMul * standHeight(pose, dir, _remoteArmored) * jogHeight(pose, dir, _remoteArmored);
+          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
+          spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
           body.visible = false;
@@ -2539,7 +2632,7 @@ export class EntityRenderer {
             }
           }
           if (_rworn.length) {
-            const _mt = _maskedBodyFrame(tex, _rworn, 4);
+            const _mt = _maskedBodyFrame(tex, _rworn, 6);
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           spriteBody.visible = true;
@@ -2792,6 +2885,7 @@ export class EntityRenderer {
 
     const P = S.player;
     const display = this.playerDisplay;
+    if (typeof window !== 'undefined' && window.__btMaskDebug) window.__playerDisplay = display;
     /* Force visibility every frame — same defensive concern as the
        parent re-attach above. */
     display.visible = true;
@@ -3006,10 +3100,9 @@ export class EntityRenderer {
            walking backward relative to their aim direction, reverse
            the playback so the legs trail the body. */
         const fc = playerFrameCount('jog', dir) || 24;
-        /* v2.3.603: armoured (chest+legs worn, armour not toggled off) keeps the
-           slower NE/NW cadence; the naked body gets the +35% speed-up. */
-        const _armCadence = !(typeof window !== 'undefined' && window.__btHideArmor)
-          && getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
+        /* v2.3.603: armoured (chest+legs worn) keeps the slower NE/NW cadence;
+           the naked body gets the +35% speed-up. */
+        const _armCadence = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
         const baseCycle = cycleMs('jog', dir, _armCadence);
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
@@ -3044,8 +3137,10 @@ export class EntityRenderer {
          v2.3.497: shirt is now BAKED into the body (torso skin retinted to the
          shirt color, follows every pose/frame) instead of an overlay sprite. */
       const _shId = getShirt(), _shCol = getShirtColor();
-      /* chest gear covers the torso -> skip the procedural shirt bake. */
-      const _chestEquipped = getEquip('chest') !== 'none';
+      /* Skip the procedural shirt bake only under the FULL set (torso fully
+         covered).  v2.3.686: chest-only wear exposes the belly band below the
+         cuirass -- bake the shirt so it reads as shirt under armour, not skin. */
+      const _chestEquipped = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
       const _shirtT = _chestEquipped ? null : shirtFill(_shId, _shCol);
       const _shirtKey = _shirtT ? (_shId + '-' + _shCol) : 'none';
       let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
@@ -3066,27 +3161,17 @@ export class EntityRenderer {
         display._animPose = pose;
         display._animDir = dir;
         display._animFrame = frameIdx;
-        /* v2.3.576: debug "show me the bare character" toggle (hotkey/HUD
-           button in BroTown.jsx sets window.__btHideArmor).  Lets the user
-           inspect the raw body animation (e.g. the new NE/NW jog) with the
-           armour stripped off -- gear hidden, body + hair/hat shown. */
-        const _hideArmor = (typeof window !== 'undefined' && !!window.__btHideArmor);
+        /* The v2.3.576 window.__btHideArmor debug toggle was retired in
+           v2.3.678 (armour visibility is governed by the equip slots); its
+           reads were removed in the v2.3.688 cleanup. */
         /* v2.3.609: ONE transform for the whole figure.  spriteBody is the
            invisible reference (position + scale); the visible body is the three
            region sprites and the gear, all sharing this transform so they stay
-           pixel-aligned (no cloning).  Armour-fit scale applies when the bulk
-           pieces (chest+legs) are worn; naked/uniform otherwise. */
-        const _armoredIdle = !_hideArmor && getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
-        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _armoredIdle) * jogWidth(pose, dir, _armoredIdle);
-        spriteBody.scale.y = bodyScale * standHeight(pose, dir, _armoredIdle) * jogHeight(pose, dir, _armoredIdle);
+           pixel-aligned (no cloning). */
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale;
+        spriteBody.scale.y = bodyScale;
         spriteBody.tint = 0xffffff;
-        if (_hideArmor) {
-          if (display._gearLegs) display._gearLegs.visible = false;
-          if (display._gearChest) display._gearChest.visible = false;
-          if (display._gearShoulders) display._gearShoulders.visible = false;
-        } else {
-          _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
-        }
+        _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
         /* v2.3.613: no helmet -- the head/face always shows.  The body is one
            sprite; erase the body under the worn chest/legs plate (dilated to
            swallow the AI misalignment) so it never pokes past a plate edge,
@@ -3094,7 +3179,7 @@ export class EntityRenderer {
         _hideBodyRegions(display);
         _armorHidesBody = false;                 // head always visible now
         const _worn = [];
-        if (!_hideArmor) {
+        {
           for (const _sl of ['chest', 'legs']) {
             const _it = getEquip(_sl);
             if (_it && _it !== 'none') {
@@ -3112,7 +3197,7 @@ export class EntityRenderer {
            on' bug. */
         let _bodyTex;
         try {
-          _bodyTex = _worn.length ? _maskedBodyFrame(tex, _worn, 4) : tex;
+          _bodyTex = _worn.length ? _maskedBodyFrame(tex, _worn, 6) : tex;
         } catch (e) {
           _bodyTex = tex;
         }

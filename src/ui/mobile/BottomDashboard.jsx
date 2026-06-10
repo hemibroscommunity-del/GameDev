@@ -12,6 +12,7 @@ import { getFacialHairColor, facialHairColorTarget, onFacialHairColorChange } fr
 import { getHeadwear, onHeadwearChange } from '../../rendering/traits/headwearCatalog.js';
 import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js';
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
+import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { weaponSwapBus } from './weaponSwapBus.js';
 import { InventoryPanel, ItemTile }    from './dash/InventoryPanel.jsx';
@@ -1062,6 +1063,21 @@ export const BottomDashboard = () => {
                     if (!R.armor) return;
                     itemDetailBus.open({ kind: 'armor', armor: R.armor, anchor });
                   };
+                  /* v2.3.685: chest/legs cells bind to the WORN gear (the
+                     rendered steel set, gearCatalog slots -- equipped by
+                     default on join).  Tap opens the popup with Unequip,
+                     which stashes the piece in the bag (rpg.gearStash),
+                     mirroring the weapon/shield flow. */
+                  const gearChestId = getEquip('chest');
+                  const gearLegsId = getEquip('legs');
+                  const gearIconSrc = (id) =>
+                    (id === 'steelplate' || id === 'steelgreaves')
+                      ? `/sprites/gear/icons/${id}.png?v=2.3.685` : null;
+                  const onTapGear = (slot) => (anchor) => {
+                    const gearId = getEquip(slot);
+                    if (!gearId || gearId === 'none') return;
+                    itemDetailBus.open({ kind: 'gear', slot, gearId, anchor });
+                  };
                   return (
                     <div style={{
                       flex: 1,
@@ -1126,13 +1142,23 @@ export const BottomDashboard = () => {
                         {slotCell({
                           k: 'chest',
                           label: 'CHEST',
-                          iconSrc: armorSrc,
-                          equipped: !!R.armor,
+                          /* worn gear first; legacy stats-armor fallback */
+                          iconSrc: gearChestId !== 'none' ? gearIconSrc(gearChestId) : armorSrc,
+                          equipped: gearChestId !== 'none' || !!R.armor,
                           equippedGlyph: '\u{1F9BA}',
-                          active: !!armorSrc,
-                          onTap: R.armor ? onTapArmor : undefined,
+                          active: gearChestId !== 'none' || !!R.armor,
+                          onTap: gearChestId !== 'none' ? onTapGear('chest')
+                               : R.armor ? onTapArmor : undefined,
                         })}
-                        {slotCell({ k: 'legs',  label: 'LEGS',  iconSrc: null, active: !!R.legs })}
+                        {slotCell({
+                          k: 'legs',
+                          label: 'LEGS',
+                          iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId) : null,
+                          equipped: gearLegsId !== 'none',
+                          equippedGlyph: '\u{1F456}',
+                          active: gearLegsId !== 'none',
+                          onTap: gearLegsId !== 'none' ? onTapGear('legs') : undefined,
+                        })}
                         <div />
                       </div>
                     </div>
