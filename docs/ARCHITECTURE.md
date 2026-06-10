@@ -8,7 +8,7 @@ the code over this doc where they disagree.
 
 | Area | Entry points | Notes |
 |---|---|---|
-| Boot | `index.html` (1.5MB, ~2k lines embedded CSS) → `src/main.jsx` → `GameApp.jsx` → `BroTown.jsx` | GameApp also seeds a mock inventory for the Equip menu |
+| Boot | `src/index.html` (vite root is `src/`) → `src/main.jsx` → `GameApp.jsx` → `BroTown.jsx` | GameApp also seeds a mock inventory for the Equip menu |
 | Game loop | `src/game/gameLoop.js` (5k lines) | tick + collision + combat; scans `S.monsters` ~7×/frame |
 | Rendering | `src/rendering/systems/entityRenderer.js` (4.4k) | Pixi 8; per-dir body scale `BODY_DIR_SCALE`; armor masking `_maskedBodyFrame` |
 | Gear/armor | `src/rendering/gearCatalog.js` (equip stores, localStorage `bt-gear-v2-*`) | steel set is "indestructible": `reconcileGearStash()` |
@@ -72,7 +72,7 @@ it currently feeds the Equip menu's item list.
 3. **Perf, measured**: extend `src/debug/perfHud.js` to break frame time into
    tick / render / bake phases before optimizing further. Known candidates:
    merge the ~7 per-frame `S.monsters` passes in gameLoop; `Date.now()` ×257
-   per tick → single `now`; index.html CSS extraction (1.5MB → cacheable file).
+   per tick → single `now`; ~~index.html CSS extraction~~ (done: the 1.5MB root index.html was a pre-extraction fossil, deleted v2.3.691; `src/index.html` is the real 2KB entry).
 4. **Tooling**: no lint/tests. Cheapest wins: `npx knip` for dead exports;
    eslint with `no-unused-vars` only; a smoke test that boots the game headless.
 5. **index.html slim-down**: move embedded CSS out; verify the CDN React UMD
