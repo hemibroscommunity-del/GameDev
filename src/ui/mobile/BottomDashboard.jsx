@@ -81,20 +81,23 @@ const ICON_SRC = {
   more:      '/icons/ui/more.png?v=2.3.115',
 };
 
-// 5 Tier-1 character stats shown in the middle dashboard column.
-// Tooltip phrasing per GDD §1.2 — describes both the effect and the
-// specific training source so the player knows what to do.
+// Character build stats shown in the middle dashboard column, ordered for a
+// 2-row x 3-col grid (v2.3.692): TOP row = damage stats (Power / Agility /
+// Mind), BOTTOM row = combat resources (Vitality / Endurance / Defense).
+// Defense is the Tier-2 trained skill (rpg.defenseSkill); the others are
+// Tier-1 capacity stats.  Tooltip phrasing per GDD §1.2.
 const CHAR_STATS = [
-  { key: 'power',     label: 'Power',     short: 'POW', iconSrc: '/icons/popups/sword.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Power — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  /* v2.3.112 applied iconScale 1.4 to compensate for the heart's
-     padded crop in the old 2-col Build grid.  v2.3.126: the merged
-     3x5 grid cells are ~33% column width, so the 1.4x heart overflowed
-     and pushed its value text off-center.  Back to 1.0 — the cell
-     layout below now centers the value regardless of icon size. */
-  { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.112',                       pixelated: true,  iconScale: 1.0, tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/sprites/shields/wood-shield-front.png?v=2.3.198',         pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
-  { key: 'agility',   label: 'Agility',   short: 'AGI', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Agility — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
-  { key: 'mind',      label: 'Mind',      short: 'MIN', iconSrc: '/icons/popups/spell.png?v=2.3.109',                       pixelated: false, iconScale: 1.0, tip: 'Mind — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
+  { key: 'power',     label: 'Power',     short: 'POW', iconSrc: '/icons/popups/sword.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Power — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
+  { key: 'agility',   label: 'Agility',   short: 'AGI', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Agility — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
+  { key: 'mind',      label: 'Mind',      short: 'MIN', iconSrc: '/icons/popups/spell.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Mind — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
+  /* v2.3.112 heart iconScale history dropped; cell centers the value
+     regardless of icon size. */
+  { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/sprites/shields/wood-shield-front.png?v=2.3.198', pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
+     DEF spend tab in the T2 panel (wired in v2.3.693).  Distinct shield angle
+     so it doesn't read identical to Endurance's front-shield icon. */
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/sprites/shields/wood-shield-3q.png?v=2.3.692',    pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
 ];
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
@@ -721,11 +724,17 @@ export const BottomDashboard = () => {
                 style={chipStyle}
               >◂</button>
             )}
+            {/* v2.3.692: match the LOADOUT / BUILD ColHeader treatment
+                (14px, .08em tracking, uppercase, centered) so every open
+                panel title — BAG, MAP, etc. — reads consistently. */}
             <div style={{
               flex: 1,
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: 700,
-              letterSpacing: '.04em',
+              letterSpacing: '.08em',
+              textTransform: 'uppercase',
+              textAlign: 'center',
+              color: '#E8EAF8',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -1105,7 +1114,9 @@ export const BottomDashboard = () => {
                         <span style={{ color: COL.muted }}>DMG </span>{dmgText}
                         <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
                       </div>
-                      {/* Row 1 — Shield · Amulet · Weapon. */}
+                      {/* Row 1 — Chest · Weapon · Shield.  v2.3.692: reordered
+                          per user so armour leads and the active weapon sits
+                          centre, shield right (mirrors the equip silhouette). */}
                       <div style={{
                         flex: 1,
                         display: 'grid',
@@ -1113,32 +1124,6 @@ export const BottomDashboard = () => {
                         gap: 3,
                         minHeight: 0,
                       }}>
-                        {/* v2.3.227: highlight (active) reflects equipped
-                            state for every slot, not just the weapon. The
-                            weapon was always active; now it highlights only
-                            when a weapon is actually equipped (UNARMED ->
-                            default coloring). */}
-                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: R.shield ? onTapShield : undefined })}
-                        {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null,      active: !!R.amulet, equipped: !!R.amulet })}
-                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: !!wpn,    onTap: onTapWeapon })}
-                      </div>
-                      {/* Row 2 — Chest · Legs.  v2.3.129: row reuses the
-                          same 3-column track as Row 1 so chest + legs
-                          cells render at the same width as shield /
-                          amulet / weapon above.  Third slot is left
-                          empty (no third armor piece). */}
-                      <div style={{
-                        flex: 1,
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: 3,
-                        minHeight: 0,
-                      }}>
-                        {/* Chest slot: armor swap via tap-tooltip
-                            (session-2 v2.3.228) + iconSrc-gated active
-                            highlight (main v2.3.228 polish).  Empty-icon
-                            fallback shows the vest glyph so an equipped
-                            armor without a sprite still reads as filled. */}
                         {slotCell({
                           k: 'chest',
                           label: 'CHEST',
@@ -1150,6 +1135,18 @@ export const BottomDashboard = () => {
                           onTap: gearChestId !== 'none' ? onTapGear('chest')
                                : R.armor ? onTapArmor : undefined,
                         })}
+                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
+                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: R.shield ? onTapShield : undefined })}
+                      </div>
+                      {/* Row 2 — Legs · Amulet · Cape.  v2.3.692: legs under
+                          chest, jewelry + the new back slot fill the row. */}
+                      <div style={{
+                        flex: 1,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: 3,
+                        minHeight: 0,
+                      }}>
                         {slotCell({
                           k: 'legs',
                           label: 'LEGS',
@@ -1159,7 +1156,10 @@ export const BottomDashboard = () => {
                           active: gearLegsId !== 'none',
                           onTap: gearLegsId !== 'none' ? onTapGear('legs') : undefined,
                         })}
-                        <div />
+                        {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
+                        {/* Cape: new back-layer slot (v2.3.692).  Render + equip
+                            flow land in Phase 2; cell shows as empty for now. */}
+                        {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
                       </div>
                     </div>
                   );
@@ -1186,18 +1186,25 @@ export const BottomDashboard = () => {
                 <div style={{
                   flex: 1,
                   display: 'grid',
-                  gridTemplateColumns: SHOW_LIFE_SKILLS ? 'repeat(3, 1fr)' : '1fr',
-                  gridTemplateRows: 'repeat(5, 1fr)',
+                  /* v2.3.692: Build-only is a clean 3-col x 2-row grid filled
+                     ROW-major (damage stats top, combat resources bottom).
+                     With life skills shown, fall back to the old 3-col x 5-row
+                     column-flow layout (Build in sub-col 1, skills in 2-3). */
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(2, 1fr)',
                   gap: 2,
-                  /* gridAutoFlow column so the first 5 cells (Build) stack
-                     vertically in sub-column 1, then Life Skills fill
-                     sub-cols 2 and 3 in row-major order. */
-                  gridAutoFlow: 'column',
+                  gridAutoFlow: SHOW_LIFE_SKILLS ? 'column' : 'row',
                   minHeight: 0,
                 }}>
                   {CHAR_STATS.map(s => {
-                    const val = R[s.key] ?? 0;
-                    const prog = (R._buildProg && R._buildProg[s.key]) || 0;
+                    /* Defense is a Tier-2 skill (level on rpg.defenseSkill);
+                       the rest are Tier-1 capacity stats read straight off R.
+                       defenseSkill is absent until v2.3.693 wires it -> 0. */
+                    const isDef = s.t2;
+                    const val = isDef ? ((R.defenseSkill && R.defenseSkill.level) || 0) : (R[s.key] ?? 0);
+                    const prog = isDef
+                      ? 0   /* DEF progress strip wired with the skill in v2.3.693 */
+                      : ((R._buildProg && R._buildProg[s.key]) || 0);
                     const pct = Math.max(0, Math.min(100, (prog / buildThresh) * 100));
                     let bonusTxt = '';
                     if (s.key === 'vitality')       bonusTxt = `${calcMaxHp(R.level || 1, val)} HP`;
@@ -1205,6 +1212,7 @@ export const BottomDashboard = () => {
                     else if (s.key === 'power')     bonusTxt = `+${Math.round(val * 0.8)} melee dmg`;
                     else if (s.key === 'agility')   bonusTxt = `+${Math.round(val * 0.8)} bow dmg`;
                     else if (s.key === 'mind')      bonusTxt = `+${Math.round(val * 0.8)} magic dmg`;
+                    else if (s.key === 'defense')   bonusTxt = `Lv ${val} — block + damage cut`;
                     const tipFull = `${s.label} ${val} → ${bonusTxt}. ${s.tip}`;
                     return (
                       <div key={'b_' + s.key}
