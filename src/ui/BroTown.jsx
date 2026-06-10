@@ -1448,29 +1448,37 @@ export var BroTown = function BroTown(_ref0) {
       ? { width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #9090a8', flex: '0 0 auto' }
       : { width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderLeft: '5px solid #9090a8', flex: '0 0 auto' } });
   };
+  /* v2.3.704: pills restyled for the narrow side rail of the two-pane
+     welcome modal.  The old 60px left label + horizontally-scrolling tile
+     rows assumed a 320px-wide card; in a ~150px rail that left ~85px for
+     44px tiles.  The label is now a full-width header strip on top, and
+     expanded rows WRAP instead of side-scrolling (the rail scrolls
+     vertically instead). */
   var _pillBox = { display: 'flex', alignItems: 'stretch', width: '100%', marginBottom: 6,
     border: '1.5px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.12)', boxSizing: 'border-box' };
-  var _pillLabel = { width: 60, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+  var _pillLabel = { width: '100%', minHeight: 40, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
     padding: '0 8px', fontSize: 10, fontWeight: 800, color: '#c2c2d2', letterSpacing: '.04em', fontFamily: 'Source Sans 3,sans-serif',
-    borderRight: '1.5px solid var(--line)', background: 'var(--ink3)', textAlign: 'left' };
-  /* Category pill -- COLLAPSED by default: the right side shows the current
-     selection; tapping the pill (or its label) expands it to reveal all
-     choices (style on top, color below).  Label spans the left, full height.
+    background: 'var(--ink3)', textAlign: 'left', boxSizing: 'border-box' };
+  /* Category pill -- COLLAPSED by default: below the label header sits the
+     current selection; tapping the pill (or its header) expands it to reveal
+     all choices (style rows on top, color rows below).
      `optionRows` = expanded-state tile-arrays; `summary` = collapsed preview. */
   var _apPill = function (catKey, label, optionRows, summary) {
     var open = !!expanded[catKey];
     var toggle = function () { setExpanded(function (p) { var n = Object.assign({}, p); n[catKey] = !p[catKey]; return n; }); };
     var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb' }, label), _chevron(open)];
     if (open) {
-      return /*#__PURE__*/React.createElement("div", { key: catKey, style: _pillBox },
-        /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillLabel, { cursor: 'pointer', borderTop: 'none', borderBottom: 'none', borderLeft: 'none' }) }, labelKids),
-        /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', flexDirection: 'column', minWidth: 0 } },
+      return /*#__PURE__*/React.createElement("div", { key: catKey, style: Object.assign({}, _pillBox, { flexDirection: 'column' }) },
+        /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillLabel, { cursor: 'pointer', border: 'none', borderBottom: '1.5px solid var(--line)' }) }, labelKids),
+        /*#__PURE__*/React.createElement("div", { style: { width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, boxSizing: 'border-box' } },
           optionRows.map(function (kids, i) {
-            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', gap: 5, overflowX: 'auto', padding: '4px 6px', borderTop: i > 0 ? '1px solid var(--line)' : 'none' } }, kids);
+            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, padding: '4px 6px', borderTop: i > 0 ? '1px solid var(--line)' : 'none' } }, kids);
           })));
     }
+    /* Collapsed stays a single horizontal row (label left, current pick
+       right) so all 7 categories fit in the rail without scrolling. */
     return /*#__PURE__*/React.createElement("button", { key: catKey, type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0 }) },
-      /*#__PURE__*/React.createElement("div", { style: _pillLabel }, labelKids),
+      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 'auto', borderRight: '1.5px solid var(--line)' }) }, labelKids),
       /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary));
   };
   var randomizeAppearance = function () {
@@ -13678,19 +13686,30 @@ export var BroTown = function BroTown(_ref0) {
     if (!_skipIntro) setShowIntro(true);
   };
 
-  /* Name / avatar selection modal */
+  /* Name / avatar selection modal.
+     v2.3.704: redesigned to two side-by-side panes at EVERY width (iPhone
+     Safari portrait is the primary platform): big live preview + name +
+     PLAY on the left (~57%), scrollable category rail + RANDOMIZE on the
+     right.  Layout-only change — every input/button keeps its previous
+     handlers and state. */
   if (showNameModal) return /*#__PURE__*/React.createElement("div", {
     className: "bt-name-modal"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-name-box"
+    className: "bt-name-box bt-cc-box"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-main"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-left"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 32,
-      marginBottom: 4
+      display: 'inline-block',
+      fontSize: 17
     }
   }, "\u2694\uFE0F"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 22,
+      display: 'inline-block',
+      marginLeft: 6,
+      fontSize: 17,
       fontWeight: 800,
       color: 'var(--txt)',
       fontFamily: 'Source Sans 3,sans-serif',
@@ -13698,46 +13717,54 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "HEMI BROS"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 12,
+      fontSize: 10,
       color: 'var(--pop)',
-      fontWeight: 700,
-      marginBottom: 2
+      fontWeight: 700
     }
   }, "Action RPG"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
       color: '#ffffff',
       fontFamily: 'Source Sans 3, sans-serif',
-      letterSpacing: '.05em',
-      marginBottom: 12,
+      letterSpacing: '.05em'
     }
-  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha), /*#__PURE__*/React.createElement("div", {
-    style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 12 }
-  }, /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
-    style: { width: 30, height: 30, flex: '0 0 auto', borderRadius: '50%', cursor: 'pointer',
-      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderRight: '7px solid currentColor' } })),
-  /*#__PURE__*/React.createElement("canvas", {
+  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)), /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-preview"
+  }, /*#__PURE__*/React.createElement("div", {
+    /* Square frame sized by the pane width (clamped by the pane height on
+       short/landscape screens).  Keeping the frame its own element means
+       the rotate buttons pin to the white box's corners, not to whatever
+       taller space the flex column hands the preview row. */
+    style: { position: 'relative', width: '100%', aspectRatio: '1 / 1', maxHeight: '100%' }
+  }, /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
-    width: 256,
-    height: 256,
     title: 'Live preview',
+    /* No width/height attributes: drawCharacterPortrait force-sets the
+       bitmap to 256x256 on every draw, so attributes here would be dead
+       weight.  The bitmap upscales via CSS — object-fit keeps it square
+       (never stretched) whatever shape the frame takes, and pixelated
+       keeps the pixel-art upscale sharp instead of blurry. */
     style: {
-      width: 128,
-      height: 128,
+      width: '100%',
+      height: '100%',
+      objectFit: 'contain',
       imageRendering: 'pixelated',
       borderRadius: 8,
       display: 'block',
       background: '#ffffff'
     }
   }), /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(1); },
-    style: { width: 30, height: 30, flex: '0 0 auto', borderRadius: '50%', cursor: 'pointer',
-      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
+    style: { position: 'absolute', left: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
+      background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '7px solid currentColor' } }))), /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderRight: '8px solid currentColor' } })),
+  /*#__PURE__*/React.createElement("button", {
+    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(1); },
+    style: { position: 'absolute', right: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
+      background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '8px solid currentColor' } })))), /*#__PURE__*/React.createElement("input", {
     value: nameInput,
     onChange: function onChange(e) {
       return setNameInput(e.target.value);
@@ -13755,32 +13782,20 @@ export var BroTown = function BroTown(_ref0) {
       border: '1.5px solid var(--line)',
       borderRadius: 10,
       color: 'var(--txt)',
-      fontSize: 15,
+      /* v2.3.704: 16px floor — iOS Safari auto-zooms inputs with a smaller
+         font on focus, leaving visualViewport.scale > 1, which trips the
+         joinTown pinch-zoom gate. */
+      fontSize: 16,
       fontWeight: 600,
       outline: 'none',
       textAlign: 'center',
-      marginBottom: 8,
       boxSizing: 'border-box'
     }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: { width: '100%', marginTop: 8 }
-  },
-  _apPill('hat', 'HAT', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
-  _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
-  _apPill('beard', 'BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
-  _apPill('skin', 'SKIN', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
-  _apPill('shirt', 'SHIRT', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : [])),
-  _apPill('pants', 'PANTS', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
-  _apPill('shoes', 'SHOES', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))]),
-  /*#__PURE__*/React.createElement("button", {
-    type: 'button', onClick: randomizeAppearance,
-    style: { width: '100%', padding: '7px', marginTop: 6, cursor: 'pointer', borderRadius: 8,
-      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
-      fontSize: 11, fontWeight: 800, letterSpacing: '.08em', fontFamily: 'Source Sans 3,sans-serif' }
-  }, "RANDOMIZE")), /*#__PURE__*/React.createElement("button", {
+  }), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
-      marginTop: 12,
+      marginTop: 'auto',
+      minHeight: 48,
       padding: '12px 32px',
       background: 'var(--pop)',
       color: '#fff',
@@ -13793,7 +13808,24 @@ export var BroTown = function BroTown(_ref0) {
       letterSpacing: '.08em',
       width: '100%'
     }
-  }, "PLAY")));
+  }, "PLAY")), /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-rail"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-rail-scroll"
+  },
+  _apPill('hat', 'HAT', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
+  _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
+  _apPill('beard', 'BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
+  _apPill('skin', 'SKIN', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
+  _apPill('shirt', 'SHIRT', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : [])),
+  _apPill('pants', 'PANTS', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
+  _apPill('shoes', 'SHOES', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))])),
+  /*#__PURE__*/React.createElement("button", {
+    type: 'button', onClick: randomizeAppearance,
+    style: { width: '100%', padding: '7px', marginTop: 6, minHeight: 40, cursor: 'pointer', borderRadius: 8,
+      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      fontSize: 11, fontWeight: 800, letterSpacing: '.08em', fontFamily: 'Source Sans 3,sans-serif' }
+  }, "RANDOMIZE")))));
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
     onComplete: function onComplete() { return setShowIntro(false); }
