@@ -386,14 +386,23 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
        freeze an invisible/garbled body (headless armoured player on join), so
        render the raw body this frame and retry the bake on a later frame. */
     if (figBot <= figTop) return bodyTex;
-    ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
+    /* v2.3.689: separable box dilation.  Erasing the body under every (dx,dy)
+       offset of the gear is a square-box dilation of the gear silhouette --
+       the union of translates over a (2d+1)^2 grid equals horizontal translates
+       gathered once, then vertical translates of THAT (max-filter separability).
+       Same erased pixel set, 2*(2d+1) draws instead of (2d+1)^2 per piece
+       (26 vs 169 at dilate 6). */
+    const dilCv = document.createElement('canvas'); dilCv.width = 256; dilCv.height = 256;
+    const dilCtx = dilCv.getContext('2d');
     for (const w of worn) {
       const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
       const gf = gt.frame;
       for (let dx = -dilate; dx <= dilate; dx++)
-        for (let dy = -dilate; dy <= dilate; dy++)
-          ctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, dy, 256, 256);
+        dilCtx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, 0, 256, 256);
     }
+    ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
+    for (let dy = -dilate; dy <= dilate; dy++)
+      ctx.drawImage(dilCv, 0, dy);
     ctx.globalCompositeOperation = 'source-over';
     if (neckY > 0) {                                     // restore the head+neck band
       ctx.save();
@@ -672,10 +681,17 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
   } catch (e) { return bodyTex; }
   const t = Texture.from(cv);
   _maskedBodyCache.set(key, t);
-  if (_maskedBodyCache.size > 600) {
+  /* v2.3.689: cap 600 -> 256.  Each entry is a 256x256 RGBA texture (256KB
+     GPU), so the old cap allowed ~150MB of masked-body frames -- brutal on
+     phones.  256 covers both poses x 5 dirs x a full jog cycle for ~1.6 worn
+     sets (one player set + remotes); overflow just rebakes (~2ms) on the
+     next sighting of an evicted frame.  Evict 2 per insert when over cap so
+     a burst (gear swap mid-fight) drains back down instead of hovering. */
+  while (_maskedBodyCache.size > 256) {
     const k0 = _maskedBodyCache.keys().next().value;
     const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
     try { old.destroy(true); } catch (e) { /* ignore */ }
+    if (_maskedBodyCache.size <= 254) break;
   }
   return t;
 }
