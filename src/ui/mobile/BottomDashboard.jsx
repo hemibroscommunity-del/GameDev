@@ -93,12 +93,13 @@ const CHAR_STATS = [
   /* v2.3.112 heart iconScale history dropped; cell centers the value
      regardless of icon size. */
   { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/popups/energy.png?v=2.3.695',               pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
      DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.695: dedicated
      shield-crest icon (user-supplied); Endurance moved to the energy bolt so
-     the two no longer share shield imagery. */
+     the two no longer share shield imagery.  v2.3.696: DEF and END swapped --
+     bottom row reads Vitality · Defense · Endurance per user. */
   { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/popups/shield-defense.png?v=2.3.695',       pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/popups/energy.png?v=2.3.695',               pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
 ];
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
@@ -379,16 +380,22 @@ const InventoryPreview = () => {
       title="Tap to open Bag"
     >
       {tiles.length === 0 ? (
-        <div style={{
-          flex: 1,
-          color: COL.muted,
-          fontSize: 11,
-          textAlign: 'center',
-          padding: '14px 4px 0',
-          opacity: 0.7,
-        }}>
-          Bag<br /><br />Empty.<br />Tap to open.
-        </div>
+        /* v2.3.696: BAG header in the LOADOUT/BUILD ColHeader treatment --
+           only while the preview is empty; once items land, the header
+           yields its row so all 6 tile cells fit (per user). */
+        <>
+          <ColHeader>Bag</ColHeader>
+          <div style={{
+            flex: 1,
+            color: COL.muted,
+            fontSize: 11,
+            textAlign: 'center',
+            padding: '10px 4px 0',
+            opacity: 0.7,
+          }}>
+            Empty.<br />Tap to open.
+          </div>
+        </>
       ) : (
         <div style={{
           flex: 1,
@@ -1222,15 +1229,14 @@ export const BottomDashboard = () => {
                         style={{
                           position: 'relative',
                           display: 'flex',
+                          /* v2.3.696: vertical stack -- icon top-center,
+                             value centered directly beneath it (user).
+                             v2.3.695's horizontal pair superseded. */
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          /* v2.3.695: icon+value rendered as one CENTERED pair
-                             (justifyContent center, fixed gap) so the number
-                             reads as the icon's value -- the old flex:1
-                             centered-in-remaining-space let the number drift
-                             far from wide icons. Icons 18 -> 24px. */
                           justifyContent: 'center',
-                          gap: 6,
-                          padding: '0 4px',
+                          gap: 1,
+                          padding: '2px 4px',
                           borderRadius: 3,
                           background: 'rgba(91,82,255,0.06)',
                           border: '1px solid rgba(91,82,255,0.18)',
@@ -1251,9 +1257,10 @@ export const BottomDashboard = () => {
                             pointerEvents: 'none',
                             userSelect: 'none',
                             flexShrink: 0,
+                            minHeight: 0,
                           }}
                         />
-                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 15 }}>{val}</span>
+                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 14, lineHeight: 1 }}>{val}</span>
                         <div style={{
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
