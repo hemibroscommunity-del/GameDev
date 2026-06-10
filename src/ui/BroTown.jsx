@@ -64,6 +64,7 @@ const {
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
+  migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
@@ -4762,6 +4763,7 @@ export var BroTown = function BroTown(_ref0) {
       /* T2 redesign: backfill per-weapon-category build fields + wipe the
          retired generic specs (one-time, idempotent). */
       migrateWeaponT2(S.rpg);
+      migrateDefenseT2(S.rpg);   /* v2.3.693: backfill the Defense T2 category */
       /* v2.3.687: restore any orphaned steel piece (worn nowhere, bagged
          nowhere -- e.g. unequipped via the old Equipment-menu toggle) into
          the bag so it's never lost. */
@@ -8226,7 +8228,7 @@ export var BroTown = function BroTown(_ref0) {
                     var ss = getShieldStats(_R6.shield);
                     if (ss.flatDef) rawDmg = Math.max(1, Math.floor(rawDmg - ss.flatDef));
                   }
-                  var blockReduc = shielded ? calcBlockReduction(_R6.fortification, _R6.shield) : 0;
+                  var blockReduc = shielded ? calcBlockReduction(getDefenseBlockBonus(_R6), _R6.shield) : 0;
                   /* Per-variant damage multiplier (e.g. skeleton.dmgMult = 4
                      for the post-mummy-transform danger form).  This is the
                      LOCAL melee path -- runs for client-side-movement
@@ -19401,7 +19403,7 @@ export var BroTown = function BroTown(_ref0) {
       marginTop: 8,
       lineHeight: 1.6
     }
-  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, getWeaponCritStat(rpgState)) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, getWeaponCritStat(rpgState)).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
+  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, getWeaponCritStat(rpgState)) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, getWeaponCritStat(rpgState)).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(getDefenseBlockBonus(rpgState), rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setBuildingPanel(null);

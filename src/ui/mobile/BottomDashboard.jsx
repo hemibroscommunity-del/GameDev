@@ -796,7 +796,7 @@ export const BottomDashboard = () => {
                      crit channel (matches the combat loop; generic Ferocity
                      retired). */
                   const critPct  = Math.round(calcCritChance(R.power || 0, getWeaponCritStat(R)) * 100);
-                  const blockPct = Math.round(calcBlockReduction(R.fortification || 0, R.shield) * 100);
+                  const blockPct = Math.round(calcBlockReduction(getDefenseBlockBonus(R), R.shield) * 100);
                   /* Session summary — zone name lookup is safe-guarded so
                      a missing currentZone or a zone removed from ZONES
                      never crashes the dashboard.  _compStats may be

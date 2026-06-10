@@ -8,7 +8,16 @@ import {
   weaponXpRequired,
   activeWeaponCategory,
   recalcDerived,
+  DEFENSE_CHANNELS,
+  DEFENSE_CHANNEL_CAP,
 } from '../../../data/gameSystems.js';
+
+/* v2.3.693: Defense is a 4th tab.  Its data lives in rpg.defenseSkill /
+   defenseSpec / defenseUnspent (not the weapon maps) and it trains by
+   blocking / mitigating rather than dealing damage, but the panel shape is
+   identical so it shares the tab strip + channel rows below. */
+const DEF_TAB = 'defense';
+const DEF_META = { label: 'Defense', emoji: '\u{1F6E1}' };
 
 function persist(R) {
   try {
@@ -47,25 +56,35 @@ export const T2Panel = () => {
 
   /* Default the selected tab to whatever's equipped right now. */
   const activeCat = cat || activeWeaponCategory(R);
+  const isDef = activeCat === DEF_TAB;
   const skills = R.weaponSkills || {};
   const specs = R.weaponSpecs || {};
   const pools = R.weaponUnspent || {};
 
-  const sk = skills[activeCat] || { level: 0, xp: 0 };
-  const catSpecs = specs[activeCat] || {};
-  const unspent = pools[activeCat] || 0;
-  const channels = WEAPON_CHANNELS[activeCat] || [];
+  /* Source the selected tab's skill / spec / pool / channels from either the
+     Defense fields or the weapon maps. */
+  const sk = isDef ? (R.defenseSkill || { level: 0, xp: 0 }) : (skills[activeCat] || { level: 0, xp: 0 });
+  const catSpecs = isDef ? (R.defenseSpec || {}) : (specs[activeCat] || {});
+  const unspent = isDef ? (R.defenseUnspent || 0) : (pools[activeCat] || 0);
+  const channels = isDef ? DEFENSE_CHANNELS : (WEAPON_CHANNELS[activeCat] || []);
+  const channelCap = isDef ? DEFENSE_CHANNEL_CAP : WEAPON_CHANNEL_CAP;
   const need = weaponXpRequired(sk.level || 0);
   const xpPct = need > 0 ? Math.max(0, Math.min(100, ((sk.xp || 0) / need) * 100)) : 0;
 
   const addPoint = (key, active) => {
     if (!active) return;
-    if ((pools[activeCat] || 0) <= 0) return;
-    if ((catSpecs[key] || 0) >= WEAPON_CHANNEL_CAP) return;
-    if (!R.weaponSpecs) R.weaponSpecs = {};
-    if (!R.weaponSpecs[activeCat]) R.weaponSpecs[activeCat] = {};
-    R.weaponSpecs[activeCat][key] = (R.weaponSpecs[activeCat][key] || 0) + 1;
-    R.weaponUnspent[activeCat] -= 1;
+    if (unspent <= 0) return;
+    if ((catSpecs[key] || 0) >= channelCap) return;
+    if (isDef) {
+      if (!R.defenseSpec) R.defenseSpec = {};
+      R.defenseSpec[key] = (R.defenseSpec[key] || 0) + 1;
+      R.defenseUnspent -= 1;
+    } else {
+      if (!R.weaponSpecs) R.weaponSpecs = {};
+      if (!R.weaponSpecs[activeCat]) R.weaponSpecs[activeCat] = {};
+      R.weaponSpecs[activeCat][key] = (R.weaponSpecs[activeCat][key] || 0) + 1;
+      R.weaponUnspent[activeCat] -= 1;
+    }
     recalcDerived(R);
     persist(R);
     force((v) => v + 1);
@@ -82,20 +101,23 @@ export const T2Panel = () => {
       }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.02em' }}>
-            Weapon Builds
+            Builds
           </div>
           <div style={{ fontSize: 11, color: COL.muted, marginTop: 2 }}>
-            Deal damage to level a weapon. Each level = +5 points.
+            {isDef
+              ? 'Block & mitigate hits to level Defense. Each level = +5 points.'
+              : 'Deal damage to level a weapon. Each level = +5 points.'}
           </div>
         </div>
       </div>
 
-      {/* Category tabs */}
+      {/* Category tabs — weapon categories + the Defense tab (v2.3.693). */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-        {WEAPON_CATEGORIES.map((c) => {
-          const meta = WEAPON_CATEGORY_META[c] || { label: c, emoji: '' };
-          const lvl = (skills[c] && skills[c].level) || 0;
-          const p = pools[c] || 0;
+        {[...WEAPON_CATEGORIES, DEF_TAB].map((c) => {
+          const cIsDef = c === DEF_TAB;
+          const meta = cIsDef ? DEF_META : (WEAPON_CATEGORY_META[c] || { label: c, emoji: '' });
+          const lvl = cIsDef ? ((R.defenseSkill && R.defenseSkill.level) || 0) : ((skills[c] && skills[c].level) || 0);
+          const p = cIsDef ? (R.defenseUnspent || 0) : (pools[c] || 0);
           const sel = c === activeCat;
           return (
             <button
@@ -137,7 +159,7 @@ export const T2Panel = () => {
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, color: COL.muted, marginBottom: 3 }}>
-            {(WEAPON_CATEGORY_META[activeCat] || {}).label} skill · Lv {sk.level || 0}
+            {(isDef ? DEF_META : (WEAPON_CATEGORY_META[activeCat] || {})).label} skill · Lv {sk.level || 0}
             {(sk.level || 0) >= 99 ? ' (Max)' : ` · ${Math.round(xpPct)}% to next`}
           </div>
           <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
@@ -159,7 +181,7 @@ export const T2Panel = () => {
       {/* Channels */}
       {channels.map((ch) => {
         const v = catSpecs[ch.key] || 0;
-        const atCap = v >= WEAPON_CHANNEL_CAP;
+        const atCap = v >= channelCap;
         const canAdd = ch.active && unspent > 0 && !atCap;
         return (
           <div key={ch.key} style={{
@@ -209,7 +231,7 @@ export const T2Panel = () => {
               <div style={{ fontSize: 11, color: COL.text }}>{ch.derive(v)}</div>
             )}
             {atCap && (
-              <div style={{ fontSize: 10, color: COL.gold }}>Max ({WEAPON_CHANNEL_CAP}).</div>
+              <div style={{ fontSize: 10, color: COL.gold }}>Max ({channelCap}).</div>
             )}
           </div>
         );
