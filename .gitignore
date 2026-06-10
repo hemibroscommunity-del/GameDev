@@ -4,11 +4,12 @@ dist/
 *.local
 
 # Design docs — kept local, not published to public repo
+# (CLAUDE.md is deliberately NOT ignored: it's the operational handoff
+# doc for coding sessions — no design content, no secrets.)
 gdd-*.md
 creative-reference-*.md
 architecture.md
 development-playbook-*.md
-CLAUDE.md
 .claude/
 
 # Python bytecode cache
