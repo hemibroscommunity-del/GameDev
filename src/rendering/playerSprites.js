@@ -54,10 +54,12 @@ const JOG_DURATION_BY_DIR = {
      was playing too fast.  NW mirrors NE, so both slow together.
      v2.3.598: NE/NW +50% speed (1776->1184) per user — 1776 read too slow;
      1.5x quicker, between the old fast (888) and slow (1776). NW mirrors NE.
-     v2.3.601: NE/NW +35% speed (1184->877) per user. NW mirrors NE. */
+     v2.3.601: NE/NW +35% speed (1184->877) per user. NW mirrors NE.
+     v2.3.706: NE/NW +50% speed (877->585) per user, on the new half-cycle
+     sheets (v2.3.705). NW mirrors NE. */
   north: 808,
   south: 823,
-  northeast: 877,
+  northeast: 585,
   east: 900,
   southwest: 1656,
 };
@@ -65,7 +67,8 @@ const JOG_DURATION_BY_DIR = {
    keeps its pre-v2.3.601 cadence (the +35% naked speed-up doesn't apply). NW
    mirrors NE.  Dirs absent here use JOG_DURATION_BY_DIR regardless of armour. */
 const JOG_DURATION_ARMORED_BY_DIR = {
-  northeast: 1184,
+  /* v2.3.706: 1184 -> 789 (+50% speed per user, same pass as the naked map). */
+  northeast: 789,
 };
 const HIT_DURATION_MS = 250;
 /* v2.3.188: pickup pose plays during the 0.5 s loot-pickup freeze.
