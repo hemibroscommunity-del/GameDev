@@ -141,22 +141,42 @@ const SHIRT_FILL_K = 0.96;
    t-shirt, not long sleeves that paint the hands). */
 const SHIRT_SLEEVE_FRAC = 0.42;
 
+/* v2.3.694: a skin run this narrow that pokes past the torso interval is an
+   arm crossing in front of (or beside) the chest -- left as skin. */
+const SHIRT_ARM_W = 7;
+/* v2.3.694: the trunk widens at most this many px per row below the sleeves. */
+const SHIRT_GROW = 2;
+/* v2.3.694: trunk half-width window around the neck centre used to pinch the
+   torso interval back after the wide shoulder band. */
+const SHIRT_TRUNK_HALF = 10;
+
 /* Per-frame SHIRT pixel mask.  For each 256px frame:
    - classify pixels (skin / pants / other) and find crown (topmost skin),
      waist (topmost pants in the lower body), collar (crown+NECK_FRAC*span,
      stable refs so it doesn't jitter), per-column hem (first pants per column,
      closes hip skin corners), sleeve cap (collar+SLEEVE_FRAC*span).
-   - shoulder cap: mark ALL skin in [collar, sleeveCap].
-   - torso flood: from the cap's central skin run, follow the trunk DOWNWARD to
-     the per-column hem.  Arms branch off ABOVE the cap, so the downward flood
-     never enters them -> forearms/hands stay skin.
-   Returns shirtPx (1 = this skin pixel is shirt).  Keyed off each frame's body,
-   so it follows the run lean/twist/bob. */
+   v2.3.694: rewritten as NECK-SEEDED interval tracking.  The old version
+   marked ALL skin in the cap band and seeded a downward flood at the chest
+   centre; when the arms swung in front of the torso (south/SW jog, attack,
+   hit, pickup) the seed landed on the ARM -- painting the arm to the wrist
+   and leaving the chest bare with its muscle lines showing.  Now:
+   - cap band [collar, sleeveCap): paint only skin runs row-connected to the
+     COLLAR-row runs (the neck -- the one landmark that is always torso).
+     Shoulders/upper arms widen freely (sleeves); a forearm/hand raised into
+     the band but not connected to the neck stays skin.
+   - the interval is then PINCHED to neck-centre +/- SHIRT_TRUNK_HALF, so the
+     arms (which exit the cap at its outer edges) fall outside it.
+   - trunk rows grow <= SHIRT_GROW px/row; a run narrower than SHIRT_ARM_W
+     that pokes past the interval is a crossing arm and is skipped whole, so
+     it stays skin even where it overlaps the chest.
+   Verified frame-by-frame against all 21 sheets via
+   tools/preview_shirt_frames.py (--algo=v2 == this; keep them in sync).
+   Returns shirtPx (1 = this skin pixel is shirt).  Keyed off each frame's
+   body, so it follows the run lean/twist/bob. */
 function _torsoBands(d, w, h, frameW, frames) {
   const cls = new Uint8Array(w * h);
   const colWaist = new Int16Array(w);
   const shirtPx = new Uint8Array(w * h);
-  const cur = new Uint8Array(frameW), nxt = new Uint8Array(frameW);
   for (let f = 0; f < frames; f++) {
     const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
     const pantsRow = new Int16Array(h);
@@ -190,48 +210,69 @@ function _torsoBands(d, w, h, frameW, frames) {
       for (let y = mid; y < bottom; y++) { if (cls[y * w + x] === 3) { cw = y; break; } }
       colWaist[x] = cw;
     }
-    /* shoulder cap: all skin in [collar, sleeveCap) */
-    for (let y = collar; y < sleeveCap; y++) {
-      const base = y * w;
-      for (let x = x0; x < x1; x++) if (cls[base + x] === 1 && y < colWaist[x]) shirtPx[base + x] = 1;
-    }
-    /* torso flood from the cap down.  Seed = skin run at sleeveCap containing
-       the chest centre. */
-    let cxl = 1e9, cxr = -1;
-    for (let y = collar; y < Math.min(collar + 6, sleeveCap + 1); y++)
-      for (let x = x0; x < x1; x++) if (cls[y * w + x] === 1) { if (x < cxl) cxl = x; if (x > cxr) cxr = x; }
-    let cx = cxr >= cxl ? (cxl + cxr) >> 1 : (x0 + x1) >> 1;
-    cur.fill(0);
-    let seedRow = sleeveCap;
-    if (seedRow >= bottom) seedRow = bottom - 1;
-    /* find seed x: chest centre, else nearest skin on that row */
-    let sx = -1;
-    if (cls[seedRow * w + cx] === 1) sx = cx;
-    else for (let dd = 1; dd < frameW; dd++) {
-      if (cx - dd >= x0 && cls[seedRow * w + (cx - dd)] === 1) { sx = cx - dd; break; }
-      if (cx + dd < x1 && cls[seedRow * w + (cx + dd)] === 1) { sx = cx + dd; break; }
-    }
-    if (sx >= 0) {
-      let l = sx; while (l > x0 && cls[seedRow * w + (l - 1)] === 1) l--;
-      let r = sx; while (r < x1 - 1 && cls[seedRow * w + (r + 1)] === 1) r++;
-      for (let xx = l; xx <= r; xx++) if (seedRow < colWaist[xx]) { cur[xx - x0] = 1; shirtPx[seedRow * w + xx] = 1; }
-      for (let y = seedRow + 1; y < bottom; y++) {
-        nxt.fill(0);
-        let any = false;
-        const base = y * w;
-        for (let lx = 0; lx < frameW; lx++) {
-          const x = x0 + lx;
-          if (cls[base + x] !== 1 || y >= colWaist[x]) continue;
-          if (!(cur[lx] || (lx > 0 && cur[lx - 1]) || (lx < frameW - 1 && cur[lx + 1]))) continue;
-          /* expand to the full skin run, then skip past it */
-          let l2 = lx; while (l2 > 0 && cls[base + (x0 + l2 - 1)] === 1) l2--;
-          let r2 = lx; while (r2 < frameW - 1 && cls[base + (x0 + r2 + 1)] === 1) r2++;
-          for (let k = l2; k <= r2; k++) { const xx = x0 + k; if (y < colWaist[xx]) { nxt[k] = 1; shirtPx[base + xx] = 1; any = true; } }
-          lx = r2;
-        }
-        cur.set(nxt); // nxt becomes the new frontier
-        if (!any) break;
+    /* shirt-eligible skin runs on row y -> flat [l0,r0, l1,r1, ...] */
+    const runsOf = (y) => {
+      const base = y * w, out = [];
+      let x = x0;
+      while (x < x1) {
+        if (cls[base + x] === 1 && y < colWaist[x]) {
+          let r = x;
+          while (r + 1 < x1 && cls[base + r + 1] === 1 && y < colWaist[r + 1]) r++;
+          out.push(x, r);
+          x = r + 1;
+        } else x++;
       }
+      return out;
+    };
+    /* neck seed: the collar-row runs */
+    let fl = 1e9, fr = -1;
+    {
+      const rs = runsOf(collar);
+      const base = collar * w;
+      for (let i = 0; i < rs.length; i += 2) {
+        for (let xx = rs[i]; xx <= rs[i + 1]; xx++) shirtPx[base + xx] = 1;
+        if (rs[i] < fl) fl = rs[i];
+        if (rs[i + 1] > fr) fr = rs[i + 1];
+      }
+    }
+    if (fr < 0) continue;
+    const ncx = (fl + fr) >> 1;
+    /* cap band: free growth, but only neck-connected runs (sleeves) */
+    for (let y = collar + 1; y < sleeveCap; y++) {
+      const rs = runsOf(y);
+      const base = y * w;
+      let nl = 1e9, nr = -1;
+      for (let i = 0; i < rs.length; i += 2) {
+        const l = rs[i], r = rs[i + 1];
+        if (r < fl - 1 || l > fr + 1) continue;
+        for (let xx = l; xx <= r; xx++) shirtPx[base + xx] = 1;
+        if (l < nl) nl = l;
+        if (r > nr) nr = r;
+      }
+      if (nr < 0) break;
+      fl = nl; fr = nr;
+    }
+    /* pinch the interval back to the trunk below the sleeves */
+    fl = Math.max(fl, ncx - SHIRT_TRUNK_HALF);
+    fr = Math.min(fr, ncx + SHIRT_TRUNK_HALF);
+    /* trunk: slow growth + crossing-arm rejection */
+    for (let y = sleeveCap; y < bottom; y++) {
+      const rs = runsOf(y);
+      const base = y * w;
+      let nl = 1e9, nr = -1, painted = false;
+      for (let i = 0; i < rs.length; i += 2) {
+        const l = rs[i], r = rs[i + 1];
+        if (r < fl - 1 || l > fr + 1) continue;
+        if ((r - l + 1) <= SHIRT_ARM_W && (l < fl - 1 || r > fr + 1)) continue;
+        const cl = Math.max(l, fl - SHIRT_GROW), cr = Math.min(r, fr + SHIRT_GROW);
+        if (cl > cr) continue;
+        for (let xx = cl; xx <= cr; xx++) shirtPx[base + xx] = 1;
+        if (cl < nl) nl = cl;
+        if (cr > nr) nr = cr;
+        painted = true;
+      }
+      if (!painted) break;
+      fl = nl; fr = nr;
     }
   }
   return shirtPx;
