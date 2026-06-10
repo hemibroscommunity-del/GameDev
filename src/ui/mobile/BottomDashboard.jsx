@@ -93,11 +93,12 @@ const CHAR_STATS = [
   /* v2.3.112 heart iconScale history dropped; cell centers the value
      regardless of icon size. */
   { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/sprites/shields/wood-shield-front.png?v=2.3.198', pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/popups/energy.png?v=2.3.695',               pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
-     DEF spend tab in the T2 panel (wired in v2.3.693).  Distinct shield angle
-     so it doesn't read identical to Endurance's front-shield icon. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/sprites/shields/wood-shield-3q.png?v=2.3.692',    pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
+     DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.695: dedicated
+     shield-crest icon (user-supplied); Endurance moved to the energy bolt so
+     the two no longer share shield imagery. */
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/popups/shield-defense.png?v=2.3.695',       pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
 ];
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
@@ -1222,7 +1223,13 @@ export const BottomDashboard = () => {
                           position: 'relative',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 3,
+                          /* v2.3.695: icon+value rendered as one CENTERED pair
+                             (justifyContent center, fixed gap) so the number
+                             reads as the icon's value -- the old flex:1
+                             centered-in-remaining-space let the number drift
+                             far from wide icons. Icons 18 -> 24px. */
+                          justifyContent: 'center',
+                          gap: 6,
                           padding: '0 4px',
                           borderRadius: 3,
                           background: 'rgba(91,82,255,0.06)',
@@ -1237,8 +1244,8 @@ export const BottomDashboard = () => {
                           alt={s.label}
                           draggable={false}
                           style={{
-                            width: 18 * (s.iconScale || 1),
-                            height: 18 * (s.iconScale || 1),
+                            width: 24 * (s.iconScale || 1),
+                            height: 24 * (s.iconScale || 1),
                             objectFit: 'contain',
                             imageRendering: s.pixelated ? 'pixelated' : 'auto',
                             pointerEvents: 'none',
@@ -1246,12 +1253,7 @@ export const BottomDashboard = () => {
                             flexShrink: 0,
                           }}
                         />
-                        {/* v2.3.126: flex:1 + textAlign:center so the value
-                            sits in the cell's remaining horizontal space.
-                            Previously justify-content:space-between pinned
-                            the value to the right edge, which read as
-                            crowded when icons were wide (heart at 1.4x). */}
-                        <span style={{ flex: 1, textAlign: 'center', color: COL.text, fontWeight: 700, fontSize: 13 }}>{val}</span>
+                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 15 }}>{val}</span>
                         <div style={{
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
