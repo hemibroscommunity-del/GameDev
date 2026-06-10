@@ -4,40 +4,14 @@
 const WS_BASE = window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev';
 export const BT_API_BASE = WS_BASE.replace('wss://', 'https://').replace('ws://', 'http://');
 
-/* Legacy Supabase compat */
+/* Legacy Supabase compat (Supabase removed; Durable Objects is the backend).
+   btRpc is kept as a no-op because BroTown.jsx still calls it on legacy paths
+   (bt_load_player / bt_register_player / bt_update_stats / bt_monster_kill /
+   bt_sync_rpg) -- every caller already handles the null return.  The call
+   sites go away with the BroTown decomposition. */
 export const SUPA_URL = '';
 export const SUPA_KEY = '';
-
-/* ═══ RPC HELPER ═══ */
-const _btRpcQueue = {};
-
-export async function btRpc(fnName, params) {
-  const key = fnName + JSON.stringify(params);
-  if (_btRpcQueue[key]) return _btRpcQueue[key];
-
-  const promise = (async () => {
-    try {
-      const r = await fetch(SUPA_URL + '/rest/v1/rpc/' + fnName, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPA_KEY,
-          'Authorization': 'Bearer ' + SUPA_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-      });
-      if (!r.ok) return null;
-      return await r.json();
-    } catch {
-      return null;
-    } finally {
-      delete _btRpcQueue[key];
-    }
-  })();
-
-  _btRpcQueue[key] = promise;
-  return promise;
-}
+export async function btRpc(fnName, params) { return null; }
 
 /* ═══ PASSPHRASE IDENTITY SYSTEM ═══ */
 const BT_WORDS = [

@@ -206,66 +206,11 @@ function bodyDirScale(pose, dir) {
   return (m && m[dir]) || 1.0;
 }
 
-/* v2.3.565: per-direction WIDTH (horizontal-only) multiplier for the IDLE pose
-   -- some idle facings are drawn too narrow, so stretch the whole armored
-   figure horizontally (the gear copies the body's scale.x, so it follows).
-   Mirror dirs share the base value (W<-E, NW<-NE, SE<-SW). */
-/* v2.3.567: all 1.0 -- the re-drawn idle sprites have correct proportions, so
-   no horizontal stretch is needed (was a patch for the old narrow idles). */
-/* Per-direction idle WIDEN pass (user-tuned to match the jog frames' bulk).
-   Horizontal-only stretch applied on top of the uniform height scale; the gear
-   copies scale.x so the armour follows.  Mirror dirs share the source value
-   (W<-E, NW<-NE, SE<-SW), so the user's "NW"/"SE" tweaks map onto NE/SW.
-   ARMOUR-ONLY (see standWidth's `armored` gate): the bare body is left alone.
-   v2.3.576: S+2% E+50% N+30% NE+50% SW+15%.
-   v2.3.577: E +5% (1.50->1.575), N +2% (1.30->1.326), NE +5% (1.50->1.575),
-             SW +2% (1.15->1.173); south unchanged.
-   v2.3.579: E +10% wider (1.575->1.7325), SW +5% wider (1.173->1.232).
-   v2.3.580: S +5% wider (1.02->1.071).
-   v2.3.584: S -1% narrower (1.071->1.060); NE +5% wider (1.575->1.654, covers
-             NW via mirror) per user. */
-const STAND_WIDTH = { south: 1.060, east: 1.7325, north: 1.326, northeast: 1.654, southwest: 1.232 };
-function standWidth(pose, dir, armored) {
-  return 1.0;   // v2.3.645: per-axis manual armour correction removed -- the aligned
-                // gear is drawn to fit, so only the uniform BODY_DIR_SCALE applies.
-}
-/* Per-direction idle SHORTEN/TALLEN pass (vertical-only) -- trims/extends the
-   idle height per dir to line the armoured figure up with its jog frames.
-   scale.y only (standWidth handles x); mirror dirs share the source; ARMOUR-ONLY.
-   v2.3.576: S0.98 E0.92 N0.95 NE0.95 SW0.95.
-   v2.3.577: E +5% taller (0.92->0.966), NE +5% taller (0.95->0.998),
-             SW -2% shorter (0.95->0.931); N & S unchanged.
-   v2.3.584: S -2% shorter (0.98->0.960); N +12% taller (0.95->1.064) per user.
-   v2.3.585: re-derived by tools/measure_armored.py to normalize EVERY armored
-             idle to one rendered height (~81px median); widths left at natural
-             perspective per user ("height-only, all equal"). */
-const STAND_HEIGHT = { south: 0.975, east: 0.945, north: 0.964, northeast: 0.946, southwest: 0.949 };
-function standHeight(pose, dir, armored) {
-  return 1.0;   // v2.3.645: neutralized (see standWidth)
-}
-
-/* Per-direction JOG height (vertical-only) multiplier -- normalizes the running
-   figure's rendered height per facing to the SAME ~81px target as the idles, so
-   stand and run read the same size.  scale.y only; mirror dirs share the source;
-   ARMOUR-ONLY, same gate as standHeight.  v2.3.585: derived by
-   tools/measure_armored.py (height-only, all equal).
-   v2.3.587: NE re-calibrated on the whole-cycle MEAN (not the mid frame) --
-             its raised-knee frames towered to 90px; 1.059->0.977 brings the
-             cycle mean back in line with the other facings (~80px). */
-const JOG_HEIGHT = { south: 1.052, east: 0.985, north: 0.926, northeast: 0.977, southwest: 1.028 };
-function jogHeight(pose, dir, armored) {
-  return 1.0;   // v2.3.645: neutralized (see standWidth)
-}
-
-/* Per-direction JOG width (horizontal-only) multiplier -- trims the running
-   figure's bulk per facing to line it up against its idle.  scale.x only;
-   mirror dirs share the source (W<-E, NW<-NE, SE<-SW); ARMOUR-ONLY, same gate
-   as standWidth.  v2.3.584: NE -5% narrower (covers NW), SW -5% narrower
-   (covers SE) per user.  v2.3.586: NE -5% more (0.95->0.903) per user. */
-const JOG_WIDTH = { northeast: 0.903, southwest: 0.95 };
-function jogWidth(pose, dir, armored) {
-  return 1.0;   // v2.3.645: neutralized (see standWidth)
-}
+/* v2.3.645 removed the per-axis manual armour stretches (STAND_WIDTH/
+   STAND_HEIGHT/JOG_WIDTH/JOG_HEIGHT + their accessor functions) -- the
+   aligned gear is drawn to fit, so only the uniform BODY_DIR_SCALE applies.
+   The neutralized scaffolding (functions returning 1.0 multiplied into every
+   scale) was deleted in the v2.3.688 cleanup; history has the tuned maps. */
 
 /* Place a player's headwear sprite for this frame.  Shared by the local
    player (_updatePlayer) and remote players (_updateOtherPlayers).
@@ -2661,10 +2606,8 @@ export class EntityRenderer {
           /* v2.3.537: derived per-(pose,dir) scale, shared with the local
              player path via bodyDirScale (silhouette-height normalization). */
           const sizeMul = bodyDirScale(pose, dir) * 0.3515625;
-          /* v2.3.577: idle widen/shorten is armour-only (see local path). */
-          const _remoteArmored = other.equip && other.equip.chest && other.equip.chest !== 'none' && other.equip.legs && other.equip.legs !== 'none';
-          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * standWidth(pose, dir, _remoteArmored) * jogWidth(pose, dir, _remoteArmored);
-          spriteBody.scale.y = sizeMul * standHeight(pose, dir, _remoteArmored) * jogHeight(pose, dir, _remoteArmored);
+          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
+          spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
           body.visible = false;
@@ -3157,10 +3100,9 @@ export class EntityRenderer {
            walking backward relative to their aim direction, reverse
            the playback so the legs trail the body. */
         const fc = playerFrameCount('jog', dir) || 24;
-        /* v2.3.603: armoured (chest+legs worn, armour not toggled off) keeps the
-           slower NE/NW cadence; the naked body gets the +35% speed-up. */
-        const _armCadence = !(typeof window !== 'undefined' && window.__btHideArmor)
-          && getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
+        /* v2.3.603: armoured (chest+legs worn) keeps the slower NE/NW cadence;
+           the naked body gets the +35% speed-up. */
+        const _armCadence = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
         const baseCycle = cycleMs('jog', dir, _armCadence);
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
@@ -3219,27 +3161,17 @@ export class EntityRenderer {
         display._animPose = pose;
         display._animDir = dir;
         display._animFrame = frameIdx;
-        /* v2.3.576: debug "show me the bare character" toggle (hotkey/HUD
-           button in BroTown.jsx sets window.__btHideArmor).  Lets the user
-           inspect the raw body animation (e.g. the new NE/NW jog) with the
-           armour stripped off -- gear hidden, body + hair/hat shown. */
-        const _hideArmor = (typeof window !== 'undefined' && !!window.__btHideArmor);
+        /* The v2.3.576 window.__btHideArmor debug toggle was retired in
+           v2.3.678 (armour visibility is governed by the equip slots); its
+           reads were removed in the v2.3.688 cleanup. */
         /* v2.3.609: ONE transform for the whole figure.  spriteBody is the
            invisible reference (position + scale); the visible body is the three
            region sprites and the gear, all sharing this transform so they stay
-           pixel-aligned (no cloning).  Armour-fit scale applies when the bulk
-           pieces (chest+legs) are worn; naked/uniform otherwise. */
-        const _armoredIdle = !_hideArmor && getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
-        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * standWidth(pose, dir, _armoredIdle) * jogWidth(pose, dir, _armoredIdle);
-        spriteBody.scale.y = bodyScale * standHeight(pose, dir, _armoredIdle) * jogHeight(pose, dir, _armoredIdle);
+           pixel-aligned (no cloning). */
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale;
+        spriteBody.scale.y = bodyScale;
         spriteBody.tint = 0xffffff;
-        if (_hideArmor) {
-          if (display._gearLegs) display._gearLegs.visible = false;
-          if (display._gearChest) display._gearChest.visible = false;
-          if (display._gearShoulders) display._gearShoulders.visible = false;
-        } else {
-          _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
-        }
+        _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
         /* v2.3.613: no helmet -- the head/face always shows.  The body is one
            sprite; erase the body under the worn chest/legs plate (dilated to
            swallow the AI misalignment) so it never pokes past a plate edge,
@@ -3247,7 +3179,7 @@ export class EntityRenderer {
         _hideBodyRegions(display);
         _armorHidesBody = false;                 // head always visible now
         const _worn = [];
-        if (!_hideArmor) {
+        {
           for (const _sl of ['chest', 'legs']) {
             const _it = getEquip(_sl);
             if (_it && _it !== 'none') {
