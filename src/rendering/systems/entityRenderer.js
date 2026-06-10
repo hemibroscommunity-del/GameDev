@@ -680,6 +680,51 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
   return t;
 }
 
+/* Pre-bake the local player's masked body frames (stand + jog, all 5 base
+   directions, every frame) so the first seconds of play don't hitch.  The
+   v2.3.681 silhouette-confinement pass made each cache miss cost a few ms
+   of canvas + flood-fill work; with the v2.3.687 loadout gear worn by
+   default, a fresh spawn used to pay that on the fly for every new
+   (pose, dir, frame) it hit while moving and turning -- a visible stutter
+   right after the intro.  Called behind the intro overlay (pixiRenderer.
+   preloadPlayerAssets) AFTER the body + gear sheets resolve, so every
+   getBodyFrame/getGearFrame here lands in the same caches (and therefore
+   the same _maskedBodyFrame keys) the render path uses.  Yields to the
+   event loop every few frames to keep the intro animation smooth.  Rare
+   poses (pickup / mine) stay lazy -- their one-off bake hitch is fine. */
+export async function prewarmMaskedBodyFrames() {
+  const slots = ['chest', 'legs'];
+  if (!slots.some((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) return;
+  const _chestEquipped = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
+  const shirtT = _chestEquipped ? null : shirtFill(getShirt(), getShirtColor());
+  const shirtKey = shirtT ? (getShirt() + '-' + getShirtColor()) : 'none';
+  const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  let sinceYield = 0;
+  for (const pose of ['stand', 'jog']) {
+    for (const dir of DIRS) {
+      const fc = playerFrameCount(pose, dir) || 1;
+      for (let f = 0; f < fc; f++) {
+        const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey);
+        if (!tex) continue;
+        const worn = [];
+        for (const sl of slots) {
+          const it = getEquip(sl);
+          if (it && it !== 'none') {
+            const gt = getGearFrame(sl, it, pose, dir, f);
+            if (gt) worn.push({ k: sl + ':' + it, tex: gt });
+          }
+        }
+        if (!worn.length) continue;
+        try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
+        if (++sinceYield >= 6) {
+          sinceYield = 0;
+          await new Promise((r) => setTimeout(r, 0));
+        }
+      }
+    }
+  }
+}
+
 const _REGION_SPR = { head: '_bodyHead', torso: '_bodyTorso', legs: '_bodyLegs' };
 /* Draw the body via its three region sprites.  `show` = {head,torso,legs}.
    v2.3.609: the regions use the SAME transform as the reference sprite `sb`

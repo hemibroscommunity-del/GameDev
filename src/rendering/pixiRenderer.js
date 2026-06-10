@@ -4,7 +4,7 @@
  */
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
-import { EntityRenderer } from './systems/entityRenderer.js';
+import { EntityRenderer, prewarmMaskedBodyFrames } from './systems/entityRenderer.js';
 import { EffectsRenderer } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadTileAssets } from './tileAssets.js';
@@ -36,7 +36,13 @@ export function preloadPlayerAssets() {
     loadPlayerAnchors(),
     preloadGear(),
     preloadBodyAll(),
-  ]);
+  ]).then((results) =>
+    /* Bake the armored-body masked frames while the intro overlay is still
+       up (needs the body + gear sheets above resolved first), so the
+       silhouette-confinement cost is paid here instead of as hitches during
+       the first seconds of play. */
+    prewarmMaskedBodyFrames().catch(() => {}).then(() => results)
+  );
 }
 
 /**
