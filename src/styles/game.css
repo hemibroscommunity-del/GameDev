@@ -187,15 +187,21 @@ input{font-family:inherit}
    left, scrollable category rail right.  The modal no longer scrolls as a
    page; the rail (.bt-cc-rail-scroll) is the SOLE scroller, so the modal
    itself locks to the viewport (100dvh + safe-area insets for the iPhone
-   notch / home indicator). */
-.bt-name-modal{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden}
+   notch / home indicator).
+   v2.3.707: backdrop is a faint radial instead of flat #000 — a drop
+   shadow is invisible against pure black, and the card needs it to read
+   as floating. */
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:radial-gradient(120% 90% at 50% 35%,#151930 0%,#08090f 60%,#000 100%);display:flex;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden}
 .bt-name-box{background:var(--ink2);border:1px solid var(--line);border-radius:14px;padding:24px;max-width:320px;width:100%;text-align:center;margin:auto 0}
 /* Two-pane character-creation box.  Composes with .bt-name-box (bg/border/
    radius); the doubled selector outranks .bt-name-box so its 320px max-width
    and centered text don't win.  The min-height:0 / min-width:0 entries are
    load-bearing: without them flex children refuse to shrink and the rail
-   never scrolls. */
-.bt-name-box.bt-cc-box{display:flex;flex-direction:column;width:100%;height:auto;max-width:560px;max-height:min(760px,100%);margin:auto;padding:12px;text-align:left}
+   never scrolls.
+   v2.3.707: gray-blue gradient lifted verbatim from the in-game bottom
+   dashboard (BottomDashboard.jsx) so the menu shares its material, plus a
+   layered drop shadow + hairline inner highlight for the floating look. */
+.bt-name-box.bt-cc-box{display:flex;flex-direction:column;width:100%;height:auto;max-width:560px;max-height:min(760px,100%);margin:auto;padding:12px;text-align:left;background:linear-gradient(180deg,#1e2436 0%,#141826 55%,#0c0f18 100%);box-shadow:0 24px 60px rgba(0,0,0,.6),0 6px 18px rgba(0,0,0,.45),0 0 0 1px rgba(91,82,255,.08),inset 0 1px 0 rgba(255,255,255,.06)}
 .bt-cc-main{display:flex;flex-direction:row;gap:10px;flex:1;min-height:0}
 .bt-cc-left{flex:0 0 57%;min-width:0;display:flex;flex-direction:column;gap:8px}
 .bt-cc-preview{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
