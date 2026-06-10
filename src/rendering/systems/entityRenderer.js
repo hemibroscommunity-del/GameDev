@@ -27,7 +27,7 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame } from '../gearSheets.js';
-import { getEquip } from '../gearCatalog.js';
+import { getEquip, onEquipChange } from '../gearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -753,6 +753,32 @@ export async function prewarmMaskedBodyFrames() {
     }
   }
 }
+
+/* v2.3.692: re-run the prewarm whenever the worn chest/legs change.  The
+   spawn-time prewarm only covers the loadout you spawned with; an equip or
+   unequip changes every _maskedBodyCache key, so each (pose, dir, frame) was
+   a lazy first-sighting bake (~ms each) -- felt as a frame-rate dip while
+   running around right after a gear swap.  Re-baking here lands in the dead
+   time while the player is still in the equip menu.  Debounced 150ms so
+   swapping both pieces bakes only the final combination; if a change arrives
+   mid-prewarm, one more pass is queued rather than overlapped.  Stale
+   combinations left in the cache age out via the 256-entry FIFO cap. */
+let _equipPrewarmTimer = null;
+let _equipPrewarmRunning = false;
+let _equipPrewarmAgain = false;
+function _schedulePrewarm() {
+  if (_equipPrewarmTimer) clearTimeout(_equipPrewarmTimer);
+  _equipPrewarmTimer = setTimeout(() => {
+    _equipPrewarmTimer = null;
+    if (_equipPrewarmRunning) { _equipPrewarmAgain = true; return; }
+    _equipPrewarmRunning = true;
+    prewarmMaskedBodyFrames().catch(() => { /* best-effort */ }).then(() => {
+      _equipPrewarmRunning = false;
+      if (_equipPrewarmAgain) { _equipPrewarmAgain = false; _schedulePrewarm(); }
+    });
+  }, 150);
+}
+for (const _sl of ['chest', 'legs']) onEquipChange(_sl, _schedulePrewarm);
 
 const _REGION_SPR = { head: '_bodyHead', torso: '_bodyTorso', legs: '_bodyLegs' };
 /* Draw the body via its three region sprites.  `show` = {head,torso,legs}.
