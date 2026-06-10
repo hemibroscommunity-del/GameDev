@@ -6,8 +6,12 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # wrangler-action@v3 still declares node20, which GitHub retires
+      # Sept 2026; this opts its steps into the node24 runtime now.
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
