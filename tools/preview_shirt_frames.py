@@ -264,12 +264,16 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom, crown):
                 continue
             if is_limb(l, r, y, ncx):
                 continue
-            for xx in range(l, r + 1):
-                shirt.add((xx, y))
             nl = min(nl, l)
             nr = max(nr, r)
         if nr < 0:
             break
+        # SOLID FILL: every opaque pixel across the accepted span becomes
+        # shirt -- shading/highlight/contour-line pixels included.  Filling
+        # only classified-skin runs left them as holes ("torn rags").
+        for xx in range(nl, nr + 1):
+            if cls[y][xx] != 0 and y < col_waist[xx]:
+                shirt.add((xx, y))
         fl, fr = nl, nr
     # pinch back to the trunk below the sleeves: re-anchor on the CHEST (the
     # widest non-limb run under the cap), not the neck centre -- in a hard
@@ -290,8 +294,10 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom, crown):
         fl, fr = ncx - TRUNK_HALF, ncx + TRUNK_HALF
     else:
         tcx = (tseed[0] + tseed[1]) >> 1
-        fl = max(tseed[0], tcx - TRUNK_HALF)
-        fr = min(tseed[1], tcx + TRUNK_HALF)
+        # anchor at the FULL chest run: the chest is ~2x wider than the old
+        # tcx +/- TRUNK_HALF window, which took several +/-GROW rows to catch
+        # up and left triangular skin wedges under the pecs.
+        fl, fr = tseed
         for xx in range(fl, fr + 1):
             shirt.add((xx, ty))
     # trunk: slow growth + arm rejection + coasting over blank rows
@@ -310,23 +316,42 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom, crown):
             cl, cr = max(l, fl - GROW), min(r, fr + GROW)
             if cl > cr:
                 continue
-            # paint the WHOLE run unless it is far wider than the tracked
-            # interval (merged arm+torso): clipping every run left skin
-            # slivers along the shirt edges wherever the chest widened
-            # faster than GROW px/row -- the "holes in the shirt".
+            # span bounds: whole run unless far wider than the tracked
+            # interval (merged arm+torso)
             pl, pr = (cl, cr) if (r - l + 1) > (fr - fl + 1) + 10 else (l, r)
-            for xx in range(pl, pr + 1):
-                shirt.add((xx, y))
-            nl = min(nl, cl)
-            nr = max(nr, cr)
+            nl = min(nl, pl)
+            nr = max(nr, pr)
             painted = True
         if painted:
-            fl, fr = nl, nr
+            # SOLID FILL across the accepted span (see cap band note)
+            for xx in range(nl, nr + 1):
+                if cls[y][xx] != 0 and y < col_waist[xx]:
+                    shirt.add((xx, y))
+            fl, fr = max(nl, fl - GROW), min(nr, fr + GROW)
             blanks = 0
         else:
             blanks += 1
             if blanks > 2:
                 break
+    # pre-seed shoulder band: in bent poses the seed sits below the chin,
+    # leaving the shoulders ABOVE it bare (hit-south 3-5, deep pickup).
+    # Fill non-limb, non-head runs near the trunk window in [collar, seed).
+    for y in range(collar, seed_row):
+        rs = skin_runs(cls, col_waist, y, x0, x1)
+        head = None
+        for (l, r) in rs:
+            if l <= hx + 2 and r >= hx - 2:
+                head = (l, r)
+                break
+        for (l, r) in rs:
+            if head and not (r < head[0] or l > head[1]):
+                continue
+            if r < tcx - TRUNK_HALF - 4 or l > tcx + TRUNK_HALF + 4:
+                continue
+            if is_limb(l, r, y, None):
+                continue
+            for xx in range(l, r + 1):
+                shirt.add((xx, y))
     # backstop: no bare belly.  Any row between the sleeves and the hem that
     # has torso skin inside the trunk window but no shirt (the tracker
     # stumbled on a weird pose) gets its non-limb runs painted, clipped to
@@ -336,29 +361,17 @@ def _v2(cls, col_waist, shirt, x0, x1, collar, sleeve_cap, bottom, crown):
     for y in range(ty + 1, bottom):
         if any((xx, y) in shirt for xx in range(wl, wr + 1)):
             continue
+        bl, br = 10 ** 9, -1
         for (l, r) in skin_runs(cls, col_waist, y, x0, x1):
             if r < wl or l > wr:
                 continue
             if is_limb(l, r, y, None):
                 continue
-            for xx in range(max(l, wl), min(r, wr) + 1):
+            bl = min(bl, max(l, wl))
+            br = max(br, min(r, wr))
+        for xx in range(bl, br + 1):
+            if cls[y][xx] != 0 and y < col_waist[xx]:
                 shirt.add((xx, y))
-    # hole fill: an eligible skin run horizontally bracketed by shirt within
-    # 2px on BOTH sides is an enclosed hole (seam fragment / clip residue)
-    # unless it is a limb (a fist in front of the chest stays skin).
-    for y in range(seed_row, bottom):
-        rs = skin_runs(cls, col_waist, y, x0, x1)
-        for (l, r) in rs:
-            if (l, y) in shirt:
-                continue
-            if is_limb(l, r, y, None):
-                continue
-            lb = any((xx, y) in shirt for xx in range(max(x0, l - 3), l))
-            rb = any((xx, y) in shirt for xx in range(r + 1, min(x1, r + 4)))
-            if lb and rb:
-                for xx in range(l, r + 1):
-                    shirt.add((xx, y))
-
 
 def main():
     algo = 'v2' if '--algo=v2' in sys.argv else 'v1'
