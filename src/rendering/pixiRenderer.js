@@ -41,14 +41,15 @@ export function preloadPlayerAssets() {
        up (needs the body + gear sheets above resolved first), so the
        silhouette-confinement cost is paid here instead of as hitches during
        the first seconds of play. */
-    prewarmMaskedBodyFrames().catch(() => {}).then(() => {
-      /* v2.3.698: warm the ALTERNATE worn states (full / chest-only /
-         legs-only + both shirt-variant sheets) in the background AFTER the
-         intro completes -- fire-and-forget, yields generously, so armor
-         toggles later never hitch. */
-      try { prewarmAltWornSets().catch(() => {}); } catch (e) { /* ignore */ }
-      return results;
-    })
+    /* v2.3.700: BOTH prewarm passes now run behind the intro overlay (the
+       IntroVideo loading bar tracks prewarmProgress) -- full speed with
+       nothing competing, so the total wait is a few seconds and the player
+       joins with EVERY gear state warm.  Replaces the v2.3.698/699
+       post-join idle trickle, which traded a long warm-up for early-play
+       frame-rate dips. */
+    prewarmMaskedBodyFrames().catch(() => {})
+      .then(() => prewarmAltWornSets({ fast: true }).catch(() => {}))
+      .then(() => results)
   );
 }
 

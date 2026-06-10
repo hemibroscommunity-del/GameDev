@@ -725,6 +725,11 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
    the same _maskedBodyFrame keys) the render path uses.  Yields to the
    event loop every few frames to keep the intro animation smooth.  Rare
    poses (pickup / mine) stay lazy -- their one-off bake hitch is fine. */
+/* v2.3.700: shared prewarm progress for the intro loading bar.  Both prewarm
+   passes add their planned bake counts to `total` up front and bump `done`
+   per frame; IntroVideo polls this to draw a real progress bar. */
+export const prewarmProgress = { done: 0, total: 0 };
+
 export async function prewarmMaskedBodyFrames() {
   const slots = ['chest', 'legs'];
   if (!slots.some((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) return;
@@ -732,11 +737,17 @@ export async function prewarmMaskedBodyFrames() {
   const shirtT = _chestEquipped ? null : shirtFill(getShirt(), getShirtColor());
   const shirtKey = shirtT ? (getShirt() + '-' + getShirtColor()) : 'none';
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  for (const pose of ['stand', 'jog']) {
+    for (const dir of DIRS) {
+      prewarmProgress.total += playerFrameCount(pose, dir) || 1;
+    }
+  }
   let sinceYield = 0;
   for (const pose of ['stand', 'jog']) {
     for (const dir of DIRS) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
+        prewarmProgress.done++;
         const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey);
         if (!tex) continue;
         const worn = [];
@@ -779,11 +790,18 @@ const _idleYield = () => new Promise((r) => {
     setTimeout(r, 120);
   }
 });
-export async function prewarmAltWornSets() {
+export async function prewarmAltWornSets(opts) {
+  /* v2.3.700: `fast` mode runs behind the intro loading bar at full speed
+     (nothing competes for the main thread there) -- the player joins with
+     EVERY gear state warm.  The slow idle-trickle path remains for the
+     equip-change re-kick during live play. */
+  const fast = !!(opts && opts.fast);
   const seq = ++_altPrewarmSeq;
-  /* grace period: let the join settle (zone load, first combat) first */
-  await new Promise((r) => setTimeout(r, 5000));
-  if (seq !== _altPrewarmSeq) return;
+  if (!fast) {
+    /* grace period: let the join settle (zone load, first combat) first */
+    await new Promise((r) => setTimeout(r, 5000));
+    if (seq !== _altPrewarmSeq) return;
+  }
   const chestId = getEquip('chest') !== 'none' ? getEquip('chest') : 'steelplate';
   const legsId = getEquip('legs') !== 'none' ? getEquip('legs') : 'steelgreaves';
   const shirtT = shirtFill(getShirt(), getShirtColor());
@@ -798,6 +816,13 @@ export async function prewarmAltWornSets() {
     { worn: [['legs', legsId]], full: false },
   ];
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  if (fast) {
+    for (const pose of ['stand', 'jog']) {
+      for (const dir of DIRS) {
+        prewarmProgress.total += (playerFrameCount(pose, dir) || 1) * SETS.length;
+      }
+    }
+  }
   let sinceYield = 0;
   for (const set of SETS) {
     const sT = set.full ? null : shirtT;
@@ -807,6 +832,7 @@ export async function prewarmAltWornSets() {
         const fc = playerFrameCount(pose, dir) || 1;
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
+          if (fast) prewarmProgress.done++;
           const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK);
           if (!tex) continue;
           const worn = [];
@@ -816,9 +842,10 @@ export async function prewarmAltWornSets() {
           }
           if (!worn.length) continue;
           try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
-          if (++sinceYield >= 2) {
+          if (++sinceYield >= (fast ? 6 : 2)) {
             sinceYield = 0;
-            await _idleYield();
+            if (fast) await new Promise((r) => setTimeout(r, 0));
+            else await _idleYield();
           }
         }
       }
