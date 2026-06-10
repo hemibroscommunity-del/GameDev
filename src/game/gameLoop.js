@@ -33,6 +33,7 @@ const {
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction,
+  getDefenseBlockBonus, applyIronSkin, trainDefense,
   xpRequired, monsterStat,
   applyStatus, tickStatuses, getOldestStatusElement,
   lookupCollision, resolveCollision, getEffectiveness,
@@ -2824,7 +2825,7 @@ export function setupGameLoop(ctx) {
                 if (distToP < 20 && !invuln) {
                   var chargeDmg = Math.ceil(m.dmg * 1.5);
                   var _blocked2 = Date.now() < S.shieldEnd;
-                  var _finalDmg2 = _blocked2 ? Math.max(1, Math.ceil(chargeDmg * (1 - calcBlockReduction(_R6.fortification, _R6.shield)))) : chargeDmg;
+                  var _finalDmg2 = _blocked2 ? Math.max(1, Math.ceil(chargeDmg * (1 - calcBlockReduction(getDefenseBlockBonus(_R6), _R6.shield)))) : chargeDmg;
                   _R6.hp -= _finalDmg2;
                   S.dmgNumbers.push({
                     x: P.x,
@@ -2872,8 +2873,15 @@ export function setupGameLoop(ctx) {
                     var ss = getShieldStats(_R6.shield);
                     if (ss.flatDef) rawDmg = Math.max(1, Math.floor(rawDmg - ss.flatDef));
                   }
-                  var blockReduc = shielded ? calcBlockReduction(_R6.fortification, _R6.shield) : 0;
-                  var dmgTaken = shielded ? Math.max(1, Math.floor(rawDmg * (1 - blockReduc))) : rawDmg;
+                  var blockReduc = shielded ? calcBlockReduction(getDefenseBlockBonus(_R6), _R6.shield) : 0;
+                  /* Iron Skin (Defense T2) is a flat % cut applied AFTER block,
+                     to every hit.  v2.3.693. */
+                  var _preIron = shielded ? Math.max(1, Math.floor(rawDmg * (1 - blockReduc))) : rawDmg;
+                  var dmgTaken = applyIronSkin(_R6, _preIron);
+                  /* Train Defense: blocked + iron-skin-prevented damage trains
+                     full; the damage that still landed trains at a quarter.
+                     Valid-threat ±5 levels (boss check N/A for mobs here). */
+                  trainDefense(_R6, Math.max(0, rawDmg - dmgTaken), dmgTaken, m.level, false);
                   if (shielded) {
                     if (!_R6._questFlags) _R6._questFlags = {};
                     _R6._questFlags.blocksLanded = (_R6._questFlags.blocksLanded || 0) + 1;

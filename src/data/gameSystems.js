@@ -3875,6 +3875,118 @@ export function migrateWeaponT2(rpg) {
   return rpg;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   DEFENSE — a 4th Tier-2 build category (v2.3.693), parallel to the weapon
+   categories but TRAINED BY DEFENSIVE PLAY rather than damage dealt.
+
+   Design mandate (user): formulas an 8th grader can do in their head, and the
+   value a point buys is visible in the panel.  So every ACTIVE channel uses a
+   ROUND per-point number with a clear cap:
+     • Bulwark  — +1% block per point  (base block 25% → 75% cap at 50 pts)
+     • Iron Skin — −0.5% damage taken per point  (−25% cap at 50 pts)
+   Thorns / Second Wind / Poise ship as "Soon" so points are never wasted.
+   Monsters have NO defense stat — player damage stays raw; these channels are
+   purely the PLAYER's mitigation. ═══════════════════════════════════════ */
+export const DEFENSE_PTS_PER_LEVEL = WEAPON_PTS_PER_LEVEL;   // 5
+export const DEFENSE_CHANNEL_CAP = 50;                       // both active channels max here
+export const DEFENSE_LEVEL_CAP = WEAPON_LEVEL_CAP;           // 99
+/* XP weighting at the damage-taken sites: a blocked/mitigated hit trains at
+   full rate; an unblocked hit trains at a quarter (so active blocking is the
+   fast path and you can't AFK-tank your way up).  The caller multiplies the
+   damage amount by one of these before calling awardDefenseXp. */
+export const DEFENSE_XP_BLOCKED = 1.0;
+export const DEFENSE_XP_TAKEN = 0.25;
+
+export const DEFENSE_CHANNELS = [
+  { key: 'bulwark',   label: 'Bulwark',     role: 'block',     active: true,  perPt: 1.0,
+    blurb: '+1% block on a successful block.',
+    derive: (v) => '+' + v + '% block (25→' + Math.min(75, 25 + v) + '%)' },
+  { key: 'ironskin',  label: 'Iron Skin',   role: 'dmgreduce', active: true,  perPt: 0.5,
+    blurb: '−0.5% damage taken from every hit.',
+    derive: (v) => '−' + (v * 0.5).toFixed(1) + '% dmg taken' },
+  { key: 'thorns',    label: 'Thorns',      role: 'reflect',   active: false,
+    blurb: 'Reflect a share of blocked damage.', derive: () => 'Soon' },
+  { key: 'secondwind', label: 'Second Wind', role: 'regen',    active: false,
+    blurb: 'Heal a burst after surviving a hit.', derive: () => 'Soon' },
+  { key: 'poise',     label: 'Poise',       role: 'poise',     active: false,
+    blurb: 'Resist stagger / knockback.', derive: () => 'Soon' },
+];
+
+/* Spend point total for a defense channel key. */
+export function getDefenseSpec(rpg, key) {
+  return (rpg && rpg.defenseSpec && rpg.defenseSpec[key]) || 0;
+}
+/* Block % bonus the player's Bulwark channel adds (whole percent == points). */
+export function getDefenseBlockBonus(rpg) { return getDefenseSpec(rpg, 'bulwark'); }
+/* Iron Skin flat damage-taken reduction as a 0..0.25 fraction. */
+export function getIronSkinReduction(rpg) {
+  return Math.min(0.25, getDefenseSpec(rpg, 'ironskin') * 0.005);
+}
+
+/* Award defense-skill XP (already weighted by the caller) and resolve
+   level-ups; each level grants DEFENSE_PTS_PER_LEVEL into defenseUnspent.
+   Returns {level, points} on a level-up (for a toast), else null. */
+export function awardDefenseXp(rpg, weightedAmount) {
+  if (!rpg || !(weightedAmount > 0)) return null;
+  if (!rpg.defenseSkill) rpg.defenseSkill = { level: 0, xp: 0 };
+  var sk = rpg.defenseSkill;
+  if (sk.level >= DEFENSE_LEVEL_CAP) return null;
+  sk.xp += weightedAmount;
+  var gained = 0;
+  while (sk.level < DEFENSE_LEVEL_CAP && sk.xp >= weaponXpRequired(sk.level)) {
+    sk.xp -= weaponXpRequired(sk.level);
+    sk.level++;
+    gained++;
+    rpg.defenseUnspent = (rpg.defenseUnspent || 0) + DEFENSE_PTS_PER_LEVEL;
+  }
+  if (sk.level >= DEFENSE_LEVEL_CAP) sk.xp = 0;
+  return gained > 0 ? { level: sk.level, points: gained * DEFENSE_PTS_PER_LEVEL } : null;
+}
+
+/* Apply Iron Skin to a raw post-block damage number (flat % cut, integers
+   in → integers out; identity when the player has 0 Iron Skin points). */
+export function applyIronSkin(rpg, dmg) {
+  if (!(dmg > 0)) return dmg;
+  var out = Math.round(dmg * (1 - getIronSkinReduction(rpg)));
+  return Math.max(1, out);
+}
+
+/* Train Defense from a damage event.  `prevented` = damage the block stopped
+   (trains at full rate), `taken` = damage that still landed (quarter rate).
+   Valid-threat rule (GDD §1.4): only counts vs attackers within ±5 levels or
+   a boss.  Returns the awardDefenseXp result (level-up info) or null. */
+export function trainDefense(rpg, prevented, taken, attackerLevel, isBoss) {
+  if (!rpg) return null;
+  var pl = rpg.level || 1;
+  if (!isBoss && attackerLevel != null && Math.abs((attackerLevel || 1) - pl) > 5) return null;
+  var amt = (prevented > 0 ? prevented * DEFENSE_XP_BLOCKED : 0)
+          + (taken > 0 ? taken * DEFENSE_XP_TAKEN : 0);
+  return awardDefenseXp(rpg, amt);
+}
+
+/* Fresh defense scaffolding for a new character. */
+export function createDefaultDefenseT2() {
+  var spec = {};
+  DEFENSE_CHANNELS.forEach(function (ch) { spec[ch.key] = 0; });
+  return { defenseSkill: { level: 0, xp: 0 }, defenseSpec: spec, defenseUnspent: 0 };
+}
+
+/* Backfill defense fields on an existing save.  Idempotent. */
+export function migrateDefenseT2(rpg) {
+  if (!rpg) return rpg;
+  if (!rpg.defenseSkill)  rpg.defenseSkill  = { level: 0, xp: 0 };
+  if (rpg.defenseUnspent == null) rpg.defenseUnspent = 0;
+  if (!rpg.defenseSpec)   rpg.defenseSpec   = {};
+  DEFENSE_CHANNELS.forEach(function (ch) {
+    if (rpg.defenseSpec[ch.key] == null) rpg.defenseSpec[ch.key] = 0;
+  });
+  /* Hard cap the active channels so a tampered save can't exceed the
+     advertised maxima (server re-validates too). */
+  rpg.defenseSpec.bulwark = Math.min(DEFENSE_CHANNEL_CAP, rpg.defenseSpec.bulwark || 0);
+  rpg.defenseSpec.ironskin = Math.min(DEFENSE_CHANNEL_CAP, rpg.defenseSpec.ironskin || 0);
+  return rpg;
+}
+
 /* §4.6 Rarity Tiers */
 export const RARITY_TIERS = {
   common: {
@@ -4754,9 +4866,12 @@ export function calcCritMult(power, ferocity) {
   return 1.5 + (power || 0) * 0.001 + (ferocity || 0) * 0.0008;
 }
 
-/* §2.3 Block */
-export function calcBlockReduction(fortification, shield) {
-  var base = 0.25 + fortification * 0.0012;
+/* §2.3 Block.  v2.3.693: the first arg is now the Defense BULWARK channel
+   point total (whole percent each), replacing the retired Fortification stat:
+   base 25% + 1% per Bulwark point + the shield's own block bonus, hard cap 75%.
+   Simple mental math: "25% + your Bulwark points = your block %". */
+export function calcBlockReduction(bulwark, shield) {
+  var base = 0.25 + (bulwark || 0) * 0.01;
   /* Shield gear bonus */
   if (shield) {
     var ss = getShieldStats(shield);
@@ -4851,6 +4966,8 @@ export function createDefaultRpg() {
     _t2Retired: true,
     /* Tier 2 — per-weapon-category skills / channels / point pools. */
     ...createDefaultWeaponT2(),
+    /* Tier 2 — Defense category (trained by blocking / mitigating). */
+    ...createDefaultDefenseT2(),
     /* Derived (recalculated) */
     hp: 100,
     maxHp: 100,

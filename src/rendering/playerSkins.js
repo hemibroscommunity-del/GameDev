@@ -571,6 +571,27 @@ export function preloadBodyAll() {
     .catch(() => {});
 }
 
+/** Preload the current combo's sheets for a SPECIFIC shirt variant (both
+ *  poses, all dirs).  v2.3.698: armor on/off flips the shirt bake, and the
+ *  first toggle paid a full 13056x256 sheet recolor on the spot -- the
+ *  'slowdown when taking armor on and off'.  The alt-worn-set prewarmer
+ *  builds both variants up front.  Returns a Promise that resolves when the
+ *  sheets are baked (or immediately if nothing needs baking). */
+export function preloadBodyVariant(shirtT, shirtKey) {
+  const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
+  const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+  if (!skinT && !pantsT && !shoesT && !shirtT) return Promise.resolve();
+  const shKey = shirtT ? (shirtKey || 'shirt') : 'none';
+  const tasks = [];
+  for (const pose of ['stand', 'jog']) {
+    for (const dir of SOURCE_DIRS) {
+      const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/' + shKey + '|' + pose + '/' + dir;
+      if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT));
+    }
+  }
+  return Promise.all(tasks).catch(() => {});
+}
+
 /* Resolve the current shirt via dynamic import (static import would form a
    cycle: playerSkins -> shirtColorCatalog -> characterPortrait -> playerSkins),
    then prewarm the spawn pose with the full combo so there's no skin-torso

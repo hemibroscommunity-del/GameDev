@@ -4,7 +4,7 @@
  */
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
-import { EntityRenderer, prewarmMaskedBodyFrames } from './systems/entityRenderer.js';
+import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures } from './systems/entityRenderer.js';
 import { EffectsRenderer } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadTileAssets } from './tileAssets.js';
@@ -41,7 +41,18 @@ export function preloadPlayerAssets() {
        up (needs the body + gear sheets above resolved first), so the
        silhouette-confinement cost is paid here instead of as hitches during
        the first seconds of play. */
-    prewarmMaskedBodyFrames().catch(() => {}).then(() => results)
+    /* v2.3.700: BOTH prewarm passes now run behind the intro overlay (the
+       IntroVideo loading bar tracks prewarmProgress) -- full speed with
+       nothing competing, so the total wait is a few seconds and the player
+       joins with EVERY gear state warm.  Replaces the v2.3.698/699
+       post-join idle trickle, which traded a long warm-up for early-play
+       frame-rate dips. */
+    (planPrewarmProgress(), prewarmMaskedBodyFrames().catch(() => {}))
+      .then(() => prewarmAltWornSets({ fast: true }).catch(() => {}))
+      /* v2.3.701: force GPU upload of the baked textures behind the intro
+         so early play doesn't pay lazy first-draw upload stalls. */
+      .then(() => uploadBakedTextures(_appRef && _appRef.renderer).catch(() => {}))
+      .then(() => results)
   );
 }
 
@@ -50,8 +61,11 @@ export function preloadPlayerAssets() {
  * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
  * @returns {Promise<{update: Function, onZoneChange: Function, destroy: Function}>}
  */
+let _appRef = null;   /* v2.3.701: handle for uploadBakedTextures behind the intro */
+
 export async function initPixiRenderer(canvas) {
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
+  _appRef = app;
 
   const tileRenderer = new TileRenderer(layers.tiles, app);
   const entityRenderer = new EntityRenderer(layers.entities, layers.player);

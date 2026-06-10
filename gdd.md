@@ -591,7 +591,29 @@ Tier 1 stats train through **any combat engagement** that exercises them. They a
 
 #### §1.3 Tier 2 — Technique
 
+> **IMPLEMENTATION NOTE (v2.3.693) — supersedes the generic-spec table below.**
+> The five generic specs (Ferocity / Elemental Mastery / Fortification /
+> Restoration / Influence) were retired in code. Tier 2 now ships as **trained
+> per-category build skills**, each levelled by a *kind* of play and spending
+> **+5 points per level** into channels (2 active, the rest "Soon"):
+>
+> | Category | Trained by | Active channels (live formulas) |
+> |---|---|---|
+> | **Sword / Bow / Staff** | Damage dealt with that weapon class | *Damage* (+0.12 base dmg/pt) · *Crit* (30·v/(v+250) % crit) |
+> | **Defense** | Blocking & mitigating hits (blocked ×1.0, taken ×0.25; valid-threat ±5 levels) | **Bulwark** +1% block/pt (block = 25% + Bulwark, cap 75%) · **Iron Skin** −0.5% damage taken/pt (cap −25%) |
+>
+> **Design mandate — clarity over balance.** Every active channel uses a
+> round, head-doable number with a visible cap, and the allocation panel shows
+> the live mental math ("+12% block (25→37%)", "−5.0% dmg taken"). A player who
+> levels up instantly understands what each point buys. **Monsters have no
+> defense stat** — player damage stays raw and readable; Defense channels are
+> purely the player's own mitigation. Old per-coefficient formulas (e.g. the
+> ×0.0012 Fortification block term in §2.3) are retained below only as historical
+> design intent; the shipped numbers are the simple ones above.
+
 Tier 2 specs train through the **kind** of engagement, not just any engagement. They are technical — they reflect a *style* of play within a Tier 1 identity. Tier 2 trains slower than Tier 1 (see §1.4) so that specialization is the second layer of identity, layered on top of capacity.
+
+*(Historical generic-spec model — superseded by the per-category model above.)*
 
 | Spec | Style | Scales | Trained By |
 |------|-------|--------|------------|

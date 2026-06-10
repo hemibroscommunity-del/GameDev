@@ -31,7 +31,7 @@ import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.
 import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
-import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, getDeviceNonce } from '@/networking/index.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
@@ -64,6 +64,7 @@ const {
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
+  migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
@@ -2009,6 +2010,9 @@ export var BroTown = function BroTown(_ref0) {
           type: 'join',
           id: S.myId,
           name: S.myName,
+          /* v2.3.694: device correlation nonce {id, env} for the server's
+             multi-account / bot-fleet anomaly tracker.  Old workers ignore it. */
+          device: getDeviceNonce(),
           /* Protocol v2 opt-in: the worker sends this session delta
              player_state emits (only changed fields), per-entity
              monster/node tick deltas, and the merged zone_state
@@ -2487,6 +2491,19 @@ export var BroTown = function BroTown(_ref0) {
                   x: S.player.x, y: S.player.y - 40,
                   text: '+' + msg.payload.refund + ' HP',
                   color: '#3dd497', ts: Date.now(),
+                });
+              } else if (msg.payload && S.dmgNumbers && S.player) {
+                /* v2.3.701: surface the server's zero-refund reason instead of
+                   dropping it silently (user report: 'lifesteal not working').
+                   Most common legit reason: 'no-this-mon' after a fully
+                   BLOCKED fight -- the server skips attacks while shielded,
+                   so there's no damage to refund (by design).  The muted
+                   floater + console line make the gate diagnosable in play. */
+                try { console.log('[lifesteal] refund 0:', JSON.stringify(msg.payload)); } catch (e) {}
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: 'lifesteal: ' + (msg.payload.reason || 'no heal'),
+                  color: '#8890b8', ts: Date.now(),
                 });
               }
               break;
@@ -4762,6 +4779,7 @@ export var BroTown = function BroTown(_ref0) {
       /* T2 redesign: backfill per-weapon-category build fields + wipe the
          retired generic specs (one-time, idempotent). */
       migrateWeaponT2(S.rpg);
+      migrateDefenseT2(S.rpg);   /* v2.3.693: backfill the Defense T2 category */
       /* v2.3.687: restore any orphaned steel piece (worn nowhere, bagged
          nowhere -- e.g. unequipped via the old Equipment-menu toggle) into
          the bag so it's never lost. */
@@ -8226,7 +8244,7 @@ export var BroTown = function BroTown(_ref0) {
                     var ss = getShieldStats(_R6.shield);
                     if (ss.flatDef) rawDmg = Math.max(1, Math.floor(rawDmg - ss.flatDef));
                   }
-                  var blockReduc = shielded ? calcBlockReduction(_R6.fortification, _R6.shield) : 0;
+                  var blockReduc = shielded ? calcBlockReduction(getDefenseBlockBonus(_R6), _R6.shield) : 0;
                   /* Per-variant damage multiplier (e.g. skeleton.dmgMult = 4
                      for the post-mummy-transform danger form).  This is the
                      LOCAL melee path -- runs for client-side-movement
@@ -12699,7 +12717,7 @@ export var BroTown = function BroTown(_ref0) {
      Consumes 1 raw fish from inventory and writes either
      cooked_<fishKey> (success) or burnt_dust (over-cooked).  Awards a
      small Cooking life-skill XP bump on success. */
-  var _applyCookingResult = useCallback(function (fishKey, kind) {
+  var _applyCookingResult = useCallback(function (fishKey, kind, taps) {
     var S = stateRef.current;
     var R = S && S.rpg;
     if (!R || !fishKey) return;
@@ -12719,7 +12737,10 @@ export var BroTown = function BroTown(_ref0) {
          burnt_dust + cooking XP server-side.  Authoritative inventory
          comes back via player_state.  Closes the "cook a fish you
          don't own" cheat. */
-      try { S.channel.send({ type: 'cook_request', payload: { fishKey: fishKey, kind: kind } }); } catch (e) {}
+      /* v2.3.694: carry the flip taps ({t, frac}) so the server can re-verify
+         both landed in the golden zone instead of trusting `kind`.  Old
+         server tolerates the extra field; new server validates it. */
+      try { S.channel.send({ type: 'cook_request', payload: { fishKey: fishKey, kind: kind, taps: taps || [] } }); } catch (e) {}
       return;
     }
     /* Fallback: no channel (SP / dungeon offline). */
@@ -13431,6 +13452,34 @@ export var BroTown = function BroTown(_ref0) {
     lBase.addEventListener('touchstart', lS, {
       passive: false
     });
+    /* v2.3.697: iOS rubber-band kill.  The joystick touchmove handlers below
+       only preventDefault touches they OWN (lM/rM/sM bail early for touches
+       that started near-but-not-on a base), so an unclaimed drag over the
+       game area fell through to Safari, which treated it as a document
+       scroll and elastic-bounced the whole fixed page (the dashboard
+       visibly rubber-banded).  CSS touch-action/overscroll-behavior alone
+       are not reliably honored by iOS Safari -- a non-passive global guard
+       is.  Touches inside genuinely scrollable UI (open panels, chat log:
+       overflowY auto/scroll AND actually overflowing) keep native scroll. */
+    var _scrollableUp = function _scrollableUp(el) {
+      var n = el, i = 0;
+      while (n && n !== document.body && i < 12) {
+        try {
+          var st = getComputedStyle(n);
+          if ((st.overflowY === 'auto' || st.overflowY === 'scroll') && n.scrollHeight > n.clientHeight + 1) return true;
+        } catch (_e) { return false; }
+        n = n.parentElement; i++;
+      }
+      return false;
+    };
+    var gM = function gM(e) {
+      if (!e.cancelable) return;
+      if (e.target && _scrollableUp(e.target)) return;
+      e.preventDefault();
+    };
+    window.addEventListener('touchmove', gM, {
+      passive: false
+    });
     window.addEventListener('touchmove', lM, {
       passive: false
     });
@@ -13499,6 +13548,7 @@ export var BroTown = function BroTown(_ref0) {
     }
     return function () {
       lBase.removeEventListener('touchstart', lS);
+      window.removeEventListener('touchmove', gM);
       window.removeEventListener('touchmove', lM);
       window.removeEventListener('touchend', lE);
       window.removeEventListener('touchcancel', lE);
@@ -19401,7 +19451,7 @@ export var BroTown = function BroTown(_ref0) {
       marginTop: 8,
       lineHeight: 1.6
     }
-  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, getWeaponCritStat(rpgState)) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, getWeaponCritStat(rpgState)).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(rpgState.fortification || 0, rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
+  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, getWeaponCritStat(rpgState)) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, getWeaponCritStat(rpgState)).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(getDefenseBlockBonus(rpgState), rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s"))), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setBuildingPanel(null);
@@ -31338,7 +31388,7 @@ export var BroTown = function BroTown(_ref0) {
   }), cookingMini && /*#__PURE__*/React.createElement(CookingMinigame, {
     fishKey: cookingMini.fishKey,
     panSheetSrc: cookingMini.panSheetSrc,
-    onComplete: function (kind) { _applyCookingResult(cookingMini.fishKey, kind); setCookingMini(null); },
+    onComplete: function (kind, taps) { _applyCookingResult(cookingMini.fishKey, kind, taps); setCookingMini(null); },
     onCancel: function () { setCookingMini(null); }
   }), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {
     var S = stateRef.current;

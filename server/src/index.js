@@ -2819,10 +2819,14 @@ export class GameRoom {
   }
 
   _wsBySessionId(sessionId) {
+    /* v2.3.702: LAST match wins -- Map iterates in insertion order, so if a
+       stale same-id session somehow survives the join-time eviction, the
+       newest socket (most recent join) is the live one. */
+    let found = null;
     for (const [ws, s] of this.sessions) {
-      if (s.id === sessionId) return ws;
+      if (s.id === sessionId) found = ws;
     }
-    return null;
+    return found;
   }
 
   _despawnLoot(zone, lootId) {
@@ -3412,6 +3416,24 @@ export class GameRoom {
 
     switch (msg.type) {
       case 'join':
+        // v2.3.702: EVICT any lingering session with the same player id.
+        // A reconnect (worker-deploy bounce, iOS tab suspend/resume)
+        // re-joins with the same stable passphrase id while the old
+        // socket can sit in this.sessions until TCP close or the 2-min
+        // AFK sweep.  _wsBySessionId returned the FIRST match -- the
+        // corpse -- so every direct-to-player send (lifesteal_credit,
+        // combat_credit, harvest_credit, and the synchronous post-heal
+        // player_state push) black-holed for up to two minutes.  This
+        // is the thrice-recurring "lifesteal broke client-side /
+        // missing id" incident (v2.3.462, v2.3.25x, v2.3.701).
+        if (msg.id) {
+          for (const [oldWs, oldS] of this.sessions) {
+            if (oldS.id === msg.id && oldWs !== ws) {
+              this.sessions.delete(oldWs);
+              try { oldWs.close(1000, 'superseded by reconnect'); } catch {}
+            }
+          }
+        }
         session.id = msg.id;
         session.name = msg.name || 'Anon';
         session.data = msg.data || {};

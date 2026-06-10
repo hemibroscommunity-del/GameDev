@@ -20,7 +20,7 @@ import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
 import { getHair } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame } from '../playerSkins.js';
+import { getSkin, getPants, getShoes, getBodyFrame, preloadBodyVariant } from '../playerSkins.js';
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
@@ -700,7 +700,11 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
      sets (one player set + remotes); overflow just rebakes (~2ms) on the
      next sighting of an evicted frame.  Evict 2 per insert when over cap so
      a burst (gear swap mid-fight) drains back down instead of hovering. */
-  while (_maskedBodyCache.size > 256) {
+  /* v2.3.698: cap 256 -> 420 -- prewarmAltWornSets keeps THREE worn-set
+     bake families resident (full / chest-only / legs-only, ~130 frames
+     each) so armor toggles never hitch; 420 x 256KB =~ 105MB worst case,
+     still below the pre-v2.3.689 150MB ceiling. */
+  while (_maskedBodyCache.size > 420) {
     const k0 = _maskedBodyCache.keys().next().value;
     const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
     try { old.destroy(true); } catch (e) { /* ignore */ }
@@ -728,6 +732,48 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
    intro overlay, so finishing fast matters more than frame pacing there.
    On iPhone one bake can cost ~10ms, so 6 back-to-back chunks queued as
    0ms timers starved rendering -- the near-freeze on equip/unequip. */
+/* v2.3.700: shared prewarm progress for the intro loading bar.  Both prewarm
+   passes add their planned bake counts to `total` up front and bump `done`
+   per frame; IntroVideo polls this to draw a real progress bar. */
+export const prewarmProgress = { done: 0, total: 0 };
+
+/* v2.3.701: plan the WHOLE intro workload up front so the loading bar is
+   monotonic.  Previously each pass added its own count to `total` when it
+   started, so done/total dropped (bar visibly 'reset') when the alt pass
+   registered 3x more work mid-load. */
+export function planPrewarmProgress() {
+  prewarmProgress.done = 0;
+  prewarmProgress.total = 0;
+  const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  let per = 0;
+  for (const pose of ['stand', 'jog']) {
+    for (const dir of DIRS) per += playerFrameCount(pose, dir) || 1;
+  }
+  const anyWorn = ['chest', 'legs'].some((sl) => { const it = getEquip(sl); return it && it !== 'none'; });
+  prewarmProgress.total = per * ((anyWorn ? 1 : 0) + 3);   // current set + 3 alt sets
+}
+
+/* v2.3.701: force-upload the baked masked-body textures to the GPU while the
+   intro overlay is still up.  Texture.from(canvas) uploads lazily on first
+   DRAW, so early play paid a stream of one-off upload stalls as the player
+   turned/moved through freshly-baked frames ('slowing down on a few frames
+   even after joining').  Feature-detected; harmless no-op if the renderer
+   doesn't expose an upload path. */
+export async function uploadBakedTextures(renderer) {
+  if (!renderer) return;
+  let n = 0;
+  for (const t of _maskedBodyCache.values()) {
+    try {
+      if (renderer.texture && typeof renderer.texture.initSource === 'function' && t && t.source) {
+        renderer.texture.initSource(t.source);
+      } else if (renderer.prepare && typeof renderer.prepare.upload === 'function') {
+        renderer.prepare.upload(t);
+      } else return;
+    } catch (e) { /* best-effort */ }
+    if (++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
 export async function prewarmMaskedBodyFrames(opts) {
   const budgetMs = (opts && opts.frameBudgetMs) || 0;
   const slots = ['chest', 'legs'];
@@ -746,6 +792,7 @@ export async function prewarmMaskedBodyFrames(opts) {
     for (const dir of DIRS) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
+        prewarmProgress.done++;
         const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey);
         if (!tex) continue;
         const worn = [];
@@ -772,6 +819,85 @@ export async function prewarmMaskedBodyFrames(opts) {
   }
 }
 
+/* v2.3.698: pre-bake the ALTERNATE worn states in the background so taking
+   armor on/off never hitches (user request).  Two costs hide behind a toggle:
+   (1) the shirt-variant body sheets -- equipping/removing the full set flips
+   the shirt bake, and the first toggle paid a 13056x256 canvas recolor on the
+   spot; (2) the masked-body bakes for the new worn set, paid per (pose, dir,
+   frame) while moving.  This warms both for all three gear states (full /
+   chest-only / legs-only; naked needs no bake), yielding generously so it
+   never competes with gameplay.  Kicked after the current-set prewarm
+   (pixiRenderer.preloadPlayerAssets) and re-kicked on equip changes. */
+let _altPrewarmSeq = 0;
+/* Yield between bake slices: prefer idle time (rIC), else a long-ish pause.
+   v2.3.699: the first trickle (4 bakes / 16ms gap =~ a third of the main
+   thread) measurably dented the frame rate right after joining -- now 2
+   bakes per slice, >=90ms apart, idle-scheduled, after a 5s grace. */
+const _idleYield = () => new Promise((r) => {
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(() => setTimeout(r, 90), { timeout: 1000 });
+  } else {
+    setTimeout(r, 120);
+  }
+});
+export async function prewarmAltWornSets(opts) {
+  /* v2.3.700: `fast` mode runs behind the intro loading bar at full speed
+     (nothing competes for the main thread there) -- the player joins with
+     EVERY gear state warm.  The slow idle-trickle path remains for the
+     equip-change re-kick during live play. */
+  const fast = !!(opts && opts.fast);
+  const seq = ++_altPrewarmSeq;
+  if (!fast) {
+    /* grace period: let the join settle (zone load, first combat) first */
+    await new Promise((r) => setTimeout(r, 5000));
+    if (seq !== _altPrewarmSeq) return;
+  }
+  const chestId = getEquip('chest') !== 'none' ? getEquip('chest') : 'steelplate';
+  const legsId = getEquip('legs') !== 'none' ? getEquip('legs') : 'steelgreaves';
+  const shirtT = shirtFill(getShirt(), getShirtColor());
+  const shirtKey = shirtT ? (getShirt() + '-' + getShirtColor()) : 'none';
+  /* both shirt variants' sheets first (the big hitch) */
+  try { await preloadBodyVariant(null, 'none'); } catch (e) { /* best-effort */ }
+  try { await preloadBodyVariant(shirtT, shirtKey); } catch (e) { /* best-effort */ }
+  if (seq !== _altPrewarmSeq) return;            // superseded by a newer kick
+  const SETS = [
+    { worn: [['chest', chestId], ['legs', legsId]], full: true },
+    { worn: [['chest', chestId]], full: false },
+    { worn: [['legs', legsId]], full: false },
+  ];
+  const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  let sinceYield = 0;
+  for (const set of SETS) {
+    const sT = set.full ? null : shirtT;
+    const sK = sT ? shirtKey : 'none';
+    for (const pose of ['stand', 'jog']) {
+      for (const dir of DIRS) {
+        const fc = playerFrameCount(pose, dir) || 1;
+        for (let f = 0; f < fc; f++) {
+          if (seq !== _altPrewarmSeq) return;
+          if (fast) prewarmProgress.done++;
+          const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK);
+          if (!tex) continue;
+          const worn = [];
+          for (const [sl, id] of set.worn) {
+            const gt = getGearFrame(sl, id, pose, dir, f);
+            if (gt) worn.push({ k: sl + ':' + id, tex: gt });
+          }
+          if (!worn.length) continue;
+          try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
+          if (++sinceYield >= (fast ? 6 : 2)) {
+            sinceYield = 0;
+            if (fast) await new Promise((r) => setTimeout(r, 0));
+            else await _idleYield();
+          }
+        }
+      }
+    }
+  }
+}
+/* Equip-change re-kick: handled by _schedulePrewarm below (v2.3.692/693,
+   frame-budgeted).  The intro-time prewarmAltWornSets keeps all three
+   gear states resident, so the scheduler is mostly cache hits. */
 /* v2.3.692: re-run the prewarm whenever the worn chest/legs change.  The
    spawn-time prewarm only covers the loadout you spawned with; an equip or
    unequip changes every _maskedBodyCache key, so each (pose, dir, frame) was
@@ -913,12 +1039,14 @@ function _orderTraitsAndWeapon(display, facingIdx) {
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
-    /* Rear = away-from-camera: SW(3) / NW(5) / N(6).  NE(7) is a
-       toward-camera facing (same set as the weapon block below: E/SE/S/NE)
-       -- the v2.3.679 fix shipped with NE in the rear set and SW out of
-       it, which hid the beard on NE and stamped it over the back of the
-       head on SW (user report, v2.3.689). */
-    const rearFacing = (facingIdx === 3 || facingIdx === 5 || facingIdx === 6);
+    /* Rear = away-from-camera: NW(5) / N(6).  NE(7) is a toward-camera
+       facing (same set as the weapon block below: E/SE/S/NE) -- the
+       v2.3.679 fix shipped with NE in the rear set, which hid the beard
+       on NE (user report, v2.3.689).  SW(3) was then swept INTO the rear
+       set by that fix, which hid the beard entirely on southwest (user
+       report, v2.3.698) -- SW shows the face, so it belongs with the
+       toward-camera facings (beard above body + gear like S/SE). */
+    const rearFacing = (facingIdx === 5 || facingIdx === 6);
     if (rearFacing) {
       /* Behind the head: insert just BELOW the body sprite. */
       const bodyIdx = display.getChildIndex(display._spriteBody);

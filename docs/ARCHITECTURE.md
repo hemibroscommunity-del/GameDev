@@ -14,6 +14,8 @@ the code over this doc where they disagree.
 | Gear/armor | `src/rendering/gearCatalog.js` (equip stores, localStorage `bt-gear-v2-*`) | steel set is "indestructible": `reconcileGearStash()` |
 | Body/skins | `src/rendering/playerSkins.js` | sheet-level retint (skin/pants/shoes/shirt), cached per combo |
 | Networking | `src/networking/wsClient.js` → Cloudflare Durable Object (`brotown-server.…workers.dev`) | `S.channel` is a Supabase-shaped shim; `btRpc()` is a dead no-op kept for legacy call sites |
+| Server | `server/src/index.js` (in-repo since the protocol-v2 monorepo merge; `server/test/`, auto-deploy workflow) | DO authority: coins/inventory/lifeSkills/combat. Deploys independently → keep changes back-compat. Anti-cheat plan: `docs/ANTICHEAT-SPEC.md` |
+| Tier-2 builds | `src/data/gameSystems.js` `WEAPON_CHANNELS` + `DEFENSE_CHANNELS`; `src/ui/mobile/dash/T2Panel.jsx` | per-category trained skills (sword/bow/staff + Defense); +5 pts/lvl into channels; **client-side only today** (see anti-cheat spec server TODO) |
 | UI (live) | `src/ui/mobile/BottomDashboard.jsx` + `dash/*` panels, `EquippedTab` via `inventoryBus` | popup actions in `dash/ItemDetailPopup.jsx` |
 | RPG state | `src/data/gameSystems.js` (6.8k) | `S.rpg` persisted to localStorage `bt_rpg`; stashes: weapon/shield/armor/gear |
 | Sprite pipeline | `tools/` (26 scripts) | `make_pose_sheet.py` → hand-drawn `*-mannequin-armored.png` → `import_gear_from_sheet.py` → `fill_gear_gaps.py` (belt) → `preview_armor_frames.py` (verification; **mirrors the renderer — keep in sync**) |
