@@ -1998,6 +1998,13 @@ export var BroTown = function BroTown(_ref0) {
           type: 'join',
           id: S.myId,
           name: S.myName,
+          /* Protocol v2 opt-in: the worker sends this session delta
+             player_state emits (only changed fields), per-entity
+             monster/node tick deltas, and the merged zone_state
+             message on zone change.  Old workers ignore the field and
+             keep sending full v1 payloads, which this client still
+             handles (the v1 cases below stay in place). */
+          protocolVersion: 2,
           data: {
             x: S.player.x,
             y: S.player.y,
@@ -2433,20 +2440,17 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'zone_loot':
             {
-              /* Sent on zone change.  Replace S.groundLoot with the new
-                 zone's authoritative pile list. */
-              if (msg.loot) {
-                S._serverLoot = true;
-                var _curZoneCfgZL = ZONES[S.currentZone];
-                var _zlzone = msg.zone;
-                if (_curZoneCfgZL && _curZoneCfgZL.safe) {
-                  S.groundLoot = [];
-                } else if (_zlzone && _zlzone !== S.currentZone) {
-                  /* Stale zone_loot for a different zone -- ignore. */
-                } else {
-                  S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
-                }
-              }
+              _applyZoneLootMsg(msg, S);
+              break;
+            }
+          case 'zone_state':
+            {
+              /* Protocol v2: merged zone-change snapshot.  One message
+                 carrying what v1 split across zone_monsters +
+                 zone_nodes + zone_loot. */
+              _applyZoneMonstersMsg(msg, S);
+              _applyZoneNodesMsg(msg, S);
+              _applyZoneLootMsg(msg, S);
               break;
             }
           case 'loot_credit':
@@ -2803,72 +2807,12 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'zone_nodes':
             {
-              /* Server sent the full gather-node list for a zone (sent on
-                 zone change).  Replace S.gatherNodes wholesale; the
-                 client-local spawnGatherNodes() and the v2.3.30 revive
-                 loop are gated on !S._serverGatherNodes so they stop
-                 running once we flip the flag here. */
-              if (msg.nodes) {
-                S._serverGatherNodes = true;
-                var _zzone = msg.zone || S.currentZone;
-                var _curZoneCfgZN = ZONES[S.currentZone];
-                if (_curZoneCfgZN && _curZoneCfgZN.safe) {
-                  /* Safe zone -- never accept server resource nodes
-                     (v2.3.136). */
-                  S.gatherNodes = [];
-                } else if (_zzone && _zzone !== S.currentZone) {
-                  /* Stale snapshot for a different zone -- ignore. */
-                } else {
-                  S.gatherNodes = msg.nodes.map(function (n) {
-                    var local = createGatherNode(_zzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
-                    local.id = n.id;
-                    local.alive = !!n.alive;
-                    local.respawnAt = n.respawnAt || 0;
-                    return local;
-                  });
-                }
-              }
+              _applyZoneNodesMsg(msg, S);
               break;
             }
           case 'zone_monsters':
             {
-              /* Server sent the full monster list for a zone (sent on
-                 zone change).  Non-empty → server-authoritative,
-                 replace local snapshot.  Empty → server doesn't model
-                 this zone (dungeon, town); flip back to client-local
-                 and re-spawn if the local zone-change code skipped its
-                 spawn while the previous flag was still true. */
-              if (!msg.monsters) break;
-              if (msg.monsters.length > 0) {
-                S._serverMonsters = true;
-                S.monsters = msg.monsters.map(function(m) {
-                  var local = _objectSpread(_objectSpread({}, m), {}, {
-                    archetype: m.arch, type: m.arch,
-                    curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-                    alive: m.alive, statuses: {}, _hitThisSwing: false,
-                    _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
-                    _stuckArrows: [],
-                  });
-                  applyZoneVariant(local, S.currentZone);
-                  /* See state_sync handler -- mirror the same spawn
-                     archetype stash so respawn can revert a transformed
-                     monster back to the zone's spawn variant. */
-                  local._spawnArchetype = local.archetype;
-                  return local;
-                });
-              } else {
-                var _prevSrvFlag = S._serverMonsters;
-                S._serverMonsters = false;
-                /* If we just transitioned from a server-managed zone
-                   to a non-server zone, the local zone-change code
-                   skipped its spawnMonstersForZone call.  Re-spawn now
-                   for known ZONES entries (dungeons handle their own
-                   spawn in the depth-descent code). */
-                if (_prevSrvFlag) {
-                  var _zn = ZONES[S.currentZone];
-                  if (_zn) S.monsters = spawnMonstersForZone(_zn);
-                }
-              }
+              _applyZoneMonstersMsg(msg, S);
               break;
             }
           case 'player_join':
@@ -3075,6 +3019,94 @@ export var BroTown = function BroTown(_ref0) {
               break;
             }
           }
+        }
+      }
+
+      /* Zone-snapshot appliers.  Shared between the legacy v1 trio
+         (zone_monsters / zone_nodes / zone_loot, still sent by old
+         workers) and the protocol-v2 merged zone_state message, which
+         carries all three lists in one frame.  Bodies are the original
+         case implementations, factored so both paths stay identical. */
+      function _applyZoneMonstersMsg(msg, S) {
+        /* Server sent the full monster list for a zone (sent on
+           zone change).  Non-empty → server-authoritative,
+           replace local snapshot.  Empty → server doesn't model
+           this zone (dungeon, town); flip back to client-local
+           and re-spawn if the local zone-change code skipped its
+           spawn while the previous flag was still true. */
+        if (!msg.monsters) return;
+        if (msg.monsters.length > 0) {
+          S._serverMonsters = true;
+          S.monsters = msg.monsters.map(function(m) {
+            var local = _objectSpread(_objectSpread({}, m), {}, {
+              archetype: m.arch, type: m.arch,
+              curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
+              alive: m.alive, statuses: {}, _hitThisSwing: false,
+              _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
+              _stuckArrows: [],
+            });
+            applyZoneVariant(local, S.currentZone);
+            /* See state_sync handler -- mirror the same spawn
+               archetype stash so respawn can revert a transformed
+               monster back to the zone's spawn variant. */
+            local._spawnArchetype = local.archetype;
+            return local;
+          });
+        } else {
+          var _prevSrvFlag = S._serverMonsters;
+          S._serverMonsters = false;
+          /* If we just transitioned from a server-managed zone
+             to a non-server zone, the local zone-change code
+             skipped its spawnMonstersForZone call.  Re-spawn now
+             for known ZONES entries (dungeons handle their own
+             spawn in the depth-descent code). */
+          if (_prevSrvFlag) {
+            var _zn = ZONES[S.currentZone];
+            if (_zn) S.monsters = spawnMonstersForZone(_zn);
+          }
+        }
+      }
+
+      function _applyZoneNodesMsg(msg, S) {
+        /* Server sent the full gather-node list for a zone (sent on
+           zone change).  Replace S.gatherNodes wholesale; the
+           client-local spawnGatherNodes() and the v2.3.30 revive
+           loop are gated on !S._serverGatherNodes so they stop
+           running once we flip the flag here. */
+        if (!msg.nodes) return;
+        S._serverGatherNodes = true;
+        var _zzone = msg.zone || S.currentZone;
+        var _curZoneCfgZN = ZONES[S.currentZone];
+        if (_curZoneCfgZN && _curZoneCfgZN.safe) {
+          /* Safe zone -- never accept server resource nodes
+             (v2.3.136). */
+          S.gatherNodes = [];
+        } else if (_zzone && _zzone !== S.currentZone) {
+          /* Stale snapshot for a different zone -- ignore. */
+        } else {
+          S.gatherNodes = msg.nodes.map(function (n) {
+            var local = createGatherNode(_zzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
+            local.id = n.id;
+            local.alive = !!n.alive;
+            local.respawnAt = n.respawnAt || 0;
+            return local;
+          });
+        }
+      }
+
+      function _applyZoneLootMsg(msg, S) {
+        /* Sent on zone change.  Replace S.groundLoot with the new
+           zone's authoritative pile list. */
+        if (!msg.loot) return;
+        S._serverLoot = true;
+        var _curZoneCfgZL = ZONES[S.currentZone];
+        var _zlzone = msg.zone;
+        if (_curZoneCfgZL && _curZoneCfgZL.safe) {
+          S.groundLoot = [];
+        } else if (_zlzone && _zlzone !== S.currentZone) {
+          /* Stale zone_loot for a different zone -- ignore. */
+        } else {
+          S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
         }
       }
 
