@@ -18,7 +18,9 @@ import { GEAR_SLOTS, getEquip } from './gearCatalog.js';
 
 const FRAME_W = 256;
 const FRAME_H = 256;
-const GEAR_VERSION = '2.3.684';
+/* v2.3.705: jog-east/-northeast gear sheets remapped to the body's new
+   half-cycle frame order (see playerSprites VERSION 68). */
+const GEAR_VERSION = '2.3.705';
 
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};

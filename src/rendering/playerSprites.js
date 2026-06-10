@@ -86,7 +86,15 @@ const MINE_DURATION_MS = 650;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine'];
 
-const VERSION = 67; /* +mine pose; v67 cleaned interior white gaps in mine-south */
+/* v68 (v2.3.705): jog-east + jog-northeast rebuilt as HALF-CYCLE LOOPS.  The
+   AI armor pass couldn't keep limb identity through the second arm/leg
+   crossover (the arms "repelled" instead of swinging through), so the sheet
+   now carries ONE clean half-stride played twice -- visually identical on a
+   symmetric figure, and the gait alternation is implied.  East = old frames
+   0-13 doubled (28); NE = old frames 8-15 doubled (16), which also drops the
+   two worst frame-pops the old NE cycle had (7->8 and 15->0).  Gear sheets +
+   anchors/body-tops/body-anchors were remapped to the same frame order. */
+const VERSION = 68; /* v67 cleaned interior white gaps in mine-south */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
