@@ -4,6 +4,7 @@ import { cookingBus } from '../cookingBus.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
+import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 
 // Category filter chips — icon-only.  "All" comes first so the player
 // always opens the bag with everything visible.
@@ -186,6 +187,17 @@ export const InventoryPanel = () => {
   const S = getState();
   const inv = (S?.rpg?.inventory) || {};
 
+  /* v2.3.687: self-healing gear stash -- restore any orphaned steel piece
+     (e.g. unequipped via the Equipment menu's toggle, which predates the
+     stash) so it can always be re-equipped from the bag. */
+  if (S?.rpg) {
+    try {
+      if (reconcileGearStash(S.rpg)) {
+        localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
+      }
+    } catch (e) { /* reconcile is best-effort */ }
+  }
+
   // Diff against last frame — bubble up any key whose count increased.
   const prev = prevCountRef.current;
   const recents = recentRef.current.slice();
@@ -251,7 +263,12 @@ export const InventoryPanel = () => {
         const stashArmors = (filter === 'all' || filter === 'armor')
           ? ((S?.rpg?.armorStash) || [])
           : [];
-        const totalTiles = stashWpns.length + stashShields.length + stashArmors.length + filtered.length;
+        /* v2.3.685: unequipped WORN gear (steel chest/legs from the Loadout)
+           -- Equip from the popup puts it back on. */
+        const stashGears = (filter === 'all' || filter === 'armor')
+          ? ((S?.rpg?.gearStash) || [])
+          : [];
+        const totalTiles = stashWpns.length + stashShields.length + stashArmors.length + stashGears.length + filtered.length;
         if (totalTiles === 0) {
           return (
             <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
@@ -274,7 +291,10 @@ export const InventoryPanel = () => {
             {stashArmors.map((ar, i) => (
               <StashTile key={`sa-${i}`} kind="stashArmor" obj={ar} index={i} />
             ))}
-            {filtered.slice(0, 32 - stashWpns.length - stashShields.length - stashArmors.length).map(k => (
+            {stashGears.map((g, i) => (
+              <StashTile key={`sg-${i}`} kind="stashGear" obj={g} index={i} />
+            ))}
+            {filtered.slice(0, 32 - stashWpns.length - stashShields.length - stashArmors.length - stashGears.length).map(k => (
               <ItemTile key={k} ikey={k} count={inv[k]} />
             ))}
           </div>
@@ -300,12 +320,18 @@ const StashTile = ({ kind, obj, index }) => {
     } else if (kind === 'stashArmor') {
       /* v2.3.228: armor stash tile -> popup with Equip action. */
       itemDetailBus.open({ kind: 'stashArmor', armor: obj, index, anchor });
+    } else if (kind === 'stashGear') {
+      /* v2.3.685: unequipped worn gear (steel chest/legs). */
+      itemDetailBus.open({ kind: 'stashGear', gear: obj, index, anchor });
     } else {
       itemDetailBus.open({ kind: 'stashWeapon', wpn: obj, index, anchor });
     }
   };
   const v = '2.3.211';
-  const thumb = kind === 'stashArmor'
+  const thumb = kind === 'stashGear'
+    ? ((obj && (obj.gearId === 'steelplate' || obj.gearId === 'steelgreaves'))
+        ? `/sprites/gear/icons/${obj.gearId}.png?v=2.3.685` : null)
+    : kind === 'stashArmor'
     ? null /* no armor sprites yet -- glyph fallback below */
     : kind === 'stashShield'
     ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.png?v=${v}` : null)
@@ -316,6 +342,7 @@ const StashTile = ({ kind, obj, index }) => {
   const color = TIER_COLOR.rare;
   const fallbackGlyph = kind === 'stashShield' ? '\u{1F6E1}'
                       : kind === 'stashArmor'  ? '\u{1F9BA}'
+                      : kind === 'stashGear'   ? (obj && obj.slot === 'legs' ? '\u{1F456}' : '\u{1F9BA}')
                       :                          '⚔';
   return (
     <div onPointerUp={handleTap} style={{

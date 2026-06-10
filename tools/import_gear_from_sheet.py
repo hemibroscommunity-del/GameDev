@@ -386,9 +386,25 @@ for i in range(n):
         # no skin/head heuristics -> surgically clean. Dilate the green a touch to
         # take its AA fringe with it.
         R, G, B = a_rgb[:, :, 0], a_rgb[:, :, 1], a_rgb[:, :, 2]
-        green = (G > R + 25) & (G > B + 25) & (G > 60)
-        green = ndimage.binary_dilation(green, iterations=1)
-        gear = a_op & ~green & band
+        green_raw = (G > R + 25) & (G > B + 25) & (G > 60)
+        cand = a_op & ~ndimage.binary_dilation(green_raw, iterations=1) & band
+        # The mannequin's own outline/halo (black stroke + soft AA + painted
+        # ground shadow) is neither green nor magenta, so it used to come
+        # through as 'gear' wherever the armour drawing drifted off the body --
+        # floating arcs hugging the figure in-game (v2.3.681).  Real armour has
+        # a CONFIDENT CORE: an eroded mass of pixels away from the body edge.
+        # 1) drop whole components that contain no core (stray shadows/arcs);
+        # 2) within kept components, drop pixels hugging the green body with no
+        #    core within 3px (the outline/AA halo) -- armour that genuinely
+        #    touches the body keeps its edge because its core is right there.
+        core = ndimage.binary_erosion(
+            cand & ~ndimage.binary_dilation(green_raw, iterations=2), iterations=1)
+        lblm, numm = ndimage.label(cand)
+        keep_ids = np.unique(lblm[core & (lblm > 0)])
+        gear = np.isin(lblm, keep_ids) & cand
+        near_core = ndimage.binary_dilation(core, iterations=3)
+        halo = gear & ndimage.binary_dilation(green_raw, iterations=2) & ~near_core
+        gear &= ~halo
     else:
         bf = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))
         b_rgb = bf[:, :, :3].astype(int)

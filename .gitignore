@@ -17,3 +17,4 @@ __pycache__/
 
 # Importer validation composites (dev artifacts)
 tools/posesheets/_validate_*.png
+assets-archive/

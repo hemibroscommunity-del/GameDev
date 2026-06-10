@@ -30,13 +30,15 @@ LOCAL = 0.3515625
 NECK_RESTORE_FRAC = 0.33
 # --- keep in sync with entityRenderer.js ---
 BODY_DIR_SCALE = {
-    'stand': {'south': 1.136, 'east': 0.983, 'north': 1.039, 'northeast': 1.003, 'southwest': 0.983},
+    'stand': {'south': 1.051, 'east': 0.983, 'north': 1.039, 'northeast': 1.003, 'southwest': 0.983},
     'jog':   {'south': 1.000, 'east': 1.157, 'north': 1.050, 'northeast': 1.126, 'southwest': 1.000},
 }
-STAND_WIDTH  = {'south': 1.060, 'east': 1.7325, 'north': 1.326, 'northeast': 1.654, 'southwest': 1.232}
-STAND_HEIGHT = {'south': 0.975, 'east': 0.945, 'north': 0.964, 'northeast': 0.946, 'southwest': 0.949}
-JOG_WIDTH    = {'northeast': 0.903, 'southwest': 0.95}
-JOG_HEIGHT   = {'south': 1.052, 'east': 0.985, 'north': 0.926, 'northeast': 0.977, 'southwest': 1.028}
+# v2.3.645 neutralized the per-axis armour stretches in the renderer (only the
+# uniform BODY_DIR_SCALE applies) -- mirror that here so previews match in-game.
+STAND_WIDTH  = {'south': 1.0, 'east': 1.0, 'north': 1.0, 'northeast': 1.0, 'southwest': 1.0}
+STAND_HEIGHT = {'south': 1.0, 'east': 1.0, 'north': 1.0, 'northeast': 1.0, 'southwest': 1.0}
+JOG_WIDTH    = {}
+JOG_HEIGHT   = {}
 DIRS = ['south', 'east', 'northeast', 'north', 'southwest']
 
 SHEETS = {
@@ -160,7 +162,7 @@ def _blend_ghost_hand(ba, top, bot, orig_alpha=None):
     ba[out, 3] = 0
 
 
-def composite(pose, d, i, worn, nudges, mask_dilate=5):
+def composite(pose, d, i, worn, nudges, mask_dilate=6):
     """One 256 frame composited as the renderer would.
     v2: erase the body wherever a worn piece's silhouette (dilated by
     mask_dilate px to swallow the per-frame AI misalignment) covers, so the
@@ -194,11 +196,77 @@ def composite(pose, d, i, worn, nudges, mask_dilate=5):
                 # bbox so it tracks the bob.
                 op = orig_alpha > 40
                 ys = np.where(op.any(axis=1))[0]
+                neck_y = 0
                 if len(ys):
                     neck_y = ys[0] + int(round(NECK_RESTORE_FRAC * (ys[-1] - ys[0])))
                     ba[:neck_y, :, 3] = orig_alpha[:neck_y, :]
-                    if worn.get('chest'):
+                    # v2.3.686: full set only -- with chest-only wear the bare
+                    # belly/hands are legit skin, and the blend smeared/erased
+                    # them.  Mirrors the renderer.
+                    if worn.get('chest') and worn.get('legs'):
                         _blend_ghost_hand(ba, ys[0], ys[-1], orig_alpha)
+                # v2.3.681: erase the naked-body OUTLINE/SHADOW remnants that
+                # survive OUTSIDE the armour silhouette where the AI drawing
+                # drifted (floating arcs hugging the figure).  When armoured,
+                # the body may only show INSIDE the filled gear silhouette
+                # (+2px) -- pants in plate gaps, armpit windows -- or in the
+                # restored head band above neck_y.  Row-ranges keep partial
+                # equips intact: chest-only must not erase the bare legs etc.
+                # Runs AFTER the blend so the pant-restore can't re-open these.
+                gop = np.zeros((FRAME, FRAME), bool)
+                for arr in pieces.values():
+                    gop |= arr[:, :, 3] > 30
+                if gop.any():
+                    allowed = ndimage.binary_dilation(
+                        ndimage.binary_fill_holes(gop), iterations=2)
+                    gys = np.where(gop.any(axis=1))[0]
+                    lo = int(gys.min()); hi = int(gys.max())
+                    outside = ~allowed
+                    outside[:neck_y] = False               # head band stays
+                    # WAIST BAND: the torso-leg gap isn't always enclosed by
+                    # gear (open at the hip side in profile frames), but the
+                    # body there is legit -- it backs the see-through chain
+                    # belt and fills the gap with pants instead of background.
+                    # Allow body in the waist rows, but only within the gear's
+                    # horizontal span per row so outline arcs at waist height
+                    # (beyond the gauntlets) stay dead.
+                    if (worn.get('chest') or worn.get('legs')) and len(ys):
+                        fh = int(ys[-1] - ys[0])
+                        w0 = int(ys[0] + 0.38 * fh); w1 = int(ys[0] + 0.64 * fh)
+                        for y in range(max(0, w0), min(FRAME, w1)):
+                            gx = np.where(gop[y])[0]
+                            if len(gx):
+                                outside[y, gx.min():gx.max() + 1] = False
+                    # v2.3.684 PARTIAL WEAR: row-range gates are fooled by sheet
+                    # accessories (idle chest's hanging gauntlet, greaves stray
+                    # pixels above the knee) -- whole bare rows got erased.
+                    # Confine per ROW: only rows the gear WRAPS (gear pixels >=
+                    # 85% of original body pixels) are silhouette-confined.
+                    # Mirrors entityRenderer._maskedBodyFrame -- keep in sync.
+                    partial = not (worn.get('chest') and worn.get('legs'))
+                    if partial:
+                        bc = (orig_alpha > 40).sum(axis=1)
+                        gc = gop.sum(axis=1)
+                        covered = (bc > 0) & (gc >= 0.85 * bc)
+                        outside[~covered] = False          # bare row stays whole
+                    elif not worn.get('chest'):
+                        outside[:lo] = False               # bare torso stays
+                    if worn.get('legs'):
+                        hi2 = min(FRAME, hi + 8)           # boots end the figure:
+                        outside[hi2:] = True               # kill under-boot shadow
+                    elif not partial:
+                        outside[hi:] = False               # bare legs stay
+                    ba[outside, 3] = 0
+                    if partial:
+                        # bare rows get back what the dilated cover halo ate
+                        # (hue-based pant-restore misses shirt/skin -> a
+                        # transparent band above the greaves top / around the
+                        # hanging gauntlet).  Mirrors the renderer.
+                        res = (orig_alpha > 40) & (ba[:, :, 3] <= 20) & ~covered[:, None]
+                        res[:max(0, neck_y)] = False
+                        if worn.get('legs'):
+                            res[min(FRAME, hi + 8):] = False
+                        ba[res, 3] = orig_alpha[res]
             o.alpha_composite(Image.fromarray(ba))
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:
@@ -237,17 +305,26 @@ def render_dir(pose, d, worn, nudges, zoom, mask_dilate=5):
     x0, x1, y0, y1 = xs.min() - 2, xs.max() + 3, ys.min() - 2, ys.max() + 3
     cw, ch = x1 - x0, y1 - y0
     cols = min(n, 8); rows = (n + cols - 1) // cols
-    pad, lbl = 4, 14
+    # banner label per cell, sized to stay readable when the grid is shrunk
+    lbl = max(28, ch // 7)
+    from PIL import ImageFont
+    try:
+        font = ImageFont.load_default(size=int(lbl * 0.7))
+    except TypeError:                                   # older Pillow
+        font = ImageFont.load_default()
+    pad = 4
     out = Image.new('RGBA', (cols * (cw + pad) + pad, rows * (ch + lbl + pad) + pad), (38, 42, 50, 255))
     dr = ImageDraw.Draw(out)
     bg = Image.new('RGBA', (cw, ch), (70, 76, 86, 255))
+    tag = {'south': 'S', 'east': 'E', 'northeast': 'NE', 'north': 'N',
+           'southwest': 'SW', 'northwest': 'NW'}.get(d, d[:2].upper())
     for i, c in enumerate(cells):
         r, cc = divmod(i, cols)
         x = pad + cc * (cw + pad); y = pad + lbl + r * (ch + lbl + pad)
         cell = bg.copy(); cell.alpha_composite(c.crop((x0, y0, x1, y1)))
         out.alpha_composite(cell, (x, y))
-        dr.rectangle([x, y - lbl, x + 22, y], fill=(0, 0, 0, 200))
-        dr.text((x + 3, y - lbl + 2), str(i), fill=(255, 220, 0, 255))
+        dr.rectangle([x, y - lbl, x + cw, y], fill=(0, 0, 0, 220))
+        dr.text((x + 6, y - lbl + 3), f'{tag} f{i}', fill=(255, 220, 0, 255), font=font)
     return out
 
 

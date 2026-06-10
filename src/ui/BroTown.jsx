@@ -42,7 +42,7 @@ import { HAT_COLOR_CATALOG, getHatColor, setHatColor, hatColorTarget } from '@/r
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor, facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor, shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
-import { getEquip, setEquip } from '@/rendering/gearCatalog.js';
+import { getEquip, setEquip, onEquipChange, reconcileGearStash } from '@/rendering/gearCatalog.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
@@ -846,6 +846,17 @@ export var BroTown = function BroTown(_ref0) {
       ng[slot] = worn;
       return ng;
     });
+  }, []);
+  /* v2.3.685: the dashboard Loadout can now equip/unequip the same gear slots
+     (popup unequip -> bag).  Track external setEquip calls so this menu's
+     WORN ARMOUR toggle reflects them instead of going stale. */
+  useEffect(function () {
+    var offs = ['chest', 'legs'].map(function (slot) {
+      return onEquipChange(slot, function () {
+        setGearWorn({ chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none' });
+      });
+    });
+    return function () { offs.forEach(function (off) { off(); }); };
   }, []);
   var _useState15 = useState([]),
     _useState16 = _slicedToArray(_useState15, 2),
@@ -4751,6 +4762,10 @@ export var BroTown = function BroTown(_ref0) {
       /* T2 redesign: backfill per-weapon-category build fields + wipe the
          retired generic specs (one-time, idempotent). */
       migrateWeaponT2(S.rpg);
+      /* v2.3.687: restore any orphaned steel piece (worn nowhere, bagged
+         nowhere -- e.g. unequipped via the old Equipment-menu toggle) into
+         the bag so it's never lost. */
+      try { reconcileGearStash(S.rpg); } catch (e) { /* best-effort */ }
       if (!S.rpg._quests) S.rpg._quests = {};
       if (!S.rpg._questFlags) S.rpg._questFlags = {};
       if (!S.rpg._questKills) S.rpg._questKills = {};

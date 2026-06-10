@@ -10,6 +10,7 @@ import {
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { cookingBus } from '../cookingBus.js';
 import { eatBus } from '../eatBus.js';
+import { GEAR_CATALOG, getEquip, setEquip } from '../../../rendering/gearCatalog.js';
 import {
   WEAPON_TYPES,
   SWING_COOLDOWN,
@@ -183,7 +184,46 @@ function resolveTarget(target) {
       actions: { equip: true },
     };
   }
+  /* v2.3.685: worn gear (the rendered steel chest/legs, gearCatalog slots) in
+     the Loadout -- unequip drops it into the bag (rpg.gearStash), mirroring
+     the weapon/shield flow. */
+  if (target.kind === 'gear') {
+    return {
+      lockKey: 'gear_' + target.slot,
+      thumb: gearThumb(target.gearId),
+      glyph: target.slot === 'chest' ? '\u{1F9BA}' : '\u{1F456}',
+      name: gearName(target.slot, target.gearId),
+      info: 'Worn armour',
+      desc: 'Steel · ' + (target.slot === 'chest' ? 'Chest' : 'Legs'),
+      actions: { unequip: true },
+    };
+  }
+  if (target.kind === 'stashGear') {
+    const g = target.gear;
+    if (!g) return null;
+    return {
+      lockKey: 'stashGear_' + (target.index || 0),
+      thumb: gearThumb(g.gearId),
+      glyph: g.slot === 'chest' ? '\u{1F9BA}' : '\u{1F456}',
+      name: g.name || gearName(g.slot, g.gearId),
+      info: 'In bag',
+      desc: 'Steel · ' + (g.slot === 'chest' ? 'Chest' : 'Legs'),
+      actions: { equip: true },
+    };
+  }
   return null;
+}
+
+/* Catalog display name for a gear slot item id. */
+function gearName(slot, gearId) {
+  const c = (GEAR_CATALOG[slot] || []).find((g) => g.id === gearId);
+  return (c && c.name) || 'Armour';
+}
+/* Icon PNGs exist for the steel set; other ids fall back to the glyph. */
+function gearThumb(gearId) {
+  return (gearId === 'steelplate' || gearId === 'steelgreaves')
+    ? '/sprites/gear/icons/' + gearId + '.png?v=2.3.685'
+    : null;
 }
 
 function prettyName(key) {
@@ -424,6 +464,40 @@ export const ItemDetailPopup = () => {
     _syncArmorChange(R);
     itemDetailBus.close();
   };
+  /* v2.3.685: worn gear (rendered steel chest/legs) unequips into
+     rpg.gearStash -- the bag shows it as a stash tile, and Equip from there
+     puts it back on (swapping any currently-worn piece into the stash).
+     setEquip drives the renderer directly (same path as the Equipment menu),
+     so the armour visibly comes off/on and eqc/eql sync covers remotes. */
+  const onUnequipGear = () => {
+    const S = getState();
+    if (!S || !S.rpg) return;
+    const R = S.rpg;
+    const slot = target.slot;
+    const gearId = getEquip(slot);
+    if (!gearId || gearId === 'none') { itemDetailBus.close(); return; }
+    if (!R.gearStash) R.gearStash = [];
+    R.gearStash.push({ slot, gearId, name: gearName(slot, gearId) });
+    setEquip(slot, 'none');
+    persist(R);
+    itemDetailBus.close();
+  };
+  const onEquipStashGear = () => {
+    const S = getState();
+    if (!S || !S.rpg || !target.gear) return;
+    const R = S.rpg;
+    const g = target.gear;
+    if (!R.gearStash) R.gearStash = [];
+    const idx = R.gearStash.indexOf(g);
+    if (idx >= 0) R.gearStash.splice(idx, 1);
+    const cur = getEquip(g.slot);
+    if (cur && cur !== 'none') {
+      R.gearStash.push({ slot: g.slot, gearId: cur, name: gearName(g.slot, cur) });
+    }
+    setEquip(g.slot, g.gearId);
+    persist(R);
+    itemDetailBus.close();
+  };
   const onToggleLock = () => {
     if (locked) unlockItem(lockKey);
     else        lockItem(lockKey);
@@ -434,11 +508,13 @@ export const ItemDetailPopup = () => {
   const onUnequip = () => {
     if (target.kind === 'shield')      onUnequipShield();
     else if (target.kind === 'armor')  onUnequipArmor();
+    else if (target.kind === 'gear')   onUnequipGear();
     else                                onUnequipWeapon();
   };
   const onEquip = () => {
     if (target.kind === 'stashShield')      onEquipStashShield();
     else if (target.kind === 'stashArmor')  onEquipStashArmor();
+    else if (target.kind === 'stashGear')   onEquipStashGear();
     else                                     onEquipStashWeapon();
   };
 
