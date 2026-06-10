@@ -10832,8 +10832,16 @@ export var BroTown = function BroTown(_ref0) {
             while (o._fAngle > Math.PI) o._fAngle -= Math.PI * 2;
             while (o._fAngle < -Math.PI) o._fAngle += Math.PI * 2;
           }
-          /* Discrete facing */
-          if (oAdx > 0.03 || oAdy > 0.03) {
+          /* Discrete facing.  Gated on the delta AGREEING with the smoothed
+             velocity: when a remote player stops, renderX/Y keep advancing on
+             the decaying _smoothVx/Vy and sail PAST the frozen server
+             position -- the convergence delta then points BACKWARDS for a
+             dozen frames, which used to rewrite _moveFacing8 to the opposite
+             direction the moment they stopped (and freeze it there, since no
+             further deltas arrive).  Real movement keeps delta and velocity
+             roughly aligned; a fresh start from idle has _smoothV ~ 0, so
+             the dot is ~0 and still passes. */
+          if ((oAdx > 0.03 || oAdy > 0.03) && (oDx * o._smoothVx + oDy * o._smoothVy >= 0)) {
             if (oAdy > oAdx) o._facing = oDy > 0 ? 'down' : 'up';
             else o._facing = oDx > 0 ? 'right' : 'left';
             /* v2.3.398: 8-way facing from POSITION delta (which is correct --

@@ -791,7 +791,12 @@ function _orderTraitsAndWeapon(display, facingIdx) {
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
-    const rearFacing = (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+    /* Rear = away-from-camera: SW(3) / NW(5) / N(6).  NE(7) is a
+       toward-camera facing (same set as the weapon block below: E/SE/S/NE)
+       -- the v2.3.679 fix shipped with NE in the rear set and SW out of
+       it, which hid the beard on NE and stamped it over the back of the
+       head on SW (user report, v2.3.689). */
+    const rearFacing = (facingIdx === 3 || facingIdx === 5 || facingIdx === 6);
     if (rearFacing) {
       /* Behind the head: insert just BELOW the body sprite. */
       const bodyIdx = display.getChildIndex(display._spriteBody);
