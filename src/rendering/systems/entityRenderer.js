@@ -724,7 +724,14 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
    getBodyFrame/getGearFrame here lands in the same caches (and therefore
    the same _maskedBodyFrame keys) the render path uses.  Yields to the
    event loop every few frames to keep the intro animation smooth.  Rare
-   poses (pickup / mine) stay lazy -- their one-off bake hitch is fine. */
+   poses (pickup / mine) stay lazy -- their one-off bake hitch is fine.
+   v2.3.693: optional opts.frameBudgetMs paces the work for LIVE gameplay
+   (the v2.3.692 gear-change re-prewarm): bake until the budget is spent,
+   then wait for the next animation frame.  The default count-based yield
+   (every 6 bakes via setTimeout) stays for the spawn path -- it gates the
+   intro overlay, so finishing fast matters more than frame pacing there.
+   On iPhone one bake can cost ~10ms, so 6 back-to-back chunks queued as
+   0ms timers starved rendering -- the near-freeze on equip/unequip. */
 /* v2.3.700: shared prewarm progress for the intro loading bar.  Both prewarm
    passes add their planned bake counts to `total` up front and bump `done`
    per frame; IntroVideo polls this to draw a real progress bar. */
@@ -767,14 +774,20 @@ export async function uploadBakedTextures(renderer) {
   }
 }
 
-export async function prewarmMaskedBodyFrames() {
+export async function prewarmMaskedBodyFrames(opts) {
+  const budgetMs = (opts && opts.frameBudgetMs) || 0;
   const slots = ['chest', 'legs'];
   if (!slots.some((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) return;
   const _chestEquipped = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
   const shirtT = _chestEquipped ? null : shirtFill(getShirt(), getShirtColor());
   const shirtKey = shirtT ? (getShirt() + '-' + getShirtColor()) : 'none';
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  const _nextFrame = () => new Promise((r) => {
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => r());
+    else setTimeout(r, 16);
+  });
   let sinceYield = 0;
+  let chunkT0 = (typeof performance !== 'undefined') ? performance.now() : 0;
   for (const pose of ['stand', 'jog']) {
     for (const dir of DIRS) {
       const fc = playerFrameCount(pose, dir) || 1;
@@ -792,7 +805,12 @@ export async function prewarmMaskedBodyFrames() {
         }
         if (!worn.length) continue;
         try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
-        if (++sinceYield >= 6) {
+        if (budgetMs) {
+          if (performance.now() - chunkT0 >= budgetMs) {
+            await _nextFrame();
+            chunkT0 = performance.now();
+          }
+        } else if (++sinceYield >= 6) {
           sinceYield = 0;
           await new Promise((r) => setTimeout(r, 0));
         }
@@ -877,19 +895,38 @@ export async function prewarmAltWornSets(opts) {
     }
   }
 }
-/* Re-kick on equip changes so the now-current set is fully resident even
-   after cache churn (debounced; the seq counter cancels stale runs). */
-if (typeof window !== 'undefined') {
-  let _t = 0;
-  for (const sl of ['chest', 'legs']) {
-    try {
-      onEquipChange(sl, () => {
-        clearTimeout(_t);
-        _t = setTimeout(() => { prewarmAltWornSets().catch(() => {}); }, 800);
-      });
-    } catch (e) { /* ignore */ }
-  }
+/* Equip-change re-kick: handled by _schedulePrewarm below (v2.3.692/693,
+   frame-budgeted).  The intro-time prewarmAltWornSets keeps all three
+   gear states resident, so the scheduler is mostly cache hits. */
+/* v2.3.692: re-run the prewarm whenever the worn chest/legs change.  The
+   spawn-time prewarm only covers the loadout you spawned with; an equip or
+   unequip changes every _maskedBodyCache key, so each (pose, dir, frame) was
+   a lazy first-sighting bake (~ms each) -- felt as a frame-rate dip while
+   running around right after a gear swap.  Re-baking here lands in the dead
+   time while the player is still in the equip menu.  Debounced 150ms so
+   swapping both pieces bakes only the final combination; if a change arrives
+   mid-prewarm, one more pass is queued rather than overlapped.  Stale
+   combinations left in the cache age out via the 256-entry FIFO cap.
+   v2.3.693: pace with frameBudgetMs (~5ms of baking per rendered frame) --
+   the unpaced run starved rendering on iPhone (near-freeze on swap).
+   Warmup takes a few seconds; frames not yet baked still lazy-bake on
+   sighting, so worst case is the old pre-v2.3.692 behavior, not a gap. */
+let _equipPrewarmTimer = null;
+let _equipPrewarmRunning = false;
+let _equipPrewarmAgain = false;
+function _schedulePrewarm() {
+  if (_equipPrewarmTimer) clearTimeout(_equipPrewarmTimer);
+  _equipPrewarmTimer = setTimeout(() => {
+    _equipPrewarmTimer = null;
+    if (_equipPrewarmRunning) { _equipPrewarmAgain = true; return; }
+    _equipPrewarmRunning = true;
+    prewarmMaskedBodyFrames({ frameBudgetMs: 5 }).catch(() => { /* best-effort */ }).then(() => {
+      _equipPrewarmRunning = false;
+      if (_equipPrewarmAgain) { _equipPrewarmAgain = false; _schedulePrewarm(); }
+    });
+  }, 150);
 }
+for (const _sl of ['chest', 'legs']) onEquipChange(_sl, _schedulePrewarm);
 
 const _REGION_SPR = { head: '_bodyHead', torso: '_bodyTorso', legs: '_bodyLegs' };
 /* Draw the body via its three region sprites.  `show` = {head,torso,legs}.

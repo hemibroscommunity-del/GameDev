@@ -19,3 +19,6 @@ __pycache__/
 # Importer validation composites (dev artifacts)
 tools/posesheets/_validate_*.png
 assets-archive/
+
+# Shirt-preview dev artifacts (tools/preview_shirt_frames.py output)
+tools/_*.png
