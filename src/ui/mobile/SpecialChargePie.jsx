@@ -107,7 +107,12 @@ export const SpecialChargePie = () => {
           stroke={RING_FG}
           strokeWidth={strokeW}
           strokeLinecap="butt"
-          strokeDasharray={(partialFrac * C) + ' ' + C}
+          /* Fixed-point formatting: tiny fractions stringify in exponent
+             notation (9.4e-7), which some SVG dasharray parsers reject --
+             an invalid dasharray falls back to a SOLID stroke, flashing a
+             full blue ring over the indicator for a frame whenever the
+             ring resets near zero. */
+          strokeDasharray={(Math.max(0, partialFrac) * C).toFixed(2) + ' ' + C.toFixed(2)}
           transform={'rotate(-90 ' + cx + ' ' + cy + ')'}
         />
         <text
