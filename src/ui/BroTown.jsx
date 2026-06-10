@@ -1359,6 +1359,10 @@ export var BroTown = function BroTown(_ref0) {
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
+  /* v2.3.705: drag-to-rotate -- horizontal swipes on the preview canvas step
+     the facing every 26px of travel; the corner buttons remain for
+     discoverability.  Holds the last x where a step fired. */
+  var _dragRotX = useRef(null);
   /* Which of the 8 compass directions the preview faces; rotate buttons step
      through them.  Clockwise order. */
   var _PREVIEW_DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', 'west', 'southwest'];
@@ -1399,39 +1403,50 @@ export var BroTown = function BroTown(_ref0) {
      part of the item, not its own row). */
   var _apTileStyle = function (sel, size) {
     return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
-      borderRadius: 8, background: sel ? 'var(--pop)' : 'var(--ink3)',
+      position: 'relative', borderRadius: 8, background: sel ? 'var(--pop)' : 'var(--ink3)',
       border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
-  var _swatchTile = function (opt, selId, onSet, size) {
+  /* v2.3.705: explicit checkmark badge on the picked tile -- the purple
+     highlight alone was ambiguous next to the purple-ish swatches. */
+  var _checkBadge = function () {
+    return /*#__PURE__*/React.createElement("span", { key: 'ck', style: { position: 'absolute', right: -2, bottom: -2, width: 14, height: 14, borderRadius: '50%', background: 'var(--pop)', border: '1px solid #fff', color: '#fff', fontSize: 9, lineHeight: '12px', textAlign: 'center', fontWeight: 800, pointerEvents: 'none' } }, "✓");
+  };
+  var _swatchTile = function (opt, selId, onSet, size, thumbCat, thumbItem) {
     /* The 'default' option = keep the item's original color (no recolor).
-       Render it as a muted swatch with a diagonal slash (the universal
-       "original / no override" cue) instead of a literal color, so it
-       doesn't read as a real color choice (e.g. the hat-color default
-       swatch was #7c6cff and looked like a blue pick). */
-    var _swBg = opt.id === 'default'
-      ? 'linear-gradient(135deg, transparent 44%, #c9cdd6 44%, #c9cdd6 56%, transparent 56%), #454a55'
-      : opt.swatch;
+       v2.3.705: the old diagonal-slash cue read poorly (owner feedback).
+       Now: trait colors (hat/hair/beard/shirt) pass thumbCat/thumbItem and
+       the default tile shows the selected item's own thumbnail in its
+       original colors -- "this is what you get".  Body colors (skin/pants/
+       shoes) keep a plain swatch: their catalog 'default' swatches ARE the
+       sprite's native colors, so the swatch is accurate as-is. */
+    var sel = selId === opt.id;
+    var inner = opt.id === 'default' && thumbCat && thumbItem && thumbItem !== 'none'
+      ? /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + thumbCat + '/' + thumbItem + '/thumb.png?v=' + BUILD_INFO.version, alt: 'Original', style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } })
+      : /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 5, background: opt.swatch, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } });
     return /*#__PURE__*/React.createElement("button", {
-      key: 'c_' + opt.id, type: 'button', title: opt.id === 'default' ? 'Default (original color)' : opt.name,
-      onClick: function () { onSet(opt.id); }, style: _apTileStyle(selId === opt.id, size || 28)
-    }, /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 5, background: _swBg, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } }));
+      key: 'c_' + opt.id, type: 'button', title: opt.id === 'default' ? 'Original color' : opt.name,
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 28)
+    }, inner, sel ? _checkBadge() : null);
   };
   var _thumbTile = function (cat, opt, selId, onSet, size) {
     var sz = size || 44;
+    var sel = selId === opt.id;
     return /*#__PURE__*/React.createElement("button", {
       key: 's_' + opt.id, type: 'button', title: opt.name,
-      onClick: function () { onSet(opt.id); }, style: _apTileStyle(selId === opt.id, sz)
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, sz)
     }, opt.id === 'none'
       ? /*#__PURE__*/React.createElement("div", { style: { width: sz - 14, height: sz - 14, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
-      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }));
+      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+    sel ? _checkBadge() : null);
   };
   /* Collapsed-pill previews (non-interactive). */
   var _swOf = function (cat, id) {
-    /* 'default' = original color: return the same slash gradient _swatchTile
-       uses so the collapsed-pill mini preview matches the grid (not a literal
-       color like the hat-default #7c6cff). */
-    if (id === 'default') return 'linear-gradient(135deg, transparent 44%, #c9cdd6 44%, #c9cdd6 56%, transparent 56%), #454a55';
+    /* v2.3.705: no more slash gradient for 'default' -- the only catalogs
+       whose default still reaches here are skin/pants/shoes, and their
+       catalog swatches are the sprite's real native colors.  Trait pills
+       (hat/hair/beard/shirt) skip the mini swatch entirely when the color
+       is 'default' (the item mini-thumb already shows original colors). */
     var e = cat.find(function (o) { return o.id === id; });
     return (e && e.swatch) || '#888';
   };
@@ -1465,7 +1480,9 @@ export var BroTown = function BroTown(_ref0) {
      `optionRows` = expanded-state tile-arrays; `summary` = collapsed preview. */
   var _apPill = function (catKey, label, optionRows, summary) {
     var open = !!expanded[catKey];
-    var toggle = function () { setExpanded(function (p) { var n = Object.assign({}, p); n[catKey] = !p[catKey]; return n; }); };
+    /* v2.3.705: accordion -- opening a category closes the others, so the
+       rail stays short and an open panel is never forgotten off-screen. */
+    var toggle = function () { setExpanded(function (p) { var n = {}; if (!p[catKey]) n[catKey] = true; return n; }); };
     var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb' }, label), _chevron(open)];
     if (open) {
       return /*#__PURE__*/React.createElement("div", { key: catKey, style: Object.assign({}, _pillBox, { flexDirection: 'column' }) },
@@ -1495,6 +1512,21 @@ export var BroTown = function BroTown(_ref0) {
     var stc = rpick(SHIRT_COLOR_CATALOG); setShirtColor(stc); setShirtColorSel(stc);
     var ht = rpick(HEADWEAR_CATALOG); setHeadwear(ht); setHeadwearSel(ht);
     var htc = rpick(HAT_COLOR_CATALOG); setHatColor(htc); setHatColorSel(htc);
+  };
+  /* v2.3.705: RANDOMIZE rolls a few quick looks before settling -- the
+     slot-machine beat makes the button feel fun instead of a dry reroll. */
+  var randomizeWithFlair = function () {
+    randomizeAppearance();
+    var n = 0;
+    var t = setInterval(function () { randomizeAppearance(); if (++n >= 3) clearInterval(t); }, 110);
+  };
+  /* v2.3.705: dice button beside the name box -- naming is the spot players
+     freeze on.  Longest combo is 16 chars, inside the 20-char input cap. */
+  var _NAME_FIRST = ['Brad', 'Chad', 'Turbo', 'Mega', 'Big', 'Lil', 'Iron', 'Captain', 'Duke', 'Rad', 'Ultra', 'Gnarly'];
+  var _NAME_LAST = ['Bro', 'Flex', 'Gains', 'Smash', 'Thunder', 'Blaze', 'Dozer', 'Knuckles', 'Storm', 'Hammer', 'Biceps', 'Swole'];
+  var rollRandomName = function () {
+    var p = function (a) { return a[Math.floor(Math.random() * a.length)]; };
+    setNameInput(p(_NAME_FIRST) + ' ' + p(_NAME_LAST));
   };
   var nftCatalogRef = useRef(null); /* cached CSV data [{ID,Image,...}] */
   var _useState203 = useState('#2563eb'),
@@ -13739,6 +13771,12 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
     title: 'Live preview',
+    /* v2.3.705: drag-to-rotate.  Pointer capture keeps the gesture alive
+       when the finger drifts off the canvas mid-swipe. */
+    onPointerDown: function (e) { _dragRotX.current = e.clientX; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
+    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
+    onPointerUp: function () { _dragRotX.current = null; },
+    onPointerCancel: function () { _dragRotX.current = null; },
     /* No width/height attributes: drawCharacterPortrait force-sets the
        bitmap to 256x256 on every draw, so attributes here would be dead
        weight.  The bitmap upscales via CSS — object-fit keeps it square
@@ -13751,7 +13789,15 @@ export var BroTown = function BroTown(_ref0) {
       imageRendering: 'pixelated',
       borderRadius: 8,
       display: 'block',
-      background: '#ffffff'
+      touchAction: 'none',
+      cursor: 'grab',
+      /* v2.3.705: near-white checker instead of flat white.  Some trait
+         sprites carry white residue from extraction, so the backdrop must
+         stay close to white to hide it -- but a hint of contrast lets
+         white shirts and pale skins read.  Keep both shades near-white;
+         don't swap in a colored/scene backdrop without re-extracting the
+         affected sprites. */
+      background: 'repeating-conic-gradient(#f7f8fb 0% 25%, #eaecf2 0% 50%) 0 0 / 22px 22px'
     }
   }), /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
@@ -13764,7 +13810,9 @@ export var BroTown = function BroTown(_ref0) {
     style: { position: 'absolute', right: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
       background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '8px solid currentColor' } })))), /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '8px solid currentColor' } })))), /*#__PURE__*/React.createElement("div", {
+    style: { position: 'relative', width: '100%' }
+  }, /*#__PURE__*/React.createElement("input", {
     value: nameInput,
     onChange: function onChange(e) {
       return setNameInput(e.target.value);
@@ -13777,7 +13825,9 @@ export var BroTown = function BroTown(_ref0) {
     autoFocus: true,
     style: {
       width: '100%',
-      padding: '12px 14px',
+      /* v2.3.705: symmetric 44px side padding clears the dice button while
+         keeping the centered text centered. */
+      padding: '12px 44px',
       background: 'var(--ink3)',
       border: '1.5px solid var(--line)',
       borderRadius: 10,
@@ -13792,6 +13842,10 @@ export var BroTown = function BroTown(_ref0) {
       boxSizing: 'border-box'
     }
   }), /*#__PURE__*/React.createElement("button", {
+    type: 'button', title: 'Random name', onClick: rollRandomName,
+    style: { position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', width: 36, height: 36, borderRadius: 8, cursor: 'pointer',
+      background: 'var(--ink2)', border: '1.5px solid var(--line)', fontSize: 17, padding: 0, lineHeight: 1 }
+  }, "🎲")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
       marginTop: 'auto',
@@ -13813,15 +13867,15 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-rail-scroll"
   },
-  _apPill('hat', 'HAT', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
-  _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
-  _apPill('beard', 'BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
+  _apPill('hat', 'HAT', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' && hatColorSel !== 'default' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
+  _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' && hairColorSel !== 'default' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
+  _apPill('beard', 'BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' && beardColorSel !== 'default' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
   _apPill('skin', 'SKIN', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
-  _apPill('shirt', 'SHIRT', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : [])),
+  _apPill('shirt', 'SHIRT', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' && shirtColorSel !== 'default' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : [])),
   _apPill('pants', 'PANTS', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
   _apPill('shoes', 'SHOES', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))])),
   /*#__PURE__*/React.createElement("button", {
-    type: 'button', onClick: randomizeAppearance,
+    type: 'button', onClick: randomizeWithFlair,
     style: { width: '100%', padding: '7px', marginTop: 6, minHeight: 40, cursor: 'pointer', borderRadius: 8,
       background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       fontSize: 11, fontWeight: 800, letterSpacing: '.08em', fontFamily: 'Source Sans 3,sans-serif' }
