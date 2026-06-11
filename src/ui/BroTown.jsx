@@ -1396,15 +1396,22 @@ export var BroTown = function BroTown(_ref0) {
   var _introWarmRef = useRef(null);
   useEffect(function () {
     if (!showNameModal) return;
-    try { prewarmBaseSheets(); } catch (e) {}
-    try {
-      var v = document.createElement('video');
-      v.preload = 'auto';
-      v.muted = true;
-      v.src = '/intro/brotown-intro.mp4';
-      v.load();
-      _introWarmRef.current = v;
-    } catch (e) {}
+    /* v2.3.717: prewarm DELAYED 2.5s -- kicking it immediately had the
+       game sheets racing the welcome screen's own theme art for
+       bandwidth, which is exactly the "modal loads slow" complaint.
+       Let the visible UI finish dressing first. */
+    var t = setTimeout(function () {
+      try { prewarmBaseSheets(); } catch (e) {}
+      try {
+        var v = document.createElement('video');
+        v.preload = 'auto';
+        v.muted = true;
+        v.src = '/intro/brotown-intro.mp4';
+        v.load();
+        _introWarmRef.current = v;
+      } catch (e) {}
+    }, 2500);
+    return function () { clearTimeout(t); };
   }, [showNameModal]);
   /* The long-hair sprite is ~88% pure black, so a light hair color over-
      processes into a black band around the face (see characterPortrait recolor
@@ -13794,7 +13801,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "★ BRO TOWN · ACTION RPG ★"), /*#__PURE__*/React.createElement("img", {
     /* v2.3.716: generated gem divider replaces the v2.3.714 CSS hairline. */
-    src: '/ui/welcome/divider.png',
+    src: '/ui/welcome/divider.webp',
     alt: '',
     style: { width: '100%', height: 9, objectFit: 'contain', marginTop: 6, display: 'block', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("div", {
@@ -13818,7 +13825,7 @@ export var BroTown = function BroTown(_ref0) {
        center stays NEAR-WHITE on purpose — some trait sprites carry white
        extraction residue that a dark backdrop would expose. */
     style: { position: 'relative', width: '100%', aspectRatio: '1 / 1', maxHeight: '100%', boxSizing: 'border-box',
-      border: '14px solid transparent', borderImage: "url('/ui/welcome/panel.png') 90 fill / 14px stretch" }
+      border: '14px solid transparent', borderImage: "url('/ui/welcome/panel.webp') 90 fill / 14px stretch" }
   }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-pillar bt-cc-pillar--left" }),
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-pillar bt-cc-pillar--right" }),
   /*#__PURE__*/React.createElement("canvas", {
