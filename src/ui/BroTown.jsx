@@ -13795,7 +13795,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       display: 'inline-block',
       verticalAlign: 'middle',
-      fontSize: 16
+      fontSize: 19
     }
   }, "\u2694\uFE0F"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -13808,7 +13808,9 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.714: lineHeight 1 -- the font's tall default line box made
          the lockup's vertical rhythm impossible to control. */
       fontFamily: "'Press Start 2P','Source Sans 3',sans-serif",
-      fontSize: 14,
+      /* v2.3.723: wordmark + sub-plate bumped a size (owner request);
+         16px is the ceiling before HEMI BROS overflows the ~197px pane. */
+      fontSize: 16,
       lineHeight: 1,
       color: 'var(--gold)',
       textShadow: '0 2px 0 #6b4310, 0 3px 0 rgba(0,0,0,0.5)'
@@ -13822,11 +13824,12 @@ export var BroTown = function BroTown(_ref0) {
        match the mockup, slightly tighter tracking to fit the longer text. */
     style: {
       /* v2.3.719: sized to fit one line in the ~197px pane — the trailing
-         star was wrapping. */
-      fontSize: 8,
+         star was wrapping.  v2.3.723: bumped with the wordmark; tracking
+         eased to keep one line. */
+      fontSize: 10,
       color: 'var(--gold)',
       fontWeight: 700,
-      letterSpacing: '.12em',
+      letterSpacing: '.08em',
       whiteSpace: 'nowrap',
       marginTop: 7
     }
@@ -13872,7 +13875,9 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
        when the finger drifts off the canvas mid-swipe. */
     onPointerDown: function (e) { _dragRotX.current = e.clientX; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
-    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? -1 : 1); _dragRotX.current = e.clientX; } },
+    /* v2.3.723: drag mapping reverted to dx>0 -> +1 (owner: only the
+       BUTTONS were backwards; the drag felt right as originally shipped). */
+    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
     onPointerUp: function () { _dragRotX.current = null; },
     onPointerCancel: function () { _dragRotX.current = null; },
     /* No width/height attributes: drawCharacterPortrait force-sets the
