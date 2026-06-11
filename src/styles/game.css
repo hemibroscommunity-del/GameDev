@@ -190,8 +190,16 @@ input{font-family:inherit}
    notch / home indicator).
    v2.3.713: backdrop is a faint radial instead of flat #000 — a drop
    shadow is invisible against pure black, and the card needs it to read
-   as floating. */
-.bt-name-modal{position:fixed;inset:0;z-index:9999;background:radial-gradient(120% 90% at 50% 35%,#151930 0%,#08090f 60%,#000 100%);display:flex;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
+   as floating.
+   v2.3.717: dark-fantasy theme from owner-generated art (public/ui/
+   welcome/): starfield backdrop, ornate gem frame, parchment preview
+   panel, torch pillars with a sprite-strip flame animation.
+   v2.3.717: theme art recompressed to WebP (~935KB -> ~276KB, the
+   screen was slow to dress) and the sky darkened so the card pops. */
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
+/* v2.3.738: touch-action:none on the modal — iOS ignores overscroll-behavior
+   and rubber-banded the splash when a swipe started on a non-scrollable
+   element.  The rail and sheet re-allow pan-y; everything else is taps. */
 /* v2.3.715: iOS touch hardening -- press-and-hold was popping the text-
    selection loupe / image save-callout and juddering held gestures.  The
    name input opts back in to selection so typing still works; thumbnails
@@ -207,12 +215,74 @@ input{font-family:inherit}
    v2.3.713: gray-blue gradient lifted verbatim from the in-game bottom
    dashboard (BottomDashboard.jsx) so the menu shares its material, plus a
    layered drop shadow + hairline inner highlight for the floating look. */
-.bt-name-box.bt-cc-box{display:flex;flex-direction:column;width:100%;height:auto;max-width:560px;max-height:min(760px,100%);margin:auto;padding:12px;text-align:left;background:linear-gradient(180deg,#1e2436 0%,#141826 55%,#0c0f18 100%);box-shadow:0 24px 60px rgba(0,0,0,.6),0 6px 18px rgba(0,0,0,.45),0 0 0 1px rgba(91,82,255,.08),inset 0 1px 0 rgba(255,255,255,.06)}
+/* v2.3.725: painted splash theme (owner's asset pack) — the UI floats
+   directly on the painted backdrop.
+   v2.3.728: decorative outer frame retired (owner: the picker and preview
+   need the room); padding shrinks to a breathing margin. */
+.bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;width:100%;height:auto;max-width:560px;max-height:min(820px,100%);margin:auto;padding:12px 12px 16px;text-align:left;background:none;border:none;box-shadow:none}
+/* Torch pillars flanking the character — 12-frame sprite strip (static
+   pillar + the flame animated from the owner's generated clip).  jump-none
+   lands on every cell including the last before looping. */
+/* v2.3.726: braziers animate via 12-cell sprite strips built from the
+   owner's flame clip (purple as shot; gold = luminance-ramped recolor for
+   the sun side).  jump-none lands on every cell before looping. */
+.bt-cc-brazier{position:absolute;bottom:1.5%;height:34%;pointer-events:none;background:0 0/1200% 100% no-repeat;animation:bt-cc-braz 1.0s steps(12,jump-none) infinite}
+@keyframes bt-cc-braz{from{background-position-x:0%}to{background-position-x:100%}}
+/* v2.3.720: pillars hug the window edges (mockup: columns are part of the
+   window architecture, not free-standing) */
+.bt-cc-brazier--left{left:2.5%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
+/* negative delay desyncs the two flames so they don't flicker in lockstep */
+.bt-cc-brazier--right{right:2.5%;aspect-ratio:110/231;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
+/* Chunky beveled PLAY — presses down on tap (border-bottom is the bevel). */
+/* v2.3.725: PLAY is the owner's painted button art (label baked in). */
+/* v2.3.740: solid color UNDER the art + a min-height — the button's entire
+   face is one image; if it ever fails or loads late the button was literally
+   invisible (suspected in the owner's 'PLAY disappeared' report; the other
+   cause is overlays — the bottom sheet and the iOS keyboard both cover it
+   while open, by design). */
+.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px}
+/* v2.3.741: solid-color fallback removed — the art has transparent corners,
+   so the backing purple peeked out around the painted shape (owner). */
+.bt-cc-play:active{transform:translateY(2px);filter:brightness(1.12)}
+.bt-cc-rand{border:1.5px solid #8a6d1f!important;color:var(--gold)!important}
+.bt-cc-rand:active{background:rgba(245,197,66,.12)!important}
+/* v2.3.718: name input on the owner's parchment scroll (3-slice border-
+   image: rolled end caps stay fixed, the parchment middle stretches).
+   Ink-dark text + placeholder; the quill img is an absolutely-positioned
+   "sign here" cue at the left. */
+
+/* v2.3.734: lockup sizing lives here so short screens can squeeze it —
+   the full-size header starved the rail on 667pt-class phones, clipping
+   the Shoes pill under Randomize. */
+.bt-cc-crest{height:48px;width:auto;margin:0 auto;display:block;pointer-events:none}
+.bt-cc-logo-main{width:70%;max-width:360px;height:auto;margin:2px auto 0;display:block;pointer-events:none}
+@media (max-height:720px){
+  .bt-cc-crest{height:32px}
+  .bt-cc-logo-main{width:54%}
+}
+
+
+/* v2.3.736: CSS twinkle — two copies of the transparent star sheet, one
+   rotated/scaled so different stars carry each phase, opacity-oscillating
+   in opposition.  Replaces the night.mp4 clip whose decode path tinted
+   the black backdrop cyan on device. */
+.bt-cc-stars{position:absolute;inset:0;background:url('/ui/welcome/stars.png') center/cover no-repeat;pointer-events:none;animation:bt-cc-tw 1.7s ease-in-out infinite alternate}
+.bt-cc-stars--b{transform:scale(1.4) rotate(180deg);animation-delay:-.85s}
+/* v2.3.737: deep 0.05..1 swing — the original .25..1 over 2.6s read as a
+   static field (the opposed layers kept total brightness ~constant). */
+@keyframes bt-cc-tw{from{opacity:.05}to{opacity:1}}
+
+.bt-cc-name{border:0 solid transparent;border-width:0 26px;border-image:url('/ui/welcome/scroll2.webp') 0 64 fill/0 26px stretch;background:none;color:#3a2a14;height:58px}
+.bt-cc-name::placeholder{color:#8a7350;opacity:1}
 .bt-cc-main{display:flex;flex-direction:row;gap:10px;flex:1;min-height:0}
 .bt-cc-left{flex:0 0 57%;min-width:0;display:flex;flex-direction:column;gap:8px}
 .bt-cc-preview{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 .bt-cc-rail{flex:1 1 43%;min-width:0;display:flex;flex-direction:column}
-.bt-cc-rail-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
+/* v2.3.719: flex 0 1 auto (was flex:1) — the scroll area no longer grows
+   past its content, so Randomize stacks directly under the Shoes pill in
+   the same rhythm instead of being pinned to the rail's bottom.  It still
+   SHRINKS (and scrolls) when an expanded category overflows. */
+.bt-cc-rail-scroll{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}

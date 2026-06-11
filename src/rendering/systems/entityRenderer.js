@@ -199,7 +199,17 @@ const BODY_DIR_SCALE = {
      truth sits just above the full-height end. */
   /* east -3% (1.218->1.181, covers west via mirror) v2.3.542 per user. */
   /* east -2% uniform (1.181->1.157) v2.3.584 per user (covers west via mirror). */
-  jog:   { south: 1.000, east: 1.157, north: 1.050, northeast: 1.126, southwest: 1.000 },
+  /* v2.3.740: east 1.157 -> 1.25 (owner: east jog armor much smaller than it
+     should be).  Diagnosis: the jog-east SOURCE art draws the figure with
+     ~18% less body mass than every other direction (mean silhouette 163px vs
+     ~200px; it has been that way since the v2.3.5xx sheets — confirmed NOT a
+     regression from the v2.3.705 half-cycle remap, whose frames are byte-
+     identical art).  Height normalization alone can't fix small body mass on
+     a leaning profile figure, so this is a perceptual split: +8% closes most
+     of the mass gap at the cost of a small jog>stand height pop when
+     stopping.  The DURABLE fix is regenerating jog-east art at proper figure
+     scale via the same video pipeline that rebuilt NE (v2.3.708/716). */
+  jog:   { south: 1.000, east: 1.25, north: 1.050, northeast: 1.126, southwest: 1.000 },
 };
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
@@ -301,7 +311,7 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
    to the body frame, so placement is just copying the body sprite's transform
    (which already carries mirror + bodyScale + bob).  No anchors/angles.  equip
    = { legs, chest, shoulders } item ids.  See gear-layer-spec.md. */
-/* v2.3.717: 'shirt' is a tinted under-layer (white-base sheet x picked colour);
+/* v2.3.748: 'shirt' is a tinted under-layer (white-base sheet x picked colour);
    it is NOT in the masked-body worn list (skin-tight, no body erase). */
 const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];
 function _placeGear(display, equip, pose, dir, frameIdx) {
@@ -1488,7 +1498,7 @@ function createPlayerDisplay() {
   /* v2.3.503: layered gear (paper-doll).  One sprite per slot, drawn above the
      body with the body's exact transform.  Order shirt < legs < chest <
      shoulders, all above the body and below the head traits.
-     v2.3.717: gearShirt = the layered t-shirt (tinted white-base sheet),
+     v2.3.748: gearShirt = the layered t-shirt (tinted white-base sheet),
      under the armour so a chest plate covers it. */
   const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
   const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
@@ -1784,7 +1794,7 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.504: layered gear for remote players (above body, below head traits).
      Driven by other.equip; placement copies the body transform.
-     v2.3.717: + shirt under-layer (see local display). */
+     v2.3.748: + shirt under-layer (see local display). */
   const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
   const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
   const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
@@ -2903,7 +2913,7 @@ export class EntityRenderer {
              players rendered noticeably smaller than yourself. */
           /* v2.3.537: derived per-(pose,dir) scale, shared with the local
              player path via bodyDirScale (silhouette-height normalization). */
-          const sizeMul = bodyDirScale(pose, dir) * 0.3515625;
+          const sizeMul = bodyDirScale(pose, dir) * 0.421875; /* v2.3.741: +20% with the local player */
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
           spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
@@ -3049,11 +3059,11 @@ export class EntityRenderer {
              spriteBody scale change above (also 0.5).  Keeps the
              weapon anchored to the visual hand position rather than
              flying off into space. */
-          let bodyScale = 0.5;
+          let bodyScale = 0.6; /* v2.3.741: 0.5 -> 0.6, tracking the +20% body bump */
           const isHitNow = other._hitFlash && (now - other._hitFlash) < 250;
           const poseNow = isHitNow ? 'hit' : (isMoving ? 'jog' : 'stand');
-          if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88 * 0.5;
-          else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03 * 0.5;
+          if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88 * 0.6;
+          else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03 * 0.6;
           const animFrame = display._animFrame || 0;
           const hand = display._animPose ? getAnchor(display._animPose, dir, animFrame, mirror) : null;
           let wpnX = 0, wpnY = 0;
@@ -3376,8 +3386,11 @@ export class EntityRenderer {
        the player sprite 25% larger everywhere".
        v2.3.166: sprite source bumped 128 -> 256; halved again
        (0.703125 -> 0.3515625) so on-screen size stays identical.
-       Net visible scale vs v2.3.110 baseline: still +25%. */
-    const LOCAL_SCALE = 0.3515625;
+       Net visible scale vs v2.3.110 baseline: still +25%.
+       v2.3.741: +20% (0.3515625 -> 0.421875) per user "make the character
+       20% larger in game for all directions".  Remote players and the
+       remote weapon-anchor baseline bumped by the same factor. */
+    const LOCAL_SCALE = 0.421875;
     /* v2.3.537: per-(pose,dir) scale now comes from the derived
        BODY_DIR_SCALE map (silhouette-height normalization), replacing the
        old hand-tuned bump stack. */
@@ -3439,14 +3452,14 @@ export class EntityRenderer {
          covered).  v2.3.686: chest-only wear exposes the belly band below the
          cuirass -- bake the shirt so it reads as shirt under armour, not skin. */
       const _chestEquipped = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
-      /* v2.3.717 PoC: when the LAYERED shirt is equipped and this dir has its
+      /* v2.3.748 PoC: when the LAYERED shirt is equipped and this dir has its
          sheets, skip the baked torso-retint shirt -- the layer replaces it.
          Dirs without sheets keep the baked look until theirs exist, so
          turning doesn't strip the shirt entirely.
-         v2.3.719: + northeast (covers northwest via mirror).
-         v2.3.720: + southwest (covers southeast via mirror).
-         v2.3.721: + north.
-         v2.3.722: + east (covers west via mirror) -- ALL base dirs now have
+         v2.3.750: + northeast (covers northwest via mirror).
+         v2.3.751: + southwest (covers southeast via mirror).
+         v2.3.752: + north.
+         v2.3.753: + east (covers west via mirror) -- ALL base dirs now have
          sheets, so the layer fully replaces the baked shirt when equipped. */
       const _layerShirt = getEquip('shirt') !== 'none';
       const _shirtT = (_chestEquipped || _layerShirt) ? null : shirtFill(_shId, _shCol);
@@ -3922,7 +3935,7 @@ export class EntityRenderer {
              saw the bow/staff "clipped" in the south view.  Only sword-type
              weapons get the cap. */
           const _weaponNeedsCap = wpn.type === 'sword' || wpn.type === 'greatsword';
-          /* v2.3.718: the cap clones BODY pixels, and the layered shirt is no
+          /* v2.3.749: the cap clones BODY pixels, and the layered shirt is no
              longer baked into the body texture -- so over the shirt the cap
              stamped a bare-skin circle ("shirt eaten at the right hand").
              Skip it while the layered shirt is showing (same pattern as the
