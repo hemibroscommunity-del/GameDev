@@ -13887,28 +13887,35 @@ export var BroTown = function BroTown(_ref0) {
     placeholder: "Name\u2026",
     maxLength: 20,
     autoFocus: true,
+    /* v2.3.718: parchment scroll skin + ink colors live in .bt-cc-name
+       (::placeholder needs a stylesheet). */
+    className: "bt-cc-name",
     style: {
       width: '100%',
-      /* v2.3.711: symmetric 44px side padding clears the dice button while
-         keeping the centered text centered. */
-      padding: '12px 44px',
-      background: 'var(--ink3)',
-      border: '1.5px solid var(--line)',
-      borderRadius: 10,
-      color: 'var(--txt)',
+      /* v2.3.711: symmetric side padding clears the quill (left) and dice
+         (right) while keeping the centered text centered.  Note the 20px
+         scroll border caps also eat into the border-box width — keep
+         padding modest or the text area collapses. */
+      padding: '12px 38px',
       /* v2.3.710: 16px floor — iOS Safari auto-zooms inputs with a smaller
          font on focus, leaving visualViewport.scale > 1, which trips the
          joinTown pinch-zoom gate. */
       fontSize: 16,
-      fontWeight: 600,
+      fontWeight: 700,
       outline: 'none',
       textAlign: 'center',
       boxSizing: 'border-box'
     }
+  }), /*#__PURE__*/React.createElement("img", {
+    /* v2.3.718: owner-generated quill — the "sign here" cue before the
+       name (from the mockup).  Decorative; never intercepts taps. */
+    src: '/ui/welcome/quill.webp',
+    alt: '',
+    style: { position: 'absolute', left: 26, top: '50%', transform: 'translateY(-50%)', height: 24, width: 'auto', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Random name', onClick: rollRandomName,
-    style: { position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', width: 36, height: 36, borderRadius: 8, cursor: 'pointer',
-      background: 'var(--ink2)', border: '1.5px solid var(--line)', fontSize: 17, padding: 0, lineHeight: 1 }
+    style: { position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)', width: 34, height: 34, borderRadius: 8, cursor: 'pointer',
+      background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 16, padding: 0, lineHeight: 1 }
   }, "🎲")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     /* v2.3.716: gradient + bevel (and the :active press) live in the

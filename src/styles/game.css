@@ -226,6 +226,12 @@ input{font-family:inherit}
 .bt-cc-play:active{transform:translateY(2px);border-bottom-width:3px}
 .bt-cc-rand{border:1.5px solid #8a6d1f!important;color:var(--gold)!important}
 .bt-cc-rand:active{background:rgba(245,197,66,.12)!important}
+/* v2.3.718: name input on the owner's parchment scroll (3-slice border-
+   image: rolled end caps stay fixed, the parchment middle stretches).
+   Ink-dark text + placeholder; the quill img is an absolutely-positioned
+   "sign here" cue at the left. */
+.bt-cc-name{border:0 solid transparent;border-width:0 20px;border-image:url('/ui/welcome/scroll.webp') 0 92 fill/0 20px stretch;background:none;color:#3a2a14;height:52px}
+.bt-cc-name::placeholder{color:#8a7350;opacity:1}
 .bt-cc-main{display:flex;flex-direction:row;gap:10px;flex:1;min-height:0}
 .bt-cc-left{flex:0 0 57%;min-width:0;display:flex;flex-direction:column;gap:8px}
 .bt-cc-preview{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
