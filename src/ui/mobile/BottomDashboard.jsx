@@ -376,6 +376,12 @@ const InventoryPreview = () => {
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
+        /* v2.3.761: leather backdrop (owner art) behind the quick-bag tiles;
+           a touch of padding so the texture's border reads as the frame. */
+        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
+        backgroundSize: '100% 100%',
+        borderRadius: 6,
+        padding: 3,
       }}
       title="Tap to open Bag"
     >

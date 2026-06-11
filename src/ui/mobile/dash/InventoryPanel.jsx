@@ -250,6 +250,14 @@ export const InventoryPanel = () => {
         })}
       </div>
 
+      {/* v2.3.761: leather backdrop (owner art) behind the bag's cell grid;
+          stretched to 100%/100% so its ornate border frames the container. */}
+      <div style={{
+        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
+        backgroundSize: '100% 100%',
+        borderRadius: 8,
+        padding: 8,
+      }}>
       {(() => {
         /* v2.3.210: surface stash weapons + shields in the bag grid
            so the popup's Equip action has somewhere to come from. */
@@ -300,6 +308,7 @@ export const InventoryPanel = () => {
           </div>
         );
       })()}
+      </div>
     </div>
   );
 };
