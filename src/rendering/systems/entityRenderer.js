@@ -3440,10 +3440,11 @@ export class EntityRenderer {
          cuirass -- bake the shirt so it reads as shirt under armour, not skin. */
       const _chestEquipped = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
       /* v2.3.717 PoC: when the LAYERED shirt is equipped and this dir has its
-         sheets (south only so far), skip the baked torso-retint shirt -- the
-         layer replaces it.  Other dirs keep the baked look until their sheets
-         exist, so turning doesn't strip the shirt entirely. */
-      const _layerShirt = getEquip('shirt') !== 'none' && dir === 'south';
+         sheets, skip the baked torso-retint shirt -- the layer replaces it.
+         Dirs without sheets keep the baked look until theirs exist, so
+         turning doesn't strip the shirt entirely.
+         v2.3.719: + northeast (covers northwest via mirror). */
+      const _layerShirt = getEquip('shirt') !== 'none' && (dir === 'south' || dir === 'northeast');
       const _shirtT = (_chestEquipped || _layerShirt) ? null : shirtFill(_shId, _shCol);
       const _shirtKey = _shirtT ? (_shId + '-' + _shCol) : 'none';
       let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
