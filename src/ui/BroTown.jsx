@@ -13788,9 +13788,7 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-name-modal"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-name-box bt-cc-box"
-  }, /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/frame2.webp', alt: '', className: "bt-cc-outer-frame"
-  }), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     /* v2.3.724: header promoted out of the left pane to a full-card-width
        banner above both panes.
        v2.3.725: text lockup replaced by the owner's painted logo art
