@@ -13785,17 +13785,14 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-name-box bt-cc-box"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-main"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-left"
-  }, /*#__PURE__*/React.createElement("div", {
-    /* v2.3.721: header lockup centered in the pane (owner request). */
-    style: { textAlign: 'center' }
+    /* v2.3.724: header promoted out of the left pane to a full-card-width
+       banner above both panes, and sized up to match (owner request). */
+    style: { textAlign: 'center', marginBottom: 10 }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'inline-block',
       verticalAlign: 'middle',
-      fontSize: 19
+      fontSize: 26
     }
   }, "\u2694\uFE0F"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -13808,12 +13805,11 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.714: lineHeight 1 -- the font's tall default line box made
          the lockup's vertical rhythm impossible to control. */
       fontFamily: "'Press Start 2P','Source Sans 3',sans-serif",
-      /* v2.3.723: wordmark + sub-plate bumped a size (owner request);
-         16px is the ceiling before HEMI BROS overflows the ~197px pane. */
-      fontSize: 16,
+      /* v2.3.724: banner-sized now that the lockup spans the full card. */
+      fontSize: 24,
       lineHeight: 1,
       color: 'var(--gold)',
-      textShadow: '0 2px 0 #6b4310, 0 3px 0 rgba(0,0,0,0.5)'
+      textShadow: '0 2px 0 #6b4310, 0 4px 0 rgba(0,0,0,0.5)'
     }
     /* v2.3.715: the pixel font's space glyph is a full em, which split the
        wordmark apart -- two spans with an em-relative gap keep the words
@@ -13823,32 +13819,34 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.716: BRO TOWN added to the sub-plate (owner request); gold to
        match the mockup, slightly tighter tracking to fit the longer text. */
     style: {
-      /* v2.3.719: sized to fit one line in the ~197px pane — the trailing
-         star was wrapping.  v2.3.723: bumped with the wordmark; tracking
-         eased to keep one line. */
-      fontSize: 10,
+      /* v2.3.724: full-width banner sizing; wide tracking restored. */
+      fontSize: 12,
       color: 'var(--gold)',
       fontWeight: 700,
-      letterSpacing: '.08em',
+      letterSpacing: '.26em',
       whiteSpace: 'nowrap',
-      marginTop: 7
+      marginTop: 8
     }
   }, "★ BRO TOWN · ACTION RPG ★"), /*#__PURE__*/React.createElement("img", {
     /* v2.3.716: generated gem divider replaces the v2.3.714 CSS hairline. */
     src: '/ui/welcome/divider.webp',
     alt: '',
-    style: { width: '100%', height: 9, objectFit: 'contain', marginTop: 6, display: 'block', pointerEvents: 'none' }
+    style: { width: '100%', maxWidth: 420, height: 12, objectFit: 'contain', margin: '7px auto 0', display: 'block', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       /* v2.3.714: version is metadata -- dim + tiny so it stops competing
          with the wordmark. */
-      fontSize: 8,
+      fontSize: 9,
       color: 'var(--txt2)',
       fontFamily: 'Source Sans 3, sans-serif',
       letterSpacing: '.06em',
       marginTop: 6
     }
   }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)), /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-main"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-left"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-preview"
   }, /*#__PURE__*/React.createElement("div", {
     /* Square frame sized by the pane width (clamped by the pane height on
@@ -13859,7 +13857,10 @@ export var BroTown = function BroTown(_ref0) {
        v2.3.716 parchment).  Known tradeoff, owner-approved: some trait
        sprites carry white extraction residue that a dark backdrop can
        expose — the floor glow masks the worst of it. */
-    style: { position: 'relative', width: '100%', aspectRatio: '1 / 1', maxHeight: '100%', boxSizing: 'border-box',
+    /* v2.3.724: 3:4 (was square) — with the header banner above the panes
+       the left column has more height, so the window grows taller and the
+       cover-fit canvas scales the figure up with it. */
+    style: { position: 'relative', width: '100%', aspectRatio: '3 / 4', maxHeight: '100%', boxSizing: 'border-box',
       border: '2px solid #3d3360', borderRadius: 14, overflow: 'hidden',
       background: 'radial-gradient(90% 80% at 50% 42%, #2c2153 0%, #1a1438 55%, #110d26 100%)',
       boxShadow: 'inset 0 0 26px rgba(0,0,0,.55), inset 0 0 60px rgba(91,82,255,.10)' }
@@ -13888,7 +13889,10 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       width: '100%',
       height: '100%',
-      objectFit: 'contain',
+      /* v2.3.724: cover (was contain) — in the taller 3:4 window the
+         bitmap scales to the window HEIGHT, so the figure renders bigger;
+         the cropped bitmap sides are empty margin, the figure is safe. */
+      objectFit: 'cover',
       imageRendering: 'pixelated',
       borderRadius: 8,
       display: 'block',
@@ -13964,13 +13968,13 @@ export var BroTown = function BroTown(_ref0) {
        name (from the mockup).  Decorative; never intercepts taps. */
     src: '/ui/welcome/quill.webp',
     alt: '',
-    style: { position: 'absolute', left: 27, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', height: 18, width: 'auto', pointerEvents: 'none' }
+    style: { position: 'absolute', left: 30, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', height: 22, width: 'auto', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Random name', onClick: rollRandomName,
     /* v2.3.722: pushed onto the scroll cap — at right:25 it clipped the
        end of longer names. */
-    style: { position: 'absolute', right: 10, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer',
-      background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 13, padding: 0, lineHeight: 1 }
+    style: { position: 'absolute', right: 12, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
+      background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 15, padding: 0, lineHeight: 1 }
   }, "🎲")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     /* v2.3.716: gradient + bevel (and the :active press) live in the
