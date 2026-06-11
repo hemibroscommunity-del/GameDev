@@ -13878,8 +13878,10 @@ export var BroTown = function BroTown(_ref0) {
          compositing path itself.  The sky is now a plain CSS gradient
          (renders color-exact) with two CSS-animated star layers
          (.bt-cc-stars) for the twinkle.  Black by construction. */
+      /* v2.3.743: owner's storm-light void painting replaces the plain
+         gradient (still an IMAGE, not video — color-exact). */
       border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
-      background: 'linear-gradient(180deg, #0e0e10 0%, #030304 100%)',
+      background: "url('/ui/welcome/void.webp') center/cover no-repeat, #0a0a0c",
       boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
   }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars" }),
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars bt-cc-stars--b" }),
