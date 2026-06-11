@@ -199,7 +199,17 @@ const BODY_DIR_SCALE = {
      truth sits just above the full-height end. */
   /* east -3% (1.218->1.181, covers west via mirror) v2.3.542 per user. */
   /* east -2% uniform (1.181->1.157) v2.3.584 per user (covers west via mirror). */
-  jog:   { south: 1.000, east: 1.157, north: 1.050, northeast: 1.126, southwest: 1.000 },
+  /* v2.3.740: east 1.157 -> 1.25 (owner: east jog armor much smaller than it
+     should be).  Diagnosis: the jog-east SOURCE art draws the figure with
+     ~18% less body mass than every other direction (mean silhouette 163px vs
+     ~200px; it has been that way since the v2.3.5xx sheets — confirmed NOT a
+     regression from the v2.3.705 half-cycle remap, whose frames are byte-
+     identical art).  Height normalization alone can't fix small body mass on
+     a leaning profile figure, so this is a perceptual split: +8% closes most
+     of the mass gap at the cost of a small jog>stand height pop when
+     stopping.  The DURABLE fix is regenerating jog-east art at proper figure
+     scale via the same video pipeline that rebuilt NE (v2.3.708/716). */
+  jog:   { south: 1.000, east: 1.25, north: 1.050, northeast: 1.126, southwest: 1.000 },
 };
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
