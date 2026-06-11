@@ -13921,8 +13921,12 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.725: lands the boots on the painted stone platform (~83%
          of the window height in the cover-fit scene).
          v2.3.741: scale .9 — 10% smaller per owner; translate stays so
-         the boots keep the platform. */
-      transform: 'translateY(-6%) scale(0.9)',
+         the boots keep the platform.
+         v2.3.744: per-angle drop — the SW and E source frames sit higher
+         in their 256 box than the others, so those facings (and their
+         mirrors) floated above the pedestal (owner: SW/SE down ~20px,
+         E/W down ~10px). */
+      transform: 'translateY(calc(-6% + ' + ({ southwest: 20, southeast: 20, east: 10, west: 10 }[previewDir] || 0) + 'px)) scale(0.9)',
       /* v2.3.717: transparent — the parchment border-image panel behind
          supplies the backdrop now.  It must stay NEAR-WHITE (see the
          wrapper comment): trait sprites carry white extraction residue
