@@ -362,23 +362,23 @@ export const ItemDetailPopup = () => {
     const shirtOn = shirtId !== 'none';
     const layerRow = (key, iconSrc, name, sub, on, canEquip, onToggle) => (
       <div key={key} style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '7px 8px', borderRadius: 8,
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '5px 6px', borderRadius: 8,
         background: on ? 'rgba(61,212,151,.07)' : 'rgba(255,255,255,.03)',
         border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(255,255,255,.08)'}`,
       }}>
         <img src={iconSrc} alt={name} draggable={false}
-          style={{ width: 32, height: 32, imageRendering: 'pixelated',
+          style={{ width: 24, height: 24, imageRendering: 'pixelated',
             filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#3dd497' : COL.muted }}>{name}</div>
-          <div style={{ fontSize: 8, color: 'rgba(255,255,255,.35)' }}>{sub}</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: on ? '#3dd497' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+          <div style={{ fontSize: 7.5, color: 'rgba(255,255,255,.35)' }}>{sub}</div>
         </div>
         <button type="button"
           onPointerUp={(e) => { e.stopPropagation(); if (on || canEquip) onToggle(); }}
           disabled={!on && !canEquip}
           style={{
-            padding: '5px 10px', fontSize: 9, fontWeight: 700, borderRadius: 7,
+            padding: '4px 8px', fontSize: 8.5, fontWeight: 700, borderRadius: 6,
             border: '1px solid rgba(255,255,255,.2)',
             background: on ? 'rgba(255,94,108,.25)' : (canEquip ? 'rgba(61,212,151,.25)' : 'rgba(255,255,255,.06)'),
             color: (on || canEquip) ? '#fff' : 'rgba(255,255,255,.3)',
@@ -395,17 +395,17 @@ export const ItemDetailPopup = () => {
             position: 'absolute',
             left: pos ? pos.left : -9999,
             top: pos ? pos.top : -9999,
-            width: 240,
+            width: 200,
             background: 'rgba(20,22,32,0.98)',
             border: '1px solid rgba(255,255,255,0.14)',
-            borderRadius: 12,
-            padding: 10,
+            borderRadius: 10,
+            padding: 8,
             boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
           }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,.55)', letterSpacing: 0.5, marginBottom: 7 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,.55)', letterSpacing: 0.5, marginBottom: 5 }}>
             CHEST — LAYERS
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {layerRow('armor', '/sprites/gear/icons/steelplate.png?v=2.3.685',
               armorOn ? gearName('chest', chestId) : (stashedChest ? stashedChest.name : 'Steel Plate'),
               'Armour · top layer', armorOn, !!stashedChest, toggleArmor)}

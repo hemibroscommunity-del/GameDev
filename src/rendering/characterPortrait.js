@@ -160,9 +160,13 @@ export async function drawCharacterPortrait(canvas, opts) {
      stages (body-tops -> body sprite -> traits), so on a cold load the preview
      sat blank-white for ~3 network round-trips; now it's one.  All loads are
      cached after the first draw, so later redraws/rotations are instant. */
-  const [bodyTops, bodyImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg] = await Promise.all([
+  const [bodyTops, bodyImg, shirtImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg] = await Promise.all([
     loadBodyTops(),
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`),
+    /* v2.3.757: the LAYERED shirt sheet (white-base, tinted below) -- the
+       baked torso-retint shirt is retired, so the preview composites the
+       same layer the game renders. */
+    wantShirt ? loadImage(`/sprites/gear/shirt/tshirt/stand-${DIR}.png?v=2.3.756`).catch(() => null) : null,
     wantHair ? loadImage(`/sprites/traits/hair/${hair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
     wantHair ? loadMeta('hair', hair) : null,
     wantFh ? loadImage(`/sprites/traits/facialhair/${facialHair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
@@ -191,12 +195,27 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.translate(ZCX, ZCY);
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
-  /* v2.3.497: shirt is baked into the body torso (skin retinted to the shirt
-     color inside recolorBodyToCanvas) instead of an overlay sprite -- matches
-     the in-game render and follows the figure exactly.  shirtColor is the
-     resolved LIT rgb (or null for default); default selection -> default blue. */
-  const _shirtT = wantShirt ? (shirtColor || [58, 91, 208]) : null;
-  ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), _shirtT), 0, 0);
+  /* v2.3.757: the body always draws SHIRTLESS (baked shirt retired); the
+     shirt is the layered white-base sheet tinted to the picked color and
+     composited on top -- exactly what the game renders.  Null color = white
+     tee (matches the in-game default tint). */
+  ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null), 0, 0);
+  if (shirtImg) {
+    let layer = shirtImg;
+    if (shirtColor) {
+      const sc = document.createElement('canvas');
+      sc.width = FRAME; sc.height = FRAME;
+      const sctx = sc.getContext('2d');
+      sctx.drawImage(shirtImg, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+      sctx.globalCompositeOperation = 'multiply';
+      sctx.fillStyle = `rgb(${shirtColor[0]},${shirtColor[1]},${shirtColor[2]})`;
+      sctx.fillRect(0, 0, FRAME, FRAME);
+      sctx.globalCompositeOperation = 'destination-in';
+      sctx.drawImage(shirtImg, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+      layer = sc;
+    }
+    ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+  }
   /* Beard BELOW hair so hair strands lay over the beard (per user -- the NW
      view had the beard covering the hair). */
   if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
