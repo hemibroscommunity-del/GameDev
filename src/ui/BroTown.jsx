@@ -13926,7 +13926,7 @@ export var BroTown = function BroTown(_ref0) {
          in their 256 box than the others, so those facings (and their
          mirrors) floated above the pedestal (owner: SW/SE down ~20px,
          E/W down ~10px). */
-      transform: 'translateY(calc(-6% + ' + ({ southwest: 20, southeast: 20, east: 10, west: 10 }[previewDir] || 0) + 'px)) scale(0.9)',
+      transform: 'translateY(calc(-6% + ' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)) scale(0.9)', /* v2.3.745: SW/SE 20->15, NE/NW 0->5 per owner */
       /* v2.3.717: transparent — the parchment border-image panel behind
          supplies the backdrop now.  It must stay NEAR-WHITE (see the
          wrapper comment): trait sprites carry white extraction residue
