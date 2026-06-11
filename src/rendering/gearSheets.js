@@ -19,11 +19,8 @@ import { GEAR_SLOTS, getEquip } from './gearCatalog.js';
 const FRAME_W = 256;
 const FRAME_H = 256;
 /* v2.3.708: NE jog gear re-painted on the new 24-frame body cycle (see
-   playerSprites VERSION 69); chain belt re-baked into the chest sheet.
-   v2.3.717: EAST jog gear re-painted (bracelet/anklet-tracked ChatGPT pass,
-   clean half doubled to 28 frames); chain belt baked, waist verified
-   hole-free against the renderer's mask.  Body sheet unchanged. */
-const GEAR_VERSION = '2.3.717';
+   playerSprites VERSION 69); chain belt re-baked into the chest sheet. */
+const GEAR_VERSION = '2.3.708';
 
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};
