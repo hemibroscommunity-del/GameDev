@@ -1413,6 +1413,27 @@ export var BroTown = function BroTown(_ref0) {
     }, 2500);
     return function () { clearTimeout(t); };
   }, [showNameModal]);
+  /* v2.3.722: torch crackle, extracted from the owner's flame clip.
+     Browsers refuse un-muted autoplay, so it arms on the modal's first
+     pointerdown (any tap counts), loops quietly, and stops when the
+     modal closes (PLAY). */
+  useEffect(function () {
+    if (!showNameModal) return;
+    var au = null;
+    var start = function () {
+      try {
+        au = new Audio('/ui/welcome/torch-crackle.m4a');
+        au.loop = true;
+        au.volume = 0.22;
+        au.play().catch(function () {});
+      } catch (e) {}
+    };
+    window.addEventListener('pointerdown', start, { once: true });
+    return function () {
+      window.removeEventListener('pointerdown', start);
+      try { if (au) { au.pause(); au.src = ''; au = null; } } catch (e) {}
+    };
+  }, [showNameModal]);
   /* The long-hair sprite is ~88% pure black, so a light hair color over-
      processes into a black band around the face (see characterPortrait recolor
      note).  Restrict that one style to dark colors only; clamp the selection
@@ -1526,9 +1547,11 @@ export var BroTown = function BroTown(_ref0) {
           })));
     }
     /* Collapsed stays a single horizontal row (label left, current pick
-       right) so all 7 categories fit in the rail without scrolling. */
+       right) so all 7 categories fit in the rail without scrolling.
+       v2.3.722: label column FIXED-width (sized to the widest label,
+       "Beard") so every pill's summary starts at the same x. */
     return /*#__PURE__*/React.createElement("button", { key: catKey, type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0 }) },
-      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 'auto', borderRight: '1.5px solid var(--line)' }) }, labelKids),
+      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 78, borderRight: '1.5px solid var(--line)' }) }, labelKids),
       /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary));
   };
   var randomizeAppearance = function () {
@@ -13849,7 +13872,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
        when the finger drifts off the canvas mid-swipe. */
     onPointerDown: function (e) { _dragRotX.current = e.clientX; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
-    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
+    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? -1 : 1); _dragRotX.current = e.clientX; } },
     onPointerUp: function () { _dragRotX.current = null; },
     onPointerCancel: function () { _dragRotX.current = null; },
     /* No width/height attributes: drawCharacterPortrait force-sets the
@@ -13882,14 +13905,17 @@ export var BroTown = function BroTown(_ref0) {
   }), /*#__PURE__*/React.createElement("button", {
     /* v2.3.712: circular spin arrows replaced the triangle glyphs -- the
        triangles read like the accordion chevrons in the rail (owner
-       feedback), and rotation is a different verb than expand/collapse. */
-    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
+       feedback), and rotation is a different verb than expand/collapse.
+       v2.3.722: signs INVERTED (owner: "they're backwards") -- stepping
+       +1 walks the dir list clockwise, but on screen that reads as the
+       character turning the other way. */
+    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(1); },
     style: { position: 'absolute', left: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
       background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
   }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↺")),
   /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(1); },
+    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
     style: { position: 'absolute', right: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
       background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
@@ -13918,7 +13944,7 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.721: asymmetric top/bottom — the scroll art's bottom-left
          tail drops its visual center above the input's geometric center,
          so the text rides a few px high to sit on the parchment band. */
-      padding: '9px 38px 15px',
+      padding: '9px 30px 15px',
       /* v2.3.710: 16px floor — iOS Safari auto-zooms inputs with a smaller
          font on focus, leaving visualViewport.scale > 1, which trips the
          joinTown pinch-zoom gate. */
@@ -13936,7 +13962,9 @@ export var BroTown = function BroTown(_ref0) {
     style: { position: 'absolute', left: 27, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', height: 18, width: 'auto', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Random name', onClick: rollRandomName,
-    style: { position: 'absolute', right: 25, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer',
+    /* v2.3.722: pushed onto the scroll cap — at right:25 it clipped the
+       end of longer names. */
+    style: { position: 'absolute', right: 10, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer',
       background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 13, padding: 0, lineHeight: 1 }
   }, "🎲")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
