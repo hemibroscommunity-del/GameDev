@@ -1548,11 +1548,27 @@ export var BroTown = function BroTown(_ref0) {
       icon ? /*#__PURE__*/React.createElement("img", { src: icon, alt: '', style: { width: 20, height: 20, objectFit: 'contain', borderRadius: 4, flex: '0 0 auto' } }) : null,
       /*#__PURE__*/React.createElement("span", null, label)), _chevron(open)];
     if (open) {
-      return /*#__PURE__*/React.createElement("div", { key: catKey, style: Object.assign({}, _pillBox, { flexDirection: 'column' }) },
-        /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillLabel, { cursor: 'pointer', border: 'none', borderBottom: '1.5px solid var(--line)' }) }, labelKids),
-        /*#__PURE__*/React.createElement("div", { style: { width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, boxSizing: 'border-box' } },
+      /* v2.3.735: expanded category opens a CENTERED SHEET over a dimmed
+         scrim instead of unfolding inside the ~150px rail (owner: pickers
+         need room).  The pill stays in place as the open/anchor row; the
+         sheet is position:fixed so the rail's overflow clipping can't
+         touch it.  Tapping the scrim, the pill, or ✕ closes it; picking
+         an option keeps it open so color rows stay reachable. */
+      return /*#__PURE__*/React.createElement(React.Fragment, { key: catKey },
+        /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0, border: '1.5px solid var(--gold)' }) },
+          /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 104, borderRight: '1.5px solid #3a3163' }) }, labelKids),
+          /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary)),
+        /*#__PURE__*/React.createElement("div", { onClick: toggle, style: { position: 'fixed', inset: 0, background: 'rgba(4,3,10,0.55)', zIndex: 40 } }),
+        /*#__PURE__*/React.createElement("div", { style: { position: 'fixed', left: '50%', bottom: 'max(12px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
+          width: 'min(92vw, 430px)', maxHeight: '56vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+          background: 'rgba(24,19,46,0.97)', border: '1.5px solid #56499a', borderRadius: 16, zIndex: 41, padding: '4px 10px 10px',
+          boxShadow: '0 18px 50px rgba(0,0,0,.65)' } },
+          /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 2px 6px', borderBottom: '1.5px solid #3a3163' } },
+            /*#__PURE__*/React.createElement("span", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 700, color: '#f0edfb', fontFamily: "'Baloo 2','Source Sans 3',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.55)' } },
+              icon ? /*#__PURE__*/React.createElement("img", { src: icon, alt: '', style: { width: 26, height: 26, objectFit: 'contain', borderRadius: 6 } }) : null, label),
+            /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: { width: 34, height: 34, borderRadius: 8, cursor: 'pointer', background: '#372e63', border: '1.5px solid #56499a', color: '#f0edfb', fontSize: 16, fontWeight: 700, lineHeight: 1, padding: 0 } }, "✕")),
           optionRows.map(function (kids, i) {
-            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, padding: '6px 7px', borderTop: i > 0 ? '1px solid #3a3163' : 'none' } }, kids);
+            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '9px 2px', borderTop: i > 0 ? '1px solid #3a3163' : 'none' } }, kids);
           })));
     }
     /* Collapsed stays a single horizontal row (label left, current pick
