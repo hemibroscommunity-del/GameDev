@@ -217,9 +217,11 @@ input{font-family:inherit}
    pillar + the flame animated from the owner's generated clip).  jump-none
    lands on every cell including the last before looping. */
 .bt-cc-pillar{position:absolute;bottom:-1%;height:88%;aspect-ratio:128/722;background:url('/ui/welcome/pillar-strip.webp') 0 0/1200% 100% no-repeat;pointer-events:none;image-rendering:pixelated;animation:bt-cc-flame 1.1s steps(12,jump-none) infinite}
-.bt-cc-pillar--left{left:1.5%}
+/* v2.3.720: pillars hug the window edges (mockup: columns are part of the
+   window architecture, not free-standing) */
+.bt-cc-pillar--left{left:0.5%}
 /* negative delay desyncs the two flames so they don't flicker in lockstep */
-.bt-cc-pillar--right{right:1.5%;animation-delay:-.55s}
+.bt-cc-pillar--right{right:0.5%;animation-delay:-.55s}
 @keyframes bt-cc-flame{from{background-position-x:0%}to{background-position-x:100%}}
 /* Chunky beveled PLAY — presses down on tap (border-bottom is the bevel). */
 .bt-cc-play{background:linear-gradient(180deg,#7b6cff 0%,#5b52ff 45%,#483dd2 100%);border:2px solid #2c2380;border-bottom-width:5px;text-shadow:0 2px 0 rgba(0,0,0,.35)}

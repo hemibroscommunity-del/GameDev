@@ -1497,14 +1497,16 @@ export var BroTown = function BroTown(_ref0) {
      44px tiles.  The label is now a full-width header strip on top, and
      expanded rows WRAP instead of side-scrolling (the rail scrolls
      vertically instead). */
+  /* v2.3.720: pill chrome purple-ized to match the owner's mockup (was the
+     blue-gray in-game --line/--ink3 palette). */
   var _pillBox = { display: 'flex', alignItems: 'stretch', width: '100%', marginBottom: 6,
-    border: '1.5px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.12)', boxSizing: 'border-box' };
+    border: '1.5px solid #3a3163', borderRadius: 10, overflow: 'hidden', background: 'rgba(13,10,29,0.55)', boxSizing: 'border-box' };
   /* v2.3.715: rounded display font + Title Case for the category labels --
      the bold ALL-CAPS sans read like terminal text (owner feedback).
      'Baloo 2' is loaded in index.html. */
   var _pillLabel = { width: '100%', minHeight: 40, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
     padding: '0 9px', fontSize: 13, fontWeight: 700, color: '#d3d6e6', letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-    background: 'var(--ink3)', textAlign: 'left', boxSizing: 'border-box' };
+    background: '#221b41', textAlign: 'left', boxSizing: 'border-box' };
   /* Category pill -- COLLAPSED by default: below the label header sits the
      current selection; tapping the pill (or its header) expands it to reveal
      all choices (style rows on top, color rows below).
@@ -13824,12 +13826,19 @@ export var BroTown = function BroTown(_ref0) {
        short/landscape screens).  Keeping the frame its own element means
        the rotate buttons pin to the panel's corners, not to whatever
        taller space the flex column hands the preview row.
-       v2.3.716: parchment border-image panel (owner-generated art).  Its
-       center stays NEAR-WHITE on purpose — some trait sprites carry white
-       extraction residue that a dark backdrop would expose. */
+       v2.3.720: DARK window interior per the owner's mockup (replaces the
+       v2.3.716 parchment).  Known tradeoff, owner-approved: some trait
+       sprites carry white extraction residue that a dark backdrop can
+       expose — the floor glow masks the worst of it. */
     style: { position: 'relative', width: '100%', aspectRatio: '1 / 1', maxHeight: '100%', boxSizing: 'border-box',
-      border: '14px solid transparent', borderImage: "url('/ui/welcome/panel.webp') 90 fill / 14px stretch" }
-  }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-pillar bt-cc-pillar--left" }),
+      border: '2px solid #3d3360', borderRadius: 14, overflow: 'hidden',
+      background: 'radial-gradient(90% 80% at 50% 42%, #2c2153 0%, #1a1438 55%, #110d26 100%)',
+      boxShadow: 'inset 0 0 26px rgba(0,0,0,.55), inset 0 0 60px rgba(91,82,255,.10)' }
+  }, /*#__PURE__*/React.createElement("div", {
+    /* soft spotlight under the character (mockup's floor glow) */
+    style: { position: 'absolute', left: '18%', right: '18%', bottom: '4%', height: '22%', pointerEvents: 'none',
+      background: 'radial-gradient(50% 60% at 50% 60%, rgba(112,96,255,0.38) 0%, rgba(91,82,255,0.16) 45%, rgba(91,82,255,0) 75%)' }
+  }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-pillar bt-cc-pillar--left" }),
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-pillar bt-cc-pillar--right" }),
   /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
