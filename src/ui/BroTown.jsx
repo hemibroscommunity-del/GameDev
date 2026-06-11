@@ -13765,7 +13765,10 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-cc-main"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-left"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    /* v2.3.721: header lockup centered in the pane (owner request). */
+    style: { textAlign: 'center' }
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'inline-block',
       verticalAlign: 'middle',
@@ -13911,8 +13914,11 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.711: symmetric side padding clears the quill (left) and dice
          (right) while keeping the centered text centered.  Note the 20px
          scroll border caps also eat into the border-box width — keep
-         padding modest or the text area collapses. */
-      padding: '12px 38px',
+         padding modest or the text area collapses.
+         v2.3.721: asymmetric top/bottom — the scroll art's bottom-left
+         tail drops its visual center above the input's geometric center,
+         so the text rides a few px high to sit on the parchment band. */
+      padding: '9px 38px 15px',
       /* v2.3.710: 16px floor — iOS Safari auto-zooms inputs with a smaller
          font on focus, leaving visualViewport.scale > 1, which trips the
          joinTown pinch-zoom gate. */
@@ -13927,10 +13933,10 @@ export var BroTown = function BroTown(_ref0) {
        name (from the mockup).  Decorative; never intercepts taps. */
     src: '/ui/welcome/quill.webp',
     alt: '',
-    style: { position: 'absolute', left: 27, top: '50%', transform: 'translateY(-50%)', height: 18, width: 'auto', pointerEvents: 'none' }
+    style: { position: 'absolute', left: 27, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', height: 18, width: 'auto', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Random name', onClick: rollRandomName,
-    style: { position: 'absolute', right: 25, top: '50%', transform: 'translateY(-50%)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer',
+    style: { position: 'absolute', right: 25, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer',
       background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 13, padding: 0, lineHeight: 1 }
   }, "🎲")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
