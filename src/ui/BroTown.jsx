@@ -1451,9 +1451,11 @@ export var BroTown = function BroTown(_ref0) {
      rows append their color chips after a divider in the SAME row (color is
      part of the item, not its own row). */
   var _apTileStyle = function (sel, size) {
+    /* v2.3.731: lighter tile wells (dark thumbs like black hair were
+       invisible on the old near-black tiles) + gold ring on the pick. */
     return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
-      position: 'relative', borderRadius: 8, background: sel ? 'var(--pop)' : 'var(--ink3)',
-      border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
+      position: 'relative', borderRadius: 8, background: sel ? 'var(--pop)' : '#372e63',
+      border: sel ? '2px solid var(--gold)' : '1.5px solid #56499a',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
   /* v2.3.711: explicit checkmark badge on the picked tile -- the purple
@@ -1475,11 +1477,11 @@ export var BroTown = function BroTown(_ref0) {
       : /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 5, background: opt.swatch, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } });
     return /*#__PURE__*/React.createElement("button", {
       key: 'c_' + opt.id, type: 'button', title: opt.id === 'default' ? 'Original color' : opt.name,
-      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 28)
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 32)
     }, inner, sel ? _checkBadge() : null);
   };
   var _thumbTile = function (cat, opt, selId, onSet, size) {
-    var sz = size || 44;
+    var sz = size || 50;
     var sel = selId === opt.id;
     return /*#__PURE__*/React.createElement("button", {
       key: 's_' + opt.id, type: 'button', title: opt.name,
@@ -1518,16 +1520,17 @@ export var BroTown = function BroTown(_ref0) {
      44px tiles.  The label is now a full-width header strip on top, and
      expanded rows WRAP instead of side-scrolling (the rail scrolls
      vertically instead). */
-  /* v2.3.720: pill chrome purple-ized to match the owner's mockup (was the
-     blue-gray in-game --line/--ink3 palette). */
+  /* v2.3.720: pill chrome purple-ized to match the owner's mockup.
+     v2.3.731: near-OPAQUE — the painted backdrop bled through the old 55%
+     background and fought the labels/tiles (owner: hard to see). */
   var _pillBox = { display: 'flex', alignItems: 'stretch', width: '100%', marginBottom: 6,
-    border: '1.5px solid #3a3163', borderRadius: 10, overflow: 'hidden', background: 'rgba(13,10,29,0.55)', boxSizing: 'border-box' };
+    border: '1.5px solid #4a4080', borderRadius: 10, overflow: 'hidden', background: 'rgba(20,16,40,0.93)', boxSizing: 'border-box' };
   /* v2.3.715: rounded display font + Title Case for the category labels --
      the bold ALL-CAPS sans read like terminal text (owner feedback).
      'Baloo 2' is loaded in index.html. */
   var _pillLabel = { width: '100%', minHeight: 40, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
-    padding: '0 9px', fontSize: 13, fontWeight: 700, color: '#d3d6e6', letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-    background: '#221b41', textAlign: 'left', boxSizing: 'border-box' };
+    padding: '0 9px', fontSize: 13, fontWeight: 700, color: '#e8e4f8', letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+    background: '#241d49', textAlign: 'left', boxSizing: 'border-box' };
   /* Category pill -- COLLAPSED by default: below the label header sits the
      current selection; tapping the pill (or its header) expands it to reveal
      all choices (style rows on top, color rows below).
@@ -1547,7 +1550,7 @@ export var BroTown = function BroTown(_ref0) {
         /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillLabel, { cursor: 'pointer', border: 'none', borderBottom: '1.5px solid var(--line)' }) }, labelKids),
         /*#__PURE__*/React.createElement("div", { style: { width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, boxSizing: 'border-box' } },
           optionRows.map(function (kids, i) {
-            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, padding: '4px 6px', borderTop: i > 0 ? '1px solid var(--line)' : 'none' } }, kids);
+            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, padding: '6px 7px', borderTop: i > 0 ? '1px solid #3a3163' : 'none' } }, kids);
           })));
     }
     /* Collapsed stays a single horizontal row (label left, current pick
