@@ -4,7 +4,7 @@
  */
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
-import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures } from './systems/entityRenderer.js';
+import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
 import { EffectsRenderer } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadTileAssets } from './tileAssets.js';
@@ -56,7 +56,7 @@ export function preloadPlayerAssets() {
   );
 }
 
-/** v2.3.709: light, network-only warm kicked while the welcome modal is up
+/** v2.3.715: light, network-only warm kicked while the welcome modal is up
  *  -- that screen is otherwise dead network time.  Downloads the same sheets
  *  the full preloadPlayerAssets() bake needs, so the intro-gated prewarm
  *  starts from a hot cache instead of cold fetches.  Deliberately NO baking
@@ -83,6 +83,9 @@ let _appRef = null;   /* v2.3.701: handle for uploadBakedTextures behind the int
 export async function initPixiRenderer(canvas) {
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
   _appRef = app;
+  /* v2.3.704: let the equip-change re-prewarm GPU-upload its fresh bakes
+     (the intro-time uploadBakedTextures only covered the spawn loadout). */
+  registerPrewarmRenderer(app.renderer);
 
   const tileRenderer = new TileRenderer(layers.tiles, app);
   const entityRenderer = new EntityRenderer(layers.entities, layers.player);

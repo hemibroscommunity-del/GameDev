@@ -132,7 +132,7 @@ function renderTraitCanvas(traitImg, meta, crown, dir) {
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
   const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir } = opts || {};
-  /* v2.3.709: composite OFFSCREEN and blit at the end.  This used to set
+  /* v2.3.715: composite OFFSCREEN and blit at the end.  This used to set
      canvas.width up front, which blanks the visible canvas synchronously --
      then the awaits below yield at least a frame, so every rotation /
      selection change flashed blank even with all assets cached.  The old
@@ -221,7 +221,7 @@ export async function drawCharacterPortrait(canvas, opts) {
   canvas.getContext('2d').drawImage(work, 0, 0);
 }
 
-/** v2.3.709: fire-and-forget warm of every preview angle's sprites for the
+/** v2.3.715: fire-and-forget warm of every preview angle's sprites for the
  *  current selections, so the login rotate buttons / drag-to-rotate never
  *  wait on the network.  The promise caches above make the subsequent draws
  *  hit memory; expected misses (e.g. hairmask 404s) are harmless. */

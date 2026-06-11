@@ -183,16 +183,16 @@ input{font-family:inherit}
   border-radius:50%;
   pointer-events:none;
 }
-/* v2.3.704: welcome modal redesigned to two panes — big character preview
+/* v2.3.710: welcome modal redesigned to two panes — big character preview
    left, scrollable category rail right.  The modal no longer scrolls as a
    page; the rail (.bt-cc-rail-scroll) is the SOLE scroller, so the modal
    itself locks to the viewport (100dvh + safe-area insets for the iPhone
    notch / home indicator).
-   v2.3.707: backdrop is a faint radial instead of flat #000 — a drop
+   v2.3.713: backdrop is a faint radial instead of flat #000 — a drop
    shadow is invisible against pure black, and the card needs it to read
    as floating. */
 .bt-name-modal{position:fixed;inset:0;z-index:9999;background:radial-gradient(120% 90% at 50% 35%,#151930 0%,#08090f 60%,#000 100%);display:flex;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
-/* v2.3.709: iOS touch hardening -- press-and-hold was popping the text-
+/* v2.3.715: iOS touch hardening -- press-and-hold was popping the text-
    selection loupe / image save-callout and juddering held gestures.  The
    name input opts back in to selection so typing still works; thumbnails
    refuse the native image-drag. */
@@ -204,7 +204,7 @@ input{font-family:inherit}
    and centered text don't win.  The min-height:0 / min-width:0 entries are
    load-bearing: without them flex children refuse to shrink and the rail
    never scrolls.
-   v2.3.707: gray-blue gradient lifted verbatim from the in-game bottom
+   v2.3.713: gray-blue gradient lifted verbatim from the in-game bottom
    dashboard (BottomDashboard.jsx) so the menu shares its material, plus a
    layered drop shadow + hairline inner highlight for the floating look. */
 .bt-name-box.bt-cc-box{display:flex;flex-direction:column;width:100%;height:auto;max-width:560px;max-height:min(760px,100%);margin:auto;padding:12px;text-align:left;background:linear-gradient(180deg,#1e2436 0%,#141826 55%,#0c0f18 100%);box-shadow:0 24px 60px rgba(0,0,0,.6),0 6px 18px rgba(0,0,0,.45),0 0 0 1px rgba(91,82,255,.08),inset 0 1px 0 rgba(255,255,255,.06)}

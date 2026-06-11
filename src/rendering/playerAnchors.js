@@ -36,7 +36,7 @@
  *   express this directly as anchor.set(hx/srcW, hy/srcH).
  */
 
-const ANCHORS_URL = '/sprites/player/anchors.json?v=13';
+const ANCHORS_URL = '/sprites/player/anchors.json?v=14'; /* v14: half-cycle jog-east/-northeast remap (v2.3.705) */
 const HANDLES_URL = '/sprites/weapons/handles.json?v=5';
 
 /* v2.3.174: session-2 sprite pipeline shipped 256-px frames and the

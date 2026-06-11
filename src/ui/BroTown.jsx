@@ -1359,7 +1359,7 @@ export var BroTown = function BroTown(_ref0) {
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
-  /* v2.3.705: drag-to-rotate -- horizontal swipes on the preview canvas step
+  /* v2.3.711: drag-to-rotate -- horizontal swipes on the preview canvas step
      the facing every 26px of travel; the corner buttons remain for
      discoverability.  Holds the last x where a step fired. */
   var _dragRotX = useRef(null);
@@ -1384,11 +1384,11 @@ export var BroTown = function BroTown(_ref0) {
       headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
       shirt: shirtSel, shirtColor: shirtColorTarget(shirtColorSel),
     });
-    /* v2.3.709: warm the other 7 angles for whatever is selected NOW, so
+    /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
        rotating never waits on the network. */
     prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });
   }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel]);
-  /* v2.3.709: the welcome modal is dead network time -- start pulling the
+  /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
      behind the intro overlay via preloadPlayerAssets in joinTown) and warm
      the intro clip so it starts instantly on PLAY.  The video element is
@@ -1428,14 +1428,14 @@ export var BroTown = function BroTown(_ref0) {
       border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
-  /* v2.3.705: explicit checkmark badge on the picked tile -- the purple
+  /* v2.3.711: explicit checkmark badge on the picked tile -- the purple
      highlight alone was ambiguous next to the purple-ish swatches. */
   var _checkBadge = function () {
     return /*#__PURE__*/React.createElement("span", { key: 'ck', style: { position: 'absolute', right: -2, bottom: -2, width: 14, height: 14, borderRadius: '50%', background: 'var(--pop)', border: '1px solid #fff', color: '#fff', fontSize: 9, lineHeight: '12px', textAlign: 'center', fontWeight: 800, pointerEvents: 'none' } }, "✓");
   };
   var _swatchTile = function (opt, selId, onSet, size, thumbCat, thumbItem) {
     /* The 'default' option = keep the item's original color (no recolor).
-       v2.3.705: the old diagonal-slash cue read poorly (owner feedback).
+       v2.3.711: the old diagonal-slash cue read poorly (owner feedback).
        Now: trait colors (hat/hair/beard/shirt) pass thumbCat/thumbItem and
        the default tile shows the selected item's own thumbnail in its
        original colors -- "this is what you get".  Body colors (skin/pants/
@@ -1463,7 +1463,7 @@ export var BroTown = function BroTown(_ref0) {
   };
   /* Collapsed-pill previews (non-interactive). */
   var _swOf = function (cat, id) {
-    /* v2.3.705: no more slash gradient for 'default' -- the only catalogs
+    /* v2.3.711: no more slash gradient for 'default' -- the only catalogs
        whose default still reaches here are skin/pants/shoes, and their
        catalog swatches are the sprite's real native colors.  Trait pills
        (hat/hair/beard/shirt) skip the mini swatch entirely when the color
@@ -1484,7 +1484,7 @@ export var BroTown = function BroTown(_ref0) {
       ? { width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #9090a8', flex: '0 0 auto' }
       : { width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderLeft: '5px solid #9090a8', flex: '0 0 auto' } });
   };
-  /* v2.3.704: pills restyled for the narrow side rail of the two-pane
+  /* v2.3.710: pills restyled for the narrow side rail of the two-pane
      welcome modal.  The old 60px left label + horizontally-scrolling tile
      rows assumed a 320px-wide card; in a ~150px rail that left ~85px for
      44px tiles.  The label is now a full-width header strip on top, and
@@ -1492,7 +1492,7 @@ export var BroTown = function BroTown(_ref0) {
      vertically instead). */
   var _pillBox = { display: 'flex', alignItems: 'stretch', width: '100%', marginBottom: 6,
     border: '1.5px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.12)', boxSizing: 'border-box' };
-  /* v2.3.709: rounded display font + Title Case for the category labels --
+  /* v2.3.715: rounded display font + Title Case for the category labels --
      the bold ALL-CAPS sans read like terminal text (owner feedback).
      'Baloo 2' is loaded in index.html. */
   var _pillLabel = { width: '100%', minHeight: 40, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
@@ -1504,7 +1504,7 @@ export var BroTown = function BroTown(_ref0) {
      `optionRows` = expanded-state tile-arrays; `summary` = collapsed preview. */
   var _apPill = function (catKey, label, optionRows, summary) {
     var open = !!expanded[catKey];
-    /* v2.3.705: accordion -- opening a category closes the others, so the
+    /* v2.3.711: accordion -- opening a category closes the others, so the
        rail stays short and an open panel is never forgotten off-screen. */
     var toggle = function () { setExpanded(function (p) { var n = {}; if (!p[catKey]) n[catKey] = true; return n; }); };
     var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb' }, label), _chevron(open)];
@@ -1537,14 +1537,14 @@ export var BroTown = function BroTown(_ref0) {
     var ht = rpick(HEADWEAR_CATALOG); setHeadwear(ht); setHeadwearSel(ht);
     var htc = rpick(HAT_COLOR_CATALOG); setHatColor(htc); setHatColorSel(htc);
   };
-  /* v2.3.705: RANDOMIZE rolls a few quick looks before settling -- the
+  /* v2.3.711: RANDOMIZE rolls a few quick looks before settling -- the
      slot-machine beat makes the button feel fun instead of a dry reroll. */
   var randomizeWithFlair = function () {
     randomizeAppearance();
     var n = 0;
     var t = setInterval(function () { randomizeAppearance(); if (++n >= 3) clearInterval(t); }, 110);
   };
-  /* v2.3.705: dice button beside the name box -- naming is the spot players
+  /* v2.3.711: dice button beside the name box -- naming is the spot players
      freeze on.  Longest combo is 16 chars, inside the 20-char input cap. */
   var _NAME_FIRST = ['Brad', 'Chad', 'Turbo', 'Mega', 'Big', 'Lil', 'Iron', 'Captain', 'Duke', 'Rad', 'Ultra', 'Gnarly'];
   var _NAME_LAST = ['Bro', 'Flex', 'Gains', 'Smash', 'Thunder', 'Blaze', 'Dozer', 'Knuckles', 'Storm', 'Hammer', 'Biceps', 'Swole'];
@@ -1785,7 +1785,7 @@ export var BroTown = function BroTown(_ref0) {
         };
         img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
         /* Cache-buster: bump v= each time sheet content or frame count changes. */
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=41';
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=42'; /* v42: half-cycle jog-east/-northeast (v2.3.705) */
       });
     });
 
@@ -13743,7 +13743,7 @@ export var BroTown = function BroTown(_ref0) {
   };
 
   /* Name / avatar selection modal.
-     v2.3.704: redesigned to two side-by-side panes at EVERY width (iPhone
+     v2.3.710: redesigned to two side-by-side panes at EVERY width (iPhone
      Safari portrait is the primary platform): big live preview + name +
      PLAY on the left (~57%), scrollable category rail + RANDOMIZE on the
      right.  Layout-only change — every input/button keeps its previous
@@ -13767,10 +13767,10 @@ export var BroTown = function BroTown(_ref0) {
       display: 'inline-block',
       verticalAlign: 'middle',
       marginLeft: 8,
-      /* v2.3.706: retro-arcade wordmark -- chunky 8-bit font + gold with a
+      /* v2.3.712: retro-arcade wordmark -- chunky 8-bit font + gold with a
          hard (unblurred) offset shadow, matching the pixel-art identity.
          'Press Start 2P' is loaded in index.html; one weight (400) only.
-         v2.3.708: lineHeight 1 -- the font's tall default line box made
+         v2.3.714: lineHeight 1 -- the font's tall default line box made
          the lockup's vertical rhythm impossible to control. */
       fontFamily: "'Press Start 2P','Source Sans 3',sans-serif",
       fontSize: 14,
@@ -13778,7 +13778,7 @@ export var BroTown = function BroTown(_ref0) {
       color: 'var(--gold)',
       textShadow: '0 2px 0 #6b4310, 0 3px 0 rgba(0,0,0,0.5)'
     }
-    /* v2.3.709: the pixel font's space glyph is a full em, which split the
+    /* v2.3.715: the pixel font's space glyph is a full em, which split the
        wordmark apart -- two spans with an em-relative gap keep the words
        tight in BOTH the pixel font and the sans fallback (a negative
        word-spacing fix collapsed the fallback into "HEMBROS"). */
@@ -13791,13 +13791,13 @@ export var BroTown = function BroTown(_ref0) {
       marginTop: 7
     }
   }, "ACTION RPG"), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.708: gold hairline under the lockup -- ties the wordmark color
+    /* v2.3.714: gold hairline under the lockup -- ties the wordmark color
        into the card and separates brand from metadata, fading out like a
        nameplate engraving. */
     style: { height: 2, marginTop: 7, borderRadius: 1, background: 'linear-gradient(90deg, rgba(245,197,66,.45), rgba(245,197,66,0) 72%)' }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
-      /* v2.3.708: version is metadata -- dim + tiny so it stops competing
+      /* v2.3.714: version is metadata -- dim + tiny so it stops competing
          with the wordmark. */
       fontSize: 8,
       color: 'var(--txt2)',
@@ -13816,7 +13816,7 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
     title: 'Live preview',
-    /* v2.3.705: drag-to-rotate.  Pointer capture keeps the gesture alive
+    /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
        when the finger drifts off the canvas mid-swipe. */
     onPointerDown: function (e) { _dragRotX.current = e.clientX; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
     onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
@@ -13836,7 +13836,7 @@ export var BroTown = function BroTown(_ref0) {
       display: 'block',
       touchAction: 'none',
       cursor: 'grab',
-      /* v2.3.705: near-white checker instead of flat white.  Some trait
+      /* v2.3.711: near-white checker instead of flat white.  Some trait
          sprites carry white residue from extraction, so the backdrop must
          stay close to white to hide it -- but a hint of contrast lets
          white shirts and pale skins read.  Keep both shades near-white;
@@ -13845,7 +13845,7 @@ export var BroTown = function BroTown(_ref0) {
       background: 'repeating-conic-gradient(#f7f8fb 0% 25%, #eaecf2 0% 50%) 0 0 / 22px 22px'
     }
   }), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.706: circular spin arrows replaced the triangle glyphs -- the
+    /* v2.3.712: circular spin arrows replaced the triangle glyphs -- the
        triangles read like the accordion chevrons in the rail (owner
        feedback), and rotation is a different verb than expand/collapse. */
     type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
@@ -13873,14 +13873,14 @@ export var BroTown = function BroTown(_ref0) {
     autoFocus: true,
     style: {
       width: '100%',
-      /* v2.3.705: symmetric 44px side padding clears the dice button while
+      /* v2.3.711: symmetric 44px side padding clears the dice button while
          keeping the centered text centered. */
       padding: '12px 44px',
       background: 'var(--ink3)',
       border: '1.5px solid var(--line)',
       borderRadius: 10,
       color: 'var(--txt)',
-      /* v2.3.704: 16px floor — iOS Safari auto-zooms inputs with a smaller
+      /* v2.3.710: 16px floor — iOS Safari auto-zooms inputs with a smaller
          font on focus, leaving visualViewport.scale > 1, which trips the
          joinTown pinch-zoom gate. */
       fontSize: 16,

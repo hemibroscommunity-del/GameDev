@@ -57,7 +57,9 @@ function _ensureHudBarTextures() {
    Currently hard-coded to the `test-1` NFT for demo; later this will
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
-const TRAIT_VER = '2.3.531';
+/* v2.3.705: bumped to re-fetch body-anchors/body-tops (remapped for the
+   half-cycle jog-east/-northeast sheets). */
+const TRAIT_VER = '2.3.705';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -369,7 +371,14 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
   if (!bres) return bodyTex;
   const key = (bodyTex.uid != null ? bodyTex.uid : '') + '|' + worn.map(w => w.k).join(',') + '|' + dilate;
   const hit = _maskedBodyCache.get(key);
-  if (hit) return hit;
+  /* v2.3.704: LRU, not FIFO.  A hit re-inserts the key so the frames being
+     RENDERED (the worn set, every frame) sit at the back of the eviction
+     queue.  Under FIFO they stayed at the front -- the oldest inserts -- so
+     every cold insert (rare-pose lazy bake, a remote player, an equip
+     re-prewarm) evicted a HOT frame, which then rebaked + re-inserted and
+     evicted the next hot frame: a rolling ~10ms-per-frame bake thrash that
+     read as a stutter after every gear swap. */
+  if (hit) { _maskedBodyCache.delete(key); _maskedBodyCache.set(key, hit); return hit; }
   let cv;
   try {
     cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
@@ -704,11 +713,18 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
      bake families resident (full / chest-only / legs-only, ~130 frames
      each) so armor toggles never hitch; 420 x 256KB =~ 105MB worst case,
      still below the pre-v2.3.689 150MB ceiling. */
-  while (_maskedBodyCache.size > 420) {
+  /* v2.3.704: cap 420 -> 520.  The "~130 frames each" estimate undercounted:
+     a family is stand (1x5 dirs) + jog (24+31+25+35+24 = 139) = 144 frames,
+     so the three intro families are ~432 -- OVER the old cap, meaning the
+     intro prewarm evicted the start of its own work and armor toggles
+     rebaked those frames live anyway.  520 fits all three families plus
+     headroom for rare-pose lazy bakes and armored remotes (~130MB worst
+     case, still under the 150MB ceiling).  Eviction takes the LRU front,
+     which after the hit-refresh above is genuinely cold entries. */
+  while (_maskedBodyCache.size > 520) {
     const k0 = _maskedBodyCache.keys().next().value;
     const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
     try { old.destroy(true); } catch (e) { /* ignore */ }
-    if (_maskedBodyCache.size <= 254) break;
   }
   return t;
 }
@@ -759,20 +775,34 @@ export function planPrewarmProgress() {
    turned/moved through freshly-baked frames ('slowing down on a few frames
    even after joining').  Feature-detected; harmless no-op if the renderer
    doesn't expose an upload path. */
+/* v2.3.704: remember which sources already went up so repeat calls (the
+   equip-change re-prewarm below re-runs this) only push the NEW bakes
+   instead of re-uploading the whole ~100MB cache. */
+const _uploadedSources = new WeakSet();
 export async function uploadBakedTextures(renderer) {
   if (!renderer) return;
   let n = 0;
   for (const t of _maskedBodyCache.values()) {
+    if (!t || !t.source || _uploadedSources.has(t.source)) continue;
     try {
-      if (renderer.texture && typeof renderer.texture.initSource === 'function' && t && t.source) {
+      if (renderer.texture && typeof renderer.texture.initSource === 'function') {
         renderer.texture.initSource(t.source);
       } else if (renderer.prepare && typeof renderer.prepare.upload === 'function') {
         renderer.prepare.upload(t);
       } else return;
+      _uploadedSources.add(t.source);
     } catch (e) { /* best-effort */ }
     if (++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
   }
 }
+
+/* v2.3.704: renderer handle for the equip-change re-prewarm's GPU upload.
+   pixiRenderer registers it at init; without it the rebaked frames uploaded
+   lazily on first DRAW (uploadBakedTextures only ran behind the intro), so
+   a gear swap still paid a trail of one-off upload stalls while turning
+   through freshly-baked frames. */
+let _prewarmRenderer = null;
+export function registerPrewarmRenderer(renderer) { _prewarmRenderer = renderer; }
 
 export async function prewarmMaskedBodyFrames(opts) {
   const budgetMs = (opts && opts.frameBudgetMs) || 0;
@@ -921,6 +951,9 @@ function _schedulePrewarm() {
     if (_equipPrewarmRunning) { _equipPrewarmAgain = true; return; }
     _equipPrewarmRunning = true;
     prewarmMaskedBodyFrames({ frameBudgetMs: 5 }).catch(() => { /* best-effort */ }).then(() => {
+      /* v2.3.704: push any frames this pass actually had to bake (cache
+         misses) to the GPU now, instead of stalling on first draw. */
+      uploadBakedTextures(_prewarmRenderer).catch(() => { /* best-effort */ });
       _equipPrewarmRunning = false;
       if (_equipPrewarmAgain) { _equipPrewarmAgain = false; _schedulePrewarm(); }
     });
