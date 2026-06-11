@@ -1613,15 +1613,31 @@ export var BroTown = function BroTown(_ref0) {
   };
   /* v2.3.711: dice button beside the name box -- naming is the spot players
      freeze on.  Longest combo is 16 chars, inside the 20-char input cap. */
-  /* v2.3.746: name pools tripled (owner liked the recipe).  Keep firsts
-     <=8 and lasts <=9 chars so the longest combo stays inside the 20-char
-     input cap. */
-  var _NAME_FIRST = ['Brad', 'Chad', 'Turbo', 'Mega', 'Big', 'Lil', 'Iron', 'Captain', 'Duke', 'Rad', 'Ultra', 'Gnarly',
-    'Sir', 'Lord', 'Baron', 'Diesel', 'Buck', 'Rex', 'Hank', 'Bruno', 'Atlas', 'Rowdy', 'Beefy', 'Wild',
-    'Epic', 'Grand', 'Slick', 'Macho', 'Heavy', 'Stone', 'Young', 'Crispy', 'Major', 'Frosty', 'Salty', 'Turbo'];
-  var _NAME_LAST = ['Bro', 'Flex', 'Gains', 'Smash', 'Thunder', 'Blaze', 'Dozer', 'Knuckles', 'Storm', 'Hammer', 'Biceps', 'Swole',
-    'Crusher', 'Punch', 'Wreck', 'Fury', 'Quake', 'Steel', 'Granite', 'Pecs', 'Cardio', 'Protein', 'Slam', 'Clutch',
-    'Bolt', 'Rumble', 'Savage', 'Grit', 'Boulder', 'Bash', 'Stomp', 'Quads', 'Deltoid', 'Mullet', 'Burrito', 'Nugget'];
+  /* v2.3.747: 100 x 100 pools = 10,000 combos (owner request).  Keep
+     firsts <=8 and lasts <=9 chars so the longest combo stays inside the
+     20-char input cap; the two lists share no words (no 'Savage Savage'). */
+  var _NAME_FIRST = [
+    'Brad', 'Chad', 'Turbo', 'Mega', 'Big', 'Lil', 'Iron', 'Captain', 'Duke', 'Rad',
+    'Ultra', 'Gnarly', 'Sir', 'Lord', 'Baron', 'Diesel', 'Buck', 'Rex', 'Hank', 'Bruno',
+    'Atlas', 'Rowdy', 'Beefy', 'Wild', 'Epic', 'Grand', 'Slick', 'Macho', 'Heavy', 'Stone',
+    'Young', 'Crispy', 'Major', 'Frosty', 'Salty', 'Thicc', 'Swift', 'Mighty', 'Brave', 'Bold',
+    'Noble', 'Royal', 'Golden', 'Shadow', 'Crimson', 'Cosmic', 'Mystic', 'Arcane', 'Coach', 'Sarge',
+    'General', 'Colonel', 'Cadet', 'Rookie', 'Elder', 'Primal', 'Feral', 'Grumpy', 'Spicy', 'Smoky',
+    'Chunky', 'Husky', 'Burly', 'Brawny', 'Jacked', 'Ripped', 'Buff', 'Alpha', 'Sigma', 'Omega',
+    'Prime', 'Apex', 'Zesty', 'Saucy', 'Toasty', 'Drippy', 'Steely', 'Bronze', 'Cobalt', 'Onyx',
+    'Dusty', 'Rusty', 'Stormy', 'Sunny', 'Lunar', 'Solar', 'Astro', 'Hyper', 'Nitro', 'Laser',
+    'Cyber', 'Retro', 'Disco', 'Funky', 'Groovy', 'Jolly', 'Cranky', 'Feisty', 'Sneaky', 'Jumbo'];
+  var _NAME_LAST = [
+    'Bro', 'Flex', 'Gains', 'Smash', 'Thunder', 'Blaze', 'Dozer', 'Knuckles', 'Storm', 'Hammer',
+    'Biceps', 'Swole', 'Crusher', 'Punch', 'Wreck', 'Fury', 'Quake', 'Steel', 'Granite', 'Pecs',
+    'Cardio', 'Protein', 'Slam', 'Clutch', 'Bolt', 'Rumble', 'Savage', 'Grit', 'Boulder', 'Bash',
+    'Stomp', 'Quads', 'Deltoid', 'Mullet', 'Burrito', 'Nugget', 'Lats', 'Traps', 'Mauler', 'Brawler',
+    'Slugger', 'Bruiser', 'Clobber', 'Wallop', 'Haymaker', 'Uppercut', 'Suplex', 'Bodyslam', 'Headlock', 'Gunshow',
+    'Deadlift', 'Squats', 'Bench', 'Curls', 'Burpee', 'Whey', 'Macros', 'Bulk', 'Shred', 'Dragon',
+    'Griffin', 'Phoenix', 'Hydra', 'Kraken', 'Cyclops', 'Titan', 'Golem', 'Ogre', 'Wyvern', 'Chimera',
+    'Valor', 'Glory', 'Legend', 'Quest', 'Rune', 'Aegis', 'Bastion', 'Citadel', 'Vanguard', 'Warpath',
+    'Tsunami', 'Cyclone', 'Tempest', 'Inferno', 'Wildfire', 'Magma', 'Ember', 'Glacier', 'Blizzard', 'Monsoon',
+    'Zephyr', 'Taco', 'Nacho', 'Brisket', 'Gravy', 'Waffle', 'Meatball', 'Pickle', 'Jerky', 'Mohawk'];
   var rollRandomName = function () {
     var p = function (a) { return a[Math.floor(Math.random() * a.length)]; };
     setNameInput(p(_NAME_FIRST) + ' ' + p(_NAME_LAST));
