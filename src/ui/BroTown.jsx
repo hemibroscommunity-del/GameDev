@@ -1528,9 +1528,11 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.715: rounded display font + Title Case for the category labels --
      the bold ALL-CAPS sans read like terminal text (owner feedback).
      'Baloo 2' is loaded in index.html. */
-  var _pillLabel = { width: '100%', minHeight: 40, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
-    padding: '0 9px', fontSize: 13, fontWeight: 700, color: '#e8e4f8', letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-    background: '#241d49', textAlign: 'left', boxSizing: 'border-box' };
+  /* v2.3.732: label font up 13->15 with a soft shadow (owner: selection
+     text too small); label column widened to keep 'Beard' on one line. */
+  var _pillLabel = { width: '100%', minHeight: 44, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+    padding: '0 7px', fontSize: 15, fontWeight: 700, color: '#f0edfb', letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+    textShadow: '0 1px 2px rgba(0,0,0,.55)', background: '#241d49', textAlign: 'left', boxSizing: 'border-box' };
   /* Category pill -- COLLAPSED by default: below the label header sits the
      current selection; tapping the pill (or its header) expands it to reveal
      all choices (style rows on top, color rows below).
@@ -1558,7 +1560,7 @@ export var BroTown = function BroTown(_ref0) {
        v2.3.722: label column FIXED-width (sized to the widest label,
        "Beard") so every pill's summary starts at the same x. */
     return /*#__PURE__*/React.createElement("button", { key: catKey, type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0 }) },
-      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 96, borderRight: '1.5px solid var(--line)' }) }, labelKids),
+      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 104, borderRight: '1.5px solid #3a3163' }) }, labelKids),
       /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary));
   };
   var randomizeAppearance = function () {
@@ -13839,11 +13841,16 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.726: animated starry-night clip behind the character (the
          poster is the fallback while the video warms); the standalone
          stone-platform asset replaces the vista's baked-in one. */
+      /* v2.3.732: ?v= cache-buster (repo convention) — phones were
+         replaying the stale violet night.mp4 from browser cache, which is
+         why the 'cyan' backdrop survived two rebakes.  The bake itself is
+         now PURE neutral gray (R=G=B): at near-black luma, the encoder's
+         coarse chroma quantization turns even a 4-point blue bias teal. */
       border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
-      background: "url('/ui/welcome/night-poster.webp') center/cover no-repeat, #131027",
+      background: "url('/ui/welcome/night-poster.webp?v=" + BUILD_INFO.version + "') center/cover no-repeat, #0d0d0d",
       boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
   }, /*#__PURE__*/React.createElement("video", {
-    src: '/ui/welcome/night.mp4',
+    src: '/ui/welcome/night.mp4?v=' + BUILD_INFO.version,
     autoPlay: true, muted: true, loop: true, playsInline: true,
     style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("img", {
@@ -13987,8 +13994,9 @@ export var BroTown = function BroTown(_ref0) {
        the pill stack. */
     style: { width: '100%', padding: '7px', marginTop: 0, minHeight: 42, cursor: 'pointer', borderRadius: 10,
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-      background: 'rgba(13,10,29,0.72)', border: '1.5px solid var(--line)', color: 'var(--txt)',
-      fontSize: 14, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif" }
+      background: 'rgba(20,16,40,0.93)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      fontSize: 16, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+      textShadow: '0 1px 2px rgba(0,0,0,.55)' }
   }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
   /*#__PURE__*/React.createElement("span", null, "Randomize"))))));
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
