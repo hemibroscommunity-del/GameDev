@@ -13826,8 +13826,10 @@ export var BroTown = function BroTown(_ref0) {
     src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo-main"
   }), /*#__PURE__*/React.createElement("div", {
     /* v2.3.738: HEMI BROS sub-logo swapped for a call-to-action line. */
-    style: { fontSize: 15, fontWeight: 700, color: 'var(--gold)', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-      letterSpacing: '.14em', marginTop: 4, textShadow: '0 1px 3px rgba(0,0,0,.7)' }
+    style: { fontSize: 15, fontWeight: 700, color: '#ffffff', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+      /* v2.3.738: white + heavy dark halo — gold vanished into the sunlit
+         half of the painted backdrop. */
+      letterSpacing: '.14em', marginTop: 4, textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
   }, "CREATE YOUR CHARACTER"), /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/divider2.webp', alt: '',
     style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
