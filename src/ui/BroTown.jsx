@@ -1613,8 +1613,31 @@ export var BroTown = function BroTown(_ref0) {
   };
   /* v2.3.711: dice button beside the name box -- naming is the spot players
      freeze on.  Longest combo is 16 chars, inside the 20-char input cap. */
-  var _NAME_FIRST = ['Brad', 'Chad', 'Turbo', 'Mega', 'Big', 'Lil', 'Iron', 'Captain', 'Duke', 'Rad', 'Ultra', 'Gnarly'];
-  var _NAME_LAST = ['Bro', 'Flex', 'Gains', 'Smash', 'Thunder', 'Blaze', 'Dozer', 'Knuckles', 'Storm', 'Hammer', 'Biceps', 'Swole'];
+  /* v2.3.747: 100 x 100 pools = 10,000 combos (owner request).  Keep
+     firsts <=8 and lasts <=9 chars so the longest combo stays inside the
+     20-char input cap; the two lists share no words (no 'Savage Savage'). */
+  var _NAME_FIRST = [
+    'Brad', 'Chad', 'Turbo', 'Mega', 'Big', 'Lil', 'Iron', 'Captain', 'Duke', 'Rad',
+    'Ultra', 'Gnarly', 'Sir', 'Lord', 'Baron', 'Diesel', 'Buck', 'Rex', 'Hank', 'Bruno',
+    'Atlas', 'Rowdy', 'Beefy', 'Wild', 'Epic', 'Grand', 'Slick', 'Macho', 'Heavy', 'Stone',
+    'Young', 'Crispy', 'Major', 'Frosty', 'Salty', 'Thicc', 'Swift', 'Mighty', 'Brave', 'Bold',
+    'Noble', 'Royal', 'Golden', 'Shadow', 'Crimson', 'Cosmic', 'Mystic', 'Arcane', 'Coach', 'Sarge',
+    'General', 'Colonel', 'Cadet', 'Rookie', 'Elder', 'Primal', 'Feral', 'Grumpy', 'Spicy', 'Smoky',
+    'Chunky', 'Husky', 'Burly', 'Brawny', 'Jacked', 'Ripped', 'Buff', 'Alpha', 'Sigma', 'Omega',
+    'Prime', 'Apex', 'Zesty', 'Saucy', 'Toasty', 'Drippy', 'Steely', 'Bronze', 'Cobalt', 'Onyx',
+    'Dusty', 'Rusty', 'Stormy', 'Sunny', 'Lunar', 'Solar', 'Astro', 'Hyper', 'Nitro', 'Laser',
+    'Cyber', 'Retro', 'Disco', 'Funky', 'Groovy', 'Jolly', 'Cranky', 'Feisty', 'Sneaky', 'Jumbo'];
+  var _NAME_LAST = [
+    'Bro', 'Flex', 'Gains', 'Smash', 'Thunder', 'Blaze', 'Dozer', 'Knuckles', 'Storm', 'Hammer',
+    'Biceps', 'Swole', 'Crusher', 'Punch', 'Wreck', 'Fury', 'Quake', 'Steel', 'Granite', 'Pecs',
+    'Cardio', 'Protein', 'Slam', 'Clutch', 'Bolt', 'Rumble', 'Savage', 'Grit', 'Boulder', 'Bash',
+    'Stomp', 'Quads', 'Deltoid', 'Mullet', 'Burrito', 'Nugget', 'Lats', 'Traps', 'Mauler', 'Brawler',
+    'Slugger', 'Bruiser', 'Clobber', 'Wallop', 'Haymaker', 'Uppercut', 'Suplex', 'Bodyslam', 'Headlock', 'Gunshow',
+    'Deadlift', 'Squats', 'Bench', 'Curls', 'Burpee', 'Whey', 'Macros', 'Bulk', 'Shred', 'Dragon',
+    'Griffin', 'Phoenix', 'Hydra', 'Kraken', 'Cyclops', 'Titan', 'Golem', 'Ogre', 'Wyvern', 'Chimera',
+    'Valor', 'Glory', 'Legend', 'Quest', 'Rune', 'Aegis', 'Bastion', 'Citadel', 'Vanguard', 'Warpath',
+    'Tsunami', 'Cyclone', 'Tempest', 'Inferno', 'Wildfire', 'Magma', 'Ember', 'Glacier', 'Blizzard', 'Monsoon',
+    'Zephyr', 'Taco', 'Nacho', 'Brisket', 'Gravy', 'Waffle', 'Meatball', 'Pickle', 'Jerky', 'Mohawk'];
   var rollRandomName = function () {
     var p = function (a) { return a[Math.floor(Math.random() * a.length)]; };
     setNameInput(p(_NAME_FIRST) + ' ' + p(_NAME_LAST));
@@ -13878,8 +13901,10 @@ export var BroTown = function BroTown(_ref0) {
          compositing path itself.  The sky is now a plain CSS gradient
          (renders color-exact) with two CSS-animated star layers
          (.bt-cc-stars) for the twinkle.  Black by construction. */
+      /* v2.3.743: owner's storm-light void painting replaces the plain
+         gradient (still an IMAGE, not video — color-exact). */
       border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
-      background: 'linear-gradient(180deg, #0e0e10 0%, #030304 100%)',
+      background: "url('/ui/welcome/void.webp') center/cover no-repeat, #0a0a0c",
       boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
   }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars" }),
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars bt-cc-stars--b" }),
@@ -13919,8 +13944,12 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.725: lands the boots on the painted stone platform (~83%
          of the window height in the cover-fit scene).
          v2.3.741: scale .9 — 10% smaller per owner; translate stays so
-         the boots keep the platform. */
-      transform: 'translateY(-6%) scale(0.9)',
+         the boots keep the platform.
+         v2.3.744: per-angle drop — the SW and E source frames sit higher
+         in their 256 box than the others, so those facings (and their
+         mirrors) floated above the pedestal (owner: SW/SE down ~20px,
+         E/W down ~10px). */
+      transform: 'translateY(calc(-6% + ' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)) scale(0.9)', /* v2.3.745: SW/SE 20->15, NE/NW 0->5 per owner */
       /* v2.3.717: transparent — the parchment border-image panel behind
          supplies the backdrop now.  It must stay NEAR-WHITE (see the
          wrapper comment): trait sprites carry white extraction residue
