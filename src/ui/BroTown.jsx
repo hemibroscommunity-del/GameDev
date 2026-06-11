@@ -13783,18 +13783,20 @@ export var BroTown = function BroTown(_ref0) {
        tight in BOTH the pixel font and the sans fallback (a negative
        word-spacing fix collapsed the fallback into "HEMBROS"). */
   }, /*#__PURE__*/React.createElement("span", null, "HEMI"), /*#__PURE__*/React.createElement("span", { style: { marginLeft: '0.4em' } }, "BROS")), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.716: BRO TOWN added to the sub-plate (owner request); gold to
+       match the mockup, slightly tighter tracking to fit the longer text. */
     style: {
       fontSize: 9,
-      color: 'var(--pop)',
+      color: 'var(--gold)',
       fontWeight: 700,
-      letterSpacing: '.34em',
+      letterSpacing: '.14em',
       marginTop: 7
     }
-  }, "ACTION RPG"), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.714: gold hairline under the lockup -- ties the wordmark color
-       into the card and separates brand from metadata, fading out like a
-       nameplate engraving. */
-    style: { height: 2, marginTop: 7, borderRadius: 1, background: 'linear-gradient(90deg, rgba(245,197,66,.45), rgba(245,197,66,0) 72%)' }
+  }, "★ BRO TOWN · ACTION RPG ★"), /*#__PURE__*/React.createElement("img", {
+    /* v2.3.716: generated gem divider replaces the v2.3.714 CSS hairline. */
+    src: '/ui/welcome/divider.png',
+    alt: '',
+    style: { width: '100%', height: 9, objectFit: 'contain', marginTop: 6, display: 'block', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       /* v2.3.714: version is metadata -- dim + tiny so it stops competing
@@ -13810,10 +13812,16 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     /* Square frame sized by the pane width (clamped by the pane height on
        short/landscape screens).  Keeping the frame its own element means
-       the rotate buttons pin to the white box's corners, not to whatever
-       taller space the flex column hands the preview row. */
-    style: { position: 'relative', width: '100%', aspectRatio: '1 / 1', maxHeight: '100%' }
-  }, /*#__PURE__*/React.createElement("canvas", {
+       the rotate buttons pin to the panel's corners, not to whatever
+       taller space the flex column hands the preview row.
+       v2.3.716: parchment border-image panel (owner-generated art).  Its
+       center stays NEAR-WHITE on purpose — some trait sprites carry white
+       extraction residue that a dark backdrop would expose. */
+    style: { position: 'relative', width: '100%', aspectRatio: '1 / 1', maxHeight: '100%', boxSizing: 'border-box',
+      border: '14px solid transparent', borderImage: "url('/ui/welcome/panel.png') 90 fill / 14px stretch" }
+  }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-pillar bt-cc-pillar--left" }),
+  /*#__PURE__*/React.createElement("div", { className: "bt-cc-pillar bt-cc-pillar--right" }),
+  /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
     title: 'Live preview',
     /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
@@ -13836,13 +13844,14 @@ export var BroTown = function BroTown(_ref0) {
       display: 'block',
       touchAction: 'none',
       cursor: 'grab',
-      /* v2.3.711: near-white checker instead of flat white.  Some trait
-         sprites carry white residue from extraction, so the backdrop must
-         stay close to white to hide it -- but a hint of contrast lets
-         white shirts and pale skins read.  Keep both shades near-white;
-         don't swap in a colored/scene backdrop without re-extracting the
-         affected sprites. */
-      background: 'repeating-conic-gradient(#f7f8fb 0% 25%, #eaecf2 0% 50%) 0 0 / 22px 22px'
+      /* v2.3.716: transparent — the parchment border-image panel behind
+         supplies the backdrop now.  It must stay NEAR-WHITE (see the
+         wrapper comment): trait sprites carry white extraction residue
+         that any dark/colored backdrop would expose.  No z-index: DOM
+         order already stacks pillars < canvas < rotate buttons, and a
+         z-index here would put the canvas over the buttons and eat
+         their taps. */
+      background: 'transparent'
     }
   }), /*#__PURE__*/React.createElement("button", {
     /* v2.3.712: circular spin arrows replaced the triangle glyphs -- the
@@ -13895,13 +13904,14 @@ export var BroTown = function BroTown(_ref0) {
       background: 'var(--ink2)', border: '1.5px solid var(--line)', fontSize: 17, padding: 0, lineHeight: 1 }
   }, "🎲")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
+    /* v2.3.716: gradient + bevel (and the :active press) live in the
+       .bt-cc-play CSS class — pseudo-states need a stylesheet. */
+    className: "bt-cc-play",
     style: {
       marginTop: 'auto',
       minHeight: 48,
       padding: '12px 32px',
-      background: 'var(--pop)',
       color: '#fff',
-      border: 'none',
       borderRadius: 10,
       fontSize: 17,
       fontWeight: 700,
@@ -13910,7 +13920,7 @@ export var BroTown = function BroTown(_ref0) {
       letterSpacing: '.06em',
       width: '100%'
     }
-  }, "PLAY")), /*#__PURE__*/React.createElement("div", {
+  }, "⚔️ PLAY")), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-rail"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-rail-scroll"
@@ -13923,7 +13933,7 @@ export var BroTown = function BroTown(_ref0) {
   _apPill('pants', 'Pants', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
   _apPill('shoes', 'Shoes', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))])),
   /*#__PURE__*/React.createElement("button", {
-    type: 'button', onClick: randomizeWithFlair,
+    type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
     style: { width: '100%', padding: '7px', marginTop: 6, minHeight: 40, cursor: 'pointer', borderRadius: 8,
       background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       fontSize: 14, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif" }
