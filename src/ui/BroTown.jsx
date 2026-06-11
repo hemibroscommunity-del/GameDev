@@ -1613,8 +1613,15 @@ export var BroTown = function BroTown(_ref0) {
   };
   /* v2.3.711: dice button beside the name box -- naming is the spot players
      freeze on.  Longest combo is 16 chars, inside the 20-char input cap. */
-  var _NAME_FIRST = ['Brad', 'Chad', 'Turbo', 'Mega', 'Big', 'Lil', 'Iron', 'Captain', 'Duke', 'Rad', 'Ultra', 'Gnarly'];
-  var _NAME_LAST = ['Bro', 'Flex', 'Gains', 'Smash', 'Thunder', 'Blaze', 'Dozer', 'Knuckles', 'Storm', 'Hammer', 'Biceps', 'Swole'];
+  /* v2.3.746: name pools tripled (owner liked the recipe).  Keep firsts
+     <=8 and lasts <=9 chars so the longest combo stays inside the 20-char
+     input cap. */
+  var _NAME_FIRST = ['Brad', 'Chad', 'Turbo', 'Mega', 'Big', 'Lil', 'Iron', 'Captain', 'Duke', 'Rad', 'Ultra', 'Gnarly',
+    'Sir', 'Lord', 'Baron', 'Diesel', 'Buck', 'Rex', 'Hank', 'Bruno', 'Atlas', 'Rowdy', 'Beefy', 'Wild',
+    'Epic', 'Grand', 'Slick', 'Macho', 'Heavy', 'Stone', 'Young', 'Crispy', 'Major', 'Frosty', 'Salty', 'Turbo'];
+  var _NAME_LAST = ['Bro', 'Flex', 'Gains', 'Smash', 'Thunder', 'Blaze', 'Dozer', 'Knuckles', 'Storm', 'Hammer', 'Biceps', 'Swole',
+    'Crusher', 'Punch', 'Wreck', 'Fury', 'Quake', 'Steel', 'Granite', 'Pecs', 'Cardio', 'Protein', 'Slam', 'Clutch',
+    'Bolt', 'Rumble', 'Savage', 'Grit', 'Boulder', 'Bash', 'Stomp', 'Quads', 'Deltoid', 'Mullet', 'Burrito', 'Nugget'];
   var rollRandomName = function () {
     var p = function (a) { return a[Math.floor(Math.random() * a.length)]; };
     setNameInput(p(_NAME_FIRST) + ' ' + p(_NAME_LAST));
