@@ -3445,9 +3445,10 @@ export class EntityRenderer {
          turning doesn't strip the shirt entirely.
          v2.3.719: + northeast (covers northwest via mirror).
          v2.3.720: + southwest (covers southeast via mirror).
-         v2.3.721: + north. */
-      const _layerShirt = getEquip('shirt') !== 'none'
-        && (dir === 'south' || dir === 'northeast' || dir === 'southwest' || dir === 'north');
+         v2.3.721: + north.
+         v2.3.722: + east (covers west via mirror) -- ALL base dirs now have
+         sheets, so the layer fully replaces the baked shirt when equipped. */
+      const _layerShirt = getEquip('shirt') !== 'none';
       const _shirtT = (_chestEquipped || _layerShirt) ? null : shirtFill(_shId, _shCol);
       const _shirtKey = _shirtT ? (_shId + '-' + _shCol) : 'none';
       let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
