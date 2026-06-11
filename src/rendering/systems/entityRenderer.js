@@ -3917,13 +3917,20 @@ export class EntityRenderer {
              saw the bow/staff "clipped" in the south view.  Only sword-type
              weapons get the cap. */
           const _weaponNeedsCap = wpn.type === 'sword' || wpn.type === 'greatsword';
+          /* v2.3.718: the cap clones BODY pixels, and the layered shirt is no
+             longer baked into the body texture -- so over the shirt the cap
+             stamped a bare-skin circle ("shirt eaten at the right hand").
+             Skip it while the layered shirt is showing (same pattern as the
+             SE/NE jog skips); the grip-wrap nicety returns when the shirt
+             clone learns to ride along. */
           const handCapEligible = handCap && handMask && _bodyRef
             && _bodyRef.visible && _bodyRef.texture
             && !swingActive && isInCombat
             && _weaponInFront
             && _weaponNeedsCap
             && !_seJogSkipCap
-            && !_neJogSkipCap;
+            && !_neJogSkipCap
+            && !_layerShirt;
           if (handCapEligible) {
             handCap.texture = _bodyRef.texture;
             handCap.x = _bodyRef.x;
