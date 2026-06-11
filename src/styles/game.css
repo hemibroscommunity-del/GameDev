@@ -219,22 +219,24 @@ input{font-family:inherit}
 .bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;width:100%;height:auto;max-width:560px;max-height:min(820px,100%);margin:auto;padding:56px 26px 38px;text-align:left;background:none;border:none;box-shadow:none}
 /* ^ generous top/bottom padding clears the frame art's tall crown and base
    ornaments; side padding clears its rails. */
-.bt-cc-outer-frame{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+/* v2.3.726: frame pushed outward so its rails/ornaments stop crowding the UI */
+.bt-cc-outer-frame{position:absolute;inset:-12px;width:calc(100% + 24px);height:calc(100% + 24px);pointer-events:none;z-index:0}
 /* positioned frame img would otherwise paint OVER the static-flow content
    (positioned > static in paint order, DOM order be damned) */
 .bt-name-box.bt-cc-box>*:not(.bt-cc-outer-frame){position:relative;z-index:1}
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
    lands on every cell including the last before looping. */
-/* v2.3.725: painted braziers replace the pixel pillars; gentle brightness
-   pulse instead of the sprite-strip flame (DOM-only screen, filter safe). */
-.bt-cc-brazier{position:absolute;bottom:1.5%;height:34%;width:auto;pointer-events:none;animation:bt-cc-glow 2.4s ease-in-out infinite alternate}
-@keyframes bt-cc-glow{from{filter:brightness(1)}to{filter:brightness(1.16)}}
+/* v2.3.726: braziers animate via 12-cell sprite strips built from the
+   owner's flame clip (purple as shot; gold = luminance-ramped recolor for
+   the sun side).  jump-none lands on every cell before looping. */
+.bt-cc-brazier{position:absolute;bottom:1.5%;height:34%;pointer-events:none;background:0 0/1200% 100% no-repeat;animation:bt-cc-braz 1.0s steps(12,jump-none) infinite}
+@keyframes bt-cc-braz{from{background-position-x:0%}to{background-position-x:100%}}
 /* v2.3.720: pillars hug the window edges (mockup: columns are part of the
    window architecture, not free-standing) */
-.bt-cc-brazier--left{left:2.5%}
+.bt-cc-brazier--left{left:2.5%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
 /* negative delay desyncs the two flames so they don't flicker in lockstep */
-.bt-cc-brazier--right{right:2.5%;animation-delay:-1.2s}
+.bt-cc-brazier--right{right:2.5%;aspect-ratio:110/224;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
 /* Chunky beveled PLAY — presses down on tap (border-bottom is the bevel). */
 /* v2.3.725: PLAY is the owner's painted button art (label baked in). */
 .bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none}

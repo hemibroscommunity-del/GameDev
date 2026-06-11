@@ -13835,13 +13835,21 @@ export var BroTown = function BroTown(_ref0) {
        the left column has more height, so the window grows taller and the
        cover-fit canvas scales the figure up with it. */
     style: { position: 'relative', width: '100%', aspectRatio: '3 / 4', maxHeight: '100%', boxSizing: 'border-box',
-      /* v2.3.725: the owner's painted vista (stone platform baked in)
-         replaces the flat radial; braziers flank instead of pillars. */
+      /* v2.3.726: animated starry-night clip behind the character (the
+         poster is the fallback while the video warms); the standalone
+         stone-platform asset replaces the vista's baked-in one. */
       border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
-      background: "url('/ui/welcome/window-scene.webp') center/cover no-repeat, #1a1438",
+      background: "url('/ui/welcome/night-poster.webp') center/cover no-repeat, #131027",
       boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
-  }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/brazier-dark.webp', alt: '', className: "bt-cc-brazier bt-cc-brazier--left" }),
-  /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/brazier-light.webp', alt: '', className: "bt-cc-brazier bt-cc-brazier--right" }),
+  }, /*#__PURE__*/React.createElement("video", {
+    src: '/ui/welcome/night.mp4',
+    autoPlay: true, muted: true, loop: true, playsInline: true,
+    style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }
+  }), /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/platform.webp', alt: '',
+    style: { position: 'absolute', bottom: '3%', left: '8%', width: '84%', height: 'auto', pointerEvents: 'none' }
+  }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
+  /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" }),
   /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
     title: 'Live preview',
