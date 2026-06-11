@@ -2902,7 +2902,7 @@ export class EntityRenderer {
              players rendered noticeably smaller than yourself. */
           /* v2.3.537: derived per-(pose,dir) scale, shared with the local
              player path via bodyDirScale (silhouette-height normalization). */
-          const sizeMul = bodyDirScale(pose, dir) * 0.3515625;
+          const sizeMul = bodyDirScale(pose, dir) * 0.421875; /* v2.3.741: +20% with the local player */
           spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
           spriteBody.scale.y = sizeMul;
           spriteBody.tint = 0xffffff;
@@ -3048,11 +3048,11 @@ export class EntityRenderer {
              spriteBody scale change above (also 0.5).  Keeps the
              weapon anchored to the visual hand position rather than
              flying off into space. */
-          let bodyScale = 0.5;
+          let bodyScale = 0.6; /* v2.3.741: 0.5 -> 0.6, tracking the +20% body bump */
           const isHitNow = other._hitFlash && (now - other._hitFlash) < 250;
           const poseNow = isHitNow ? 'hit' : (isMoving ? 'jog' : 'stand');
-          if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88 * 0.5;
-          else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03 * 0.5;
+          if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88 * 0.6;
+          else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03 * 0.6;
           const animFrame = display._animFrame || 0;
           const hand = display._animPose ? getAnchor(display._animPose, dir, animFrame, mirror) : null;
           let wpnX = 0, wpnY = 0;
@@ -3375,8 +3375,11 @@ export class EntityRenderer {
        the player sprite 25% larger everywhere".
        v2.3.166: sprite source bumped 128 -> 256; halved again
        (0.703125 -> 0.3515625) so on-screen size stays identical.
-       Net visible scale vs v2.3.110 baseline: still +25%. */
-    const LOCAL_SCALE = 0.3515625;
+       Net visible scale vs v2.3.110 baseline: still +25%.
+       v2.3.741: +20% (0.3515625 -> 0.421875) per user "make the character
+       20% larger in game for all directions".  Remote players and the
+       remote weapon-anchor baseline bumped by the same factor. */
+    const LOCAL_SCALE = 0.421875;
     /* v2.3.537: per-(pose,dir) scale now comes from the derived
        BODY_DIR_SCALE map (silhouette-height normalization), replacing the
        old hand-tuned bump stack. */

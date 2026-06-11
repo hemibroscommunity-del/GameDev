@@ -13830,9 +13830,9 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.738: white + heavy dark halo — gold vanished into the sunlit
          half of the painted backdrop.  Plus a dark pill backdrop so it
          holds contrast over the brightest sky. */
-      letterSpacing: '.14em', marginTop: 5, textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8)',
-      display: 'inline-block', background: 'rgba(8,6,18,0.62)', padding: '3px 16px', borderRadius: 999,
-      border: '1px solid rgba(245,197,66,0.25)' }
+      /* v2.3.741: pill backdrop removed (owner: too prominent) — plain
+         white text, the heavy halo carries the contrast. */
+      letterSpacing: '.14em', marginTop: 5, textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
   }, "CREATE YOUR CHARACTER"), /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/divider2.webp', alt: '',
     style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
@@ -13910,8 +13910,10 @@ export var BroTown = function BroTown(_ref0) {
       touchAction: 'none',
       cursor: 'grab',
       /* v2.3.725: lands the boots on the painted stone platform (~83%
-         of the window height in the cover-fit scene). */
-      transform: 'translateY(-6%)',
+         of the window height in the cover-fit scene).
+         v2.3.741: scale .9 — 10% smaller per owner; translate stays so
+         the boots keep the platform. */
+      transform: 'translateY(-6%) scale(0.9)',
       /* v2.3.717: transparent — the parchment border-image panel behind
          supplies the backdrop now.  It must stay NEAR-WHITE (see the
          wrapper comment): trait sprites carry white extraction residue
