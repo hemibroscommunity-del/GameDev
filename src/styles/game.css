@@ -216,7 +216,7 @@ input{font-family:inherit}
    gone — the UI floats directly on the painted backdrop, wrapped by the
    ornate gold frame img (.bt-cc-outer-frame, stretched; painted style
    tolerates the mild distortion). */
-.bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;width:100%;height:auto;max-width:560px;max-height:min(820px,100%);margin:auto;padding:56px 26px 38px;text-align:left;background:none;border:none;box-shadow:none}
+.bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;width:100%;height:auto;max-width:560px;max-height:min(820px,100%);margin:auto;padding:64px 26px 40px;text-align:left;background:none;border:none;box-shadow:none}
 /* ^ generous top/bottom padding clears the frame art's tall crown and base
    ornaments; side padding clears its rails. */
 /* v2.3.726: frame pushed outward so its rails/ornaments stop crowding the UI */
@@ -236,7 +236,7 @@ input{font-family:inherit}
    window architecture, not free-standing) */
 .bt-cc-brazier--left{left:2.5%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
 /* negative delay desyncs the two flames so they don't flicker in lockstep */
-.bt-cc-brazier--right{right:2.5%;aspect-ratio:110/224;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
+.bt-cc-brazier--right{right:2.5%;aspect-ratio:110/231;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
 /* Chunky beveled PLAY — presses down on tap (border-bottom is the bevel). */
 /* v2.3.725: PLAY is the owner's painted button art (label baked in). */
 .bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none}
