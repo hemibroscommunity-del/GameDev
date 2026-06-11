@@ -166,7 +166,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     /* v2.3.757: the LAYERED shirt sheet (white-base, tinted below) -- the
        baked torso-retint shirt is retired, so the preview composites the
        same layer the game renders. */
-    wantShirt ? loadImage(`/sprites/gear/shirt/tshirt/stand-${DIR}.png?v=2.3.756`).catch(() => null) : null,
+    wantShirt ? loadImage(`/sprites/gear/shirt/tshirt/stand-${DIR}.png?v=2.3.758`).catch(() => null) : null,
     wantHair ? loadImage(`/sprites/traits/hair/${hair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
     wantHair ? loadMeta('hair', hair) : null,
     wantFh ? loadImage(`/sprites/traits/facialhair/${facialHair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
