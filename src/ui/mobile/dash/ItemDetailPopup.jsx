@@ -328,6 +328,95 @@ export const ItemDetailPopup = () => {
 
   if (!itemDetailBus.state.open) return null;
   const target = itemDetailBus.state.target;
+
+  /* v2.3.756: the CHEST loadout slot holds TWO layers -- armour worn OVER the
+     t-shirt.  Tapping it opens this two-row picker instead of a single-item
+     card: each layer equips/unequips independently (armour to/from the bag,
+     the shirt simply on/off), and the popup stays open so both can be set in
+     one visit.  Armour always renders above the shirt in-game. */
+  if (target && target.kind === 'chestLayers') {
+    const chestId = getEquip('chest');
+    const shirtId = getEquip('shirt');
+    const S2 = getState();
+    const R2 = S2 && S2.rpg;
+    const stashedChest = R2 && R2.gearStash && R2.gearStash.find((g) => g && g.slot === 'chest');
+    const toggleArmor = () => {
+      if (!R2) return;
+      if (chestId !== 'none') {
+        if (!R2.gearStash) R2.gearStash = [];
+        R2.gearStash.push({ slot: 'chest', gearId: chestId, name: gearName('chest', chestId) });
+        setEquip('chest', 'none');
+      } else if (stashedChest) {
+        const idx = R2.gearStash.indexOf(stashedChest);
+        if (idx >= 0) R2.gearStash.splice(idx, 1);
+        setEquip('chest', stashedChest.gearId);
+      }
+      persist(R2);
+      force((v) => v + 1);
+    };
+    const toggleShirt = () => {
+      setEquip('shirt', shirtId !== 'none' ? 'none' : 'tshirt');
+      force((v) => v + 1);
+    };
+    const armorOn = chestId !== 'none';
+    const shirtOn = shirtId !== 'none';
+    const layerRow = (key, iconSrc, name, sub, on, canEquip, onToggle) => (
+      <div key={key} style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '7px 8px', borderRadius: 8,
+        background: on ? 'rgba(61,212,151,.07)' : 'rgba(255,255,255,.03)',
+        border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(255,255,255,.08)'}`,
+      }}>
+        <img src={iconSrc} alt={name} draggable={false}
+          style={{ width: 32, height: 32, imageRendering: 'pixelated',
+            filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#3dd497' : COL.muted }}>{name}</div>
+          <div style={{ fontSize: 8, color: 'rgba(255,255,255,.35)' }}>{sub}</div>
+        </div>
+        <button type="button"
+          onPointerUp={(e) => { e.stopPropagation(); if (on || canEquip) onToggle(); }}
+          disabled={!on && !canEquip}
+          style={{
+            padding: '5px 10px', fontSize: 9, fontWeight: 700, borderRadius: 7,
+            border: '1px solid rgba(255,255,255,.2)',
+            background: on ? 'rgba(255,94,108,.25)' : (canEquip ? 'rgba(61,212,151,.25)' : 'rgba(255,255,255,.06)'),
+            color: (on || canEquip) ? '#fff' : 'rgba(255,255,255,.3)',
+            cursor: (on || canEquip) ? 'pointer' : 'default',
+            WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+          }}>{on ? 'Unequip' : 'Equip'}</button>
+      </div>
+    );
+    return (
+      <div onPointerDown={() => itemDetailBus.close()}
+        style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
+        <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            left: pos ? pos.left : -9999,
+            top: pos ? pos.top : -9999,
+            width: 240,
+            background: 'rgba(20,22,32,0.98)',
+            border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: 12,
+            padding: 10,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
+          }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,.55)', letterSpacing: 0.5, marginBottom: 7 }}>
+            CHEST — LAYERS
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {layerRow('armor', '/sprites/gear/icons/steelplate.png?v=2.3.685',
+              armorOn ? gearName('chest', chestId) : (stashedChest ? stashedChest.name : 'Steel Plate'),
+              'Armour · top layer', armorOn, !!stashedChest, toggleArmor)}
+            {layerRow('shirt', '/sprites/gear/icons/tshirt.png?v=2.3.756',
+              'T-Shirt', 'Clothing · under armour', shirtOn, true, toggleShirt)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const resolved = resolveTarget(target);
   if (!resolved) return null;
   const { lockKey, thumb, glyph, name, info, desc, actions } = resolved;

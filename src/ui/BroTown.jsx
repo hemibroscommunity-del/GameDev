@@ -832,9 +832,9 @@ export var BroTown = function BroTown(_ref0) {
   /* Per-slot armour equip state (chest/legs) -- equip/unequip each gear slot
      live from the Equipment menu.  Mirrors gearCatalog.setEquip; default ids
      per slot. */
-  var GEAR_DEFAULT_ID = { chest: 'steelplate', legs: 'steelgreaves' };
+  var GEAR_DEFAULT_ID = { chest: 'steelplate', legs: 'steelgreaves', shirt: 'tshirt' };
   var _useStateGear = useState(function () {
-    return { chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none' };
+    return { chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none', shirt: getEquip('shirt') !== 'none' };
   }),
     _useStateGear2 = _slicedToArray(_useStateGear, 2),
     gearWorn = _useStateGear2[0],
@@ -852,9 +852,9 @@ export var BroTown = function BroTown(_ref0) {
      (popup unequip -> bag).  Track external setEquip calls so this menu's
      WORN ARMOUR toggle reflects them instead of going stale. */
   useEffect(function () {
-    var offs = ['chest', 'legs'].map(function (slot) {
+    var offs = ['chest', 'legs', 'shirt'].map(function (slot) {
       return onEquipChange(slot, function () {
-        setGearWorn({ chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none' });
+        setGearWorn({ chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none', shirt: getEquip('shirt') !== 'none' });
       });
     });
     return function () { offs.forEach(function (off) { off(); }); };
@@ -2196,6 +2196,7 @@ export var BroTown = function BroTown(_ref0) {
             eqc: getEquip('chest'),
             eql: getEquip('legs'),
             eqs: getEquip('shoulders'),
+            eqst: getEquip('shirt'),
             pt: getPants(),
             sh: getShoes(),
             bs: S.bodySize || 'slim',
@@ -2334,12 +2335,13 @@ export var BroTown = function BroTown(_ref0) {
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
-                    if (data.eqc !== undefined || data.eql !== undefined || data.eqs !== undefined) {
-                      var _oe5 = S.others[pid].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none' };
+                    if (data.eqc !== undefined || data.eql !== undefined || data.eqs !== undefined || data.eqst !== undefined) {
+                      var _oe5 = S.others[pid].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' };
                       S.others[pid].equip = {
                         chest: data.eqc !== undefined ? (data.eqc || 'none') : _oe5.chest,
                         legs: data.eql !== undefined ? (data.eql || 'none') : _oe5.legs,
                         shoulders: data.eqs !== undefined ? (data.eqs || 'none') : _oe5.shoulders,
+                        shirt: data.eqst !== undefined ? (data.eqst || 'none') : _oe5.shirt,
                       };
                     }
                     /* Snapshot interpolation — buffer positions + velocity */
@@ -2515,7 +2517,9 @@ export var BroTown = function BroTown(_ref0) {
                   facialHairColor: _data.fhc || null,
                   shirt: _data.st || null,
                   shirtColor: _data.stc || null,
-                  equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none' },
+                  equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
+                    /* v2.3.756: layered shirt; old clients send no eqst -> infer from their legacy shirt style */
+                    shirt: _data.eqst !== undefined ? (_data.eqst || 'none') : ((_data.st && _data.st !== 'none') ? 'tshirt' : 'none') },
                   pants: _data.pt || null,
                   shoes: _data.sh || null,
                   rpgLv: _data.rpgLv || 1,
@@ -3022,7 +3026,8 @@ export var BroTown = function BroTown(_ref0) {
                 facialHairColor: (msg.data && msg.data.fhc) || null,
                 shirt: (msg.data && msg.data.st) || null,
                 shirtColor: (msg.data && msg.data.stc) || null,
-                equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none' },
+                equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none',
+                  shirt: (msg.data && msg.data.eqst !== undefined) ? (msg.data.eqst || 'none') : ((msg.data && msg.data.st && msg.data.st !== 'none') ? 'tshirt' : 'none') },
                 pants: (msg.data && msg.data.pt) || null,
                 shoes: (msg.data && msg.data.sh) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
@@ -27986,7 +27991,10 @@ export var BroTown = function BroTown(_ref0) {
     style: { display: 'flex', gap: 8, marginBottom: 8 }
   }, [
     { slot: 'chest', name: 'Steel Plate', sub: 'Chest', icon: '/sprites/gear/icons/steelplate.png' },
-    { slot: 'legs', name: 'Steel Greaves', sub: 'Legs', icon: '/sprites/gear/icons/steelgreaves.png' }
+    { slot: 'legs', name: 'Steel Greaves', sub: 'Legs', icon: '/sprites/gear/icons/steelgreaves.png' },
+    /* v2.3.756: the t-shirt layer -- worn UNDER the chest armour (both can
+       be on at once; armour always renders on top). */
+    { slot: 'shirt', name: 'T-Shirt', sub: 'Chest \u00b7 under armour', icon: '/sprites/gear/icons/tshirt.png' }
   ].map(function (it) {
     var on = gearWorn[it.slot];
     return /*#__PURE__*/React.createElement("div", {

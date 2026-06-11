@@ -823,9 +823,10 @@ export async function prewarmMaskedBodyFrames(opts) {
   const budgetMs = (opts && opts.frameBudgetMs) || 0;
   const slots = ['chest', 'legs'];
   if (!slots.some((sl) => { const it = getEquip(sl); return it && it !== 'none'; })) return;
-  const _chestEquipped = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
-  const shirtT = _chestEquipped ? null : shirtFill(getShirt(), getShirtColor());
-  const shirtKey = shirtT ? (getShirt() + '-' + getShirtColor()) : 'none';
+  /* v2.3.756: baked shirt retired -- the body always bakes shirtless (the
+     layered shirt is a separate sprite, no masked-body involvement). */
+  const shirtT = null;
+  const shirtKey = 'none';
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
   const _nextFrame = () => new Promise((r) => {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => r());
@@ -899,11 +900,9 @@ export async function prewarmAltWornSets(opts) {
   }
   const chestId = getEquip('chest') !== 'none' ? getEquip('chest') : 'steelplate';
   const legsId = getEquip('legs') !== 'none' ? getEquip('legs') : 'steelgreaves';
-  const shirtT = shirtFill(getShirt(), getShirtColor());
-  const shirtKey = shirtT ? (getShirt() + '-' + getShirtColor()) : 'none';
-  /* both shirt variants' sheets first (the big hitch) */
+  /* v2.3.756: baked shirt retired -- only the shirtless body sheets exist
+     now, so there is a single variant to warm. */
   try { await preloadBodyVariant(null, 'none'); } catch (e) { /* best-effort */ }
-  try { await preloadBodyVariant(shirtT, shirtKey); } catch (e) { /* best-effort */ }
   if (seq !== _altPrewarmSeq) return;            // superseded by a newer kick
   const SETS = [
     { worn: [['chest', chestId], ['legs', legsId]], full: true },
@@ -913,8 +912,7 @@ export async function prewarmAltWornSets(opts) {
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
   let sinceYield = 0;
   for (const set of SETS) {
-    const sT = set.full ? null : shirtT;
-    const sK = sT ? shirtKey : 'none';
+    const sT = null, sK = 'none';   /* v2.3.756: shirtless always */
     for (const pose of ['stand', 'jog']) {
       for (const dir of DIRS) {
         const fc = playerFrameCount(pose, dir) || 1;
@@ -2887,8 +2885,15 @@ export class EntityRenderer {
         const _oChest = (other.equip && other.equip.chest) || 'none';
         const _oLegs = (other.equip && other.equip.legs) || 'none';
         /* v2.3.686: full set only (mirrors the local-player shirt gate). */
-        const _oShirtT = (_oChest !== 'none' && _oLegs !== 'none') ? null : shirtFill(other.shirt, other.shirtColor);
-        const _oShirtKey = _oShirtT ? (other.shirt + '-' + other.shirtColor) : 'none';
+        /* v2.3.756: baked shirt retired for remotes too -- they wear the
+           layered shirt via equip.shirt (eqst broadcast).  Old clients
+           don't send eqst; fall back to their legacy shirt-style field
+           (st) so a shirted old-client player still reads as shirted. */
+        const _oShirtT = null;
+        const _oShirtKey = 'none';
+        const _oEq = other.equip || {};
+        const _oShirtEquip = _oEq.shirt !== undefined ? _oEq.shirt
+          : ((other.shirt && other.shirt !== 'none') ? 'tshirt' : 'none');
         let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey);
         if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey);
         if (tex) {
@@ -2926,7 +2931,11 @@ export class EntityRenderer {
           useSprite = true;
           /* v2.3.504: this remote player's layered gear (their equip is
              broadcast over the network). */
-          _placeGear(display, other.equip, pose, dir, frameIdx);
+          _placeGear(display, {
+            shirt: _oShirtEquip, legs: _oEq.legs, chest: _oEq.chest,
+            shoulders: _oEq.shoulders,
+            shirtTint: shirtFill(other.shirt || 'tshirt', other.shirtColor),
+          }, pose, dir, frameIdx);
           /* v2.3.613: no helmet -- head/face always shows.  Mask the body under
              the remote's worn chest/legs plate (dilated) so it can't poke past a
              plate edge; the head + bare regions still show. */
@@ -3445,25 +3454,16 @@ export class EntityRenderer {
       /* v2.3.389: recolor the bare skin to the selected tone (preserving
          shading) -- falls back to the default sheets internally.
          v2.3.399: + pants / shoes colors.
-         v2.3.497: shirt is now BAKED into the body (torso skin retinted to the
-         shirt color, follows every pose/frame) instead of an overlay sprite. */
+         v2.3.756: the BAKED torso-retint shirt (v2.3.497) is RETIRED --
+         "never worked right and looks bad" (owner).  The layered shirt
+         (gear slot 'shirt': white-base sheet x tint) is the only shirt;
+         the body always bakes shirtless.  shirtFill survives solely as
+         the layer's tint source.  _layerShirt still gates the weapon
+         hand-cap below (the cap clones shirtless body pixels). */
       const _shId = getShirt(), _shCol = getShirtColor();
-      /* Skip the procedural shirt bake only under the FULL set (torso fully
-         covered).  v2.3.686: chest-only wear exposes the belly band below the
-         cuirass -- bake the shirt so it reads as shirt under armour, not skin. */
-      const _chestEquipped = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
-      /* v2.3.748 PoC: when the LAYERED shirt is equipped and this dir has its
-         sheets, skip the baked torso-retint shirt -- the layer replaces it.
-         Dirs without sheets keep the baked look until theirs exist, so
-         turning doesn't strip the shirt entirely.
-         v2.3.750: + northeast (covers northwest via mirror).
-         v2.3.751: + southwest (covers southeast via mirror).
-         v2.3.752: + north.
-         v2.3.753: + east (covers west via mirror) -- ALL base dirs now have
-         sheets, so the layer fully replaces the baked shirt when equipped. */
       const _layerShirt = getEquip('shirt') !== 'none';
-      const _shirtT = (_chestEquipped || _layerShirt) ? null : shirtFill(_shId, _shCol);
-      const _shirtKey = _shirtT ? (_shId + '-' + _shCol) : 'none';
+      const _shirtT = null;
+      const _shirtKey = 'none';
       let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
       if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey);
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
