@@ -240,6 +240,19 @@ input{font-family:inherit}
    image: rolled end caps stay fixed, the parchment middle stretches).
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
    "sign here" cue at the left. */
+
+/* v2.3.734: lockup sizing lives here so short screens can squeeze it —
+   the full-size header starved the rail on 667pt-class phones, clipping
+   the Shoes pill under Randomize. */
+.bt-cc-crest{height:48px;width:auto;margin:0 auto;display:block;pointer-events:none}
+.bt-cc-logo-main{width:54%;max-width:290px;height:auto;margin:2px auto 0;display:block;pointer-events:none}
+.bt-cc-logo-sub{width:27%;max-width:150px;height:auto;margin:4px auto 0;display:block;pointer-events:none}
+@media (max-height:720px){
+  .bt-cc-crest{height:32px}
+  .bt-cc-logo-main{width:40%}
+  .bt-cc-logo-sub{width:20%}
+}
+
 .bt-cc-name{border:0 solid transparent;border-width:0 26px;border-image:url('/ui/welcome/scroll2.webp') 0 64 fill/0 26px stretch;background:none;color:#3a2a14;height:58px}
 .bt-cc-name::placeholder{color:#8a7350;opacity:1}
 .bt-cc-main{display:flex;flex-direction:row;gap:10px;flex:1;min-height:0}

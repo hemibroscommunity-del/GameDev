@@ -13800,14 +13800,13 @@ export var BroTown = function BroTown(_ref0) {
        (crest / BRO TOWN / HEMI BROS / gem divider) per the splash mockup. */
     style: { textAlign: 'center', marginBottom: 8 }
   }, /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/crest.webp', alt: '',
-    style: { height: 48, width: 'auto', margin: '0 auto', display: 'block', pointerEvents: 'none' }
+    /* v2.3.734: sizes moved to CSS classes so short screens can shrink the
+       lockup (it was starving the rail into scroll-clipping). */
+    src: '/ui/welcome/crest.webp', alt: '', className: "bt-cc-crest"
   }), /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN',
-    style: { width: '54%', maxWidth: 290, height: 'auto', margin: '2px auto 0', display: 'block', pointerEvents: 'none' }
+    src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo-main"
   }), /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/logo-hemibros.webp', alt: 'HEMI BROS',
-    style: { width: '27%', maxWidth: 150, height: 'auto', margin: '4px auto 0', display: 'block', pointerEvents: 'none' }
+    src: '/ui/welcome/logo-hemibros.webp', alt: 'HEMI BROS', className: "bt-cc-logo-sub"
   }), /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/divider2.webp', alt: '',
     style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
@@ -13991,19 +13990,22 @@ export var BroTown = function BroTown(_ref0) {
   _apPill('skin', 'Skin', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))], '/ui/welcome/icon-skin.webp'),
   _apPill('shirt', 'Shirt', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' && shirtColorSel !== 'default' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : []), '/ui/welcome/icon-shirt.webp'),
   _apPill('pants', 'Pants', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))], '/ui/welcome/icon-pants.webp'),
-  _apPill('shoes', 'Shoes', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))], '/ui/welcome/icon-shoes.webp')),
+  _apPill('shoes', 'Shoes', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))], '/ui/welcome/icon-shoes.webp'),
   /*#__PURE__*/React.createElement("button", {
     type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
     /* v2.3.719: no marginTop and pill-matching radius — the last pill's
        own 6px marginBottom is the gap, so the button reads as part of
-       the pill stack. */
+       the pill stack.
+       v2.3.734: lives INSIDE the rail scroller — when a short screen
+       forces the rail to scroll, a bottom-pinned button sat on top of the
+       half-clipped Shoes pill (owner saw them overlap). */
     style: { width: '100%', padding: '7px', marginTop: 0, minHeight: 42, cursor: 'pointer', borderRadius: 10,
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
       background: 'rgba(20,16,40,0.93)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       fontSize: 16, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
       textShadow: '0 1px 2px rgba(0,0,0,.55)' }
   }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
-  /*#__PURE__*/React.createElement("span", null, "Randomize"))))));
+  /*#__PURE__*/React.createElement("span", null, "Randomize")))))));
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
     onComplete: function onComplete() { return setShowIntro(false); }
