@@ -1532,12 +1532,16 @@ export var BroTown = function BroTown(_ref0) {
      current selection; tapping the pill (or its header) expands it to reveal
      all choices (style rows on top, color rows below).
      `optionRows` = expanded-state tile-arrays; `summary` = collapsed preview. */
-  var _apPill = function (catKey, label, optionRows, summary) {
+  /* v2.3.725: `icon` = small equipment-slot icon (cropped from the owner's
+     mockup) shown before the label. */
+  var _apPill = function (catKey, label, optionRows, summary, icon) {
     var open = !!expanded[catKey];
     /* v2.3.711: accordion -- opening a category closes the others, so the
        rail stays short and an open panel is never forgotten off-screen. */
     var toggle = function () { setExpanded(function (p) { var n = {}; if (!p[catKey]) n[catKey] = true; return n; }); };
-    var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb' }, label), _chevron(open)];
+    var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb', style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 } },
+      icon ? /*#__PURE__*/React.createElement("img", { src: icon, alt: '', style: { width: 20, height: 20, objectFit: 'contain', borderRadius: 4, flex: '0 0 auto' } }) : null,
+      /*#__PURE__*/React.createElement("span", null, label)), _chevron(open)];
     if (open) {
       return /*#__PURE__*/React.createElement("div", { key: catKey, style: Object.assign({}, _pillBox, { flexDirection: 'column' }) },
         /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillLabel, { cursor: 'pointer', border: 'none', borderBottom: '1.5px solid var(--line)' }) }, labelKids),
@@ -1551,7 +1555,7 @@ export var BroTown = function BroTown(_ref0) {
        v2.3.722: label column FIXED-width (sized to the widest label,
        "Beard") so every pill's summary starts at the same x. */
     return /*#__PURE__*/React.createElement("button", { key: catKey, type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0 }) },
-      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 78, borderRight: '1.5px solid var(--line)' }) }, labelKids),
+      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 96, borderRight: '1.5px solid var(--line)' }) }, labelKids),
       /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary));
   };
   var randomizeAppearance = function () {
@@ -13784,63 +13788,33 @@ export var BroTown = function BroTown(_ref0) {
     className: "bt-name-modal"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-name-box bt-cc-box"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/frame2.webp', alt: '', className: "bt-cc-outer-frame"
+  }), /*#__PURE__*/React.createElement("div", {
     /* v2.3.724: header promoted out of the left pane to a full-card-width
-       banner above both panes, and sized up to match (owner request). */
-    style: { textAlign: 'center', marginBottom: 10 }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'inline-block',
-      verticalAlign: 'middle',
-      fontSize: 26
-    }
-  }, "\u2694\uFE0F"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'inline-block',
-      verticalAlign: 'middle',
-      marginLeft: 8,
-      /* v2.3.712: retro-arcade wordmark -- chunky 8-bit font + gold with a
-         hard (unblurred) offset shadow, matching the pixel-art identity.
-         'Press Start 2P' is loaded in index.html; one weight (400) only.
-         v2.3.714: lineHeight 1 -- the font's tall default line box made
-         the lockup's vertical rhythm impossible to control. */
-      fontFamily: "'Press Start 2P','Source Sans 3',sans-serif",
-      /* v2.3.724: banner-sized now that the lockup spans the full card. */
-      fontSize: 24,
-      lineHeight: 1,
-      color: 'var(--gold)',
-      textShadow: '0 2px 0 #6b4310, 0 4px 0 rgba(0,0,0,0.5)'
-    }
-    /* v2.3.715: the pixel font's space glyph is a full em, which split the
-       wordmark apart -- two spans with an em-relative gap keep the words
-       tight in BOTH the pixel font and the sans fallback (a negative
-       word-spacing fix collapsed the fallback into "HEMBROS"). */
-  }, /*#__PURE__*/React.createElement("span", null, "HEMI"), /*#__PURE__*/React.createElement("span", { style: { marginLeft: '0.4em' } }, "BROS")), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.716: BRO TOWN added to the sub-plate (owner request); gold to
-       match the mockup, slightly tighter tracking to fit the longer text. */
-    style: {
-      /* v2.3.724: full-width banner sizing; wide tracking restored. */
-      fontSize: 12,
-      color: 'var(--gold)',
-      fontWeight: 700,
-      letterSpacing: '.26em',
-      whiteSpace: 'nowrap',
-      marginTop: 8
-    }
-  }, "★ BRO TOWN · ACTION RPG ★"), /*#__PURE__*/React.createElement("img", {
-    /* v2.3.716: generated gem divider replaces the v2.3.714 CSS hairline. */
-    src: '/ui/welcome/divider.webp',
-    alt: '',
-    style: { width: '100%', maxWidth: 420, height: 12, objectFit: 'contain', margin: '7px auto 0', display: 'block', pointerEvents: 'none' }
+       banner above both panes.
+       v2.3.725: text lockup replaced by the owner's painted logo art
+       (crest / BRO TOWN / HEMI BROS / gem divider) per the splash mockup. */
+    style: { textAlign: 'center', marginBottom: 8 }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/crest.webp', alt: '',
+    style: { height: 48, width: 'auto', margin: '0 auto', display: 'block', pointerEvents: 'none' }
+  }), /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN',
+    style: { width: '54%', maxWidth: 290, height: 'auto', margin: '2px auto 0', display: 'block', pointerEvents: 'none' }
+  }), /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/logo-hemibros.webp', alt: 'HEMI BROS',
+    style: { width: '27%', maxWidth: 150, height: 'auto', margin: '4px auto 0', display: 'block', pointerEvents: 'none' }
+  }), /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/divider2.webp', alt: '',
+    style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
-      /* v2.3.714: version is metadata -- dim + tiny so it stops competing
-         with the wordmark. */
       fontSize: 9,
       color: 'var(--txt2)',
       fontFamily: 'Source Sans 3, sans-serif',
       letterSpacing: '.06em',
-      marginTop: 6
+      marginTop: 3
     }
   }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-main"
@@ -13861,15 +13835,13 @@ export var BroTown = function BroTown(_ref0) {
        the left column has more height, so the window grows taller and the
        cover-fit canvas scales the figure up with it. */
     style: { position: 'relative', width: '100%', aspectRatio: '3 / 4', maxHeight: '100%', boxSizing: 'border-box',
-      border: '2px solid #3d3360', borderRadius: 14, overflow: 'hidden',
-      background: 'radial-gradient(90% 80% at 50% 42%, #2c2153 0%, #1a1438 55%, #110d26 100%)',
-      boxShadow: 'inset 0 0 26px rgba(0,0,0,.55), inset 0 0 60px rgba(91,82,255,.10)' }
-  }, /*#__PURE__*/React.createElement("div", {
-    /* soft spotlight under the character (mockup's floor glow) */
-    style: { position: 'absolute', left: '18%', right: '18%', bottom: '4%', height: '22%', pointerEvents: 'none',
-      background: 'radial-gradient(50% 60% at 50% 60%, rgba(112,96,255,0.38) 0%, rgba(91,82,255,0.16) 45%, rgba(91,82,255,0) 75%)' }
-  }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-pillar bt-cc-pillar--left" }),
-  /*#__PURE__*/React.createElement("div", { className: "bt-cc-pillar bt-cc-pillar--right" }),
+      /* v2.3.725: the owner's painted vista (stone platform baked in)
+         replaces the flat radial; braziers flank instead of pillars. */
+      border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
+      background: "url('/ui/welcome/window-scene.webp') center/cover no-repeat, #1a1438",
+      boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
+  }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/brazier-dark.webp', alt: '', className: "bt-cc-brazier bt-cc-brazier--left" }),
+  /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/brazier-light.webp', alt: '', className: "bt-cc-brazier bt-cc-brazier--right" }),
   /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
     title: 'Live preview',
@@ -13898,10 +13870,9 @@ export var BroTown = function BroTown(_ref0) {
       display: 'block',
       touchAction: 'none',
       cursor: 'grab',
-      /* v2.3.719: nudged down so the figure stands at the window sill
-         with the pillars instead of floating mid-panel (owner request).
-         The bitmap has empty space below the boots, so nothing clips. */
-      transform: 'translateY(7%)',
+      /* v2.3.725: lands the boots on the painted stone platform (~83%
+         of the window height in the cover-fit scene). */
+      transform: 'translateY(-6%)',
       /* v2.3.716: transparent — the parchment border-image panel behind
          supplies the backdrop now.  It must stay NEAR-WHITE (see the
          wrapper comment): trait sprites carry white extraction residue
@@ -13977,43 +13948,40 @@ export var BroTown = function BroTown(_ref0) {
       background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 15, padding: 0, lineHeight: 1 }
   }, "🎲")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
-    /* v2.3.716: gradient + bevel (and the :active press) live in the
-       .bt-cc-play CSS class — pseudo-states need a stylesheet. */
+    /* v2.3.725: the owner's painted PLAY art (label baked in); the img is
+       the button.  :active press lives in .bt-cc-play. */
     className: "bt-cc-play",
+    "aria-label": 'Play',
     style: {
       marginTop: 'auto',
-      minHeight: 48,
-      padding: '12px 32px',
-      color: '#fff',
-      borderRadius: 10,
-      fontSize: 17,
-      fontWeight: 700,
-      cursor: 'pointer',
-      fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-      letterSpacing: '.06em',
-      width: '100%'
+      width: '100%',
+      aspectRatio: '560 / 157',
+      borderRadius: 12,
+      cursor: 'pointer'
     }
-  }, "⚔️ PLAY")), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-rail"
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-rail-scroll"
   },
-  _apPill('hat', 'Hat', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' && hatColorSel !== 'default' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
-  _apPill('hair', 'Hair', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' && hairColorSel !== 'default' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
-  _apPill('beard', 'Beard', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' && beardColorSel !== 'default' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
-  _apPill('skin', 'Skin', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
-  _apPill('shirt', 'Shirt', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' && shirtColorSel !== 'default' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : [])),
-  _apPill('pants', 'Pants', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
-  _apPill('shoes', 'Shoes', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))])),
+  _apPill('hat', 'Hat', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' && hatColorSel !== 'default' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : []), '/ui/welcome/icon-hat.webp'),
+  _apPill('hair', 'Hair', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' && hairColorSel !== 'default' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : []), '/ui/welcome/icon-hair.webp'),
+  _apPill('beard', 'Beard', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' && beardColorSel !== 'default' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : []), '/ui/welcome/icon-beard.webp'),
+  _apPill('skin', 'Skin', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))], '/ui/welcome/icon-skin.webp'),
+  _apPill('shirt', 'Shirt', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' && shirtColorSel !== 'default' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : []), '/ui/welcome/icon-shirt.webp'),
+  _apPill('pants', 'Pants', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))], '/ui/welcome/icon-pants.webp'),
+  _apPill('shoes', 'Shoes', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))], '/ui/welcome/icon-shoes.webp')),
   /*#__PURE__*/React.createElement("button", {
     type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
     /* v2.3.719: no marginTop and pill-matching radius — the last pill's
        own 6px marginBottom is the gap, so the button reads as part of
        the pill stack. */
-    style: { width: '100%', padding: '7px', marginTop: 0, minHeight: 40, cursor: 'pointer', borderRadius: 10,
-      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+    style: { width: '100%', padding: '7px', marginTop: 0, minHeight: 42, cursor: 'pointer', borderRadius: 10,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+      background: 'rgba(13,10,29,0.72)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       fontSize: 14, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif" }
-  }, "🎰 Randomize")))));
+  }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
+  /*#__PURE__*/React.createElement("span", null, "Randomize"))))));
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
     onComplete: function onComplete() { return setShowIntro(false); }
