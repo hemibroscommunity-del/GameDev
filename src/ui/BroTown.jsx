@@ -13847,12 +13847,17 @@ export var BroTown = function BroTown(_ref0) {
          now PURE neutral gray (R=G=B): at near-black luma, the encoder's
          coarse chroma quantization turns even a 4-point blue bias teal. */
       border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
-      background: "url('/ui/welcome/night-poster.webp?v=" + BUILD_INFO.version + "') center/cover no-repeat, #0d0d0d",
+      background: "url('/ui/welcome/night-poster.webp?v=" + BUILD_INFO.version + "') center/cover no-repeat, linear-gradient(180deg, #0e0e10 0%, #030304 100%)",
       boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
   }, /*#__PURE__*/React.createElement("video", {
     src: '/ui/welcome/night.mp4?v=' + BUILD_INFO.version,
     autoPlay: true, muted: true, loop: true, playsInline: true,
-    style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }
+    /* v2.3.733: blend-mode screen — the persistent 'cyan' came from the
+       VIDEO DECODE path tinting near-blacks (it survived a pure-neutral
+       bake + cache-buster).  The clip is now stars-on-pure-black and only
+       ADDS light over the CSS backdrop; black decode tint multiplies away
+       to invisible, and the visible background color is CSS-exact. */
+    style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', mixBlendMode: 'screen' }
   }), /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/platform.webp', alt: '',
     style: { position: 'absolute', bottom: '3%', left: '8%', width: '84%', height: 'auto', pointerEvents: 'none' }
