@@ -301,7 +301,9 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
    to the body frame, so placement is just copying the body sprite's transform
    (which already carries mirror + bodyScale + bob).  No anchors/angles.  equip
    = { legs, chest, shoulders } item ids.  See gear-layer-spec.md. */
-const _GEAR_SLOTS = [['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];
+/* v2.3.717: 'shirt' is a tinted under-layer (white-base sheet x picked colour);
+   it is NOT in the masked-body worn list (skin-tight, no body erase). */
+const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];
 function _placeGear(display, equip, pose, dir, frameIdx) {
   const sb = display._spriteBody;
   for (let s = 0; s < _GEAR_SLOTS.length; s++) {
@@ -313,6 +315,10 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
       if (spr.texture !== tex) spr.texture = tex;
       spr.x = sb.x; spr.y = sb.y;
       spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
+      if (_GEAR_SLOTS[s][0] === 'shirt') {
+        const t = equip && equip.shirtTint;
+        spr.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
+      }
       if (!spr.visible) spr.visible = true;
     } else if (spr.visible) spr.visible = false;
   }
@@ -1480,14 +1486,17 @@ function createPlayerDisplay() {
   container._bodyHead = bodyHead; container._bodyTorso = bodyTorso; container._bodyLegs = bodyLegs;
 
   /* v2.3.503: layered gear (paper-doll).  One sprite per slot, drawn above the
-     body with the body's exact transform.  Order legs < chest < shoulders, all
-     above the body and below the head traits. */
+     body with the body's exact transform.  Order shirt < legs < chest <
+     shoulders, all above the body and below the head traits.
+     v2.3.717: gearShirt = the layered t-shirt (tinted white-base sheet),
+     under the armour so a chest plate covers it. */
+  const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
   const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
   const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
   const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
   /* v2.3.602: helmet is its own slot now; drawn topmost (over the hair + chest collar). */
   const gearHead = new Sprite(); gearHead.anchor.set(0.5, 0.5); gearHead.visible = false; container.addChild(gearHead);
-  container._gearLegs = gearLegs; container._gearChest = gearChest; container._gearShoulders = gearShoulders; container._gearHead = gearHead;
+  container._gearShirt = gearShirt; container._gearLegs = gearLegs; container._gearChest = gearChest; container._gearShoulders = gearShoulders; container._gearHead = gearHead;
 
   /* v2.3.467: shirt (torso clothing) layer.  Sits just above the body and
      below the head traits.  Same crown-anchored placement as the beard,
@@ -1774,13 +1783,15 @@ function createOtherPlayerDisplay() {
   container._bodyHead = bodyHead; container._bodyTorso = bodyTorso; container._bodyLegs = bodyLegs;
 
   /* v2.3.504: layered gear for remote players (above body, below head traits).
-     Driven by other.equip; placement copies the body transform. */
+     Driven by other.equip; placement copies the body transform.
+     v2.3.717: + shirt under-layer (see local display). */
+  const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
   const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
   const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
   const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
   /* v2.3.602: helmet is its own slot now; drawn topmost (over the hair + chest collar). */
   const gearHead = new Sprite(); gearHead.anchor.set(0.5, 0.5); gearHead.visible = false; container.addChild(gearHead);
-  container._gearLegs = gearLegs; container._gearChest = gearChest; container._gearShoulders = gearShoulders; container._gearHead = gearHead;
+  container._gearShirt = gearShirt; container._gearLegs = gearLegs; container._gearChest = gearChest; container._gearShoulders = gearShoulders; container._gearHead = gearHead;
 
   /* v2.3.467: shirt sprite for remote players (above body, below head
      traits).  Driven by other.shirt. */
@@ -3428,7 +3439,12 @@ export class EntityRenderer {
          covered).  v2.3.686: chest-only wear exposes the belly band below the
          cuirass -- bake the shirt so it reads as shirt under armour, not skin. */
       const _chestEquipped = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
-      const _shirtT = _chestEquipped ? null : shirtFill(_shId, _shCol);
+      /* v2.3.717 PoC: when the LAYERED shirt is equipped and this dir has its
+         sheets (south only so far), skip the baked torso-retint shirt -- the
+         layer replaces it.  Other dirs keep the baked look until their sheets
+         exist, so turning doesn't strip the shirt entirely. */
+      const _layerShirt = getEquip('shirt') !== 'none' && dir === 'south';
+      const _shirtT = (_chestEquipped || _layerShirt) ? null : shirtFill(_shId, _shCol);
       const _shirtKey = _shirtT ? (_shId + '-' + _shCol) : 'none';
       let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
       if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey);
@@ -3458,7 +3474,12 @@ export class EntityRenderer {
         spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale;
         spriteBody.scale.y = bodyScale;
         spriteBody.tint = 0xffffff;
-        _placeGear(display, { legs: getEquip('legs'), chest: getEquip('chest'), shoulders: getEquip('shoulders') }, pose, dir, frameIdx);
+        _placeGear(display, {
+          shirt: getEquip('shirt'), legs: getEquip('legs'),
+          chest: getEquip('chest'), shoulders: getEquip('shoulders'),
+          /* white-base sheet x picked colour; null colour -> white tee */
+          shirtTint: shirtFill(_shId, _shCol),
+        }, pose, dir, frameIdx);
         /* v2.3.613: no helmet -- the head/face always shows.  The body is one
            sprite; erase the body under the worn chest/legs plate (dilated to
            swallow the AI misalignment) so it never pokes past a plate edge,

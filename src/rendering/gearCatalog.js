@@ -5,14 +5,20 @@
  * the body.  See gear-layer-spec.md.
  */
 
-export const GEAR_SLOTS = ['legs', 'chest', 'shoulders'];
+export const GEAR_SLOTS = ['shirt', 'legs', 'chest', 'shoulders'];
 
 /* Per-slot catalog.  v2.3.503: a single 'testplate' chest piece (an aligned
    steel vest baked from the body frames by tools/make_test_gear.py) to prove
    the layered renderer before real gear art exists.
    v2.3.613: helmet/head slot removed -- the head/face is always shown (player
    identity) and only chest + legs plate are equippable. */
+/* v2.3.717: 'shirt' slot (PoC) -- the t-shirt as a LAYERED overlay drawn under
+   the armour, replacing the baked torso-retint shirt ("working terribly" per
+   the owner).  The sheet is stored as a WHITE-BASE garment and tinted at
+   render time to the picked shirt colour, like hats/hair.  South-only sheets
+   so far (stand + jog); other dirs render no layer until their sheets exist. */
 export const GEAR_CATALOG = {
+  shirt: [{ id: 'none', name: 'None' }, { id: 'tshirt', name: 'T-Shirt' }],
   legs: [{ id: 'none', name: 'None' }, { id: 'steelgreaves', name: 'Steel Greaves' }],
   chest: [{ id: 'none', name: 'None' }, { id: 'testplate', name: 'Test Plate' },
           { id: 'steelplate', name: 'Steel Plate' }],
@@ -46,6 +52,8 @@ function makeSlotStore(slot, defId) {
    good.  Key stays bt-gear-v2-* (no stale equips under it, so this default
    wins). */
 const _stores = {
+  /* v2.3.717 PoC: t-shirt layer ON by default so the preview shows it. */
+  shirt: makeSlotStore('shirt', 'tshirt'),
   legs: makeSlotStore('legs', 'steelgreaves'),
   chest: makeSlotStore('chest', 'steelplate'),
   shoulders: makeSlotStore('shoulders', 'none'),
