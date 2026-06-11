@@ -1563,7 +1563,7 @@ export var BroTown = function BroTown(_ref0) {
            (owner request). */
         /*#__PURE__*/React.createElement("div", { onClick: toggle, style: { position: 'fixed', inset: 0, background: 'transparent', zIndex: 40 } }),
         /*#__PURE__*/React.createElement("div", { style: { position: 'fixed', left: '50%', bottom: 'max(12px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
-          width: 'min(92vw, 430px)', maxHeight: '56vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+          width: 'min(92vw, 430px)', maxHeight: '56vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y',
           background: 'rgba(24,19,46,0.97)', border: '1.5px solid #56499a', borderRadius: 16, zIndex: 41, padding: '4px 10px 10px',
           boxShadow: '0 18px 50px rgba(0,0,0,.65)' } },
           /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 2px 6px', borderBottom: '1.5px solid #3a3163' } },
@@ -13824,9 +13824,11 @@ export var BroTown = function BroTown(_ref0) {
     src: '/ui/welcome/crest.webp', alt: '', className: "bt-cc-crest"
   }), /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo-main"
-  }), /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/logo-hemibros.webp', alt: 'HEMI BROS', className: "bt-cc-logo-sub"
-  }), /*#__PURE__*/React.createElement("img", {
+  }), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.738: HEMI BROS sub-logo swapped for a call-to-action line. */
+    style: { fontSize: 15, fontWeight: 700, color: 'var(--gold)', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+      letterSpacing: '.14em', marginTop: 4, textShadow: '0 1px 3px rgba(0,0,0,.7)' }
+  }, "CREATE YOUR CHARACTER"), /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/divider2.webp', alt: '',
     style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("div", {
