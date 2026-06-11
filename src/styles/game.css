@@ -235,7 +235,14 @@ input{font-family:inherit}
 .bt-cc-brazier--right{right:2.5%;aspect-ratio:110/231;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
 /* Chunky beveled PLAY — presses down on tap (border-bottom is the bevel). */
 /* v2.3.725: PLAY is the owner's painted button art (label baked in). */
-.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none}
+/* v2.3.740: solid color UNDER the art + a min-height — the button's entire
+   face is one image; if it ever fails or loads late the button was literally
+   invisible (suspected in the owner's 'PLAY disappeared' report; the other
+   cause is overlays — the bottom sheet and the iOS keyboard both cover it
+   while open, by design). */
+.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px}
+/* v2.3.741: solid-color fallback removed — the art has transparent corners,
+   so the backing purple peeked out around the painted shape (owner). */
 .bt-cc-play:active{transform:translateY(2px);filter:brightness(1.12)}
 .bt-cc-rand{border:1.5px solid #8a6d1f!important;color:var(--gold)!important}
 .bt-cc-rand:active{background:rgba(245,197,66,.12)!important}

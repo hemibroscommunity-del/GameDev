@@ -1452,9 +1452,13 @@ export var BroTown = function BroTown(_ref0) {
      part of the item, not its own row). */
   var _apTileStyle = function (sel, size) {
     /* v2.3.731: lighter tile wells (dark thumbs like black hair were
-       invisible on the old near-black tiles) + gold ring on the pick. */
+       invisible on the old near-black tiles) + gold ring on the pick.
+       v2.3.742: white/light-gray CHECKER wells (owner request) — reads as
+       an inventory slot, dark and light art both silhouette against it,
+       and the selected state rides entirely on the gold ring + badge. */
     return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
-      position: 'relative', borderRadius: 8, background: sel ? 'var(--pop)' : '#372e63',
+      position: 'relative', borderRadius: 8,
+      background: 'repeating-conic-gradient(#ffffff 0% 25%, #d7dae2 0% 50%) 0 0 / 12px 12px',
       border: sel ? '2px solid var(--gold)' : '1.5px solid #56499a',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
@@ -1502,9 +1506,12 @@ export var BroTown = function BroTown(_ref0) {
     return (e && e.swatch) || '#888';
   };
   var _miniThumb = function (cat, id) {
+    /* v2.3.742: collapsed-pill mini thumbs get the same checker well as the
+       picker tiles. */
     return id === 'none'
       ? /*#__PURE__*/React.createElement("div", { key: 'mt', style: { width: 26, height: 26, borderRadius: '50%', border: '1.5px dashed var(--line)', flex: '0 0 auto' } })
-      : /*#__PURE__*/React.createElement("img", { key: 'mt', src: '/sprites/traits/' + cat + '/' + id + '/thumb.png?v=' + BUILD_INFO.version, alt: '', style: { width: 30, height: 30, objectFit: 'contain', imageRendering: 'pixelated', flex: '0 0 auto' } });
+      : /*#__PURE__*/React.createElement("img", { key: 'mt', src: '/sprites/traits/' + cat + '/' + id + '/thumb.png?v=' + BUILD_INFO.version, alt: '', style: { width: 30, height: 30, objectFit: 'contain', imageRendering: 'pixelated', flex: '0 0 auto',
+          background: 'repeating-conic-gradient(#ffffff 0% 25%, #d7dae2 0% 50%) 0 0 / 10px 10px', borderRadius: 6, border: '1px solid #56499a' } });
   };
   var _miniSwatch = function (sw) {
     return /*#__PURE__*/React.createElement("div", { key: 'ms', style: { width: 22, height: 22, borderRadius: 5, background: sw, border: '1px solid rgba(0,0,0,0.35)', flex: '0 0 auto' } });
@@ -13830,9 +13837,9 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.738: white + heavy dark halo — gold vanished into the sunlit
          half of the painted backdrop.  Plus a dark pill backdrop so it
          holds contrast over the brightest sky. */
-      letterSpacing: '.14em', marginTop: 5, textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8)',
-      display: 'inline-block', background: 'rgba(8,6,18,0.62)', padding: '3px 16px', borderRadius: 999,
-      border: '1px solid rgba(245,197,66,0.25)' }
+      /* v2.3.741: pill backdrop removed (owner: too prominent) — plain
+         white text, the heavy halo carries the contrast. */
+      letterSpacing: '.14em', marginTop: 5, textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
   }, "CREATE YOUR CHARACTER"), /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/divider2.webp', alt: '',
     style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
@@ -13910,8 +13917,10 @@ export var BroTown = function BroTown(_ref0) {
       touchAction: 'none',
       cursor: 'grab',
       /* v2.3.725: lands the boots on the painted stone platform (~83%
-         of the window height in the cover-fit scene). */
-      transform: 'translateY(-6%)',
+         of the window height in the cover-fit scene).
+         v2.3.741: scale .9 — 10% smaller per owner; translate stays so
+         the boots keep the platform. */
+      transform: 'translateY(-6%) scale(0.9)',
       /* v2.3.717: transparent — the parchment border-image panel behind
          supplies the backdrop now.  It must stay NEAR-WHITE (see the
          wrapper comment): trait sprites carry white extraction residue
