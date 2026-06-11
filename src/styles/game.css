@@ -191,7 +191,7 @@ input{font-family:inherit}
    v2.3.713: backdrop is a faint radial instead of flat #000 — a drop
    shadow is invisible against pure black, and the card needs it to read
    as floating.
-   v2.3.716: dark-fantasy theme from owner-generated art (public/ui/
+   v2.3.717: dark-fantasy theme from owner-generated art (public/ui/
    welcome/): starfield backdrop, ornate gem frame, parchment preview
    panel, torch pillars with a sprite-strip flame animation.
    v2.3.717: theme art recompressed to WebP (~935KB -> ~276KB, the

@@ -1845,7 +1845,7 @@ export var BroTown = function BroTown(_ref0) {
         };
         img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
         /* Cache-buster: bump v= each time sheet content or frame count changes. */
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=42'; /* v42: half-cycle jog-east/-northeast (v2.3.705) */
+        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=43'; /* v43: regenerated NE jog cycle (v2.3.708) */
       });
     });
 
@@ -13856,7 +13856,7 @@ export var BroTown = function BroTown(_ref0) {
        the rotate buttons pin to the panel's corners, not to whatever
        taller space the flex column hands the preview row.
        v2.3.720: DARK window interior per the owner's mockup (replaces the
-       v2.3.716 parchment).  Known tradeoff, owner-approved: some trait
+       v2.3.717 parchment).  Known tradeoff, owner-approved: some trait
        sprites carry white extraction residue that a dark backdrop can
        expose — the floor glow masks the worst of it. */
     /* v2.3.724: 3:4 (was square) — with the header banner above the panes
@@ -13912,7 +13912,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.725: lands the boots on the painted stone platform (~83%
          of the window height in the cover-fit scene). */
       transform: 'translateY(-6%)',
-      /* v2.3.716: transparent — the parchment border-image panel behind
+      /* v2.3.717: transparent — the parchment border-image panel behind
          supplies the backdrop now.  It must stay NEAR-WHITE (see the
          wrapper comment): trait sprites carry white extraction residue
          that any dark/colored backdrop would expose.  No z-index: DOM

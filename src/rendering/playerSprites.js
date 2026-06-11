@@ -54,7 +54,10 @@ const JOG_DURATION_BY_DIR = {
      was playing too fast.  NW mirrors NE, so both slow together.
      v2.3.598: NE/NW +50% speed (1776->1184) per user — 1776 read too slow;
      1.5x quicker, between the old fast (888) and slow (1776). NW mirrors NE.
-     v2.3.601: NE/NW +35% speed (1184->877) per user. NW mirrors NE. */
+     v2.3.601: NE/NW +35% speed (1184->877) per user. NW mirrors NE.
+     v2.3.707: the v2.3.706 +50% pass (877->585) was reverted same-day; 877
+     stands, and the armored NE override is gone -- naked and armored now
+     share this value (see JOG_DURATION_ARMORED_BY_DIR). NW mirrors NE. */
   north: 808,
   south: 823,
   northeast: 877,
@@ -64,9 +67,12 @@ const JOG_DURATION_BY_DIR = {
 /* v2.3.603: ARMOURED overrides -- when wearing the armour set the NE/NW jog
    keeps its pre-v2.3.601 cadence (the +35% naked speed-up doesn't apply). NW
    mirrors NE.  Dirs absent here use JOG_DURATION_BY_DIR regardless of armour. */
-const JOG_DURATION_ARMORED_BY_DIR = {
-  northeast: 1184,
-};
+/* v2.3.707: emptied -- the armored NE/NW cadence now matches the naked one
+   (877, JOG_DURATION_BY_DIR).  The v2.3.603 split (armored kept the slower
+   pre-v2.3.601 cadence for a heavier-in-plate feel) was a tuning choice that
+   no longer applies on the v2.3.705 half-cycle sheets.  The armour-aware
+   mechanism stays for future per-dir overrides. */
+const JOG_DURATION_ARMORED_BY_DIR = {};
 const HIT_DURATION_MS = 250;
 /* v2.3.188: pickup pose plays during the 0.5 s loot-pickup freeze.
    One sheet, south-only (facing is force-locked to 'down' during the
@@ -94,7 +100,16 @@ const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine'];
    0-13 doubled (28); NE = old frames 8-15 doubled (16), which also drops the
    two worst frame-pops the old NE cycle had (7->8 and 15->0).  Gear sheets +
    anchors/body-tops/body-anchors were remapped to the same frame order. */
-const VERSION = 68; /* v67 cleaned interior white gaps in mine-south */
+/* v69 (v2.3.708): jog-northeast REGENERATED from new source footage -- a
+   full natural 24-frame cycle (owner-selected 1s clip, Grok video off a
+   red-wristband/cyan-boot limb-marker reference, markers scrubbed in post).
+   Replaces the v68 half-cycle stopgap for NE; correct limb alternation is
+   in the art itself.  Steel chest/legs re-painted by ChatGPT on the new
+   frames (green-mannequin flow per gear-armor-separation-recipe.md), chain
+   belt re-baked from chainbelt.png.  anchors.json NE hand positions are
+   measured from the wristband marker per frame -- real data, replacing the
+   stale 48-entry list from the pre-v2.3.6xx sheet. */
+const VERSION = 69;
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
