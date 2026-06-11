@@ -18,9 +18,9 @@ import { GEAR_SLOTS, getEquip } from './gearCatalog.js';
 
 const FRAME_W = 256;
 const FRAME_H = 256;
-/* v2.3.705: jog-east/-northeast gear sheets remapped to the body's new
-   half-cycle frame order (see playerSprites VERSION 68). */
-const GEAR_VERSION = '2.3.705';
+/* v2.3.708: NE jog gear re-painted on the new 24-frame body cycle (see
+   playerSprites VERSION 69); chain belt re-baked into the chest sheet. */
+const GEAR_VERSION = '2.3.708';
 
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};
