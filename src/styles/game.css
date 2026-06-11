@@ -216,7 +216,7 @@ input{font-family:inherit}
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
    lands on every cell including the last before looping. */
-.bt-cc-pillar{position:absolute;bottom:3%;height:88%;aspect-ratio:128/722;background:url('/ui/welcome/pillar-strip.webp') 0 0/1200% 100% no-repeat;pointer-events:none;image-rendering:pixelated;animation:bt-cc-flame 1.1s steps(12,jump-none) infinite}
+.bt-cc-pillar{position:absolute;bottom:-1%;height:88%;aspect-ratio:128/722;background:url('/ui/welcome/pillar-strip.webp') 0 0/1200% 100% no-repeat;pointer-events:none;image-rendering:pixelated;animation:bt-cc-flame 1.1s steps(12,jump-none) infinite}
 .bt-cc-pillar--left{left:1.5%}
 /* negative delay desyncs the two flames so they don't flicker in lockstep */
 .bt-cc-pillar--right{right:1.5%;animation-delay:-.55s}
@@ -236,7 +236,11 @@ input{font-family:inherit}
 .bt-cc-left{flex:0 0 57%;min-width:0;display:flex;flex-direction:column;gap:8px}
 .bt-cc-preview{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 .bt-cc-rail{flex:1 1 43%;min-width:0;display:flex;flex-direction:column}
-.bt-cc-rail-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
+/* v2.3.719: flex 0 1 auto (was flex:1) — the scroll area no longer grows
+   past its content, so Randomize stacks directly under the Shoes pill in
+   the same rhythm instead of being pinned to the rail's bottom.  It still
+   SHRINKS (and scrolls) when an expanded category overflows. */
+.bt-cc-rail-scroll{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}

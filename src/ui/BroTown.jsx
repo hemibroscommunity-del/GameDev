@@ -13793,10 +13793,13 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.716: BRO TOWN added to the sub-plate (owner request); gold to
        match the mockup, slightly tighter tracking to fit the longer text. */
     style: {
-      fontSize: 9,
+      /* v2.3.719: sized to fit one line in the ~197px pane — the trailing
+         star was wrapping. */
+      fontSize: 8,
       color: 'var(--gold)',
       fontWeight: 700,
-      letterSpacing: '.14em',
+      letterSpacing: '.12em',
+      whiteSpace: 'nowrap',
       marginTop: 7
     }
   }, "★ BRO TOWN · ACTION RPG ★"), /*#__PURE__*/React.createElement("img", {
@@ -13851,6 +13854,10 @@ export var BroTown = function BroTown(_ref0) {
       display: 'block',
       touchAction: 'none',
       cursor: 'grab',
+      /* v2.3.719: nudged down so the figure stands at the window sill
+         with the pillars instead of floating mid-panel (owner request).
+         The bitmap has empty space below the boots, so nothing clips. */
+      transform: 'translateY(7%)',
       /* v2.3.716: transparent — the parchment border-image panel behind
          supplies the backdrop now.  It must stay NEAR-WHITE (see the
          wrapper comment): trait sprites carry white extraction residue
@@ -13911,11 +13918,11 @@ export var BroTown = function BroTown(_ref0) {
        name (from the mockup).  Decorative; never intercepts taps. */
     src: '/ui/welcome/quill.webp',
     alt: '',
-    style: { position: 'absolute', left: 26, top: '50%', transform: 'translateY(-50%)', height: 24, width: 'auto', pointerEvents: 'none' }
+    style: { position: 'absolute', left: 27, top: '50%', transform: 'translateY(-50%)', height: 18, width: 'auto', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Random name', onClick: rollRandomName,
-    style: { position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)', width: 34, height: 34, borderRadius: 8, cursor: 'pointer',
-      background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 16, padding: 0, lineHeight: 1 }
+    style: { position: 'absolute', right: 25, top: '50%', transform: 'translateY(-50%)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer',
+      background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 13, padding: 0, lineHeight: 1 }
   }, "🎲")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     /* v2.3.716: gradient + bevel (and the :active press) live in the
@@ -13948,7 +13955,10 @@ export var BroTown = function BroTown(_ref0) {
   _apPill('shoes', 'Shoes', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))])),
   /*#__PURE__*/React.createElement("button", {
     type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
-    style: { width: '100%', padding: '7px', marginTop: 6, minHeight: 40, cursor: 'pointer', borderRadius: 8,
+    /* v2.3.719: no marginTop and pill-matching radius — the last pill's
+       own 6px marginBottom is the gap, so the button reads as part of
+       the pill stack. */
+    style: { width: '100%', padding: '7px', marginTop: 0, minHeight: 40, cursor: 'pointer', borderRadius: 10,
       background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       fontSize: 14, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif" }
   }, "🎰 Randomize")))));
