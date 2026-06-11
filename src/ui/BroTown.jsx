@@ -1452,9 +1452,13 @@ export var BroTown = function BroTown(_ref0) {
      part of the item, not its own row). */
   var _apTileStyle = function (sel, size) {
     /* v2.3.731: lighter tile wells (dark thumbs like black hair were
-       invisible on the old near-black tiles) + gold ring on the pick. */
+       invisible on the old near-black tiles) + gold ring on the pick.
+       v2.3.742: white/light-gray CHECKER wells (owner request) — reads as
+       an inventory slot, dark and light art both silhouette against it,
+       and the selected state rides entirely on the gold ring + badge. */
     return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
-      position: 'relative', borderRadius: 8, background: sel ? 'var(--pop)' : '#372e63',
+      position: 'relative', borderRadius: 8,
+      background: 'repeating-conic-gradient(#ffffff 0% 25%, #d7dae2 0% 50%) 0 0 / 12px 12px',
       border: sel ? '2px solid var(--gold)' : '1.5px solid #56499a',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
@@ -1502,9 +1506,12 @@ export var BroTown = function BroTown(_ref0) {
     return (e && e.swatch) || '#888';
   };
   var _miniThumb = function (cat, id) {
+    /* v2.3.742: collapsed-pill mini thumbs get the same checker well as the
+       picker tiles. */
     return id === 'none'
       ? /*#__PURE__*/React.createElement("div", { key: 'mt', style: { width: 26, height: 26, borderRadius: '50%', border: '1.5px dashed var(--line)', flex: '0 0 auto' } })
-      : /*#__PURE__*/React.createElement("img", { key: 'mt', src: '/sprites/traits/' + cat + '/' + id + '/thumb.png?v=' + BUILD_INFO.version, alt: '', style: { width: 30, height: 30, objectFit: 'contain', imageRendering: 'pixelated', flex: '0 0 auto' } });
+      : /*#__PURE__*/React.createElement("img", { key: 'mt', src: '/sprites/traits/' + cat + '/' + id + '/thumb.png?v=' + BUILD_INFO.version, alt: '', style: { width: 30, height: 30, objectFit: 'contain', imageRendering: 'pixelated', flex: '0 0 auto',
+          background: 'repeating-conic-gradient(#ffffff 0% 25%, #d7dae2 0% 50%) 0 0 / 10px 10px', borderRadius: 6, border: '1px solid #56499a' } });
   };
   var _miniSwatch = function (sw) {
     return /*#__PURE__*/React.createElement("div", { key: 'ms', style: { width: 22, height: 22, borderRadius: 5, background: sw, border: '1px solid rgba(0,0,0,0.35)', flex: '0 0 auto' } });
