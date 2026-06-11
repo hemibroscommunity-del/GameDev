@@ -3443,8 +3443,10 @@ export class EntityRenderer {
          sheets, skip the baked torso-retint shirt -- the layer replaces it.
          Dirs without sheets keep the baked look until theirs exist, so
          turning doesn't strip the shirt entirely.
-         v2.3.719: + northeast (covers northwest via mirror). */
-      const _layerShirt = getEquip('shirt') !== 'none' && (dir === 'south' || dir === 'northeast');
+         v2.3.719: + northeast (covers northwest via mirror).
+         v2.3.720: + southwest (covers southeast via mirror). */
+      const _layerShirt = getEquip('shirt') !== 'none'
+        && (dir === 'south' || dir === 'northeast' || dir === 'southwest');
       const _shirtT = (_chestEquipped || _layerShirt) ? null : shirtFill(_shId, _shCol);
       const _shirtKey = _shirtT ? (_shId + '-' + _shCol) : 'none';
       let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
