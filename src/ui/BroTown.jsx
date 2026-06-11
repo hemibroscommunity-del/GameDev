@@ -1544,8 +1544,9 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.711: accordion -- opening a category closes the others, so the
        rail stays short and an open panel is never forgotten off-screen. */
     var toggle = function () { setExpanded(function (p) { var n = {}; if (!p[catKey]) n[catKey] = true; return n; }); };
+    /* v2.3.736: slot icons removed from labels and the sheet header — the
+       owner found them noisy; names only. */
     var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb', style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 } },
-      icon ? /*#__PURE__*/React.createElement("img", { src: icon, alt: '', style: { width: 20, height: 20, objectFit: 'contain', borderRadius: 4, flex: '0 0 auto' } }) : null,
       /*#__PURE__*/React.createElement("span", null, label)), _chevron(open)];
     if (open) {
       /* v2.3.735: expanded category opens a CENTERED SHEET over a dimmed
@@ -1556,16 +1557,18 @@ export var BroTown = function BroTown(_ref0) {
          an option keeps it open so color rows stay reachable. */
       return /*#__PURE__*/React.createElement(React.Fragment, { key: catKey },
         /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0, border: '1.5px solid var(--gold)' }) },
-          /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 104, borderRight: '1.5px solid #3a3163' }) }, labelKids),
+          /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 80, borderRight: '1.5px solid #3a3163' }) }, labelKids),
           /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary)),
-        /*#__PURE__*/React.createElement("div", { onClick: toggle, style: { position: 'fixed', inset: 0, background: 'rgba(4,3,10,0.55)', zIndex: 40 } }),
+        /* v2.3.736: scrim stays for tap-outside-to-close but no longer dims
+           (owner request). */
+        /*#__PURE__*/React.createElement("div", { onClick: toggle, style: { position: 'fixed', inset: 0, background: 'transparent', zIndex: 40 } }),
         /*#__PURE__*/React.createElement("div", { style: { position: 'fixed', left: '50%', bottom: 'max(12px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
           width: 'min(92vw, 430px)', maxHeight: '56vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
           background: 'rgba(24,19,46,0.97)', border: '1.5px solid #56499a', borderRadius: 16, zIndex: 41, padding: '4px 10px 10px',
           boxShadow: '0 18px 50px rgba(0,0,0,.65)' } },
           /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 2px 6px', borderBottom: '1.5px solid #3a3163' } },
             /*#__PURE__*/React.createElement("span", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 700, color: '#f0edfb', fontFamily: "'Baloo 2','Source Sans 3',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.55)' } },
-              icon ? /*#__PURE__*/React.createElement("img", { src: icon, alt: '', style: { width: 26, height: 26, objectFit: 'contain', borderRadius: 6 } }) : null, label),
+              label),
             /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: { width: 34, height: 34, borderRadius: 8, cursor: 'pointer', background: '#372e63', border: '1.5px solid #56499a', color: '#f0edfb', fontSize: 16, fontWeight: 700, lineHeight: 1, padding: 0 } }, "✕")),
           optionRows.map(function (kids, i) {
             return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '9px 2px', borderTop: i > 0 ? '1px solid #3a3163' : 'none' } }, kids);
@@ -1576,7 +1579,7 @@ export var BroTown = function BroTown(_ref0) {
        v2.3.722: label column FIXED-width (sized to the widest label,
        "Beard") so every pill's summary starts at the same x. */
     return /*#__PURE__*/React.createElement("button", { key: catKey, type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0 }) },
-      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 104, borderRight: '1.5px solid #3a3163' }) }, labelKids),
+      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 80, borderRight: '1.5px solid #3a3163' }) }, labelKids),
       /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary));
   };
   var randomizeAppearance = function () {
@@ -13856,24 +13859,17 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.726: animated starry-night clip behind the character (the
          poster is the fallback while the video warms); the standalone
          stone-platform asset replaces the vista's baked-in one. */
-      /* v2.3.732: ?v= cache-buster (repo convention) — phones were
-         replaying the stale violet night.mp4 from browser cache, which is
-         why the 'cyan' backdrop survived two rebakes.  The bake itself is
-         now PURE neutral gray (R=G=B): at near-black luma, the encoder's
-         coarse chroma quantization turns even a 4-point blue bias teal. */
+      /* v2.3.736: NO video — the cyan tint survived neutral bakes, cache
+         busters and a screen blend, so it lives in the device's video
+         compositing path itself.  The sky is now a plain CSS gradient
+         (renders color-exact) with two CSS-animated star layers
+         (.bt-cc-stars) for the twinkle.  Black by construction. */
       border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
-      background: "url('/ui/welcome/night-poster.webp?v=" + BUILD_INFO.version + "') center/cover no-repeat, linear-gradient(180deg, #0e0e10 0%, #030304 100%)",
+      background: 'linear-gradient(180deg, #0e0e10 0%, #030304 100%)',
       boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
-  }, /*#__PURE__*/React.createElement("video", {
-    src: '/ui/welcome/night.mp4?v=' + BUILD_INFO.version,
-    autoPlay: true, muted: true, loop: true, playsInline: true,
-    /* v2.3.733: blend-mode screen — the persistent 'cyan' came from the
-       VIDEO DECODE path tinting near-blacks (it survived a pure-neutral
-       bake + cache-buster).  The clip is now stars-on-pure-black and only
-       ADDS light over the CSS backdrop; black decode tint multiplies away
-       to invisible, and the visible background color is CSS-exact. */
-    style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', mixBlendMode: 'screen' }
-  }), /*#__PURE__*/React.createElement("img", {
+  }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars" }),
+  /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars bt-cc-stars--b" }),
+  /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/platform.webp', alt: '',
     style: { position: 'absolute', bottom: '3%', left: '8%', width: '84%', height: 'auto', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
