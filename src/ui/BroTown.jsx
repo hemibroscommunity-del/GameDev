@@ -27,7 +27,7 @@ import { eatBus } from './mobile/eatBus.js';
 import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
-import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
+import { initPixiRenderer, preloadPlayerAssets, prewarmBaseSheets } from '@/rendering/pixiRenderer.js';
 import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
@@ -36,7 +36,7 @@ import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/h
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
 import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants, setPants, getShoes, setShoes } from '@/rendering/playerSkins.js';
-import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
+import { drawCharacterPortrait, prewarmPortraitDirs } from '@/rendering/characterPortrait.js';
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor, hairColorTarget } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, getHatColor, setHatColor, hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor, facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -1359,6 +1359,10 @@ export var BroTown = function BroTown(_ref0) {
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
+  /* v2.3.711: drag-to-rotate -- horizontal swipes on the preview canvas step
+     the facing every 26px of travel; the corner buttons remain for
+     discoverability.  Holds the last x where a step fired. */
+  var _dragRotX = useRef(null);
   /* Which of the 8 compass directions the preview faces; rotate buttons step
      through them.  Clockwise order. */
   var _PREVIEW_DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', 'west', 'southwest'];
@@ -1380,7 +1384,28 @@ export var BroTown = function BroTown(_ref0) {
       headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
       shirt: shirtSel, shirtColor: shirtColorTarget(shirtColorSel),
     });
+    /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
+       rotating never waits on the network. */
+    prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });
   }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel]);
+  /* v2.3.715: the welcome modal is dead network time -- start pulling the
+     heavy in-game sheets (network/decode only; the CPU bakes still run
+     behind the intro overlay via preloadPlayerAssets in joinTown) and warm
+     the intro clip so it starts instantly on PLAY.  The video element is
+     held in a ref so the prefetch isn't garbage-collected mid-download. */
+  var _introWarmRef = useRef(null);
+  useEffect(function () {
+    if (!showNameModal) return;
+    try { prewarmBaseSheets(); } catch (e) {}
+    try {
+      var v = document.createElement('video');
+      v.preload = 'auto';
+      v.muted = true;
+      v.src = '/intro/brotown-intro.mp4';
+      v.load();
+      _introWarmRef.current = v;
+    } catch (e) {}
+  }, [showNameModal]);
   /* The long-hair sprite is ~88% pure black, so a light hair color over-
      processes into a black band around the face (see characterPortrait recolor
      note).  Restrict that one style to dark colors only; clamp the selection
@@ -1399,39 +1424,50 @@ export var BroTown = function BroTown(_ref0) {
      part of the item, not its own row). */
   var _apTileStyle = function (sel, size) {
     return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
-      borderRadius: 8, background: sel ? 'var(--pop)' : 'var(--ink3)',
+      position: 'relative', borderRadius: 8, background: sel ? 'var(--pop)' : 'var(--ink3)',
       border: sel ? '2px solid #fff' : '1.5px solid var(--line)',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
-  var _swatchTile = function (opt, selId, onSet, size) {
+  /* v2.3.711: explicit checkmark badge on the picked tile -- the purple
+     highlight alone was ambiguous next to the purple-ish swatches. */
+  var _checkBadge = function () {
+    return /*#__PURE__*/React.createElement("span", { key: 'ck', style: { position: 'absolute', right: -2, bottom: -2, width: 14, height: 14, borderRadius: '50%', background: 'var(--pop)', border: '1px solid #fff', color: '#fff', fontSize: 9, lineHeight: '12px', textAlign: 'center', fontWeight: 800, pointerEvents: 'none' } }, "✓");
+  };
+  var _swatchTile = function (opt, selId, onSet, size, thumbCat, thumbItem) {
     /* The 'default' option = keep the item's original color (no recolor).
-       Render it as a muted swatch with a diagonal slash (the universal
-       "original / no override" cue) instead of a literal color, so it
-       doesn't read as a real color choice (e.g. the hat-color default
-       swatch was #7c6cff and looked like a blue pick). */
-    var _swBg = opt.id === 'default'
-      ? 'linear-gradient(135deg, transparent 44%, #c9cdd6 44%, #c9cdd6 56%, transparent 56%), #454a55'
-      : opt.swatch;
+       v2.3.711: the old diagonal-slash cue read poorly (owner feedback).
+       Now: trait colors (hat/hair/beard/shirt) pass thumbCat/thumbItem and
+       the default tile shows the selected item's own thumbnail in its
+       original colors -- "this is what you get".  Body colors (skin/pants/
+       shoes) keep a plain swatch: their catalog 'default' swatches ARE the
+       sprite's native colors, so the swatch is accurate as-is. */
+    var sel = selId === opt.id;
+    var inner = opt.id === 'default' && thumbCat && thumbItem && thumbItem !== 'none'
+      ? /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + thumbCat + '/' + thumbItem + '/thumb.png?v=' + BUILD_INFO.version, alt: 'Original', style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } })
+      : /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 5, background: opt.swatch, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } });
     return /*#__PURE__*/React.createElement("button", {
-      key: 'c_' + opt.id, type: 'button', title: opt.id === 'default' ? 'Default (original color)' : opt.name,
-      onClick: function () { onSet(opt.id); }, style: _apTileStyle(selId === opt.id, size || 28)
-    }, /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 5, background: _swBg, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } }));
+      key: 'c_' + opt.id, type: 'button', title: opt.id === 'default' ? 'Original color' : opt.name,
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 28)
+    }, inner, sel ? _checkBadge() : null);
   };
   var _thumbTile = function (cat, opt, selId, onSet, size) {
     var sz = size || 44;
+    var sel = selId === opt.id;
     return /*#__PURE__*/React.createElement("button", {
       key: 's_' + opt.id, type: 'button', title: opt.name,
-      onClick: function () { onSet(opt.id); }, style: _apTileStyle(selId === opt.id, sz)
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, sz)
     }, opt.id === 'none'
       ? /*#__PURE__*/React.createElement("div", { style: { width: sz - 14, height: sz - 14, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
-      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }));
+      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+    sel ? _checkBadge() : null);
   };
   /* Collapsed-pill previews (non-interactive). */
   var _swOf = function (cat, id) {
-    /* 'default' = original color: return the same slash gradient _swatchTile
-       uses so the collapsed-pill mini preview matches the grid (not a literal
-       color like the hat-default #7c6cff). */
-    if (id === 'default') return 'linear-gradient(135deg, transparent 44%, #c9cdd6 44%, #c9cdd6 56%, transparent 56%), #454a55';
+    /* v2.3.711: no more slash gradient for 'default' -- the only catalogs
+       whose default still reaches here are skin/pants/shoes, and their
+       catalog swatches are the sprite's real native colors.  Trait pills
+       (hat/hair/beard/shirt) skip the mini swatch entirely when the color
+       is 'default' (the item mini-thumb already shows original colors). */
     var e = cat.find(function (o) { return o.id === id; });
     return (e && e.swatch) || '#888';
   };
@@ -1448,29 +1484,42 @@ export var BroTown = function BroTown(_ref0) {
       ? { width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #9090a8', flex: '0 0 auto' }
       : { width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderLeft: '5px solid #9090a8', flex: '0 0 auto' } });
   };
+  /* v2.3.710: pills restyled for the narrow side rail of the two-pane
+     welcome modal.  The old 60px left label + horizontally-scrolling tile
+     rows assumed a 320px-wide card; in a ~150px rail that left ~85px for
+     44px tiles.  The label is now a full-width header strip on top, and
+     expanded rows WRAP instead of side-scrolling (the rail scrolls
+     vertically instead). */
   var _pillBox = { display: 'flex', alignItems: 'stretch', width: '100%', marginBottom: 6,
     border: '1.5px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: 'rgba(0,0,0,0.12)', boxSizing: 'border-box' };
-  var _pillLabel = { width: 60, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
-    padding: '0 8px', fontSize: 10, fontWeight: 800, color: '#c2c2d2', letterSpacing: '.04em', fontFamily: 'Source Sans 3,sans-serif',
-    borderRight: '1.5px solid var(--line)', background: 'var(--ink3)', textAlign: 'left' };
-  /* Category pill -- COLLAPSED by default: the right side shows the current
-     selection; tapping the pill (or its label) expands it to reveal all
-     choices (style on top, color below).  Label spans the left, full height.
+  /* v2.3.715: rounded display font + Title Case for the category labels --
+     the bold ALL-CAPS sans read like terminal text (owner feedback).
+     'Baloo 2' is loaded in index.html. */
+  var _pillLabel = { width: '100%', minHeight: 40, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+    padding: '0 9px', fontSize: 13, fontWeight: 700, color: '#d3d6e6', letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+    background: 'var(--ink3)', textAlign: 'left', boxSizing: 'border-box' };
+  /* Category pill -- COLLAPSED by default: below the label header sits the
+     current selection; tapping the pill (or its header) expands it to reveal
+     all choices (style rows on top, color rows below).
      `optionRows` = expanded-state tile-arrays; `summary` = collapsed preview. */
   var _apPill = function (catKey, label, optionRows, summary) {
     var open = !!expanded[catKey];
-    var toggle = function () { setExpanded(function (p) { var n = Object.assign({}, p); n[catKey] = !p[catKey]; return n; }); };
+    /* v2.3.711: accordion -- opening a category closes the others, so the
+       rail stays short and an open panel is never forgotten off-screen. */
+    var toggle = function () { setExpanded(function (p) { var n = {}; if (!p[catKey]) n[catKey] = true; return n; }); };
     var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb' }, label), _chevron(open)];
     if (open) {
-      return /*#__PURE__*/React.createElement("div", { key: catKey, style: _pillBox },
-        /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillLabel, { cursor: 'pointer', borderTop: 'none', borderBottom: 'none', borderLeft: 'none' }) }, labelKids),
-        /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', flexDirection: 'column', minWidth: 0 } },
+      return /*#__PURE__*/React.createElement("div", { key: catKey, style: Object.assign({}, _pillBox, { flexDirection: 'column' }) },
+        /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillLabel, { cursor: 'pointer', border: 'none', borderBottom: '1.5px solid var(--line)' }) }, labelKids),
+        /*#__PURE__*/React.createElement("div", { style: { width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, boxSizing: 'border-box' } },
           optionRows.map(function (kids, i) {
-            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', gap: 5, overflowX: 'auto', padding: '4px 6px', borderTop: i > 0 ? '1px solid var(--line)' : 'none' } }, kids);
+            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, padding: '4px 6px', borderTop: i > 0 ? '1px solid var(--line)' : 'none' } }, kids);
           })));
     }
+    /* Collapsed stays a single horizontal row (label left, current pick
+       right) so all 7 categories fit in the rail without scrolling. */
     return /*#__PURE__*/React.createElement("button", { key: catKey, type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0 }) },
-      /*#__PURE__*/React.createElement("div", { style: _pillLabel }, labelKids),
+      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 'auto', borderRight: '1.5px solid var(--line)' }) }, labelKids),
       /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary));
   };
   var randomizeAppearance = function () {
@@ -1487,6 +1536,21 @@ export var BroTown = function BroTown(_ref0) {
     var stc = rpick(SHIRT_COLOR_CATALOG); setShirtColor(stc); setShirtColorSel(stc);
     var ht = rpick(HEADWEAR_CATALOG); setHeadwear(ht); setHeadwearSel(ht);
     var htc = rpick(HAT_COLOR_CATALOG); setHatColor(htc); setHatColorSel(htc);
+  };
+  /* v2.3.711: RANDOMIZE rolls a few quick looks before settling -- the
+     slot-machine beat makes the button feel fun instead of a dry reroll. */
+  var randomizeWithFlair = function () {
+    randomizeAppearance();
+    var n = 0;
+    var t = setInterval(function () { randomizeAppearance(); if (++n >= 3) clearInterval(t); }, 110);
+  };
+  /* v2.3.711: dice button beside the name box -- naming is the spot players
+     freeze on.  Longest combo is 16 chars, inside the 20-char input cap. */
+  var _NAME_FIRST = ['Brad', 'Chad', 'Turbo', 'Mega', 'Big', 'Lil', 'Iron', 'Captain', 'Duke', 'Rad', 'Ultra', 'Gnarly'];
+  var _NAME_LAST = ['Bro', 'Flex', 'Gains', 'Smash', 'Thunder', 'Blaze', 'Dozer', 'Knuckles', 'Storm', 'Hammer', 'Biceps', 'Swole'];
+  var rollRandomName = function () {
+    var p = function (a) { return a[Math.floor(Math.random() * a.length)]; };
+    setNameInput(p(_NAME_FIRST) + ' ' + p(_NAME_LAST));
   };
   var nftCatalogRef = useRef(null); /* cached CSV data [{ID,Image,...}] */
   var _useState203 = useState('#2563eb'),
@@ -13678,66 +13742,125 @@ export var BroTown = function BroTown(_ref0) {
     if (!_skipIntro) setShowIntro(true);
   };
 
-  /* Name / avatar selection modal */
+  /* Name / avatar selection modal.
+     v2.3.710: redesigned to two side-by-side panes at EVERY width (iPhone
+     Safari portrait is the primary platform): big live preview + name +
+     PLAY on the left (~57%), scrollable category rail + RANDOMIZE on the
+     right.  Layout-only change — every input/button keeps its previous
+     handlers and state. */
   if (showNameModal) return /*#__PURE__*/React.createElement("div", {
     className: "bt-name-modal"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-name-box"
+    className: "bt-name-box bt-cc-box"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-main"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-left"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 32,
-      marginBottom: 4
+      display: 'inline-block',
+      verticalAlign: 'middle',
+      fontSize: 16
     }
   }, "\u2694\uFE0F"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 22,
-      fontWeight: 800,
-      color: 'var(--txt)',
-      fontFamily: 'Source Sans 3,sans-serif',
-      letterSpacing: '.06em'
+      display: 'inline-block',
+      verticalAlign: 'middle',
+      marginLeft: 8,
+      /* v2.3.712: retro-arcade wordmark -- chunky 8-bit font + gold with a
+         hard (unblurred) offset shadow, matching the pixel-art identity.
+         'Press Start 2P' is loaded in index.html; one weight (400) only.
+         v2.3.714: lineHeight 1 -- the font's tall default line box made
+         the lockup's vertical rhythm impossible to control. */
+      fontFamily: "'Press Start 2P','Source Sans 3',sans-serif",
+      fontSize: 14,
+      lineHeight: 1,
+      color: 'var(--gold)',
+      textShadow: '0 2px 0 #6b4310, 0 3px 0 rgba(0,0,0,0.5)'
     }
-  }, "HEMI BROS"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: 'var(--pop)',
-      fontWeight: 700,
-      marginBottom: 2
-    }
-  }, "Action RPG"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.715: the pixel font's space glyph is a full em, which split the
+       wordmark apart -- two spans with an em-relative gap keep the words
+       tight in BOTH the pixel font and the sans fallback (a negative
+       word-spacing fix collapsed the fallback into "HEMBROS"). */
+  }, /*#__PURE__*/React.createElement("span", null, "HEMI"), /*#__PURE__*/React.createElement("span", { style: { marginLeft: '0.4em' } }, "BROS")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
-      color: '#ffffff',
-      fontFamily: 'Source Sans 3, sans-serif',
-      letterSpacing: '.05em',
-      marginBottom: 12,
+      color: 'var(--pop)',
+      fontWeight: 700,
+      letterSpacing: '.34em',
+      marginTop: 7
     }
-  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha), /*#__PURE__*/React.createElement("div", {
-    style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 12 }
-  }, /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
-    style: { width: 30, height: 30, flex: '0 0 auto', borderRadius: '50%', cursor: 'pointer',
-      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderRight: '7px solid currentColor' } })),
-  /*#__PURE__*/React.createElement("canvas", {
-    ref: previewCanvasRef,
-    width: 256,
-    height: 256,
-    title: 'Live preview',
+  }, "ACTION RPG"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.714: gold hairline under the lockup -- ties the wordmark color
+       into the card and separates brand from metadata, fading out like a
+       nameplate engraving. */
+    style: { height: 2, marginTop: 7, borderRadius: 1, background: 'linear-gradient(90deg, rgba(245,197,66,.45), rgba(245,197,66,0) 72%)' }
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
-      width: 128,
-      height: 128,
+      /* v2.3.714: version is metadata -- dim + tiny so it stops competing
+         with the wordmark. */
+      fontSize: 8,
+      color: 'var(--txt2)',
+      fontFamily: 'Source Sans 3, sans-serif',
+      letterSpacing: '.06em',
+      marginTop: 6
+    }
+  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)), /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-preview"
+  }, /*#__PURE__*/React.createElement("div", {
+    /* Square frame sized by the pane width (clamped by the pane height on
+       short/landscape screens).  Keeping the frame its own element means
+       the rotate buttons pin to the white box's corners, not to whatever
+       taller space the flex column hands the preview row. */
+    style: { position: 'relative', width: '100%', aspectRatio: '1 / 1', maxHeight: '100%' }
+  }, /*#__PURE__*/React.createElement("canvas", {
+    ref: previewCanvasRef,
+    title: 'Live preview',
+    /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
+       when the finger drifts off the canvas mid-swipe. */
+    onPointerDown: function (e) { _dragRotX.current = e.clientX; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
+    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
+    onPointerUp: function () { _dragRotX.current = null; },
+    onPointerCancel: function () { _dragRotX.current = null; },
+    /* No width/height attributes: drawCharacterPortrait force-sets the
+       bitmap to 256x256 on every draw, so attributes here would be dead
+       weight.  The bitmap upscales via CSS — object-fit keeps it square
+       (never stretched) whatever shape the frame takes, and pixelated
+       keeps the pixel-art upscale sharp instead of blurry. */
+    style: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'contain',
       imageRendering: 'pixelated',
       borderRadius: 8,
       display: 'block',
-      background: '#ffffff'
+      touchAction: 'none',
+      cursor: 'grab',
+      /* v2.3.711: near-white checker instead of flat white.  Some trait
+         sprites carry white residue from extraction, so the backdrop must
+         stay close to white to hide it -- but a hint of contrast lets
+         white shirts and pale skins read.  Keep both shades near-white;
+         don't swap in a colored/scene backdrop without re-extracting the
+         affected sprites. */
+      background: 'repeating-conic-gradient(#f7f8fb 0% 25%, #eaecf2 0% 50%) 0 0 / 22px 22px'
     }
   }), /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(1); },
-    style: { width: 30, height: 30, flex: '0 0 auto', borderRadius: '50%', cursor: 'pointer',
-      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+    /* v2.3.712: circular spin arrows replaced the triangle glyphs -- the
+       triangles read like the accordion chevrons in the rail (owner
+       feedback), and rotation is a different verb than expand/collapse. */
+    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(-1); },
+    style: { position: 'absolute', left: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
+      background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '7px solid currentColor' } }))), /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↺")),
+  /*#__PURE__*/React.createElement("button", {
+    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(1); },
+    style: { position: 'absolute', right: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
+      background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+  }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻")))), /*#__PURE__*/React.createElement("div", {
+    style: { position: 'relative', width: '100%' }
+  }, /*#__PURE__*/React.createElement("input", {
     value: nameInput,
     onChange: function onChange(e) {
       return setNameInput(e.target.value);
@@ -13745,55 +13868,66 @@ export var BroTown = function BroTown(_ref0) {
     onKeyDown: function onKeyDown(e) {
       return e.key === 'Enter' && joinTown();
     },
-    placeholder: "Enter your name\u2026",
+    placeholder: "Name\u2026",
     maxLength: 20,
     autoFocus: true,
     style: {
       width: '100%',
-      padding: '12px 14px',
+      /* v2.3.711: symmetric 44px side padding clears the dice button while
+         keeping the centered text centered. */
+      padding: '12px 44px',
       background: 'var(--ink3)',
       border: '1.5px solid var(--line)',
       borderRadius: 10,
       color: 'var(--txt)',
-      fontSize: 15,
+      /* v2.3.710: 16px floor — iOS Safari auto-zooms inputs with a smaller
+         font on focus, leaving visualViewport.scale > 1, which trips the
+         joinTown pinch-zoom gate. */
+      fontSize: 16,
       fontWeight: 600,
       outline: 'none',
       textAlign: 'center',
-      marginBottom: 8,
       boxSizing: 'border-box'
     }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: { width: '100%', marginTop: 8 }
-  },
-  _apPill('hat', 'HAT', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
-  _apPill('hair', 'HAIR', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
-  _apPill('beard', 'BEARD', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
-  _apPill('skin', 'SKIN', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
-  _apPill('shirt', 'SHIRT', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : [])),
-  _apPill('pants', 'PANTS', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
-  _apPill('shoes', 'SHOES', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))]),
-  /*#__PURE__*/React.createElement("button", {
-    type: 'button', onClick: randomizeAppearance,
-    style: { width: '100%', padding: '7px', marginTop: 6, cursor: 'pointer', borderRadius: 8,
-      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
-      fontSize: 11, fontWeight: 800, letterSpacing: '.08em', fontFamily: 'Source Sans 3,sans-serif' }
-  }, "RANDOMIZE")), /*#__PURE__*/React.createElement("button", {
+  }), /*#__PURE__*/React.createElement("button", {
+    type: 'button', title: 'Random name', onClick: rollRandomName,
+    style: { position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', width: 36, height: 36, borderRadius: 8, cursor: 'pointer',
+      background: 'var(--ink2)', border: '1.5px solid var(--line)', fontSize: 17, padding: 0, lineHeight: 1 }
+  }, "🎲")), /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     style: {
-      marginTop: 12,
+      marginTop: 'auto',
+      minHeight: 48,
       padding: '12px 32px',
       background: 'var(--pop)',
       color: '#fff',
       border: 'none',
       borderRadius: 10,
-      fontSize: 14,
-      fontWeight: 800,
+      fontSize: 17,
+      fontWeight: 700,
       cursor: 'pointer',
-      fontFamily: 'Source Sans 3,sans-serif',
-      letterSpacing: '.08em',
+      fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+      letterSpacing: '.06em',
       width: '100%'
     }
-  }, "PLAY")));
+  }, "PLAY")), /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-rail"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-rail-scroll"
+  },
+  _apPill('hat', 'Hat', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' && hatColorSel !== 'default' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : [])),
+  _apPill('hair', 'Hair', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' && hairColorSel !== 'default' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : [])),
+  _apPill('beard', 'Beard', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' && beardColorSel !== 'default' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : [])),
+  _apPill('skin', 'Skin', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))]),
+  _apPill('shirt', 'Shirt', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' && shirtColorSel !== 'default' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : [])),
+  _apPill('pants', 'Pants', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))]),
+  _apPill('shoes', 'Shoes', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))])),
+  /*#__PURE__*/React.createElement("button", {
+    type: 'button', onClick: randomizeWithFlair,
+    style: { width: '100%', padding: '7px', marginTop: 6, minHeight: 40, cursor: 'pointer', borderRadius: 8,
+      background: 'var(--ink3)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      fontSize: 14, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif" }
+  }, "🎰 Randomize")))));
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
     onComplete: function onComplete() { return setShowIntro(false); }
