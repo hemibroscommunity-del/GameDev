@@ -13789,23 +13789,24 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-name-box bt-cc-box"
   }, /*#__PURE__*/React.createElement("div", {
-    /* v2.3.724: header promoted out of the left pane to a full-card-width
-       banner above both panes.
-       v2.3.725: text lockup replaced by the owner's painted logo art
-       (crest / BRO TOWN / HEMI BROS / gem divider) per the splash mockup. */
-    style: { textAlign: 'center', marginBottom: 8 }
+    /* v2.3.729: lockup compacted to ONE top row — crest, HEMI BROS, then
+       BRO TOWN to its right (owner request) — so nearly all vertical room
+       goes to the preview window and pickers. */
+    style: { textAlign: 'center', marginBottom: 6 }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }
   }, /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/crest.webp', alt: '',
-    style: { height: 48, width: 'auto', margin: '0 auto', display: 'block', pointerEvents: 'none' }
-  }), /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN',
-    style: { width: '54%', maxWidth: 290, height: 'auto', margin: '2px auto 0', display: 'block', pointerEvents: 'none' }
+    style: { height: 44, width: 'auto', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/logo-hemibros.webp', alt: 'HEMI BROS',
-    style: { width: '27%', maxWidth: 150, height: 'auto', margin: '4px auto 0', display: 'block', pointerEvents: 'none' }
+    style: { height: 32, width: 'auto', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN',
+    style: { height: 40, width: 'auto', pointerEvents: 'none' }
+  })), /*#__PURE__*/React.createElement("img", {
     src: '/ui/welcome/divider2.webp', alt: '',
-    style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
+    style: { width: '70%', maxWidth: 400, height: 10, objectFit: 'contain', margin: '3px auto 0', display: 'block', pointerEvents: 'none' }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
@@ -13829,10 +13830,10 @@ export var BroTown = function BroTown(_ref0) {
        v2.3.716 parchment).  Known tradeoff, owner-approved: some trait
        sprites carry white extraction residue that a dark backdrop can
        expose — the floor glow masks the worst of it. */
-    /* v2.3.724: 3:4 (was square) — with the header banner above the panes
-       the left column has more height, so the window grows taller and the
-       cover-fit canvas scales the figure up with it. */
-    style: { position: 'relative', width: '100%', aspectRatio: '3 / 4', maxHeight: '100%', boxSizing: 'border-box',
+    /* v2.3.729: 2:3 with the one-row header — taller than the old 3:4 but
+       capped: fully unconstrained height made the cover-fit canvas crop
+       into the figure on tall phones. */
+    style: { position: 'relative', width: '100%', aspectRatio: '2 / 3', maxHeight: '100%', boxSizing: 'border-box',
       /* v2.3.726: animated starry-night clip behind the character (the
          poster is the fallback while the video warms); the standalone
          stone-platform asset replaces the vista's baked-in one. */
