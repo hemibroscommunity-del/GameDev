@@ -21,7 +21,7 @@ const FRAME_H = 256;
 /* v2.3.708: NE jog gear re-painted on the new 24-frame body cycle (see
    playerSprites VERSION 69); chain belt re-baked into the chest sheet. */
 /* v2.3.717: + shirt/tshirt white-base sheets (south PoC). */
-const GEAR_VERSION = '2.3.722';
+const GEAR_VERSION = '2.3.723';
 
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};
