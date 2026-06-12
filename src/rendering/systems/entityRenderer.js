@@ -3458,10 +3458,8 @@ export class EntityRenderer {
          "never worked right and looks bad" (owner).  The layered shirt
          (gear slot 'shirt': white-base sheet x tint) is the only shirt;
          the body always bakes shirtless.  shirtFill survives solely as
-         the layer's tint source.  _layerShirt still gates the weapon
-         hand-cap below (the cap clones shirtless body pixels). */
+         the layer's tint source. */
       const _shId = getShirt(), _shCol = getShirtColor();
-      const _layerShirt = getEquip('shirt') !== 'none';
       const _shirtT = null;
       const _shirtKey = 'none';
       let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
@@ -3948,7 +3946,12 @@ export class EntityRenderer {
             && _weaponNeedsCap
             && !_seJogSkipCap
             && !_neJogSkipCap
-            && !_layerShirt;
+            /* v2.3.764: inlined -- the _layerShirt const lives in a SIBLING
+               block; referencing it here was a ReferenceError that killed
+               _updatePlayer EVERY combat frame since v2.3.756 (caught by the
+               headless QA bot).  The cap clones shirtless body pixels, so it
+               stays off while the layered shirt is worn. */
+            && getEquip('shirt') === 'none';
           if (handCapEligible) {
             handCap.texture = _bodyRef.texture;
             handCap.x = _bodyRef.x;
