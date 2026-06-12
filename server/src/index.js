@@ -5001,10 +5001,59 @@ export class Feedback {
         return new Response(JSON.stringify(await this.getStats()), { headers: H });
       }
 
+      // POST /crash — crash-telemetry upload from crashTrap.js (v2.3.782).
+      // Body may arrive as text/plain (sendBeacon can't send JSON without
+      // a CORS preflight), so parse the text ourselves.
+      if (request.method === 'POST' && path.startsWith('/crash')) {
+        let body = null;
+        try { body = JSON.parse(await request.text()); } catch (e) { /* fall through */ }
+        return new Response(JSON.stringify(await this.crashReport(body)), { headers: H });
+      }
+
+      // GET /crashes?limit=50 — recent crash reports, newest first
+      if (request.method === 'GET' && path.startsWith('/crashes')) {
+        const limit = Math.min(200, parseInt(url.searchParams.get('limit')) || 50);
+        const all = JSON.parse(await this.state.storage.get('_crashlog') || '[]');
+        return new Response(JSON.stringify({ ok: true, count: all.length, reports: all.slice(-limit).reverse() }), { headers: H });
+      }
+
       return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
     } catch (err) {
       return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500, headers: H });
     }
+  }
+
+  /* v2.3.782: crash telemetry.  crashTrap.js uploads its ring buffer so
+     iPhone field failures stop depending on the owner screenshotting the
+     ?dev=1 banner before iOS evicts the page.  Prototype-grade by design:
+     one storage key, 200-report ring, soft per-session rate limit.  Every
+     field is length-clamped -- the endpoint is public. */
+  async crashReport(data) {
+    const { sid, v, ua, zone, log } = data || {};
+    if (!sid || !Array.isArray(log) || !log.length) return { ok: false, error: 'Missing fields' };
+    const rateKey = 'crashrate:' + String(sid).slice(0, 32);
+    const rate = JSON.parse(await this.state.storage.get(rateKey) || '{"count":0,"resetAt":0}');
+    if (Date.now() < rate.resetAt && rate.count >= 12) return { ok: false, error: 'Rate limited' };
+    if (Date.now() >= rate.resetAt) { rate.count = 0; rate.resetAt = Date.now() + 3600000; }
+    rate.count++;
+    await this.state.storage.put(rateKey, JSON.stringify(rate));
+    const report = {
+      ts: Date.now(),
+      sid: String(sid).slice(0, 32),
+      v: String(v || '?').slice(0, 16),
+      ua: String(ua || '').slice(0, 160),
+      zone: String(zone || '').slice(0, 24),
+      log: log.slice(-16).map((e) => ({
+        t: String((e && e.t) || '').slice(0, 24),
+        kind: String((e && e.kind) || '?').slice(0, 24),
+        msg: String((e && e.msg) || '').slice(0, 300),
+      })),
+    };
+    const all = JSON.parse(await this.state.storage.get('_crashlog') || '[]');
+    all.push(report);
+    while (all.length > 200) all.shift();
+    await this.state.storage.put('_crashlog', JSON.stringify(all));
+    return { ok: true };
   }
 
   async submit(data) {
