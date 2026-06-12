@@ -13788,7 +13788,7 @@ export var BroTown = function BroTown(_ref0) {
     var _ccCats = [
       { key: 'hat', label: 'Headwear',
         mini: _miniThumb('headwear', headwearSel),
-        items: HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); }),
+        items: HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }, 44); }),
         /* v2.3.768: the 'default' swatch leaves the grid for the mockup's
            dedicated Default Color button below it. */
         colors: headwearSel !== 'none' ? HAT_COLOR_CATALOG.filter(function (o) { return o.id !== 'default'; }).map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); }) : null,
@@ -13796,7 +13796,7 @@ export var BroTown = function BroTown(_ref0) {
         resetColor: function () { setHatColor('default'); setHatColorSel('default'); } },
       { key: 'hair', label: 'Hair',
         mini: _miniThumb('hair', hairSel),
-        items: HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); }),
+        items: HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }, 44); }),
         colors: hairSel !== 'none' ? (hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).filter(function (o) { return o.id !== 'default'; }).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); }) : null,
         /* Long hair is clamped to dark colors (see LONG_HAIR_COLORS) —
            'default' would dodge the clamp, so no reset for that style. */
@@ -13804,7 +13804,7 @@ export var BroTown = function BroTown(_ref0) {
         resetColor: function () { setHairColor('default'); setHairColorSel('default'); } },
       { key: 'beard', label: 'Beard',
         mini: _miniThumb('facialhair', facialHairSel),
-        items: FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); }),
+        items: FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }, 44); }),
         colors: facialHairSel !== 'none' ? FACIALHAIR_COLOR_CATALOG.filter(function (o) { return o.id !== 'default'; }).map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); }) : null,
         colorIsDefault: beardColorSel === 'default', canReset: true,
         resetColor: function () { setFacialHairColor('default'); setBeardColorSel('default'); } },
@@ -13817,7 +13817,7 @@ export var BroTown = function BroTown(_ref0) {
         colors: null },
       { key: 'shirt', label: 'Shirt',
         mini: _miniThumb('shirt', shirtSel),
-        items: SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); }),
+        items: SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }, 44); }),
         colors: shirtSel !== 'none' ? SHIRT_COLOR_CATALOG.filter(function (o) { return o.id !== 'default'; }).map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); }) : null,
         colorIsDefault: shirtColorSel === 'default', canReset: true,
         resetColor: function () { setShirtColor('default'); setShirtColorSel('default'); } },
@@ -13845,16 +13845,27 @@ export var BroTown = function BroTown(_ref0) {
     };
     return /*#__PURE__*/React.createElement("div", {
       className: "bt-name-modal"
-    }, /*#__PURE__*/React.createElement("img", {
+    }, /*#__PURE__*/React.createElement("picture", {
       /* v2.3.765: crest + BRO TOWN lockup replaced by the owner's painted
          tavern-banner art.
          v2.3.766: full-bleed edge-to-edge strip across the top of the
          screen (owner: no card border/rounding).
          v2.3.767: the strip starts BELOW the top safe-area inset — the
          old negative top margin pushed it under the iPhone notch/Dynamic
-         Island, which ate the art's top ~50px (owner: bump it down). */
-      src: '/ui/welcome/banner-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
-    }), /*#__PURE__*/React.createElement("div", {
+         Island, which ate the art's top ~50px (owner: bump it down).
+         v2.3.770: TWO sources — the 15vh strip is too short for the full
+         3:2 art (a bottom-anchored cover crop showed only "TOWN" + gems,
+         no "BRO"), so portrait gets banner-strip.webp, a 3:1 pre-crop of
+         just the lettering band.  Wide viewports keep the full art: their
+         CSS override aims the thin band at the gem row, which isn't in
+         the strip crop.  display:contents on the picture keeps the img
+         itself as the modal's flex child. */
+      style: { display: 'contents' }
+    }, /*#__PURE__*/React.createElement("source", {
+      media: '(min-aspect-ratio: 5/3)', srcSet: '/ui/welcome/banner-brotown.webp'
+    }), /*#__PURE__*/React.createElement("img", {
+      src: '/ui/welcome/banner-strip.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
+    })), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
     }, /*#__PURE__*/React.createElement("div", {
       /* Header: call-to-action + divider (the logo itself lives in the
@@ -13867,7 +13878,7 @@ export var BroTown = function BroTown(_ref0) {
            half of the painted backdrop.
            v2.3.741: pill backdrop removed (owner: too prominent) — plain
            white text, the heavy halo carries the contrast. */
-        letterSpacing: '.14em', marginTop: 5, textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
+        letterSpacing: '.14em', textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
     }, "CREATE YOUR CHARACTER"), /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/divider2.webp', alt: '',
       style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
@@ -13888,7 +13899,7 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.743: owner's storm-light void painting (an IMAGE, not video
          — the v2.3.736 cyan-tint lesson: device video compositing isn't
          color-exact). */
-      style: { position: 'relative', width: '100%', aspectRatio: '1.8 / 1', boxSizing: 'border-box',
+      style: { position: 'relative', width: '100%', aspectRatio: '2 / 1', boxSizing: 'border-box',
         border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
         background: "url('/ui/welcome/void.webp') center/cover no-repeat, #0a0a0c",
         boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
@@ -13936,7 +13947,7 @@ export var BroTown = function BroTown(_ref0) {
            in their 256 box than the others, so those facings (and their
            mirrors) floated above the pedestal (owner: SW/SE down ~20px,
            E/W down ~10px).
-           v2.3.768: scale 1.3 — the mockup's wider/shorter stage (1.8:1)
+           v2.3.768: scale 1.3 — the mockup's wider/shorter stage (2:1)
            shrinks the contain-fit bitmap, so the figure needs the extra
            bump to stay ~20% larger than the old 3:4 window (spec); the
            overflow crop is empty bitmap margin, the figure is safe. */
@@ -14016,9 +14027,16 @@ export var BroTown = function BroTown(_ref0) {
          end of longer names. */
       style: { position: 'absolute', right: 12, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
         background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 15, padding: 0, lineHeight: 1 }
-    }, "🎲"))), /*#__PURE__*/React.createElement("div", null,
-    /* Tab bar + drawer share one wrapper so the card's gap can't split
-       them — they must read as a single component (spec §5). */
+    }, "🎲"))), /*#__PURE__*/React.createElement("div", {
+      /* Tab bar + drawer share one wrapper so the card's gap can't split
+         them (one component, spec §5).  v2.3.770: the wrapper is the
+         card's ONE flexing region — the drawer absorbs leftover height
+         and scrolls internally, so showcase/name/Randomize/PLAY always
+         fit on screen without page scrolling (the mockup is a single
+         non-scrolling screen; v2.3.769 in the wild overflowed an iPhone
+         by ~250px and pushed PLAY below the fold). */
+      className: "bt-cc-menu"
+    },
     /*#__PURE__*/React.createElement("div", {
       className: "bt-cc-tabs"
     }, _ccCats.map(_ccTab)), /*#__PURE__*/React.createElement("div", {
@@ -14043,7 +14061,7 @@ export var BroTown = function BroTown(_ref0) {
          was in the old rail; the name dice above keeps rerolling just the
          name. */
       type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
-      style: { width: '100%', padding: '7px', minHeight: 42, cursor: 'pointer', borderRadius: 10,
+      style: { width: '100%', padding: '5px', minHeight: 38, cursor: 'pointer', borderRadius: 10,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
         background: 'rgba(20,16,40,0.93)', color: 'var(--txt)',
         fontSize: 16, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
