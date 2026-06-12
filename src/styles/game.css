@@ -131,6 +131,20 @@ input{font-family:inherit}
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:rgba(255,255,255,.8);
   -webkit-tap-highlight-color:transparent}
 .bt-exit-fab:active{background:rgba(255,94,108,.5)}
+/* v2.3.785/786: reload indicator shown when the exit arrow tears the app
+   down (full page navigation).  Full-screen dim so it reads over the frozen
+   game frame Safari keeps painted until the new document's first paint;
+   compositor-driven CSS animation so the spinner keeps turning through the
+   main-thread teardown stutter. */
+.bt-exit-dim{position:fixed;inset:0;z-index:99999;background:rgba(5,6,12,.78);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;pointer-events:none;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.bt-exit-loading{width:36px;height:36px;border-radius:50%;
+  border:3px solid rgba(255,255,255,.2);border-top-color:rgba(255,255,255,.9);
+  animation:bt-exit-spin .8s linear infinite}
+.bt-exit-label{font-size:12px;font-weight:700;color:rgba(255,255,255,.85);
+  letter-spacing:.08em;font-family:'Source Sans 3',sans-serif}
+@keyframes bt-exit-spin{to{transform:rotate(360deg)}}
 .bt-fab-group{position:absolute;bottom:16px;right:16px;z-index:20;display:flex;flex-direction:column;gap:10px}
 .bt-combat-bar{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:20;
   display:flex;gap:8px;padding:6px 10px;background:rgba(0,0,0,.5);border-radius:14px;

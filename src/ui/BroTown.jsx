@@ -88,7 +88,6 @@ const {
   getSalvageReturns, getAmuletSalvageReturns, gemExtractCost,
   getDungeonCreatorUnlocks, validateCustomDungeon, createDefaultDungeonConfig,
   hasUnlock, getNpcQuest,
-  checkAnniversaryDrop, ANNIVERSARY_ITEMS,
   discoverMonster, discoverMaterial, discoverZone, discoverCollision,
   SHOP_PRICES, SHOP_ITEMS_FOR_SALE,
   getGuildRank, getGuildQuest, GUILD_RANKS, GUILD_QUESTS, SKILL_GUILDS,
@@ -146,7 +145,7 @@ Object.assign(globalThis, { BT_API_BASE, SUPA_URL, SUPA_KEY, supa });
 Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep });
 
 export var BroTown = function BroTown(_ref0) {
-  var _stateRef$current, _stateRef$current2, _anniversaryDrop$rari, _minigameInstance$win, _minigameInstance$win2, _anniversaryDrop$colo, _anniversaryDrop$colo2, _anniversaryDrop$colo3, _anniversaryDrop$colo4, _anniversaryDrop$colo5, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
+  var _stateRef$current, _stateRef$current2, _minigameInstance$win, _minigameInstance$win2, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
   var nfts = _ref0.nfts,
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
@@ -823,10 +822,6 @@ export var BroTown = function BroTown(_ref0) {
     _useState120 = _slicedToArray(_useState119, 2),
     minigameTick = _useState120[0],
     setMinigameTick = _useState120[1];
-  var _useState121 = useState(null),
-    _useState122 = _slicedToArray(_useState121, 2),
-    anniversaryDrop = _useState122[0],
-    setAnniversaryDrop = _useState122[1]; /* pending anniversary item */
   /* Close all menus — enforce single menu open at a time */
   var closeAllMenus = function closeAllMenus() {
     setShowStatScreen(false);
@@ -1738,7 +1733,7 @@ export var BroTown = function BroTown(_ref0) {
         src.loop = true;
         gain.gain.value = 0;
         src.connect(gain);
-        gain.connect(BT_AUDIO.ctx.destination);
+        gain.connect(BT_AUDIO._out()); /* v2.3.786: through the master bus */
         src.start(0);
         slot.source = src;
         slot.gain = gain;
@@ -2288,12 +2283,6 @@ export var BroTown = function BroTown(_ref0) {
         localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
       } catch (e) {}
       discoverZone('town'); /* §ENC — Everyone starts in town */
-
-      /* §ANNIV — Check for anniversary item drop */
-      var annivDrop = checkAnniversaryDrop(S.rpg);
-      if (annivDrop) {
-        setAnniversaryDrop(annivDrop);
-      }
 
       /* Then fetch from server and overwrite (async, non-blocking) */
       if (!S._serverLoadStarted && getBtPlayerId()) {
@@ -12146,159 +12135,7 @@ export var BroTown = function BroTown(_ref0) {
         marginTop: 8
       }
     }, "Closing in a few seconds...")));
-  }(), anniversaryDrop && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      inset: 0,
-      zIndex: 50,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'rgba(0,0,0,.85)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: 'center',
-      padding: 28,
-      maxWidth: 300
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 48,
-      marginBottom: 8,
-      animation: 'scoreReveal .6s cubic-bezier(.22,1,.36,1)'
-    }
-  }, "\uD83C\uDFF4"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.4)',
-      letterSpacing: '.15em',
-      textTransform: 'uppercase',
-      marginBottom: 4
-    }
-  }, "Anniversary Drop"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 20,
-      fontWeight: 900,
-      color: '#f5c542',
-      marginBottom: 4,
-      textShadow: '0 0 20px rgba(212,160,48,.5)'
-    }
-  }, anniversaryDrop.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.5)',
-      marginBottom: 12,
-      lineHeight: 1.5
-    }
-  }, anniversaryDrop.desc), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 4,
-      justifyContent: 'center',
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '3px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 800,
-      background: 'rgba(212,160,48,.15)',
-      border: '1px solid rgba(212,160,48,.3)',
-      color: '#f5c542'
-    }
-  }, (_anniversaryDrop$rari = anniversaryDrop.rarity) === null || _anniversaryDrop$rari === void 0 ? void 0 : _anniversaryDrop$rari.toUpperCase()), /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '3px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 700,
-      background: 'rgba(255,255,255,.05)',
-      border: '1px solid rgba(255,255,255,.1)',
-      color: 'rgba(255,255,255,.4)'
-    }
-  }, "Tradeable"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '3px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 700,
-      background: 'rgba(255,94,108,.1)',
-      border: '1px solid rgba(255,94,108,.2)',
-      color: '#ff5e6c'
-    }
-  }, "Discontinued")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 60,
-      height: 80,
-      margin: '0 auto 12px',
-      position: 'relative'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      left: 10,
-      top: 5,
-      width: 40,
-      height: 50,
-      borderRadius: 4,
-      background: 'linear-gradient(180deg, ' + anniversaryDrop.colors.primary + ' 0%, ' + anniversaryDrop.colors.primary + ' 70%, ' + anniversaryDrop.colors.accent + ' 100%)',
-      border: '1.5px solid ' + anniversaryDrop.colors.trim,
-      boxShadow: '0 0 15px ' + anniversaryDrop.colors.glow
-    }
-  })), /*#__PURE__*/React.createElement("button", {
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (!R._anniversaryItems) R._anniversaryItems = [];
-      R._anniversaryItems.push({
-        id: anniversaryDrop.id,
-        name: anniversaryDrop.name,
-        emoji: anniversaryDrop.emoji,
-        type: anniversaryDrop.type,
-        rarity: anniversaryDrop.rarity,
-        colors: anniversaryDrop.colors,
-        claimedAt: Date.now(),
-        tradeable: true
-      });
-      setAnniversaryDrop(null);
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 40,
-        text: 'OG Bro Cape claimed!',
-        color: '#f5c542',
-        ts: Date.now()
-      });
-      BT_AUDIO.levelUp();
-      stateRef.current.screenShake = 6;
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (_unused15) {}
-    },
-    style: {
-      padding: '12px 32px',
-      borderRadius: 8,
-      fontSize: 13,
-      fontWeight: 900,
-      border: '2px solid #f5c542',
-      background: 'rgba(245,197,66,.15)',
-      color: '#f5c542',
-      cursor: 'pointer',
-      letterSpacing: '.05em',
-      boxShadow: '0 0 20px rgba(245,197,66,.3)',
-      textTransform: 'uppercase'
-    }
-  }, "\u2728 Claim"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.2)',
-      marginTop: 8
-    }
-  }, "One per account \xB7 Can be traded with other players"))), showMinigame && /*#__PURE__*/React.createElement("div", {
+  }(), showMinigame && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       if (!minigameInstance || minigameInstance.status === 'waiting' || minigameInstance.status === 'ended') setShowMinigame(false);
@@ -12668,7 +12505,32 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "Play Again")))), /*#__PURE__*/React.createElement("button", {
     className: "bt-exit-fab",
-    onClick: onExit
+    onClick: function onClick() {
+      /* v2.3.785: exiting reloads the whole app, and the teardown stutter
+         read as a frame-rate crash with no explanation.
+         v2.3.786: the lone 36px spinner wasn't legible over the frozen
+         game frame (Safari keeps the old page painted, animations and all
+         stopped, until the new document's first paint).  Full-screen dim
+         + spinner + label instead, appended OUTSIDE the React tree so
+         unmounting can't remove it; navigate on the next frame so it
+         paints first.  The new page's #bt-loading boot screen takes over
+         from there. */
+      try {
+        var dim = document.createElement('div');
+        dim.className = 'bt-exit-dim';
+        var sp = document.createElement('div');
+        sp.className = 'bt-exit-loading';
+        var lbl = document.createElement('div');
+        lbl.className = 'bt-exit-label';
+        lbl.textContent = 'Reloading…';
+        dim.appendChild(sp);
+        dim.appendChild(lbl);
+        document.body.appendChild(dim);
+      } catch (e) {}
+      requestAnimationFrame(function () {
+        setTimeout(onExit, 30);
+      });
+    }
   }, /*#__PURE__*/React.createElement("svg", {
     width: "14",
     height: "14",
@@ -14606,176 +14468,7 @@ export var BroTown = function BroTown(_ref0) {
         fontStyle: 'italic'
       }
     }, "Travel here to discover"));
-  })))), anniversaryDrop && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      inset: 0,
-      zIndex: 50,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'rgba(0,0,0,.85)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: 'center',
-      padding: 24,
-      maxWidth: 300
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 48,
-      marginBottom: 8,
-      animation: 'scoreReveal .6s cubic-bezier(.22,1,.36,1)'
-    }
-  }, "\uD83C\uDFF4"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.3)',
-      letterSpacing: '.15em',
-      textTransform: 'uppercase',
-      marginBottom: 4
-    }
-  }, "Anniversary Drop"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 20,
-      fontWeight: 900,
-      color: '#f5c542',
-      marginBottom: 4
-    }
-  }, anniversaryDrop.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.5)',
-      marginBottom: 12,
-      lineHeight: 1.5
-    }
-  }, anniversaryDrop.desc), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'relative',
-      width: 60,
-      height: 80,
-      margin: '0 auto 12px'
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: "60",
-    height: "80",
-    viewBox: "0 0 60 80"
-  }, /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("linearGradient", {
-    id: "capeGrad",
-    x1: "0",
-    y1: "0",
-    x2: "0",
-    y2: "1"
-  }, /*#__PURE__*/React.createElement("stop", {
-    offset: "0%",
-    stopColor: ((_anniversaryDrop$colo = anniversaryDrop.colors) === null || _anniversaryDrop$colo === void 0 ? void 0 : _anniversaryDrop$colo.primary) || '#1a1a1a'
-  }), /*#__PURE__*/React.createElement("stop", {
-    offset: "70%",
-    stopColor: ((_anniversaryDrop$colo2 = anniversaryDrop.colors) === null || _anniversaryDrop$colo2 === void 0 ? void 0 : _anniversaryDrop$colo2.primary) || '#1a1a1a'
-  }), /*#__PURE__*/React.createElement("stop", {
-    offset: "100%",
-    stopColor: ((_anniversaryDrop$colo3 = anniversaryDrop.colors) === null || _anniversaryDrop$colo3 === void 0 ? void 0 : _anniversaryDrop$colo3.accent) || '#d4a030'
-  }))), /*#__PURE__*/React.createElement("path", {
-    d: "M15,10 L45,10 L48,70 L12,70 Z",
-    fill: "url(#capeGrad)",
-    stroke: ((_anniversaryDrop$colo4 = anniversaryDrop.colors) === null || _anniversaryDrop$colo4 === void 0 ? void 0 : _anniversaryDrop$colo4.trim) || '#f5c542',
-    strokeWidth: "1.5"
-  }), /*#__PURE__*/React.createElement("line", {
-    x1: "12",
-    y1: "70",
-    x2: "48",
-    y2: "70",
-    stroke: ((_anniversaryDrop$colo5 = anniversaryDrop.colors) === null || _anniversaryDrop$colo5 === void 0 ? void 0 : _anniversaryDrop$colo5.trim) || '#f5c542',
-    strokeWidth: "2"
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 4,
-      justifyContent: 'center',
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '2px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 800,
-      background: 'rgba(245,197,66,.15)',
-      border: '1px solid rgba(245,197,66,.3)',
-      color: '#f5c542'
-    }
-  }, "Legendary"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '2px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 800,
-      background: 'rgba(255,94,108,.15)',
-      border: '1px solid rgba(255,94,108,.3)',
-      color: '#ff5e6c'
-    }
-  }, "Discontinued"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '2px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 800,
-      background: 'rgba(91,82,255,.15)',
-      border: '1px solid rgba(91,82,255,.3)',
-      color: '#5b52ff'
-    }
-  }, "Tradeable")), /*#__PURE__*/React.createElement("button", {
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (!R._anniversaryItems) R._anniversaryItems = [];
-      R._anniversaryItems.push({
-        id: anniversaryDrop.id,
-        name: anniversaryDrop.name,
-        emoji: anniversaryDrop.emoji,
-        type: anniversaryDrop.type,
-        colors: anniversaryDrop.colors,
-        rarity: anniversaryDrop.rarity,
-        claimedAt: Date.now(),
-        year: anniversaryDrop.year,
-        tradeable: true
-      });
-      setAnniversaryDrop(null);
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 40,
-        text: anniversaryDrop.name + ' claimed!',
-        color: '#f5c542',
-        ts: Date.now()
-      });
-      BT_AUDIO.levelUp();
-      stateRef.current.screenShake = 6;
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (_unused22) {}
-    },
-    style: {
-      padding: '12px 32px',
-      borderRadius: 8,
-      fontSize: 14,
-      fontWeight: 900,
-      border: '2px solid rgba(245,197,66,.5)',
-      background: 'linear-gradient(135deg,rgba(26,26,26,.9),rgba(212,160,48,.3))',
-      color: '#f5c542',
-      cursor: 'pointer',
-      boxShadow: '0 4px 20px rgba(212,160,48,.3)'
-    }
-  }, "Claim Cape"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.2)',
-      marginTop: 8
-    }
-  }, "One per account \xB7 Tradeable \xB7 Never drops again"))), showMinigame && rpgState && /*#__PURE__*/React.createElement("div", {
+  })))), showMinigame && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       if (!minigameInstance || minigameInstance.status === 'waiting') setShowMinigame(false);
