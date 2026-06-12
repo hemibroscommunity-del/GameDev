@@ -241,7 +241,6 @@ export function setupGameLoop(ctx) {
       S.rpg.vit = S.rpg.vitality;
       S.rpg.spd = S.rpg.agility;
       S.rpg.lck = S.rpg.ferocity;
-      S.rpg.maxHp = S.rpg.maxHp;
       S.rpg.unspentPts = S.rpg.unspentT1 + S.rpg.unspentT2;
       setRpgState(_objectSpread({}, S.rpg));
       try {

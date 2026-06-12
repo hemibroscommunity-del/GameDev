@@ -72,7 +72,6 @@ export const IntroVideo = ({ onComplete, waitFor }) => {
       clearTimeout(minTimer);
       clearTimeout(hardCap);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

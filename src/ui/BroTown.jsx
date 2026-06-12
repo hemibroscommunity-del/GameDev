@@ -2302,9 +2302,9 @@ export var BroTown = function BroTown(_ref0) {
             }
           }
           if (performance.now() - ws._slowLog.lastT > 500 && ws._slowLog.worst > 5) {
-            /* eslint-disable no-console */
+             
             console.warn('[bt-ws-slow]', { ms: +ws._slowLog.worst.toFixed(1), type: ws._slowLog.worstType });
-            /* eslint-enable no-console */
+             
             ws._slowLog.lastT = performance.now();
             ws._slowLog.worst = 0;
             ws._slowLog.worstType = '';
@@ -5034,7 +5034,6 @@ export var BroTown = function BroTown(_ref0) {
       S.rpg.vit = S.rpg.vitality;
       S.rpg.spd = S.rpg.agility;
       S.rpg.lck = S.rpg.ferocity;
-      S.rpg.maxHp = S.rpg.maxHp;
       S.rpg.unspentPts = S.rpg.unspentT1 + S.rpg.unspentT2;
       setRpgState(_objectSpread({}, S.rpg));
       try {
@@ -5765,7 +5764,7 @@ export var BroTown = function BroTown(_ref0) {
           S._perf.slowFrameCount++;
         }
         if (window.__btPerf !== false && _perfNow - S._perf.slowLastT > 500 && S._perf.worstMs > 0) {
-          /* eslint-disable no-console */
+           
           console.warn('[bt-perf]', {
             frameMs: +S._perf.worstMs.toFixed(1),
             instFps: S._perf.worstFps,
@@ -5780,7 +5779,7 @@ export var BroTown = function BroTown(_ref0) {
             miningOpen: !!stateRef.current._miningOpen,
             renderer: window.__pixiActive ? 'pixi' : 'none',
           });
-          /* eslint-enable no-console */
+           
           S._perf.worstMs = 0;
           S._perf.slowFrameCount = 0;
           S._perf.slowLastT = _perfNow;
@@ -11713,7 +11712,7 @@ export var BroTown = function BroTown(_ref0) {
           S._splitLog.worstRender = _renderEndT - _simEndT;
         }
         if (_renderEndT - S._splitLog.lastT > 500 && S._splitLog.worstTotal > 30) {
-          /* eslint-disable no-console */
+           
           console.warn('[bt-frame-split]', {
             totalMs: +S._splitLog.worstTotal.toFixed(1),
             simMs: +S._splitLog.worstSim.toFixed(1),
@@ -11723,7 +11722,7 @@ export var BroTown = function BroTown(_ref0) {
             slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
             zone: S.currentZone,
           });
-          /* eslint-enable no-console */
+           
           S._splitLog.lastT = _renderEndT;
           S._splitLog.worstTotal = 0;
           S._splitLog.worstSim = 0;
@@ -11898,14 +11897,6 @@ export var BroTown = function BroTown(_ref0) {
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
       if (pixiRef.current) { pixiRef.current.destroy(); pixiRef.current = null; window._pixiRenderer = null; }
-    };
-    return function () {
-      cancelAnimationFrame(frameRef.current);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('resize', resize);
-      if (resizeObs) resizeObs.disconnect();
-      if (vv) vv.removeEventListener('resize', resize);
     };
   }, [showNameModal, showLogin]);
 
@@ -30560,7 +30551,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.224: snow auto-collection retired; button is a no-op
          until a non-placeholder resource is wired in. */
       return;
-      // eslint-disable-next-line no-unreachable
+      /* eslint-disable no-unreachable -- reference impl kept for future wiring */
       var _R$inventory;
       var S = stateRef.current,
         R = S.rpg;

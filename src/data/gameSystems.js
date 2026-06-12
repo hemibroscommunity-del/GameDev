@@ -5011,7 +5011,6 @@ export function createDefaultRpg() {
        user request.  Armor + stash both empty by default.  Players
        acquire armor through other paths (forge / drops / etc.). */
     armor: null,
-    armorStash: [],
     /* v2.3.188: default wood shield matches the other starter gear
        (bamboo stick, wood bow, wood staff, leather armor) so the
        v2.3.187 shield-on-back render has something to draw without

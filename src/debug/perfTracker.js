@@ -181,7 +181,7 @@ export const perfTracker = {
       if (!spikeWorst || ms > spikeWorst.totalMs) spikeWorst = sample;
       const tNow = sample.t || performance.now();
       if (tNow - spikeLastT > 500 && spikeWorst) {
-        /* eslint-disable no-console */
+         
         const _interval = +spikeWorst.totalMs.toFixed(1);
         const _work     = +(spikeWorst.workMs || 0).toFixed(1);
         const _outside  = +(spikeWorst.totalMs - (spikeWorst.workMs || 0)).toFixed(1);
@@ -206,7 +206,7 @@ export const perfTracker = {
           splatter: spikeWorst.groundSplatter,
           dmgNums:  spikeWorst.dmgNumbers,
         });
-        /* eslint-enable no-console */
+         
         spikeLastT = tNow;
         spikeWorst = null;
       }

@@ -280,7 +280,7 @@ export async function initPixiRenderer(canvas) {
       update._pp.monsters = (S.monsters && S.monsters.length) || 0;
     }
     if (_t5 - update._pp.lastT > 500 && update._pp.worst > 30) {
-      /* eslint-disable no-console */
+       
       console.warn('[bt-render-split]', {
         totalMs:    +update._pp.worst.toFixed(1),
         tileMs:     +update._pp.tile.toFixed(1),
@@ -291,7 +291,7 @@ export async function initPixiRenderer(canvas) {
         monsters:   update._pp.monsters,
         zone:       S.currentZone,
       });
-      /* eslint-enable no-console */
+       
       update._pp.lastT = _t5;
       update._pp.worst = 0;
     }
