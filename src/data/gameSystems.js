@@ -5308,6 +5308,32 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     if (this.ctx) return;
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      /* v2.3.786: master bus.  Every voice used to connect straight to
+         ctx.destination, so there was no way to shape overall volume --
+         when iOS un-suspends the context (or the first gesture after a
+         reload starts it), all pending voices slammed in at full level
+         ("pops in loud").  All connects now route through _out(); fadeIn()
+         ramps this gain on resume/unlock. */
+      this._master = this.ctx.createGain();
+      this._master.connect(this.ctx.destination);
+    } catch (e) {}
+  },
+  /* Output node for every voice — falls back to destination if the master
+     bus failed to build (behavior identical to pre-v2.3.786). */
+  _out: function _out() {
+    return this._master || this.ctx.destination;
+  },
+  /* Ramp the master bus from silent to full over `dur` seconds.  Called
+     when the AudioContext (re)starts so queued/looping voices ease in
+     instead of popping. */
+  fadeIn: function fadeIn(dur) {
+    if (!this.ctx || !this._master) return;
+    try {
+      var t = this.ctx.currentTime;
+      var g = this._master.gain;
+      g.cancelScheduledValues(t);
+      g.setValueAtTime(0.001, t);
+      g.exponentialRampToValueAtTime(1, t + (dur || 1.2));
     } catch (e) {}
   },
   beep: function beep(freq, dur, vol, type) {
@@ -5320,7 +5346,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       g.gain.setValueAtTime(vol || 0.1, this.ctx.currentTime);
       g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + (dur || 0.1));
       o.connect(g);
-      g.connect(this.ctx.destination);
+      g.connect(this._out());
       o.start();
       o.stop(this.ctx.currentTime + (dur || 0.1) + 0.05);
     } catch (e) {}
@@ -5597,7 +5623,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       g.gain.setValueAtTime(0.02, this.ctx.currentTime);
       g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
       o.connect(g);
-      g.connect(this.ctx.destination);
+      g.connect(this._out());
       o.start();
       o.stop(this.ctx.currentTime + dur);
     } catch (e) {}
@@ -5641,7 +5667,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
         gain.gain.setValueAtTime(0, t0);
         gain.gain.linearRampToValueAtTime(TARGET_VOL, t0 + 0.6);
         src.connect(gain);
-        gain.connect(self.ctx.destination);
+        gain.connect(self._out());
         src.start(0);
         self._zoneMusicSource = src;
         self._zoneMusicGain = gain;
@@ -5815,7 +5841,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     lfoG.gain.value = params.freq * 0.05;
     lfo.connect(lfoG);
     lfoG.connect(o.frequency);
-    g.connect(this.ctx.destination);
+    g.connect(this._out());
     o.start();
     lfo.start();
     this._ambientOsc = o;
@@ -5836,7 +5862,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       lfoG2.gain.value = p2.freq * 0.08;
       lfo2.connect(lfoG2);
       lfoG2.connect(o2.frequency);
-      g2.connect(this.ctx.destination);
+      g2.connect(this._out());
       o2.start();
       lfo2.start();
       this._ambientOsc2 = o2;
@@ -6006,10 +6032,15 @@ BT_AUDIO.loadSfxManifest = function () {
 BT_AUDIO.unlock = function () {
   if (!this.ctx) this.init();
   if (!this.ctx) return;
+  /* v2.3.786: first unlock of a page load = the context is starting from
+     scratch (fresh boot or post-exit reload).  Ease the master bus in so
+     the ambient/zone music doesn't pop in loud on the first gesture. */
+  var firstUnlock = !this._unlocked;
   if (this.ctx.state === 'suspended' && this.ctx.resume) {
     try { this.ctx.resume(); } catch (e) {}
   }
   this._unlocked = true;
+  if (firstUnlock) this.fadeIn(1.2);
   this.loadSfxManifest();
 };
 /* v2.3.254: called from the visibilitychange handler in GameApp.jsx
@@ -6021,6 +6052,9 @@ BT_AUDIO.resumeFromBackground = function () {
   if (!this.ctx) return;
   if (this.ctx.state === 'suspended' && this.ctx.resume) {
     try { this.ctx.resume(); } catch (e) {}
+    /* v2.3.786: ease back in after a background resume (same pop as the
+       first-gesture case, just mid-session). */
+    this.fadeIn(0.8);
   }
   var zone = this._currentZoneAmbient;
   if (!zone) return;
@@ -6043,6 +6077,9 @@ BT_AUDIO.play = function (key, opts) {
      the field. */
   if (this.ctx.state === 'suspended') {
     if (this.ctx.resume) { try { this.ctx.resume(); } catch (e) {} }
+    /* v2.3.786: same anti-pop ease as unlock/resumeFromBackground —
+       short ramp so the self-heal path doesn't blast either. */
+    this.fadeIn(0.6);
     if (!this._suspendLogged && typeof window !== 'undefined' && window.debug && window.debug.pushLog) {
       try { window.debug.pushLog('warn', ['BT_AUDIO ctx was suspended (key=' + key + '); resuming']); } catch (e) {}
       this._suspendLogged = true;
@@ -6068,7 +6105,7 @@ BT_AUDIO.play = function (key, opts) {
     var g = this.ctx.createGain();
     g.gain.value = (opts && opts.vol != null) ? opts.vol : 0.6;
     src.connect(g);
-    g.connect(this.ctx.destination);
+    g.connect(this._out());
     src.start(0);
     /* Return a handle so callers that need to cut a sample short
        (e.g. fishing reel sound when the catch completes mid-clip)

@@ -131,6 +131,20 @@ input{font-family:inherit}
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:rgba(255,255,255,.8);
   -webkit-tap-highlight-color:transparent}
 .bt-exit-fab:active{background:rgba(255,94,108,.5)}
+/* v2.3.785/786: reload indicator shown when the exit arrow tears the app
+   down (full page navigation).  Full-screen dim so it reads over the frozen
+   game frame Safari keeps painted until the new document's first paint;
+   compositor-driven CSS animation so the spinner keeps turning through the
+   main-thread teardown stutter. */
+.bt-exit-dim{position:fixed;inset:0;z-index:99999;background:rgba(5,6,12,.78);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;pointer-events:none;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.bt-exit-loading{width:36px;height:36px;border-radius:50%;
+  border:3px solid rgba(255,255,255,.2);border-top-color:rgba(255,255,255,.9);
+  animation:bt-exit-spin .8s linear infinite}
+.bt-exit-label{font-size:12px;font-weight:700;color:rgba(255,255,255,.85);
+  letter-spacing:.08em;font-family:'Source Sans 3',sans-serif}
+@keyframes bt-exit-spin{to{transform:rotate(360deg)}}
 .bt-fab-group{position:absolute;bottom:16px;right:16px;z-index:20;display:flex;flex-direction:column;gap:10px}
 .bt-combat-bar{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:20;
   display:flex;gap:8px;padding:6px 10px;background:rgba(0,0,0,.5);border-radius:14px;
@@ -185,7 +199,7 @@ input{font-family:inherit}
 }
 /* v2.3.710: welcome modal stopped scrolling as a page — the modal locks
    to the viewport (100dvh + safe-area insets for the iPhone notch / home
-   indicator) and a designated inner region does the moving (v2.3.789:
+   indicator) and a designated inner region does the moving (v2.3.794:
    the drawer columns inside .bt-cc-menu).
    v2.3.713: backdrop is a faint radial instead of flat #000 — a drop
    shadow is invisible against pure black, and the card needs it to read
@@ -195,7 +209,7 @@ input{font-family:inherit}
    panel, torch pillars with a sprite-strip flame animation.
    v2.3.717: theme art recompressed to WebP (~935KB -> ~276KB, the
    screen was slow to dress) and the sky darkened so the card pops. */
-/* v2.3.783: flex-direction:column — the full-bleed banner strip stacks
+/* v2.3.788: flex-direction:column — the full-bleed banner strip stacks
    above the card (card stays centered via its margin:auto). */
 .bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
 /* v2.3.738: touch-action:none on the modal — iOS ignores overscroll-behavior
@@ -220,21 +234,21 @@ input{font-family:inherit}
    directly on the painted backdrop.
    v2.3.728: decorative outer frame retired (owner: the picker and preview
    need the room); padding shrinks to a breathing margin.
-   v2.3.789: LOCKED single-screen column (vertical-flow redesign) — the
+   v2.3.794: LOCKED single-screen column (vertical-flow redesign) — the
    card fills the space under the pinned banner and never page-scrolls
-   (the v2.3.784 attempt overflowed an iPhone by ~250px and pushed PLAY
+   (the v2.3.789 attempt overflowed an iPhone by ~250px and pushed PLAY
    below the fold).  Every section is fixed (the >* floor) except
    .bt-cc-menu, whose drawer absorbs the leftover height and scrolls
    internally — the old rail's job, moved down a level.  Short/landscape
    viewports fall back to page scrolling (media query below) because
    nothing meaningfully flexes at that height. */
-/* v2.3.791: gap 8->6 + slimmer bottom pad — the width-driven banner is
+/* v2.3.796: gap 8->6 + slimmer bottom pad — the width-driven banner is
    taller, so the fixed rows return a few px to the flex regions.
-   v2.3.792: gap 6->4 + slimmer top pad (owner: compact the space
+   v2.3.797: gap 6->4 + slimmer top pad (owner: compact the space
    between UI items). */
 .bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;gap:4px;width:100%;flex:1 1 auto;min-height:0;max-width:560px;margin:0 auto;padding:8px 12px 10px;text-align:left;background:none;border:none;box-shadow:none;overflow:hidden}
 .bt-name-box.bt-cc-box>*{flex:0 0 auto}
-/* v2.3.790: the v2.3.789 fixed budget (16:9 stage from WIDTH, fixed
+/* v2.3.795: the v2.3.794 fixed budget (16:9 stage from WIDTH, fixed
    banner, full-width PLAY) collapsed the drawer to a ~25px sliver on a
    real device — Safari's URL bar shrinks dvh ~100px below the screen
    size while width-driven sections keep growing.  Now the stage and the
@@ -245,14 +259,14 @@ input{font-family:inherit}
    positioned / 100%-sized, so flex height works cleanly and the canvas
    contain+scale adapts to whatever shape falls out. */
 .bt-name-box.bt-cc-box>.bt-cc-stage{flex:3 1 140px;min-height:140px;max-height:300px}
-/* v2.3.795: menu goes ROW — vertical tab rail left, drawer right
+/* v2.3.800: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right). */
 .bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
-/* v2.3.791: fallback raised 620->690 — in-app browser webviews (extra
+/* v2.3.796: fallback raised 620->690 — in-app browser webviews (extra
    chrome) land near 650 and should page-scroll rather than crush the
    flex minimums into clipping. */
 @media (max-height:690px){
@@ -268,12 +282,12 @@ input{font-family:inherit}
 /* v2.3.726: braziers animate via 12-cell sprite strips built from the
    owner's flame clip (purple as shot; gold = luminance-ramped recolor for
    the sun side).  jump-none lands on every cell before looping. */
-/* v2.3.794: braziers live INSIDE the pedestal group now (% values are
+/* v2.3.799: braziers live INSIDE the pedestal group now (% values are
    relative to the disc box) — they stand on the platform's top face and
    flank the character (owner), instead of hanging at the stage edges. */
 .bt-cc-brazier{position:absolute;bottom:44%;height:105%;pointer-events:none;background:0 0/1200% 100% no-repeat;animation:bt-cc-braz 1.0s steps(12,jump-none) infinite}
 @keyframes bt-cc-braz{from{background-position-x:0%}to{background-position-x:100%}}
-/* v2.3.792's 52px button-clearance lift is superseded — on the disc the
+/* v2.3.797's 52px button-clearance lift is superseded — on the disc the
    braziers sit nowhere near the stage's corner rotate buttons. */
 .bt-cc-brazier--left{left:4%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
 /* negative delay desyncs the two flames so they don't flicker in lockstep */
@@ -285,11 +299,11 @@ input{font-family:inherit}
    invisible (suspected in the owner's 'PLAY disappeared' report; the other
    cause is overlays — the bottom sheet and the iOS keyboard both cover it
    while open, by design). */
-/* v2.3.790: width cap — the art scaled with card width, so on a Pro Max
+/* v2.3.795: width cap — the art scaled with card width, so on a Pro Max
    PLAY rendered ~108px tall, TALLER than the squeezed drawer above it
    (owner screenshot).  320px keeps it the clear final action without
    competing for the drawer's room.
-   v2.3.793: 300 -> 230 (owner: shrink it). */
+   v2.3.798: 300 -> 230 (owner: shrink it). */
 .bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px;max-width:230px;margin-left:auto;margin-right:auto}
 /* v2.3.741: solid-color fallback removed — the art has transparent corners,
    so the backing purple peeked out around the painted shape (owner). */
@@ -301,36 +315,36 @@ input{font-family:inherit}
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
    "sign here" cue at the left. */
 
-/* v2.3.782: crest + logo lockup replaced by the owner's painted tavern-
+/* v2.3.787: crest + logo lockup replaced by the owner's painted tavern-
    banner art (single image).  The 3:2 source is too tall as-is, so
    object-fit:cover crops it to a wide strip; object-position 70% biases
    the crop downward so the BRO TOWN lettering and the element-gem row
    stay in frame (the trim comes out of the empty sky).
-   v2.3.783: full-bleed (owner: no card border/rounding — span the entire
+   v2.3.788: full-bleed (owner: no card border/rounding — span the entire
    background).  The negative side margins cancel the modal's padding so
    the strip touches the left/right screen edges; height is viewport-
    driven and capped so the card below keeps its room — same lesson as
    v2.3.734: header height is what starves the rail into scroll-clipping
    on 667pt-class phones.
-   v2.3.788: no top negative margin — it pushed the strip under the
+   v2.3.793: no top negative margin — it pushed the strip under the
    iPhone notch/Dynamic Island, which ate the art's top ~50px.
-   v2.3.789: 24vh -> ~12dvh — the locked single-screen creator pays for
+   v2.3.794: 24vh -> ~12dvh — the locked single-screen creator pays for
    its drawer out of the header (spec §2: the header takes less priority
    than the character).  At this height the full 3:2 art loses "BRO" to
    the crop, so portrait loads banner-strip.webp, a 3:1 pre-crop of the
    lettering band (see the <picture> in BroTown.jsx), cropped plain
    CENTER; the old bottom-anchor only made sense against the full art's
    stone base, which wide viewports still use via the override below.
-   v2.3.790: vh -> dvh (vh line kept as old-Safari fallback) — iOS vh is
+   v2.3.795: vh -> dvh (vh line kept as old-Safari fallback) — iOS vh is
    the LARGE-viewport unit, so with the Safari URL bar open the banner
    rendered ~25px taller than budgeted and squeezed the drawer (owner's
    device screenshot: drawer collapsed to a sliver).
-   v2.3.791: height is WIDTH-driven (33vw ≈ the strip's own 3:1 ratio,
+   v2.3.796: height is WIDTH-driven (33vw ≈ the strip's own 3:1 ratio,
    capped) — any viewport-height-driven height makes the box wider-
    ratioed than the art on some device and cover crops the lettering
    (owner screenshot: BRO TOWN cut in half).  Width-coupled height means
    the crop is always ~0; the flex stage/menu absorb the cost. */
-/* v2.3.793: tavern-banner art retired (owner) — the painted gold
+/* v2.3.798: tavern-banner art retired (owner) — the painted gold
    BRO TOWN lettering (logo-brotown.webp, 560x329) takes its slot.
    Width-driven so it can never clip; centered over the page backdrop. */
 .bt-cc-logo{flex:none;align-self:center;width:min(56vw,270px);height:auto;display:block;pointer-events:none}
@@ -351,12 +365,12 @@ input{font-family:inherit}
 
 .bt-cc-name{border:0 solid transparent;border-width:0 26px;border-image:url('/ui/welcome/scroll2.webp') 0 64 fill/0 26px stretch;background:none;color:#3a2a14;height:58px}
 .bt-cc-name::placeholder{color:#8a7350;opacity:1}
-/* v2.3.789: the two-pane grid (.bt-cc-main/.bt-cc-left/.bt-cc-rail*) is
+/* v2.3.794: the two-pane grid (.bt-cc-main/.bt-cc-left/.bt-cc-rail*) is
    retired with the rail.  Text-only category TABS fused to ONE drawer
    replace the pill stack (spec §5: the active tab and the panel read as
    a single component; deliberately the old pill-label material, NOT iOS
    pills).
-   v2.3.795: re-oriented per owner — the tab rail runs DOWN the left
+   v2.3.800: re-oriented per owner — the tab rail runs DOWN the left
    edge (rail carries the left radius, drawer the right, one shared
    border; the active tab's gold baseline moves to its right edge where
    it meets the panel).  The drawer stacks two strips: the item strip on
