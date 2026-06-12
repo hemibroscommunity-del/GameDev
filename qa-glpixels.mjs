@@ -20,6 +20,10 @@ const ctx = await browser.newContext({ viewport: { width: 844, height: 390 } });
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message.slice(0, 160)));
+/* v2.3.775: the zone-map JPG must be RE-FETCHED after a rebuild -- the
+ * Assets-cached ImageBitmap can be a dead husk on iOS after GPU purge. */
+let mapFetches = 0;
+page.on('request', (r) => { if (/\/maps\/town_v\d+\.jpg/.test(r.url())) mapFetches++; });
 await page.addInitScript(`window.BROTOWN_WS_URL = 'ws://127.0.0.1:8787'`);
 await page.goto('http://localhost:4173/?dev=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(9000);
@@ -78,7 +82,8 @@ const diag = await page.evaluate(() => {
 });
 console.log('diag:', JSON.stringify(diag));
 console.log('errors:', errs.length, errs.slice(0, 6));
-const ok = pre.litPct > 20 && post.litPct > 20 && diag.crash.includes('gl-rebuild');
-console.log(ok ? 'PASS: world visibly renders after rebuild' : 'FAIL: post-rebuild world is dark');
+console.log('map jpg fetches:', mapFetches, '(expect >= 2: boot + post-rebuild re-decode)');
+const ok = pre.litPct > 20 && post.litPct > 20 && diag.crash.includes('gl-rebuild') && mapFetches >= 2;
+console.log(ok ? 'PASS: world visibly renders after rebuild (map re-fetched)' : 'FAIL: post-rebuild world dark or map not re-fetched');
 await browser.close();
 process.exit(ok ? 0 : 1);
