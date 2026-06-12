@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { GameApp } from './ui/GameApp.jsx';
 import { debugBus } from './debug/debugBus.js';
 import { installPerfHud } from './debug/perfHud.js';
+import { installCrashTrap } from './debug/crashTrap.js';
 import './styles/game.css';
 
 /* Debug console intercept is handled by debugBus.initFromUrl() alone now.
@@ -14,6 +15,11 @@ import './styles/game.css';
    DebugOverlay is the user-facing surface, so the vanilla-JS banner is
    redundant.  Re-add if the React overlay regresses. */
 debugBus.initFromUrl();
+
+/* v2.3.763: crash evidence capture (see crashTrap.js) -- owner reported
+   black-canvas + kicked-to-login instability on iPhone; this records JS
+   errors, promise rejections and WebGL context loss across reloads. */
+installCrashTrap();
 
 /* On-screen perf HUD (vanilla DOM, reads perfTracker, no console hook).
    Activates with ?perf=1 or ?debug=1.  Survives the React overlay

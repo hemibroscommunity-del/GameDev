@@ -2,6 +2,7 @@
  * PixiJS Application setup and container hierarchy.
  * Creates the layered scene graph used by all render systems.
  */
+import { watchContextLoss } from '../debug/crashTrap.js';
 import { Application, Container } from 'pixi.js';
 
 /**
@@ -94,6 +95,9 @@ export async function createPixiApp(canvas) {
   try {
     const app = new Application();
     await app.init({ ...initOpts, preference: 'webgl' });
+    /* v2.3.763: record WebGL context loss -- prime suspect for the reported
+       mid-fight black canvas on iPhone. */
+    watchContextLoss(canvas);
     console.log('PixiJS using WebGL renderer');
     return buildScene(app);
   } catch (e) {
@@ -103,6 +107,9 @@ export async function createPixiApp(canvas) {
   // Fallback to PixiJS Canvas renderer
   const app = new Application();
   await app.init({ ...initOpts, preference: 'canvas' });
+  /* v2.3.763: record WebGL context loss -- prime suspect for the reported
+     mid-fight black canvas on iPhone. */
+  watchContextLoss(canvas);
   console.log('PixiJS using Canvas renderer');
   return buildScene(app);
 }
