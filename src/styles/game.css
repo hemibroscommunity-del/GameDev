@@ -245,7 +245,10 @@ input{font-family:inherit}
    positioned / 100%-sized, so flex height works cleanly and the canvas
    contain+scale adapts to whatever shape falls out. */
 .bt-name-box.bt-cc-box>.bt-cc-stage{flex:3 1 140px;min-height:140px;max-height:300px}
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:column}
+/* v2.3.795: menu goes ROW — vertical tab rail left, drawer right
+   (owner: tabs span down vertically, the container expands to the
+   right). */
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
@@ -256,7 +259,8 @@ input{font-family:inherit}
   .bt-name-box.bt-cc-box{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
   .bt-cc-menu{flex:0 0 auto!important}
   .bt-cc-stage{flex:0 0 auto!important;height:220px}
-  .bt-cc-drawer-items{max-height:240px}
+  /* column-wrap needs a definite height once the menu stops flexing */
+  .bt-cc-drawer-items>.bt-cc-drawer-grid{height:104px}
 }
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
@@ -350,23 +354,28 @@ input{font-family:inherit}
 /* v2.3.789: the two-pane grid (.bt-cc-main/.bt-cc-left/.bt-cc-rail*) is
    retired with the rail.  Text-only category TABS fused to ONE drawer
    replace the pill stack (spec §5: the active tab and the panel read as
-   a single component — tabs carry the top radius, the drawer the bottom,
-   one shared border; deliberately the old pill-label material, NOT iOS
-   pills).  flex-wrap lets tabs fall to a second row on very narrow
-   screens; on a 390pt phone all 7 share one row (~49px each — labels
-   are short by design; "Headwear" didn't fit, "Hat" does). */
-.bt-cc-tabs{flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:stretch;background:rgba(20,16,40,0.93);border:1.5px solid #4a4080;border-bottom:1px solid #3a3163;border-radius:12px 12px 0 0;overflow:hidden}
-.bt-cc-tab{flex:1 1 0;min-width:44px;padding:9px 2px;background:none;border:none;border-right:1px solid #3a3163;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bt-cc-tab:last-child{border-right:none}
+   a single component; deliberately the old pill-label material, NOT iOS
+   pills).
+   v2.3.795: re-oriented per owner — the tab rail runs DOWN the left
+   edge (rail carries the left radius, drawer the right, one shared
+   border; the active tab's gold baseline moves to its right edge where
+   it meets the panel).  The drawer stacks two strips: the item strip on
+   top — a column-WRAP flex that fills the height then grows RIGHT, so
+   more choices appear by horizontal scrolling — and the color row
+   beneath it. */
+.bt-cc-tabs{flex:0 0 78px;display:flex;flex-direction:column;align-items:stretch;background:rgba(20,16,40,0.93);border:1.5px solid #4a4080;border-right:1px solid #3a3163;border-radius:12px 0 0 12px;overflow:hidden}
+.bt-cc-tab{flex:1 1 0;min-height:0;padding:2px 6px;background:none;border:none;border-bottom:1px solid #3a3163;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-cc-tab:last-child{border-bottom:none}
 .bt-cc-tab:active{transform:translateY(1px)}
-.bt-cc-tab--on{background:rgba(58,49,99,0.85);color:#fff;box-shadow:inset 0 -3px 0 var(--gold)}
-/* The drawer flexes to the leftover viewport height; its two columns
-   scroll independently (pan-y re-allowed under the modal's
-   touch-action:none — the old rail's iOS trick). */
-.bt-cc-drawer{flex:1 1 auto;min-height:0;display:flex;align-items:stretch;border:1.5px solid #4a4080;border-top:none;border-radius:0 0 12px 12px;background:rgba(24,19,46,0.97);padding:10px;box-sizing:border-box}
-.bt-cc-drawer-items{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
-.bt-cc-drawer-colors{flex:0 0 auto;max-width:130px;display:flex;flex-direction:column;gap:8px;border-left:1.5px solid #3a3163;padding-left:10px;margin-left:10px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
-.bt-cc-drawer-grid{display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start}
+.bt-cc-tab--on{background:rgba(58,49,99,0.85);color:#fff;box-shadow:inset -3px 0 0 var(--gold)}
+.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;border:1.5px solid #4a4080;border-left:none;border-radius:0 12px 12px 0;background:rgba(24,19,46,0.97);padding:8px;box-sizing:border-box}
+.bt-cc-drawer-items{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px}
+/* Item strip: column-wrap fills the available height (1-2 tile rows
+   depending on device) then extends rightward; pan-x re-allowed under
+   the modal's touch-action:none (the old rail's iOS trick, rotated). */
+.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x}
+.bt-cc-drawer-colors{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;border-top:1.5px solid #3a3163;padding-top:6px;margin-top:6px}
+.bt-cc-drawer-colors>.bt-cc-drawer-grid{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x;padding-bottom:2px}
 .bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:#9090a8;letter-spacing:.08em;font-family:'Baloo 2','Source Sans 3',sans-serif}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
