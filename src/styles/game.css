@@ -196,7 +196,9 @@ input{font-family:inherit}
    panel, torch pillars with a sprite-strip flame animation.
    v2.3.717: theme art recompressed to WebP (~935KB -> ~276KB, the
    screen was slow to dress) and the sky darkened so the card pops. */
-.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
+/* v2.3.766: flex-direction:column — the full-bleed banner strip stacks
+   above the card (card stays centered via its margin:auto). */
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
 /* v2.3.738: touch-action:none on the modal — iOS ignores overscroll-behavior
    and rubber-banded the splash when a swipe started on a non-scrollable
    element.  The rail and sheet re-allow pan-y; everything else is taps. */
@@ -252,15 +254,27 @@ input{font-family:inherit}
    "sign here" cue at the left. */
 
 /* v2.3.765: crest + logo lockup replaced by the owner's painted tavern-
-   banner art (single image).  The source is 3:2 — too tall as-is — so
-   aspect-ratio + object-fit:cover crop it to a wide strip; object-position
-   70% biases the crop downward so the BRO TOWN lettering and the element-
-   gem row stay in frame (the trim comes out of the empty sky).  Short
-   screens crop harder — same lesson as v2.3.734: header height is what
-   starves the rail into scroll-clipping on 667pt-class phones. */
-.bt-cc-banner{width:100%;aspect-ratio:2.2/1;object-fit:cover;object-position:center 70%;display:block;margin:0 auto;border:2px solid #6b5630;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:none}
+   banner art (single image).  The 3:2 source is too tall as-is, so
+   object-fit:cover crops it to a wide strip; object-position 70% biases
+   the crop downward so the BRO TOWN lettering and the element-gem row
+   stay in frame (the trim comes out of the empty sky).
+   v2.3.766: full-bleed (owner: no card border/rounding — span the entire
+   background).  The negative margins cancel the modal's safe-area padding
+   so the strip truly touches the screen edges; height is viewport-driven
+   and capped so the card below keeps its room — same lesson as v2.3.734:
+   header height is what starves the rail into scroll-clipping on
+   667pt-class phones. */
+.bt-cc-banner{flex:none;align-self:stretch;height:clamp(110px,24vh,280px);object-fit:cover;object-position:center 70%;display:block;pointer-events:none;margin:calc(-1*max(10px,env(safe-area-inset-top))) calc(-1*max(10px,env(safe-area-inset-right))) 0 calc(-1*max(10px,env(safe-area-inset-left)))}
 @media (max-height:720px){
-  .bt-cc-banner{aspect-ratio:3/1}
+  .bt-cc-banner{height:clamp(80px,17vh,170px)}
+}
+/* v2.3.766: on wide viewports (landscape phone / desktop) the strip is so
+   much wider than the 3:2 art that cover only shows a thin horizontal
+   band — the BRO TOWN lettering is too tall to ever fit it (any aim point
+   slices letters).  The element-gem row IS short enough, and reads as an
+   intentional decorative border, so wide screens aim there. */
+@media (min-aspect-ratio:5/3){
+  .bt-cc-banner{object-position:center 87%}
 }
 
 

@@ -13845,7 +13845,16 @@ export var BroTown = function BroTown(_ref0) {
      handlers and state. */
   if (showNameModal) return /*#__PURE__*/React.createElement("div", {
     className: "bt-name-modal"
-  }, /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("img", {
+    /* v2.3.765: crest + BRO TOWN lockup replaced by the owner's painted
+       tavern-banner art.
+       v2.3.766: banner promoted OUT of the card to a direct child of the
+       modal — full-bleed edge-to-edge strip across the top of the screen
+       (owner: no card border/rounding, span the entire background).  The
+       modal goes flex-column to stack it above the centered card; sizing
+       and the padding-escape negative margins live in game.css. */
+    src: '/ui/welcome/banner-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
+  }), /*#__PURE__*/React.createElement("div", {
     className: "bt-name-box bt-cc-box"
   }, /*#__PURE__*/React.createElement("div", {
     /* v2.3.724: header promoted out of the left pane to a full-card-width
@@ -13853,14 +13862,7 @@ export var BroTown = function BroTown(_ref0) {
        v2.3.725: text lockup replaced by the owner's painted logo art
        (crest / BRO TOWN / HEMI BROS / gem divider) per the splash mockup. */
     style: { textAlign: 'center', marginBottom: 8 }
-  }, /*#__PURE__*/React.createElement("img", {
-    /* v2.3.765: crest + BRO TOWN lockup replaced by the owner's painted
-       tavern-banner art (single full-width image).  The source is 3:2 —
-       too tall as-is on phones — so the CSS class letterboxes it to a
-       wide strip with object-fit:cover; sizing lives in game.css beside
-       the old lockup rules it supersedes. */
-    src: '/ui/welcome/banner-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
-  }), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     /* v2.3.738: HEMI BROS sub-logo swapped for a call-to-action line. */
     style: { fontSize: 15, fontWeight: 700, color: '#ffffff', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
       /* v2.3.738: white + heavy dark halo — gold vanished into the sunlit
