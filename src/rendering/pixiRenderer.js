@@ -311,6 +311,14 @@ export async function initPixiRenderer(canvas) {
     update,
     onZoneChange,
     destroy,
+    /* v2.3.771: rebuild the current zone's tiles in place -- called on
+       tab-resume (iOS freezes background tabs and often reclaims the GPU
+       context; after restore the tile buffers can be stale/black). */
+    forceRefresh: () => {
+      try {
+        if (currentZone && currentMap) tileRenderer.rebuild(app, currentMap, currentZone);
+      } catch (e) { /* best-effort */ }
+    },
     /* v2.3.113: expose immediate-dispose for a single loot pile.
        BroTown's loot_credit / loot_despawn handlers call this so
        the Pixi children tear down the same tick the pile is

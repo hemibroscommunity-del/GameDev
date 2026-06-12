@@ -13,7 +13,7 @@ the code over this doc where they disagree.
 | Rendering | `src/rendering/systems/entityRenderer.js` (4.4k) | Pixi 8; per-dir body scale `BODY_DIR_SCALE`; armor masking `_maskedBodyFrame` |
 | Gear/armor | `src/rendering/gearCatalog.js` (equip stores, localStorage `bt-gear-v2-*`) | steel set is "indestructible": `reconcileGearStash()` |
 | Body/skins | `src/rendering/playerSkins.js` | sheet-level retint (skin/pants/shoes/shirt), cached per combo |
-| Networking | `src/networking/wsClient.js` → Cloudflare Durable Object (`brotown-server.…workers.dev`) | `S.channel` is a Supabase-shaped shim; `btRpc()` is a dead no-op kept for legacy call sites |
+| Networking | **BroTown.jsx's internal connect()** (~line 2123: WS_BASE/join/onmessage/onclose) → Cloudflare Durable Object (`brotown-server.…workers.dev`).  ⚠ `src/networking/wsClient.js` is a DEAD-CODE extraction (not in the bundle — verified v2.3.771); patch BroTown's copy | `S.channel` is a Supabase-shaped shim; `btRpc()` is a dead no-op kept for legacy call sites |
 | Server | `server/src/index.js` (in-repo since the protocol-v2 monorepo merge; `server/test/`, auto-deploy workflow) | DO authority: coins/inventory/lifeSkills/combat. Deploys independently → keep changes back-compat. Anti-cheat plan: `docs/ANTICHEAT-SPEC.md` |
 | Tier-2 builds | `src/data/gameSystems.js` `WEAPON_CHANNELS` + `DEFENSE_CHANNELS`; `src/ui/mobile/dash/T2Panel.jsx` | per-category trained skills (sword/bow/staff + Defense); +5 pts/lvl into channels; **client-side only today** (see anti-cheat spec server TODO) |
 | UI (live) | `src/ui/mobile/BottomDashboard.jsx` + `dash/*` panels, `EquippedTab` via `inventoryBus` | popup actions in `dash/ItemDetailPopup.jsx` |

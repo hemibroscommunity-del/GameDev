@@ -1366,6 +1366,37 @@ export function setupWebSocket(ctx) {
         S._realtimeStatus = 'disconnected';
       };
     }
+    /* v2.3.771: iPhone tab-resume recovery.  iOS freezes background tabs
+       (Safari runs ONE tab at a time): the game loop halts, the socket dies,
+       and the GPU context is often reclaimed -- resuming showed a black,
+       half-dead world until a manual reload ("the two-window bug", which
+       equally hits anyone backgrounding Safari mid-fight).  On resume:
+       reconnect a dead socket IMMEDIATELY (skip the backoff) and rebuild the
+       current zone's tiles once the context is back. */
+    function _resumeRecover(tag) {
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
+        }).catch(function () {});
+      } catch (e) {}
+      if (!ws || ws.readyState === 2 || ws.readyState === 3) {
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectDelay = 1000;
+        try { connect(); } catch (e) {}
+      }
+      setTimeout(function () {
+        try { if (window._pixiRenderer && window._pixiRenderer.forceRefresh) window._pixiRenderer.forceRefresh(); } catch (e) {}
+      }, 600);
+    }
+    try {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') _resumeRecover('visible');
+      });
+      window.addEventListener('pageshow', function (e) {
+        if (e && e.persisted) _resumeRecover('bfcache');
+      });
+    } catch (e) { /* ignore */ }
+
     function scheduleReconnect() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(function () {

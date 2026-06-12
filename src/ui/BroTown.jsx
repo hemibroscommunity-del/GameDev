@@ -4563,12 +4563,32 @@ export var BroTown = function BroTown(_ref0) {
 
       ws.onclose = function (event) {
         S._realtimeStatus = 'disconnected';
-        /* v2.3.770: close-reason evidence (see wsClient.js twin). */
+        /* v2.3.771: close-reason evidence.  NOTE this is the LIVE connection
+           stack -- src/networking/wsClient.js is dead code (not in the
+           bundle); fixes must land HERE. */
         try {
           import('../debug/crashTrap.js').then(function (ct) {
-            ct.recordCrash('ws-close', 'code=' + (event && event.code) + ' reason=' + ((event && event.reason) || '(none)') + ' [legacy-stack]');
+            ct.recordCrash('ws-close', 'code=' + (event && event.code) + ' reason=' + ((event && event.reason) || '(none)'));
           }).catch(function () {});
         } catch (e) {}
+        /* v2.3.771: a LIVE page superseded by another login must not
+           auto-reconnect (two windows would kick each other forever) --
+           stop, tell the player, offer a manual take-over. */
+        if (event && event.reason === 'superseded by reconnect') {
+          S._realtimeStatus = 'superseded';
+          try {
+            var _el = document.createElement('div');
+            _el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b2536;color:#fff;font:13px/1.5 sans-serif;padding:10px 12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
+            _el.textContent = 'This account connected from another window. ';
+            var _btn = document.createElement('button');
+            _btn.textContent = 'Play here instead';
+            _btn.style.cssText = 'margin-left:8px;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:#3dd497;color:#08231a;font-weight:700;cursor:pointer;';
+            _btn.onclick = function () { _el.remove(); connect(); };
+            _el.appendChild(_btn);
+            document.body.appendChild(_el);
+          } catch (e) { /* DOM unavailable */ }
+          return;
+        }
         scheduleReconnect();
       };
       ws.onerror = function () {
@@ -4582,6 +4602,37 @@ export var BroTown = function BroTown(_ref0) {
         connect();
       }, reconnectDelay);
     }
+    /* v2.3.771: iPhone tab-resume recovery.  iOS runs ONE Safari tab at a
+       time: backgrounding freezes the page, kills the socket, and often
+       reclaims the GPU context -- resuming showed a black, half-dead world
+       until manual reload (reported as the 'two-window bug', but it hits
+       anyone backgrounding Safari mid-fight).  On resume: reconnect a dead
+       socket immediately (skip backoff) and rebuild the zone tiles once the
+       restored context settles.  crashTrap's contextlost preventDefault
+       (same version) lets the browser restore the GL context at all. */
+    function _resumeRecover(tag) {
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
+        }).catch(function () {});
+      } catch (e) {}
+      if (S._realtimeStatus !== 'superseded' && (!ws || ws.readyState === 2 || ws.readyState === 3)) {
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectDelay = 1000;
+        try { connect(); } catch (e) {}
+      }
+      setTimeout(function () {
+        try { if (window._pixiRenderer && window._pixiRenderer.forceRefresh) window._pixiRenderer.forceRefresh(); } catch (e) {}
+      }, 600);
+    }
+    try {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') _resumeRecover('visible');
+      });
+      window.addEventListener('pageshow', function (e) {
+        if (e && e.persisted) _resumeRecover('bfcache');
+      });
+    } catch (e) { /* ignore */ }
 
     /* Channel shim — wraps WebSocket with batched input protocol (§16.14)
      * Movement and non-critical events batch at 10Hz (100ms windows).

@@ -71,7 +71,11 @@ export function installCrashTrap() {
 export function watchContextLoss(canvas) {
   if (!canvas || !canvas.addEventListener) return;
   canvas.addEventListener('webglcontextlost', (e) => {
-    recordCrash('CONTEXT_LOST', 'WebGL context lost (GPU memory pressure / driver reset)');
+    /* v2.3.771: preventDefault tells the browser we want the context BACK --
+       without it 'webglcontextrestored' never fires and the canvas stays
+       black forever (the iPhone background-tab symptom). */
+    try { e.preventDefault(); } catch (err) { /* ignore */ }
+    recordCrash('CONTEXT_LOST', 'WebGL context lost (GPU memory pressure / tab suspend)');
     if (/[?&]dev=1\b/.test(window.location.search)) banner('WEBGL CONTEXT LOST — the black-screen bug just happened. Screenshot this.');
   });
   canvas.addEventListener('webglcontextrestored', () => {
