@@ -2720,6 +2720,11 @@ export var BroTown = function BroTown(_ref0) {
                      EVERY interval -- the multiplayer 'black world / kicked'
                      instability (found by the two-session headless repro). */
                   var _v = msg.payload.lifeSkills[k];
+                  /* v2.3.768: the SERVER's stored copy can itself carry the
+                     corrupted shape (it bootstrapped from a pre-fix client's
+                     join payload and echoes it forever) -- heal known-array
+                     keys on the way in, not just locally-persisted saves. */
+                  if (k === 'pets' && _v && !Array.isArray(_v) && typeof _v === 'object') _v = Object.values(_v);
                   S.rpg.lifeSkills[k] = Array.isArray(_v) ? _v.slice()
                     : (_v && typeof _v === 'object') ? _objectSpread({}, _v)
                     : _v;
@@ -11952,7 +11957,9 @@ export var BroTown = function BroTown(_ref0) {
           S2.stats._furnitureCrafted = S2.rpg._furniture ? Object.keys(S2.rpg._furniture).length : 0;
           S2.stats._dungeonsCreated = ((_S2$rpg$_customDungeo = S2.rpg._customDungeons) === null || _S2$rpg$_customDungeo === void 0 ? void 0 : _S2$rpg$_customDungeo.length) || 0;
           S2.stats._petsEvolved = ((_S2$rpg$_compStats4 = S2.rpg._compStats) === null || _S2$rpg$_compStats4 === void 0 ? void 0 : _S2$rpg$_compStats4.petsEvolved) || S2.stats._petsEvolved || 0;
-          S2.stats._mythicPets = (((_S2$rpg$lifeSkills = S2.rpg.lifeSkills) === null || _S2$rpg$lifeSkills === void 0 ? void 0 : _S2$rpg$lifeSkills.pets) || []).filter(function (p) {
+          var _petsArr = ((_S2$rpg$lifeSkills = S2.rpg.lifeSkills) === null || _S2$rpg$lifeSkills === void 0 ? void 0 : _S2$rpg$lifeSkills.pets) || [];
+          if (!Array.isArray(_petsArr)) _petsArr = Object.values(_petsArr); /* v2.3.768 shape guard */
+          S2.stats._mythicPets = _petsArr.filter(function (p) {
             return (p.evolutionTier || 0) >= 3;
           }).length;
           S2.stats._mktTrades = ((_S2$rpg$_compStats5 = S2.rpg._compStats) === null || _S2$rpg$_compStats5 === void 0 ? void 0 : _S2$rpg$_compStats5.mktTrades) || S2.stats._mktTrades || 0;
