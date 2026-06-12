@@ -13776,38 +13776,51 @@ export var BroTown = function BroTown(_ref0) {
      handlers and state. */
   if (showNameModal) {
     /* v2.3.767: character creator redesigned to a VERTICAL GUIDED FLOW
-       (owner's redesign spec): banner, header, landscape character
-       SHOWCASE (the character is the star of the screen), name row,
-       horizontal category chips with one attached customization drawer,
-       and PLAY as the natural endpoint.  Replaces the v2.3.710 two-pane
-       layout (preview left + permanent pill rail right) and the v2.3.735
-       centered picker sheet.  The card is the sole scroller (the banner
-       stays pinned above it); future categories just append a chip and
-       inherit the same items-left / colors-right drawer split. */
+       (owner's redesign spec): banner, showcase, name, category tabs with
+       one attached customization drawer, PLAY as the endpoint.
+       v2.3.768: restructured to the owner's MOCKUP: Randomize floats
+       top-right over the banner; the name scroll STRADDLES the showcase's
+       bottom edge; the chip row became a connected TAB BAR (current-pick
+       icon over label) fused to the drawer; drawer sections get centered
+       "— LABEL —" headers and the color column gains a Default Color
+       reset; the build tag drops to the very bottom.  The card is the
+       sole scroller; future categories just append a tab. */
     var _ccCats = [
-      { key: 'hat', label: 'Hat',
+      { key: 'hat', label: 'Headwear',
         mini: _miniThumb('headwear', headwearSel),
         items: HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); }),
-        colors: headwearSel !== 'none' ? HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); }) : null },
+        /* v2.3.768: the 'default' swatch leaves the grid for the mockup's
+           dedicated Default Color button below it. */
+        colors: headwearSel !== 'none' ? HAT_COLOR_CATALOG.filter(function (o) { return o.id !== 'default'; }).map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); }) : null,
+        colorIsDefault: hatColorSel === 'default', canReset: true,
+        resetColor: function () { setHatColor('default'); setHatColorSel('default'); } },
       { key: 'hair', label: 'Hair',
         mini: _miniThumb('hair', hairSel),
         items: HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); }),
-        colors: hairSel !== 'none' ? (hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); }) : null },
+        colors: hairSel !== 'none' ? (hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).filter(function (o) { return o.id !== 'default'; }).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); }) : null,
+        /* Long hair is clamped to dark colors (see LONG_HAIR_COLORS) —
+           'default' would dodge the clamp, so no reset for that style. */
+        colorIsDefault: hairColorSel === 'default', canReset: hairSel !== 'long',
+        resetColor: function () { setHairColor('default'); setHairColorSel('default'); } },
       { key: 'beard', label: 'Beard',
         mini: _miniThumb('facialhair', facialHairSel),
         items: FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); }),
-        colors: facialHairSel !== 'none' ? FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); }) : null },
+        colors: facialHairSel !== 'none' ? FACIALHAIR_COLOR_CATALOG.filter(function (o) { return o.id !== 'default'; }).map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); }) : null,
+        colorIsDefault: beardColorSel === 'default', canReset: true,
+        resetColor: function () { setFacialHairColor('default'); setBeardColorSel('default'); } },
       { key: 'skin', label: 'Skin',
         mini: _miniSwatch(_swOf(SKIN_CATALOG, skinSel)),
         /* Body-color categories: the swatches ARE the item grid (their
-           catalogs have no separate style/color split), so no Colors
-           column.  40px (was 32) — they carry the drawer alone. */
+           'default' entries carry the sprite's real native colors), so no
+           Colors column and no reset. */
         items: SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }, 40); }),
         colors: null },
       { key: 'shirt', label: 'Shirt',
         mini: _miniThumb('shirt', shirtSel),
         items: SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); }),
-        colors: shirtSel !== 'none' ? SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); }) : null },
+        colors: shirtSel !== 'none' ? SHIRT_COLOR_CATALOG.filter(function (o) { return o.id !== 'default'; }).map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); }) : null,
+        colorIsDefault: shirtColorSel === 'default', canReset: true,
+        resetColor: function () { setShirtColor('default'); setShirtColorSel('default'); } },
       { key: 'pants', label: 'Pants',
         mini: _miniSwatch(_swOf(PANTS_CATALOG, pantsSel)),
         items: PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }, 40); }),
@@ -13819,14 +13832,14 @@ export var BroTown = function BroTown(_ref0) {
     ];
     var _ccActive = _ccCats[0];
     for (var _ci = 0; _ci < _ccCats.length; _ci++) { if (expanded[_ccCats[_ci].key]) { _ccActive = _ccCats[_ci]; break; } }
-    var _ccChip = function (c) {
+    var _ccTab = function (c) {
       var on = c.key === _ccActive.key;
-      /* Tab semantics: tapping a chip activates it (and only it); tapping
-         the active chip is a no-op rather than a close — the drawer always
+      /* Tab semantics: tapping activates it (and only it); tapping the
+         active tab is a no-op rather than a close — the drawer always
          shows SOMETHING, so the layout never reflows underneath PLAY. */
       return /*#__PURE__*/React.createElement("button", {
         key: c.key, type: 'button',
-        className: 'bt-cc-chip' + (on ? ' bt-cc-chip--on' : ''),
+        className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : ''),
         onClick: function () { var n = {}; n[c.key] = true; setExpanded(n); }
       }, c.mini, /*#__PURE__*/React.createElement("span", { key: 'lb' }, c.label));
     };
@@ -13841,11 +13854,17 @@ export var BroTown = function BroTown(_ref0) {
          old negative top margin pushed it under the iPhone notch/Dynamic
          Island, which ate the art's top ~50px (owner: bump it down). */
       src: '/ui/welcome/banner-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
-    }), /*#__PURE__*/React.createElement("div", {
+    }), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.768: appearance RANDOMIZE floats at the screen's top-right
+         over the banner sky (mockup); the name dice below keeps rerolling
+         just the name. */
+      type: 'button', onClick: randomizeWithFlair, className: "bt-cc-randtop"
+    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 18, height: 18, flex: '0 0 auto' } }),
+    /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
     }, /*#__PURE__*/React.createElement("div", {
-      /* Header: call-to-action + divider + build tag (the logo itself
-         lives in the banner above). */
+      /* Header: call-to-action + divider (the logo itself lives in the
+         banner above; the build tag moved to the bottom of the scroll). */
       style: { textAlign: 'center', marginBottom: 0 }
     }, /*#__PURE__*/React.createElement("div", {
       /* v2.3.738: HEMI BROS sub-logo swapped for a call-to-action line. */
@@ -13858,15 +13877,12 @@ export var BroTown = function BroTown(_ref0) {
     }, "CREATE YOUR CHARACTER"), /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/divider2.webp', alt: '',
       style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
-    }), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        color: 'var(--txt2)',
-        fontFamily: 'Source Sans 3, sans-serif',
-        letterSpacing: '.06em',
-        marginTop: 3
-      }
-    }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)), /*#__PURE__*/React.createElement("div", {
+    })), /*#__PURE__*/React.createElement("div", {
+      /* Showcase wrapper — position context for the straddling name
+         scroll; the bottom margin makes room for the scroll's overhang
+         (half its 58px height, less the card's 10px gap). */
+      style: { position: 'relative', width: '100%', marginBottom: 22 }
+    }, /*#__PURE__*/React.createElement("div", {
       /* Character SHOWCASE — full-card-width LANDSCAPE stage (spec: the
          character is the star; the wide panel leaves negative space for
          future equipped-item previews / ambient effects beside the
@@ -13878,18 +13894,17 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.743: owner's storm-light void painting (an IMAGE, not video
          — the v2.3.736 cyan-tint lesson: device video compositing isn't
          color-exact). */
-      style: { position: 'relative', width: '100%', aspectRatio: '16 / 10', boxSizing: 'border-box',
+      style: { position: 'relative', width: '100%', aspectRatio: '1.8 / 1', boxSizing: 'border-box',
         border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
         background: "url('/ui/welcome/void.webp') center/cover no-repeat, #0a0a0c",
         boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
     }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars" }),
     /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars bt-cc-stars--b" }),
     /*#__PURE__*/React.createElement("img", {
-      /* v2.3.767: re-proportioned for the landscape stage — 84% width of
-         the old narrow pane is ~48% of the full card, keeping the pedestal
-         the same visual size relative to the figure. */
+      /* v2.3.767: re-proportioned for the landscape stage, keeping the
+         pedestal the same visual size relative to the figure. */
       src: '/ui/welcome/platform.webp', alt: '',
-      style: { position: 'absolute', bottom: '4%', left: '26%', width: '48%', height: 'auto', pointerEvents: 'none' }
+      style: { position: 'absolute', bottom: '5%', left: '22%', width: '56%', height: 'auto', pointerEvents: 'none' }
     }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
     /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" }),
     /*#__PURE__*/React.createElement("canvas", {
@@ -13927,11 +13942,11 @@ export var BroTown = function BroTown(_ref0) {
            in their 256 box than the others, so those facings (and their
            mirrors) floated above the pedestal (owner: SW/SE down ~20px,
            E/W down ~10px).
-           v2.3.767: scale 0.9 -> 1.2 — the landscape stage is shorter than
-           the old 3:4 window, so the figure needed the bump to come out
-           ~20% LARGER than before (spec); the overflow crop is empty
-           bitmap margin, the figure is safe. */
-        transform: 'translateY(calc(-6% + ' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)) scale(1.2)', /* v2.3.745: SW/SE 20->15, NE/NW 0->5 per owner */
+           v2.3.768: scale 1.3 — the mockup's wider/shorter stage (1.8:1)
+           shrinks the contain-fit bitmap, so the figure needs the extra
+           bump to stay ~20% larger than the old 3:4 window (spec); the
+           overflow crop is empty bitmap margin, the figure is safe. */
+        transform: 'translateY(calc(-6% + ' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)) scale(1.3)', /* v2.3.745: SW/SE 20->15, NE/NW 0->5 per owner */
         /* v2.3.717: transparent — trait sprites carry white extraction
            residue that any dark/colored backdrop would expose.  No
            z-index: DOM order already stacks pillars < canvas < rotate
@@ -13945,22 +13960,23 @@ export var BroTown = function BroTown(_ref0) {
          feedback), and rotation is a different verb than expand/collapse.
          v2.3.722: signs INVERTED (owner: "they're backwards") -- stepping
          +1 walks the dir list clockwise, but on screen that reads as the
-         character turning the other way. */
+         character turning the other way.
+         v2.3.768: lifted off the bottom edge — the straddling name scroll
+         now lives down there. */
       type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(1); },
-      style: { position: 'absolute', left: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
+      style: { position: 'absolute', left: 6, bottom: 38, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
         background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
     }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↺")),
     /*#__PURE__*/React.createElement("button", {
       type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
-      style: { position: 'absolute', right: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
+      style: { position: 'absolute', right: 6, bottom: 38, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
         background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
     }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻"))), /*#__PURE__*/React.createElement("div", {
-      /* Name row — directly below the showcase, above the chips (spec:
-         preview, name, customize, play).  The dice rerolls the NAME only;
-         appearance randomize lives in the chip row below. */
-      style: { position: 'relative', width: '100%' }
+      /* Name scroll — STRADDLES the showcase's bottom edge (mockup): half
+         on the stage, half off.  The dice rerolls the NAME only. */
+      style: { position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: -29, width: '80%', maxWidth: 400 }
     }, /*#__PURE__*/React.createElement("input", {
       value: nameInput,
       onChange: function onChange(e) {
@@ -13969,7 +13985,7 @@ export var BroTown = function BroTown(_ref0) {
       onKeyDown: function onKeyDown(e) {
         return e.key === 'Enter' && joinTown();
       },
-      placeholder: "Name…",
+      placeholder: "Name your bro…",
       maxLength: 20,
       autoFocus: true,
       /* v2.3.718: parchment scroll skin + ink colors live in .bt-cc-name
@@ -14006,25 +14022,27 @@ export var BroTown = function BroTown(_ref0) {
          end of longer names. */
       style: { position: 'absolute', right: 12, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
         background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 15, padding: 0, lineHeight: 1 }
-    }, "🎲")), /*#__PURE__*/React.createElement("div", {
-      /* Category chips — wrapping row in body order (spec); each shows its
-         current pick as the icon, so the whole appearance stays readable
-         at a glance like the old collapsed pills.  Appearance RANDOMIZE
-         rides at the end of the row as a gold chip. */
-      className: "bt-cc-chips"
-    }, _ccCats.map(_ccChip), /*#__PURE__*/React.createElement("button", {
-      type: 'button', onClick: randomizeWithFlair, className: "bt-cc-chip bt-cc-rand"
-    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
-    /*#__PURE__*/React.createElement("span", null, "Randomize"))), /*#__PURE__*/React.createElement("div", {
-      /* Customization drawer — one shared panel under the chips.  Split
+    }, "🎲"))), /*#__PURE__*/React.createElement("div", null,
+    /* Tab bar + drawer share one wrapper so the card's gap can't split
+       them — they must read as a single component (spec §5). */
+    /*#__PURE__*/React.createElement("div", {
+      className: "bt-cc-tabs"
+    }, _ccCats.map(_ccTab)), /*#__PURE__*/React.createElement("div", {
+      /* Customization drawer — one shared panel under the tabs.  Split
          layout (spec): items grid left = "what am I using?", color
          swatches right = "what color is it?"; the column only renders for
          categories that support recoloring. */
       className: "bt-cc-drawer"
-    }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-items" }, _ccActive.items),
+    }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-items" },
+      /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— " + _ccActive.label.toUpperCase() + " —"),
+      /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _ccActive.items)),
     _ccActive.colors ? /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-colors" },
-      /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-coltitle" }, "Colors"),
-      _ccActive.colors) : null), /*#__PURE__*/React.createElement("button", {
+      /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— COLORS —"),
+      /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _ccActive.colors),
+      _ccActive.canReset ? /*#__PURE__*/React.createElement("button", {
+        type: 'button', onClick: _ccActive.resetColor,
+        className: 'bt-cc-defcol' + (_ccActive.colorIsDefault ? ' bt-cc-defcol--on' : '')
+      }, "↻ Default Color") : null) : null)), /*#__PURE__*/React.createElement("button", {
       onClick: joinTown,
       /* v2.3.725: the owner's painted PLAY art (label baked in); the img is
          the button.  :active press lives in .bt-cc-play.
@@ -14039,7 +14057,17 @@ export var BroTown = function BroTown(_ref0) {
         borderRadius: 12,
         cursor: 'pointer'
       }
-    })));
+    }), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.768: build tag moved out of the header to the scroll's tail
+         end (mockup keeps the header art clean). */
+      style: {
+        fontSize: 9,
+        color: 'var(--txt2)',
+        fontFamily: 'Source Sans 3, sans-serif',
+        letterSpacing: '.06em',
+        textAlign: 'center'
+      }
+    }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)));
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,

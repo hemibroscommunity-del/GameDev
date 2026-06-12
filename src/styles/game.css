@@ -251,8 +251,8 @@ input{font-family:inherit}
 /* v2.3.741: solid-color fallback removed — the art has transparent corners,
    so the backing purple peeked out around the painted shape (owner). */
 .bt-cc-play:active{transform:translateY(2px);filter:brightness(1.12)}
-.bt-cc-rand{border:1.5px solid #8a6d1f!important;color:var(--gold)!important}
-.bt-cc-rand:active{background:rgba(245,197,66,.12)!important}
+/* v2.3.768: .bt-cc-rand retired — Randomize moved to the floating
+   .bt-cc-randtop button over the banner. */
 /* v2.3.718: name input on the owner's parchment scroll (3-slice border-
    image: rolled end caps stay fixed, the parchment middle stretches).
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
@@ -301,18 +301,29 @@ input{font-family:inherit}
 .bt-cc-name{border:0 solid transparent;border-width:0 26px;border-image:url('/ui/welcome/scroll2.webp') 0 64 fill/0 26px stretch;background:none;color:#3a2a14;height:58px}
 .bt-cc-name::placeholder{color:#8a7350;opacity:1}
 /* v2.3.767: the two-pane grid (.bt-cc-main/.bt-cc-left/.bt-cc-rail*) is
-   retired with the rail.  Category CHIPS + one attached DRAWER replace the
-   pill stack: the active chip shares the drawer's background and gold
-   border so tab and panel read as one component (spec §5); chips wrap so
-   future categories just append. */
-.bt-cc-chips{display:flex;flex-wrap:wrap;gap:6px}
-.bt-cc-chip{display:flex;align-items:center;gap:6px;padding:4px 10px 4px 5px;min-height:40px;border-radius:10px;cursor:pointer;border:1.5px solid #4a4080;background:rgba(20,16,40,0.93);color:#f0edfb;font-size:14px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55)}
-.bt-cc-chip:active{transform:translateY(1px)}
-.bt-cc-chip--on{border-color:var(--gold);background:rgba(24,19,46,0.97)}
-.bt-cc-drawer{display:flex;align-items:stretch;border:1.5px solid var(--gold);border-radius:12px;background:rgba(24,19,46,0.97);padding:10px;box-sizing:border-box}
-.bt-cc-drawer-items{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start}
-.bt-cc-drawer-colors{flex:0 0 auto;max-width:92px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;border-left:1.5px solid #3a3163;padding-left:10px;margin-left:10px}
-.bt-cc-drawer-coltitle{width:100%;font-size:12px;font-weight:700;color:#9090a8;letter-spacing:.06em;font-family:'Baloo 2','Source Sans 3',sans-serif}
+   retired with the rail.
+   v2.3.768: per the owner's mockup, the categories are a connected TAB
+   BAR fused to the drawer below (one component: tabs carry the top
+   radius, the drawer the bottom, single shared border).  Each tab stacks
+   its current-pick icon over its label; the active tab lightens and gets
+   a gold baseline.  Equal flex shares keep all 7 on one row at phone
+   width; future categories can append and shares just narrow. */
+.bt-cc-tabs{display:flex;align-items:stretch;background:rgba(20,16,40,0.93);border:1.5px solid #4a4080;border-bottom:1px solid #3a3163;border-radius:12px 12px 0 0;overflow:hidden}
+.bt-cc-tab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:7px 2px 6px;background:none;border:none;border-right:1px solid #3a3163;cursor:pointer;color:#b9b2d8;font-size:10px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55)}
+.bt-cc-tab:last-child{border-right:none}
+.bt-cc-tab:active{transform:translateY(1px)}
+.bt-cc-tab--on{background:rgba(58,49,99,0.85);color:#fff;box-shadow:inset 0 -3px 0 var(--gold)}
+.bt-cc-drawer{display:flex;align-items:stretch;border:1.5px solid #4a4080;border-top:none;border-radius:0 0 12px 12px;background:rgba(24,19,46,0.97);padding:10px;box-sizing:border-box}
+.bt-cc-drawer-items{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:8px}
+.bt-cc-drawer-colors{flex:0 0 auto;max-width:130px;display:flex;flex-direction:column;gap:8px;border-left:1.5px solid #3a3163;padding-left:10px;margin-left:10px}
+.bt-cc-drawer-grid{display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start}
+.bt-cc-drawer-head{width:100%;text-align:center;font-size:11px;font-weight:700;color:#9090a8;letter-spacing:.08em;font-family:'Baloo 2','Source Sans 3',sans-serif}
+.bt-cc-defcol{width:100%;padding:6px 4px;border-radius:8px;cursor:pointer;background:rgba(20,16,40,0.93);border:1.5px solid #56499a;color:#cfc9ee;font-size:11px;font-weight:700;font-family:'Baloo 2','Source Sans 3',sans-serif}
+.bt-cc-defcol--on{border-color:var(--gold);color:var(--gold)}
+/* v2.3.768: appearance Randomize floats over the banner's top-right sky
+   (mockup) — gold chrome to read as the "fun" verb, clear of the notch. */
+.bt-cc-randtop{position:absolute;top:max(14px,calc(env(safe-area-inset-top) + 8px));right:max(12px,env(safe-area-inset-right));z-index:5;display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:10px;cursor:pointer;background:rgba(12,10,22,0.82);border:1.5px solid #8a6d1f;color:var(--gold);font-size:13px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55)}
+.bt-cc-randtop:active{transform:translateY(1px)}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}
