@@ -97,8 +97,24 @@ copy won.
   (`sendChatMessage`, `handleChatEvent`, `handleEmoteEvent`), functions
   taking `(S, deps)` with the React setters in deps. BroTown keeps a thin
   `sendChat` wrapper owning the input-widget state (chatInput, refocus).
-- **Phase 3 — quests:** quest panel state + `quest_accept`/`quest_turn_in`
-  senders + NPC quest gating.
+- **Phase 3 — ✅ done (v2.3.782):** quest accept/turn-in transition logic →
+  `src/game/quests.js` (`acceptQuest`, `turnInQuest`): `_quests` state
+  machine, server `quest_accept`/`quest_turn_in` sends, rewards/chain
+  unlock, persistence. Quest *data* was already in the data layer
+  (`QUESTS`/`QUEST_STATUS`/`getNpcQuest`); the panel JSX and the one-line
+  NPC-tap open-panel wiring stay in BroTown by design.
+  **⚠ Dormant system (owner-confirmed, 2026-06-12):** quests date from the
+  earliest builds — the current game content has no quest-giver NPCs or
+  buildings, so none of this code path is reachable in live play and the
+  owner hasn't seen it in months. The machinery is fully wired end-to-end
+  (client logic, server `quest_accept`/`quest_turn_in` cases, data tables),
+  so it was preserved behavior-frozen, but: (a) it cannot be play-verified
+  until quest content returns, (b) don't invest further decomposition or
+  fixes in it, and (c) it is a candidate for a future owner decision —
+  revive with new content, or remove client+server+data together as its
+  own PR. Same likely applies to other early-build content systems
+  (collectibles/scavenger hunt, some NPC interactions) — check with the
+  owner before assuming any content-facing system is live.
 - **Phase 4 — WS event dispatcher:** lift `_processGameEvent` (~3033–4279,
   the bulk of the 40+ message handlers) → `src/networking/gameEvents.js` as
   `(type, payload, S, deps)`.
