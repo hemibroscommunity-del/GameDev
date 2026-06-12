@@ -2711,7 +2711,18 @@ export var BroTown = function BroTown(_ref0) {
                    migrations land. */
                 if (!S.rpg.lifeSkills) S.rpg.lifeSkills = {};
                 Object.keys(msg.payload.lifeSkills).forEach(function (k) {
-                  S.rpg.lifeSkills[k] = _objectSpread({}, msg.payload.lifeSkills[k]);
+                  /* v2.3.767: preserve the VALUE SHAPE.  _objectSpread({},v)
+                     turned ARRAYS into plain objects ({0:..,1:..}) and null
+                     into {} -- the server's lifeSkills echo (sent in the
+                     player_state flush after every monster kill) corrupted
+                     pets[] into an object, and the achievements timer's
+                     (pets || []).filter then threw an uncaught TypeError
+                     EVERY interval -- the multiplayer 'black world / kicked'
+                     instability (found by the two-session headless repro). */
+                  var _v = msg.payload.lifeSkills[k];
+                  S.rpg.lifeSkills[k] = Array.isArray(_v) ? _v.slice()
+                    : (_v && typeof _v === 'object') ? _objectSpread({}, _v)
+                    : _v;
                 });
               }
               /* Combat XP / level / unspent T2 stat points -- worker
