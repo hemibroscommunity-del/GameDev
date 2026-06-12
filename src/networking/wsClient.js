@@ -1301,8 +1301,38 @@ export function setupWebSocket(ctx) {
         }
       } /* end _processGameEvent */
 
-      ws.onclose = function () {
+      ws.onclose = function (event) {
         S._realtimeStatus = 'disconnected';
+        /* v2.3.766: the server enforces ONE live session per account id --
+           a second login closes the first with reason 'superseded by
+           reconnect' (server index.js, the lifesteal-corpse fix).  The old
+           behavior auto-reconnected here, so two live browsers on one
+           account kicked each other in a loop: each close -> reconnect ->
+           supersede the other.  The owner hit this testing with two
+           sessions ("kicked to login" / the other side's socket dying
+           mid-zone = black background).  A LIVE page that gets superseded
+           must NOT auto-reconnect: stop, tell the player, and offer a
+           manual take-over (which supersedes the other side once,
+           deliberately). */
+        if (event && event.reason === 'superseded by reconnect') {
+          S._realtimeStatus = 'superseded';
+          try {
+            var el = document.createElement('div');
+            el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
+              + 'background:#1b2536;color:#fff;font:13px/1.5 sans-serif;'
+              + 'padding:10px 12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
+            el.textContent = 'This account connected from another window. ';
+            var btn = document.createElement('button');
+            btn.textContent = 'Play here instead';
+            btn.style.cssText = 'margin-left:8px;padding:4px 12px;border-radius:6px;'
+              + 'border:1px solid rgba(255,255,255,.3);background:#3dd497;color:#08231a;'
+              + 'font-weight:700;cursor:pointer;';
+            btn.onclick = function () { el.remove(); connect(); };
+            el.appendChild(btn);
+            document.body.appendChild(el);
+          } catch (e) { /* DOM unavailable */ }
+          return;
+        }
         /* Upgrade failed (onopen never fired) AND the player didn't
            pin a specific room → presume the room was full (503) or
            otherwise unreachable, and try the next room number on a
