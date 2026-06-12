@@ -120,7 +120,7 @@ more entangled than it looks; safety (rules above) outranks the sequence.
    yet — adding a smoke/unit harness around extracted modules is a welcome
    follow-up once a few pure modules exist).
 2. Optional local smoke: `npm run build && npm run preview` + `node
-   tools/qa-smoke.mjs` (Playwright boot/join/walk, captures pageerrors and
+   tools/qa/qa-smoke.mjs` (Playwright boot/join/walk, captures pageerrors and
    `bt-crashlog`).
 3. Canonical: **PR preview URL on iPhone Safari**, with the per-phase
    behavioral checklist from the PR description.

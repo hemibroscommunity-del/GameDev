@@ -10,7 +10,7 @@ The entire game-world state on the client lives in **one mutable object**:
 
 - Created as `stateRef = useRef({...})` in `src/ui/BroTown.jsx` (~line 201).
 - Exposed globally as `window._gameState = stateRef` (~310) — the game loop,
-  the extracted helper modules, the QA smoke test (`tools/qa-smoke.mjs`), and
+  the extracted helper modules, the QA smoke test (`tools/qa/qa-smoke.mjs`), and
   debug overlays all read it as `window._gameState.current`.
 - Convention everywhere in the codebase: `var S = stateRef.current;`
 - **Mutated directly, not via React.** React state (the ~hundreds of
@@ -113,4 +113,4 @@ module-evaluation time (they're assigned when BroTown.jsx evaluates / renders):
 `bt_friends`, `bt_clan` (social), `bt_stats`, `bt_bestiary`, `bt_codex`,
 `bt_materials`, `bt_zones`, `bt_tutorial`, `bt_lastBuilding` (progress/UX),
 `bt-gear-v2-*` (gear stash, `src/rendering/gearCatalog.js`), `bt-crashlog`
-(crash capture read by `tools/qa-smoke.mjs`).
+(crash capture read by `tools/qa/qa-smoke.mjs`).
