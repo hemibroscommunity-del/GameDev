@@ -12181,8 +12181,83 @@ export var BroTown = function BroTown(_ref0) {
   /* Sync nearBuilding + player list from game loop to React */
   useEffect(function () {
     if (showNameModal || showLogin) return;
+    /* v2.3.777: tiny world-canvas readback -> % of pixels brighter than
+       near-black.  Cheap (32x18) and only every 5s. */
+    function _sampleLit() {
+      try {
+        var cv = canvasRef.current;
+        if (!cv || !cv.width) return -1;
+        var c2 = document.createElement('canvas');
+        c2.width = 32;
+        c2.height = 18;
+        var g2 = c2.getContext('2d');
+        g2.drawImage(cv, 0, 0, 32, 18);
+        var d2 = g2.getImageData(0, 0, 32, 18).data;
+        var lit = 0;
+        for (var i2 = 0; i2 < d2.length; i2 += 4) {
+          if (d2[i2] + d2[i2 + 1] + d2[i2 + 2] > 30) lit++;
+        }
+        return Math.round(100 * lit / (32 * 18));
+      } catch (e) { return -1; }
+    }
     var interval = setInterval(function () {
       var S = stateRef.current;
+      /* v2.3.777: black-screen watchdog + resume-snapshot heartbeat.
+         The watchdog is the FINAL stability line: it judges recovery by
+         actual pixels, not renderer health flags.  Dark 10s -> in-place
+         rebuild.  Dark 20s -> flag a recovery reload and reload the page;
+         the auto-rejoin effect puts the player straight back into the
+         world (fresh boots have never failed).  Capped at 2 reloads per
+         5 min so a server-side black screen can't loop the page. */
+      var _nowWd = Date.now();
+      if (!S.__wdArmedAt) S.__wdArmedAt = _nowWd; /* grace for first bake */
+      if ((!S.__wdNext || _nowWd >= S.__wdNext) && _nowWd - S.__wdArmedAt > 15000) {
+        S.__wdNext = _nowWd + 5000;
+        if (!S.__wdHb || _nowWd - S.__wdHb > 30000) {
+          S.__wdHb = _nowWd;
+          try {
+            var _rawHb = sessionStorage.getItem('bt_resume') || localStorage.getItem('bt_resume');
+            if (_rawHb) {
+              var _snHb = JSON.parse(_rawHb);
+              _snHb.t = _nowWd;
+              var _strHb = JSON.stringify(_snHb);
+              sessionStorage.setItem('bt_resume', _strHb);
+              localStorage.setItem('bt_resume', _strHb);
+            }
+          } catch (e) {}
+        }
+        if (document.visibilityState === 'visible') {
+          requestAnimationFrame(function () {
+            var _pctWd = _sampleLit();
+            if (_pctWd < 0) return;
+            if (_pctWd >= 1) { S.__wdDark = 0; return; }
+            S.__wdDark = (S.__wdDark || 0) + 1;
+            try {
+              import('../debug/crashTrap.js').then(function (ct) {
+                ct.recordCrash('watchdog-dark', 'screen ' + _pctWd + '% lit, strike ' + S.__wdDark);
+              }).catch(function () {});
+            } catch (e) {}
+            if (S.__wdDark === 2 && window._rebuildRenderer) {
+              window._rebuildRenderer('watchdog: screen dark 10s');
+            }
+            if (S.__wdDark >= 4) {
+              S.__wdDark = 0;
+              try {
+                var _rls = JSON.parse(sessionStorage.getItem('bt-reloads') || '[]').filter(function (t) { return Date.now() - t < 300000; });
+                if (_rls.length < 2) {
+                  _rls.push(Date.now());
+                  sessionStorage.setItem('bt-reloads', JSON.stringify(_rls));
+                  sessionStorage.setItem('bt_resume_now', '1');
+                  import('../debug/crashTrap.js').then(function (ct) {
+                    ct.recordCrash('auto-reload', 'world dark 20s despite rebuild -- reloading into game');
+                  }).catch(function () {});
+                  setTimeout(function () { window.location.reload(); }, 350);
+                }
+              } catch (e) {}
+            }
+          });
+        }
+      }
       var nb = S.nearBuilding;
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
@@ -14089,6 +14164,37 @@ export var BroTown = function BroTown(_ref0) {
       p_body_torso: S.bodyTorso,
       p_body_legs: S.bodyLegs
     });
+    /* v2.3.777: resume snapshot -- the character needed to rejoin without
+       the login screen.  Written on every PLAY; heartbeated in-game; read
+       by the auto-rejoin effect after a recovery reload or an iOS tab
+       eviction.  sessionStorage survives same-tab reloads (even in
+       private windows); localStorage is the backup for normal Safari. */
+    try {
+      var _snapJ = JSON.stringify({
+        t: Date.now(),
+        name: S.myName,
+        avatar: S.myAvatar,
+        bro: S.myBroData,
+        color: S.myColor,
+        bodyTorso: S.bodyTorso,
+        bodyLegs: S.bodyLegs,
+        traits: {
+          headwear: getHeadwear(),
+          hair: getHair(),
+          facialHair: getFacialHair(),
+          skin: getSkin(),
+          pants: getPants(),
+          shoes: getShoes(),
+          hairColor: getHairColor(),
+          hatColor: getHatColor(),
+          facialHairColor: getFacialHairColor(),
+          shirt: getShirt(),
+          shirtColor: getShirtColor()
+        }
+      });
+      sessionStorage.setItem('bt_resume', _snapJ);
+      localStorage.setItem('bt_resume', _snapJ);
+    } catch (e) {}
     BT_AUDIO.init();
     BT_AUDIO.join();
     setShowWelcome(false);
@@ -14107,6 +14213,61 @@ export var BroTown = function BroTown(_ref0) {
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
     if (!_skipIntro) setShowIntro(true);
   };
+
+  /* v2.3.777: auto-rejoin -- the stability endgame.  Every in-place
+     renderer recovery can be defeated by iOS (context refusal, GPU-backed
+     bitmap purges, page eviction), but a fresh page boot has worked 100%
+     of the time.  So: a recovery reload (bt_resume_now, set by the
+     black-screen watchdog) or any reload within 10 min of the last
+     heartbeat skips the character screen and rejoins as the same
+     character, straight into the world.  ?noresume=1 escapes to the
+     normal character screen. */
+  useEffect(function () {
+    var snap = null;
+    var wanted = false;
+    try {
+      if (/[?&]noresume=1\b/.test(window.location.search)) return;
+      wanted = sessionStorage.getItem('bt_resume_now') === '1';
+      sessionStorage.removeItem('bt_resume_now');
+      var _rawSnap = sessionStorage.getItem('bt_resume') || localStorage.getItem('bt_resume');
+      if (_rawSnap) snap = JSON.parse(_rawSnap);
+    } catch (e) {}
+    if (!snap || !snap.name) return;
+    var fresh = Date.now() - (snap.t || 0) < 10 * 60 * 1000;
+    if (!wanted && !fresh) return;
+    var S = stateRef.current;
+    S.myName = snap.name;
+    if (snap.avatar) S.myAvatar = snap.avatar;
+    if (snap.bro) S.myBroData = snap.bro;
+    if (snap.color) S.myColor = snap.color;
+    if (snap.bodyTorso) S.bodyTorso = snap.bodyTorso;
+    if (snap.bodyLegs) S.bodyLegs = snap.bodyLegs;
+    try {
+      var tr = snap.traits || {};
+      if (tr.headwear != null) setHeadwear(tr.headwear);
+      if (tr.hair != null) setHair(tr.hair);
+      if (tr.facialHair != null) setFacialHair(tr.facialHair);
+      if (tr.skin != null) setSkin(tr.skin);
+      if (tr.pants != null) setPants(tr.pants);
+      if (tr.shoes != null) setShoes(tr.shoes);
+      if (tr.hairColor != null) setHairColor(tr.hairColor);
+      if (tr.hatColor != null) setHatColor(tr.hatColor);
+      if (tr.facialHairColor != null) setFacialHairColor(tr.facialHairColor);
+      if (tr.shirt != null) setShirt(tr.shirt);
+      if (tr.shirtColor != null) setShirtColor(tr.shirtColor);
+    } catch (e) {}
+    /* NOTE: unlike joinTown, do NOT wipe bt_rpg -- the cached RPG state is
+       what makes the rejoin seamless (server state_sync still overwrites). */
+    try {
+      import('../debug/crashTrap.js').then(function (ct) {
+        ct.recordCrash('auto-rejoin', (wanted ? 'recovery reload' : 'fresh snapshot') + ' as ' + snap.name);
+      }).catch(function () {});
+    } catch (e) {}
+    BT_AUDIO.init();
+    BT_AUDIO.join();
+    try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
+    setShowWelcome(false); /* straight in -- no intro video on a resume */
+  }, []); /* mount-only by design: resumes happen once per page load */
 
   /* Name / avatar selection modal.
      v2.3.710: redesigned to two side-by-side panes at EVERY width (iPhone
