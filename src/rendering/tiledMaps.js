@@ -74,6 +74,14 @@ export const WALKABILITY_MAPS = {};
 export async function loadImageZoneMaps() {
   // Lazy import so this module stays usable in non-Pixi contexts.
   const { Assets } = await import('pixi.js');
+  /* v2.3.776: decode zone maps via HTMLImageElement, NOT createImageBitmap.
+     On iOS, ImageBitmaps are GPU-backed: the same memory purge that kills
+     the WebGL context silently wipes their pixels, and re-uploading the
+     husk after a rebuild gives a black map under a perfectly rendered
+     player (the two-window iPhone repro, twice).  <img>-backed sources
+     re-decode from compressed bytes on upload, so they survive any purge.
+     Decode of nine 1024x1024 JPGs is a one-time ~100ms tax at boot. */
+  try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
   const tasks = Object.values(IMAGE_ZONE_MAPS).map((url) =>
     Assets.load(url).catch((e) => {
       console.warn('[image-zone] failed to load', url, e && e.message);

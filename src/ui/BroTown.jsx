@@ -5035,6 +5035,40 @@ export var BroTown = function BroTown(_ref0) {
               ct.recordCrash('gl-rebuild-ok', 'renderer re-initialized (webgl)');
             }).catch(function () {});
           } catch (e) {}
+          /* v2.3.776: screen probe.  'gl-rebuild-ok' proves init, not
+             pixels -- the iPhone showed a black map under a healthy
+             renderer.  Sample the frame: record the result either way
+             (evidence), and if it's still dark, retry ONCE. */
+          setTimeout(function () {
+            if (canvasRef.current !== canvas) return; /* superseded by a newer rebuild */
+            try {
+              requestAnimationFrame(function () {
+                try {
+                  var _c2 = document.createElement('canvas');
+                  _c2.width = 32; _c2.height = 18;
+                  var _g2 = _c2.getContext('2d');
+                  _g2.drawImage(canvas, 0, 0, 32, 18);
+                  var _d2 = _g2.getImageData(0, 0, 32, 18).data;
+                  var _lit = 0;
+                  for (var _i2 = 0; _i2 < _d2.length; _i2 += 4) {
+                    if (_d2[_i2] + _d2[_i2 + 1] + _d2[_i2 + 2] > 45) _lit++;
+                  }
+                  var _pct = Math.round(100 * _lit / (32 * 18));
+                  import('../debug/crashTrap.js').then(function (ct) {
+                    ct.recordCrash('post-rebuild-screen', _pct + '% lit');
+                  }).catch(function () {});
+                  if (_pct < 2 && !window.__btBlackRetry) {
+                    window.__btBlackRetry = true;
+                    setTimeout(function () {
+                      if (window._rebuildRenderer) window._rebuildRenderer('screen still black after rebuild');
+                    }, 2000);
+                  } else if (_pct >= 2) {
+                    window.__btBlackRetry = false;
+                  }
+                } catch (e) {}
+              });
+            } catch (e) {}
+          }, 5000);
         }
       }).catch(function(err) {
         console.error('[pixi-init] FAILED:', err);

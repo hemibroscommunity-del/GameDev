@@ -21,9 +21,14 @@ const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message.slice(0, 160)));
 /* v2.3.775: the zone-map JPG must be RE-FETCHED after a rebuild -- the
- * Assets-cached ImageBitmap can be a dead husk on iOS after GPU purge. */
+ * Assets-cached ImageBitmap can be a dead husk on iOS after GPU purge.
+ * Browser cache is disabled via CDP so every real (re)load surfaces as a
+ * request event -- <img> memory-cache hits are otherwise invisible. */
 let mapFetches = 0;
 page.on('request', (r) => { if (/\/maps\/town_v\d+\.jpg/.test(r.url())) mapFetches++; });
+const cdpNet = await ctx.newCDPSession(page);
+await cdpNet.send('Network.enable');
+await cdpNet.send('Network.setCacheDisabled', { cacheDisabled: true });
 await page.addInitScript(`window.BROTOWN_WS_URL = 'ws://127.0.0.1:8787'`);
 await page.goto('http://localhost:4173/?dev=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(9000);
@@ -78,6 +83,7 @@ const diag = await page.evaluate(() => {
     glLost: r.app.renderer.gl.isContextLost(),
     crash: JSON.parse(localStorage.getItem('bt-crashlog') || '[]').map(e => e.kind),
     stage: tiles,
+    mapFetches: performance.getEntriesByType('resource').filter(e => /\/maps\/town_v\d+\.jpg/.test(e.name)).length,
   };
 });
 console.log('diag:', JSON.stringify(diag));

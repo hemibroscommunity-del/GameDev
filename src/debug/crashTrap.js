@@ -64,9 +64,12 @@ export function installCrashTrap() {
     try { console.warn('[bt-crash] prior session log:', prior); } catch (e) { /* ignore */ }
     if (/[?&]dev=1\b/.test(window.location.search)) {
       /* v2.3.773: show the TAIL of the log, not just the last entry --
-         the last entry was always a routine [resume] and hid the story. */
+         the last entry was always a routine [resume] and hid the story.
+         v2.3.776: header carries the build version so a screenshot also
+         answers "which deploy was this?". */
+      const ver = typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev';
       const tail = prior.slice(-6).map((e) => `${e.t.slice(11, 19)} [${e.kind}] ${e.msg.slice(0, 110)}`).join('\n');
-      banner(`CRASH LOG (last ${Math.min(6, prior.length)} of ${prior.length})\n${tail}`);
+      banner(`CRASH LOG v${ver} (last ${Math.min(6, prior.length)} of ${prior.length})\n${tail}`);
     }
   }
 }
