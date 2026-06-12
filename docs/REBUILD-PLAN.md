@@ -135,9 +135,20 @@ copy won.
   BroTown.jsx.** Follow-up noted: wire the live `tick` case into the
   `tickTimes`/`tickSizes` NET-overlay buffers (pre-existing gap, kept
   frozen).
-- **Phase 6+ —** zone-transition block, desktop keyboard controls
-  (~11475–11637), then game-loop slicing (extract per-zone mechanic blocks,
-  then the simulation/render split) guided by perf needs.
+- **Phase 6 — ✅ done (v2.3.787):** the zone-transition block (~457 lines of
+  the game loop) → `src/game/zoneTransitions.js`
+  `handleZoneTransitions(S, ptx, pty, _zone, W, H)`: town-exit proximity
+  warp, tile-9 return-to-town, the disabled tile-10 dungeon entrance
+  (`if (false &&` preserved verbatim), and the dungeon exit. `ptx`/`pty`/
+  `_zone` stay computed in BroTown and are passed in — downstream loop code
+  (wasteland gate, water check) keeps reading the pre-transition values,
+  same as inline. The wasteland fence-climb and zone-specific mechanics
+  that followed the block stay put for the game-loop-slicing phases.
+  Note: the dungeon entrance/exit paths are dormant (entrance disabled
+  since v2.3.54) — same owner-decision caveat as the Phase 3 quest system.
+- **Phase 7+ —** desktop keyboard controls (~11475–11637), then game-loop
+  slicing (extract per-zone mechanic blocks, then the simulation/render
+  split) guided by perf needs.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
