@@ -38,6 +38,23 @@ code disagree, trust the code and fix the doc.
   x/y/dir/zone plus the full appearance set (name, color, avatar, body
   colors, headwear/hair/facial-hair/skin/shirt + color variants, equipped
   armor pieces).
+- **Session identity & supersede (verified v2.3.780):** the join `id` is
+  minted **randomly per page load** (`myId` in BroTown's stateRef init, ~line
+  223) — it is NOT the passphrase id (`getBtPlayerId` is used only for the
+  separate RPC sync) and NOT derived from name or device. The server's only
+  multi-socket rule is in the `join` case (server ~3455): any *other* socket
+  with the **same `msg.id`** is evicted with close reason
+  `'superseded by reconnect'`. Two windows therefore can never legitimately
+  supersede each other (their random ids differ); every observed
+  "kicked by the other window" was a **self-supersede**: a same-window
+  reconnect joins with the same id, the server closes that window's own old
+  socket, and (pre-v2.3.778) the old socket's still-attached `onclose`
+  showed the takeover banner in the very window that initiated the
+  reconnect. v2.3.778's resume-resync detaches the old socket's handlers
+  before any deliberate rejoin, which closes that hole. The `device` nonce
+  sent in join is currently **ignored by the server** (the v2.3.694
+  anomaly tracker never landed server-side) — it must not be used for
+  session eviction without revisiting the two-windows-one-iPhone case.
 - **Reconnect:** exponential backoff starting at 1000 ms, ×1.5 per attempt,
   capped at 10 s; reset to 1000 ms on successful connect (~1875–1895, ~4290).
 - **Resume resync (v2.3.778):** v2's tick deltas are never retransmitted, so
