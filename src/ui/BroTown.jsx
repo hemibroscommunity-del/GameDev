@@ -4642,6 +4642,13 @@ export var BroTown = function BroTown(_ref0) {
          full renderer rebuild on a fresh canvas via _rebuildRenderer. */
       setTimeout(function () {
         try {
+          /* v2.3.773: if the context was lost AT ALL while away, rebuild --
+             even when it came back.  A restored context reports healthy but
+             the baked render textures are gone (black world regardless). */
+          if (window.__btGlLostAt && window.__btGlLostAt > (window.__btLastGlRebuild || 0)) {
+            if (window._rebuildRenderer) window._rebuildRenderer(tag + ': context was lost while away');
+            return;
+          }
           var _r = window._pixiRenderer;
           var _gl = _r && _r.app && _r.app.renderer && _r.app.renderer.gl;
           if (!_gl || !_gl.isContextLost || !_gl.isContextLost()) {
@@ -4992,10 +4999,17 @@ export var BroTown = function BroTown(_ref0) {
        by the resume probe (ws effect) and crashTrap's contextlost
        escalation.  Debounced: a foreground contextlost timer and the
        resume probe can both conclude 'rebuild' for the same death. */
+    /* v2.3.773: each effect run starts on a fresh canvas/context -- any
+       loss recorded against a previous canvas is history, not a pending
+       emergency for the resume probe. */
+    window.__btGlLostAt = 0;
     window._rebuildRenderer = function (reason) {
       var _now = Date.now();
       if (window.__btLastGlRebuild && _now - window.__btLastGlRebuild < 5000) return;
       window.__btLastGlRebuild = _now;
+      /* v2.3.773: let the fresh renderer record its own first error --
+         otherwise a rebuild that didn't cure the throw leaves no trace. */
+      window.__pixiUpdateErrLogged = false;
       try {
         import('../debug/crashTrap.js').then(function (ct) {
           ct.recordCrash('gl-rebuild', reason || 'manual');
@@ -11797,10 +11811,30 @@ export var BroTown = function BroTown(_ref0) {
           var H = canvas.height / (window.devicePixelRatio || 1);
           try {
             pixiRef.current.update(S, W, H, nfts);
+            S.__pixiErrStreak = 0;
           } catch (pixiErr) {
             if (!window.__pixiUpdateErrLogged) {
               window.__pixiUpdateErrLogged = true;
               console.error('[pixi-render] update threw', pixiErr && pixiErr.message, pixiErr && pixiErr.stack);
+              /* v2.3.773: a persistent update() throw was INVISIBLE on
+                 iPhone -- UI stays alive, world stays black, and nothing
+                 reaches the window error handler because this catch eats
+                 it.  Put it in the crash log where the dev banner shows it. */
+              try {
+                var _pmsg = ((pixiErr && pixiErr.message) || String(pixiErr)) + ' | ' + (((pixiErr && pixiErr.stack) || '').split('\n')[1] || '').trim();
+                import('../debug/crashTrap.js').then(function (ct) {
+                  ct.recordCrash('pixi-update-err', _pmsg);
+                }).catch(function () {});
+              } catch (e2) {}
+            }
+            /* v2.3.773: self-heal a poisoned renderer.  90 consecutive
+               throwing frames (~1.5s of black world) -> one rebuild
+               attempt (=== so it can't loop; if the fresh renderer still
+               throws, the streak keeps climbing past 90 and we keep the
+               recorded error as evidence instead of thrashing). */
+            S.__pixiErrStreak = (S.__pixiErrStreak || 0) + 1;
+            if (S.__pixiErrStreak === 90 && window._rebuildRenderer) {
+              window._rebuildRenderer('update() threw 90 consecutive frames');
             }
           }
         }
