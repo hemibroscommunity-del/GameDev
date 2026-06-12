@@ -19,13 +19,7 @@
  * players freezing, monsters teleporting) corresponds to a gap in
  * the tick stream.
  */
-/* v2.3.778: wsClient.js (dead legacy networking, 1.5k lines, never
-   executed) deleted.  The NET line never had live data since the
-   BroTown-internal socket replaced it; these stubs keep today's behavior.
-   To revive NET stats, push performance.now() + byte size per tick from
-   BroTown's ws.onmessage into shared arrays and read them here. */
-function getTickTimes() { return []; }
-function getTickSizes() { return []; }
+import { getTickTimes, getTickSizes } from '../../networking/wsClient.js';
 
 const FPS_WINDOW_MS = 1000;
 const REDISPLAY_MS = 250;
