@@ -20,9 +20,12 @@
 <link rel="preload" as="image" href="/ui/welcome/bg.webp">
 <link rel="preload" as="image" href="/ui/welcome/platform.webp">
 <link rel="preload" as="image" href="/ui/welcome/void.webp">
-<!-- v2.3.765: crest + logo preloads replaced by the single banner art
-     that superseded them in the welcome header. -->
-<link rel="preload" as="image" href="/ui/welcome/banner-brotown.webp">
+<!-- v2.3.765: crest + logo preloads replaced by the banner art that
+     superseded them in the welcome header.
+     v2.3.772: media-gated — portrait loads the 3:1 lettering strip, wide
+     viewports the full 3:2 art (mirrors the <picture> in BroTown.jsx). -->
+<link rel="preload" as="image" href="/ui/welcome/banner-strip.webp" media="(max-aspect-ratio: 5/3)">
+<link rel="preload" as="image" href="/ui/welcome/banner-brotown.webp" media="(min-aspect-ratio: 5/3)">
 <link rel="preload" as="image" href="/ui/welcome/scroll2.webp">
 <link rel="preload" as="image" href="/ui/welcome/play-btn.webp">
 </head>
