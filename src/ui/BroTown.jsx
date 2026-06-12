@@ -1733,7 +1733,7 @@ export var BroTown = function BroTown(_ref0) {
         src.loop = true;
         gain.gain.value = 0;
         src.connect(gain);
-        gain.connect(BT_AUDIO.ctx.destination);
+        gain.connect(BT_AUDIO._out()); /* v2.3.786: through the master bus */
         src.start(0);
         slot.source = src;
         slot.gain = gain;
@@ -12506,16 +12506,26 @@ export var BroTown = function BroTown(_ref0) {
   }, "Play Again")))), /*#__PURE__*/React.createElement("button", {
     className: "bt-exit-fab",
     onClick: function onClick() {
-      /* v2.3.785: exiting reloads the whole app (GameApp passes
-         onExit = location.href '/'), and the teardown stutter read as a
-         frame-rate crash with no explanation.  Drop a spinner into the
-         body OUTSIDE the React tree (so unmounting can't remove it) and
-         navigate on the next frame so it paints first; the new page
-         load replaces it. */
+      /* v2.3.785: exiting reloads the whole app, and the teardown stutter
+         read as a frame-rate crash with no explanation.
+         v2.3.786: the lone 36px spinner wasn't legible over the frozen
+         game frame (Safari keeps the old page painted, animations and all
+         stopped, until the new document's first paint).  Full-screen dim
+         + spinner + label instead, appended OUTSIDE the React tree so
+         unmounting can't remove it; navigate on the next frame so it
+         paints first.  The new page's #bt-loading boot screen takes over
+         from there. */
       try {
+        var dim = document.createElement('div');
+        dim.className = 'bt-exit-dim';
         var sp = document.createElement('div');
         sp.className = 'bt-exit-loading';
-        document.body.appendChild(sp);
+        var lbl = document.createElement('div');
+        lbl.className = 'bt-exit-label';
+        lbl.textContent = 'Reloading…';
+        dim.appendChild(sp);
+        dim.appendChild(lbl);
+        document.body.appendChild(dim);
       } catch (e) {}
       requestAnimationFrame(function () {
         setTimeout(onExit, 30);
