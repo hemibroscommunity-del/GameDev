@@ -46,6 +46,8 @@ import { getEquip, setEquip, onEquipChange, reconcileGearStash } from '@/renderi
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDamage, addBuildProg, addBuildUse, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage, applyMeleeLifesteal } from '@/game/combatHelpers.js';
+/* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
+import { sendChatMessage, handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
 
@@ -1523,35 +1525,12 @@ export var BroTown = function BroTown(_ref0) {
   }(), [nfts]);
   var frameRef = useRef(0);
 
-  /* Send chat message */
+  /* Send chat message — input-widget concerns stay here; the network/state
+     body lives in src/game/chat.js (v2.3.767, REBUILD-PLAN Phase 2). */
   var sendChat = useCallback(function () {
     var text = chatInput.trim();
     if (!text) return;
-    var S = stateRef.current;
-    if (S.channel) S.channel.send({
-      type: 'broadcast',
-      event: 'chat',
-      payload: {
-        id: S.myId,
-        name: S.myName,
-        text: text,
-        color: S.myColor
-      }
-    });
-    BT_AUDIO.chatSend();
-    if (S.stats) S.stats.msgsSent++;
-    S.chatBubbles[S.myId] = {
-      text: text,
-      ts: Date.now()
-    };
-    S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
-      id: S.myId,
-      name: S.myName,
-      text: text,
-      color: S.myColor,
-      ts: Date.now()
-    }]);
-    setChatLog(_toConsumableArray(S.chatLog));
+    sendChatMessage(stateRef.current, text, { setChatLog: setChatLog });
     setChatInput('');
     chatInputValRef.current = '';
     /* Keep keyboard open by re-focusing */
@@ -3118,45 +3097,14 @@ export var BroTown = function BroTown(_ref0) {
             }
           case 'chat':
             {
-              if (!payload || payload.id === S.myId) break;
-              try {
-                var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
-                if (bl.includes(payload.id)) break;
-              } catch (e) {}
-              var isMuted = false;
-              try {
-                var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
-                isMuted = ml.includes(payload.id);
-              } catch (e) {}
-              if (!isMuted && payload.id) S.chatBubbles[payload.id] = {
-                text: payload.text,
-                ts: Date.now()
-              };
-              BT_AUDIO.chatReceive();
-              S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
-                id: payload.id,
-                name: payload.name,
-                text: isMuted ? '[muted]' : payload.text,
-                color: payload.color,
-                ts: Date.now(),
-                muted: isMuted
-              }]);
-              setChatLog(_toConsumableArray(S.chatLog));
-              if (!isMuted) setUnreadChats(function (prev) {
-                return prev + 1;
-              });
+              /* v2.3.767: body moved to src/game/chat.js (Phase 2). */
+              handleChatEvent(payload, S, { setChatLog: setChatLog, setUnreadChats: setUnreadChats });
               break;
             }
           case 'emote':
             {
-              if (payload.id && S.others[payload.id]) S.others[payload.id].emote = {
-                emoji: payload.emoji,
-                ts: Date.now()
-              };
-              BT_AUDIO.beep(800, 0.06, 0.06, 'sine');
-              setTimeout(function () {
-                return BT_AUDIO.beep(1000, 0.04, 0.06, 'sine');
-              }, 60);
+              /* v2.3.767: body moved to src/game/chat.js (Phase 2). */
+              handleEmoteEvent(payload, S);
               break;
             }
           case 'player_swing':
