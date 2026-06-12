@@ -261,8 +261,14 @@ input{font-family:inherit}
 .bt-name-box.bt-cc-box>.bt-cc-stage{flex:3 1 140px;min-height:140px;max-height:300px}
 /* v2.3.800: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
-   right). */
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row}
+   right).
+   v2.3.801: the whole menu sits in the owner's gem-cornered FRAME art
+   (frame.webp from the v2.3.725 asset pack, restored from git history)
+   via 9-slice border-image; `fill` paints the art's dark center as the
+   panel background, so the rail/drawer drop their own outer chrome.
+   Note border-image ignores border-radius — the art carries its own
+   corners. */
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
@@ -377,18 +383,24 @@ input{font-family:inherit}
    top — a column-WRAP flex that fills the height then grows RIGHT, so
    more choices appear by horizontal scrolling — and the color row
    beneath it. */
-.bt-cc-tabs{flex:0 0 78px;display:flex;flex-direction:column;align-items:stretch;background:rgba(20,16,40,0.93);border:1.5px solid #4a4080;border-right:1px solid #3a3163;border-radius:12px 0 0 12px;overflow:hidden}
+/* v2.3.801: rail/drawer chrome (outer border, radius, opaque panel
+   backgrounds) retired — the menu's frame art supplies all of it; only
+   the rail/panel separator and a light rail tint remain. */
+.bt-cc-tabs{flex:0 0 78px;display:flex;flex-direction:column;align-items:stretch;background:rgba(12,9,26,0.45);border-right:1px solid #3a3163}
 .bt-cc-tab{flex:1 1 0;min-height:0;padding:2px 6px;background:none;border:none;border-bottom:1px solid #3a3163;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bt-cc-tab:last-child{border-bottom:none}
 .bt-cc-tab:active{transform:translateY(1px)}
 .bt-cc-tab--on{background:rgba(58,49,99,0.85);color:#fff;box-shadow:inset -3px 0 0 var(--gold)}
-.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;border:1.5px solid #4a4080;border-left:none;border-radius:0 12px 12px 0;background:rgba(24,19,46,0.97);padding:8px;box-sizing:border-box}
+.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;padding:8px;box-sizing:border-box}
 .bt-cc-drawer-items{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px}
 /* Item strip: column-wrap fills the available height (1-2 tile rows
    depending on device) then extends rightward; pan-x re-allowed under
    the modal's touch-action:none (the old rail's iOS trick, rotated). */
 .bt-cc-drawer-items>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x}
-.bt-cc-drawer-colors{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;border-top:1.5px solid #3a3163;padding-top:6px;margin-top:6px}
+/* v2.3.801: the items/colors separator is the owner's gold divider art
+   (divider.webp, also restored from the v2.3.725 pack) instead of a
+   plain hairline. */
+.bt-cc-drawer-colors{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;background:url('/ui/welcome/divider.webp') top center/auto 13px no-repeat;padding-top:15px;margin-top:4px}
 .bt-cc-drawer-colors>.bt-cc-drawer-grid{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x;padding-bottom:2px}
 .bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:#9090a8;letter-spacing:.08em;font-family:'Baloo 2','Source Sans 3',sans-serif}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
