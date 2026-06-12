@@ -28,7 +28,7 @@ import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets, prewarmBaseSheets } from '@/rendering/pixiRenderer.js';
-import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
+import { preloadAllTiledMaps, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, getDeviceNonce } from '@/networking/index.js';
@@ -4622,16 +4622,59 @@ export var BroTown = function BroTown(_ref0) {
        socket immediately (skip backoff) and rebuild the zone tiles once the
        restored context settles.  crashTrap's contextlost preventDefault
        (same version) lets the browser restore the GL context at all. */
+    /* v2.3.778: how long were we actually gone?  Two clocks:
+       _hiddenAt    -- visibilitychange to 'hidden' (when iOS bothers to fire it)
+       _lastAliveAt -- 1s heartbeat; a frozen page stops ticking, so the gap
+                       on resume IS the freeze length even with no events. */
+    var RESYNC_AWAY_MS = 5000;
+    var _hiddenAt = 0;
+    var _lastAliveAt = Date.now();
+    var _aliveTimer = setInterval(function () { _lastAliveAt = Date.now(); }, 1000);
     function _resumeRecover(tag) {
       try {
         import('../debug/crashTrap.js').then(function (ct) {
           ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
         }).catch(function () {});
       } catch (e) {}
-      if (S._realtimeStatus !== 'superseded' && (!ws || ws.readyState === 2 || ws.readyState === 3)) {
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        reconnectDelay = 1000;
-        try { connect(); } catch (e) {}
+      if (S._realtimeStatus !== 'superseded') {
+        var _hiddenMs = _hiddenAt ? (Date.now() - _hiddenAt) : 0;
+        var _frozenMs = Date.now() - _lastAliveAt - 1100; /* heartbeat period + slack */
+        var _awayMs = Math.max(_hiddenMs, _frozenMs);
+        if (!ws || ws.readyState === 2 || ws.readyState === 3) {
+          /* dead socket: reconnect immediately, skip backoff (v2.3.771) */
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectDelay = 1000;
+          try { connect(); } catch (e) {}
+        } else if (ws.readyState === 1 && _awayMs > RESYNC_AWAY_MS) {
+          /* v2.3.778: socket SURVIVED a long freeze ('[resume] visible
+             wsState=1' in every crash log) = stale world.  Protocol v2
+             sends only per-tick monster deltas; everything missed while
+             frozen is never retransmitted -- the 'invisible monsters that
+             still deal damage' session.  A deliberate rejoin gets a FULL
+             state_sync (complete zone monster list) with zero server
+             changes.  Detach handlers BEFORE closing so neither
+             scheduleReconnect nor a late server 'superseded by reconnect'
+             close can fire on the old socket. */
+          try {
+            import('../debug/crashTrap.js').then(function (ct) {
+              ct.recordCrash('resume-resync', tag + ' away ' + Math.round(_awayMs / 1000) + 's, forcing rejoin');
+            }).catch(function () {});
+          } catch (e) {}
+          var _oldWs = ws;
+          ws = null;
+          try {
+            _oldWs.onclose = null;
+            _oldWs.onmessage = null;
+            _oldWs.onerror = null;
+            _oldWs.close(1000, 'resume resync');
+          } catch (e) {}
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectDelay = 1000;
+          try { connect(); } catch (e) {}
+        }
+        /* readyState 0 (CONNECTING): a connect is already in flight. */
+        _hiddenAt = 0;
+        _lastAliveAt = Date.now();
       }
       /* v2.3.772: probe the GL context directly instead of trusting events.
          On the iPhone repro the context died with NO webglcontextlost ever
@@ -4689,6 +4732,10 @@ export var BroTown = function BroTown(_ref0) {
     }
     try {
       document.addEventListener('visibilitychange', function () {
+        /* v2.3.778: stamp when we go hidden so the resync threshold can
+           use real away-time even when the heartbeat keeps ticking
+           (desktop tab switches don't freeze JS). */
+        if (document.visibilityState === 'hidden') { _hiddenAt = Date.now(); return; }
         if (document.visibilityState === 'visible') _resumeRecover('visible');
       });
       window.addEventListener('pageshow', function (e) {
@@ -4855,6 +4902,7 @@ export var BroTown = function BroTown(_ref0) {
     return function () {
       stopBatchTimer();
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      clearInterval(_aliveTimer); /* v2.3.778 resync heartbeat */
       if (ws) {
         try {
           ws.close();
@@ -5008,7 +5056,10 @@ export var BroTown = function BroTown(_ref0) {
            plain sprite (the iPhone two-window screenshot).  If this device
            ran WebGL before (we're here via a rebuild), keep retrying
            WebGL with backoff while the canvas renderer keeps the lights
-           on; foreground tabs usually get a context again within seconds. */
+           on; foreground tabs usually get a context again within seconds.
+           v2.3.778: createPixiApp is now fail-fast (no canvas renderer),
+           so this branch is defensive -- it only fires if that ever
+           regresses. */
         var _noGl = !(renderer.app && renderer.app.renderer && renderer.app.renderer.gl);
         window.__btCanvasFallback = _noGl && !!window.__btLastGlRebuild;
         if (window.__btCanvasFallback) {

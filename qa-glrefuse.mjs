@@ -1,8 +1,9 @@
-/* v2.3.774: simulate iOS refusing WebGL context creation under GPU
- * pressure: stub getContext(webgl) to return null and kill the live
- * context.  Assert the rebuild lands on the Canvas-renderer fallback,
- * records pixi-canvas-fallback, and keeps retrying -- then un-stub and
- * assert a backoff retry restores a real WebGL renderer. */
+/* v2.3.774 (updated v2.3.778): simulate iOS refusing WebGL context
+ * creation under GPU pressure: stub getContext(webgl) to return null and
+ * kill the live context.  createPixiApp is now FAIL-FAST (no Canvas
+ * renderer), so the rebuild's init must FAIL and record pixi-init-failed
+ * with backoff retries -- then un-stub and assert a retry restores a real
+ * WebGL renderer. */
 import { chromium } from 'playwright-core';
 const EXE = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const browser = await chromium.launch({ executablePath: EXE, headless: true,
@@ -51,13 +52,12 @@ await page.evaluate(() => {
 await page.waitForTimeout(20000); // next backoff retry should land on webgl
 const post = await st('post-unstub: ');
 
-const ok = mid.pixiActive === true && mid.renderer === 'canvas'
-  && mid.canvasFallback === true && mid.fails >= 1
-  && mid.crash.includes('pixi-canvas-fallback')
+const ok = mid.pixiActive === false && mid.fails >= 1
+  && mid.crash.includes('pixi-init-failed')
   && post.renderer !== 'canvas' && post.glLost === false
   && post.canvasFallback === false && post.status === 'connected'
   && post.crash.includes('gl-rebuild-ok');
 console.log('errors:', errs.length, errs.slice(0, 4));
-console.log(ok ? 'PASS: canvas fallback retries until WebGL returns' : 'FAIL');
+console.log(ok ? 'PASS: fail-fast init retries until WebGL returns' : 'FAIL');
 await browser.close();
 process.exit(ok ? 0 : 1);

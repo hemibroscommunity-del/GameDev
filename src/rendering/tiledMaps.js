@@ -3,8 +3,8 @@
  *
  * Fetches .tmx XML from /public/maps, resolves each <tileset> reference to
  * its .tsx (which holds the source PNG dimensions + columns), preloads the
- * PNGs, and exposes a `drawTiledMap(ctx, zoneId, cx, cy, W, H)` helper that
- * draws each layer's visible tiles as drawImage calls.
+ * PNGs, and exposes the parsed maps via getLoadedTiledMap() for the Pixi
+ * TileRenderer (the Canvas-2D drawTiledMap helper was removed in v2.3.778).
  *
  * No Tiled features beyond CSV-encoded tile layers + multiple tilesets are
  * supported — that's all the prototype needs. Object layers, animations,
@@ -74,13 +74,9 @@ export const WALKABILITY_MAPS = {};
 export async function loadImageZoneMaps() {
   // Lazy import so this module stays usable in non-Pixi contexts.
   const { Assets } = await import('pixi.js');
-  /* v2.3.776: decode zone maps via HTMLImageElement, NOT createImageBitmap.
-     On iOS, ImageBitmaps are GPU-backed: the same memory purge that kills
-     the WebGL context silently wipes their pixels, and re-uploading the
-     husk after a rebuild gives a black map under a perfectly rendered
-     player (the two-window iPhone repro, twice).  <img>-backed sources
-     re-decode from compressed bytes on upload, so they survive any purge.
-     Decode of nine 1024x1024 JPGs is a one-time ~100ms tax at boot. */
+  /* v2.3.776, redundant since v2.3.778 (canonical call is at
+     pixiRenderer.js module scope, early enough for ALL loaders);
+     kept as belt-and-braces. */
   try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
   const tasks = Object.values(IMAGE_ZONE_MAPS).map((url) =>
     Assets.load(url).catch((e) => {
@@ -220,45 +216,9 @@ function _resolveGid(gid, tilesets) {
   return { ts: pick, localId: gid - pick.firstgid };
 }
 
-/**
- * Draw the loaded Tiled map for `zoneId` to ctx, viewport (cx,cy,W,H) in
- * world pixels. No-ops if the map isn't loaded yet — the caller falls back
- * to its existing renderer until the data arrives.
- */
-export function drawTiledMap(ctx, zoneId, cx, cy, W, H) {
-  const map = _maps[zoneId];
-  if (!map) return false;
-  const startCol = Math.max(0, Math.floor(cx / TILE));
-  const endCol = Math.min(map.width - 1, Math.floor((cx + W) / TILE));
-  const startRow = Math.max(0, Math.floor(cy / TILE));
-  const endRow = Math.min(map.height - 1, Math.floor((cy + H) / TILE));
-
-  for (const layer of map.layers) {
-    for (let r = startRow; r <= endRow; r++) {
-      for (let c = startCol; c <= endCol; c++) {
-        const gid = layer.data[r * layer.width + c];
-        if (!gid) continue;
-        // Strip Tiled flip flags (top 3 bits) — we don't render flips for v1.
-        const realGid = gid & 0x1fffffff;
-        const r2 = _resolveGid(realGid, map.tilesets);
-        if (!r2 || !r2.ts) continue;
-        const img = _images[r2.ts.imageSrc];
-        if (!img || !img.naturalWidth) continue;
-        const cols = r2.ts.columns || 1;
-        const sx = (r2.localId % cols) * r2.ts.tileWidth;
-        const sy = Math.floor(r2.localId / cols) * r2.ts.tileHeight;
-        const dx = c * TILE - cx;
-        const dy = r * TILE - cy;
-        ctx.drawImage(
-          img,
-          sx, sy, r2.ts.tileWidth, r2.ts.tileHeight,
-          dx, dy, TILE, TILE,
-        );
-      }
-    }
-  }
-  return true;
-}
+/* v2.3.778: drawTiledMap (the legacy Canvas-2D world renderer) deleted --
+   it was dead code; the Pixi TileRenderer consumes getLoadedTiledMap()
+   instead. */
 
 /**
  * Walkability grid — true = walkable, false = blocked.

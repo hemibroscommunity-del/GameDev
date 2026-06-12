@@ -19,6 +19,21 @@ import { loadShieldSprites } from './shieldSprites.js';
 import { loadImageZoneMaps } from './tiledMaps.js';
 import { preloadGear } from './gearSheets.js';
 import { preloadBodyAll } from './playerSkins.js';
+import { Assets } from 'pixi.js';
+
+/* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
+   On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL
+   context silently wipes their pixels, leaving non-null "husk" Textures that
+   render INVISIBLE after a rebuild -- the 'monsters gone, weapon gone, still
+   taking damage' session.  <img> sources keep the compressed bytes and
+   re-decode on every GPU upload, so they survive any purge, and the
+   module-level loader caches become safe to reuse across rebuilds.
+   MUST run before the first Assets.load anywhere; module scope here wins by
+   construction (the whole module graph evaluates before any runtime load).
+   The v2.3.776 call inside loadImageZoneMaps ran too LATE for every loader
+   except zone maps -- which is exactly why the map healed but weapons and
+   monsters didn't. */
+try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
 
 /**
  * Preload every player-avatar asset that would otherwise stream in lazily and
