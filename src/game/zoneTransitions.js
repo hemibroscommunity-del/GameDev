@@ -12,7 +12,7 @@
    Closure captures made explicit via imports below (never the globalThis
    copies). Frame-scope values arrive as arguments:
    - ptx/pty: the player tile BEFORE any transition this frame — the caller
-     keeps using them after this returns (wasteland gate, water check), so
+     keeps using them after this returns (water check), so
      they are computed in BroTown and passed in;
    - _zone: ZONES[S.currentZone] read BEFORE any transition (the inline code
      evaluated it earlier in the frame — the dungeon-entrance bounds check

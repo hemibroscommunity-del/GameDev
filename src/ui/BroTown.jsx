@@ -918,14 +918,6 @@ export var BroTown = function BroTown(_ref0) {
       return clearInterval(id);
     };
   }, [gatherMini === null || gatherMini === void 0 ? void 0 : gatherMini.started, gatherMini === null || gatherMini === void 0 ? void 0 : gatherMini.result]);
-  var _useState145 = useState(false),
-    _useState146 = _slicedToArray(_useState145, 2),
-    ferrymanPanel = _useState146[0],
-    setFerrymanPanel = _useState146[1]; /* show ferryman travel dialog */
-  var _useState147 = useState(null),
-    _useState148 = _slicedToArray(_useState147, 2),
-    fenceClimbing = _useState148[0],
-    setFenceClimbing = _useState148[1]; /* {started, direction:'in'|'out'} */
   var _useState149 = useState(null),
     _useState150 = _slicedToArray(_useState149, 2),
     duelRequest = _useState150[0],
@@ -3347,89 +3339,14 @@ export var BroTown = function BroTown(_ref0) {
            tile-9 return-to-town, disabled tile-10 dungeon entrance, dungeon
            exit) moved verbatim to src/game/zoneTransitions.js (REBUILD-PLAN
            Phase 6, behavior-frozen). ptx/pty/_zone are intentionally the
-           PRE-transition values and stay in this scope — the wasteland-gate
-           and water checks below keep reading them, same as the inline code. */
+           PRE-transition values and stay in this scope — the water check
+           below keeps reading them, same as the inline code. */
         handleZoneTransitions(S, ptx, pty, _zone, W, H);
 
-        /* ═══ WASTELAND — gate tile (12) fence climbing ═══ */
-        if (S.map && S.currentZone === 'wasteland' && ptx >= 0 && pty >= 0 && pty < _zone.h && ptx < _zone.w) {
-          var _S$map$pty3;
-          var gateTile = (_S$map$pty3 = S.map[pty]) === null || _S$map$pty3 === void 0 ? void 0 : _S$map$pty3[ptx];
-          if (gateTile === 12) {
-            /* Player is on a gate tile — start climbing if not already */
-            if (!S._fenceClimb) {
-              var safePad = ZONES.wasteland._safePad;
-              /* Determine direction: if player is inside safe pad, climbing OUT. Otherwise climbing IN. */
-              var inSafe = safePad && P.x >= safePad.x && P.x <= safePad.x + safePad.w && P.y >= safePad.y - TILE && P.y <= safePad.y + safePad.h;
-              S._fenceClimb = {
-                started: Date.now(),
-                duration: 2000,
-                direction: inSafe ? 'out' : 'in'
-              };
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'Climbing fence... (2s)',
-                color: '#f5c542',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(300, 0.06, 0.08, 'triangle');
-            }
-          } else {
-            /* Not on gate tile — cancel climb */
-            if (S._fenceClimb) {
-              S._fenceClimb = null;
-            }
-          }
-        } else if (S._fenceClimb && S.currentZone !== 'wasteland') {
-          S._fenceClimb = null;
-        }
-
-        /* Fence climb progress — complete after 2 seconds */
-        if (S._fenceClimb) {
-          var elapsed = Date.now() - S._fenceClimb.started;
-          if (elapsed >= S._fenceClimb.duration) {
-            /* Climb complete! */
-            if (S._fenceClimb.direction === 'out') {
-              /* Climbing OUT of safe zone — now in lawless area */
-              var gateY = ZONES.wasteland._gateY;
-              P.y = gateY - TILE; /* place just north of fence */
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'LAWLESS ZONE - All items at risk!',
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
-              S.screenShake = 4;
-              BT_AUDIO.beep(80, 0.2, 0.25, 'sawtooth');
-            } else {
-              /* Climbing IN to safe zone — safe now */
-              var _safePad = ZONES.wasteland._safePad;
-              P.y = _safePad.y + TILE; /* place inside safe pad */
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'Safe zone! Walk south to return to town.',
-                color: '#3dd497',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
-            }
-            S._fenceClimb = null;
-          }
-          /* Cancel climb if player takes damage */
-          if (S._fenceClimb && S.lastDamageTaken > S._fenceClimb.started) {
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 30,
-              text: 'Climb interrupted!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
-            S._fenceClimb = null;
-          }
-        }
+        /* v2.3.788: the WASTELAND fence-climb block that lived here was
+           removed with the rest of the Lawless Land content (owner decision,
+           2026-06-12). The Ferryman NPC had been despawned long before
+           (NPC_DATA emptied), so the zone was already unreachable in play. */
 
         /* ═══ ZONE-SPECIFIC MECHANICS ═══ */
         var zoneElem2 = (_ZONES$S$currentZone3 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone3 === void 0 ? void 0 : _ZONES$S$currentZone3.element;
@@ -8576,7 +8493,7 @@ export var BroTown = function BroTown(_ref0) {
         return;
       }
 
-      /* E — interact priority: building > sleep > gather > NPC quest > ferryman */
+      /* E — interact priority: building > sleep > gather > NPC quest */
       if (e.code === 'KeyE') {
         e.preventDefault();
         /* 1. Building */
@@ -8611,13 +8528,9 @@ export var BroTown = function BroTown(_ref0) {
           _desktopGather();
           return;
         }
-        /* 4. Nearby NPC — open quest dialog or ferryman */
+        /* 4. Nearby NPC — open quest dialog */
         if (S._nearNpc) {
           var npc = S._nearNpc;
-          if (npc.isFerryman) {
-            _desktopFerryman();
-            return;
-          }
           var npcQ = typeof getNpcQuest === 'function' ? getNpcQuest(S.rpg, npc.name) : null;
           if (npcQ) {
             _desktopNpcQuest(npc, npcQ);
@@ -9938,9 +9851,6 @@ export var BroTown = function BroTown(_ref0) {
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
   }, []);
 
-  var _desktopFerryman = useCallback(function () {
-    setFerrymanPanel(true);
-  }, []);
   var _desktopOpenWorkshop = useCallback(function () {
     setShowDungeonCreator(true);
     if (!dungeonCreator) setDungeonCreator(createDefaultDungeonConfig());
@@ -10019,7 +9929,6 @@ export var BroTown = function BroTown(_ref0) {
     closeAllMenus();
     setBuildingPanel(null);
     setQuestPanel(null);
-    setFerrymanPanel(false);
     setInspectPlayer(null);
   }, []);
 
@@ -11323,11 +11232,6 @@ export var BroTown = function BroTown(_ref0) {
             var nsx = (npc.x - cx) * SCALE_X,
               nsy = (npc.y - cy) * SCALE_Y;
             if (Math.sqrt(Math.pow(cssX - nsx, 2) + Math.pow(cssY - nsy, 2)) < 30) {
-              /* The Ferryman — special travel dialog */
-              if (npc.isFerryman) {
-                setFerrymanPanel(true);
-                return;
-              }
               /* Check if NPC has a quest */
               var npcQ = getNpcQuest(S.rpg, npc.name);
               if (npcQ) {
@@ -22189,165 +22093,7 @@ export var BroTown = function BroTown(_ref0) {
       textAlign: 'center',
       padding: 8
     }
-  }, "No gems yet. Harvest resources in elemental zones to collect raw gems!")))), ferrymanPanel && rpgState && /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-card",
-    onClick: function onClick(e) {
-      return e.stopPropagation();
-    },
-    style: {
-      width: 280,
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 40,
-      marginBottom: 4
-    }
-  }, "\uD83D\uDC80"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#ff5e6c',
-      marginBottom: 4
-    }
-  }, "The Ferryman"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.6)',
-      marginBottom: 8,
-      lineHeight: 1.5
-    }
-  }, "\"Beyond the fence lies the Lawless Land. No rules. No mercy. Attack anyone. Loot everything.\""), /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 8,
-      borderRadius: 8,
-      background: 'rgba(255,94,108,.1)',
-      border: '1px solid rgba(255,94,108,.3)',
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: '#ff5e6c',
-      marginBottom: 4
-    }
-  }, "\u26A0\uFE0F WARNING"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.5)',
-      lineHeight: 1.5
-    }
-  }, "If you die in the Lawless Land, you lose ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: '#ff5e6c'
-    }
-  }, "EVERYTHING"), " \u2014 equipped weapons, armor, shield, amulet, all inventory, all gold. Items drop where you fall. Other players can take them.")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 8
-    }
-  }, "Travel cost: ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: '#f5c542'
-    }
-  }, "100g"), " \xB7 Your gold: ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: '#f5c542'
-    }
-  }, rpgState.coins, "g")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 1,
-      padding: '8px 0',
-      borderRadius: 8,
-      border: 'none',
-      fontSize: 11,
-      fontWeight: 800,
-      background: rpgState.coins >= 100 ? '#ff5e6c' : 'rgba(255,255,255,.08)',
-      color: rpgState.coins >= 100 ? '#fff' : 'rgba(255,255,255,.3)',
-      cursor: 'pointer',
-      letterSpacing: '.03em'
-    },
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (R.coins < 100) return;
-      R.coins -= 100;
-      var S = stateRef.current;
-      /* Travel to wasteland */
-      S.currentZone = 'wasteland';
-      updateZoneDimensions('wasteland');
-      S.map = generateZoneMap('wasteland');
-      S.monsters = [];
-      S.gatherNodes = [];
-      S.npcs = null;
-      BT_AUDIO.startZoneAmbient('wasteland');
-      /* Spawn in safe pad center */
-      var wz = ZONES.wasteland;
-      S.player.x = Math.floor(wz.w / 2) * TILE;
-      S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-      S.hitParticles = [];
-      S.deathExplosions = [];
-      S.arrows = [];
-      S._ambientParticles = [];
-      S._zoneWipe = Date.now();
-      S._fenceClimb = null;
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 40,
-        text: 'The Lawless Land',
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 25,
-        text: 'Climb the fence to enter. No turning back easy.',
-        color: '#ea580c',
-        ts: Date.now()
-      });
-      BT_AUDIO.beep(100, 0.2, 0.3, 'sawtooth');
-      setTimeout(function () {
-        return BT_AUDIO.beep(80, 0.15, 0.25, 'sawtooth');
-      }, 150);
-      setRpgState(_objectSpread({}, R));
-      setFerrymanPanel(false);
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (e) {}
-    }
-  }, "\u2620\uFE0F ENTER THE WASTELAND (100g)"), /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 0.6,
-      padding: '8px 0',
-      borderRadius: 8,
-      border: '1px solid rgba(255,255,255,.15)',
-      background: 'rgba(255,255,255,.06)',
-      color: 'rgba(255,255,255,.6)',
-      fontSize: 10,
-      fontWeight: 600,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "Nevermind")))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
+  }, "No gems yet. Harvest resources in elemental zones to collect raw gems!")))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 8,
@@ -22410,66 +22156,6 @@ export var BroTown = function BroTown(_ref0) {
       background: '#a0a0ff',
       transition: 'width 0.1s',
       width: Math.min(100, (Date.now() - (((_stateRef$current$_sl = stateRef.current._sleeping) === null || _stateRef$current$_sl === void 0 ? void 0 : _stateRef$current$_sl.started) || Date.now())) / HOUSE_SLEEP_MS * 100) + '%'
-    }
-  }))), ((_stateRef$current21 = stateRef.current) === null || _stateRef$current21 === void 0 ? void 0 : _stateRef$current21.currentZone) === 'wasteland' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: 8,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 20,
-      padding: '4px 14px',
-      borderRadius: 8,
-      background: 'rgba(255,94,108,.2)',
-      border: '1px solid rgba(255,94,108,.4)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 800,
-      color: '#ff5e6c',
-      fontFamily: 'Source Sans 3,sans-serif'
-    }
-  }, "\u2620\uFE0F LAWLESS LAND \u2014 ALL items drop on death")), ((_stateRef$current22 = stateRef.current) === null || _stateRef$current22 === void 0 ? void 0 : _stateRef$current22._fenceClimb) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: 38,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 20,
-      padding: '4px 14px',
-      borderRadius: 8,
-      background: 'rgba(245,197,66,.2)',
-      border: '1px solid rgba(245,197,66,.4)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center',
-      minWidth: 200
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#f5c542',
-      marginBottom: 3
-    }
-  }, "\uD83E\uDDD7 Climbing fence..."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: 6,
-      background: 'rgba(255,255,255,.1)',
-      borderRadius: 3,
-      overflow: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: '100%',
-      borderRadius: 3,
-      background: '#f5c542',
-      transition: 'width 0.1s',
-      width: Math.min(100, (Date.now() - (((_stateRef$current$_fe = stateRef.current._fenceClimb) === null || _stateRef$current$_fe === void 0 ? void 0 : _stateRef$current$_fe.started) || Date.now())) / 2000 * 100) + '%'
     }
   }))), ((_stateRef$current23 = stateRef.current) === null || _stateRef$current23 === void 0 ? void 0 : _stateRef$current23.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -22695,7 +22381,7 @@ export var BroTown = function BroTown(_ref0) {
       color: 'rgba(255,255,255,.25)',
       marginBottom: 4
     }
-  }, "Blocked players can't chat, attack, trade, or duel you in lawful areas. Block does NOT apply in the Lawless Land."), blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Blocked players can't chat, attack, trade, or duel you."), blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
       color: 'rgba(255,255,255,.3)'
@@ -23736,133 +23422,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
       turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
     }
-  }, "Turn In Quest"))), ferrymanPanel && rpgState && /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-card",
-    onClick: function onClick(e) {
-      return e.stopPropagation();
-    },
-    style: {
-      width: 280,
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 40,
-      marginBottom: 4
-    }
-  }, "\uD83D\uDC80"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#ff5e6c',
-      marginBottom: 4
-    }
-  }, "The Ferryman"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: 'rgba(255,255,255,.7)',
-      marginBottom: 8,
-      lineHeight: 1.5
-    }
-  }, "\"The Lawless Land awaits. No rules. No mercy.", /*#__PURE__*/React.createElement("br", null), "Attack any player. Win everything they carry.", /*#__PURE__*/React.createElement("br", null), "Lose... and they take everything from you.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", null, "All items drop on death. All gold. All gear."), /*#__PURE__*/React.createElement("br", null), "Equipped weapons, armor, amulet, shield \u2014 everything.\""), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: '#f5c542',
-      marginBottom: 8,
-      padding: '4px 8px',
-      borderRadius: 6,
-      background: 'rgba(245,197,66,.1)',
-      border: '1px solid rgba(245,197,66,.2)'
-    }
-  }, "\u26A0\uFE0F Travel cost: 100 gold \xB7 You arrive at a fenced safe area.", /*#__PURE__*/React.createElement("br", null), "Climb the fence (2s) to enter the lawless zone."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 1,
-      padding: '10px',
-      borderRadius: 8,
-      border: 'none',
-      background: rpgState.coins >= 100 ? '#ff5e6c' : 'rgba(255,255,255,.1)',
-      color: rpgState.coins >= 100 ? '#fff' : 'rgba(255,255,255,.3)',
-      fontWeight: 800,
-      fontSize: 12,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (R.coins < 100) return;
-      R.coins -= 100;
-      var S = stateRef.current;
-      S.currentZone = 'wasteland';
-      updateZoneDimensions('wasteland');
-      S.map = generateZoneMap('wasteland');
-      S.monsters = [];
-      S.gatherNodes = [];
-      S.npcs = null;
-      BT_AUDIO.startZoneAmbient('wasteland');
-      /* Spawn in safe pad center */
-      var wz = ZONES.wasteland;
-      S.player.x = Math.floor(wz.w / 2) * TILE;
-      S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-      S.hitParticles = [];
-      S.deathExplosions = [];
-      S.arrows = [];
-      S._ambientParticles = [];
-      S._zoneWipe = Date.now();
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 40,
-        text: 'The Lawless Land',
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 25,
-        text: 'Climb the fence to enter. All items at risk.',
-        color: '#f5c542',
-        ts: Date.now()
-      });
-      BT_AUDIO.beep(100, 0.15, 0.2, 'sawtooth');
-      setTimeout(function () {
-        return BT_AUDIO.beep(80, 0.1, 0.15, 'sawtooth');
-      }, 150);
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (e) {}
-      setFerrymanPanel(false);
-    }
-  }, "\uD83D\uDC80 Travel (100g)"), /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 1,
-      padding: '10px',
-      borderRadius: 8,
-      border: '1px solid rgba(255,255,255,.15)',
-      background: 'rgba(255,255,255,.06)',
-      color: 'rgba(255,255,255,.6)',
-      fontWeight: 700,
-      fontSize: 12,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "Not today")))), duelRequest && /*#__PURE__*/React.createElement("div", {
+  }, "Turn In Quest"))), duelRequest && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setDuelRequest(null);
@@ -25701,7 +25261,7 @@ export var BroTown = function BroTown(_ref0) {
     }, {
       label: 'PvP',
       color: '#a78bfa',
-      stats: [['PvP Kills', cs.pvpKills], ['PvP Deaths', cs.pvpDeaths], ['Lawless Kills', cs.lawlessKills], ['Lawless Deaths', cs.lawlessDeaths], ['Duels Won', cs.duelsWon], ['Duels Lost', cs.duelsLost]]
+      stats: [['PvP Kills', cs.pvpKills], ['PvP Deaths', cs.pvpDeaths], ['Duels Won', cs.duelsWon], ['Duels Lost', cs.duelsLost]]
     }, {
       label: 'Life Skills',
       color: '#3dd497',
@@ -26166,46 +25726,6 @@ export var BroTown = function BroTown(_ref0) {
         animation: timeLeft < 10 ? 'promptPulse 0.5s ease-in-out infinite' : 'none'
       }
     }, "\uD83D\uDC80 ", itemCount, " items scattered in ", ((_ZONES$nearest$zone = ZONES[nearest.zone]) === null || _ZONES$nearest$zone === void 0 ? void 0 : _ZONES$nearest$zone.name) || nearest.zone, " \u2014 ", timeLeft, "s to recover!");
-  }(), function (_stateRef$current38) {
-    var fc = (_stateRef$current38 = stateRef.current) === null || _stateRef$current38 === void 0 ? void 0 : _stateRef$current38._fenceClimb;
-    if (!fc) return null;
-    var elapsed = Date.now() - fc.started;
-    var pct = Math.min(100, elapsed / fc.duration * 100);
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'absolute',
-        top: 52,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 18,
-        width: 180,
-        textAlign: 'center'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        fontWeight: 700,
-        fontFamily: 'Source Sans 3,sans-serif',
-        color: '#f5c542',
-        marginBottom: 2
-      }
-    }, "\uD83E\uDDD7 Climbing ", fc.direction === 'out' ? 'OUT' : 'IN', "... ", Math.ceil((fc.duration - elapsed) / 1000), "s"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: '100%',
-        height: 6,
-        background: 'rgba(255,255,255,.1)',
-        borderRadius: 3,
-        overflow: 'hidden'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: pct + '%',
-        height: '100%',
-        background: fc.direction === 'out' ? '#ff5e6c' : '#3dd497',
-        borderRadius: 3,
-        transition: 'width 0.1s linear'
-      }
-    })));
   }(), showPlayerList && /*#__PURE__*/React.createElement("div", {
     className: "bt-plist"
   }, playerList.length === 0 && /*#__PURE__*/React.createElement("div", {
