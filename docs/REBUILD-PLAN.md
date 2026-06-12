@@ -93,9 +93,10 @@ copy won.
   Note: the NET overlay's tick buffers were only ever fed by the deleted
   `setupWebSocket`, so they were already empty in production; wiring the
   live inline `tick` handler into them is a Phase 5 follow-up.
-- **Phase 2 — chat:** `sendChat` (~1515) + the `chat`/`emote` dispatcher
-  cases → `src/game/chat.js`, functions taking `(S, deps)` where deps are the
-  React setters (`setChatLog`, `setUnreadChats`, …).
+- **Phase 2 — ✅ done (v2.3.767):** chat → `src/game/chat.js`
+  (`sendChatMessage`, `handleChatEvent`, `handleEmoteEvent`), functions
+  taking `(S, deps)` with the React setters in deps. BroTown keeps a thin
+  `sendChat` wrapper owning the input-widget state (chatInput, refocus).
 - **Phase 3 — quests:** quest panel state + `quest_accept`/`quest_turn_in`
   senders + NPC quest gating.
 - **Phase 4 — WS event dispatcher:** lift `_processGameEvent` (~3033–4279,
