@@ -22,6 +22,55 @@ function read() {
   try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; }
 }
 
+/* ═══ v2.3.782: field telemetry ═══
+   Screenshot-driven debugging died here: every serious entry also uploads
+   the whole ring buffer to the server's Feedback DO (POST
+   /api/feedback/crash; read back via GET /api/feedback/crashes).  Sent as
+   text/plain so sendBeacon needs no CORS preflight; payload fields are
+   clamped server-side.  Debounced (30s, expedited to 1.5s for fatal
+   kinds) + per-session rate-limited server-side, so a strike storm can't
+   flood storage.  Telemetry must NEVER throw into the game. */
+const _SID = Math.random().toString(36).slice(2, 10);
+const _IMMEDIATE = new Set(['error', 'rejection', 'CONTEXT_LOST', 'pixi-init-failed', 'auto-reload', 'prior']);
+let _flushTimer = null;
+let _flushAt = 0;
+let _lastSentLen = -1;
+function _apiBase() {
+  try {
+    return (window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev')
+      .replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
+  } catch (e) { return ''; }
+}
+function _doFlush() {
+  _flushTimer = null;
+  try {
+    const log = read();
+    if (!log.length || log.length === _lastSentLen) return;
+    _lastSentLen = log.length;
+    const payload = JSON.stringify({
+      sid: _SID,
+      v: typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev',
+      ua: (navigator && navigator.userAgent) || '',
+      zone: (window._gameState && window._gameState.current && window._gameState.current.currentZone) || '',
+      log: log.slice(-16),
+    });
+    const url = _apiBase() + '/api/feedback/crash';
+    let sent = false;
+    try {
+      if (navigator.sendBeacon) sent = navigator.sendBeacon(url, new Blob([payload], { type: 'text/plain' }));
+    } catch (e) { sent = false; }
+    if (!sent) fetch(url, { method: 'POST', body: payload, keepalive: true }).catch(() => {});
+  } catch (e) { /* telemetry is best-effort */ }
+}
+function _scheduleFlush(kind) {
+  try {
+    const delay = _IMMEDIATE.has(kind) ? 1500 : 30000;
+    const due = Date.now() + delay;
+    if (_flushTimer && due < _flushAt) { clearTimeout(_flushTimer); _flushTimer = null; }
+    if (!_flushTimer) { _flushAt = due; _flushTimer = setTimeout(_doFlush, delay); }
+  } catch (e) { /* ignore */ }
+}
+
 export function recordCrash(kind, msg) {
   try {
     const log = read();
@@ -32,6 +81,10 @@ export function recordCrash(kind, msg) {
     localStorage.setItem(KEY, JSON.stringify(log));
   } catch (e) { /* storage unavailable */ }
   try { console.error('[bt-crash]', kind, msg); } catch (e) { /* ignore */ }
+  /* v2.3.782: upload (debounced).  'resume' alone is routine tab-switch
+     noise and doesn't trigger a send -- it still rides along in the ring
+     buffer whenever a real event flushes. */
+  if (kind !== 'resume') _scheduleFlush(kind);
 }
 
 function banner(text) {
@@ -62,6 +115,10 @@ export function installCrashTrap() {
   const prior = read();
   if (prior.length) {
     try { console.warn('[bt-crash] prior session log:', prior); } catch (e) { /* ignore */ }
+    /* v2.3.782: a page that iOS evicted could never report anything --
+       but its ring buffer survived in localStorage.  Upload it on the
+       NEXT boot so even eviction deaths leave server-side evidence. */
+    _scheduleFlush('prior');
     if (/[?&]dev=1\b/.test(window.location.search)) {
       /* v2.3.773: show the TAIL of the log, not just the last entry --
          the last entry was always a routine [resume] and hid the story.

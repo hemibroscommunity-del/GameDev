@@ -1,13 +1,14 @@
 {
   "name": "hemi-bros-arpg",
-  "version": "2.3.783",
+  "version": "2.3.784",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "qa": "node tools/qa/run-all.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.6.6",
