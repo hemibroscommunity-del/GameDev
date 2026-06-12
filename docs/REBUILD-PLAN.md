@@ -123,10 +123,18 @@ copy won.
   object built once per WS-effect run. eslint `no-undef` was the capture
   detector (caught `pixiRef`, `DEATH_GOLD_PENALTY`, `updateZoneDimensions`/
   `generateZoneMap`, `BT_API_BASE`).
-- **Phase 5 — connection lifecycle:** move the remaining inline WS effect
-  body (~1845–3030 + channelShim) into `src/networking/wsClient.js`,
-  **replacing** the stale file wholesale; BroTown keeps a ~10-line useEffect
-  that calls it with a context object.
+- **Phase 5 — ✅ done (v2.3.784):** the remaining inline WS effect body
+  (~1,560 lines: lobby room resolution, protocol-v2 join, the main message
+  switch, `_buildServerPile`, reconnect backoff, the v2.3.778 resume-resync
+  recovery ladder, channelShim) → `src/networking/wsClient.js`
+  `setupWebSocket(ctx)`; BroTown keeps a thin useEffect passing the ctx
+  (setters/refs/gating flags). Every dependency imported explicitly; the
+  stale eslint LEGACY DEBT globals blocks for wsClient.js (19 entries) and
+  the deleted gameLoop.js (30) were removed — wsClient lints with zero
+  grandfathered globals. **The networking layer is now fully out of
+  BroTown.jsx.** Follow-up noted: wire the live `tick` case into the
+  `tickTimes`/`tickSizes` NET-overlay buffers (pre-existing gap, kept
+  frozen).
 - **Phase 6+ —** zone-transition block, desktop keyboard controls
   (~11475–11637), then game-loop slicing (extract per-zone mechanic blocks,
   then the simulation/render split) guided by perf needs.
