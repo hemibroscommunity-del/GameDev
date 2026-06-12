@@ -7,20 +7,23 @@ code disagree, trust the code and fix the doc.
 
 ## Sources of truth, in priority order
 
-1. **Client handlers:** the inline WebSocket client in `src/ui/BroTown.jsx`
-   (the `useEffect` starting ~line 1845): the main message switch
-   (~2048–2829) and the `_processGameEvent` dispatcher (~3033–4279).
+> **Updated v2.3.784 (REBUILD-PLAN Phases 4–5):** the client networking code
+> moved out of BroTown.jsx. The connection lifecycle (room resolution, join,
+> the main message switch, reconnect/resume-resync, channelShim) now lives in
+> `src/networking/wsClient.js` (`setupWebSocket`), and the per-event
+> dispatcher (`_processGameEvent` → `processGameEvent`) in
+> `src/networking/gameEvents.js`. Both were moved verbatim, so every handler
+> description below still applies — only the file (and therefore the line
+> anchors) changed. BroTown.jsx keeps a thin useEffect wiring.
+
+1. **Client handlers:** `src/networking/wsClient.js` (connection lifecycle +
+   main message switch) and `src/networking/gameEvents.js` (the event
+   dispatcher).
 2. **Server:** `server/src/index.js` — incoming-message switch in
    `GameRoom.webSocketMessage` (~3418–4018) and the `PRIVILEGED_EVENTS`
    deny-list (~line 91).
 3. **v1/v2 delta semantics:** `server/test/protocol-v2.test.mjs` and the
    "Wire protocol" section of `CLAUDE.md`.
-
-> **⚠ Do NOT use `src/networking/wsClient.js` as a reference.** It is a dead,
-> pre-protocol-v2 copy from an abandoned extraction — `setupWebSocket` is
-> never called anywhere. Only its `getTickTimes`/`getTickSizes` ring-buffer
-> exports are live (imported by `src/rendering/systems/fpsOverlay.js`).
-> Scheduled for removal in REBUILD-PLAN Phase 1.
 
 ## Transport and connection lifecycle
 
