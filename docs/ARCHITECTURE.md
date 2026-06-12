@@ -1,5 +1,14 @@
 # Hemi Bros ARPG — Architecture Map & Engineering Roadmap
 
+> **⚠ STALE — v2.3.765 (2026-06-12):** parts of this doc no longer match the
+> code. Known wrong: the "Game loop" row (`src/game/gameLoop.js` is a **dead
+> duplicate** from an abandoned extraction — the live loop is inline in
+> `src/ui/BroTown.jsx`) and the "Networking" row (`src/networking/wsClient.js`
+> is a dead pre-protocol-v2 copy — the live WS client is inline in
+> `BroTown.jsx`). Trust the code, and see `docs/REBUILD-PLAN.md` for the
+> current decomposition state and roadmap. A corrected rewrite of this doc
+> lands with REBUILD-PLAN Phase 1.
+
 Written 2026-06-10 (v2.3.689) after a deep audit + cleanup session. Intended as
 the onboarding map for any future work session. Corrections welcome — trust
 the code over this doc where they disagree.
