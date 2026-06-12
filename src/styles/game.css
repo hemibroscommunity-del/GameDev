@@ -230,16 +230,20 @@ input{font-family:inherit}
    nothing meaningfully flexes at that height. */
 .bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;gap:8px;width:100%;flex:1 1 auto;min-height:0;max-width:560px;margin:0 auto;padding:12px 12px 14px;text-align:left;background:none;border:none;box-shadow:none;overflow:hidden}
 .bt-name-box.bt-cc-box>*{flex:0 0 auto}
-.bt-cc-menu{flex:1 1 auto!important;min-height:0;display:flex;flex-direction:column}
-/* v2.3.772: showcase shape — 16:9 normally (spec §3: landscape, the
-   character is the star); 667pt-class screens flatten it and drop the
-   decorative CTA line so the drawer keeps >=2 tile rows (pixel budget:
-   at 375x667 the 16:9 stage + CTA left the drawer ~35px). */
-.bt-cc-stage{aspect-ratio:16/9}
+/* v2.3.773: the v2.3.772 fixed budget (16:9 stage from WIDTH, fixed
+   banner, full-width PLAY) collapsed the drawer to a ~25px sliver on a
+   real device — Safari's URL bar shrinks dvh ~100px below the screen
+   size while width-driven sections keep growing.  Now the stage and the
+   menu are the TWO flexible regions sharing the actual viewport: spare
+   height goes to the stage first (grow 3, owner: the character is the
+   star) then the drawer (grow 2), and BOTH have hard minimums so
+   neither can collapse again.  The stage's children are all absolutely
+   positioned / 100%-sized, so flex height works cleanly and the canvas
+   contain+scale adapts to whatever shape falls out. */
+.bt-name-box.bt-cc-box>.bt-cc-stage{flex:3 1 140px;min-height:140px;max-height:300px}
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:column}
 @media (max-height:720px){
-  .bt-cc-stage{aspect-ratio:2.2/1}
   .bt-cc-cta{display:none}
-  .bt-cc-play{max-width:300px;margin-left:auto;margin-right:auto}
 }
 @media (max-height:620px){
   .bt-name-box.bt-cc-box{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
@@ -266,7 +270,11 @@ input{font-family:inherit}
    invisible (suspected in the owner's 'PLAY disappeared' report; the other
    cause is overlays — the bottom sheet and the iOS keyboard both cover it
    while open, by design). */
-.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px}
+/* v2.3.773: width cap — the art scaled with card width, so on a Pro Max
+   PLAY rendered ~108px tall, TALLER than the squeezed drawer above it
+   (owner screenshot).  320px keeps it the clear final action without
+   competing for the drawer's room. */
+.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px;max-width:320px;margin-left:auto;margin-right:auto}
 /* v2.3.741: solid-color fallback removed — the art has transparent corners,
    so the backing purple peeked out around the painted shape (owner). */
 .bt-cc-play:active{transform:translateY(2px);filter:brightness(1.12)}
@@ -290,16 +298,20 @@ input{font-family:inherit}
    on 667pt-class phones.
    v2.3.771: no top negative margin — it pushed the strip under the
    iPhone notch/Dynamic Island, which ate the art's top ~50px.
-   v2.3.772: 24vh -> 15vh — the locked single-screen creator pays for
+   v2.3.772: 24vh -> ~12dvh — the locked single-screen creator pays for
    its drawer out of the header (spec §2: the header takes less priority
    than the character).  At this height the full 3:2 art loses "BRO" to
    the crop, so portrait loads banner-strip.webp, a 3:1 pre-crop of the
    lettering band (see the <picture> in BroTown.jsx), cropped plain
    CENTER; the old bottom-anchor only made sense against the full art's
-   stone base, which wide viewports still use via the override below. */
-.bt-cc-banner{flex:none;align-self:stretch;height:clamp(80px,15vh,200px);object-fit:cover;object-position:center;display:block;pointer-events:none;margin:0 calc(-1*max(10px,env(safe-area-inset-right))) 0 calc(-1*max(10px,env(safe-area-inset-left)))}
+   stone base, which wide viewports still use via the override below.
+   v2.3.773: vh -> dvh (vh line kept as old-Safari fallback) — iOS vh is
+   the LARGE-viewport unit, so with the Safari URL bar open the banner
+   rendered ~25px taller than budgeted and squeezed the drawer (owner's
+   device screenshot: drawer collapsed to a sliver). */
+.bt-cc-banner{flex:none;align-self:stretch;height:clamp(70px,12vh,160px);height:clamp(70px,12dvh,160px);object-fit:cover;object-position:center;display:block;pointer-events:none;margin:0 calc(-1*max(10px,env(safe-area-inset-right))) 0 calc(-1*max(10px,env(safe-area-inset-left)))}
 @media (max-height:720px){
-  .bt-cc-banner{height:clamp(80px,14vh,150px)}
+  .bt-cc-banner{height:clamp(60px,11vh,130px);height:clamp(60px,11dvh,130px)}
 }
 /* v2.3.766: on wide viewports (landscape phone / desktop) the strip is so
    much wider than the 3:2 art that cover only shows a thin horizontal

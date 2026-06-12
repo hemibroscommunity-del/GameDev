@@ -13847,8 +13847,9 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.743: owner's storm-light void painting (an IMAGE, not video
          — the v2.3.736 cyan-tint lesson: device video compositing isn't
          color-exact). */
-      /* aspect-ratio lives in .bt-cc-stage so short screens can flatten
-         the stage (game.css). */
+      /* Height lives in .bt-cc-stage (game.css) — v2.3.773: flex-driven,
+         not aspect-ratio: the stage and the menu share the real viewport
+         with guaranteed minimums. */
       className: "bt-cc-stage",
       style: { position: 'relative', width: '100%', boxSizing: 'border-box',
         border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
