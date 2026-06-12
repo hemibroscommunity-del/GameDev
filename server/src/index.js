@@ -2041,10 +2041,35 @@ export class GameRoom {
   async _loadRpg(playerId) {
     try {
       const stored = await this.state.storage.get('rpg:' + playerId);
+      if (stored && this._healLifeSkills(stored)) {
+        // self-heal corrupted records in place (see _healLifeSkills), then
+        // persist so storage converges clean without a manual wipe.
+        try { await this.state.storage.put('rpg:' + playerId, stored); } catch (e) { /* best-effort */ }
+      }
       return stored || null;
     } catch (e) {
       return null;
     }
+  }
+
+  // v2.3.769: records bootstrapped from pre-fix clients carry lifeSkills
+  // with ARRAYS object-spread into plain objects (pets: {0:..}) and null
+  // into {} (activePet) -- the client-side merge bug that caused the
+  // multiplayer corruption storm.  Heal the stored shape: pets back to an
+  // array, empty-object activePet back to null.  Returns true if changed.
+  _healLifeSkills(stored) {
+    const ls = stored && stored.lifeSkills;
+    if (!ls || typeof ls !== 'object') return false;
+    let changed = false;
+    if (ls.pets && !Array.isArray(ls.pets) && typeof ls.pets === 'object') {
+      ls.pets = Object.values(ls.pets);
+      changed = true;
+    }
+    if (ls.activePet && typeof ls.activePet === 'object' && Object.keys(ls.activePet).length === 0) {
+      ls.activePet = null;
+      changed = true;
+    }
+    return changed;
   }
 
   // Prune expired buff entries from ps._buffs.  _buffActive treats
