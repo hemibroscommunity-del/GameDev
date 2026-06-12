@@ -14008,17 +14008,23 @@ export var BroTown = function BroTown(_ref0) {
          position so the pedestal/figure/rotate geometry is untouched. */
       className: "bt-cc-stage",
       style: { position: 'relative', width: '100%', boxSizing: 'border-box' }
-    }, /*#__PURE__*/React.createElement("img", {
+    }, /*#__PURE__*/React.createElement("div", {
       /* v2.3.791: pedestal sized by stage HEIGHT, bottom-center anchored —
          it was %-of-WIDTH while the figure scaled with height, so the
          flexing stage broke the boots/platform contact differently on
          every device (owner screenshot: floating player).  Both now
          scale off the same axis, so the contact point is proportional
-         everywhere. */
+         everywhere.
+         v2.3.794: promoted to a GROUP (aspect-ratio supplies the width
+         from the 34% height) so the braziers can stand ON the disc and
+         track it at every stage size (owner: goblets on the platform).
+         DOM order keeps them behind the character canvas. */
+      style: { position: 'absolute', bottom: '3%', left: '50%', height: '34%', aspectRatio: '480 / 165', transform: 'translateX(-50%)', pointerEvents: 'none' }
+    }, /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/platform.webp', alt: '',
-      style: { position: 'absolute', bottom: '3%', left: '50%', height: '34%', width: 'auto', transform: 'translateX(-50%)', pointerEvents: 'none' }
+      style: { position: 'absolute', inset: 0, width: '100%', height: '100%' }
     }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
-    /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" }),
+    /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" })),
     /*#__PURE__*/React.createElement("canvas", {
       ref: previewCanvasRef,
       title: 'Live preview',

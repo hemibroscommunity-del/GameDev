@@ -264,17 +264,16 @@ input{font-family:inherit}
 /* v2.3.726: braziers animate via 12-cell sprite strips built from the
    owner's flame clip (purple as shot; gold = luminance-ramped recolor for
    the sun side).  jump-none lands on every cell before looping. */
-.bt-cc-brazier{position:absolute;bottom:1.5%;height:34%;pointer-events:none;background:0 0/1200% 100% no-repeat;animation:bt-cc-braz 1.0s steps(12,jump-none) infinite}
+/* v2.3.794: braziers live INSIDE the pedestal group now (% values are
+   relative to the disc box) — they stand on the platform's top face and
+   flank the character (owner), instead of hanging at the stage edges. */
+.bt-cc-brazier{position:absolute;bottom:44%;height:105%;pointer-events:none;background:0 0/1200% 100% no-repeat;animation:bt-cc-braz 1.0s steps(12,jump-none) infinite}
 @keyframes bt-cc-braz{from{background-position-x:0%}to{background-position-x:100%}}
-/* v2.3.720: pillars hug the window edges (mockup: columns are part of the
-   window architecture, not free-standing) */
-/* v2.3.792: lifted off the stage floor — the rotate buttons live in the
-   bottom corners (40px + margin) and the flames sat right on top of
-   them (owner: nudge the flames out of the way). */
-.bt-cc-brazier{bottom:52px}
-.bt-cc-brazier--left{left:2.5%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
+/* v2.3.792's 52px button-clearance lift is superseded — on the disc the
+   braziers sit nowhere near the stage's corner rotate buttons. */
+.bt-cc-brazier--left{left:4%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
 /* negative delay desyncs the two flames so they don't flicker in lockstep */
-.bt-cc-brazier--right{right:2.5%;aspect-ratio:110/231;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
+.bt-cc-brazier--right{right:4%;aspect-ratio:110/231;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
 /* Chunky beveled PLAY — presses down on tap (border-bottom is the bevel). */
 /* v2.3.725: PLAY is the owner's painted button art (label baked in). */
 /* v2.3.740: solid color UNDER the art + a min-height — the button's entire
