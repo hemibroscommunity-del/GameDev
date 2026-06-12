@@ -251,14 +251,16 @@ input{font-family:inherit}
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
    "sign here" cue at the left. */
 
-/* v2.3.734: lockup sizing lives here so short screens can squeeze it —
-   the full-size header starved the rail on 667pt-class phones, clipping
-   the Shoes pill under Randomize. */
-.bt-cc-crest{height:48px;width:auto;margin:0 auto;display:block;pointer-events:none}
-.bt-cc-logo-main{width:70%;max-width:360px;height:auto;margin:2px auto 0;display:block;pointer-events:none}
+/* v2.3.765: crest + logo lockup replaced by the owner's painted tavern-
+   banner art (single image).  The source is 3:2 — too tall as-is — so
+   aspect-ratio + object-fit:cover crop it to a wide strip; object-position
+   70% biases the crop downward so the BRO TOWN lettering and the element-
+   gem row stay in frame (the trim comes out of the empty sky).  Short
+   screens crop harder — same lesson as v2.3.734: header height is what
+   starves the rail into scroll-clipping on 667pt-class phones. */
+.bt-cc-banner{width:100%;aspect-ratio:2.2/1;object-fit:cover;object-position:center 70%;display:block;margin:0 auto;border:2px solid #6b5630;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.5);pointer-events:none}
 @media (max-height:720px){
-  .bt-cc-crest{height:32px}
-  .bt-cc-logo-main{width:54%}
+  .bt-cc-banner{aspect-ratio:3/1}
 }
 
 

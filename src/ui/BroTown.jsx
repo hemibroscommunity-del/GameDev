@@ -13854,11 +13854,12 @@ export var BroTown = function BroTown(_ref0) {
        (crest / BRO TOWN / HEMI BROS / gem divider) per the splash mockup. */
     style: { textAlign: 'center', marginBottom: 8 }
   }, /*#__PURE__*/React.createElement("img", {
-    /* v2.3.734: sizes moved to CSS classes so short screens can shrink the
-       lockup (it was starving the rail into scroll-clipping). */
-    src: '/ui/welcome/crest.webp', alt: '', className: "bt-cc-crest"
-  }), /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo-main"
+    /* v2.3.765: crest + BRO TOWN lockup replaced by the owner's painted
+       tavern-banner art (single full-width image).  The source is 3:2 —
+       too tall as-is on phones — so the CSS class letterboxes it to a
+       wide strip with object-fit:cover; sizing lives in game.css beside
+       the old lockup rules it supersedes. */
+    src: '/ui/welcome/banner-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
   }), /*#__PURE__*/React.createElement("div", {
     /* v2.3.738: HEMI BROS sub-logo swapped for a call-to-action line. */
     style: { fontSize: 15, fontWeight: 700, color: '#ffffff', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
