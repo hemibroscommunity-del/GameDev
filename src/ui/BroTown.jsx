@@ -48,6 +48,8 @@ import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDamage, addBuildProg, addBuildUse, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage, applyMeleeLifesteal } from '@/game/combatHelpers.js';
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage, handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
+/* v2.3.782: quest accept/turn-in transitions extracted behavior-frozen (REBUILD-PLAN Phase 3). */
+import { acceptQuest, turnInQuest } from '@/game/quests.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
 
@@ -27204,34 +27206,8 @@ export var BroTown = function BroTown(_ref0) {
       cursor: 'pointer'
     },
     onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (!R._quests) R._quests = {};
-      R._quests[questPanel.quest.id] = QUEST_STATUS.active;
-      /* Server-authoritative quest state in MP -- worker tracks the
-         _quests transitions so a cheater can't activate a quest they
-         haven't been offered.  Local mutation stays as snappy UI
-         feedback; player_state arrives with authoritative _quests. */
-      {
-        var _Sqa = stateRef.current;
-        if (_Sqa._serverMonsters && _Sqa.channel) {
-          try { _Sqa.channel.send({ type: 'quest_accept', payload: { questId: questPanel.quest.id } }); } catch (e) {}
-        }
-      }
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (e) {}
-      setQuestPanel(_objectSpread(_objectSpread({}, questPanel), {}, {
-        status: 'active'
-      }));
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 40,
-        text: 'Quest Accepted: ' + questPanel.quest.title,
-        color: '#5b52ff',
-        ts: Date.now()
-      });
-      BT_AUDIO.collect();
+      /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
+      acceptQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
     }
   }, "Accept Quest"), questPanel.status === 'active' && questPanel.quest.check(rpgState, stateRef.current) && /*#__PURE__*/React.createElement("button", {
     style: {
@@ -27246,44 +27222,8 @@ export var BroTown = function BroTown(_ref0) {
       cursor: 'pointer'
     },
     onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (!R._quests) R._quests = {};
-      /* Server-authoritative quest reward in MP -- worker validates
-         the quest is 'active', looks up reward gold + xp from its
-         own QUEST_REWARDS table, applies, unlocks next.  Local
-         mutation stays as snappy popup feedback; player_state
-         arrives with authoritative _quests + coins + xp + level. */
-      {
-        var _Sqt = stateRef.current;
-        if (_Sqt._serverMonsters && _Sqt.channel) {
-          try { _Sqt.channel.send({ type: 'quest_turn_in', payload: { questId: questPanel.quest.id } }); } catch (e) {}
-        }
-      }
-      R._quests[questPanel.quest.id] = QUEST_STATUS.turnedIn;
-      R.coins += questPanel.quest.reward.gold;
-      R.xp += questPanel.quest.reward.xp;
-      /* Achievement points for quest completion */
-      R.achievementPoints = (R.achievementPoints || 0) + QUEST_AP_REWARD;
-      if (!R._compStats) R._compStats = createDefaultCompStats();
-      R._compStats.questsCompleted++;
-      R._compStats.totalGoldEarned += questPanel.quest.reward.gold;
-      /* Unlock next quest in chain */
-      if (questPanel.quest.next && !R._quests[questPanel.quest.next]) {
-        R._quests[questPanel.quest.next] = QUEST_STATUS.available;
-      }
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (e) {}
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 40,
-        text: 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP',
-        color: '#f5c542',
-        ts: Date.now()
-      });
-      BT_AUDIO.levelUp();
-      setQuestPanel(null);
+      /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
+      turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
     }
   }, "Turn In Quest"))), ferrymanPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",

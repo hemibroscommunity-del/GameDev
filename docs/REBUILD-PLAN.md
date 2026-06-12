@@ -97,8 +97,12 @@ copy won.
   (`sendChatMessage`, `handleChatEvent`, `handleEmoteEvent`), functions
   taking `(S, deps)` with the React setters in deps. BroTown keeps a thin
   `sendChat` wrapper owning the input-widget state (chatInput, refocus).
-- **Phase 3 — quests:** quest panel state + `quest_accept`/`quest_turn_in`
-  senders + NPC quest gating.
+- **Phase 3 — ✅ done (v2.3.782):** quest accept/turn-in transition logic →
+  `src/game/quests.js` (`acceptQuest`, `turnInQuest`): `_quests` state
+  machine, server `quest_accept`/`quest_turn_in` sends, rewards/chain
+  unlock, persistence. Quest *data* was already in the data layer
+  (`QUESTS`/`QUEST_STATUS`/`getNpcQuest`); the panel JSX and the one-line
+  NPC-tap open-panel wiring stay in BroTown by design.
 - **Phase 4 — WS event dispatcher:** lift `_processGameEvent` (~3033–4279,
   the bulk of the 40+ message handlers) → `src/networking/gameEvents.js` as
   `(type, payload, S, deps)`.
