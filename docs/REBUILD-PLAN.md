@@ -42,7 +42,8 @@ banners are the durable markers):
 helpers** (`src/game/combatHelpers.js` — build progression, peer damage
 smoothing, shield arc, lifesteal tracking).
 
-**Dead duplicates from an earlier abandoned extraction (to delete, Phase 1):**
+**Dead duplicates from an earlier abandoned extraction (deleted in Phase 1,
+v2.3.766 — list kept as the record of what was removed and why):**
 
 - `src/game/gameLoop.js` (~5k lines) — imported by nothing live; the real
   loop is inline in BroTown.jsx.
@@ -81,14 +82,17 @@ copy won.
 
 ## Phases (one PR each)
 
-- **Phase 0 — this PR (v2.3.765):** foundation docs (this file,
+- **Phase 0 — ✅ done (v2.3.765, PR #31):** foundation docs (this file,
   WIRE-PROTOCOL.md, STATE-SCHEMA.md, ARCHITECTURE.md staleness banner) +
   first extraction: module-scope combat helpers → `src/game/combatHelpers.js`.
-- **Phase 1 — dead-code deletion:** remove `src/game/gameLoop.js`,
+- **Phase 1 — ✅ done (v2.3.766):** removed `src/game/gameLoop.js`,
   `src/game/createInitialState.js`, `src/game/index.js`, and
-  `setupWebSocket` from `src/networking/wsClient.js`. Rewrite
+  `setupWebSocket` from `src/networking/wsClient.js`. Rewrote
   ARCHITECTURE.md's stale rows. Zero behavior change; bundle unaffected
-  (these are already tree-shaken out) — this is hygiene + foot-gun removal.
+  (these were already tree-shaken out) — hygiene + foot-gun removal.
+  Note: the NET overlay's tick buffers were only ever fed by the deleted
+  `setupWebSocket`, so they were already empty in production; wiring the
+  live inline `tick` handler into them is a Phase 5 follow-up.
 - **Phase 2 — chat:** `sendChat` (~1515) + the `chat`/`emote` dispatcher
   cases → `src/game/chat.js`, functions taking `(S, deps)` where deps are the
   React setters (`setChatLog`, `setUnreadChats`, …).
