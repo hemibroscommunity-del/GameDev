@@ -1,5 +1,14 @@
 # Hemi Bros ARPG — Architecture Map & Engineering Roadmap
 
+> **Updated v2.3.766 (2026-06-12):** the stale "Game loop" and "Networking"
+> rows below were corrected — the dead duplicate files they pointed at
+> (`src/game/gameLoop.js`, `src/game/createInitialState.js`,
+> `src/game/index.js`, the old `setupWebSocket` in
+> `src/networking/wsClient.js`) were deleted in REBUILD-PLAN Phase 1.
+> For the current decomposition state and roadmap see `docs/REBUILD-PLAN.md`;
+> for the wire protocol see `docs/WIRE-PROTOCOL.md`; for the `S` object see
+> `docs/STATE-SCHEMA.md`. As always: trust the code over any doc.
+
 Written 2026-06-10 (v2.3.689) after a deep audit + cleanup session. Intended as
 the onboarding map for any future work session. Corrections welcome — trust
 the code over this doc where they disagree.
@@ -9,11 +18,12 @@ the code over this doc where they disagree.
 | Area | Entry points | Notes |
 |---|---|---|
 | Boot | `src/index.html` (vite root is `src/`) → `src/main.jsx` → `GameApp.jsx` → `BroTown.jsx` | GameApp also seeds a mock inventory for the Equip menu |
-| Game loop | `src/game/gameLoop.js` (5k lines) | tick + collision + combat; scans `S.monsters` ~7×/frame |
+| Game loop | **inline in `src/ui/BroTown.jsx`** (banner `═══ GAME LOOP ═══`) | tick + collision + combat; scans `S.monsters` ~7×/frame. Extraction is REBUILD-PLAN Phase 6+ |
 | Rendering | `src/rendering/systems/entityRenderer.js` (4.4k) | Pixi 8; per-dir body scale `BODY_DIR_SCALE`; armor masking `_maskedBodyFrame` |
 | Gear/armor | `src/rendering/gearCatalog.js` (equip stores, localStorage `bt-gear-v2-*`) | steel set is "indestructible": `reconcileGearStash()` |
 | Body/skins | `src/rendering/playerSkins.js` | sheet-level retint (skin/pants/shoes/shirt), cached per combo |
-| Networking | `src/networking/wsClient.js` → Cloudflare Durable Object (`brotown-server.…workers.dev`) | `S.channel` is a Supabase-shaped shim; `btRpc()` is a dead no-op kept for legacy call sites |
+| Networking | **inline WS client in `src/ui/BroTown.jsx`** → Cloudflare Durable Object (`brotown-server.…workers.dev`); see `docs/WIRE-PROTOCOL.md` | `S.channel` is a Supabase-shaped shim; `btRpc()` is a dead no-op kept for legacy call sites. `src/networking/wsClient.js` now only holds the NET-overlay tick buffers (Phase 5 moves the live client there) |
+| Combat helpers | `src/game/combatHelpers.js` | build progression, peer damage smoothing, shield arc, lifesteal tracking (extracted v2.3.765) |
 | Server | `server/src/index.js` (in-repo since the protocol-v2 monorepo merge; `server/test/`, auto-deploy workflow) | DO authority: coins/inventory/lifeSkills/combat. Deploys independently → keep changes back-compat. Anti-cheat plan: `docs/ANTICHEAT-SPEC.md` |
 | Tier-2 builds | `src/data/gameSystems.js` `WEAPON_CHANNELS` + `DEFENSE_CHANNELS`; `src/ui/mobile/dash/T2Panel.jsx` | per-category trained skills (sword/bow/staff + Defense); +5 pts/lvl into channels; **client-side only today** (see anti-cheat spec server TODO) |
 | UI (live) | `src/ui/mobile/BottomDashboard.jsx` + `dash/*` panels, `EquippedTab` via `inventoryBus` | popup actions in `dash/ItemDetailPopup.jsx` |
