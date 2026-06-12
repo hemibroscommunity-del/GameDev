@@ -1454,12 +1454,13 @@ export var BroTown = function BroTown(_ref0) {
   var _apTileStyle = function (sel, size) {
     /* v2.3.731: lighter tile wells (dark thumbs like black hair were
        invisible on the old near-black tiles) + gold ring on the pick.
-       v2.3.742: white/light-gray CHECKER wells (owner request) — reads as
-       an inventory slot, dark and light art both silhouette against it,
-       and the selected state rides entirely on the gold ring + badge. */
+       v2.3.742: white/light-gray CHECKER wells (owner request).
+       v2.3.775: checker -> soft light-gray GRADIENT (owner request) —
+       still light enough that dark art silhouettes; selection still
+       rides on the gold ring + badge. */
     return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
       position: 'relative', borderRadius: 8,
-      background: 'repeating-conic-gradient(#ffffff 0% 25%, #d7dae2 0% 50%) 0 0 / 12px 12px',
+      background: 'linear-gradient(180deg,#f4f5f8,#cdd2dc)',
       border: sel ? '2px solid var(--gold)' : '1.5px solid #56499a',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
@@ -13800,26 +13801,20 @@ export var BroTown = function BroTown(_ref0) {
     for (var _ci = 0; _ci < _ccCats.length; _ci++) { if (_ccCats[_ci].key === activeCat) { _ccActive = _ccCats[_ci]; break; } }
     return /*#__PURE__*/React.createElement("div", {
       className: "bt-name-modal"
-    }, /*#__PURE__*/React.createElement("picture", {
+    }, /*#__PURE__*/React.createElement("img", {
       /* v2.3.765: crest + BRO TOWN lockup replaced by the owner's painted
          tavern-banner art.
-         v2.3.766: full-bleed edge-to-edge strip across the top of the
-         screen (owner: no card border/rounding).
          v2.3.771: starts BELOW the top safe-area inset (the notch was
-         eating the art) with a bottom-anchored crop.
-         v2.3.772: TWO sources — at the new 15vh header height the full
-         3:2 art loses "BRO" to the crop, so portrait gets
-         banner-strip.webp, a 3:1 pre-crop of just the lettering band.
-         Wide viewports keep the full art: their CSS override aims the
-         thin band at the gem row, which isn't in the strip crop.
-         display:contents keeps the img itself as the modal's flex
-         child. */
-      style: { display: 'contents' }
-    }, /*#__PURE__*/React.createElement("source", {
-      media: '(min-aspect-ratio: 5/3)', srcSet: '/ui/welcome/banner-brotown.webp'
-    }), /*#__PURE__*/React.createElement("img", {
-      src: '/ui/welcome/banner-strip.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
-    })), /*#__PURE__*/React.createElement("div", {
+         eating the art).
+         v2.3.775: the WHOLE 3:2 art, scaled down and centered — every
+         cover-crop strategy (bottom-anchor, lettering pre-strip, gem
+         band) eventually clipped something on some device (owner: show
+         the full banner, just smaller).  Height-driven contain scaling
+         can never clip; the painted modal backdrop shows at the sides.
+         The banner-strip.webp pre-crop and the <picture> dual-source are
+         retired with this. */
+      src: '/ui/welcome/banner-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
+    }), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
     }, /*#__PURE__*/React.createElement("div", {
       /* Header: call-to-action only — the logo lives in the banner, the
@@ -13933,11 +13928,11 @@ export var BroTown = function BroTown(_ref0) {
         background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
     }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻"))), /*#__PURE__*/React.createElement("div", {
-      /* Name row — directly below the showcase, above the tabs (spec §4:
-         the name belongs to character identity, not the customization
-         list).  The dice rerolls the NAME only; appearance Randomize
-         lives under the drawer. */
-      style: { position: 'relative', width: '100%' }
+      /* Name row — DIRECTLY beneath the showcase (v2.3.775: negative
+         margin tucks the scroll against the stage frame per owner; the
+         card gap alone read as loose).  The dice rerolls the NAME only;
+         appearance Randomize lives under the drawer. */
+      style: { position: 'relative', width: '100%', marginTop: -2 }
     }, /*#__PURE__*/React.createElement("input", {
       value: nameInput,
       onChange: function onChange(e) {
@@ -14019,7 +14014,8 @@ export var BroTown = function BroTown(_ref0) {
          menu it acts on (owner placement, v2.3.769); the name dice above
          rerolls just the name. */
       type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
-      style: { width: '100%', padding: '5px', minHeight: 38, cursor: 'pointer', borderRadius: 10,
+      /* v2.3.775: slimmed with the rest of the vertical rhythm. */
+      style: { width: '100%', padding: '4px', minHeight: 34, cursor: 'pointer', borderRadius: 10,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
         background: 'rgba(20,16,40,0.93)', color: 'var(--txt)',
         fontSize: 16, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",

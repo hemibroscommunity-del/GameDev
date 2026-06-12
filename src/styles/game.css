@@ -229,8 +229,10 @@ input{font-family:inherit}
    viewports fall back to page scrolling (media query below) because
    nothing meaningfully flexes at that height. */
 /* v2.3.774: gap 8->6 + slimmer bottom pad — the width-driven banner is
-   taller, so the fixed rows return a few px to the flex regions. */
-.bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;gap:6px;width:100%;flex:1 1 auto;min-height:0;max-width:560px;margin:0 auto;padding:12px 12px 10px;text-align:left;background:none;border:none;box-shadow:none;overflow:hidden}
+   taller, so the fixed rows return a few px to the flex regions.
+   v2.3.775: gap 6->4 + slimmer top pad (owner: compact the space
+   between UI items). */
+.bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;gap:4px;width:100%;flex:1 1 auto;min-height:0;max-width:560px;margin:0 auto;padding:8px 12px 10px;text-align:left;background:none;border:none;box-shadow:none;overflow:hidden}
 .bt-name-box.bt-cc-box>*{flex:0 0 auto}
 /* v2.3.773: the v2.3.772 fixed budget (16:9 stage from WIDTH, fixed
    banner, full-width PLAY) collapsed the drawer to a ~25px sliver on a
@@ -266,6 +268,10 @@ input{font-family:inherit}
 @keyframes bt-cc-braz{from{background-position-x:0%}to{background-position-x:100%}}
 /* v2.3.720: pillars hug the window edges (mockup: columns are part of the
    window architecture, not free-standing) */
+/* v2.3.775: lifted off the stage floor — the rotate buttons live in the
+   bottom corners (40px + margin) and the flames sat right on top of
+   them (owner: nudge the flames out of the way). */
+.bt-cc-brazier{bottom:52px}
 .bt-cc-brazier--left{left:2.5%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
 /* negative delay desyncs the two flames so they don't flicker in lockstep */
 .bt-cc-brazier--right{right:2.5%;aspect-ratio:110/231;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
@@ -320,17 +326,13 @@ input{font-family:inherit}
    ratioed than the art on some device and cover crops the lettering
    (owner screenshot: BRO TOWN cut in half).  Width-coupled height means
    the crop is always ~0; the flex stage/menu absorb the cost. */
-.bt-cc-banner{flex:none;align-self:stretch;height:min(33vw,160px);object-fit:cover;object-position:center;display:block;pointer-events:none;margin:0 calc(-1*max(10px,env(safe-area-inset-right))) 0 calc(-1*max(10px,env(safe-area-inset-left)))}
+/* v2.3.775: the WHOLE art, height-driven contain scaling (width:auto
+   keeps the 3:2 ratio, so nothing can ever clip), centered over the
+   painted backdrop.  Full-bleed margins and the wide-viewport gem-band
+   override are retired with the cover-cropping. */
+.bt-cc-banner{flex:none;align-self:center;height:min(36vw,168px);width:auto;display:block;pointer-events:none}
 @media (max-height:720px){
-  .bt-cc-banner{height:min(30vw,120px)}
-}
-/* v2.3.766: on wide viewports (landscape phone / desktop) the strip is so
-   much wider than the 3:2 art that cover only shows a thin horizontal
-   band — the BRO TOWN lettering is too tall to ever fit it (any aim point
-   slices letters).  The element-gem row IS short enough, and reads as an
-   intentional decorative border, so wide screens aim there. */
-@media (min-aspect-ratio:5/3){
-  .bt-cc-banner{object-position:center 87%}
+  .bt-cc-banner{height:min(30vw,128px)}
 }
 
 
