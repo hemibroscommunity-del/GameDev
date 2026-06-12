@@ -19,6 +19,21 @@ import { loadShieldSprites } from './shieldSprites.js';
 import { loadImageZoneMaps } from './tiledMaps.js';
 import { preloadGear } from './gearSheets.js';
 import { preloadBodyAll } from './playerSkins.js';
+import { Assets } from 'pixi.js';
+
+/* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
+   On iOS, ImageBitmaps are GPU-backed: the memory purge that kills the WebGL
+   context silently wipes their pixels, leaving non-null "husk" Textures that
+   render INVISIBLE after a rebuild -- the 'monsters gone, weapon gone, still
+   taking damage' session.  <img> sources keep the compressed bytes and
+   re-decode on every GPU upload, so they survive any purge, and the
+   module-level loader caches become safe to reuse across rebuilds.
+   MUST run before the first Assets.load anywhere; module scope here wins by
+   construction (the whole module graph evaluates before any runtime load).
+   The v2.3.776 call inside loadImageZoneMaps ran too LATE for every loader
+   except zone maps -- which is exactly why the map healed but weapons and
+   monsters didn't. */
+try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
 
 /**
  * Preload every player-avatar asset that would otherwise stream in lazily and
@@ -280,7 +295,7 @@ export async function initPixiRenderer(canvas) {
       update._pp.monsters = (S.monsters && S.monsters.length) || 0;
     }
     if (_t5 - update._pp.lastT > 500 && update._pp.worst > 30) {
-      /* eslint-disable no-console */
+       
       console.warn('[bt-render-split]', {
         totalMs:    +update._pp.worst.toFixed(1),
         tileMs:     +update._pp.tile.toFixed(1),
@@ -291,7 +306,7 @@ export async function initPixiRenderer(canvas) {
         monsters:   update._pp.monsters,
         zone:       S.currentZone,
       });
-      /* eslint-enable no-console */
+       
       update._pp.lastT = _t5;
       update._pp.worst = 0;
     }
@@ -311,6 +326,14 @@ export async function initPixiRenderer(canvas) {
     update,
     onZoneChange,
     destroy,
+    /* v2.3.771: rebuild the current zone's tiles in place -- called on
+       tab-resume (iOS freezes background tabs and often reclaims the GPU
+       context; after restore the tile buffers can be stale/black). */
+    forceRefresh: () => {
+      try {
+        if (currentZone && currentMap) tileRenderer.rebuild(app, currentMap, currentZone);
+      } catch (e) { /* best-effort */ }
+    },
     /* v2.3.113: expose immediate-dispose for a single loot pile.
        BroTown's loot_credit / loot_despawn handlers call this so
        the Pixi children tear down the same tick the pile is

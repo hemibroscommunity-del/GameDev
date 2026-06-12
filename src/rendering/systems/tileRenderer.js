@@ -112,6 +112,15 @@ export class TileRenderer {
        first zone entry, reused on revisits, destroyed if the zone's
        map data changes. */
     this._bakedMapCache = new Map();    // zoneId -> Texture (RenderTexture)
+    /* v2.3.775: set when this instance was built after a GL loss (epoch
+       rebuild).  On iOS the Assets-cached zone-map JPGs are decoded to
+       GPU-backed ImageBitmaps -- the same memory purge that killed the
+       context wipes their pixels, so re-upload from the cache yields a
+       silently BLACK map while freshly-baked (CPU-canvas) player sprites
+       render fine (the 2026-06-12 iPhone screenshot).  First use of each
+       image zone after a rebuild forces a fresh fetch+decode instead. */
+    this._forceImageReload = typeof window !== 'undefined' && !!window.__btLastGlRebuild;
+    this._reloadedZones = {};
   }
 
   /** Set tile assets (call once after loadTileAssets resolves). */
@@ -304,7 +313,16 @@ export class TileRenderer {
     if (imageUrl) {
       this._renderedTiled = true;   // tell update() not to retry
       this._isImageZone = true;
-      const cachedTex = Assets.cache.get(imageUrl);
+      let cachedTex = Assets.cache.get(imageUrl);
+      /* v2.3.775: after a GL-loss rebuild the cached ImageBitmap may be
+         a husk (see constructor) -- treat the first use of each zone as
+         a cache miss and re-fetch below. */
+      let reload = false;
+      if (this._forceImageReload && !this._reloadedZones[zoneId]) {
+        this._reloadedZones[zoneId] = true;
+        reload = !!cachedTex;
+        cachedTex = null;
+      }
       if (cachedTex && cachedTex.source) cachedTex.source.scaleMode = 'nearest';
       const sprite = new Sprite(cachedTex || Texture.EMPTY);
       sprite.x = 0;
@@ -319,7 +337,10 @@ export class TileRenderer {
       if (!cachedTex) {
         const w = this._mapW;
         const h = this._mapH;
-        Assets.load(imageUrl).then((loaded) => {
+        const loadP = reload
+          ? Promise.resolve().then(() => Assets.unload(imageUrl)).catch(() => {}).then(() => Assets.load(imageUrl))
+          : Assets.load(imageUrl);
+        loadP.then((loaded) => {
           if (loaded && !sprite.destroyed) {
             if (loaded.source) loaded.source.scaleMode = 'nearest';
             sprite.texture = loaded;

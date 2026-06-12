@@ -2,7 +2,7 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
-import { Assets, Container, Graphics, Sprite, Text, TextStyle, Texture } from 'pixi.js';
+import { Assets, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
@@ -739,7 +739,17 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
   while (_maskedBodyCache.size > 520) {
     const k0 = _maskedBodyCache.keys().next().value;
     const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
-    try { old.destroy(true); } catch (e) { /* ignore */ }
+    /* v2.3.780: destroy DEFERRED, not immediate.  destroy(true) nuked the
+       TextureSource the moment an entry was evicted -- and a REMOTE
+       player's join-bake burst (~144 frames) is exactly what pushes the
+       cache over cap, so eviction could land on a frame a local sprite
+       was still displaying.  Worst case is the STAND pose: one frame,
+       never reassigned, so the sprite kept rendering the destroyed
+       texture forever ('my character's face/body got erased when the
+       other session joined').  After 30s an evicted frame is either
+       genuinely cold (dies quietly) or has long since re-baked under a
+       fresh texture and every sprite has re-pointed. */
+    setTimeout(() => { try { old.destroy(true); } catch (e) { /* ignore */ } }, 30000);
   }
   return t;
 }

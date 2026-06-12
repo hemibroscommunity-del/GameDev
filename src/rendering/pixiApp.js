@@ -64,8 +64,7 @@ function buildScene(app) {
 
 /**
  * Creates and initializes the PixiJS application.
- * Tries WebGL first; if it fails (e.g. blocked by browser extensions),
- * falls back to the PixiJS Canvas renderer.
+ * WebGL only -- throws on failure so the caller's retry/backoff handles it.
  * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
  */
 export async function createPixiApp(canvas) {
@@ -91,7 +90,13 @@ export async function createPixiApp(canvas) {
     roundPixels: true,
   };
 
-  // Try WebGL first
+  // WebGL only.  v2.3.778: the Pixi v8 Canvas renderer cannot draw our
+  // baked/tinted pipeline -- the old silent fallback produced a near-black
+  // world that PRETENDED to work (the iPhone two-window screenshots).
+  // Throwing instead routes failure into BroTown's pixi-init-failed
+  // handler: crash-log entry + fresh-canvas retry with backoff, with the
+  // black-screen watchdog as the floor.  Strictly better than a broken
+  // canvas renderer even on first boot.
   try {
     const app = new Application();
     await app.init({ ...initOpts, preference: 'webgl' });
@@ -101,15 +106,7 @@ export async function createPixiApp(canvas) {
     console.log('PixiJS using WebGL renderer');
     return buildScene(app);
   } catch (e) {
-    console.warn('WebGL init failed, retrying with Canvas renderer:', e.message);
+    console.error('WebGL init failed (no canvas fallback -- failing fast):', e && e.message);
+    throw e;
   }
-
-  // Fallback to PixiJS Canvas renderer
-  const app = new Application();
-  await app.init({ ...initOpts, preference: 'canvas' });
-  /* v2.3.763: record WebGL context loss -- prime suspect for the reported
-     mid-fight black canvas on iPhone. */
-  watchContextLoss(canvas);
-  console.log('PixiJS using Canvas renderer');
-  return buildScene(app);
 }

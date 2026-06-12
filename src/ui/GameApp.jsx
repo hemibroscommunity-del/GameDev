@@ -146,6 +146,17 @@ export const GameApp = () => {
     };
     const onVis = () => { if (document.visibilityState === 'visible') onResume(); };
     document.addEventListener('visibilitychange', onVis);
+    /* v2.3.780: iOS Safari often REJECTS ctx.resume() outside a user
+       gesture after a long background -- the visibilitychange resume
+       above then silently fails and the game stays mute until reload
+       ('music stopped' after switching between two game windows).
+       Retry inside every tap: the first gesture after returning
+       restores the context AND re-kicks the zone music. */
+    const onGesture = () => {
+      if (BT_AUDIO && BT_AUDIO.ctx && BT_AUDIO.ctx.state === 'suspended') onResume();
+    };
+    document.addEventListener('pointerdown', onGesture, { passive: true });
+    document.addEventListener('touchstart', onGesture, { passive: true });
     /* pageshow fires on iOS Safari when restoring from the bfcache
        (back/forward navigation or returning from a backgrounded tab
        that the browser unloaded).  visibilitychange does not always
@@ -154,6 +165,8 @@ export const GameApp = () => {
     window.addEventListener('focus', onResume);
     return () => {
       document.removeEventListener('visibilitychange', onVis);
+      document.removeEventListener('pointerdown', onGesture);
+      document.removeEventListener('touchstart', onGesture);
       window.removeEventListener('pageshow', onResume);
       window.removeEventListener('focus', onResume);
     };

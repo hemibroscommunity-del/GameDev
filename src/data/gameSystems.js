@@ -902,6 +902,15 @@ export function createDefaultLifeSkills() {
 /* Migrate old saves — convert gathering → mining, ensure new skills exist */
 export function migrateLifeSkills(sk) {
   if (!sk) return createDefaultLifeSkills();
+  /* v2.3.767: heal saves corrupted by the pre-fix player_state merge, which
+     object-spread ARRAYS into plain objects ({0:..}) and null into {}.
+     pets must be an array; activePet must be an object-with-fields or null. */
+  if (sk.pets && !Array.isArray(sk.pets) && typeof sk.pets === 'object') {
+    sk.pets = Object.values(sk.pets);
+  }
+  if (sk.activePet && typeof sk.activePet === 'object' && Object.keys(sk.activePet).length === 0) {
+    sk.activePet = null;
+  }
   /* Migrate gathering → mining if old save */
   if (sk.gathering && sk.gathering.level && !sk.mining) {
     sk.mining = {
@@ -5011,7 +5020,6 @@ export function createDefaultRpg() {
        user request.  Armor + stash both empty by default.  Players
        acquire armor through other paths (forge / drops / etc.). */
     armor: null,
-    armorStash: [],
     /* v2.3.188: default wood shield matches the other starter gear
        (bamboo stick, wood bow, wood staff, leather armor) so the
        v2.3.187 shield-on-back render has something to draw without
