@@ -4561,8 +4561,14 @@ export var BroTown = function BroTown(_ref0) {
         }
       } /* end _processGameEvent */
 
-      ws.onclose = function () {
+      ws.onclose = function (event) {
         S._realtimeStatus = 'disconnected';
+        /* v2.3.770: close-reason evidence (see wsClient.js twin). */
+        try {
+          import('../debug/crashTrap.js').then(function (ct) {
+            ct.recordCrash('ws-close', 'code=' + (event && event.code) + ' reason=' + ((event && event.reason) || '(none)') + ' [legacy-stack]');
+          }).catch(function () {});
+        } catch (e) {}
         scheduleReconnect();
       };
       ws.onerror = function () {

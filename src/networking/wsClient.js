@@ -1303,6 +1303,15 @@ export function setupWebSocket(ctx) {
 
       ws.onclose = function (event) {
         S._realtimeStatus = 'disconnected';
+        /* v2.3.770: evidence for the owner's two-session kicks -- record
+           every close (code + server reason) into the crash log so a
+           ?dev=1 screenshot after a repro shows exactly which mechanism
+           dropped the session. */
+        try {
+          import('../debug/crashTrap.js').then(function (ct) {
+            ct.recordCrash('ws-close', 'code=' + (event && event.code) + ' reason=' + ((event && event.reason) || '(none)') + ' opened=' + wsOpened);
+          }).catch(function () {});
+        } catch (e) {}
         /* v2.3.766: the server enforces ONE live session per account id --
            a second login closes the first with reason 'superseded by
            reconnect' (server index.js, the lifesteal-corpse fix).  The old

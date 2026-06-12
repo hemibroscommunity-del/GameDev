@@ -11,7 +11,7 @@ async function makePage(context, label) {
   const errs = [];
   page.on('pageerror', (e) => errs.push(label + ' ' + e.message.slice(0, 120)));
   page.on('console', (m) => { if (m.type() === 'error' && !/CORS|Failed to load|WebSocket/.test(m.text())) errs.push(label + ' ' + m.text().slice(0, 120)); });
-  await page.addInitScript(() => { window.BROTOWN_WS_URL = 'ws://127.0.0.1:8787'; });
+  await page.addInitScript(`window.BROTOWN_WS_URL = 'ws://127.0.0.1:${process.env.QA_PORT || '8787'}'`);
   if (process.env.QA_CORRUPT) await page.addInitScript(() => {
     /* simulate a player whose pre-fix save corrupted pets/activePet (and
        whose SERVER record will bootstrap from this on first join) */
