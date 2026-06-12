@@ -69,71 +69,11 @@ export default [
       },
     },
   },
-  {
-    /* LEGACY DEBT (30 known latent ReferenceErrors -- see commit). */
-    files: ['src/game/gameLoop.js'],
-    languageOptions: {
-      globals: {
-        CLAN_WAR_REWARDS: 'readonly',
-        DIVE_TREASURE_CHANCE: 'readonly',
-        FARM_BED_TILE: 'readonly',
-        PET_LOOT_RADIUS: 'readonly',
-        PVP_THREAT_DURATION: 'readonly',
-        R: 'readonly',
-        SPECIAL_ATK_MULT: 'readonly',
-        SWING_ARC: 'readonly',
-        SWING_COOLDOWN: 'readonly',
-        SWING_RANGE: 'readonly',
-        _asyncToGenerator: 'readonly',
-        _createForOfIteratorHelper: 'readonly',
-        _desktopCloseAll: 'readonly',
-        _desktopCycleWeapon: 'readonly',
-        _desktopEnterBuilding: 'readonly',
-        _desktopFerryman: 'readonly',
-        _desktopGather: 'readonly',
-        _desktopNpcQuest: 'readonly',
-        _desktopOpenWorkshop: 'readonly',
-        _desktopSelectSlot: 'readonly',
-        _desktopShieldOff: 'readonly',
-        _desktopShieldOn: 'readonly',
-        _desktopSleep: 'readonly',
-        _desktopSpecialAttack: 'readonly',
-        _objectSpread: 'readonly',
-        _regenerator: 'readonly',
-        arch: 'readonly',
-        setShowMinigame: 'readonly',
-        setShowPetHouse: 'readonly',
-        setTutorialStep: 'readonly',
-      },
-    },
-  },
-  {
-    /* LEGACY DEBT (19 known latent ReferenceErrors -- see commit). */
-    files: ['src/networking/wsClient.js'],
-    languageOptions: {
-      globals: {
-        ARENA_CHAMPION_REWARD: 'readonly',
-        ARENA_WIN_REWARD: 'readonly',
-        BT_API_BASE: 'readonly',
-        BT_AUDIO: 'readonly',
-        CLAN_WAR_REWARDS: 'readonly',
-        DEATH_GOLD_PENALTY: 'readonly',
-        TILE: 'readonly',
-        ZONES: 'readonly',
-        _objectSpread: 'readonly',
-        _slicedToArray: 'readonly',
-        _toConsumableArray: 'readonly',
-        createDefaultCompStats: 'readonly',
-        generateZoneMap: 'readonly',
-        recalcDerived: 'readonly',
-        setLevelUpMsg: 'readonly',
-        setRpgState: 'readonly',
-        setUnreadChats: 'readonly',
-        updateZoneDimensions: 'readonly',
-        xpRequired: 'readonly',
-      },
-    },
-  },
+  /* v2.3.784: the src/game/gameLoop.js and src/networking/wsClient.js
+     LEGACY DEBT blocks were removed: gameLoop.js (dead duplicate) was
+     deleted in REBUILD-PLAN Phase 1, and wsClient.js was replaced in
+     Phase 5 by the live connection lifecycle with every dependency
+     imported explicitly -- zero grandfathered globals. */
   {
     /* LEGACY DEBT (27 known latent ReferenceErrors -- see commit). */
     files: ['src/ui/BroTown.jsx'],
