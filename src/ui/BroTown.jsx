@@ -28,7 +28,7 @@ import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets, prewarmBaseSheets } from '@/rendering/pixiRenderer.js';
-import { preloadAllTiledMaps, drawTiledMap, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
+import { preloadAllTiledMaps, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, getDeviceNonce } from '@/networking/index.js';
@@ -532,6 +532,18 @@ export var BroTown = function BroTown(_ref0) {
     setChatInput = _useState2[1];
   var chatInputValRef = useRef(''); /* mirror for canvas render loop */
   var chatInputRef = useRef(null);
+  /* v2.3.772: WebGL-rebuild epoch.  iOS Safari reclaims the GPU context of
+     backgrounded tabs and sometimes never restores it on resume (black
+     world, and NO webglcontextlost event ever fires).  A lost context can
+     never be re-acquired on the same <canvas> element, so the only real
+     recovery is: remount the canvas (key'd on this epoch in the JSX) and
+     re-run the game-loop effect (epoch in its dep list), which re-inits
+     Pixi on the fresh element.  Game state lives in stateRef and the
+     socket lives in its own effect -- both survive the rebuild. */
+  var _useGlEpoch = useState(0),
+    _useGlEpoch2 = _slicedToArray(_useGlEpoch, 2),
+    glEpoch = _useGlEpoch2[0],
+    setGlEpoch = _useGlEpoch2[1];
   var _useState3 = useState(false),
     _useState4 = _slicedToArray(_useState3, 2),
     chatOpen = _useState4[0],
@@ -2014,9 +2026,9 @@ export var BroTown = function BroTown(_ref0) {
             }
           }
           if (performance.now() - ws._slowLog.lastT > 500 && ws._slowLog.worst > 5) {
-            /* eslint-disable no-console */
+             
             console.warn('[bt-ws-slow]', { ms: +ws._slowLog.worst.toFixed(1), type: ws._slowLog.worstType });
-            /* eslint-enable no-console */
+             
             ws._slowLog.lastT = performance.now();
             ws._slowLog.worst = 0;
             ws._slowLog.worstType = '';
@@ -2423,7 +2435,23 @@ export var BroTown = function BroTown(_ref0) {
                    migrations land. */
                 if (!S.rpg.lifeSkills) S.rpg.lifeSkills = {};
                 Object.keys(msg.payload.lifeSkills).forEach(function (k) {
-                  S.rpg.lifeSkills[k] = _objectSpread({}, msg.payload.lifeSkills[k]);
+                  /* v2.3.767: preserve the VALUE SHAPE.  _objectSpread({},v)
+                     turned ARRAYS into plain objects ({0:..,1:..}) and null
+                     into {} -- the server's lifeSkills echo (sent in the
+                     player_state flush after every monster kill) corrupted
+                     pets[] into an object, and the achievements timer's
+                     (pets || []).filter then threw an uncaught TypeError
+                     EVERY interval -- the multiplayer 'black world / kicked'
+                     instability (found by the two-session headless repro). */
+                  var _v = msg.payload.lifeSkills[k];
+                  /* v2.3.768: the SERVER's stored copy can itself carry the
+                     corrupted shape (it bootstrapped from a pre-fix client's
+                     join payload and echoes it forever) -- heal known-array
+                     keys on the way in, not just locally-persisted saves. */
+                  if (k === 'pets' && _v && !Array.isArray(_v) && typeof _v === 'object') _v = Object.values(_v);
+                  S.rpg.lifeSkills[k] = Array.isArray(_v) ? _v.slice()
+                    : (_v && typeof _v === 'object') ? _objectSpread({}, _v)
+                    : _v;
                 });
               }
               /* Combat XP / level / unspent T2 stat points -- worker
@@ -4226,8 +4254,34 @@ export var BroTown = function BroTown(_ref0) {
         }
       } /* end _processGameEvent */
 
-      ws.onclose = function () {
+      ws.onclose = function (event) {
         S._realtimeStatus = 'disconnected';
+        /* v2.3.771: close-reason evidence.  NOTE this is the LIVE connection
+           stack -- src/networking/wsClient.js is dead code (not in the
+           bundle); fixes must land HERE. */
+        try {
+          import('../debug/crashTrap.js').then(function (ct) {
+            ct.recordCrash('ws-close', 'code=' + (event && event.code) + ' reason=' + ((event && event.reason) || '(none)'));
+          }).catch(function () {});
+        } catch (e) {}
+        /* v2.3.771: a LIVE page superseded by another login must not
+           auto-reconnect (two windows would kick each other forever) --
+           stop, tell the player, offer a manual take-over. */
+        if (event && event.reason === 'superseded by reconnect') {
+          S._realtimeStatus = 'superseded';
+          try {
+            var _el = document.createElement('div');
+            _el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b2536;color:#fff;font:13px/1.5 sans-serif;padding:10px 12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
+            _el.textContent = 'This account connected from another window. ';
+            var _btn = document.createElement('button');
+            _btn.textContent = 'Play here instead';
+            _btn.style.cssText = 'margin-left:8px;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:#3dd497;color:#08231a;font-weight:700;cursor:pointer;';
+            _btn.onclick = function () { _el.remove(); connect(); };
+            _el.appendChild(_btn);
+            document.body.appendChild(_el);
+          } catch (e) { /* DOM unavailable */ }
+          return;
+        }
         scheduleReconnect();
       };
       ws.onerror = function () {
@@ -4241,6 +4295,134 @@ export var BroTown = function BroTown(_ref0) {
         connect();
       }, reconnectDelay);
     }
+    /* v2.3.771: iPhone tab-resume recovery.  iOS runs ONE Safari tab at a
+       time: backgrounding freezes the page, kills the socket, and often
+       reclaims the GPU context -- resuming showed a black, half-dead world
+       until manual reload (reported as the 'two-window bug', but it hits
+       anyone backgrounding Safari mid-fight).  On resume: reconnect a dead
+       socket immediately (skip backoff) and rebuild the zone tiles once the
+       restored context settles.  crashTrap's contextlost preventDefault
+       (same version) lets the browser restore the GL context at all. */
+    /* v2.3.778: how long were we actually gone?  Two clocks:
+       _hiddenAt    -- visibilitychange to 'hidden' (when iOS bothers to fire it)
+       _lastAliveAt -- 1s heartbeat; a frozen page stops ticking, so the gap
+                       on resume IS the freeze length even with no events. */
+    var RESYNC_AWAY_MS = 5000;
+    var _hiddenAt = 0;
+    var _lastAliveAt = Date.now();
+    var _aliveTimer = setInterval(function () { _lastAliveAt = Date.now(); }, 1000);
+    function _resumeRecover(tag) {
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
+        }).catch(function () {});
+      } catch (e) {}
+      if (S._realtimeStatus !== 'superseded') {
+        var _hiddenMs = _hiddenAt ? (Date.now() - _hiddenAt) : 0;
+        var _frozenMs = Date.now() - _lastAliveAt - 1100; /* heartbeat period + slack */
+        var _awayMs = Math.max(_hiddenMs, _frozenMs);
+        if (!ws || ws.readyState === 2 || ws.readyState === 3) {
+          /* dead socket: reconnect immediately, skip backoff (v2.3.771) */
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectDelay = 1000;
+          try { connect(); } catch (e) {}
+        } else if (ws.readyState === 1 && _awayMs > RESYNC_AWAY_MS) {
+          /* v2.3.778: socket SURVIVED a long freeze ('[resume] visible
+             wsState=1' in every crash log) = stale world.  Protocol v2
+             sends only per-tick monster deltas; everything missed while
+             frozen is never retransmitted -- the 'invisible monsters that
+             still deal damage' session.  A deliberate rejoin gets a FULL
+             state_sync (complete zone monster list) with zero server
+             changes.  Detach handlers BEFORE closing so neither
+             scheduleReconnect nor a late server 'superseded by reconnect'
+             close can fire on the old socket. */
+          try {
+            import('../debug/crashTrap.js').then(function (ct) {
+              ct.recordCrash('resume-resync', tag + ' away ' + Math.round(_awayMs / 1000) + 's, forcing rejoin');
+            }).catch(function () {});
+          } catch (e) {}
+          var _oldWs = ws;
+          ws = null;
+          try {
+            _oldWs.onclose = null;
+            _oldWs.onmessage = null;
+            _oldWs.onerror = null;
+            _oldWs.close(1000, 'resume resync');
+          } catch (e) {}
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectDelay = 1000;
+          try { connect(); } catch (e) {}
+        }
+        /* readyState 0 (CONNECTING): a connect is already in flight. */
+        _hiddenAt = 0;
+        _lastAliveAt = Date.now();
+      }
+      /* v2.3.772: probe the GL context directly instead of trusting events.
+         On the iPhone repro the context died with NO webglcontextlost ever
+         firing (and a frozen tab can't record anything anyway), so:
+         healthy context -> cheap tile rebuild; lost context -> give the
+         browser a grace period to restore it (crashTrap + Pixi both
+         preventDefault to request that), re-probe, and if still dead do a
+         full renderer rebuild on a fresh canvas via _rebuildRenderer. */
+      setTimeout(function () {
+        try {
+          /* v2.3.774: renderer never (re)initialized -- a prior init
+             failed (iOS refused the context under GPU pressure) or a
+             rebuild was cut short by a freeze.  Now that this tab is
+             foreground again a fresh attempt usually succeeds. */
+          if (window.__pixiActive === false) {
+            if (window._rebuildRenderer) window._rebuildRenderer(tag + ': renderer dead on resume');
+            return;
+          }
+          /* v2.3.774: stuck on the Canvas-renderer fallback (WebGL was
+             refused during a rebuild and the backoff retries ran out
+             while we were hidden) -- now that we're foreground, go again. */
+          if (window.__btCanvasFallback) {
+            if (window._rebuildRenderer) window._rebuildRenderer(tag + ': canvas fallback active, retrying WebGL');
+            return;
+          }
+          /* v2.3.773: if the context was lost AT ALL while away, rebuild --
+             even when it came back.  A restored context reports healthy but
+             the baked render textures are gone (black world regardless). */
+          if (window.__btGlLostAt && window.__btGlLostAt > (window.__btLastGlRebuild || 0)) {
+            if (window._rebuildRenderer) window._rebuildRenderer(tag + ': context was lost while away');
+            return;
+          }
+          var _r = window._pixiRenderer;
+          var _gl = _r && _r.app && _r.app.renderer && _r.app.renderer.gl;
+          if (!_gl || !_gl.isContextLost || !_gl.isContextLost()) {
+            if (_r && _r.forceRefresh) _r.forceRefresh();
+            return;
+          }
+          import('../debug/crashTrap.js').then(function (ct) {
+            ct.recordCrash('gl-probe', tag + ': context LOST on resume, waiting for restore');
+          }).catch(function () {});
+          setTimeout(function () {
+            try {
+              var _r2 = window._pixiRenderer;
+              var _gl2 = _r2 && _r2.app && _r2.app.renderer && _r2.app.renderer.gl;
+              if (_gl2 && _gl2.isContextLost && _gl2.isContextLost()) {
+                if (window._rebuildRenderer) window._rebuildRenderer(tag + ': context not restored 1.5s after resume');
+              } else if (_r2 && _r2.forceRefresh) {
+                _r2.forceRefresh();
+              }
+            } catch (e) {}
+          }, 1500);
+        } catch (e) {}
+      }, 600);
+    }
+    try {
+      document.addEventListener('visibilitychange', function () {
+        /* v2.3.778: stamp when we go hidden so the resync threshold can
+           use real away-time even when the heartbeat keeps ticking
+           (desktop tab switches don't freeze JS). */
+        if (document.visibilityState === 'hidden') { _hiddenAt = Date.now(); return; }
+        if (document.visibilityState === 'visible') _resumeRecover('visible');
+      });
+      window.addEventListener('pageshow', function (e) {
+        if (e && e.persisted) _resumeRecover('bfcache');
+      });
+    } catch (e) { /* ignore */ }
 
     /* Channel shim — wraps WebSocket with batched input protocol (§16.14)
      * Movement and non-critical events batch at 10Hz (100ms windows).
@@ -4401,6 +4583,7 @@ export var BroTown = function BroTown(_ref0) {
     return function () {
       stopBatchTimer();
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      clearInterval(_aliveTimer); /* v2.3.778 resync heartbeat */
       if (ws) {
         try {
           ws.close();
@@ -4547,11 +4730,128 @@ export var BroTown = function BroTown(_ref0) {
            like flushAllLoot without ref plumbing.  Mirrors __pixiActive. */
         window._pixiRenderer = renderer;
         window.__pixiActive = true;
+        /* v2.3.774: detect the silent Canvas-renderer fallback.  When iOS
+           refuses a WebGL context under GPU pressure, createPixiApp falls
+           back to Pixi's Canvas renderer -- which cannot draw our
+           baked/tinted pipeline: the world shows near-black with the odd
+           plain sprite (the iPhone two-window screenshot).  If this device
+           ran WebGL before (we're here via a rebuild), keep retrying
+           WebGL with backoff while the canvas renderer keeps the lights
+           on; foreground tabs usually get a context again within seconds.
+           v2.3.778: createPixiApp is now fail-fast (no canvas renderer),
+           so this branch is defensive -- it only fires if that ever
+           regresses. */
+        var _noGl = !(renderer.app && renderer.app.renderer && renderer.app.renderer.gl);
+        window.__btCanvasFallback = _noGl && !!window.__btLastGlRebuild;
+        if (window.__btCanvasFallback) {
+          var _cfails = (window.__btPixiInitFails || 0) + 1;
+          window.__btPixiInitFails = _cfails;
+          try {
+            import('../debug/crashTrap.js').then(function (ct) {
+              ct.recordCrash('pixi-canvas-fallback', 'WebGL refused, attempt ' + _cfails + ' -- retrying');
+            }).catch(function () {});
+          } catch (e) {}
+          if (_cfails <= 8) {
+            setTimeout(function () {
+              setGlEpoch(function (n) { return n + 1; });
+            }, Math.min(15000, 1000 * Math.pow(2, _cfails - 1)));
+          }
+          return;
+        }
+        window.__btPixiInitFails = 0;
+        /* v2.3.774: confirm recovery in the crash log -- but only after
+           a rebuild, so normal boots stay quiet. */
+        if (window.__btLastGlRebuild && Date.now() - window.__btLastGlRebuild < 60000) {
+          try {
+            import('../debug/crashTrap.js').then(function (ct) {
+              ct.recordCrash('gl-rebuild-ok', 'renderer re-initialized (webgl)');
+            }).catch(function () {});
+          } catch (e) {}
+          /* v2.3.776: screen probe.  'gl-rebuild-ok' proves init, not
+             pixels -- the iPhone showed a black map under a healthy
+             renderer.  Sample the frame: record the result either way
+             (evidence), and if it's still dark, retry ONCE. */
+          setTimeout(function () {
+            if (canvasRef.current !== canvas) return; /* superseded by a newer rebuild */
+            try {
+              requestAnimationFrame(function () {
+                try {
+                  var _c2 = document.createElement('canvas');
+                  _c2.width = 32; _c2.height = 18;
+                  var _g2 = _c2.getContext('2d');
+                  _g2.drawImage(canvas, 0, 0, 32, 18);
+                  var _d2 = _g2.getImageData(0, 0, 32, 18).data;
+                  var _lit = 0;
+                  for (var _i2 = 0; _i2 < _d2.length; _i2 += 4) {
+                    if (_d2[_i2] + _d2[_i2 + 1] + _d2[_i2 + 2] > 45) _lit++;
+                  }
+                  var _pct = Math.round(100 * _lit / (32 * 18));
+                  import('../debug/crashTrap.js').then(function (ct) {
+                    ct.recordCrash('post-rebuild-screen', _pct + '% lit');
+                  }).catch(function () {});
+                  if (_pct < 2 && !window.__btBlackRetry) {
+                    window.__btBlackRetry = true;
+                    setTimeout(function () {
+                      if (window._rebuildRenderer) window._rebuildRenderer('screen still black after rebuild');
+                    }, 2000);
+                  } else if (_pct >= 2) {
+                    window.__btBlackRetry = false;
+                  }
+                } catch (e) {}
+              });
+            } catch (e) {}
+          }, 5000);
+        }
       }).catch(function(err) {
         console.error('[pixi-init] FAILED:', err);
         window.__pixiActive = false;
+        /* v2.3.774: iOS can REFUSE to create a WebGL context while the
+           GPU is under memory pressure (e.g. a second game window holds
+           one).  This used to be a console-only dead end = permanent
+           black canvas with the UI still alive (the iPhone two-window
+           screenshot).  Record it and retry on a fresh canvas with
+           backoff -- pressure usually clears once this tab is the
+           foreground one. */
+        var _fails = (window.__btPixiInitFails || 0) + 1;
+        window.__btPixiInitFails = _fails;
+        try {
+          import('../debug/crashTrap.js').then(function (ct) {
+            ct.recordCrash('pixi-init-failed', 'attempt ' + _fails + ': ' + ((err && err.message) || err));
+          }).catch(function () {});
+        } catch (e) {}
+        if (_fails <= 8) {
+          setTimeout(function () {
+            setGlEpoch(function (n) { return n + 1; });
+          }, Math.min(15000, 1000 * Math.pow(2, _fails - 1)));
+        }
       });
     }
+
+    /* v2.3.772: full renderer rebuild -- the only recovery from a GL
+       context the browser refuses to restore.  Bumping the epoch remounts
+       the canvas (fresh element = fresh context) and re-runs this whole
+       effect; the cleanup below destroys the dead Pixi app first.  Called
+       by the resume probe (ws effect) and crashTrap's contextlost
+       escalation.  Debounced: a foreground contextlost timer and the
+       resume probe can both conclude 'rebuild' for the same death. */
+    /* v2.3.773: each effect run starts on a fresh canvas/context -- any
+       loss recorded against a previous canvas is history, not a pending
+       emergency for the resume probe. */
+    window.__btGlLostAt = 0;
+    window._rebuildRenderer = function (reason) {
+      var _now = Date.now();
+      if (window.__btLastGlRebuild && _now - window.__btLastGlRebuild < 5000) return;
+      window.__btLastGlRebuild = _now;
+      /* v2.3.773: let the fresh renderer record its own first error --
+         otherwise a rebuild that didn't cure the throw leaves no trace. */
+      window.__pixiUpdateErrLogged = false;
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('gl-rebuild', reason || 'manual');
+        }).catch(function () {});
+      } catch (e) {}
+      setGlEpoch(function (n) { return n + 1; });
+    };
 
     if (!S.map) {
       updateZoneDimensions(S.currentZone);
@@ -4715,7 +5015,6 @@ export var BroTown = function BroTown(_ref0) {
       S.rpg.vit = S.rpg.vitality;
       S.rpg.spd = S.rpg.agility;
       S.rpg.lck = S.rpg.ferocity;
-      S.rpg.maxHp = S.rpg.maxHp;
       S.rpg.unspentPts = S.rpg.unspentT1 + S.rpg.unspentT2;
       setRpgState(_objectSpread({}, S.rpg));
       try {
@@ -5446,7 +5745,7 @@ export var BroTown = function BroTown(_ref0) {
           S._perf.slowFrameCount++;
         }
         if (window.__btPerf !== false && _perfNow - S._perf.slowLastT > 500 && S._perf.worstMs > 0) {
-          /* eslint-disable no-console */
+           
           console.warn('[bt-perf]', {
             frameMs: +S._perf.worstMs.toFixed(1),
             instFps: S._perf.worstFps,
@@ -5461,7 +5760,7 @@ export var BroTown = function BroTown(_ref0) {
             miningOpen: !!stateRef.current._miningOpen,
             renderer: window.__pixiActive ? 'pixi' : 'none',
           });
-          /* eslint-enable no-console */
+           
           S._perf.worstMs = 0;
           S._perf.slowFrameCount = 0;
           S._perf.slowLastT = _perfNow;
@@ -11347,10 +11646,30 @@ export var BroTown = function BroTown(_ref0) {
           var H = canvas.height / (window.devicePixelRatio || 1);
           try {
             pixiRef.current.update(S, W, H, nfts);
+            S.__pixiErrStreak = 0;
           } catch (pixiErr) {
             if (!window.__pixiUpdateErrLogged) {
               window.__pixiUpdateErrLogged = true;
               console.error('[pixi-render] update threw', pixiErr && pixiErr.message, pixiErr && pixiErr.stack);
+              /* v2.3.773: a persistent update() throw was INVISIBLE on
+                 iPhone -- UI stays alive, world stays black, and nothing
+                 reaches the window error handler because this catch eats
+                 it.  Put it in the crash log where the dev banner shows it. */
+              try {
+                var _pmsg = ((pixiErr && pixiErr.message) || String(pixiErr)) + ' | ' + (((pixiErr && pixiErr.stack) || '').split('\n')[1] || '').trim();
+                import('../debug/crashTrap.js').then(function (ct) {
+                  ct.recordCrash('pixi-update-err', _pmsg);
+                }).catch(function () {});
+              } catch (e2) {}
+            }
+            /* v2.3.773: self-heal a poisoned renderer.  90 consecutive
+               throwing frames (~1.5s of black world) -> one rebuild
+               attempt (=== so it can't loop; if the fresh renderer still
+               throws, the streak keeps climbing past 90 and we keep the
+               recorded error as evidence instead of thrashing). */
+            S.__pixiErrStreak = (S.__pixiErrStreak || 0) + 1;
+            if (S.__pixiErrStreak === 90 && window._rebuildRenderer) {
+              window._rebuildRenderer('update() threw 90 consecutive frames');
             }
           }
         }
@@ -11394,7 +11713,7 @@ export var BroTown = function BroTown(_ref0) {
           S._splitLog.worstRender = _renderEndT - _simEndT;
         }
         if (_renderEndT - S._splitLog.lastT > 500 && S._splitLog.worstTotal > 30) {
-          /* eslint-disable no-console */
+           
           console.warn('[bt-frame-split]', {
             totalMs: +S._splitLog.worstTotal.toFixed(1),
             simMs: +S._splitLog.worstSim.toFixed(1),
@@ -11404,7 +11723,7 @@ export var BroTown = function BroTown(_ref0) {
             slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
             zone: S.currentZone,
           });
-          /* eslint-enable no-console */
+           
           S._splitLog.lastT = _renderEndT;
           S._splitLog.worstTotal = 0;
           S._splitLog.worstSim = 0;
@@ -11578,23 +11897,99 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
-      if (pixiRef.current) { pixiRef.current.destroy(); pixiRef.current = null; window._pixiRenderer = null; }
+      window._rebuildRenderer = null;
+      /* v2.3.772: destroy() can throw mid-teardown when the GL context is
+         already dead (the very case the epoch rebuild handles) -- never
+         let that skip the ref nulling or the re-init guard stays blocked. */
+      if (pixiRef.current) {
+        try { pixiRef.current.destroy(); } catch (e) {}
+        pixiRef.current = null;
+        window._pixiRenderer = null;
+        window.__pixiActive = false;
+      }
     };
-    return function () {
-      cancelAnimationFrame(frameRef.current);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('resize', resize);
-      if (resizeObs) resizeObs.disconnect();
-      if (vv) vv.removeEventListener('resize', resize);
-    };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, glEpoch]);
 
   /* Sync nearBuilding + player list from game loop to React */
   useEffect(function () {
     if (showNameModal || showLogin) return;
+    /* v2.3.777: tiny world-canvas readback -> % of pixels brighter than
+       near-black.  Cheap (32x18) and only every 5s. */
+    function _sampleLit() {
+      try {
+        var cv = canvasRef.current;
+        if (!cv || !cv.width) return -1;
+        var c2 = document.createElement('canvas');
+        c2.width = 32;
+        c2.height = 18;
+        var g2 = c2.getContext('2d');
+        g2.drawImage(cv, 0, 0, 32, 18);
+        var d2 = g2.getImageData(0, 0, 32, 18).data;
+        var lit = 0;
+        for (var i2 = 0; i2 < d2.length; i2 += 4) {
+          if (d2[i2] + d2[i2 + 1] + d2[i2 + 2] > 30) lit++;
+        }
+        return Math.round(100 * lit / (32 * 18));
+      } catch (e) { return -1; }
+    }
     var interval = setInterval(function () {
       var S = stateRef.current;
+      /* v2.3.777: black-screen watchdog + resume-snapshot heartbeat.
+         The watchdog is the FINAL stability line: it judges recovery by
+         actual pixels, not renderer health flags.  Dark 10s -> in-place
+         rebuild.  Dark 20s -> flag a recovery reload and reload the page;
+         the auto-rejoin effect puts the player straight back into the
+         world (fresh boots have never failed).  Capped at 2 reloads per
+         5 min so a server-side black screen can't loop the page. */
+      var _nowWd = Date.now();
+      if (!S.__wdArmedAt) S.__wdArmedAt = _nowWd; /* grace for first bake */
+      if ((!S.__wdNext || _nowWd >= S.__wdNext) && _nowWd - S.__wdArmedAt > 15000) {
+        S.__wdNext = _nowWd + 5000;
+        if (!S.__wdHb || _nowWd - S.__wdHb > 30000) {
+          S.__wdHb = _nowWd;
+          try {
+            var _rawHb = sessionStorage.getItem('bt_resume') || localStorage.getItem('bt_resume');
+            if (_rawHb) {
+              var _snHb = JSON.parse(_rawHb);
+              _snHb.t = _nowWd;
+              var _strHb = JSON.stringify(_snHb);
+              sessionStorage.setItem('bt_resume', _strHb);
+              localStorage.setItem('bt_resume', _strHb);
+            }
+          } catch (e) {}
+        }
+        if (document.visibilityState === 'visible') {
+          requestAnimationFrame(function () {
+            var _pctWd = _sampleLit();
+            if (_pctWd < 0) return;
+            if (_pctWd >= 1) { S.__wdDark = 0; return; }
+            S.__wdDark = (S.__wdDark || 0) + 1;
+            try {
+              import('../debug/crashTrap.js').then(function (ct) {
+                ct.recordCrash('watchdog-dark', 'screen ' + _pctWd + '% lit, strike ' + S.__wdDark);
+              }).catch(function () {});
+            } catch (e) {}
+            if (S.__wdDark === 2 && window._rebuildRenderer) {
+              window._rebuildRenderer('watchdog: screen dark 10s');
+            }
+            if (S.__wdDark >= 4) {
+              S.__wdDark = 0;
+              try {
+                var _rls = JSON.parse(sessionStorage.getItem('bt-reloads') || '[]').filter(function (t) { return Date.now() - t < 300000; });
+                if (_rls.length < 2) {
+                  _rls.push(Date.now());
+                  sessionStorage.setItem('bt-reloads', JSON.stringify(_rls));
+                  sessionStorage.setItem('bt_resume_now', '1');
+                  import('../debug/crashTrap.js').then(function (ct) {
+                    ct.recordCrash('auto-reload', 'world dark 20s despite rebuild -- reloading into game');
+                  }).catch(function () {});
+                  setTimeout(function () { window.location.reload(); }, 350);
+                }
+              } catch (e) {}
+            }
+          });
+        }
+      }
       var nb = S.nearBuilding;
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
@@ -11631,7 +12026,9 @@ export var BroTown = function BroTown(_ref0) {
           S2.stats._furnitureCrafted = S2.rpg._furniture ? Object.keys(S2.rpg._furniture).length : 0;
           S2.stats._dungeonsCreated = ((_S2$rpg$_customDungeo = S2.rpg._customDungeons) === null || _S2$rpg$_customDungeo === void 0 ? void 0 : _S2$rpg$_customDungeo.length) || 0;
           S2.stats._petsEvolved = ((_S2$rpg$_compStats4 = S2.rpg._compStats) === null || _S2$rpg$_compStats4 === void 0 ? void 0 : _S2$rpg$_compStats4.petsEvolved) || S2.stats._petsEvolved || 0;
-          S2.stats._mythicPets = (((_S2$rpg$lifeSkills = S2.rpg.lifeSkills) === null || _S2$rpg$lifeSkills === void 0 ? void 0 : _S2$rpg$lifeSkills.pets) || []).filter(function (p) {
+          var _petsArr = ((_S2$rpg$lifeSkills = S2.rpg.lifeSkills) === null || _S2$rpg$lifeSkills === void 0 ? void 0 : _S2$rpg$lifeSkills.pets) || [];
+          if (!Array.isArray(_petsArr)) _petsArr = Object.values(_petsArr); /* v2.3.768 shape guard */
+          S2.stats._mythicPets = _petsArr.filter(function (p) {
             return (p.evolutionTier || 0) >= 3;
           }).length;
           S2.stats._mktTrades = ((_S2$rpg$_compStats5 = S2.rpg._compStats) === null || _S2$rpg$_compStats5 === void 0 ? void 0 : _S2$rpg$_compStats5.mktTrades) || S2.stats._mktTrades || 0;
@@ -13499,6 +13896,37 @@ export var BroTown = function BroTown(_ref0) {
       p_body_torso: S.bodyTorso,
       p_body_legs: S.bodyLegs
     });
+    /* v2.3.777: resume snapshot -- the character needed to rejoin without
+       the login screen.  Written on every PLAY; heartbeated in-game; read
+       by the auto-rejoin effect after a recovery reload or an iOS tab
+       eviction.  sessionStorage survives same-tab reloads (even in
+       private windows); localStorage is the backup for normal Safari. */
+    try {
+      var _snapJ = JSON.stringify({
+        t: Date.now(),
+        name: S.myName,
+        avatar: S.myAvatar,
+        bro: S.myBroData,
+        color: S.myColor,
+        bodyTorso: S.bodyTorso,
+        bodyLegs: S.bodyLegs,
+        traits: {
+          headwear: getHeadwear(),
+          hair: getHair(),
+          facialHair: getFacialHair(),
+          skin: getSkin(),
+          pants: getPants(),
+          shoes: getShoes(),
+          hairColor: getHairColor(),
+          hatColor: getHatColor(),
+          facialHairColor: getFacialHairColor(),
+          shirt: getShirt(),
+          shirtColor: getShirtColor()
+        }
+      });
+      sessionStorage.setItem('bt_resume', _snapJ);
+      localStorage.setItem('bt_resume', _snapJ);
+    } catch (e) {}
     BT_AUDIO.init();
     BT_AUDIO.join();
     setShowWelcome(false);
@@ -13517,6 +13945,61 @@ export var BroTown = function BroTown(_ref0) {
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
     if (!_skipIntro) setShowIntro(true);
   };
+
+  /* v2.3.777: auto-rejoin -- the stability endgame.  Every in-place
+     renderer recovery can be defeated by iOS (context refusal, GPU-backed
+     bitmap purges, page eviction), but a fresh page boot has worked 100%
+     of the time.  So: a recovery reload (bt_resume_now, set by the
+     black-screen watchdog) or any reload within 10 min of the last
+     heartbeat skips the character screen and rejoins as the same
+     character, straight into the world.  ?noresume=1 escapes to the
+     normal character screen. */
+  useEffect(function () {
+    var snap = null;
+    var wanted = false;
+    try {
+      if (/[?&]noresume=1\b/.test(window.location.search)) return;
+      wanted = sessionStorage.getItem('bt_resume_now') === '1';
+      sessionStorage.removeItem('bt_resume_now');
+      var _rawSnap = sessionStorage.getItem('bt_resume') || localStorage.getItem('bt_resume');
+      if (_rawSnap) snap = JSON.parse(_rawSnap);
+    } catch (e) {}
+    if (!snap || !snap.name) return;
+    var fresh = Date.now() - (snap.t || 0) < 10 * 60 * 1000;
+    if (!wanted && !fresh) return;
+    var S = stateRef.current;
+    S.myName = snap.name;
+    if (snap.avatar) S.myAvatar = snap.avatar;
+    if (snap.bro) S.myBroData = snap.bro;
+    if (snap.color) S.myColor = snap.color;
+    if (snap.bodyTorso) S.bodyTorso = snap.bodyTorso;
+    if (snap.bodyLegs) S.bodyLegs = snap.bodyLegs;
+    try {
+      var tr = snap.traits || {};
+      if (tr.headwear != null) setHeadwear(tr.headwear);
+      if (tr.hair != null) setHair(tr.hair);
+      if (tr.facialHair != null) setFacialHair(tr.facialHair);
+      if (tr.skin != null) setSkin(tr.skin);
+      if (tr.pants != null) setPants(tr.pants);
+      if (tr.shoes != null) setShoes(tr.shoes);
+      if (tr.hairColor != null) setHairColor(tr.hairColor);
+      if (tr.hatColor != null) setHatColor(tr.hatColor);
+      if (tr.facialHairColor != null) setFacialHairColor(tr.facialHairColor);
+      if (tr.shirt != null) setShirt(tr.shirt);
+      if (tr.shirtColor != null) setShirtColor(tr.shirtColor);
+    } catch (e) {}
+    /* NOTE: unlike joinTown, do NOT wipe bt_rpg -- the cached RPG state is
+       what makes the rejoin seamless (server state_sync still overwrites). */
+    try {
+      import('../debug/crashTrap.js').then(function (ct) {
+        ct.recordCrash('auto-rejoin', (wanted ? 'recovery reload' : 'fresh snapshot') + ' as ' + snap.name);
+      }).catch(function () {});
+    } catch (e) {}
+    BT_AUDIO.init();
+    BT_AUDIO.join();
+    try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
+    setShowWelcome(false); /* straight in -- no intro video on a resume */
+  }, []); /* mount-only by design: resumes happen once per page load */
 
   /* Name / avatar selection modal.
      v2.3.710: redesigned to two side-by-side panes at EVERY width (iPhone
@@ -13798,6 +14281,10 @@ export var BroTown = function BroTown(_ref0) {
       minHeight: 0
     }
   }, /*#__PURE__*/React.createElement("canvas", {
+    /* v2.3.772: epoch key -- bumping glEpoch swaps in a brand-new canvas
+       element (and thus a brand-new WebGL context; a lost context can
+       never be re-acquired on the old element). */
+    key: 'cv' + glEpoch,
     ref: canvasRef,
     className: "brotown-canvas",
     style: {
@@ -30241,7 +30728,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.224: snow auto-collection retired; button is a no-op
          until a non-placeholder resource is wired in. */
       return;
-      // eslint-disable-next-line no-unreachable
+      /* eslint-disable no-unreachable -- reference impl kept for future wiring */
       var _R$inventory;
       var S = stateRef.current,
         R = S.rpg;

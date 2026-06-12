@@ -433,7 +433,7 @@ const PerfPanel = () => {
         <button style={btnStyle} onClick={() => perfTracker.reset()}>reset buffers</button>
         <button style={btnStyle} onClick={() => {
           /* Dump full perf state to console so user can copy it */
-          /* eslint-disable no-console */
+           
           console.warn('[perfdump]', {
             zone: perfTracker.getZoneStats(),
             last60: perfTracker.summary(60),
@@ -441,7 +441,7 @@ const PerfPanel = () => {
             longFrames: perfTracker.getLongFrames(),
             longTasks: perfTracker.getLongTasks(),
           });
-          /* eslint-enable no-console */
+           
           debugBus.pushLog('info', ['[perfdump] written to console + this log']);
         }}>dump to console</button>
       </div>
