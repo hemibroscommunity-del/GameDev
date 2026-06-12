@@ -115,9 +115,14 @@ copy won.
   own PR. Same likely applies to other early-build content systems
   (collectibles/scavenger hunt, some NPC interactions) — check with the
   owner before assuming any content-facing system is live.
-- **Phase 4 — WS event dispatcher:** lift `_processGameEvent` (~3033–4279,
-  the bulk of the 40+ message handlers) → `src/networking/gameEvents.js` as
-  `(type, payload, S, deps)`.
+- **Phase 4 — ✅ done (v2.3.783):** `_processGameEvent` (~1,215 lines, the
+  bulk of the 40+ message handlers) → `src/networking/gameEvents.js` as
+  `processGameEvent(type, payload, S, deps)`. Closure captures made
+  explicit: data/variant/combat/chat imports at module scope; React setters
+  + `pixiRef` + the effect-scoped `_buildServerPile` via a `_gameEventDeps`
+  object built once per WS-effect run. eslint `no-undef` was the capture
+  detector (caught `pixiRef`, `DEATH_GOLD_PENALTY`, `updateZoneDimensions`/
+  `generateZoneMap`, `BT_API_BASE`).
 - **Phase 5 — connection lifecycle:** move the remaining inline WS effect
   body (~1845–3030 + channelShim) into `src/networking/wsClient.js`,
   **replacing** the stale file wholesale; BroTown keeps a ~10-line useEffect
