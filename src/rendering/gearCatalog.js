@@ -5,6 +5,8 @@
  * the body.  See gear-layer-spec.md.
  */
 
+import { onShirtChange } from './traits/shirtCatalog.js';
+
 export const GEAR_SLOTS = ['shirt', 'legs', 'chest', 'shoulders'];
 
 /* Per-slot catalog.  v2.3.503: a single 'testplate' chest piece (an aligned
@@ -78,6 +80,13 @@ export function gearInventoryItems() {
   }
   return out;
 }
+
+/* v2.3.756: the character-creator's shirt picker drives the LAYER now (the
+   baked shirt is retired): picking a shirt style equips it, picking None
+   removes it.  Sync runs on CHANGE only, so a creator default of 'none'
+   never strips the new-player default tshirt.  (shirtCatalog has no
+   imports, so this static import cannot form a cycle.) */
+onShirtChange((id) => setEquip('shirt', id === 'none' ? 'none' : 'tshirt'));
 
 export function getEquip(slot) { return _stores[slot] ? _stores[slot].get() : 'none'; }
 export function setEquip(slot, id) { if (_stores[slot]) _stores[slot].set(id); }

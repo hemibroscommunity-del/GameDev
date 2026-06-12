@@ -376,6 +376,12 @@ const InventoryPreview = () => {
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
+        /* v2.3.761: leather backdrop (owner art) behind the quick-bag tiles;
+           a touch of padding so the texture's border reads as the frame. */
+        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
+        backgroundSize: '100% 100%',
+        borderRadius: 6,
+        padding: 3,
       }}
       title="Tap to open Bag"
     >
@@ -1087,13 +1093,22 @@ export const BottomDashboard = () => {
                      mirroring the weapon/shield flow. */
                   const gearChestId = getEquip('chest');
                   const gearLegsId = getEquip('legs');
+                  const gearShirtId = getEquip('shirt');
                   const gearIconSrc = (id) =>
                     (id === 'steelplate' || id === 'steelgreaves')
-                      ? `/sprites/gear/icons/${id}.png?v=2.3.685` : null;
+                      ? `/sprites/gear/icons/${id}.png?v=2.3.685`
+                      : id === 'tshirt' ? '/sprites/gear/icons/tshirt.png?v=2.3.756' : null;
                   const onTapGear = (slot) => (anchor) => {
                     const gearId = getEquip(slot);
                     if (!gearId || gearId === 'none') return;
                     itemDetailBus.open({ kind: 'gear', slot, gearId, anchor });
+                  };
+                  /* v2.3.756: the CHEST cell holds two layers (armour over
+                     shirt).  Its icon shows the TOP visible layer; tapping
+                     always opens the two-layer picker, even when empty, so
+                     either layer can be re-equipped from here. */
+                  const onTapChestLayers = (anchor) => {
+                    itemDetailBus.open({ kind: 'chestLayers', anchor });
                   };
                   return (
                     <div style={{
@@ -1135,13 +1150,15 @@ export const BottomDashboard = () => {
                         {slotCell({
                           k: 'chest',
                           label: 'CHEST',
-                          /* worn gear first; legacy stats-armor fallback */
-                          iconSrc: gearChestId !== 'none' ? gearIconSrc(gearChestId) : armorSrc,
-                          equipped: gearChestId !== 'none' || !!R.armor,
+                          /* v2.3.756: top visible layer -- armour over
+                             shirt; legacy stats-armor fallback last */
+                          iconSrc: gearChestId !== 'none' ? gearIconSrc(gearChestId)
+                                 : gearShirtId !== 'none' ? gearIconSrc(gearShirtId)
+                                 : armorSrc,
+                          equipped: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
                           equippedGlyph: '\u{1F9BA}',
-                          active: gearChestId !== 'none' || !!R.armor,
-                          onTap: gearChestId !== 'none' ? onTapGear('chest')
-                               : R.armor ? onTapArmor : undefined,
+                          active: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
+                          onTap: onTapChestLayers,
                         })}
                         {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
                         {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: R.shield ? onTapShield : undefined })}

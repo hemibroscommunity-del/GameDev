@@ -224,7 +224,7 @@ export const InventoryPanel = () => {
     : visible.filter(k => classify(k) === filter);
 
   return (
-    <div style={panelStyle}>
+    <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
 
       {/* Filter strip — icon-only chips. */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
@@ -250,6 +250,18 @@ export const InventoryPanel = () => {
         })}
       </div>
 
+      {/* v2.3.761: leather backdrop (owner art) behind the bag's cell grid;
+          stretched to 100%/100% so its ornate border frames the container.
+          v2.3.762: flex:1 so the leather fills the panel's FULL height in
+          the expanded view (it used to stop at the last tile row). */}
+      <div style={{
+        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
+        backgroundSize: '100% 100%',
+        borderRadius: 8,
+        padding: 8,
+        flex: 1,
+        minHeight: 0,
+      }}>
       {(() => {
         /* v2.3.210: surface stash weapons + shields in the bag grid
            so the popup's Equip action has somewhere to come from. */
@@ -300,6 +312,7 @@ export const InventoryPanel = () => {
           </div>
         );
       })()}
+      </div>
     </div>
   );
 };

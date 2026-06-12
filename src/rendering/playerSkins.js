@@ -551,24 +551,20 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
  *  flashes the default-skin frame when first turning/jogging in a direction.
  *  Resolves immediately for the default combo (base sheets are used as-is). */
 export function preloadBodyAll() {
-  return Promise.all([import('./traits/shirtCatalog.js'), import('./traits/shirtColorCatalog.js')])
-    .then(([sc, scc]) => {
-      const shirtId = sc.getShirt(), colorId = scc.getShirtColor();
-      const shirtT = scc.shirtFill(shirtId, colorId);
-      const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
-      const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
-      if (!skinT && !pantsT && !shoesT && !shirtT) return; /* default combo: nothing to bake */
-      const shKey = shirtT ? (shirtId + '-' + colorId) : 'none';
-      const tasks = [];
-      for (const pose of ['stand', 'jog']) {
-        for (const dir of SOURCE_DIRS) {
-          const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/' + shKey + '|' + pose + '/' + dir;
-          if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT));
-        }
-      }
-      return Promise.all(tasks);
-    })
-    .catch(() => {});
+  /* v2.3.756: baked shirt retired -- the body always bakes SHIRTLESS (the
+     layered shirt is a separate tinted gear sprite).  The shirt machinery
+     below (_torsoBands etc.) is dormant: no caller passes shirtT anymore. */
+  const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
+  const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+  if (!skinT && !pantsT && !shoesT) return Promise.resolve(); /* default combo */
+  const tasks = [];
+  for (const pose of ['stand', 'jog']) {
+    for (const dir of SOURCE_DIRS) {
+      const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/none|' + pose + '/' + dir;
+      if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null));
+    }
+  }
+  return Promise.all(tasks);
 }
 
 /** Preload the current combo's sheets for a SPECIFIC shirt variant (both
@@ -597,20 +593,10 @@ export function preloadBodyVariant(shirtT, shirtKey) {
    then prewarm the spawn pose with the full combo so there's no skin-torso
    flash before the shirt bakes. */
 function _prewarmCurrent() {
-  Promise.all([import('./traits/shirtCatalog.js'), import('./traits/shirtColorCatalog.js')])
-    .then(([sc, scc]) => {
-      const shirtId = sc.getShirt(), colorId = scc.getShirtColor();
-      const shirtT = scc.shirtFill(shirtId, colorId);
-      prewarmBody(_skinStore.get(), _pantsStore.get(), _shoesStore.get(), shirtT, shirtId + '-' + colorId);
-      if (!_shirtSubscribed) {
-        _shirtSubscribed = true;
-        sc.onShirtChange(_prewarmCurrent);
-        scc.onShirtColorChange(_prewarmCurrent);
-      }
-    })
-    .catch(() => { try { prewarmBody(_skinStore.get(), _pantsStore.get(), _shoesStore.get(), null, 'none'); } catch (e) { /* ignore */ } });
+  /* v2.3.756: baked shirt retired -- always prewarm the shirtless body
+     (this also removed the dynamic-import cycle workaround). */
+  try { prewarmBody(_skinStore.get(), _pantsStore.get(), _shoesStore.get(), null, 'none'); } catch (e) { /* ignore */ }
 }
-let _shirtSubscribed = false;
 _skinStore.on(_prewarmCurrent);
 _pantsStore.on(_prewarmCurrent);
 _shoesStore.on(_prewarmCurrent);
