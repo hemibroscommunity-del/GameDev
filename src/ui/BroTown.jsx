@@ -4642,6 +4642,21 @@ export var BroTown = function BroTown(_ref0) {
          full renderer rebuild on a fresh canvas via _rebuildRenderer. */
       setTimeout(function () {
         try {
+          /* v2.3.774: renderer never (re)initialized -- a prior init
+             failed (iOS refused the context under GPU pressure) or a
+             rebuild was cut short by a freeze.  Now that this tab is
+             foreground again a fresh attempt usually succeeds. */
+          if (window.__pixiActive === false) {
+            if (window._rebuildRenderer) window._rebuildRenderer(tag + ': renderer dead on resume');
+            return;
+          }
+          /* v2.3.774: stuck on the Canvas-renderer fallback (WebGL was
+             refused during a rebuild and the backoff retries ran out
+             while we were hidden) -- now that we're foreground, go again. */
+          if (window.__btCanvasFallback) {
+            if (window._rebuildRenderer) window._rebuildRenderer(tag + ': canvas fallback active, retrying WebGL');
+            return;
+          }
           /* v2.3.773: if the context was lost AT ALL while away, rebuild --
              even when it came back.  A restored context reports healthy but
              the baked render textures are gone (black world regardless). */
@@ -4986,9 +5001,63 @@ export var BroTown = function BroTown(_ref0) {
            like flushAllLoot without ref plumbing.  Mirrors __pixiActive. */
         window._pixiRenderer = renderer;
         window.__pixiActive = true;
+        /* v2.3.774: detect the silent Canvas-renderer fallback.  When iOS
+           refuses a WebGL context under GPU pressure, createPixiApp falls
+           back to Pixi's Canvas renderer -- which cannot draw our
+           baked/tinted pipeline: the world shows near-black with the odd
+           plain sprite (the iPhone two-window screenshot).  If this device
+           ran WebGL before (we're here via a rebuild), keep retrying
+           WebGL with backoff while the canvas renderer keeps the lights
+           on; foreground tabs usually get a context again within seconds. */
+        var _noGl = !(renderer.app && renderer.app.renderer && renderer.app.renderer.gl);
+        window.__btCanvasFallback = _noGl && !!window.__btLastGlRebuild;
+        if (window.__btCanvasFallback) {
+          var _cfails = (window.__btPixiInitFails || 0) + 1;
+          window.__btPixiInitFails = _cfails;
+          try {
+            import('../debug/crashTrap.js').then(function (ct) {
+              ct.recordCrash('pixi-canvas-fallback', 'WebGL refused, attempt ' + _cfails + ' -- retrying');
+            }).catch(function () {});
+          } catch (e) {}
+          if (_cfails <= 8) {
+            setTimeout(function () {
+              setGlEpoch(function (n) { return n + 1; });
+            }, Math.min(15000, 1000 * Math.pow(2, _cfails - 1)));
+          }
+          return;
+        }
+        window.__btPixiInitFails = 0;
+        /* v2.3.774: confirm recovery in the crash log -- but only after
+           a rebuild, so normal boots stay quiet. */
+        if (window.__btLastGlRebuild && Date.now() - window.__btLastGlRebuild < 60000) {
+          try {
+            import('../debug/crashTrap.js').then(function (ct) {
+              ct.recordCrash('gl-rebuild-ok', 'renderer re-initialized (webgl)');
+            }).catch(function () {});
+          } catch (e) {}
+        }
       }).catch(function(err) {
         console.error('[pixi-init] FAILED:', err);
         window.__pixiActive = false;
+        /* v2.3.774: iOS can REFUSE to create a WebGL context while the
+           GPU is under memory pressure (e.g. a second game window holds
+           one).  This used to be a console-only dead end = permanent
+           black canvas with the UI still alive (the iPhone two-window
+           screenshot).  Record it and retry on a fresh canvas with
+           backoff -- pressure usually clears once this tab is the
+           foreground one. */
+        var _fails = (window.__btPixiInitFails || 0) + 1;
+        window.__btPixiInitFails = _fails;
+        try {
+          import('../debug/crashTrap.js').then(function (ct) {
+            ct.recordCrash('pixi-init-failed', 'attempt ' + _fails + ': ' + ((err && err.message) || err));
+          }).catch(function () {});
+        } catch (e) {}
+        if (_fails <= 8) {
+          setTimeout(function () {
+            setGlEpoch(function (n) { return n + 1; });
+          }, Math.min(15000, 1000 * Math.pow(2, _fails - 1)));
+        }
       });
     }
 
