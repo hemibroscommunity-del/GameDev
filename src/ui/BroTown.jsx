@@ -13854,13 +13854,7 @@ export var BroTown = function BroTown(_ref0) {
          old negative top margin pushed it under the iPhone notch/Dynamic
          Island, which ate the art's top ~50px (owner: bump it down). */
       src: '/ui/welcome/banner-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
-    }), /*#__PURE__*/React.createElement("button", {
-      /* v2.3.768: appearance RANDOMIZE floats at the screen's top-right
-         over the banner sky (mockup); the name dice below keeps rerolling
-         just the name. */
-      type: 'button', onClick: randomizeWithFlair, className: "bt-cc-randtop"
-    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 18, height: 18, flex: '0 0 auto' } }),
-    /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("div", {
+    }), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
     }, /*#__PURE__*/React.createElement("div", {
       /* Header: call-to-action + divider (the logo itself lives in the
@@ -14043,6 +14037,19 @@ export var BroTown = function BroTown(_ref0) {
         type: 'button', onClick: _ccActive.resetColor,
         className: 'bt-cc-defcol' + (_ccActive.colorIsDefault ? ' bt-cc-defcol--on' : '')
       }, "↻ Default Color") : null) : null)), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.769: appearance RANDOMIZE sits right under the customization
+         menu it acts on (owner: the mockup's floating top-right button and
+         back arrow were illustration only) — same full-width gold row it
+         was in the old rail; the name dice above keeps rerolling just the
+         name. */
+      type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
+      style: { width: '100%', padding: '7px', minHeight: 42, cursor: 'pointer', borderRadius: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        background: 'rgba(20,16,40,0.93)', color: 'var(--txt)',
+        fontSize: 16, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+        textShadow: '0 1px 2px rgba(0,0,0,.55)' }
+    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
+    /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("button", {
       onClick: joinTown,
       /* v2.3.725: the owner's painted PLAY art (label baked in); the img is
          the button.  :active press lives in .bt-cc-play.

@@ -251,8 +251,10 @@ input{font-family:inherit}
 /* v2.3.741: solid-color fallback removed — the art has transparent corners,
    so the backing purple peeked out around the painted shape (owner). */
 .bt-cc-play:active{transform:translateY(2px);filter:brightness(1.12)}
-/* v2.3.768: .bt-cc-rand retired — Randomize moved to the floating
-   .bt-cc-randtop button over the banner. */
+/* v2.3.769: Randomize lives under the customization drawer (the mockup's
+   floating top-right button was illustration only, owner). */
+.bt-cc-rand{border:1.5px solid #8a6d1f!important;color:var(--gold)!important}
+.bt-cc-rand:active{background:rgba(245,197,66,.12)!important}
 /* v2.3.718: name input on the owner's parchment scroll (3-slice border-
    image: rolled end caps stay fixed, the parchment middle stretches).
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
@@ -320,10 +322,6 @@ input{font-family:inherit}
 .bt-cc-drawer-head{width:100%;text-align:center;font-size:11px;font-weight:700;color:#9090a8;letter-spacing:.08em;font-family:'Baloo 2','Source Sans 3',sans-serif}
 .bt-cc-defcol{width:100%;padding:6px 4px;border-radius:8px;cursor:pointer;background:rgba(20,16,40,0.93);border:1.5px solid #56499a;color:#cfc9ee;font-size:11px;font-weight:700;font-family:'Baloo 2','Source Sans 3',sans-serif}
 .bt-cc-defcol--on{border-color:var(--gold);color:var(--gold)}
-/* v2.3.768: appearance Randomize floats over the banner's top-right sky
-   (mockup) — gold chrome to read as the "fun" verb, clear of the notch. */
-.bt-cc-randtop{position:absolute;top:max(14px,calc(env(safe-area-inset-top) + 8px));right:max(12px,env(safe-area-inset-right));z-index:5;display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:10px;cursor:pointer;background:rgba(12,10,22,0.82);border:1.5px solid #8a6d1f;color:var(--gold);font-size:13px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55)}
-.bt-cc-randtop:active{transform:translateY(1px)}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}
