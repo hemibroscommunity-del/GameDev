@@ -76,6 +76,21 @@ export function watchContextLoss(canvas) {
        black forever (the iPhone background-tab symptom). */
     try { e.preventDefault(); } catch (err) { /* ignore */ }
     recordCrash('CONTEXT_LOST', 'WebGL context lost (GPU memory pressure / tab suspend)');
+    /* v2.3.772: escalation.  preventDefault only ASKS the browser to
+       restore the context; iOS Safari often never does.  If it's still
+       lost after a grace period, hand off to the full renderer rebuild
+       (fresh canvas = fresh context).  When the loss happened in a
+       background tab this timer is frozen with the page and fires on
+       resume -- exactly when the rebuild can actually work. */
+    setTimeout(() => {
+      try {
+        const r = window._pixiRenderer;
+        const gl = r && r.app && r.app.renderer && r.app.renderer.gl;
+        if (gl && gl.isContextLost && gl.isContextLost() && window._rebuildRenderer) {
+          window._rebuildRenderer('contextlost: not restored after 2.5s');
+        }
+      } catch (err) { /* ignore */ }
+    }, 2500);
     if (/[?&]dev=1\b/.test(window.location.search)) banner('WEBGL CONTEXT LOST — the black-screen bug just happened. Screenshot this.');
   });
   canvas.addEventListener('webglcontextrestored', () => {

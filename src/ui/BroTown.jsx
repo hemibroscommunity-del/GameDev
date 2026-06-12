@@ -797,6 +797,18 @@ export var BroTown = function BroTown(_ref0) {
     setChatInput = _useState2[1];
   var chatInputValRef = useRef(''); /* mirror for canvas render loop */
   var chatInputRef = useRef(null);
+  /* v2.3.772: WebGL-rebuild epoch.  iOS Safari reclaims the GPU context of
+     backgrounded tabs and sometimes never restores it on resume (black
+     world, and NO webglcontextlost event ever fires).  A lost context can
+     never be re-acquired on the same <canvas> element, so the only real
+     recovery is: remount the canvas (key'd on this epoch in the JSX) and
+     re-run the game-loop effect (epoch in its dep list), which re-inits
+     Pixi on the fresh element.  Game state lives in stateRef and the
+     socket lives in its own effect -- both survive the rebuild. */
+  var _useGlEpoch = useState(0),
+    _useGlEpoch2 = _slicedToArray(_useGlEpoch, 2),
+    glEpoch = _useGlEpoch2[0],
+    setGlEpoch = _useGlEpoch2[1];
   var _useState3 = useState(false),
     _useState4 = _slicedToArray(_useState3, 2),
     chatOpen = _useState4[0],
@@ -4621,8 +4633,36 @@ export var BroTown = function BroTown(_ref0) {
         reconnectDelay = 1000;
         try { connect(); } catch (e) {}
       }
+      /* v2.3.772: probe the GL context directly instead of trusting events.
+         On the iPhone repro the context died with NO webglcontextlost ever
+         firing (and a frozen tab can't record anything anyway), so:
+         healthy context -> cheap tile rebuild; lost context -> give the
+         browser a grace period to restore it (crashTrap + Pixi both
+         preventDefault to request that), re-probe, and if still dead do a
+         full renderer rebuild on a fresh canvas via _rebuildRenderer. */
       setTimeout(function () {
-        try { if (window._pixiRenderer && window._pixiRenderer.forceRefresh) window._pixiRenderer.forceRefresh(); } catch (e) {}
+        try {
+          var _r = window._pixiRenderer;
+          var _gl = _r && _r.app && _r.app.renderer && _r.app.renderer.gl;
+          if (!_gl || !_gl.isContextLost || !_gl.isContextLost()) {
+            if (_r && _r.forceRefresh) _r.forceRefresh();
+            return;
+          }
+          import('../debug/crashTrap.js').then(function (ct) {
+            ct.recordCrash('gl-probe', tag + ': context LOST on resume, waiting for restore');
+          }).catch(function () {});
+          setTimeout(function () {
+            try {
+              var _r2 = window._pixiRenderer;
+              var _gl2 = _r2 && _r2.app && _r2.app.renderer && _r2.app.renderer.gl;
+              if (_gl2 && _gl2.isContextLost && _gl2.isContextLost()) {
+                if (window._rebuildRenderer) window._rebuildRenderer(tag + ': context not restored 1.5s after resume');
+              } else if (_r2 && _r2.forceRefresh) {
+                _r2.forceRefresh();
+              }
+            } catch (e) {}
+          }, 1500);
+        } catch (e) {}
       }, 600);
     }
     try {
@@ -4944,6 +4984,25 @@ export var BroTown = function BroTown(_ref0) {
         window.__pixiActive = false;
       });
     }
+
+    /* v2.3.772: full renderer rebuild -- the only recovery from a GL
+       context the browser refuses to restore.  Bumping the epoch remounts
+       the canvas (fresh element = fresh context) and re-runs this whole
+       effect; the cleanup below destroys the dead Pixi app first.  Called
+       by the resume probe (ws effect) and crashTrap's contextlost
+       escalation.  Debounced: a foreground contextlost timer and the
+       resume probe can both conclude 'rebuild' for the same death. */
+    window._rebuildRenderer = function (reason) {
+      var _now = Date.now();
+      if (window.__btLastGlRebuild && _now - window.__btLastGlRebuild < 5000) return;
+      window.__btLastGlRebuild = _now;
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('gl-rebuild', reason || 'manual');
+        }).catch(function () {});
+      } catch (e) {}
+      setGlEpoch(function (n) { return n + 1; });
+    };
 
     if (!S.map) {
       updateZoneDimensions(S.currentZone);
@@ -11969,9 +12028,18 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
-      if (pixiRef.current) { pixiRef.current.destroy(); pixiRef.current = null; window._pixiRenderer = null; }
+      window._rebuildRenderer = null;
+      /* v2.3.772: destroy() can throw mid-teardown when the GL context is
+         already dead (the very case the epoch rebuild handles) -- never
+         let that skip the ref nulling or the re-init guard stays blocked. */
+      if (pixiRef.current) {
+        try { pixiRef.current.destroy(); } catch (e) {}
+        pixiRef.current = null;
+        window._pixiRenderer = null;
+        window.__pixiActive = false;
+      }
     };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, glEpoch]);
 
   /* Sync nearBuilding + player list from game loop to React */
   useEffect(function () {
@@ -14183,6 +14251,10 @@ export var BroTown = function BroTown(_ref0) {
       minHeight: 0
     }
   }, /*#__PURE__*/React.createElement("canvas", {
+    /* v2.3.772: epoch key -- bumping glEpoch swaps in a brand-new canvas
+       element (and thus a brand-new WebGL context; a lost context can
+       never be re-acquired on the old element). */
+    key: 'cv' + glEpoch,
     ref: canvasRef,
     className: "brotown-canvas",
     style: {
