@@ -285,8 +285,9 @@ input{font-family:inherit}
 /* v2.3.790: width cap — the art scaled with card width, so on a Pro Max
    PLAY rendered ~108px tall, TALLER than the squeezed drawer above it
    (owner screenshot).  320px keeps it the clear final action without
-   competing for the drawer's room. */
-.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px;max-width:300px;margin-left:auto;margin-right:auto}
+   competing for the drawer's room.
+   v2.3.793: 300 -> 230 (owner: shrink it). */
+.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px;max-width:230px;margin-left:auto;margin-right:auto}
 /* v2.3.741: solid-color fallback removed — the art has transparent corners,
    so the backing purple peeked out around the painted shape (owner). */
 .bt-cc-play:active{transform:translateY(2px);filter:brightness(1.12)}
@@ -326,13 +327,12 @@ input{font-family:inherit}
    ratioed than the art on some device and cover crops the lettering
    (owner screenshot: BRO TOWN cut in half).  Width-coupled height means
    the crop is always ~0; the flex stage/menu absorb the cost. */
-/* v2.3.792: the WHOLE art, height-driven contain scaling (width:auto
-   keeps the 3:2 ratio, so nothing can ever clip), centered over the
-   painted backdrop.  Full-bleed margins and the wide-viewport gem-band
-   override are retired with the cover-cropping. */
-.bt-cc-banner{flex:none;align-self:center;height:min(36vw,168px);width:auto;display:block;pointer-events:none}
+/* v2.3.793: tavern-banner art retired (owner) — the painted gold
+   BRO TOWN lettering (logo-brotown.webp, 560x329) takes its slot.
+   Width-driven so it can never clip; centered over the page backdrop. */
+.bt-cc-logo{flex:none;align-self:center;width:min(56vw,270px);height:auto;display:block;pointer-events:none}
 @media (max-height:720px){
-  .bt-cc-banner{height:min(30vw,128px)}
+  .bt-cc-logo{width:min(44vw,200px)}
 }
 
 

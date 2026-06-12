@@ -13966,18 +13966,11 @@ export var BroTown = function BroTown(_ref0) {
     return /*#__PURE__*/React.createElement("div", {
       className: "bt-name-modal"
     }, /*#__PURE__*/React.createElement("img", {
-      /* v2.3.782: crest + BRO TOWN lockup replaced by the owner's painted
-         tavern-banner art.
-         v2.3.788: starts BELOW the top safe-area inset (the notch was
-         eating the art).
-         v2.3.792: the WHOLE 3:2 art, scaled down and centered — every
-         cover-crop strategy (bottom-anchor, lettering pre-strip, gem
-         band) eventually clipped something on some device (owner: show
-         the full banner, just smaller).  Height-driven contain scaling
-         can never clip; the painted modal backdrop shows at the sides.
-         The banner-strip.webp pre-crop and the <picture> dual-source are
-         retired with this. */
-      src: '/ui/welcome/banner-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-banner"
+      /* v2.3.793: tavern-banner art retired (owner) — back to the painted
+         gold BRO TOWN lettering (logo-brotown.webp, the main piece of the
+         pre-v2.3.782 lockup) in the banner's slot at the top of the
+         screen.  Width-driven sizing in .bt-cc-logo. */
+      src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo"
     }), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
     }, /*#__PURE__*/React.createElement("div", {
@@ -14008,15 +14001,14 @@ export var BroTown = function BroTown(_ref0) {
          color-exact). */
       /* Height lives in .bt-cc-stage (game.css) — v2.3.790: flex-driven,
          not aspect-ratio: the stage and the menu share the real viewport
-         with guaranteed minimums. */
+         with guaranteed minimums.
+         v2.3.793: framed dark box (border, void painting, inset shadow,
+         star layers) removed — the character floats directly on the
+         painted page backdrop (owner).  The element keeps its size and
+         position so the pedestal/figure/rotate geometry is untouched. */
       className: "bt-cc-stage",
-      style: { position: 'relative', width: '100%', boxSizing: 'border-box',
-        border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
-        background: "url('/ui/welcome/void.webp') center/cover no-repeat, #0a0a0c",
-        boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
-    }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars" }),
-    /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars bt-cc-stars--b" }),
-    /*#__PURE__*/React.createElement("img", {
+      style: { position: 'relative', width: '100%', boxSizing: 'border-box' }
+    }, /*#__PURE__*/React.createElement("img", {
       /* v2.3.791: pedestal sized by stage HEIGHT, bottom-center anchored —
          it was %-of-WIDTH while the figure scaled with height, so the
          flexing stage broke the boots/platform contact differently on
