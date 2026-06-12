@@ -268,7 +268,10 @@ input{font-family:inherit}
    panel background, so the rail/drawer drop their own outer chrome.
    Note border-image ignores border-radius — the art carries its own
    corners. */
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch}
+/* v2.3.802: the frame art's CENTER is transparent — `fill` was showing
+   the painted page backdrop through the menu (owner: black background).
+   padding-box clip keeps the black out of the art's rounded corners. */
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch;background:#05050c;background-clip:padding-box}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
