@@ -13858,11 +13858,14 @@ export var BroTown = function BroTown(_ref0) {
     }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars" }),
     /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars bt-cc-stars--b" }),
     /*#__PURE__*/React.createElement("img", {
-      /* v2.3.772: re-proportioned for the landscape stage — 84% width of
-         the old narrow pane is ~52% of the full card, keeping the
-         pedestal the same visual size relative to the figure. */
+      /* v2.3.774: pedestal sized by stage HEIGHT, bottom-center anchored —
+         it was %-of-WIDTH while the figure scaled with height, so the
+         flexing stage broke the boots/platform contact differently on
+         every device (owner screenshot: floating player).  Both now
+         scale off the same axis, so the contact point is proportional
+         everywhere. */
       src: '/ui/welcome/platform.webp', alt: '',
-      style: { position: 'absolute', bottom: '4%', left: '24%', width: '52%', height: 'auto', pointerEvents: 'none' }
+      style: { position: 'absolute', bottom: '3%', left: '50%', height: '34%', width: 'auto', transform: 'translateX(-50%)', pointerEvents: 'none' }
     }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
     /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" }),
     /*#__PURE__*/React.createElement("canvas", {
@@ -13882,29 +13885,29 @@ export var BroTown = function BroTown(_ref0) {
          (never stretched) whatever shape the frame takes, and pixelated
          keeps the pixel-art upscale sharp instead of blurry. */
       style: {
-        width: '100%',
-        height: '100%',
-        /* v2.3.772: contain (was v2.3.724 cover) — in a LANDSCAPE frame
-           cover scales the square bitmap to the frame WIDTH and crops the
-           figure's head and boots; contain pins it to the frame height
-           (exactly what cover did in the old portrait frame), and the
-           scale() below grows the figure. */
+        /* v2.3.774: SQUARE canvas sized by stage HEIGHT and bottom-center
+           anchored (was width:100%/height:100% + contain + scale, whose
+           figure position depended on the stage's flex-variable shape).
+           88% height with a 1:1 aspect keeps the square bitmap exactly
+           filling the element — no object-fit cropping at all — and the
+           bottom offset plants the boots (≈89% down the bitmap, per the
+           v2.3.725 ~83%-of-window tuning) on the pedestal's top face. */
+        position: 'absolute',
+        left: '50%',
+        bottom: '14.5%',
+        height: '88%',
+        aspectRatio: '1 / 1',
         objectFit: 'contain',
         imageRendering: 'pixelated',
         borderRadius: 8,
         display: 'block',
         touchAction: 'none',
         cursor: 'grab',
-        /* v2.3.725: lands the boots on the painted stone platform.
-           v2.3.744: per-angle drop — the SW and E source frames sit higher
+        /* v2.3.744: per-angle drop — the SW and E source frames sit higher
            in their 256 box than the others, so those facings (and their
            mirrors) floated above the pedestal (owner: SW/SE down ~20px,
-           E/W down ~10px).
-           v2.3.772: scale 0.9 -> 1.25 — the 16:9 stage is shorter than the
-           old 3:4 window, so the figure needs the bump to render ~20%
-           LARGER than before (spec §3); the overflow crop is empty bitmap
-           margin, the figure is safe. */
-        transform: 'translateY(calc(-6% + ' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)) scale(1.25)', /* v2.3.745: SW/SE 20->15, NE/NW 0->5 per owner */
+           E/W down ~10px). */
+        transform: 'translateX(-50%) translateY(' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)', /* v2.3.745: SW/SE 20->15, NE/NW 0->5 per owner */
         /* v2.3.717: transparent — trait sprites carry white extraction
            residue that any dark/colored backdrop would expose.  No
            z-index: DOM order already stacks pillars < canvas < rotate
