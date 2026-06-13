@@ -270,8 +270,12 @@ input{font-family:inherit}
    corners. */
 /* v2.3.802: the frame art's CENTER is transparent — `fill` was showing
    the painted page backdrop through the menu (owner: black background).
-   padding-box clip keeps the black out of the art's rounded corners. */
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch;background:#05050c;background-clip:padding-box}
+   v2.3.803: padding-box clip retired — the art's painted band doesn't
+   fill the whole 14px border zone, so a transparent seam showed between
+   the band and the black (owner's gap report).  Default border-box clip
+   runs the black under the entire band instead; the gem corners are
+   opaque, so nothing peeks. */
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch;background:#05050c}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
@@ -355,10 +359,16 @@ input{font-family:inherit}
    the crop is always ~0; the flex stage/menu absorb the cost. */
 /* v2.3.798: tavern-banner art retired (owner) — the painted gold
    BRO TOWN lettering (logo-brotown.webp, 560x329) takes its slot.
-   Width-driven so it can never clip; centered over the page backdrop. */
-.bt-cc-logo{flex:none;align-self:center;width:min(56vw,270px);height:auto;display:block;pointer-events:none}
+   Width-driven so it can never clip; centered over the page backdrop.
+   v2.3.803: lettering + sword share a wrap; the sword rides the wrap's
+   left edge at ~115% of the lettering's height, tilted like the old
+   banner art's. */
+.bt-cc-logo-wrap{flex:none;align-self:center;position:relative}
+.bt-cc-logo{width:min(56vw,270px);height:auto;display:block;pointer-events:none}
+.bt-cc-logo-sword{position:absolute;left:-36px;top:50%;height:115%;width:auto;transform:translateY(-50%) rotate(-16deg);pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){
   .bt-cc-logo{width:min(44vw,200px)}
+  .bt-cc-logo-sword{left:-26px}
 }
 
 

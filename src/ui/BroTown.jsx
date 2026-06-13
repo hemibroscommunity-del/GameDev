@@ -11221,13 +11221,19 @@ export var BroTown = function BroTown(_ref0) {
     for (var _ci = 0; _ci < _ccCats.length; _ci++) { if (_ccCats[_ci].key === activeCat) { _ccActive = _ccCats[_ci]; break; } }
     return /*#__PURE__*/React.createElement("div", {
       className: "bt-name-modal"
-    }, /*#__PURE__*/React.createElement("img", {
+    }, /*#__PURE__*/React.createElement("div", {
       /* v2.3.798: tavern-banner art retired (owner) — back to the painted
          gold BRO TOWN lettering (logo-brotown.webp, the main piece of the
          pre-v2.3.787 lockup) in the banner's slot at the top of the
-         screen.  Width-driven sizing in .bt-cc-logo. */
+         screen.  Width-driven sizing in .bt-cc-logo.
+         v2.3.803: owner's gem sword flanks the lettering (the wrap is the
+         position context; the sword hangs off its left edge, tilted). */
+      className: "bt-cc-logo-wrap"
+    }, /*#__PURE__*/React.createElement("img", {
+      src: '/ui/welcome/sword.webp', alt: '', className: "bt-cc-logo-sword"
+    }), /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo"
-    }), /*#__PURE__*/React.createElement("div", {
+    })), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
     }, /*#__PURE__*/React.createElement("div", {
       /* Header: call-to-action only — the logo lives in the banner, the
