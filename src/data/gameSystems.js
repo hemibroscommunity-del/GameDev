@@ -1551,7 +1551,7 @@ export const FEEDBACK_TOPICS = [{
 }, {
   id: 'pvp',
   label: '💀 PvP',
-  desc: 'PvP, duels, lawless land'
+  desc: 'PvP and duels'
 }, {
   id: 'zones',
   label: '🗺️ Zones',
@@ -2592,60 +2592,6 @@ export function generateZoneMap(zoneId) {
         if (py >= 0 && py < H && px >= 0 && px < W && map[py][px] === 0) map[py][px] = 2;
       }
     }
-  } else if (zoneId === 'wasteland') {
-    /* ═══ WASTELAND — lawless PvP zone ═══ */
-    /* Safe spawn pad in bottom-center, surrounded by fence (tile 11) */
-    var padX = MX - 4,
-      padY = H - 10,
-      padW = 9,
-      padH = 6;
-
-    /* Ground is barren wasteland */
-    for (var _y3 = 0; _y3 < H; _y3++) for (var _x3 = 0; _x3 < W; _x3++) {
-      if (Math.random() < 0.15) map[_y3][_x3] = 7; /* scattered rocks */else if (Math.random() < 0.03) map[_y3][_x3] = 6; /* sand patches */
-    }
-
-    /* Spawn pad — path tiles (safe area) */
-    for (var _dy = 0; _dy < padH; _dy++) for (var _dx = 0; _dx < padW; _dx++) {
-      map[padY + _dy][padX + _dx] = 1;
-    }
-
-    /* Fence around spawn pad — tile 11 (new: fence) */
-    for (var _dx2 = -1; _dx2 <= padW; _dx2++) {
-      if (padX + _dx2 >= 0 && padX + _dx2 < W) {
-        map[padY - 1][padX + _dx2] = 11;
-        map[padY + padH][padX + _dx2] = 11;
-      }
-    }
-    for (var _dy2 = -1; _dy2 <= padH; _dy2++) {
-      if (padY + _dy2 >= 0 && padY + _dy2 < H) {
-        map[padY + _dy2][padX - 1] = 11;
-        map[padY + _dy2][padX + padW] = 11;
-      }
-    }
-
-    /* Gate opening — front of fence (north side, center) */
-    map[padY - 1][MX] = 12; /* gate tile — climbable */
-    map[padY - 1][MX + 1] = 12;
-
-    /* Path from gate into the wasteland */
-    for (var _y4 = 0; _y4 < padY - 1; _y4++) {
-      map[_y4][MX] = 1;
-      map[_y4][MX + 1] = 1;
-    }
-
-    /* Return exit at bottom edge */
-    map[H - 1][MX] = 9;
-    map[H - 1][MX + 1] = 9;
-
-    /* Store fence bounds for lawless check */
-    ZONES.wasteland._safePad = {
-      x: padX * TILE,
-      y: padY * TILE,
-      w: padW * TILE,
-      h: padH * TILE
-    };
-    ZONES.wasteland._gateY = (padY - 1) * TILE;
   } else if (zoneId === 'farm_home') {
     /* ═══ PERSONAL FARM — house, plots, garden, path to exit ═══ */
     /* Grass everywhere */
@@ -6990,8 +6936,10 @@ export const PVP_THREAT_DURATION = PVP_THREAT_BASE_COUNTDOWN; /* compat */
 /* NPC_DATA emptied -- placeholder NPCs (Mayor Bro / Trader Tix /
    Enchantress / Scout / Blacksmith Bron / Healer Luna / Beastmaster Kai /
    Veteran Ash / The Ferryman) removed per user request.  Rendering,
-   quest, dialog, follow, and ferryman-portal code intact -- add entries
-   back here one at a time to light each NPC up. */
+   quest, dialog, and follow code intact -- add entries back here one at
+   a time to light each NPC up.  v2.3.788: the ferryman-portal code and
+   the wasteland zone it led to were removed for good (owner decision,
+   2026-06-12) -- don't re-add The Ferryman without rebuilding both. */
 export const NPC_DATA = [];
 /* PLAYER_COLORS moved to constants.js */
 

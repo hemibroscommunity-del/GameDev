@@ -50,6 +50,9 @@ import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDa
 import { sendChatMessage, handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
 /* v2.3.782: quest accept/turn-in transitions extracted behavior-frozen (REBUILD-PLAN Phase 3). */
 import { acceptQuest, turnInQuest } from '@/game/quests.js';
+/* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
+   extracted behavior-frozen (REBUILD-PLAN Phase 6). */
+import { handleZoneTransitions } from '@/game/zoneTransitions.js';
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -915,14 +918,6 @@ export var BroTown = function BroTown(_ref0) {
       return clearInterval(id);
     };
   }, [gatherMini === null || gatherMini === void 0 ? void 0 : gatherMini.started, gatherMini === null || gatherMini === void 0 ? void 0 : gatherMini.result]);
-  var _useState145 = useState(false),
-    _useState146 = _slicedToArray(_useState145, 2),
-    ferrymanPanel = _useState146[0],
-    setFerrymanPanel = _useState146[1]; /* show ferryman travel dialog */
-  var _useState147 = useState(null),
-    _useState148 = _slicedToArray(_useState147, 2),
-    fenceClimbing = _useState148[0],
-    setFenceClimbing = _useState148[1]; /* {started, direction:'in'|'out'} */
   var _useState149 = useState(null),
     _useState150 = _slicedToArray(_useState149, 2),
     duelRequest = _useState150[0],
@@ -3340,543 +3335,18 @@ export var BroTown = function BroTown(_ref0) {
         var ptx = Math.floor(P.x / TILE),
           pty = Math.floor(P.y / TILE);
 
-        /* v2.3.387: town exits are PROXIMITY zones on the painted
-           path-ends (the pink markers), not the map edge.  Transition when
-           the player walks within TOWN_EXIT_R tiles (manhattan) of an exit
-           marker.  Nearest marker wins if two overlap. */
-        if (S.currentZone === 'town') {
-          var TOWN_EXIT_R = 2;
-          var bestExit = null,
-            bestDist = Infinity;
-          TOWN_EXITS.forEach(function (ex) {
-            var d = Math.abs(ptx - ex.tx) + Math.abs(pty - ex.ty);
-            if (d <= TOWN_EXIT_R && d < bestDist) {
-              bestDist = d;
-              bestExit = ex;
-            }
-          });
-          if (bestExit) {
-            /* Zone exits — open to all players (quest gate removed) */
-            {
-              S.currentZone = bestExit.zoneId;
-              perfTracker.setZone(bestExit.zoneId);
-              updateZoneDimensions(bestExit.zoneId);
-              BT_AUDIO.startZoneAmbient(bestExit.zoneId);
-              discoverZone(bestExit.zoneId); /* §ENC — Encyclopedia zone discovery */
-              if (S.rpg) {
-                if (!S.rpg._questFlags) S.rpg._questFlags = {};
-                if (!S.rpg._questFlags.zonesVisited || _typeof(S.rpg._questFlags.zonesVisited) !== 'object') S.rpg._questFlags.zonesVisited = {};
-                /* Fix broken Set from old save data */
-                if (S.rpg._questFlags.zonesVisited instanceof Set) {
-                  var old = S.rpg._questFlags.zonesVisited;
-                  S.rpg._questFlags.zonesVisited = {};
-                  old.forEach(function (v) {
-                    return S.rpg._questFlags.zonesVisited[v] = true;
-                  });
-                }
-                if (typeof S.rpg._questFlags.zonesVisited.add === 'function') S.rpg._questFlags.zonesVisited = {}; /* nuclear fallback */
-                S.rpg._questFlags.zonesVisited[bestExit.zoneId] = true;
-              }
-              /* ═══ ZONE ENTRY — always start at shallow depth ═══ */
-              /* Players always enter the first zone layer. Dungeons warp to deeper depths. */
-              /* This preserves the sense of progression — you walk through the shallow zone */
-              /* to reach the dungeon entrance, which then takes you to your deepest unlocked depth. */
-              var entryDepth = 'shallow';
-              S._currentDepth = entryDepth;
-              S.map = generateZoneMap(bestExit.zoneId);
-              var newZone = ZONES[bestExit.zoneId];
-              /* Monsters + nodes at shallow depth */
-              var depthCfg = DEPTH_CONFIG[entryDepth];
-              if(!S._serverMonsters) S.monsters = spawnMonstersForZone(newZone, (depthCfg === null || depthCfg === void 0 ? void 0 : depthCfg.levelMod) || 0);
-              if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(bestExit.zoneId, entryDepth);
-              var nW = newZone.w * TILE,
-                nH = newZone.h * TILE;
-              /* Spawn continues your direction of travel from town.
-                 Then remap tile 9 (return) to the entry edge and tile 10 (dungeon) to the far edge. */
-              S._enteredFromDir = bestExit.dir; /* remember entry direction for return */
-              var midX = Math.floor(newZone.w / 2) * TILE;
-              var midY = Math.floor(newZone.h / 2) * TILE;
-              /* Spawn opposite to entry direction so the zone is "in
-                 front of" the player. Cardinal: drop in on the back
-                 edge. Diagonal: drop in at the opposite corner.
-                 The dungeon entrance (tile 10) is placed at column MX,
-                 row 2 in every themed zone — for entries that would
-                 otherwise land the player on column MX near the north
-                 edge ('south'), shift them off-axis so they don't
-                 spawn on the dungeon-approach path facing the
-                 entrance.  For 'se' / 'sw' / 'south' that share the
-                 north-area band, also tuck them a bit deeper. */
-              if (bestExit.dir === 'north')      { P.x = midX;             P.y = nH - TILE * 5; }
-              else if (bestExit.dir === 'south') { P.x = midX - TILE * 5;  P.y = TILE * 8;       }
-              else if (bestExit.dir === 'east')  { P.x = TILE * 5;         P.y = midY;           }
-              else if (bestExit.dir === 'west')  { P.x = nW - TILE * 5;    P.y = midY;           }
-              else if (bestExit.dir === 'ne')    { P.x = TILE * 5;         P.y = nH - TILE * 5;  }
-              else if (bestExit.dir === 'nw')    { P.x = nW - TILE * 5;    P.y = nH - TILE * 5;  }
-              else if (bestExit.dir === 'se')    { P.x = TILE * 5;         P.y = TILE * 8;       }
-              else if (bestExit.dir === 'sw')    { P.x = nW - TILE * 5;    P.y = TILE * 8;       }
-              else                                { P.x = midX;             P.y = nH - TILE * 5; }
-              /* Push monsters away from player spawn — minimum 200px distance */
-              var _minSpawnDist = 200;
-              if (S.monsters) {
-                S.monsters.forEach(function(mon) {
-                  var mdx2 = mon.x - P.x, mdy2 = mon.y - P.y;
-                  var md2 = Math.sqrt(mdx2 * mdx2 + mdy2 * mdy2);
-                  if (md2 < _minSpawnDist && md2 > 0) {
-                    var pushScale = _minSpawnDist / md2;
-                    mon.x = P.x + mdx2 * pushScale;
-                    mon.y = P.y + mdy2 * pushScale;
-                  } else if (md2 === 0) {
-                    mon.x += _minSpawnDist;
-                  }
-                  mon.x = Math.max(TILE * 3, Math.min(nW - TILE * 3, mon.x));
-                  mon.y = Math.max(TILE * 3, Math.min(nH - TILE * 3, mon.y));
-                  mon.spawnX = mon.x;
-                  mon.spawnY = mon.y;
-                });
-              }
-              /* Remap exits: move return exit (tile 9) to entry edge, dungeon (tile 10) to far edge */
-              var mapH = S.map.length, mapW = S.map[0].length;
-              var mapMX = Math.floor(mapW / 2);
-              var mapMY = Math.floor(mapH / 2);
-              /* Clear old exit/dungeon tiles */
-              for (var my = 0; my < mapH; my++) for (var mx = 0; mx < mapW; mx++) {
-                if (S.map[my][mx] === 9 || S.map[my][mx] === 10) S.map[my][mx] = 1;
-              }
-              /* Helper: carve a path (tile 1) through walls from edge to center road */
-              function carvePath(startX, startY, dirX, dirY, length) {
-                for (var step = 0; step < length; step++) {
-                  var py2 = startY + dirY * step;
-                  var px2 = startX + dirX * step;
-                  if (py2 >= 0 && py2 < mapH && px2 >= 0 && px2 < mapW) {
-                    if (S.map[py2][px2] === 7 || S.map[py2][px2] === 4) S.map[py2][px2] = 1;
-                    /* Also clear adjacent tile for 2-wide path */
-                    var adj = dirY !== 0 ? px2 + 1 : py2 + 1;
-                    if (dirY !== 0 && adj < mapW && (S.map[py2][adj] === 7 || S.map[py2][adj] === 4)) S.map[py2][adj] = 1;
-                    if (dirX !== 0 && adj < mapH && (S.map[adj][px2] === 7 || S.map[adj][px2] === 4)) S.map[adj][px2] = 1;
-                  }
-                }
-              }
-              /* Place return exit at the spawn corner/edge, dungeon at
-                 the far corner/edge, then carve a short cardinal path
-                 from each so the player has a walkable tile to step on.
-                 Diagonals get tile placements at corners with paths
-                 carved along both adjacent cardinals. */
-              if (bestExit.dir === 'north') {
-                S.map[mapH-1][mapMX] = 9; S.map[mapH-1][mapMX+1] = 9;
-                S.map[2][mapMX] = 10; S.map[2][mapMX+1] = 10;
-                carvePath(mapMX, mapH-1, 0, -1, 4);
-                carvePath(mapMX, 2, 0, 1, 4);
-              } else if (bestExit.dir === 'south') {
-                S.map[0][mapMX] = 9; S.map[0][mapMX+1] = 9;
-                S.map[mapH-3][mapMX] = 10; S.map[mapH-3][mapMX+1] = 10;
-                carvePath(mapMX, 0, 0, 1, 4);
-                carvePath(mapMX, mapH-3, 0, -1, 4);
-              } else if (bestExit.dir === 'east') {
-                S.map[mapMY][0] = 9; S.map[mapMY+1][0] = 9;
-                S.map[mapMY][mapW-3] = 10; S.map[mapMY+1][mapW-3] = 10;
-                carvePath(0, mapMY, 1, 0, 4);
-                carvePath(mapW-3, mapMY, -1, 0, 4);
-              } else if (bestExit.dir === 'west') {
-                S.map[mapMY][mapW-1] = 9; S.map[mapMY+1][mapW-1] = 9;
-                S.map[mapMY][2] = 10; S.map[mapMY+1][2] = 10;
-                carvePath(mapW-1, mapMY, -1, 0, 4);
-                carvePath(2, mapMY, 1, 0, 4);
-              } else if (bestExit.dir === 'ne') {
-                /* Entered from town's NE → spawned in zone's SW corner.
-                   Return tile at SW; dungeon at NE. */
-                S.map[mapH-1][1] = 9; S.map[mapH-1][2] = 9;
-                S.map[2][mapW-3] = 10; S.map[2][mapW-2] = 10;
-                carvePath(2, mapH-1, 0, -1, 4); carvePath(2, mapH-1, 1, 0, 4);
-                carvePath(mapW-3, 2, 0, 1, 4); carvePath(mapW-3, 2, -1, 0, 4);
-              } else if (bestExit.dir === 'nw') {
-                /* SE corner spawn → return SE, dungeon NW. */
-                S.map[mapH-1][mapW-3] = 9; S.map[mapH-1][mapW-2] = 9;
-                S.map[2][1] = 10; S.map[2][2] = 10;
-                carvePath(mapW-3, mapH-1, 0, -1, 4); carvePath(mapW-3, mapH-1, -1, 0, 4);
-                carvePath(2, 2, 0, 1, 4); carvePath(2, 2, 1, 0, 4);
-              } else if (bestExit.dir === 'se') {
-                /* NW corner spawn → return NW, dungeon SE. */
-                S.map[1][1] = 9; S.map[1][2] = 9;
-                S.map[mapH-3][mapW-3] = 10; S.map[mapH-3][mapW-2] = 10;
-                carvePath(2, 1, 0, 1, 4); carvePath(2, 1, 1, 0, 4);
-                carvePath(mapW-3, mapH-3, 0, -1, 4); carvePath(mapW-3, mapH-3, -1, 0, 4);
-              } else if (bestExit.dir === 'sw') {
-                /* NE corner spawn → return NE, dungeon SW. */
-                S.map[1][mapW-3] = 9; S.map[1][mapW-2] = 9;
-                S.map[mapH-3][1] = 10; S.map[mapH-3][2] = 10;
-                carvePath(mapW-3, 1, 0, 1, 4); carvePath(mapW-3, 1, -1, 0, 4);
-                carvePath(2, mapH-3, 0, -1, 4); carvePath(2, mapH-3, 1, 0, 4);
-              }
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: newZone.name,
-                color: newZone.element ? ELEMENTS[newZone.element].color : '#fff',
-                ts: Date.now()
-              });
-              S.npcs = null;
-              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-              S.hitParticles = [];
-              S.deathExplosions = [];
-              S.arrows = [];
-              /* §5.5 Restore death-scattered items if returning to death zone */
-              if (S._deathDrops) {
-                var zoneDrops = S._deathDrops.filter(function (d) {
-                  return d.zone === bestExit.zoneId && Date.now() < d.expiry;
-                });
-                zoneDrops.forEach(function (dd) {
-                  S.groundLoot.push({
-                    x: dd.x,
-                    y: dd.y,
-                    ts: Date.now(),
-                    isDeathDrop: true,
-                    deathItems: dd.items,
-                    coins: 0,
-                    xp: 0,
-                    expiry: dd.expiry
-                  });
-                });
-                /* Remove expired drops */
-                S._deathDrops = S._deathDrops.filter(function (d) {
-                  return Date.now() < d.expiry && d.zone !== bestExit.zoneId;
-                });
-              }
-              S._zoneWipe = Date.now(); /* trigger transition wipe */
-              S._ambientParticles = []; /* clear old zone particles */
-              /* Snap camera to player — keep them centered, no edge clamp. */
-              S.camera.x = P.x - W / 2;
-              S.camera.y = P.y - H / 2;
-            } /* end zone transition */
-          }
-        } else if (S.currentZone !== 'town' && !S._inDungeon) {
-          /* In combat zones: return to town when stepping on tile 9 (any edge) */
-          var czZone = ZONES[S.currentZone];
-          var czPtx = Math.floor(P.x / TILE),
-            czPty = Math.floor(P.y / TILE);
-          var czMX = Math.floor(czZone.w / 2);
-          var czTile = S.map && S.map[czPty] && S.map[czPty][czPtx];
-          if (czTile === 9) {
-            S.currentZone = 'town';
-            updateZoneDimensions('town');
-            BT_AUDIO.startZoneAmbient('town');
-            S.map = generateZoneMap('town');
-            S.monsters = []; /* Town has no monsters */
-            S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
-            /* Spawn at the same town extreme you originally left from
-               — 8 directions including diagonals so corner-exit zones
-               return you to the same corner. */
-            /* v2.3.387: return to town just INSIDE the exit marker you
-               left from -- offset 4 tiles toward the hub center so you land
-               on the path clear of the proximity trigger (else you'd warp
-               straight back out). */
-            var twn2 = ZONES.town;
-            var entryDir = S._enteredFromDir || 'north';
-            var _rcx = twn2.w / 2, _rcy = twn2.h / 2;
-            var _rex = TOWN_EXITS.find(function (e) { return e.dir === entryDir; });
-            if (_rex) {
-              var _rdx = _rcx - _rex.tx, _rdy = _rcy - _rex.ty;
-              var _rlen = Math.max(0.001, Math.sqrt(_rdx * _rdx + _rdy * _rdy));
-              P.x = (_rex.tx + _rdx / _rlen * 4) * TILE;
-              P.y = (_rex.ty + _rdy / _rlen * 4) * TILE;
-            } else {
-              P.x = _rcx * TILE; P.y = _rcy * TILE;
-            }
-            S._enteredFromDir = null;
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 40,
-              text: 'Town',
-              color: '#5b52ff',
-              ts: Date.now()
-            });
-            S.npcs = null;
-            S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-            S.hitParticles = [];
-            S.deathExplosions = [];
-            S.arrows = [];
-            S._zoneWipe = Date.now();
-            S._ambientParticles = [];
-            /* Snap camera to player — keep them centered, no edge clamp. */
-            S.camera.x = P.x - W / 2;
-            S.camera.y = P.y - H / 2;
-          }
-        }
+        /* v2.3.787: the zone-transition block (town-exit proximity warp,
+           tile-9 return-to-town, disabled tile-10 dungeon entrance, dungeon
+           exit) moved verbatim to src/game/zoneTransitions.js (REBUILD-PLAN
+           Phase 6, behavior-frozen). ptx/pty/_zone are intentionally the
+           PRE-transition values and stay in this scope — the water check
+           below keeps reading them, same as the inline code. */
+        handleZoneTransitions(S, ptx, pty, _zone, W, H);
 
-        /* Dungeon entrance — tile 10 */
-        if (S.map && ptx >= 0 && pty >= 0 && pty < _zone.h && ptx < _zone.w) {
-          var _S$map$pty;
-          var tile = (_S$map$pty = S.map[pty]) === null || _S$map$pty === void 0 ? void 0 : _S$map$pty[ptx];
-          /* Dungeon entry disabled v2.3.54 per user request -- the
-             depth-tier dungeons aren't ready for play yet so the
-             tile-10 trigger no-ops.  Flip this to `tile === 10` to
-             re-enable.  Generated maps still place tile 10 at the
-             far edge but stepping on it does nothing now. */
-          if (false && tile === 10 && S.currentZone !== 'town' && !S._inDungeon) {
-            var _S$rpg6;
-            /* §14.1 Dungeon entrance — find deepest accessible depth */
-            var currentDepth = S._currentDepth || 'shallow';
-            var depthOrder = ['shallow', 'mid', 'deep', 'abyss', 'core'];
-            var currentIdx = depthOrder.indexOf(currentDepth);
-            var clearKey = S.currentZone + '_' + currentDepth;
-            var isCleared = (_S$rpg6 = S.rpg) === null || _S$rpg6 === void 0 || (_S$rpg6 = _S$rpg6.lifeSkills) === null || _S$rpg6 === void 0 || (_S$rpg6 = _S$rpg6.dungeonClears) === null || _S$rpg6 === void 0 ? void 0 : _S$rpg6[clearKey];
-            if (currentIdx >= depthOrder.length - 1 && isCleared) {
-              /* Core is cleared — zone fully done */
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'Zone fully cleared!',
-                color: '#3dd497',
-                ts: Date.now()
-              });
-            } else if (isCleared) {
-              var _ELEMENTS$zn$element;
-              /* Current depth already cleared — warp to next depth zone (skip dungeon) */
-              var nextDepth = depthOrder[currentIdx + 1];
-              S._currentDepth = nextDepth;
-              var dc = DEPTH_CONFIG[nextDepth];
-              var zn = ZONES[S.currentZone];
-              S.map = generateZoneMap(S.currentZone);
-              if(!S._serverMonsters) S.monsters = spawnMonstersForZone(zn, (dc === null || dc === void 0 ? void 0 : dc.levelMod) || 0);
-              if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, nextDepth);
-              P.x = zn.w / 2 * TILE;
-              P.y = (zn.h - 3) * TILE;
-              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-              S.hitParticles = [];
-              S.deathExplosions = [];
-              S.arrows = [];
-              S._ambientParticles = [];
-              S._zoneWipe = Date.now();
-              var lvlRange = dc.lvlRange || [1, 10];
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: zn.name + ' - ' + nextDepth.toUpperCase(),
-                color: ((_ELEMENTS$zn$element = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element === void 0 ? void 0 : _ELEMENTS$zn$element.color) || '#fff',
-                ts: Date.now()
-              });
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 25,
-                text: 'Lv ' + lvlRange[0] + '-' + lvlRange[1],
-                color: 'rgba(255,255,255,.5)',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
-            } else {
-              /* Current depth NOT cleared — enter dungeon fight! */
-              var nextDepthMap = {
-                shallow: 'mid',
-                mid: 'deep',
-                deep: 'abyss',
-                abyss: 'core'
-              };
-              var _nextDepth = nextDepthMap[currentDepth];
-              /* Enter dungeon! */
-              S._inDungeon = true;
-              S._dungeonZone = S.currentZone;
-              S._dungeonDepth = currentDepth;
-              S._dungeonWave = 0;
-              S._dungeonMaxWaves = 3 + DEPTH_CONFIG[_nextDepth].depthIdx;
-              S._dungeonBossSpawned = false;
-              S._dungeonComplete = false;
-              S._preDungeonPos = {
-                x: P.x,
-                y: P.y
-              };
-
-              /* Generate small dungeon arena */
-              var dW = 25,
-                dH = 20;
-              S._preDungeonMap = S.map;
-              S._preDungeonMonsters = S.monsters;
-              S._preDungeonNodes = S.gatherNodes;
-              var dMap = Array.from({
-                length: dH
-              }, function () {
-                return Array(dW).fill(0);
-              });
-              /* Walls around edge */
-              for (var x = 0; x < dW; x++) {
-                dMap[0][x] = 7;
-                dMap[dH - 1][x] = 7;
-              }
-              for (var y = 0; y < dH; y++) {
-                dMap[y][0] = 7;
-                dMap[y][dW - 1] = 7;
-              }
-              /* Path cross */
-              var dMX = Math.floor(dW / 2),
-                dMY = Math.floor(dH / 2);
-              for (var _x17 = 1; _x17 < dW - 1; _x17++) dMap[dMY][_x17] = 1;
-              for (var _y15 = 1; _y15 < dH - 1; _y15++) dMap[_y15][dMX] = 1;
-              S.map = dMap;
-              /* Add exit tile at bottom of dungeon (tile 9 = return) */
-              dMap[dH - 1][dMX] = 9;
-              dMap[dH - 1][dMX + 1] = 9;
-              globalThis.TOWN_W = dW * TILE;
-              globalThis.TOWN_H = dH * TILE;
-              globalThis.COLS = dW;
-              globalThis.ROWS = dH;
-              S.monsters = [];
-              S.gatherNodes = [];
-              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-              S.hitParticles = [];
-              S.deathExplosions = [];
-              S.arrows = [];
-              P.x = dMX * TILE;
-              P.y = (dH - 3) * TILE;
-
-              /* Spawn first wave */
-              var _zone2 = ZONES[S.currentZone];
-              var _dc = DEPTH_CONFIG[_nextDepth];
-              var waveLvl = _zone2.level[0] + _dc.levelMod;
-              var waveArchs = ['fodder', 'swarm', 'brute', 'sentinel', 'volatile', 'hexer', 'stalker'];
-              for (var wi = 0; wi < 4 + S._dungeonWave; wi++) {
-                var _arch = waveArchs[Math.floor(Math.random() * waveArchs.length)];
-                var mx = (3 + Math.random() * (dW - 6)) * TILE;
-                var my = (2 + Math.random() * (dH / 2 - 2)) * TILE;
-                var m = createMonster('dw-0-' + wi, _arch, waveLvl + Math.floor(Math.random() * 5), mx, my, _zone2.element);
-                m.curHp = m.hp;
-                m.type = _arch;
-                S.monsters.push(m);
-              }
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: 'DUNGEON: Wave 1/' + S._dungeonMaxWaves,
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
-              setTimeout(function () {
-                return BT_AUDIO.beep(150, 0.2, 0.25, 'sawtooth');
-              }, 100);
-            }
-          }
-        }
-
-        /* ═══ DUNGEON EXIT — tile 9 in dungeon returns to zone ═══ */
-        if (S._inDungeon && S.map && ptx >= 0 && pty >= 0) {
-          var _S$map$pty2;
-          var dTile = (_S$map$pty2 = S.map[pty]) === null || _S$map$pty2 === void 0 ? void 0 : _S$map$pty2[ptx];
-          if (dTile === 9) {
-            /* Exit dungeon — return to combat zone at current depth */
-            S._inDungeon = false;
-            S._dungeonComplete = false;
-            var _zn = ZONES[S._dungeonZone || S.currentZone];
-            var depth = S._currentDepth || 'shallow';
-            S.map = generateZoneMap(S.currentZone);
-            var _dc2 = DEPTH_CONFIG[depth];
-            globalThis.TOWN_W = _zn.w * TILE;
-            globalThis.TOWN_H = _zn.h * TILE;
-            globalThis.COLS = _zn.w;
-            globalThis.ROWS = _zn.h;
-            if(!S._serverMonsters) S.monsters = spawnMonstersForZone(_zn, (_dc2 === null || _dc2 === void 0 ? void 0 : _dc2.levelMod) || 0);
-            if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, depth);
-            S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-            S.hitParticles = [];
-            S.deathExplosions = [];
-            S.arrows = [];
-            S._ambientParticles = [];
-            /* Spawn south of the dungeon entrance — the entrance sits at
-               (MX, 2) and the path runs along column MX down to the
-               south exit, so dropping the player on (MX, 5) like
-               before put them facing the entrance with one stray
-               north step re-entering the dungeon.  Shift off-column
-               and a few rows south so they're clearly OUTSIDE. */
-            P.x = (Math.floor(_zn.w / 2) - 5) * TILE;
-            P.y = TILE * 8;
-            S._zoneWipe = Date.now();
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 30,
-              text: 'Exited dungeon',
-              color: '#3dd497',
-              ts: Date.now()
-            });
-            BT_AUDIO.beep(500, 0.05, 0.06, 'sine');
-          }
-        }
-
-        /* ═══ WASTELAND — gate tile (12) fence climbing ═══ */
-        if (S.map && S.currentZone === 'wasteland' && ptx >= 0 && pty >= 0 && pty < _zone.h && ptx < _zone.w) {
-          var _S$map$pty3;
-          var gateTile = (_S$map$pty3 = S.map[pty]) === null || _S$map$pty3 === void 0 ? void 0 : _S$map$pty3[ptx];
-          if (gateTile === 12) {
-            /* Player is on a gate tile — start climbing if not already */
-            if (!S._fenceClimb) {
-              var safePad = ZONES.wasteland._safePad;
-              /* Determine direction: if player is inside safe pad, climbing OUT. Otherwise climbing IN. */
-              var inSafe = safePad && P.x >= safePad.x && P.x <= safePad.x + safePad.w && P.y >= safePad.y - TILE && P.y <= safePad.y + safePad.h;
-              S._fenceClimb = {
-                started: Date.now(),
-                duration: 2000,
-                direction: inSafe ? 'out' : 'in'
-              };
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'Climbing fence... (2s)',
-                color: '#f5c542',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(300, 0.06, 0.08, 'triangle');
-            }
-          } else {
-            /* Not on gate tile — cancel climb */
-            if (S._fenceClimb) {
-              S._fenceClimb = null;
-            }
-          }
-        } else if (S._fenceClimb && S.currentZone !== 'wasteland') {
-          S._fenceClimb = null;
-        }
-
-        /* Fence climb progress — complete after 2 seconds */
-        if (S._fenceClimb) {
-          var elapsed = Date.now() - S._fenceClimb.started;
-          if (elapsed >= S._fenceClimb.duration) {
-            /* Climb complete! */
-            if (S._fenceClimb.direction === 'out') {
-              /* Climbing OUT of safe zone — now in lawless area */
-              var gateY = ZONES.wasteland._gateY;
-              P.y = gateY - TILE; /* place just north of fence */
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'LAWLESS ZONE - All items at risk!',
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
-              S.screenShake = 4;
-              BT_AUDIO.beep(80, 0.2, 0.25, 'sawtooth');
-            } else {
-              /* Climbing IN to safe zone — safe now */
-              var _safePad = ZONES.wasteland._safePad;
-              P.y = _safePad.y + TILE; /* place inside safe pad */
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'Safe zone! Walk south to return to town.',
-                color: '#3dd497',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
-            }
-            S._fenceClimb = null;
-          }
-          /* Cancel climb if player takes damage */
-          if (S._fenceClimb && S.lastDamageTaken > S._fenceClimb.started) {
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 30,
-              text: 'Climb interrupted!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
-            S._fenceClimb = null;
-          }
-        }
+        /* v2.3.788: the WASTELAND fence-climb block that lived here was
+           removed with the rest of the Lawless Land content (owner decision,
+           2026-06-12). The Ferryman NPC had been despawned long before
+           (NPC_DATA emptied), so the zone was already unreachable in play. */
 
         /* ═══ ZONE-SPECIFIC MECHANICS ═══ */
         var zoneElem2 = (_ZONES$S$currentZone3 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone3 === void 0 ? void 0 : _ZONES$S$currentZone3.element;
@@ -9023,7 +8493,7 @@ export var BroTown = function BroTown(_ref0) {
         return;
       }
 
-      /* E — interact priority: building > sleep > gather > NPC quest > ferryman */
+      /* E — interact priority: building > sleep > gather > NPC quest */
       if (e.code === 'KeyE') {
         e.preventDefault();
         /* 1. Building */
@@ -9058,13 +8528,9 @@ export var BroTown = function BroTown(_ref0) {
           _desktopGather();
           return;
         }
-        /* 4. Nearby NPC — open quest dialog or ferryman */
+        /* 4. Nearby NPC — open quest dialog */
         if (S._nearNpc) {
           var npc = S._nearNpc;
-          if (npc.isFerryman) {
-            _desktopFerryman();
-            return;
-          }
           var npcQ = typeof getNpcQuest === 'function' ? getNpcQuest(S.rpg, npc.name) : null;
           if (npcQ) {
             _desktopNpcQuest(npc, npcQ);
@@ -10385,9 +9851,6 @@ export var BroTown = function BroTown(_ref0) {
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
   }, []);
 
-  var _desktopFerryman = useCallback(function () {
-    setFerrymanPanel(true);
-  }, []);
   var _desktopOpenWorkshop = useCallback(function () {
     setShowDungeonCreator(true);
     if (!dungeonCreator) setDungeonCreator(createDefaultDungeonConfig());
@@ -10466,7 +9929,6 @@ export var BroTown = function BroTown(_ref0) {
     closeAllMenus();
     setBuildingPanel(null);
     setQuestPanel(null);
-    setFerrymanPanel(false);
     setInspectPlayer(null);
   }, []);
 
@@ -11770,11 +11232,6 @@ export var BroTown = function BroTown(_ref0) {
             var nsx = (npc.x - cx) * SCALE_X,
               nsy = (npc.y - cy) * SCALE_Y;
             if (Math.sqrt(Math.pow(cssX - nsx, 2) + Math.pow(cssY - nsy, 2)) < 30) {
-              /* The Ferryman — special travel dialog */
-              if (npc.isFerryman) {
-                setFerrymanPanel(true);
-                return;
-              }
               /* Check if NPC has a quest */
               var npcQ = getNpcQuest(S.rpg, npc.name);
               if (npcQ) {
@@ -22636,165 +22093,7 @@ export var BroTown = function BroTown(_ref0) {
       textAlign: 'center',
       padding: 8
     }
-  }, "No gems yet. Harvest resources in elemental zones to collect raw gems!")))), ferrymanPanel && rpgState && /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-card",
-    onClick: function onClick(e) {
-      return e.stopPropagation();
-    },
-    style: {
-      width: 280,
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 40,
-      marginBottom: 4
-    }
-  }, "\uD83D\uDC80"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#ff5e6c',
-      marginBottom: 4
-    }
-  }, "The Ferryman"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.6)',
-      marginBottom: 8,
-      lineHeight: 1.5
-    }
-  }, "\"Beyond the fence lies the Lawless Land. No rules. No mercy. Attack anyone. Loot everything.\""), /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 8,
-      borderRadius: 8,
-      background: 'rgba(255,94,108,.1)',
-      border: '1px solid rgba(255,94,108,.3)',
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: '#ff5e6c',
-      marginBottom: 4
-    }
-  }, "\u26A0\uFE0F WARNING"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.5)',
-      lineHeight: 1.5
-    }
-  }, "If you die in the Lawless Land, you lose ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: '#ff5e6c'
-    }
-  }, "EVERYTHING"), " \u2014 equipped weapons, armor, shield, amulet, all inventory, all gold. Items drop where you fall. Other players can take them.")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 8
-    }
-  }, "Travel cost: ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: '#f5c542'
-    }
-  }, "100g"), " \xB7 Your gold: ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: '#f5c542'
-    }
-  }, rpgState.coins, "g")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 1,
-      padding: '8px 0',
-      borderRadius: 8,
-      border: 'none',
-      fontSize: 11,
-      fontWeight: 800,
-      background: rpgState.coins >= 100 ? '#ff5e6c' : 'rgba(255,255,255,.08)',
-      color: rpgState.coins >= 100 ? '#fff' : 'rgba(255,255,255,.3)',
-      cursor: 'pointer',
-      letterSpacing: '.03em'
-    },
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (R.coins < 100) return;
-      R.coins -= 100;
-      var S = stateRef.current;
-      /* Travel to wasteland */
-      S.currentZone = 'wasteland';
-      updateZoneDimensions('wasteland');
-      S.map = generateZoneMap('wasteland');
-      S.monsters = [];
-      S.gatherNodes = [];
-      S.npcs = null;
-      BT_AUDIO.startZoneAmbient('wasteland');
-      /* Spawn in safe pad center */
-      var wz = ZONES.wasteland;
-      S.player.x = Math.floor(wz.w / 2) * TILE;
-      S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-      S.hitParticles = [];
-      S.deathExplosions = [];
-      S.arrows = [];
-      S._ambientParticles = [];
-      S._zoneWipe = Date.now();
-      S._fenceClimb = null;
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 40,
-        text: 'The Lawless Land',
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 25,
-        text: 'Climb the fence to enter. No turning back easy.',
-        color: '#ea580c',
-        ts: Date.now()
-      });
-      BT_AUDIO.beep(100, 0.2, 0.3, 'sawtooth');
-      setTimeout(function () {
-        return BT_AUDIO.beep(80, 0.15, 0.25, 'sawtooth');
-      }, 150);
-      setRpgState(_objectSpread({}, R));
-      setFerrymanPanel(false);
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (e) {}
-    }
-  }, "\u2620\uFE0F ENTER THE WASTELAND (100g)"), /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 0.6,
-      padding: '8px 0',
-      borderRadius: 8,
-      border: '1px solid rgba(255,255,255,.15)',
-      background: 'rgba(255,255,255,.06)',
-      color: 'rgba(255,255,255,.6)',
-      fontSize: 10,
-      fontWeight: 600,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "Nevermind")))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
+  }, "No gems yet. Harvest resources in elemental zones to collect raw gems!")))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 8,
@@ -22857,66 +22156,6 @@ export var BroTown = function BroTown(_ref0) {
       background: '#a0a0ff',
       transition: 'width 0.1s',
       width: Math.min(100, (Date.now() - (((_stateRef$current$_sl = stateRef.current._sleeping) === null || _stateRef$current$_sl === void 0 ? void 0 : _stateRef$current$_sl.started) || Date.now())) / HOUSE_SLEEP_MS * 100) + '%'
-    }
-  }))), ((_stateRef$current21 = stateRef.current) === null || _stateRef$current21 === void 0 ? void 0 : _stateRef$current21.currentZone) === 'wasteland' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: 8,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 20,
-      padding: '4px 14px',
-      borderRadius: 8,
-      background: 'rgba(255,94,108,.2)',
-      border: '1px solid rgba(255,94,108,.4)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 800,
-      color: '#ff5e6c',
-      fontFamily: 'Source Sans 3,sans-serif'
-    }
-  }, "\u2620\uFE0F LAWLESS LAND \u2014 ALL items drop on death")), ((_stateRef$current22 = stateRef.current) === null || _stateRef$current22 === void 0 ? void 0 : _stateRef$current22._fenceClimb) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: 38,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 20,
-      padding: '4px 14px',
-      borderRadius: 8,
-      background: 'rgba(245,197,66,.2)',
-      border: '1px solid rgba(245,197,66,.4)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center',
-      minWidth: 200
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#f5c542',
-      marginBottom: 3
-    }
-  }, "\uD83E\uDDD7 Climbing fence..."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: 6,
-      background: 'rgba(255,255,255,.1)',
-      borderRadius: 3,
-      overflow: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: '100%',
-      borderRadius: 3,
-      background: '#f5c542',
-      transition: 'width 0.1s',
-      width: Math.min(100, (Date.now() - (((_stateRef$current$_fe = stateRef.current._fenceClimb) === null || _stateRef$current$_fe === void 0 ? void 0 : _stateRef$current$_fe.started) || Date.now())) / 2000 * 100) + '%'
     }
   }))), ((_stateRef$current23 = stateRef.current) === null || _stateRef$current23 === void 0 ? void 0 : _stateRef$current23.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -23142,7 +22381,7 @@ export var BroTown = function BroTown(_ref0) {
       color: 'rgba(255,255,255,.25)',
       marginBottom: 4
     }
-  }, "Blocked players can't chat, attack, trade, or duel you in lawful areas. Block does NOT apply in the Lawless Land."), blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Blocked players can't chat, attack, trade, or duel you."), blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
       color: 'rgba(255,255,255,.3)'
@@ -24183,133 +23422,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
       turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
     }
-  }, "Turn In Quest"))), ferrymanPanel && rpgState && /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-card",
-    onClick: function onClick(e) {
-      return e.stopPropagation();
-    },
-    style: {
-      width: 280,
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 40,
-      marginBottom: 4
-    }
-  }, "\uD83D\uDC80"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#ff5e6c',
-      marginBottom: 4
-    }
-  }, "The Ferryman"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: 'rgba(255,255,255,.7)',
-      marginBottom: 8,
-      lineHeight: 1.5
-    }
-  }, "\"The Lawless Land awaits. No rules. No mercy.", /*#__PURE__*/React.createElement("br", null), "Attack any player. Win everything they carry.", /*#__PURE__*/React.createElement("br", null), "Lose... and they take everything from you.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", null, "All items drop on death. All gold. All gear."), /*#__PURE__*/React.createElement("br", null), "Equipped weapons, armor, amulet, shield \u2014 everything.\""), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: '#f5c542',
-      marginBottom: 8,
-      padding: '4px 8px',
-      borderRadius: 6,
-      background: 'rgba(245,197,66,.1)',
-      border: '1px solid rgba(245,197,66,.2)'
-    }
-  }, "\u26A0\uFE0F Travel cost: 100 gold \xB7 You arrive at a fenced safe area.", /*#__PURE__*/React.createElement("br", null), "Climb the fence (2s) to enter the lawless zone."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 1,
-      padding: '10px',
-      borderRadius: 8,
-      border: 'none',
-      background: rpgState.coins >= 100 ? '#ff5e6c' : 'rgba(255,255,255,.1)',
-      color: rpgState.coins >= 100 ? '#fff' : 'rgba(255,255,255,.3)',
-      fontWeight: 800,
-      fontSize: 12,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (R.coins < 100) return;
-      R.coins -= 100;
-      var S = stateRef.current;
-      S.currentZone = 'wasteland';
-      updateZoneDimensions('wasteland');
-      S.map = generateZoneMap('wasteland');
-      S.monsters = [];
-      S.gatherNodes = [];
-      S.npcs = null;
-      BT_AUDIO.startZoneAmbient('wasteland');
-      /* Spawn in safe pad center */
-      var wz = ZONES.wasteland;
-      S.player.x = Math.floor(wz.w / 2) * TILE;
-      S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-      S.hitParticles = [];
-      S.deathExplosions = [];
-      S.arrows = [];
-      S._ambientParticles = [];
-      S._zoneWipe = Date.now();
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 40,
-        text: 'The Lawless Land',
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 25,
-        text: 'Climb the fence to enter. All items at risk.',
-        color: '#f5c542',
-        ts: Date.now()
-      });
-      BT_AUDIO.beep(100, 0.15, 0.2, 'sawtooth');
-      setTimeout(function () {
-        return BT_AUDIO.beep(80, 0.1, 0.15, 'sawtooth');
-      }, 150);
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (e) {}
-      setFerrymanPanel(false);
-    }
-  }, "\uD83D\uDC80 Travel (100g)"), /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 1,
-      padding: '10px',
-      borderRadius: 8,
-      border: '1px solid rgba(255,255,255,.15)',
-      background: 'rgba(255,255,255,.06)',
-      color: 'rgba(255,255,255,.6)',
-      fontWeight: 700,
-      fontSize: 12,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "Not today")))), duelRequest && /*#__PURE__*/React.createElement("div", {
+  }, "Turn In Quest"))), duelRequest && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setDuelRequest(null);
@@ -26148,7 +25261,7 @@ export var BroTown = function BroTown(_ref0) {
     }, {
       label: 'PvP',
       color: '#a78bfa',
-      stats: [['PvP Kills', cs.pvpKills], ['PvP Deaths', cs.pvpDeaths], ['Lawless Kills', cs.lawlessKills], ['Lawless Deaths', cs.lawlessDeaths], ['Duels Won', cs.duelsWon], ['Duels Lost', cs.duelsLost]]
+      stats: [['PvP Kills', cs.pvpKills], ['PvP Deaths', cs.pvpDeaths], ['Duels Won', cs.duelsWon], ['Duels Lost', cs.duelsLost]]
     }, {
       label: 'Life Skills',
       color: '#3dd497',
@@ -26613,46 +25726,6 @@ export var BroTown = function BroTown(_ref0) {
         animation: timeLeft < 10 ? 'promptPulse 0.5s ease-in-out infinite' : 'none'
       }
     }, "\uD83D\uDC80 ", itemCount, " items scattered in ", ((_ZONES$nearest$zone = ZONES[nearest.zone]) === null || _ZONES$nearest$zone === void 0 ? void 0 : _ZONES$nearest$zone.name) || nearest.zone, " \u2014 ", timeLeft, "s to recover!");
-  }(), function (_stateRef$current38) {
-    var fc = (_stateRef$current38 = stateRef.current) === null || _stateRef$current38 === void 0 ? void 0 : _stateRef$current38._fenceClimb;
-    if (!fc) return null;
-    var elapsed = Date.now() - fc.started;
-    var pct = Math.min(100, elapsed / fc.duration * 100);
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'absolute',
-        top: 52,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 18,
-        width: 180,
-        textAlign: 'center'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        fontWeight: 700,
-        fontFamily: 'Source Sans 3,sans-serif',
-        color: '#f5c542',
-        marginBottom: 2
-      }
-    }, "\uD83E\uDDD7 Climbing ", fc.direction === 'out' ? 'OUT' : 'IN', "... ", Math.ceil((fc.duration - elapsed) / 1000), "s"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: '100%',
-        height: 6,
-        background: 'rgba(255,255,255,.1)',
-        borderRadius: 3,
-        overflow: 'hidden'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: pct + '%',
-        height: '100%',
-        background: fc.direction === 'out' ? '#ff5e6c' : '#3dd497',
-        borderRadius: 3,
-        transition: 'width 0.1s linear'
-      }
-    })));
   }(), showPlayerList && /*#__PURE__*/React.createElement("div", {
     className: "bt-plist"
   }, playerList.length === 0 && /*#__PURE__*/React.createElement("div", {
