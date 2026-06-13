@@ -363,13 +363,14 @@ input{font-family:inherit}
    v2.3.803: lettering + sword share a wrap.
    v2.3.804: sword BEHIND the letters, vertical, handle rising out of
    the "O" in BRO (owner) — the O's counter is transparent in the logo
-   art, so the grip genuinely shows through the hole.  Alpha-measured
-   placement: the O's hole is centered at x 76.3% of the art; %-based
-   offsets keep the alignment at every logo size, so no media override
-   is needed. */
+   art, so the grip genuinely shows through the hole.
+   v2.3.805: the POMMEL GEM centers in the O (owner).  Alpha-measured:
+   hole center (427, 82.5) of the 560x329 logo, gem center (91, 26) of
+   the 185x480 sword; left/top solve those into wrap-relative % so the
+   alignment holds at every logo size — no media override needed. */
 .bt-cc-logo-wrap{flex:none;align-self:center;position:relative}
 .bt-cc-logo{position:relative;z-index:1;width:min(56vw,270px);height:auto;display:block;pointer-events:none}
-.bt-cc-logo-sword{position:absolute;left:59.5%;top:-5%;height:130%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
+.bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){
   .bt-cc-logo{width:min(44vw,200px)}
 }
