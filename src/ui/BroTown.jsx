@@ -73,6 +73,8 @@ import { updateStateCleanup } from '@/game/stateCleanup.js';
 import { renderFrame } from '@/game/renderFrame.js';
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge } from '@/game/dodge.js';
+/* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
+import { swingAttack, specialAttack, raiseShield } from '@/game/playerActions.js';
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -178,6 +180,10 @@ export var BroTown = function BroTown(_ref0) {
      fully baked.  The intro overlay holds until this settles so the player
      never sees the armour->unarmoured flicker on first turn. */
   var introWaitRef = useRef(null);
+  /* v2.3.831: the splash theme Audio lives in a ref (not a per-effect
+     local) so it survives the splash->loading-screen transition and the
+     IntroVideo can crossfade it into the town ambience. */
+  var themeAudioRef = useRef(null);
   /* PixiJS is the only render path now — Canvas 2D fallback was
      removed once every system finished migrating.  If Pixi fails
      to init, the game logs the error and continues without a
@@ -1121,6 +1127,21 @@ export var BroTown = function BroTown(_ref0) {
   var _catState = useState('hat'),
     activeCat = _catState[0],
     setActiveCat = _catState[1];
+  /* v2.3.834: per-category flag set the first time the user taps an object
+     in that category this session.  The color menu only appears once this
+     is set (owner: hide colors until an object is picked, so the object
+     grid gets the full drawer width by default). */
+  var _objPickState = useState({}),
+    objPicked = _objPickState[0],
+    setObjPicked = _objPickState[1];
+  var markObjPicked = function (k) { setObjPicked(function (p) { if (p[k]) return p; var n = Object.assign({}, p); n[k] = true; return n; }); };
+  /* v2.3.835: per-category open/collapsed state for the object grid and the
+     color grid.  Picking an object collapses its grid to just that pick
+     (checkmark) and opens the colors; picking a color collapses the color
+     grid to that swatch; tapping a collapsed pick re-expands its grid.
+     Absent key === open (the default on first view). */
+  var _objOpenState = useState({}), objOpen = _objOpenState[0], setObjOpen = _objOpenState[1];
+  var _colOpenState = useState({}), colOpen = _colOpenState[0], setColOpen = _colOpenState[1];
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
@@ -1197,6 +1218,32 @@ export var BroTown = function BroTown(_ref0) {
     return function () {
       window.removeEventListener('pointerdown', start);
       try { if (au) { au.pause(); au.src = ''; au = null; } } catch (e) {}
+    };
+  }, [showNameModal]);
+  /* v2.3.830: splash theme music (owner's chiptune adventure track).  Same
+     autoplay-policy dance as the torch crackle — browsers block un-muted
+     autoplay, so it arms on the modal's first pointerdown and loops.
+     v2.3.831: it now KEEPS PLAYING through the loading screen (held in
+     themeAudioRef, not stopped on the modal's cleanup); IntroVideo
+     crossfades it into the town ambience at the transition.  start() is a
+     no-op if the theme is already armed so re-renders don't double it. */
+  useEffect(function () {
+    if (!showNameModal) return;
+    var start = function () {
+      try {
+        if (themeAudioRef.current) return;
+        var au = new Audio('/ui/welcome/theme.m4a');
+        au.loop = true;
+        au.volume = 0.4;
+        au.play().catch(function () {});
+        themeAudioRef.current = au;
+      } catch (e) {}
+    };
+    window.addEventListener('pointerdown', start, { once: true });
+    return function () {
+      window.removeEventListener('pointerdown', start);
+      /* deliberately NOT stopping the theme here — it carries into the
+         loading screen; IntroVideo (or the skip-intro path) hands it off. */
     };
   }, [showNameModal]);
   /* The long-hair sprite is ~88% pure black, so a light hair color over-
@@ -4586,19 +4633,7 @@ export var BroTown = function BroTown(_ref0) {
      the top; it dispatches to the internal doStandardDodge/doLunge/
      doRetreatShot. Shared by the touch swipe handler + desktop keyboard. */
   var doSwing = useCallback(function () {
-    var S = stateRef.current;
-    if (!S.rpg || Date.now() - S.swingTimer < SWING_COOLDOWN) return;
-    if (S._playerStunUntil && Date.now() < S._playerStunUntil) return;
-    var slot = S.rpg.activeSlot || 'melee';
-    /* Ranged/staff: let the auto-attack loop fire the projectile on the
-       next frame so the first shot matches the equipped weapon. Resetting
-       swingTimer here would force a melee swing AND delay the projectile
-       by the full swing cooldown. */
-    if (slot === 'ranged' || slot === 'staff') return;
-    S.swingTimer = Date.now();
-    S.isSwinging = true;
-    S._specialAttack = false;
-    BT_AUDIO.play(meleeSwingSfx(S.rpg), { vol: 0.55 });
+    swingAttack(stateRef.current);
   }, []);
 
   /* Special attack — 4x damage, 10s cooldown */
@@ -4693,158 +4728,14 @@ export var BroTown = function BroTown(_ref0) {
     shieldStamina = _useState228[0],
     setShieldStamina = _useState228[1]; /* max 3000ms */
   var doSpecialAttack = useCallback(function () {
-    var S = stateRef.current;
-    if (!S.rpg) return;
-    var R = S.rpg;
-    var now = Date.now();
-
-    /* §4.5 Swipe cooldown check */
-    if (now - (S._lastSwipe || 0) < 1500) return;
-
-    /* §4.5 Mana cost.
-       v2.3.172: cost = floor(maxMana / 5) so the 5-segment MP bar
-       drains exactly one segment per special.  Tier still affects
-       damage via SPECIAL_ATK_MULT downstream; it no longer affects
-       cost.  Old formula was `15 + tierIdx * 3` (15-24). */
-    var activeWpn = getActiveWeapon(R);
-    /* v2.3.212: no weapon equipped in active slot -> special disabled. */
-    if (!activeWpn) return;
-    var tierIdx = {
-      common: 0,
-      elemental: 1,
-      fusion: 2,
-      shift: 3
-    }[activeWpn.tier] || 0;
-    var manaCost = Math.floor((R.maxMana || 100) / 5);
-    /* During tutorial step 4, make swipe free so player can learn */
-    var isTutorialSwipe = (stateRef.current._tutorialStep || 0) === 4;
-    if (!isTutorialSwipe && (R.mana || 0) < manaCost) {
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'No mana!',
-        color: '#3498DB',
-        ts: now
-      });
-      return;
-    }
-    if (!isTutorialSwipe) {
-      /* Server-authoritative mana in MP: predict the deduction locally
-         for snappy bar feedback, then send ability_use so the worker
-         validates + applies.  player_state arrives shortly with the
-         authoritative value. */
-      R.mana -= manaCost;
-      if (S._serverMonsters && S.channel) {
-        try { S.channel.send({ type: 'ability_use', payload: { type: 'swipe', tier: tierIdx } }); } catch (e) {}
-      }
-      /* GDD §1.2 Mind: spending mana on swipe triggers. */
-      addBuildUse(R, 'mind', manaCost);
-    }
-    S._lastSwipe = now;
-    S._hasUsedSwipe = true;
-    var hasElement = activeWpn.element2 || activeWpn.element1;
-    /* Aim direction — use finger swipe direction from right joystick, or locked target, or facing */
-    var aimAng = S._aimAngle || 0;
-    if (S.lockedTarget && S.lockedTarget.ref) {
-      var lt = S.lockedTarget.ref;
-      aimAng = Math.atan2((lt.y || 0) - S.player.y, (lt.x || 0) - S.player.x);
-    }
-    if (activeWpn.type === 'bow') {
-      /* BOW heavy — large elemental arrow in swipe direction.  Renders
-         in effectsRenderer as a regular arrow with a bright halo ring;
-         no `ice` flag (that flag is the "draw as orb" toggle and is
-         reserved for staff/ice specials now).  pierce:true keeps the
-         arrow alive after each hit so it travels through every monster
-         it overlaps -- hitIds prevents double-hits on the same target. */
-      if (!S.arrows) S.arrows = [];
-      /* v2.3.234 (Phase 4): specials scale with Mind, not weapon stat. */
-      var wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult);
-      S.arrows.push({
-        ang: aimAng,
-        dist: 14,
-        dmg: Math.round(wpnDmg * SPECIAL_ATK_MULT),
-        life: 200,
-        maxLife: 200,
-        hitIds: new Set(),
-        isSpecial: true,
-        isStaff: false,
-        pierce: true,
-        element: hasElement || null
-      });
-      BT_AUDIO.beep(400, 0.12, 0.15, 'sine');
-      setTimeout(function () {
-        return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
-      }, 60);
-    } else if (activeWpn.type === 'staff') {
-      /* STAFF heavy — burst of 3 projectiles in a cone.  isStaff:true so
-         the hit handler picks the 'spell' popup icon (vs 'arrow' for
-         bows) and the projectile renders as magic, not a physical arrow. */
-      if (!S.arrows) S.arrows = [];
-      /* v2.3.234 (Phase 4): staff special damage scales with Mind. */
-      var _wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult);
-      for (var si = -1; si <= 1; si++) {
-        S.arrows.push({
-          ang: aimAng + si * 0.25,
-          dist: 14,
-          dmg: Math.round(_wpnDmg * SPECIAL_ATK_MULT * 0.6),
-          life: 150,
-          maxLife: 150,
-          hitIds: new Set(),
-          isSpecial: true,
-          isStaff: true,
-          element: hasElement || null,
-          ice: true
-        });
-      }
-      BT_AUDIO.beep(500, 0.15, 0.18, 'square');
-      setTimeout(function () {
-        return BT_AUDIO.beep(700, 0.1, 0.12, 'square');
-      }, 50);
-      S.screenShake = 3;
-    } else {
-      /* SWORD/GREATSWORD heavy — melee elemental swing */
-      S.swingTimer = now;
-      S.isSwinging = true;
-      S._specialAttack = true;
-      if (hasElement) S._iceAttack = true;
-      /* Broadcast the special swing so peers render the wider arc +
-         gold halo.  The regular auto-swing broadcast path is skipped
-         because isSwinging is already true here. */
-      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: now, special: true } });
-    }
-
-    /* Power-up sound */
-    BT_AUDIO.beep(300, 0.15, 0.2, 'sawtooth');
-    setTimeout(function () {
-      return BT_AUDIO.beep(600, 0.12, 0.15, 'square');
-    }, 80);
-    setTimeout(function () {
-      return BT_AUDIO.beep(900, 0.1, 0.12, 'square');
-    }, 160);
+    specialAttack(stateRef.current);
   }, []);
 
   /* Legacy fishing/campfire/woodcutting systems removed — replaced by §18 Life Skills */
 
   /* Shield — 80% damage reduction for 2s, stuns attacker, 10s cooldown */
   var doShield = useCallback(function () {
-    var S = stateRef.current;
-    var now = Date.now();
-    if (S._shieldCdUntil && now < S._shieldCdUntil) return;
-    if ((S._shieldStamina || 3000) <= 0) return;
-    /* v2.3.212: no shield equipped -> block is disabled. */
-    if (!S.rpg || !S.rpg.shield) return;
-    S._shieldUp = true;
-    setShieldUp(true);
-    S.shieldActive = now;
-    if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: true }});
-    BT_AUDIO.beep(500, 0.1, 0.15, 'sine');
-    setTimeout(function () {
-      return BT_AUDIO.beep(700, 0.08, 0.1, 'sine');
-    }, 60);
-    /* Cooldown starts when shield drops (on touch release) */
-    setTimeout(function () {
-      return BT_AUDIO.beep(1000, 0.12, 0.08, 'sine');
-    }, 120);
+    raiseShield(stateRef.current, { setShieldUp: setShieldUp });
   }, []);
   var sendEmote = useCallback(function (emoji) {
     var S = stateRef.current;
@@ -6225,6 +6116,11 @@ export var BroTown = function BroTown(_ref0) {
        point) so the intro overlay can hold until it's flicker-free. */
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
     if (!_skipIntro) setShowIntro(true);
+    else {
+      /* v2.3.831: no IntroVideo to hand the theme off, so stop it here;
+         the join flow starts the town ambience on its own. */
+      try { if (themeAudioRef.current) { themeAudioRef.current.pause(); themeAudioRef.current = null; } } catch (e3) {}
+    }
   };
 
   /* v2.3.777: auto-rejoin -- the stability endgame.  Every in-place
@@ -6280,6 +6176,24 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.join();
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
     setShowWelcome(false); /* straight in -- no intro video on a resume */
+    /* v2.3.833: a resume skips the intro loading screen and drops straight
+       into the world while the avatar's gear sheets are still baking, which
+       tanks the frame rate with no on-screen explanation (owner asked for
+       this before; it never shipped).  Inject a top-left spinner DIRECTLY
+       on document.body — outside the React tree and at z-index 100000, so
+       it's guaranteed on the top layer and its compositor-driven CSS spin
+       keeps turning through the main-thread stutter (the React tree is too
+       busy to animate one itself).  Removed when the preload resolves
+       (assets baked, frame rate recovers), with a 20s safety cap. */
+    var _rejoinSpin = null;
+    try {
+      _rejoinSpin = document.createElement('div');
+      _rejoinSpin.className = 'bt-rejoin-loading';
+      document.body.appendChild(_rejoinSpin);
+    } catch (e4) {}
+    var _clearSpin = function () { try { if (_rejoinSpin) { _rejoinSpin.remove(); _rejoinSpin = null; } } catch (e5) {} };
+    Promise.resolve(introWaitRef.current).catch(function () {}).then(_clearSpin);
+    setTimeout(_clearSpin, 20000);
   }, []); /* mount-only by design: resumes happen once per page load */
 
   /* Name / avatar selection modal.
@@ -6300,49 +6214,107 @@ export var BroTown = function BroTown(_ref0) {
        always on screen.  Layout verified against to-scale 390x844 and
        375x667 renders before shipping.  Future categories just append a
        tab + a _ccCats entry. */
-    var _ccCats = [
-      { key: 'hat', label: 'Hat',
-        items: HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }, 44); }),
-        colors: headwearSel !== 'none' ? HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); }) : null },
-      { key: 'hair', label: 'Hair',
-        items: HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }, 44); }),
-        colors: hairSel !== 'none' ? (hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); }) : null },
-      { key: 'beard', label: 'Beard',
-        items: FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }, 44); }),
-        colors: facialHairSel !== 'none' ? FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); }) : null },
-      { key: 'skin', label: 'Skin',
-        /* Body-color categories: the swatches ARE the item grid (their
-           catalog 'default' entries carry the sprite's real native
-           colors), so no Colors column.  40px — they carry the drawer
-           alone. */
-        items: SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }, 40); }),
-        colors: null },
-      { key: 'shirt', label: 'Shirt',
-        items: SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }, 44); }),
-        colors: shirtSel !== 'none' ? SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); }) : null },
-      { key: 'pants', label: 'Pants',
-        items: PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }, 40); }),
-        colors: null },
-      { key: 'shoes', label: 'Shoes',
-        items: SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }, 40); }),
-        colors: null }
-    ];
-    var _ccActive = _ccCats[0];
-    for (var _ci = 0; _ci < _ccCats.length; _ci++) { if (_ccCats[_ci].key === activeCat) { _ccActive = _ccCats[_ci]; break; } }
+    /* v2.3.835: collapse-on-select pickers.  _objTiles/_colTiles render the
+       full catalog when the grid is open, or just the current pick (with
+       its checkmark) when collapsed; the lone collapsed tile re-expands on
+       tap.  Picking a real object collapses the object grid and opens the
+       colors; picking a color collapses the color grid. */
+    var _setOpen = function (setter, k, v) { setter(function (p) { var n = Object.assign({}, p); n[k] = v; return n; }); };
+    var _objTiles = function (k, catalog, kind, spriteCat, sel, setSel) {
+      var real = sel && sel !== 'none';
+      var collapsed = real && objOpen[k] === false;
+      var list = collapsed ? catalog.filter(function (o) { return o.id === sel; }) : catalog;
+      if (collapsed && !list.length) { collapsed = false; list = catalog; }
+      return list.map(function (o) {
+        var onSet = function (id) {
+          if (collapsed) { _setOpen(setObjOpen, k, true); return; }
+          setSel(id); markObjPicked(k);
+          if (id !== 'none') { _setOpen(setObjOpen, k, false); _setOpen(setColOpen, k, true); }
+          else { _setOpen(setObjOpen, k, true); }
+        };
+        return kind === 'thumb' ? _thumbTile(spriteCat, o, sel, onSet, 44) : _swatchTile(o, sel, onSet, 40);
+      });
+    };
+    var _colTiles = function (k, colCat, sel, setSel, spriteCat, objId) {
+      var collapsed = colOpen[k] === false;
+      var list = collapsed ? colCat.filter(function (o) { return o.id === sel; }) : colCat;
+      if (collapsed && !list.length) { collapsed = false; list = colCat; }
+      return list.map(function (o) {
+        var onSet = function (id) {
+          if (collapsed) { _setOpen(setColOpen, k, true); return; }
+          setSel(id); _setOpen(setColOpen, k, false);
+        };
+        return _swatchTile(o, sel, onSet, undefined, spriteCat, objId);
+      });
+    };
+    var _hairColCat = hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;
+    /* Body-color categories (skin/pants/shoes): the swatches ARE the object
+       grid (their catalog 'default' entries carry the sprite's native
+       colors), so they have no separate Colors column. */
+    var _catDefs = {
+      hat: { label: 'Hat', build: function () { return {
+        items: _objTiles('hat', HEADWEAR_CATALOG, 'thumb', 'headwear', headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }),
+        colors: (objPicked['hat'] && headwearSel !== 'none') ? _colTiles('hat', HAT_COLOR_CATALOG, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, 'headwear', headwearSel) : null }; } },
+      hair: { label: 'Hair', build: function () { return {
+        items: _objTiles('hair', HAIR_CATALOG, 'thumb', 'hair', hairSel, function (id) { setHair(id); setHairSel(id); }),
+        colors: (objPicked['hair'] && hairSel !== 'none') ? _colTiles('hair', _hairColCat, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, 'hair', hairSel) : null }; } },
+      beard: { label: 'Beard', build: function () { return {
+        items: _objTiles('beard', FACIALHAIR_CATALOG, 'thumb', 'facialhair', facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }),
+        colors: (objPicked['beard'] && facialHairSel !== 'none') ? _colTiles('beard', FACIALHAIR_COLOR_CATALOG, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, 'facialhair', facialHairSel) : null }; } },
+      skin: { label: 'Skin', build: function () { return {
+        items: _objTiles('skin', SKIN_CATALOG, 'swatch', null, skinSel, function (id) { setSkin(id); setSkinSel(id); }), colors: null }; } },
+      shirt: { label: 'Shirt', build: function () { return {
+        items: _objTiles('shirt', SHIRT_CATALOG, 'thumb', 'shirt', shirtSel, function (id) { setShirt(id); setShirtSel(id); }),
+        colors: (objPicked['shirt'] && shirtSel !== 'none') ? _colTiles('shirt', SHIRT_COLOR_CATALOG, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, 'shirt', shirtSel) : null }; } },
+      pants: { label: 'Pants', build: function () { return {
+        items: _objTiles('pants', PANTS_CATALOG, 'swatch', null, pantsSel, function (id) { setPants(id); setPantsSel(id); }), colors: null }; } },
+      shoes: { label: 'Shoes', build: function () { return {
+        items: _objTiles('shoes', SHOES_CATALOG, 'swatch', null, shoesSel, function (id) { setShoes(id); setShoesSel(id); }), colors: null }; } }
+    };
+    var _catOrder = ['hat', 'hair', 'beard', 'skin', 'shirt', 'pants', 'shoes'];
+    var _ccCats = _catOrder.map(function (k) { return { key: k, label: _catDefs[k].label }; });
+    var _activeKey = _catDefs[activeCat] ? activeCat : 'hat';
+    var _built = _catDefs[_activeKey].build();
+    var _ccActive = { key: _activeKey, label: _catDefs[_activeKey].label, items: _built.items, colors: _built.colors };
     return /*#__PURE__*/React.createElement("div", {
       className: "bt-name-modal"
-    }, /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("video", {
+      /* v2.3.824: animated splash backdrop — the owner's painted vista as a
+         seamless 4.5s crossfade loop (built from the 6s source so its end
+         frame matches its start, no visible cut).  bg.webp stays the
+         poster + the modal's CSS fallback, so a blocked-autoplay or
+         decode-failure path still shows the painted still.  Muted +
+         playsInline + loop is the iOS inline-autoplay contract.
+         NOTE (CLAUDE.md / v2.3.736): iOS Safari's video compositor once
+         cyan-tinted a behind-character clip — that was a must-be-black
+         starfield; a full-colour vista tolerates a slight shift, but this
+         is the surface to eyeball on iPhone. */
+      className: "bt-cc-bgvideo",
+      src: '/ui/welcome/bg-loop.mp4',
+      poster: '/ui/welcome/bg.webp',
+      autoPlay: true, muted: true, playsInline: true, loop: true, preload: 'auto',
+      "aria-hidden": true
+    }), /*#__PURE__*/React.createElement("div", {
       /* v2.3.801: tavern-banner art retired (owner) — back to the painted
          gold BRO TOWN lettering (logo-brotown.webp, the main piece of the
-         pre-v2.3.809 lockup) in the banner's slot at the top of the
+         pre-v2.3.790 lockup) in the banner's slot at the top of the
          screen.  Width-driven sizing in .bt-cc-logo.
          v2.3.806: owner's gem sword flanks the lettering (the wrap is the
          position context; the sword hangs off its left edge, tilted). */
       className: "bt-cc-logo-wrap"
     }, /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/sword.webp', alt: '', className: "bt-cc-logo-sword"
+    }), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.827: CSS specular shine — a light band swept across the
+         sword, masked to its shape (sits below the letters like the sword
+         itself, so the glint shows on the grip/blade/gem-in-the-O). */
+      className: "bt-cc-sword-shine", "aria-hidden": true
     }), /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo"
+    }), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.827: matching shine over the gold lettering (masked to the
+         logo), staggered so the two don't glint in unison. */
+      className: "bt-cc-logo-shine", "aria-hidden": true
     })), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
     }, /*#__PURE__*/React.createElement("div", {
@@ -6394,7 +6366,9 @@ export var BroTown = function BroTown(_ref0) {
       style: { position: 'absolute', bottom: '3%', left: '50%', height: '34%', aspectRatio: '480 / 165', transform: 'translateX(-50%)', pointerEvents: 'none' }
     }, /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/platform.webp', alt: '',
-      style: { position: 'absolute', inset: 0, width: '100%', height: '100%' }
+      /* v2.3.825: drop-shadow grounds the disc against the now-animated
+         vista (owner saw it wash out over the bright video). */
+      style: { position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,.6))' }
     }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
     /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" })),
     /*#__PURE__*/React.createElement("canvas", {
@@ -6584,6 +6558,7 @@ export var BroTown = function BroTown(_ref0) {
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
+    themeAudio: themeAudioRef,
     onComplete: function onComplete() { return setShowIntro(false); }
   }), /*#__PURE__*/React.createElement("div", {
     className: "brotown-wrap",
