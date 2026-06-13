@@ -69,6 +69,10 @@ import { updateArrows, updateSlimeProjectiles } from '@/game/projectiles.js';
 import { updateVisualSystems } from '@/game/visualSystems.js';
 /* v2.3.815: per-frame state-cleanup block extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 7). */
 import { updateStateCleanup } from '@/game/stateCleanup.js';
+/* v2.3.816: render dispatch + sim/render perf split extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 8). */
+import { renderFrame } from '@/game/renderFrame.js';
+/* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
+import { triggerContextualDodge } from '@/game/dodge.js';
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -4186,95 +4190,11 @@ export var BroTown = function BroTown(_ref0) {
            in the mobile console.  Tells us whether the JS game-loop
            work (simMs) or the Pixi render (renderMs) is the
            bottleneck.  */
-        var _simEndT = performance.now();
-        if (pixiRef.current) {
-          var W = canvas.width / (window.devicePixelRatio || 1);
-          var H = canvas.height / (window.devicePixelRatio || 1);
-          try {
-            pixiRef.current.update(S, W, H, nfts);
-            S.__pixiErrStreak = 0;
-          } catch (pixiErr) {
-            if (!window.__pixiUpdateErrLogged) {
-              window.__pixiUpdateErrLogged = true;
-              console.error('[pixi-render] update threw', pixiErr && pixiErr.message, pixiErr && pixiErr.stack);
-              /* v2.3.773: a persistent update() throw was INVISIBLE on
-                 iPhone -- UI stays alive, world stays black, and nothing
-                 reaches the window error handler because this catch eats
-                 it.  Put it in the crash log where the dev banner shows it. */
-              try {
-                var _pmsg = ((pixiErr && pixiErr.message) || String(pixiErr)) + ' | ' + (((pixiErr && pixiErr.stack) || '').split('\n')[1] || '').trim();
-                import('../debug/crashTrap.js').then(function (ct) {
-                  ct.recordCrash('pixi-update-err', _pmsg);
-                }).catch(function () {});
-              } catch (e2) {}
-            }
-            /* v2.3.773: self-heal a poisoned renderer.  90 consecutive
-               throwing frames (~1.5s of black world) -> one rebuild
-               attempt (=== so it can't loop; if the fresh renderer still
-               throws, the streak keeps climbing past 90 and we keep the
-               recorded error as evidence instead of thrashing). */
-            S.__pixiErrStreak = (S.__pixiErrStreak || 0) + 1;
-            if (S.__pixiErrStreak === 90 && window._rebuildRenderer) {
-              window._rebuildRenderer('update() threw 90 consecutive frames');
-            }
-          }
-        }
-        var _renderEndT = performance.now();
-        var _workMs = _renderEndT - _perfNow;
-        /* totalMs is the INTERVAL between consecutive RAF callbacks
-           (= S._perf.prevT delta computed earlier in this frame =
-           _perfDelta).  THAT is what the user perceives as a freeze —
-           it includes browser composite, GC, style recalc, and any
-           work the browser does BETWEEN our RAFs.  workMs is what our
-           callback alone spent.  When totalMs >> workMs, the freeze is
-           browser-side, not our code. */
-        var _intervalMs = (S._perf && _perfDelta) || _workMs;
-        var _stages = (pixiRef.current && pixiRef.current.update && pixiRef.current.update._lastStages) || null;
-        perfTracker.record({
-          t: _renderEndT,
-          totalMs: _intervalMs,
-          workMs: _workMs,
-          simMs: _simEndT - _perfNow,
-          renderMs: _renderEndT - _simEndT,
-          tileMs: _stages ? _stages.tileMs : 0,
-          entityMs: _stages ? _stages.entityMs : 0,
-          effectsMs: _stages ? _stages.effectsMs : 0,
-          fpsMs: _stages ? _stages.fpsMs : 0,
-          appMs: _stages ? _stages.appMs : 0,
-          zone: S.currentZone,
-          monsters: (S.monsters && S.monsters.length) || 0,
-          others: (S.others && S.others.length) || 0,
-          projectiles: (S.projectiles && S.projectiles.length) || 0,
-          hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
-          slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
-          dmgNumbers: (S.dmgNumbers && S.dmgNumbers.length) || 0,
-          groundLoot: (S.groundLoot && S.groundLoot.length) || 0,
-          groundSplatter: (S.groundSplatter && S.groundSplatter.length) || 0,
-          campfires: (S.campfires && S.campfires.length) || 0,
-        });
-        if (!S._splitLog) S._splitLog = { lastT: 0, worstTotal: 0, worstSim: 0, worstRender: 0 };
-        if (_workMs > 30 && _workMs > S._splitLog.worstTotal) {
-          S._splitLog.worstTotal = _workMs;
-          S._splitLog.worstSim = _simEndT - _perfNow;
-          S._splitLog.worstRender = _renderEndT - _simEndT;
-        }
-        if (_renderEndT - S._splitLog.lastT > 500 && S._splitLog.worstTotal > 30) {
-           
-          console.warn('[bt-frame-split]', {
-            totalMs: +S._splitLog.worstTotal.toFixed(1),
-            simMs: +S._splitLog.worstSim.toFixed(1),
-            renderMs: +S._splitLog.worstRender.toFixed(1),
-            monsters: (S.monsters && S.monsters.length) || 0,
-            hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
-            slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
-            zone: S.currentZone,
-          });
-           
-          S._splitLog.lastT = _renderEndT;
-          S._splitLog.worstTotal = 0;
-          S._splitLog.worstSim = 0;
-          S._splitLog.worstRender = 0;
-        }
+        /* Sim/render split — the render half moved verbatim to
+           src/game/renderFrame.js (v2.3.816, REBUILD-PLAN Phase 8 slice 8).
+           Frame-timing values (_perfNow/_perfDelta) computed at loop top
+           are passed in; perfTracker recording lives in the module now. */
+        renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta });
       } catch (gameLoopErr) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
       }
@@ -4623,148 +4543,10 @@ export var BroTown = function BroTown(_ref0) {
        based on lock-on state, swipe direction, and active weapon type. */
     triggerContextualDodge(S, R, ang);
   }, []);
-  /* §5.8 — contextual dodge resolver shared between mobile swipe + keyboard. */
-  var triggerContextualDodge = function (S, R, ang) {
-    if (S._dodgeRoll) return;
-    var ctx = resolveDodgeContext(S, ang);
-    if (ctx === 'lunge') return doLunge(S, R, ang);
-    if (ctx === 'retreat_shot') return doRetreatShot(S, R, ang);
-    return doStandardDodge(S, R, ang);
-  };
-  var resolveDodgeContext = function (S, swipeAng) {
-    var lt = S.lockedTarget && S.lockedTarget.ref;
-    if (!lt) return 'dodge';
-    var P = S.player;
-    var tx = lt.x - P.x, ty = lt.y - P.y;
-    var tlen = Math.sqrt(tx * tx + ty * ty);
-    if (tlen < 0.001) return 'dodge';
-    var tdx = tx / tlen, tdy = ty / tlen;
-    var sdx = Math.cos(swipeAng), sdy = Math.sin(swipeAng);
-    var dot = sdx * tdx + sdy * tdy;
-    var thresh = LUNGE_DIRECTION_THRESHOLD || 0.707;
-    var slot = (S.rpg && S.rpg.activeSlot) || 'melee';
-    var isRanged = slot === 'ranged' || slot === 'staff';
-    if (dot > thresh && !isRanged) return 'lunge';
-    if (dot < -thresh && isRanged) return 'retreat_shot';
-    return 'dodge';
-  };
-  var doStandardDodge = function (S, R, ang) {
-    var dodgeCost = Math.ceil((R.maxStamina || 100) * 0.2);
-    if ((R.stamina || 0) < dodgeCost) return;
-    /* Server-authoritative stamina in MP: send ability_use and let the
-       worker validate + deduct.  Local predict for snappy bar feedback;
-       player_state arrives shortly with the authoritative value.  In SP
-       the local mutation is the only writer. */
-    R.stamina -= dodgeCost;
-    if (S._serverMonsters && S.channel) {
-      try { S.channel.send({ type: 'ability_use', payload: { type: 'dodge' } }); } catch (e) {}
-    }
-    /* GDD §1.2 Endurance + Agility — tracked as use-frequency and
-       resolved when the next monster dies. */
-    addBuildUse(R, 'endurance', dodgeCost);
-    addBuildUse(R, 'agility', dodgeCost);
-    S._dodgeRoll = { angle: ang, startTime: Date.now() };
-    S._hasDodged = true;
-    S._dodgeFlash = Date.now();
-    if (!S.respawnTimer || Date.now() > S.respawnTimer) S.respawnTimer = Date.now() + 400;
-  };
-  var doLunge = function (S, R, ang) {
-    /* v2.3.213: no melee weapon -> fall back to a plain dodge. */
-    if (!R.weapon) return doStandardDodge(S, R, ang);
-    var lungeCost = Math.ceil((R.maxStamina || 100) * (LUNGE_STAMINA_FRACTION || 0.25));
-    if ((R.stamina || 0) < lungeCost) return doStandardDodge(S, R, ang);
-    var lt = S.lockedTarget && S.lockedTarget.ref;
-    if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
-    /* Server-authoritative stamina in MP — see doStandardDodge note. */
-    R.stamina -= lungeCost;
-    if (S._serverMonsters && S.channel) {
-      try { S.channel.send({ type: 'ability_use', payload: { type: 'lunge' } }); } catch (e) {}
-    }
-    addBuildUse(R, 'endurance', lungeCost);
-    addBuildUse(R, 'agility', lungeCost);
-    /* §12.2 cert — first lunge executed. */
-    masteryEarnCert('first-lunge');
-    var P = S.player;
-    var tdx = lt.x - P.x, tdy = lt.y - P.y;
-    var tlen = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
-    var dirAng = Math.atan2(tdy, tdx);
-    /* Reuse the dodge-roll state for visual + i-frames; mark as a lunge so
-       the post-dash hit fires on landing. */
-    S._dodgeRoll = { angle: dirAng, startTime: Date.now(), kind: 'lunge', targetId: lt.id || null };
-    S._lungeIFramesUntil = Date.now() + (LUNGE_IFRAMES_MS || 150);
-    S._dodgeFlash = Date.now();
-    S._hasDodged = true;
-    /* Hit on arrival — reduced damage, applies element_1 status (setup). */
-    var activeWpn = getActiveWeapon(R);
-    var pDmg = calcWeaponDmg(activeWpn.type || 'sword', R || {}, activeWpn.tierMult || 1);
-    var lDmg = Math.max(1, Math.round(pDmg * (LUNGE_DAMAGE_MULT || 0.6)));
-    setTimeout(function () {
-      if (!lt.alive) return;
-      var hitEl = activeWpn.element1;
-      lt.curHp = (lt.curHp || lt.hp) - lDmg;
-      if (hitEl) {
-        var sid = (ELEMENTS[hitEl] || {}).status;
-        if (sid) applyStatus(lt, sid, S.player, Date.now());
-      }
-      S.dmgNumbers.push({ x: lt.x, y: lt.y - 18, text: String(lDmg), color: '#fffbb0', ts: Date.now() });
-      BT_AUDIO.swordHit({ vol: 0.5 });
-      /* Combo treats a lunge hit as an auto-attack hit on the lock-on target. */
-      if (!S.combo) S.combo = { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 };
-      if (S.combo.targetId !== lt.id) { S.combo.targetId = lt.id; S.combo.count = 1; }
-      else S.combo.count = Math.min(S.combo.count + 1, 3);
-      S.combo.lastHitTs = Date.now();
-    }, 160);
-  };
-  var doRetreatShot = function (S, R, ang) {
-    /* v2.3.213: no ranged weapon in active slot -> plain dodge. */
-    var _rwSlot = R.activeSlot || 'ranged';
-    var _rwEq = _rwSlot === 'staff' ? R.staffWeapon : R.rangedWeapon;
-    if (!_rwEq) return doStandardDodge(S, R, ang);
-    var retCost = Math.ceil((R.maxStamina || 100) * (RETREAT_SHOT_STAMINA_FRACTION || 0.20));
-    if ((R.stamina || 0) < retCost) return doStandardDodge(S, R, ang);
-    var lt = S.lockedTarget && S.lockedTarget.ref;
-    if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
-    /* Server-authoritative stamina in MP — see doStandardDodge note. */
-    R.stamina -= retCost;
-    if (S._serverMonsters && S.channel) {
-      try { S.channel.send({ type: 'ability_use', payload: { type: 'retreat' } }); } catch (e) {}
-    }
-    addBuildUse(R, 'endurance', retCost);
-    addBuildUse(R, 'agility', retCost);
-    /* §12.2 cert — first retreat shot executed. */
-    masteryEarnCert('first-retreat-shot');
-    /* Standard dodge movement — but no i-frames per §5.8.3 (the shot is
-       the tradeoff for safety). We mark this on _dodgeRoll so the damage
-       interceptor can skip i-frames when checked. */
-    S._dodgeRoll = { angle: ang, startTime: Date.now(), kind: 'retreat_shot', noIFrames: true };
-    S._dodgeFlash = Date.now();
-    S._hasDodged = true;
-    /* Fire a setup shot at the locked target. */
-    var P = S.player;
-    var aimAng = Math.atan2(lt.y - P.y, lt.x - P.x);
-    var activeWpn = getActiveWeapon(R);
-    var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R || {}, activeWpn.tierMult || 1);
-    var shotDmg = Math.max(1, Math.round(pDmg * (RETREAT_SHOT_DAMAGE_MULT || 0.5)));
-    var slot = R.activeSlot || 'ranged';
-    var isStaff = slot === 'staff';
-    if (!S.arrows) S.arrows = [];
-    var pushArrow = function (a) {
-      S.arrows.push({
-        ang: a, dist: 14, dmg: shotDmg, life: isStaff ? 90 : 120,
-        maxLife: isStaff ? 90 : 120, hitIds: new Set(), isStaff: isStaff,
-        element: activeWpn.element1 || null, retreatShot: true
-      });
-    };
-    if (isStaff) {
-      var c = RETREAT_STAFF_CONE_RAD || (25 * Math.PI / 180);
-      pushArrow(aimAng - c / 2);
-      pushArrow(aimAng);
-      pushArrow(aimAng + c / 2);
-    } else {
-      pushArrow(aimAng);
-    }
-    BT_AUDIO.play('arrow-fly', { vol: 0.7 });
-  };
+  /* §5.8 — contextual dodge / lunge / retreat-shot cluster moved verbatim
+     to src/game/dodge.js (v2.3.817). triggerContextualDodge is imported at
+     the top; it dispatches to the internal doStandardDodge/doLunge/
+     doRetreatShot. Shared by the touch swipe handler + desktop keyboard. */
   var doSwing = useCallback(function () {
     var S = stateRef.current;
     if (!S.rpg || Date.now() - S.swingTimer < SWING_COOLDOWN) return;

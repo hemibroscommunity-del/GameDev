@@ -242,17 +242,49 @@ copy won.
     ground splatter, impact rings) and expired-ground-loot marking. 3
     captures (S + two combo constants); `_now` confirmed block-local
     (not read by the render dispatch that follows).
-  - **End state of the sim portion:** the game loop's *simulation* is now
-    a sequence of module calls — zone transitions, zone mechanics, dungeon
-    waves, monster combat, ground-loot, projectiles, visual systems, state
-    cleanup — followed inline only by the RENDER dispatch.
-  - **Remaining — the RENDER / perf-instrumentation block** (`pixiRef
-    .current.update(S, W, H, nfts)` + the `perfTracker.record(...)`
-    sim/render split logging) stays inline by design for now: it's the
-    effect's own render responsibility, tightly bound to `canvas`, `nfts`,
-    `pixiRef`, and `performance.now()` frame timing. Extracting it is a
-    structural change (not a verbatim block move) and is a deliberate,
-    owner-steered step rather than another quick slice.
+  - **Slice 8 — ✅ done (v2.3.816):** the RENDER dispatch + sim/render
+    perf split (~89 lines) → `src/game/renderFrame.js`
+    `renderFrame(S, { pixiRef, canvas, nfts, perfNow, perfDelta })`:
+    `pixiRef.current.update()` (PixiJS-only), the 90-frame poisoned-
+    renderer self-heal, and the `perfTracker.record(...)` per-frame
+    breakdown + throttled `[bt-frame-split]` warn. Turned out to be a
+    clean verbatim move after all — `W`/`H` compute inside from the
+    canvas; the only captures are pixiRef/canvas/nfts and the two
+    loop-top frame-timing values (passed as perfNow/perfDelta). The
+    crashTrap dynamic-import path resolves to the same `src/debug/`
+    target from `src/game/`. 9 references, zero unresolved.
+  - **✅ Phase 8 complete (v2.3.816).** The game-loop `useEffect` body is
+    now a flat sequence of imported calls — death-flow catch, farm sleep,
+    zone transitions, zone mechanics, dungeon waves, monster combat,
+    ground-loot, the regen/dmg-number bookkeeping that's inherently
+    React-stateful, projectiles, visual systems, state cleanup, and the
+    render dispatch — with the per-frame perf setup at the top. No large
+    inline simulation blocks remain. BroTown.jsx is ~25,080 lines (from
+    ~33k at the plan's start). What's left in BroTown is genuine
+    component territory: hooks/effects, the `_desktop*`/dodge helpers
+    shared with touch, and the JSX. Further shrinkage would be UI/JSX
+    decomposition (panels, modals) — a different kind of work from the
+    game-loop strangler-fig, to be planned separately if desired.
+
+## Post-Phase-8 — game-logic helpers still inline in the component
+
+The game *loop* is done; a few cohesive game-logic helper clusters still
+live in BroTown alongside the React/JSX. These are the same `(S, …)`-style
+pure-logic moves and continue thinning the component.
+
+- **Dodge cluster — ✅ done (v2.3.817):** the §5.8 contextual
+  dodge/lunge/retreat-shot helpers → `src/game/dodge.js`
+  (`triggerContextualDodge` + internal `resolveDodgeContext`,
+  `doStandardDodge`, `doLunge`, `doRetreatShot`). All five already took
+  explicit `(S, R, ang)`; 14 references, every one a module import (zero
+  React state / refs), so BroTown imports only `triggerContextualDodge`
+  (the touch-swipe + keyboard entry point) and the cluster's cross-calls
+  resolve inside the module. Bodies byte-identical.
+- **Candidates remaining:** `doSwing` / `doSpecialAttack` / `doShield`
+  are `useCallback`s that read `stateRef.current` + a few setters — more
+  entangled (would need a deps object), so a later pass. The big
+  remaining mass is JSX panels/modals (UI decomposition), still its own
+  separate effort.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
