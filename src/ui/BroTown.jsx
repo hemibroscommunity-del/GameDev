@@ -69,6 +69,8 @@ import { updateArrows, updateSlimeProjectiles } from '@/game/projectiles.js';
 import { updateVisualSystems } from '@/game/visualSystems.js';
 /* v2.3.815: per-frame state-cleanup block extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 7). */
 import { updateStateCleanup } from '@/game/stateCleanup.js';
+/* v2.3.816: render dispatch + sim/render perf split extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 8). */
+import { renderFrame } from '@/game/renderFrame.js';
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -4186,95 +4188,11 @@ export var BroTown = function BroTown(_ref0) {
            in the mobile console.  Tells us whether the JS game-loop
            work (simMs) or the Pixi render (renderMs) is the
            bottleneck.  */
-        var _simEndT = performance.now();
-        if (pixiRef.current) {
-          var W = canvas.width / (window.devicePixelRatio || 1);
-          var H = canvas.height / (window.devicePixelRatio || 1);
-          try {
-            pixiRef.current.update(S, W, H, nfts);
-            S.__pixiErrStreak = 0;
-          } catch (pixiErr) {
-            if (!window.__pixiUpdateErrLogged) {
-              window.__pixiUpdateErrLogged = true;
-              console.error('[pixi-render] update threw', pixiErr && pixiErr.message, pixiErr && pixiErr.stack);
-              /* v2.3.773: a persistent update() throw was INVISIBLE on
-                 iPhone -- UI stays alive, world stays black, and nothing
-                 reaches the window error handler because this catch eats
-                 it.  Put it in the crash log where the dev banner shows it. */
-              try {
-                var _pmsg = ((pixiErr && pixiErr.message) || String(pixiErr)) + ' | ' + (((pixiErr && pixiErr.stack) || '').split('\n')[1] || '').trim();
-                import('../debug/crashTrap.js').then(function (ct) {
-                  ct.recordCrash('pixi-update-err', _pmsg);
-                }).catch(function () {});
-              } catch (e2) {}
-            }
-            /* v2.3.773: self-heal a poisoned renderer.  90 consecutive
-               throwing frames (~1.5s of black world) -> one rebuild
-               attempt (=== so it can't loop; if the fresh renderer still
-               throws, the streak keeps climbing past 90 and we keep the
-               recorded error as evidence instead of thrashing). */
-            S.__pixiErrStreak = (S.__pixiErrStreak || 0) + 1;
-            if (S.__pixiErrStreak === 90 && window._rebuildRenderer) {
-              window._rebuildRenderer('update() threw 90 consecutive frames');
-            }
-          }
-        }
-        var _renderEndT = performance.now();
-        var _workMs = _renderEndT - _perfNow;
-        /* totalMs is the INTERVAL between consecutive RAF callbacks
-           (= S._perf.prevT delta computed earlier in this frame =
-           _perfDelta).  THAT is what the user perceives as a freeze —
-           it includes browser composite, GC, style recalc, and any
-           work the browser does BETWEEN our RAFs.  workMs is what our
-           callback alone spent.  When totalMs >> workMs, the freeze is
-           browser-side, not our code. */
-        var _intervalMs = (S._perf && _perfDelta) || _workMs;
-        var _stages = (pixiRef.current && pixiRef.current.update && pixiRef.current.update._lastStages) || null;
-        perfTracker.record({
-          t: _renderEndT,
-          totalMs: _intervalMs,
-          workMs: _workMs,
-          simMs: _simEndT - _perfNow,
-          renderMs: _renderEndT - _simEndT,
-          tileMs: _stages ? _stages.tileMs : 0,
-          entityMs: _stages ? _stages.entityMs : 0,
-          effectsMs: _stages ? _stages.effectsMs : 0,
-          fpsMs: _stages ? _stages.fpsMs : 0,
-          appMs: _stages ? _stages.appMs : 0,
-          zone: S.currentZone,
-          monsters: (S.monsters && S.monsters.length) || 0,
-          others: (S.others && S.others.length) || 0,
-          projectiles: (S.projectiles && S.projectiles.length) || 0,
-          hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
-          slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
-          dmgNumbers: (S.dmgNumbers && S.dmgNumbers.length) || 0,
-          groundLoot: (S.groundLoot && S.groundLoot.length) || 0,
-          groundSplatter: (S.groundSplatter && S.groundSplatter.length) || 0,
-          campfires: (S.campfires && S.campfires.length) || 0,
-        });
-        if (!S._splitLog) S._splitLog = { lastT: 0, worstTotal: 0, worstSim: 0, worstRender: 0 };
-        if (_workMs > 30 && _workMs > S._splitLog.worstTotal) {
-          S._splitLog.worstTotal = _workMs;
-          S._splitLog.worstSim = _simEndT - _perfNow;
-          S._splitLog.worstRender = _renderEndT - _simEndT;
-        }
-        if (_renderEndT - S._splitLog.lastT > 500 && S._splitLog.worstTotal > 30) {
-           
-          console.warn('[bt-frame-split]', {
-            totalMs: +S._splitLog.worstTotal.toFixed(1),
-            simMs: +S._splitLog.worstSim.toFixed(1),
-            renderMs: +S._splitLog.worstRender.toFixed(1),
-            monsters: (S.monsters && S.monsters.length) || 0,
-            hitParticles: (S.hitParticles && S.hitParticles.length) || 0,
-            slimeProj: (S.slimeProjectiles && S.slimeProjectiles.length) || 0,
-            zone: S.currentZone,
-          });
-           
-          S._splitLog.lastT = _renderEndT;
-          S._splitLog.worstTotal = 0;
-          S._splitLog.worstSim = 0;
-          S._splitLog.worstRender = 0;
-        }
+        /* Sim/render split — the render half moved verbatim to
+           src/game/renderFrame.js (v2.3.816, REBUILD-PLAN Phase 8 slice 8).
+           Frame-timing values (_perfNow/_perfDelta) computed at loop top
+           are passed in; perfTracker recording lives in the module now. */
+        renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta });
       } catch (gameLoopErr) {
         console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
       }
