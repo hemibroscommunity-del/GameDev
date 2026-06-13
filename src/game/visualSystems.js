@@ -46,8 +46,12 @@ export function updateVisualSystems(S) {
           if (!S._footstepTimer) S._footstepTimer = 0;
           S._footstepTimer++;
           /* v2.3.836: armored footstep when any armor piece is worn
-             (shirt is clothing, not armor). */
-          if (S._footstepTimer % 12 === 0) BT_AUDIO.footstep(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none');
+             (shirt is clothing, not armor).
+             v2.3.838: naked steps patter at a lighter (quicker) tempo --
+             every 9 frames vs the heavier armored cadence of 12. */
+          var _armored = getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none';
+          var _stepEvery = _armored ? 12 : 9;
+          if (S._footstepTimer % _stepEvery === 0) BT_AUDIO.footstep(_armored);
           if (S.stats && S._footstepTimer % 6 === 0) S.stats.steps++;
         }
 
