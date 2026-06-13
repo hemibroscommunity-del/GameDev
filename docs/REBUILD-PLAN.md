@@ -208,9 +208,20 @@ copy won.
     block-internal `_activeWpn`, captured via deps so the one shard-roll
     RPC reading `activeWpn.element1` stays byte-identical; the two React
     setters. `window._pixiRenderer` stays a runtime global.
-  - **Next slices:** the remaining loop tail (arrow/slime projectile
-    sims, visual-system updates, ground-loot pickup), then the
-    simulation/render split — guided by perf needs.
+    **lint-build caught one missed capture** the scanner mis-classified:
+    `arch`, used at 3 spots inside an `if (false)` dead death-FX block —
+    fixed with a local declaration (unreachable, so byte-equivalent at
+    runtime). A good reminder that combat-sized slices need the CI gate.
+  - **Slice 4 — ✅ done (v2.3.812):** the ground-loot pickup block
+    (~347 lines) → `src/game/groundLoot.js`
+    `updateGroundLootPickup(S, { pixiRef, setRpgState, setLevelUpMsg })`:
+    the whole `if (S.groundLoot)` filter — stale-pile expiry, loot
+    magnetism, multiplayer recipient/claim gating, coin/xp/item/shard
+    awards on pickup, pickup sparkle + level-up burst, post-pickup
+    despawn delay. 16 captures, all clean on the first scan.
+  - **Next slices:** arrow/slime projectile sims + the VISUAL SYSTEM
+    UPDATES section, then the simulation/render split — guided by perf
+    needs.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
