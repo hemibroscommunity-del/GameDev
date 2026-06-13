@@ -169,8 +169,21 @@ copy won.
   semantics (effect dep array unchanged). WASD movement itself was never
   here — the game loop reads `S.keys`, which the extracted handlers
   still populate.
-- **Phase 8+ —** game-loop slicing (extract per-zone mechanic blocks,
-  then the simulation/render split) guided by perf needs.
+- **Phase 8 — game-loop slicing, in progress.**
+  - **Slice 1 — ✅ done (v2.3.809):** per-zone mechanics (~270 lines) →
+    `src/game/zoneMechanics.js` `updateZoneMechanics(S, ptx, pty)`:
+    FROZEN SHORE snowballs/snowmen/sled (dormant — the action UI is
+    disabled), TIDAL CAVES tide/swim/§DIVE (live), DEEP HOLLOWS torch
+    (dormant) + echo flag (live). Found while moving: the dormant
+    snowball/sled damage formulas read a bare `R` (the pre-module
+    global rpg alias) that no longer exists — they'd have thrown a
+    ReferenceError if the disabled UI were ever re-enabled. Guarded
+    with a documented `var R;` so they fall back to their intended
+    `|| 0` path; zero effect on live play. Frozen-shore actions are
+    another revive-or-remove owner decision (like quests).
+  - **Next slices:** dungeon wave progression (§14.1, sits right after
+    this block), per-system combat chunks, then the simulation/render
+    split — guided by perf needs.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
