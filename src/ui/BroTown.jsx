@@ -10585,8 +10585,17 @@ export var BroTown = function BroTown(_ref0) {
       className: "bt-cc-logo-wrap"
     }, /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/sword.webp', alt: '', className: "bt-cc-logo-sword"
+    }), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.814: CSS specular shine — a light band swept across the
+         sword, masked to its shape (sits below the letters like the sword
+         itself, so the glint shows on the grip/blade/gem-in-the-O). */
+      className: "bt-cc-sword-shine", "aria-hidden": true
     }), /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo"
+    }), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.814: matching shine over the gold lettering (masked to the
+         logo), staggered so the two don't glint in unison. */
+      className: "bt-cc-logo-shine", "aria-hidden": true
     })), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
     }, /*#__PURE__*/React.createElement("div", {
