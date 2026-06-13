@@ -1,5 +1,12 @@
 # Hemi Bros ARPG — Architecture Map & Engineering Roadmap
 
+> ⚠️ **STALE — HISTORICAL REFERENCE ONLY (owner directive, 2026-06-13).**
+> Like the GDD, this doc predates recent iterations and is NOT to be used
+> as a blueprint for changing anything in the game. It's useful for early
+> thinking and orientation only. The code is the source of truth; the
+> current docs are `docs/REBUILD-PLAN.md` (decomposition state + roadmap),
+> `docs/WIRE-PROTOCOL.md`, and `docs/STATE-SCHEMA.md`.
+
 > **Updated v2.3.766 (2026-06-12):** the stale "Game loop" and "Networking"
 > rows below were corrected — the dead duplicate files they pointed at
 > (`src/game/gameLoop.js`, `src/game/createInitialState.js`,
