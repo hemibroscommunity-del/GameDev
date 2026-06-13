@@ -14,7 +14,7 @@ import { prewarmProgress } from '../rendering/systems/entityRenderer.js';
 const MIN_MS = 3000;     // minimum clip display before we even consider fading
 const FADE_MS = 1000;    // opacity fade duration
 
-export const IntroVideo = ({ onComplete, waitFor }) => {
+export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
   const [fading, setFading] = useState(false);
   const [waiting, setWaiting] = useState(false);   // assets still loading past MIN_MS
   /* v2.3.700: real loading bar -- polls the renderer's prewarmProgress
@@ -41,14 +41,40 @@ export const IntroVideo = ({ onComplete, waitFor }) => {
     onComplete && onComplete();
   };
 
-  useEffect(() => {
+  /* v2.3.818: the splash theme keeps playing across this loading screen
+     (passed in via themeAudio).  At the transition we crossfade: ramp the
+     theme down over the visual fade while the town ambience starts up, so
+     the music dissolves into the town's sound instead of cutting.  Guarded
+     so it only runs once. */
+  const transitionedRef = useRef(false);
+  const beginTransition = () => {
+    if (transitionedRef.current) return;
+    transitionedRef.current = true;
     try { window.BT_AUDIO && window.BT_AUDIO.startZoneAmbient('town'); } catch (e) {}
+    const a = themeAudio && themeAudio.current;
+    if (a) {
+      const v0 = a.volume;
+      const steps = 24;
+      let i = 0;
+      const id = setInterval(() => {
+        i++;
+        try { a.volume = Math.max(0, v0 * (1 - i / steps)); } catch (e) {}
+        if (i >= steps) {
+          clearInterval(id);
+          try { a.pause(); a.src = ''; } catch (e) {}
+          if (themeAudio) themeAudio.current = null;
+        }
+      }, FADE_MS / steps);
+    }
+  };
 
+  useEffect(() => {
     let cancelled = false;
     const maybeFinish = () => {
       if (cancelled || finishedRef.current) return;
       if (minDoneRef.current && readyRef.current) {
         setWaiting(false);
+        beginTransition();
         setFading(true);
         setTimeout(finish, FADE_MS);
       } else if (minDoneRef.current && !readyRef.current) {
@@ -88,44 +114,20 @@ export const IntroVideo = ({ onComplete, waitFor }) => {
         playsInline
         loop
         preload="auto"
-        onError={() => { minDoneRef.current = true; readyRef.current = true; finish(); }}
+        onError={() => { minDoneRef.current = true; readyRef.current = true; beginTransition(); finish(); }}
       />
-      {prog > 0 && prog < 1 && (
-        <div style={{
-          position: 'absolute',
-          left: '20%',
-          right: '20%',
-          bottom: 36,
-          textAlign: 'center',
-          pointerEvents: 'none',
-        }}>
-          <div style={{
-            height: 5,
-            borderRadius: 3,
-            background: 'rgba(255,255,255,0.12)',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              width: `${Math.round(prog * 100)}%`,
-              height: '100%',
-              borderRadius: 3,
-              background: '#5b52ff',
-              transition: 'width .15s linear',
-            }} />
-          </div>
-          <div style={{
-            marginTop: 6,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '.08em',
-            color: 'rgba(232,234,248,0.75)',
-            fontFamily: "'Source Sans 3', sans-serif",
-          }}>LOADING {Math.round(prog * 100)}%</div>
+      {/* v2.3.818: persistent LOADING . . . caption + progress bar on the
+          loading screen (owner).  The bar shows real prewarm progress when
+          it's reporting; before that it runs an indeterminate sweep so the
+          screen always reads as actively loading. */}
+      <div className="bt-intro__loadwrap">
+        <div className="bt-intro__loadlabel">LOADING . . .</div>
+        <div className="bt-intro__track">
+          {prog > 0
+            ? <div className="bt-intro__fill" style={{ width: `${Math.round(prog * 100)}%` }} />
+            : <div className="bt-intro__fill bt-intro__fill--indet" />}
         </div>
-      )}
-      {waiting && prog >= 1 && (
-        <div className="bt-intro__loading">Loading…</div>
-      )}
+      </div>
     </div>
   );
 };

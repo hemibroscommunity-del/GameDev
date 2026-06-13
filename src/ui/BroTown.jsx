@@ -160,6 +160,10 @@ export var BroTown = function BroTown(_ref0) {
      fully baked.  The intro overlay holds until this settles so the player
      never sees the armour->unarmoured flicker on first turn. */
   var introWaitRef = useRef(null);
+  /* v2.3.818: the splash theme Audio lives in a ref (not a per-effect
+     local) so it survives the splash->loading-screen transition and the
+     IntroVideo can crossfade it into the town ambience. */
+  var themeAudioRef = useRef(null);
   /* PixiJS is the only render path now — Canvas 2D fallback was
      removed once every system finished migrating.  If Pixi fails
      to init, the game logs the error and continues without a
@@ -1183,24 +1187,28 @@ export var BroTown = function BroTown(_ref0) {
   }, [showNameModal]);
   /* v2.3.817: splash theme music (owner's chiptune adventure track).  Same
      autoplay-policy dance as the torch crackle — browsers block un-muted
-     autoplay, so it arms on the modal's first pointerdown, loops, and stops
-     when the modal closes (PLAY) so it doesn't bleed into the intro/game
-     (BT_AUDIO drives zone music from there). */
+     autoplay, so it arms on the modal's first pointerdown and loops.
+     v2.3.818: it now KEEPS PLAYING through the loading screen (held in
+     themeAudioRef, not stopped on the modal's cleanup); IntroVideo
+     crossfades it into the town ambience at the transition.  start() is a
+     no-op if the theme is already armed so re-renders don't double it. */
   useEffect(function () {
     if (!showNameModal) return;
-    var au = null;
     var start = function () {
       try {
-        au = new Audio('/ui/welcome/theme.m4a');
+        if (themeAudioRef.current) return;
+        var au = new Audio('/ui/welcome/theme.m4a');
         au.loop = true;
         au.volume = 0.4;
         au.play().catch(function () {});
+        themeAudioRef.current = au;
       } catch (e) {}
     };
     window.addEventListener('pointerdown', start, { once: true });
     return function () {
       window.removeEventListener('pointerdown', start);
-      try { if (au) { au.pause(); au.src = ''; au = null; } } catch (e) {}
+      /* deliberately NOT stopping the theme here — it carries into the
+         loading screen; IntroVideo (or the skip-intro path) hands it off. */
     };
   }, [showNameModal]);
   /* The long-hair sprite is ~88% pure black, so a light hair color over-
@@ -10475,6 +10483,11 @@ export var BroTown = function BroTown(_ref0) {
        point) so the intro overlay can hold until it's flicker-free. */
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e) { introWaitRef.current = null; }
     if (!_skipIntro) setShowIntro(true);
+    else {
+      /* v2.3.818: no IntroVideo to hand the theme off, so stop it here;
+         the join flow starts the town ambience on its own. */
+      try { if (themeAudioRef.current) { themeAudioRef.current.pause(); themeAudioRef.current = null; } } catch (e3) {}
+    }
   };
 
   /* v2.3.777: auto-rejoin -- the stability endgame.  Every in-place
@@ -10861,6 +10874,7 @@ export var BroTown = function BroTown(_ref0) {
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
+    themeAudio: themeAudioRef,
     onComplete: function onComplete() { return setShowIntro(false); }
   }), /*#__PURE__*/React.createElement("div", {
     className: "brotown-wrap",
