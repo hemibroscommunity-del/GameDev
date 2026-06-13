@@ -1945,6 +1945,12 @@ export function updateMonsterCombat(S, deps) {
                   }
                   /* Skip heavy element/collision death FX — use simple particles above */
                   if (false) {
+                  /* v2.3.811: `arch` here resolved to an enclosing-scope binding
+                     in the pre-extraction game loop; this block is unreachable
+                     dead code (`if (false)`), so declaring it locally with the
+                     same archetype expression the live AI uses is byte-equivalent
+                     at runtime (never executes) and satisfies no-undef. */
+                  var arch = m.archetype || m.type || 'fodder';
                   var _killColl = collisionResult ? collisionResult.collision : null;
 
                   /* Try element-specific death first */
