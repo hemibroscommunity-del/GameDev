@@ -574,30 +574,9 @@ export const BottomDashboard = () => {
       <ItemDetailPopup />
       <Tooltip text={tooltip} onClose={() => setTooltip('')} />
 
-      <div style={{
-        position: 'fixed',
-        left: 0, right: 0,
-        bottom: 'var(--dash-h)',
-        /* v2.3.115: height 6 -> 8 + inner shadow so the XP strip reads
-           as a deliberate UI element rather than a thin trim line. */
-        height: 8,
-        background: 'rgba(0,0,0,0.55)',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: 'inset 0 -1px 2px rgba(0,0,0,0.35)',
-        zIndex: 29,
-        pointerEvents: 'none',
-        boxSizing: 'border-box',
-      }}>
-        <div style={{
-          width: xpPct + '%',
-          height: '100%',
-          background: 'linear-gradient(90deg, #3ddc97, #5be3aa)',
-          /* v2.3.131: longer ease-out so XP gains visibly count up
-             into the bar instead of snapping in 150ms. */
-          transition: 'width .4s ease-out',
-        }} />
-      </div>
+      {/* v2.3.821: the XP bar moved off the bottom trim into the top-right
+          character card (beneath the gold row) at the owner's request --
+          see the card below. */}
 
       {/* Upper-right player card — portrait, name + level, gold.
           Name plate moved here from above the player's head so the
@@ -688,7 +667,26 @@ export const BottomDashboard = () => {
               display: 'block',
             }}
           />
-          {Number(displayGold).toLocaleString()}
+          {/* v2.3.821: animated gold-sheen glimmer on the coin count. */}
+          <span className="bt-coin-glimmer">{Number(displayGold).toLocaleString()}</span>
+        </div>
+        {/* v2.3.821: XP progress — moved here, beneath the character card. */}
+        <div style={{
+          alignSelf: 'stretch',
+          height: 6,
+          marginTop: 1,
+          background: 'rgba(0,0,0,0.5)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 4,
+          overflow: 'hidden',
+          boxShadow: 'inset 0 -1px 2px rgba(0,0,0,0.35)',
+        }}>
+          <div style={{
+            width: xpPct + '%',
+            height: '100%',
+            background: 'linear-gradient(90deg, #3ddc97, #5be3aa)',
+            transition: 'width .4s ease-out',
+          }} />
         </div>
       </div>
 

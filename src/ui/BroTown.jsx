@@ -3291,8 +3291,15 @@ export var BroTown = function BroTown(_ref0) {
         var _zone = ZONES[S.currentZone];
         var ZONE_W = _zone.w * TILE,
           ZONE_H = _zone.h * TILE;
+        /* v2.3.821: the local player sprite is CENTRE-anchored, so its lower
+           half extends ~36 px below P.y.  With the camera clamped to the map
+           bottom, walking to the very bottom edge tucked the feet behind the
+           opaque dashboard.  Hold the player a sprite-half above the map's
+           bottom so the whole character stays above the dashboard -- i.e.
+           the playable area ends right where the dashboard begins. */
+        var _FOOT_MARGIN = 36;
         P.x = Math.max(hs, Math.min(ZONE_W - hs, P.x));
-        P.y = Math.max(hs, Math.min(ZONE_H - hs, P.y));
+        P.y = Math.max(hs, Math.min(ZONE_H - _FOOT_MARGIN, P.y));
 
         /* ═══ ZONE TRANSITION — edge-based detection ═══ */
         var ptx = Math.floor(P.x / TILE),
@@ -6600,9 +6607,14 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
-      top: 6,
-      right: 6,
-      zIndex: 999,
+      /* v2.3.821: was top:6 right:6 z-999 -- sat directly ON TOP of the
+         top-right character card (which is z-30 under it), reading as a
+         mystery box "behind" the HUD.  Moved down to stack BELOW the card
+         + its new XP bar (card height ~= 6 + ~111), and dropped under the
+         card's z so it can never overlap it again. */
+      top: 'calc(env(safe-area-inset-top, 0px) + 120px)',
+      right: 'calc(env(safe-area-inset-right, 0px) + 6px)',
+      zIndex: 28,
       padding: '3px 8px',
       borderRadius: 6,
       background: 'rgba(0,0,0,.7)',
