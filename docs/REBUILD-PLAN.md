@@ -280,7 +280,16 @@ pure-logic moves and continue thinning the component.
   React state / refs), so BroTown imports only `triggerContextualDodge`
   (the touch-swipe + keyboard entry point) and the cluster's cross-calls
   resolve inside the module. Bodies byte-identical.
-- **Candidates remaining:** `doSwing` / `doSpecialAttack` / `doShield`
+- **Player-actions cluster — ✅ done (v2.3.819):** the `doSwing` /
+  `doSpecialAttack` / `doShield` useCallback *bodies* → `src/game/
+  playerActions.js` `swingAttack(S)` / `specialAttack(S)` / `raiseShield(S,
+  { setShieldUp })`. The component keeps thin useCallback wrappers (so the
+  referential identity every JSX/handler caller depends on is unchanged)
+  that just call the module fn with `stateRef.current`. specialAttack's
+  one `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
+  object); raiseShield's only React setter (`setShieldUp`) goes via deps.
+  Bodies byte-identical.
+- **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
   remaining mass is JSX panels/modals (UI decomposition), still its own
