@@ -438,17 +438,21 @@ input{font-family:inherit}
 .bt-cc-tab:last-child{border-bottom:none}
 .bt-cc-tab:active{transform:translateY(1px)}
 .bt-cc-tab--on{background:rgba(58,49,99,0.85);color:#fff;box-shadow:inset -3px 0 0 var(--gold)}
-.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;padding:8px;box-sizing:border-box}
-.bt-cc-drawer-items{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px}
+/* v2.3.816: colors moved to the RIGHT of the objects (owner) — drawer is
+   ROW again: items fill the left and scroll horizontally, the colors
+   column docks on the right behind a gold-divider separator and only
+   renders at all once a real object is equipped (the _ccActive.colors
+   gate in BroTown.jsx; when null, items take the full width). */
+.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:row;gap:8px;padding:8px;box-sizing:border-box}
+.bt-cc-drawer-items{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:6px}
 /* Item strip: column-wrap fills the available height (1-2 tile rows
    depending on device) then extends rightward; pan-x re-allowed under
    the modal's touch-action:none (the old rail's iOS trick, rotated). */
 .bt-cc-drawer-items>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x}
-/* v2.3.804: the items/colors separator is the owner's gold divider art
-   (divider.webp, also restored from the v2.3.725 pack) instead of a
-   plain hairline. */
-.bt-cc-drawer-colors{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;background:url('/ui/welcome/divider.webp') top center/auto 13px no-repeat;padding-top:15px;margin-top:4px}
-.bt-cc-drawer-colors>.bt-cc-drawer-grid{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x;padding-bottom:2px}
+/* v2.3.804/816: the owner's gold divider art (divider.webp) is the
+   vertical separator on the colors column's left edge (rotated 90°). */
+.bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1.5px solid #4a4080;padding-left:9px}
+.bt-cc-drawer-colors>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
 .bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:#9090a8;letter-spacing:.08em;font-family:'Baloo 2','Source Sans 3',sans-serif}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
