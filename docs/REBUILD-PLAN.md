@@ -169,8 +169,90 @@ copy won.
   semantics (effect dep array unchanged). WASD movement itself was never
   here — the game loop reads `S.keys`, which the extracted handlers
   still populate.
-- **Phase 8+ —** game-loop slicing (extract per-zone mechanic blocks,
-  then the simulation/render split) guided by perf needs.
+- **Phase 8 — game-loop slicing, in progress.**
+  - **Slice 1 — ✅ done (v2.3.809):** per-zone mechanics (~270 lines) →
+    `src/game/zoneMechanics.js` `updateZoneMechanics(S, ptx, pty)`:
+    FROZEN SHORE snowballs/snowmen/sled (dormant — the action UI is
+    disabled), TIDAL CAVES tide/swim/§DIVE (live), DEEP HOLLOWS torch
+    (dormant) + echo flag (live). Found while moving: the dormant
+    snowball/sled damage formulas read a bare `R` (the pre-module
+    global rpg alias) that no longer exists — they'd have thrown a
+    ReferenceError if the disabled UI were ever re-enabled. Guarded
+    with a documented `var R;` so they fall back to their intended
+    `|| 0` path; zero effect on live play. Frozen-shore actions are
+    another revive-or-remove owner decision (like quests).
+  - **Slice 2 — ✅ done (v2.3.810):** §14.1 dungeon wave progression
+    (~356 lines) → `src/game/dungeonWaves.js`
+    `updateDungeonWaves(S, { stateRef, setRpgState })`: next-wave spawn,
+    boss spawn (custom §DNG + standard depth-scaled), completion rewards
+    + return-home / next-depth warps, endgame unlock on core clear. The
+    custom-dungeon path (Dungeon Workshop) is live; the standard path is
+    dormant behind the disabled tile-10 entry. The 3s setTimeouts re-read
+    `stateRef.current`, preserved via deps.
+  - **Slice 3 — ✅ done (v2.3.811):** the MONSTER AI + COMBAT block
+    (~2,460 lines — the single largest game-loop block) →
+    `src/game/monsterCombat.js`
+    `updateMonsterCombat(S, { activeWpn, setRpgState, setLevelUpMsg })`:
+    the whole `if (S.monsters && S.rpg)` body — per-frame weapon/crit
+    setup, the `S.monsters.forEach(m)` AI + combat loop (status ticks,
+    archetype AI, aggro, boss abilities/phases, telegraphs, fodder ranged
+    attacks, attack FX, block feedback, melee resolution, kills,
+    drops/shards/gems/nuggets), the player-swing PvP pass over
+    `S.others`, and the periodic RPG save. Because the build can't run in
+    the web sandbox (npm registry blocked), captures were enumerated with
+    a **depth-aware scope scanner** rather than eslint; the first naive
+    scanner under-reported (a `Math.atan2(P.y, P.x)` initializer made it
+    treat `P` as declared), so it was rewritten to track paren/brace
+    depth before trusting the result. Non-obvious captures: `P`
+    (player); `activeWpn` — the OUTER loop weapon var, distinct from the
+    block-internal `_activeWpn`, captured via deps so the one shard-roll
+    RPC reading `activeWpn.element1` stays byte-identical; the two React
+    setters. `window._pixiRenderer` stays a runtime global.
+    **lint-build caught one missed capture** the scanner mis-classified:
+    `arch`, used at 3 spots inside an `if (false)` dead death-FX block —
+    fixed with a local declaration (unreachable, so byte-equivalent at
+    runtime). A good reminder that combat-sized slices need the CI gate.
+  - **Slice 4 — ✅ done (v2.3.812):** the ground-loot pickup block
+    (~347 lines) → `src/game/groundLoot.js`
+    `updateGroundLootPickup(S, { pixiRef, setRpgState, setLevelUpMsg })`:
+    the whole `if (S.groundLoot)` filter — stale-pile expiry, loot
+    magnetism, multiplayer recipient/claim gating, coin/xp/item/shard
+    awards on pickup, pickup sparkle + level-up burst, post-pickup
+    despawn delay. 16 captures, all clean on the first scan.
+  - **Slice 5 — ✅ done (v2.3.813):** arrow + slime projectile sims
+    (~575 lines) → `src/game/projectiles.js` `updateArrows(S, {
+    setRpgState, setLevelUpMsg })` (flight/aim/homing, monster hit +
+    kills sharing the melee drop/shard/xp path, wall/range expiry) and
+    `updateSlimeProjectiles(S)` (fodder-slime projectiles with
+    mid-flight shield/block re-eval + contact damage). Arrows: 35
+    captures, only P/setters non-module; slime: 7, all clean. No
+    `if (false)` dead blocks (the slice-3 `arch` failure mode), so the
+    scope scanner's flat-scope limitation didn't bite.
+  - **Slice 6 — ✅ done (v2.3.814):** the VISUAL SYSTEM UPDATES
+    "pre-render simulation" block (~107 lines) → `src/game/visualSystems.js`
+    `updateVisualSystems(S)`: screen-shake decay, player facing (discrete
+    dir + continuous angle), footstep timer/stats, other-player
+    interpolation, remote-projectile simulation. Cleanest slice yet — the
+    only capture is `BT_AUDIO`; the block reads `S.player` directly so no
+    `P` and no deps.
+  - **Slice 7 — ✅ done (v2.3.815):** the per-frame state-cleanup block
+    (~26 lines) → `src/game/stateCleanup.js` `updateStateCleanup(S)`:
+    expiry of transient flags/timers (block/level-up/death flashes, zone
+    wipe, combo grace + next-extended, monster telegraphs, chat bubbles,
+    ground splatter, impact rings) and expired-ground-loot marking. 3
+    captures (S + two combo constants); `_now` confirmed block-local
+    (not read by the render dispatch that follows).
+  - **End state of the sim portion:** the game loop's *simulation* is now
+    a sequence of module calls — zone transitions, zone mechanics, dungeon
+    waves, monster combat, ground-loot, projectiles, visual systems, state
+    cleanup — followed inline only by the RENDER dispatch.
+  - **Remaining — the RENDER / perf-instrumentation block** (`pixiRef
+    .current.update(S, W, H, nfts)` + the `perfTracker.record(...)`
+    sim/render split logging) stays inline by design for now: it's the
+    effect's own render responsibility, tightly bound to `canvas`, `nfts`,
+    `pixiRef`, and `performance.now()` frame timing. Extracting it is a
+    structural change (not a verbatim block move) and is a deliberate,
+    owner-steered step rather than another quick slice.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
