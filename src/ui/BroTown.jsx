@@ -75,6 +75,8 @@ import { renderFrame } from '@/game/renderFrame.js';
 import { triggerContextualDodge } from '@/game/dodge.js';
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, raiseShield } from '@/game/playerActions.js';
+/* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
+import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -4895,146 +4897,16 @@ export var BroTown = function BroTown(_ref0) {
      waiting -> ready -> missed transitions; success is fired from
      the swipe handler. */
   var _startExtraction = useCallback(function (node, skill) {
-    var S = stateRef.current;
-    if (!S || !node) return;
-    /* Mining is done from one tile NORTH of the vein so the south-facing swing
-       lines up over the rock. Refuse to start unless the player is on that spot
-       (the marker shows where). Covers every entry path. */
-    if (skill === 'mining' && S.player) {
-      var _sx = node.x, _sy = node.y - TILE;
-      var _sdist = Math.sqrt(Math.pow(_sx - S.player.x, 2) + Math.pow(_sy - S.player.y, 2));
-      if (_sdist > MINE_SPOT_R) return;
-    }
-    /* One extraction at a time -- tapping a new node cancels the old. */
-    if (S._extraction) S._extraction = null;
-    var R = S.rpg;
-    var skillLvl = (R && R.lifeSkills && R.lifeSkills[skill] && R.lifeSkills[skill].level) || 0;
-    var nodeTier = node.gatherLvl || 1;
-    var openDelay = computeOpenDelay(skillLvl, nodeTier);
-    var now = Date.now();
-    S._extraction = {
-      nodeId: node.id,
-      /* v2.3.253: keep the node reference too so the tick can find it
-         even when nodes lack ids (SP locally-spawned nodes were
-         missing the id field, which silently broke the loop). */
-      nodeRef: node,
-      skill: skill,
-      startedAt: now,
-      windowOpensAt: now + openDelay,
-      windowClosesAt: now + openDelay + EXTRACT_WINDOW_MS,
-      status: 'waiting',
-      swipeSamples: [],
-    };
-    /* v2.3.230: tell the server we started so it can validate the
-       eventual node_strike's timing against the same computeOpenDelay
-       window we just rolled.  Server treats missing extraction_start
-       as a permissive fallback (no rejection), so this is the latency
-       anti-cheat hook, not a hard gate. */
-    if (S.channel) {
-      try {
-        S.channel.send({ type: 'extraction_start', payload: {
-          nodeId: node.id, zone: S.currentZone, skill: skill,
-        }});
-      } catch (e) {}
-    }
-    try { BT_AUDIO.beep(440, 0.03, 0.04, 'sine'); } catch (e) {}
+    startExtraction(stateRef.current, node, skill);
   }, []);
 
   /* Called from the swipe handler when a valid swipe lands during the
      'ready' window. Routes to the existing per-skill reward applier
      so XP + inventory + server node_strike all run unchanged. */
   var _succeedExtraction = useCallback(function (accuracy) {
-    var S = stateRef.current;
-    if (!S || !S._extraction || S._extraction.status !== 'ready') return false;
-    var _ex = S._extraction;
-    var node = (_ex.nodeRef && _ex.nodeRef.alive) ? _ex.nodeRef
-              : (S.gatherNodes && _ex.nodeId
-                 ? S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; })
-                 : null);
-    if (!node) { S._extraction = null; return false; }
-    /* accuracy comes from the phase-2 gesture grade (ExtractionSwipeLayer);
-       defaults to 'good' for any legacy caller. Keyed into MINIGAME_REWARDS. */
-    var result = { accuracy: (accuracy === 'perfect' || accuracy === 'ok') ? accuracy : 'good' };
-    if (_ex.skill === 'fishing')      _applyFishingReward(node, result);
-    else if (_ex.skill === 'woodcutting') _applyWoodReward(node, result);
-    else if (_ex.skill === 'mining')      _applyMiningReward(node, result);
-    S._extraction = null;
-    return true;
+    return succeedExtraction(stateRef.current, accuracy, { setRpgState: setRpgState });
   }, []);
 
-  /* applyFishingReward — called when the fishing minigame's reel-up phase
-     completes successfully. Mirrors the inventory + XP block in the
-     gather-mini success path, scoped to fishing only.  result.accuracy is
-     a key into MINIGAME_REWARDS ('perfect' / 'good' / 'ok'). */
-  var _applyFishingReward = useCallback(function (node, result) {
-    var S = stateRef.current;
-    var R = S && S.rpg;
-    if (!node || !R) return;
-    var accuracy = (result && result.accuracy) || 'good';
-    var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
-    BT_AUDIO.beep(600, 0.03, 0.06, 'triangle');
-    /* Consume node */
-    node.alive = false;
-    node.respawnAt = Date.now() + (node.respawnTime || 30000);
-    /* When the server owns gather-node state, tell it about the harvest so
-       it broadcasts the deplete + respawn to every other player.  Local
-       mutation above stays as a client-prediction so the player sees the
-       node disappear immediately; the tick delta reconciles on arrival. */
-    if (S._serverGatherNodes && S.channel) {
-      try {
-        /* v2.3.229: attach extraction swipe fingerprint when present
-           so the server's anomaly tracker (per the v2.3.229 hand-off
-           note) can flag suspicious sessions. Field is optional. */
-        var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
-        var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
-        if (_swipeFp) _np.swipeFp = _swipeFp;
-        S.channel.send({ type: 'node_strike', payload: _np });
-      } catch (e) {}
-    }
-    /* Inventory grant for the resource itself (fish_clownfish, etc.).
-       When the server owns gather nodes the worker's _handleNodeStrike
-       applies the grant + emits player_state; we skip the local
-       mutation here so the server's value isn't double-counted.  For
-       dungeon / SP zones the local path stays as the fallback. */
-    var baseName = node.baseName || node.name || 'Fish';
-    var yieldQty = reward.yieldMult || 1;
-    if (!R.inventory) R.inventory = {};
-    if (!S._serverGatherNodes) {
-      var baseKey = (node.resourceType || 'fish') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
-      R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
-    }
-    /* Elemental shard is server-rolled in MP (worker's _handleNodeStrike
-       owns the RNG and emits harvest_credit).  Skill XP is now applied
-       LOCALLY in both modes as a client-side prediction so the skill
-       level moves up immediately on harvest; the server's player_state
-       push reconciles with authoritative xp/level on arrival. v2.3.224. */
-    var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
-    var leveled = false;
-    if (!S._serverGatherNodes) {
-      var _shardF1 = rollHarvestShard(S.currentZone);
-      if (_shardF1) {
-        R.inventory[_shardF1] = (R.inventory[_shardF1] || 0) + 1;
-        var _shardDesc1 = shardByKey(_shardF1);
-        S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc1 ? _shardDesc1.label : 'Shard'), color: (_shardDesc1 && _shardDesc1.color) || '#cce6ff', ts: Date.now() });
-      }
-    }
-    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-    leveled = addLifeSkillXp(R.lifeSkills, 'fishing', xpAmt);
-    /* Counters (client-side; not part of the rpg cheat surface). */
-    if (!R._compStats) R._compStats = createDefaultCompStats();
-    R._compStats.fishCaught = (R._compStats.fishCaught || 0) + 1;
-    /* Floating numbers near the node (deterministic; safe to predict
-       client-side regardless of who owns the state). */
-    S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), color: node.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Fishing XP', color: '#00d4b8', ts: Date.now() });
-    if (leveled) {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Fishing Level ' + R.lifeSkills.fishing.level + '!', color: '#f5c542', ts: Date.now() });
-      BT_AUDIO.collect();
-    }
-    setRpgState(_objectSpread({}, R));
-    try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
-  }, []);
 
   /* Subscribe to cookingBus so a tap on a raw fish_* tile in the
      InventoryPanel opens the cooking overlay here. */
@@ -5082,179 +4954,10 @@ export var BroTown = function BroTown(_ref0) {
      cooked_<fishKey> (success) or burnt_dust (over-cooked).  Awards a
      small Cooking life-skill XP bump on success. */
   var _applyCookingResult = useCallback(function (fishKey, kind, taps) {
-    var S = stateRef.current;
-    var R = S && S.rpg;
-    if (!R || !fishKey) return;
-    /* Popups fire client-side regardless of who applies the state --
-       they're deterministic from `kind`.  The actual inventory mutation
-       + cooking XP gain go through the server when the channel is open;
-       fallback to local apply otherwise (SP / disconnected). */
-    if (kind === 'cooked') {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'Cooked!', color: '#f5c542', ts: Date.now() });
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: '+8 Cooking XP', color: '#00d4b8', ts: Date.now() });
-    } else {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'Burnt!', color: '#ff5e6c', ts: Date.now() });
-    }
-    if (S.channel) {
-      /* Server-mediated path: cook_request lets the worker validate
-         the player has the raw fish, consume it, and apply cooked or
-         burnt_dust + cooking XP server-side.  Authoritative inventory
-         comes back via player_state.  Closes the "cook a fish you
-         don't own" cheat. */
-      /* v2.3.694: carry the flip taps ({t, frac}) so the server can re-verify
-         both landed in the golden zone instead of trusting `kind`.  Old
-         server tolerates the extra field; new server validates it. */
-      try { S.channel.send({ type: 'cook_request', payload: { fishKey: fishKey, kind: kind, taps: taps || [] } }); } catch (e) {}
-      return;
-    }
-    /* Fallback: no channel (SP / dungeon offline). */
-    if (!R.inventory) R.inventory = {};
-    if ((R.inventory[fishKey] || 0) > 0) R.inventory[fishKey] -= 1;
-    if (R.inventory[fishKey] <= 0) delete R.inventory[fishKey];
-    if (kind === 'cooked') {
-      var cookedKey = 'cooked_' + fishKey;
-      R.inventory[cookedKey] = (R.inventory[cookedKey] || 0) + 1;
-      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      addLifeSkillXp(R.lifeSkills, 'cooking', 8);
-    } else {
-      R.inventory.burnt_dust = (R.inventory.burnt_dust || 0) + 1;
-    }
-    setRpgState(_objectSpread({}, R));
-    try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
+    applyCookingResult(stateRef.current, fishKey, kind, taps, { setRpgState: setRpgState });
   }, []);
 
-  /* applyWoodReward — called when the wood-chopping minigame finishes
-     felling the tree. Mirror of _applyFishingReward, scoped to
-     woodcutting. */
-  var _applyWoodReward = useCallback(function (node, result) {
-    var S = stateRef.current;
-    var R = S && S.rpg;
-    if (!node || !R) return;
-    var accuracy = (result && result.accuracy) || 'good';
-    var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
-    BT_AUDIO.beep(500, 0.03, 0.06, 'triangle');
-    node.alive = false;
-    node.respawnAt = Date.now() + (node.respawnTime || 30000);
-    /* When the server owns gather-node state, tell it about the harvest so
-       it broadcasts the deplete + respawn to every other player.  Local
-       mutation above stays as a client-prediction so the player sees the
-       node disappear immediately; the tick delta reconciles on arrival. */
-    if (S._serverGatherNodes && S.channel) {
-      try {
-        /* v2.3.229: attach extraction swipe fingerprint when present
-           so the server's anomaly tracker (per the v2.3.229 hand-off
-           note) can flag suspicious sessions. Field is optional. */
-        var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
-        var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
-        if (_swipeFp) _np.swipeFp = _swipeFp;
-        S.channel.send({ type: 'node_strike', payload: _np });
-      } catch (e) {}
-    }
-    /* Resource inventory grant on the worker when authoritative;
-       local fallback for dungeon / SP. */
-    var baseName = node.baseName || node.name || 'Pine';
-    var yieldQty = reward.yieldMult || 1;
-    if (!R.inventory) R.inventory = {};
-    if (!S._serverGatherNodes) {
-      var baseKeyW = (node.resourceType || 'wood') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
-      R.inventory[baseKeyW] = (R.inventory[baseKeyW] || 0) + yieldQty;
-    }
-    /* v2.3.224: skill XP applied locally in both SP and MP for instant
-       feedback; server's player_state reconciles. Shard roll is still
-       MP-server-only (non-deterministic RNG). */
-    var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
-    var leveled = false;
-    if (!S._serverGatherNodes) {
-      var _shardF2 = rollHarvestShard(S.currentZone);
-      if (_shardF2) {
-        R.inventory[_shardF2] = (R.inventory[_shardF2] || 0) + 1;
-        var _shardDesc2 = shardByKey(_shardF2);
-        S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc2 ? _shardDesc2.label : 'Shard'), color: (_shardDesc2 && _shardDesc2.color) || '#cce6ff', ts: Date.now() });
-      }
-    }
-    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-    leveled = addLifeSkillXp(R.lifeSkills, 'woodcutting', xpAmt);
-    if (!R._compStats) R._compStats = createDefaultCompStats();
-    R._compStats.treesFelled = (R._compStats.treesFelled || 0) + 1;
-    S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), color: node.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Woodcutting XP', color: '#00d4b8', ts: Date.now() });
-    if (leveled) {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Woodcutting Level ' + R.lifeSkills.woodcutting.level + '!', color: '#f5c542', ts: Date.now() });
-      BT_AUDIO.collect();
-    }
-    setRpgState(_objectSpread({}, R));
-    try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
-  }, []);
 
-  /* applyMiningReward — called when the mining minigame finishes.  Same
-     shape as _applyWoodReward: success grants ore + XP, miss is a no-op
-     gather attempt (node stays alive). */
-  var _applyMiningReward = useCallback(function (node, result) {
-    var S = stateRef.current;
-    var R = S && S.rpg;
-    if (!node || !R) return;
-    var accuracy = (result && result.accuracy) || 'good';
-    if (accuracy === 'miss') {
-      BT_AUDIO.beep(180, 0.04, 0.08, 'sawtooth');
-      S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: 'Miss!', color: '#ef4444', ts: Date.now() });
-      return;
-    }
-    var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
-    BT_AUDIO.beep(700, 0.04, 0.07, 'square');
-    node.alive = false;
-    node.respawnAt = Date.now() + (node.respawnTime || 30000);
-    /* When the server owns gather-node state, tell it about the harvest so
-       it broadcasts the deplete + respawn to every other player.  Local
-       mutation above stays as a client-prediction so the player sees the
-       node disappear immediately; the tick delta reconciles on arrival. */
-    if (S._serverGatherNodes && S.channel) {
-      try {
-        /* v2.3.229: attach extraction swipe fingerprint when present
-           so the server's anomaly tracker (per the v2.3.229 hand-off
-           note) can flag suspicious sessions. Field is optional. */
-        var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
-        var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
-        if (_swipeFp) _np.swipeFp = _swipeFp;
-        S.channel.send({ type: 'node_strike', payload: _np });
-      } catch (e) {}
-    }
-    /* Resource inventory grant on the worker when authoritative;
-       local fallback for dungeon / SP. */
-    var baseName = node.baseName || node.name || 'Copper Ore';
-    var yieldQty = reward.yieldMult || 1;
-    if (!R.inventory) R.inventory = {};
-    if (!S._serverGatherNodes) {
-      var baseKeyM = (node.resourceType || 'ore') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
-      R.inventory[baseKeyM] = (R.inventory[baseKeyM] || 0) + yieldQty;
-    }
-    /* v2.3.224: skill XP applied locally in both SP and MP for instant
-       feedback; server's player_state reconciles. Shard roll is still
-       MP-server-only (non-deterministic RNG). */
-    var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
-    var leveled = false;
-    if (!S._serverGatherNodes) {
-      var _shardF3 = rollHarvestShard(S.currentZone);
-      if (_shardF3) {
-        R.inventory[_shardF3] = (R.inventory[_shardF3] || 0) + 1;
-        var _shardDesc3 = shardByKey(_shardF3);
-        S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc3 ? _shardDesc3.label : 'Shard'), color: (_shardDesc3 && _shardDesc3.color) || '#cce6ff', ts: Date.now() });
-      }
-    }
-    if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-    leveled = addLifeSkillXp(R.lifeSkills, 'mining', xpAmt);
-    if (!R._compStats) R._compStats = createDefaultCompStats();
-    R._compStats.oresMined = (R._compStats.oresMined || 0) + 1;
-    S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), color: node.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Mining XP', color: '#00d4b8', ts: Date.now() });
-    if (leveled) {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Mining Level ' + R.lifeSkills.mining.level + '!', color: '#f5c542', ts: Date.now() });
-      BT_AUDIO.collect();
-    }
-    setRpgState(_objectSpread({}, R));
-    try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
-  }, []);
 
   var _desktopOpenWorkshop = useCallback(function () {
     setShowDungeonCreator(true);
