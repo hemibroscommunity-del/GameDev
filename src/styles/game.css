@@ -212,6 +212,12 @@ input{font-family:inherit}
 /* v2.3.791: flex-direction:column — the full-bleed banner strip stacks
    above the card (card stays centered via its margin:auto). */
 .bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
+/* v2.3.811: animated vista loop fills the modal behind everything; the
+   modal's bg.webp stays the under-layer fallback.  z-index:0 + the two
+   content children lifted to z-index:1 keeps the positioned video behind
+   them (positioned elements otherwise paint over static flex siblings). */
+.bt-cc-bgvideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none}
+.bt-name-modal>.bt-cc-logo-wrap,.bt-name-modal>.bt-name-box{z-index:1}
 /* v2.3.738: touch-action:none on the modal — iOS ignores overscroll-behavior
    and rubber-banded the splash when a swipe started on a non-scrollable
    element.  The rail and sheet re-allow pan-y; everything else is taps. */

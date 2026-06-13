@@ -10559,7 +10559,23 @@ export var BroTown = function BroTown(_ref0) {
     for (var _ci = 0; _ci < _ccCats.length; _ci++) { if (_ccCats[_ci].key === activeCat) { _ccActive = _ccCats[_ci]; break; } }
     return /*#__PURE__*/React.createElement("div", {
       className: "bt-name-modal"
-    }, /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("video", {
+      /* v2.3.811: animated splash backdrop — the owner's painted vista as a
+         seamless 4.5s crossfade loop (built from the 6s source so its end
+         frame matches its start, no visible cut).  bg.webp stays the
+         poster + the modal's CSS fallback, so a blocked-autoplay or
+         decode-failure path still shows the painted still.  Muted +
+         playsInline + loop is the iOS inline-autoplay contract.
+         NOTE (CLAUDE.md / v2.3.736): iOS Safari's video compositor once
+         cyan-tinted a behind-character clip — that was a must-be-black
+         starfield; a full-colour vista tolerates a slight shift, but this
+         is the surface to eyeball on iPhone. */
+      className: "bt-cc-bgvideo",
+      src: '/ui/welcome/bg-loop.mp4',
+      poster: '/ui/welcome/bg.webp',
+      autoPlay: true, muted: true, playsInline: true, loop: true, preload: 'auto',
+      "aria-hidden": true
+    }), /*#__PURE__*/React.createElement("div", {
       /* v2.3.801: tavern-banner art retired (owner) — back to the painted
          gold BRO TOWN lettering (logo-brotown.webp, the main piece of the
          pre-v2.3.790 lockup) in the banner's slot at the top of the
