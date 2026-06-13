@@ -5385,9 +5385,24 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   npcChat: function npcChat() {
     this.beep(600, 0.04, 0.03, 'sine');
   },
-  footstep: function footstep() {
+  footstep: function footstep(armored) {
     if (!this.ctx || this.muted) return;
-    this.beep(180 + Math.random() * 40, 0.02, 0.02, 'triangle');
+    /* v2.3.836: real footstep samples (extracted from the owner's videos).
+       `armored` is set by the caller from the equipped gear.  A little
+       volume + pitch jitter keeps repeated steps from machine-gunning.
+       Falls back to the old synth tick until the sample preloads. */
+    var key = armored ? 'footstep-armored' : 'footstep-naked';
+    if (this._samples && this._samples[key]) {
+      /* v2.3.839: 80% quieter than before (×0.2). */
+      if (armored) {
+        this.play(key, { vol: (0.4 + Math.random() * 0.12) * 0.2, pitchVar: 0.12 });
+      } else {
+        /* naked reads lighter -- slightly up-pitched as well as quieter. */
+        this.play(key, { vol: (0.3 + Math.random() * 0.1) * 0.2, rate: 1.05 + (Math.random() - 0.5) * 0.12 });
+      }
+    } else {
+      this.beep(180 + Math.random() * 40, 0.02, 0.02, 'triangle');
+    }
   },
   enterBuilding: function enterBuilding() {
     var _this3 = this;
@@ -5886,6 +5901,11 @@ BT_AUDIO._sampleLoading = {};
 BT_AUDIO._unlocked = false;
 BT_AUDIO._loadedManifest = false;
 BT_AUDIO.SFX_MANIFEST = {
+  /* v2.3.836: real footstep SFX isolated from the owner's videos --
+     naked (softer thud) vs armored (metallic clank); chosen per-step
+     from the player's equipped gear in visualSystems.js. */
+  'footstep-naked':   '/sfx/footstep/footstep-naked.wav',
+  'footstep-armored': '/sfx/footstep/footstep-armored.wav',
   'sword-swing':   '/sfx/sword/sword-swing.wav',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */

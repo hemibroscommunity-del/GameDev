@@ -44,7 +44,10 @@ export function updateVisualSystems(S) {
         if (_fIsMoving) {
           if (!S._footstepTimer) S._footstepTimer = 0;
           S._footstepTimer++;
-          if (S._footstepTimer % 12 === 0) BT_AUDIO.footstep();
+          /* v2.3.839: footstep AUDIO moved into the renderer (entityRenderer
+             _updatePlayer jog branch) so it's locked to the animation cycle
+             and matches the visible stride exactly.  This timer now only
+             drives the step COUNTER for stats/achievements. */
           if (S.stats && S._footstepTimer % 6 === 0) S.stats.steps++;
         }
 
