@@ -3251,14 +3251,42 @@ export var BroTown = function BroTown(_ref0) {
 
         /* Collision check — check corners of a 20x20 hitbox */
         var hs = 10;
-        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs)) P.x = nx;
-        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs)) P.y = ny;
+        /* v2.3.820: monsters are SOLID — the player can't walk into/through
+           a monster's body.  Fixes the "monsters run through you" feel and
+           the shield arc spinning wildly as a monster overlaps your centre.
+           Checked per-axis (like the tile check) so you still slide along a
+           monster instead of sticking, and only blocks motion that moves
+           DEEPER into a monster — so if a server-driven monster ends up on
+           top of you, you can always walk back out.  Body centre uses the
+           same per-archetype Y offset as tap-to-lock so the solid footprint
+           lines up with the sprite you see. */
+        var _monBlock = function (curX, curY, px, py) {
+          var ms = S.monsters;
+          if (!ms) return false;
+          for (var _mi = 0; _mi < ms.length; _mi++) {
+            var _m = ms[_mi];
+            if (!_m || !_m.alive) continue;
+            var _arch = _m.archetype || _m.type;
+            var _by = _m.y - (_arch === 'fodder' ? 40 : _arch === 'snowman' ? 19 : 0);
+            var _mr = _arch === 'snowman' ? 13 : (_arch === 'fodder' || MONSTER_VARIANTS[_arch]) ? 8 : 32;
+            var _rr = _mr + hs;
+            var _ndx = px - _m.x, _ndy = py - _by;
+            var _nd2 = _ndx * _ndx + _ndy * _ndy;
+            if (_nd2 < _rr * _rr) {
+              var _cdx = curX - _m.x, _cdy = curY - _by;
+              if (_nd2 < _cdx * _cdx + _cdy * _cdy) return true; /* moving deeper in */
+            }
+          }
+          return false;
+        };
+        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y)) P.x = nx;
+        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny)) P.y = ny;
         /* Apply ice slide */
         if (S._slideVx || S._slideVy) {
           var sx = P.x + (S._slideVx || 0),
             sy = P.y + (S._slideVy || 0);
-          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs)) P.x = sx;
-          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs)) P.y = sy;
+          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y)) P.x = sx;
+          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy)) P.y = sy;
         }
         var _zone = ZONES[S.currentZone];
         var ZONE_W = _zone.w * TILE,
@@ -4394,17 +4422,17 @@ export var BroTown = function BroTown(_ref0) {
             return (((_S2$rpg$lifeSkills3 = S2.rpg.lifeSkills) === null || _S2$rpg$lifeSkills3 === void 0 || (_S2$rpg$lifeSkills3 = _S2$rpg$lifeSkills3[k]) === null || _S2$rpg$lifeSkills3 === void 0 ? void 0 : _S2$rpg$lifeSkills3.level) || 0) >= 25;
           });
         }
+        /* v2.3.820: achievement toast notifications removed at the owner's
+           request ("First Steps", "Renaissance", etc. -- none were
+           intentional content).  Badges are still recorded silently so any
+           profile/stat that reads S.badges keeps working; only the popup +
+           its sound are suppressed.  Level-up, XP, damage, and chat
+           feedback are untouched (separate systems). */
         BT_ACHIEVEMENTS.forEach(function (a) {
           if (!S2.badges.includes(a.id) && a.check(S2.stats)) {
             S2.badges.push(a.id);
             S2.stats.badges = _toConsumableArray(S2.badges);
             setMyBadges(_toConsumableArray(S2.badges));
-            setAchievementMsg({
-              icon: a.icon,
-              name: a.name,
-              ts: Date.now()
-            });
-            BT_AUDIO.collect();
           }
         });
         /* Save stats periodically */
@@ -21284,10 +21312,15 @@ export var BroTown = function BroTown(_ref0) {
         var z = ZONES[((_stateRef$current32 = stateRef.current) === null || _stateRef$current32 === void 0 ? void 0 : _stateRef$current32.currentZone) || 'town'];
         return z !== null && z !== void 0 && z.element ? (_ELEMENTS$z$element4 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element4 === void 0 ? void 0 : _ELEMENTS$z$element4.color : '#e8eaf8';
       }(),
-      background: '#000',
+      /* v2.3.820: was a solid black bar (background:#000 + border) that
+         clipped the player when they ran to the top map edge.  Now a
+         transparent text overlay -- the map fills the full play area to
+         the top, the zone/level label just floats over it with a shadow
+         for legibility, and nothing can clip behind it. */
+      background: 'transparent',
       padding: '6px 12px',
       textAlign: 'center',
-      borderBottom: '1px solid rgba(255,255,255,0.12)',
+      textShadow: '0 1px 3px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.7)',
       pointerEvents: 'none',
     }
   }, ((_ZONES = ZONES[((_stateRef$current33 = stateRef.current) === null || _stateRef$current33 === void 0 ? void 0 : _stateRef$current33.currentZone) || 'town']) === null || _ZONES === void 0 ? void 0 : _ZONES.name) || 'Town', function (_stateRef$current34, _stateRef$current35, _stateRef$current36, _z$level) {

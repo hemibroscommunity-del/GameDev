@@ -18,7 +18,8 @@ import { SpecialChargePie } from './mobile/SpecialChargePie.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { MoreOverlay, moreOverlay } from './mobile/MoreOverlay.jsx';
 import { ControlsTutorial } from './mobile/ControlsTutorial.jsx';
-import { MasteryNotification } from './mobile/MasteryNotification.jsx';
+/* v2.3.820: MasteryNotification removed from the render (owner request) --
+   import dropped to avoid an unused symbol. */
 import { advanceMastery, earnCertification } from '../game/mastery.js';
 import { debugBus } from '../debug/debugBus.js';
 import { BuildBadge } from './BuildBadge.jsx';
@@ -526,7 +527,11 @@ export const GameApp = () => {
       <BlockRing />
       <SpecialChargePie />
       <XpFlyOverlay />
-      <MasteryNotification />
+      {/* v2.3.820: MasteryNotification unmounted at the owner's request --
+          the mastery/certification toasts ("First Resonance-Timed Hit",
+          etc.) were auto-generated notifications they didn't add.  Mastery
+          tracking itself (advanceMastery/earnCertification + localStorage)
+          is untouched; only the popup UI is gone. */}
       <ControlsTutorial />
       {/* v2.3.221: dev-tooling overlays gated on ?dev=1 URL param so
           the player-facing build doesn't show the D button, version
