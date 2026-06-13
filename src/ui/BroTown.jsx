@@ -1107,6 +1107,14 @@ export var BroTown = function BroTown(_ref0) {
   var _catState = useState('hat'),
     activeCat = _catState[0],
     setActiveCat = _catState[1];
+  /* v2.3.821: per-category flag set the first time the user taps an object
+     in that category this session.  The color menu only appears once this
+     is set (owner: hide colors until an object is picked, so the object
+     grid gets the full drawer width by default). */
+  var _objPickState = useState({}),
+    objPicked = _objPickState[0],
+    setObjPicked = _objPickState[1];
+  var markObjPicked = function (k) { setObjPicked(function (p) { if (p[k]) return p; var n = Object.assign({}, p); n[k] = true; return n; }); };
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
@@ -10583,14 +10591,14 @@ export var BroTown = function BroTown(_ref0) {
        tab + a _ccCats entry. */
     var _ccCats = [
       { key: 'hat', label: 'Hat',
-        items: HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }, 44); }),
-        colors: headwearSel !== 'none' ? HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); }) : null },
+        items: HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); markObjPicked('hat'); }, 44); }),
+        colors: (objPicked['hat'] && headwearSel !== 'none') ? HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); }) : null },
       { key: 'hair', label: 'Hair',
-        items: HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }, 44); }),
-        colors: hairSel !== 'none' ? (hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); }) : null },
+        items: HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); markObjPicked('hair'); }, 44); }),
+        colors: (objPicked['hair'] && hairSel !== 'none') ? (hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); }) : null },
       { key: 'beard', label: 'Beard',
-        items: FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }, 44); }),
-        colors: facialHairSel !== 'none' ? FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); }) : null },
+        items: FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); markObjPicked('beard'); }, 44); }),
+        colors: (objPicked['beard'] && facialHairSel !== 'none') ? FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); }) : null },
       { key: 'skin', label: 'Skin',
         /* Body-color categories: the swatches ARE the item grid (their
            catalog 'default' entries carry the sprite's real native
@@ -10599,8 +10607,8 @@ export var BroTown = function BroTown(_ref0) {
         items: SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }, 40); }),
         colors: null },
       { key: 'shirt', label: 'Shirt',
-        items: SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }, 44); }),
-        colors: shirtSel !== 'none' ? SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); }) : null },
+        items: SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); markObjPicked('shirt'); }, 44); }),
+        colors: (objPicked['shirt'] && shirtSel !== 'none') ? SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); }) : null },
       { key: 'pants', label: 'Pants',
         items: PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }, 40); }),
         colors: null },
