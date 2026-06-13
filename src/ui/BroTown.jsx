@@ -50,8 +50,14 @@ import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDa
 import { sendChatMessage, handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
 /* v2.3.782: quest accept/turn-in transitions extracted behavior-frozen (REBUILD-PLAN Phase 3). */
 import { acceptQuest, turnInQuest } from '@/game/quests.js';
-/* v2.3.783: the game-event dispatcher extracted behavior-frozen (REBUILD-PLAN Phase 4). */
-import { processGameEvent } from '@/networking/gameEvents.js';
+/* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
+   extracted behavior-frozen (REBUILD-PLAN Phase 6). */
+import { handleZoneTransitions } from '@/game/zoneTransitions.js';
+/* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
+import { setupDesktopControls } from '@/game/desktopControls.js';
+/* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
+   the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
+import { setupWebSocket } from '@/networking/wsClient.js';
 import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
 import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
 
@@ -87,7 +93,6 @@ const {
   getSalvageReturns, getAmuletSalvageReturns, gemExtractCost,
   getDungeonCreatorUnlocks, validateCustomDungeon, createDefaultDungeonConfig,
   hasUnlock, getNpcQuest,
-  checkAnniversaryDrop, ANNIVERSARY_ITEMS,
   discoverMonster, discoverMaterial, discoverZone, discoverCollision,
   SHOP_PRICES, SHOP_ITEMS_FOR_SALE,
   getGuildRank, getGuildQuest, GUILD_RANKS, GUILD_QUESTS, SKILL_GUILDS,
@@ -145,7 +150,7 @@ Object.assign(globalThis, { BT_API_BASE, SUPA_URL, SUPA_KEY, supa });
 Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep });
 
 export var BroTown = function BroTown(_ref0) {
-  var _stateRef$current, _stateRef$current2, _anniversaryDrop$rari, _minigameInstance$win, _minigameInstance$win2, _anniversaryDrop$colo, _anniversaryDrop$colo2, _anniversaryDrop$colo3, _anniversaryDrop$colo4, _anniversaryDrop$colo5, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
+  var _stateRef$current, _stateRef$current2, _minigameInstance$win, _minigameInstance$win2, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
   var nfts = _ref0.nfts,
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
@@ -822,10 +827,6 @@ export var BroTown = function BroTown(_ref0) {
     _useState120 = _slicedToArray(_useState119, 2),
     minigameTick = _useState120[0],
     setMinigameTick = _useState120[1];
-  var _useState121 = useState(null),
-    _useState122 = _slicedToArray(_useState121, 2),
-    anniversaryDrop = _useState122[0],
-    setAnniversaryDrop = _useState122[1]; /* pending anniversary item */
   /* Close all menus — enforce single menu open at a time */
   var closeAllMenus = function closeAllMenus() {
     setShowStatScreen(false);
@@ -919,14 +920,6 @@ export var BroTown = function BroTown(_ref0) {
       return clearInterval(id);
     };
   }, [gatherMini === null || gatherMini === void 0 ? void 0 : gatherMini.started, gatherMini === null || gatherMini === void 0 ? void 0 : gatherMini.result]);
-  var _useState145 = useState(false),
-    _useState146 = _slicedToArray(_useState145, 2),
-    ferrymanPanel = _useState146[0],
-    setFerrymanPanel = _useState146[1]; /* show ferryman travel dialog */
-  var _useState147 = useState(null),
-    _useState148 = _slicedToArray(_useState147, 2),
-    fenceClimbing = _useState148[0],
-    setFenceClimbing = _useState148[1]; /* {started, direction:'in'|'out'} */
   var _useState149 = useState(null),
     _useState150 = _slicedToArray(_useState149, 2),
     duelRequest = _useState150[0],
@@ -1103,10 +1096,13 @@ export var BroTown = function BroTown(_ref0) {
   var _shoesSelState = useState(getShoes()),
     shoesSel = _shoesSelState[0],
     setShoesSel = _shoesSelState[1];
-  /* Which appearance-picker categories are expanded (collapsed by default). */
-  var _apExpState = useState({}),
-    expanded = _apExpState[0],
-    setExpanded = _apExpState[1];
+  /* Which appearance-picker category is active.  v2.3.797: single active
+     tab string (replaces the v2.3.711 accordion's expanded-map) — the
+     tabs+drawer creator always shows exactly one category; 'hat' is the
+     landing tab. */
+  var _catState = useState('hat'),
+    activeCat = _catState[0],
+    setActiveCat = _catState[1];
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
@@ -1195,21 +1191,20 @@ export var BroTown = function BroTown(_ref0) {
       setHairColor(LONG_HAIR_COLORS[0]); setHairColorSel(LONG_HAIR_COLORS[0]);
     }
   }, [hairSel]);
-  /* Category picker: every category is a left-labelled ROW, stacked head-to-
-     toe, so the whole appearance is visible at once.  Each row is a horizontal
-     strip of icon tiles (thumbnails for styles, color chips for colors) that
-     scrolls sideways for long catalogs; the current pick is highlighted.  Style
-     rows append their color chips after a divider in the SAME row (color is
-     part of the item, not its own row). */
+  /* Category picker helpers: shared tile primitives for the tabs-and-
+     drawer creator (v2.3.797 vertical-flow redesign) — thumbnail tiles for
+     styles, color chips for colors; the current pick gets a gold ring and
+     a check badge. */
   var _apTileStyle = function (sel, size) {
     /* v2.3.731: lighter tile wells (dark thumbs like black hair were
        invisible on the old near-black tiles) + gold ring on the pick.
-       v2.3.742: white/light-gray CHECKER wells (owner request) — reads as
-       an inventory slot, dark and light art both silhouette against it,
-       and the selected state rides entirely on the gold ring + badge. */
+       v2.3.742: white/light-gray CHECKER wells (owner request).
+       v2.3.800: checker -> soft light-gray GRADIENT (owner request) —
+       still light enough that dark art silhouettes; selection still
+       rides on the gold ring + badge. */
     return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
       position: 'relative', borderRadius: 8,
-      background: 'repeating-conic-gradient(#ffffff 0% 25%, #d7dae2 0% 50%) 0 0 / 12px 12px',
+      background: 'linear-gradient(180deg,#f4f5f8,#cdd2dc)',
       border: sel ? '2px solid var(--gold)' : '1.5px solid #56499a',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
@@ -1246,100 +1241,13 @@ export var BroTown = function BroTown(_ref0) {
       : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
     sel ? _checkBadge() : null);
   };
-  /* Collapsed-pill previews (non-interactive). */
-  var _swOf = function (cat, id) {
-    /* v2.3.711: no more slash gradient for 'default' -- the only catalogs
-       whose default still reaches here are skin/pants/shoes, and their
-       catalog swatches are the sprite's real native colors.  Trait pills
-       (hat/hair/beard/shirt) skip the mini swatch entirely when the color
-       is 'default' (the item mini-thumb already shows original colors). */
-    var e = cat.find(function (o) { return o.id === id; });
-    return (e && e.swatch) || '#888';
-  };
-  var _miniThumb = function (cat, id) {
-    /* v2.3.742: collapsed-pill mini thumbs get the same checker well as the
-       picker tiles. */
-    return id === 'none'
-      ? /*#__PURE__*/React.createElement("div", { key: 'mt', style: { width: 26, height: 26, borderRadius: '50%', border: '1.5px dashed var(--line)', flex: '0 0 auto' } })
-      : /*#__PURE__*/React.createElement("img", { key: 'mt', src: '/sprites/traits/' + cat + '/' + id + '/thumb.png?v=' + BUILD_INFO.version, alt: '', style: { width: 30, height: 30, objectFit: 'contain', imageRendering: 'pixelated', flex: '0 0 auto',
-          background: 'repeating-conic-gradient(#ffffff 0% 25%, #d7dae2 0% 50%) 0 0 / 10px 10px', borderRadius: 6, border: '1px solid #56499a' } });
-  };
-  var _miniSwatch = function (sw) {
-    return /*#__PURE__*/React.createElement("div", { key: 'ms', style: { width: 22, height: 22, borderRadius: 5, background: sw, border: '1px solid rgba(0,0,0,0.35)', flex: '0 0 auto' } });
-  };
-  var _chevron = function (open) {
-    return /*#__PURE__*/React.createElement("span", { key: 'cv', style: open
-      ? { width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #9090a8', flex: '0 0 auto' }
-      : { width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderLeft: '5px solid #9090a8', flex: '0 0 auto' } });
-  };
-  /* v2.3.710: pills restyled for the narrow side rail of the two-pane
-     welcome modal.  The old 60px left label + horizontally-scrolling tile
-     rows assumed a 320px-wide card; in a ~150px rail that left ~85px for
-     44px tiles.  The label is now a full-width header strip on top, and
-     expanded rows WRAP instead of side-scrolling (the rail scrolls
-     vertically instead). */
-  /* v2.3.720: pill chrome purple-ized to match the owner's mockup.
-     v2.3.731: near-OPAQUE — the painted backdrop bled through the old 55%
-     background and fought the labels/tiles (owner: hard to see). */
-  var _pillBox = { display: 'flex', alignItems: 'stretch', width: '100%', marginBottom: 6,
-    border: '1.5px solid #4a4080', borderRadius: 10, overflow: 'hidden', background: 'rgba(20,16,40,0.93)', boxSizing: 'border-box' };
-  /* v2.3.715: rounded display font + Title Case for the category labels --
-     the bold ALL-CAPS sans read like terminal text (owner feedback).
-     'Baloo 2' is loaded in index.html. */
-  /* v2.3.732: label font up 13->15 with a soft shadow (owner: selection
-     text too small); label column widened to keep 'Beard' on one line. */
-  var _pillLabel = { width: '100%', minHeight: 44, flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
-    padding: '0 7px', fontSize: 15, fontWeight: 700, color: '#f0edfb', letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-    textShadow: '0 1px 2px rgba(0,0,0,.55)', background: '#241d49', textAlign: 'left', boxSizing: 'border-box' };
-  /* Category pill -- COLLAPSED by default: below the label header sits the
-     current selection; tapping the pill (or its header) expands it to reveal
-     all choices (style rows on top, color rows below).
-     `optionRows` = expanded-state tile-arrays; `summary` = collapsed preview. */
-  /* v2.3.725: `icon` = small equipment-slot icon (cropped from the owner's
-     mockup) shown before the label. */
-  var _apPill = function (catKey, label, optionRows, summary, icon) {
-    var open = !!expanded[catKey];
-    /* v2.3.711: accordion -- opening a category closes the others, so the
-       rail stays short and an open panel is never forgotten off-screen. */
-    var toggle = function () { setExpanded(function (p) { var n = {}; if (!p[catKey]) n[catKey] = true; return n; }); };
-    /* v2.3.736: slot icons removed from labels and the sheet header — the
-       owner found them noisy; names only. */
-    var labelKids = [/*#__PURE__*/React.createElement("span", { key: 'lb', style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 } },
-      /*#__PURE__*/React.createElement("span", null, label)), _chevron(open)];
-    if (open) {
-      /* v2.3.735: expanded category opens a CENTERED SHEET over a dimmed
-         scrim instead of unfolding inside the ~150px rail (owner: pickers
-         need room).  The pill stays in place as the open/anchor row; the
-         sheet is position:fixed so the rail's overflow clipping can't
-         touch it.  Tapping the scrim, the pill, or ✕ closes it; picking
-         an option keeps it open so color rows stay reachable. */
-      return /*#__PURE__*/React.createElement(React.Fragment, { key: catKey },
-        /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0, border: '1.5px solid var(--gold)' }) },
-          /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 80, borderRight: '1.5px solid #3a3163' }) }, labelKids),
-          /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary)),
-        /* v2.3.736: scrim stays for tap-outside-to-close but no longer dims
-           (owner request). */
-        /*#__PURE__*/React.createElement("div", { onClick: toggle, style: { position: 'fixed', inset: 0, background: 'transparent', zIndex: 40 } }),
-        /*#__PURE__*/React.createElement("div", { style: { position: 'fixed', left: '50%', bottom: 'max(12px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)',
-          width: 'min(92vw, 430px)', maxHeight: '56vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y',
-          background: 'rgba(24,19,46,0.97)', border: '1.5px solid #56499a', borderRadius: 16, zIndex: 41, padding: '4px 10px 10px',
-          boxShadow: '0 18px 50px rgba(0,0,0,.65)' } },
-          /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 2px 6px', borderBottom: '1.5px solid #3a3163' } },
-            /*#__PURE__*/React.createElement("span", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 700, color: '#f0edfb', fontFamily: "'Baloo 2','Source Sans 3',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.55)' } },
-              label),
-            /*#__PURE__*/React.createElement("button", { type: 'button', onClick: toggle, style: { width: 34, height: 34, borderRadius: 8, cursor: 'pointer', background: '#372e63', border: '1.5px solid #56499a', color: '#f0edfb', fontSize: 16, fontWeight: 700, lineHeight: 1, padding: 0 } }, "✕")),
-          optionRows.map(function (kids, i) {
-            return /*#__PURE__*/React.createElement("div", { key: i, style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '9px 2px', borderTop: i > 0 ? '1px solid #3a3163' : 'none' } }, kids);
-          })));
-    }
-    /* Collapsed stays a single horizontal row (label left, current pick
-       right) so all 7 categories fit in the rail without scrolling.
-       v2.3.722: label column FIXED-width (sized to the widest label,
-       "Beard") so every pill's summary starts at the same x. */
-    return /*#__PURE__*/React.createElement("button", { key: catKey, type: 'button', onClick: toggle, style: Object.assign({}, _pillBox, { cursor: 'pointer', padding: 0 }) },
-      /*#__PURE__*/React.createElement("div", { style: Object.assign({}, _pillLabel, { width: 80, borderRight: '1.5px solid #3a3163' }) }, labelKids),
-      /*#__PURE__*/React.createElement("div", { style: { flex: '1 1 auto', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', minWidth: 0, overflow: 'hidden' } }, summary));
-  };
+  /* v2.3.797: the collapsed-pill kit (_swOf/_miniThumb/_miniSwatch summary
+     previews, _chevron, _pillBox/_pillLabel chrome and the _apPill
+     accordion itself — the v2.3.710-735 rail era) is retired: the
+     vertical-flow redesign renders categories as text tabs with one
+     shared drawer, inline in the modal JSX.  The tile helpers above
+     (_apTileStyle/_checkBadge/_swatchTile/_thumbTile) carry over
+     unchanged. */
   var randomizeAppearance = function () {
     var rpick = function (c) { return c[Math.floor(Math.random() * c.length)].id; };
     var sk = rpick(SKIN_CATALOG); setSkin(sk); setSkinSel(sk);
@@ -1737,7 +1645,7 @@ export var BroTown = function BroTown(_ref0) {
         src.loop = true;
         gain.gain.value = 0;
         src.connect(gain);
-        gain.connect(BT_AUDIO.ctx.destination);
+        gain.connect(BT_AUDIO._out()); /* v2.3.786: through the master bus */
         src.start(0);
         slot.source = src;
         slot.gain = gain;
@@ -1836,1568 +1744,28 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('orientationchange', handleOrientationChange);
     };
   }, [showNameModal, showLogin]);
-  /* Initialize WebSocket connection to Durable Objects game server */
+  /* Initialize WebSocket connection to Durable Objects game server.
+     v2.3.784: the ~1,560-line effect body moved verbatim to
+     src/networking/wsClient.js setupWebSocket (REBUILD-PLAN Phase 5);
+     ctx carries the closure captures it used to take from this scope. */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
-    var S = stateRef.current;
-
-    /* ═══ DURABLE OBJECTS WEBSOCKET CLIENT ═══ */
-    /* Room selection: ?room=X URL query first (escape hatch for
-       testing / friend rendezvous), then GET /api/lobby for the
-       worker's auto-pick (first room under soft cap, mint fresh if
-       all full), else fall back to brotown-1 if the lobby fetch
-       fails.  Resolved once on initial connect, cached for reconnects
-       so we don't bounce between rooms mid-session. */
-    var WS_BASE = window.BROTOWN_WS_URL || 'wss://brotown-server.hemibroscommunity.workers.dev';
-    var API_BASE = WS_BASE.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
-    var WS_URL = null;
-    async function resolveRoom() {
-      try {
-        var p = new URLSearchParams(window.location.search);
-        var urlRoom = (p.get('room') || '').trim();
-        if (urlRoom) return urlRoom;
-      } catch (e) {}
-      try {
-        var res = await fetch(API_BASE + '/api/lobby');
-        if (res.ok) {
-          var j = await res.json();
-          if (j && j.room) return j.room;
-        }
-      } catch (e) {}
-      return 'brotown-1';
-    }
-    var ws = null;
-    var reconnectTimer = null;
-    var reconnectDelay = 1000;
-    function connect() {
-      if (!WS_URL) {
-        resolveRoom().then(function (room) {
-          WS_URL = WS_BASE + '/ws?room=' + encodeURIComponent(room);
-          S._currentRoom = room;
-          connect();
-        });
-        return;
-      }
-      try {
-        ws = new WebSocket(WS_URL);
-      } catch (e) {
-        scheduleReconnect();
-        return;
-      }
-      ws.onopen = function () {
-        var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI, _S$rpgL, _S$rpgLV, _S$rpgXP, _S$rpgUT;
-        S._realtimeStatus = 'connected';
-        reconnectDelay = 1000;
-        ws.send(JSON.stringify({
-          type: 'join',
-          id: S.myId,
-          name: S.myName,
-          /* v2.3.694: device correlation nonce {id, env} for the server's
-             multi-account / bot-fleet anomaly tracker.  Old workers ignore it. */
-          device: getDeviceNonce(),
-          /* Protocol v2 opt-in: the worker sends this session delta
-             player_state emits (only changed fields), per-entity
-             monster/node tick deltas, and the merged zone_state
-             message on zone change.  Old workers ignore the field and
-             keep sending full v1 payloads, which this client still
-             handles (the v1 cases below stay in place). */
-          protocolVersion: 2,
-          data: {
-            x: S.player.x,
-            y: S.player.y,
-            d: S.player.dir,
-            z: S.currentZone || 'town',
-            name: S.myName,
-            color: S.myColor,
-            avatar: S.myAvatar,
-            bt: S.bodyTorso || '#2563eb',
-            bl: S.bodyLegs || '#1e3a5f',
-            hw: getHeadwear(),
-            fh: getFacialHair(),
-            hr: getHair(),
-            sk: getSkin(),
-            hc: getHairColor(),
-            htc: getHatColor(),
-            fhc: getFacialHairColor(),
-            st: getShirt(),
-            stc: getShirtColor(),
-            eqc: getEquip('chest'),
-            eql: getEquip('legs'),
-            eqs: getEquip('shoulders'),
-            eqst: getEquip('shirt'),
-            pt: getPants(),
-            sh: getShoes(),
-            bs: S.bodySize || 'slim',
-            /* Bootstrap fields for server-authoritative coins / inventory
-               / lifeSkills.  Used only on a player's FIRST connection
-               to the GameRoom DO (when DO storage has no rpg:<playerId>
-               entry yet); the server persists this and ignores the
-               fields on subsequent connects, so localStorage tampering
-               only affects the first session. */
-            rpgCoins: ((_S$rpgC = S.rpg) === null || _S$rpgC === void 0 ? void 0 : _S$rpgC.coins) || 0,
-            rpgInventory: ((_S$rpgI = S.rpg) === null || _S$rpgI === void 0 ? void 0 : _S$rpgI.inventory) || {},
-            rpgLifeSkills: ((_S$rpgL = S.rpg) === null || _S$rpgL === void 0 ? void 0 : _S$rpgL.lifeSkills) || {},
-            rpgLevel: ((_S$rpgLV = S.rpg) === null || _S$rpgLV === void 0 ? void 0 : _S$rpgLV.level) || 1,
-            rpgXp: ((_S$rpgXP = S.rpg) === null || _S$rpgXP === void 0 ? void 0 : _S$rpgXP.xp) || 0,
-            rpgUnspentT2: ((_S$rpgUT = S.rpg) === null || _S$rpgUT === void 0 ? void 0 : _S$rpgUT.unspentT2) || 0,
-            rpgLv: ((_S$rpg = S.rpg) === null || _S$rpg === void 0 ? void 0 : _S$rpg.level) || 1,
-            rpgHp: ((_S$rpg2 = S.rpg) === null || _S$rpg2 === void 0 ? void 0 : _S$rpg2.hp) || 50,
-            rpgMaxHp: ((_S$rpg3 = S.rpg) === null || _S$rpg3 === void 0 ? void 0 : _S$rpg3.maxHp) || 50,
-            /* Server-authoritative HP store derived stats.  def + amuletHpRegen
-               + restoration are session-only on the worker (recomputed from the
-               stats_update event whenever recalcDerived runs).  These join
-               values are the initial seed before the first stats_update. */
-            rpgDef: (function () {
-              var _r = S.rpg || {};
-              var _at = (_r.armor && typeof _r.armor.tierMult === 'number') ? _r.armor.tierMult : 1;
-              return (_r.endurance || 0) * 0.5 + _at * 3;
-            })(),
-            rpgAmuletHpRegen: (function () {
-              var _ab = (S.rpg && S.rpg._amuletBonus) || null;
-              return (_ab && _ab.stat === 'hpRegen') ? (_ab.value || 0) : 0;
-            })(),
-            rpgAmuletStaminaRegen: (function () {
-              var _ab2 = (S.rpg && S.rpg._amuletBonus) || null;
-              return (_ab2 && _ab2.stat === 'staminaRegen') ? (_ab2.value || 0) : 0;
-            })(),
-            rpgRestoration: (S.rpg && typeof S.rpg.restoration === 'number') ? S.rpg.restoration : 0,
-            /* Stamina + mana pools — slice 1b bootstrap. */
-            rpgStamina: (S.rpg && typeof S.rpg.stamina === 'number') ? S.rpg.stamina : 100,
-            rpgMaxStamina: (S.rpg && typeof S.rpg.maxStamina === 'number') ? S.rpg.maxStamina : 100,
-            rpgMana: (S.rpg && typeof S.rpg.mana === 'number') ? S.rpg.mana : 100,
-            rpgMaxMana: (S.rpg && typeof S.rpg.maxMana === 'number') ? S.rpg.maxMana : 100,
-            /* Raw stats bootstrap (slice v2.3.79).  Worker clamps each
-               to level * 10 + 20 on first connect; subsequent connects
-               read from DO storage rather than this join payload. */
-            rpgPower: (S.rpg && typeof S.rpg.power === 'number') ? S.rpg.power : 0,
-            rpgVitality: (S.rpg && typeof S.rpg.vitality === 'number') ? S.rpg.vitality : 0,
-            rpgEndurance: (S.rpg && typeof S.rpg.endurance === 'number') ? S.rpg.endurance : 0,
-            rpgAgility: (S.rpg && typeof S.rpg.agility === 'number') ? S.rpg.agility : 0,
-            rpgMind: (S.rpg && typeof S.rpg.mind === 'number') ? S.rpg.mind : 0,
-            rpgFerocity: (S.rpg && typeof S.rpg.ferocity === 'number') ? S.rpg.ferocity : 0,
-            rpgElementalMastery: (S.rpg && typeof S.rpg.elementalMastery === 'number') ? S.rpg.elementalMastery : 0,
-            rpgFortification: (S.rpg && typeof S.rpg.fortification === 'number') ? S.rpg.fortification : 0,
-            /* Equipment slots bootstrap (slice 12).  Worker stores
-               these as opaque objects; stash truncated to cap server-
-               side. */
-            rpgWeapon: (S.rpg && S.rpg.weapon) || null,
-            rpgRangedWeapon: (S.rpg && S.rpg.rangedWeapon) || null,
-            rpgStaffWeapon: (S.rpg && S.rpg.staffWeapon) || null,
-            rpgActiveSlot: (S.rpg && S.rpg.activeSlot) || 'melee',
-            rpgArmor: (S.rpg && S.rpg.armor) || null,
-            rpgShield: (S.rpg && S.rpg.shield) || null,
-            rpgAmulet: (S.rpg && S.rpg.amulet) || null,
-            rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash : [],
-            /* Quest state bootstrap (slice 17). */
-            rpgQuests: (S.rpg && S.rpg._quests) || {},
-            rpgQuestFlags: (S.rpg && S.rpg._questFlags) || {},
-            rpgQuestKills: (S.rpg && S.rpg._questKills) || {},
-            rpgAchievementPoints: (S.rpg && typeof S.rpg.achievementPoints === 'number') ? S.rpg.achievementPoints : 0
-          }
-        }));
-        var welcomeMsg = {
-          id: 'sys-' + Date.now(),
-          name: '',
-          text: S.myName + ' joined Bro Town!',
-          color: '',
-          ts: Date.now(),
-          system: true
-        };
-        S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [welcomeMsg]);
-        setChatLog(_toConsumableArray(S.chatLog));
-      };
-      ws.onmessage = function (evt) {
-        var _wsStart = performance.now();
-        var msg;
-        try {
-          msg = JSON.parse(evt.data);
-        } catch (_unused1) {
-          return;
-        }
-        /* Tail timing — wrap the rest of the body and log + push to
-           perfTracker when this handler exceeds 5 ms.  Server sends
-           ticks at 30 Hz; if each handler call takes 30+ ms we monopolise
-           the main thread between RAF callbacks (= the rhythmic outside-
-           the-RAF spike pattern we captured in v2.1.65). */
-        var _wsType = msg.type;
-        var _wsDone = function _wsDone() {
-          var _wsMs = performance.now() - _wsStart;
-          if (!ws._slowLog) ws._slowLog = { lastT: 0, worst: 0, worstType: '' };
-          if (_wsMs > 5) {
-            if (_wsMs > ws._slowLog.worst) { ws._slowLog.worst = _wsMs; ws._slowLog.worstType = _wsType; }
-            if (window.perfTracker && window.perfTracker.recordExternal) {
-              window.perfTracker.recordExternal('ws.' + _wsType, _wsMs);
-            }
-          }
-          if (performance.now() - ws._slowLog.lastT > 500 && ws._slowLog.worst > 5) {
-             
-            console.warn('[bt-ws-slow]', { ms: +ws._slowLog.worst.toFixed(1), type: ws._slowLog.worstType });
-             
-            ws._slowLog.lastT = performance.now();
-            ws._slowLog.worst = 0;
-            ws._slowLog.worstType = '';
-          }
-        };
-        try {
-        switch (msg.type) {
-          case 'tick':
-            {
-              // §16.9 — Process batched player positions
-              if (msg.players) {
-                for (var _i33 = 0, _Object$entries5 = Object.entries(msg.players); _i33 < _Object$entries5.length; _i33++) {
-                  var _Object$entries5$_i = _slicedToArray(_Object$entries5[_i33], 2),
-                    pid = _Object$entries5$_i[0],
-                    data = _Object$entries5$_i[1];
-                  if (pid === S.myId) continue;
-                  if (S.others[pid]) {
-                    S.others[pid].x = data.x;
-                    S.others[pid].y = data.y;
-                    S.others[pid]._serverX = data.x;
-                    S.others[pid]._serverY = data.y;
-                    S.others[pid].dir = data.d;
-                    if (data.f) S.others[pid]._renderFacing = data.f;
-                    S.others[pid].zone = data.z;
-                    S.others[pid]._vx = (data.vx || 0) / 100;
-                    S.others[pid]._vy = (data.vy || 0) / 100;
-                    S.others[pid]._lastUpdate = Date.now();
-                    /* v2.3.599: live equip -> the renderer reads other.equip
-                       (nested), so rebuild it from the broadcast eqc/eql/eqs
-                       whenever present, keeping armour on/off in sync. */
-                    if (data.eqc !== undefined || data.eql !== undefined || data.eqs !== undefined || data.eqst !== undefined) {
-                      var _oe5 = S.others[pid].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' };
-                      S.others[pid].equip = {
-                        chest: data.eqc !== undefined ? (data.eqc || 'none') : _oe5.chest,
-                        legs: data.eql !== undefined ? (data.eql || 'none') : _oe5.legs,
-                        shoulders: data.eqs !== undefined ? (data.eqs || 'none') : _oe5.shoulders,
-                        shirt: data.eqst !== undefined ? (data.eqst || 'none') : _oe5.shirt,
-                      };
-                    }
-                    /* Snapshot interpolation — buffer positions + velocity */
-                    if (!S.others[pid]._posBuffer) S.others[pid]._posBuffer = [];
-                    S.others[pid]._posBuffer.push({
-                      x: data.x, y: data.y,
-                      vx: (data.vx || 0) / 100, vy: (data.vy || 0) / 100,
-                      t: performance.now()
-                    });
-                    if (S.others[pid]._posBuffer.length > 20) S.others[pid]._posBuffer.shift();
-                  }
-                }
-              }
-              // §16.10 — Process batched game events
-              if (msg.events) {
-                for (var ei = 0; ei < msg.events.length; ei++) {
-                  var _evt = msg.events[ei];
-                  var payload = _evt.payload || _evt;
-                  payload.id = payload.id || _evt.from;
-                  processGameEvent(_evt.type, payload, S, _gameEventDeps);
-                }
-              }
-              // Server gather-node state deltas (alive/respawnAt only;
-              // position + type + tierLvl came once at state_sync /
-              // zone_nodes).
-              if (msg.nodes && S._serverGatherNodes && S.gatherNodes) {
-                var myZoneN = S.currentZone || 'town';
-                var zoneNodeData = msg.nodes[myZoneN];
-                if (zoneNodeData) {
-                  for (var nni = 0; nni < zoneNodeData.length; nni++) {
-                    var nnd = zoneNodeData[nni];
-                    var localN = S.gatherNodes.find(function (gn) { return gn.id === nnd.id; });
-                    if (localN) {
-                      localN.alive = !!nnd.alive;
-                      localN.respawnAt = nnd.respawnAt || 0;
-                      if (nnd.alive) localN.hp = localN.maxHp;
-                    }
-                  }
-                }
-              }
-
-              // Server monster position/HP updates
-              if (msg.monsters && S._serverMonsters && S.monsters) {
-                var myZone = S.currentZone || 'town';
-                var zoneData = msg.monsters[myZone];
-                if (zoneData) {
-                  for (var mi = 0; mi < zoneData.length; mi++) {
-                    var md = zoneData[mi];
-                    var localM = S.monsters.find(function(m) { return m.id === md.id; });
-                    if (localM) {
-                      /* Client-authoritative variants (e.g. fireGoblin)
-                         keep their locally-simulated position; server
-                         position is ignored.  HP / alive still sync.
-                         v2.3.223: also skip while local knockback is
-                         active so the visual bump on server-driven
-                         variants (mummy / skeleton) doesn't get
-                         instantly stomped by the next server tick. */
-                      var _kbActive = localM._kbUntil && Date.now() < localM._kbUntil;
-                      if (!usesClientSideMovement(localM) && !_kbActive) {
-                        /* Stamp _lastPosChangeAt whenever the server's
-                           rounded position differs from our cached
-                           x/y.  Slow server-driven variants (mummy at
-                           0.4 spd) only see integer x changes every
-                           ~44 ms (round-trips below the 0.5-px interp
-                           threshold), so renderX-delta detection in
-                           the renderer is sparse + drops moving=false
-                           between bumps.  This stamp gives the
-                           renderer a direct "server pushed a new
-                           position this recently" signal. */
-                        if (md.x !== localM.x || md.y !== localM.y) {
-                          localM._lastPosChangeAt = Date.now();
-                        }
-                        localM.x = md.x;
-                        localM.y = md.y;
-                      }
-                      localM.curHp = md.hp;
-                      /* Don't overwrite maxHp — it stays at the spawn value */
-                      if (md.alive && !localM.alive) {
-                        /* Monster respawned -- clear all per-life
-                           transient flags so the next death replays
-                           the loot drop, SFX, stuck arrows, and the
-                           death animation cleanly. */
-                        localM.alive = true;
-                        localM.renderX = md.x;
-                        localM.renderY = md.y;
-                        localM._stuckArrows = [];
-                        localM._slimeDeathStart = null;
-                        localM._snowmanDeathStart = null;
-                        localM._lootDropped = false;
-                        localM._deathSfxPlayed = false;
-                        /* Revert any mid-fight variant transform.  A
-                           desert mummy that died as a skeleton needs to
-                           come back as a mummy so the first 50% HP
-                           still triggers the bandage-shred animation
-                           next life.  Server already resets m.variant
-                           on its side but doesn't broadcast that field
-                           per tick, so the client uses the spawn
-                           archetype it stashed at state_sync time. */
-                        if (localM._spawnArchetype && localM.archetype !== localM._spawnArchetype) {
-                          localM.archetype = localM._spawnArchetype;
-                          localM.type = localM._spawnArchetype;
-                          if (localM.arch !== undefined) localM.arch = localM._spawnArchetype;
-                          localM._transformStart = null;
-                          localM._transformHoldMs = 0;
-                          localM._transformFromArch = null;
-                          var _sv = MONSTER_VARIANTS[localM._spawnArchetype];
-                          if (_sv && _sv.spd != null) localM.spd = _sv.spd;
-                        }
-                      }
-                      if (!md.alive && localM.alive) {
-                        /* Monster died (from another player's kill or
-                           server-driven mechanics).  Drop the remnant
-                           pile here as the canonical alive -> dead
-                           transition for server-managed monsters --
-                           m.curHp -= dmg in the local hit paths is
-                           gated on !S._serverMonsters so those never
-                           fire in MP, leaving this tick branch (and
-                           the monster_kill handler) as the only
-                           places that know the kill happened. */
-                        localM.alive = false;
-                        if (!localM._lootDropped && S.groundLoot && isRemnantSkull(localM.type)) {
-                          localM._lootDropped = true;
-                          var _shardA = rollMonsterShard(S.currentZone);
-                          S.groundLoot.push({
-                            x: (localM.x || localM.renderX || 0) + (Math.random() - 0.5) * 12,
-                            y: (localM.y || localM.renderY || 0) + (Math.random() - 0.5) * 12,
-                            coins: 0,
-                            xp: 0,
-                            skull: localM.type,
-                            skullEmoji: '🦴',
-                            ts: Date.now(),
-                            shard: _shardA,
-                          });
-                        }
-                        if (!localM._deathSfxPlayed) {
-                          localM._deathSfxPlayed = true;
-                          try { BT_AUDIO.monsterDeath(localM.archetype || localM.type); } catch (e) {}
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              break;
-            }
-          case 'state_sync':
-            {
-              var others = {};
-              for (var _i34 = 0, _Object$entries6 = Object.entries(msg.players); _i34 < _Object$entries6.length; _i34++) {
-                var _Object$entries6$_i = _slicedToArray(_Object$entries6[_i34], 2),
-                  _pid = _Object$entries6$_i[0],
-                  _data = _Object$entries6$_i[1];
-                if (_pid === S.myId) continue;
-                others[_pid] = {
-                  x: _data.x || 0,
-                  y: _data.y || 0,
-                  _serverX: _data.x || 0,
-                  _serverY: _data.y || 0,
-                  renderX: _data.x || 0,
-                  renderY: _data.y || 0,
-                  name: _data.name || 'Anon',
-                  color: _data.color || '#888',
-                  avatar: _data.avatar || null,
-                  dir: _data.d || 'down',
-                  bt: _data.bt || '#2563eb',
-                  bl: _data.bl || '#1e3a5f',
-                  headwear: _data.hw || null,
-                  facialhair: _data.fh || null,
-                  hair: _data.hr || null,
-                  skin: _data.sk || null,
-                  hairColor: _data.hc || null,
-                  hatColor: _data.htc || null,
-                  facialHairColor: _data.fhc || null,
-                  shirt: _data.st || null,
-                  shirtColor: _data.stc || null,
-                  equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
-                    /* v2.3.756: layered shirt; old clients send no eqst -> infer from their legacy shirt style */
-                    shirt: _data.eqst !== undefined ? (_data.eqst || 'none') : ((_data.st && _data.st !== 'none') ? 'tshirt' : 'none') },
-                  pants: _data.pt || null,
-                  shoes: _data.sh || null,
-                  rpgLv: _data.rpgLv || 1,
-                  rpgHp: _data.rpgHp || 50,
-                  rpgMaxHp: _data.rpgMaxHp || 50,
-                  bodySize: _data.bs || 'slim',
-                  zone: _data.z || 'town'
-                };
-              }
-              S.others = others;
-              setPlayerCount(msg.playerCount || Object.keys(others).length + 1);
-              /* Load server monsters when present — shared monster
-                 instances across all players, GDD §7 damage-share
-                 active.  Empty list means the server has no monsters
-                 for this zone (town, or a dungeon the server doesn't
-                 model); fall back to client-local. */
-              if (msg.monsters && msg.monsters.length > 0) {
-                S._serverMonsters = true;
-                S.monsters = msg.monsters.map(function(m) {
-                  var local = _objectSpread(_objectSpread({}, m), {}, {
-                    archetype: m.arch, type: m.arch,
-                    curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-                    alive: m.alive, statuses: {}, _hitThisSwing: false,
-                    _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
-                    _stuckArrows: [],
-                  });
-                  /* Apply per-zone variant skin (see monsterVariants.js).
-                     Maps ember fodder -> fireGoblin so the renderer + AI
-                     route to the variant sheets without any inline
-                     zone/archetype check elsewhere in the codebase. */
-                  applyZoneVariant(local, S.currentZone);
-                  /* Remember the post-variant archetype so the respawn
-                     branch in the tick handler can revert a transformed
-                     monster (mummy -> skeleton) back to its spawn form.
-                     Server resets m.variant on respawn but doesn't
-                     broadcast that field per tick, so the client needs
-                     its own source of truth here. */
-                  local._spawnArchetype = local.archetype;
-                  return local;
-                });
-              } else {
-                S._serverMonsters = false;
-              }
-              /* Server-authoritative gather nodes — thicken the worker's
-                 minimal {id,nodeType,x,y,tierLvl,alive,respawnAt} payload
-                 into the full client node shape using createGatherNode
-                 with a forced tier lvl (so two clients agree on tier
-                 per server node id).  msg.monsterZone is the join zone. */
-              if (msg.nodes) {
-                S._serverGatherNodes = true;
-                var _nzone = msg.monsterZone || S.currentZone;
-                var _curZoneCfgN = ZONES[S.currentZone];
-                /* Safe zones (town, farm) never have resource nodes --
-                   ignore any server-sent set regardless of source so
-                   stale snapshots can't leak trees/ores into town
-                   (v2.3.136 bug report). */
-                if (_curZoneCfgN && _curZoneCfgN.safe) {
-                  S.gatherNodes = [];
-                } else if (_nzone && _nzone !== S.currentZone) {
-                  /* Stale snapshot for a different zone -- ignore. */
-                } else {
-                  S.gatherNodes = msg.nodes.map(function (n) {
-                    var local = createGatherNode(_nzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
-                    local.id = n.id;
-                    local.alive = !!n.alive;
-                    local.respawnAt = n.respawnAt || 0;
-                    return local;
-                  });
-                }
-              }
-              /* Server-authoritative ground loot — server now owns the
-                 pile list, validates pickups, and emits private
-                 loot_credit events with the picker's authorized share.
-                 Setting S._serverLoot disables the legacy client-local
-                 loot push in the monster_kill handler. */
-              if (msg.loot) {
-                S._serverLoot = true;
-                var _curZoneCfgL = ZONES[S.currentZone];
-                var _lzone = msg.zone || msg.monsterZone;
-                if (_curZoneCfgL && _curZoneCfgL.safe) {
-                  /* Safe zones never have loot piles -- drop stale
-                     payloads from previous-zone fights (v2.3.136). */
-                  S.groundLoot = [];
-                } else if (_lzone && _lzone !== S.currentZone) {
-                  /* Stale loot for a different zone -- ignore. */
-                } else {
-                  S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
-                }
-              }
-              break;
-            }
-          case 'zone_loot':
-            {
-              _applyZoneLootMsg(msg, S);
-              break;
-            }
-          case 'zone_state':
-            {
-              /* Protocol v2: merged zone-change snapshot.  One message
-                 carrying what v1 split across zone_monsters +
-                 zone_nodes + zone_loot. */
-              _applyZoneMonstersMsg(msg, S);
-              _applyZoneNodesMsg(msg, S);
-              _applyZoneLootMsg(msg, S);
-              break;
-            }
-          case 'loot_credit':
-            {
-              /* Private message: server is granting us the share + (if
-                 we were first to pick up) the one-of inventory drop.
-                 _applyLootCredit handles the popup + SFX + local pile
-                 despawn.  The actual coin/inventory mutation rides on
-                 the player_state event that immediately follows. */
-              if (msg.payload) _applyLootCredit(msg.payload, S);
-              break;
-            }
-          case 'lifesteal_credit':
-            {
-              /* Worker tells us a melee-kill heal landed -- render the +N HP
-                 floater (the HP itself rides on the player_state push).
-                 v2.3.462: do NOT gate on payload.playerId === S.myId -- this is
-                 direct-sent to the killer's own ws (server session.id != client
-                 S.myId, which silently dropped every heal); combat_credit
-                 (same direct-send path) doesn't gate either. */
-              if (msg.payload && msg.payload.refund > 0 && S.dmgNumbers && S.player) {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 40,
-                  text: '+' + msg.payload.refund + ' HP',
-                  color: '#3dd497', ts: Date.now(),
-                });
-              } else if (msg.payload && S.dmgNumbers && S.player) {
-                /* v2.3.701: surface the server's zero-refund reason instead of
-                   dropping it silently (user report: 'lifesteal not working').
-                   Most common legit reason: 'no-this-mon' after a fully
-                   BLOCKED fight -- the server skips attacks while shielded,
-                   so there's no damage to refund (by design).  The muted
-                   floater + console line make the gate diagnosable in play. */
-                try { console.log('[lifesteal] refund 0:', JSON.stringify(msg.payload)); } catch (e) {}
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 40,
-                  text: 'lifesteal: ' + (msg.payload.reason || 'no heal'),
-                  color: '#8890b8', ts: Date.now(),
-                });
-              }
-              break;
-            }
-          case 'loot_pickup_rejected':
-            {
-              /* v2.3.260 diagnostic: server tells us why a pickup
-                 silently failed (recipient mismatch, out-of-range,
-                 already-claimed, etc.).  Renders a small floater +
-                 console.log so the user can see which gate is firing
-                 instead of guessing why a pile won't grab.  Drop once
-                 the underlying issue is identified. */
-              if (!msg.payload || !S || !S.player) break;
-              try { console.log('[loot_pickup_rejected]', msg.payload, 'myId=', S.myId); } catch (e) {}
-              if (S.dmgNumbers) {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 24,
-                  text: 'pickup: ' + (msg.payload.reason || 'unknown'),
-                  color: '#f5c542', ts: Date.now(),
-                });
-              }
-              break;
-            }
-          case 'player_state':
-            {
-              /* Server-authoritative rpg state snapshot.  OVERWRITE
-                 local R.coins / R.inventory / R.lifeSkills with the
-                 worker's totals -- this is the closure for cheats
-                 that try to modify the local value (they get stomped
-                 on the next sync).  Fires on join (bootstrap) and
-                 after every server-validated rpg-mutating action
-                 (currently loot pickup + harvest; future: sales /
-                 quest / etc.). */
-              if (!msg.payload || !S.rpg) break;
-              if (typeof msg.payload.coins === 'number') {
-                S.rpg.coins = msg.payload.coins;
-              }
-              if (msg.payload.inventory && typeof msg.payload.inventory === 'object') {
-                S.rpg.inventory = _objectSpread({}, msg.payload.inventory);
-              }
-              if (msg.payload.lifeSkills && typeof msg.payload.lifeSkills === 'object') {
-                /* Preserve client-only sub-fields (resources / gems /
-                   farmPlots / pets / etc.) by spreading the server's
-                   per-skill objects on top of the existing R.lifeSkills.
-                   Server owns woodcutting / fishing / mining today; the
-                   non-XP-bearing maps stay client-side until their own
-                   migrations land. */
-                if (!S.rpg.lifeSkills) S.rpg.lifeSkills = {};
-                Object.keys(msg.payload.lifeSkills).forEach(function (k) {
-                  /* v2.3.767: preserve the VALUE SHAPE.  _objectSpread({},v)
-                     turned ARRAYS into plain objects ({0:..,1:..}) and null
-                     into {} -- the server's lifeSkills echo (sent in the
-                     player_state flush after every monster kill) corrupted
-                     pets[] into an object, and the achievements timer's
-                     (pets || []).filter then threw an uncaught TypeError
-                     EVERY interval -- the multiplayer 'black world / kicked'
-                     instability (found by the two-session headless repro). */
-                  var _v = msg.payload.lifeSkills[k];
-                  /* v2.3.768: the SERVER's stored copy can itself carry the
-                     corrupted shape (it bootstrapped from a pre-fix client's
-                     join payload and echoes it forever) -- heal known-array
-                     keys on the way in, not just locally-persisted saves. */
-                  if (k === 'pets' && _v && !Array.isArray(_v) && typeof _v === 'object') _v = Object.values(_v);
-                  S.rpg.lifeSkills[k] = Array.isArray(_v) ? _v.slice()
-                    : (_v && typeof _v === 'object') ? _objectSpread({}, _v)
-                    : _v;
-                });
-              }
-              /* Combat XP / level / unspent T2 stat points -- worker
-                 applies on monster_kill (and persists), client mirrors
-                 here.  A modified client that sets R.xp = 999999 will
-                 get stomped on the next kill's player_state.
-                 v2.3.154: the worker now uses the BP gate (per the
-                 build-points-gate-server spec), so its level updates
-                 only arrive after the player has earned 5 BP. Safe to
-                 accept verbatim again; the v2.3.153 bootstrap-only
-                 workaround came out. */
-              if (typeof msg.payload.level === 'number') {
-                S.rpg.level = msg.payload.level;
-              }
-              if (typeof msg.payload.xp === 'number') {
-                S.rpg.xp = msg.payload.xp;
-              }
-              if (typeof msg.payload.unspentT2 === 'number') {
-                S.rpg.unspentT2 = msg.payload.unspentT2;
-              }
-              /* HP / stamina / mana store -- worker applies damage,
-                 ability costs, shield drain, regen, level-up + respawn
-                 resets.  Client OVERWRITES on every player_state so a
-                 DevTools R.hp/stamina/mana = 99999 cheat gets stomped
-                 on the next sync.
-                 LIFESTEAL TEST MODE (companion to the v2.3.132 client
-                 regen pause): only let HP go DOWN from server. This
-                 stops server-side regen ticks from undoing the C1
-                 melee-kill heal (which is applied client-side, so the
-                 next player_state would otherwise stomp it back down).
-                 Also-stops in-combat / OOC regen for the same reason.
-                 Trade-off: server-side heal sources (cooking, level-up
-                 full restore, respawn) are blocked until the player
-                 next takes damage, at which point HP resyncs. */
-              /* v2.3.237: worker now mirrors getArmorHp() per the
-                 t1-t2-stat-redesign-server spec.  The v2.3.231 client
-                 fold is retired -- server's hp / maxHp are authoritative
-                 and already include the armor bonus. */
-              if (typeof msg.payload.hp === 'number') {
-                S.rpg.hp = msg.payload.hp;
-              }
-              if (typeof msg.payload.maxHp === 'number') {
-                S.rpg.maxHp = msg.payload.maxHp;
-              }
-              if (typeof msg.payload.stamina === 'number') {
-                S.rpg.stamina = msg.payload.stamina;
-              }
-              if (typeof msg.payload.maxStamina === 'number') {
-                S.rpg.maxStamina = msg.payload.maxStamina;
-              }
-              if (typeof msg.payload.mana === 'number') {
-                S.rpg.mana = msg.payload.mana;
-              }
-              if (typeof msg.payload.maxMana === 'number') {
-                S.rpg.maxMana = msg.payload.maxMana;
-              }
-              /* Food buff timers -- worker is authoritative for the
-                 endsAt timestamps so a cheater can't extend their
-                 _dmgBuff by writing it locally.  Mirror onto the
-                 client's S._dmgBuff / _regenBuff / etc. flags so the
-                 existing client-side UI + math reads the server values. */
-              if (msg.payload._buffs && typeof msg.payload._buffs === 'object') {
-                var _sb = msg.payload._buffs;
-                if (typeof _sb.damage === 'number') S._dmgBuff = _sb.damage;
-                if (typeof _sb.regen === 'number') S._regenBuff = _sb.regen;
-                if (typeof _sb.resist === 'number') S._resistBuff = _sb.resist;
-                if (typeof _sb.spd === 'number') S._spdBuff = _sb.spd;
-                if (typeof _sb.hp === 'number') S._hpBuff = _sb.hp;
-                if (typeof _sb.mana === 'number') S._manaBuff = _sb.mana;
-              }
-              /* Equipment slots -- worker is the canonical owner.  An
-                 equip_request swap, marketplace buy, or future server-
-                 side crafting result lands here.  Note: rangedWeapon /
-                 staffWeapon may legitimately be undefined in payload
-                 (e.g., a player who never bought a bow); only assign
-                 when the field is present so we don't overwrite a
-                 freshly-acquired weapon with null. */
-              if ('weapon' in msg.payload) S.rpg.weapon = msg.payload.weapon;
-              if ('rangedWeapon' in msg.payload) S.rpg.rangedWeapon = msg.payload.rangedWeapon;
-              if ('staffWeapon' in msg.payload) S.rpg.staffWeapon = msg.payload.staffWeapon;
-              /* activeSlot: server's value applies only when the user
-                 hasn't explicitly cycled in this session.  Without this
-                 guard, ANY stale persisted activeSlot on the worker
-                 (e.g., set_active_slot lost to a race or pipeline hop)
-                 reverts the player's cycled slot the moment a combat
-                 kill / loot pickup / credit event fires player_state.
-                 Client trusts itself once the user has touched the
-                 cycle gesture. */
-              if (typeof msg.payload.activeSlot === 'string' && !S._userCycledSlot) {
-                S.rpg.activeSlot = msg.payload.activeSlot;
-              }
-              var _armorChanged = false;
-              if ('armor' in msg.payload) { S.rpg.armor = msg.payload.armor; _armorChanged = true; }
-              /* v2.3.189: never let the server stomp the default wood
-                 shield. Pre-v2.3.188 saves on the worker may have
-                 shield=null, which would erase the client default
-                 added in the load-time migration. If the server's
-                 value is falsy, keep whatever the client has. */
-              if ('shield' in msg.payload && msg.payload.shield) {
-                S.rpg.shield = msg.payload.shield;
-              }
-              if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
-              /* v2.3.227 (Phase 1): armor swaps change maxHp via
-                 getArmorHp() in recalcDerived.  Recompute so HP stays
-                 consistent after server-echoed equipment changes. */
-              if (_armorChanged) recalcDerived(S.rpg);
-              if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
-              /* Quest state mirror (slice 17).  Worker is authoritative
-                 for chain progression + reward grants.  Quest completion
-                 criteria (kill counts / item drops / NPC dialog) still
-                 run client-side. */
-              if (msg.payload._quests && typeof msg.payload._quests === 'object') S.rpg._quests = msg.payload._quests;
-              if (msg.payload._questFlags && typeof msg.payload._questFlags === 'object') S.rpg._questFlags = msg.payload._questFlags;
-              if (msg.payload._questKills && typeof msg.payload._questKills === 'object') S.rpg._questKills = msg.payload._questKills;
-              if (typeof msg.payload.achievementPoints === 'number') S.rpg.achievementPoints = msg.payload.achievementPoints;
-              setRpgState(_objectSpread({}, S.rpg));
-              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
-              break;
-            }
-          case 'player_died':
-            {
-              /* Server detected our HP hit 0.  Drives the death animation
-                 + screen shake + gold-loss popup.  Server owns the respawn
-                 timer; we wait for player_respawned to teleport home and
-                 player_state to restore hp/stamina/mana.  Local R.hp
-                 is no longer the trigger (worker authoritative this slice). */
-              if (!S.rpg || S._dying) break;
-              S._dying = true;
-              if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
-              S.rpg._compStats.deaths++;
-              S._deathStart = Date.now();
-              /* Gold penalty mirrors the legacy local-death path
-                 (worker doesn't apply this yet; client is still the
-                 source for R.coins this slice will not change). */
-              var _goldLost3 = Math.floor((S.rpg.coins || 0) * DEATH_GOLD_PENALTY);
-              if (_goldLost3 > 0 && S.channel) {
-                /* Client still mutates R.coins for the gold-loss popup;
-                   server tracks coins via the loot path, so its view
-                   will drift on death until coins-on-death migrates.
-                   Note: the player_state on respawn does NOT re-apply
-                   this penalty, so the cheat surface here is the same
-                   as it was before this slice. */
-                S.rpg.coins = Math.max(0, S.rpg.coins - _goldLost3);
-              }
-              /* Death particles + audio + popup. */
-              for (var _dp3 = 0; _dp3 < 25; _dp3++) {
-                var _dpA3 = _dp3 / 25 * Math.PI * 2;
-                S.hitParticles.push({
-                  x: S.player.x, y: S.player.y,
-                  vx: Math.cos(_dpA3) * (2 + Math.random() * 4),
-                  vy: Math.sin(_dpA3) * (2 + Math.random() * 4) - 1,
-                  life: 1.0, color: ['#ff5e6c', '#cc2233', '#ff8888'][Math.floor(Math.random() * 3)], size: 2 + Math.random() * 3
-                });
-              }
-              S.screenShake = 10;
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 40,
-                text: 'YOU DIED', color: '#ff5e6c', ts: Date.now()
-              });
-              if (_goldLost3 > 0) S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 55,
-                text: '-' + _goldLost3 + 'G', color: '#fbbf24', ts: Date.now()
-              });
-              BT_AUDIO.deathBoom();
-              /* Tell the room we died so remote clients render a dead
-                 pose at our last position.  Server already knows. */
-              if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
-              if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: S.player.x, y: S.player.y } });
-              setRpgState(_objectSpread({}, S.rpg));
-              break;
-            }
-          case 'player_respawned':
-            {
-              /* Server's respawn timer elapsed -- teleport to town and
-                 clear local death state.  hp/stamina/mana are restored
-                 server-side and arrive via the player_state that fires
-                 alongside this event. */
-              S.currentZone = (msg.payload && msg.payload.zone) || 'town';
-              updateZoneDimensions(S.currentZone);
-              BT_AUDIO.startZoneAmbient(S.currentZone);
-              S.map = generateZoneMap(S.currentZone);
-              S.monsters = [];
-              S.gatherNodes = [];
-              S.player.x = (ZONES[S.currentZone] ? ZONES[S.currentZone].w / 2 : 16) * TILE;
-              S.player.y = (ZONES[S.currentZone] ? ZONES[S.currentZone].h / 2 : 16) * TILE;
-              S.respawnTimer = Date.now() + 3000;
-              S._deathStart = 0;
-              S._dying = false;
-              /* Tell the server our new position + zone + dead=false.
-                 Other clients clear our _isDead via the broadcast. */
-              if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
-              if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
-              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
-              break;
-            }
-          case 'harvest_credit':
-            {
-              /* Server's non-deterministic feedback for a harvest the
-                 client just requested via node_strike.  Carries the
-                 shard roll outcome (server-owned RNG) and the level-up
-                 confirmation; the client uses these for the +Shard
-                 popup and the "Skill Level N!" popup.  Deterministic
-                 popups ("PERFECT!", "+Pine ×2", "+10 Woodcutting XP")
-                 still fire client-side at apply time because the
-                 client knows accuracy + tier and matches the server's
-                 formula. */
-              if (!msg.payload || !S.rpg) break;
-              var hc = msg.payload;
-              if (hc.shard) {
-                var _pickedHShard = shardByKey(hc.shard);
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 54,
-                  text: '+ ' + (_pickedHShard ? _pickedHShard.label : 'Shard'),
-                  color: (_pickedHShard && _pickedHShard.color) || '#cce6ff',
-                  ts: Date.now(),
-                });
-              }
-              if (hc.leveled && hc.skillName) {
-                var _sklEmoji = hc.skillName === 'fishing' ? '🎣' : hc.skillName === 'woodcutting' ? '🪓' : '⛏';
-                var _sklLabel = hc.skillName.charAt(0).toUpperCase() + hc.skillName.slice(1);
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 50,
-                  text: _sklEmoji + ' ' + _sklLabel + ' Level ' + (hc.newLevel || '?') + '!',
-                  color: '#f5c542', ts: Date.now(),
-                });
-                try { BT_AUDIO.collect(); } catch (e) {}
-              }
-              break;
-            }
-          case 'combat_credit':
-            {
-              /* Server's combat-XP grant from a monster kill we
-                 contributed to.  Carries the authoritative xpAmt + the
-                 level-up confirmation.  The deterministic "+N XP"
-                 popup still predicts client-side at monster_kill time
-                 (same payload.xp * shares formula) so the player gets
-                 instant feedback; this handler is for level-up only.
-                 Combat-level regen (HP / stamina / mana to max) stays
-                 client-side until its own slice migrates those pools
-                 to the server. */
-              if (!msg.payload || !S.rpg) break;
-              var cc = msg.payload;
-              if (cc.leveled) {
-                setLevelUpMsg({ kind: 'combat', level: cc.newLevel || ((S.rpg && S.rpg.level) || 1), ts: Date.now() });
-                try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
-                /* Pool restore on level-up: worker resets hp/stamina/mana
-                   = max inside _addCombatXp and emits player_state alongside
-                   this combat_credit, so R.* lands at max from the network.
-                   No local write needed in MP. */
-              }
-              break;
-            }
-          case 'stat_allocated':
-            {
-              /* Server confirmed our stat_allocate request.  Apply
-                 R[stat]++ locally, refresh the str/def/vit/spd/lck
-                 aliases, and run recalcDerived so the dashboard
-                 numbers update.  unspentT2 also mirrored here (the
-                 player_state right after carries it too, but the
-                 explicit value avoids any race). */
-              if (!msg.payload || !S.rpg) break;
-              var sa = msg.payload;
-              if (!sa.stat) break;
-              var Rsa = S.rpg;
-              Rsa[sa.stat] = (Rsa[sa.stat] || 0) + 1;
-              Rsa.str = Rsa.power;
-              Rsa.def = Rsa.fortification;
-              Rsa.vit = Rsa.vitality;
-              Rsa.spd = Rsa.agility;
-              Rsa.lck = Rsa.ferocity;
-              if (typeof sa.newUnspentT2 === 'number') {
-                Rsa.unspentT2 = sa.newUnspentT2;
-              }
-              Rsa.unspentPts = (Rsa.unspentT1 || 0) + (Rsa.unspentT2 || 0);
-              recalcDerived(Rsa);
-              setRpgState(_objectSpread({}, Rsa));
-              try { localStorage.setItem('bt_rpg', JSON.stringify(Rsa)); } catch (e) {}
-              break;
-            }
-          case 'zone_nodes':
-            {
-              _applyZoneNodesMsg(msg, S);
-              break;
-            }
-          case 'zone_monsters':
-            {
-              _applyZoneMonstersMsg(msg, S);
-              break;
-            }
-          case 'player_join':
-            {
-              var _msg$data, _msg$data2, _msg$data3, _msg$data4, _msg$data5, _msg$data6, _msg$data7, _msg$data8, _msg$data9, _msg$data0, _msg$data1, _msg$data10, _msg$data11, _msg$data12;
-              S.others[msg.id] = {
-                x: ((_msg$data = msg.data) === null || _msg$data === void 0 ? void 0 : _msg$data.x) || 0,
-                y: ((_msg$data2 = msg.data) === null || _msg$data2 === void 0 ? void 0 : _msg$data2.y) || 0,
-                _serverX: ((_msg$data = msg.data) === null || _msg$data === void 0 ? void 0 : _msg$data.x) || 0,
-                _serverY: ((_msg$data2 = msg.data) === null || _msg$data2 === void 0 ? void 0 : _msg$data2.y) || 0,
-                renderX: ((_msg$data3 = msg.data) === null || _msg$data3 === void 0 ? void 0 : _msg$data3.x) || 0,
-                renderY: ((_msg$data4 = msg.data) === null || _msg$data4 === void 0 ? void 0 : _msg$data4.y) || 0,
-                name: msg.name || 'Anon',
-                color: ((_msg$data5 = msg.data) === null || _msg$data5 === void 0 ? void 0 : _msg$data5.color) || '#888',
-                avatar: ((_msg$data6 = msg.data) === null || _msg$data6 === void 0 ? void 0 : _msg$data6.avatar) || null,
-                dir: ((_msg$data7 = msg.data) === null || _msg$data7 === void 0 ? void 0 : _msg$data7.d) || 'down',
-                bt: ((_msg$data8 = msg.data) === null || _msg$data8 === void 0 ? void 0 : _msg$data8.bt) || '#2563eb',
-                bl: ((_msg$data9 = msg.data) === null || _msg$data9 === void 0 ? void 0 : _msg$data9.bl) || '#1e3a5f',
-                headwear: (msg.data && msg.data.hw) || null,
-                facialhair: (msg.data && msg.data.fh) || null,
-                hair: (msg.data && msg.data.hr) || null,
-                skin: (msg.data && msg.data.sk) || null,
-                hairColor: (msg.data && msg.data.hc) || null,
-                hatColor: (msg.data && msg.data.htc) || null,
-                facialHairColor: (msg.data && msg.data.fhc) || null,
-                shirt: (msg.data && msg.data.st) || null,
-                shirtColor: (msg.data && msg.data.stc) || null,
-                equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none',
-                  shirt: (msg.data && msg.data.eqst !== undefined) ? (msg.data.eqst || 'none') : ((msg.data && msg.data.st && msg.data.st !== 'none') ? 'tshirt' : 'none') },
-                pants: (msg.data && msg.data.pt) || null,
-                shoes: (msg.data && msg.data.sh) || null,
-                rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
-                rpgHp: ((_msg$data1 = msg.data) === null || _msg$data1 === void 0 ? void 0 : _msg$data1.rpgHp) || 50,
-                rpgMaxHp: ((_msg$data10 = msg.data) === null || _msg$data10 === void 0 ? void 0 : _msg$data10.rpgMaxHp) || 50,
-                bodySize: ((_msg$data11 = msg.data) === null || _msg$data11 === void 0 ? void 0 : _msg$data11.bs) || 'slim',
-                zone: ((_msg$data12 = msg.data) === null || _msg$data12 === void 0 ? void 0 : _msg$data12.z) || 'town'
-              };
-              setPlayerCount(function (prev) {
-                setJoinFlash(true);
-                setTimeout(function () {
-                  return setJoinFlash(false);
-                }, 1500);
-                return prev + 1;
-              });
-              break;
-            }
-          case 'player_leave':
-            {
-              delete S.others[msg.id];
-              setPlayerCount(function (prev) {
-                return Math.max(1, prev - 1);
-              });
-              break;
-            }
-          case 'player_count':
-            {
-              setPlayerCount(msg.count);
-              break;
-            }
-          case 'player_update':
-            {
-              if (S.others[msg.id]) {
-                Object.assign(S.others[msg.id], msg.data);
-                /* v2.3.599: track relays carry flat eqc/eql/eqs; rebuild the
-                   nested other.equip the renderer reads so armour on/off syncs
-                   (covers the standing-still case via the 2s track). */
-                var _ud = msg.data || {};
-                if (_ud.eqc !== undefined || _ud.eql !== undefined || _ud.eqs !== undefined) {
-                  var _oe6 = S.others[msg.id].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none' };
-                  S.others[msg.id].equip = {
-                    chest: _ud.eqc !== undefined ? (_ud.eqc || 'none') : _oe6.chest,
-                    legs: _ud.eql !== undefined ? (_ud.eql || 'none') : _oe6.legs,
-                    shoulders: _ud.eqs !== undefined ? (_ud.eqs || 'none') : _oe6.shoulders,
-                  };
-                }
-              }
-              break;
-            }
-          case 'ping':
-            {
-              // §16.12 — Respond to server ping for RTT estimation
-              if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                  type: 'pong',
-                  ts: msg.ts
-                }));
-              }
-              break;
-            }
-          default:
-            {
-              /* All game events: chat, pvp, trade, emote, duel, etc. */
-              var _payload = msg.payload || msg;
-              _payload.id = _payload.id || msg.from;
-              processGameEvent(msg.type, _payload, S, _gameEventDeps);
-            }
-        }
-        } finally { _wsDone(); }
-      };
-
-      /* §16.10 — Shared game event dispatcher (used by both direct messages and batched tick events) */
-      /* Thicken a server-authoritative loot pile (the worker's wire
-         payload from loot_drop / zone_loot / state_sync.loot) into the
-         shape the renderer + pickup filter consume.  The "coins" field
-         is the player's own share (server's total * shares[myId]) so
-         the existing renderer's "+Xg" label shows the right amount;
-         watchers with no share get coins=0 and the renderer falls back
-         to the dim "[killer]'s loot" view via the recipients gate. */
-      function _buildServerPile(p, myId) {
-        var myShare = (p.shares && typeof p.shares[myId] === 'number') ? p.shares[myId] : 0;
-        var isDeath = !!p.isDeathDrop;
-        return {
-          lootId: p.lootId,
-          x: isFinite(p.x) ? p.x : 0, y: isFinite(p.y) ? p.y : 0,
-          coins: Math.round((p.coins || 0) * myShare),
-          xp: 0,
-          skull: p.skull || null,
-          skullEmoji: p.skull ? '🦴' : null,
-          shard: p.shard || null,
-          /* Preserve null recipients for death drops -- the magnetism
-             + bounce-back gates downstream check `loot.recipients` truthy,
-             so null lets anyone walk over and trigger pickup. */
-          recipients: p.recipients == null ? null : p.recipients,
-          killerName: p.killerName || 'Player',
-          ts: p.ts || Date.now(),
-          inventoryClaimed: !!p.inventoryClaimed,
-          /* Death-drop fields -- effectsRenderer renders aura/timer
-             when isDeathDrop is set; expiry drives the urgency pulse.
-             ownerOnlyUntil = wall-clock ms; after that the pile flips
-             to free-for-all (anyone in zone can grab) until expiry. */
-          isDeathDrop: isDeath,
-          deathItems: isDeath ? (p.deathItems || []) : null,
-          expiry: isDeath ? (p.expiry || null) : null,
-          ownerOnlyUntil: isDeath ? (p.ownerOnlyUntil || null) : null,
-          _serverLoot: true,
-        };
-      }
-
-      /* Server-issued loot_credit handler.  The actual coin /
-         inventory mutation lives in the player_state event that
-         follows this one over the same WS (server is authoritative
-         for the rpg store -- this handler stays purely cosmetic).
-         Responsibilities here:
-           * floating popups + SFX so the player feels the pickup
-           * comp-stat increment (still local; will migrate later)
-           * shard label lookup for the popup
-           * despawn the picker's local copy of the pile
-      */
-      function _applyLootCredit(payload, S) {
-        if (!S.rpg) return;
-        var R = S.rpg;
-        /* Server-loot path equivalent of the local pickup freeze in the
-           groundLoot.filter at line ~9362. Sets the same gate variable
-           so the movement gate, renderer facing override, and auto-swing
-           suppression all kick in for MP loot too. Without this, the
-           freeze only fired for single-player loot. */
-        S._lootFreezeUntil = Date.now() + 500;
-        if (payload.coins && payload.coins > 0) {
-          if (R._compStats) R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + payload.coins;
-          pushHudPopup(S, { target: 'goldIcon', text: '+' + payload.coins + ' G', color: '#f5c542' });
-        }
-        if (payload.shard) {
-          var _pickedShard = shardByKey(payload.shard);
-          S.dmgNumbers.push({
-            x: S.player.x + 12, y: S.player.y - 22,
-            text: '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'),
-            color: (_pickedShard && _pickedShard.color) || '#cce6ff',
-            ts: Date.now(),
-          });
-        }
-        if (payload.skull) {
-          /* Local skull-counter tally still tracked client-side --
-             not part of inventory; just a kill-trophy ledger.  Server
-             doesn't replicate it. */
-          if (!R.skulls) R.skulls = {};
-          R.skulls[payload.skull] = (R.skulls[payload.skull] || 0) + 1;
-        }
-        /* Death-drop pickup: server bundles the dead player's whole
-           general inventory under payload.items.  Authoritative R.inventory
-           write rides on the player_state that follows; we only render
-           the popup + recovered-count floater here. */
-        if (payload.isDeathDrop && Array.isArray(payload.items) && payload.items.length > 0) {
-          var _recovered = 0;
-          payload.items.forEach(function (it) { _recovered += (it && it.qty) || 0; });
-          if (_recovered > 0) {
-            S.dmgNumbers.push({
-              x: S.player.x, y: S.player.y - 20,
-              text: 'RECOVERED ' + _recovered + ' items!',
-              color: '#3dd497', ts: Date.now(),
-            });
-          }
-        }
-        BT_AUDIO.beep(500, 0.06, 0.1, 'sine');
-        try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
-        /* Despawn the picker's local copy of the pile -- they're done
-           with it.  v2.3.189: delay the actual despawn by 0.75 s so
-           the pile remains visible while the pickup animation plays.
-           The top-of-filter check in the pickup loop fires the dispose
-           when Date.now() > _despawnAt. */
-        if (payload.lootId && S.groundLoot) {
-          for (var _glci = 0; _glci < S.groundLoot.length; _glci++) {
-            if (S.groundLoot[_glci].lootId === payload.lootId) {
-              S.groundLoot[_glci]._collected = true;
-              S.groundLoot[_glci]._despawnAt = Date.now() + 500;
-              break;
-            }
-          }
-        }
-      }
-
-      /* Zone-snapshot appliers.  Shared between the legacy v1 trio
-         (zone_monsters / zone_nodes / zone_loot, still sent by old
-         workers) and the protocol-v2 merged zone_state message, which
-         carries all three lists in one frame.  Bodies are the original
-         case implementations, factored so both paths stay identical. */
-      function _applyZoneMonstersMsg(msg, S) {
-        /* Server sent the full monster list for a zone (sent on
-           zone change).  Non-empty → server-authoritative,
-           replace local snapshot.  Empty → server doesn't model
-           this zone (dungeon, town); flip back to client-local
-           and re-spawn if the local zone-change code skipped its
-           spawn while the previous flag was still true. */
-        if (!msg.monsters) return;
-        if (msg.monsters.length > 0) {
-          S._serverMonsters = true;
-          S.monsters = msg.monsters.map(function(m) {
-            var local = _objectSpread(_objectSpread({}, m), {}, {
-              archetype: m.arch, type: m.arch,
-              curHp: m.hp, renderX: m.x, renderY: m.y, spawnX: m.x, spawnY: m.y,
-              alive: m.alive, statuses: {}, _hitThisSwing: false,
-              _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
-              _stuckArrows: [],
-            });
-            applyZoneVariant(local, S.currentZone);
-            /* See state_sync handler -- mirror the same spawn
-               archetype stash so respawn can revert a transformed
-               monster back to the zone's spawn variant. */
-            local._spawnArchetype = local.archetype;
-            return local;
-          });
-        } else {
-          var _prevSrvFlag = S._serverMonsters;
-          S._serverMonsters = false;
-          /* If we just transitioned from a server-managed zone
-             to a non-server zone, the local zone-change code
-             skipped its spawnMonstersForZone call.  Re-spawn now
-             for known ZONES entries (dungeons handle their own
-             spawn in the depth-descent code). */
-          if (_prevSrvFlag) {
-            var _zn = ZONES[S.currentZone];
-            if (_zn) S.monsters = spawnMonstersForZone(_zn);
-          }
-        }
-      }
-
-      function _applyZoneNodesMsg(msg, S) {
-        /* Server sent the full gather-node list for a zone (sent on
-           zone change).  Replace S.gatherNodes wholesale; the
-           client-local spawnGatherNodes() and the v2.3.30 revive
-           loop are gated on !S._serverGatherNodes so they stop
-           running once we flip the flag here. */
-        if (!msg.nodes) return;
-        S._serverGatherNodes = true;
-        var _zzone = msg.zone || S.currentZone;
-        var _curZoneCfgZN = ZONES[S.currentZone];
-        if (_curZoneCfgZN && _curZoneCfgZN.safe) {
-          /* Safe zone -- never accept server resource nodes
-             (v2.3.136). */
-          S.gatherNodes = [];
-        } else if (_zzone && _zzone !== S.currentZone) {
-          /* Stale snapshot for a different zone -- ignore. */
-        } else {
-          S.gatherNodes = msg.nodes.map(function (n) {
-            var local = createGatherNode(_zzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
-            local.id = n.id;
-            local.alive = !!n.alive;
-            local.respawnAt = n.respawnAt || 0;
-            return local;
-          });
-        }
-      }
-
-      function _applyZoneLootMsg(msg, S) {
-        /* Sent on zone change.  Replace S.groundLoot with the new
-           zone's authoritative pile list. */
-        if (!msg.loot) return;
-        S._serverLoot = true;
-        var _curZoneCfgZL = ZONES[S.currentZone];
-        var _zlzone = msg.zone;
-        if (_curZoneCfgZL && _curZoneCfgZL.safe) {
-          S.groundLoot = [];
-        } else if (_zlzone && _zlzone !== S.currentZone) {
-          /* Stale zone_loot for a different zone -- ignore. */
-        } else {
-          S.groundLoot = msg.loot.map(function (p) { return _buildServerPile(p, S.myId); });
-        }
-      }
-
-      /* v2.3.783: _processGameEvent moved to src/networking/gameEvents.js
-         (REBUILD-PLAN Phase 4). Its former closure captures are passed
-         explicitly; built once per effect run (the setters and
-         _buildServerPile are stable for the effect's lifetime). */
-      var _gameEventDeps = {
-        setRpgState: setRpgState,
-        setChatLog: setChatLog,
-        setUnreadChats: setUnreadChats,
-        setDuelRequest: setDuelRequest,
-        setThreatIncoming: setThreatIncoming,
-        setLevelUpMsg: setLevelUpMsg,
-        setIncomingTrade: setIncomingTrade,
-        setArenaTournament: setArenaTournament,
-        setArenaBets: setArenaBets,
-        pixiRef: pixiRef,
-        _buildServerPile: _buildServerPile
-      };
-
-
-      ws.onclose = function (event) {
-        S._realtimeStatus = 'disconnected';
-        /* v2.3.771: close-reason evidence.  NOTE this is the LIVE connection
-           stack -- src/networking/wsClient.js is dead code (not in the
-           bundle); fixes must land HERE. */
-        try {
-          import('../debug/crashTrap.js').then(function (ct) {
-            ct.recordCrash('ws-close', 'code=' + (event && event.code) + ' reason=' + ((event && event.reason) || '(none)'));
-          }).catch(function () {});
-        } catch (e) {}
-        /* v2.3.771: a LIVE page superseded by another login must not
-           auto-reconnect (two windows would kick each other forever) --
-           stop, tell the player, offer a manual take-over. */
-        if (event && event.reason === 'superseded by reconnect') {
-          S._realtimeStatus = 'superseded';
-          try {
-            var _el = document.createElement('div');
-            _el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b2536;color:#fff;font:13px/1.5 sans-serif;padding:10px 12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
-            _el.textContent = 'This account connected from another window. ';
-            var _btn = document.createElement('button');
-            _btn.textContent = 'Play here instead';
-            _btn.style.cssText = 'margin-left:8px;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:#3dd497;color:#08231a;font-weight:700;cursor:pointer;';
-            _btn.onclick = function () { _el.remove(); connect(); };
-            _el.appendChild(_btn);
-            document.body.appendChild(_el);
-          } catch (e) { /* DOM unavailable */ }
-          return;
-        }
-        scheduleReconnect();
-      };
-      ws.onerror = function () {
-        S._realtimeStatus = 'disconnected';
-      };
-    }
-    function scheduleReconnect() {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      reconnectTimer = setTimeout(function () {
-        reconnectDelay = Math.min(reconnectDelay * 1.5, 10000);
-        connect();
-      }, reconnectDelay);
-    }
-    /* v2.3.771: iPhone tab-resume recovery.  iOS runs ONE Safari tab at a
-       time: backgrounding freezes the page, kills the socket, and often
-       reclaims the GPU context -- resuming showed a black, half-dead world
-       until manual reload (reported as the 'two-window bug', but it hits
-       anyone backgrounding Safari mid-fight).  On resume: reconnect a dead
-       socket immediately (skip backoff) and rebuild the zone tiles once the
-       restored context settles.  crashTrap's contextlost preventDefault
-       (same version) lets the browser restore the GL context at all. */
-    /* v2.3.778: how long were we actually gone?  Two clocks:
-       _hiddenAt    -- visibilitychange to 'hidden' (when iOS bothers to fire it)
-       _lastAliveAt -- 1s heartbeat; a frozen page stops ticking, so the gap
-                       on resume IS the freeze length even with no events. */
-    var RESYNC_AWAY_MS = 5000;
-    var _hiddenAt = 0;
-    var _lastAliveAt = Date.now();
-    var _aliveTimer = setInterval(function () { _lastAliveAt = Date.now(); }, 1000);
-    function _resumeRecover(tag) {
-      try {
-        import('../debug/crashTrap.js').then(function (ct) {
-          ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
-        }).catch(function () {});
-      } catch (e) {}
-      if (S._realtimeStatus !== 'superseded') {
-        var _hiddenMs = _hiddenAt ? (Date.now() - _hiddenAt) : 0;
-        var _frozenMs = Date.now() - _lastAliveAt - 1100; /* heartbeat period + slack */
-        var _awayMs = Math.max(_hiddenMs, _frozenMs);
-        if (!ws || ws.readyState === 2 || ws.readyState === 3) {
-          /* dead socket: reconnect immediately, skip backoff (v2.3.771) */
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectDelay = 1000;
-          try { connect(); } catch (e) {}
-        } else if (ws.readyState === 1 && _awayMs > RESYNC_AWAY_MS) {
-          /* v2.3.778: socket SURVIVED a long freeze ('[resume] visible
-             wsState=1' in every crash log) = stale world.  Protocol v2
-             sends only per-tick monster deltas; everything missed while
-             frozen is never retransmitted -- the 'invisible monsters that
-             still deal damage' session.  A deliberate rejoin gets a FULL
-             state_sync (complete zone monster list) with zero server
-             changes.  Detach handlers BEFORE closing so neither
-             scheduleReconnect nor a late server 'superseded by reconnect'
-             close can fire on the old socket. */
-          try {
-            import('../debug/crashTrap.js').then(function (ct) {
-              ct.recordCrash('resume-resync', tag + ' away ' + Math.round(_awayMs / 1000) + 's, forcing rejoin');
-            }).catch(function () {});
-          } catch (e) {}
-          var _oldWs = ws;
-          ws = null;
-          try {
-            _oldWs.onclose = null;
-            _oldWs.onmessage = null;
-            _oldWs.onerror = null;
-            _oldWs.close(1000, 'resume resync');
-          } catch (e) {}
-          if (reconnectTimer) clearTimeout(reconnectTimer);
-          reconnectDelay = 1000;
-          try { connect(); } catch (e) {}
-        }
-        /* readyState 0 (CONNECTING): a connect is already in flight. */
-        _hiddenAt = 0;
-        _lastAliveAt = Date.now();
-      }
-      /* v2.3.772: probe the GL context directly instead of trusting events.
-         On the iPhone repro the context died with NO webglcontextlost ever
-         firing (and a frozen tab can't record anything anyway), so:
-         healthy context -> cheap tile rebuild; lost context -> give the
-         browser a grace period to restore it (crashTrap + Pixi both
-         preventDefault to request that), re-probe, and if still dead do a
-         full renderer rebuild on a fresh canvas via _rebuildRenderer. */
-      setTimeout(function () {
-        try {
-          /* v2.3.774: renderer never (re)initialized -- a prior init
-             failed (iOS refused the context under GPU pressure) or a
-             rebuild was cut short by a freeze.  Now that this tab is
-             foreground again a fresh attempt usually succeeds. */
-          if (window.__pixiActive === false) {
-            if (window._rebuildRenderer) window._rebuildRenderer(tag + ': renderer dead on resume');
-            return;
-          }
-          /* v2.3.774: stuck on the Canvas-renderer fallback (WebGL was
-             refused during a rebuild and the backoff retries ran out
-             while we were hidden) -- now that we're foreground, go again. */
-          if (window.__btCanvasFallback) {
-            if (window._rebuildRenderer) window._rebuildRenderer(tag + ': canvas fallback active, retrying WebGL');
-            return;
-          }
-          /* v2.3.773: if the context was lost AT ALL while away, rebuild --
-             even when it came back.  A restored context reports healthy but
-             the baked render textures are gone (black world regardless). */
-          if (window.__btGlLostAt && window.__btGlLostAt > (window.__btLastGlRebuild || 0)) {
-            if (window._rebuildRenderer) window._rebuildRenderer(tag + ': context was lost while away');
-            return;
-          }
-          var _r = window._pixiRenderer;
-          var _gl = _r && _r.app && _r.app.renderer && _r.app.renderer.gl;
-          if (!_gl || !_gl.isContextLost || !_gl.isContextLost()) {
-            if (_r && _r.forceRefresh) _r.forceRefresh();
-            return;
-          }
-          import('../debug/crashTrap.js').then(function (ct) {
-            ct.recordCrash('gl-probe', tag + ': context LOST on resume, waiting for restore');
-          }).catch(function () {});
-          setTimeout(function () {
-            try {
-              var _r2 = window._pixiRenderer;
-              var _gl2 = _r2 && _r2.app && _r2.app.renderer && _r2.app.renderer.gl;
-              if (_gl2 && _gl2.isContextLost && _gl2.isContextLost()) {
-                if (window._rebuildRenderer) window._rebuildRenderer(tag + ': context not restored 1.5s after resume');
-              } else if (_r2 && _r2.forceRefresh) {
-                _r2.forceRefresh();
-              }
-            } catch (e) {}
-          }, 1500);
-        } catch (e) {}
-      }, 600);
-    }
-    try {
-      document.addEventListener('visibilitychange', function () {
-        /* v2.3.778: stamp when we go hidden so the resync threshold can
-           use real away-time even when the heartbeat keeps ticking
-           (desktop tab switches don't freeze JS). */
-        if (document.visibilityState === 'hidden') { _hiddenAt = Date.now(); return; }
-        if (document.visibilityState === 'visible') _resumeRecover('visible');
-      });
-      window.addEventListener('pageshow', function (e) {
-        if (e && e.persisted) _resumeRecover('bfcache');
-      });
-    } catch (e) { /* ignore */ }
-
-    /* Channel shim — wraps WebSocket with batched input protocol (§16.14)
-     * Movement and non-critical events batch at 10Hz (100ms windows).
-     * Combat-critical actions (attacks, PvP, duels, trades) flush immediately.
-     * Track calls pass through unchanged (already throttled to 2s).
-     */
-    var PRIORITY_EVENTS = new Set(['pvp_confirmed', 'stunned', 'duel_accept', 'duel_decline', 'duel_wager_request', 'pvp_threat', 'threat_response', 'trade_offer', 'trade_accept', 'trade_reject', 'clan_war_kill', 'clan_war_end', 'clan_war_declare', 'clan_invite']);
-    var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
-    var _inputBuffer = [];
-    var _pendingMove = null;
-    var _batchTimer = null;
-    function flushInputBuffer() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      // Send pending move if any
-      if (_pendingMove) {
-        ws.send(JSON.stringify(_pendingMove));
-        _pendingMove = null;
-      }
-      // Send all buffered events
-      for (var i = 0; i < _inputBuffer.length; i++) {
-        ws.send(JSON.stringify(_inputBuffer[i]));
-      }
-      _inputBuffer.length = 0;
-    }
-    function startBatchTimer() {
-      if (_batchTimer) return;
-      _batchTimer = setInterval(function () {
-        if (_pendingMove || _inputBuffer.length > 0) flushInputBuffer();
-      }, INPUT_BATCH_WINDOW);
-    }
-    function stopBatchTimer() {
-      if (_batchTimer) {
-        clearInterval(_batchTimer);
-        _batchTimer = null;
-      }
-    }
-    var channelShim = {
-      send: function send(msg) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
-        /* Direct message types — sent immediately to server, not as broadcast events */
-        if (msg.type === 'monster_damage') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'node_strike') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'loot_pickup') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'stat_allocate') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'cook_request') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'stats_update') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'ability_use') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'eat_request') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'shop_purchase') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'cook_recipe') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'equip_request') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'sell_weapon') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'forge_weapon') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'quest_accept') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'quest_turn_in') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'set_active_slot') {
-          ws.send(JSON.stringify(msg));
-          return;
-        }
-        if (msg.type === 'broadcast' && msg.event) {
-          if (msg.event === 'move') {
-            // Movement: overwrite pending (only latest position matters)
-            // §16.12 — Include combat state flags for lag compensation
-            var p = msg.payload;
-            var _S4 = stateRef.current;
-            _pendingMove = {
-              type: 'move',
-              x: p.x,
-              y: p.y,
-              d: p.d || p.dir,
-              z: p.z || p.zone,
-              vx: p.vx || 0,
-              vy: p.vy || 0,
-              dodging: !!_S4._dodgeRoll,
-              blocking: !!_S4._shieldUp,
-              dead: _S4.rpg ? _S4.rpg.hp <= 0 : false
-            };
-            startBatchTimer();
-          } else if (msg.event === 'player_attack') {
-            // §16.12 — PvP attacks go directly to server for lag-compensated resolution
-            flushInputBuffer();
-            ws.send(JSON.stringify({
-              type: 'player_attack',
-              payload: msg.payload
-            }));
-          } else if (PRIORITY_EVENTS.has(msg.event)) {
-            // Priority: flush buffer immediately, then send this event
-            flushInputBuffer();
-            ws.send(JSON.stringify({
-              type: msg.event,
-              payload: msg.payload
-            }));
-          } else {
-            // Non-priority: buffer for next batch window
-            _inputBuffer.push({
-              type: msg.event,
-              payload: msg.payload
-            });
-            startBatchTimer();
-          }
-        }
-      },
-      track: function track(data) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
-        ws.send(JSON.stringify({
-          type: 'track',
-          data: data
-        }));
-      }
-    };
-    S.channel = channelShim;
-    connect();
-    return function () {
-      stopBatchTimer();
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      clearInterval(_aliveTimer); /* v2.3.778 resync heartbeat */
-      if (ws) {
-        try {
-          ws.close();
-        } catch (e) {}
-      }
-      S.channel = null;
-      S._realtimeStatus = 'disconnected';
-    };
+    return setupWebSocket({
+      stateRef: stateRef,
+      showNameModal: showNameModal,
+      showLogin: showLogin,
+      setPlayerCount: setPlayerCount,
+      setChatLog: setChatLog,
+      setUnreadChats: setUnreadChats,
+      setJoinFlash: setJoinFlash,
+      setRpgState: setRpgState,
+      setLevelUpMsg: setLevelUpMsg,
+      setDuelRequest: setDuelRequest,
+      setThreatIncoming: setThreatIncoming,
+      setIncomingTrade: setIncomingTrade,
+      setArenaTournament: setArenaTournament,
+      setArenaBets: setArenaBets,
+      pixiRef: pixiRef
+    });
   }, [showNameModal, showLogin]);
 
   /* ═══ Server stats_update sync ═══
@@ -3827,12 +2195,6 @@ export var BroTown = function BroTown(_ref0) {
         localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
       } catch (e) {}
       discoverZone('town'); /* §ENC — Everyone starts in town */
-
-      /* §ANNIV — Check for anniversary item drop */
-      var annivDrop = checkAnniversaryDrop(S.rpg);
-      if (annivDrop) {
-        setAnniversaryDrop(annivDrop);
-      }
 
       /* Then fetch from server and overwrite (async, non-blocking) */
       if (!S._serverLoadStarted && getBtPlayerId()) {
@@ -4890,543 +3252,18 @@ export var BroTown = function BroTown(_ref0) {
         var ptx = Math.floor(P.x / TILE),
           pty = Math.floor(P.y / TILE);
 
-        /* v2.3.387: town exits are PROXIMITY zones on the painted
-           path-ends (the pink markers), not the map edge.  Transition when
-           the player walks within TOWN_EXIT_R tiles (manhattan) of an exit
-           marker.  Nearest marker wins if two overlap. */
-        if (S.currentZone === 'town') {
-          var TOWN_EXIT_R = 2;
-          var bestExit = null,
-            bestDist = Infinity;
-          TOWN_EXITS.forEach(function (ex) {
-            var d = Math.abs(ptx - ex.tx) + Math.abs(pty - ex.ty);
-            if (d <= TOWN_EXIT_R && d < bestDist) {
-              bestDist = d;
-              bestExit = ex;
-            }
-          });
-          if (bestExit) {
-            /* Zone exits — open to all players (quest gate removed) */
-            {
-              S.currentZone = bestExit.zoneId;
-              perfTracker.setZone(bestExit.zoneId);
-              updateZoneDimensions(bestExit.zoneId);
-              BT_AUDIO.startZoneAmbient(bestExit.zoneId);
-              discoverZone(bestExit.zoneId); /* §ENC — Encyclopedia zone discovery */
-              if (S.rpg) {
-                if (!S.rpg._questFlags) S.rpg._questFlags = {};
-                if (!S.rpg._questFlags.zonesVisited || _typeof(S.rpg._questFlags.zonesVisited) !== 'object') S.rpg._questFlags.zonesVisited = {};
-                /* Fix broken Set from old save data */
-                if (S.rpg._questFlags.zonesVisited instanceof Set) {
-                  var old = S.rpg._questFlags.zonesVisited;
-                  S.rpg._questFlags.zonesVisited = {};
-                  old.forEach(function (v) {
-                    return S.rpg._questFlags.zonesVisited[v] = true;
-                  });
-                }
-                if (typeof S.rpg._questFlags.zonesVisited.add === 'function') S.rpg._questFlags.zonesVisited = {}; /* nuclear fallback */
-                S.rpg._questFlags.zonesVisited[bestExit.zoneId] = true;
-              }
-              /* ═══ ZONE ENTRY — always start at shallow depth ═══ */
-              /* Players always enter the first zone layer. Dungeons warp to deeper depths. */
-              /* This preserves the sense of progression — you walk through the shallow zone */
-              /* to reach the dungeon entrance, which then takes you to your deepest unlocked depth. */
-              var entryDepth = 'shallow';
-              S._currentDepth = entryDepth;
-              S.map = generateZoneMap(bestExit.zoneId);
-              var newZone = ZONES[bestExit.zoneId];
-              /* Monsters + nodes at shallow depth */
-              var depthCfg = DEPTH_CONFIG[entryDepth];
-              if(!S._serverMonsters) S.monsters = spawnMonstersForZone(newZone, (depthCfg === null || depthCfg === void 0 ? void 0 : depthCfg.levelMod) || 0);
-              if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(bestExit.zoneId, entryDepth);
-              var nW = newZone.w * TILE,
-                nH = newZone.h * TILE;
-              /* Spawn continues your direction of travel from town.
-                 Then remap tile 9 (return) to the entry edge and tile 10 (dungeon) to the far edge. */
-              S._enteredFromDir = bestExit.dir; /* remember entry direction for return */
-              var midX = Math.floor(newZone.w / 2) * TILE;
-              var midY = Math.floor(newZone.h / 2) * TILE;
-              /* Spawn opposite to entry direction so the zone is "in
-                 front of" the player. Cardinal: drop in on the back
-                 edge. Diagonal: drop in at the opposite corner.
-                 The dungeon entrance (tile 10) is placed at column MX,
-                 row 2 in every themed zone — for entries that would
-                 otherwise land the player on column MX near the north
-                 edge ('south'), shift them off-axis so they don't
-                 spawn on the dungeon-approach path facing the
-                 entrance.  For 'se' / 'sw' / 'south' that share the
-                 north-area band, also tuck them a bit deeper. */
-              if (bestExit.dir === 'north')      { P.x = midX;             P.y = nH - TILE * 5; }
-              else if (bestExit.dir === 'south') { P.x = midX - TILE * 5;  P.y = TILE * 8;       }
-              else if (bestExit.dir === 'east')  { P.x = TILE * 5;         P.y = midY;           }
-              else if (bestExit.dir === 'west')  { P.x = nW - TILE * 5;    P.y = midY;           }
-              else if (bestExit.dir === 'ne')    { P.x = TILE * 5;         P.y = nH - TILE * 5;  }
-              else if (bestExit.dir === 'nw')    { P.x = nW - TILE * 5;    P.y = nH - TILE * 5;  }
-              else if (bestExit.dir === 'se')    { P.x = TILE * 5;         P.y = TILE * 8;       }
-              else if (bestExit.dir === 'sw')    { P.x = nW - TILE * 5;    P.y = TILE * 8;       }
-              else                                { P.x = midX;             P.y = nH - TILE * 5; }
-              /* Push monsters away from player spawn — minimum 200px distance */
-              var _minSpawnDist = 200;
-              if (S.monsters) {
-                S.monsters.forEach(function(mon) {
-                  var mdx2 = mon.x - P.x, mdy2 = mon.y - P.y;
-                  var md2 = Math.sqrt(mdx2 * mdx2 + mdy2 * mdy2);
-                  if (md2 < _minSpawnDist && md2 > 0) {
-                    var pushScale = _minSpawnDist / md2;
-                    mon.x = P.x + mdx2 * pushScale;
-                    mon.y = P.y + mdy2 * pushScale;
-                  } else if (md2 === 0) {
-                    mon.x += _minSpawnDist;
-                  }
-                  mon.x = Math.max(TILE * 3, Math.min(nW - TILE * 3, mon.x));
-                  mon.y = Math.max(TILE * 3, Math.min(nH - TILE * 3, mon.y));
-                  mon.spawnX = mon.x;
-                  mon.spawnY = mon.y;
-                });
-              }
-              /* Remap exits: move return exit (tile 9) to entry edge, dungeon (tile 10) to far edge */
-              var mapH = S.map.length, mapW = S.map[0].length;
-              var mapMX = Math.floor(mapW / 2);
-              var mapMY = Math.floor(mapH / 2);
-              /* Clear old exit/dungeon tiles */
-              for (var my = 0; my < mapH; my++) for (var mx = 0; mx < mapW; mx++) {
-                if (S.map[my][mx] === 9 || S.map[my][mx] === 10) S.map[my][mx] = 1;
-              }
-              /* Helper: carve a path (tile 1) through walls from edge to center road */
-              function carvePath(startX, startY, dirX, dirY, length) {
-                for (var step = 0; step < length; step++) {
-                  var py2 = startY + dirY * step;
-                  var px2 = startX + dirX * step;
-                  if (py2 >= 0 && py2 < mapH && px2 >= 0 && px2 < mapW) {
-                    if (S.map[py2][px2] === 7 || S.map[py2][px2] === 4) S.map[py2][px2] = 1;
-                    /* Also clear adjacent tile for 2-wide path */
-                    var adj = dirY !== 0 ? px2 + 1 : py2 + 1;
-                    if (dirY !== 0 && adj < mapW && (S.map[py2][adj] === 7 || S.map[py2][adj] === 4)) S.map[py2][adj] = 1;
-                    if (dirX !== 0 && adj < mapH && (S.map[adj][px2] === 7 || S.map[adj][px2] === 4)) S.map[adj][px2] = 1;
-                  }
-                }
-              }
-              /* Place return exit at the spawn corner/edge, dungeon at
-                 the far corner/edge, then carve a short cardinal path
-                 from each so the player has a walkable tile to step on.
-                 Diagonals get tile placements at corners with paths
-                 carved along both adjacent cardinals. */
-              if (bestExit.dir === 'north') {
-                S.map[mapH-1][mapMX] = 9; S.map[mapH-1][mapMX+1] = 9;
-                S.map[2][mapMX] = 10; S.map[2][mapMX+1] = 10;
-                carvePath(mapMX, mapH-1, 0, -1, 4);
-                carvePath(mapMX, 2, 0, 1, 4);
-              } else if (bestExit.dir === 'south') {
-                S.map[0][mapMX] = 9; S.map[0][mapMX+1] = 9;
-                S.map[mapH-3][mapMX] = 10; S.map[mapH-3][mapMX+1] = 10;
-                carvePath(mapMX, 0, 0, 1, 4);
-                carvePath(mapMX, mapH-3, 0, -1, 4);
-              } else if (bestExit.dir === 'east') {
-                S.map[mapMY][0] = 9; S.map[mapMY+1][0] = 9;
-                S.map[mapMY][mapW-3] = 10; S.map[mapMY+1][mapW-3] = 10;
-                carvePath(0, mapMY, 1, 0, 4);
-                carvePath(mapW-3, mapMY, -1, 0, 4);
-              } else if (bestExit.dir === 'west') {
-                S.map[mapMY][mapW-1] = 9; S.map[mapMY+1][mapW-1] = 9;
-                S.map[mapMY][2] = 10; S.map[mapMY+1][2] = 10;
-                carvePath(mapW-1, mapMY, -1, 0, 4);
-                carvePath(2, mapMY, 1, 0, 4);
-              } else if (bestExit.dir === 'ne') {
-                /* Entered from town's NE → spawned in zone's SW corner.
-                   Return tile at SW; dungeon at NE. */
-                S.map[mapH-1][1] = 9; S.map[mapH-1][2] = 9;
-                S.map[2][mapW-3] = 10; S.map[2][mapW-2] = 10;
-                carvePath(2, mapH-1, 0, -1, 4); carvePath(2, mapH-1, 1, 0, 4);
-                carvePath(mapW-3, 2, 0, 1, 4); carvePath(mapW-3, 2, -1, 0, 4);
-              } else if (bestExit.dir === 'nw') {
-                /* SE corner spawn → return SE, dungeon NW. */
-                S.map[mapH-1][mapW-3] = 9; S.map[mapH-1][mapW-2] = 9;
-                S.map[2][1] = 10; S.map[2][2] = 10;
-                carvePath(mapW-3, mapH-1, 0, -1, 4); carvePath(mapW-3, mapH-1, -1, 0, 4);
-                carvePath(2, 2, 0, 1, 4); carvePath(2, 2, 1, 0, 4);
-              } else if (bestExit.dir === 'se') {
-                /* NW corner spawn → return NW, dungeon SE. */
-                S.map[1][1] = 9; S.map[1][2] = 9;
-                S.map[mapH-3][mapW-3] = 10; S.map[mapH-3][mapW-2] = 10;
-                carvePath(2, 1, 0, 1, 4); carvePath(2, 1, 1, 0, 4);
-                carvePath(mapW-3, mapH-3, 0, -1, 4); carvePath(mapW-3, mapH-3, -1, 0, 4);
-              } else if (bestExit.dir === 'sw') {
-                /* NE corner spawn → return NE, dungeon SW. */
-                S.map[1][mapW-3] = 9; S.map[1][mapW-2] = 9;
-                S.map[mapH-3][1] = 10; S.map[mapH-3][2] = 10;
-                carvePath(mapW-3, 1, 0, 1, 4); carvePath(mapW-3, 1, -1, 0, 4);
-                carvePath(2, mapH-3, 0, -1, 4); carvePath(2, mapH-3, 1, 0, 4);
-              }
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: newZone.name,
-                color: newZone.element ? ELEMENTS[newZone.element].color : '#fff',
-                ts: Date.now()
-              });
-              S.npcs = null;
-              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-              S.hitParticles = [];
-              S.deathExplosions = [];
-              S.arrows = [];
-              /* §5.5 Restore death-scattered items if returning to death zone */
-              if (S._deathDrops) {
-                var zoneDrops = S._deathDrops.filter(function (d) {
-                  return d.zone === bestExit.zoneId && Date.now() < d.expiry;
-                });
-                zoneDrops.forEach(function (dd) {
-                  S.groundLoot.push({
-                    x: dd.x,
-                    y: dd.y,
-                    ts: Date.now(),
-                    isDeathDrop: true,
-                    deathItems: dd.items,
-                    coins: 0,
-                    xp: 0,
-                    expiry: dd.expiry
-                  });
-                });
-                /* Remove expired drops */
-                S._deathDrops = S._deathDrops.filter(function (d) {
-                  return Date.now() < d.expiry && d.zone !== bestExit.zoneId;
-                });
-              }
-              S._zoneWipe = Date.now(); /* trigger transition wipe */
-              S._ambientParticles = []; /* clear old zone particles */
-              /* Snap camera to player — keep them centered, no edge clamp. */
-              S.camera.x = P.x - W / 2;
-              S.camera.y = P.y - H / 2;
-            } /* end zone transition */
-          }
-        } else if (S.currentZone !== 'town' && !S._inDungeon) {
-          /* In combat zones: return to town when stepping on tile 9 (any edge) */
-          var czZone = ZONES[S.currentZone];
-          var czPtx = Math.floor(P.x / TILE),
-            czPty = Math.floor(P.y / TILE);
-          var czMX = Math.floor(czZone.w / 2);
-          var czTile = S.map && S.map[czPty] && S.map[czPty][czPtx];
-          if (czTile === 9) {
-            S.currentZone = 'town';
-            updateZoneDimensions('town');
-            BT_AUDIO.startZoneAmbient('town');
-            S.map = generateZoneMap('town');
-            S.monsters = []; /* Town has no monsters */
-            S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
-            /* Spawn at the same town extreme you originally left from
-               — 8 directions including diagonals so corner-exit zones
-               return you to the same corner. */
-            /* v2.3.387: return to town just INSIDE the exit marker you
-               left from -- offset 4 tiles toward the hub center so you land
-               on the path clear of the proximity trigger (else you'd warp
-               straight back out). */
-            var twn2 = ZONES.town;
-            var entryDir = S._enteredFromDir || 'north';
-            var _rcx = twn2.w / 2, _rcy = twn2.h / 2;
-            var _rex = TOWN_EXITS.find(function (e) { return e.dir === entryDir; });
-            if (_rex) {
-              var _rdx = _rcx - _rex.tx, _rdy = _rcy - _rex.ty;
-              var _rlen = Math.max(0.001, Math.sqrt(_rdx * _rdx + _rdy * _rdy));
-              P.x = (_rex.tx + _rdx / _rlen * 4) * TILE;
-              P.y = (_rex.ty + _rdy / _rlen * 4) * TILE;
-            } else {
-              P.x = _rcx * TILE; P.y = _rcy * TILE;
-            }
-            S._enteredFromDir = null;
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 40,
-              text: 'Town',
-              color: '#5b52ff',
-              ts: Date.now()
-            });
-            S.npcs = null;
-            S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-            S.hitParticles = [];
-            S.deathExplosions = [];
-            S.arrows = [];
-            S._zoneWipe = Date.now();
-            S._ambientParticles = [];
-            /* Snap camera to player — keep them centered, no edge clamp. */
-            S.camera.x = P.x - W / 2;
-            S.camera.y = P.y - H / 2;
-          }
-        }
+        /* v2.3.787: the zone-transition block (town-exit proximity warp,
+           tile-9 return-to-town, disabled tile-10 dungeon entrance, dungeon
+           exit) moved verbatim to src/game/zoneTransitions.js (REBUILD-PLAN
+           Phase 6, behavior-frozen). ptx/pty/_zone are intentionally the
+           PRE-transition values and stay in this scope — the water check
+           below keeps reading them, same as the inline code. */
+        handleZoneTransitions(S, ptx, pty, _zone, W, H);
 
-        /* Dungeon entrance — tile 10 */
-        if (S.map && ptx >= 0 && pty >= 0 && pty < _zone.h && ptx < _zone.w) {
-          var _S$map$pty;
-          var tile = (_S$map$pty = S.map[pty]) === null || _S$map$pty === void 0 ? void 0 : _S$map$pty[ptx];
-          /* Dungeon entry disabled v2.3.54 per user request -- the
-             depth-tier dungeons aren't ready for play yet so the
-             tile-10 trigger no-ops.  Flip this to `tile === 10` to
-             re-enable.  Generated maps still place tile 10 at the
-             far edge but stepping on it does nothing now. */
-          if (false && tile === 10 && S.currentZone !== 'town' && !S._inDungeon) {
-            var _S$rpg6;
-            /* §14.1 Dungeon entrance — find deepest accessible depth */
-            var currentDepth = S._currentDepth || 'shallow';
-            var depthOrder = ['shallow', 'mid', 'deep', 'abyss', 'core'];
-            var currentIdx = depthOrder.indexOf(currentDepth);
-            var clearKey = S.currentZone + '_' + currentDepth;
-            var isCleared = (_S$rpg6 = S.rpg) === null || _S$rpg6 === void 0 || (_S$rpg6 = _S$rpg6.lifeSkills) === null || _S$rpg6 === void 0 || (_S$rpg6 = _S$rpg6.dungeonClears) === null || _S$rpg6 === void 0 ? void 0 : _S$rpg6[clearKey];
-            if (currentIdx >= depthOrder.length - 1 && isCleared) {
-              /* Core is cleared — zone fully done */
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'Zone fully cleared!',
-                color: '#3dd497',
-                ts: Date.now()
-              });
-            } else if (isCleared) {
-              var _ELEMENTS$zn$element;
-              /* Current depth already cleared — warp to next depth zone (skip dungeon) */
-              var nextDepth = depthOrder[currentIdx + 1];
-              S._currentDepth = nextDepth;
-              var dc = DEPTH_CONFIG[nextDepth];
-              var zn = ZONES[S.currentZone];
-              S.map = generateZoneMap(S.currentZone);
-              if(!S._serverMonsters) S.monsters = spawnMonstersForZone(zn, (dc === null || dc === void 0 ? void 0 : dc.levelMod) || 0);
-              if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, nextDepth);
-              P.x = zn.w / 2 * TILE;
-              P.y = (zn.h - 3) * TILE;
-              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-              S.hitParticles = [];
-              S.deathExplosions = [];
-              S.arrows = [];
-              S._ambientParticles = [];
-              S._zoneWipe = Date.now();
-              var lvlRange = dc.lvlRange || [1, 10];
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: zn.name + ' - ' + nextDepth.toUpperCase(),
-                color: ((_ELEMENTS$zn$element = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element === void 0 ? void 0 : _ELEMENTS$zn$element.color) || '#fff',
-                ts: Date.now()
-              });
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 25,
-                text: 'Lv ' + lvlRange[0] + '-' + lvlRange[1],
-                color: 'rgba(255,255,255,.5)',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
-            } else {
-              /* Current depth NOT cleared — enter dungeon fight! */
-              var nextDepthMap = {
-                shallow: 'mid',
-                mid: 'deep',
-                deep: 'abyss',
-                abyss: 'core'
-              };
-              var _nextDepth = nextDepthMap[currentDepth];
-              /* Enter dungeon! */
-              S._inDungeon = true;
-              S._dungeonZone = S.currentZone;
-              S._dungeonDepth = currentDepth;
-              S._dungeonWave = 0;
-              S._dungeonMaxWaves = 3 + DEPTH_CONFIG[_nextDepth].depthIdx;
-              S._dungeonBossSpawned = false;
-              S._dungeonComplete = false;
-              S._preDungeonPos = {
-                x: P.x,
-                y: P.y
-              };
-
-              /* Generate small dungeon arena */
-              var dW = 25,
-                dH = 20;
-              S._preDungeonMap = S.map;
-              S._preDungeonMonsters = S.monsters;
-              S._preDungeonNodes = S.gatherNodes;
-              var dMap = Array.from({
-                length: dH
-              }, function () {
-                return Array(dW).fill(0);
-              });
-              /* Walls around edge */
-              for (var x = 0; x < dW; x++) {
-                dMap[0][x] = 7;
-                dMap[dH - 1][x] = 7;
-              }
-              for (var y = 0; y < dH; y++) {
-                dMap[y][0] = 7;
-                dMap[y][dW - 1] = 7;
-              }
-              /* Path cross */
-              var dMX = Math.floor(dW / 2),
-                dMY = Math.floor(dH / 2);
-              for (var _x17 = 1; _x17 < dW - 1; _x17++) dMap[dMY][_x17] = 1;
-              for (var _y15 = 1; _y15 < dH - 1; _y15++) dMap[_y15][dMX] = 1;
-              S.map = dMap;
-              /* Add exit tile at bottom of dungeon (tile 9 = return) */
-              dMap[dH - 1][dMX] = 9;
-              dMap[dH - 1][dMX + 1] = 9;
-              globalThis.TOWN_W = dW * TILE;
-              globalThis.TOWN_H = dH * TILE;
-              globalThis.COLS = dW;
-              globalThis.ROWS = dH;
-              S.monsters = [];
-              S.gatherNodes = [];
-              S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-              S.hitParticles = [];
-              S.deathExplosions = [];
-              S.arrows = [];
-              P.x = dMX * TILE;
-              P.y = (dH - 3) * TILE;
-
-              /* Spawn first wave */
-              var _zone2 = ZONES[S.currentZone];
-              var _dc = DEPTH_CONFIG[_nextDepth];
-              var waveLvl = _zone2.level[0] + _dc.levelMod;
-              var waveArchs = ['fodder', 'swarm', 'brute', 'sentinel', 'volatile', 'hexer', 'stalker'];
-              for (var wi = 0; wi < 4 + S._dungeonWave; wi++) {
-                var _arch = waveArchs[Math.floor(Math.random() * waveArchs.length)];
-                var mx = (3 + Math.random() * (dW - 6)) * TILE;
-                var my = (2 + Math.random() * (dH / 2 - 2)) * TILE;
-                var m = createMonster('dw-0-' + wi, _arch, waveLvl + Math.floor(Math.random() * 5), mx, my, _zone2.element);
-                m.curHp = m.hp;
-                m.type = _arch;
-                S.monsters.push(m);
-              }
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: 'DUNGEON: Wave 1/' + S._dungeonMaxWaves,
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
-              setTimeout(function () {
-                return BT_AUDIO.beep(150, 0.2, 0.25, 'sawtooth');
-              }, 100);
-            }
-          }
-        }
-
-        /* ═══ DUNGEON EXIT — tile 9 in dungeon returns to zone ═══ */
-        if (S._inDungeon && S.map && ptx >= 0 && pty >= 0) {
-          var _S$map$pty2;
-          var dTile = (_S$map$pty2 = S.map[pty]) === null || _S$map$pty2 === void 0 ? void 0 : _S$map$pty2[ptx];
-          if (dTile === 9) {
-            /* Exit dungeon — return to combat zone at current depth */
-            S._inDungeon = false;
-            S._dungeonComplete = false;
-            var _zn = ZONES[S._dungeonZone || S.currentZone];
-            var depth = S._currentDepth || 'shallow';
-            S.map = generateZoneMap(S.currentZone);
-            var _dc2 = DEPTH_CONFIG[depth];
-            globalThis.TOWN_W = _zn.w * TILE;
-            globalThis.TOWN_H = _zn.h * TILE;
-            globalThis.COLS = _zn.w;
-            globalThis.ROWS = _zn.h;
-            if(!S._serverMonsters) S.monsters = spawnMonstersForZone(_zn, (_dc2 === null || _dc2 === void 0 ? void 0 : _dc2.levelMod) || 0);
-            if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, depth);
-            S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-            S.hitParticles = [];
-            S.deathExplosions = [];
-            S.arrows = [];
-            S._ambientParticles = [];
-            /* Spawn south of the dungeon entrance — the entrance sits at
-               (MX, 2) and the path runs along column MX down to the
-               south exit, so dropping the player on (MX, 5) like
-               before put them facing the entrance with one stray
-               north step re-entering the dungeon.  Shift off-column
-               and a few rows south so they're clearly OUTSIDE. */
-            P.x = (Math.floor(_zn.w / 2) - 5) * TILE;
-            P.y = TILE * 8;
-            S._zoneWipe = Date.now();
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 30,
-              text: 'Exited dungeon',
-              color: '#3dd497',
-              ts: Date.now()
-            });
-            BT_AUDIO.beep(500, 0.05, 0.06, 'sine');
-          }
-        }
-
-        /* ═══ WASTELAND — gate tile (12) fence climbing ═══ */
-        if (S.map && S.currentZone === 'wasteland' && ptx >= 0 && pty >= 0 && pty < _zone.h && ptx < _zone.w) {
-          var _S$map$pty3;
-          var gateTile = (_S$map$pty3 = S.map[pty]) === null || _S$map$pty3 === void 0 ? void 0 : _S$map$pty3[ptx];
-          if (gateTile === 12) {
-            /* Player is on a gate tile — start climbing if not already */
-            if (!S._fenceClimb) {
-              var safePad = ZONES.wasteland._safePad;
-              /* Determine direction: if player is inside safe pad, climbing OUT. Otherwise climbing IN. */
-              var inSafe = safePad && P.x >= safePad.x && P.x <= safePad.x + safePad.w && P.y >= safePad.y - TILE && P.y <= safePad.y + safePad.h;
-              S._fenceClimb = {
-                started: Date.now(),
-                duration: 2000,
-                direction: inSafe ? 'out' : 'in'
-              };
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'Climbing fence... (2s)',
-                color: '#f5c542',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(300, 0.06, 0.08, 'triangle');
-            }
-          } else {
-            /* Not on gate tile — cancel climb */
-            if (S._fenceClimb) {
-              S._fenceClimb = null;
-            }
-          }
-        } else if (S._fenceClimb && S.currentZone !== 'wasteland') {
-          S._fenceClimb = null;
-        }
-
-        /* Fence climb progress — complete after 2 seconds */
-        if (S._fenceClimb) {
-          var elapsed = Date.now() - S._fenceClimb.started;
-          if (elapsed >= S._fenceClimb.duration) {
-            /* Climb complete! */
-            if (S._fenceClimb.direction === 'out') {
-              /* Climbing OUT of safe zone — now in lawless area */
-              var gateY = ZONES.wasteland._gateY;
-              P.y = gateY - TILE; /* place just north of fence */
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'LAWLESS ZONE - All items at risk!',
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
-              S.screenShake = 4;
-              BT_AUDIO.beep(80, 0.2, 0.25, 'sawtooth');
-            } else {
-              /* Climbing IN to safe zone — safe now */
-              var _safePad = ZONES.wasteland._safePad;
-              P.y = _safePad.y + TILE; /* place inside safe pad */
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'Safe zone! Walk south to return to town.',
-                color: '#3dd497',
-                ts: Date.now()
-              });
-              BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
-            }
-            S._fenceClimb = null;
-          }
-          /* Cancel climb if player takes damage */
-          if (S._fenceClimb && S.lastDamageTaken > S._fenceClimb.started) {
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 30,
-              text: 'Climb interrupted!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
-            S._fenceClimb = null;
-          }
-        }
+        /* v2.3.788: the WASTELAND fence-climb block that lived here was
+           removed with the rest of the Lawless Land content (owner decision,
+           2026-06-12). The Ferryman NPC had been despawned long before
+           (NPC_DATA emptied), so the zone was already unreachable in play. */
 
         /* ═══ ZONE-SPECIFIC MECHANICS ═══ */
         var zoneElem2 = (_ZONES$S$currentZone3 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone3 === void 0 ? void 0 : _ZONES$S$currentZone3.element;
@@ -10544,162 +8381,32 @@ export var BroTown = function BroTown(_ref0) {
     frameRef.current = requestAnimationFrame(_gameLoop);
 
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */
-    S._isDesktop = window.matchMedia('(pointer:fine)').matches;
-    var onKeyDown = function onKeyDown(e) {
-      var _document$activeEleme, _S$rpg25;
-      if (((_document$activeEleme = document.activeElement) === null || _document$activeEleme === void 0 ? void 0 : _document$activeEleme.tagName) === 'INPUT') return;
-      S.keys[e.key] = true;
-      S._isDesktop = true; /* any keyboard input confirms desktop */
-
-      /* Space — dodge roll in movement or facing direction (§5.8 contextual). */
-      if (e.code === 'Space') {
-        e.preventDefault();
-        var _R1 = S.rpg;
-        if (!_R1 || S._dodgeRoll) return;
-        /* Direction: WASD if held, else mouse aim, else facing. */
-        var ddx = 0, ddy = 0;
-        if (S.keys['w'] || S.keys['W'] || S.keys['ArrowUp']) ddy = -1;
-        if (S.keys['s'] || S.keys['S'] || S.keys['ArrowDown']) ddy = 1;
-        if (S.keys['a'] || S.keys['A'] || S.keys['ArrowLeft']) ddx = -1;
-        if (S.keys['d'] || S.keys['D'] || S.keys['ArrowRight']) ddx = 1;
-        var ang;
-        if (ddx || ddy) ang = Math.atan2(ddy, ddx);
-        else if (S._mouseAimAngle != null) ang = S._mouseAimAngle;
-        else {
-          var dirs = { down: Math.PI / 2, up: -Math.PI / 2, left: Math.PI, right: 0 };
-          ang = dirs[S.player.dir] || 0;
-        }
-        triggerContextualDodge(S, _R1, ang);
-        return;
-      }
-
-      /* E — interact priority: building > sleep > gather > NPC quest > ferryman */
-      if (e.code === 'KeyE') {
-        e.preventDefault();
-        /* 1. Building */
-        if (S.nearBuilding !== null) {
-          _desktopEnterBuilding();
-          return;
-        }
-        /* 2. Sleep at house */
-        if (S._nearHouse) {
-          _desktopSleep();
-          return;
-        }
-        /* 2b. Dungeon Workshop */
-        if (S._nearWorkshop) {
-          _desktopOpenWorkshop();
-          return;
-        }
-        /* 2c. Pet House */
-        if (S._nearPetHouse) {
-          setShowPetHouse(true);
-          BT_AUDIO.enterBuilding();
-          return;
-        }
-        /* 2d. Minigame Arena */
-        if (S._nearMinigameArena) {
-          setShowMinigame(true);
-          BT_AUDIO.enterBuilding();
-          return;
-        }
-        /* 3. Gather node */
-        if (S._nearNode && S._nearNode.alive) {
-          _desktopGather();
-          return;
-        }
-        /* 4. Nearby NPC — open quest dialog or ferryman */
-        if (S._nearNpc) {
-          var npc = S._nearNpc;
-          if (npc.isFerryman) {
-            _desktopFerryman();
-            return;
-          }
-          var npcQ = typeof getNpcQuest === 'function' ? getNpcQuest(S.rpg, npc.name) : null;
-          if (npcQ) {
-            _desktopNpcQuest(npc, npcQ);
-            return;
-          }
-        }
-        return;
-      }
-
-      /* Q — toggle shield */
-      if (e.code === 'KeyQ' && !e.repeat) {
-        e.preventDefault();
-        if (S._shieldUp) {
-          S._shieldUp = false;
-          _desktopShieldOff();
-        } else {
-          _desktopShieldOn();
-        }
-        return;
-      }
-
-      /* Tab — cycle weapon slot */
-      if (e.code === 'Tab') {
-        e.preventDefault();
-        _desktopCycleWeapon();
-        return;
-      }
-
-      /* 1/2/3 — direct weapon slot */
-      if (e.code === 'Digit1') {
-        _desktopSelectSlot('melee');
-        return;
-      }
-      if (e.code === 'Digit2') {
-        _desktopSelectSlot('ranged');
-        return;
-      }
-      if (e.code === 'Digit3' && (_S$rpg25 = S.rpg) !== null && _S$rpg25 !== void 0 && _S$rpg25.staffWeapon) {
-        _desktopSelectSlot('staff');
-        return;
-      }
-
-      /* F — special attack toward mouse aim */
-      if (e.code === 'KeyF' && !e.repeat) {
-        e.preventDefault();
-        if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
-        _desktopSpecialAttack();
-        return;
-      }
-
-      /* C — open chat */
-      if (e.code === 'KeyC' && !e.repeat) {
-        e.preventDefault();
-        setChatOpen(true);
-        setTimeout(function() {
-          if (chatInputRef.current) chatInputRef.current.focus();
-        }, 50);
-        return;
-      }
-
-      /* Escape — close chat first, then close panels */
-      if (e.code === 'Escape') {
-        if (chatOpen) {
-          setChatOpen(false);
-          if (chatInputRef.current) chatInputRef.current.blur();
-          return;
-        }
-        _desktopCloseAll();
-        return;
-      }
-    };
-    var onKeyUp = function onKeyUp(e) {
-      S.keys[e.key] = false;
-      /* Release Q → drop shield */
-      if (e.code === 'KeyQ' && S._shieldUp) {
-        S._shieldUp = false;
-        _desktopShieldOff();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    /* v2.3.789: keyboard handlers moved verbatim to
+       src/game/desktopControls.js (REBUILD-PLAN Phase 7, behavior-frozen).
+       The _desktop* helpers and the dodge resolver stay in this component
+       (they're shared with the touch controls) and go in via deps. */
+    var teardownDesktopControls = setupDesktopControls(S, {
+      triggerContextualDodge: triggerContextualDodge,
+      _desktopEnterBuilding: _desktopEnterBuilding,
+      _desktopSleep: _desktopSleep,
+      _desktopOpenWorkshop: _desktopOpenWorkshop,
+      _desktopGather: _desktopGather,
+      _desktopNpcQuest: _desktopNpcQuest,
+      _desktopShieldOn: _desktopShieldOn,
+      _desktopShieldOff: _desktopShieldOff,
+      _desktopCycleWeapon: _desktopCycleWeapon,
+      _desktopSelectSlot: _desktopSelectSlot,
+      _desktopSpecialAttack: _desktopSpecialAttack,
+      _desktopCloseAll: _desktopCloseAll,
+      setShowPetHouse: setShowPetHouse,
+      setShowMinigame: setShowMinigame,
+      setChatOpen: setChatOpen,
+      chatInputRef: chatInputRef,
+      chatOpen: chatOpen
+    });
     return function () {
       cancelAnimationFrame(frameRef.current);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      teardownDesktopControls();
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
@@ -11935,9 +9642,6 @@ export var BroTown = function BroTown(_ref0) {
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
   }, []);
 
-  var _desktopFerryman = useCallback(function () {
-    setFerrymanPanel(true);
-  }, []);
   var _desktopOpenWorkshop = useCallback(function () {
     setShowDungeonCreator(true);
     if (!dungeonCreator) setDungeonCreator(createDefaultDungeonConfig());
@@ -12016,7 +9720,6 @@ export var BroTown = function BroTown(_ref0) {
     closeAllMenus();
     setBuildingPanel(null);
     setQuestPanel(null);
-    setFerrymanPanel(false);
     setInspectPlayer(null);
   }, []);
 
@@ -12813,231 +10516,300 @@ export var BroTown = function BroTown(_ref0) {
      PLAY on the left (~57%), scrollable category rail + RANDOMIZE on the
      right.  Layout-only change — every input/button keeps its previous
      handlers and state. */
-  if (showNameModal) return /*#__PURE__*/React.createElement("div", {
-    className: "bt-name-modal"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-name-box bt-cc-box"
-  }, /*#__PURE__*/React.createElement("div", {
-    /* v2.3.724: header promoted out of the left pane to a full-card-width
-       banner above both panes.
-       v2.3.725: text lockup replaced by the owner's painted logo art
-       (crest / BRO TOWN / HEMI BROS / gem divider) per the splash mockup. */
-    style: { textAlign: 'center', marginBottom: 8 }
-  }, /*#__PURE__*/React.createElement("img", {
-    /* v2.3.734: sizes moved to CSS classes so short screens can shrink the
-       lockup (it was starving the rail into scroll-clipping). */
-    src: '/ui/welcome/crest.webp', alt: '', className: "bt-cc-crest"
-  }), /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo-main"
-  }), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.738: HEMI BROS sub-logo swapped for a call-to-action line. */
-    style: { fontSize: 15, fontWeight: 700, color: '#ffffff', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+  if (showNameModal) {
+    /* v2.3.797: character creator refactored to a VERTICAL GUIDED FLOW
+       (owner's spec, second attempt — the v2.3.799-792 run was reverted
+       at v2.3.796 for viewport overflow): banner, CTA, landscape
+       character SHOWCASE (the character is the star of the screen), name
+       row, text-only category tabs fused to ONE customization drawer,
+       Randomize, PLAY.  The screen is LOCKED — nothing page-scrolls; the
+       drawer absorbs the leftover height and its columns scroll
+       internally (the old rail's job, moved down a level), so PLAY is
+       always on screen.  Layout verified against to-scale 390x844 and
+       375x667 renders before shipping.  Future categories just append a
+       tab + a _ccCats entry. */
+    var _ccCats = [
+      { key: 'hat', label: 'Hat',
+        items: HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }, 44); }),
+        colors: headwearSel !== 'none' ? HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); }) : null },
+      { key: 'hair', label: 'Hair',
+        items: HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }, 44); }),
+        colors: hairSel !== 'none' ? (hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); }) : null },
+      { key: 'beard', label: 'Beard',
+        items: FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }, 44); }),
+        colors: facialHairSel !== 'none' ? FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); }) : null },
+      { key: 'skin', label: 'Skin',
+        /* Body-color categories: the swatches ARE the item grid (their
+           catalog 'default' entries carry the sprite's real native
+           colors), so no Colors column.  40px — they carry the drawer
+           alone. */
+        items: SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }, 40); }),
+        colors: null },
+      { key: 'shirt', label: 'Shirt',
+        items: SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }, 44); }),
+        colors: shirtSel !== 'none' ? SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); }) : null },
+      { key: 'pants', label: 'Pants',
+        items: PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }, 40); }),
+        colors: null },
+      { key: 'shoes', label: 'Shoes',
+        items: SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }, 40); }),
+        colors: null }
+    ];
+    var _ccActive = _ccCats[0];
+    for (var _ci = 0; _ci < _ccCats.length; _ci++) { if (_ccCats[_ci].key === activeCat) { _ccActive = _ccCats[_ci]; break; } }
+    return /*#__PURE__*/React.createElement("div", {
+      className: "bt-name-modal"
+    }, /*#__PURE__*/React.createElement("div", {
+      /* v2.3.801: tavern-banner art retired (owner) — back to the painted
+         gold BRO TOWN lettering (logo-brotown.webp, the main piece of the
+         pre-v2.3.790 lockup) in the banner's slot at the top of the
+         screen.  Width-driven sizing in .bt-cc-logo.
+         v2.3.806: owner's gem sword flanks the lettering (the wrap is the
+         position context; the sword hangs off its left edge, tilted). */
+      className: "bt-cc-logo-wrap"
+    }, /*#__PURE__*/React.createElement("img", {
+      src: '/ui/welcome/sword.webp', alt: '', className: "bt-cc-logo-sword"
+    }), /*#__PURE__*/React.createElement("img", {
+      src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo"
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "bt-name-box bt-cc-box"
+    }, /*#__PURE__*/React.createElement("div", {
+      /* Header: call-to-action only — the logo lives in the banner, the
+         divider art was cut for vertical budget (every px here comes out
+         of the drawer), and the build tag moved to the scroll's tail.
+         The class exists so 667pt-class screens can drop the line
+         entirely (game.css media query). */
+      className: "bt-cc-cta", style: { textAlign: 'center' }
+    }, /*#__PURE__*/React.createElement("div", {
       /* v2.3.738: white + heavy dark halo — gold vanished into the sunlit
-         half of the painted backdrop.  Plus a dark pill backdrop so it
-         holds contrast over the brightest sky. */
-      /* v2.3.741: pill backdrop removed (owner: too prominent) — plain
+         half of the painted backdrop.
+         v2.3.741: pill backdrop removed (owner: too prominent) — plain
          white text, the heavy halo carries the contrast. */
-      letterSpacing: '.14em', marginTop: 5, textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
-  }, "CREATE YOUR CHARACTER"), /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/divider2.webp', alt: '',
-    style: { width: '76%', maxWidth: 420, height: 15, objectFit: 'contain', margin: '5px auto 0', display: 'block', pointerEvents: 'none' }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'var(--txt2)',
-      fontFamily: 'Source Sans 3, sans-serif',
-      letterSpacing: '.06em',
-      marginTop: 3
-    }
-  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)), /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-main"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-left"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-preview"
-  }, /*#__PURE__*/React.createElement("div", {
-    /* Square frame sized by the pane width (clamped by the pane height on
-       short/landscape screens).  Keeping the frame its own element means
-       the rotate buttons pin to the panel's corners, not to whatever
-       taller space the flex column hands the preview row.
-       v2.3.720: DARK window interior per the owner's mockup (replaces the
-       v2.3.717 parchment).  Known tradeoff, owner-approved: some trait
-       sprites carry white extraction residue that a dark backdrop can
-       expose — the floor glow masks the worst of it. */
-    /* v2.3.724: 3:4 (was square) — with the header banner above the panes
-       the left column has more height, so the window grows taller and the
-       cover-fit canvas scales the figure up with it. */
-    style: { position: 'relative', width: '100%', aspectRatio: '3 / 4', maxHeight: '100%', boxSizing: 'border-box',
-      /* v2.3.726: animated starry-night clip behind the character (the
-         poster is the fallback while the video warms); the standalone
-         stone-platform asset replaces the vista's baked-in one. */
-      /* v2.3.736: NO video — the cyan tint survived neutral bakes, cache
-         busters and a screen blend, so it lives in the device's video
-         compositing path itself.  The sky is now a plain CSS gradient
-         (renders color-exact) with two CSS-animated star layers
-         (.bt-cc-stars) for the twinkle.  Black by construction. */
-      /* v2.3.743: owner's storm-light void painting replaces the plain
-         gradient (still an IMAGE, not video — color-exact). */
-      border: '2px solid #6b5630', borderRadius: 14, overflow: 'hidden',
-      background: "url('/ui/welcome/void.webp') center/cover no-repeat, #0a0a0c",
-      boxShadow: 'inset 0 0 26px rgba(0,0,0,.45)' }
-  }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars" }),
-  /*#__PURE__*/React.createElement("div", { className: "bt-cc-stars bt-cc-stars--b" }),
-  /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/platform.webp', alt: '',
-    style: { position: 'absolute', bottom: '3%', left: '8%', width: '84%', height: 'auto', pointerEvents: 'none' }
-  }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
-  /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" }),
-  /*#__PURE__*/React.createElement("canvas", {
-    ref: previewCanvasRef,
-    title: 'Live preview',
-    /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
-       when the finger drifts off the canvas mid-swipe. */
-    onPointerDown: function (e) { _dragRotX.current = e.clientX; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
-    /* v2.3.723: drag mapping reverted to dx>0 -> +1 (owner: only the
-       BUTTONS were backwards; the drag felt right as originally shipped). */
-    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
-    onPointerUp: function () { _dragRotX.current = null; },
-    onPointerCancel: function () { _dragRotX.current = null; },
-    /* No width/height attributes: drawCharacterPortrait force-sets the
-       bitmap to 256x256 on every draw, so attributes here would be dead
-       weight.  The bitmap upscales via CSS — object-fit keeps it square
-       (never stretched) whatever shape the frame takes, and pixelated
-       keeps the pixel-art upscale sharp instead of blurry. */
-    style: {
-      width: '100%',
-      height: '100%',
-      /* v2.3.724: cover (was contain) — in the taller 3:4 window the
-         bitmap scales to the window HEIGHT, so the figure renders bigger;
-         the cropped bitmap sides are empty margin, the figure is safe. */
-      objectFit: 'cover',
-      imageRendering: 'pixelated',
-      borderRadius: 8,
-      display: 'block',
-      touchAction: 'none',
-      cursor: 'grab',
-      /* v2.3.725: lands the boots on the painted stone platform (~83%
-         of the window height in the cover-fit scene).
-         v2.3.741: scale .9 — 10% smaller per owner; translate stays so
-         the boots keep the platform.
-         v2.3.744: per-angle drop — the SW and E source frames sit higher
-         in their 256 box than the others, so those facings (and their
-         mirrors) floated above the pedestal (owner: SW/SE down ~20px,
-         E/W down ~10px). */
-      transform: 'translateY(calc(-6% + ' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)) scale(0.9)', /* v2.3.745: SW/SE 20->15, NE/NW 0->5 per owner */
-      /* v2.3.717: transparent — the parchment border-image panel behind
-         supplies the backdrop now.  It must stay NEAR-WHITE (see the
-         wrapper comment): trait sprites carry white extraction residue
-         that any dark/colored backdrop would expose.  No z-index: DOM
-         order already stacks pillars < canvas < rotate buttons, and a
-         z-index here would put the canvas over the buttons and eat
-         their taps. */
-      background: 'transparent'
-    }
-  }), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.712: circular spin arrows replaced the triangle glyphs -- the
-       triangles read like the accordion chevrons in the rail (owner
-       feedback), and rotation is a different verb than expand/collapse.
-       v2.3.722: signs INVERTED (owner: "they're backwards") -- stepping
-       +1 walks the dir list clockwise, but on screen that reads as the
-       character turning the other way. */
-    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(1); },
-    style: { position: 'absolute', left: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
-      background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↺")),
-  /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
-    style: { position: 'absolute', right: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
-      background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻")))), /*#__PURE__*/React.createElement("div", {
-    style: { position: 'relative', width: '100%' }
-  }, /*#__PURE__*/React.createElement("input", {
-    value: nameInput,
-    onChange: function onChange(e) {
-      return setNameInput(e.target.value);
-    },
-    onKeyDown: function onKeyDown(e) {
-      return e.key === 'Enter' && joinTown();
-    },
-    placeholder: "Name\u2026",
-    maxLength: 20,
-    autoFocus: true,
-    /* v2.3.718: parchment scroll skin + ink colors live in .bt-cc-name
-       (::placeholder needs a stylesheet). */
-    className: "bt-cc-name",
-    style: {
-      width: '100%',
-      /* v2.3.711: symmetric side padding clears the quill (left) and dice
-         (right) while keeping the centered text centered.  Note the 20px
-         scroll border caps also eat into the border-box width — keep
-         padding modest or the text area collapses.
-         v2.3.721: asymmetric top/bottom — the scroll art's bottom-left
-         tail drops its visual center above the input's geometric center,
-         so the text rides a few px high to sit on the parchment band. */
-      padding: '9px 30px 15px',
-      /* v2.3.710: 16px floor — iOS Safari auto-zooms inputs with a smaller
-         font on focus, leaving visualViewport.scale > 1, which trips the
-         joinTown pinch-zoom gate. */
-      fontSize: 16,
-      fontWeight: 700,
-      outline: 'none',
-      textAlign: 'center',
-      boxSizing: 'border-box'
-    }
-  }), /*#__PURE__*/React.createElement("img", {
-    /* v2.3.718: owner-generated quill — the "sign here" cue before the
-       name (from the mockup).  Decorative; never intercepts taps. */
-    src: '/ui/welcome/quill.webp',
-    alt: '',
-    style: { position: 'absolute', left: 30, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', height: 22, width: 'auto', pointerEvents: 'none' }
-  }), /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Random name', onClick: rollRandomName,
-    /* v2.3.722: pushed onto the scroll cap — at right:25 it clipped the
-       end of longer names. */
-    style: { position: 'absolute', right: 12, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
-      background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 15, padding: 0, lineHeight: 1 }
-  }, "🎲")), /*#__PURE__*/React.createElement("button", {
-    onClick: joinTown,
-    /* v2.3.725: the owner's painted PLAY art (label baked in); the img is
-       the button.  :active press lives in .bt-cc-play. */
-    className: "bt-cc-play",
-    "aria-label": 'Play',
-    style: {
-      marginTop: 'auto',
-      width: '100%',
-      aspectRatio: '560 / 157',
-      borderRadius: 12,
-      cursor: 'pointer'
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-rail"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-rail-scroll"
-  },
-  _apPill('hat', 'Hat', [HEADWEAR_CATALOG.map(function (o) { return _thumbTile('headwear', o, headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }); })].concat(headwearSel !== 'none' ? [HAT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, hatColorSel, function (id) { setHatColor(id); setHatColorSel(id); }, undefined, 'headwear', headwearSel); })] : []), [_miniThumb('headwear', headwearSel)].concat(headwearSel !== 'none' && hatColorSel !== 'default' ? [_miniSwatch(_swOf(HAT_COLOR_CATALOG, hatColorSel))] : []), '/ui/welcome/icon-hat.webp'),
-  _apPill('hair', 'Hair', [HAIR_CATALOG.map(function (o) { return _thumbTile('hair', o, hairSel, function (id) { setHair(id); setHairSel(id); }); })].concat(hairSel !== 'none' ? [(hairSel === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG).map(function (o) { return _swatchTile(o, hairColorSel, function (id) { setHairColor(id); setHairColorSel(id); }, undefined, 'hair', hairSel); })] : []), [_miniThumb('hair', hairSel)].concat(hairSel !== 'none' && hairColorSel !== 'default' ? [_miniSwatch(_swOf(HAIR_COLOR_CATALOG, hairColorSel))] : []), '/ui/welcome/icon-hair.webp'),
-  _apPill('beard', 'Beard', [FACIALHAIR_CATALOG.map(function (o) { return _thumbTile('facialhair', o, facialHairSel, function (id) { setFacialHair(id); setFacialHairSel(id); }); })].concat(facialHairSel !== 'none' ? [FACIALHAIR_COLOR_CATALOG.map(function (o) { return _swatchTile(o, beardColorSel, function (id) { setFacialHairColor(id); setBeardColorSel(id); }, undefined, 'facialhair', facialHairSel); })] : []), [_miniThumb('facialhair', facialHairSel)].concat(facialHairSel !== 'none' && beardColorSel !== 'default' ? [_miniSwatch(_swOf(FACIALHAIR_COLOR_CATALOG, beardColorSel))] : []), '/ui/welcome/icon-beard.webp'),
-  _apPill('skin', 'Skin', [SKIN_CATALOG.map(function (o) { return _swatchTile(o, skinSel, function (id) { setSkin(id); setSkinSel(id); }); })], [_miniSwatch(_swOf(SKIN_CATALOG, skinSel))], '/ui/welcome/icon-skin.webp'),
-  _apPill('shirt', 'Shirt', [SHIRT_CATALOG.map(function (o) { return _thumbTile('shirt', o, shirtSel, function (id) { setShirt(id); setShirtSel(id); }); })].concat(shirtSel !== 'none' ? [SHIRT_COLOR_CATALOG.map(function (o) { return _swatchTile(o, shirtColorSel, function (id) { setShirtColor(id); setShirtColorSel(id); }, undefined, 'shirt', shirtSel); })] : []), [_miniThumb('shirt', shirtSel)].concat(shirtSel !== 'none' && shirtColorSel !== 'default' ? [_miniSwatch(_swOf(SHIRT_COLOR_CATALOG, shirtColorSel))] : []), '/ui/welcome/icon-shirt.webp'),
-  _apPill('pants', 'Pants', [PANTS_CATALOG.map(function (o) { return _swatchTile(o, pantsSel, function (id) { setPants(id); setPantsSel(id); }); })], [_miniSwatch(_swOf(PANTS_CATALOG, pantsSel))], '/ui/welcome/icon-pants.webp'),
-  _apPill('shoes', 'Shoes', [SHOES_CATALOG.map(function (o) { return _swatchTile(o, shoesSel, function (id) { setShoes(id); setShoesSel(id); }); })], [_miniSwatch(_swOf(SHOES_CATALOG, shoesSel))], '/ui/welcome/icon-shoes.webp'),
-  /*#__PURE__*/React.createElement("button", {
-    type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
-    /* v2.3.719: no marginTop and pill-matching radius — the last pill's
-       own 6px marginBottom is the gap, so the button reads as part of
-       the pill stack.
-       v2.3.734: lives INSIDE the rail scroller — when a short screen
-       forces the rail to scroll, a bottom-pinned button sat on top of the
-       half-clipped Shoes pill (owner saw them overlap). */
-    style: { width: '100%', padding: '7px', marginTop: 0, minHeight: 42, cursor: 'pointer', borderRadius: 10,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-      background: 'rgba(20,16,40,0.93)', border: '1.5px solid var(--line)', color: 'var(--txt)',
-      fontSize: 16, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-      textShadow: '0 1px 2px rgba(0,0,0,.55)' }
-  }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
-  /*#__PURE__*/React.createElement("span", null, "Randomize")))))));
+      style: { fontSize: 15, fontWeight: 700, color: '#ffffff', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+        letterSpacing: '.14em', textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
+    }, "CREATE YOUR CHARACTER")), /*#__PURE__*/React.createElement("section", {
+      /* Character SHOWCASE — full-card-width LANDSCAPE stage (spec §3:
+         the character is the star; the wide panel leaves negative space
+         for future equipped-item previews / ambient effects beside the
+         figure).  Replaces the v2.3.724 3:4 portrait window.
+         v2.3.720: DARK window interior per the owner's mockup.  Known
+         tradeoff, owner-approved: some trait sprites carry white
+         extraction residue that a dark backdrop can expose — the floor
+         glow masks the worst of it.
+         v2.3.743: owner's storm-light void painting (an IMAGE, not video
+         — the v2.3.736 cyan-tint lesson: device video compositing isn't
+         color-exact). */
+      /* Height lives in .bt-cc-stage (game.css) — v2.3.798: flex-driven,
+         not aspect-ratio: the stage and the menu share the real viewport
+         with guaranteed minimums.
+         v2.3.801: framed dark box (border, void painting, inset shadow,
+         star layers) removed — the character floats directly on the
+         painted page backdrop (owner).  The element keeps its size and
+         position so the pedestal/figure/rotate geometry is untouched. */
+      className: "bt-cc-stage",
+      style: { position: 'relative', width: '100%', boxSizing: 'border-box' }
+    }, /*#__PURE__*/React.createElement("div", {
+      /* v2.3.799: pedestal sized by stage HEIGHT, bottom-center anchored —
+         it was %-of-WIDTH while the figure scaled with height, so the
+         flexing stage broke the boots/platform contact differently on
+         every device (owner screenshot: floating player).  Both now
+         scale off the same axis, so the contact point is proportional
+         everywhere.
+         v2.3.802: promoted to a GROUP (aspect-ratio supplies the width
+         from the 34% height) so the braziers can stand ON the disc and
+         track it at every stage size (owner: goblets on the platform).
+         DOM order keeps them behind the character canvas. */
+      style: { position: 'absolute', bottom: '3%', left: '50%', height: '34%', aspectRatio: '480 / 165', transform: 'translateX(-50%)', pointerEvents: 'none' }
+    }, /*#__PURE__*/React.createElement("img", {
+      src: '/ui/welcome/platform.webp', alt: '',
+      style: { position: 'absolute', inset: 0, width: '100%', height: '100%' }
+    }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
+    /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" })),
+    /*#__PURE__*/React.createElement("canvas", {
+      ref: previewCanvasRef,
+      title: 'Live preview',
+      /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
+         when the finger drifts off the canvas mid-swipe. */
+      onPointerDown: function (e) { _dragRotX.current = e.clientX; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
+      /* v2.3.723: drag mapping reverted to dx>0 -> +1 (owner: only the
+         BUTTONS were backwards; the drag felt right as originally shipped). */
+      onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
+      onPointerUp: function () { _dragRotX.current = null; },
+      onPointerCancel: function () { _dragRotX.current = null; },
+      /* No width/height attributes: drawCharacterPortrait force-sets the
+         bitmap to 256x256 on every draw, so attributes here would be dead
+         weight.  The bitmap upscales via CSS — object-fit keeps it square
+         (never stretched) whatever shape the frame takes, and pixelated
+         keeps the pixel-art upscale sharp instead of blurry. */
+      style: {
+        /* v2.3.799: SQUARE canvas sized by stage HEIGHT and bottom-center
+           anchored (was width:100%/height:100% + contain + scale, whose
+           figure position depended on the stage's flex-variable shape).
+           88% height with a 1:1 aspect keeps the square bitmap exactly
+           filling the element — no object-fit cropping at all — and the
+           bottom offset plants the boots (≈89% down the bitmap, per the
+           v2.3.725 ~83%-of-window tuning) on the pedestal's top face. */
+        position: 'absolute',
+        left: '50%',
+        bottom: '14.5%',
+        height: '88%',
+        aspectRatio: '1 / 1',
+        objectFit: 'contain',
+        imageRendering: 'pixelated',
+        borderRadius: 8,
+        display: 'block',
+        touchAction: 'none',
+        cursor: 'grab',
+        /* v2.3.744: per-angle drop — the SW and E source frames sit higher
+           in their 256 box than the others, so those facings (and their
+           mirrors) floated above the pedestal (owner: SW/SE down ~20px,
+           E/W down ~10px). */
+        transform: 'translateX(-50%) translateY(' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)', /* v2.3.745: SW/SE 20->15, NE/NW 0->5 per owner */
+        /* v2.3.717: transparent — trait sprites carry white extraction
+           residue that any dark/colored backdrop would expose.  No
+           z-index: DOM order already stacks pillars < canvas < rotate
+           buttons, and a z-index here would put the canvas over the
+           buttons and eat their taps. */
+        background: 'transparent'
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.712: circular spin arrows replaced the triangle glyphs -- the
+         triangles read like the accordion chevrons in the rail (owner
+         feedback), and rotation is a different verb than expand/collapse.
+         v2.3.722: signs INVERTED (owner: "they're backwards") -- stepping
+         +1 walks the dir list clockwise, but on screen that reads as the
+         character turning the other way. */
+      type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(1); },
+      style: { position: 'absolute', left: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
+        background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+    }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↺")),
+    /*#__PURE__*/React.createElement("button", {
+      type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
+      style: { position: 'absolute', right: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
+        background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+    }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻"))), /*#__PURE__*/React.createElement("div", {
+      /* Name row — DIRECTLY beneath the showcase (v2.3.800: negative
+         margin tucks the scroll against the stage frame per owner; the
+         card gap alone read as loose).  The dice rerolls the NAME only;
+         appearance Randomize lives under the drawer. */
+      style: { position: 'relative', width: '100%', marginTop: -2 }
+    }, /*#__PURE__*/React.createElement("input", {
+      value: nameInput,
+      onChange: function onChange(e) {
+        return setNameInput(e.target.value);
+      },
+      onKeyDown: function onKeyDown(e) {
+        return e.key === 'Enter' && joinTown();
+      },
+      placeholder: "Name…",
+      maxLength: 20,
+      autoFocus: true,
+      /* v2.3.718: parchment scroll skin + ink colors live in .bt-cc-name
+         (::placeholder needs a stylesheet). */
+      className: "bt-cc-name",
+      style: {
+        width: '100%',
+        /* v2.3.711: symmetric side padding clears the quill (left) and dice
+           (right) while keeping the centered text centered.  Note the 20px
+           scroll border caps also eat into the border-box width — keep
+           padding modest or the text area collapses.
+           v2.3.721: asymmetric top/bottom — the scroll art's bottom-left
+           tail drops its visual center above the input's geometric center,
+           so the text rides a few px high to sit on the parchment band. */
+        padding: '9px 30px 15px',
+        /* v2.3.710: 16px floor — iOS Safari auto-zooms inputs with a smaller
+           font on focus, leaving visualViewport.scale > 1, which trips the
+           joinTown pinch-zoom gate. */
+        fontSize: 16,
+        fontWeight: 700,
+        outline: 'none',
+        textAlign: 'center',
+        boxSizing: 'border-box'
+      }
+    }), /*#__PURE__*/React.createElement("img", {
+      /* v2.3.718: owner-generated quill — the "sign here" cue before the
+         name (from the mockup).  Decorative; never intercepts taps. */
+      src: '/ui/welcome/quill.webp',
+      alt: '',
+      style: { position: 'absolute', left: 30, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', height: 22, width: 'auto', pointerEvents: 'none' }
+    }), /*#__PURE__*/React.createElement("button", {
+      type: 'button', title: 'Random name', onClick: rollRandomName,
+      /* v2.3.722: pushed onto the scroll cap — at right:25 it clipped the
+         end of longer names. */
+      style: { position: 'absolute', right: 12, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
+        background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 15, padding: 0, lineHeight: 1 }
+    }, "🎲")), /*#__PURE__*/React.createElement("div", {
+      /* Tabs + drawer share one wrapper so the card's gap can't split
+         them — they must read as a single component (spec §5).  The
+         wrapper is also the card's ONE flexing child: the drawer absorbs
+         the leftover viewport height. */
+      className: "bt-cc-menu"
+    }, /*#__PURE__*/React.createElement("nav", {
+      className: "bt-cc-tabs"
+    }, _ccCats.map(function (c) {
+      var on = c.key === activeCat;
+      /* Tab semantics: tapping activates it (and only it); tapping the
+         active tab is a no-op rather than a close — the drawer always
+         shows SOMETHING, so the layout never reflows under PLAY. */
+      return /*#__PURE__*/React.createElement("button", {
+        key: c.key, type: 'button',
+        className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : ''),
+        onClick: function () { setActiveCat(c.key); }
+      }, c.label);
+    })), /*#__PURE__*/React.createElement("section", {
+      /* Customization drawer — one shared panel under the tabs.  Split
+         layout (spec §6): items grid left = "what am I using?", color
+         swatches right = "what color is it?"; the column only renders
+         for categories that support recoloring.  The 'default' swatch
+         tile stays in the grid — it already previews the item's
+         original colors. */
+      className: "bt-cc-drawer"
+    }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-items" },
+      /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— " + _ccActive.label.toUpperCase() + " —"),
+      /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _ccActive.items)),
+    _ccActive.colors ? /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-colors" },
+      /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— COLORS —"),
+      /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _ccActive.colors)) : null)), /*#__PURE__*/React.createElement("button", {
+      /* Appearance RANDOMIZE — full-width gold row directly under the
+         menu it acts on (owner placement, v2.3.794); the name dice above
+         rerolls just the name. */
+      type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
+      /* v2.3.800: slimmed with the rest of the vertical rhythm. */
+      style: { width: '100%', padding: '4px', minHeight: 34, cursor: 'pointer', borderRadius: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        background: 'rgba(20,16,40,0.93)', color: 'var(--txt)',
+        fontSize: 16, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+        textShadow: '0 1px 2px rgba(0,0,0,.55)' }
+    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
+    /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("button", {
+      onClick: joinTown,
+      /* v2.3.725: the owner's painted PLAY art (label baked in); the img is
+         the button.  :active press lives in .bt-cc-play.
+         v2.3.797: flow endpoint — the final action once the character is
+         ready (spec §8); the locked layout keeps it on screen. */
+      className: "bt-cc-play",
+      "aria-label": 'Play',
+      style: {
+        marginTop: 6,
+        width: '100%',
+        aspectRatio: '560 / 157',
+        borderRadius: 12,
+        cursor: 'pointer'
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.797: build tag moved out of the header to the scroll's tail
+         end (header px now belongs to the drawer). */
+      style: {
+        fontSize: 9,
+        color: 'var(--txt2)',
+        fontFamily: 'Source Sans 3, sans-serif',
+        letterSpacing: '.06em',
+        textAlign: 'center'
+      }
+    }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)));
+  }
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
     onComplete: function onComplete() { return setShowIntro(false); }
@@ -13320,11 +11092,6 @@ export var BroTown = function BroTown(_ref0) {
             var nsx = (npc.x - cx) * SCALE_X,
               nsy = (npc.y - cy) * SCALE_Y;
             if (Math.sqrt(Math.pow(cssX - nsx, 2) + Math.pow(cssY - nsy, 2)) < 30) {
-              /* The Ferryman — special travel dialog */
-              if (npc.isFerryman) {
-                setFerrymanPanel(true);
-                return;
-              }
               /* Check if NPC has a quest */
               var npcQ = getNpcQuest(S.rpg, npc.name);
               if (npcQ) {
@@ -13685,159 +11452,7 @@ export var BroTown = function BroTown(_ref0) {
         marginTop: 8
       }
     }, "Closing in a few seconds...")));
-  }(), anniversaryDrop && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      inset: 0,
-      zIndex: 50,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'rgba(0,0,0,.85)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: 'center',
-      padding: 28,
-      maxWidth: 300
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 48,
-      marginBottom: 8,
-      animation: 'scoreReveal .6s cubic-bezier(.22,1,.36,1)'
-    }
-  }, "\uD83C\uDFF4"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.4)',
-      letterSpacing: '.15em',
-      textTransform: 'uppercase',
-      marginBottom: 4
-    }
-  }, "Anniversary Drop"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 20,
-      fontWeight: 900,
-      color: '#f5c542',
-      marginBottom: 4,
-      textShadow: '0 0 20px rgba(212,160,48,.5)'
-    }
-  }, anniversaryDrop.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.5)',
-      marginBottom: 12,
-      lineHeight: 1.5
-    }
-  }, anniversaryDrop.desc), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 4,
-      justifyContent: 'center',
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '3px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 800,
-      background: 'rgba(212,160,48,.15)',
-      border: '1px solid rgba(212,160,48,.3)',
-      color: '#f5c542'
-    }
-  }, (_anniversaryDrop$rari = anniversaryDrop.rarity) === null || _anniversaryDrop$rari === void 0 ? void 0 : _anniversaryDrop$rari.toUpperCase()), /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '3px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 700,
-      background: 'rgba(255,255,255,.05)',
-      border: '1px solid rgba(255,255,255,.1)',
-      color: 'rgba(255,255,255,.4)'
-    }
-  }, "Tradeable"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '3px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 700,
-      background: 'rgba(255,94,108,.1)',
-      border: '1px solid rgba(255,94,108,.2)',
-      color: '#ff5e6c'
-    }
-  }, "Discontinued")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 60,
-      height: 80,
-      margin: '0 auto 12px',
-      position: 'relative'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      left: 10,
-      top: 5,
-      width: 40,
-      height: 50,
-      borderRadius: 4,
-      background: 'linear-gradient(180deg, ' + anniversaryDrop.colors.primary + ' 0%, ' + anniversaryDrop.colors.primary + ' 70%, ' + anniversaryDrop.colors.accent + ' 100%)',
-      border: '1.5px solid ' + anniversaryDrop.colors.trim,
-      boxShadow: '0 0 15px ' + anniversaryDrop.colors.glow
-    }
-  })), /*#__PURE__*/React.createElement("button", {
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (!R._anniversaryItems) R._anniversaryItems = [];
-      R._anniversaryItems.push({
-        id: anniversaryDrop.id,
-        name: anniversaryDrop.name,
-        emoji: anniversaryDrop.emoji,
-        type: anniversaryDrop.type,
-        rarity: anniversaryDrop.rarity,
-        colors: anniversaryDrop.colors,
-        claimedAt: Date.now(),
-        tradeable: true
-      });
-      setAnniversaryDrop(null);
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 40,
-        text: 'OG Bro Cape claimed!',
-        color: '#f5c542',
-        ts: Date.now()
-      });
-      BT_AUDIO.levelUp();
-      stateRef.current.screenShake = 6;
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (_unused15) {}
-    },
-    style: {
-      padding: '12px 32px',
-      borderRadius: 8,
-      fontSize: 13,
-      fontWeight: 900,
-      border: '2px solid #f5c542',
-      background: 'rgba(245,197,66,.15)',
-      color: '#f5c542',
-      cursor: 'pointer',
-      letterSpacing: '.05em',
-      boxShadow: '0 0 20px rgba(245,197,66,.3)',
-      textTransform: 'uppercase'
-    }
-  }, "\u2728 Claim"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.2)',
-      marginTop: 8
-    }
-  }, "One per account \xB7 Can be traded with other players"))), showMinigame && /*#__PURE__*/React.createElement("div", {
+  }(), showMinigame && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       if (!minigameInstance || minigameInstance.status === 'waiting' || minigameInstance.status === 'ended') setShowMinigame(false);
@@ -14207,7 +11822,32 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "Play Again")))), /*#__PURE__*/React.createElement("button", {
     className: "bt-exit-fab",
-    onClick: onExit
+    onClick: function onClick() {
+      /* v2.3.785: exiting reloads the whole app, and the teardown stutter
+         read as a frame-rate crash with no explanation.
+         v2.3.786: the lone 36px spinner wasn't legible over the frozen
+         game frame (Safari keeps the old page painted, animations and all
+         stopped, until the new document's first paint).  Full-screen dim
+         + spinner + label instead, appended OUTSIDE the React tree so
+         unmounting can't remove it; navigate on the next frame so it
+         paints first.  The new page's #bt-loading boot screen takes over
+         from there. */
+      try {
+        var dim = document.createElement('div');
+        dim.className = 'bt-exit-dim';
+        var sp = document.createElement('div');
+        sp.className = 'bt-exit-loading';
+        var lbl = document.createElement('div');
+        lbl.className = 'bt-exit-label';
+        lbl.textContent = 'Reloading…';
+        dim.appendChild(sp);
+        dim.appendChild(lbl);
+        document.body.appendChild(dim);
+      } catch (e) {}
+      requestAnimationFrame(function () {
+        setTimeout(onExit, 30);
+      });
+    }
   }, /*#__PURE__*/React.createElement("svg", {
     width: "14",
     height: "14",
@@ -16145,176 +13785,7 @@ export var BroTown = function BroTown(_ref0) {
         fontStyle: 'italic'
       }
     }, "Travel here to discover"));
-  })))), anniversaryDrop && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      inset: 0,
-      zIndex: 50,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'rgba(0,0,0,.85)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: 'center',
-      padding: 24,
-      maxWidth: 300
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 48,
-      marginBottom: 8,
-      animation: 'scoreReveal .6s cubic-bezier(.22,1,.36,1)'
-    }
-  }, "\uD83C\uDFF4"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.3)',
-      letterSpacing: '.15em',
-      textTransform: 'uppercase',
-      marginBottom: 4
-    }
-  }, "Anniversary Drop"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 20,
-      fontWeight: 900,
-      color: '#f5c542',
-      marginBottom: 4
-    }
-  }, anniversaryDrop.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.5)',
-      marginBottom: 12,
-      lineHeight: 1.5
-    }
-  }, anniversaryDrop.desc), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'relative',
-      width: 60,
-      height: 80,
-      margin: '0 auto 12px'
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: "60",
-    height: "80",
-    viewBox: "0 0 60 80"
-  }, /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("linearGradient", {
-    id: "capeGrad",
-    x1: "0",
-    y1: "0",
-    x2: "0",
-    y2: "1"
-  }, /*#__PURE__*/React.createElement("stop", {
-    offset: "0%",
-    stopColor: ((_anniversaryDrop$colo = anniversaryDrop.colors) === null || _anniversaryDrop$colo === void 0 ? void 0 : _anniversaryDrop$colo.primary) || '#1a1a1a'
-  }), /*#__PURE__*/React.createElement("stop", {
-    offset: "70%",
-    stopColor: ((_anniversaryDrop$colo2 = anniversaryDrop.colors) === null || _anniversaryDrop$colo2 === void 0 ? void 0 : _anniversaryDrop$colo2.primary) || '#1a1a1a'
-  }), /*#__PURE__*/React.createElement("stop", {
-    offset: "100%",
-    stopColor: ((_anniversaryDrop$colo3 = anniversaryDrop.colors) === null || _anniversaryDrop$colo3 === void 0 ? void 0 : _anniversaryDrop$colo3.accent) || '#d4a030'
-  }))), /*#__PURE__*/React.createElement("path", {
-    d: "M15,10 L45,10 L48,70 L12,70 Z",
-    fill: "url(#capeGrad)",
-    stroke: ((_anniversaryDrop$colo4 = anniversaryDrop.colors) === null || _anniversaryDrop$colo4 === void 0 ? void 0 : _anniversaryDrop$colo4.trim) || '#f5c542',
-    strokeWidth: "1.5"
-  }), /*#__PURE__*/React.createElement("line", {
-    x1: "12",
-    y1: "70",
-    x2: "48",
-    y2: "70",
-    stroke: ((_anniversaryDrop$colo5 = anniversaryDrop.colors) === null || _anniversaryDrop$colo5 === void 0 ? void 0 : _anniversaryDrop$colo5.trim) || '#f5c542',
-    strokeWidth: "2"
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 4,
-      justifyContent: 'center',
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '2px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 800,
-      background: 'rgba(245,197,66,.15)',
-      border: '1px solid rgba(245,197,66,.3)',
-      color: '#f5c542'
-    }
-  }, "Legendary"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '2px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 800,
-      background: 'rgba(255,94,108,.15)',
-      border: '1px solid rgba(255,94,108,.3)',
-      color: '#ff5e6c'
-    }
-  }, "Discontinued"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      padding: '2px 8px',
-      borderRadius: 4,
-      fontSize: 8,
-      fontWeight: 800,
-      background: 'rgba(91,82,255,.15)',
-      border: '1px solid rgba(91,82,255,.3)',
-      color: '#5b52ff'
-    }
-  }, "Tradeable")), /*#__PURE__*/React.createElement("button", {
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (!R._anniversaryItems) R._anniversaryItems = [];
-      R._anniversaryItems.push({
-        id: anniversaryDrop.id,
-        name: anniversaryDrop.name,
-        emoji: anniversaryDrop.emoji,
-        type: anniversaryDrop.type,
-        colors: anniversaryDrop.colors,
-        rarity: anniversaryDrop.rarity,
-        claimedAt: Date.now(),
-        year: anniversaryDrop.year,
-        tradeable: true
-      });
-      setAnniversaryDrop(null);
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 40,
-        text: anniversaryDrop.name + ' claimed!',
-        color: '#f5c542',
-        ts: Date.now()
-      });
-      BT_AUDIO.levelUp();
-      stateRef.current.screenShake = 6;
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (_unused22) {}
-    },
-    style: {
-      padding: '12px 32px',
-      borderRadius: 8,
-      fontSize: 14,
-      fontWeight: 900,
-      border: '2px solid rgba(245,197,66,.5)',
-      background: 'linear-gradient(135deg,rgba(26,26,26,.9),rgba(212,160,48,.3))',
-      color: '#f5c542',
-      cursor: 'pointer',
-      boxShadow: '0 4px 20px rgba(212,160,48,.3)'
-    }
-  }, "Claim Cape"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.2)',
-      marginTop: 8
-    }
-  }, "One per account \xB7 Tradeable \xB7 Never drops again"))), showMinigame && rpgState && /*#__PURE__*/React.createElement("div", {
+  })))), showMinigame && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       if (!minigameInstance || minigameInstance.status === 'waiting') setShowMinigame(false);
@@ -24482,165 +21953,7 @@ export var BroTown = function BroTown(_ref0) {
       textAlign: 'center',
       padding: 8
     }
-  }, "No gems yet. Harvest resources in elemental zones to collect raw gems!")))), ferrymanPanel && rpgState && /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-card",
-    onClick: function onClick(e) {
-      return e.stopPropagation();
-    },
-    style: {
-      width: 280,
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 40,
-      marginBottom: 4
-    }
-  }, "\uD83D\uDC80"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#ff5e6c',
-      marginBottom: 4
-    }
-  }, "The Ferryman"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.6)',
-      marginBottom: 8,
-      lineHeight: 1.5
-    }
-  }, "\"Beyond the fence lies the Lawless Land. No rules. No mercy. Attack anyone. Loot everything.\""), /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 8,
-      borderRadius: 8,
-      background: 'rgba(255,94,108,.1)',
-      border: '1px solid rgba(255,94,108,.3)',
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: '#ff5e6c',
-      marginBottom: 4
-    }
-  }, "\u26A0\uFE0F WARNING"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.5)',
-      lineHeight: 1.5
-    }
-  }, "If you die in the Lawless Land, you lose ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: '#ff5e6c'
-    }
-  }, "EVERYTHING"), " \u2014 equipped weapons, armor, shield, amulet, all inventory, all gold. Items drop where you fall. Other players can take them.")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 8
-    }
-  }, "Travel cost: ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: '#f5c542'
-    }
-  }, "100g"), " \xB7 Your gold: ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: '#f5c542'
-    }
-  }, rpgState.coins, "g")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 1,
-      padding: '8px 0',
-      borderRadius: 8,
-      border: 'none',
-      fontSize: 11,
-      fontWeight: 800,
-      background: rpgState.coins >= 100 ? '#ff5e6c' : 'rgba(255,255,255,.08)',
-      color: rpgState.coins >= 100 ? '#fff' : 'rgba(255,255,255,.3)',
-      cursor: 'pointer',
-      letterSpacing: '.03em'
-    },
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (R.coins < 100) return;
-      R.coins -= 100;
-      var S = stateRef.current;
-      /* Travel to wasteland */
-      S.currentZone = 'wasteland';
-      updateZoneDimensions('wasteland');
-      S.map = generateZoneMap('wasteland');
-      S.monsters = [];
-      S.gatherNodes = [];
-      S.npcs = null;
-      BT_AUDIO.startZoneAmbient('wasteland');
-      /* Spawn in safe pad center */
-      var wz = ZONES.wasteland;
-      S.player.x = Math.floor(wz.w / 2) * TILE;
-      S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-      S.hitParticles = [];
-      S.deathExplosions = [];
-      S.arrows = [];
-      S._ambientParticles = [];
-      S._zoneWipe = Date.now();
-      S._fenceClimb = null;
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 40,
-        text: 'The Lawless Land',
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 25,
-        text: 'Climb the fence to enter. No turning back easy.',
-        color: '#ea580c',
-        ts: Date.now()
-      });
-      BT_AUDIO.beep(100, 0.2, 0.3, 'sawtooth');
-      setTimeout(function () {
-        return BT_AUDIO.beep(80, 0.15, 0.25, 'sawtooth');
-      }, 150);
-      setRpgState(_objectSpread({}, R));
-      setFerrymanPanel(false);
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (e) {}
-    }
-  }, "\u2620\uFE0F ENTER THE WASTELAND (100g)"), /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 0.6,
-      padding: '8px 0',
-      borderRadius: 8,
-      border: '1px solid rgba(255,255,255,.15)',
-      background: 'rgba(255,255,255,.06)',
-      color: 'rgba(255,255,255,.6)',
-      fontSize: 10,
-      fontWeight: 600,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "Nevermind")))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
+  }, "No gems yet. Harvest resources in elemental zones to collect raw gems!")))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 8,
@@ -24703,66 +22016,6 @@ export var BroTown = function BroTown(_ref0) {
       background: '#a0a0ff',
       transition: 'width 0.1s',
       width: Math.min(100, (Date.now() - (((_stateRef$current$_sl = stateRef.current._sleeping) === null || _stateRef$current$_sl === void 0 ? void 0 : _stateRef$current$_sl.started) || Date.now())) / HOUSE_SLEEP_MS * 100) + '%'
-    }
-  }))), ((_stateRef$current21 = stateRef.current) === null || _stateRef$current21 === void 0 ? void 0 : _stateRef$current21.currentZone) === 'wasteland' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: 8,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 20,
-      padding: '4px 14px',
-      borderRadius: 8,
-      background: 'rgba(255,94,108,.2)',
-      border: '1px solid rgba(255,94,108,.4)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 800,
-      color: '#ff5e6c',
-      fontFamily: 'Source Sans 3,sans-serif'
-    }
-  }, "\u2620\uFE0F LAWLESS LAND \u2014 ALL items drop on death")), ((_stateRef$current22 = stateRef.current) === null || _stateRef$current22 === void 0 ? void 0 : _stateRef$current22._fenceClimb) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: 38,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 20,
-      padding: '4px 14px',
-      borderRadius: 8,
-      background: 'rgba(245,197,66,.2)',
-      border: '1px solid rgba(245,197,66,.4)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center',
-      minWidth: 200
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#f5c542',
-      marginBottom: 3
-    }
-  }, "\uD83E\uDDD7 Climbing fence..."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: 6,
-      background: 'rgba(255,255,255,.1)',
-      borderRadius: 3,
-      overflow: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: '100%',
-      borderRadius: 3,
-      background: '#f5c542',
-      transition: 'width 0.1s',
-      width: Math.min(100, (Date.now() - (((_stateRef$current$_fe = stateRef.current._fenceClimb) === null || _stateRef$current$_fe === void 0 ? void 0 : _stateRef$current$_fe.started) || Date.now())) / 2000 * 100) + '%'
     }
   }))), ((_stateRef$current23 = stateRef.current) === null || _stateRef$current23 === void 0 ? void 0 : _stateRef$current23.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -24988,7 +22241,7 @@ export var BroTown = function BroTown(_ref0) {
       color: 'rgba(255,255,255,.25)',
       marginBottom: 4
     }
-  }, "Blocked players can't chat, attack, trade, or duel you in lawful areas. Block does NOT apply in the Lawless Land."), blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Blocked players can't chat, attack, trade, or duel you."), blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
       color: 'rgba(255,255,255,.3)'
@@ -26029,133 +23282,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
       turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
     }
-  }, "Turn In Quest"))), ferrymanPanel && rpgState && /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-card",
-    onClick: function onClick(e) {
-      return e.stopPropagation();
-    },
-    style: {
-      width: 280,
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 40,
-      marginBottom: 4
-    }
-  }, "\uD83D\uDC80"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#ff5e6c',
-      marginBottom: 4
-    }
-  }, "The Ferryman"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: 'rgba(255,255,255,.7)',
-      marginBottom: 8,
-      lineHeight: 1.5
-    }
-  }, "\"The Lawless Land awaits. No rules. No mercy.", /*#__PURE__*/React.createElement("br", null), "Attack any player. Win everything they carry.", /*#__PURE__*/React.createElement("br", null), "Lose... and they take everything from you.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", null, "All items drop on death. All gold. All gear."), /*#__PURE__*/React.createElement("br", null), "Equipped weapons, armor, amulet, shield \u2014 everything.\""), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: '#f5c542',
-      marginBottom: 8,
-      padding: '4px 8px',
-      borderRadius: 6,
-      background: 'rgba(245,197,66,.1)',
-      border: '1px solid rgba(245,197,66,.2)'
-    }
-  }, "\u26A0\uFE0F Travel cost: 100 gold \xB7 You arrive at a fenced safe area.", /*#__PURE__*/React.createElement("br", null), "Climb the fence (2s) to enter the lawless zone."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 1,
-      padding: '10px',
-      borderRadius: 8,
-      border: 'none',
-      background: rpgState.coins >= 100 ? '#ff5e6c' : 'rgba(255,255,255,.1)',
-      color: rpgState.coins >= 100 ? '#fff' : 'rgba(255,255,255,.3)',
-      fontWeight: 800,
-      fontSize: 12,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      var R = stateRef.current.rpg;
-      if (R.coins < 100) return;
-      R.coins -= 100;
-      var S = stateRef.current;
-      S.currentZone = 'wasteland';
-      updateZoneDimensions('wasteland');
-      S.map = generateZoneMap('wasteland');
-      S.monsters = [];
-      S.gatherNodes = [];
-      S.npcs = null;
-      BT_AUDIO.startZoneAmbient('wasteland');
-      /* Spawn in safe pad center */
-      var wz = ZONES.wasteland;
-      S.player.x = Math.floor(wz.w / 2) * TILE;
-      S.player.y = (wz.h - 7) * TILE;
-      S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
-      S.hitParticles = [];
-      S.deathExplosions = [];
-      S.arrows = [];
-      S._ambientParticles = [];
-      S._zoneWipe = Date.now();
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 40,
-        text: 'The Lawless Land',
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 25,
-        text: 'Climb the fence to enter. All items at risk.',
-        color: '#f5c542',
-        ts: Date.now()
-      });
-      BT_AUDIO.beep(100, 0.15, 0.2, 'sawtooth');
-      setTimeout(function () {
-        return BT_AUDIO.beep(80, 0.1, 0.15, 'sawtooth');
-      }, 150);
-      setRpgState(_objectSpread({}, R));
-      try {
-        localStorage.setItem('bt_rpg', JSON.stringify(R));
-      } catch (e) {}
-      setFerrymanPanel(false);
-    }
-  }, "\uD83D\uDC80 Travel (100g)"), /*#__PURE__*/React.createElement("button", {
-    style: {
-      flex: 1,
-      padding: '10px',
-      borderRadius: 8,
-      border: '1px solid rgba(255,255,255,.15)',
-      background: 'rgba(255,255,255,.06)',
-      color: 'rgba(255,255,255,.6)',
-      fontWeight: 700,
-      fontSize: 12,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      return setFerrymanPanel(false);
-    }
-  }, "Not today")))), duelRequest && /*#__PURE__*/React.createElement("div", {
+  }, "Turn In Quest"))), duelRequest && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setDuelRequest(null);
@@ -27994,7 +25121,7 @@ export var BroTown = function BroTown(_ref0) {
     }, {
       label: 'PvP',
       color: '#a78bfa',
-      stats: [['PvP Kills', cs.pvpKills], ['PvP Deaths', cs.pvpDeaths], ['Lawless Kills', cs.lawlessKills], ['Lawless Deaths', cs.lawlessDeaths], ['Duels Won', cs.duelsWon], ['Duels Lost', cs.duelsLost]]
+      stats: [['PvP Kills', cs.pvpKills], ['PvP Deaths', cs.pvpDeaths], ['Duels Won', cs.duelsWon], ['Duels Lost', cs.duelsLost]]
     }, {
       label: 'Life Skills',
       color: '#3dd497',
@@ -28459,46 +25586,6 @@ export var BroTown = function BroTown(_ref0) {
         animation: timeLeft < 10 ? 'promptPulse 0.5s ease-in-out infinite' : 'none'
       }
     }, "\uD83D\uDC80 ", itemCount, " items scattered in ", ((_ZONES$nearest$zone = ZONES[nearest.zone]) === null || _ZONES$nearest$zone === void 0 ? void 0 : _ZONES$nearest$zone.name) || nearest.zone, " \u2014 ", timeLeft, "s to recover!");
-  }(), function (_stateRef$current38) {
-    var fc = (_stateRef$current38 = stateRef.current) === null || _stateRef$current38 === void 0 ? void 0 : _stateRef$current38._fenceClimb;
-    if (!fc) return null;
-    var elapsed = Date.now() - fc.started;
-    var pct = Math.min(100, elapsed / fc.duration * 100);
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'absolute',
-        top: 52,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 18,
-        width: 180,
-        textAlign: 'center'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        fontWeight: 700,
-        fontFamily: 'Source Sans 3,sans-serif',
-        color: '#f5c542',
-        marginBottom: 2
-      }
-    }, "\uD83E\uDDD7 Climbing ", fc.direction === 'out' ? 'OUT' : 'IN', "... ", Math.ceil((fc.duration - elapsed) / 1000), "s"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: '100%',
-        height: 6,
-        background: 'rgba(255,255,255,.1)',
-        borderRadius: 3,
-        overflow: 'hidden'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: pct + '%',
-        height: '100%',
-        background: fc.direction === 'out' ? '#ff5e6c' : '#3dd497',
-        borderRadius: 3,
-        transition: 'width 0.1s linear'
-      }
-    })));
   }(), showPlayerList && /*#__PURE__*/React.createElement("div", {
     className: "bt-plist"
   }, playerList.length === 0 && /*#__PURE__*/React.createElement("div", {

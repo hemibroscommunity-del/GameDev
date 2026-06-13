@@ -509,7 +509,13 @@ export const GameApp = () => {
     <>
       <BroTown
         nfts={nfts}
-        onExit={() => { window.location.href = '/'; }}
+        onExit={() => {
+          /* v2.3.786: exit means "back to the character screen", but the
+             v2.3.777 auto-rejoin treats ANY reload within 10 min as a crash
+             recovery and warps straight back into the world. ?noresume=1 is
+             that feature's own escape hatch for deliberate exits. */
+          window.location.href = '/?noresume=1';
+        }}
       />
       <BottomDashboard />
       <ChatLauncher />

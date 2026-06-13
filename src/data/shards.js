@@ -44,7 +44,7 @@ export function shardByKey(shardKey) {
    so call sites can spread the field conditionally:
      var _shard = rollMonsterShard(S.currentZone);
      groundLoot.push({ ..., ...( _shard ? { shard: _shard } : {} ) });
-   Zones without a registered shard (town, wasteland, dungeons) return
+   Zones without a registered shard (town, dungeons) return
    null and the kill drops nothing extra. */
 export function rollMonsterShard(zoneId) {
   if (Math.random() >= 0.10) return null;

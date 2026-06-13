@@ -131,6 +131,20 @@ input{font-family:inherit}
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:rgba(255,255,255,.8);
   -webkit-tap-highlight-color:transparent}
 .bt-exit-fab:active{background:rgba(255,94,108,.5)}
+/* v2.3.785/786: reload indicator shown when the exit arrow tears the app
+   down (full page navigation).  Full-screen dim so it reads over the frozen
+   game frame Safari keeps painted until the new document's first paint;
+   compositor-driven CSS animation so the spinner keeps turning through the
+   main-thread teardown stutter. */
+.bt-exit-dim{position:fixed;inset:0;z-index:99999;background:rgba(5,6,12,.78);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;pointer-events:none;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.bt-exit-loading{width:36px;height:36px;border-radius:50%;
+  border:3px solid rgba(255,255,255,.2);border-top-color:rgba(255,255,255,.9);
+  animation:bt-exit-spin .8s linear infinite}
+.bt-exit-label{font-size:12px;font-weight:700;color:rgba(255,255,255,.85);
+  letter-spacing:.08em;font-family:'Source Sans 3',sans-serif}
+@keyframes bt-exit-spin{to{transform:rotate(360deg)}}
 .bt-fab-group{position:absolute;bottom:16px;right:16px;z-index:20;display:flex;flex-direction:column;gap:10px}
 .bt-combat-bar{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:20;
   display:flex;gap:8px;padding:6px 10px;background:rgba(0,0,0,.5);border-radius:14px;
@@ -183,11 +197,10 @@ input{font-family:inherit}
   border-radius:50%;
   pointer-events:none;
 }
-/* v2.3.710: welcome modal redesigned to two panes — big character preview
-   left, scrollable category rail right.  The modal no longer scrolls as a
-   page; the rail (.bt-cc-rail-scroll) is the SOLE scroller, so the modal
-   itself locks to the viewport (100dvh + safe-area insets for the iPhone
-   notch / home indicator).
+/* v2.3.710: welcome modal stopped scrolling as a page — the modal locks
+   to the viewport (100dvh + safe-area insets for the iPhone notch / home
+   indicator) and a designated inner region does the moving (v2.3.797:
+   the drawer columns inside .bt-cc-menu).
    v2.3.713: backdrop is a faint radial instead of flat #000 — a drop
    shadow is invisible against pure black, and the card needs it to read
    as floating.
@@ -196,7 +209,9 @@ input{font-family:inherit}
    panel, torch pillars with a sprite-strip flame animation.
    v2.3.717: theme art recompressed to WebP (~935KB -> ~276KB, the
    screen was slow to dress) and the sky darkened so the card pops. */
-.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
+/* v2.3.791: flex-direction:column — the full-bleed banner strip stacks
+   above the card (card stays centered via its margin:auto). */
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
 /* v2.3.738: touch-action:none on the modal — iOS ignores overscroll-behavior
    and rubber-banded the splash when a swipe started on a non-scrollable
    element.  The rail and sheet re-allow pan-y; everything else is taps. */
@@ -218,21 +233,78 @@ input{font-family:inherit}
 /* v2.3.725: painted splash theme (owner's asset pack) — the UI floats
    directly on the painted backdrop.
    v2.3.728: decorative outer frame retired (owner: the picker and preview
-   need the room); padding shrinks to a breathing margin. */
-.bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;width:100%;height:auto;max-width:560px;max-height:min(820px,100%);margin:auto;padding:12px 12px 16px;text-align:left;background:none;border:none;box-shadow:none}
+   need the room); padding shrinks to a breathing margin.
+   v2.3.797: LOCKED single-screen column (vertical-flow redesign) — the
+   card fills the space under the pinned banner and never page-scrolls
+   (the v2.3.792 attempt overflowed an iPhone by ~250px and pushed PLAY
+   below the fold).  Every section is fixed (the >* floor) except
+   .bt-cc-menu, whose drawer absorbs the leftover height and scrolls
+   internally — the old rail's job, moved down a level.  Short/landscape
+   viewports fall back to page scrolling (media query below) because
+   nothing meaningfully flexes at that height. */
+/* v2.3.799: gap 8->6 + slimmer bottom pad — the width-driven banner is
+   taller, so the fixed rows return a few px to the flex regions.
+   v2.3.800: gap 6->4 + slimmer top pad (owner: compact the space
+   between UI items). */
+.bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;gap:4px;width:100%;flex:1 1 auto;min-height:0;max-width:560px;margin:0 auto;padding:8px 12px 10px;text-align:left;background:none;border:none;box-shadow:none;overflow:hidden}
+.bt-name-box.bt-cc-box>*{flex:0 0 auto}
+/* v2.3.798: the v2.3.797 fixed budget (16:9 stage from WIDTH, fixed
+   banner, full-width PLAY) collapsed the drawer to a ~25px sliver on a
+   real device — Safari's URL bar shrinks dvh ~100px below the screen
+   size while width-driven sections keep growing.  Now the stage and the
+   menu are the TWO flexible regions sharing the actual viewport: spare
+   height goes to the stage first (grow 3, owner: the character is the
+   star) then the drawer (grow 2), and BOTH have hard minimums so
+   neither can collapse again.  The stage's children are all absolutely
+   positioned / 100%-sized, so flex height works cleanly and the canvas
+   contain+scale adapts to whatever shape falls out. */
+.bt-name-box.bt-cc-box>.bt-cc-stage{flex:3 1 140px;min-height:140px;max-height:300px}
+/* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
+   (owner: tabs span down vertically, the container expands to the
+   right).
+   v2.3.804: the whole menu sits in the owner's gem-cornered FRAME art
+   (frame.webp from the v2.3.725 asset pack, restored from git history)
+   via 9-slice border-image; `fill` paints the art's dark center as the
+   panel background, so the rail/drawer drop their own outer chrome.
+   Note border-image ignores border-radius — the art carries its own
+   corners. */
+/* v2.3.805: the frame art's CENTER is transparent — `fill` was showing
+   the painted page backdrop through the menu (owner: black background).
+   v2.3.806: padding-box clip retired — the art's painted band doesn't
+   fill the whole 14px border zone, so a transparent seam showed between
+   the band and the black (owner's gap report).  Default border-box clip
+   runs the black under the entire band instead; the gem corners are
+   opaque, so nothing peeks. */
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch;background:#05050c}
+@media (max-height:720px){
+  .bt-cc-cta{display:none}
+}
+/* v2.3.799: fallback raised 620->690 — in-app browser webviews (extra
+   chrome) land near 650 and should page-scroll rather than crush the
+   flex minimums into clipping. */
+@media (max-height:690px){
+  .bt-name-box.bt-cc-box{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
+  .bt-cc-menu{flex:0 0 auto!important}
+  .bt-cc-stage{flex:0 0 auto!important;height:220px}
+  /* column-wrap needs a definite height once the menu stops flexing */
+  .bt-cc-drawer-items>.bt-cc-drawer-grid{height:104px}
+}
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
    lands on every cell including the last before looping. */
 /* v2.3.726: braziers animate via 12-cell sprite strips built from the
    owner's flame clip (purple as shot; gold = luminance-ramped recolor for
    the sun side).  jump-none lands on every cell before looping. */
-.bt-cc-brazier{position:absolute;bottom:1.5%;height:34%;pointer-events:none;background:0 0/1200% 100% no-repeat;animation:bt-cc-braz 1.0s steps(12,jump-none) infinite}
+/* v2.3.802: braziers live INSIDE the pedestal group now (% values are
+   relative to the disc box) — they stand on the platform's top face and
+   flank the character (owner), instead of hanging at the stage edges. */
+.bt-cc-brazier{position:absolute;bottom:44%;height:105%;pointer-events:none;background:0 0/1200% 100% no-repeat;animation:bt-cc-braz 1.0s steps(12,jump-none) infinite}
 @keyframes bt-cc-braz{from{background-position-x:0%}to{background-position-x:100%}}
-/* v2.3.720: pillars hug the window edges (mockup: columns are part of the
-   window architecture, not free-standing) */
-.bt-cc-brazier--left{left:2.5%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
+/* v2.3.800's 52px button-clearance lift is superseded — on the disc the
+   braziers sit nowhere near the stage's corner rotate buttons. */
+.bt-cc-brazier--left{left:4%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
 /* negative delay desyncs the two flames so they don't flicker in lockstep */
-.bt-cc-brazier--right{right:2.5%;aspect-ratio:110/231;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
+.bt-cc-brazier--right{right:4%;aspect-ratio:110/231;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
 /* Chunky beveled PLAY — presses down on tap (border-bottom is the bevel). */
 /* v2.3.725: PLAY is the owner's painted button art (label baked in). */
 /* v2.3.740: solid color UNDER the art + a min-height — the button's entire
@@ -240,7 +312,12 @@ input{font-family:inherit}
    invisible (suspected in the owner's 'PLAY disappeared' report; the other
    cause is overlays — the bottom sheet and the iOS keyboard both cover it
    while open, by design). */
-.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px}
+/* v2.3.798: width cap — the art scaled with card width, so on a Pro Max
+   PLAY rendered ~108px tall, TALLER than the squeezed drawer above it
+   (owner screenshot).  320px keeps it the clear final action without
+   competing for the drawer's room.
+   v2.3.801: 300 -> 230 (owner: shrink it). */
+.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px;max-width:230px;margin-left:auto;margin-right:auto}
 /* v2.3.741: solid-color fallback removed — the art has transparent corners,
    so the backing purple peeked out around the painted shape (owner). */
 .bt-cc-play:active{transform:translateY(2px);filter:brightness(1.12)}
@@ -251,14 +328,51 @@ input{font-family:inherit}
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
    "sign here" cue at the left. */
 
-/* v2.3.734: lockup sizing lives here so short screens can squeeze it —
-   the full-size header starved the rail on 667pt-class phones, clipping
-   the Shoes pill under Randomize. */
-.bt-cc-crest{height:48px;width:auto;margin:0 auto;display:block;pointer-events:none}
-.bt-cc-logo-main{width:70%;max-width:360px;height:auto;margin:2px auto 0;display:block;pointer-events:none}
+/* v2.3.790: crest + logo lockup replaced by the owner's painted tavern-
+   banner art (single image).  The 3:2 source is too tall as-is, so
+   object-fit:cover crops it to a wide strip; object-position 70% biases
+   the crop downward so the BRO TOWN lettering and the element-gem row
+   stay in frame (the trim comes out of the empty sky).
+   v2.3.791: full-bleed (owner: no card border/rounding — span the entire
+   background).  The negative side margins cancel the modal's padding so
+   the strip touches the left/right screen edges; height is viewport-
+   driven and capped so the card below keeps its room — same lesson as
+   v2.3.734: header height is what starves the rail into scroll-clipping
+   on 667pt-class phones.
+   v2.3.796: no top negative margin — it pushed the strip under the
+   iPhone notch/Dynamic Island, which ate the art's top ~50px.
+   v2.3.797: 24vh -> ~12dvh — the locked single-screen creator pays for
+   its drawer out of the header (spec §2: the header takes less priority
+   than the character).  At this height the full 3:2 art loses "BRO" to
+   the crop, so portrait loads banner-strip.webp, a 3:1 pre-crop of the
+   lettering band (see the <picture> in BroTown.jsx), cropped plain
+   CENTER; the old bottom-anchor only made sense against the full art's
+   stone base, which wide viewports still use via the override below.
+   v2.3.798: vh -> dvh (vh line kept as old-Safari fallback) — iOS vh is
+   the LARGE-viewport unit, so with the Safari URL bar open the banner
+   rendered ~25px taller than budgeted and squeezed the drawer (owner's
+   device screenshot: drawer collapsed to a sliver).
+   v2.3.799: height is WIDTH-driven (33vw ≈ the strip's own 3:1 ratio,
+   capped) — any viewport-height-driven height makes the box wider-
+   ratioed than the art on some device and cover crops the lettering
+   (owner screenshot: BRO TOWN cut in half).  Width-coupled height means
+   the crop is always ~0; the flex stage/menu absorb the cost. */
+/* v2.3.801: tavern-banner art retired (owner) — the painted gold
+   BRO TOWN lettering (logo-brotown.webp, 560x329) takes its slot.
+   Width-driven so it can never clip; centered over the page backdrop.
+   v2.3.806: lettering + sword share a wrap.
+   v2.3.807: sword BEHIND the letters, vertical, handle rising out of
+   the "O" in BRO (owner) — the O's counter is transparent in the logo
+   art, so the grip genuinely shows through the hole.
+   v2.3.808: the POMMEL GEM centers in the O (owner).  Alpha-measured:
+   hole center (427, 82.5) of the 560x329 logo, gem center (91, 26) of
+   the 185x480 sword; left/top solve those into wrap-relative % so the
+   alignment holds at every logo size — no media override needed. */
+.bt-cc-logo-wrap{flex:none;align-self:center;position:relative}
+.bt-cc-logo{position:relative;z-index:1;width:min(56vw,270px);height:auto;display:block;pointer-events:none}
+.bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){
-  .bt-cc-crest{height:32px}
-  .bt-cc-logo-main{width:54%}
+  .bt-cc-logo{width:min(44vw,200px)}
 }
 
 
@@ -274,15 +388,38 @@ input{font-family:inherit}
 
 .bt-cc-name{border:0 solid transparent;border-width:0 26px;border-image:url('/ui/welcome/scroll2.webp') 0 64 fill/0 26px stretch;background:none;color:#3a2a14;height:58px}
 .bt-cc-name::placeholder{color:#8a7350;opacity:1}
-.bt-cc-main{display:flex;flex-direction:row;gap:10px;flex:1;min-height:0}
-.bt-cc-left{flex:0 0 57%;min-width:0;display:flex;flex-direction:column;gap:8px}
-.bt-cc-preview{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
-.bt-cc-rail{flex:1 1 43%;min-width:0;display:flex;flex-direction:column}
-/* v2.3.719: flex 0 1 auto (was flex:1) — the scroll area no longer grows
-   past its content, so Randomize stacks directly under the Shoes pill in
-   the same rhythm instead of being pinned to the rail's bottom.  It still
-   SHRINKS (and scrolls) when an expanded category overflows. */
-.bt-cc-rail-scroll{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
+/* v2.3.797: the two-pane grid (.bt-cc-main/.bt-cc-left/.bt-cc-rail*) is
+   retired with the rail.  Text-only category TABS fused to ONE drawer
+   replace the pill stack (spec §5: the active tab and the panel read as
+   a single component; deliberately the old pill-label material, NOT iOS
+   pills).
+   v2.3.803: re-oriented per owner — the tab rail runs DOWN the left
+   edge (rail carries the left radius, drawer the right, one shared
+   border; the active tab's gold baseline moves to its right edge where
+   it meets the panel).  The drawer stacks two strips: the item strip on
+   top — a column-WRAP flex that fills the height then grows RIGHT, so
+   more choices appear by horizontal scrolling — and the color row
+   beneath it. */
+/* v2.3.804: rail/drawer chrome (outer border, radius, opaque panel
+   backgrounds) retired — the menu's frame art supplies all of it; only
+   the rail/panel separator and a light rail tint remain. */
+.bt-cc-tabs{flex:0 0 78px;display:flex;flex-direction:column;align-items:stretch;background:rgba(12,9,26,0.45);border-right:1px solid #3a3163}
+.bt-cc-tab{flex:1 1 0;min-height:0;padding:2px 6px;background:none;border:none;border-bottom:1px solid #3a3163;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-cc-tab:last-child{border-bottom:none}
+.bt-cc-tab:active{transform:translateY(1px)}
+.bt-cc-tab--on{background:rgba(58,49,99,0.85);color:#fff;box-shadow:inset -3px 0 0 var(--gold)}
+.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;padding:8px;box-sizing:border-box}
+.bt-cc-drawer-items{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px}
+/* Item strip: column-wrap fills the available height (1-2 tile rows
+   depending on device) then extends rightward; pan-x re-allowed under
+   the modal's touch-action:none (the old rail's iOS trick, rotated). */
+.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x}
+/* v2.3.804: the items/colors separator is the owner's gold divider art
+   (divider.webp, also restored from the v2.3.725 pack) instead of a
+   plain hairline. */
+.bt-cc-drawer-colors{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;background:url('/ui/welcome/divider.webp') top center/auto 13px no-repeat;padding-top:15px;margin-top:4px}
+.bt-cc-drawer-colors>.bt-cc-drawer-grid{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x;padding-bottom:2px}
+.bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:#9090a8;letter-spacing:.08em;font-family:'Baloo 2','Source Sans 3',sans-serif}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}
