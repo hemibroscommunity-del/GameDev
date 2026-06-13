@@ -219,9 +219,18 @@ copy won.
     magnetism, multiplayer recipient/claim gating, coin/xp/item/shard
     awards on pickup, pickup sparkle + level-up burst, post-pickup
     despawn delay. 16 captures, all clean on the first scan.
-  - **Next slices:** arrow/slime projectile sims + the VISUAL SYSTEM
-    UPDATES section, then the simulation/render split — guided by perf
-    needs.
+  - **Slice 5 — ✅ done (v2.3.813):** arrow + slime projectile sims
+    (~575 lines) → `src/game/projectiles.js` `updateArrows(S, {
+    setRpgState, setLevelUpMsg })` (flight/aim/homing, monster hit +
+    kills sharing the melee drop/shard/xp path, wall/range expiry) and
+    `updateSlimeProjectiles(S)` (fodder-slime projectiles with
+    mid-flight shield/block re-eval + contact damage). Arrows: 35
+    captures, only P/setters non-module; slime: 7, all clean. No
+    `if (false)` dead blocks (the slice-3 `arch` failure mode), so the
+    scope scanner's flat-scope limitation didn't bite.
+  - **Next slices:** the VISUAL SYSTEM UPDATES section (screen-shake/
+    facing/footstep/other-player interp/remote-projectile), then the
+    simulation/render split — guided by perf needs.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
