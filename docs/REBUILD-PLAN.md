@@ -266,6 +266,26 @@ copy won.
     decomposition (panels, modals) — a different kind of work from the
     game-loop strangler-fig, to be planned separately if desired.
 
+## Post-Phase-8 — game-logic helpers still inline in the component
+
+The game *loop* is done; a few cohesive game-logic helper clusters still
+live in BroTown alongside the React/JSX. These are the same `(S, …)`-style
+pure-logic moves and continue thinning the component.
+
+- **Dodge cluster — ✅ done (v2.3.817):** the §5.8 contextual
+  dodge/lunge/retreat-shot helpers → `src/game/dodge.js`
+  (`triggerContextualDodge` + internal `resolveDodgeContext`,
+  `doStandardDodge`, `doLunge`, `doRetreatShot`). All five already took
+  explicit `(S, R, ang)`; 14 references, every one a module import (zero
+  React state / refs), so BroTown imports only `triggerContextualDodge`
+  (the touch-swipe + keyboard entry point) and the cluster's cross-calls
+  resolve inside the module. Bodies byte-identical.
+- **Candidates remaining:** `doSwing` / `doSpecialAttack` / `doShield`
+  are `useCallback`s that read `stateRef.current` + a few setters — more
+  entangled (would need a deps object), so a later pass. The big
+  remaining mass is JSX panels/modals (UI decomposition), still its own
+  separate effort.
+
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
 more entangled than it looks; safety (rules above) outranks the sequence.
