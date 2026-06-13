@@ -189,9 +189,28 @@ copy won.
     custom-dungeon path (Dungeon Workshop) is live; the standard path is
     dormant behind the disabled tile-10 entry. The 3s setTimeouts re-read
     `stateRef.current`, preserved via deps.
-  - **Next slices:** per-system combat chunks (monster AI, boss
-    abilities, loot), then the simulation/render split — guided by perf
-    needs.
+  - **Slice 3 — ✅ done (v2.3.811):** the MONSTER AI + COMBAT block
+    (~2,460 lines — the single largest game-loop block) →
+    `src/game/monsterCombat.js`
+    `updateMonsterCombat(S, { activeWpn, setRpgState, setLevelUpMsg })`:
+    the whole `if (S.monsters && S.rpg)` body — per-frame weapon/crit
+    setup, the `S.monsters.forEach(m)` AI + combat loop (status ticks,
+    archetype AI, aggro, boss abilities/phases, telegraphs, fodder ranged
+    attacks, attack FX, block feedback, melee resolution, kills,
+    drops/shards/gems/nuggets), the player-swing PvP pass over
+    `S.others`, and the periodic RPG save. Because the build can't run in
+    the web sandbox (npm registry blocked), captures were enumerated with
+    a **depth-aware scope scanner** rather than eslint; the first naive
+    scanner under-reported (a `Math.atan2(P.y, P.x)` initializer made it
+    treat `P` as declared), so it was rewritten to track paren/brace
+    depth before trusting the result. Non-obvious captures: `P`
+    (player); `activeWpn` — the OUTER loop weapon var, distinct from the
+    block-internal `_activeWpn`, captured via deps so the one shard-roll
+    RPC reading `activeWpn.element1` stays byte-identical; the two React
+    setters. `window._pixiRenderer` stays a runtime global.
+  - **Next slices:** the remaining loop tail (arrow/slime projectile
+    sims, visual-system updates, ground-loot pickup), then the
+    simulation/render split — guided by perf needs.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
