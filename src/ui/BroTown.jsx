@@ -10543,6 +10543,24 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.join();
     try { introWaitRef.current = preloadPlayerAssets(); } catch (e2) { introWaitRef.current = null; }
     setShowWelcome(false); /* straight in -- no intro video on a resume */
+    /* v2.3.820: a resume skips the intro loading screen and drops straight
+       into the world while the avatar's gear sheets are still baking, which
+       tanks the frame rate with no on-screen explanation (owner asked for
+       this before; it never shipped).  Inject a top-left spinner DIRECTLY
+       on document.body — outside the React tree and at z-index 100000, so
+       it's guaranteed on the top layer and its compositor-driven CSS spin
+       keeps turning through the main-thread stutter (the React tree is too
+       busy to animate one itself).  Removed when the preload resolves
+       (assets baked, frame rate recovers), with a 20s safety cap. */
+    var _rejoinSpin = null;
+    try {
+      _rejoinSpin = document.createElement('div');
+      _rejoinSpin.className = 'bt-rejoin-loading';
+      document.body.appendChild(_rejoinSpin);
+    } catch (e4) {}
+    var _clearSpin = function () { try { if (_rejoinSpin) { _rejoinSpin.remove(); _rejoinSpin = null; } } catch (e5) {} };
+    Promise.resolve(introWaitRef.current).catch(function () {}).then(_clearSpin);
+    setTimeout(_clearSpin, 20000);
   }, []); /* mount-only by design: resumes happen once per page load */
 
   /* Name / avatar selection modal.

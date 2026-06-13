@@ -145,6 +145,13 @@ input{font-family:inherit}
 .bt-exit-label{font-size:12px;font-weight:700;color:rgba(255,255,255,.85);
   letter-spacing:.08em;font-family:'Source Sans 3',sans-serif}
 @keyframes bt-exit-spin{to{transform:rotate(360deg)}}
+/* v2.3.820: resume loading indicator — top-left, injected on document.body
+   so it sits on the very top layer, beside (not over) the exit arrow.  The
+   spinner + label are pseudo-elements and the spin is compositor-driven, so
+   it keeps turning while the rejoin's asset bake hammers the main thread. */
+.bt-rejoin-loading{position:fixed;top:max(10px,env(safe-area-inset-top));left:52px;z-index:100000;display:flex;align-items:center;gap:8px;padding:6px 11px;border-radius:10px;background:rgba(5,6,12,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);pointer-events:none}
+.bt-rejoin-loading::before{content:'';width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.25);border-top-color:rgba(255,255,255,.92);animation:bt-exit-spin .8s linear infinite}
+.bt-rejoin-loading::after{content:'Loading\2026';font-size:11px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.85);font-family:'Source Sans 3',sans-serif}
 .bt-fab-group{position:absolute;bottom:16px;right:16px;z-index:20;display:flex;flex-direction:column;gap:10px}
 .bt-combat-bar{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:20;
   display:flex;gap:8px;padding:6px 10px;background:rgba(0,0,0,.5);border-radius:14px;
