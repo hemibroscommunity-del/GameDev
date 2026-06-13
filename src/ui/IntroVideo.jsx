@@ -41,7 +41,7 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
     onComplete && onComplete();
   };
 
-  /* v2.3.818: the splash theme keeps playing across this loading screen
+  /* v2.3.831: the splash theme keeps playing across this loading screen
      (passed in via themeAudio).  At the transition we crossfade: ramp the
      theme down over the visual fade while the town ambience starts up, so
      the music dissolves into the town's sound instead of cutting.  Guarded
@@ -103,9 +103,9 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
   return (
     <div className={'bt-intro' + (fading ? ' bt-intro--fading' : '')}>
       <video
-        /* v2.3.809: ocean clip (owner art) — the loading screen leads into
+        /* v2.3.822: ocean clip (owner art) — the loading screen leads into
            the planned opening beat of the player washing ashore.
-           v2.3.810: swapped for the pixel-art underwater reef clip (owner);
+           v2.3.823: swapped for the pixel-art underwater reef clip (owner);
            ocean-intro.mp4 and the original brotown-intro.mp4 both live in
            git history. */
         src="/intro/loading-reef.mp4"
@@ -116,7 +116,7 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
         preload="auto"
         onError={() => { minDoneRef.current = true; readyRef.current = true; beginTransition(); finish(); }}
       />
-      {/* v2.3.818: persistent LOADING . . . caption + progress bar on the
+      {/* v2.3.831: persistent LOADING . . . caption + progress bar on the
           loading screen (owner).  The bar shows real prewarm progress when
           it's reporting; before that it runs an indeterminate sweep so the
           screen always reads as actively loading. */}
