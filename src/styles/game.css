@@ -395,10 +395,14 @@ input{font-family:inherit}
    loop is seamless (both ends are off-frame).  Logo-shine sits above the
    letters; sword-shine below them (matching the sword's own layer, so the
    blade glint hides behind the lettering exactly as the blade does). */
-.bt-cc-logo-shine,.bt-cc-sword-shine{pointer-events:none;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.85) 50%,transparent 60%);background-size:220% 100%;background-repeat:no-repeat;mix-blend-mode:screen;animation:bt-cc-shine 6.5s ease-in-out infinite}
+/* v2.3.815: ~90% slower (owner) — 6.5s -> 60s cycle.  The sweep window is
+   kept narrow (3%->6% = ~1.8s) so the glint still reads as a crisp glint
+   rather than a slow smear; it just happens far more rarely.  Sword
+   offset half a cycle so the two never glint together. */
+.bt-cc-logo-shine,.bt-cc-sword-shine{pointer-events:none;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.85) 50%,transparent 60%);background-size:220% 100%;background-repeat:no-repeat;mix-blend-mode:screen;animation:bt-cc-shine 60s ease-in-out infinite}
 .bt-cc-logo-shine{position:absolute;inset:0;z-index:2;-webkit-mask:url('/ui/welcome/logo-brotown.webp') center/contain no-repeat;mask:url('/ui/welcome/logo-brotown.webp') center/contain no-repeat}
-.bt-cc-sword-shine{position:absolute;left:63.5%;top:19%;height:115%;aspect-ratio:185/480;z-index:0;-webkit-mask:url('/ui/welcome/sword.webp') center/contain no-repeat;mask:url('/ui/welcome/sword.webp') center/contain no-repeat;animation-delay:2.6s}
-@keyframes bt-cc-shine{0%,8%{background-position:220% 0}24%{background-position:-120% 0}100%{background-position:-120% 0}}
+.bt-cc-sword-shine{position:absolute;left:63.5%;top:19%;height:115%;aspect-ratio:185/480;z-index:0;-webkit-mask:url('/ui/welcome/sword.webp') center/contain no-repeat;mask:url('/ui/welcome/sword.webp') center/contain no-repeat;animation-delay:30s}
+@keyframes bt-cc-shine{0%,3%{background-position:220% 0}6%{background-position:-120% 0}100%{background-position:-120% 0}}
 @media (prefers-reduced-motion:reduce){.bt-cc-logo-shine,.bt-cc-sword-shine{animation:none;opacity:0}}
 
 
