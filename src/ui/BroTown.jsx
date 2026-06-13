@@ -3332,23 +3332,15 @@ export var BroTown = function BroTown(_ref0) {
            §DNG dungeons are live; the standard tile-10 path is dormant. */
         updateDungeonWaves(S, { stateRef: stateRef, setRpgState: setRpgState });
 
-        /* Check building proximity (town only) */
+        /* v2.3.823: town building entrances removed (owner request).  The
+           town buildings have no in-game art yet, so their "Enter X"
+           proximity prompts were floating over empty painted ground.
+           Force nearBuilding null so no entrance prompt ever renders.
+           (Restore the BUILDINGS proximity scan here when building art
+           ships.) */
         var pTileX = Math.floor(P.x / TILE);
         var pTileY = Math.floor(P.y / TILE);
-        var nearBldg = null;
-        if (S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
-          for (var i = 0; i < BUILDINGS.length; i++) {
-            var b = BUILDINGS[i];
-            /* Check if player is within 2 tiles of building edge */
-            if (pTileX >= b.bx - 2 && pTileX <= b.bx + b.bw + 1 && pTileY >= b.by - 2 && pTileY <= b.by + b.bh + 1) {
-              nearBldg = i;
-              break;
-            }
-          }
-          S.nearBuilding = nearBldg;
-        } else {
-          S.nearBuilding = null;
-        }
+        S.nearBuilding = null;
 
         /* ═══ PERSONAL FARM — house proximity sleep prompt ═══ */
         if (S.currentZone === 'farm_home' && ZONES.farm_home._house) {
