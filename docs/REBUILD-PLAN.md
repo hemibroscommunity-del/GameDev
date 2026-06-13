@@ -235,9 +235,24 @@ copy won.
     interpolation, remote-projectile simulation. Cleanest slice yet — the
     only capture is `BT_AUDIO`; the block reads `S.player` directly so no
     `P` and no deps.
-  - **Next slices:** State cleanup flags + the remaining loop bookkeeping,
-    then the big one — the RENDER section / the simulation⇄render split,
-    which is the structural payoff of the phase. Guided by perf needs.
+  - **Slice 7 — ✅ done (v2.3.815):** the per-frame state-cleanup block
+    (~26 lines) → `src/game/stateCleanup.js` `updateStateCleanup(S)`:
+    expiry of transient flags/timers (block/level-up/death flashes, zone
+    wipe, combo grace + next-extended, monster telegraphs, chat bubbles,
+    ground splatter, impact rings) and expired-ground-loot marking. 3
+    captures (S + two combo constants); `_now` confirmed block-local
+    (not read by the render dispatch that follows).
+  - **End state of the sim portion:** the game loop's *simulation* is now
+    a sequence of module calls — zone transitions, zone mechanics, dungeon
+    waves, monster combat, ground-loot, projectiles, visual systems, state
+    cleanup — followed inline only by the RENDER dispatch.
+  - **Remaining — the RENDER / perf-instrumentation block** (`pixiRef
+    .current.update(S, W, H, nfts)` + the `perfTracker.record(...)`
+    sim/render split logging) stays inline by design for now: it's the
+    effect's own render responsibility, tightly bound to `canvas`, `nfts`,
+    `pixiRef`, and `performance.now()` frame timing. Extracting it is a
+    structural change (not a verbatim block move) and is a deliberate,
+    owner-steered step rather than another quick slice.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
