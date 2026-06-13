@@ -5409,6 +5409,13 @@ export var BroTown = function BroTown(_ref0) {
   }, []);
 
   /* Virtual joysticks — each tracks its own finger */
+  /* v2.3.816: floating model.  The joysticks are hidden until touched and
+     spawn under the finger anywhere in their half of the screen.  lZoneRef
+     / rZoneRef are the full-height left/right touch-capture zones; the
+     joystick visuals (joystickRef / rJoyRef bases) are position:fixed and
+     repositioned to the touch point on each touchstart. */
+  var lZoneRef = useRef(null);
+  var rZoneRef = useRef(null);
   var joystickRef = useRef(null);
   var knobRef = useRef(null);
   var lStickRef = useRef(null);
@@ -5480,6 +5487,8 @@ export var BroTown = function BroTown(_ref0) {
   }, []);
   var handleJoystickEnd = useCallback(function () {
     joystickActive.current = false;
+    /* v2.3.816: fade the floating joystick back out on release. */
+    if (joystickRef.current) joystickRef.current.style.opacity = '0';
     if (knobRef.current) knobRef.current.style.transform = 'translate(-50%,-50%)';
     if (lStickRef.current) {
       lStickRef.current.style.width = '0px';
@@ -5547,6 +5556,8 @@ export var BroTown = function BroTown(_ref0) {
   }, []);
   var handleRJoyEnd = useCallback(function () {
     rJoyActive.current = false;
+    /* v2.3.816: fade the floating joystick back out on release. */
+    if (rJoyRef.current) rJoyRef.current.style.opacity = '0';
     if (rKnobRef.current) rKnobRef.current.style.transform = 'translate(-50%,-50%)';
     if (rStickRef.current) {
       rStickRef.current.style.width = '0px';
@@ -5609,8 +5620,11 @@ export var BroTown = function BroTown(_ref0) {
   /* Dual joystick — each finger tracked independently */
   useEffect(function () {
     if (showNameModal || showLogin) return;
-    var lBase = joystickRef.current;
-    var rBase = rJoyRef.current;
+    /* v2.3.816: touchstart is captured by the full-height left/right zones
+       (floating model), not the small joystick bases.  touchmove/end stay
+       on window so a drag tracks anywhere once started. */
+    var lBase = lZoneRef.current;
+    var rBase = rZoneRef.current;
     if (!lBase) return;
     var findT = function findT(tl, id) {
       for (var i = 0; i < tl.length; i++) if (tl[i].identifier === id) return tl[i];
@@ -5644,6 +5658,15 @@ export var BroTown = function BroTown(_ref0) {
       var lts = lTapState.current;
       lTouchId.current = t.identifier;
       joystickActive.current = true;
+      /* v2.3.816: spawn the movement joystick centered under the finger
+         (base is position:fixed with translate(-50%,-50%), so left/top ARE
+         the centre) and fade it in.  All downstream math reads the base
+         rect, so it tracks the spawn point automatically. */
+      if (joystickRef.current) {
+        joystickRef.current.style.left = t.clientX + 'px';
+        joystickRef.current.style.top = t.clientY + 'px';
+        joystickRef.current.style.opacity = '0.25';
+      }
       lts.startAt = nowMs;
       lts.startX = t.clientX;
       lts.startY = t.clientY;
@@ -5711,6 +5734,13 @@ export var BroTown = function BroTown(_ref0) {
         } else {
           /* Drag/long-press cancels any pending double-tap. */
           lts.lastEndAt = 0;
+          /* v2.3.816: a fast flick on the movement side triggers the
+             contextual dodge/lunge/retreat-shot.  Previously this lived on
+             the canvas swipe handler, which the full-screen floating zones
+             now sit over -- route it back in.  handleCanvasSwipe self-gates
+             on speed/distance/duration, so a normal slow move-and-release
+             never dodges. */
+          try { handleCanvasSwipe(lts.startX, lts.startY, t.clientX, t.clientY, endT - lts.startAt); } catch (err) {}
         }
       }
     };
@@ -5732,6 +5762,14 @@ export var BroTown = function BroTown(_ref0) {
         && (dxLast * dxLast + dyLast * dyLast) < DOUBLE_TAP_MAX_DIST_SQ_PX;
       rTouchId.current = t.identifier;
       rJoyActive.current = true;
+      /* v2.3.816: spawn the combat joystick under the finger (before the
+         double-tap-shield branch so the shield arc + BlockRing orbit the
+         spawn point too). */
+      if (rJoyRef.current) {
+        rJoyRef.current.style.left = t.clientX + 'px';
+        rJoyRef.current.style.top = t.clientY + 'px';
+        rJoyRef.current.style.opacity = '0.25';
+      }
       rts.startAt = nowMs;
       rts.startX = t.clientX;
       rts.startY = t.clientY;
@@ -5866,6 +5904,17 @@ export var BroTown = function BroTown(_ref0) {
           rts3.lastEndAt = endT;
           rts3.lastX = t.clientX;
           rts3.lastY = t.clientY;
+          /* v2.3.816: a tap on the combat side forwards a synthetic click
+             to the canvas so the existing tap-to-lock-on-target logic
+             (monsters / NPCs / players / empty-space unlock) keeps working
+             now that the floating zone sits over the canvas.  The canvas
+             onTouchEnd no longer fires (zone is on top), so _touchHandledAt
+             is never set and the canvas onClick runs this once. */
+          try {
+            if (canvasRef.current) {
+              canvasRef.current.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY }));
+            }
+          } catch (err) {}
           if (rJoyPreviewRef.current) {
             rJoyPreviewRef.current.style.display = 'flex';
             if (rPreviewTimer.current) clearTimeout(rPreviewTimer.current);
@@ -5996,7 +6045,7 @@ export var BroTown = function BroTown(_ref0) {
         window.removeEventListener('touchcancel', sE);
       }
     };
-  }, [showNameModal, showLogin, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleShieldMove]);
+  }, [showNameModal, showLogin, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleShieldMove, handleCanvasSwipe]);
 
   /* Keep keyboard open — focus input when game starts and periodically re-focus */
   useEffect(function () {
@@ -24456,13 +24505,33 @@ export var BroTown = function BroTown(_ref0) {
         display: 'inline-block'
       }
     })));
-  }(), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
+  }(),
+  /* v2.3.816: floating-joystick touch zones.  Left half = movement, right
+     half = aim/combat; each captures touches anywhere in its half and spawns
+     the joystick under the finger (see the dual-joystick effect).  Transparent
+     and z-index 6 so they sit over the world canvas but under all HUD
+     (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
+     canvas. */
+  /*#__PURE__*/React.createElement("div", {
+    ref: lZoneRef,
+    className: "bt-desktop-hide",
+    'data-joyzone': 'L',
+    style: { position: 'fixed', left: 0, top: 0, width: '50%', height: 'calc(100% - var(--dash-h))', zIndex: 6, touchAction: 'none', background: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }
+  }), /*#__PURE__*/React.createElement("div", {
+    ref: rZoneRef,
+    className: "bt-desktop-hide",
+    'data-joyzone': 'R',
+    style: { position: 'fixed', right: 0, top: 0, width: '50%', height: 'calc(100% - var(--dash-h))', zIndex: 6, touchAction: 'none', background: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }
+  }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-zone",
     style: {
       position: 'fixed',
       bottom: 'calc(var(--dash-h) + 70px)',
       left: isLandscape ? 16 : 12,
       zIndex: 30,
+      /* v2.3.816: visuals only -- touches are handled by lZoneRef beneath,
+         so this corner box must not intercept them. */
+      pointerEvents: 'none',
       width: isLandscape ? 98 : 83,
       height: isLandscape ? 98 : 83
     }
@@ -24472,7 +24541,16 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       width: isLandscape ? 90 : 75,
       height: isLandscape ? 90 : 75,
-      position: 'relative',
+      /* v2.3.816: floating -- position:fixed so left/top (set on touchstart)
+         place the base CENTRE at the finger; hidden (opacity 0) until then;
+         the whole disc renders at 25% (owner: "75% transparency"). */
+      position: 'fixed',
+      left: '50%',
+      top: '50%',
+      transform: 'translate(-50%,-50%)',
+      opacity: 0,
+      pointerEvents: 'none',
+      transition: 'opacity 0.12s ease',
       /* v2.3.99: sprite-backed base.  Overrides the rgba bg + border in
          game.css with the metal-ring + center-hole art the user uploaded.
          No overflow:hidden -- the stick + knob layer on top and don't
@@ -24552,11 +24630,10 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'fixed',
       bottom: 'calc(var(--dash-h) + 70px)',
-      // Pulled inward so the shield ring (joyOuter + RING_GAP + RING_BAND
-      // = 50 + 7 + 36 = 93px from joystick center) clears the screen edge
-      // with a small buffer.
       right: isLandscape ? 50 : 50,
       zIndex: 30,
+      /* v2.3.816: visuals only -- touches handled by rZoneRef beneath. */
+      pointerEvents: 'none',
       width: isLandscape ? 98 : 83,
       height: isLandscape ? 98 : 83
     }
@@ -24566,10 +24643,14 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       width: isLandscape ? 90 : 75,
       height: isLandscape ? 90 : 75,
-      position: 'absolute',
+      /* v2.3.816: floating -- position:fixed, hidden until touchstart sets
+         left/top to the finger; whole disc at 25% opacity. */
+      position: 'fixed',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
+      opacity: 0,
+      transition: 'opacity 0.12s ease',
       /* v2.3.99: sprite-backed base.  The previous rgba bg + dynamic
          autoAttack border/shadow are gone; auto-attack signal is now a
          separate red-ring overlay rendered below.  borderRadius kept
