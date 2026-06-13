@@ -158,9 +158,19 @@ copy won.
   (shared infra), the generic `zone.lawless` flag checks (inert with no
   lawless zone), and the `lawlessKills`/`lawlessDeaths` comp-stat fields
   (saved-data shape). `server/` had zero references.
-- **Phase 7+ —** desktop keyboard controls (~11475–11637), then game-loop
-  slicing (extract per-zone mechanic blocks, then the simulation/render
-  split) guided by perf needs.
+- **Phase 7 — ✅ done (v2.3.789):** desktop keyboard controls (the
+  onKeyDown/onKeyUp pair inside the game-loop effect) →
+  `src/game/desktopControls.js` `setupDesktopControls(S, deps)`, which
+  registers the window listeners and returns the teardown the effect
+  cleanup calls. The `_desktop*` useCallback helpers and the §5.8
+  contextual-dodge resolver stay in BroTown (shared with touch controls)
+  and arrive via deps; `BT_AUDIO`/`getNpcQuest` are module imports. The
+  captured `chatOpen` value keeps the original closure's staleness
+  semantics (effect dep array unchanged). WASD movement itself was never
+  here — the game loop reads `S.keys`, which the extracted handlers
+  still populate.
+- **Phase 8+ —** game-loop slicing (extract per-zone mechanic blocks,
+  then the simulation/render split) guided by perf needs.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be

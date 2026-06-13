@@ -53,6 +53,8 @@ import { acceptQuest, turnInQuest } from '@/game/quests.js';
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
+/* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
+import { setupDesktopControls } from '@/game/desktopControls.js';
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -8464,158 +8466,32 @@ export var BroTown = function BroTown(_ref0) {
     frameRef.current = requestAnimationFrame(_gameLoop);
 
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */
-    S._isDesktop = window.matchMedia('(pointer:fine)').matches;
-    var onKeyDown = function onKeyDown(e) {
-      var _document$activeEleme, _S$rpg25;
-      if (((_document$activeEleme = document.activeElement) === null || _document$activeEleme === void 0 ? void 0 : _document$activeEleme.tagName) === 'INPUT') return;
-      S.keys[e.key] = true;
-      S._isDesktop = true; /* any keyboard input confirms desktop */
-
-      /* Space — dodge roll in movement or facing direction (§5.8 contextual). */
-      if (e.code === 'Space') {
-        e.preventDefault();
-        var _R1 = S.rpg;
-        if (!_R1 || S._dodgeRoll) return;
-        /* Direction: WASD if held, else mouse aim, else facing. */
-        var ddx = 0, ddy = 0;
-        if (S.keys['w'] || S.keys['W'] || S.keys['ArrowUp']) ddy = -1;
-        if (S.keys['s'] || S.keys['S'] || S.keys['ArrowDown']) ddy = 1;
-        if (S.keys['a'] || S.keys['A'] || S.keys['ArrowLeft']) ddx = -1;
-        if (S.keys['d'] || S.keys['D'] || S.keys['ArrowRight']) ddx = 1;
-        var ang;
-        if (ddx || ddy) ang = Math.atan2(ddy, ddx);
-        else if (S._mouseAimAngle != null) ang = S._mouseAimAngle;
-        else {
-          var dirs = { down: Math.PI / 2, up: -Math.PI / 2, left: Math.PI, right: 0 };
-          ang = dirs[S.player.dir] || 0;
-        }
-        triggerContextualDodge(S, _R1, ang);
-        return;
-      }
-
-      /* E — interact priority: building > sleep > gather > NPC quest */
-      if (e.code === 'KeyE') {
-        e.preventDefault();
-        /* 1. Building */
-        if (S.nearBuilding !== null) {
-          _desktopEnterBuilding();
-          return;
-        }
-        /* 2. Sleep at house */
-        if (S._nearHouse) {
-          _desktopSleep();
-          return;
-        }
-        /* 2b. Dungeon Workshop */
-        if (S._nearWorkshop) {
-          _desktopOpenWorkshop();
-          return;
-        }
-        /* 2c. Pet House */
-        if (S._nearPetHouse) {
-          setShowPetHouse(true);
-          BT_AUDIO.enterBuilding();
-          return;
-        }
-        /* 2d. Minigame Arena */
-        if (S._nearMinigameArena) {
-          setShowMinigame(true);
-          BT_AUDIO.enterBuilding();
-          return;
-        }
-        /* 3. Gather node */
-        if (S._nearNode && S._nearNode.alive) {
-          _desktopGather();
-          return;
-        }
-        /* 4. Nearby NPC — open quest dialog */
-        if (S._nearNpc) {
-          var npc = S._nearNpc;
-          var npcQ = typeof getNpcQuest === 'function' ? getNpcQuest(S.rpg, npc.name) : null;
-          if (npcQ) {
-            _desktopNpcQuest(npc, npcQ);
-            return;
-          }
-        }
-        return;
-      }
-
-      /* Q — toggle shield */
-      if (e.code === 'KeyQ' && !e.repeat) {
-        e.preventDefault();
-        if (S._shieldUp) {
-          S._shieldUp = false;
-          _desktopShieldOff();
-        } else {
-          _desktopShieldOn();
-        }
-        return;
-      }
-
-      /* Tab — cycle weapon slot */
-      if (e.code === 'Tab') {
-        e.preventDefault();
-        _desktopCycleWeapon();
-        return;
-      }
-
-      /* 1/2/3 — direct weapon slot */
-      if (e.code === 'Digit1') {
-        _desktopSelectSlot('melee');
-        return;
-      }
-      if (e.code === 'Digit2') {
-        _desktopSelectSlot('ranged');
-        return;
-      }
-      if (e.code === 'Digit3' && (_S$rpg25 = S.rpg) !== null && _S$rpg25 !== void 0 && _S$rpg25.staffWeapon) {
-        _desktopSelectSlot('staff');
-        return;
-      }
-
-      /* F — special attack toward mouse aim */
-      if (e.code === 'KeyF' && !e.repeat) {
-        e.preventDefault();
-        if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
-        _desktopSpecialAttack();
-        return;
-      }
-
-      /* C — open chat */
-      if (e.code === 'KeyC' && !e.repeat) {
-        e.preventDefault();
-        setChatOpen(true);
-        setTimeout(function() {
-          if (chatInputRef.current) chatInputRef.current.focus();
-        }, 50);
-        return;
-      }
-
-      /* Escape — close chat first, then close panels */
-      if (e.code === 'Escape') {
-        if (chatOpen) {
-          setChatOpen(false);
-          if (chatInputRef.current) chatInputRef.current.blur();
-          return;
-        }
-        _desktopCloseAll();
-        return;
-      }
-    };
-    var onKeyUp = function onKeyUp(e) {
-      S.keys[e.key] = false;
-      /* Release Q → drop shield */
-      if (e.code === 'KeyQ' && S._shieldUp) {
-        S._shieldUp = false;
-        _desktopShieldOff();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    /* v2.3.789: keyboard handlers moved verbatim to
+       src/game/desktopControls.js (REBUILD-PLAN Phase 7, behavior-frozen).
+       The _desktop* helpers and the dodge resolver stay in this component
+       (they're shared with the touch controls) and go in via deps. */
+    var teardownDesktopControls = setupDesktopControls(S, {
+      triggerContextualDodge: triggerContextualDodge,
+      _desktopEnterBuilding: _desktopEnterBuilding,
+      _desktopSleep: _desktopSleep,
+      _desktopOpenWorkshop: _desktopOpenWorkshop,
+      _desktopGather: _desktopGather,
+      _desktopNpcQuest: _desktopNpcQuest,
+      _desktopShieldOn: _desktopShieldOn,
+      _desktopShieldOff: _desktopShieldOff,
+      _desktopCycleWeapon: _desktopCycleWeapon,
+      _desktopSelectSlot: _desktopSelectSlot,
+      _desktopSpecialAttack: _desktopSpecialAttack,
+      _desktopCloseAll: _desktopCloseAll,
+      setShowPetHouse: setShowPetHouse,
+      setShowMinigame: setShowMinigame,
+      setChatOpen: setChatOpen,
+      chatInputRef: chatInputRef,
+      chatOpen: chatOpen
+    });
     return function () {
       cancelAnimationFrame(frameRef.current);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      teardownDesktopControls();
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
