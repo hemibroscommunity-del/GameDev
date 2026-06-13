@@ -67,6 +67,8 @@ import { updateGroundLootPickup } from '@/game/groundLoot.js';
 import { updateArrows, updateSlimeProjectiles } from '@/game/projectiles.js';
 /* v2.3.814: pre-render visual-system updates extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 6). */
 import { updateVisualSystems } from '@/game/visualSystems.js';
+/* v2.3.815: per-frame state-cleanup block extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 7). */
+import { updateStateCleanup } from '@/game/stateCleanup.js';
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -4169,32 +4171,9 @@ export var BroTown = function BroTown(_ref0) {
            src/game/projectiles.js (REBUILD-PLAN Phase 8, slice 5). ── */
         updateSlimeProjectiles(S);
 
-        /* ── State cleanup flags ── */
-        var _now = Date.now();
-        if (S._blockFlash && _now - S._blockFlash > 200) S._blockFlash = null;
-        if (S._levelUpFlash && _now - S._levelUpFlash > 800) S._levelUpFlash = null;
-        /* §5.9.3 Combo grace window — auto-attack chain decays after a
-           pause. Grace = swing cooldown × COMBO_GRACE_MULT. */
-        if (S.combo && S.combo.count > 0) {
-          var _comboGrace = (SWING_COOLDOWN || 600) * (COMBO_GRACE_MULT || 1.5);
-          if (_now - (S.combo.lastHitTs || 0) > _comboGrace) {
-            S.combo.count = 0;
-            S.combo.targetId = null;
-          }
-        }
-        /* §5.9.6 Combo "Next" extended-status flag also expires. */
-        if (S.combo && S.combo.nextExtended && _now > (S.combo.nextExtendedTs || 0)) {
-          S.combo.nextExtended = false;
-        }
-        if (S._deathFlash && _now - S._deathFlash > 500) S._deathFlash = null;
-        if (S._zoneWipe && _now - S._zoneWipe.ts > 800) S._zoneWipe = null;
-        if (S.monsters) S.monsters.forEach(function(m) { if (m._telegraphUntil && _now > m._telegraphUntil) m._telegraphUntil = null; });
-        Object.keys(S.chatBubbles || {}).forEach(function(pid) {
-          if (_now - (S.chatBubbles[pid] || {}).ts > 5000) delete S.chatBubbles[pid];
-        });
-        if (S.groundSplatter) S.groundSplatter = S.groundSplatter.filter(function(sp) { return _now - sp.ts < 30000; });
-        if (S._impactRings) S._impactRings = S._impactRings.filter(function(r) { return _now - r.ts < 400; });
-        if (S.groundLoot) S.groundLoot.forEach(function(loot) { if (loot.expiry && _now > loot.expiry) loot._expired = true; });
+        /* ── State cleanup flags — v2.3.815: moved verbatim to
+           src/game/stateCleanup.js (REBUILD-PLAN Phase 8, slice 7). ── */
+        updateStateCleanup(S);
 
         /* ══════════════════════════════════════════════════════════
            ── RENDER ── PixiJS only.  The Canvas 2D fallback path was
