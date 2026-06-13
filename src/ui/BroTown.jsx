@@ -3996,9 +3996,18 @@ export var BroTown = function BroTown(_ref0) {
         var _camSpeed = S.isSwinging || S._dodgeRoll ? 0.18 : Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 ? 0.14 : 0.08;
         S.camera.x += (camTargetX - S.camera.x) * _camSpeed;
         S.camera.y += (camTargetY - S.camera.y) * _camSpeed;
-        /* Camera no longer clamps to map bounds — the player stays
-           centered even at the edge of a zone.  Out-of-map area renders
-           as the zone's ground colour (or black) which is fine for now. */
+        /* v2.3.819: clamp the camera to the map so the viewport never shows
+           the out-of-bounds void.  Player movement is already bounded to the
+           same ZONE_W/ZONE_H (the P.x/P.y clamp above), so the player keeps
+           running toward the screen edge while the camera holds at the map
+           boundary -- centered in open areas, edge-locked near the borders.
+           Maps narrower/shorter than the viewport (only possible on a very
+           wide desktop window) center instead, since some void is then
+           unavoidable. */
+        var _maxCamX = ZONE_W - W;
+        var _maxCamY = ZONE_H - H;
+        S.camera.x = _maxCamX <= 0 ? _maxCamX / 2 : Math.max(0, Math.min(_maxCamX, S.camera.x));
+        S.camera.y = _maxCamY <= 0 ? _maxCamY / 2 : Math.max(0, Math.min(_maxCamY, S.camera.y));
 
         /* Broadcast position — slim payload for speed */
         var now = performance.now();
