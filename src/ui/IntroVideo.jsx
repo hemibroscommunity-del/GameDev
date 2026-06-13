@@ -77,10 +77,12 @@ export const IntroVideo = ({ onComplete, waitFor }) => {
   return (
     <div className={'bt-intro' + (fading ? ' bt-intro--fading' : '')}>
       <video
-        /* v2.3.809: ocean clip (owner art) — the loading screen now leads
-           into the planned opening beat of the player washing ashore.
-           Replaces the original brotown-intro.mp4 (in git history). */
-        src="/intro/ocean-intro.mp4"
+        /* v2.3.809: ocean clip (owner art) — the loading screen leads into
+           the planned opening beat of the player washing ashore.
+           v2.3.810: swapped for the pixel-art underwater reef clip (owner);
+           ocean-intro.mp4 and the original brotown-intro.mp4 both live in
+           git history. */
+        src="/intro/loading-reef.mp4"
         autoPlay
         muted
         playsInline
