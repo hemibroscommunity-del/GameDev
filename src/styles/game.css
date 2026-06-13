@@ -304,7 +304,9 @@ input{font-family:inherit}
 /* v2.3.802: braziers live INSIDE the pedestal group now (% values are
    relative to the disc box) — they stand on the platform's top face and
    flank the character (owner), instead of hanging at the stage edges. */
-.bt-cc-brazier{position:absolute;bottom:44%;height:105%;pointer-events:none;background:0 0/1200% 100% no-repeat;animation:bt-cc-braz 1.0s steps(12,jump-none) infinite}
+/* v2.3.812: drop-shadow keeps the torches defined against the animated
+   vista (owner: they washed out over the bright video background). */
+.bt-cc-brazier{position:absolute;bottom:44%;height:105%;pointer-events:none;background:0 0/1200% 100% no-repeat;animation:bt-cc-braz 1.0s steps(12,jump-none) infinite;filter:drop-shadow(0 3px 7px rgba(0,0,0,.55))}
 @keyframes bt-cc-braz{from{background-position-x:0%}to{background-position-x:100%}}
 /* v2.3.800's 52px button-clearance lift is superseded — on the disc the
    braziers sit nowhere near the stage's corner rotate buttons. */

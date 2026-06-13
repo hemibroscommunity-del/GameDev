@@ -10638,7 +10638,9 @@ export var BroTown = function BroTown(_ref0) {
       style: { position: 'absolute', bottom: '3%', left: '50%', height: '34%', aspectRatio: '480 / 165', transform: 'translateX(-50%)', pointerEvents: 'none' }
     }, /*#__PURE__*/React.createElement("img", {
       src: '/ui/welcome/platform.webp', alt: '',
-      style: { position: 'absolute', inset: 0, width: '100%', height: '100%' }
+      /* v2.3.812: drop-shadow grounds the disc against the now-animated
+         vista (owner saw it wash out over the bright video). */
+      style: { position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,.6))' }
     }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
     /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" })),
     /*#__PURE__*/React.createElement("canvas", {
