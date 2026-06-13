@@ -122,14 +122,9 @@ export const ZONES = {
     atmosphere: { tint: 'rgba(240,200,60,0.04)', vignette: 'rgba(200,180,40,0.06)' },
     enemyEmoji: { fodder: '✨', brute: '🦁', swarm: '🐝', volatile: '☀️', stalker: '🦅', hexer: '🌟', sentinel: '🏛️' }
   },
-  wasteland: {
-    id: 'wasteland', name: 'The Lawless Land', w: 60, h: 50,
-    element: null, secondary: null, level: [1, 100], music: null, safe: false, lawless: true,
-    palette: { ground: '#3a3228', path: '#5a4a38', accent: '#2a2218' },
-    spawns: [],
-    atmosphere: { tint: 'rgba(40,20,10,.08)', vignette: 'rgba(0,0,0,.30)' },
-    enemyEmoji: {}
-  },
+  /* v2.3.788: wasteland ('The Lawless Land') removed — the Ferryman NPC
+     was despawned long before (NPC_DATA emptied), leaving the zone
+     unreachable; owner confirmed removal 2026-06-12. */
   farm_home: {
     id: 'farm_home', name: 'Your Farm', w: 30, h: 25,
     element: null, secondary: null, level: [0, 0], music: 'town', safe: true, personal: true,
