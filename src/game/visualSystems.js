@@ -58,6 +58,10 @@ export function updateVisualSystems(S) {
           if (o._smoothVx === undefined) { o._smoothVx = rawVx; o._smoothVy = rawVy; }
           o._smoothVx += (rawVx - o._smoothVx) * 0.15;
           o._smoothVy += (rawVy - o._smoothVy) * 0.15;
+          /* v2.3.840: snap a stopped remote's decaying velocity to 0 so it
+             doesn't hover near the move/idle threshold and flicker the pose. */
+          if (rawVx === 0 && Math.abs(o._smoothVx) < 0.01) o._smoothVx = 0;
+          if (rawVy === 0 && Math.abs(o._smoothVy) < 0.01) o._smoothVy = 0;
           var oDx = o.x - o.renderX, oDy = o.y - o.renderY;
           var oDist = Math.sqrt(oDx * oDx + oDy * oDy);
           if (oDist > 100) {

@@ -117,7 +117,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (!S._remoteProjectiles) S._remoteProjectiles = [];
               S._remoteProjectiles.push({
                 x: payload.x, y: payload.y, ang: payload.ang,
-                isStaff: payload.isStaff, dist: 14,
+                isStaff: payload.isStaff, isSpecial: !!payload.isSpecial, dist: 14,
                 life: payload.isStaff ? 90 : 120,
                 ts: Date.now(), ownerId: payload.id
               });
