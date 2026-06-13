@@ -8,6 +8,7 @@
    simulation. Only capture is BT_AUDIO (footsteps); S is stateRef.current
    and the block reads S.player directly. */
 import { BT_AUDIO } from '@/data/index.js';
+import { getEquip } from '@/rendering/gearCatalog.js';
 
 export function updateVisualSystems(S) {
         /* ── Screen shake decay ── */
@@ -44,7 +45,9 @@ export function updateVisualSystems(S) {
         if (_fIsMoving) {
           if (!S._footstepTimer) S._footstepTimer = 0;
           S._footstepTimer++;
-          if (S._footstepTimer % 12 === 0) BT_AUDIO.footstep();
+          /* v2.3.836: armored footstep when any armor piece is worn
+             (shirt is clothing, not armor). */
+          if (S._footstepTimer % 12 === 0) BT_AUDIO.footstep(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none');
           if (S.stats && S._footstepTimer % 6 === 0) S.stats.steps++;
         }
 
