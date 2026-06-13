@@ -3291,13 +3291,15 @@ export var BroTown = function BroTown(_ref0) {
         var _zone = ZONES[S.currentZone];
         var ZONE_W = _zone.w * TILE,
           ZONE_H = _zone.h * TILE;
-        /* v2.3.821: the local player sprite is CENTRE-anchored, so its lower
-           half extends ~36 px below P.y.  With the camera clamped to the map
-           bottom, walking to the very bottom edge tucked the feet behind the
-           opaque dashboard.  Hold the player a sprite-half above the map's
-           bottom so the whole character stays above the dashboard -- i.e.
-           the playable area ends right where the dashboard begins. */
-        var _FOOT_MARGIN = 36;
+        /* v2.3.822: the local player sprite is CENTRE-anchored; its body
+           extends ~57 world-px BELOW P.y (measured from the rendered Pixi
+           bounds -- the clamp is in world coords so this is device-
+           independent).  With the camera clamped to the map bottom, walking
+           to the bottom edge tucked the legs/feet behind the opaque
+           dashboard.  Hold the player this far above the map bottom (plus a
+           buffer) so the WHOLE character stays above the dashboard -- the
+           playable area ends right where the dashboard begins. */
+        var _FOOT_MARGIN = 80;
         P.x = Math.max(hs, Math.min(ZONE_W - hs, P.x));
         P.y = Math.max(hs, Math.min(ZONE_H - _FOOT_MARGIN, P.y));
 
