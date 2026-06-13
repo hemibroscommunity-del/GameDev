@@ -3460,6 +3460,20 @@ export class EntityRenderer {
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
+        /* v2.3.839: footstep SFX locked to the jog animation.  The jog
+           sheet is ONE half-stride (one step) played each effectiveCycle,
+           so fire exactly one footstep per cycle -- the sound now matches
+           the visible stride exactly.  Naked uses a shorter cycleMs, so
+           its steps come quicker: a naturally lighter tempo, no separate
+           timer needed.  Aim/shield doubles effectiveCycle, so steps slow
+           with the animation too. */
+        const _jogCycle = Math.floor(now / effectiveCycle);
+        if (display._jogCycle !== _jogCycle) {
+          if (display._jogCycle !== undefined && typeof window !== 'undefined' && window.BT_AUDIO) {
+            window.BT_AUDIO.footstep(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none');
+          }
+          display._jogCycle = _jogCycle;
+        }
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;
         frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));

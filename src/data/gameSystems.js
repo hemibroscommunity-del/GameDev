@@ -5393,12 +5393,12 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        Falls back to the old synth tick until the sample preloads. */
     var key = armored ? 'footstep-armored' : 'footstep-naked';
     if (this._samples && this._samples[key]) {
+      /* v2.3.839: 80% quieter than before (×0.2). */
       if (armored) {
-        this.play(key, { vol: 0.4 + Math.random() * 0.12, pitchVar: 0.12 });
+        this.play(key, { vol: (0.4 + Math.random() * 0.12) * 0.2, pitchVar: 0.12 });
       } else {
-        /* v2.3.838: naked step reads lighter -- a touch quieter and
-           slightly up-pitched to pair with its quicker tempo. */
-        this.play(key, { vol: 0.3 + Math.random() * 0.1, rate: 1.05 + (Math.random() - 0.5) * 0.12 });
+        /* naked reads lighter -- slightly up-pitched as well as quieter. */
+        this.play(key, { vol: (0.3 + Math.random() * 0.1) * 0.2, rate: 1.05 + (Math.random() - 0.5) * 0.12 });
       }
     } else {
       this.beep(180 + Math.random() * 40, 0.02, 0.02, 'triangle');

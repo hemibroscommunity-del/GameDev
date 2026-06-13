@@ -8,7 +8,6 @@
    simulation. Only capture is BT_AUDIO (footsteps); S is stateRef.current
    and the block reads S.player directly. */
 import { BT_AUDIO } from '@/data/index.js';
-import { getEquip } from '@/rendering/gearCatalog.js';
 
 export function updateVisualSystems(S) {
         /* ── Screen shake decay ── */
@@ -45,13 +44,10 @@ export function updateVisualSystems(S) {
         if (_fIsMoving) {
           if (!S._footstepTimer) S._footstepTimer = 0;
           S._footstepTimer++;
-          /* v2.3.836: armored footstep when any armor piece is worn
-             (shirt is clothing, not armor).
-             v2.3.838: naked steps patter at a lighter (quicker) tempo --
-             every 9 frames vs the heavier armored cadence of 12. */
-          var _armored = getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none';
-          var _stepEvery = _armored ? 12 : 9;
-          if (S._footstepTimer % _stepEvery === 0) BT_AUDIO.footstep(_armored);
+          /* v2.3.839: footstep AUDIO moved into the renderer (entityRenderer
+             _updatePlayer jog branch) so it's locked to the animation cycle
+             and matches the visible stride exactly.  This timer now only
+             drives the step COUNTER for stats/achievements. */
           if (S.stats && S._footstepTimer % 6 === 0) S.stats.steps++;
         }
 
