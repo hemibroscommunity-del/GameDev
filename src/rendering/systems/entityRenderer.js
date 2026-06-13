@@ -2850,29 +2850,33 @@ export class EntityRenderer {
          ~33ms; a 150ms gap means they stopped. */
       const STALE_UPDATE_MS = 150;
       const stale = !other._lastUpdate || (now - other._lastUpdate) > STALE_UPDATE_MS;
-      const isMoving = !stale && (Math.abs(other._smoothVx || 0) > 0.01 || Math.abs(other._smoothVy || 0) > 0.01);
+      /* v2.3.840: movement hysteresis.  The smoothed remote velocity decays
+         asymptotically toward 0 when a player stops, so a single threshold
+         made isMoving (and thus the jog<->stand pose) flicker frame to frame
+         -- visible as a jitter.  Require a clear push to START moving and
+         drop to idle only well below that, so a decelerating or
+         direction-changing remote holds its pose cleanly. */
+      const _remoteV = Math.max(Math.abs(other._smoothVx || 0), Math.abs(other._smoothVy || 0));
+      let isMoving;
+      if (stale) isMoving = false;
+      else if (display._remoteMoving) isMoving = _remoteV > 0.012;
+      else isMoving = _remoteV > 0.05;
+      display._remoteMoving = isMoving;
       const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
 
       /* Sprite-sheet body — same as local player.  Other players
-         broadcast their facing in `other._facing` (4-cardinal), but
-         when moving we derive an 8-compass direction from their
-         interpolated velocity for diagonal frames.  When they stop,
-         reuse the last computed 8-compass on display._lastFacing so
-         the diagonal idle pose carries through (otherwise it would
-         snap back to the broadcast 4-cardinal). */
+         broadcast their own 8-way facing in `f` (-> other._renderFacing). */
       let facing;
-      if (other._moveFacing8) {
-        /* v2.3.398: derive remote facing from POSITION deltas (computed in the
-           interpolation loop), which are correct because remote players appear
-           in the right spots.  The previous velocity-based facing inverted
-           vertically -- the broadcast vy sign didn't survive the server relay,
-           causing the reported front/back mirror.  Holds the last value while
-           idle (= the direction they last walked), which is the right resting
-           facing. */
-        facing = other._moveFacing8;
-        display._lastFacing = facing;
-      } else if (other._renderFacing) {
+      if (other._renderFacing) {
+        /* v2.3.840: trust the SENDER's own 8-way facing first.  It's the
+           ground truth (the remote's render facing) and a plain string that
+           survives the relay intact -- unlike the position-delta derivation
+           (_moveFacing8), which goes stale during fast direction changes and
+           was rendering e.g. a northeast run as the west animation. */
         facing = other._renderFacing;
+        display._lastFacing = facing;
+      } else if (other._moveFacing8) {
+        facing = other._moveFacing8;
         display._lastFacing = facing;
       } else if (isMoving) {
         const ang = Math.atan2(other._smoothVy || 0, other._smoothVx || 0);

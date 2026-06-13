@@ -3753,6 +3753,13 @@ export class GameRoom {
             ps.x = msg.x; ps.y = msg.y;
             ps.d = msg.d || ps.d; ps.z = newZone;
             ps.vx = msg.vx || 0; ps.vy = msg.vy || 0;
+            /* v2.3.840: persist the sender's 8-way facing + live equip so
+               the tick can relay them -- peers render the correct jog
+               direction and live armour on/off. */
+            if (msg.f) ps.f = msg.f;
+            if (msg.eqc !== undefined) ps.eqc = msg.eqc;
+            if (msg.eql !== undefined) ps.eql = msg.eql;
+            if (msg.eqs !== undefined) ps.eqs = msg.eqs;
             if (msg.dodging !== undefined) ps.dodging = !!msg.dodging;
             if (msg.blocking !== undefined) ps.blocking = !!msg.blocking;
             if (msg.dead !== undefined) ps.dead = !!msg.dead;
@@ -4268,7 +4275,7 @@ export class GameRoom {
         const players = {};
         for (const id of this.dirtyPlayers) {
           const ps = this.playerState[id];
-          if (ps) players[id] = { x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy };
+          if (ps) players[id] = { x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy, f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs };
         }
         delta.players = players;
         this.dirtyPlayers.clear();

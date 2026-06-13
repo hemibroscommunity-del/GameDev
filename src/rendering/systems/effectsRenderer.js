@@ -740,10 +740,13 @@ export class EffectsRenderer {
       if (!rp._renderX) continue;
       this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff);
       if (rp.isStaff) {
-        gfx.circle(rp._renderX, rp._renderY, 4);
-        gfx.fill({ color: 0xa855f7, alpha: 0.8 });
+        /* v2.3.840: special staff bolts read bigger + golden with a halo. */
+        gfx.circle(rp._renderX, rp._renderY, rp.isSpecial ? 7 : 4);
+        gfx.fill({ color: rp.isSpecial ? 0xf5c542 : 0xa855f7, alpha: rp.isSpecial ? 0.95 : 0.8 });
+        if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.6 }); }
       } else {
-        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, 0xd4a574, 0.9);
+        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : 0xd4a574, rp.isSpecial ? 1.0 : 0.9);
+        if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.55 }); }
       }
     }
 

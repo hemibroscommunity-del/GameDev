@@ -1564,6 +1564,15 @@ export function setupWebSocket(ctx) {
               x: p.x,
               y: p.y,
               d: p.d || p.dir,
+              /* v2.3.840: forward the 8-way facing + live equip too.  They
+                 were in the broadcast payload but the shim dropped them, so
+                 the server never saw them and peers fell back to a noisy
+                 position-delta facing (wrong direction on fast turns) and
+                 join-only armour. */
+              f: p.f || null,
+              eqc: p.eqc,
+              eql: p.eql,
+              eqs: p.eqs,
               z: p.z || p.zone,
               vx: p.vx || 0,
               vy: p.vy || 0,

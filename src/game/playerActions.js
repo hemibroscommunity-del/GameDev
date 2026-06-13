@@ -104,6 +104,11 @@ export function specialAttack(S) {
         pierce: true,
         element: hasElement || null
       });
+      /* v2.3.840: broadcast the bow special so peers see the big golden
+         arrow fly (mirrors the regular-arrow player_projectile path). */
+      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+        id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: false, isSpecial: true, ts: now
+      }});
       BT_AUDIO.beep(400, 0.12, 0.15, 'sine');
       setTimeout(function () {
         return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
@@ -128,6 +133,14 @@ export function specialAttack(S) {
           element: hasElement || null,
           ice: true
         });
+      }
+      /* v2.3.840: broadcast the 3-bolt staff special cone so peers see it. */
+      if (S.channel) {
+        for (var _bcj = -1; _bcj <= 1; _bcj++) {
+          S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
+            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng + _bcj * 0.25, isStaff: true, isSpecial: true, ts: now
+          }});
+        }
       }
       BT_AUDIO.beep(500, 0.15, 0.18, 'square');
       setTimeout(function () {
