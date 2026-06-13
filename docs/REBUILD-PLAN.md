@@ -181,9 +181,17 @@ copy won.
     with a documented `var R;` so they fall back to their intended
     `|| 0` path; zero effect on live play. Frozen-shore actions are
     another revive-or-remove owner decision (like quests).
-  - **Next slices:** dungeon wave progression (§14.1, sits right after
-    this block), per-system combat chunks, then the simulation/render
-    split — guided by perf needs.
+  - **Slice 2 — ✅ done (v2.3.810):** §14.1 dungeon wave progression
+    (~356 lines) → `src/game/dungeonWaves.js`
+    `updateDungeonWaves(S, { stateRef, setRpgState })`: next-wave spawn,
+    boss spawn (custom §DNG + standard depth-scaled), completion rewards
+    + return-home / next-depth warps, endgame unlock on core clear. The
+    custom-dungeon path (Dungeon Workshop) is live; the standard path is
+    dormant behind the disabled tile-10 entry. The 3s setTimeouts re-read
+    `stateRef.current`, preserved via deps.
+  - **Next slices:** per-system combat chunks (monster AI, boss
+    abilities, loot), then the simulation/render split — guided by perf
+    needs.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
