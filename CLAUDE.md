@@ -15,6 +15,15 @@ A real-time multiplayer ARPG, fully contained in this one repository:
 - **Docs** — the root `README.md` is the Master Game Design Document
   (GDD), NOT a setup guide; don't put tooling docs in it.
   `docs/specs/*.md` holds implementation specs for shipped features.
+- **Doc trust (owner directive, 2026-06-13):** the GDD (`README.md` /
+  `gdd.md`) and `docs/ARCHITECTURE.md` are STALE — early design
+  thinking only, describing many systems that were never built and
+  missing many that were. NEVER use them as a blueprint to change,
+  "fix", or "restore" game behavior. Code is the source of truth.
+  Current, trustworthy docs: `docs/REBUILD-PLAN.md`,
+  `docs/WIRE-PROTOCOL.md`, `docs/STATE-SCHEMA.md`, `docs/specs/*.md`.
+  Content-facing systems found in code may also be dormant (quests,
+  collectibles) — confirm with the owner before building on one.
 
 The server previously lived in a separate `brotown-server` repo, now
 archived. Do not push there or build patches against it.

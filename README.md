@@ -1,5 +1,17 @@
 # Master GDD
 
+> ⚠️ **HISTORICAL DESIGN REFERENCE — NOT A BLUEPRINT (owner directive,
+> 2026-06-13).** This document captures the game's early design thinking
+> and grew far beyond what was ever built. The shipped game has diverged
+> from it heavily (systems described here don't exist; systems that exist
+> aren't described). **Never use this document as a spec to change,
+> "fix", or "restore" anything in the live game.** The code is the only
+> source of truth. For the current, trustworthy docs see
+> `docs/REBUILD-PLAN.md`, `docs/WIRE-PROTOCOL.md`, `docs/STATE-SCHEMA.md`,
+> and `docs/specs/*.md` (implementation specs for shipped features).
+> Read this file only for what it is: a record of early creative and
+> systems thinking.
+
 
 > Vite + React + PixiJS · WebGL renderer · Real-Time ARPG · 50 players/room · 4-player dungeon parties.
 > Priority: Clarity > Flexibility > Balance > Implementation.
