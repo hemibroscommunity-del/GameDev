@@ -320,7 +320,12 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
     const spr = display[_GEAR_SLOTS[s][1]];
     if (!spr) continue;
     const item = equip && equip[_GEAR_SLOTS[s][0]];
-    const tex = (sb && item && item !== 'none') ? getGearFrame(_GEAR_SLOTS[s][0], item, pose, dir, frameIdx) : null;
+    /* v2.3.809: the shirt is an under-layer, and on some jog frames its
+       sleeves/hem poke through the chest plate (the plate silhouette is not
+       a strict superset of the shirt's).  Owner call: the shirt is fully
+       hidden while a torso piece is worn -- it pops back on unequip. */
+    const hiddenUnderChest = _GEAR_SLOTS[s][0] === 'shirt' && equip && equip.chest && equip.chest !== 'none';
+    const tex = (sb && item && item !== 'none' && !hiddenUnderChest) ? getGearFrame(_GEAR_SLOTS[s][0], item, pose, dir, frameIdx) : null;
     if (tex) {
       if (spr.texture !== tex) spr.texture = tex;
       spr.x = sb.x; spr.y = sb.y;
@@ -2771,6 +2776,20 @@ export class EntityRenderer {
          corpse reads cleanly.  Fall back to a fade+tilt visual if the
          sheet hasn't loaded yet. */
       if (other._isDead) {
+        /* v2.3.809: self-heal a missed corpse-clear.  player_respawned is a
+           one-shot peer broadcast -- an observer that was frozen,
+           reconnecting, or joined after the respawn never receives it, so
+           the remote stayed a skeleton/bone pile forever while walking
+           around.  Corpses cannot move: once the player's position leaves
+           the death spot, they respawned. */
+        if (other._deathPx == null) { other._deathPx = display.x; other._deathPy = display.y; }
+        if (Date.now() - (other._deathTs || 0) > 1500
+            && Math.hypot(display.x - other._deathPx, display.y - other._deathPy) > 24) {
+          other._isDead = false;
+          other._deathPx = other._deathPy = null;
+        }
+      }
+      if (other._isDead) {
         if (display.alpha !== 1) display.alpha = 1;
         if (display.rotation !== 0) display.rotation = 0;
         const _elapsed = Date.now() - (other._deathTs || Date.now());
@@ -2808,6 +2827,10 @@ export class EntityRenderer {
       if (display._weaponContainer && !display._weaponContainer.visible) {
         display._weaponContainer.visible = true;
       }
+      /* v2.3.809: drop the corpse-position snapshot once alive so the NEXT
+         death takes a fresh one (a stale snapshot from a previous death
+         would read as instant movement and skip the death animation). */
+      if (other._deathPx != null) { other._deathPx = other._deathPy = null; }
 
       const body = display._body;
       const torso = other.bt || '#2563eb';
