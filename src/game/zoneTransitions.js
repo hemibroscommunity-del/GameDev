@@ -234,13 +234,30 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             } /* end zone transition */
           }
         } else if (S.currentZone !== 'town' && !S._inDungeon) {
-          /* In combat zones: return to town when stepping on tile 9 (any edge) */
+          /* In combat zones: return to town when NEAR a tile-9 return marker.
+             v2.3.823: was an exact step-onto-tile-9 check, but the player's
+             bottom foot-margin (kept off the dashboard) now leaves the very
+             bottom rows unreachable -- return markers placed on the bottom
+             edge (north/ne/nw entries) could never be stepped on.  Match the
+             town-exit model: trigger within RETURN_R tiles (manhattan) of a
+             return marker.  The 5-tile entry spawn keeps the player clear of
+             this radius on arrival, so it won't fire immediately. */
           var czZone = ZONES[S.currentZone];
           var czPtx = Math.floor(P.x / TILE),
             czPty = Math.floor(P.y / TILE);
           var czMX = Math.floor(czZone.w / 2);
-          var czTile = S.map && S.map[czPty] && S.map[czPty][czPtx];
-          if (czTile === 9) {
+          var RETURN_R = 2;
+          var _czNearReturn = false;
+          if (S.map) {
+            for (var _ry = czPty - RETURN_R; _ry <= czPty + RETURN_R && !_czNearReturn; _ry++) {
+              var _crow = S.map[_ry];
+              if (!_crow) continue;
+              for (var _rx = czPtx - RETURN_R; _rx <= czPtx + RETURN_R; _rx++) {
+                if (_crow[_rx] === 9 && (Math.abs(_ry - czPty) + Math.abs(_rx - czPtx)) <= RETURN_R) { _czNearReturn = true; break; }
+              }
+            }
+          }
+          if (_czNearReturn) {
             S.currentZone = 'town';
             updateZoneDimensions('town');
             BT_AUDIO.startZoneAmbient('town');

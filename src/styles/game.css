@@ -194,6 +194,24 @@ input{font-family:inherit}
 .bt-joy-flash-active{
   animation: bt-joy-flash 0.18s linear infinite;
 }
+/* v2.3.821: coin-count glimmer — a bright sheen sweeps across the gold
+   number in the top-right character card.  Uses background-clip:text so the
+   gradient paints the glyphs; the surrounding card sets the base gold color
+   as a fallback if clip:text is unsupported. */
+@keyframes bt-coin-glimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.bt-coin-glimmer{
+  background-image: linear-gradient(100deg,
+    #f5c542 0%, #f5c542 38%, #fff6cf 50%, #f5c542 62%, #f5c542 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #f5c542;
+  animation: bt-coin-glimmer 2.8s linear infinite;
+}
 /* Left-joystick centre — beveled blue button matching the right joystick,
    but without an icon.  Hints "this is interactable". */
 /* v2.3.105: knob default 42 px (1.5x v2.3.104's 28).  Inline JSX

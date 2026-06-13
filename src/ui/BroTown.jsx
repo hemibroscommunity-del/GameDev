@@ -3298,20 +3298,57 @@ export var BroTown = function BroTown(_ref0) {
 
         /* Collision check — check corners of a 20x20 hitbox */
         var hs = 10;
-        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs)) P.x = nx;
-        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs)) P.y = ny;
+        /* v2.3.820: monsters are SOLID — the player can't walk into/through
+           a monster's body.  Fixes the "monsters run through you" feel and
+           the shield arc spinning wildly as a monster overlaps your centre.
+           Checked per-axis (like the tile check) so you still slide along a
+           monster instead of sticking, and only blocks motion that moves
+           DEEPER into a monster — so if a server-driven monster ends up on
+           top of you, you can always walk back out.  Body centre uses the
+           same per-archetype Y offset as tap-to-lock so the solid footprint
+           lines up with the sprite you see. */
+        var _monBlock = function (curX, curY, px, py) {
+          var ms = S.monsters;
+          if (!ms) return false;
+          for (var _mi = 0; _mi < ms.length; _mi++) {
+            var _m = ms[_mi];
+            if (!_m || !_m.alive) continue;
+            var _arch = _m.archetype || _m.type;
+            var _by = _m.y - (_arch === 'fodder' ? 40 : _arch === 'snowman' ? 19 : 0);
+            var _mr = _arch === 'snowman' ? 13 : (_arch === 'fodder' || MONSTER_VARIANTS[_arch]) ? 8 : 32;
+            var _rr = _mr + hs;
+            var _ndx = px - _m.x, _ndy = py - _by;
+            var _nd2 = _ndx * _ndx + _ndy * _ndy;
+            if (_nd2 < _rr * _rr) {
+              var _cdx = curX - _m.x, _cdy = curY - _by;
+              if (_nd2 < _cdx * _cdx + _cdy * _cdy) return true; /* moving deeper in */
+            }
+          }
+          return false;
+        };
+        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y)) P.x = nx;
+        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny)) P.y = ny;
         /* Apply ice slide */
         if (S._slideVx || S._slideVy) {
           var sx = P.x + (S._slideVx || 0),
             sy = P.y + (S._slideVy || 0);
-          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs)) P.x = sx;
-          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs)) P.y = sy;
+          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y)) P.x = sx;
+          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy)) P.y = sy;
         }
         var _zone = ZONES[S.currentZone];
         var ZONE_W = _zone.w * TILE,
           ZONE_H = _zone.h * TILE;
+        /* v2.3.822: the local player sprite is CENTRE-anchored; its body
+           extends ~57 world-px BELOW P.y (measured from the rendered Pixi
+           bounds -- the clamp is in world coords so this is device-
+           independent).  With the camera clamped to the map bottom, walking
+           to the bottom edge tucked the legs/feet behind the opaque
+           dashboard.  Hold the player this far above the map bottom (plus a
+           buffer) so the WHOLE character stays above the dashboard -- the
+           playable area ends right where the dashboard begins. */
+        var _FOOT_MARGIN = 80;
         P.x = Math.max(hs, Math.min(ZONE_W - hs, P.x));
-        P.y = Math.max(hs, Math.min(ZONE_H - hs, P.y));
+        P.y = Math.max(hs, Math.min(ZONE_H - _FOOT_MARGIN, P.y));
 
         /* ═══ ZONE TRANSITION — edge-based detection ═══ */
         var ptx = Math.floor(P.x / TILE),
@@ -3342,23 +3379,15 @@ export var BroTown = function BroTown(_ref0) {
            §DNG dungeons are live; the standard tile-10 path is dormant. */
         updateDungeonWaves(S, { stateRef: stateRef, setRpgState: setRpgState });
 
-        /* Check building proximity (town only) */
+        /* v2.3.823: town building entrances removed (owner request).  The
+           town buildings have no in-game art yet, so their "Enter X"
+           proximity prompts were floating over empty painted ground.
+           Force nearBuilding null so no entrance prompt ever renders.
+           (Restore the BUILDINGS proximity scan here when building art
+           ships.) */
         var pTileX = Math.floor(P.x / TILE);
         var pTileY = Math.floor(P.y / TILE);
-        var nearBldg = null;
-        if (S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
-          for (var i = 0; i < BUILDINGS.length; i++) {
-            var b = BUILDINGS[i];
-            /* Check if player is within 2 tiles of building edge */
-            if (pTileX >= b.bx - 2 && pTileX <= b.bx + b.bw + 1 && pTileY >= b.by - 2 && pTileY <= b.by + b.bh + 1) {
-              nearBldg = i;
-              break;
-            }
-          }
-          S.nearBuilding = nearBldg;
-        } else {
-          S.nearBuilding = null;
-        }
+        S.nearBuilding = null;
 
         /* ═══ PERSONAL FARM — house proximity sleep prompt ═══ */
         if (S.currentZone === 'farm_home' && ZONES.farm_home._house) {
@@ -4043,9 +4072,18 @@ export var BroTown = function BroTown(_ref0) {
         var _camSpeed = S.isSwinging || S._dodgeRoll ? 0.18 : Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 ? 0.14 : 0.08;
         S.camera.x += (camTargetX - S.camera.x) * _camSpeed;
         S.camera.y += (camTargetY - S.camera.y) * _camSpeed;
-        /* Camera no longer clamps to map bounds — the player stays
-           centered even at the edge of a zone.  Out-of-map area renders
-           as the zone's ground colour (or black) which is fine for now. */
+        /* v2.3.819: clamp the camera to the map so the viewport never shows
+           the out-of-bounds void.  Player movement is already bounded to the
+           same ZONE_W/ZONE_H (the P.x/P.y clamp above), so the player keeps
+           running toward the screen edge while the camera holds at the map
+           boundary -- centered in open areas, edge-locked near the borders.
+           Maps narrower/shorter than the viewport (only possible on a very
+           wide desktop window) center instead, since some void is then
+           unavoidable. */
+        var _maxCamX = ZONE_W - W;
+        var _maxCamY = ZONE_H - H;
+        S.camera.x = _maxCamX <= 0 ? _maxCamX / 2 : Math.max(0, Math.min(_maxCamX, S.camera.x));
+        S.camera.y = _maxCamY <= 0 ? _maxCamY / 2 : Math.max(0, Math.min(_maxCamY, S.camera.y));
 
         /* Broadcast position — slim payload for speed */
         var now = performance.now();
@@ -4432,17 +4470,17 @@ export var BroTown = function BroTown(_ref0) {
             return (((_S2$rpg$lifeSkills3 = S2.rpg.lifeSkills) === null || _S2$rpg$lifeSkills3 === void 0 || (_S2$rpg$lifeSkills3 = _S2$rpg$lifeSkills3[k]) === null || _S2$rpg$lifeSkills3 === void 0 ? void 0 : _S2$rpg$lifeSkills3.level) || 0) >= 25;
           });
         }
+        /* v2.3.820: achievement toast notifications removed at the owner's
+           request ("First Steps", "Renaissance", etc. -- none were
+           intentional content).  Badges are still recorded silently so any
+           profile/stat that reads S.badges keeps working; only the popup +
+           its sound are suppressed.  Level-up, XP, damage, and chat
+           feedback are untouched (separate systems). */
         BT_ACHIEVEMENTS.forEach(function (a) {
           if (!S2.badges.includes(a.id) && a.check(S2.stats)) {
             S2.badges.push(a.id);
             S2.stats.badges = _toConsumableArray(S2.badges);
             setMyBadges(_toConsumableArray(S2.badges));
-            setAchievementMsg({
-              icon: a.icon,
-              name: a.name,
-              ts: Date.now()
-            });
-            BT_AUDIO.collect();
           }
         });
         /* Save stats periodically */
@@ -6538,9 +6576,14 @@ export var BroTown = function BroTown(_ref0) {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
-      top: 6,
-      right: 6,
-      zIndex: 999,
+      /* v2.3.821: was top:6 right:6 z-999 -- sat directly ON TOP of the
+         top-right character card (which is z-30 under it), reading as a
+         mystery box "behind" the HUD.  Moved down to stack BELOW the card
+         + its new XP bar (card height ~= 6 + ~111), and dropped under the
+         card's z so it can never overlap it again. */
+      top: 'calc(env(safe-area-inset-top, 0px) + 120px)',
+      right: 'calc(env(safe-area-inset-right, 0px) + 6px)',
+      zIndex: 28,
       padding: '3px 8px',
       borderRadius: 6,
       background: 'rgba(0,0,0,.7)',
@@ -21250,10 +21293,15 @@ export var BroTown = function BroTown(_ref0) {
         var z = ZONES[((_stateRef$current32 = stateRef.current) === null || _stateRef$current32 === void 0 ? void 0 : _stateRef$current32.currentZone) || 'town'];
         return z !== null && z !== void 0 && z.element ? (_ELEMENTS$z$element4 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element4 === void 0 ? void 0 : _ELEMENTS$z$element4.color : '#e8eaf8';
       }(),
-      background: '#000',
+      /* v2.3.820: was a solid black bar (background:#000 + border) that
+         clipped the player when they ran to the top map edge.  Now a
+         transparent text overlay -- the map fills the full play area to
+         the top, the zone/level label just floats over it with a shadow
+         for legibility, and nothing can clip behind it. */
+      background: 'transparent',
       padding: '6px 12px',
       textAlign: 'center',
-      borderBottom: '1px solid rgba(255,255,255,0.12)',
+      textShadow: '0 1px 3px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.7)',
       pointerEvents: 'none',
     }
   }, ((_ZONES = ZONES[((_stateRef$current33 = stateRef.current) === null || _stateRef$current33 === void 0 ? void 0 : _stateRef$current33.currentZone) || 'town']) === null || _ZONES === void 0 ? void 0 : _ZONES.name) || 'Town', function (_stateRef$current34, _stateRef$current35, _stateRef$current36, _z$level) {

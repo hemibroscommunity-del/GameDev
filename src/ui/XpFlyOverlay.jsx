@@ -62,6 +62,9 @@ const HudPopup = ({ pop, stackIdx }) => {
      up in BottomDashboard.  XP strip is 8 px tall pinned to
      bottom: var(--dash-h) — popups appear centered above the strip
      while the bar fill grows to the new total. */
+  /* v2.3.821: the XP bar moved into the top-right character card, so the
+     XP popups now anchor there too (just below the gold popups) instead of
+     above the retired bottom strip. */
   const base = isGold
     ? {
         position: 'fixed',
@@ -71,16 +74,14 @@ const HudPopup = ({ pop, stackIdx }) => {
       }
     : {
         position: 'fixed',
-        left: '50%',
-        bottom: 'calc(var(--dash-h) + 14px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
-        textAlign: 'center',
+        right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 112px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
+        textAlign: 'right',
       };
 
-  /* Phase 1 drift: gold sinks down 8 px, xp rises up 8 px. Both fade out. */
+  /* Phase 1 drift: both sink/rise slightly and fade out. */
   const driftY = phase === 1 ? (isGold ? 8 : -8) : 0;
-  const transformVal = isGold
-    ? 'translateY(' + driftY + 'px)'
-    : 'translate(-50%, ' + driftY + 'px)';
+  const transformVal = 'translateY(' + driftY + 'px)';
 
   return (
     <div

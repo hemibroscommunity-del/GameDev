@@ -606,20 +606,12 @@ export function setupWebSocket(ctx) {
                   text: '+' + msg.payload.refund + ' HP',
                   color: '#3dd497', ts: Date.now(),
                 });
-              } else if (msg.payload && S.dmgNumbers && S.player) {
-                /* v2.3.701: surface the server's zero-refund reason instead of
-                   dropping it silently (user report: 'lifesteal not working').
-                   Most common legit reason: 'no-this-mon' after a fully
-                   BLOCKED fight -- the server skips attacks while shielded,
-                   so there's no damage to refund (by design).  The muted
-                   floater + console line make the gate diagnosable in play. */
-                try { console.log('[lifesteal] refund 0:', JSON.stringify(msg.payload)); } catch (e) {}
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 40,
-                  text: 'lifesteal: ' + (msg.payload.reason || 'no heal'),
-                  color: '#8890b8', ts: Date.now(),
-                });
               }
+              /* v2.3.824: the zero-refund diagnostic floater ('lifesteal:
+                 <reason>') was removed at the owner's request -- a melee kill
+                 with no damage to refund (e.g. a fully-blocked fight) should
+                 simply show nothing.  Only the +N HP heal above ever
+                 surfaces now. */
               break;
             }
           case 'loot_pickup_rejected':
