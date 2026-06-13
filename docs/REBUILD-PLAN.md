@@ -228,9 +228,16 @@ copy won.
     captures, only P/setters non-module; slime: 7, all clean. No
     `if (false)` dead blocks (the slice-3 `arch` failure mode), so the
     scope scanner's flat-scope limitation didn't bite.
-  - **Next slices:** the VISUAL SYSTEM UPDATES section (screen-shake/
-    facing/footstep/other-player interp/remote-projectile), then the
-    simulation/render split — guided by perf needs.
+  - **Slice 6 — ✅ done (v2.3.814):** the VISUAL SYSTEM UPDATES
+    "pre-render simulation" block (~107 lines) → `src/game/visualSystems.js`
+    `updateVisualSystems(S)`: screen-shake decay, player facing (discrete
+    dir + continuous angle), footstep timer/stats, other-player
+    interpolation, remote-projectile simulation. Cleanest slice yet — the
+    only capture is `BT_AUDIO`; the block reads `S.player` directly so no
+    `P` and no deps.
+  - **Next slices:** State cleanup flags + the remaining loop bookkeeping,
+    then the big one — the RENDER section / the simulation⇄render split,
+    which is the structural payoff of the phase. Guided by perf needs.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
