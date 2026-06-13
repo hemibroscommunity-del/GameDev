@@ -1181,6 +1181,28 @@ export var BroTown = function BroTown(_ref0) {
       try { if (au) { au.pause(); au.src = ''; au = null; } } catch (e) {}
     };
   }, [showNameModal]);
+  /* v2.3.817: splash theme music (owner's chiptune adventure track).  Same
+     autoplay-policy dance as the torch crackle — browsers block un-muted
+     autoplay, so it arms on the modal's first pointerdown, loops, and stops
+     when the modal closes (PLAY) so it doesn't bleed into the intro/game
+     (BT_AUDIO drives zone music from there). */
+  useEffect(function () {
+    if (!showNameModal) return;
+    var au = null;
+    var start = function () {
+      try {
+        au = new Audio('/ui/welcome/theme.m4a');
+        au.loop = true;
+        au.volume = 0.4;
+        au.play().catch(function () {});
+      } catch (e) {}
+    };
+    window.addEventListener('pointerdown', start, { once: true });
+    return function () {
+      window.removeEventListener('pointerdown', start);
+      try { if (au) { au.pause(); au.src = ''; au = null; } } catch (e) {}
+    };
+  }, [showNameModal]);
   /* The long-hair sprite is ~88% pure black, so a light hair color over-
      processes into a black band around the face (see characterPortrait recolor
      note).  Restrict that one style to dark colors only; clamp the selection
