@@ -583,14 +583,32 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   setTradeOffer/setTradeTarget (setters). Data imports (BT_AUDIO,
   PVP_THREAT_BASE_COUNTDOWN, PVP_THREAT_COOLDOWN, REPUTATION, ZONES)
   verified real; slice/spread-array babel helpers; 7 hoisted temps local.
-- **Candidates remaining:** with inspectPlayer gone, all the gated
-  panel/modal/overlay subtrees are extracted. BroTown.jsx is down to
-  ~10.3k lines (from ~15.9k at the start of this run). What's left is the
-  core component itself: the HUD/controls overlay JSX that is interleaved
-  with live state, plus the top-level effect/loop and channel wiring —
-  these are not standalone gated subtrees, so the next pass needs a
-  different strategy (extract render helpers and/or move effect bodies into
-  `src/game/`), with anchors re-derived each time.
+- **NameModal — ✅ done (v2.3.888):** the `if (showNameModal) { … }`
+  early-return render path (~352 lines: the vertical guided character
+  creator — banner, character showcase, name row, customization drawer,
+  Randomize, PLAY) → `src/ui/panels/NameModal.jsx`. First **render-helper**
+  extraction (the "different strategy"): the whole render body, including
+  its local `_objTiles`/`_colTiles`/category-builder helpers, moves into
+  the component; the `if (showNameModal)` gate stays in BroTown and now
+  just returns `<NameModal …/>`. Render-only — NO effects or game-loop
+  logic moved. Trait catalogs + their sprite setters import from
+  `@/rendering/*` (the modules they actually live in — same imports BroTown
+  uses); BUILD_INFO from BuildBadge. 41 props carry the React selection
+  state, its `*Sel` setters, the preview refs, and BroTown handler
+  closures (joinTown, randomizeWithFlair, rollRandomName, rotatePreview,
+  markObjPicked, _swatchTile, _thumbTile, _dragRotX). Key lesson:
+  `set*` is NOT always a React setter — `setHeadwear/setHair/setShirt/…`
+  are **imported** trait functions, only the `*Sel` ones are state.
+  Classify each free var against BroTown's import lines before deciding
+  import-vs-prop. With this BroTown.jsx is under 10k lines (9,963).
+- **Candidates remaining:** what's left is the core component: the
+  HUD/controls overlay JSX interleaved with live state (the floating
+  joystick cluster is ref-heavy — lZoneRef/rZoneRef/knobRef/lJoyPreviewRef
+  etc. — and a multi-sibling run, so it needs careful boundary work), plus
+  the top-level effect/game-loop and channel wiring. Effect/loop bodies are
+  the highest-risk; prefer moving them into `src/game/` behind a deps
+  object only with the verification protocol and anchors re-derived each
+  time.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
