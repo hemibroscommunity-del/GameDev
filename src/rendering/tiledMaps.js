@@ -39,8 +39,8 @@ export const IMAGE_ZONE_MAPS = {
   thunder: '/maps/thunder_v4.jpg',
   tidal:   '/maps/tidal_v6.png',   /* redesign: arrival-by-sea cave island */
   mist:    '/maps/mist_v5.png',   /* redesign: poison swamp, living edge -> toxic deep */
-  hollows: '/maps/hollows_v5.jpg',
-  ember:   '/maps/ember_v5.jpg',
+  hollows: '/maps/hollows_v6.png',   /* redesign: underground crystal cavern */
+  ember:   '/maps/ember_v6.png',   /* redesign: volcanic, scorched fringe -> molten heart */
   sky:     '/maps/sky_v5.png',   /* redesign: warm desert, scrub fringe -> dune sea */
 };
 
@@ -75,6 +75,8 @@ export const WALKABILITY_MAPS = {
   tidal: '/maps/tidal_v6.walk.json',   /* note: mask covered rocks only -- open sea + deep pools still walkable, needs a water pass */
   mist: '/maps/mist_v5.walk.json',
   sky: '/maps/sky_v5.walk.json',
+  hollows: '/maps/hollows_v6.walk.json',   /* dark cave: formations block, dark rock floor walkable */
+  ember: '/maps/ember_v6.walk.json',   /* note: translucent magenta over lava may leak a few walkable lava spots */
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
