@@ -38,7 +38,7 @@ export const IMAGE_ZONE_MAPS = {
   meadow:  '/maps/meadow_v6.png',   /* redesign: new painterly meadow (scaled to 1024 world) */
   thunder: '/maps/thunder_v4.jpg',
   tidal:   '/maps/tidal_v6.png',   /* redesign: arrival-by-sea cave island */
-  mist:    '/maps/mist_v4.jpg',
+  mist:    '/maps/mist_v5.png',   /* redesign: poison swamp, living edge -> toxic deep */
   hollows: '/maps/hollows_v5.jpg',
   ember:   '/maps/ember_v5.jpg',
   sky:     '/maps/sky_v4.jpg',
@@ -73,6 +73,7 @@ export const WALKABILITY_MAPS = {
   meadow: '/maps/meadow_v6.walk.json',
   frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
   tidal: '/maps/tidal_v6.walk.json',   /* note: mask covered rocks only -- open sea + deep pools still walkable, needs a water pass */
+  mist: '/maps/mist_v5.walk.json',
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
