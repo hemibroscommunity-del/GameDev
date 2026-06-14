@@ -344,6 +344,14 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   setShowGuildPanel, stateRef); GUILD_RANKS/SKILL_GUILDS/getGuildQuest/
   getGuildRank/BT_AUDIO + babel imported. Boundary paren-matched; subtree
   byte-identical; full-file syntax re-checked.
+- **FeedbackPanel — ✅ done (v2.3.858):** the submit + browse community
+  feedback modal (`showFeedback`, ~598 lines — the biggest panel yet) →
+  `src/ui/panels/FeedbackPanel.jsx`. Includes its async ticket-list fetch,
+  moved verbatim. 18 props (8 feedback-* useState values + their setters +
+  setShowFeedback + stateRef); FEEDBACK_CATEGORIES/FEEDBACK_TOPICS/
+  BT_API_BASE/BT_AUDIO + babel async/spread helpers imported; fetch /
+  URLSearchParams are globals. Props destructure + mount object generated
+  programmatically to avoid typos across the large surface.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
