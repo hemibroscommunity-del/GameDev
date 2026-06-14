@@ -566,12 +566,23 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   (state), setIncomingTrade, setRpgState (setters); rpgState is read only
   in the gate, not the subtree. BT_AUDIO verified real; spread/slice babel
   helpers; one hoisted temp declared locally.
-- **Candidates remaining:** the standalone panels and modals are now all
-  extracted. BroTown.jsx is down to ~10.9k lines (from ~15.9k at the start
-  of this run) and is mostly the core component, game-loop wiring, and the
-  remaining inline HUD/render scaffolding. Re-derive anchors before the
-  next pass; the biggest remaining masses are the HUD/controls overlays and
-  the top-level effect/loop setup.
+- **PlayerListPanel + EmotePanel — ✅ done (v2.3.886):** two small HUD
+  overlays extracted together (low-risk, same gated-subtree pattern).
+  - `showPlayerList` (~42 lines: the online-players list, tap to inspect) →
+    `src/ui/panels/PlayerListPanel.jsx`. 3 props (playerList,
+    setInspectPlayer, setShowPlayerList).
+  - `showEmotes` (~44 lines: the emote / quick-chat picker) →
+    `src/ui/panels/EmotePanel.jsx`. 1 prop (sendEmote, a useCallback);
+    EMOTES/TEXT_EMOTES imported.
+- **Candidates remaining:** the `inspectPlayer` modal (~549 lines: the
+  player-inspect / social-actions popup — friend/mute/block, reputation,
+  initiate trade) is the next inline-subtree extraction — bigger, ~16 props
+  (blockedList/clanData/friendsList/mutedList state + their setters, plus
+  setShowTrade/setTradeOffer/setTradeTarget and setInspectPlayer), data
+  imports (REPUTATION, PVP_THREAT_*, ZONES, BT_AUDIO) and multi-`$` temps.
+  After that BroTown is mostly the core component, the HUD/controls
+  overlays, and the top-level effect/loop setup. Re-derive anchors before
+  each pass.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be

@@ -31,6 +31,8 @@ import { QuestPanel } from './panels/QuestPanel.jsx';
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
 import { TradePanel } from './panels/TradePanel.jsx';
 import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
+import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
+import { EmotePanel } from './panels/EmotePanel.jsx';
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
 import { ForgePanel } from './panels/buildings/ForgePanel.jsx';
 import { WoodworkPanel } from './panels/buildings/WoodworkPanel.jsx';
@@ -7818,48 +7820,7 @@ export var BroTown = function BroTown(_ref0) {
         animation: timeLeft < 10 ? 'promptPulse 0.5s ease-in-out infinite' : 'none'
       }
     }, "\uD83D\uDC80 ", itemCount, " items scattered in ", ((_ZONES$nearest$zone = ZONES[nearest.zone]) === null || _ZONES$nearest$zone === void 0 ? void 0 : _ZONES$nearest$zone.name) || nearest.zone, " \u2014 ", timeLeft, "s to recover!");
-  }(), showPlayerList && /*#__PURE__*/React.createElement("div", {
-    className: "bt-plist"
-  }, playerList.length === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: '16px 10px',
-      textAlign: 'center',
-      fontSize: 11,
-      color: 'rgba(255,255,255,.4)'
-    }
-  }, "No other players nearby"), playerList.map(function (p) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: p.id,
-      className: "bt-plist-item",
-      onTouchStart: function onTouchStart(e) {
-        e.preventDefault();
-        setInspectPlayer(p);
-        setShowPlayerList(false);
-      },
-      onMouseDown: function onMouseDown(e) {
-        e.preventDefault();
-        setInspectPlayer(p);
-        setShowPlayerList(false);
-      }
-    }, p.avatar ? /*#__PURE__*/React.createElement("img", {
-      className: "bt-plist-av",
-      src: p.avatar,
-      alt: ""
-    }) : /*#__PURE__*/React.createElement("div", {
-      className: "bt-plist-dot",
-      style: {
-        background: p.color
-      }
-    }, p.name.charAt(0).toUpperCase()), /*#__PURE__*/React.createElement("div", {
-      style: {
-        minWidth: 0
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "bt-plist-name"
-    }, p.name), p.bro && /*#__PURE__*/React.createElement("div", {
-      className: "bt-plist-sub"
-    }, "Bro #", p.bro.ID, " \xB7 Rank #", p.bro.rank)));
-  })), inspectPlayer && /*#__PURE__*/React.createElement("div", {
+  }(), showPlayerList && /*#__PURE__*/React.createElement(PlayerListPanel, { playerList: playerList, setInspectPlayer: setInspectPlayer, setShowPlayerList: setShowPlayerList }), inspectPlayer && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setInspectPlayer(null);
@@ -9104,50 +9065,7 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement("div", {
-    className: "bt-emote-bar",
-    style: {
-      flexWrap: 'wrap',
-      maxWidth: 320
-    }
-  }, EMOTES.map(function (e) {
-    return /*#__PURE__*/React.createElement("button", {
-      key: e,
-      className: "bt-emote-btn",
-      onTouchStart: function onTouchStart(ev) {
-        ev.preventDefault();
-        sendEmote(e);
-      },
-      onMouseDown: function onMouseDown(ev) {
-        ev.preventDefault();
-        sendEmote(e);
-      }
-    }, e);
-  }), TEXT_EMOTES.map(function (t) {
-    return /*#__PURE__*/React.createElement("button", {
-      key: t,
-      style: {
-        padding: '4px 8px',
-        borderRadius: 6,
-        border: '1px solid rgba(255,255,255,.15)',
-        background: 'rgba(255,255,255,.08)',
-        color: '#fff',
-        fontSize: 10,
-        fontWeight: 700,
-        cursor: 'pointer',
-        fontFamily: 'Source Sans 3,sans-serif',
-        letterSpacing: '.05em'
-      },
-      onTouchStart: function onTouchStart(ev) {
-        ev.preventDefault();
-        sendEmote(t);
-      },
-      onMouseDown: function onMouseDown(ev) {
-        ev.preventDefault();
-        sendEmote(t);
-      }
-    }, t);
-  })), nearBuilding === 0 && /*#__PURE__*/React.createElement("button", {
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }), nearBuilding === 0 && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     style: {
       bottom: 160
