@@ -8,7 +8,7 @@ import {
   subscribe as subscribeLocks,
 } from './inventoryLocks.js';
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
-import { cookingBus } from '../cookingBus.js';
+import { firemakingBus } from '../firemakingBus.js';
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip } from '../../../rendering/gearCatalog.js';
 import {
@@ -79,10 +79,12 @@ function resolveTarget(target) {
     const isRawFish = /^fish_/.test(key);
     const isCookedFish = /^cooked_fish_/.test(key);
     const isBurnt = /^burnt_/.test(key);
+    const isLog = /^wood_/.test(key);
     let info = null;
     if (isCookedFish) info = '+' + getFishHealAmount(key) + ' HP when eaten';
-    else if (isRawFish) info = 'Cook to make edible';
+    else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
+    else if (isLog) info = 'Light a campfire to cook at';
     else if (count > 0) info = 'Quantity: ' + count;
     return {
       lockKey: key,
@@ -91,7 +93,7 @@ function resolveTarget(target) {
       name: prettyName(key),
       info,
       desc: cat.charAt(0).toUpperCase() + cat.slice(1),
-      actions: { cook: isRawFish && count > 0, eat: isCookedFish && count > 0 },
+      actions: { light: isLog && count > 0, eat: isCookedFish && count > 0 },
     };
   }
   if (target.kind === 'weapon') {
@@ -422,8 +424,10 @@ export const ItemDetailPopup = () => {
   const { lockKey, thumb, glyph, name, info, desc, actions } = resolved;
   const locked = itemIsLocked(lockKey);
 
-  const onCook = () => {
-    cookingBus.open(target.key);
+  /* v2.3.853: logs no longer cook directly -- they light a campfire.  Tapping a
+     lit campfire (with raw fish in the bag) starts the cooking interaction. */
+  const onLight = () => {
+    firemakingBus.open(target.key);
     itemDetailBus.close();
   };
   const onEat = () => {
@@ -689,7 +693,7 @@ export const ItemDetailPopup = () => {
         )}
 
         <div style={{ display: 'flex', gap: 5, marginTop: 2 }}>
-          {actions.cook     && <button onClick={onCook}    style={buttonStyle('primary')}>Cook</button>}
+          {actions.light    && <button onClick={onLight}   style={buttonStyle('primary')}>Light fire</button>}
           {actions.eat      && <button onClick={onEat}     style={buttonStyle('primary')}>Eat</button>}
           {actions.equip    && <button onClick={onEquip}   style={buttonStyle('primary')}>Equip</button>}
           {actions.unequip  && <button onClick={onUnequip} style={buttonStyle('danger')}>Unequip</button>}

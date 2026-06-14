@@ -1,7 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 import { MINE_SPOT_R } from '@/data/constants.js';
-import { CookingMinigame } from './CookingMinigame.jsx';
 import { IntroVideo } from './IntroVideo.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
@@ -22,7 +21,7 @@ const COOKED_HEAL_DEFAULT = 30;
 const COOKED_HEAL_BY_KEY = {
   cooked_fish_clownfish: 50,
 };
-import { cookingBus } from './mobile/cookingBus.js';
+import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
@@ -932,7 +931,8 @@ export var BroTown = function BroTown(_ref0) {
     setGatherMini = _useState142[1]; /* {node, skill, started, result} — timing bar minigame */
   /* v2.3.232: legacy modal minigame state removed -- the windowed-swipe
      extraction loop (v2.3.229) is the live path for fishSpot/tree/oreVein. */
-  var [cookingMini, setCookingMini] = useState(null);   /* {fishKey} — pan/slider/flip cooking minigame */
+  /* v2.3.853: the canvas cooking minigame (pan + doneness slider) is retired;
+     cooking is now a swipe-up-to-flip extraction at the campfire. */
   var _useState143 = useState(0),
     _useState144 = _slicedToArray(_useState143, 2),
     gatherTick = _useState144[0],
@@ -3456,8 +3456,8 @@ export var BroTown = function BroTown(_ref0) {
            in-range but proximity-out-of-range (user: "resources
            showing that have no menu to interact with it"). */
         S._nearNode = null;
+        var closestDist = Infinity;
         if (S.gatherNodes) {
-          var closestDist = Infinity;
           S.gatherNodes.forEach(function (n) {
             if (!n.alive || n.respawnAt && Date.now() < n.respawnAt) return;
             if (n.nodeType === 'oreVein') {
@@ -3477,6 +3477,30 @@ export var BroTown = function BroTown(_ref0) {
               S._nearNode = n;
             }
           });
+        }
+        /* v2.3.853: a lit campfire is also interactable (Cook) — treat it like
+           a node for the prompt/tap path. */
+        if (S._campfire && S._campfire.alive) {
+          var _cfd = Math.sqrt(Math.pow(S._campfire.x - P.x, 2) + Math.pow(S._campfire.y - P.y, 2));
+          if (_cfd < 80 && _cfd < closestDist) { closestDist = _cfd; S._nearNode = S._campfire; }
+        }
+
+        /* v2.3.853: firemaking → campfire lifecycle.  Firemaking is a one-shot
+           animation (set when a log is lit from the Bag); when it finishes,
+           light a campfire at the player.  Campfires burn out after ~45s. */
+        if (S._firemaking && Date.now() >= S._firemaking.doneAt) {
+          var _fm = S._firemaking;
+          S._firemaking = null;
+          S._campfire = {
+            x: _fm.x, y: _fm.y, nodeType: 'campfire', alive: true,
+            litAt: Date.now(), expiresAt: Date.now() + 45000,
+            name: 'Campfire', spotName: 'Campfire', gatherLvl: 1, skill: 'cooking', emoji: '🔥',
+          };
+          try { BT_AUDIO.beep(360, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+        }
+        if (S._campfire && Date.now() > S._campfire.expiresAt) {
+          S._campfire.alive = false;   // so an in-progress cook cancels
+          S._campfire = null;
         }
 
         /* v2.3.229: extraction state machine tick. Replaces the modal
@@ -3522,21 +3546,29 @@ export var BroTown = function BroTown(_ref0) {
               _ex.status = 'ready';
               try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
             } else if (_ex.status === 'ready' && _exNow >= _ex.windowClosesAt) {
-              /* Window closed without a swipe — fish swims off, axe vanishes.
-                 Node depletes locally + via server in MP so it respawns on
-                 its normal timer. No XP, no inventory. */
-              _exNode.alive = false;
-              _exNode.respawnAt = _exNow + (_exNode.respawnTime || 30000);
-              if (S._serverGatherNodes && S.channel) {
-                try { S.channel.send({ type: 'node_strike', payload: { id: _exNode.id, zone: S.currentZone, accuracy: 'miss' } }); } catch (e) {}
+              if (_ex.skill === 'cooking') {
+                /* v2.3.853: never flipped in time → the fish burns (consume
+                   raw → burnt_dust, no XP).  The campfire is not consumed. */
+                applyCookingResult(S, _ex.fishKey, 'burnt', [], { setRpgState: setRpgState });
+                try { BT_AUDIO.beep(200, 0.06, 0.08, 'sawtooth'); } catch (e) {}
+                S._extraction = null;
+              } else {
+                /* Window closed without a swipe — fish swims off, axe vanishes.
+                   Node depletes locally + via server in MP so it respawns on
+                   its normal timer. No XP, no inventory. */
+                _exNode.alive = false;
+                _exNode.respawnAt = _exNow + (_exNode.respawnTime || 30000);
+                if (S._serverGatherNodes && S.channel) {
+                  try { S.channel.send({ type: 'node_strike', payload: { id: _exNode.id, zone: S.currentZone, accuracy: 'miss' } }); } catch (e) {}
+                }
+                S.dmgNumbers.push({
+                  x: _exNode.x, y: _exNode.y - 10,
+                  text: _ex.skill === 'fishing' ? 'Fish escaped' : 'Missed',
+                  color: '#ff5e6c', ts: _exNow,
+                });
+                try { BT_AUDIO.beep(200, 0.06, 0.08, 'sawtooth'); } catch (e) {}
+                S._extraction = null;
               }
-              S.dmgNumbers.push({
-                x: _exNode.x, y: _exNode.y - 10,
-                text: _ex.skill === 'fishing' ? 'Fish escaped' : _ex.skill === 'woodcutting' ? 'Missed' : 'Missed',
-                color: '#ff5e6c', ts: _exNow,
-              });
-              try { BT_AUDIO.beep(200, 0.06, 0.08, 'sawtooth'); } catch (e) {}
-              S._extraction = null;
             }
           }
         }
@@ -4840,6 +4872,10 @@ export var BroTown = function BroTown(_ref0) {
       _startExtraction(node, 'mining');
       return;
     }
+    if (node.nodeType === 'campfire') {
+      _startCookingAtCampfire(node);
+      return;
+    }
     var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
     var target = 0.2 + Math.random() * 0.6;
     setGatherMini({
@@ -4858,8 +4894,25 @@ export var BroTown = function BroTown(_ref0) {
      game-tick state machine (search _extraction in this file) handles
      waiting -> ready -> missed transitions; success is fired from
      the swipe handler. */
-  var _startExtraction = useCallback(function (node, skill) {
-    startExtraction(stateRef.current, node, skill);
+  var _startExtraction = useCallback(function (node, skill, extra) {
+    startExtraction(stateRef.current, node, skill, extra);
+  }, []);
+
+  /* v2.3.853: tapping the campfire starts a cook on the first raw fish in the
+     bag (swipe-up-to-flip extraction).  No raw fish → a nudge popup. */
+  var _startCookingAtCampfire = useCallback(function (node) {
+    var S = stateRef.current;
+    var R = S && S.rpg;
+    if (!R || !R.inventory) return;
+    var fishKey = Object.keys(R.inventory).find(function (k) {
+      return k.indexOf('fish_') === 0 && R.inventory[k] > 0;
+    });
+    if (!fishKey) {
+      S.dmgNumbers.push({ x: node.x, y: node.y - 24, text: 'Need raw fish', color: '#ff5e6c', ts: Date.now() });
+      try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}
+      return;
+    }
+    _startExtraction(node, 'cooking', { fishKey: fishKey });
   }, []);
 
   /* Called from the swipe handler when a valid swipe lands during the
@@ -4870,13 +4923,26 @@ export var BroTown = function BroTown(_ref0) {
   }, []);
 
 
-  /* Subscribe to cookingBus so a tap on a raw fish_* tile in the
-     InventoryPanel opens the cooking overlay here. */
+  /* v2.3.853: tapping a log (wood_*) in the Bag lights a campfire to cook at.
+     Consumes one log, plays the one-shot firemaking animation at the player,
+     and the tick lights the campfire when it finishes.  Firemaking is NOT a
+     tracked skill — no XP. */
   useEffect(function () {
-    return cookingBus.subscribe(function () {
-      var key = cookingBus.consume();
+    return firemakingBus.subscribe(function () {
+      var key = firemakingBus.consume();
       if (!key) return;
-      setCookingMini({ fishKey: key, panSheetSrc: COOK_PAN_BY_FISH[key] || null });
+      var S = stateRef.current;
+      var R = S && S.rpg;
+      if (!R || !R.inventory || (R.inventory[key] || 0) <= 0) return;
+      if (S._firemaking) return;  // already lighting one
+      R.inventory[key] -= 1;
+      if (R.inventory[key] <= 0) delete R.inventory[key];
+      var now = Date.now();
+      S._firemaking = { startedAt: now, doneAt: now + 1500, x: S.player.x, y: S.player.y + 6 };
+      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'Lighting fire…', color: '#ff8a3c', ts: now });
+      try { BT_AUDIO.beep(180, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+      setRpgState(_objectSpread({}, R));
+      try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
     });
   }, []);
 
@@ -22799,6 +22865,7 @@ export var BroTown = function BroTown(_ref0) {
       if (node.nodeType === 'fishSpot')  { _startExtraction(node, 'fishing');     return; }
       if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
       if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
+      if (node.nodeType === 'campfire')  { _startCookingAtCampfire(node);         return; }
       /* Launch timing bar minigame — green zone width scales with skill level */
       var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004); /* 12%–40% of bar */
       var target = 0.2 + Math.random() * 0.6; /* random position 20%–80% */
@@ -22837,6 +22904,7 @@ export var BroTown = function BroTown(_ref0) {
       if (node.nodeType === 'fishSpot')  { _startExtraction(node, 'fishing');     return; }
       if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
       if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
+      if (node.nodeType === 'campfire')  { _startCookingAtCampfire(node);         return; }
       var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
       var target = 0.2 + Math.random() * 0.6;
       setGatherMini({
@@ -22863,8 +22931,12 @@ export var BroTown = function BroTown(_ref0) {
   }, "E"), (_stateRef$current$_ne = stateRef.current._nearNode) === null || _stateRef$current$_ne === void 0 ? void 0 : _stateRef$current$_ne.emoji, " ", function () {
     var n = stateRef.current._nearNode;
     var s = (n === null || n === void 0 ? void 0 : n.skill) || 'mining';
-    return s === 'woodcutting' ? 'Chop' : s === 'fishing' ? 'Fish' : 'Mine';
-  }(), "  ", (_stateRef$current$_ne2 = stateRef.current._nearNode) === null || _stateRef$current$_ne2 === void 0 ? void 0 : _stateRef$current$_ne2.spotName, " \u2014 ", (_stateRef$current$_ne3 = stateRef.current._nearNode) === null || _stateRef$current$_ne3 === void 0 ? void 0 : _stateRef$current$_ne3.name, " (Lv", (_stateRef$current$_ne4 = stateRef.current._nearNode) === null || _stateRef$current$_ne4 === void 0 ? void 0 : _stateRef$current$_ne4.gatherLvl, ")"), gatherMini && !gatherMini.result && /*#__PURE__*/React.createElement("div", {
+    return s === 'woodcutting' ? 'Chop' : s === 'fishing' ? 'Fish' : s === 'cooking' ? 'Cook' : 'Mine';
+  }(), /* v2.3.853: campfire shows just "\ud83d\udd25 Cook"; gather nodes show the tier tail */ function () {
+    var n = stateRef.current._nearNode;
+    if (!n || n.nodeType === 'campfire') return '';
+    return '  ' + (n.spotName || '') + ' \u2014 ' + (n.name || '') + ' (Lv' + (n.gatherLvl || 1) + ')';
+  }()), gatherMini && !gatherMini.result && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
       bottom: 'calc(var(--dash-h) + 110px)',
@@ -23115,11 +23187,6 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A1 STRIKE!")), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
     stateRef: stateRef,
     onSuccess: _succeedExtraction
-  }), cookingMini && /*#__PURE__*/React.createElement(CookingMinigame, {
-    fishKey: cookingMini.fishKey,
-    panSheetSrc: cookingMini.panSheetSrc,
-    onComplete: function (kind, taps) { _applyCookingResult(cookingMini.fishKey, kind, taps); setCookingMini(null); },
-    onCancel: function () { setCookingMini(null); }
   }), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {
     var S = stateRef.current;
     var R = S === null || S === void 0 ? void 0 : S.rpg;

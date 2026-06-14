@@ -107,8 +107,12 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
            the planned opening beat of the player washing ashore.
            v2.3.823: swapped for the pixel-art underwater reef clip (owner);
            ocean-intro.mp4 and the original brotown-intro.mp4 both live in
-           git history. */
-        src="/intro/loading-reef.mp4"
+           git history.
+           v2.3.854: swapped for the owner's painted island vista (the volcano
+           island the town sits on), re-encoded muted/no-audio, 900px wide,
+           H.264 yuv420p + faststart (~1 MB, was 14.8 MB) so it loads fast on
+           iPhone Safari.  loading-reef.mp4 stays in git history. */
+        src="/intro/loading-island.mp4"
         autoPlay
         muted
         playsInline

@@ -3244,9 +3244,13 @@ export class EntityRenderer {
        parent re-attach above.
        v2.3.846: ...except while a woodcutting chop is active — the chopper
        sprite (effectsRenderer) stands in for the avatar beside the tree,
-       so hide the real one to avoid a double character. */
-    const _chopHide = !!(S._extraction && S._extraction.skill === 'woodcutting'
-      && (S._extraction.status === 'waiting' || S._extraction.status === 'ready'));
+       so hide the real one to avoid a double character.
+       v2.3.853: same for cooking (the cook+pan sprite stands in beside the
+       campfire) and firemaking (the crouching-to-light sprite stands in at
+       the player). */
+    const _exSkill = (S._extraction && (S._extraction.status === 'waiting' || S._extraction.status === 'ready'))
+      ? S._extraction.skill : null;
+    const _chopHide = _exSkill === 'woodcutting' || _exSkill === 'cooking' || !!S._firemaking;
     display.visible = !_chopHide;
     display.x = P.x;
     display.y = P.y;

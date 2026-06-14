@@ -54,7 +54,7 @@ function _flyResourceToInventory(S, wx, wy, iconUrl) {
   } catch (e) {}
 }
 
-export function startExtraction(S, node, skill) {
+export function startExtraction(S, node, skill, extra) {
     if (!S || !node) return;
     /* v2.3.854: mining lines the character up with the vein the same way
        fishing lines up with the pond.  Seat the player above the ore so the
@@ -101,12 +101,18 @@ export function startExtraction(S, node, skill) {
       status: 'waiting',
       swipeSamples: [],
     };
+    /* v2.3.853: cooking carries the chosen raw fish key so succeed/burn can
+       apply the cook outcome (the "node" is the campfire, not a gather node). */
+    if (extra) { for (var _k in extra) S._extraction[_k] = extra[_k]; }
     /* v2.3.230: tell the server we started so it can validate the
        eventual node_strike's timing against the same computeOpenDelay
        window we just rolled.  Server treats missing extraction_start
        as a permissive fallback (no rejection), so this is the latency
        anti-cheat hook, not a hard gate. */
-    if (S.channel) {
+    /* v2.3.853: cooking happens at a client-local campfire (no server gather
+       node and no node_strike — the reward flows through cook_request), so
+       skip the extraction_start handshake for it. */
+    if (S.channel && skill !== 'cooking') {
       try {
         S.channel.send({ type: 'extraction_start', payload: {
           nodeId: node.id, zone: S.currentZone, skill: skill,
@@ -127,7 +133,8 @@ export function succeedExtraction(S, accuracy, deps) {
     /* accuracy comes from the phase-2 gesture grade (ExtractionSwipeLayer);
        defaults to 'good' for any legacy caller. Keyed into MINIGAME_REWARDS. */
     var result = { accuracy: (accuracy === 'perfect' || accuracy === 'ok') ? accuracy : 'good' };
-    if (_ex.skill === 'fishing')      applyFishingReward(S, node, result, deps);
+    if (_ex.skill === 'cooking')      applyCookingResult(S, _ex.fishKey, 'cooked', [], deps);
+    else if (_ex.skill === 'fishing')      applyFishingReward(S, node, result, deps);
     else if (_ex.skill === 'woodcutting') applyWoodReward(S, node, result, deps);
     else if (_ex.skill === 'mining')      applyMiningReward(S, node, result, deps);
     S._extraction = null;
