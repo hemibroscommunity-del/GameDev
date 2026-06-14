@@ -3267,7 +3267,8 @@ export class EntityRenderer {
         const d = Math.min(1, Math.hypot(P.x - cx, P.y - cy) / (Math.hypot(cx, cy) || 1));
         const near = ps.near != null ? ps.near : 0.6;
         const far = ps.far != null ? ps.far : 0.3;
-        pscale = near + (far - near) * d;
+        const curve = ps.curve != null ? ps.curve : 1; // <1 shrinks faster as you leave centre
+        pscale = near + (far - near) * Math.pow(d, curve);
       }
       if (display.scale.x !== pscale) display.scale.set(pscale);
     }

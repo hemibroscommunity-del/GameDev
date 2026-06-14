@@ -10,10 +10,11 @@ export const ZONES = {
     id: 'town', name: 'Town', w: 48, h: 48,
     element: null, level: [0, 0], music: 'town', safe: true,
     palette: { ground: '#4a6741', path: '#8b7355', accent: '#5a7a50' },
-    /* TEMP (Overlook preview): shrink the avatar on the vista -- ~60% at the
-       plateau centre, ~30% toward the distant edges. Move to the real overlook
-       zone when town art is restored. (number = flat scale instead.) */
-    playerScale: { near: 0.6, far: 0.3 }
+    /* TEMP (Overlook preview): shrink the avatar to a speck on the vista --
+       ~55% at the plateau centre, shrinking FAST (curve<1) to ~6% as you head
+       up the trails toward the distant regions. Move to the real overlook zone
+       when town art is restored. (number = flat scale instead.) */
+    playerScale: { near: 0.55, far: 0.06, curve: 0.6 }
   },
   meadow: {
     id: 'meadow', name: 'Starting Meadow', w: 32, h: 32,
