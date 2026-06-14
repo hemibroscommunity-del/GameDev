@@ -3241,8 +3241,13 @@ export class EntityRenderer {
     const display = this.playerDisplay;
     if (typeof window !== 'undefined' && window.__btMaskDebug) window.__playerDisplay = display;
     /* Force visibility every frame — same defensive concern as the
-       parent re-attach above. */
-    display.visible = true;
+       parent re-attach above.
+       v2.3.846: ...except while a woodcutting chop is active — the chopper
+       sprite (effectsRenderer) stands in for the avatar beside the tree,
+       so hide the real one to avoid a double character. */
+    const _chopHide = !!(S._extraction && S._extraction.skill === 'woodcutting'
+      && (S._extraction.status === 'waiting' || S._extraction.status === 'ready'));
+    display.visible = !_chopHide;
     display.x = P.x;
     display.y = P.y;
 
