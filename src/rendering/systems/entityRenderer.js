@@ -1145,6 +1145,15 @@ export function hideSkillTraits(sprites) {
   if (sprites.hair) sprites.hair.visible = false;
 }
 
+/** v2.3.876: resolve the torso-overlay tint for the gathering poses.  Chest
+ *  armour -> a generic steel colour (a PLACEHOLDER: real per-pose plate art
+ *  doesn't exist, so an armoured player reads as "wearing metal" rather than a
+ *  cloth shirt).  Otherwise the shirt colour, or null when the torso is bare. */
+export function skillTorsoTint() {
+  if (getEquip('chest') !== 'none') return [168, 174, 190];
+  return shirtFill(getShirt(), getShirtColor());
+}
+
 /* v2.3.873: torso "shirt" tint masks for the mine/fish poses.  The player's own
    body renders shirtless there (raw sheet / no shirt gear sheet for the pose),
    so overlay a torso-shaped mask tinted to the shirt colour.  Sheets are 256px
@@ -3736,7 +3745,7 @@ export class EntityRenderer {
            the shirt colour via _shirtSprite -- otherwise a worn shirt vanishes
            while gathering.  Sheet frames align 1:1 with the body sheet. */
         if (display._shirtSprite && (pose === 'mine' || pose === 'fish')) {
-          const _fill = shirtFill(_shId, _shCol);
+          const _fill = skillTorsoTint();
           const _torso = _ensureTorsoSheet(pose);
           if (_fill && _torso && _torso.length) {
             const _ts = display._shirtSprite;

@@ -12,9 +12,7 @@ import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.j
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, hideSkillTraits } from './entityRenderer.js';
-import { getShirt } from '../traits/shirtCatalog.js';
-import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
+import { placeSkillTraits, hideSkillTraits, skillTorsoTint } from './entityRenderer.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -326,7 +324,7 @@ export class EffectsRenderer {
   /* Tint the torso mask (aligned 1:1 with the stand-in strip) to the player's
      shirt colour and overlay it on the stand-in.  No-op when no shirt is worn. */
   _placeSkillShirt(torsoFrames, sp, fi) {
-    const fill = shirtFill(getShirt(), getShirtColor());
+    const fill = skillTorsoTint();
     if (!fill || !torsoFrames || !torsoFrames.length) { this.skillShirt.visible = false; return; }
     this.skillShirt.texture = torsoFrames[Math.min(fi, torsoFrames.length - 1)];
     this.skillShirt.x = sp.x; this.skillShirt.y = sp.y;
