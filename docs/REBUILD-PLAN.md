@@ -472,7 +472,11 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   - **WoodworkPanel — ✅ done (v2.3.873):** the `buildingPanel === 'woodwork'`
     clause (~367 lines) → `src/ui/panels/buildings/WoodworkPanel.jsx`. 3
     props; imports verified real; 4 hoisted babel temps declared locally.
-  - **Remaining sub-panels:** enchant, gemcut, exchange, farm,
+  - **EnchantPanel — ✅ done (v2.3.874):** the `buildingPanel === 'enchant'`
+    clause (~412 lines: gem socketing / amulet+shield enchant) →
+    `src/ui/panels/buildings/EnchantPanel.jsx`. 3 props; imports verified
+    real; 5 hoisted babel temps declared locally.
+  - **Remaining sub-panels:** gemcut, exchange, farm,
     bank, cook, gamble, party, shop.
 - **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
