@@ -35,6 +35,7 @@ import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
 import { NameModal } from './panels/NameModal.jsx';
+import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
 import { ForgePanel } from './panels/buildings/ForgePanel.jsx';
 import { WoodworkPanel } from './panels/buildings/WoodworkPanel.jsx';
@@ -9829,29 +9830,7 @@ export var BroTown = function BroTown(_ref0) {
       pointerEvents: 'none',
       zIndex: 1
     }
-  }, "\uD83D\uDEE1\uFE0F")))), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement("div", {
-    className: "bt-kb-hints"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "WASD"), " Move"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Click"), " Attack"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "R-Click"), " Special"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Space"), " Dodge"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "E"), " Interact"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Q"), " Shield"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Tab"), " Swap"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "F"), " Special"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "C"), " Chat"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Esc"), " Close")), chatOpen && /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDEE1\uFE0F")))), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, null), chatOpen && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
       left: 10,

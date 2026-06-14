@@ -601,14 +601,26 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   are **imported** trait functions, only the `*Sel` ones are state.
   Classify each free var against BroTown's import lines before deciding
   import-vs-prop. With this BroTown.jsx is under 10k lines (9,963).
-- **Candidates remaining:** what's left is the core component: the
-  HUD/controls overlay JSX interleaved with live state (the floating
-  joystick cluster is ref-heavy — lZoneRef/rZoneRef/knobRef/lJoyPreviewRef
-  etc. — and a multi-sibling run, so it needs careful boundary work), plus
-  the top-level effect/game-loop and channel wiring. Effect/loop bodies are
-  the highest-risk; prefer moving them into `src/game/` behind a deps
-  object only with the verification protocol and anchors re-derived each
-  time.
+- **KeyboardHintsPanel — ✅ done (v2.3.889):** the `bt-kb-hints` desktop
+  WASD/hotkey help strip → `src/ui/panels/KeyboardHintsPanel.jsx`. The
+  cleanest extraction yet: **zero props** (fully static markup); the
+  desktop-detection `window.matchMedia` gate stays in BroTown.
+- **Candidates remaining (now the genuinely harder ones):**
+  - **Floating joystick / touch-controls cluster** (~lines 9450–9830): a
+    multi-sibling run (left zone, right zone, left joystick base+knob+
+    preview, right joystick, legacy shield) with ~11 refs
+    (lZoneRef/rZoneRef/joystickRef/lStickRef/knobRef/lJoyPreviewRef/rJoyRef/
+    rStickRef/rKnobRef/rJoyPreviewRef/shieldJoyRef) and **embedded IIFEs**
+    (the auto-attack indicator, the shield `}()`). Extract as a single
+    `TouchControls` returning a Fragment of the run; refs pass by value
+    (stable). HIGHER RISK: this is the primary iPhone touch input, so a
+    boundary slip breaks live controls — do the multi-sibling boundary
+    carefully (the run ends right before the `bt-kb-hints` gate) and verify
+    on a real device via the preview URL.
+  - **Top-level effect / game-loop / channel wiring** — the highest-risk
+    category. Prefer moving effect bodies into `src/game/` behind a deps
+    object, one effect at a time, only with the full verification protocol
+    and anchors re-derived each pass.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
