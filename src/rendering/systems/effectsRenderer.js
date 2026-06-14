@@ -1970,48 +1970,37 @@ export class EffectsRenderer {
     }
   }
 
-  /* ── Fishing hole (v2.3.843) ──
-   * While a fishing extraction is active, draw a rippling water hole in
-   * the tile beneath the player, positioned where the rod's dangling line
-   * (baked into the south-only 'fish' body sheet) meets the water.  Drawn
-   * on nodeGfx, which renders UNDER the player layer, so the line appears
-   * to drop INTO the hole.  HOLE_DX/DY are the line-end offset measured
-   * from the fish sheet at the player's render scale (dir scale 1.0 x
-   * LOCAL_SCALE 0.421875): line end ~ (frame 5, 232) -> (-52, +44) px. */
+  /* ── Fishing bobber (v2.3.844) ──
+   * While a fishing extraction is active, the player has been seated so the
+   * baked rod line drops into the existing fish-spot pond (startExtraction).
+   * Draw a little bobber + ripple at the pond center where the line enters
+   * the water, so the cast reads as connected.  On 'ready' the bobber dips
+   * and a brighter splash ring fires -- the "fish on!" tell that pairs with
+   * the rotating reel cue.  Drawn on nodeGfx (above the pond sprite, which
+   * is inserted at index 0 of nodeLayer). */
   _updateFishingHole(S, now) {
     const ex = S && S._extraction;
     if (!ex || ex.skill !== 'fishing') return;
-    const P = S.player;
-    if (!P) return;
+    const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
+               : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(n => n.id === ex.nodeId) : null);
+    if (!node) return;
     const gfx = this.nodeGfx;
-    const HOLE_DX = -50, HOLE_DY = 46;
-    const hx = P.x + HOLE_DX, hy = P.y + HOLE_DY;
-    const rx = 16, ry = 8;                 /* perspective ellipse (2:1) */
-    /* Dark water pocket. */
-    gfx.ellipse(hx, hy, rx, ry);
-    gfx.fill({ color: 0x10314a, alpha: 0.55 });
-    gfx.ellipse(hx, hy, rx * 0.62, ry * 0.62);
-    gfx.fill({ color: 0x1c4e6e, alpha: 0.5 });
-    /* Two expanding ripple rings, phase-offset so one is always growing. */
+    const hx = node.x, hy = node.y;
+    const ready = ex.status === 'ready';
+    /* Expanding ripple rings on the pond surface (perspective 2:1). */
+    const rx = 12, ry = 6;
     for (let k = 0; k < 2; k++) {
-      const t = ((now / 1100) + k * 0.5) % 1;
-      const rr = 0.35 + t * 0.9;
+      const t = ((now / (ready ? 700 : 1100)) + k * 0.5) % 1;
+      const rr = 0.35 + t * 0.95;
       gfx.ellipse(hx, hy, rx * rr, ry * rr);
-      gfx.stroke({ color: 0x7ec8ef, width: 1.5, alpha: 0.5 * (1 - t) });
+      gfx.stroke({ color: ready ? 0xfff2a8 : 0x9bd6f2, width: 1.5, alpha: 0.55 * (1 - t) });
     }
-    /* Bobber bobbing where the line enters the water. */
-    const bob = Math.sin(now / 260) * 1.6;
-    gfx.circle(hx, hy - 1 + bob, 2.4);
+    /* Bobber where the line meets the water -- bobs gently, dips on 'ready'. */
+    const bob = ready ? Math.abs(Math.sin(now / 110)) * 3 : Math.sin(now / 280) * 1.4;
+    gfx.circle(hx, hy - 2 + bob, 2.4);
     gfx.fill({ color: 0xff4d4d, alpha: 0.95 });
-    gfx.circle(hx, hy - 1 + bob, 2.4);
+    gfx.circle(hx, hy - 2 + bob, 2.4);
     gfx.stroke({ color: 0xffffff, width: 0.8, alpha: 0.7 });
-    /* On 'ready', the fish is tugging — flash the bobber down + add a
-       sharper splash ring so the reel cue reads as "now!". */
-    if (ex.status === 'ready') {
-      const pulse = 0.5 + 0.5 * Math.sin(now / 90);
-      gfx.ellipse(hx, hy, rx * (1.1 + pulse * 0.25), ry * (1.1 + pulse * 0.25));
-      gfx.stroke({ color: 0xfff2a8, width: 1.5, alpha: 0.35 + 0.3 * pulse });
-    }
   }
 
   /* ── Extraction cue (v2.3.229) ──
