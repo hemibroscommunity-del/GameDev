@@ -33,7 +33,7 @@ export const IMAGE_ZONE_MAPS = {
      is gone.  town_v8.jpg fallback for blocked-autoplay; animated
      overlay through VIDEO_ZONE_MAPS.town below.  Bump suffix on next
      change to bust browser/CDN caches. */
-  town:    '/maps/town_v14.png',   /* preview: new painterly cove town (1254px native, scaled to 1536 world) */
+  town:    '/maps/overlook_v1.png',   /* TEMP PREVIEW: evaluating the Overlook as the hub -- restore town_v14.png after */
   frost:   '/maps/frost_v5.png',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.png',   /* redesign: new painterly meadow (scaled to 1024 world) */
   thunder: '/maps/thunder_v5.png',   /* redesign: metallic/electric buried-machine peaks */
@@ -71,7 +71,7 @@ export const WALKABILITY_MAPS = {
      tools/mask-to-walkable.mjs (64x64 grid). Authoritative collision for
      the new cove town -- blocks cliffs + ocean, replaces the stale
      procedural building tiles. */
-  town: '/maps/town_v14.walk.json',
+  // town: '/maps/town_v14.walk.json',   /* TEMP: disabled so the Overlook preview is fully walkable (no mask yet) */
   meadow: '/maps/meadow_v6.walk.json',
   frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
   tidal: '/maps/tidal_v6.walk.json',   /* note: mask covered rocks only -- open sea + deep pools still walkable, needs a water pass */
