@@ -511,7 +511,13 @@ the gate, and eslint no-undef catches a missed prop in the new component.
     setRpgState, cookMinigame, setCookMinigame). Data imports verified
     real (createDefaultCompStats from items via the @/data barrel);
     hoisted optional-chaining temp set declared locally.
-  - **Remaining sub-panels:** gamble, party, shop.
+  - **GamblePanel — ✅ done (v2.3.880):** the `buildingPanel === 'gamble'`
+    clause (~262 lines: the casino — coin-flip bet + jackpot deposit) →
+    `src/ui/panels/buildings/GamblePanel.jsx`. 3 props (rpgState,
+    stateRef, setRpgState). Data imports verified real
+    (createDefaultCompStats from items via the @/data barrel); the 8
+    hoisted `_compStats` optional-chaining temps declared locally.
+  - **Remaining sub-panels:** party, shop.
 - **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
   now all extracted. JSX panels/modals
