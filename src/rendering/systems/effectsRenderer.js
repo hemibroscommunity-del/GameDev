@@ -2342,13 +2342,13 @@ export class EffectsRenderer {
        + ready), the chopper's sibling.  Stands just left of the fire so the
        pan (extends right) sits over the flames. */
     if (cookingCue && this.cookSprite && this._cookFrames.length) {
-      const COOK_H = 82, COOK_FRAME_MS = 60;
+      const COOK_H = 41, COOK_FRAME_MS = 60;   // v2.3.896: ~50% smaller (owner: was too large)
       const sp = this.cookSprite;
       const cookFi = Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
       sp.texture = this._cookFrames[cookFi];
       const s = COOK_H / 220;
       sp.scale.set(s, s);
-      sp.x = node.x - 14;
+      sp.x = node.x - 7;                        // halved with the size so the pan still sits over the fire
       sp.y = node.y + 8;
       sp.visible = true;
       this._placeSkillShirt(this._cookTorso, sp, cookFi);

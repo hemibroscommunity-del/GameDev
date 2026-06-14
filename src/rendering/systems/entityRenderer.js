@@ -1145,12 +1145,12 @@ export function hideSkillTraits(sprites) {
   if (sprites.hair) sprites.hair.visible = false;
 }
 
-/** v2.3.876: resolve the torso-overlay tint for the gathering poses.  Chest
- *  armour -> a generic steel colour (a PLACEHOLDER: real per-pose plate art
- *  doesn't exist, so an armoured player reads as "wearing metal" rather than a
- *  cloth shirt).  Otherwise the shirt colour, or null when the torso is bare. */
+/** Resolve the torso-overlay tint for the gathering poses: the shirt colour,
+ *  or null when no shirt is worn (bare torso).  v2.3.896: the generic steel
+ *  armour placeholder was removed (owner: didn't look good enough) -- armour
+ *  simply doesn't show during these poses, same as the shirt's own limitation,
+ *  until real per-pose plate art exists. */
 export function skillTorsoTint() {
-  if (getEquip('chest') !== 'none') return [168, 174, 190];
   return shirtFill(getShirt(), getShirtColor());
 }
 
