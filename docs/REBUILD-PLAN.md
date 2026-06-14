@@ -362,6 +362,22 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   list, not declared in the panel — declared locally in the component
   (reassigned before each read, byte-equivalent). A reminder to scan every
   panel for hoisted transpiler temps, not just state/props.
+- **SocialPanel — ✅ done (v2.3.860):** the friends/muted/blocked lists
+  modal (`showSocialPanel`, ~257 lines) → `src/ui/panels/SocialPanel.jsx`.
+  Purely presentational — zero module imports (only React + 8 props: the
+  three lists + their setters + setShowSocialPanel + stateRef). Two
+  verification notes: (a) the depth-aware scan MISSED `setBlockedList` (a
+  bare-call setter) — caught by a direct `grep set[A-Z]\w*(` enumeration,
+  now part of the per-panel checklist; (b) the `_stateRef$current26/28`
+  and `_f$name` babel temps were declared locally inside the panel (lines
+  45/215), not hoisted like ClanPanel's — verified directly.
+- **Per-panel pre-ship checklist (learned the hard way):** (1) paren-match
+  the boundary; (2) depth-aware scan for the prop surface; (3) **grep all
+  `set[A-Z]\w*(` calls** (scan has a bare-call blind spot); (4) **verify
+  every module import is a real `export`** (not just present in the `=
+  DATA` destructure — `createDefaultClan` was a phantom); (5) grep for
+  hoisted babel temps (`_x$y`) not declared in the subtree; (6) full-file
+  `node --check`. CI (vite build) remains the final gate.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
