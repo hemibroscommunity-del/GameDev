@@ -3500,7 +3500,22 @@ export var BroTown = function BroTown(_ref0) {
           } else {
             var _exDx = _exNode.x - P.x, _exDy = _exNode.y - P.y;
             var _exDist = Math.sqrt(_exDx * _exDx + _exDy * _exDy);
-            if (_exDist > EXTRACT_CANCEL_R) {
+            /* v2.3.843: the walk-away cancel radius must be at least the
+               range the prompt let you START from, or chopping/fishing
+               self-cancels on the very next tick.  Trees/fish use the same
+               sprite-height proximity as the detection above (which reaches
+               100–196px), but the flat EXTRACT_CANCEL_R is only 90px — so a
+               chop begun from the canopy edge died instantly (owner: "the
+               button does nothing").  Ore stays tight (90) since mining is
+               done from the fixed north spot. */
+            var _cancelR = EXTRACT_CANCEL_R;
+            if (_exNode.nodeType !== 'oreVein') {
+              var _cbH = _exNode.nodeType === 'tree' ? 112 : 88;
+              var _cStep = Math.min(10, Math.max(1, Math.ceil((_exNode.gatherLvl || 1) / 10)));
+              var _cProx = Math.max(100, (_cbH * (1 + (_cStep - 1) * 0.15)) * 0.75);
+              _cancelR = Math.max(EXTRACT_CANCEL_R, _cProx) + 24;
+            }
+            if (_exDist > _cancelR) {
               /* Walk-away cancel — no XP, no node damage, no popup. */
               S._extraction = null;
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
