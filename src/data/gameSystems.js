@@ -2450,7 +2450,12 @@ export const MINIGAME_REWARDS = {
 export const EXTRACT_WINDOW_MS = 3500;       /* phase-2 gesture window once cue appears
                                                 (widened from 1500 for the sustained
                                                 "keep the motion going" meter) */
-export const EXTRACT_CANCEL_R  = 90;         /* px from node before walk-away cancel */
+export const EXTRACT_CANCEL_R  = 110;        /* px from node before walk-away cancel.
+                                                v2.3.854: 90 -> 110 so the mining
+                                                stance (~86px above the vein, to line
+                                                the swing up with the ore) doesn't sit
+                                                on the cancel boundary. Matches the
+                                                server NODE_STRIKE_RANGE (110). */
 export const EXTRACT_OPEN_MIN  = 2000;       /* floor at fully over-leveled */
 export const EXTRACT_OPEN_MAX  = 10000;      /* ceiling at very under-leveled */
 export const EXTRACT_OPEN_BASE = 4000;       /* level == tier */

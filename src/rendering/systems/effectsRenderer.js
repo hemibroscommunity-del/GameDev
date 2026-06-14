@@ -1805,6 +1805,18 @@ export class EffectsRenderer {
         node._pixiSprite.scale.set(baseScale * pulse);
         node._pixiSprite.x = node.x;
         node._pixiSprite.y = node.y;
+        /* v2.3.854: while THIS vein is the active mining target, render the
+           ore ABOVE the player so it hides the baked rock in the south
+           'mine' swing sheet -- the pickaxe then reads as striking the real
+           ore.  Restored below the player (nodeLayer) otherwise. */
+        const _mineEx = S._extraction;
+        const _isMineTarget = !!(_mineEx && _mineEx.skill === 'mining'
+          && (_mineEx.nodeRef === node || (_mineEx.nodeId != null && _mineEx.nodeId === node.id)));
+        const _wantLayer = _isMineTarget ? this.overlayLayer : this.nodeLayer;
+        if (node._pixiSprite.parent !== _wantLayer) {
+          if (_wantLayer === this.nodeLayer) this.nodeLayer.addChildAt(node._pixiSprite, 0);
+          else _wantLayer.addChild(node._pixiSprite);
+        }
       } else if (node.nodeType === 'tree') {
         const tw = tier?.trunkW || 3;
         const th = tier?.trunkH || 8;

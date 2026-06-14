@@ -3306,8 +3306,10 @@ export class EntityRenderer {
     /* v2.3.844: during the fishing pose the character holds the rod (baked
        into the 'fish' sheet), so suppress the equipped weapon + shield +
        hand caps -- otherwise the bamboo staff renders as a stray second
-       item beside them.  Mirrors how the pose locks facing south. */
-    const _fishingPose = !!(S._extraction && S._extraction.skill === 'fishing');
+       item beside them.  Mirrors how the pose locks facing south.
+       v2.3.854: same for mining -- the pickaxe is baked into the 'mine'
+       sheet, so the equipped weapon must not show. */
+    const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining'));
     if (_fishingPose) {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
