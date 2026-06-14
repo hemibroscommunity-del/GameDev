@@ -517,7 +517,16 @@ the gate, and eslint no-undef catches a missed prop in the new component.
     stateRef, setRpgState). Data imports verified real
     (createDefaultCompStats from items via the @/data barrel); the 8
     hoisted `_compStats` optional-chaining temps declared locally.
-  - **Remaining sub-panels:** party, shop.
+  - **PartyPanel — ✅ done (v2.3.881):** the `buildingPanel === 'party'`
+    clause (~1634 lines — the **largest** sub-panel: the Arena, with a
+    live tournament bracket, match betting, champion rewards, and worker
+    polling for arena state) → `src/ui/panels/buildings/PartyPanel.jsx`.
+    15 props (rpgState, stateRef, setRpgState plus the 6 `arena*` state
+    values and their 6 setters). Data imports verified real; BT_API_BASE
+    re-imported from @/networking (byte-identical to BroTown's local var);
+    async/regenerator + spread/spread-array babel helpers imported; the
+    hoisted optional-chaining temp set declared locally.
+  - **Remaining sub-panels:** shop.
 - **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
   now all extracted. JSX panels/modals
