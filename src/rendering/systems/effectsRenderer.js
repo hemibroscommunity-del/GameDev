@@ -225,6 +225,7 @@ export class EffectsRenderer {
     this._updateGroundLoot(S, now);
     this._updateGroundSplatter(S);
     this._updateGatherNodes(S, now);
+    this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
     this._updateTelegraphs(S, now);
@@ -1969,6 +1970,50 @@ export class EffectsRenderer {
     }
   }
 
+  /* ── Fishing hole (v2.3.843) ──
+   * While a fishing extraction is active, draw a rippling water hole in
+   * the tile beneath the player, positioned where the rod's dangling line
+   * (baked into the south-only 'fish' body sheet) meets the water.  Drawn
+   * on nodeGfx, which renders UNDER the player layer, so the line appears
+   * to drop INTO the hole.  HOLE_DX/DY are the line-end offset measured
+   * from the fish sheet at the player's render scale (dir scale 1.0 x
+   * LOCAL_SCALE 0.421875): line end ~ (frame 5, 232) -> (-52, +44) px. */
+  _updateFishingHole(S, now) {
+    const ex = S && S._extraction;
+    if (!ex || ex.skill !== 'fishing') return;
+    const P = S.player;
+    if (!P) return;
+    const gfx = this.nodeGfx;
+    const HOLE_DX = -50, HOLE_DY = 46;
+    const hx = P.x + HOLE_DX, hy = P.y + HOLE_DY;
+    const rx = 16, ry = 8;                 /* perspective ellipse (2:1) */
+    /* Dark water pocket. */
+    gfx.ellipse(hx, hy, rx, ry);
+    gfx.fill({ color: 0x10314a, alpha: 0.55 });
+    gfx.ellipse(hx, hy, rx * 0.62, ry * 0.62);
+    gfx.fill({ color: 0x1c4e6e, alpha: 0.5 });
+    /* Two expanding ripple rings, phase-offset so one is always growing. */
+    for (let k = 0; k < 2; k++) {
+      const t = ((now / 1100) + k * 0.5) % 1;
+      const rr = 0.35 + t * 0.9;
+      gfx.ellipse(hx, hy, rx * rr, ry * rr);
+      gfx.stroke({ color: 0x7ec8ef, width: 1.5, alpha: 0.5 * (1 - t) });
+    }
+    /* Bobber bobbing where the line enters the water. */
+    const bob = Math.sin(now / 260) * 1.6;
+    gfx.circle(hx, hy - 1 + bob, 2.4);
+    gfx.fill({ color: 0xff4d4d, alpha: 0.95 });
+    gfx.circle(hx, hy - 1 + bob, 2.4);
+    gfx.stroke({ color: 0xffffff, width: 0.8, alpha: 0.7 });
+    /* On 'ready', the fish is tugging — flash the bobber down + add a
+       sharper splash ring so the reel cue reads as "now!". */
+    if (ex.status === 'ready') {
+      const pulse = 0.5 + 0.5 * Math.sin(now / 90);
+      gfx.ellipse(hx, hy, rx * (1.1 + pulse * 0.25), ry * (1.1 + pulse * 0.25));
+      gfx.stroke({ color: 0xfff2a8, width: 1.5, alpha: 0.35 + 0.3 * pulse });
+    }
+  }
+
   /* ── Extraction cue (v2.3.229) ──
    * Renders the "ready to extract" cue at the active node when
    * S._extraction.status === 'ready'. Procedural shapes for v1; swap
@@ -1985,11 +2030,15 @@ export class EffectsRenderer {
                   : null);
     if (!node) return;
     const gfx = this.nodeGfx;
-    const x = node.x;
+    /* Fishing reels over the CHARACTER (the rod's reel is at the hands) so
+       the cue + the circular gesture center match the player, not the
+       distant fish spot.  ExtractionSwipeLayer.cueScreenPos mirrors this. */
+    const fishingCue = ex.skill === 'fishing' && S.player;
+    const x = fishingCue ? S.player.x : node.x;
     /* Anchor cue above the node so it doesn't sit on top of the
        sprite. Trees are tallest so they get the largest offset. */
     const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-    const y = node.y - yOff;
+    const y = fishingCue ? (S.player.y - 24) : (node.y - yOff);
     /* Pulse + gentle float so the tool reads as a grabbable "pick me up". */
     const pulse = 1 + Math.sin(now / 80) * 0.12;
     const bob = Math.sin(now / 300) * 4;
@@ -1999,16 +2048,11 @@ export class EffectsRenderer {
     gfx.fill({ color: 0x000000, alpha: 0.22 });
     gfx.circle(x, cy, 16 * pulse);
     gfx.fill({ color: 0x000000, alpha: 0.3 });
-    /* Floating tool icon — the grab target the finger drags from. */
+    /* Floating tool icon — the grab target the finger drags from.  Fishing
+       skips it: the player already holds the rod, so the rotating reel arrow
+       below is the whole cue ("reel icon appears -> circle clockwise"). */
     if (ex.skill === 'fishing') {
-      /* Rod: brown shaft + a thin line dangling. */
-      gfx.rect(x - 1.5, cy - 14 * pulse, 3, 26 * pulse);
-      gfx.fill({ color: 0x6a4830, alpha: 0.95 });
-      gfx.moveTo(x + 1, cy - 14 * pulse);
-      gfx.lineTo(x + 9, cy + 11 * pulse);
-      gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.6 });
-      gfx.circle(x + 9, cy + 11 * pulse, 1.6);
-      gfx.fill({ color: 0xffffff, alpha: 0.85 });
+      /* no floating tool — see comment above */
     } else if (ex.skill === 'woodcutting') {
       /* Axe icon: brown handle + grey head. */
       gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);

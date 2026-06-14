@@ -3365,10 +3365,14 @@ export class EntityRenderer {
        same lock as the loot freeze.  Active for the whole extraction
        window (waiting + ready). */
     const mining = !!(S._extraction && S._extraction.skill === 'mining');
+    /* v2.3.843: fishing gather — same south-only facing lock as mining so
+       the rod cast/sway reads and the dangling line lines up with the water
+       hole drawn beneath the player (effectsRenderer._updateFishingHole). */
+    const fishing = !!(S._extraction && S._extraction.skill === 'fishing');
     let facing;
     if (lootFrozen) {
       facing = 'south';
-    } else if (mining) {
+    } else if (mining || fishing) {
       facing = 'south';
     } else if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
@@ -3411,9 +3415,11 @@ export class EntityRenderer {
       ? 'pickup'
       : (mining
           ? 'mine'
-          : (isHit
-              ? 'hit'
-              : (isMoving ? 'jog' : 'stand')));
+          : (fishing
+              ? 'fish'
+              : (isHit
+                  ? 'hit'
+                  : (isMoving ? 'jog' : 'stand'))));
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
@@ -3495,6 +3501,12 @@ export class EntityRenderer {
         const fc = playerFrameCount('mine', 'south') || 14;
         const cycle = cycleMs('mine', 'south');
         frameIdx = Math.floor((now / cycle) * fc) % fc;
+      } else if (pose === 'fish') {
+        /* Fishing rod-sway loops continuously for the whole gather window
+           (waiting + ready), south-only. */
+        const fc = playerFrameCount('fish', 'south') || 32;
+        const cycle = cycleMs('fish', 'south');
+        frameIdx = Math.floor((now / cycle) * fc) % fc;
       }
       /* Kick off body-anchor + selected-hat asset loads early so they're
          ready by the time we place the headwear below. */
@@ -3513,7 +3525,14 @@ export class EntityRenderer {
       const _shId = getShirt(), _shCol = getShirtColor();
       const _shirtT = null;
       const _shirtKey = 'none';
-      let tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
+      /* Fishing uses the RAW sheet (no skin/pants/shoes recolor): the pink
+         rod + line are baked art and the body-region recolor seeds (tuned
+         for upright poses) would mis-paint them.  The pose is brief and
+         south-only, so skipping the per-player retint is an acceptable
+         trade for keeping the rod art intact for everyone. */
+      let tex = pose === 'fish'
+        ? getFrame('fish', 'south', frameIdx)
+        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
       if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey);
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body
