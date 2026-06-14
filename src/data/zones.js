@@ -14,7 +14,7 @@ export const ZONES = {
        ~55% at the plateau centre, shrinking FAST (curve<1) to ~6% as you head
        up the trails toward the distant regions. Move to the real overlook zone
        when town art is restored. (number = flat scale instead.) */
-    playerScale: { near: 0.55, far: 0.06, curve: 0.6 }
+    playerScale: { near: 0.55, far: 0.03, curve: 0.6 }
   },
   meadow: {
     id: 'meadow', name: 'Starting Meadow', w: 32, h: 32,
