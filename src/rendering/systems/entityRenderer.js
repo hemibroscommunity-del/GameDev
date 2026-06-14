@@ -1145,31 +1145,6 @@ export function hideSkillTraits(sprites) {
   if (sprites.hair) sprites.hair.visible = false;
 }
 
-/** Resolve the torso-overlay tint for the gathering poses: the shirt colour,
- *  or null when no shirt is worn (bare torso).  v2.3.896: the generic steel
- *  armour placeholder was removed (owner: didn't look good enough) -- armour
- *  simply doesn't show during these poses, same as the shirt's own limitation,
- *  until real per-pose plate art exists. */
-export function skillTorsoTint() {
-  return shirtFill(getShirt(), getShirtColor());
-}
-
-/* v2.3.873: torso "shirt" tint masks for the mine/fish poses.  The player's own
-   body renders shirtless there (raw sheet / no shirt gear sheet for the pose),
-   so overlay a torso-shaped mask tinted to the shirt colour.  Sheets are 256px
-   frames aligned 1:1 with the body sheets. */
-const _torsoSheets = {};  // 'mine'/'fish' -> [Texture] | 'loading'
-function _ensureTorsoSheet(key) {
-  const cur = _torsoSheets[key];
-  if (cur) return cur === 'loading' ? null : cur;
-  _torsoSheets[key] = 'loading';
-  Assets.load(`/sprites/player/${key}-torso.png?v=1`).then((tex) => {
-    const out = []; const n = Math.max(1, Math.round(tex.width / 256));
-    for (let i = 0; i < n; i++) out.push(new Texture({ source: tex.source, frame: new Rectangle(i * 256, 0, 256, 256) }));
-    _torsoSheets[key] = out;
-  }).catch(() => { _torsoSheets[key] = []; });
-  return null;
-}
 
 /* v2.3.354: per-frame beard z-order.  The beard is on the face, so it
    needs a direction-dependent layer just like the weapon + shield:
@@ -3739,24 +3714,6 @@ export class EntityRenderer {
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
-
-        /* v2.3.873: mine/fish render the body shirtless (raw 'fish' sheet / no
-           shirt gear sheet for these poses), so overlay a torso-mask tinted to
-           the shirt colour via _shirtSprite -- otherwise a worn shirt vanishes
-           while gathering.  Sheet frames align 1:1 with the body sheet. */
-        if (display._shirtSprite && (pose === 'mine' || pose === 'fish')) {
-          const _fill = skillTorsoTint();
-          const _torso = _ensureTorsoSheet(pose);
-          if (_fill && _torso && _torso.length) {
-            const _ts = display._shirtSprite;
-            _ts.texture = _torso[Math.min(frameIdx, _torso.length - 1)];
-            _ts.anchor.set(0.5, 0.5);
-            _ts.x = spriteBody.x; _ts.y = spriteBody.y;
-            _ts.scale.set(spriteBody.scale.x, spriteBody.scale.y);
-            _ts.tint = (_fill[0] << 16) | (_fill[1] << 8) | _fill[2];
-            _ts.visible = true;
-          }
-        }
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
