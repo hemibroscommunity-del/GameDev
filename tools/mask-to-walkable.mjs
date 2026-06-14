@@ -53,13 +53,14 @@ function decodePNG(buf) {
   return { width, height, channels, data: out };
 }
 
-const [, , maskPath, outPath, gwArg, ghArg, threshArg] = process.argv;
+const [, , maskPath, outPath, gwArg, ghArg, threshArg, dilateArg] = process.argv;
 if (!maskPath || !outPath || !gwArg || !ghArg) {
-  console.error('usage: node tools/mask-to-walkable.mjs <mask.png> <out.json> <gridW> <gridH> [blockThreshold=0.5]');
+  console.error('usage: node tools/mask-to-walkable.mjs <mask.png> <out.json> <gridW> <gridH> [blockThreshold=0.5] [dilate=0]');
   process.exit(1);
 }
 const gw = parseInt(gwArg, 10), gh = parseInt(ghArg, 10);
 const thresh = threshArg ? parseFloat(threshArg) : 0.5;
+const dilate = dilateArg ? parseInt(dilateArg, 10) : 0;
 
 const img = decodePNG(readFileSync(maskPath));
 const total = Array.from({ length: gh }, () => new Array(gw).fill(0));
@@ -74,18 +75,40 @@ for (let y = 0; y < img.height; y++) {
     if (r >= 180 && b >= 180 && g <= 120) mag[ty][tx]++; // magenta-ish
   }
 }
-const grid = [];
-let blocked = 0;
+let grid = [];
 for (let ty = 0; ty < gh; ty++) {
   const row = [];
   for (let tx = 0; tx < gw; tx++) {
     const frac = mag[ty][tx] / Math.max(1, total[ty][tx]);
-    const walkable = frac < thresh;
-    if (!walkable) blocked++;
-    row.push(walkable);
+    row.push(frac < thresh); // true = walkable
   }
   grid.push(row);
 }
+
+// Dilate the blocked region by `dilate` cells (8-neighbour): any walkable
+// cell touching a blocked cell becomes blocked. Adds a safety buffer so a
+// ragged/AI-drifted barrier edge can't be crept into.
+for (let d = 0; d < dilate; d++) {
+  const prev = grid.map((r) => r.slice());
+  for (let ty = 0; ty < gh; ty++) {
+    for (let tx = 0; tx < gw; tx++) {
+      if (!prev[ty][tx]) continue; // already blocked
+      let touchesBlocked = false;
+      for (let dy = -1; dy <= 1 && !touchesBlocked; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const ny = ty + dy, nx = tx + dx;
+          if (ny < 0 || ny >= gh || nx < 0 || nx >= gw) continue;
+          if (prev[ny][nx] === false) { touchesBlocked = true; break; }
+        }
+      }
+      if (touchesBlocked) grid[ty][tx] = false;
+    }
+  }
+}
+
+let blocked = 0;
+for (let ty = 0; ty < gh; ty++) for (let tx = 0; tx < gw; tx++) if (!grid[ty][tx]) blocked++;
 
 // ASCII preview so the collision can be eyeballed against the art.
 console.log(`source ${img.width}x${img.height} (${img.channels}ch) -> ${gw}x${gh} grid, threshold ${thresh}`);
