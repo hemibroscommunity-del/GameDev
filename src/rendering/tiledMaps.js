@@ -35,7 +35,7 @@ export const IMAGE_ZONE_MAPS = {
      change to bust browser/CDN caches. */
   town:    '/maps/town_v14.png',   /* preview: new painterly cove town (1254px native, scaled to 1536 world) */
   frost:   '/maps/frost_v4.jpg',
-  meadow:  '/maps/meadow_v5.jpg',
+  meadow:  '/maps/meadow_v6.png',   /* redesign: new painterly meadow (scaled to 1024 world) */
   thunder: '/maps/thunder_v4.jpg',
   tidal:   '/maps/tidal_v5.jpg',
   mist:    '/maps/mist_v4.jpg',
@@ -70,6 +70,7 @@ export const WALKABILITY_MAPS = {
      the new cove town -- blocks cliffs + ocean, replaces the stale
      procedural building tiles. */
   town: '/maps/town_v14.walk.json',
+  meadow: '/maps/meadow_v6.walk.json',
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
