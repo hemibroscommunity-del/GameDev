@@ -352,6 +352,16 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   BT_API_BASE/BT_AUDIO + babel async/spread helpers imported; fetch /
   URLSearchParams are globals. Props destructure + mount object generated
   programmatically to avoid typos across the large surface.
+- **ClanPanel — ✅ done (v2.3.859):** the clan create/manage/war screen
+  (`showClanPanel`, ~726 lines — now the biggest) → `src/ui/panels/
+  ClanPanel.jsx`. 8 props; CLAN_*/ELEMENTS/ZONES/createClanWar/
+  createDefaultClan/BT_AUDIO + babel imported (CLAN_WAR_ZONES +
+  createClanWar were globalThis-only inline — imported explicitly per the
+  no-globals rule). **Gotcha the scanner caught:** `_clanData$members(2)`
+  are babel optional-chaining temps hoisted to BroTown's top-level var
+  list, not declared in the panel — declared locally in the component
+  (reassigned before each read, byte-equivalent). A reminder to scan every
+  panel for hoisted transpiler temps, not just state/props.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
