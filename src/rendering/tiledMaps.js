@@ -34,7 +34,7 @@ export const IMAGE_ZONE_MAPS = {
      overlay through VIDEO_ZONE_MAPS.town below.  Bump suffix on next
      change to bust browser/CDN caches. */
   town:    '/maps/town_v14.png',   /* preview: new painterly cove town (1254px native, scaled to 1536 world) */
-  frost:   '/maps/frost_v4.jpg',
+  frost:   '/maps/frost_v5.png',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.png',   /* redesign: new painterly meadow (scaled to 1024 world) */
   thunder: '/maps/thunder_v4.jpg',
   tidal:   '/maps/tidal_v5.jpg',
@@ -71,6 +71,7 @@ export const WALKABILITY_MAPS = {
      procedural building tiles. */
   town: '/maps/town_v14.walk.json',
   meadow: '/maps/meadow_v6.walk.json',
+  frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
