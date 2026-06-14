@@ -90,14 +90,15 @@ export const ZONES = {
     id: 'sky', name: 'Desert Winds', w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'wind', secondary: 'frost', level: [65, 82], music: 'sky', safe: false,
-    palette: { ground: '#6a7a8a', path: '#aabbcc', accent: '#8a9aaa' },
+    /* v2.3.855: warm desert palette (replaces the old cool "Sky Reaches" blue-grey). */
+    palette: { ground: '#c2a060', path: '#b08a4a', accent: '#9c6a38' },
     /* fodder count is the seed for the mummy variant -- ZONE_VARIANT_MAP.sky
        remaps every fodder spawn here to a mummy that transforms to a
        skeleton at 50% HP (see monsterVariants.js).  Kept stalker/hexer/
        volatile for variety; if you want pure mummies in Desert Winds,
        drop the other entries. */
     spawns: [{ arch: 'fodder', count: 6 }, { arch: 'stalker', count: 4 }, { arch: 'hexer', count: 3 }, { arch: 'volatile', count: 3 }],
-    atmosphere: { tint: 'rgba(160,190,210,0.04)', vignette: 'rgba(100,140,180,0.06)' },
+    atmosphere: { tint: 'rgba(210,165,90,0.05)', vignette: 'rgba(150,100,40,0.08)' },
     enemyEmoji: { fodder: '🌬️', brute: '🦅', swarm: '🕊️', volatile: '🌪️', stalker: '🦉', hexer: '☁️', sentinel: '🗼' }
   },
   tidal: {

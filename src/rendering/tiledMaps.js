@@ -41,7 +41,7 @@ export const IMAGE_ZONE_MAPS = {
   mist:    '/maps/mist_v5.png',   /* redesign: poison swamp, living edge -> toxic deep */
   hollows: '/maps/hollows_v5.jpg',
   ember:   '/maps/ember_v5.jpg',
-  sky:     '/maps/sky_v4.jpg',
+  sky:     '/maps/sky_v5.png',   /* redesign: warm desert, scrub fringe -> dune sea */
 };
 
 /** Zones that play a looping video as their map texture.  When a zone
@@ -74,6 +74,7 @@ export const WALKABILITY_MAPS = {
   frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
   tidal: '/maps/tidal_v6.walk.json',   /* note: mask covered rocks only -- open sea + deep pools still walkable, needs a water pass */
   mist: '/maps/mist_v5.walk.json',
+  sky: '/maps/sky_v5.walk.json',
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
