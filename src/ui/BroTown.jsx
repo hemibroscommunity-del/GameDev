@@ -134,7 +134,7 @@ const {
   getTileColor, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createGatherNode,
   drawMask, getStatVisuals, createDefaultClan,
   awardSkillXp, addLifeSkillXp, addResource, getResource, skillXpRequired,
-  evaluateMinigame, createMinigameInstance, createPet,
+  createMinigameInstance, createPet,
   rollReforgeBonus, hardenChance,
   getShieldBonus, getShieldStats, getAmuletBonus,
   getSalvageReturns, getAmuletSalvageReturns, gemExtractCost,
@@ -949,29 +949,6 @@ export var BroTown = function BroTown(_ref0) {
     _useState140 = _slicedToArray(_useState139, 2),
     questPanel = _useState140[0],
     setQuestPanel = _useState140[1]; /* {npc, quest, status} or null */
-  var _useState141 = useState(null),
-    _useState142 = _slicedToArray(_useState141, 2),
-    gatherMini = _useState142[0],
-    setGatherMini = _useState142[1]; /* {node, skill, started, result} — timing bar minigame */
-  /* v2.3.232: legacy modal minigame state removed -- the windowed-swipe
-     extraction loop (v2.3.229) is the live path for fishSpot/tree/oreVein. */
-  /* v2.3.853: the canvas cooking minigame (pan + doneness slider) is retired;
-     cooking is now a swipe-up-to-flip extraction at the campfire. */
-  var _useState143 = useState(0),
-    _useState144 = _slicedToArray(_useState143, 2),
-    gatherTick = _useState144[0],
-    setGatherTick = _useState144[1];
-  useEffect(function () {
-    if (!gatherMini || gatherMini.result) return;
-    var id = setInterval(function () {
-      return setGatherTick(function (t) {
-        return t + 1;
-      });
-    }, 30); /* ~33fps animation */
-    return function () {
-      return clearInterval(id);
-    };
-  }, [gatherMini === null || gatherMini === void 0 ? void 0 : gatherMini.started, gatherMini === null || gatherMini === void 0 ? void 0 : gatherMini.result]);
   var _useState149 = useState(null),
     _useState150 = _slicedToArray(_useState149, 2),
     duelRequest = _useState150[0],
@@ -4900,17 +4877,6 @@ export var BroTown = function BroTown(_ref0) {
       _startCookingAtCampfire(node);
       return;
     }
-    var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
-    var target = 0.2 + Math.random() * 0.6;
-    setGatherMini({
-      node: node,
-      skill: skillName,
-      started: Date.now(),
-      target: target,
-      targetSize: targetSize,
-      result: null
-    });
-    BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
   }, []);
 
   /* v2.3.229: extraction-loop entry. Tapping a node funnels through
@@ -17463,7 +17429,7 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       marginRight: 4
     }
-  }, "E"), "\uD83C\uDFAE Minigame Arena"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && !gatherMini && /*#__PURE__*/React.createElement("button", {
+  }, "E"), "\uD83C\uDFAE Minigame Arena"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     style: {
       /* Inline 'bottom: 140' was hiding this button behind the 25vh
@@ -17500,18 +17466,6 @@ export var BroTown = function BroTown(_ref0) {
       if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
       if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
       if (node.nodeType === 'campfire')  { _startCookingAtCampfire(node);         return; }
-      /* Launch timing bar minigame — green zone width scales with skill level */
-      var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004); /* 12%–40% of bar */
-      var target = 0.2 + Math.random() * 0.6; /* random position 20%–80% */
-      setGatherMini({
-        node: node,
-        skill: skillName,
-        started: Date.now(),
-        target: target,
-        targetSize: targetSize,
-        result: null
-      });
-      BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
     },
     onTouchStart: function onTouchStart(e) {
       var _R$lifeSkills4;
@@ -17539,17 +17493,6 @@ export var BroTown = function BroTown(_ref0) {
       if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
       if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
       if (node.nodeType === 'campfire')  { _startCookingAtCampfire(node);         return; }
-      var targetSize = Math.min(0.4, 0.12 + skillLvl * 0.004);
-      var target = 0.2 + Math.random() * 0.6;
-      setGatherMini({
-        node: node,
-        skill: skillName,
-        started: Date.now(),
-        target: target,
-        targetSize: targetSize,
-        result: null
-      });
-      BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
     },
     onMouseDown: function onMouseDown(e) {
       return e.preventDefault();
@@ -17570,255 +17513,7 @@ export var BroTown = function BroTown(_ref0) {
     var n = stateRef.current._nearNode;
     if (!n || n.nodeType === 'campfire') return '';
     return '  ' + (n.spotName || '') + ' \u2014 ' + (n.name || '') + ' (Lv' + (n.gatherLvl || 1) + ')';
-  }()), gatherMini && !gatherMini.result && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'fixed',
-      bottom: 'calc(var(--dash-h) + 110px)',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 50,
-      width: 260,
-      padding: '10px 14px',
-      borderRadius: 12,
-      background: 'rgba(10,8,20,.95)',
-      border: '1px solid rgba(255,255,255,.2)',
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: 'var(--txt)',
-      marginBottom: 6,
-      fontFamily: 'Source Sans 3,sans-serif'
-    }
-  }, gatherMini.skill === 'woodcutting' ? '🪓' : gatherMini.skill === 'fishing' ? '🎣' : '⛏️', " TAP when the bar hits the green zone!"), function (_gatherMini$node) {
-    var elapsed = (Date.now() - gatherMini.started) / 1000;
-    var speed = 1.2 + (((_gatherMini$node = gatherMini.node) === null || _gatherMini$node === void 0 ? void 0 : _gatherMini$node.gatherLvl) || 1) * 0.03; /* faster for higher tier nodes */
-    var progress = elapsed * speed % 2; /* ping-pong 0→1→0 */
-    var pos = progress <= 1 ? progress : 2 - progress;
-    var t = gatherMini.target,
-      ts = gatherMini.targetSize;
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'relative',
-        width: '100%',
-        height: 28,
-        background: 'rgba(255,60,60,.25)',
-        borderRadius: 6,
-        overflow: 'hidden',
-        border: '1px solid rgba(255,255,255,.15)'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'absolute',
-        left: (t - ts) * 100 + '%',
-        width: ts * 200 + '%',
-        height: '100%',
-        background: 'rgba(0,200,100,.35)',
-        borderLeft: '2px solid #3dd497',
-        borderRight: '2px solid #3dd497'
-      }
-    }), /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'absolute',
-        left: t * 100 + '%',
-        width: 2,
-        height: '100%',
-        background: '#f5c542',
-        opacity: 0.6
-      }
-    }), /*#__PURE__*/React.createElement("div", {
-      style: {
-        position: 'absolute',
-        left: pos * 100 + '%',
-        top: 2,
-        width: 4,
-        height: 24,
-        background: '#fff',
-        borderRadius: 2,
-        boxShadow: '0 0 6px #fff',
-        transform: 'translateX(-2px)'
-      }
-    }));
-  }(), /*#__PURE__*/React.createElement("button", {
-    onClick: function onClick() {
-      var _gatherMini$node2;
-      var elapsed = (Date.now() - gatherMini.started) / 1000;
-      var speed = 1.2 + (((_gatherMini$node2 = gatherMini.node) === null || _gatherMini$node2 === void 0 ? void 0 : _gatherMini$node2.gatherLvl) || 1) * 0.03;
-      var progress = elapsed * speed % 2;
-      var pos = progress <= 1 ? progress : 2 - progress;
-      var result = evaluateMinigame(pos, gatherMini.target, gatherMini.targetSize);
-      var reward = MINIGAME_REWARDS[result];
-      var S = stateRef.current,
-        node = gatherMini.node,
-        R = S.rpg;
-      if (!node || !R) {
-        setGatherMini(null);
-        return;
-      }
-
-      /* Show result text */
-      S.dmgNumbers.push({
-        x: node.x,
-        y: node.y - 10,
-        text: reward.label,
-        color: reward.color,
-        ts: Date.now()
-      });
-      if (result === 'miss') {
-        BT_AUDIO.beep(150, 0.06, 0.1, 'square');
-        setGatherMini(null);
-        return; /* miss = no harvest, try again */
-      }
-
-      /* Hit the node */
-      BT_AUDIO.beep(gatherMini.skill === 'woodcutting' ? 400 : gatherMini.skill === 'fishing' ? 600 : 800, 0.03, 0.06, 'triangle');
-      node.hp -= result === 'perfect' ? 2 : 1; /* perfect = double damage */
-      for (var gp = 0; gp < 5; gp++) S.hitParticles.push({
-        x: node.x + (Math.random() - .5) * 8,
-        y: node.y + (Math.random() - .5) * 8,
-        vx: (Math.random() - .5) * 3,
-        vy: -1 - Math.random() * 2,
-        life: 0.6,
-        color: node.color,
-        size: 1.5 + Math.random()
-      });
-      S.dmgNumbers.push({
-        x: node.x,
-        y: node.y - 15,
-        text: node.emoji + ' ' + Math.max(0, node.hp) + '/' + node.maxHp,
-        color: node.color,
-        ts: Date.now()
-      });
-      if (node.hp <= 0) {
-        node.alive = false;
-        node.respawnAt = Date.now() + node.respawnTime;
-        if (S._serverGatherNodes && S.channel) {
-          try { S.channel.send({ type: 'node_strike', payload: { id: node.id, zone: S.currentZone, accuracy: result } }); } catch (e) {}
-        }
-        if (!R.inventory) R.inventory = {};
-        var baseName = node.baseName || node.name;
-        var yieldQty = reward.yieldMult || 1;
-        /* Resource inventory grant -- server applies it via
-           node_strike + player_state when S._serverGatherNodes is
-           true; the legacy local grant below stays as fallback for
-           dungeons / SP only. */
-        if (!S._serverGatherNodes) {
-          var baseKey = node.resourceType + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
-          R.inventory[baseKey] = (R.inventory[baseKey] || 0) + yieldQty;
-        }
-        var processVerb = gatherMini.skill === 'fishing' ? 'Descaled' : gatherMini.skill === 'woodcutting' ? 'Stripped' : 'Smelted';
-        if (node.element) {
-          var _ZONE_RESOURCES$node$, _ZONE_RESOURCES$node$2;
-          var gemKey = 'raw_' + node.element;
-          if (!R.lifeSkills.gems) R.lifeSkills.gems = {};
-          R.lifeSkills.gems[gemKey] = (R.lifeSkills.gems[gemKey] || 0) + 1;
-          var gemName = ((_ZONE_RESOURCES$node$ = ZONE_RESOURCES[node.element]) === null || _ZONE_RESOURCES$node$ === void 0 ? void 0 : _ZONE_RESOURCES$node$.gem) || node.element + ' Gem';
-          var gemCol = ((_ZONE_RESOURCES$node$2 = ZONE_RESOURCES[node.element]) === null || _ZONE_RESOURCES$node$2 === void 0 ? void 0 : _ZONE_RESOURCES$node$2.gemColor) || '#fff';
-          S.dmgNumbers.push({
-            x: node.x + 12,
-            y: node.y - 42,
-            text: gemName + '!',
-            color: gemCol,
-            ts: Date.now()
-          });
-          BT_AUDIO.beep(900, 0.04, 0.06, 'sine');
-        }
-        if (Math.random() < GOLD_NUGGET_DROP.lifeSkill) {
-          R.goldNuggets = (R.goldNuggets || 0) + 1;
-          S.dmgNumbers.push({
-            x: node.x,
-            y: node.y - 55,
-            text: 'Gold Nugget!',
-            color: '#f5c542',
-            ts: Date.now()
-          });
-          BT_AUDIO.beep(1000, 0.08, 0.1, 'sine');
-        }
-        if (Math.random() < RARE_DROP_CHANCE) {
-          var rareDrop = RARE_DROP_ITEMS[Math.floor(Math.random() * RARE_DROP_ITEMS.length)];
-          R.achievementPoints = (R.achievementPoints || 0) + rareDrop.points;
-          if (!R._compStats) R._compStats = createDefaultCompStats();
-          R._compStats.rareDropsFound++;
-          S.dmgNumbers.push({
-            x: node.x,
-            y: node.y - 65,
-            text: rareDrop.emoji + ' RARE: ' + rareDrop.name,
-            color: '#f5c542',
-            ts: Date.now()
-          });
-        }
-        if (!R._compStats) R._compStats = createDefaultCompStats();
-        if (gatherMini.skill === 'fishing') R._compStats.fishCaught++;else if (gatherMini.skill === 'woodcutting') R._compStats.treesFelled++;else if (gatherMini.skill === 'mining') R._compStats.oresMined++;
-        /* §ENC — Material discovery */
-        if (discoverMaterial(gatherMini.skill, baseName)) {
-          S.dmgNumbers.push({
-            x: node.x,
-            y: node.y - 75,
-            text: 'New Material Entry!',
-            color: '#00d4b8',
-            ts: Date.now()
-          });
-        }
-        var xpAmt = Math.ceil((node.xp || 10) * reward.xpMult);
-        var leveled = addLifeSkillXp(R.lifeSkills, gatherMini.skill, xpAmt);
-        if (!R._questKills) R._questKills = {};
-        Object.keys(QUEST_CHAINS).forEach(function (qid) {
-          var _R$_quests;
-          if (((_R$_quests = R._quests) === null || _R$_quests === void 0 ? void 0 : _R$_quests[qid]) === QUEST_STATUS.active) R._questKills[qid] = (R._questKills[qid] || 0) + 1;
-        });
-        var skillLabel = gatherMini.skill.charAt(0).toUpperCase() + gatherMini.skill.slice(1);
-        S.dmgNumbers.push({
-          x: node.x,
-          y: node.y - 20,
-          text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''),
-          color: node.color,
-          ts: Date.now()
-        });
-        S.dmgNumbers.push({
-          x: node.x,
-          y: node.y - 52,
-          text: '+' + xpAmt + ' ' + skillLabel + ' XP',
-          color: '#00d4b8',
-          ts: Date.now()
-        });
-        if (leveled) {
-          S.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 50,
-            text: node.emoji + ' ' + skillLabel + ' Level ' + R.lifeSkills[gatherMini.skill].level + '!',
-            color: '#f5c542',
-            ts: Date.now()
-          });
-          BT_AUDIO.collect();
-        }
-        setRpgState(_objectSpread({}, R));
-        try {
-          localStorage.setItem('bt_rpg', JSON.stringify(R));
-        } catch (e) {}
-      }
-      setGatherMini(null);
-    },
-    onTouchStart: function onTouchStart(e) {
-      e.preventDefault();
-      e.target.click();
-    },
-    style: {
-      marginTop: 8,
-      padding: '10px 24px',
-      background: '#3dd497',
-      color: '#000',
-      border: 'none',
-      borderRadius: 8,
-      fontSize: 14,
-      fontWeight: 800,
-      cursor: 'pointer',
-      width: '100%',
-      fontFamily: 'Source Sans 3,sans-serif',
-      letterSpacing: '.05em'
-    }
-  }, "\u26A1 STRIKE!")), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
+  }()), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
     stateRef: stateRef,
     onSuccess: _succeedExtraction
   }), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {

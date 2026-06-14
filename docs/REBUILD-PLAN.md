@@ -311,6 +311,22 @@ pure-logic moves and continue thinning the component.
   to the passed-in `S` (same object). Setters via deps (setShowEmotes,
   setBuildingPanel). This roughly exhausts the cleanly-separable
   game-logic in BroTown; what remains is genuine UI/JSX territory.
+## Dead-content removal (owner-directed)
+
+- **In-window gather minigame removed — ✅ done (v2.3.867):** the old
+  `gatherMini` timing-bar modal ("TAP when the bar hits the green zone"
+  for fishing/woodcutting/mining, ~300 lines: useState + animation
+  useEffect + 3 dead `setGatherMini` fall-throughs + the UI block) was
+  deleted. Owner confirmed (2026-06-14) the in-window life-skill minigames
+  were replaced by on-screen gesture events. Proven dead first: every
+  gather node type (fishSpot/tree/oreVein/campfire, plus createGatherNode's
+  `oreVein` default) returns early into the gesture flow
+  (`_startExtraction`/`_startCookingAtCampfire`) before the `setGatherMini`
+  fall-through, so it was unreachable. The elemental Minigame Arena
+  (`showMinigame`/`ELEMENTAL_MINIGAMES`) is a SEPARATE system and was left
+  untouched. `evaluateMinigame` (only used by gatherMini) dropped from the
+  DATA destructure. Zero residual refs; gesture flow intact.
+
 ## UI/JSX decomposition (the remaining BroTown mass)
 
 The game-logic is out; what's left in BroTown is the React component + its
