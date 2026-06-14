@@ -180,7 +180,14 @@ export class GameRoom {
     // the wait by 1200 ms; -1 compresses by 250 ms; clamped to [2000, 10000].
     // Jitter ±15% applied per attempt (we use the bounds to validate, not
     // the same jitter sample the client picked).
-    this.EXTRACT_WINDOW_MS = 1500;
+    // v2.3.846: was 1500 -- stale.  The client's phase-2 sustained gesture
+    // (mining pump / wood chop / fishing reel) gives the player a 3500 ms
+    // window (EXTRACT_WINDOW_MS in src/data/gameSystems.js), but this validator
+    // still bounded the strike to 1500 ms, so any harvest that took longer than
+    // ~1.75 s (very common for a 2-turn fishing reel) arrived past latestClose
+    // and was silently coerced to 'miss': node consumed + respawned, no
+    // resource credited.  Must match the client window.
+    this.EXTRACT_WINDOW_MS = 3500;
     this.EXTRACT_OPEN_MIN  = 2000;
     this.EXTRACT_OPEN_MAX  = 10000;
     this.EXTRACT_OPEN_BASE = 4000;
@@ -205,6 +212,12 @@ export class GameRoom {
     this.DEATH_PILE_OWNER_MS = 60000;
     this.DEATH_PILE_TOTAL_MS = 120000;
     this.LOOT_PICKUP_RANGE = 60; // px; was 30, bumped to absorb client/server position lag without silently dropping pickups
+    // v2.3.846: node_strike proximity gate.  Separate from LOOT_PICKUP_RANGE
+    // because the gather STANCE can sit further from the node than a loot
+    // pickup: fishing seats the player ~67 px up-right of the pond so the rod
+    // line drops into it (startExtraction snap), and the mining "stand one
+    // tile north" spot is a tile away.  60 px silently rejected those strikes.
+    this.NODE_STRIKE_RANGE = 110;
     // Zone-entry damage immunity window -- _applyDamage zeroes incoming
     // hits while ps._zoneEntryGraceUntil > now.  Long enough to orient
     // (read monster positions, raise shield), short enough that camping
@@ -1859,7 +1872,7 @@ export class GameRoom {
     if (!ps || ps.z !== zone || ps.dead || ps.disconnected) return;
     const dx = ps.x - n.x;
     const dy = ps.y - n.y;
-    if (dx * dx + dy * dy > this.LOOT_PICKUP_RANGE * this.LOOT_PICKUP_RANGE) return;
+    if (dx * dx + dy * dy > this.NODE_STRIKE_RANGE * this.NODE_STRIKE_RANGE) return;
 
     // ═══ Timing validation against the recorded extraction_start ═══
     //

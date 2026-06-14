@@ -213,6 +213,12 @@ export class EffectsRenderer {
     this.nodeGfx = new Graphics();
     this.nodeLayer.addChild(this.nodeGfx);
 
+    // Catch-flight graphics (fish flying into the bag) — overlayWorld, above
+    // the player.  Drawn as a shape (not an emoji) so it renders identically
+    // on every platform regardless of emoji-font availability.
+    this.catchGfx = new Graphics();
+    this.overlayLayer.addChild(this.catchGfx);
+
     /* v2.3.843: woodcutting "chopper" animation — the owner's pixel-art
        lumberjack swung beside a tree during the chop (the ready phase).
        A persistent world-space Sprite (nodeLayer is camera-transformed)
@@ -240,11 +246,13 @@ export class EffectsRenderer {
   update(S, viewW, viewH, now) {
     this._updateParticles(S, now);
     this._updateDamageNumbers(S, now);
+    this._updateCatchFlights(S, viewW, viewH, now);
     this._updateScreenFlash(S, viewW, viewH, now);
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
     this._updateGroundSplatter(S);
     this._updateGatherNodes(S, now);
+    this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
     this._updateTelegraphs(S, now);
@@ -1989,6 +1997,96 @@ export class EffectsRenderer {
     }
   }
 
+  /* ── Catch flight (v2.3.845) ──
+   * A caught fish pops out of the pond and arcs into the quick-bag.  Flights
+   * are queued by applyFishingReward as { wx, wy (pond, world), t0, dur }.
+   * Rendered as a 🐟 Text on overlayWorld (above the player); pooled so a
+   * rapid string of catches reuses the same Text objects.  The bag landing
+   * point is read live from #bt-bag-target's screen rect (falls back to the
+   * bottom-left if the dashboard is collapsed).  overlayWorld is translated
+   * by -camera, so screen positions are mapped back with + camera. */
+  _updateCatchFlights(S, viewW, viewH, now) {
+    const gfx = this.catchGfx;
+    gfx.clear();
+    const flights = S && S._catchFlights;
+    if (!flights || !flights.length) return;
+    const cam = S.camera || { x: 0, y: 0 };
+    /* catchGfx lives on overlayWorld (scaled by the camera), so work in WORLD
+       coords.  The bag is anchored in SCREEN (CSS) px -> convert to world:
+       worldX = screenX / scaleX + camera.x. */
+    const scaleX = S._worldScaleX || 1, scaleY = S._worldScaleY || 1;
+    let bagSx = 56, bagSy = (viewH || 800) - 56;     /* screen px fallback (bottom-left) */
+    try {
+      const bag = typeof document !== 'undefined' && document.getElementById('bt-bag-target');
+      if (bag) { const r = bag.getBoundingClientRect(); if (r.width) { bagSx = r.left + r.width / 2; bagSy = r.top + r.height / 2; } }
+    } catch (e) { /* SSR / no DOM — keep fallback */ }
+    const bagWx = bagSx / scaleX + cam.x;            /* bag, world coords */
+    const bagWy = bagSy / scaleY + cam.y;
+    const arcW = 64 / scaleY;                        /* ~64 screen px of arc */
+    for (let i = flights.length - 1; i >= 0; i--) {
+      const f = flights[i];
+      const t = (now - f.t0) / (f.dur || 850);
+      if (t >= 1 || t < 0) { if (t >= 1) flights.splice(i, 1); continue; }
+      const e = t * t * (3 - 2 * t);                 /* smoothstep ease */
+      const px = f.wx + (bagWx - f.wx) * e;          /* world position */
+      const py = f.wy + (bagWy - f.wy) * e - Math.sin(Math.PI * t) * arcW;
+      const sc = 1 - 0.6 * e;                        /* shrink into the bag */
+      const a = t < 0.85 ? 1 : Math.max(0, 1 - (t - 0.85) / 0.15);
+      const flop = Math.sin(now / 60 + i * 1.7) * 0.45;
+      /* Little fish silhouette (world-sized; the layer scales it to screen):
+         body + tail + eye, tail trailing back toward the pond. */
+      const bodyR = (9 / scaleX) * sc;
+      const tail = (9 / scaleX) * sc;
+      const fy = py + flop * bodyR;                  /* vertical flop */
+      gfx.ellipse(px, fy, bodyR, bodyR * 0.58);
+      gfx.fill({ color: 0x6fc6e0, alpha: a });
+      gfx.moveTo(px + bodyR * 0.5, fy);
+      gfx.lineTo(px + bodyR * 0.5 + tail, fy - tail * 0.55);
+      gfx.lineTo(px + bodyR * 0.5 + tail, fy + tail * 0.55);
+      gfx.fill({ color: 0x4aa6c4, alpha: a });
+      gfx.circle(px - bodyR * 0.45, fy - bodyR * 0.12, Math.max(0.8, (1.6 / scaleX) * sc));
+      gfx.fill({ color: 0x09202c, alpha: a });
+      /* tiny sparkle as it lands in the bag. */
+      if (t > 0.82) {
+        gfx.circle(bagWx, bagWy, (5 / scaleX) * (1 - (t - 0.82) / 0.18));
+        gfx.stroke({ color: 0xfff2a8, width: 1.5, alpha: a });
+      }
+    }
+  }
+
+  /* ── Fishing bobber (v2.3.844) ──
+   * While a fishing extraction is active, the player has been seated so the
+   * baked rod line drops into the existing fish-spot pond (startExtraction).
+   * Draw a little bobber + ripple at the pond center where the line enters
+   * the water, so the cast reads as connected.  On 'ready' the bobber dips
+   * and a brighter splash ring fires -- the "fish on!" tell that pairs with
+   * the rotating reel cue.  Drawn on nodeGfx (above the pond sprite, which
+   * is inserted at index 0 of nodeLayer). */
+  _updateFishingHole(S, now) {
+    const ex = S && S._extraction;
+    if (!ex || ex.skill !== 'fishing') return;
+    const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
+               : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(n => n.id === ex.nodeId) : null);
+    if (!node) return;
+    const gfx = this.nodeGfx;
+    const hx = node.x, hy = node.y;
+    const ready = ex.status === 'ready';
+    /* Expanding ripple rings on the pond surface (perspective 2:1). */
+    const rx = 12, ry = 6;
+    for (let k = 0; k < 2; k++) {
+      const t = ((now / (ready ? 700 : 1100)) + k * 0.5) % 1;
+      const rr = 0.35 + t * 0.95;
+      gfx.ellipse(hx, hy, rx * rr, ry * rr);
+      gfx.stroke({ color: ready ? 0xfff2a8 : 0x9bd6f2, width: 1.5, alpha: 0.55 * (1 - t) });
+    }
+    /* Bobber where the line meets the water -- bobs gently, dips on 'ready'. */
+    const bob = ready ? Math.abs(Math.sin(now / 110)) * 3 : Math.sin(now / 280) * 1.4;
+    gfx.circle(hx, hy - 2 + bob, 2.4);
+    gfx.fill({ color: 0xff4d4d, alpha: 0.95 });
+    gfx.circle(hx, hy - 2 + bob, 2.4);
+    gfx.stroke({ color: 0xffffff, width: 0.8, alpha: 0.7 });
+  }
+
   /* ── Extraction cue (v2.3.229) ──
    * Renders the "ready to extract" cue at the active node when
    * S._extraction.status === 'ready'. Procedural shapes for v1; swap
@@ -2012,11 +2110,15 @@ export class EffectsRenderer {
                   : null);
     if (!node) return;
     const gfx = this.nodeGfx;
-    const x = node.x;
+    /* Fishing reels over the CHARACTER (the rod's reel is at the hands) so
+       the cue + the circular gesture center match the player, not the
+       distant fish spot.  ExtractionSwipeLayer.cueScreenPos mirrors this. */
+    const fishingCue = ex.skill === 'fishing' && S.player;
+    const x = fishingCue ? S.player.x : node.x;
     /* Anchor cue above the node so it doesn't sit on top of the
        sprite. Trees are tallest so they get the largest offset. */
     const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-    const y = node.y - yOff;
+    const y = fishingCue ? (S.player.y - 24) : (node.y - yOff);
     /* v2.3.843: which side of the tree the player is on (+1 = tree to the
        player's right).  Computed from live player position so the chopper
        and the finger hint pick the correct side the instant the cue shows
@@ -2071,16 +2173,11 @@ export class EffectsRenderer {
     gfx.fill({ color: 0x000000, alpha: 0.22 });
     gfx.circle(x, cy, 16 * pulse);
     gfx.fill({ color: 0x000000, alpha: 0.3 });
-    /* Floating tool icon — the grab target the finger drags from. */
+    /* Floating tool icon — the grab target the finger drags from.  Fishing
+       skips it: the player already holds the rod, so the rotating reel arrow
+       below is the whole cue ("reel icon appears -> circle clockwise"). */
     if (ex.skill === 'fishing') {
-      /* Rod: brown shaft + a thin line dangling. */
-      gfx.rect(x - 1.5, cy - 14 * pulse, 3, 26 * pulse);
-      gfx.fill({ color: 0x6a4830, alpha: 0.95 });
-      gfx.moveTo(x + 1, cy - 14 * pulse);
-      gfx.lineTo(x + 9, cy + 11 * pulse);
-      gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.6 });
-      gfx.circle(x + 9, cy + 11 * pulse, 1.6);
-      gfx.fill({ color: 0xffffff, alpha: 0.85 });
+      /* no floating tool — see comment above */
     } else if (ex.skill === 'woodcutting') {
       /* Axe icon: brown handle + grey head. */
       gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);

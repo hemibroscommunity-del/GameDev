@@ -150,6 +150,14 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
     const cueScreenPos = (S, ex) => {
       const node = nodeOf(S, ex);
       if (!node || !S.camera) return null;
+      /* Fishing centers the reel gesture on the CHARACTER (the rod's reel is
+         at the hands), matching the cue render in effectsRenderer — the user
+         circles their finger over the player to reel.  A node-centered angle
+         would be measured around a point up to ~100px away and fail to
+         accumulate when the finger circles over the player instead. */
+      if (ex.skill === 'fishing' && S.player) {
+        return { x: S.player.x - S.camera.x, y: (S.player.y - 24) - S.camera.y };
+      }
       const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
       return { x: node.x - S.camera.x, y: (node.y - yOff) - S.camera.y };
     };

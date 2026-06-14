@@ -88,9 +88,17 @@ const ATTACK_DURATION_MS = 220;
    gathering, same as pickup), ~14-frame loop carved from the Grok clip.
    See docs/skill-animation-pipeline.md. */
 const MINE_DURATION_MS = 650;
+/* v2.3.843: life-skill fishing cast/sway -- south-only (facing locks to
+   'down' while fishing, same as mine/pickup), 32-frame rod-sway loop carved
+   from the owner-supplied Grok clip and keyed off its near-white background.
+   The
+   pink rod + dangling line are baked into the sheet; the renderer draws a
+   ripple "hole" where the line meets the water (see effectsRenderer
+   _updateFishingHole).  ~1.33 s = the source clip's natural cadence. */
+const FISH_DURATION_MS = 1333;
 
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
-const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine'];
+const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine', 'fish'];
 
 /* v68 (v2.3.705): jog-east + jog-northeast rebuilt as HALF-CYCLE LOOPS.  The
    AI armor pass couldn't keep limb identity through the second arm/leg
@@ -121,7 +129,7 @@ export const SPRITE_VERSION = VERSION;
  * Graphics until the manifest populates.
  */
 const manifest = {
-  stand: {}, jog: {}, hit: {}, pickup: {}, attack: {}, mine: {},
+  stand: {}, jog: {}, hit: {}, pickup: {}, attack: {}, mine: {}, fish: {},
 };
 
 let loadPromise = null;
@@ -135,7 +143,7 @@ function spriteUrl(pose, dir) {
    so we can't hardcode.  Falls back to fixed counts for stand/hit. */
 function deriveFrameCount(pose, tex) {
   const width = (tex && tex.source && tex.source.width) || 0;
-  if (pose === 'jog' || pose === 'pickup' || pose === 'mine') return Math.max(1, Math.floor(width / FRAME_W));
+  if (pose === 'jog' || pose === 'pickup' || pose === 'mine' || pose === 'fish') return Math.max(1, Math.floor(width / FRAME_W));
   if (pose === 'hit') return HIT_FRAMES;
   if (pose === 'attack') return ATTACK_FRAMES;
   return STAND_FRAMES;
@@ -174,10 +182,10 @@ export function loadPlayerSprites() {
   const tasks = [];
   for (const pose of POSES) {
     for (const dir of SOURCE_DIRS) {
-      /* pickup and mine are south-only -- facing locks to 'down' during
-         the loot-pickup freeze / mining gather, so we only ship one sheet
-         and skip the other dir slots to avoid 404s. */
-      if ((pose === 'pickup' || pose === 'mine') && dir !== 'south') continue;
+      /* pickup, mine, and fish are south-only -- facing locks to 'down'
+         during the loot-pickup freeze / mining / fishing gather, so we
+         only ship one sheet and skip the other dir slots to avoid 404s. */
+      if ((pose === 'pickup' || pose === 'mine' || pose === 'fish') && dir !== 'south') continue;
       tasks.push(loadSheet(pose, dir));
     }
   }
@@ -236,6 +244,7 @@ export function cycleMs(pose, dir, armored) {
   if (pose === 'pickup') return PICKUP_DURATION_MS;
   if (pose === 'attack') return ATTACK_DURATION_MS;
   if (pose === 'mine') return MINE_DURATION_MS;
+  if (pose === 'fish') return FISH_DURATION_MS;
   return 1000;
 }
 

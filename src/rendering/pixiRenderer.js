@@ -225,6 +225,11 @@ export async function initPixiRenderer(canvas) {
     const scaleX = cssW / viewW;
     const scaleY = cssH / viewH;
     worldContainer.scale.set(scaleX, scaleY);
+    /* v2.3.845: publish the world<->screen scale so screen-anchored effects
+       (e.g. the catch flight's bag target) can convert CSS px back to world
+       coords: screenX = (worldX - camera.x) * scaleX. */
+    S._worldScaleX = scaleX;
+    S._worldScaleY = scaleY;
 
     // Camera offset: cx/cy are top-left of viewport in world coords.
     // With scale applied, world position X maps to screen position X*scale.

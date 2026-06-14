@@ -64,6 +64,17 @@ export function startExtraction(S, node, skill) {
       var _sdist = Math.sqrt(Math.pow(_sx - S.player.x, 2) + Math.pow(_sy - S.player.y, 2));
       if (_sdist > MINE_SPOT_R) return;
     }
+    /* v2.3.844: fishing lines the character up with the pond.  The baked
+       'fish' rod line drops down-LEFT of the body (tip ~(-52, +43) px from
+       the body center at the south render scale), so seat the player up-and-
+       right of the fish-spot and the line falls straight into the existing
+       pond -- no separate hole needed.  67 px from the node keeps us inside
+       EXTRACT_CANCEL_R (90).  Velocity zeroed so the snap holds. */
+    if (skill === 'fishing' && S.player) {
+      S.player.x = node.x + 52;
+      S.player.y = node.y - 43;
+      S.player.vx = 0; S.player.vy = 0;
+    }
     /* One extraction at a time -- tapping a new node cancels the old. */
     if (S._extraction) S._extraction = null;
     var R = S.rpg;
@@ -183,6 +194,11 @@ function applyFishingReward(S, node, result, deps) {
       S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Fishing Level ' + R.lifeSkills.fishing.level + '!', color: '#f5c542', ts: Date.now() });
       BT_AUDIO.collect();
     }
+    /* v2.3.845: the catch pops out of the pond and flies into the quick-bag.
+       effectsRenderer._updateCatchFlights renders it; the pond (node) is the
+       launch point and #bt-bag-target is the landing point. */
+    if (!S._catchFlights) S._catchFlights = [];
+    S._catchFlights.push({ wx: node.x, wy: node.y, t0: Date.now(), dur: 850, qty: yieldQty });
     setRpgState(_objectSpread({}, R));
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
 }

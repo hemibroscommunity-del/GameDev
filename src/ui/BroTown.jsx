@@ -5224,6 +5224,22 @@ export var BroTown = function BroTown(_ref0) {
       for (var i = 0; i < tl.length; i++) if (tl[i].identifier === id) return tl[i];
       return null;
     };
+    /* v2.3.845: while a fishing reel is in progress, a touch that lands ON the
+       character (the reel zone) must drive the circular reel gesture
+       (ExtractionSwipeLayer), NOT spawn a movement / aim joystick -- otherwise
+       reeling walks the player off the spot and the catch is cancelled before
+       the gesture can complete (so no fish is ever awarded).  The reel cue is
+       centered on the player; claim touches within ~170 px of it.  Touches
+       outside that (screen edges) still move, so walking away to cancel works. */
+    var isReelTouch = function (clientX, clientY) {
+      var S = stateRef.current;
+      if (!S || !S._extraction || S._extraction.skill !== 'fishing') return false;
+      var cam = S.camera, P = S.player;
+      if (!cam || !P) return false;
+      var dx = clientX - (P.x - cam.x);
+      var dy = clientY - (P.y - 24 - cam.y);
+      return (dx * dx + dy * dy) < (170 * 170);
+    };
     /* Left joystick double-tap = cycle weapon (melee -> ranged -> staff).
        Constants shared with the right joystick at the head of this
        useEffect so both gestures use the same tap-vs-drag classifier.
@@ -5255,6 +5271,8 @@ export var BroTown = function BroTown(_ref0) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
+      /* v2.3.845: hand reel-zone touches to the fishing gesture, not movement. */
+      if (isReelTouch(t.clientX, t.clientY)) return;
       var nowMs = Date.now();
       var lts = lTapState.current;
       lTouchId.current = t.identifier;
@@ -5359,6 +5377,8 @@ export var BroTown = function BroTown(_ref0) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
+      /* v2.3.845: hand reel-zone touches to the fishing gesture, not aim/attack. */
+      if (isReelTouch(t.clientX, t.clientY)) return;
       var nowMs = Date.now();
       var rts = rTapState.current;
       var dxLast = t.clientX - rts.lastX;
