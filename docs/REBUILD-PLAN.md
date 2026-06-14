@@ -400,6 +400,11 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   inside the header comment (from `DUNGEON_*/`) closed the block comment
   early — node --check flagged it before push. (Watch for `*/` sequences
   in generated comments.)
+- **EncyclopediaPanel — ✅ done (v2.3.864):** the discovery compendium
+  (`showEncyclopedia`, ~703 lines) → `src/ui/panels/EncyclopediaPanel.jsx`.
+  Notably reads no rpgState/stateRef — discovery state comes via the
+  imported discovered*/visitedZones selectors. 3 props; 15 data symbols +
+  babel imported (all real exports); `_key$split2` hoisted temp local.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
