@@ -1,5 +1,5 @@
 import React from 'react';
-import { BT_AUDIO, CLAN_COLORS, CLAN_CREATE_COST, CLAN_LOGO_SIZE, CLAN_MAX_MEMBERS, CLAN_NAME_MAX, CLAN_TAG_MAX, CLAN_WAR_ZONES, ELEMENTS, ZONES, createClanWar, createDefaultClan } from '@/data/index.js';
+import { BT_AUDIO, CLAN_COLORS, CLAN_CREATE_COST, CLAN_LOGO_SIZE, CLAN_MAX_MEMBERS, CLAN_NAME_MAX, CLAN_TAG_MAX, CLAN_WAR_ZONES, ELEMENTS, ZONES, createClanWar } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 /* ═══ ClanPanel — clan create/manage/war screen ═══ */
@@ -7,12 +7,17 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
    decomposition; behavior-frozen). createElement subtree unchanged. Props:
    rpgState, clanCreateMode, setClanCreateMode, clanData, setClanData,
    setRpgState, setShowClanPanel, stateRef. CLAN_* / ELEMENTS / ZONES /
-   createClanWar / createDefaultClan / BT_AUDIO + babel helpers imported
-   (CLAN_WAR_ZONES + createClanWar resolved via globalThis inline; imported
-   explicitly here per the no-globals rule). `_clanData$members(2)` are
-   babel optional-chaining temps that were hoisted to BroTown's top-level
-   var list; declared locally here (reassigned before each read, so
-   byte-equivalent). */
+   createClanWar / BT_AUDIO + babel helpers imported (CLAN_WAR_ZONES +
+   createClanWar resolved via globalThis inline; imported explicitly here
+   per the no-globals rule).
+   `_clanData$members(2)` are babel optional-chaining temps that were
+   hoisted to BroTown's top-level var list; declared locally here
+   (reassigned before each read, so byte-equivalent).
+   `createDefaultClan` is a PHANTOM: it's in BroTown's `= DATA` destructure
+   but defined/exported nowhere, so inline it is `undefined` (the referencing
+   code path is unreachable / never actually calls it). A named ESM import
+   would hard-fail rollup, so it's declared as an undefined local to mirror
+   the original behavior byte-for-byte. */
 export function ClanPanel(props) {
   var rpgState = props.rpgState,
     clanCreateMode = props.clanCreateMode,
@@ -23,6 +28,7 @@ export function ClanPanel(props) {
     setShowClanPanel = props.setShowClanPanel,
     stateRef = props.stateRef;
   var _clanData$members, _clanData$members2;
+  var createDefaultClan; /* phantom: undefined in BroTown too — see header */
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
