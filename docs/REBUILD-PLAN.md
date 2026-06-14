@@ -504,7 +504,14 @@ the gate, and eslint no-undef catches a missed prop in the new component.
     `src/ui/panels/buildings/BankPanel.jsx`. The simplest one: 1 prop
     (rpgState), read-only, no setters / data tables / babel helpers; 3
     hoisted optional-chaining temps declared locally.
-  - **Remaining sub-panels:** cook, gamble, party, shop.
+  - **CookPanel — ✅ done (v2.3.879):** the `buildingPanel === 'cook'`
+    clause (~531 lines: the cooking station — pick a fish, hit the
+    sweet-spot timing, brew a heal dish) →
+    `src/ui/panels/buildings/CookPanel.jsx`. 5 props (rpgState, stateRef,
+    setRpgState, cookMinigame, setCookMinigame). Data imports verified
+    real (createDefaultCompStats from items via the @/data barrel);
+    hoisted optional-chaining temp set declared locally.
+  - **Remaining sub-panels:** gamble, party, shop.
 - **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
   now all extracted. JSX panels/modals
