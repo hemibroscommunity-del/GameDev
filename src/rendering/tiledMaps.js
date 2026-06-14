@@ -64,7 +64,13 @@ export const VIDEO_ZONE_MAPS = {
  *  treats the painted footprints as collision.  When a zone has an
  *  IMAGE_ZONE_MAPS entry but NO walkability JSON, isSolid() defaults
  *  it to fully walkable. */
-export const WALKABILITY_MAPS = {};
+export const WALKABILITY_MAPS = {
+  /* Generated from a ChatGPT-painted magenta=blocked mask via
+     tools/mask-to-walkable.mjs (64x64 grid). Authoritative collision for
+     the new cove town -- blocks cliffs + ocean, replaces the stale
+     procedural building tiles. */
+  town: '/maps/town_v14.walk.json',
+};
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
  *  once at renderer startup (alongside loadTileAssets / loadPlayerSprites).
