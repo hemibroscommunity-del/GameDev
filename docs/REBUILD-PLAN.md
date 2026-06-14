@@ -630,10 +630,17 @@ the gate, and eslint no-undef catches a missed prop in the new component.
     -threat popup — ignore/call-guards) →
     `src/ui/panels/ThreatIncomingPanel.jsx`. 3 props (stateRef,
     threatIncoming, setThreatIncoming); BT_AUDIO + _objectSpread.
+- **ChatPanel — ✅ done (v2.3.892):** the `chatOpen` chat-input overlay
+  (~109 lines: type + send a message) → `src/ui/panels/ChatPanel.jsx`. 6
+  props: chatInput (state), chatInputRef / chatInputValRef (the SAME refs
+  BroTown's canvas render loop mirrors — passed through, same correctness
+  pattern as TouchControls), sendChat (useCallback), setChatInput,
+  setChatOpen. No data imports or temps.
 - **Candidates remaining (now the genuinely harder ones):**
-  - A few smaller inline HUD bits may still remain (warzone banner,
-    well-rested indicator, torch indicator, interact prompts) — re-survey
-    the return tree; extract any that are clean gated subtrees first.
+  - A few smaller inline HUD bits may still remain (the clan-war banner
+    IIFE near the top of the return, well-rested indicator, torch button,
+    nearBuilding interact prompts) — re-survey the return tree; extract any
+    that are clean gated subtrees / self-contained IIFEs first.
   - **Top-level effect / game-loop / channel wiring** — the highest-risk
     category. Prefer moving effect bodies into `src/game/` behind a deps
     object, one effect at a time, only with the full verification protocol
