@@ -405,6 +405,12 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   Notably reads no rpgState/stateRef — discovery state comes via the
   imported discovered*/visitedZones selectors. 3 props; 15 data symbols +
   babel imported (all real exports); `_key$split2` hoisted temp local.
+- **SkillsPanel — ✅ done (v2.3.865):** the life-skill levels / resources
+  / quest-progress screen (`showSkills`, ~574 lines) → `src/ui/panels/
+  SkillsPanel.jsx`. Display-only — 3 props (rpgState, stateRef,
+  setShowSkills; no setRpgState). 5 data + babel imports (real exports);
+  `_rpgState$lifeSkills46` hoisted temp local. (The `_`/`g`/`herb` the
+  scanner flagged were regex/string content, not identifiers.)
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
