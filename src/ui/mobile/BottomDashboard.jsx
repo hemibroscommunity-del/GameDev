@@ -362,6 +362,10 @@ const InventoryPreview = () => {
   };
   return (
     <div
+      /* v2.3.845: id lets the catch-flight animation (effectsRenderer
+         _updateCatchFlights) find the quick-bag on screen so a caught fish
+         flies into it. */
+      id="bt-bag-target"
       onPointerUp={openFullBag}
       style={{
         /* v2.3.162: zero inner padding + zero flex gap. The only outer

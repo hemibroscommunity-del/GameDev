@@ -212,6 +212,12 @@ export class EffectsRenderer {
     // Node graphics
     this.nodeGfx = new Graphics();
     this.nodeLayer.addChild(this.nodeGfx);
+
+    // Catch-flight graphics (fish flying into the bag) — overlayWorld, above
+    // the player.  Drawn as a shape (not an emoji) so it renders identically
+    // on every platform regardless of emoji-font availability.
+    this.catchGfx = new Graphics();
+    this.overlayLayer.addChild(this.catchGfx);
   }
 
   /**
@@ -220,6 +226,7 @@ export class EffectsRenderer {
   update(S, viewW, viewH, now) {
     this._updateParticles(S, now);
     this._updateDamageNumbers(S, now);
+    this._updateCatchFlights(S, viewW, viewH, now);
     this._updateScreenFlash(S, viewW, viewH, now);
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
@@ -1966,6 +1973,63 @@ export class EffectsRenderer {
       if (!fx.popped && idx >= ORE_BREAK_SPLIT_FRAME) {
         fx.popped = true;
         this._spawnItemPopup(ORE_ICON_TEX, fx.x, fx.y - 6, now);
+      }
+    }
+  }
+
+  /* ── Catch flight (v2.3.845) ──
+   * A caught fish pops out of the pond and arcs into the quick-bag.  Flights
+   * are queued by applyFishingReward as { wx, wy (pond, world), t0, dur }.
+   * Rendered as a 🐟 Text on overlayWorld (above the player); pooled so a
+   * rapid string of catches reuses the same Text objects.  The bag landing
+   * point is read live from #bt-bag-target's screen rect (falls back to the
+   * bottom-left if the dashboard is collapsed).  overlayWorld is translated
+   * by -camera, so screen positions are mapped back with + camera. */
+  _updateCatchFlights(S, viewW, viewH, now) {
+    const gfx = this.catchGfx;
+    gfx.clear();
+    const flights = S && S._catchFlights;
+    if (!flights || !flights.length) return;
+    const cam = S.camera || { x: 0, y: 0 };
+    /* catchGfx lives on overlayWorld (scaled by the camera), so work in WORLD
+       coords.  The bag is anchored in SCREEN (CSS) px -> convert to world:
+       worldX = screenX / scaleX + camera.x. */
+    const scaleX = S._worldScaleX || 1, scaleY = S._worldScaleY || 1;
+    let bagSx = 56, bagSy = (viewH || 800) - 56;     /* screen px fallback (bottom-left) */
+    try {
+      const bag = typeof document !== 'undefined' && document.getElementById('bt-bag-target');
+      if (bag) { const r = bag.getBoundingClientRect(); if (r.width) { bagSx = r.left + r.width / 2; bagSy = r.top + r.height / 2; } }
+    } catch (e) { /* SSR / no DOM — keep fallback */ }
+    const bagWx = bagSx / scaleX + cam.x;            /* bag, world coords */
+    const bagWy = bagSy / scaleY + cam.y;
+    const arcW = 64 / scaleY;                        /* ~64 screen px of arc */
+    for (let i = flights.length - 1; i >= 0; i--) {
+      const f = flights[i];
+      const t = (now - f.t0) / (f.dur || 850);
+      if (t >= 1 || t < 0) { if (t >= 1) flights.splice(i, 1); continue; }
+      const e = t * t * (3 - 2 * t);                 /* smoothstep ease */
+      const px = f.wx + (bagWx - f.wx) * e;          /* world position */
+      const py = f.wy + (bagWy - f.wy) * e - Math.sin(Math.PI * t) * arcW;
+      const sc = 1 - 0.6 * e;                        /* shrink into the bag */
+      const a = t < 0.85 ? 1 : Math.max(0, 1 - (t - 0.85) / 0.15);
+      const flop = Math.sin(now / 60 + i * 1.7) * 0.45;
+      /* Little fish silhouette (world-sized; the layer scales it to screen):
+         body + tail + eye, tail trailing back toward the pond. */
+      const bodyR = (9 / scaleX) * sc;
+      const tail = (9 / scaleX) * sc;
+      const fy = py + flop * bodyR;                  /* vertical flop */
+      gfx.ellipse(px, fy, bodyR, bodyR * 0.58);
+      gfx.fill({ color: 0x6fc6e0, alpha: a });
+      gfx.moveTo(px + bodyR * 0.5, fy);
+      gfx.lineTo(px + bodyR * 0.5 + tail, fy - tail * 0.55);
+      gfx.lineTo(px + bodyR * 0.5 + tail, fy + tail * 0.55);
+      gfx.fill({ color: 0x4aa6c4, alpha: a });
+      gfx.circle(px - bodyR * 0.45, fy - bodyR * 0.12, Math.max(0.8, (1.6 / scaleX) * sc));
+      gfx.fill({ color: 0x09202c, alpha: a });
+      /* tiny sparkle as it lands in the bag. */
+      if (t > 0.82) {
+        gfx.circle(bagWx, bagWy, (5 / scaleX) * (1 - (t - 0.82) / 0.18));
+        gfx.stroke({ color: 0xfff2a8, width: 1.5, alpha: a });
       }
     }
   }

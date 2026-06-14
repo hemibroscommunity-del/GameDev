@@ -159,6 +159,11 @@ function applyFishingReward(S, node, result, deps) {
       S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Fishing Level ' + R.lifeSkills.fishing.level + '!', color: '#f5c542', ts: Date.now() });
       BT_AUDIO.collect();
     }
+    /* v2.3.845: the catch pops out of the pond and flies into the quick-bag.
+       effectsRenderer._updateCatchFlights renders it; the pond (node) is the
+       launch point and #bt-bag-target is the landing point. */
+    if (!S._catchFlights) S._catchFlights = [];
+    S._catchFlights.push({ wx: node.x, wy: node.y, t0: Date.now(), dur: 850, qty: yieldQty });
     setRpgState(_objectSpread({}, R));
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
 }
