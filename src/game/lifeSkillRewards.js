@@ -159,7 +159,11 @@ function applyFishingReward(S, node, result, deps) {
        mutation here so the server's value isn't double-counted.  For
        dungeon / SP zones the local path stays as the fallback. */
     var baseName = node.baseName || node.name || 'Fish';
-    var yieldQty = reward.yieldMult || 1;
+    /* v2.3.853: one fish per catch regardless of reel accuracy (owner) --
+       matches the server's _harvestYieldMult cap for fishSpot.  Drives both
+       the SP/dungeon local grant and the floating "+Minnow" popup, so neither
+       shows a phantom x2. */
+    var yieldQty = 1;
     if (!R.inventory) R.inventory = {};
     if (!S._serverGatherNodes) {
       var baseKey = (node.resourceType || 'fish') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
