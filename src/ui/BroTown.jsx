@@ -5245,6 +5245,13 @@ export var BroTown = function BroTown(_ref0) {
       return slots[(curIdx + 1) % slots.length];
     };
     var lS = function lS(e) {
+      /* v2.3.848: while the chop swipe window is open, the joystick zones
+         must NOT grab the touch — the axe-grab swipe was walking the
+         character around.  The chop swipe is handled by the window-level
+         pointer layer (ExtractionSwipeLayer), a separate event stream, so
+         bailing here leaves it working while stopping movement. */
+      var _exL = stateRef.current && stateRef.current._extraction;
+      if (_exL && _exL.status === 'ready') { e.preventDefault(); return; }
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
@@ -5344,6 +5351,11 @@ export var BroTown = function BroTown(_ref0) {
        doSpecialAttack using the flick direction as the aim angle. */
     var rSwipe = { sx: 0, sy: 0, st: 0, lx: 0, ly: 0, lt: 0 };
     var rS = function rS(e) {
+      /* v2.3.848: same chop-swipe guard as the left zone (see lS) so a
+         swipe started on the right half during a chop doesn't fire
+         attacks/aim instead of chopping. */
+      var _exR = stateRef.current && stateRef.current._extraction;
+      if (_exR && _exR.status === 'ready') { e.preventDefault(); return; }
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];

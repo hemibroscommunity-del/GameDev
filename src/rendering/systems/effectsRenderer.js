@@ -2039,14 +2039,18 @@ export class EffectsRenderer {
       sp.x = node.x - chopSign * CHOP_OFFSET;
       sp.y = node.y + 6;
       sp.visible = true;
-      /* v2.3.847: woody "thunk" on the swing's strike frame (woodcutting
-         had no chop sound).  Fires once per loop — only on the transition
-         INTO the strike frame, which the steps land on for ~2-3 render
-         frames. */
+      /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
+         none).  Fires once per loop — only on the transition INTO the
+         strike frame (the steps hold it for ~2-3 render frames).
+         v2.3.848: reuse the generic melee weapon-hit sound (BT_AUDIO.swordHit
+         — what a strike on any monster plays), and delay it ~0.2s so it
+         lands with the visible bite rather than ahead of the swing (owner). */
       if (fi === CHOP_STRIKE_FRAME && this._chopLastFrame !== CHOP_STRIKE_FRAME) {
         try {
-          var _a = (typeof window !== 'undefined') && window.BT_AUDIO;
-          if (_a && _a.beep) { _a.beep(150, 0.06, 0.09, 'sawtooth'); _a.beep(430, 0.025, 0.04, 'square'); }
+          setTimeout(function () {
+            var _a = (typeof window !== 'undefined') && window.BT_AUDIO;
+            if (_a && _a.swordHit) _a.swordHit({ vol: 0.55 });
+          }, 200);
         } catch (e) {}
       }
       this._chopLastFrame = fi;
