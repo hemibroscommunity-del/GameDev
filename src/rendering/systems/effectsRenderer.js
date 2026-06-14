@@ -13,6 +13,8 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, hideSkillTraits } from './entityRenderer.js';
+import { getShirt } from '../traits/shirtCatalog.js';
+import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -282,6 +284,23 @@ export class EffectsRenderer {
        (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
        crown generator with the matching widths or the traits drift off-head. */
     fetch('/sprites/skills/crowns.json').then((r) => r.json()).then((j) => { this._skillCrowns = j; }).catch(() => {});
+
+    /* v2.3.873: torso "shirt" tint for the stand-ins.  The baked characters are
+       shirtless; tint a torso-shaped mask (aligned 1:1 with each strip) to the
+       player's shirt colour so a chosen shirt doesn't just vanish during these
+       poses.  One shared sprite (one stand-in at a time), under the head traits. */
+    this.skillShirt = new Sprite();
+    this.skillShirt.anchor.set(0.5, 1);
+    this.skillShirt.visible = false;
+    this.nodeLayer.addChild(this.skillShirt);
+    this._chopTorso = []; this._cookTorso = []; this._fireTorso = [];
+    const _loadTorso = (path, arr, fw) => Assets.load(path).then((tex) => {
+      const n = Math.max(1, Math.round(tex.width / fw));
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, 220) }));
+    }).catch(() => {});
+    _loadTorso('/sprites/skills/chop-torso.png', this._chopTorso, 240);
+    _loadTorso('/sprites/skills/cook-torso.png', this._cookTorso, 213);
+    _loadTorso('/sprites/skills/fire-torso.png', this._fireTorso, 161);
   }
 
   /* Composite the player's traits onto a stand-in skill sprite for this frame.
@@ -300,6 +319,18 @@ export class EffectsRenderer {
     placeSkillTraits(this.skillTraits, cwx, cwy, dir, mirror, scaleVal);
   }
 
+  /* Tint the torso mask (aligned 1:1 with the stand-in strip) to the player's
+     shirt colour and overlay it on the stand-in.  No-op when no shirt is worn. */
+  _placeSkillShirt(torsoFrames, sp, fi) {
+    const fill = shirtFill(getShirt(), getShirtColor());
+    if (!fill || !torsoFrames || !torsoFrames.length) { this.skillShirt.visible = false; return; }
+    this.skillShirt.texture = torsoFrames[Math.min(fi, torsoFrames.length - 1)];
+    this.skillShirt.x = sp.x; this.skillShirt.y = sp.y;
+    this.skillShirt.scale.set(sp.scale.x, sp.scale.y);
+    this.skillShirt.tint = (fill[0] << 16) | (fill[1] << 8) | fill[2];
+    this.skillShirt.visible = true;
+  }
+
   /**
    * Updates all effects for the current frame.
    */
@@ -307,6 +338,7 @@ export class EffectsRenderer {
     /* v2.3.867: hide the skill-stand-in traits up front; whichever stand-in is
        active this frame (firemaking / chopper / cook) re-shows + places them. */
     hideSkillTraits(this.skillTraits);
+    if (this.skillShirt) this.skillShirt.visible = false;
     this._updateParticles(S, now);
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
@@ -2218,6 +2250,7 @@ export class EffectsRenderer {
     sp.x = S.player.x;
     sp.y = S.player.y + 6;
     sp.visible = true;
+    this._placeSkillShirt(this._fireTorso, sp, fi);
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
   }
 
@@ -2298,6 +2331,7 @@ export class EffectsRenderer {
       this._chopLastFrame = fi;
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree
          is on the player's left, i.e. chopSign<0 -> render the west view. */
+      this._placeSkillShirt(this._chopTorso, sp, fi);
       this._placeSkillTraitsOn('chop', sp, fi, 'east', chopSign < 0);
     } else {
       this._chopLastFrame = -1;  // mining/fishing — no chopper, reset the edge
@@ -2315,6 +2349,7 @@ export class EffectsRenderer {
       sp.x = node.x - 14;
       sp.y = node.y + 8;
       sp.visible = true;
+      this._placeSkillShirt(this._cookTorso, sp, cookFi);
       this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
     /* The floating tool + swipe cue + pips only appear once the swipe
