@@ -386,6 +386,11 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   a comprehensive `_\w+(\$\w+)+` temp enumeration (some were assigned
   inside `var pets = (...)` initializers, so a naive "declared?" check
   false-positived; the depth-aware enumeration is the reliable one).
+- **FurniturePanel — ✅ done (v2.3.862):** the furniture crafting
+  workshop (`showFurniture`, ~158 lines) → `src/ui/panels/FurniturePanel.jsx`.
+  4 props; FURNITURE_RECIPES/addLifeSkillXp/BT_AUDIO + babel imported
+  (real exports verified); `_R$lifeSkills2`/`_rpgState$lifeSkills0` hoisted
+  temps declared locally.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
