@@ -620,7 +620,20 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   dual-joystick touch effects bind to them; TouchControls attaches those
   SAME refs to the DOM, so the effects keep working unchanged. Render-only;
   no effect/loop code moved. (Primary iPhone input — verify on device.)
+- **DuelRequestPanel + ThreatIncomingPanel — ✅ done (v2.3.891):** two PvP
+  popups extracted together (render-only gated subtrees that survived the
+  earlier sweep, still lower-risk than effects).
+  - `duelRequest` (~110 lines: incoming duel-challenge — accept/decline) →
+    `src/ui/panels/DuelRequestPanel.jsx`. 3 props (stateRef, duelRequest,
+    setDuelRequest); BT_AUDIO.
+  - `threatIncoming && !threatIncoming.responded` (~150 lines: incoming-PvP
+    -threat popup — ignore/call-guards) →
+    `src/ui/panels/ThreatIncomingPanel.jsx`. 3 props (stateRef,
+    threatIncoming, setThreatIncoming); BT_AUDIO + _objectSpread.
 - **Candidates remaining (now the genuinely harder ones):**
+  - A few smaller inline HUD bits may still remain (warzone banner,
+    well-rested indicator, torch indicator, interact prompts) — re-survey
+    the return tree; extract any that are clean gated subtrees first.
   - **Top-level effect / game-loop / channel wiring** — the highest-risk
     category. Prefer moving effect bodies into `src/game/` behind a deps
     object, one effect at a time, only with the full verification protocol
