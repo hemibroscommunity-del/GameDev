@@ -436,7 +436,13 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   panels/StatScreenPanel.jsx`. 4 props; calc derived-stat helpers +
   getActiveWeapon/getWeaponCritStat/xpRequired/BT_AUDIO + babel imported
   (real exports verified); no hoisted temps; confirm/localStorage globals.
-- **Candidates remaining:** the smaller modals (questPanel, buildingPanel,
+- **QuestPanel — ✅ done (v2.3.870):** the NPC quest accept/turn-in dialog
+  (`questPanel`, ~127 lines) → `src/ui/panels/QuestPanel.jsx`. The
+  transition logic already lived in `@/game/quests.js` (Phase 3); the
+  panel imports acceptQuest/turnInQuest from there. 5 props;
+  `_questPanel$npcRef` hoisted temp declared locally. (Quest content is
+  dormant, but the panel is wired and moved behavior-frozen.)
+- **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
   now all extracted. JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
