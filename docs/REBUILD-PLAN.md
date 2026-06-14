@@ -539,13 +539,27 @@ the gate, and eslint no-undef catches a missed prop in the new component.
     overlay) — they are two distinct shop UIs. 3 props (rpgState,
     stateRef, setRpgState); BT_AUDIO verified real; no hoisted temps.
     This was the last buildingPanel sub-panel.
-- **Candidates remaining:** the smaller modals (buildingPanel,
-  trade, minigame, statScreen, inventory) — the big standalone panels are
-  now all extracted. JSX panels/modals
-  are `useCallback`s that read `stateRef.current` + a few setters — more
-  entangled (would need a deps object), so a later pass. The big
-  remaining mass is JSX panels/modals (UI decomposition), still its own
-  separate effort.
+- **InventoryPanel — ✅ done (v2.3.883):** the `showInventory && rpgState`
+  modal subtree (~827 lines: the full inventory / equipment screen — equip
+  and compare gear, weapon stash, amulet/shield/pet slots, item actions) →
+  `src/ui/panels/InventoryPanel.jsx`. The first modal that needed
+  BroTown-local bindings passed as props: alongside rpgState/stateRef/
+  setRpgState/setShowInventory it takes **gearWorn** (a useState value) and
+  **toggleGearSlot** (a useCallback) — 6 props total, the "deps object" the
+  plan anticipated, but just plain props. 18 data/helper imports verified
+  real (including `discoveredCollisions`, a `Set` exported from
+  gameSystems). NOTE: the inventory subtree has multi-`$` babel temps
+  (e.g. `_ELEMENTS$wpn$element0`); the extraction scanner's single-`$`
+  regex truncated them to prefixes and the free-var verifier caught the
+  resulting `no-undef` risk — the full multi-`$` set is now declared
+  locally. Use the `_[A-Za-z0-9_]+(\$[A-Za-z0-9]+)+` pattern for temps.
+- **Candidates remaining:** the trade modal (`showTrade && tradeTarget`,
+  ~the player-to-player trade window). Like inventory it is an inline
+  gated JSX subtree (not a useCallback), so the same move applies; watch
+  for BroTown-local bindings to pass as props. The minigame and statScreen
+  modals are already handled (statScreen extracted; the Minigame Arena was
+  removed). After trade, BroTown is mostly the core component + game-loop
+  wiring.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
