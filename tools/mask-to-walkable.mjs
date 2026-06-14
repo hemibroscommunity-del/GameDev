@@ -89,24 +89,29 @@ for (let ty = 0; ty < gh; ty++) {
   grid.push(row);
 }
 
-// Dilate the blocked region by `dilate` cells (8-neighbour): any walkable
-// cell touching a blocked cell becomes blocked. Adds a safety buffer so a
-// ragged/AI-drifted barrier edge can't be crept into.
-for (let d = 0; d < dilate; d++) {
-  const prev = grid.map((r) => r.slice());
-  for (let ty = 0; ty < gh; ty++) {
-    for (let tx = 0; tx < gw; tx++) {
-      if (!prev[ty][tx]) continue; // already blocked
-      let touchesBlocked = false;
-      for (let dy = -1; dy <= 1 && !touchesBlocked; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue;
-          const ny = ty + dy, nx = tx + dx;
-          if (ny < 0 || ny >= gh || nx < 0 || nx >= gw) continue;
-          if (prev[ny][nx] === false) { touchesBlocked = true; break; }
+// Morphology on the blocked region (8-neighbour). dilate>0 GROWS blocked (a
+// safety buffer against ragged edges). dilate<0 ERODES blocked: shrinks walls
+// back and removes thin/small obstacles so the player doesn't catch on every
+// prop. Run as |dilate| passes.
+{
+  const erode = dilate < 0;
+  for (let d = 0; d < Math.abs(dilate); d++) {
+    const prev = grid.map((r) => r.slice());
+    for (let ty = 0; ty < gh; ty++) {
+      for (let tx = 0; tx < gw; tx++) {
+        const cell = prev[ty][tx];                 // true = walkable
+        if (erode ? cell : !cell) continue;        // erode: skip walkable; dilate: skip blocked
+        let flip = false;
+        for (let dy = -1; dy <= 1 && !flip; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const ny = ty + dy, nx = tx + dx;
+            if (ny < 0 || ny >= gh || nx < 0 || nx >= gw) continue;
+            if (prev[ny][nx] === (erode ? true : false)) { flip = true; break; }
+          }
         }
+        if (flip) grid[ty][tx] = erode;            // erode -> walkable; dilate -> blocked
       }
-      if (touchesBlocked) grid[ty][tx] = false;
     }
   }
 }
