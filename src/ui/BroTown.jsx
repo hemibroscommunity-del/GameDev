@@ -3500,7 +3500,22 @@ export var BroTown = function BroTown(_ref0) {
           } else {
             var _exDx = _exNode.x - P.x, _exDy = _exNode.y - P.y;
             var _exDist = Math.sqrt(_exDx * _exDx + _exDy * _exDy);
-            if (_exDist > EXTRACT_CANCEL_R) {
+            /* v2.3.843: the walk-away cancel radius must be at least the
+               range the prompt let you START from, or chopping/fishing
+               self-cancels on the very next tick.  Trees/fish use the same
+               sprite-height proximity as the detection above (which reaches
+               100–196px), but the flat EXTRACT_CANCEL_R is only 90px — so a
+               chop begun from the canopy edge died instantly (owner: "the
+               button does nothing").  Ore stays tight (90) since mining is
+               done from the fixed north spot. */
+            var _cancelR = EXTRACT_CANCEL_R;
+            if (_exNode.nodeType !== 'oreVein') {
+              var _cbH = _exNode.nodeType === 'tree' ? 112 : 88;
+              var _cStep = Math.min(10, Math.max(1, Math.ceil((_exNode.gatherLvl || 1) / 10)));
+              var _cProx = Math.max(100, (_cbH * (1 + (_cStep - 1) * 0.15)) * 0.75);
+              _cancelR = Math.max(EXTRACT_CANCEL_R, _cProx) + 24;
+            }
+            if (_exDist > _cancelR) {
               /* Walk-away cancel — no XP, no node damage, no popup. */
               S._extraction = null;
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
@@ -5230,6 +5245,13 @@ export var BroTown = function BroTown(_ref0) {
       return slots[(curIdx + 1) % slots.length];
     };
     var lS = function lS(e) {
+      /* v2.3.848: while the chop swipe window is open, the joystick zones
+         must NOT grab the touch — the axe-grab swipe was walking the
+         character around.  The chop swipe is handled by the window-level
+         pointer layer (ExtractionSwipeLayer), a separate event stream, so
+         bailing here leaves it working while stopping movement. */
+      var _exL = stateRef.current && stateRef.current._extraction;
+      if (_exL && _exL.status === 'ready') { e.preventDefault(); return; }
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
@@ -5329,6 +5351,11 @@ export var BroTown = function BroTown(_ref0) {
        doSpecialAttack using the flick direction as the aim angle. */
     var rSwipe = { sx: 0, sy: 0, st: 0, lx: 0, ly: 0, lt: 0 };
     var rS = function rS(e) {
+      /* v2.3.848: same chop-swipe guard as the left zone (see lS) so a
+         swipe started on the right half during a chop doesn't fire
+         attacks/aim instead of chopping. */
+      var _exR = stateRef.current && stateRef.current._extraction;
+      if (_exR && _exR.status === 'ready') { e.preventDefault(); return; }
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];

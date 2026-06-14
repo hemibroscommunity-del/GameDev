@@ -897,7 +897,10 @@ export class GameRoom {
     return resType + '_' + name.replace(/\s+/g, '_').toLowerCase();
   }
 
-  _harvestYieldMult(accuracy) {
+  _harvestYieldMult(accuracy, nodeType) {
+    // v2.3.851: a felled tree always yields one log — woodcutting skips the
+    // perfect-accuracy 2x bonus (owner). Mining/fishing keep the bonus.
+    if (nodeType === 'tree') return 1;
     if (accuracy === 'perfect') return 2;
     return 1; // 'good' / 'ok' / unknown
   }
@@ -1947,7 +1950,7 @@ export class GameRoom {
        perfect-accuracy for the doubled yield + XP. */
     const ratedAccuracy = this._ratedHarvestAccuracy(ps, accuracy);
     const invKey = this._harvestInvKey(n.nodeType, n.tierLvl);
-    const yieldQty = this._harvestYieldMult(ratedAccuracy);
+    const yieldQty = this._harvestYieldMult(ratedAccuracy, n.nodeType);
     if (!ps.inventory) ps.inventory = {};
     ps.inventory[invKey] = (ps.inventory[invKey] || 0) + yieldQty;
 
