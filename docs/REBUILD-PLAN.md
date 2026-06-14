@@ -460,6 +460,17 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   panel imports acceptQuest/turnInQuest from there. 5 props;
   `_questPanel$npcRef` hoisted temp declared locally. (Quest content is
   dormant, but the panel is wired and moved behavior-frozen.)
+- **buildingPanel sub-panels — in progress (owner-approved sub-by-sub):**
+  the ~5.8k-line buildingPanel container is being decomposed one sub-panel
+  at a time into `src/ui/panels/buildings/`, not lifted wholesale.
+  - **ForgePanel — ✅ done (v2.3.872):** the `buildingPanel === 'forge'`
+    blacksmith clause (~1,134 lines: weapon/armor craft, reforge, harden,
+    salvage) → `src/ui/panels/buildings/ForgePanel.jsx`. 3 props (rpgState,
+    stateRef, setRpgState); 19 data/helper imports verified real;
+    `_rpgState$lifeSkills21` hoisted temp local. The `buildingPanel ===
+    'forge' &&` gate stays in BroTown; the Fragment subtree is the panel.
+  - **Remaining sub-panels:** woodwork, enchant, gemcut, exchange, farm,
+    bank, cook, gamble, party, shop.
 - **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
   now all extracted. JSX panels/modals
