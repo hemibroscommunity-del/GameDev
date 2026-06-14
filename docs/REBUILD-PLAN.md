@@ -460,9 +460,14 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   panel imports acceptQuest/turnInQuest from there. 5 props;
   `_questPanel$npcRef` hoisted temp declared locally. (Quest content is
   dormant, but the panel is wired and moved behavior-frozen.)
-- **buildingPanel sub-panels — in progress (owner-approved sub-by-sub):**
-  the ~5.8k-line buildingPanel container is being decomposed one sub-panel
-  at a time into `src/ui/panels/buildings/`, not lifted wholesale.
+- **buildingPanel sub-panels — ✅ COMPLETE (owner-approved sub-by-sub):**
+  the ~5.8k-line buildingPanel container was decomposed one sub-panel
+  at a time into `src/ui/panels/buildings/`, not lifted wholesale. All 11
+  sub-panels are now extracted (forge, woodwork, enchant, gemcut,
+  exchange, farm, bank, cook, gamble, party, shop→VendorPanel). Each
+  `buildingPanel === 'X' &&` gate stays in BroTown; only the Fragment
+  subtree moved. BroTown.jsx dropped from ~15.9k to ~12.1k lines over the
+  run.
   - **ForgePanel — ✅ done (v2.3.872):** the `buildingPanel === 'forge'`
     blacksmith clause (~1,134 lines: weapon/armor craft, reforge, harden,
     salvage) → `src/ui/panels/buildings/ForgePanel.jsx`. 3 props (rpgState,
@@ -526,7 +531,14 @@ the gate, and eslint no-undef catches a missed prop in the new component.
     re-imported from @/networking (byte-identical to BroTown's local var);
     async/regenerator + spread/spread-array babel helpers imported; the
     hoisted optional-chaining temp set declared locally.
-  - **Remaining sub-panels:** shop.
+  - **VendorPanel — ✅ done (v2.3.882):** the `buildingPanel === 'shop'`
+    clause (~142 lines: the in-building Vendor view — basic supplies for
+    starting adventurers) → `src/ui/panels/buildings/VendorPanel.jsx`.
+    **Named VendorPanel, not ShopPanel**, to avoid colliding with the
+    pre-existing town-shop modal `panels/ShopPanel.jsx` (the `showShop`
+    overlay) — they are two distinct shop UIs. 3 props (rpgState,
+    stateRef, setRpgState); BT_AUDIO verified real; no hoisted temps.
+    This was the last buildingPanel sub-panel.
 - **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
   now all extracted. JSX panels/modals
