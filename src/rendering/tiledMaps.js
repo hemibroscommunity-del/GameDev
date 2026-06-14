@@ -36,7 +36,7 @@ export const IMAGE_ZONE_MAPS = {
   town:    '/maps/town_v14.png',   /* preview: new painterly cove town (1254px native, scaled to 1536 world) */
   frost:   '/maps/frost_v5.png',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.png',   /* redesign: new painterly meadow (scaled to 1024 world) */
-  thunder: '/maps/thunder_v4.jpg',
+  thunder: '/maps/thunder_v5.png',   /* redesign: metallic/electric buried-machine peaks */
   tidal:   '/maps/tidal_v6.png',   /* redesign: arrival-by-sea cave island */
   mist:    '/maps/mist_v5.png',   /* redesign: poison swamp, living edge -> toxic deep */
   hollows: '/maps/hollows_v6.png',   /* redesign: underground crystal cavern */
@@ -77,6 +77,7 @@ export const WALKABILITY_MAPS = {
   sky: '/maps/sky_v5.walk.json',
   hollows: '/maps/hollows_v6.walk.json',   /* dark cave: formations block, dark rock floor walkable */
   ember: '/maps/ember_v6.walk.json',   /* note: translucent magenta over lava may leak a few walkable lava spots */
+  thunder: '/maps/thunder_v5.walk.json',   /* dense machinery -> walkable is mostly the central path corridor */
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
