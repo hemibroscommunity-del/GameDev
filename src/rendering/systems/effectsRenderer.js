@@ -1997,9 +1997,13 @@ export class EffectsRenderer {
   _updateExtractionCue(S, now) {
     const ex = S && S._extraction;
     /* v2.3.843: chopper sprite is hidden every frame and only re-shown
-       below while a woodcutting extraction is ready. */
+       below while a woodcutting extraction is active.
+       v2.3.845: run for 'waiting' too so the chopper appears the instant
+       the player taps Chop (immediate "it triggered" feedback during the
+       ~4s wind-up before the swipe window opens) — the graphic swipe cue
+       below still waits for 'ready'. */
     if (this.chopSprite) this.chopSprite.visible = false;
-    if (!ex || ex.status !== 'ready') return;
+    if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) return;
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
                : (S.gatherNodes && ex.nodeId
@@ -2033,6 +2037,9 @@ export class EffectsRenderer {
       sp.y = node.y + 6;
       sp.visible = true;
     }
+    /* The floating tool + swipe cue + pips only appear once the swipe
+       window is open; the chopper above already covers the wind-up. */
+    if (ex.status !== 'ready') return;
     /* Pulse + gentle float so the tool reads as a grabbable "pick me up". */
     const pulse = 1 + Math.sin(now / 80) * 0.12;
     const bob = Math.sin(now / 300) * 4;
