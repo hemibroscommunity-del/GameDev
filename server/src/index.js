@@ -30,7 +30,7 @@ export default {
     // for testing / private friend sessions).
     if (url.pathname === '/api/lobby') {
       const PREFIX = 'brotown';
-      const SOFT_CAP = 40;       // 10-player headroom under MAX_PLAYERS=50
+      const SOFT_CAP = 50;       // 10-player headroom under MAX_PLAYERS=60
       const SCAN_ROOMS = 10;     // existing pool to scan before minting fresh
       for (let i = 1; i <= SCAN_ROOMS; i++) {
         const room = PREFIX + '-' + i;
@@ -122,7 +122,7 @@ export class GameRoom {
     this.tickInterval = null;
     this.tickSeq = 0;
     this.TICK_RATE = 22; // 45Hz (22ms)
-    this.MAX_PLAYERS = 50;
+    this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
     this.WEAPON_STASH_CAP = 8; // mirrors WEAPON_STASH_MAX in src/data/gameSystems.js
     this.QUEST_AP_REWARD = 5;  // mirrors QUEST_AP_REWARD in src/data/items.js
