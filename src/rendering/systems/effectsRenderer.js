@@ -278,6 +278,9 @@ export class EffectsRenderer {
     }
     this._skillCrowns = null;
     this._skillHeadW = { chop: 37, cook: 48, fire: 35 }; // in-frame head widths
+    /* crowns.json frame widths MUST match the strip-loading FWs above
+       (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
+       crown generator with the matching widths or the traits drift off-head. */
     fetch('/sprites/skills/crowns.json').then((r) => r.json()).then((j) => { this._skillCrowns = j; }).catch(() => {});
   }
 
