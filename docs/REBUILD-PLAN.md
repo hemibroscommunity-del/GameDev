@@ -431,6 +431,11 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   (`showShop`, ~222 lines) → `src/ui/panels/ShopPanel.jsx`. 4 props;
   SHOP_ITEMS_FOR_SALE/SHOP_PRICES/BT_AUDIO + syncRpgToServer + babel
   imported (real exports verified); no hoisted temps.
+- **StatScreenPanel — ✅ done (v2.3.869):** the character stats /
+  attribute-allocation screen (`showStatScreen`, ~251 lines) → `src/ui/
+  panels/StatScreenPanel.jsx`. 4 props; calc derived-stat helpers +
+  getActiveWeapon/getWeaponCritStat/xpRequired/BT_AUDIO + babel imported
+  (real exports verified); no hoisted temps; confirm/localStorage globals.
 - **Candidates remaining:** the smaller modals (questPanel, buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
   now all extracted. JSX panels/modals
