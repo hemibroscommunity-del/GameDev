@@ -492,8 +492,14 @@ the gate, and eslint no-undef catches a missed prop in the new component.
     14 hoisted optional-chaining temps declared locally. eslint is
     correctness-only (no-undef etc.; no no-unused-vars/no-redeclare), so
     declaring the full temp set is safe and avoids any out-of-scope ref.
-  - **Remaining sub-panels:** farm,
-    bank, cook, gamble, party, shop.
+  - **FarmPanel — ✅ done (v2.3.877):** the `buildingPanel === 'farm'`
+    clause (~310 lines: the farm plot manager — plant/harvest crops,
+    regenerate the farm_home zone map) →
+    `src/ui/panels/buildings/FarmPanel.jsx`. 4 props (rpgState, stateRef,
+    setRpgState, setBuildingPanel). Data imports verified real
+    (generateZoneMap / updateZoneDimensions resolve from gameSystems via
+    the @/data barrel); 2 hoisted babel temps declared locally.
+  - **Remaining sub-panels:** bank, cook, gamble, party, shop.
 - **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
   now all extracted. JSX panels/modals
