@@ -238,6 +238,31 @@ export class EffectsRenderer {
         this._chopFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
       }
     }).catch((err) => console.warn('[chop-strip] load failed', err));
+
+    /* v2.3.853: cook character (shown at the campfire during a cooking
+       extraction) + firemaking character (shown at the player while lighting
+       a fire) — same world-space sprite pattern as the chopper. */
+    this.cookSprite = new Sprite();
+    this.cookSprite.anchor.set(0.5, 1);
+    this.cookSprite.visible = false;
+    this.nodeLayer.addChild(this.cookSprite);
+    this._cookFrames = [];
+    Assets.load('/sprites/skills/cook-strip.png').then((tex) => {
+      const FW = 213, FH = 220;
+      const n = Math.max(1, Math.round(tex.width / FW));
+      for (let i = 0; i < n; i++) this._cookFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+    }).catch((err) => console.warn('[cook-strip] load failed', err));
+
+    this.fireSprite = new Sprite();
+    this.fireSprite.anchor.set(0.5, 1);
+    this.fireSprite.visible = false;
+    this.nodeLayer.addChild(this.fireSprite);
+    this._fireFrames = [];
+    Assets.load('/sprites/skills/firemaking-strip.png').then((tex) => {
+      const FW = 161, FH = 220;
+      const n = Math.max(1, Math.round(tex.width / FW));
+      for (let i = 0; i < n; i++) this._fireFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+    }).catch((err) => console.warn('[firemaking-strip] load failed', err));
   }
 
   /**
@@ -252,6 +277,8 @@ export class EffectsRenderer {
     this._updateGroundLoot(S, now);
     this._updateGroundSplatter(S);
     this._updateGatherNodes(S, now);
+    this._updateCampfire(S, now);
+    this._updateFiremaking(S, now);
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
@@ -2087,6 +2114,62 @@ export class EffectsRenderer {
     gfx.stroke({ color: 0xffffff, width: 0.8, alpha: 0.7 });
   }
 
+  /* ── Campfire (v2.3.853) ──
+   * A client-local campfire lit by firemaking (S._campfire = {x,y,litAt,
+   * expiresAt}); a cooking station that burns out after ~45s.  Procedural:
+   * a charred-log base, a flickering flame, and a warm ground glow, drawn on
+   * nodeGfx (camera-transformed).  Fades out over the last 4s. */
+  _updateCampfire(S, now) {
+    const cf = S && S._campfire;
+    if (!cf || (cf.expiresAt && now > cf.expiresAt)) return;
+    const gfx = this.nodeGfx;
+    const x = cf.x, y = cf.y;
+    const remain = cf.expiresAt ? cf.expiresAt - now : 99999;
+    const a = remain < 4000 ? Math.max(0, remain / 4000) : 1;  // fade in last 4s
+    /* warm ground glow */
+    gfx.ellipse(x, y, 26, 9);
+    gfx.fill({ color: 0xff8a3c, alpha: 0.16 * a });
+    /* charred log base */
+    gfx.roundRect(x - 16, y - 3, 32, 7, 3);
+    gfx.fill({ color: 0x3a2a1c, alpha: 0.95 * a });
+    /* flames — three flickering tongues */
+    const fl = Math.sin(now / 90) * 0.5 + Math.sin(now / 47) * 0.5;
+    for (let i = 0; i < 3; i++) {
+      const fx = x + (i - 1) * 7;
+      const h = (14 + (i === 1 ? 7 : 0)) * (0.85 + 0.15 * Math.sin(now / 70 + i * 2));
+      gfx.moveTo(fx - 5, y - 1);
+      gfx.quadraticCurveTo(fx + fl * 3, y - h, fx + 5, y - 1);
+      gfx.fill({ color: i === 1 ? 0xffd24a : 0xff7a1e, alpha: 0.9 * a });
+    }
+    /* hot core */
+    gfx.circle(x, y - 4, 4 + Math.sin(now / 60) * 1);
+    gfx.fill({ color: 0xfff0b0, alpha: 0.85 * a });
+    /* embers */
+    if (S.hitParticles && Math.random() < 0.25 && a > 0.3) {
+      S.hitParticles.push({ x: x + (Math.random() - 0.5) * 10, y: y - 6, vx: (Math.random() - 0.5) * 1.2, vy: -1 - Math.random() * 1.5, life: 0.6, color: '#ffb050', size: 1.2 });
+    }
+  }
+
+  /* ── Firemaking animation (v2.3.853) ──
+   * One-shot character animation at the player while S._firemaking is active
+   * (set when a log is lit from the Bag); hidden otherwise. */
+  _updateFiremaking(S, now) {
+    if (this.fireSprite) this.fireSprite.visible = false;
+    const fm = S && S._firemaking;
+    if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length) return;
+    if (fm.doneAt && now > fm.doneAt) return;
+    const FH = 88, FRAME_MS = 55;
+    const elapsed = now - (fm.startedAt || now);
+    const fi = Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
+    const sp = this.fireSprite;
+    sp.texture = this._fireFrames[fi];
+    const FW = 161, FHH = 220, s = FH / FHH;
+    sp.scale.set(s, s);
+    sp.x = S.player.x;
+    sp.y = S.player.y + 6;
+    sp.visible = true;
+  }
+
   /* ── Extraction cue (v2.3.229) ──
    * Renders the "ready to extract" cue at the active node when
    * S._extraction.status === 'ready'. Procedural shapes for v1; swap
@@ -2102,6 +2185,7 @@ export class EffectsRenderer {
        ~4s wind-up before the swipe window opens) — the graphic swipe cue
        below still waits for 'ready'. */
     if (this.chopSprite) this.chopSprite.visible = false;
+    if (this.cookSprite) this.cookSprite.visible = false;
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
@@ -2114,11 +2198,14 @@ export class EffectsRenderer {
        the cue + the circular gesture center match the player, not the
        distant fish spot.  ExtractionSwipeLayer.cueScreenPos mirrors this. */
     const fishingCue = ex.skill === 'fishing' && S.player;
+    /* v2.3.853: cooking's "node" is the campfire; the swipe-up cue + pan sit
+       just above it. */
+    const cookingCue = ex.skill === 'cooking';
     const x = fishingCue ? S.player.x : node.x;
     /* Anchor cue above the node so it doesn't sit on top of the
        sprite. Trees are tallest so they get the largest offset. */
     const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-    const y = fishingCue ? (S.player.y - 24) : (node.y - yOff);
+    const y = fishingCue ? (S.player.y - 24) : cookingCue ? (node.y - 40) : (node.y - yOff);
     /* v2.3.843: which side of the tree the player is on (+1 = tree to the
        player's right).  Computed from live player position so the chopper
        and the finger hint pick the correct side the instant the cue shows
@@ -2161,6 +2248,19 @@ export class EffectsRenderer {
     } else {
       this._chopLastFrame = -1;  // mining/fishing — no chopper, reset the edge
     }
+    /* v2.3.853: cook character at the campfire during the whole cook (waiting
+       + ready), the chopper's sibling.  Stands just left of the fire so the
+       pan (extends right) sits over the flames. */
+    if (cookingCue && this.cookSprite && this._cookFrames.length) {
+      const COOK_H = 82, COOK_FRAME_MS = 60;
+      const sp = this.cookSprite;
+      sp.texture = this._cookFrames[Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length];
+      const s = COOK_H / 220;
+      sp.scale.set(s, s);
+      sp.x = node.x - 14;
+      sp.y = node.y + 8;
+      sp.visible = true;
+    }
     /* The floating tool + swipe cue + pips only appear once the swipe
        window is open; the chopper above already covers the wind-up. */
     if (ex.status !== 'ready') return;
@@ -2176,8 +2276,9 @@ export class EffectsRenderer {
     /* Floating tool icon — the grab target the finger drags from.  Fishing
        skips it: the player already holds the rod, so the rotating reel arrow
        below is the whole cue ("reel icon appears -> circle clockwise"). */
-    if (ex.skill === 'fishing') {
-      /* no floating tool — see comment above */
+    if (ex.skill === 'fishing' || ex.skill === 'cooking') {
+      /* no floating tool — the angler holds the rod / the cook holds the pan;
+         the gesture hint below is the whole cue (v2.3.853 for cooking). */
     } else if (ex.skill === 'woodcutting') {
       /* Axe icon: brown handle + grey head. */
       gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);
@@ -2257,6 +2358,30 @@ export class EffectsRenderer {
       gfx.circle(fx, fy, w / 2 + 0.5);        // fingertip toward the tree
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
       gfx.circle(fx - dir * (len + 2), fy, 4);// knuckle
+      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
+    } else if (ex.skill === 'cooking') {
+      /* v2.3.853: a finger flicks UP to flip the fish, on a loop — dip down,
+         flick up, recover. */
+      const T = 1100;
+      const p = (now % T) / T;
+      const DOWN = 10, UP = 22;
+      let off;
+      if (p < 0.5) { const t = p / 0.5; off = DOWN * (t * t * (3 - 2 * t)); }        // settle down
+      else if (p < 0.68) { const t = (p - 0.5) / 0.18; off = DOWN - (DOWN + UP) * t; } // flick up
+      else { const t = (p - 0.68) / 0.32; off = -UP * (1 - (t * t * (3 - 2 * t))); }  // recover
+      const fx = x, fy = y + 30 + off;
+      const flicking = p >= 0.5 && p < 0.68;
+      if (flicking) {                          // upward swipe streak
+        gfx.moveTo(fx, fy + 22);
+        gfx.lineTo(fx, fy);
+        gfx.stroke({ color: hintCol, width: 3, alpha: hintAlpha * 0.5 });
+      }
+      const len = 15, w = 9;
+      gfx.roundRect(fx - w / 2, fy, w, len, w / 2);  // finger body (below the tip)
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(fx, fy, w / 2 + 0.5);               // fingertip (pointing up)
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(fx, fy + len + 2, 4);               // knuckle
       gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else {
       /* Vertical double-arrow (up + down pump), bobbing. */
