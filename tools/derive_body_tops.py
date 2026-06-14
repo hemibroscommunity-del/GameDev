@@ -57,7 +57,61 @@ def top_xy(arr: np.ndarray):
     return None
 
 
-def process_sheet(path: str):
+# ── Skin-based head crown (mine / fish poses) ──────────────────────────
+# The gathering poses raise a tool (pickaxe / fishing rod) ABOVE the head,
+# so the topmost opaque pixel is the tool, not the crown.  Detect the head
+# by skin tone instead: the head is the topmost skin run that has a wide
+# "face" blob a dozen rows below it (the raised tool handle is orange too
+# but stays thin / meets non-skin metal, so it fails the face test).
+SKIN_MIN_RUN = 6
+FACE_MIN_W = 34       # the face must reach this width below a real crown
+FACE_MIN_RUN = 24     # only count face runs at least this wide (skips the
+                      # thin raised hand/arm, which is also skin)
+FACE_XTOL = 12        # face must sit nearly straight below the crown (px)
+FACE_LO, FACE_HI = 8, 24
+
+
+def _skin_mask(arr):
+    a = arr[..., 3] > ALPHA_THRESHOLD
+    R = arr[..., 0].astype(int); G = arr[..., 1].astype(int); B = arr[..., 2].astype(int)
+    return a & (R > 165) & (G > 75) & (G < 170) & (B < 118) & (R - B > 72)
+
+
+def _runs(rowmask, minlen):
+    out = []; cur = 0; start = 0
+    for i, v in enumerate(rowmask):
+        if v:
+            if cur == 0:
+                start = i
+            cur += 1
+        else:
+            if cur >= minlen:
+                out.append((start, i - 1))
+            cur = 0
+    if cur >= minlen:
+        out.append((start, len(rowmask) - 1))
+    return out
+
+
+def head_crown_skin(arr):
+    """[center_x, crown_y] of the head, robust to a tool raised over it."""
+    if arr.shape[0] != FRAME_W or arr.shape[1] != FRAME_W:
+        return None
+    sk = _skin_mask(arr)
+    for r in range(FRAME_W):
+        for (x0, x1) in _runs(sk[r], SKIN_MIN_RUN):
+            cx = (x0 + x1) // 2
+            face_w = 0
+            for rr in range(r + FACE_LO, min(FRAME_W, r + FACE_HI)):
+                for (a0, a1) in _runs(sk[rr], FACE_MIN_RUN):
+                    if a0 - FACE_XTOL <= cx <= a1 + FACE_XTOL:
+                        face_w = max(face_w, a1 - a0 + 1)
+            if face_w >= FACE_MIN_W:
+                return [int(cx), int(r)]
+    return None
+
+
+def process_sheet(path: str, detector=top_xy):
     im = Image.open(path).convert("RGBA")
     arr = np.array(im)
     H, W = arr.shape[0], arr.shape[1]
@@ -67,13 +121,16 @@ def process_sheet(path: str):
     n = W // FRAME_W
     out = []
     for f in range(n):
-        out.append(top_xy(arr[:, f * FRAME_W : (f + 1) * FRAME_W]))
+        out.append(detector(arr[:, f * FRAME_W : (f + 1) * FRAME_W]))
     return out
 
 
 def main():
     DIRS = ["east", "north", "northeast", "south", "southwest"]
     POSES = ["stand", "jog", "hit", "pickup"]
+    # v2.3.855: south-only gathering poses use skin-based head detection so
+    # the raised pickaxe / fishing rod doesn't get mistaken for the crown.
+    SKIN_POSES = ["mine", "fish"]
     body = {}
     for pose in POSES:
         for d in DIRS:
@@ -85,6 +142,16 @@ def main():
                     body[f"{pose}-{d}-{i}"] = p
             n = sum(1 for k in body if k.startswith(f"{pose}-{d}-"))
             print(f"{pose}-{d}: {n} frames")
+    for pose in SKIN_POSES:
+        for d in DIRS:  # south-only sheets exist; others just don't open
+            path = f"public/sprites/player/{pose}-{d}.png"
+            if not os.path.exists(path):
+                continue
+            for i, p in enumerate(process_sheet(path, head_crown_skin)):
+                if p is not None:
+                    body[f"{pose}-{d}-{i}"] = p
+            n = sum(1 for k in body if k.startswith(f"{pose}-{d}-"))
+            print(f"{pose}-{d}: {n} frames (skin-detected)")
     out = "public/sprites/player/body-tops.json"
     with open(out, "w") as f:
         json.dump(body, f, separators=(",", ":"))
