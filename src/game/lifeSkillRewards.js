@@ -15,7 +15,7 @@
    call time, identical). The only React setter any of them touches is
    setRpgState, threaded via deps; succeedExtraction forwards deps to the
    appliers. All other refs are module imports below. */
-import { BT_AUDIO, EXTRACT_WINDOW_MS, MINE_SPOT_R, MINIGAME_REWARDS, TILE, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills } from '@/data/index.js';
+import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills } from '@/data/index.js';
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
@@ -56,13 +56,19 @@ function _flyResourceToInventory(S, wx, wy, iconUrl) {
 
 export function startExtraction(S, node, skill) {
     if (!S || !node) return;
-    /* Mining is done from one tile NORTH of the vein so the south-facing swing
-       lines up over the rock. Refuse to start unless the player is on that spot
-       (the marker shows where). Covers every entry path. */
+    /* v2.3.854: mining lines the character up with the vein the same way
+       fishing lines up with the pond.  Seat the player above the ore so the
+       pickaxe strike (the baked rock in the south 'mine' sheet, centered
+       ~(+7, +40) px from the body) lands on the real ore -- which is rendered
+       ABOVE the player during mining (effectsRenderer) to hide that baked
+       rock.  ~70 px keeps us inside EXTRACT_CANCEL_R (90).  This replaces the
+       old "must stand one tile north" gate: tapping the vein from anywhere in
+       range snaps you in, exactly like the fish-spot. */
     if (skill === 'mining' && S.player) {
-      var _sx = node.x, _sy = node.y - TILE;
-      var _sdist = Math.sqrt(Math.pow(_sx - S.player.x, 2) + Math.pow(_sy - S.player.y, 2));
-      if (_sdist > MINE_SPOT_R) return;
+      S.player.x = node.x - 7;
+      S.player.y = node.y - 86;   /* baked rock (~+40 below body) lands on the
+                                     ore's opaque mass (~46px above its base) */
+      S.player.vx = 0; S.player.vy = 0;
     }
     /* v2.3.844: fishing lines the character up with the pond.  The baked
        'fish' rod line drops down-LEFT of the body (tip ~(-52, +43) px from
@@ -159,7 +165,11 @@ function applyFishingReward(S, node, result, deps) {
        mutation here so the server's value isn't double-counted.  For
        dungeon / SP zones the local path stays as the fallback. */
     var baseName = node.baseName || node.name || 'Fish';
-    var yieldQty = reward.yieldMult || 1;
+    /* v2.3.853: one fish per catch regardless of reel accuracy (owner) --
+       matches the server's _harvestYieldMult cap for fishSpot.  Drives both
+       the SP/dungeon local grant and the floating "+Minnow" popup, so neither
+       shows a phantom x2. */
+    var yieldQty = 1;
     if (!R.inventory) R.inventory = {};
     if (!S._serverGatherNodes) {
       var baseKey = (node.resourceType || 'fish') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();

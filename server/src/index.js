@@ -912,8 +912,11 @@ export class GameRoom {
 
   _harvestYieldMult(accuracy, nodeType) {
     // v2.3.851: a felled tree always yields one log — woodcutting skips the
-    // perfect-accuracy 2x bonus (owner). Mining/fishing keep the bonus.
-    if (nodeType === 'tree') return 1;
+    // perfect-accuracy 2x bonus (owner).
+    // v2.3.853: fishing does the same — one fish per catch regardless of reel
+    // accuracy (owner: "only get one fish when I successfully fish"). Mining
+    // keeps the perfect-accuracy 2x bonus.
+    if (nodeType === 'tree' || nodeType === 'fishSpot') return 1;
     if (accuracy === 'perfect') return 2;
     return 1; // 'good' / 'ok' / unknown
   }
