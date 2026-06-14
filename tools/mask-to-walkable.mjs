@@ -72,7 +72,9 @@ for (let y = 0; y < img.height; y++) {
     const i = (y * img.width + x) * img.channels;
     const r = img.data[i], g = img.data[i + 1], b = img.data[i + 2];
     total[ty][tx]++;
-    if (r >= 180 && b >= 180 && g <= 120) mag[ty][tx]++; // magenta-ish
+    // magenta/pink overlay = red AND blue both well above green (works for
+    // pure #FF00FF and hot-pink variants); grass/tan/water all fail this.
+    if (g <= 100 && r >= 140 && b >= 110 && r - g >= 70 && b - g >= 55) mag[ty][tx]++;
   }
 }
 let grid = [];
