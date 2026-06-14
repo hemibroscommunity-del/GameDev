@@ -288,20 +288,21 @@ export class GameRoom {
     // brute in hollows -> rockmonster sprite, brute in tidal -> fishman
     // sprite (via client ZONE_VARIANT_MAP); sky remaps every archetype
     // to mummy so the existing stalker/hexer/volatile mix is preserved.
-    // v2.3.855: banded level ranges -- MUST stay in lockstep with the client
+    // v2.3.856: banded level ranges -- MUST stay in lockstep with the client
     // table in src/data/zones.js (the server is authoritative for monster
     // stats, so a mismatch desyncs client damage prediction from monster_hit).
-    // Bands are illustrative/tunable: meadow 1-10 on-ramp; frost+tidal ~8-28;
-    // ember+mist ~25-48; thunder+hollows ~45-68; sky ~65-82; endgame 81-100.
+    // Synced to docs/MAP-REDESIGN.md: meadow 1-10; frost+tidal 8-25;
+    // verdant+mist 22-40; desert(sky)+hollows 38-58; thunder+ember 55-80.
     const ZONES = {
       meadow:  { w:32, h:32, level:[1,10],  element:null,    spawns:[{arch:'fodder',count:10}] },
-      ember:   { w:32, h:32, level:[25,48], element:'flame', spawns:[{arch:'fodder',count:6}] },
-      mist:    { w:32, h:32, level:[25,48], element:'venom', spawns:[] },
-      frost:   { w:32, h:32, level:[8,28],  element:'frost', spawns:[{arch:'snowman',count:4}] },
-      thunder: { w:32, h:32, level:[45,68], element:'storm', spawns:[{arch:'fodder',count:6}] },
-      hollows: { w:32, h:32, level:[45,68], element:'stone', spawns:[{arch:'brute',count:4}] },
-      sky:     { w:32, h:32, level:[65,82], element:'wind',  spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
-      tidal:   { w:32, h:32, level:[8,28],  element:'water', spawns:[{arch:'brute',count:3}] },
+      ember:   { w:32, h:32, level:[55,80], element:'flame', spawns:[{arch:'fodder',count:6}] },
+      mist:    { w:32, h:32, level:[22,40], element:'venom', spawns:[] },
+      verdant: { w:32, h:32, level:[22,40], element:null,    spawns:[] },
+      frost:   { w:32, h:32, level:[8,25],  element:'frost', spawns:[{arch:'snowman',count:4}] },
+      thunder: { w:32, h:32, level:[55,80], element:'storm', spawns:[{arch:'fodder',count:6}] },
+      hollows: { w:32, h:32, level:[38,58], element:'stone', spawns:[{arch:'brute',count:4}] },
+      sky:     { w:32, h:32, level:[38,58], element:'wind',  spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
+      tidal:   { w:32, h:32, level:[8,25],  element:'water', spawns:[{arch:'brute',count:3}] },
     };
     return ZONES[zoneId] || null;
   }

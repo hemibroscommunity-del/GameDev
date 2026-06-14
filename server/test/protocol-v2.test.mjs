@@ -158,12 +158,12 @@ check('zone_state carries all three lists', zs.length === 1 && zs[0].zone === 'f
   && Array.isArray(zs[0].nodes) && zs[0].nodes.length > 0
   && Array.isArray(zs[0].loot));
 
-// v2.3.855: banded level ranges.  frost is band [8,28]; before banding the
+// v2.3.856: banded level ranges.  frost is band [8,25]; before banding the
 // server spawned frost at [1,10].  Guards that the widened range took effect
 // on the depthPct spawn lerp and nothing re-clamps it back to the old cap.
 const frostLevels = zs[0].monsters.map((m) => m.level);
-check('v2.3.855 frost monsters spawn in band [8,28]',
-  frostLevels.length > 0 && frostLevels.every((l) => l >= 8 && l <= 28),
+check('v2.3.856 frost monsters spawn in band [8,25]',
+  frostLevels.length > 0 && frostLevels.every((l) => l >= 8 && l <= 25),
   frostLevels);
 
 // Safe-zone change: v2 should get one zone_state with empty lists.

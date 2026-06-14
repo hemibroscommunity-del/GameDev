@@ -256,13 +256,20 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
 /* v2.3.387: tx/ty are now PROXIMITY trigger tiles placed on the painted
    path-ends (the pink markers on the town map), not edge cells -- the town
    exit logic switched from "reach the edge" to "walk near the marker". */
+/* v2.3.856: remapped onto the new cove-town walkability (the old corner
+   cells are now cliff/ocean = blocked).  Positions computed from
+   public/maps/town_v14.walk.json -- a walkable tile ~78% out toward the
+   grass edge in 9 evenly-spaced directions (meadow keeps the north trail).
+   Functional placement so all 9 zones are reachable; refine to painted
+   path-ends if the town art gets visible doorways. Verdant Wilds added. */
 export const TOWN_EXITS = [
-  { zoneId: 'frost',   tx: 7,  ty: 7,  dir: 'nw',    label: '↖ Frozen Shore',  color: ELEMENTS.frost.color },
-  { zoneId: 'meadow',  tx: 25, ty: 7,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
-  { zoneId: 'thunder', tx: 41, ty: 9,  dir: 'ne',    label: 'Thunder Peaks ↗', color: ELEMENTS.storm.color },
-  { zoneId: 'tidal',   tx: 45, ty: 27, dir: 'east',  label: 'Tidal Caves →',   color: ELEMENTS.water.color },
-  { zoneId: 'mist',    tx: 40, ty: 45, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
-  { zoneId: 'hollows', tx: 22, ty: 45, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
-  { zoneId: 'ember',   tx: 3,  ty: 45, dir: 'sw',    label: '↙ Ember Fields',  color: ELEMENTS.flame.color },
-  { zoneId: 'sky',     tx: 4,  ty: 27, dir: 'west',  label: '← Desert Winds',  color: ELEMENTS.wind.color },
+  { zoneId: 'meadow',  tx: 24, ty: 6,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
+  { zoneId: 'thunder', tx: 36, ty: 10, dir: 'ne',    label: 'Thunder Peaks ↗',   color: ELEMENTS.storm.color },
+  { zoneId: 'tidal',   tx: 37, ty: 22, dir: 'east',  label: 'Tidal Caves →',     color: ELEMENTS.water.color },
+  { zoneId: 'mist',    tx: 38, ty: 32, dir: 'se',    label: 'Mistwood ↘',        color: ELEMENTS.venom.color },
+  { zoneId: 'verdant', tx: 30, ty: 41, dir: 'south', label: 'Verdant Wilds ↓',   color: '#6abf4f' },
+  { zoneId: 'hollows', tx: 19, ty: 37, dir: 'south', label: 'Deep Hollows ↓',    color: ELEMENTS.stone.color },
+  { zoneId: 'ember',   tx: 12, ty: 31, dir: 'sw',    label: 'Ember Fields ↙',    color: ELEMENTS.flame.color },
+  { zoneId: 'sky',     tx: 8,  ty: 21, dir: 'west',  label: 'Desert Winds ←',    color: ELEMENTS.wind.color },
+  { zoneId: 'frost',   tx: 14, ty: 12, dir: 'nw',    label: 'Frozen Shore ↖',    color: ELEMENTS.frost.color },
 ];
