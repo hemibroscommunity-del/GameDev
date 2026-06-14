@@ -311,6 +311,24 @@ pure-logic moves and continue thinning the component.
   to the passed-in `S` (same object). Setters via deps (setShowEmotes,
   setBuildingPanel). This roughly exhausts the cleanly-separable
   game-logic in BroTown; what remains is genuine UI/JSX territory.
+## UI/JSX decomposition (the remaining BroTown mass)
+
+The game-logic is out; what's left in BroTown is the React component + its
+JSX panel/modal tree (~20 `showX && React.createElement(...)` blocks).
+Pattern: move a panel's createElement subtree to `src/ui/panels/<Name>.jsx`
+as a component, pass the values it closed over as props, mount it with
+`React.createElement(<Name>, { ...props })`. Caveat: the JSX tree is the
+hottest part of the file (splash/HUD/camera/life-skill sessions edit it),
+so pick self-contained panels clear of that churn, and keep prop surfaces
+small. `npm run build` can't run in the web sandbox — lint-build/Pages is
+the gate, and eslint no-undef catches a missed prop in the new component.
+
+- **InfoPanel — ✅ done (v2.3.855):** the online-count + mute/close
+  utility popup (`showInfo`, ~66 lines) → `src/ui/panels/InfoPanel.jsx`.
+  Proof-of-concept for the panel pattern: tiny prop surface
+  (`playerCount`, `setPlayerCount`, `setShowInfo`, `stateRef`; `BT_AUDIO`
+  imported), end-of-tree and isolated from the parallel UI work. Subtree
+  byte-identical; BroTown full-file syntax re-checked after the splice.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
