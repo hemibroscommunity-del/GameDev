@@ -29,15 +29,10 @@ import { IntroVideo } from './IntroVideo.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
-/* Per-fish cooking pan map.  CookingMinigame defaults to pan.png
-   (yellow tang) when no panSheetSrc is passed.  Keys are inventory
-   keys (fish_<species>) so this matches the fishKey prop directly. */
-const COOK_PAN_BY_FISH = {
-  /* -v3 from a fresh clownfish-in-pan source video — visually consistent
-     with the minnow pan (same bubbling-oil style).  Filename version
-     bump cache-busts the prior v2 strip. */
-  fish_clownfish: '/sprites/cook/pan-clownfish-v3.png',
-};
+/* v2.3.868: COOK_PAN_BY_FISH removed — it fed panSheetSrc to the
+   canvas CookingMinigame (pan + doneness slider), retired in v2.3.853
+   when cooking became the swipe-to-flip campfire extraction. The map had
+   no remaining consumer. */
 
 /* Per-cooked-food heal amount when the player taps the tile to eat.
    Default to COOKED_HEAL_DEFAULT for any cooked_fish_* not listed. */
