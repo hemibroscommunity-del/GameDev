@@ -481,7 +481,18 @@ the gate, and eslint no-undef catches a missed prop in the new component.
     `src/ui/panels/buildings/GemcutPanel.jsx`. 3 props
     (rpgState, stateRef, setRpgState); imports verified real; 2 hoisted
     babel temps declared locally.
-  - **Remaining sub-panels:** exchange, farm,
+  - **ExchangePanel — ✅ done (v2.3.876):** the `buildingPanel === 'exchange'`
+    clause (~792 lines: the player marketplace — buy/sell orders, price
+    estimation, order matching, async fetch to the worker) →
+    `src/ui/panels/buildings/ExchangePanel.jsx`. The big, entangled one:
+    21 props (rpgState, stateRef, setRpgState + the 9 `mkt*` state values
+    and their 9 setters). Data imports verified real; `BT_API_BASE`
+    re-imported from `@/networking/index.js` (byte-identical to BroTown's
+    local var); async/regenerator + spread/slice babel helpers imported;
+    14 hoisted optional-chaining temps declared locally. eslint is
+    correctness-only (no-undef etc.; no no-unused-vars/no-redeclare), so
+    declaring the full temp set is safe and avoids any out-of-scope ref.
+  - **Remaining sub-panels:** farm,
     bank, cook, gamble, party, shop.
 - **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
