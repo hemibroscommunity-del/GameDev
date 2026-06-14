@@ -42,6 +42,7 @@ export const IMAGE_ZONE_MAPS = {
   hollows: '/maps/hollows_v6.png',   /* redesign: underground crystal cavern */
   ember:   '/maps/ember_v6.png',   /* redesign: volcanic, scorched fringe -> molten heart */
   sky:     '/maps/sky_v5.png',   /* redesign: warm desert, scrub fringe -> dune sea */
+  farm_home: '/maps/farm_v1.png',   /* redesign: cozy sunlit farm grotto (newly image-backed) */
 };
 
 /** Zones that play a looping video as their map texture.  When a zone
@@ -78,6 +79,7 @@ export const WALKABILITY_MAPS = {
   hollows: '/maps/hollows_v6.walk.json',   /* dark cave: formations block, dark rock floor walkable */
   ember: '/maps/ember_v6.walk.json',   /* note: translucent magenta over lava may leak a few walkable lava spots */
   thunder: '/maps/thunder_v5.walk.json',   /* dense machinery -> walkable is mostly the central path corridor */
+  farm_home: '/maps/farm_v1.walk.json',   /* note: mask was a wider aspect than the art -- walls align at edges, interior drifts a few % */
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
