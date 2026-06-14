@@ -553,13 +553,17 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   regex truncated them to prefixes and the free-var verifier caught the
   resulting `no-undef` risk — the full multi-`$` set is now declared
   locally. Use the `_[A-Za-z0-9_]+(\$[A-Za-z0-9]+)+` pattern for temps.
-- **Candidates remaining:** the trade modal (`showTrade && tradeTarget`,
-  ~the player-to-player trade window). Like inventory it is an inline
-  gated JSX subtree (not a useCallback), so the same move applies; watch
-  for BroTown-local bindings to pass as props. The minigame and statScreen
-  modals are already handled (statScreen extracted; the Minigame Arena was
-  removed). After trade, BroTown is mostly the core component + game-loop
-  wiring.
+- **TradePanel — ✅ done (v2.3.884):** the `showTrade && tradeTarget &&
+  rpgState` modal subtree (~179 lines: the outgoing player-to-player trade
+  window — pick items + quantities to offer, send/cancel) →
+  `src/ui/panels/TradePanel.jsx`. 6 props: rpgState, stateRef, tradeTarget,
+  tradeOffer (state) and setShowTrade, setTradeOffer (setters). No
+  data-table imports; only spread/slice babel helpers; no hoisted temps.
+- **Candidates remaining:** the `incomingTrade && rpgState` modal (the
+  inbound trade-request popup, sits right after showTrade in the render)
+  is the obvious next small extraction, same pattern. Beyond that BroTown
+  is mostly the core component + game-loop wiring; the statScreen modal is
+  already extracted and the Minigame Arena was removed.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
