@@ -111,6 +111,30 @@ check('v1 tick carries full zone node list', !!ntick1 && ntick1.nodes.meadow.len
 check('v2 tick carries only the respawned node', !!ntick2 && ntick2.nodes.meadow.length === 1
   && ntick2.nodes.meadow[0].id === meadowNodes[2].id, ntick2 && ntick2.nodes.meadow.map((n) => n.id));
 
+// ── 3b. node_strike credits at the gather stance + full gesture window ──
+// Regression for v2.3.846: the fishing reel seats the player ~67 px from the
+// pond (> the old 60 px LOOT_PICKUP_RANGE gate) and the sustained gesture can
+// take up to the client's 3500 ms window (> the old 1500 ms server window).
+// Both bugs silently dropped the strike -> node consumed, no resource credited.
+{
+  const mNodes = room._ensureZoneNodes('meadow');
+  const node = mNodes.find((n) => n.id !== mNodes[2].id) || mNodes[0];
+  node.alive = true; node.respawnAt = 0;
+  const ps = room.playerState.p1;
+  ps.z = 'meadow'; ps.dead = false; ps.disconnected = false;
+  ps.x = node.x + 52; ps.y = node.y - 43;          // ~67 px stance (snap offset)
+  const invTotal = (p) => Object.values((p.inventory) || {}).reduce((a, b) => a + b, 0);
+  const before = invTotal(ps);
+  await room.webSocketMessage(ws1, JSON.stringify({ type: 'extraction_start', payload: { nodeId: node.id, zone: 'meadow', skill: 'fishing' } }));
+  const ex = room.extractions.p1;
+  // Land the strike at elapsed = openDelayBase + 3000 ms: inside the 3500 ms
+  // window (credit) but past the old 1500 ms one (would coerce to 'miss').
+  if (ex) ex.startedAt = Date.now() - (ex.openDelayBase + 3000);
+  await room.webSocketMessage(ws1, JSON.stringify({ type: 'node_strike', payload: { id: node.id, zone: 'meadow', accuracy: 'good' } }));
+  check('node_strike credits at 67px stance within the 3500ms window', invTotal(ps) > before,
+    { before, after: invTotal(ps), startedAtSet: !!ex });
+}
+
 // ── 4. merged zone_state on zone change ──
 ws1.sent.length = 0; ws2.sent.length = 0;
 await room.webSocketMessage(ws1, JSON.stringify({ type: 'move', x: 1, y: 1, z: 'frost' }));
