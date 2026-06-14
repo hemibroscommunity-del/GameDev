@@ -218,6 +218,26 @@ export class EffectsRenderer {
     // on every platform regardless of emoji-font availability.
     this.catchGfx = new Graphics();
     this.overlayLayer.addChild(this.catchGfx);
+
+    /* v2.3.843: woodcutting "chopper" animation — the owner's pixel-art
+       lumberjack swung beside a tree during the chop (the ready phase).
+       A persistent world-space Sprite (nodeLayer is camera-transformed)
+       whose texture cycles through the strip's frames; shown only while a
+       woodcutting extraction is ready, hidden otherwise.  The strip is a
+       horizontal sheet of CHOP_FRAME_W-wide frames keyed transparent. */
+    this.chopSprite = new Sprite();
+    this.chopSprite.anchor.set(0.5, 1);  // bottom-centre stands on the ground
+    this.chopSprite.visible = false;
+    this.nodeLayer.addChild(this.chopSprite);
+    this._chopFrames = [];
+    this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
+    Assets.load('/sprites/skills/chop-strip.png').then((tex) => {
+      const FW = 240, FH = 220;  // per-frame size of chop-strip.png
+      const n = Math.max(1, Math.round(tex.width / FW));
+      for (let i = 0; i < n; i++) {
+        this._chopFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      }
+    }).catch((err) => console.warn('[chop-strip] load failed', err));
   }
 
   /**
@@ -2075,7 +2095,14 @@ export class EffectsRenderer {
    * remains. Nothing is drawn during the 'waiting' phase. */
   _updateExtractionCue(S, now) {
     const ex = S && S._extraction;
-    if (!ex || ex.status !== 'ready') return;
+    /* v2.3.843: chopper sprite is hidden every frame and only re-shown
+       below while a woodcutting extraction is active.
+       v2.3.845: run for 'waiting' too so the chopper appears the instant
+       the player taps Chop (immediate "it triggered" feedback during the
+       ~4s wind-up before the swipe window opens) — the graphic swipe cue
+       below still waits for 'ready'. */
+    if (this.chopSprite) this.chopSprite.visible = false;
+    if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
                : (S.gatherNodes && ex.nodeId
@@ -2092,6 +2119,51 @@ export class EffectsRenderer {
        sprite. Trees are tallest so they get the largest offset. */
     const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
     const y = fishingCue ? (S.player.y - 24) : (node.y - yOff);
+    /* v2.3.843: which side of the tree the player is on (+1 = tree to the
+       player's right).  Computed from live player position so the chopper
+       and the finger hint pick the correct side the instant the cue shows
+       (ex.treewardSign is only set once the first swipe lands). */
+    const _px = (S.player && typeof S.player.x === 'number') ? S.player.x : node.x;
+    const chopSign = node.x >= _px ? 1 : -1;
+    /* Chopper animation beside the tree (woodcutting only): stands on the
+       player's side, faces the trunk (source faces right -> flip when the
+       tree is on the player's LEFT). */
+    if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
+      const CHOP_H = 84;          // drawn height (~player scale); tune to taste
+      const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
+      const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
+      const CHOP_STRIKE_FRAME = 10; // frame where the axe drives into the trunk
+      const sp = this.chopSprite;
+      const fi = Math.floor(now / CHOP_FRAME_MS) % this._chopFrames.length;
+      sp.texture = this._chopFrames[fi];
+      const s = CHOP_H / 220;
+      sp.scale.set(chopSign < 0 ? -s : s, s);  // flip to face the trunk
+      sp.x = node.x - chopSign * CHOP_OFFSET;
+      sp.y = node.y + 6;
+      sp.visible = true;
+      /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
+         none).  Fires once per loop — only on the transition INTO the
+         strike frame (the steps hold it for ~2-3 render frames).
+         v2.3.848: reuse the generic melee weapon-hit sound (BT_AUDIO.swordHit
+         — what a strike on any monster plays), and delay it ~0.2s so it
+         lands with the visible bite rather than ahead of the swing (owner). */
+      if (fi === CHOP_STRIKE_FRAME && this._chopLastFrame !== CHOP_STRIKE_FRAME) {
+        try {
+          setTimeout(function () {
+            var _a = (typeof window !== 'undefined') && window.BT_AUDIO;
+            /* v2.3.850: the melee hit alternates two samples; owner wants
+               the other one for wood — 'sword-hit3' (not 'sword-hit2'). */
+            if (_a && _a.play) _a.play('sword-hit3', { vol: 0.55 });
+          }, 200);
+        } catch (e) {}
+      }
+      this._chopLastFrame = fi;
+    } else {
+      this._chopLastFrame = -1;  // mining/fishing — no chopper, reset the edge
+    }
+    /* The floating tool + swipe cue + pips only appear once the swipe
+       window is open; the chopper above already covers the wind-up. */
+    if (ex.status !== 'ready') return;
     /* Pulse + gentle float so the tool reads as a grabbable "pick me up". */
     const pulse = 1 + Math.sin(now / 80) * 0.12;
     const bob = Math.sin(now / 300) * 4;
@@ -2152,18 +2224,40 @@ export class EffectsRenderer {
       gfx.lineTo(hx + tx * 7 - Math.cos(aEnd) * 5, hy + ty * 7 - Math.sin(aEnd) * 5);
       gfx.fill({ color: hintCol, alpha: hintAlpha });
     } else if (ex.skill === 'woodcutting') {
-      /* Horizontal arrow pointing toward the tree, sweeping in/out. */
-      const dir = ex.treewardSign || -1;
-      const sweep = Math.sin(now / 150) * 4;
-      const ax = x + sweep * dir, ay = y + 24;
-      const L = 16;
-      gfx.moveTo(ax - dir * L, ay);
-      gfx.lineTo(ax + dir * L, ay);
-      gfx.stroke({ color: hintCol, width: 3, alpha: hintAlpha });
-      gfx.moveTo(ax + dir * L, ay);
-      gfx.lineTo(ax + dir * (L - 7), ay - 5);
-      gfx.lineTo(ax + dir * (L - 7), ay + 5);
-      gfx.fill({ color: hintCol, alpha: hintAlpha });
+      /* v2.3.843: a finger demonstrates the chop gesture — wind UP away
+         from the tree, then SWIPE back toward it, on a loop ("do this a
+         few times").  dir points toward the tree (+1 right). */
+      const dir = chopSign;
+      const T = 1100;                         // one wind-up+chop cycle
+      const p = (now % T) / T;
+      const WIND = 18, REACH = 15;            // travel away / toward the tree
+      let off;                                // horizontal offset along the tree axis
+      if (p < 0.5) {                          // wind up: ease back away from tree
+        const t = p / 0.5; off = -dir * WIND * (t * t * (3 - 2 * t));
+      } else if (p < 0.68) {                  // chop: snap toward the tree
+        const t = (p - 0.5) / 0.18; off = -dir * WIND + dir * (WIND + REACH) * t;
+      } else {                                // recover: ease back to centre
+        const t = (p - 0.68) / 0.32; off = dir * REACH * (1 - (t * t * (3 - 2 * t)));
+      }
+      const fy = y + 26;
+      const fx = x + off;
+      const chopping = p >= 0.5 && p < 0.68;
+      /* swipe streak during the chop, trailing back from the fingertip */
+      if (chopping) {
+        gfx.moveTo(fx - dir * 20, fy);
+        gfx.lineTo(fx, fy);
+        gfx.stroke({ color: hintCol, width: 3, alpha: hintAlpha * 0.5 });
+      }
+      /* finger: a capsule body pointing toward the tree + a rounded tip;
+         a knuckle dot at the back reads it as a hand. */
+      const len = 15, w = 9;
+      const bodyL = dir > 0 ? fx - len : fx;
+      gfx.roundRect(bodyL, fy - w / 2, len, w, w / 2);
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(fx, fy, w / 2 + 0.5);        // fingertip toward the tree
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(fx - dir * (len + 2), fy, 4);// knuckle
+      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else {
       /* Vertical double-arrow (up + down pump), bobbing. */
       const bob = Math.sin(now / 150) * 3;

@@ -5937,6 +5937,10 @@ BT_AUDIO.SFX_MANIFEST = {
      pile settle.  Plays via BT_AUDIO.monsterDeath. */
   'skeleton-death': '/audio/skeleton-death.mp3?v=2',
   'snowman-hit':   '/sfx/monster/snowman-hit.wav?v=3',
+  /* v2.3.849: timber crash for a felled tree (woodcutting success) — the
+     "great" cut-down sound; wired into the extraction reward in
+     lifeSkillRewards.js. */
+  'tree-fall':     '/audio/tree-fall.mp3',
 };
 
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits
