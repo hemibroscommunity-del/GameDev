@@ -329,6 +329,15 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   (`playerCount`, `setPlayerCount`, `setShowInfo`, `stateRef`; `BT_AUDIO`
   imported), end-of-tree and isolated from the parallel UI work. Subtree
   byte-identical; BroTown full-file syntax re-checked after the splice.
+- **LeaderboardPanel — ✅ done (v2.3.856):** the top-50 rankings modal
+  (`showLeaderboard`, ~288 lines) → `src/ui/panels/LeaderboardPanel.jsx`.
+  Includes its render-time IIFE (fetches /api/leaderboard on tab change,
+  merges nearby players, sorts, renders) — moved verbatim, side effects
+  preserved. 5 props (stateRef, leaderboardTab, setLeaderboardTab,
+  setRpgState, setShowLeaderboard); LIFE_SKILLS/BT_API_BASE/babel
+  imported; fetch is the global. Boundaries found by paren-matching (not
+  by eye) since the panel ends in a nested IIFE; full-file syntax
+  re-checked.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
