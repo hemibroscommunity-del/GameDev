@@ -605,18 +605,22 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   WASD/hotkey help strip → `src/ui/panels/KeyboardHintsPanel.jsx`. The
   cleanest extraction yet: **zero props** (fully static markup); the
   desktop-detection `window.matchMedia` gate stays in BroTown.
+- **TouchControls — ✅ done (v2.3.890):** the floating dual-joystick touch
+  overlay (left movement zone, right aim/combat zone, both joystick
+  base+knob+preview stacks, legacy hidden shield) → `src/ui/panels/
+  TouchControls.jsx`. The first **multi-sibling render extraction**: the
+  five elements were a contiguous tail of children of a parent container,
+  so they're wrapped in a Fragment and the parent's closing tag + the rest
+  of the tree stay in BroTown. Boundary found by depth-tracking from the
+  lZone `React.createElement` and stopping right before the parent-closing
+  `)` (the next sibling is the `bt-kb-hints` gate); paren-balance verified
+  0. 15 props: stateRef + the 11 joystick/zone/knob/preview/shield refs +
+  autoAttack/isLandscape/shieldUp render flags; 3 stateRef.current temps
+  local. **Correctness key:** BroTown still owns the ref objects and its
+  dual-joystick touch effects bind to them; TouchControls attaches those
+  SAME refs to the DOM, so the effects keep working unchanged. Render-only;
+  no effect/loop code moved. (Primary iPhone input — verify on device.)
 - **Candidates remaining (now the genuinely harder ones):**
-  - **Floating joystick / touch-controls cluster** (~lines 9450–9830): a
-    multi-sibling run (left zone, right zone, left joystick base+knob+
-    preview, right joystick, legacy shield) with ~11 refs
-    (lZoneRef/rZoneRef/joystickRef/lStickRef/knobRef/lJoyPreviewRef/rJoyRef/
-    rStickRef/rKnobRef/rJoyPreviewRef/shieldJoyRef) and **embedded IIFEs**
-    (the auto-attack indicator, the shield `}()`). Extract as a single
-    `TouchControls` returning a Fragment of the run; refs pass by value
-    (stable). HIGHER RISK: this is the primary iPhone touch input, so a
-    boundary slip breaks live controls — do the multi-sibling boundary
-    carefully (the run ends right before the `bt-kb-hints` gate) and verify
-    on a real device via the preview URL.
   - **Top-level effect / game-loop / channel wiring** — the highest-risk
     category. Prefer moving effect bodies into `src/game/` behind a deps
     object, one effect at a time, only with the full verification protocol
