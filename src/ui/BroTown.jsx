@@ -77,6 +77,8 @@ import { triggerContextualDodge } from '@/game/dodge.js';
 import { swingAttack, specialAttack, raiseShield } from '@/game/playerActions.js';
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
+/* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
+import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl } from '@/game/interactions.js';
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
@@ -4740,67 +4742,12 @@ export var BroTown = function BroTown(_ref0) {
     raiseShield(stateRef.current, { setShieldUp: setShieldUp });
   }, []);
   var sendEmote = useCallback(function (emoji) {
-    var S = stateRef.current;
-    BT_AUDIO.emote();
-    if (stateRef.current.stats) stateRef.current.stats.emotesUsed++;
-    S.emote = {
-      emoji: emoji,
-      ts: Date.now()
-    };
-    if (S.channel) S.channel.send({
-      type: 'broadcast',
-      event: 'emote',
-      payload: {
-        id: S.myId,
-        emoji: emoji
-      }
-    });
-    setShowEmotes(false);
+    sendEmoteImpl(stateRef.current, emoji, { setShowEmotes: setShowEmotes });
   }, []);
 
   /* Enter building */
   var enterBuilding = useCallback(function () {
-    var nb = stateRef.current.nearBuilding;
-    if (nb === null) return;
-    var b = BUILDINGS[nb];
-    if (!b.action && !b.id) return;
-    BT_AUDIO.enterBuilding();
-    var S2 = stateRef.current;
-    if (S2.stats) {
-      if (!S2.stats.visitedBuildings) S2.stats.visitedBuildings = new Set();
-      if (_typeof(S2.stats.visitedBuildings) === 'object' && !(S2.stats.visitedBuildings instanceof Set)) S2.stats.visitedBuildings = new Set(Object.values(S2.stats.visitedBuildings));
-      S2.stats.visitedBuildings.add(nb);
-      S2.stats.buildingsVisited = S2.stats.visitedBuildings.size;
-    }
-    /* Open in-game building panel — check quest unlock gates */
-    var actionKey = b.action || b.id;
-    var R2 = stateRef.current.rpg;
-    var BUILDING_UNLOCK_MAP = {
-      forge: 'blacksmith',
-      woodwork: 'woodworker_reforge',
-      enchant: 'enchanting',
-      gemcut: 'gem_cutting',
-      exchange: 'marketplace',
-      farm: 'farming'
-    };
-    var requiredUnlock = BUILDING_UNLOCK_MAP[actionKey];
-    if (requiredUnlock && R2 && !hasUnlock(R2, requiredUnlock)) {
-      /* Find which quest unlocks this */
-      var gateQuest = Object.values(QUEST_CHAINS).find(function (q) {
-        return q.unlocks === requiredUnlock;
-      });
-      var msg = gateQuest ? 'Complete "' + gateQuest.title + '" (' + gateQuest.npc + ') to unlock this!' : 'Locked! Complete quests to unlock.';
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 30,
-        text: msg,
-        color: '#f5c542',
-        ts: Date.now()
-      });
-      BT_AUDIO.beep(200, 0.08, 0.1, 'triangle');
-      return;
-    }
-    setBuildingPanel(actionKey);
+    enterBuildingImpl(stateRef.current, { setBuildingPanel: setBuildingPanel });
   }, []);
 
   /* ═══ DESKTOP CONTROL HELPERS — called from keyboard handler ═══ */

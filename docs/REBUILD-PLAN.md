@@ -302,6 +302,15 @@ pure-logic moves and continue thinning the component.
   effect (left in place). All six bodies byte-identical. The scope scan
   caught (and I fixed) two body slices that had wrongly kept their
   `var S = stateRef.current` opener.
+- **Interactions cluster — ✅ done (v2.3.842):** `sendEmote` (emote
+  broadcast) and `enterBuilding` (building-tap → unlock-gate check →
+  open panel) → `src/game/interactions.js`. Thin useCallback wrappers
+  stay in the component (imported aliased — `sendEmoteImpl` /
+  `enterBuildingImpl` — to avoid shadowing the same-named wrappers).
+  Both were synchronous and read `stateRef.current` directly; rewritten
+  to the passed-in `S` (same object). Setters via deps (setShowEmotes,
+  setBuildingPanel). This roughly exhausts the cleanly-separable
+  game-logic in BroTown; what remains is genuine UI/JSX territory.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
