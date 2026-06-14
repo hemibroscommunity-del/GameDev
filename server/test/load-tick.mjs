@@ -25,7 +25,7 @@ const TICK_BUDGET_MS = 22;       // 45Hz server tick
 const MEASURE_TICKS = 600;       // ~13s of game time
 const WARMUP_TICKS = 30;
 const REPIN_EVERY = 30;          // keep players alive/on-pack mid-run
-const PLAYER_COUNTS = [20, 35, 50, 65, 80];
+const PLAYER_COUNTS = [20, 50, 80, 100, 120];
 // Combat zones that actually spawn monsters server-side (mist has none).
 const COMBAT_ZONES = ['meadow', 'ember', 'frost', 'thunder', 'hollows', 'sky', 'tidal'];
 
@@ -88,32 +88,36 @@ async function loadRoom(n) {
   return { room, tickFn };
 }
 
-// Pad each active zone's monster list to `perZone` by cloning existing
-// monsters (unique id + jittered position) -- simulates Phase 2 combat
-// density without needing the new spawn tables.
-function densify(room, perZone) {
+// Replace every active zone's monsters with `perZone` REAL mummies -- the
+// fully-implemented monster (mummy->skeleton transform, proper AI/spd) that
+// Desert Winds actually spawns -- the closest stand-in for the finished
+// game.  Templates come straight from the server's own sky spawn path so
+// the variant/speed/stat fields are authentic; clones get unique ids and
+// positions spread across the 1024px zone.
+function setMummies(room, perZone) {
+  const templates = room._spawnZoneMonsters('sky'); // real mummies (sky variant-maps every arch to mummy)
+  if (!templates.length || templates[0].variant !== 'mummy') {
+    throw new Error('expected mummy templates from sky, got ' + (templates[0] && templates[0].variant));
+  }
+  const SIZE = 1024, margin = 128;
   for (const z of COMBAT_ZONES) {
-    const arr = room.monsters[z];
-    if (!arr || !arr.length) continue;
-    let k = 0;
-    while (arr.length < perZone) {
-      const src = arr[k++ % arr.length];
-      const c = { ...src, id: src.id + '-d' + arr.length };
-      c.x = src.x + (Math.random() - 0.5) * 240;
-      c.y = src.y + (Math.random() - 0.5) * 240;
-      c.spawnX = c.x; c.spawnY = c.y;
-      c.alive = true; c.hp = c.maxHp; c.targetId = null; c.atkCd = 0;
-      arr.push(c);
+    const arr = [];
+    for (let i = 0; i < perZone; i++) {
+      const src = templates[i % templates.length];
+      const x = margin + Math.random() * (SIZE - margin * 2);
+      const y = margin + Math.random() * (SIZE - margin * 2);
+      arr.push({ ...src, id: 'mum-' + z + '-' + i, x, y, spawnX: x, spawnY: y, alive: true, hp: src.maxHp, targetId: null, atkCd: 0 });
     }
+    room.monsters[z] = arr;
   }
 }
 
-async function run(n, perZone) {
+async function run(n, mode, perZone) {
   const { room, tickFn } = await loadRoom(n);
   if (!tickFn) throw new Error('failed to capture tick fn (setInterval not called at TICK_RATE)');
 
+  if (mode === 'mummy') setMummies(room, perZone);
   pinPlayers(room, n);
-  if (perZone) { densify(room, perZone); pinPlayers(room, n); }
 
   let monsters = 0;
   for (const z of COMBAT_ZONES) monsters += (room.monsters[z]?.length || 0);
@@ -135,18 +139,18 @@ async function run(n, perZone) {
 }
 
 const f = (x) => x.toFixed(2).padStart(7);
-async function table(label, perZone) {
+async function table(label, mode, perZone) {
   console.log(`\n${label}`);
   console.log('players | monsters |  avg ms |  p50 ms |  p95 ms |  max ms | % over 22ms');
   console.log('--------|----------|---------|---------|---------|---------|------------');
   for (const n of PLAYER_COUNTS) {
-    const r = await run(n, perZone);
+    const r = await run(n, mode, perZone);
     console.log(`${String(r.n).padStart(7)} | ${String(r.monsters).padStart(8)} | ${f(r.avg)} | ${f(r.p50)} | ${f(r.p95)} | ${f(r.max)} | ${r.overPct.toFixed(1).padStart(9)}%`);
   }
 }
 
 console.log(`\nGameRoom tick load test  --  budget ${TICK_BUDGET_MS}ms (45Hz), ${MEASURE_TICKS} ticks/run, worst case`);
-await table('A) CURRENT spawn density (sparse, as shipped):', null);
-await table('B) PHASE 2 density (~25 monsters/zone, ~175 total):', 25);
+await table('A) CURRENT spawns (mixed placeholder monsters, sparse):', 'current', null);
+await table('B) ALL-MUMMY at Phase 2 density (~25 mummies/zone, the real monster):', 'mummy', 25);
 console.log('\nReading it: p95 well under 22ms = headroom to raise the cap; p95 near/over 22ms');
 console.log('= that player count is the ceiling for one room at 45Hz (lag for everyone above it).\n');
