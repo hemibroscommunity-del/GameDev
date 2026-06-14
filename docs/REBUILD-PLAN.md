@@ -469,7 +469,10 @@ the gate, and eslint no-undef catches a missed prop in the new component.
     stateRef, setRpgState); 19 data/helper imports verified real;
     `_rpgState$lifeSkills21` hoisted temp local. The `buildingPanel ===
     'forge' &&` gate stays in BroTown; the Fragment subtree is the panel.
-  - **Remaining sub-panels:** woodwork, enchant, gemcut, exchange, farm,
+  - **WoodworkPanel — ✅ done (v2.3.873):** the `buildingPanel === 'woodwork'`
+    clause (~367 lines) → `src/ui/panels/buildings/WoodworkPanel.jsx`. 3
+    props; imports verified real; 4 hoisted babel temps declared locally.
+  - **Remaining sub-panels:** enchant, gemcut, exchange, farm,
     bank, cook, gamble, party, shop.
 - **Candidates remaining:** the smaller modals (buildingPanel,
   trade, minigame, statScreen, inventory) — the big standalone panels are
