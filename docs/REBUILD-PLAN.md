@@ -574,15 +574,23 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   - `showEmotes` (~44 lines: the emote / quick-chat picker) →
     `src/ui/panels/EmotePanel.jsx`. 1 prop (sendEmote, a useCallback);
     EMOTES/TEXT_EMOTES imported.
-- **Candidates remaining:** the `inspectPlayer` modal (~549 lines: the
-  player-inspect / social-actions popup — friend/mute/block, reputation,
-  initiate trade) is the next inline-subtree extraction — bigger, ~16 props
-  (blockedList/clanData/friendsList/mutedList state + their setters, plus
-  setShowTrade/setTradeOffer/setTradeTarget and setInspectPlayer), data
-  imports (REPUTATION, PVP_THREAT_*, ZONES, BT_AUDIO) and multi-`$` temps.
-  After that BroTown is mostly the core component, the HUD/controls
-  overlays, and the top-level effect/loop setup. Re-derive anchors before
-  each pass.
+- **InspectPlayerPanel — ✅ done (v2.3.887):** the `inspectPlayer` modal
+  subtree (~549 lines: the player-inspect / social-actions popup — view
+  another player's gear and reputation, friend / mute / block, or open a
+  trade) → `src/ui/panels/InspectPlayerPanel.jsx`. 13 props: stateRef,
+  inspectPlayer/blockedList/clanData/friendsList/mutedList (state) and
+  setBlockedList/setFriendsList/setInspectPlayer/setMutedList/setShowTrade/
+  setTradeOffer/setTradeTarget (setters). Data imports (BT_AUDIO,
+  PVP_THREAT_BASE_COUNTDOWN, PVP_THREAT_COOLDOWN, REPUTATION, ZONES)
+  verified real; slice/spread-array babel helpers; 7 hoisted temps local.
+- **Candidates remaining:** with inspectPlayer gone, all the gated
+  panel/modal/overlay subtrees are extracted. BroTown.jsx is down to
+  ~10.3k lines (from ~15.9k at the start of this run). What's left is the
+  core component itself: the HUD/controls overlay JSX that is interleaved
+  with live state, plus the top-level effect/loop and channel wiring —
+  these are not standalone gated subtrees, so the next pass needs a
+  different strategy (extract render helpers and/or move effect bodies into
+  `src/game/`), with anchors re-derived each time.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
