@@ -289,6 +289,19 @@ pure-logic moves and continue thinning the component.
   one `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
   object); raiseShield's only React setter (`setShieldUp`) goes via deps.
   Bodies byte-identical.
+- **Life-skill rewards cluster — ✅ done (v2.3.841):** the gather/
+  extraction reward flow → `src/game/lifeSkillRewards.js`:
+  `startExtraction` (per-node swipe-window state machine),
+  `succeedExtraction` (routes a valid swipe to the per-skill applier),
+  `applyCookingResult`, plus module-internal `applyFishingReward` /
+  `applyWoodReward` / `applyMiningReward` (only `succeedExtraction` calls
+  them). The component keeps thin useCallback wrappers for the three with
+  external callers. `setRpgState` is the only React setter (threaded via
+  deps; `succeedExtraction` forwards it to the appliers); `setItem` was
+  `localStorage`, `setCookingMini` belongs to the interleaved cookingBus
+  effect (left in place). All six bodies byte-identical. The scope scan
+  caught (and I fixed) two body slices that had wrongly kept their
+  `var S = stateRef.current` opener.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
