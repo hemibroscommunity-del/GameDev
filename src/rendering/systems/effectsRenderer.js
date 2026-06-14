@@ -2049,7 +2049,10 @@ export class EffectsRenderer {
         try {
           setTimeout(function () {
             var _a = (typeof window !== 'undefined') && window.BT_AUDIO;
-            if (_a && _a.swordHit) _a.swordHit({ vol: 0.55 });
+            /* v2.3.849: only the first hit sample ('sword-hit2') — swordHit()
+               alternates with 'sword-hit3', which is the fleshier variant
+               the owner didn't want on wood. */
+            if (_a && _a.play) _a.play('sword-hit2', { vol: 0.55 });
           }, 200);
         } catch (e) {}
       }

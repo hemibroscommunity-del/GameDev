@@ -19,6 +19,41 @@ import { BT_AUDIO, EXTRACT_WINDOW_MS, MINE_SPOT_R, MINIGAME_REWARDS, TILE, addLi
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
+/* v2.3.849: fly a harvested-resource icon from its world node into the
+   bottom-left inventory.  DOM-only (appended to document.body, like the
+   resume spinner) so it floats above the canvas/HUD and animates on the
+   compositor; world->screen is node minus camera (world canvas pinned
+   top-left, 1:1 CSS px).  No-ops outside the browser. */
+function _flyResourceToInventory(S, wx, wy, iconUrl) {
+  try {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return;
+    var cam = (S && S.camera) || { x: 0, y: 0 };
+    var sx = wx - cam.x, sy = wy - cam.y;
+    var img = document.createElement('img');
+    img.src = iconUrl;
+    img.alt = '';
+    img.style.cssText = 'position:fixed;left:0;top:0;width:34px;height:34px;z-index:99998;' +
+      'pointer-events:none;image-rendering:pixelated;will-change:transform,opacity;' +
+      'filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));' +
+      'transition:transform .7s cubic-bezier(.45,.05,.3,1),opacity .7s ease-in';
+    img.style.transform = 'translate(' + sx + 'px,' + sy + 'px) scale(1)';
+    img.style.marginLeft = '-17px';  // centre the 34px icon on the point
+    img.style.marginTop = '-17px';
+    document.body.appendChild(img);
+    /* Target: bottom-left, just inside the dashboard where the inventory
+       preview lives (--dash-h is ~28vh). */
+    var dashH = Math.round(window.innerHeight * 0.28);
+    var tx = 46, ty = window.innerHeight - dashH + 18;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(0.55)';
+        img.style.opacity = '0.15';
+      });
+    });
+    setTimeout(function () { try { img.remove(); } catch (e) {} }, 760);
+  } catch (e) {}
+}
+
 export function startExtraction(S, node, skill) {
     if (!S || !node) return;
     /* Mining is done from one tile NORTH of the vein so the south-facing swing
@@ -158,9 +193,15 @@ function applyWoodReward(S, node, result, deps) {
     if (!node || !R) return;
     var accuracy = (result && result.accuracy) || 'good';
     var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
-    BT_AUDIO.beep(500, 0.03, 0.06, 'triangle');
+    /* v2.3.849: the felled-tree "timber" crash (was a placeholder beep). */
+    try { if (BT_AUDIO.play) BT_AUDIO.play('tree-fall', { vol: 0.8 }); else BT_AUDIO.beep(500, 0.03, 0.06, 'triangle'); } catch (e) {}
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
+    /* v2.3.849: a wood-log icon pops out of the felled tree and flies into
+       the bottom-left inventory, so the harvest reads as "collected".
+       Pure DOM (document.body, like the resume spinner) — world->screen is
+       node minus camera (the world canvas is pinned top-left, 1:1). */
+    _flyResourceToInventory(S, node.x, node.y - 24, '/icons/wood/wood-log.png');
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the
