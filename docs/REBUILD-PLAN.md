@@ -636,11 +636,20 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   BroTown's canvas render loop mirrors — passed through, same correctness
   pattern as TouchControls), sendChat (useCallback), setChatInput,
   setChatOpen. No data imports or temps.
+- **WarBanner (ActiveWarBanner + EndedWarBanner) — ✅ done (v2.3.893):**
+  the two clan-war HUD banner IIFEs → `src/ui/panels/WarBanner.jsx`. They
+  used the `function (_temp) { … }()` pattern (called with no arg — the
+  param was just a babel optional-chaining temp). Each IIFE body became a
+  **stateRef-only** component that reads `stateRef.current._activeClanWar`
+  at render and returns its banner or null (same read-at-render timing,
+  behavior-frozen). ZONES imported; the babel temp is a local var. Pattern
+  note: an `function(_t){…}()` IIFE → `Component({stateRef})` with `_t` as
+  a local var is a clean conversion when the only free vars are stateRef +
+  imports. BroTown.jsx now under 9k lines (8,969).
 - **Candidates remaining (now the genuinely harder ones):**
-  - A few smaller inline HUD bits may still remain (the clan-war banner
-    IIFE near the top of the return, well-rested indicator, torch button,
-    nearBuilding interact prompts) — re-survey the return tree; extract any
-    that are clean gated subtrees / self-contained IIFEs first.
+  - A few small inline HUD bits remain (well-rested indicator, torch
+    button, nearBuilding interact prompts) — re-survey the return tree;
+    extract any that are clean gated subtrees / self-contained IIFEs first.
   - **Top-level effect / game-loop / channel wiring** — the highest-risk
     category. Prefer moving effect bodies into `src/game/` behind a deps
     object, one effect at a time, only with the full verification protocol
