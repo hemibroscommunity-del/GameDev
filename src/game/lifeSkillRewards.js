@@ -220,7 +220,11 @@ function applyWoodReward(S, node, result, deps) {
     /* Resource inventory grant on the worker when authoritative;
        local fallback for dungeon / SP. */
     var baseName = node.baseName || node.name || 'Pine';
-    var yieldQty = reward.yieldMult || 1;
+    /* v2.3.851: one log per tree — woodcutting ignores the perfect-accuracy
+       2x yield multiplier (owner: "should only give one").  (MP is server-
+       authoritative; the matching server change is in server/src/index.js
+       _harvestYieldMult and takes effect on deploy.) */
+    var yieldQty = 1;
     if (!R.inventory) R.inventory = {};
     if (!S._serverGatherNodes) {
       var baseKeyW = (node.resourceType || 'wood') + '_' + baseName.replace(/\s+/g, '_').toLowerCase();
