@@ -378,6 +378,14 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   DATA` destructure — `createDefaultClan` was a phantom); (5) grep for
   hoisted babel temps (`_x$y`) not declared in the subtree; (6) full-file
   `node --check`. CI (vite build) remains the final gate.
+- **PetHousePanel — ✅ done (v2.3.861):** the pet slots/evolve/enchant
+  modal (`showPetHouse`, ~460 lines) → `src/ui/panels/PetHousePanel.jsx`.
+  10 props; ELEMENTS/MAX_PET_SLOTS/PET_EVOLUTION_TIERS/enchantPet/evolvePet/
+  BT_AUDIO + babel imported (all verified real exports). Six hoisted babel
+  temps (`_rpgState$lifeSkills{3,4,5,6,8,9}`) declared locally — caught by
+  a comprehensive `_\w+(\$\w+)+` temp enumeration (some were assigned
+  inside `var pets = (...)` initializers, so a naive "declared?" check
+  false-positived; the depth-aware enumeration is the reliable one).
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
