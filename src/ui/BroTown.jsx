@@ -1,5 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
+/* v2.3.855: first UI-panel extraction — the info/online-count popup. */
+import { InfoPanel } from './panels/InfoPanel.jsx';
 import { MINE_SPOT_R } from '@/data/constants.js';
 import { IntroVideo } from './IntroVideo.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
@@ -24137,74 +24139,7 @@ export var BroTown = function BroTown(_ref0) {
         }
       }, b.badge));
     });
-  }())), showInfo && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'fixed',
-      bottom: 'calc(var(--dash-h) + 70px)',
-      right: 10,
-      zIndex: 40,
-      padding: '10px 16px',
-      borderRadius: 10,
-      background: 'rgba(10,8,20,.95)',
-      border: '1px solid rgba(255,255,255,.12)',
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
-      minWidth: 120
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "bt-player-dot"
-  }), " ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: '#3dd497'
-    }
-  }, playerCount, " online"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 8,
-      color: stateRef.current._realtimeStatus === 'connected' ? '#3dd497' : '#ef4444',
-      marginLeft: 4
-    }
-  }, stateRef.current._realtimeStatus === 'connected' ? '●' : '○')), /*#__PURE__*/React.createElement("button", {
-    onClick: function onClick() {
-      BT_AUDIO.muted = !BT_AUDIO.muted;
-      setPlayerCount(function (c) {
-        return c;
-      });
-    },
-    style: {
-      padding: '6px 12px',
-      borderRadius: 6,
-      background: 'rgba(255,255,255,.08)',
-      border: '1px solid rgba(255,255,255,.12)',
-      color: '#fff',
-      fontSize: 11,
-      cursor: 'pointer',
-      width: '100%'
-    }
-  }, BT_AUDIO.muted ? '🔇 Unmute' : '🔊 Mute'), /*#__PURE__*/React.createElement("button", {
-    onClick: function onClick() {
-      return setShowInfo(false);
-    },
-    style: {
-      marginTop: 6,
-      padding: '4px 10px',
-      borderRadius: 5,
-      background: 'rgba(255,255,255,.04)',
-      border: 'none',
-      color: 'rgba(255,255,255,.4)',
-      fontSize: 9,
-      cursor: 'pointer',
-      width: '100%'
-    }
-  }, "Close")), function (_stateRef$current61) {
+  }())), showInfo && /*#__PURE__*/React.createElement(InfoPanel, { playerCount: playerCount, setPlayerCount: setPlayerCount, setShowInfo: setShowInfo, stateRef: stateRef }), function (_stateRef$current61) {
     var R = (_stateRef$current61 = stateRef.current) === null || _stateRef$current61 === void 0 ? void 0 : _stateRef$current61.rpg;
     if (!R) return null;
     var hp = R.hp || 0,
