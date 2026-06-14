@@ -411,7 +411,13 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   setShowSkills; no setRpgState). 5 data + babel imports (real exports);
   `_rpgState$lifeSkills46` hoisted temp local. (The `_`/`g`/`herb` the
   scanner flagged were regex/string content, not identifiers.)
-- **Candidates remaining:** the big remaining mass is JSX panels/modals
+- **ShopPanel — ✅ done (v2.3.866):** the town shop buy/sell modal
+  (`showShop`, ~222 lines) → `src/ui/panels/ShopPanel.jsx`. 4 props;
+  SHOP_ITEMS_FOR_SALE/SHOP_PRICES/BT_AUDIO + syncRpgToServer + babel
+  imported (real exports verified); no hoisted temps.
+- **Candidates remaining:** the smaller modals (questPanel, buildingPanel,
+  trade, minigame, statScreen, inventory) — the big standalone panels are
+  now all extracted. JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
   remaining mass is JSX panels/modals (UI decomposition), still its own
