@@ -327,6 +327,24 @@ pure-logic moves and continue thinning the component.
   untouched. `evaluateMinigame` (only used by gatherMini) dropped from the
   DATA destructure. Zero residual refs; gesture flow intact.
 
+## Dead/unwanted-content removal (owner-directed)
+
+- **Elemental Minigame Arena removed — ✅ done (v2.3.871):** the on-farm
+  2–4 player elemental minigames (Lava Dodge, etc.) — owner asked to
+  remove (same "no in-window minigames" direction). It was LIVE/reachable
+  (not dead): `ZONES.farm_home._minigameArena` was placed during farm-map
+  gen, gating a proximity button → `showMinigame` modals. Removed across
+  3 files (client-only — it used peer `broadcast` events, no server DO
+  handler): BroTown (two `showMinigame` modal blocks ~820 lines, the
+  showMinigame/minigameInstance useStates, the `_nearMinigameArena`
+  detection, the farm button, the arena-only imports), `desktopControls.js`
+  (the E-key arena branch + its dep), and `gameSystems.js` (the farm-gen
+  arena structure + `_minigameArena` rect). **Kept `MINIGAME_REWARDS`**
+  (still used by the live gesture extraction). The now-orphaned data-layer
+  cluster (`ELEMENTAL_MINIGAMES`, `createMinigameInstance`,
+  `evaluateMinigame`, arena `MINIGAME_*` consts) has no importers and is
+  tree-shaken — left as a trivial optional follow-up. ~890 lines removed.
+
 ## UI/JSX decomposition (the remaining BroTown mass)
 
 The game-logic is out; what's left in BroTown is the React component + its
