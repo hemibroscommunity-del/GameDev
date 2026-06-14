@@ -279,7 +279,11 @@ export class EffectsRenderer {
       this.nodeLayer.addChild(this.skillTraits[k]);
     }
     this._skillCrowns = null;
-    this._skillHeadW = { chop: 37, cook: 48, fire: 35 }; // in-frame head widths
+    /* v2.3.875: trait scale per stand-in = its render scale × (character height
+       / the stand 182px reference), so the hat matches how it sits idle rather
+       than being sized to the lumberjack's small head.  chop 166px, cook 212px,
+       fire ~155px in-frame -> these multipliers. */
+    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85 };
     /* crowns.json frame widths MUST match the strip-loading FWs above
        (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
        crown generator with the matching widths or the traits drift off-head. */
@@ -315,7 +319,7 @@ export class EffectsRenderer {
     if (!cr) { hideSkillTraits(this.skillTraits); return; }
     const cwx = sp.x + (cr[0] - data.fw / 2) * sp.scale.x;
     const cwy = sp.y + (cr[1] - data.fh) * sp.scale.y;
-    const scaleVal = Math.abs(sp.scale.y) * ((this._skillHeadW[skillKey] || 40) / 64);
+    const scaleVal = Math.abs(sp.scale.y) * (this._skillTraitMul[skillKey] || 1);
     placeSkillTraits(this.skillTraits, cwx, cwy, dir, mirror, scaleVal);
   }
 
