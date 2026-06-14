@@ -2694,30 +2694,6 @@ export function generateZoneMap(zoneId) {
       w: 4 * TILE,
       h: 3 * TILE
     };
-
-    /* §MINI — Minigame Arena (center-right of farm) */
-    var max = W - 8,
-      may = 5;
-    for (var _dy9 = 0; _dy9 < 4; _dy9++) for (var _dx9 = 0; _dx9 < 5; _dx9++) {
-      if (may + _dy9 < H - 1 && max + _dx9 < W - 2) map[may + _dy9][max + _dx9] = 1; /* path/arena floor */
-    }
-    /* Arena border */
-    for (var _dx0 = -1; _dx0 <= 5; _dx0++) {
-      if (may - 1 >= 0 && max + _dx0 >= 0 && max + _dx0 < W) map[may - 1][max + _dx0] = 7;
-      if (may + 4 < H && max + _dx0 >= 0 && max + _dx0 < W) map[may + 4][max + _dx0] = 7;
-    }
-    for (var _dy0 = -1; _dy0 <= 4; _dy0++) {
-      if (max - 1 >= 0 && may + _dy0 >= 0 && may + _dy0 < H) map[may + _dy0][max - 1] = 7;
-      if (max + 5 < W && may + _dy0 >= 0 && may + _dy0 < H) map[may + _dy0][max + 5] = 7;
-    }
-    /* Entrance */
-    map[may + 4][max + 2] = 1;
-    ZONES.farm_home._minigameArena = {
-      x: (max + 2) * TILE,
-      y: (may + 2) * TILE,
-      w: 5 * TILE,
-      h: 4 * TILE
-    };
   } else {
     /* ═══ COMBAT ZONE — single entrance (south), dungeon at far north ═══ */
     var elem = zone.element;

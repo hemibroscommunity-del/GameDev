@@ -28,7 +28,6 @@ export function setupDesktopControls(S, deps) {
     _desktopSpecialAttack = deps._desktopSpecialAttack,
     _desktopCloseAll = deps._desktopCloseAll,
     setShowPetHouse = deps.setShowPetHouse,
-    setShowMinigame = deps.setShowMinigame,
     setChatOpen = deps.setChatOpen,
     chatInputRef = deps.chatInputRef,
     chatOpen = deps.chatOpen;
@@ -83,12 +82,6 @@ export function setupDesktopControls(S, deps) {
         /* 2c. Pet House */
         if (S._nearPetHouse) {
           setShowPetHouse(true);
-          BT_AUDIO.enterBuilding();
-          return;
-        }
-        /* 2d. Minigame Arena */
-        if (S._nearMinigameArena) {
-          setShowMinigame(true);
           BT_AUDIO.enterBuilding();
           return;
         }
