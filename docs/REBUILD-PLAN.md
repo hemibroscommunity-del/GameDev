@@ -559,11 +559,19 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   `src/ui/panels/TradePanel.jsx`. 6 props: rpgState, stateRef, tradeTarget,
   tradeOffer (state) and setShowTrade, setTradeOffer (setters). No
   data-table imports; only spread/slice babel helpers; no hoisted temps.
-- **Candidates remaining:** the `incomingTrade && rpgState` modal (the
-  inbound trade-request popup, sits right after showTrade in the render)
-  is the obvious next small extraction, same pattern. Beyond that BroTown
-  is mostly the core component + game-loop wiring; the statScreen modal is
-  already extracted and the Minigame Arena was removed.
+- **IncomingTradePanel — ✅ done (v2.3.885):** the `incomingTrade &&
+  rpgState` modal subtree (~150 lines: the inbound trade-request popup —
+  review the offer, accept or decline) →
+  `src/ui/panels/IncomingTradePanel.jsx`. 4 props: stateRef, incomingTrade
+  (state), setIncomingTrade, setRpgState (setters); rpgState is read only
+  in the gate, not the subtree. BT_AUDIO verified real; spread/slice babel
+  helpers; one hoisted temp declared locally.
+- **Candidates remaining:** the standalone panels and modals are now all
+  extracted. BroTown.jsx is down to ~10.9k lines (from ~15.9k at the start
+  of this run) and is mostly the core component, game-loop wiring, and the
+  remaining inline HUD/render scaffolding. Re-derive anchors before the
+  next pass; the biggest remaining masses are the HUD/controls overlays and
+  the top-level effect/loop setup.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be
