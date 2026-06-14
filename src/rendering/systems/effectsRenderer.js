@@ -224,6 +224,7 @@ export class EffectsRenderer {
     this.chopSprite.visible = false;
     this.nodeLayer.addChild(this.chopSprite);
     this._chopFrames = [];
+    this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
     Assets.load('/sprites/skills/chop-strip.png').then((tex) => {
       const FW = 240, FH = 220;  // per-frame size of chop-strip.png
       const n = Math.max(1, Math.round(tex.width / FW));
@@ -2003,7 +2004,7 @@ export class EffectsRenderer {
        ~4s wind-up before the swipe window opens) — the graphic swipe cue
        below still waits for 'ready'. */
     if (this.chopSprite) this.chopSprite.visible = false;
-    if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) return;
+    if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
                : (S.gatherNodes && ex.nodeId
@@ -2029,13 +2030,28 @@ export class EffectsRenderer {
       const CHOP_H = 84;          // drawn height (~player scale); tune to taste
       const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
+      const CHOP_STRIKE_FRAME = 10; // frame where the axe drives into the trunk
       const sp = this.chopSprite;
-      sp.texture = this._chopFrames[Math.floor(now / CHOP_FRAME_MS) % this._chopFrames.length];
+      const fi = Math.floor(now / CHOP_FRAME_MS) % this._chopFrames.length;
+      sp.texture = this._chopFrames[fi];
       const s = CHOP_H / 220;
       sp.scale.set(chopSign < 0 ? -s : s, s);  // flip to face the trunk
       sp.x = node.x - chopSign * CHOP_OFFSET;
       sp.y = node.y + 6;
       sp.visible = true;
+      /* v2.3.847: woody "thunk" on the swing's strike frame (woodcutting
+         had no chop sound).  Fires once per loop — only on the transition
+         INTO the strike frame, which the steps land on for ~2-3 render
+         frames. */
+      if (fi === CHOP_STRIKE_FRAME && this._chopLastFrame !== CHOP_STRIKE_FRAME) {
+        try {
+          var _a = (typeof window !== 'undefined') && window.BT_AUDIO;
+          if (_a && _a.beep) { _a.beep(150, 0.06, 0.09, 'sawtooth'); _a.beep(430, 0.025, 0.04, 'square'); }
+        } catch (e) {}
+      }
+      this._chopLastFrame = fi;
+    } else {
+      this._chopLastFrame = -1;  // mining/fishing — no chopper, reset the edge
     }
     /* The floating tool + swipe cue + pips only appear once the swipe
        window is open; the chopper above already covers the wind-up. */
