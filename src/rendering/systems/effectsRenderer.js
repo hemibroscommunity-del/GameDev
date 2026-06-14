@@ -12,6 +12,7 @@ import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.j
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
+import { placeSkillTraits, hideSkillTraits } from './entityRenderer.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -263,12 +264,46 @@ export class EffectsRenderer {
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._fireFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
+
+    /* v2.3.867: the player's traits (hat / beard / hair) composited onto
+       whichever skill stand-in is active (chopper / cook / fire-lighter), which
+       otherwise replaces the trait-composed body.  One shared set — only one
+       stand-in renders at a time.  Added after the stand-ins so they layer on
+       top (hair behind hat via child order).  Per-frame head crowns come from
+       crowns.json (skin-detected at build time). */
+    this.skillTraits = { hair: new Sprite(), beard: new Sprite(), hat: new Sprite() };
+    for (const k of ['hair', 'beard', 'hat']) {
+      this.skillTraits[k].visible = false;
+      this.nodeLayer.addChild(this.skillTraits[k]);
+    }
+    this._skillCrowns = null;
+    this._skillHeadW = { chop: 37, cook: 48, fire: 35 }; // in-frame head widths
+    fetch('/sprites/skills/crowns.json').then((r) => r.json()).then((j) => { this._skillCrowns = j; }).catch(() => {});
+  }
+
+  /* Composite the player's traits onto a stand-in skill sprite for this frame.
+     sp = the stand-in Sprite (anchor 0.5,1); fi = its current frame index;
+     dir/mirror = trait facing; the crown world pos is derived from sp's own
+     transform + the per-frame crown, and the trait scale from the stand-in's
+     render scale × head proportion so the hat matches the head size. */
+  _placeSkillTraitsOn(skillKey, sp, fi, dir, mirror) {
+    const data = this._skillCrowns && this._skillCrowns[skillKey];
+    if (!data || !data.crowns.length) { hideSkillTraits(this.skillTraits); return; }
+    const cr = data.crowns[Math.min(fi, data.crowns.length - 1)];
+    if (!cr) { hideSkillTraits(this.skillTraits); return; }
+    const cwx = sp.x + (cr[0] - data.fw / 2) * sp.scale.x;
+    const cwy = sp.y + (cr[1] - data.fh) * sp.scale.y;
+    const scaleVal = Math.abs(sp.scale.y) * ((this._skillHeadW[skillKey] || 40) / 64);
+    placeSkillTraits(this.skillTraits, cwx, cwy, dir, mirror, scaleVal);
   }
 
   /**
    * Updates all effects for the current frame.
    */
   update(S, viewW, viewH, now) {
+    /* v2.3.867: hide the skill-stand-in traits up front; whichever stand-in is
+       active this frame (firemaking / chopper / cook) re-shows + places them. */
+    hideSkillTraits(this.skillTraits);
     this._updateParticles(S, now);
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
@@ -2180,6 +2215,7 @@ export class EffectsRenderer {
     sp.x = S.player.x;
     sp.y = S.player.y + 6;
     sp.visible = true;
+    this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
   }
 
   /* ── Extraction cue (v2.3.229) ──
@@ -2257,6 +2293,9 @@ export class EffectsRenderer {
         } catch (e) {}
       }
       this._chopLastFrame = fi;
+      /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree
+         is on the player's left, i.e. chopSign<0 -> render the west view. */
+      this._placeSkillTraitsOn('chop', sp, fi, 'east', chopSign < 0);
     } else {
       this._chopLastFrame = -1;  // mining/fishing — no chopper, reset the edge
     }
@@ -2266,12 +2305,14 @@ export class EffectsRenderer {
     if (cookingCue && this.cookSprite && this._cookFrames.length) {
       const COOK_H = 82, COOK_FRAME_MS = 60;
       const sp = this.cookSprite;
-      sp.texture = this._cookFrames[Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length];
+      const cookFi = Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
+      sp.texture = this._cookFrames[cookFi];
       const s = COOK_H / 220;
       sp.scale.set(s, s);
       sp.x = node.x - 14;
       sp.y = node.y + 8;
       sp.visible = true;
+      this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
     /* The floating tool + swipe cue + pips only appear once the swipe
        window is open; the chopper above already covers the wind-up. */

@@ -1081,6 +1081,64 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
   _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale);
 }
 
+/* v2.3.867: composite the player's CURRENT traits (hat / beard / hair) onto a
+   stand-in skill sprite — the pre-drawn chopper / cook / fire-lighter that
+   REPLACES the trait-composed body during woodcutting / cooking / firemaking.
+   Standalone version of _placeTrait: the caller (effectsRenderer) owns the
+   three sprites and passes the crown WORLD position (computed from the
+   stand-in's own transform), a scale, and the trait direction (south for the
+   front-facing cook/fire, east for the side-facing chopper).  No 256-frame /
+   spriteBody assumptions — placement is purely world-space. */
+function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
+  if (!sprite) return;
+  const tex = entry && entry.tex[dir];
+  const meta = entry && entry.meta;
+  const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
+  if (!(tex && meta && meta.fullFrame && anchorPx)) { sprite.visible = false; return; }
+  if (sprite.texture !== tex) sprite.texture = tex;
+  const screenDir = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;
+  const _pick = (obj) => obj && (obj[screenDir] != null ? obj[screenDir] : obj[dir]);
+  const nudge = _pick(meta.crownNudge) || [0, 0];
+  const dscale = (_pick(meta.scale) || 1);
+  const m = mirror ? -1 : 1;
+  sprite.anchor.set(anchorPx[0] / tex.width, anchorPx[1] / tex.height);
+  sprite.x = cwx + nudge[0] * scaleVal * m;
+  sprite.y = cwy + nudge[1] * scaleVal;
+  sprite.scale.x = m * scaleVal * dscale;
+  sprite.scale.y = scaleVal * dscale;
+  sprite.visible = true;
+}
+
+/** Place hat + beard + hair (the player's current selection) on a stand-in
+ *  skill sprite.  sprites = { hat, beard, hair } owned by the caller. */
+export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
+  if (!sprites) return;
+  /* hair first (renders behind the hat in the caller's child order), then
+     beard, then hat. */
+  let hairEntry = _ensureHairLoaded(getHair());
+  const hairCol = getColoredHairTextures(getHair(), getHairColor());
+  if (hairCol && hairEntry) hairEntry = { tex: hairCol, meta: hairEntry.meta };
+  _placeStandaloneTrait(sprites.hair, hairEntry, dir, mirror, cwx, cwy, scaleVal);
+
+  let fhEntry = _ensureFacialHairLoaded(getFacialHair());
+  const fhCol = getColoredFacialHairTextures(getFacialHair(), getFacialHairColor());
+  if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta };
+  _placeStandaloneTrait(sprites.beard, fhEntry, dir, mirror, cwx, cwy, scaleVal);
+
+  let hwEntry = _ensureHeadwearLoaded(getHeadwear());
+  const hwCol = getColoredHatTextures(getHeadwear(), getHatColor());
+  if (hwCol && hwEntry) hwEntry = { tex: hwCol, meta: hwEntry.meta };
+  _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal);
+}
+
+/** Hide all three skill-trait sprites (no stand-in active this frame). */
+export function hideSkillTraits(sprites) {
+  if (!sprites) return;
+  if (sprites.hat) sprites.hat.visible = false;
+  if (sprites.beard) sprites.beard.visible = false;
+  if (sprites.hair) sprites.hair.visible = false;
+}
+
 /* v2.3.354: per-frame beard z-order.  The beard is on the face, so it
    needs a direction-dependent layer just like the weapon + shield:
    - Rear facings (NW 5 / N 6 / NE 7): the beard sits BEHIND the head --
