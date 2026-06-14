@@ -338,6 +338,12 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   imported; fetch is the global. Boundaries found by paren-matching (not
   by eye) since the panel ends in a nested IIFE; full-file syntax
   re-checked.
+- **GuildPanel — ✅ done (v2.3.857):** the skill-guild rank/quest/title
+  screen (`showGuildPanel`, ~342 lines) → `src/ui/panels/GuildPanel.jsx`.
+  6 props (rpgState, guildSkill, setGuildSkill, setRpgState,
+  setShowGuildPanel, stateRef); GUILD_RANKS/SKILL_GUILDS/getGuildQuest/
+  getGuildRank/BT_AUDIO + babel imported. Boundary paren-matched; subtree
+  byte-identical; full-file syntax re-checked.
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
