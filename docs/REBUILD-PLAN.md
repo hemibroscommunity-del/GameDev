@@ -391,6 +391,15 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   4 props; FURNITURE_RECIPES/addLifeSkillXp/BT_AUDIO + babel imported
   (real exports verified); `_R$lifeSkills2`/`_rpgState$lifeSkills0` hoisted
   temps declared locally.
+- **DungeonCreatorPanel — ✅ done (v2.3.863):** the custom-dungeon
+  builder (`showDungeonCreator`, ~1073 lines — the largest panel) →
+  `src/ui/panels/DungeonCreatorPanel.jsx`. 8 props; ARCHETYPES/DUNGEON
+  packs/ELEMENTS/TILE/createMonster/getDungeonCreatorUnlocks/
+  validateCustomDungeon/BT_AUDIO + babel imported (real exports verified);
+  no hoisted temps; globalThis is a runtime global. Caught locally: a `*/`
+  inside the header comment (from `DUNGEON_*/`) closed the block comment
+  early — node --check flagged it before push. (Watch for `*/` sequences
+  in generated comments.)
 - **Candidates remaining:** the big remaining mass is JSX panels/modals
   are `useCallback`s that read `stateRef.current` + a few setters — more
   entangled (would need a deps object), so a later pass. The big
