@@ -92,6 +92,7 @@ import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatal
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor, shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
 import { getEquip, setEquip, onEquipChange, reconcileGearStash } from '@/rendering/gearCatalog.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
+import { wireGearWornSync } from '@/game/gearWornSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDamage, addBuildProg, addBuildUse, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage, applyMeleeLifesteal } from '@/game/combatHelpers.js';
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
@@ -684,12 +685,7 @@ export var BroTown = function BroTown(_ref0) {
      (popup unequip -> bag).  Track external setEquip calls so this menu's
      WORN ARMOUR toggle reflects them instead of going stale. */
   useEffect(function () {
-    var offs = ['chest', 'legs', 'shirt'].map(function (slot) {
-      return onEquipChange(slot, function () {
-        setGearWorn({ chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none', shirt: getEquip('shirt') !== 'none' });
-      });
-    });
-    return function () { offs.forEach(function (off) { off(); }); };
+    return wireGearWornSync(setGearWorn);
   }, []);
   var _useState15 = useState([]),
     _useState16 = _slicedToArray(_useState15, 2),
