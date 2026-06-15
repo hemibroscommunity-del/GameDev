@@ -83,6 +83,7 @@ export const WALKABILITY_MAPS = {
   thunder: '/maps/thunder_v5.walk.json',   /* dense machinery -> walkable is mostly the central path corridor */
   farm_home: '/maps/farm_v1.walk.json',   /* note: mask was a wider aspect than the art -- walls align at edges, interior drifts a few % */
   verdant: '/maps/verdant_v1.walk.json',
+  worldview: '/maps/worldview_v1.walk.json',   /* black-painted mask: walkable trails, blocked wedges */
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call

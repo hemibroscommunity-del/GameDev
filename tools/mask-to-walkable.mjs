@@ -13,21 +13,25 @@ import zlib from 'node:zlib';
 function decodePNG(buf) {
   const sig = [137, 80, 78, 71, 13, 10, 26, 10];
   for (let i = 0; i < 8; i++) if (buf[i] !== sig[i]) throw new Error('not a PNG');
-  let off = 8, width = 0, height = 0, bitDepth = 0, colorType = 0;
+  let off = 8, width = 0, height = 0, bitDepth = 0, colorType = 0, palette = null;
   const idat = [];
   while (off < buf.length) {
     const len = buf.readUInt32BE(off); off += 4;
     const type = buf.toString('ascii', off, off + 4); off += 4;
     const data = buf.subarray(off, off + len); off += len + 4; // +4 skip CRC
     if (type === 'IHDR') { width = data.readUInt32BE(0); height = data.readUInt32BE(4); bitDepth = data[8]; colorType = data[9]; }
+    else if (type === 'PLTE') palette = data; // indexed palette: RGB triples
     else if (type === 'IDAT') idat.push(data);
     else if (type === 'IEND') break;
   }
-  if (bitDepth !== 8) throw new Error('only 8-bit depth supported, got ' + bitDepth);
-  const channels = colorType === 2 ? 3 : colorType === 6 ? 4 : colorType === 0 ? 1 : 0;
-  if (!channels) throw new Error('unsupported colorType ' + colorType);
+  const spp = colorType === 2 ? 3 : colorType === 6 ? 4 : colorType === 0 ? 1 : colorType === 3 ? 1 : 0;
+  if (!spp) throw new Error('unsupported colorType ' + colorType);
+  if (colorType !== 3 && bitDepth !== 8) throw new Error('only 8-bit non-indexed supported, got bitDepth ' + bitDepth);
+  if (colorType === 3 && !palette) throw new Error('indexed PNG missing PLTE');
   const raw = zlib.inflateSync(Buffer.concat(idat));
-  const stride = width * channels;
+  const bitsPerPixel = bitDepth * spp;
+  const stride = Math.ceil((width * bitsPerPixel) / 8); // bytes per scanline
+  const fbpp = Math.max(1, Math.ceil(bitsPerPixel / 8)); // filter byte-step
   const out = Buffer.alloc(height * stride);
   let pos = 0;
   for (let y = 0; y < height; y++) {
@@ -35,9 +39,9 @@ function decodePNG(buf) {
     const rowStart = y * stride;
     for (let x = 0; x < stride; x++) {
       const rb = raw[pos++];
-      const a = x >= channels ? out[rowStart + x - channels] : 0;
+      const a = x >= fbpp ? out[rowStart + x - fbpp] : 0;
       const b = y > 0 ? out[(y - 1) * stride + x] : 0;
-      const c = (x >= channels && y > 0) ? out[(y - 1) * stride + x - channels] : 0;
+      const c = (x >= fbpp && y > 0) ? out[(y - 1) * stride + x - fbpp] : 0;
       let v;
       switch (filter) {
         case 0: v = rb; break;
@@ -50,7 +54,23 @@ function decodePNG(buf) {
       out[rowStart + x] = v & 0xff;
     }
   }
-  return { width, height, channels, data: out };
+  if (colorType === 3) {
+    // map palette indices -> RGB so the rest of the tool reads r,g,b normally
+    const rgb = Buffer.alloc(width * height * 3);
+    const cmask = (1 << bitDepth) - 1;
+    for (let y = 0; y < height; y++) {
+      const rowStart = y * stride;
+      for (let x = 0; x < width; x++) {
+        let idx;
+        if (bitDepth === 8) idx = out[rowStart + x];
+        else { const bit = x * bitDepth; idx = (out[rowStart + (bit >> 3)] >> (8 - bitDepth - (bit & 7))) & cmask; }
+        const p = idx * 3, o = (y * width + x) * 3;
+        rgb[o] = palette[p]; rgb[o + 1] = palette[p + 1]; rgb[o + 2] = palette[p + 2];
+      }
+    }
+    return { width, height, channels: 3, data: rgb };
+  }
+  return { width, height, channels: spp, data: out };
 }
 
 const [, , maskPath, outPath, gwArg, ghArg, threshArg, dilateArg, modeArg] = process.argv;

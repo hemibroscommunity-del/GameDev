@@ -270,13 +270,14 @@ export const TOWN_EXITS = [
    painted trail-heads later. */
 export const WORLDVIEW_EXITS = [
   { zoneId: 'town',    tx: 24, ty: 24, dir: 'north', label: 'Town',            color: '#cdb27a' },
-  { zoneId: 'ember',   tx: 24, ty: 6,  dir: 'north', label: 'Ember Fields ↑',  color: ELEMENTS.flame.color },
-  { zoneId: 'frost',   tx: 9,  ty: 9,  dir: 'nw',    label: 'Frozen Shore ↖',  color: ELEMENTS.frost.color },
-  { zoneId: 'sky',     tx: 39, ty: 9,  dir: 'ne',    label: 'Desert Winds ↗',  color: ELEMENTS.wind.color },
-  { zoneId: 'verdant', tx: 6,  ty: 22, dir: 'west',  label: 'Verdant Wilds ←', color: '#6abf4f' },
-  { zoneId: 'hollows', tx: 42, ty: 22, dir: 'east',  label: 'Deep Hollows →',  color: ELEMENTS.stone.color },
-  { zoneId: 'meadow',  tx: 14, ty: 32, dir: 'sw',    label: 'Starting Meadow', color: '#5a9a40' },
-  { zoneId: 'mist',    tx: 10, ty: 39, dir: 'sw',    label: 'Mistwood ↙',      color: ELEMENTS.venom.color },
-  { zoneId: 'thunder', tx: 40, ty: 38, dir: 'se',    label: 'Thunder Peaks ↘', color: ELEMENTS.storm.color },
-  { zoneId: 'tidal',   tx: 33, ty: 43, dir: 'south', label: 'Tidal Caves ↓',   color: ELEMENTS.water.color },
+  { zoneId: 'ember',   tx: 27, ty: 9,  dir: 'north', label: 'Ember Fields',    color: ELEMENTS.flame.color },
+  { zoneId: 'sky',     tx: 39, ty: 12, dir: 'ne',    label: 'Desert Winds',    color: ELEMENTS.wind.color },
+  { zoneId: 'hollows', tx: 43, ty: 23, dir: 'east',  label: 'Deep Hollows',    color: ELEMENTS.stone.color },
+  { zoneId: 'thunder', tx: 41, ty: 37, dir: 'se',    label: 'Thunder Peaks',   color: ELEMENTS.storm.color },
+  { zoneId: 'tidal',   tx: 25, ty: 40, dir: 'south', label: 'Tidal Caves',     color: ELEMENTS.water.color },
+  { zoneId: 'mist',    tx: 9,  ty: 32, dir: 'sw',    label: 'Mistwood',        color: ELEMENTS.venom.color },
+  { zoneId: 'verdant', tx: 10, ty: 16, dir: 'nw',    label: 'Verdant Wilds',   color: '#6abf4f' },
+  { zoneId: 'frost',   tx: 16, ty: 12, dir: 'nw',    label: 'Frozen Shore',    color: ELEMENTS.frost.color },
+  /* provisional -- no circle was marked for the Meadow; placed near town. */
+  { zoneId: 'meadow',  tx: 20, ty: 24, dir: 'west',  label: 'Starting Meadow', color: '#5a9a40' },
 ];
