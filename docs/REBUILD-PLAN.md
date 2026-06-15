@@ -699,6 +699,15 @@ that touches live behavior needs **on-device verification**.
   been a no-undef; the decl was kept. Always grep a moved local for OTHER
   uses before deleting it.
 
+- **weaponSwapSync — ✅ done (v2.3.898):** the empty-dep `useEffect` that
+  subscribes to `weaponSwapBus` and mirrors the picked slot into rpgState
+  (so the rKnob emoji / getActiveWeapon callers update) →
+  `src/game/weaponSwapSync.js` (`wireWeaponSwapSync(stateRef, setRpgState)`).
+  Verbatim; returns the bus unsubscribe as cleanup. Pairs conceptually with
+  gearWornSync (both sync a game event into rpgState). `weaponSwapBus`
+  imported via `@/ui/mobile/weaponSwapBus.js` (the `@`→`src` alias works
+  from `src/game/`).
+
 - **Candidates remaining (now the genuinely harder ones):**
   - More effects, by ascending risk: the small splash-audio / portrait
     effects (gated by showNameModal — could also fold into NameModal), then
