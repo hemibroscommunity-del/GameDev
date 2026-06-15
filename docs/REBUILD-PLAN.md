@@ -658,7 +658,29 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   no effect/loop bodies touched. Watch the `*/`-in-comment trap (a literal
   `getBt*/` in the header closed the block comment early — caught by
   node --check).
+## Effect / game-loop extraction (started v2.3.895)
+
+The render decomposition is essentially complete — BroTown.jsx is at the
+plan's target (~8.5k lines of component + JSX). The new phase moves effect
+**bodies** into `src/game/` behind a thin call, keeping the `useEffect` +
+its dep array in BroTown. Pattern: `useEffect(() => wireX(deps), [deps])`
+calling `export function wireX(deps) { …; return cleanup; }`. Each effect
+that touches live behavior needs **on-device verification**.
+
+- **gearWornSync — ✅ done (v2.3.895):** the first effect-body extraction.
+  The empty-dep `useEffect` that subscribes to chest/legs/shirt equip
+  changes and pushes a worn-map into React state →
+  `src/game/gearWornSync.js` (`wireGearWornSync(setGearWorn)`). Verbatim
+  body; `getEquip`/`onEquipChange` imported from `@/rendering/gearCatalog`;
+  BroTown's effect is now `useEffect(() => wireGearWornSync(setGearWorn), [])`.
+  Ideal first pick: empty deps, one React dep, clear cleanup, no
+  render-timing subtleties. Establishes the pattern for the rest.
+
 - **Candidates remaining (now the genuinely harder ones):**
+  - More effects, by ascending risk: the small splash-audio / portrait
+    effects (gated by showNameModal — could also fold into NameModal), then
+    listener/subscription effects, then the channel/networking setup, then
+    the rAF game loop (highest risk — extract last, verify hard).
   - A few small inline HUD bits remain (well-rested indicator ~18 lines,
     torch button, nearBuilding/nearNode interact prompts) — these are
     scattered between already-extracted mounts, so each is its own small
