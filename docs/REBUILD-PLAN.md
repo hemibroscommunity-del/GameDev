@@ -685,6 +685,20 @@ that touches live behavior needs **on-device verification**.
   `useEffect(() => wireThemeMusic(showNameModal, themeAudioRef), [showNameModal])`.
   Device-verified: splash torch crackle + theme music still play on tap.
 
+- **characterCreatorEffects — ✅ done (v2.3.897):** the three
+  character-creator lifecycle effects → `src/game/characterCreatorEffects.js`:
+  `wireCharacterPortrait(previewCanvasRef, sel)` (redraw the preview +
+  prewarm 7 angles on selection change; the 12 selections pass as a `sel`
+  object so the redraw body stays byte-identical), `wireSplashPrewarm(
+  showNameModal, introWarmRef)` (2.5s-delayed in-game-sheet + intro-clip
+  prefetch; returns clearTimeout cleanup), and `clampLongHairColor(hairSel,
+  hairColorSel, setHairColorSel)` (force dark hair color for the long
+  style). Trait/render helpers imported from `@/rendering/*`. GOTCHA caught
+  pre-CI: `LONG_HAIR_COLORS` had a SECOND use in BroTown (a hair-color
+  filter helper) beyond the clamp effect — removing its decl would have
+  been a no-undef; the decl was kept. Always grep a moved local for OTHER
+  uses before deleting it.
+
 - **Candidates remaining (now the genuinely harder ones):**
   - More effects, by ascending risk: the small splash-audio / portrait
     effects (gated by showNameModal — could also fold into NameModal), then
