@@ -33,15 +33,18 @@ export const IMAGE_ZONE_MAPS = {
      is gone.  town_v8.jpg fallback for blocked-autoplay; animated
      overlay through VIDEO_ZONE_MAPS.town below.  Bump suffix on next
      change to bust browser/CDN caches. */
-  town:    '/maps/town_v13.jpg',
-  frost:   '/maps/frost_v4.jpg',
-  meadow:  '/maps/meadow_v5.jpg',
-  thunder: '/maps/thunder_v4.jpg',
-  tidal:   '/maps/tidal_v5.jpg',
-  mist:    '/maps/mist_v4.jpg',
-  hollows: '/maps/hollows_v5.jpg',
-  ember:   '/maps/ember_v5.jpg',
-  sky:     '/maps/sky_v4.jpg',
+  town:    '/maps/town_v15.png',   /* new walled town with buildings (normal avatar size) */
+  worldview: '/maps/worldview_v1.png',   /* zoomed-out hub: trails branch to every region (speck avatar) */
+  frost:   '/maps/frost_v5.png',   /* redesign: meadow-coast -> deep-ice transition */
+  meadow:  '/maps/meadow_v6.png',   /* redesign: new painterly meadow (scaled to 1024 world) */
+  thunder: '/maps/thunder_v5.png',   /* redesign: metallic/electric buried-machine peaks */
+  tidal:   '/maps/tidal_v6.png',   /* redesign: arrival-by-sea cave island */
+  mist:    '/maps/mist_v5.png',   /* redesign: poison swamp, living edge -> toxic deep */
+  hollows: '/maps/hollows_v6.png',   /* redesign: underground crystal cavern */
+  ember:   '/maps/ember_v6.png',   /* redesign: volcanic, scorched fringe -> molten heart */
+  sky:     '/maps/sky_v5.png',   /* redesign: warm desert, scrub fringe -> dune sea */
+  farm_home: '/maps/farm_v1.png',   /* redesign: cozy sunlit farm grotto (newly image-backed) */
+  verdant: '/maps/verdant_v1.png',   /* redesign: new Flora spoke */
 };
 
 /** Zones that play a looping video as their map texture.  When a zone
@@ -64,7 +67,24 @@ export const VIDEO_ZONE_MAPS = {
  *  treats the painted footprints as collision.  When a zone has an
  *  IMAGE_ZONE_MAPS entry but NO walkability JSON, isSolid() defaults
  *  it to fully walkable. */
-export const WALKABILITY_MAPS = {};
+export const WALKABILITY_MAPS = {
+  /* Generated from a ChatGPT-painted magenta=blocked mask via
+     tools/mask-to-walkable.mjs (64x64 grid). Authoritative collision for
+     the new cove town -- blocks cliffs + ocean, replaces the stale
+     procedural building tiles. */
+  // town: '/maps/town_v14.walk.json',   /* TEMP: disabled so the Overlook preview is fully walkable (no mask yet) */
+  meadow: '/maps/meadow_v6.walk.json',
+  frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
+  tidal: '/maps/tidal_v6.walk.json',   /* note: mask covered rocks only -- open sea + deep pools still walkable, needs a water pass */
+  mist: '/maps/mist_v5.walk.json',
+  sky: '/maps/sky_v5.walk.json',
+  hollows: '/maps/hollows_v6.walk.json',   /* dark cave: formations block, dark rock floor walkable */
+  ember: '/maps/ember_v6.walk.json',   /* note: translucent magenta over lava may leak a few walkable lava spots */
+  thunder: '/maps/thunder_v5.walk.json',   /* dense machinery -> walkable is mostly the central path corridor */
+  farm_home: '/maps/farm_v1.walk.json',   /* note: mask was a wider aspect than the art -- walls align at edges, interior drifts a few % */
+  verdant: '/maps/verdant_v1.walk.json',
+  worldview: '/maps/worldview_v1.walk.json',   /* black-painted mask: walkable trails, blocked wedges */
+};
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
  *  once at renderer startup (alongside loadTileAssets / loadPlayerSprites).

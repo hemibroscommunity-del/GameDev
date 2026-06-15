@@ -30,7 +30,7 @@ export default {
     // for testing / private friend sessions).
     if (url.pathname === '/api/lobby') {
       const PREFIX = 'brotown';
-      const SOFT_CAP = 40;       // 10-player headroom under MAX_PLAYERS=50
+      const SOFT_CAP = 50;       // 10-player headroom under MAX_PLAYERS=60
       const SCAN_ROOMS = 10;     // existing pool to scan before minting fresh
       for (let i = 1; i <= SCAN_ROOMS; i++) {
         const room = PREFIX + '-' + i;
@@ -122,7 +122,7 @@ export class GameRoom {
     this.tickInterval = null;
     this.tickSeq = 0;
     this.TICK_RATE = 22; // 45Hz (22ms)
-    this.MAX_PLAYERS = 50;
+    this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
     this.WEAPON_STASH_CAP = 8; // mirrors WEAPON_STASH_MAX in src/data/gameSystems.js
     this.QUEST_AP_REWARD = 5;  // mirrors QUEST_AP_REWARD in src/data/items.js
@@ -288,15 +288,21 @@ export class GameRoom {
     // brute in hollows -> rockmonster sprite, brute in tidal -> fishman
     // sprite (via client ZONE_VARIANT_MAP); sky remaps every archetype
     // to mummy so the existing stalker/hexer/volatile mix is preserved.
+    // v2.3.856: banded level ranges -- MUST stay in lockstep with the client
+    // table in src/data/zones.js (the server is authoritative for monster
+    // stats, so a mismatch desyncs client damage prediction from monster_hit).
+    // Synced to docs/MAP-REDESIGN.md: meadow 1-10; frost+tidal 8-25;
+    // verdant+mist 22-40; desert(sky)+hollows 38-58; thunder+ember 55-80.
     const ZONES = {
-      meadow:  { w:32, h:32, level:[1,10], element:null,    spawns:[{arch:'fodder',count:10}] },
-      ember:   { w:32, h:32, level:[1,10], element:'flame', spawns:[{arch:'fodder',count:6}] },
-      mist:    { w:32, h:32, level:[1,10], element:'venom', spawns:[] },
-      frost:   { w:32, h:32, level:[1,10], element:'frost', spawns:[{arch:'snowman',count:4}] },
-      thunder: { w:32, h:32, level:[1,10], element:'storm', spawns:[{arch:'fodder',count:6}] },
-      hollows: { w:32, h:32, level:[1,10], element:'stone', spawns:[{arch:'brute',count:4}] },
-      sky:     { w:32, h:32, level:[1,10], element:'wind',  spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
-      tidal:   { w:32, h:32, level:[1,10], element:'water', spawns:[{arch:'brute',count:3}] },
+      meadow:  { w:32, h:32, level:[1,10],  element:null,    spawns:[{arch:'fodder',count:10}] },
+      ember:   { w:32, h:32, level:[55,80], element:'flame', spawns:[{arch:'fodder',count:6}] },
+      mist:    { w:32, h:32, level:[22,40], element:'venom', spawns:[] },
+      verdant: { w:32, h:32, level:[22,40], element:null,    spawns:[] },
+      frost:   { w:32, h:32, level:[8,25],  element:'frost', spawns:[{arch:'snowman',count:4}] },
+      thunder: { w:32, h:32, level:[55,80], element:'storm', spawns:[{arch:'fodder',count:6}] },
+      hollows: { w:32, h:32, level:[38,58], element:'stone', spawns:[{arch:'brute',count:4}] },
+      sky:     { w:32, h:32, level:[38,58], element:'wind',  spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
+      tidal:   { w:32, h:32, level:[8,25],  element:'water', spawns:[{arch:'brute',count:3}] },
     };
     return ZONES[zoneId] || null;
   }

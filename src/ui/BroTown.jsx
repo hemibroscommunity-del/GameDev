@@ -2964,7 +2964,21 @@ export var BroTown = function BroTown(_ref0) {
         var swimMult = S._swimming ? SWIM_SPEED_MULT : 1.0;
         /* Shield up: half speed.  Trades mobility for the guard. */
         var shieldMult = S._shieldUp ? 0.5 : 1.0;
-        var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult; /* sled overrides movement */
+        /* v2.3.858: vista perspective -- on a distance-based playerScale zone
+           (the Overlook), slow movement as the avatar shrinks toward the
+           distance so a tiny speck on the trail also creeps like a far-off
+           figure.  Full speed at the plateau centre, down to a 20% floor. */
+        var vistaSpeedMult = 1;
+        var _vz = ZONES[S.currentZone];
+        if (_vz && _vz.playerScale && typeof _vz.playerScale === 'object') {
+          var _vps = _vz.playerScale;
+          var _vcx = _vz.w * TILE / 2, _vcy = _vz.h * TILE / 2;
+          var _vd = Math.min(1, Math.hypot(S.player.x - _vcx, S.player.y - _vcy) / (Math.hypot(_vcx, _vcy) || 1));
+          var _vnear = _vps.near != null ? _vps.near : 0.6, _vfar = _vps.far != null ? _vps.far : 0.3, _vcurve = _vps.curve != null ? _vps.curve : 1;
+          var _vsc = _vnear + (_vfar - _vnear) * Math.pow(_vd, _vcurve);
+          vistaSpeedMult = Math.max(0.2, _vsc / _vnear);
+        }
+        var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
 
         /* Auto-attack movement: 50% speed across the board while
            S.autoAttack is on. Backpedal flag still tracks "moving

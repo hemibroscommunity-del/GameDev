@@ -4,6 +4,7 @@
  */
 import { Assets, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
+import { ZONES } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
@@ -3319,6 +3320,27 @@ export class EntityRenderer {
     display.visible = !_chopHide;
     display.x = P.x;
     display.y = P.y;
+
+    /* v2.3.858: per-zone player render scale -- shrink the avatar on vista
+       maps (e.g. the Overlook) so it doesn't dwarf the landscape.
+       zone.playerScale is either a flat number, or { near, far } to scale by
+       distance from the zone centre (bigger at the plateau, smaller toward the
+       distant edges). Absent => 1 (normal). */
+    {
+      const _z = ZONES[S.currentZone];
+      const ps = _z && _z.playerScale;
+      let pscale = 1;
+      if (typeof ps === 'number') pscale = ps;
+      else if (ps && typeof ps === 'object') {
+        const cx = (_z.w * TILE) / 2, cy = (_z.h * TILE) / 2;
+        const d = Math.min(1, Math.hypot(P.x - cx, P.y - cy) / (Math.hypot(cx, cy) || 1));
+        const near = ps.near != null ? ps.near : 0.6;
+        const far = ps.far != null ? ps.far : 0.3;
+        const curve = ps.curve != null ? ps.curve : 1; // <1 shrinks faster as you leave centre
+        pscale = near + (far - near) * Math.pow(d, curve);
+      }
+      if (display.scale.x !== pscale) display.scale.set(pscale);
+    }
 
     /* Self death visual — play the death sprite animation (player ->
        skeleton -> bone pile).  S._deathStart is set in the death

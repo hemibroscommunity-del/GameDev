@@ -256,13 +256,28 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
 /* v2.3.387: tx/ty are now PROXIMITY trigger tiles placed on the painted
    path-ends (the pink markers on the town map), not edge cells -- the town
    exit logic switched from "reach the edge" to "walk near the marker". */
+/* v2.3.859: town / world-view split. The cozy town (id 'town', keeps the
+   buildings/services) has ONE exit -- the north trail up to the World View,
+   the zoomed-out hub where the spokes branch. WORLDVIEW_EXITS holds those
+   branches plus the way back down to town (the central town circle). */
 export const TOWN_EXITS = [
-  { zoneId: 'frost',   tx: 7,  ty: 7,  dir: 'nw',    label: '↖ Frozen Shore',  color: ELEMENTS.frost.color },
-  { zoneId: 'meadow',  tx: 25, ty: 7,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
-  { zoneId: 'thunder', tx: 41, ty: 9,  dir: 'ne',    label: 'Thunder Peaks ↗', color: ELEMENTS.storm.color },
-  { zoneId: 'tidal',   tx: 45, ty: 27, dir: 'east',  label: 'Tidal Caves →',   color: ELEMENTS.water.color },
-  { zoneId: 'mist',    tx: 40, ty: 45, dir: 'se',    label: 'Mistwood ↘',      color: ELEMENTS.venom.color },
-  { zoneId: 'hollows', tx: 22, ty: 45, dir: 'south', label: 'Deep Hollows ↓',  color: ELEMENTS.stone.color },
-  { zoneId: 'ember',   tx: 3,  ty: 45, dir: 'sw',    label: '↙ Ember Fields',  color: ELEMENTS.flame.color },
-  { zoneId: 'sky',     tx: 4,  ty: 27, dir: 'west',  label: '← Desert Winds',  color: ELEMENTS.wind.color },
+  { zoneId: 'worldview', tx: 24, ty: 44, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
+];
+
+/* The World View is the second hub (see zoneTransitions hub logic). Trails
+   radiate from the central town circle to every region. Positions are
+   approximate (the zone is walkable-everywhere until a mask); tune them to the
+   painted trail-heads later. */
+export const WORLDVIEW_EXITS = [
+  { zoneId: 'town',    tx: 24, ty: 28, dir: 'north', label: 'Town',            color: '#cdb27a' },
+  { zoneId: 'ember',   tx: 27, ty: 9,  dir: 'north', label: 'Ember Fields',    color: ELEMENTS.flame.color },
+  { zoneId: 'sky',     tx: 39, ty: 12, dir: 'ne',    label: 'Desert Winds',    color: ELEMENTS.wind.color },
+  { zoneId: 'hollows', tx: 43, ty: 23, dir: 'east',  label: 'Deep Hollows',    color: ELEMENTS.stone.color },
+  { zoneId: 'thunder', tx: 41, ty: 37, dir: 'se',    label: 'Thunder Peaks',   color: ELEMENTS.storm.color },
+  { zoneId: 'tidal',   tx: 25, ty: 40, dir: 'south', label: 'Tidal Caves',     color: ELEMENTS.water.color },
+  { zoneId: 'mist',    tx: 9,  ty: 32, dir: 'sw',    label: 'Mistwood',        color: ELEMENTS.venom.color },
+  { zoneId: 'verdant', tx: 10, ty: 16, dir: 'nw',    label: 'Verdant Wilds',   color: '#6abf4f' },
+  { zoneId: 'frost',   tx: 16, ty: 12, dir: 'nw',    label: 'Frozen Shore',    color: ELEMENTS.frost.color },
+  /* provisional -- no circle was marked for the Meadow; placed near town. */
+  { zoneId: 'meadow',  tx: 20, ty: 24, dir: 'west',  label: 'Starting Meadow', color: '#5a9a40' },
 ];

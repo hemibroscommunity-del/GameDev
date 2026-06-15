@@ -19,7 +19,7 @@
      intentionally sees the pre-transition zone);
    - W/H: CSS-pixel canvas size for the camera snap.
    S is stateRef.current; P is S.player (same object the loop mutates). */
-import { TILE, ZONES, ELEMENTS, TOWN_EXITS, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createMonster } from '@/data/index.js';
+import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createMonster } from '@/data/index.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import { _typeof } from '@/lib/babelHelpers.js';
 
@@ -29,11 +29,15 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
            path-ends (the pink markers), not the map edge.  Transition when
            the player walks within TOWN_EXIT_R tiles (manhattan) of an exit
            marker.  Nearest marker wins if two overlap. */
-        if (S.currentZone === 'town') {
+        /* v2.3.859: hubs with exit markers -- the town and the World View.
+           Each branches via its own exits array. */
+        var _hubExits = S.currentZone === 'town' ? TOWN_EXITS
+          : (S.currentZone === 'worldview' ? WORLDVIEW_EXITS : null);
+        if (_hubExits) {
           var TOWN_EXIT_R = 2;
           var bestExit = null,
             bestDist = Infinity;
-          TOWN_EXITS.forEach(function (ex) {
+          _hubExits.forEach(function (ex) {
             var d = Math.abs(ptx - ex.tx) + Math.abs(pty - ex.ty);
             if (d <= TOWN_EXIT_R && d < bestDist) {
               bestDist = d;
@@ -43,6 +47,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           if (bestExit) {
             /* Zone exits — open to all players (quest gate removed) */
             {
+              S._enteredFromHub = S.currentZone; /* v2.3.859: which hub (town/worldview) to return to */
               S.currentZone = bestExit.zoneId;
               perfTracker.setZone(bestExit.zoneId);
               updateZoneDimensions(bestExit.zoneId);
@@ -79,6 +84,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               /* Spawn continues your direction of travel from town.
                  Then remap tile 9 (return) to the entry edge and tile 10 (dungeon) to the far edge. */
               S._enteredFromDir = bestExit.dir; /* remember entry direction for return */
+              S._enteredFromExit = { tx: bestExit.tx, ty: bestExit.ty }; /* v2.3.861: exact hub exit, so the return lands where you left */
               var midX = Math.floor(newZone.w / 2) * TILE;
               var midY = Math.floor(newZone.h / 2) * TILE;
               /* Spawn opposite to entry direction so the zone is "in
@@ -100,6 +106,9 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               else if (bestExit.dir === 'se')    { P.x = TILE * 5;         P.y = TILE * 8;       }
               else if (bestExit.dir === 'sw')    { P.x = nW - TILE * 5;    P.y = TILE * 8;       }
               else                                { P.x = midX;             P.y = nH - TILE * 5; }
+              /* v2.3.860: entering the World View, spawn by the central town
+                 circle (just south of centre), not flung to the ocean edge. */
+              if (bestExit.zoneId === 'worldview') { P.x = midX; P.y = midY + TILE * 7; }
               /* Push monsters away from player spawn — minimum 200px distance */
               var _minSpawnDist = 200;
               if (S.monsters) {
@@ -233,7 +242,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.camera.y = P.y - H / 2;
             } /* end zone transition */
           }
-        } else if (S.currentZone !== 'town' && !S._inDungeon) {
+        } else if (S.currentZone !== 'town' && S.currentZone !== 'worldview' && !S._inDungeon) {
           /* In combat zones: return to town when NEAR a tile-9 return marker.
              v2.3.823: was an exact step-onto-tile-9 check, but the player's
              bottom foot-margin (kept off the dashboard) now leaves the very
@@ -258,11 +267,12 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             }
           }
           if (_czNearReturn) {
-            S.currentZone = 'town';
-            updateZoneDimensions('town');
-            BT_AUDIO.startZoneAmbient('town');
-            S.map = generateZoneMap('town');
-            S.monsters = []; /* Town has no monsters */
+            var _retHub = (S._enteredFromHub === 'worldview') ? 'worldview' : 'town'; /* v2.3.859 */
+            S.currentZone = _retHub;
+            updateZoneDimensions(_retHub);
+            BT_AUDIO.startZoneAmbient(_retHub);
+            S.map = generateZoneMap(_retHub);
+            S.monsters = []; /* hub has no monsters */
             S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
             /* Spawn at the same town extreme you originally left from
                — 8 directions including diagonals so corner-exit zones
@@ -271,10 +281,11 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                left from -- offset 4 tiles toward the hub center so you land
                on the path clear of the proximity trigger (else you'd warp
                straight back out). */
-            var twn2 = ZONES.town;
-            var entryDir = S._enteredFromDir || 'north';
+            var twn2 = ZONES[_retHub];
             var _rcx = twn2.w / 2, _rcy = twn2.h / 2;
-            var _rex = TOWN_EXITS.find(function (e) { return e.dir === entryDir; });
+            /* v2.3.861: return to the EXACT hub exit the player left from, so
+               they land back on the trail-head they entered the zone at. */
+            var _rex = S._enteredFromExit;
             if (_rex) {
               var _rdx = _rcx - _rex.tx, _rdy = _rcy - _rex.ty;
               var _rlen = Math.max(0.001, Math.sqrt(_rdx * _rdx + _rdy * _rdy));
@@ -284,10 +295,11 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               P.x = _rcx * TILE; P.y = _rcy * TILE;
             }
             S._enteredFromDir = null;
+            S._enteredFromExit = null;
             S.dmgNumbers.push({
               x: P.x,
               y: P.y - 40,
-              text: 'Town',
+              text: _retHub === 'worldview' ? 'World View' : 'Town',
               color: '#5b52ff',
               ts: Date.now()
             });
