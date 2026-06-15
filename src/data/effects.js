@@ -269,7 +269,7 @@ export const TOWN_EXITS = [
    approximate (the zone is walkable-everywhere until a mask); tune them to the
    painted trail-heads later. */
 export const WORLDVIEW_EXITS = [
-  { zoneId: 'town',    tx: 24, ty: 24, dir: 'north', label: 'Town',            color: '#cdb27a' },
+  { zoneId: 'town',    tx: 24, ty: 28, dir: 'north', label: 'Town',            color: '#cdb27a' },
   { zoneId: 'ember',   tx: 27, ty: 9,  dir: 'north', label: 'Ember Fields',    color: ELEMENTS.flame.color },
   { zoneId: 'sky',     tx: 39, ty: 12, dir: 'ne',    label: 'Desert Winds',    color: ELEMENTS.wind.color },
   { zoneId: 'hollows', tx: 43, ty: 23, dir: 'east',  label: 'Deep Hollows',    color: ELEMENTS.stone.color },

@@ -84,6 +84,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               /* Spawn continues your direction of travel from town.
                  Then remap tile 9 (return) to the entry edge and tile 10 (dungeon) to the far edge. */
               S._enteredFromDir = bestExit.dir; /* remember entry direction for return */
+              S._enteredFromExit = { tx: bestExit.tx, ty: bestExit.ty }; /* v2.3.861: exact hub exit, so the return lands where you left */
               var midX = Math.floor(newZone.w / 2) * TILE;
               var midY = Math.floor(newZone.h / 2) * TILE;
               /* Spawn opposite to entry direction so the zone is "in
@@ -107,7 +108,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               else                                { P.x = midX;             P.y = nH - TILE * 5; }
               /* v2.3.860: entering the World View, spawn by the central town
                  circle (just south of centre), not flung to the ocean edge. */
-              if (bestExit.zoneId === 'worldview') { P.x = midX; P.y = Math.floor(newZone.h * 0.63) * TILE; }
+              if (bestExit.zoneId === 'worldview') { P.x = midX; P.y = midY + TILE * 7; }
               /* Push monsters away from player spawn — minimum 200px distance */
               var _minSpawnDist = 200;
               if (S.monsters) {
@@ -281,10 +282,10 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                on the path clear of the proximity trigger (else you'd warp
                straight back out). */
             var twn2 = ZONES[_retHub];
-            var entryDir = S._enteredFromDir || 'north';
-            var _retExits = (_retHub === 'worldview') ? WORLDVIEW_EXITS : TOWN_EXITS;
             var _rcx = twn2.w / 2, _rcy = twn2.h / 2;
-            var _rex = _retExits.find(function (e) { return e.dir === entryDir; });
+            /* v2.3.861: return to the EXACT hub exit the player left from, so
+               they land back on the trail-head they entered the zone at. */
+            var _rex = S._enteredFromExit;
             if (_rex) {
               var _rdx = _rcx - _rex.tx, _rdy = _rcy - _rex.ty;
               var _rlen = Math.max(0.001, Math.sqrt(_rdx * _rdx + _rdy * _rdy));
@@ -294,6 +295,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               P.x = _rcx * TILE; P.y = _rcy * TILE;
             }
             S._enteredFromDir = null;
+            S._enteredFromExit = null;
             S.dmgNumbers.push({
               x: P.x,
               y: P.y - 40,
