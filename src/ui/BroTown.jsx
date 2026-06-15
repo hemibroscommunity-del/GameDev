@@ -72,7 +72,6 @@ const COOKED_HEAL_BY_KEY = {
 };
 import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
-import { weaponSwapBus } from './mobile/weaponSwapBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets, prewarmBaseSheets } from '@/rendering/pixiRenderer.js';
@@ -1498,18 +1497,6 @@ export var BroTown = function BroTown(_ref0) {
       return clearInterval(interval);
     };
   }, [showNameModal, showLogin]);
-  /* Weapon-swap bar (WeaponSwapBar.jsx) publishes the requested slot here;
-     mirror it into rpgState so the rKnob emoji + getActiveWeapon callers
-     pick up the change. weaponSwapBus already mutates window._gameState
-     directly so game-loop logic flips immediately on tap. */
-  useEffect(function () {
-    return weaponSwapBus.subscribe(function (slot) {
-      var S = stateRef.current;
-      if (!S || !S.rpg) return;
-      S.rpg.activeSlot = slot;
-      setRpgState(_objectSpread({}, S.rpg));
-    });
-  }, []);
   /* Load player sprite sheets once, on mount. Per-direction frame counts
      and cycle durations differ — east source video is ~1 s, north/south
      ~2 s. Storing intervalMs per sheet lets each direction animate at its
