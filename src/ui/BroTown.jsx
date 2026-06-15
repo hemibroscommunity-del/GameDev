@@ -94,6 +94,7 @@ import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { wireGearWornSync } from '@/game/gearWornSync.js';
 import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
 import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/game/characterCreatorEffects.js';
+import { wireTownMusic } from '@/game/townMusic.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDamage, addBuildProg, addBuildUse, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage, applyMeleeLifesteal } from '@/game/combatHelpers.js';
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
@@ -1484,18 +1485,7 @@ export var BroTown = function BroTown(_ref0) {
   }, [chatInput]);
   /* Ambient background music — gentle chiptune loop */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
-    var melody = [262, 294, 330, 294, 262, 330, 392, 330, 262, 294, 330, 392, 440, 392, 330, 294];
-    var noteIdx = 0;
-    var interval = setInterval(function () {
-      if (!BT_AUDIO.muted && BT_AUDIO.ctx) {
-        BT_AUDIO.bgNote(melody[noteIdx % melody.length], 0.6);
-      }
-      noteIdx++;
-    }, 1800);
-    return function () {
-      return clearInterval(interval);
-    };
+    return wireTownMusic(showNameModal, showLogin);
   }, [showNameModal, showLogin]);
   /* Load player sprite sheets once, on mount. Per-direction frame counts
      and cycle durations differ — east source video is ~1 s, north/south
