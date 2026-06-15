@@ -93,6 +93,7 @@ import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor, shirtColorTarget } f
 import { getEquip, setEquip, onEquipChange, reconcileGearStash } from '@/rendering/gearCatalog.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { wireGearWornSync } from '@/game/gearWornSync.js';
+import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDamage, addBuildProg, addBuildUse, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage, applyMeleeLifesteal } from '@/game/combatHelpers.js';
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
@@ -1222,21 +1223,7 @@ export var BroTown = function BroTown(_ref0) {
      pointerdown (any tap counts), loops quietly, and stops when the
      modal closes (PLAY). */
   useEffect(function () {
-    if (!showNameModal) return;
-    var au = null;
-    var start = function () {
-      try {
-        au = new Audio('/ui/welcome/torch-crackle.m4a');
-        au.loop = true;
-        au.volume = 0.22;
-        au.play().catch(function () {});
-      } catch (e) {}
-    };
-    window.addEventListener('pointerdown', start, { once: true });
-    return function () {
-      window.removeEventListener('pointerdown', start);
-      try { if (au) { au.pause(); au.src = ''; au = null; } } catch (e) {}
-    };
+    return wireTorchCrackle(showNameModal);
   }, [showNameModal]);
   /* v2.3.830: splash theme music (owner's chiptune adventure track).  Same
      autoplay-policy dance as the torch crackle — browsers block un-muted
@@ -1246,23 +1233,7 @@ export var BroTown = function BroTown(_ref0) {
      crossfades it into the town ambience at the transition.  start() is a
      no-op if the theme is already armed so re-renders don't double it. */
   useEffect(function () {
-    if (!showNameModal) return;
-    var start = function () {
-      try {
-        if (themeAudioRef.current) return;
-        var au = new Audio('/ui/welcome/theme.m4a');
-        au.loop = true;
-        au.volume = 0.4;
-        au.play().catch(function () {});
-        themeAudioRef.current = au;
-      } catch (e) {}
-    };
-    window.addEventListener('pointerdown', start, { once: true });
-    return function () {
-      window.removeEventListener('pointerdown', start);
-      /* deliberately NOT stopping the theme here — it carries into the
-         loading screen; IntroVideo (or the skip-intro path) hands it off. */
-    };
+    return wireThemeMusic(showNameModal, themeAudioRef);
   }, [showNameModal]);
   /* The long-hair sprite is ~88% pure black, so a light hair color over-
      processes into a black band around the face (see characterPortrait recolor

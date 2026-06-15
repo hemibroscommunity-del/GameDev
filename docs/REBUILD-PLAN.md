@@ -676,6 +676,15 @@ that touches live behavior needs **on-device verification**.
   Ideal first pick: empty deps, one React dep, clear cleanup, no
   render-timing subtleties. Establishes the pattern for the rest.
 
+- **splashAudio (wireTorchCrackle + wireThemeMusic) — ✅ done (v2.3.896):**
+  the two showNameModal-gated character-creator audio effects (arm on the
+  splash's first pointerdown, loop) → `src/game/splashAudio.js`. Verbatim
+  bodies; each early-returns (no cleanup) when the modal isn't showing,
+  exactly as before. BroTown effects are now
+  `useEffect(() => wireTorchCrackle(showNameModal), [showNameModal])` and
+  `useEffect(() => wireThemeMusic(showNameModal, themeAudioRef), [showNameModal])`.
+  Device-verified: splash torch crackle + theme music still play on tap.
+
 - **Candidates remaining (now the genuinely harder ones):**
   - More effects, by ascending risk: the small splash-audio / portrait
     effects (gated by showNameModal — could also fold into NameModal), then
