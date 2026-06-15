@@ -256,20 +256,27 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
 /* v2.3.387: tx/ty are now PROXIMITY trigger tiles placed on the painted
    path-ends (the pink markers on the town map), not edge cells -- the town
    exit logic switched from "reach the edge" to "walk near the marker". */
-/* v2.3.857: exits placed at the town's walkable EDGE (~90% out toward the
-   cliff line in 9 directions), computed from public/maps/town_v14.walk.json,
-   so they read as "leave town at the perimeter" instead of floating in
-   mid-grass.  Meadow keeps the north trail.  Still abstract teleports until
-   the town art gets visible doorways or we add an overlook hub -- but no
-   longer in open space. */
+/* v2.3.859: town / world-view split. The cozy town (id 'town', keeps the
+   buildings/services) has ONE exit -- the north trail up to the World View,
+   the zoomed-out hub where the spokes branch. WORLDVIEW_EXITS holds those
+   branches plus the way back down to town (the central town circle). */
 export const TOWN_EXITS = [
-  { zoneId: 'meadow',  tx: 24, ty: 3,  dir: 'north', label: 'Starting Meadow ↑', color: '#5a9a40' },
-  { zoneId: 'thunder', tx: 38, ty: 8,  dir: 'ne',    label: 'Thunder Peaks ↗',   color: ELEMENTS.storm.color },
-  { zoneId: 'tidal',   tx: 43, ty: 21, dir: 'east',  label: 'Tidal Caves →',     color: ELEMENTS.water.color },
-  { zoneId: 'mist',    tx: 42, ty: 35, dir: 'se',    label: 'Mistwood ↘',        color: ELEMENTS.venom.color },
-  { zoneId: 'verdant', tx: 31, ty: 44, dir: 'south', label: 'Verdant Wilds ↓',   color: '#6abf4f' },
-  { zoneId: 'hollows', tx: 17, ty: 44, dir: 'south', label: 'Deep Hollows ↓',    color: ELEMENTS.stone.color },
-  { zoneId: 'ember',   tx: 6,  ty: 35, dir: 'sw',    label: 'Ember Fields ↙',    color: ELEMENTS.flame.color },
-  { zoneId: 'sky',     tx: 5,  ty: 21, dir: 'west',  label: 'Desert Winds ←',    color: ELEMENTS.wind.color },
-  { zoneId: 'frost',   tx: 12, ty: 10, dir: 'nw',    label: 'Frozen Shore ↖',    color: ELEMENTS.frost.color },
+  { zoneId: 'worldview', tx: 24, ty: 4, dir: 'north', label: 'World View ↑', color: '#cdb27a' },
+];
+
+/* The World View is the second hub (see zoneTransitions hub logic). Trails
+   radiate from the central town circle to every region. Positions are
+   approximate (the zone is walkable-everywhere until a mask); tune them to the
+   painted trail-heads later. */
+export const WORLDVIEW_EXITS = [
+  { zoneId: 'town',    tx: 24, ty: 24, dir: 'south', label: 'Town',            color: '#cdb27a' },
+  { zoneId: 'ember',   tx: 24, ty: 6,  dir: 'north', label: 'Ember Fields ↑',  color: ELEMENTS.flame.color },
+  { zoneId: 'frost',   tx: 9,  ty: 9,  dir: 'nw',    label: 'Frozen Shore ↖',  color: ELEMENTS.frost.color },
+  { zoneId: 'sky',     tx: 39, ty: 9,  dir: 'ne',    label: 'Desert Winds ↗',  color: ELEMENTS.wind.color },
+  { zoneId: 'verdant', tx: 6,  ty: 22, dir: 'west',  label: 'Verdant Wilds ←', color: '#6abf4f' },
+  { zoneId: 'hollows', tx: 42, ty: 22, dir: 'east',  label: 'Deep Hollows →',  color: ELEMENTS.stone.color },
+  { zoneId: 'meadow',  tx: 14, ty: 32, dir: 'sw',    label: 'Starting Meadow', color: '#5a9a40' },
+  { zoneId: 'mist',    tx: 10, ty: 39, dir: 'sw',    label: 'Mistwood ↙',      color: ELEMENTS.venom.color },
+  { zoneId: 'thunder', tx: 40, ty: 38, dir: 'se',    label: 'Thunder Peaks ↘', color: ELEMENTS.storm.color },
+  { zoneId: 'tidal',   tx: 33, ty: 43, dir: 'south', label: 'Tidal Caves ↓',   color: ELEMENTS.water.color },
 ];

@@ -33,7 +33,8 @@ export const IMAGE_ZONE_MAPS = {
      is gone.  town_v8.jpg fallback for blocked-autoplay; animated
      overlay through VIDEO_ZONE_MAPS.town below.  Bump suffix on next
      change to bust browser/CDN caches. */
-  town:    '/maps/overlook_v1.png',   /* TEMP PREVIEW: evaluating the Overlook as the hub -- restore town_v14.png after */
+  town:    '/maps/town_v15.png',   /* new walled town with buildings (normal avatar size) */
+  worldview: '/maps/worldview_v1.png',   /* zoomed-out hub: trails branch to every region (speck avatar) */
   frost:   '/maps/frost_v5.png',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.png',   /* redesign: new painterly meadow (scaled to 1024 world) */
   thunder: '/maps/thunder_v5.png',   /* redesign: metallic/electric buried-machine peaks */

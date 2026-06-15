@@ -19,7 +19,7 @@
      intentionally sees the pre-transition zone);
    - W/H: CSS-pixel canvas size for the camera snap.
    S is stateRef.current; P is S.player (same object the loop mutates). */
-import { TILE, ZONES, ELEMENTS, TOWN_EXITS, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createMonster } from '@/data/index.js';
+import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createMonster } from '@/data/index.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import { _typeof } from '@/lib/babelHelpers.js';
 
@@ -29,11 +29,15 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
            path-ends (the pink markers), not the map edge.  Transition when
            the player walks within TOWN_EXIT_R tiles (manhattan) of an exit
            marker.  Nearest marker wins if two overlap. */
-        if (S.currentZone === 'town') {
+        /* v2.3.859: hubs with exit markers -- the town and the World View.
+           Each branches via its own exits array. */
+        var _hubExits = S.currentZone === 'town' ? TOWN_EXITS
+          : (S.currentZone === 'worldview' ? WORLDVIEW_EXITS : null);
+        if (_hubExits) {
           var TOWN_EXIT_R = 2;
           var bestExit = null,
             bestDist = Infinity;
-          TOWN_EXITS.forEach(function (ex) {
+          _hubExits.forEach(function (ex) {
             var d = Math.abs(ptx - ex.tx) + Math.abs(pty - ex.ty);
             if (d <= TOWN_EXIT_R && d < bestDist) {
               bestDist = d;
@@ -43,6 +47,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           if (bestExit) {
             /* Zone exits — open to all players (quest gate removed) */
             {
+              S._enteredFromHub = S.currentZone; /* v2.3.859: which hub (town/worldview) to return to */
               S.currentZone = bestExit.zoneId;
               perfTracker.setZone(bestExit.zoneId);
               updateZoneDimensions(bestExit.zoneId);
@@ -233,7 +238,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.camera.y = P.y - H / 2;
             } /* end zone transition */
           }
-        } else if (S.currentZone !== 'town' && !S._inDungeon) {
+        } else if (S.currentZone !== 'town' && S.currentZone !== 'worldview' && !S._inDungeon) {
           /* In combat zones: return to town when NEAR a tile-9 return marker.
              v2.3.823: was an exact step-onto-tile-9 check, but the player's
              bottom foot-margin (kept off the dashboard) now leaves the very
@@ -258,11 +263,12 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             }
           }
           if (_czNearReturn) {
-            S.currentZone = 'town';
-            updateZoneDimensions('town');
-            BT_AUDIO.startZoneAmbient('town');
-            S.map = generateZoneMap('town');
-            S.monsters = []; /* Town has no monsters */
+            var _retHub = (S._enteredFromHub === 'worldview') ? 'worldview' : 'town'; /* v2.3.859 */
+            S.currentZone = _retHub;
+            updateZoneDimensions(_retHub);
+            BT_AUDIO.startZoneAmbient(_retHub);
+            S.map = generateZoneMap(_retHub);
+            S.monsters = []; /* hub has no monsters */
             S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
             /* Spawn at the same town extreme you originally left from
                — 8 directions including diagonals so corner-exit zones
@@ -271,10 +277,11 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                left from -- offset 4 tiles toward the hub center so you land
                on the path clear of the proximity trigger (else you'd warp
                straight back out). */
-            var twn2 = ZONES.town;
+            var twn2 = ZONES[_retHub];
             var entryDir = S._enteredFromDir || 'north';
+            var _retExits = (_retHub === 'worldview') ? WORLDVIEW_EXITS : TOWN_EXITS;
             var _rcx = twn2.w / 2, _rcy = twn2.h / 2;
-            var _rex = TOWN_EXITS.find(function (e) { return e.dir === entryDir; });
+            var _rex = _retExits.find(function (e) { return e.dir === entryDir; });
             if (_rex) {
               var _rdx = _rcx - _rex.tx, _rdy = _rcy - _rex.ty;
               var _rlen = Math.max(0.001, Math.sqrt(_rdx * _rdx + _rdy * _rdy));
@@ -287,7 +294,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             S.dmgNumbers.push({
               x: P.x,
               y: P.y - 40,
-              text: 'Town',
+              text: _retHub === 'worldview' ? 'World View' : 'Town',
               color: '#5b52ff',
               ts: Date.now()
             });

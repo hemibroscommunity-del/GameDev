@@ -9,11 +9,18 @@ export const ZONES = {
        to suit the grid. */
     id: 'town', name: 'Town', w: 48, h: 48,
     element: null, level: [0, 0], music: 'town', safe: true,
-    palette: { ground: '#4a6741', path: '#8b7355', accent: '#5a7a50' },
-    /* TEMP (Overlook preview): shrink the avatar to a speck on the vista --
-       ~55% at the plateau centre, shrinking FAST (curve<1) to ~6% as you head
-       up the trails toward the distant regions. Move to the real overlook zone
-       when town art is restored. (number = flat scale instead.) */
+    palette: { ground: '#4a6741', path: '#8b7355', accent: '#5a7a50' }
+  },
+  worldview: {
+    /* v2.3.859: zoomed-out hub map. The town is the small circle at its
+       centre; trails branch to every region (WORLDVIEW_EXITS). The avatar
+       renders as a speck toward the distant trails (playerScale) and moves
+       slower there (BroTown movement), to sell the vista's depth. */
+    id: 'worldview', name: 'World View', w: 48, h: 48,
+    element: null, level: [0, 0], music: 'town', safe: true,
+    palette: { ground: '#b89a5a', path: '#cdb27a', accent: '#7aa050' },
+    spawns: [],
+    atmosphere: { tint: 'rgba(180,200,230,0.03)', vignette: 'rgba(80,110,150,0.05)' },
     playerScale: { near: 0.55, far: 0.03, curve: 0.6 }
   },
   meadow: {
