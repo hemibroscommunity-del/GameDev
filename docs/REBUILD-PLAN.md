@@ -732,6 +732,29 @@ that touches live behavior needs **on-device verification**.
   looping BufferSource through BT_AUDIO's master bus) →
   `src/game/slimeAudio.js` (`wireSlimeAudio(stateRef, slimeIdleAudioRef)`).
   Verbatim; returns the interval-clear + source-stop cleanup.
+  (Owner note: the frame-drop incident this audio was tied to was the OLD
+  HTMLAudio impl; the current Web-Audio version FIXED it — feature is live,
+  not disabled.)
+
+- **orientationSync — ✅ done (v2.3.902):** the empty-dep resize/orientation
+  listener that updates the isLandscape flag → `src/game/orientationSync.js`
+  (`wireOrientationSync(setIsLandscape)`). Verbatim; returns the
+  listener-removal cleanup.
+
+### The rAF game loop stays in BroTown (decision)
+The `═══ GAME LOOP ═══` effect (~2,453 lines, deps `[showNameModal,
+showLogin, glEpoch]`, BroTown ~1678) is the perf-critical simulation +
+PixiJS/Canvas render loop with an enormous closure (100+ captured vars).
+The WS channel effect is already a thin `setupWebSocket({...})` wrapper.
+Per the plan's end-state ("BroTown shrinks to UI orchestration… game
+systems live in src/game/"), the game loop IS the orchestration that
+belongs in the component — extracting it behind a 100+ entry deps object
+would be more error-prone and less readable than leaving it, and it can't
+be fully device-verified. **Recommendation: leave the game loop inline;**
+the decomposition has reached its sensible end-state (BroTown 15.9k → 8.3k).
+Remaining nibbles (small post-loop effects: firemakingBus sub — verify it
+has a live publisher first, the edge-swipe guard, chat-focus/BT_AUDIO.init,
+session-resume) are optional low-value follow-ups.
 - **Candidates remaining (now the genuinely harder ones):**
   - More effects, by ascending risk: the small splash-audio / portrait
     effects (gated by showNameModal — could also fold into NameModal), then

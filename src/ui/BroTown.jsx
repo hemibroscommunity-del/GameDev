@@ -97,6 +97,7 @@ import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/
 import { wireTownMusic } from '@/game/townMusic.js';
 import { wireSpriteSheets } from '@/game/spriteSheets.js';
 import { wireSlimeAudio } from '@/game/slimeAudio.js';
+import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDamage, addBuildProg, addBuildUse, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage, applyMeleeLifesteal } from '@/game/combatHelpers.js';
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
@@ -4451,17 +4452,7 @@ export var BroTown = function BroTown(_ref0) {
 
   /* Re-render on orientation change */
   useEffect(function () {
-    var _window$screen;
-    var onResize = function onResize() {
-      return setIsLandscape(window.innerWidth > window.innerHeight);
-    };
-    window.addEventListener('resize', onResize);
-    if ((_window$screen = window.screen) !== null && _window$screen !== void 0 && _window$screen.orientation) window.screen.orientation.addEventListener('change', onResize);
-    return function () {
-      var _window$screen2;
-      window.removeEventListener('resize', onResize);
-      if ((_window$screen2 = window.screen) !== null && _window$screen2 !== void 0 && _window$screen2.orientation) window.screen.orientation.removeEventListener('change', onResize);
-    };
+    return wireOrientationSync(setIsLandscape);
   }, []);
   /* Expose legacy panel toggles for the utility wheel (replaces toolbar). */
   useEffect(function () {
