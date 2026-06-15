@@ -712,6 +712,12 @@ that touches live behavior needs **on-device verification**.
   subscription never fired). Lesson: when an extraction target turns out to
   be dead, delete don't relocate.
 
+- **townMusic — ✅ done (v2.3.899):** the `[showNameModal, showLogin]`-gated
+  in-town background-melody interval (a chiptune note every 1.8s via
+  BT_AUDIO) → `src/game/townMusic.js` (`wireTownMusic(showNameModal,
+  showLogin)`). Verbatim; returns clearInterval cleanup; early-returns
+  while the splash/login is up.
+
 - **Candidates remaining (now the genuinely harder ones):**
   - More effects, by ascending risk: the small splash-audio / portrait
     effects (gated by showNameModal — could also fold into NameModal), then
