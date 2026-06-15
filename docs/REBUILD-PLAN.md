@@ -646,10 +646,23 @@ the gate, and eslint no-undef catches a missed prop in the new component.
   note: an `function(_t){…}()` IIFE → `Component({stateRef})` with `_t` as
   a local var is a clean conversion when the only free vars are stateRef +
   imports. BroTown.jsx now under 9k lines (8,969).
+- **MenuBar — ✅ done (v2.3.894):** the scrollable bottom action/menu
+  button bar (~427 lines: the horizontal-scroll row of buttons that open
+  every panel — inventory, skills, stats, social, clan, guild, leaderboard,
+  encyclopedia, feedback, shop, emotes, info — plus special-attack, chat
+  toggle, pet/body bits) → `src/ui/panels/MenuBar.jsx`. The most entangled
+  render extraction: 32 props (rpgState/stateRef + the show* flags, the
+  panel-toggle setters, doSpecialAttack), 6 @/data + 4 @/networking + 4
+  babel imports, 7 hoisted temps. The onClick handlers (incl. async
+  btRpc/syncRpgToServer calls) are event handlers that moved with the JSX —
+  no effect/loop bodies touched. Watch the `*/`-in-comment trap (a literal
+  `getBt*/` in the header closed the block comment early — caught by
+  node --check).
 - **Candidates remaining (now the genuinely harder ones):**
-  - A few small inline HUD bits remain (well-rested indicator, torch
-    button, nearBuilding interact prompts) — re-survey the return tree;
-    extract any that are clean gated subtrees / self-contained IIFEs first.
+  - A few small inline HUD bits remain (well-rested indicator ~18 lines,
+    torch button, nearBuilding/nearNode interact prompts) — these are
+    scattered between already-extracted mounts, so each is its own small
+    component. Low value; batch a few if continuing.
   - **Top-level effect / game-loop / channel wiring** — the highest-risk
     category. Prefer moving effect bodies into `src/game/` behind a deps
     object, one effect at a time, only with the full verification protocol
