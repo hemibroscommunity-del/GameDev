@@ -726,6 +726,12 @@ that touches live behavior needs **on-device verification**.
   byte-identical (destructured back to the original names); the 4
   tiledMaps imports move to the module. Biggest effect extraction so far
   (−127 lines). Genuine game-system code that belongs in src/game/.
+
+- **slimeAudio — ✅ done (v2.3.901):** the empty-dep slime proximity-audio
+  loop (80ms tick → nearest fodder monster → inverse-distance gain on a
+  looping BufferSource through BT_AUDIO's master bus) →
+  `src/game/slimeAudio.js` (`wireSlimeAudio(stateRef, slimeIdleAudioRef)`).
+  Verbatim; returns the interval-clear + source-stop cleanup.
 - **Candidates remaining (now the genuinely harder ones):**
   - More effects, by ascending risk: the small splash-audio / portrait
     effects (gated by showNameModal — could also fold into NameModal), then
