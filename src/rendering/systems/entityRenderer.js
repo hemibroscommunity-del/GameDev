@@ -3816,6 +3816,18 @@ export class EntityRenderer {
       if (display._facialHairSprite) display._facialHairSprite.visible = false;
       if (display._hairSprite) display._hairSprite.visible = false;
       if (display._shirtSprite) display._shirtSprite.visible = false;
+      /* Hide the worn gear too -- otherwise the equipped armour stands in
+         place while the (shirtless) swing stand-in plays above it. */
+      for (const _g of [display._gearShirt, display._gearLegs, display._gearChest,
+                        display._gearShoulders, display._gearHead]) {
+        if (_g) _g.visible = false;
+      }
+      /* Publish the avatar's foot world-Y so the stand-in (effectsRenderer)
+         plants its feet exactly where the real body's feet were, instead of
+         floating up.  The body is anchored frame-centre (256-frame, feet row
+         221), so feet sit (221-128)*bodyScale below the display origin, then
+         scaled by the per-zone display scale. */
+      S._swordFootY = display.y + (221 - 128) * bodyScale * (display.scale.y || 1);
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this

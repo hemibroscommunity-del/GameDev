@@ -2264,7 +2264,9 @@ export class EffectsRenderer {
     const s = SWORD_BODY_H / 188;
     sp.scale.set(s, s);
     sp.x = S.player.x;
-    sp.y = S.player.y;
+    /* Plant the feet where the real avatar's feet were (published by
+       entityRenderer); fall back to player.y if not set yet. */
+    sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
     this._placeSkillTraitsOn('sword', sp, fi, 'south', false);
   }
