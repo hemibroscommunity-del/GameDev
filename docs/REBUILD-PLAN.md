@@ -718,6 +718,14 @@ that touches live behavior needs **on-device verification**.
   showLogin)`). Verbatim; returns clearInterval cleanup; early-returns
   while the splash/login is up.
 
+- **spriteSheets — ✅ done (v2.3.900):** the ~129-line mount-time
+  (empty-dep) loader for the per-direction player jog/hit sheets, slime
+  sheets, weapon sprites + hand anchors, and Tiled walkability maps →
+  `src/game/spriteSheets.js` (`wireSpriteSheets(stateRef, refs)`). The 10
+  image/anchor refs pass via a `refs` object so the body stays
+  byte-identical (destructured back to the original names); the 4
+  tiledMaps imports move to the module. Biggest effect extraction so far
+  (−127 lines). Genuine game-system code that belongs in src/game/.
 - **Candidates remaining (now the genuinely harder ones):**
   - More effects, by ascending risk: the small splash-audio / portrait
     effects (gated by showNameModal — could also fold into NameModal), then
