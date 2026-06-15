@@ -699,6 +699,19 @@ that touches live behavior needs **on-device verification**.
   been a no-undef; the decl was kept. Always grep a moved local for OTHER
   uses before deleting it.
 
+- **Dead weapon-swap-bus path removed — ✅ done (v2.3.898):** while
+  extracting the `weaponSwapBus.subscribe` effect (PR #107, closed) the
+  owner flagged the weapon-swap bar + emoji indicator as dead. Verified:
+  nothing calls `weaponSwapBus.setSlot` (no publisher), `WeaponSwapBar.jsx`
+  was already deleted (only comments reference it), BottomDashboard's bus
+  import was unused, and the live weapon swap runs via a separate path
+  (BroTown mutates `rpg.activeSlot` + sends `set_active_slot` directly). So
+  instead of relocating dead code, removed it: the `weaponSwapBus.subscribe`
+  effect + its BroTown import, the unused BottomDashboard import, and the
+  orphaned `src/ui/mobile/weaponSwapBus.js`. Behavior-neutral (the
+  subscription never fired). Lesson: when an extraction target turns out to
+  be dead, delete don't relocate.
+
 - **Candidates remaining (now the genuinely harder ones):**
   - More effects, by ascending risk: the small splash-audio / portrait
     effects (gated by showNameModal — could also fold into NameModal), then
