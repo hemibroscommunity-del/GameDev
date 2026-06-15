@@ -53,14 +53,15 @@ function decodePNG(buf) {
   return { width, height, channels, data: out };
 }
 
-const [, , maskPath, outPath, gwArg, ghArg, threshArg, dilateArg] = process.argv;
+const [, , maskPath, outPath, gwArg, ghArg, threshArg, dilateArg, modeArg] = process.argv;
 if (!maskPath || !outPath || !gwArg || !ghArg) {
-  console.error('usage: node tools/mask-to-walkable.mjs <mask.png> <out.json> <gridW> <gridH> [blockThreshold=0.5] [dilate=0]');
+  console.error('usage: node tools/mask-to-walkable.mjs <mask.png> <out.json> <gridW> <gridH> [blockThreshold=0.5] [dilate=0] [mode=magenta|black]');
   process.exit(1);
 }
 const gw = parseInt(gwArg, 10), gh = parseInt(ghArg, 10);
 const thresh = threshArg ? parseFloat(threshArg) : 0.5;
 const dilate = dilateArg ? parseInt(dilateArg, 10) : 0;
+const mode = modeArg || 'magenta';
 
 const img = decodePNG(readFileSync(maskPath));
 const total = Array.from({ length: gh }, () => new Array(gw).fill(0));
@@ -72,11 +73,13 @@ for (let y = 0; y < img.height; y++) {
     const i = (y * img.width + x) * img.channels;
     const r = img.data[i], g = img.data[i + 1], b = img.data[i + 2];
     total[ty][tx]++;
-    // magenta/pink overlay = green well below BOTH red and blue. Relative
-    // (not absolute) so it catches the overlay at any brightness, incl. dim
-    // magenta painted over dark backgrounds. Tan floor/grass (b<=g) and grey
-    // rock (r~=g) fail it; blue/teal crystals (r<g) fail it too.
-    if (r - g >= 50 && b - g >= 40) mag[ty][tx]++;
+    // 'magenta' mode: pink overlay = green well below BOTH red and blue
+    //   (relative, so it catches the overlay at any brightness).
+    // 'black' mode: blocked = near-black paint (all channels very low).
+    const hit = mode === 'black'
+      ? (r < 50 && g < 50 && b < 50)
+      : (r - g >= 50 && b - g >= 40);
+    if (hit) mag[ty][tx]++;
   }
 }
 let grid = [];
