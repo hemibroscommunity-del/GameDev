@@ -105,6 +105,9 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               else if (bestExit.dir === 'se')    { P.x = TILE * 5;         P.y = TILE * 8;       }
               else if (bestExit.dir === 'sw')    { P.x = nW - TILE * 5;    P.y = TILE * 8;       }
               else                                { P.x = midX;             P.y = nH - TILE * 5; }
+              /* v2.3.860: entering the World View, spawn by the central town
+                 circle (just south of centre), not flung to the ocean edge. */
+              if (bestExit.zoneId === 'worldview') { P.x = midX; P.y = Math.floor(newZone.h * 0.63) * TILE; }
               /* Push monsters away from player spawn — minimum 200px distance */
               var _minSpawnDist = 200;
               if (S.monsters) {

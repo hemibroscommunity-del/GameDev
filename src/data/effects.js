@@ -261,7 +261,7 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
    the zoomed-out hub where the spokes branch. WORLDVIEW_EXITS holds those
    branches plus the way back down to town (the central town circle). */
 export const TOWN_EXITS = [
-  { zoneId: 'worldview', tx: 24, ty: 4, dir: 'north', label: 'World View ↑', color: '#cdb27a' },
+  { zoneId: 'worldview', tx: 24, ty: 44, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
 ];
 
 /* The World View is the second hub (see zoneTransitions hub logic). Trails
@@ -269,7 +269,7 @@ export const TOWN_EXITS = [
    approximate (the zone is walkable-everywhere until a mask); tune them to the
    painted trail-heads later. */
 export const WORLDVIEW_EXITS = [
-  { zoneId: 'town',    tx: 24, ty: 24, dir: 'south', label: 'Town',            color: '#cdb27a' },
+  { zoneId: 'town',    tx: 24, ty: 24, dir: 'north', label: 'Town',            color: '#cdb27a' },
   { zoneId: 'ember',   tx: 24, ty: 6,  dir: 'north', label: 'Ember Fields ↑',  color: ELEMENTS.flame.color },
   { zoneId: 'frost',   tx: 9,  ty: 9,  dir: 'nw',    label: 'Frozen Shore ↖',  color: ELEMENTS.frost.color },
   { zoneId: 'sky',     tx: 39, ty: 9,  dir: 'ne',    label: 'Desert Winds ↗',  color: ELEMENTS.wind.color },
