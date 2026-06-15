@@ -94,6 +94,7 @@ import { getEquip, setEquip, onEquipChange, reconcileGearStash } from '@/renderi
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { wireGearWornSync } from '@/game/gearWornSync.js';
 import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
+import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/game/characterCreatorEffects.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDamage, addBuildProg, addBuildUse, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage, applyMeleeLifesteal } from '@/game/combatHelpers.js';
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
@@ -1180,18 +1181,14 @@ export var BroTown = function BroTown(_ref0) {
     setPreviewDir(_PREVIEW_DIRS[(i + step + _PREVIEW_DIRS.length) % _PREVIEW_DIRS.length]);
   };
   useEffect(function () {
-    if (!previewCanvasRef.current) return;
-    drawCharacterPortrait(previewCanvasRef.current, {
-      dir: previewDir,
-      skin: skinSel, pants: pantsSel, shoes: shoesSel,
-      hair: hairSel, hairColor: hairSel === 'long' ? null : hairColorTarget(hairColorSel),
-      facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
-      headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
-      shirt: shirtSel, shirtColor: shirtColorTarget(shirtColorSel),
+    return wireCharacterPortrait(previewCanvasRef, {
+      previewDir: previewDir,
+      skinSel: skinSel, pantsSel: pantsSel, shoesSel: shoesSel,
+      hairSel: hairSel, hairColorSel: hairColorSel,
+      facialHairSel: facialHairSel, beardColorSel: beardColorSel,
+      headwearSel: headwearSel, hatColorSel: hatColorSel,
+      shirtSel: shirtSel, shirtColorSel: shirtColorSel,
     });
-    /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
-       rotating never waits on the network. */
-    prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });
   }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel]);
   /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
@@ -1200,23 +1197,7 @@ export var BroTown = function BroTown(_ref0) {
      held in a ref so the prefetch isn't garbage-collected mid-download. */
   var _introWarmRef = useRef(null);
   useEffect(function () {
-    if (!showNameModal) return;
-    /* v2.3.717: prewarm DELAYED 2.5s -- kicking it immediately had the
-       game sheets racing the welcome screen's own theme art for
-       bandwidth, which is exactly the "modal loads slow" complaint.
-       Let the visible UI finish dressing first. */
-    var t = setTimeout(function () {
-      try { prewarmBaseSheets(); } catch (e) {}
-      try {
-        var v = document.createElement('video');
-        v.preload = 'auto';
-        v.muted = true;
-        v.src = '/intro/brotown-intro.mp4';
-        v.load();
-        _introWarmRef.current = v;
-      } catch (e) {}
-    }, 2500);
-    return function () { clearTimeout(t); };
+    return wireSplashPrewarm(showNameModal, _introWarmRef);
   }, [showNameModal]);
   /* v2.3.722: torch crackle, extracted from the owner's flame clip.
      Browsers refuse un-muted autoplay, so it arms on the modal's first
@@ -1241,9 +1222,7 @@ export var BroTown = function BroTown(_ref0) {
      back to default if a style switch or a returning player leaves it light. */
   var LONG_HAIR_COLORS = ['black'];
   useEffect(function () {
-    if (hairSel === 'long' && LONG_HAIR_COLORS.indexOf(hairColorSel) === -1) {
-      setHairColor(LONG_HAIR_COLORS[0]); setHairColorSel(LONG_HAIR_COLORS[0]);
-    }
+    clampLongHairColor(hairSel, hairColorSel, setHairColorSel);
   }, [hairSel]);
   /* Category picker helpers: shared tile primitives for the tabs-and-
      drawer creator (v2.3.797 vertical-flow redesign) — thumbnail tiles for
