@@ -1116,6 +1116,11 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
   sprite.visible = true;
 }
 
+/* v2.3.910: how long the sword-swing stand-in plays (the 14-frame swing maps
+   across this window from S.swingTimer).  Exported so effectsRenderer drives
+   the same window when it draws the stand-in and composites the traits. */
+export const SWORD_SWING_MS = 300;
+
 /** Place hat + beard + hair (the player's current selection) on a stand-in
  *  skill sprite.  sprites = { hat, beard, hair } owned by the caller. */
 export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
@@ -3401,7 +3406,15 @@ export class EntityRenderer {
        v2.3.854: same for mining -- the pickaxe is baked into the 'mine'
        sheet, so the equipped weapon must not show. */
     const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining'));
-    if (_fishingPose) {
+    /* v2.3.910: south-facing melee swing -> play the sword-swing stand-in
+       (effectsRenderer) and hide the real body + weapon for the swing window.
+       Gated on last frame's published render facing ('south' only -- the only
+       direction the swing art exists for), the melee swing flag, and no active
+       gathering/firemaking.  Combat logic is untouched; this is visual only. */
+    const _swordSwing = !!(S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWORD_SWING_MS
+      && S._renderFacing === 'south' && !S._extraction && !S._firemaking);
+    S._swordSwinging = _swordSwing;
+    if (_fishingPose || _swordSwing) {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
       if (display._handCapSprite) display._handCapSprite.visible = false;
@@ -3787,6 +3800,22 @@ export class EntityRenderer {
       display._spriteBody.visible = false;
       body.visible = true;
       display._spritePathRendered = false; _hideBodyRegions(display);
+    }
+
+    /* v2.3.910: during the south melee swing the sword-swing stand-in
+       (effectsRenderer) stands in for the avatar's body, so hide the real
+       body + its head traits here.  _spritePathRendered stays true so the
+       NFT / procedural fallbacks below don't draw a body in its place. */
+    if (_swordSwing) {
+      display._spriteBody.visible = false;
+      body.visible = false;
+      _hideBodyRegions(display);
+      display._spritePathRendered = true;
+      if (display._traitFace) display._traitFace.visible = false;
+      if (display._headwearSprite) display._headwearSprite.visible = false;
+      if (display._facialHairSprite) display._facialHairSprite.visible = false;
+      if (display._hairSprite) display._hairSprite.visible = false;
+      if (display._shirtSprite) display._shirtSprite.visible = false;
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this
