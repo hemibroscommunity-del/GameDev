@@ -311,11 +311,463 @@ pure-logic moves and continue thinning the component.
   to the passed-in `S` (same object). Setters via deps (setShowEmotes,
   setBuildingPanel). This roughly exhausts the cleanly-separable
   game-logic in BroTown; what remains is genuine UI/JSX territory.
-- **Candidates remaining:** the big remaining mass is JSX panels/modals
-  are `useCallback`s that read `stateRef.current` + a few setters — more
-  entangled (would need a deps object), so a later pass. The big
-  remaining mass is JSX panels/modals (UI decomposition), still its own
-  separate effort.
+## Dead-content removal (owner-directed)
+
+- **In-window gather minigame removed — ✅ done (v2.3.867):** the old
+  `gatherMini` timing-bar modal ("TAP when the bar hits the green zone"
+  for fishing/woodcutting/mining, ~300 lines: useState + animation
+  useEffect + 3 dead `setGatherMini` fall-throughs + the UI block) was
+  deleted. Owner confirmed (2026-06-14) the in-window life-skill minigames
+  were replaced by on-screen gesture events. Proven dead first: every
+  gather node type (fishSpot/tree/oreVein/campfire, plus createGatherNode's
+  `oreVein` default) returns early into the gesture flow
+  (`_startExtraction`/`_startCookingAtCampfire`) before the `setGatherMini`
+  fall-through, so it was unreachable. The elemental Minigame Arena
+  (`showMinigame`/`ELEMENTAL_MINIGAMES`) is a SEPARATE system and was left
+  untouched. `evaluateMinigame` (only used by gatherMini) dropped from the
+  DATA destructure. Zero residual refs; gesture flow intact.
+
+## Dead/unwanted-content removal (owner-directed)
+
+- **Elemental Minigame Arena removed — ✅ done (v2.3.871):** the on-farm
+  2–4 player elemental minigames (Lava Dodge, etc.) — owner asked to
+  remove (same "no in-window minigames" direction). It was LIVE/reachable
+  (not dead): `ZONES.farm_home._minigameArena` was placed during farm-map
+  gen, gating a proximity button → `showMinigame` modals. Removed across
+  3 files (client-only — it used peer `broadcast` events, no server DO
+  handler): BroTown (two `showMinigame` modal blocks ~820 lines, the
+  showMinigame/minigameInstance useStates, the `_nearMinigameArena`
+  detection, the farm button, the arena-only imports), `desktopControls.js`
+  (the E-key arena branch + its dep), and `gameSystems.js` (the farm-gen
+  arena structure + `_minigameArena` rect). **Kept `MINIGAME_REWARDS`**
+  (still used by the live gesture extraction). The now-orphaned data-layer
+  cluster (`ELEMENTAL_MINIGAMES`, `createMinigameInstance`,
+  `evaluateMinigame`, arena `MINIGAME_*` consts) has no importers and is
+  tree-shaken — left as a trivial optional follow-up. ~890 lines removed.
+
+## UI/JSX decomposition (the remaining BroTown mass)
+
+The game-logic is out; what's left in BroTown is the React component + its
+JSX panel/modal tree (~20 `showX && React.createElement(...)` blocks).
+Pattern: move a panel's createElement subtree to `src/ui/panels/<Name>.jsx`
+as a component, pass the values it closed over as props, mount it with
+`React.createElement(<Name>, { ...props })`. Caveat: the JSX tree is the
+hottest part of the file (splash/HUD/camera/life-skill sessions edit it),
+so pick self-contained panels clear of that churn, and keep prop surfaces
+small. `npm run build` can't run in the web sandbox — lint-build/Pages is
+the gate, and eslint no-undef catches a missed prop in the new component.
+
+- **InfoPanel — ✅ done (v2.3.855):** the online-count + mute/close
+  utility popup (`showInfo`, ~66 lines) → `src/ui/panels/InfoPanel.jsx`.
+  Proof-of-concept for the panel pattern: tiny prop surface
+  (`playerCount`, `setPlayerCount`, `setShowInfo`, `stateRef`; `BT_AUDIO`
+  imported), end-of-tree and isolated from the parallel UI work. Subtree
+  byte-identical; BroTown full-file syntax re-checked after the splice.
+- **LeaderboardPanel — ✅ done (v2.3.856):** the top-50 rankings modal
+  (`showLeaderboard`, ~288 lines) → `src/ui/panels/LeaderboardPanel.jsx`.
+  Includes its render-time IIFE (fetches /api/leaderboard on tab change,
+  merges nearby players, sorts, renders) — moved verbatim, side effects
+  preserved. 5 props (stateRef, leaderboardTab, setLeaderboardTab,
+  setRpgState, setShowLeaderboard); LIFE_SKILLS/BT_API_BASE/babel
+  imported; fetch is the global. Boundaries found by paren-matching (not
+  by eye) since the panel ends in a nested IIFE; full-file syntax
+  re-checked.
+- **GuildPanel — ✅ done (v2.3.857):** the skill-guild rank/quest/title
+  screen (`showGuildPanel`, ~342 lines) → `src/ui/panels/GuildPanel.jsx`.
+  6 props (rpgState, guildSkill, setGuildSkill, setRpgState,
+  setShowGuildPanel, stateRef); GUILD_RANKS/SKILL_GUILDS/getGuildQuest/
+  getGuildRank/BT_AUDIO + babel imported. Boundary paren-matched; subtree
+  byte-identical; full-file syntax re-checked.
+- **FeedbackPanel — ✅ done (v2.3.858):** the submit + browse community
+  feedback modal (`showFeedback`, ~598 lines — the biggest panel yet) →
+  `src/ui/panels/FeedbackPanel.jsx`. Includes its async ticket-list fetch,
+  moved verbatim. 18 props (8 feedback-* useState values + their setters +
+  setShowFeedback + stateRef); FEEDBACK_CATEGORIES/FEEDBACK_TOPICS/
+  BT_API_BASE/BT_AUDIO + babel async/spread helpers imported; fetch /
+  URLSearchParams are globals. Props destructure + mount object generated
+  programmatically to avoid typos across the large surface.
+- **ClanPanel — ✅ done (v2.3.859):** the clan create/manage/war screen
+  (`showClanPanel`, ~726 lines — now the biggest) → `src/ui/panels/
+  ClanPanel.jsx`. 8 props; CLAN_*/ELEMENTS/ZONES/createClanWar/
+  createDefaultClan/BT_AUDIO + babel imported (CLAN_WAR_ZONES +
+  createClanWar were globalThis-only inline — imported explicitly per the
+  no-globals rule). **Gotcha the scanner caught:** `_clanData$members(2)`
+  are babel optional-chaining temps hoisted to BroTown's top-level var
+  list, not declared in the panel — declared locally in the component
+  (reassigned before each read, byte-equivalent). A reminder to scan every
+  panel for hoisted transpiler temps, not just state/props.
+- **SocialPanel — ✅ done (v2.3.860):** the friends/muted/blocked lists
+  modal (`showSocialPanel`, ~257 lines) → `src/ui/panels/SocialPanel.jsx`.
+  Purely presentational — zero module imports (only React + 8 props: the
+  three lists + their setters + setShowSocialPanel + stateRef). Two
+  verification notes: (a) the depth-aware scan MISSED `setBlockedList` (a
+  bare-call setter) — caught by a direct `grep set[A-Z]\w*(` enumeration,
+  now part of the per-panel checklist; (b) the `_stateRef$current26/28`
+  and `_f$name` babel temps were declared locally inside the panel (lines
+  45/215), not hoisted like ClanPanel's — verified directly.
+- **Per-panel pre-ship checklist (learned the hard way):** (1) paren-match
+  the boundary; (2) depth-aware scan for the prop surface; (3) **grep all
+  `set[A-Z]\w*(` calls** (scan has a bare-call blind spot); (4) **verify
+  every module import is a real `export`** (not just present in the `=
+  DATA` destructure — `createDefaultClan` was a phantom); (5) grep for
+  hoisted babel temps (`_x$y`) not declared in the subtree; (6) full-file
+  `node --check`. CI (vite build) remains the final gate.
+- **PetHousePanel — ✅ done (v2.3.861):** the pet slots/evolve/enchant
+  modal (`showPetHouse`, ~460 lines) → `src/ui/panels/PetHousePanel.jsx`.
+  10 props; ELEMENTS/MAX_PET_SLOTS/PET_EVOLUTION_TIERS/enchantPet/evolvePet/
+  BT_AUDIO + babel imported (all verified real exports). Six hoisted babel
+  temps (`_rpgState$lifeSkills{3,4,5,6,8,9}`) declared locally — caught by
+  a comprehensive `_\w+(\$\w+)+` temp enumeration (some were assigned
+  inside `var pets = (...)` initializers, so a naive "declared?" check
+  false-positived; the depth-aware enumeration is the reliable one).
+- **FurniturePanel — ✅ done (v2.3.862):** the furniture crafting
+  workshop (`showFurniture`, ~158 lines) → `src/ui/panels/FurniturePanel.jsx`.
+  4 props; FURNITURE_RECIPES/addLifeSkillXp/BT_AUDIO + babel imported
+  (real exports verified); `_R$lifeSkills2`/`_rpgState$lifeSkills0` hoisted
+  temps declared locally.
+- **DungeonCreatorPanel — ✅ done (v2.3.863):** the custom-dungeon
+  builder (`showDungeonCreator`, ~1073 lines — the largest panel) →
+  `src/ui/panels/DungeonCreatorPanel.jsx`. 8 props; ARCHETYPES/DUNGEON
+  packs/ELEMENTS/TILE/createMonster/getDungeonCreatorUnlocks/
+  validateCustomDungeon/BT_AUDIO + babel imported (real exports verified);
+  no hoisted temps; globalThis is a runtime global. Caught locally: a `*/`
+  inside the header comment (from `DUNGEON_*/`) closed the block comment
+  early — node --check flagged it before push. (Watch for `*/` sequences
+  in generated comments.)
+- **EncyclopediaPanel — ✅ done (v2.3.864):** the discovery compendium
+  (`showEncyclopedia`, ~703 lines) → `src/ui/panels/EncyclopediaPanel.jsx`.
+  Notably reads no rpgState/stateRef — discovery state comes via the
+  imported discovered*/visitedZones selectors. 3 props; 15 data symbols +
+  babel imported (all real exports); `_key$split2` hoisted temp local.
+- **SkillsPanel — ✅ done (v2.3.865):** the life-skill levels / resources
+  / quest-progress screen (`showSkills`, ~574 lines) → `src/ui/panels/
+  SkillsPanel.jsx`. Display-only — 3 props (rpgState, stateRef,
+  setShowSkills; no setRpgState). 5 data + babel imports (real exports);
+  `_rpgState$lifeSkills46` hoisted temp local. (The `_`/`g`/`herb` the
+  scanner flagged were regex/string content, not identifiers.)
+- **ShopPanel — ✅ done (v2.3.866):** the town shop buy/sell modal
+  (`showShop`, ~222 lines) → `src/ui/panels/ShopPanel.jsx`. 4 props;
+  SHOP_ITEMS_FOR_SALE/SHOP_PRICES/BT_AUDIO + syncRpgToServer + babel
+  imported (real exports verified); no hoisted temps.
+- **StatScreenPanel — ✅ done (v2.3.869):** the character stats /
+  attribute-allocation screen (`showStatScreen`, ~251 lines) → `src/ui/
+  panels/StatScreenPanel.jsx`. 4 props; calc derived-stat helpers +
+  getActiveWeapon/getWeaponCritStat/xpRequired/BT_AUDIO + babel imported
+  (real exports verified); no hoisted temps; confirm/localStorage globals.
+- **QuestPanel — ✅ done (v2.3.870):** the NPC quest accept/turn-in dialog
+  (`questPanel`, ~127 lines) → `src/ui/panels/QuestPanel.jsx`. The
+  transition logic already lived in `@/game/quests.js` (Phase 3); the
+  panel imports acceptQuest/turnInQuest from there. 5 props;
+  `_questPanel$npcRef` hoisted temp declared locally. (Quest content is
+  dormant, but the panel is wired and moved behavior-frozen.)
+- **buildingPanel sub-panels — ✅ COMPLETE (owner-approved sub-by-sub):**
+  the ~5.8k-line buildingPanel container was decomposed one sub-panel
+  at a time into `src/ui/panels/buildings/`, not lifted wholesale. All 11
+  sub-panels are now extracted (forge, woodwork, enchant, gemcut,
+  exchange, farm, bank, cook, gamble, party, shop→VendorPanel). Each
+  `buildingPanel === 'X' &&` gate stays in BroTown; only the Fragment
+  subtree moved. BroTown.jsx dropped from ~15.9k to ~12.1k lines over the
+  run.
+  - **ForgePanel — ✅ done (v2.3.872):** the `buildingPanel === 'forge'`
+    blacksmith clause (~1,134 lines: weapon/armor craft, reforge, harden,
+    salvage) → `src/ui/panels/buildings/ForgePanel.jsx`. 3 props (rpgState,
+    stateRef, setRpgState); 19 data/helper imports verified real;
+    `_rpgState$lifeSkills21` hoisted temp local. The `buildingPanel ===
+    'forge' &&` gate stays in BroTown; the Fragment subtree is the panel.
+  - **WoodworkPanel — ✅ done (v2.3.873):** the `buildingPanel === 'woodwork'`
+    clause (~367 lines) → `src/ui/panels/buildings/WoodworkPanel.jsx`. 3
+    props; imports verified real; 4 hoisted babel temps declared locally.
+  - **EnchantPanel — ✅ done (v2.3.874):** the `buildingPanel === 'enchant'`
+    clause (~412 lines: gem socketing / amulet+shield enchant) →
+    `src/ui/panels/buildings/EnchantPanel.jsx`. 3 props; imports verified
+    real; 5 hoisted babel temps declared locally.
+  - **GemcutPanel — ✅ done (v2.3.875):** the `buildingPanel === 'gemcut'`
+    clause (~135 lines: raw-gem cutting / GEM_CUT_TIERS) →
+    `src/ui/panels/buildings/GemcutPanel.jsx`. 3 props
+    (rpgState, stateRef, setRpgState); imports verified real; 2 hoisted
+    babel temps declared locally.
+  - **ExchangePanel — ✅ done (v2.3.876):** the `buildingPanel === 'exchange'`
+    clause (~792 lines: the player marketplace — buy/sell orders, price
+    estimation, order matching, async fetch to the worker) →
+    `src/ui/panels/buildings/ExchangePanel.jsx`. The big, entangled one:
+    21 props (rpgState, stateRef, setRpgState + the 9 `mkt*` state values
+    and their 9 setters). Data imports verified real; `BT_API_BASE`
+    re-imported from `@/networking/index.js` (byte-identical to BroTown's
+    local var); async/regenerator + spread/slice babel helpers imported;
+    14 hoisted optional-chaining temps declared locally. eslint is
+    correctness-only (no-undef etc.; no no-unused-vars/no-redeclare), so
+    declaring the full temp set is safe and avoids any out-of-scope ref.
+  - **FarmPanel — ✅ done (v2.3.877):** the `buildingPanel === 'farm'`
+    clause (~310 lines: the farm plot manager — plant/harvest crops,
+    regenerate the farm_home zone map) →
+    `src/ui/panels/buildings/FarmPanel.jsx`. 4 props (rpgState, stateRef,
+    setRpgState, setBuildingPanel). Data imports verified real
+    (generateZoneMap / updateZoneDimensions resolve from gameSystems via
+    the @/data barrel); 2 hoisted babel temps declared locally.
+  - **BankPanel — ✅ done (v2.3.878):** the `buildingPanel === 'bank'`
+    clause (~55 lines: the bank / equipped-gear summary view) →
+    `src/ui/panels/buildings/BankPanel.jsx`. The simplest one: 1 prop
+    (rpgState), read-only, no setters / data tables / babel helpers; 3
+    hoisted optional-chaining temps declared locally.
+  - **CookPanel — ✅ done (v2.3.879):** the `buildingPanel === 'cook'`
+    clause (~531 lines: the cooking station — pick a fish, hit the
+    sweet-spot timing, brew a heal dish) →
+    `src/ui/panels/buildings/CookPanel.jsx`. 5 props (rpgState, stateRef,
+    setRpgState, cookMinigame, setCookMinigame). Data imports verified
+    real (createDefaultCompStats from items via the @/data barrel);
+    hoisted optional-chaining temp set declared locally.
+  - **GamblePanel — ✅ done (v2.3.880):** the `buildingPanel === 'gamble'`
+    clause (~262 lines: the casino — coin-flip bet + jackpot deposit) →
+    `src/ui/panels/buildings/GamblePanel.jsx`. 3 props (rpgState,
+    stateRef, setRpgState). Data imports verified real
+    (createDefaultCompStats from items via the @/data barrel); the 8
+    hoisted `_compStats` optional-chaining temps declared locally.
+  - **PartyPanel — ✅ done (v2.3.881):** the `buildingPanel === 'party'`
+    clause (~1634 lines — the **largest** sub-panel: the Arena, with a
+    live tournament bracket, match betting, champion rewards, and worker
+    polling for arena state) → `src/ui/panels/buildings/PartyPanel.jsx`.
+    15 props (rpgState, stateRef, setRpgState plus the 6 `arena*` state
+    values and their 6 setters). Data imports verified real; BT_API_BASE
+    re-imported from @/networking (byte-identical to BroTown's local var);
+    async/regenerator + spread/spread-array babel helpers imported; the
+    hoisted optional-chaining temp set declared locally.
+  - **VendorPanel — ✅ done (v2.3.882):** the `buildingPanel === 'shop'`
+    clause (~142 lines: the in-building Vendor view — basic supplies for
+    starting adventurers) → `src/ui/panels/buildings/VendorPanel.jsx`.
+    **Named VendorPanel, not ShopPanel**, to avoid colliding with the
+    pre-existing town-shop modal `panels/ShopPanel.jsx` (the `showShop`
+    overlay) — they are two distinct shop UIs. 3 props (rpgState,
+    stateRef, setRpgState); BT_AUDIO verified real; no hoisted temps.
+    This was the last buildingPanel sub-panel.
+- **InventoryPanel — ✅ done (v2.3.883):** the `showInventory && rpgState`
+  modal subtree (~827 lines: the full inventory / equipment screen — equip
+  and compare gear, weapon stash, amulet/shield/pet slots, item actions) →
+  `src/ui/panels/InventoryPanel.jsx`. The first modal that needed
+  BroTown-local bindings passed as props: alongside rpgState/stateRef/
+  setRpgState/setShowInventory it takes **gearWorn** (a useState value) and
+  **toggleGearSlot** (a useCallback) — 6 props total, the "deps object" the
+  plan anticipated, but just plain props. 18 data/helper imports verified
+  real (including `discoveredCollisions`, a `Set` exported from
+  gameSystems). NOTE: the inventory subtree has multi-`$` babel temps
+  (e.g. `_ELEMENTS$wpn$element0`); the extraction scanner's single-`$`
+  regex truncated them to prefixes and the free-var verifier caught the
+  resulting `no-undef` risk — the full multi-`$` set is now declared
+  locally. Use the `_[A-Za-z0-9_]+(\$[A-Za-z0-9]+)+` pattern for temps.
+- **TradePanel — ✅ done (v2.3.884):** the `showTrade && tradeTarget &&
+  rpgState` modal subtree (~179 lines: the outgoing player-to-player trade
+  window — pick items + quantities to offer, send/cancel) →
+  `src/ui/panels/TradePanel.jsx`. 6 props: rpgState, stateRef, tradeTarget,
+  tradeOffer (state) and setShowTrade, setTradeOffer (setters). No
+  data-table imports; only spread/slice babel helpers; no hoisted temps.
+- **IncomingTradePanel — ✅ done (v2.3.885):** the `incomingTrade &&
+  rpgState` modal subtree (~150 lines: the inbound trade-request popup —
+  review the offer, accept or decline) →
+  `src/ui/panels/IncomingTradePanel.jsx`. 4 props: stateRef, incomingTrade
+  (state), setIncomingTrade, setRpgState (setters); rpgState is read only
+  in the gate, not the subtree. BT_AUDIO verified real; spread/slice babel
+  helpers; one hoisted temp declared locally.
+- **PlayerListPanel + EmotePanel — ✅ done (v2.3.886):** two small HUD
+  overlays extracted together (low-risk, same gated-subtree pattern).
+  - `showPlayerList` (~42 lines: the online-players list, tap to inspect) →
+    `src/ui/panels/PlayerListPanel.jsx`. 3 props (playerList,
+    setInspectPlayer, setShowPlayerList).
+  - `showEmotes` (~44 lines: the emote / quick-chat picker) →
+    `src/ui/panels/EmotePanel.jsx`. 1 prop (sendEmote, a useCallback);
+    EMOTES/TEXT_EMOTES imported.
+- **InspectPlayerPanel — ✅ done (v2.3.887):** the `inspectPlayer` modal
+  subtree (~549 lines: the player-inspect / social-actions popup — view
+  another player's gear and reputation, friend / mute / block, or open a
+  trade) → `src/ui/panels/InspectPlayerPanel.jsx`. 13 props: stateRef,
+  inspectPlayer/blockedList/clanData/friendsList/mutedList (state) and
+  setBlockedList/setFriendsList/setInspectPlayer/setMutedList/setShowTrade/
+  setTradeOffer/setTradeTarget (setters). Data imports (BT_AUDIO,
+  PVP_THREAT_BASE_COUNTDOWN, PVP_THREAT_COOLDOWN, REPUTATION, ZONES)
+  verified real; slice/spread-array babel helpers; 7 hoisted temps local.
+- **NameModal — ✅ done (v2.3.888):** the `if (showNameModal) { … }`
+  early-return render path (~352 lines: the vertical guided character
+  creator — banner, character showcase, name row, customization drawer,
+  Randomize, PLAY) → `src/ui/panels/NameModal.jsx`. First **render-helper**
+  extraction (the "different strategy"): the whole render body, including
+  its local `_objTiles`/`_colTiles`/category-builder helpers, moves into
+  the component; the `if (showNameModal)` gate stays in BroTown and now
+  just returns `<NameModal …/>`. Render-only — NO effects or game-loop
+  logic moved. Trait catalogs + their sprite setters import from
+  `@/rendering/*` (the modules they actually live in — same imports BroTown
+  uses); BUILD_INFO from BuildBadge. 41 props carry the React selection
+  state, its `*Sel` setters, the preview refs, and BroTown handler
+  closures (joinTown, randomizeWithFlair, rollRandomName, rotatePreview,
+  markObjPicked, _swatchTile, _thumbTile, _dragRotX). Key lesson:
+  `set*` is NOT always a React setter — `setHeadwear/setHair/setShirt/…`
+  are **imported** trait functions, only the `*Sel` ones are state.
+  Classify each free var against BroTown's import lines before deciding
+  import-vs-prop. With this BroTown.jsx is under 10k lines (9,963).
+- **KeyboardHintsPanel — ✅ done (v2.3.889):** the `bt-kb-hints` desktop
+  WASD/hotkey help strip → `src/ui/panels/KeyboardHintsPanel.jsx`. The
+  cleanest extraction yet: **zero props** (fully static markup); the
+  desktop-detection `window.matchMedia` gate stays in BroTown.
+- **TouchControls — ✅ done (v2.3.890):** the floating dual-joystick touch
+  overlay (left movement zone, right aim/combat zone, both joystick
+  base+knob+preview stacks, legacy hidden shield) → `src/ui/panels/
+  TouchControls.jsx`. The first **multi-sibling render extraction**: the
+  five elements were a contiguous tail of children of a parent container,
+  so they're wrapped in a Fragment and the parent's closing tag + the rest
+  of the tree stay in BroTown. Boundary found by depth-tracking from the
+  lZone `React.createElement` and stopping right before the parent-closing
+  `)` (the next sibling is the `bt-kb-hints` gate); paren-balance verified
+  0. 15 props: stateRef + the 11 joystick/zone/knob/preview/shield refs +
+  autoAttack/isLandscape/shieldUp render flags; 3 stateRef.current temps
+  local. **Correctness key:** BroTown still owns the ref objects and its
+  dual-joystick touch effects bind to them; TouchControls attaches those
+  SAME refs to the DOM, so the effects keep working unchanged. Render-only;
+  no effect/loop code moved. (Primary iPhone input — verify on device.)
+- **DuelRequestPanel + ThreatIncomingPanel — ✅ done (v2.3.891):** two PvP
+  popups extracted together (render-only gated subtrees that survived the
+  earlier sweep, still lower-risk than effects).
+  - `duelRequest` (~110 lines: incoming duel-challenge — accept/decline) →
+    `src/ui/panels/DuelRequestPanel.jsx`. 3 props (stateRef, duelRequest,
+    setDuelRequest); BT_AUDIO.
+  - `threatIncoming && !threatIncoming.responded` (~150 lines: incoming-PvP
+    -threat popup — ignore/call-guards) →
+    `src/ui/panels/ThreatIncomingPanel.jsx`. 3 props (stateRef,
+    threatIncoming, setThreatIncoming); BT_AUDIO + _objectSpread.
+- **ChatPanel — ✅ done (v2.3.892):** the `chatOpen` chat-input overlay
+  (~109 lines: type + send a message) → `src/ui/panels/ChatPanel.jsx`. 6
+  props: chatInput (state), chatInputRef / chatInputValRef (the SAME refs
+  BroTown's canvas render loop mirrors — passed through, same correctness
+  pattern as TouchControls), sendChat (useCallback), setChatInput,
+  setChatOpen. No data imports or temps.
+- **WarBanner (ActiveWarBanner + EndedWarBanner) — ✅ done (v2.3.893):**
+  the two clan-war HUD banner IIFEs → `src/ui/panels/WarBanner.jsx`. They
+  used the `function (_temp) { … }()` pattern (called with no arg — the
+  param was just a babel optional-chaining temp). Each IIFE body became a
+  **stateRef-only** component that reads `stateRef.current._activeClanWar`
+  at render and returns its banner or null (same read-at-render timing,
+  behavior-frozen). ZONES imported; the babel temp is a local var. Pattern
+  note: an `function(_t){…}()` IIFE → `Component({stateRef})` with `_t` as
+  a local var is a clean conversion when the only free vars are stateRef +
+  imports. BroTown.jsx now under 9k lines (8,969).
+- **MenuBar — ✅ done (v2.3.894):** the scrollable bottom action/menu
+  button bar (~427 lines: the horizontal-scroll row of buttons that open
+  every panel — inventory, skills, stats, social, clan, guild, leaderboard,
+  encyclopedia, feedback, shop, emotes, info — plus special-attack, chat
+  toggle, pet/body bits) → `src/ui/panels/MenuBar.jsx`. The most entangled
+  render extraction: 32 props (rpgState/stateRef + the show* flags, the
+  panel-toggle setters, doSpecialAttack), 6 @/data + 4 @/networking + 4
+  babel imports, 7 hoisted temps. The onClick handlers (incl. async
+  btRpc/syncRpgToServer calls) are event handlers that moved with the JSX —
+  no effect/loop bodies touched. Watch the `*/`-in-comment trap (a literal
+  `getBt*/` in the header closed the block comment early — caught by
+  node --check).
+## Effect / game-loop extraction (started v2.3.895)
+
+The render decomposition is essentially complete — BroTown.jsx is at the
+plan's target (~8.5k lines of component + JSX). The new phase moves effect
+**bodies** into `src/game/` behind a thin call, keeping the `useEffect` +
+its dep array in BroTown. Pattern: `useEffect(() => wireX(deps), [deps])`
+calling `export function wireX(deps) { …; return cleanup; }`. Each effect
+that touches live behavior needs **on-device verification**.
+
+- **gearWornSync — ✅ done (v2.3.895):** the first effect-body extraction.
+  The empty-dep `useEffect` that subscribes to chest/legs/shirt equip
+  changes and pushes a worn-map into React state →
+  `src/game/gearWornSync.js` (`wireGearWornSync(setGearWorn)`). Verbatim
+  body; `getEquip`/`onEquipChange` imported from `@/rendering/gearCatalog`;
+  BroTown's effect is now `useEffect(() => wireGearWornSync(setGearWorn), [])`.
+  Ideal first pick: empty deps, one React dep, clear cleanup, no
+  render-timing subtleties. Establishes the pattern for the rest.
+
+- **splashAudio (wireTorchCrackle + wireThemeMusic) — ✅ done (v2.3.896):**
+  the two showNameModal-gated character-creator audio effects (arm on the
+  splash's first pointerdown, loop) → `src/game/splashAudio.js`. Verbatim
+  bodies; each early-returns (no cleanup) when the modal isn't showing,
+  exactly as before. BroTown effects are now
+  `useEffect(() => wireTorchCrackle(showNameModal), [showNameModal])` and
+  `useEffect(() => wireThemeMusic(showNameModal, themeAudioRef), [showNameModal])`.
+  Device-verified: splash torch crackle + theme music still play on tap.
+
+- **characterCreatorEffects — ✅ done (v2.3.897):** the three
+  character-creator lifecycle effects → `src/game/characterCreatorEffects.js`:
+  `wireCharacterPortrait(previewCanvasRef, sel)` (redraw the preview +
+  prewarm 7 angles on selection change; the 12 selections pass as a `sel`
+  object so the redraw body stays byte-identical), `wireSplashPrewarm(
+  showNameModal, introWarmRef)` (2.5s-delayed in-game-sheet + intro-clip
+  prefetch; returns clearTimeout cleanup), and `clampLongHairColor(hairSel,
+  hairColorSel, setHairColorSel)` (force dark hair color for the long
+  style). Trait/render helpers imported from `@/rendering/*`. GOTCHA caught
+  pre-CI: `LONG_HAIR_COLORS` had a SECOND use in BroTown (a hair-color
+  filter helper) beyond the clamp effect — removing its decl would have
+  been a no-undef; the decl was kept. Always grep a moved local for OTHER
+  uses before deleting it.
+
+- **Dead weapon-swap-bus path removed — ✅ done (v2.3.898):** while
+  extracting the `weaponSwapBus.subscribe` effect (PR #107, closed) the
+  owner flagged the weapon-swap bar + emoji indicator as dead. Verified:
+  nothing calls `weaponSwapBus.setSlot` (no publisher), `WeaponSwapBar.jsx`
+  was already deleted (only comments reference it), BottomDashboard's bus
+  import was unused, and the live weapon swap runs via a separate path
+  (BroTown mutates `rpg.activeSlot` + sends `set_active_slot` directly). So
+  instead of relocating dead code, removed it: the `weaponSwapBus.subscribe`
+  effect + its BroTown import, the unused BottomDashboard import, and the
+  orphaned `src/ui/mobile/weaponSwapBus.js`. Behavior-neutral (the
+  subscription never fired). Lesson: when an extraction target turns out to
+  be dead, delete don't relocate.
+
+- **townMusic — ✅ done (v2.3.899):** the `[showNameModal, showLogin]`-gated
+  in-town background-melody interval (a chiptune note every 1.8s via
+  BT_AUDIO) → `src/game/townMusic.js` (`wireTownMusic(showNameModal,
+  showLogin)`). Verbatim; returns clearInterval cleanup; early-returns
+  while the splash/login is up.
+
+- **spriteSheets — ✅ done (v2.3.900):** the ~129-line mount-time
+  (empty-dep) loader for the per-direction player jog/hit sheets, slime
+  sheets, weapon sprites + hand anchors, and Tiled walkability maps →
+  `src/game/spriteSheets.js` (`wireSpriteSheets(stateRef, refs)`). The 10
+  image/anchor refs pass via a `refs` object so the body stays
+  byte-identical (destructured back to the original names); the 4
+  tiledMaps imports move to the module. Biggest effect extraction so far
+  (−127 lines). Genuine game-system code that belongs in src/game/.
+
+- **slimeAudio — ✅ done (v2.3.901):** the empty-dep slime proximity-audio
+  loop (80ms tick → nearest fodder monster → inverse-distance gain on a
+  looping BufferSource through BT_AUDIO's master bus) →
+  `src/game/slimeAudio.js` (`wireSlimeAudio(stateRef, slimeIdleAudioRef)`).
+  Verbatim; returns the interval-clear + source-stop cleanup.
+  (Owner note: the frame-drop incident this audio was tied to was the OLD
+  HTMLAudio impl; the current Web-Audio version FIXED it — feature is live,
+  not disabled.)
+
+- **orientationSync — ✅ done (v2.3.902):** the empty-dep resize/orientation
+  listener that updates the isLandscape flag → `src/game/orientationSync.js`
+  (`wireOrientationSync(setIsLandscape)`). Verbatim; returns the
+  listener-removal cleanup.
+
+### The rAF game loop stays in BroTown (decision)
+The `═══ GAME LOOP ═══` effect (~2,453 lines, deps `[showNameModal,
+showLogin, glEpoch]`, BroTown ~1678) is the perf-critical simulation +
+PixiJS/Canvas render loop with an enormous closure (100+ captured vars).
+The WS channel effect is already a thin `setupWebSocket({...})` wrapper.
+Per the plan's end-state ("BroTown shrinks to UI orchestration… game
+systems live in src/game/"), the game loop IS the orchestration that
+belongs in the component — extracting it behind a 100+ entry deps object
+would be more error-prone and less readable than leaving it, and it can't
+be fully device-verified. **Recommendation: leave the game loop inline;**
+the decomposition has reached its sensible end-state (BroTown 15.9k → 8.3k).
+Remaining nibbles (small post-loop effects: firemakingBus sub — verify it
+has a live publisher first, the edge-swipe guard, chat-focus/BT_AUDIO.init,
+session-resume) are optional low-value follow-ups.
+- **Candidates remaining (now the genuinely harder ones):**
+  - More effects, by ascending risk: the small splash-audio / portrait
+    effects (gated by showNameModal — could also fold into NameModal), then
+    listener/subscription effects, then the channel/networking setup, then
+    the rAF game loop (highest risk — extract last, verify hard).
+  - A few small inline HUD bits remain (well-rested indicator ~18 lines,
+    torch button, nearBuilding/nearNode interact prompts) — these are
+    scattered between already-extracted mounts, so each is its own small
+    component. Low value; batch a few if continuing.
+  - **Top-level effect / game-loop / channel wiring** — the highest-risk
+    category. Prefer moving effect bodies into `src/game/` behind a deps
+    object, one effect at a time, only with the full verification protocol
+    and anchors re-derived each pass.
 
 Re-derive line anchors at the start of each phase — they drift with every
 release. The extraction order may be reshuffled if a phase turns out to be

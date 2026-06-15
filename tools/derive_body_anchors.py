@@ -114,7 +114,86 @@ def head_box(arr: np.ndarray) -> dict | None:
     }
 
 
-def process_sheet(path: str, pose: str, direction: str, frame_count_hint: int | None = None) -> list[dict | None]:
+# ── Skin-based head box (mine / fish poses) ────────────────────────────
+# The gathering poses raise a tool above the head, so the opaque-silhouette
+# detector above would box the tool, not the head.  Find the head by skin
+# tone: the crown is the topmost skin run with a wide "face" blob below it
+# (the raised tool handle is orange too but stays thin), then measure the
+# head box from the skin head/face region down to the neck pinch.
+def _skin_mask(arr):
+    a = arr[..., 3] > ALPHA_THRESHOLD
+    R = arr[..., 0].astype(int); G = arr[..., 1].astype(int); B = arr[..., 2].astype(int)
+    return a & (R > 165) & (G > 75) & (G < 170) & (B < 118) & (R - B > 72)
+
+
+def _runs(rowmask, minlen):
+    out = []; cur = 0; start = 0
+    for i, v in enumerate(rowmask):
+        if v:
+            if cur == 0:
+                start = i
+            cur += 1
+        else:
+            if cur >= minlen:
+                out.append((start, i - 1))
+            cur = 0
+    if cur >= minlen:
+        out.append((start, len(rowmask) - 1))
+    return out
+
+
+def head_box_skin(arr: np.ndarray) -> dict | None:
+    if arr.shape[0] != FRAME_W or arr.shape[1] != FRAME_W:
+        return None
+    sk = _skin_mask(arr)
+    crown = None
+    for r in range(FRAME_W):
+        for (x0, x1) in _runs(sk[r], 6):
+            cx = (x0 + x1) // 2
+            face_w = 0
+            for rr in range(r + 8, min(FRAME_W, r + 24)):
+                for (a0, a1) in _runs(sk[rr], 24):   # skip the thin raised hand
+                    if a0 - 12 <= cx <= a1 + 12:      # face must sit straight below
+                        face_w = max(face_w, a1 - a0 + 1)
+            if face_w >= 34:
+                crown = (cx, r); break
+        if crown:
+            break
+    if crown is None:
+        return None
+    cx, top = crown
+    widths = []  # (row, width, x0, x1) of the head/face run near cx
+    for r in range(top, min(FRAME_W, top + 60)):
+        best = 0; bx0 = bx1 = None
+        for (a0, a1) in _runs(sk[r], 3):
+            if a0 - 25 <= cx <= a1 + 25 and (a1 - a0 + 1) > best:
+                best = a1 - a0 + 1; bx0, bx1 = a0, a1
+        if best > 0:
+            widths.append((r, best, bx0, bx1))
+    if not widths:
+        return None
+    peak_i = max(range(len(widths)), key=lambda i: widths[i][1])
+    after = widths[peak_i:]
+    head_bottom = widths[-1][0] if len(after) < 2 else min(after, key=lambda x: x[1])[0]
+    hl, hr = FRAME_W, 0
+    for (r, w, a0, a1) in widths:
+        if r > head_bottom:
+            break
+        hl = min(hl, a0); hr = max(hr, a1)
+    if hr < hl:
+        return None
+    return {
+        "top":    [(hl + hr) // 2, top],
+        "bottom": [(hl + hr) // 2, head_bottom],
+        "left":   [hl, (top + head_bottom) // 2],
+        "right":  [hr, (top + head_bottom) // 2],
+        "center": [(hl + hr) // 2, (top + head_bottom) // 2],
+        "width":  hr - hl + 1,
+        "height": head_bottom - top + 1,
+    }
+
+
+def process_sheet(path: str, pose: str, direction: str, frame_count_hint: int | None = None, detector=head_box) -> list[dict | None]:
     """Process a sprite sheet (1+ frames horizontally tiled) and return
     a list of head-box entries per frame."""
     im = Image.open(path).convert("RGBA")
@@ -127,7 +206,7 @@ def process_sheet(path: str, pose: str, direction: str, frame_count_hint: int | 
     out = []
     for f in range(frame_count):
         frame = arr[:, f * FRAME_W : (f + 1) * FRAME_W]
-        out.append(head_box(frame))
+        out.append(detector(frame))
     return out
 
 
@@ -209,6 +288,21 @@ def main():
                 key = f"{pose}-{d}-{i}"
                 body[key] = {"head": fr} if fr else None
             print(f"{pose}-{d}: {sum(1 for fr in frames if fr)}/{len(frames)} frames (smoothed)")
+
+    # v2.3.855: south-only gathering poses — skin-based head box so the
+    # raised pickaxe / fishing rod isn't measured as the head.  Smoothed
+    # like the others to keep the trait overlay from jittering on the swing.
+    for pose in ["mine", "fish"]:
+        for d in DIRS:
+            path = f"public/sprites/player/{pose}-{d}.png"
+            if not os.path.exists(path):
+                continue
+            frames = process_sheet(path, pose, d, detector=head_box_skin)
+            frames = smooth_head_boxes(frames, window=5)
+            for i, fr in enumerate(frames):
+                key = f"{pose}-{d}-{i}"
+                body[key] = {"head": fr} if fr else None
+            print(f"{pose}-{d}: {sum(1 for fr in frames if fr)}/{len(frames)} frames (skin, smoothed)")
 
     out_path = "public/sprites/player/body-anchors.json"
     os.makedirs(os.path.dirname(out_path), exist_ok=True)

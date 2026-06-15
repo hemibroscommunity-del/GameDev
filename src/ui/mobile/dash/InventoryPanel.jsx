@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, TIER_COLOR, panelStyle, getState } from './common.js';
-import { cookingBus } from '../cookingBus.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';

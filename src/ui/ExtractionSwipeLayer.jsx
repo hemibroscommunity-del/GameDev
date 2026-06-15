@@ -119,6 +119,7 @@ function repsTargetFor(skill) {
 function repsFromGesture(skill, g) {
   if (skill === 'fishing') return Math.max(0, g.totalAngle) / TWO_PI;
   if (skill === 'woodcutting') return g.treewardStrokes;
+  if (skill === 'cooking') return g.cookStrokes || 0;   /* one up-flip = cooked */
   /* mining: a full up+down pump is two half-strokes */
   return g.halfStrokes / 2;
 }
@@ -158,6 +159,10 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       if (ex.skill === 'fishing' && S.player) {
         return { x: S.player.x - S.camera.x, y: (S.player.y - 24) - S.camera.y };
       }
+      /* v2.3.853: cooking centers the swipe-up over the campfire/pan. */
+      if (ex.skill === 'cooking') {
+        return { x: node.x - S.camera.x, y: (node.y - 40) - S.camera.y };
+      }
       const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
       return { x: node.x - S.camera.x, y: (node.y - yOff) - S.camera.y };
     };
@@ -182,7 +187,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          the cue meter persist across lifts. */
       if (!ex._gesture) {
         ex._gesture = {
-          axisRef: ex.skill === 'mining' ? y : x, /* value at last turning point */
+          axisRef: (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x, /* value at last turning point */
           dir: 0,
           halfStrokes: 0,
           treewardStrokes: 0,
@@ -201,7 +206,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         /* re-seed the per-press anchors so a resumed stroke measures cleanly */
         ex._gesture.cueX = cue.x; ex._gesture.cueY = cue.y;
         ex._gesture.lastAngle = Math.atan2(y - cue.y, x - cue.x);
-        ex._gesture.axisRef = ex.skill === 'mining' ? y : x;
+        ex._gesture.axisRef = (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x;
         ex._gesture.dir = 0;
       }
       swipeRef.current = { startX: x, startY: y, samples: [{ x, y, t: performance.now() }] };
@@ -230,6 +235,9 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       /* mining: the DOWN half-stroke (d===1, screen y increasing) is the slam --
          spark + clink at the ore so the hit reads. */
       if (skill === 'mining' && d === 1) onSlam(g);
+      /* v2.3.853: cooking — an UP stroke (d===-1, screen y decreasing) flips
+         the fish; one flip = cooked. */
+      if (skill === 'cooking' && d === -1) g.cookStrokes = (g.cookStrokes || 0) + 1;
     };
 
     /* Spark burst + clink at the ore on a pickaxe slam. */
@@ -266,7 +274,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         g.totalAngle += wrapPi(ang - g.lastAngle);   /* clockwise (screen y-down) = + */
         g.lastAngle = ang;
       } else {
-        stepOscillation(g, ex.skill === 'mining' ? y : x, ex.skill);
+        stepOscillation(g, (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x, ex.skill);
       }
 
       const reps = repsFromGesture(ex.skill, g);
