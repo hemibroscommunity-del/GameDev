@@ -4912,14 +4912,17 @@ export function createDefaultRpg() {
     mana: 100,
     maxMana: 100,
     /* Equipment */
-    /* Equipment — start with basic wood-tier weapons */
+    /* Equipment — start with basic wood-tier weapons.
+       v2.3.943: the starter melee weapon is a greatsword (was the Bamboo
+       Stick / type 'sword') so the per-facing held greatsword art shows and
+       the wild swing reads as a big sword. */
     weapon: {
-      type: 'sword',
+      type: 'greatsword',
       tier: 'common',
       tierMult: 1.0,
       element1: null,
       element2: null,
-      name: 'Bamboo Stick',
+      name: 'Greatsword',
       isVolatile: false,
       gearBase: 'wood'
     },

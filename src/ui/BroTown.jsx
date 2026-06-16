@@ -1940,6 +1940,20 @@ export var BroTown = function BroTown(_ref0) {
         gearBase: 'wood',
         isVolatile: false
       };
+      /* v2.3.943: swap the untouched starter melee weapon (Bamboo Stick /
+         Wood Sword, type 'sword', wood, common) for a wood-tier greatsword so
+         existing saves get the held greatsword art + the wild swing.  A player
+         who found / forged a different melee weapon keeps it. */
+      if (S.rpg.weapon && S.rpg.weapon.type === 'sword' && S.rpg.weapon.gearBase === 'wood'
+          && S.rpg.weapon.tier === 'common'
+          && (S.rpg.weapon.name === 'Bamboo Stick' || S.rpg.weapon.name === 'Wood Sword')) {
+        S.rpg.weapon = {
+          type: 'greatsword', tier: 'common', tierMult: 1.0,
+          element1: null, element2: null, name: 'Greatsword',
+          gearBase: 'wood', isVolatile: false
+        };
+        recalcDerived(S.rpg);
+      }
       if (!S.rpg.rangedWeapon) S.rpg.rangedWeapon = {
         type: 'bow',
         tier: 'common',
