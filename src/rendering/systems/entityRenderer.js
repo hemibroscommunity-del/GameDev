@@ -1121,6 +1121,11 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
    the same window when it draws the stand-in and composites the traits. */
 export const SWORD_SWING_MS = 300;
 
+/* v2.3.925: how long the bow-shoot stand-in plays per ranged shot (its 4
+   frames -- load/draw/release/follow -- map across this window from the shot
+   timestamp S._bowShotAt). */
+export const BOW_SHOT_MS = 360;
+
 /** Place hat + beard + hair (the player's current selection) on a stand-in
  *  skill sprite.  sprites = { hat, beard, hair } owned by the caller. */
 export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
@@ -3418,7 +3423,23 @@ export class EntityRenderer {
       && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking);
     S._swordSwinging = _swordSwing;
     S._swordSwingDir = _swordSwing ? _swordDir : null;
-    if (_fishingPose || _swordSwing) {
+    /* v2.3.925: bow-shoot stand-in -> driven by a ranged-bow shot
+       (S._bowShotAt set in monsterCombat when an arrow fires).  Resolve the
+       shot ANGLE (S._bowShotAng, toward the target) to a compass sector and
+       only show for the authored facings (east/west/southwest/southeast).  Other
+       aim angles fall back to the normal ranged render until their art exists. */
+    const _BOW_FACINGS = ['east', 'west', 'southwest', 'southeast'];
+    let _bowDir = null;
+    if (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS && S._bowShotAng != null
+        && !S._extraction && !S._firemaking) {
+      const _bsec = Math.round(S._bowShotAng / (Math.PI / 4));
+      const _bf = SECTORS[((_bsec % 8) + 8) % 8];
+      if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
+    }
+    const _bowShot = !!_bowDir;
+    S._bowShowing = _bowShot;
+    S._bowDir = _bowDir;
+    if (_fishingPose || _swordSwing || _bowShot) {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
       if (display._handCapSprite) display._handCapSprite.visible = false;
@@ -3806,11 +3827,11 @@ export class EntityRenderer {
       display._spritePathRendered = false; _hideBodyRegions(display);
     }
 
-    /* v2.3.910: during the south melee swing the sword-swing stand-in
-       (effectsRenderer) stands in for the avatar's body, so hide the real
-       body + its head traits here.  _spritePathRendered stays true so the
-       NFT / procedural fallbacks below don't draw a body in its place. */
-    if (_swordSwing) {
+    /* v2.3.910: during the melee swing the sword-swing stand-in (effectsRenderer)
+       stands in for the avatar's body, so hide the real body + its head traits
+       here.  v2.3.925: same for the bow-shoot stand-in.  _spritePathRendered
+       stays true so the NFT / procedural fallbacks below don't draw a body. */
+    if (_swordSwing || _bowShot) {
       display._spriteBody.visible = false;
       body.visible = false;
       _hideBodyRegions(display);

@@ -12,7 +12,7 @@ import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.j
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS } from './entityRenderer.js';
+import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS } from './entityRenderer.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -320,6 +320,35 @@ export class EffectsRenderer {
       }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
     }
 
+    /* v2.3.925: bow-shoot stand-in -- same self-contained pattern as the sword
+       swings, but driven by a ranged-bow shot (S._bowShotAt).  Authored sheets
+       for east + southwest; mirror covers west + southeast.  4 frames each
+       (load -> draw -> release -> follow). */
+    this._bowCfg = {
+      east:      { url: '/sprites/player/bow-east.png',      fw: 338, fh: 271, feetY: 252, crownKey: 'bow_e',  traitDir: 'east' },
+      southwest: { url: '/sprites/player/bow-southwest.png', fw: 254, fh: 252, feetY: 233, crownKey: 'bow_sw', traitDir: 'south' },
+    };
+    this._bowFacing = {
+      east:      ['east', false],
+      west:      ['east', true],
+      southwest: ['southwest', false],
+      southeast: ['southwest', true],
+    };
+    this._bowFrames = {};
+    const BOW_ART_VERSION = 925;
+    this.bowSprite = new Sprite();
+    this.bowSprite.anchor.set(0.5, 1);
+    this.bowSprite.visible = false;
+    this.nodeLayer.addChild(this.bowSprite);
+    for (const dir of Object.keys(this._bowCfg)) {
+      const cfg = this._bowCfg[dir];
+      this._bowFrames[dir] = [];
+      Assets.load(cfg.url + '?v=' + BOW_ART_VERSION).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / cfg.fw));
+        for (let i = 0; i < n; i++) this._bowFrames[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      }).catch((err) => console.warn('[bow ' + dir + '] load failed', err));
+    }
+
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
        whichever skill stand-in is active (chopper / cook / fire-lighter), which
        otherwise replaces the trait-composed body.  One shared set — only one
@@ -336,7 +365,7 @@ export class EffectsRenderer {
        / the stand 182px reference), so the hat matches how it sits idle rather
        than being sized to the lumberjack's small head.  chop 166px, cook 212px,
        fire ~155px in-frame -> these multipliers. */
-    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85, sword: 1.03, sword_se: 1.03 };
+    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0 };
     /* crowns.json frame widths MUST match the strip-loading FWs above
        (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
        crown generator with the matching widths or the traits drift off-head. */
@@ -377,6 +406,7 @@ export class EffectsRenderer {
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
+    this._updateBowShot(S, now);
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
@@ -2312,6 +2342,35 @@ export class EffectsRenderer {
     sp.x = S.player.x;
     /* Plant the feet where the real avatar's feet were (published by
        entityRenderer); fall back to player.y if not set yet. */
+    sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
+    sp.visible = true;
+    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+  }
+
+  /* ── Bow-shoot animation (v2.3.925) ──
+   * Plays the owner's bow-shoot at the player during a ranged-bow shot.
+   * entityRenderer._updatePlayer sets S._bowShowing + S._bowDir (and hides the
+   * real body + weapon) when a bow shot is active and the aim resolves to an
+   * authored facing.  Same self-contained pattern as the sword swings. */
+  _updateBowShot(S, now) {
+    if (this.bowSprite) this.bowSprite.visible = false;
+    if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
+    const fmap = this._bowFacing[S._bowDir];
+    if (!fmap) return;
+    const cfg = this._bowCfg[fmap[0]];
+    const mirror = fmap[1];
+    const frames = cfg && this._bowFrames[fmap[0]];
+    if (!cfg || !frames || !frames.length) return;
+    const n = frames.length;
+    const elapsed = now - (S._bowShotAt || now);
+    const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / BOW_SHOT_MS) * n)));
+    const sp = this.bowSprite;
+    sp.anchor.set(0.5, cfg.feetY / cfg.fh);
+    sp.texture = frames[fi];
+    const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
+    const s = bodyH / 188;
+    sp.scale.set(mirror ? -s : s, s);
+    sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
     this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
