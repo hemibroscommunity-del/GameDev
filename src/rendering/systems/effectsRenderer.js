@@ -284,11 +284,11 @@ export class EffectsRenderer {
     this._swordCfg = {
       south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword' },
     };
-    /* facing -> [cfg key, mirror?] */
+    /* facing -> [cfg key, mirror?].  v2.3.921: SE/SW mirror flipped per owner. */
     this._swordFacing = {
       south:     ['south', false],
-      southeast: ['south', false],
-      southwest: ['south', true],
+      southeast: ['south', true],
+      southwest: ['south', false],
     };
     this._swordFrames = {};        // cfg key -> [Texture]
     /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
