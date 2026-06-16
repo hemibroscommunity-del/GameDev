@@ -3414,12 +3414,23 @@ export class EntityRenderer {
     /* v2.3.910: melee swing -> play the sword-swing stand-in (effectsRenderer)
        and hide the real body + weapon for the swing window.  Gated on the melee
        swing flag and no active gathering/firemaking.
-       v2.3.923: all 8 compass facings now have authored swings (south sheet for
-       the front arc, east for E/W, north for the back arc), resolved in
-       effectsRenderer._swordFacing.  Combat logic untouched; visual only. */
-    const _SWORD_FACINGS = ['south', 'southeast', 'southwest', 'east', 'west', 'north', 'northeast', 'northwest'];
-    const _swordDir = _SWORD_FACINGS.includes(S._renderFacing) ? S._renderFacing : null;
-    const _swordSwing = !!(_swordDir && S.isSwinging && S.swingTimer
+       v2.3.936: pick the sheet by the DOMINANT AXIS of the swing angle, not the
+       8-way render facing.  The big sword sweeps a wide arc, so 3 sheets cover
+       everything: the north sheet plays for any up-dominant aim (covers NW/N/NE
+       that are "more north"), south for any down-dominant aim, and east/west for
+       any horizontal-dominant aim (so a NE/SE that's "more east than N/S" plays
+       the east swing).  baseAngle is published by monsterCombat (S._swingAng);
+       fall back to the 8-way facing if it isn't set yet.  Visual only. */
+    let _swingAng = S._swingAng;
+    if (_swingAng == null) {
+      const _si = SECTORS.indexOf(S._renderFacing);
+      _swingAng = _si >= 0 ? _si * (Math.PI / 4) : Math.PI / 2;  // SECTORS[i] = i*45deg, south default
+    }
+    const _sdx = Math.cos(_swingAng), _sdy = Math.sin(_swingAng);  // +y = down/south
+    const _swordDir = Math.abs(_sdx) >= Math.abs(_sdy)
+      ? (_sdx >= 0 ? 'east' : 'west')
+      : (_sdy >= 0 ? 'south' : 'north');
+    const _swordSwing = !!(S.isSwinging && S.swingTimer
       && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking);
     S._swordSwinging = _swordSwing;
     S._swordSwingDir = _swordSwing ? _swordDir : null;

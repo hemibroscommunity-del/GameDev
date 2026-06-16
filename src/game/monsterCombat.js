@@ -1341,6 +1341,11 @@ export function updateMonsterCombat(S, deps) {
               var swDir = S._facing || 'down';
               baseAngle = swDir === 'right' ? 0 : swDir === 'up' ? -Math.PI / 2 : swDir === 'left' ? Math.PI : Math.PI / 2;
             }
+            /* v2.3.936: publish the swing angle so the renderer can pick the
+               sword stand-in sheet by DOMINANT AXIS (the big sword covers a
+               wide arc, so 3 sheets cover all angles): more-north -> north,
+               more-south -> south, more-horizontal -> east/west. */
+            S._swingAng = baseAngle;
             /* §5.9 Combo Chain — capture pre-swing state. Burst bonus is
                applied to all hits in this swipe (uniform across the cone);
                spread (count 2+) and extended-status flag (count 3) read the
