@@ -5024,6 +5024,14 @@ export function meleeSwingSfx(rpg) {
 export const SWING_COOLDOWN = 600;
 export const SWING_RANGE = 50;
 export const SWING_ARC = Math.PI * 0.85;
+/* v2.3.939: greatsword "wild swing" hit shape -- a small 360° core around the
+   player (catches anything beside/behind every swing) UNION a wide forward
+   half-circle at a larger reach in the aim direction.  Shared by the hit
+   detection (monsterCombat) and the aim indicator (effectsRenderer) so the
+   preview matches the damage.  Sword keeps the narrow SWING_ARC cone. */
+export const GS_INNER_RADIUS = 38;       // 360° core radius (any angle)
+export const GS_OUTER_RADIUS = 72;       // forward reach inside the half-circle
+export const GS_FORWARD_ARC = Math.PI;   // 180° forward half-circle
 
 /* §5.9 Combo Chain — auto-attacks build per-target combo (0–3); the next
    swipe (special attack) consumes the count for cumulative bonuses. */

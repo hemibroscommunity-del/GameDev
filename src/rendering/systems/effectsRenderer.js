@@ -7,6 +7,7 @@ import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyl
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R } from '@/data/constants.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
@@ -1185,6 +1186,13 @@ export class EffectsRenderer {
         && (S._aiming || isLocked || S.autoAttack)
         && S.player
         && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
+      /* v2.3.939: greatsword shows its wild-swing AoE shape (a 360° core circle
+         + a forward half-disc) instead of the reach beam, so the indicator
+         matches the new hit shape exactly (shared GS_* constants). */
+      const _gsWpn = slot === 'melee' ? (S.rpg && S.rpg.weapon)
+                   : slot === 'staff' ? (S.rpg && (S.rpg.staffWeapon || S.rpg.rangedWeapon))
+                   : (S.rpg && S.rpg.rangedWeapon);
+      const isGreatsword = isMelee && _gsWpn && _gsWpn.type === 'greatsword';
       if (shouldDraw) {
         const P = S.player;
         let aimA;
@@ -1196,7 +1204,25 @@ export class EffectsRenderer {
         } else {
           aimA = 0;
         }
-        /* Melee at ~1/3 ranged length so the line reads as "short
+        if (isGreatsword) {
+          /* Forward half-disc (outer reach) + 360° core circle, centred on the
+             player -- the same origin + radii the swing hit test uses. */
+          gfx.moveTo(P.x, P.y);
+          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, aimA - GS_FORWARD_ARC / 2, aimA + GS_FORWARD_ARC / 2);
+          gfx.lineTo(P.x, P.y);
+          gfx.fill({ color: 0xffffff, alpha: 0.14 });
+          gfx.circle(P.x, P.y, GS_INNER_RADIUS);
+          gfx.fill({ color: 0xffffff, alpha: 0.16 });
+          /* Faint outlines (same visual language as the shield arc). */
+          gfx.circle(P.x, P.y, GS_INNER_RADIUS);
+          gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+          gfx.moveTo(P.x, P.y);
+          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, aimA - GS_FORWARD_ARC / 2, aimA + GS_FORWARD_ARC / 2);
+          gfx.lineTo(P.x, P.y);
+          gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.25 });
+        } else {
+        /* Non-greatsword: the reach beam.
+           Melee at ~1/3 ranged length so the line reads as "short
            reach indicator" not "you can hit this far." */
         const lineLen = isRanged ? 280 : 95;
         const halfW = 2;          // half-width of beam at neutral
@@ -1235,6 +1261,7 @@ export class EffectsRenderer {
         for (let i = bot.length - 2; i >= 0; i -= 2) gfx.lineTo(bot[i], bot[i + 1]);
         gfx.closePath();
         gfx.fill({ color: 0xffffff, alpha: 0.2 });
+        }
       }
     }
 

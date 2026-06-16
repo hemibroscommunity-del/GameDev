@@ -21,7 +21,8 @@
 import {
   BT_AUDIO, COMBO_BURST_BONUS, COMBO_NEXT_DURATION_BONUS, COMBO_NEXT_WINDOW_MS,
   COMBO_SPREAD_DURATION_MULT, COMBO_SPREAD_RADIUS, DEATH_GOLD_PENALTY, DEATH_SCATTER_RECOVERY,
-  ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, PVP_THREAT_DURATION,
+  ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
+  GS_INNER_RADIUS, GS_OUTER_RADIUS, PVP_THREAT_DURATION,
   QUEST_CHAINS, QUEST_STATUS, RARE_DROP_CHANCE, RARE_DROP_ITEMS, RARITY_TIERS,
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT,
   SWING_ARC, SWING_COOLDOWN, SWING_RANGE, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
@@ -1363,6 +1364,16 @@ export function updateMonsterCombat(S, deps) {
                reach. Regular swing keeps the v2.3 SWING_RANGE / SWING_ARC. */
             var _swingRange = S._specialAttack ? SWING_RANGE * 2 : SWING_RANGE;
             var _swingArc   = S._specialAttack ? Math.PI         : SWING_ARC;
+            /* v2.3.939: the GREATSWORD swings wild -- a small 360° core around
+               the player (any angle) UNION a wide forward half-circle at a
+               bigger reach.  Heavy/special -> full 360° spin at the outer reach.
+               Other melee (sword) keeps the narrow cone above. */
+            var _gsWpn = S.rpg && S.rpg.weapon;
+            var _isGS  = !!(_gsWpn && _gsWpn.type === 'greatsword');
+            var _gsInner = S._specialAttack ? GS_INNER_RADIUS * 1.25 : GS_INNER_RADIUS;
+            var _gsOuter = S._specialAttack ? GS_OUTER_RADIUS * 1.5  : GS_OUTER_RADIUS;
+            var _gsArc   = S._specialAttack ? Math.PI * 2 : GS_FORWARD_ARC;
+            var _maxRange = _isGS ? Math.max(_gsInner, _gsOuter) : _swingRange;
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
@@ -1396,12 +1407,18 @@ export function updateMonsterCombat(S, deps) {
                           _archHit === 'mummy' || _archHit === 'skeleton' ? 40 :
                           0;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
-              if (mDist > _swingRange) return;
+              if (mDist > _maxRange) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
               var angleDiff = mAngle - baseAngle;
               while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
               while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-              if (Math.abs(angleDiff) < _swingArc / 2) {
+              /* v2.3.939: greatsword = 360° core OR forward half-circle; others
+                 keep the single cone.  (Heavy greatsword: _gsArc = 2π, so the
+                 forward test is always true within _gsOuter -> full spin.) */
+              var _inShape = _isGS
+                ? (mDist <= _gsInner || (mDist <= _gsOuter && Math.abs(angleDiff) <= _gsArc / 2))
+                : (Math.abs(angleDiff) < _swingArc / 2);
+              if (_inShape) {
                 var _ELEMENTS$collisionRe2;
                 m._hitThisSwing = true;
                 if (!_swingHitTarget) _swingHitTarget = m;
