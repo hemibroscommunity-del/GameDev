@@ -3428,7 +3428,7 @@ export class EntityRenderer {
        shot ANGLE (S._bowShotAng, toward the target) to a compass sector and
        only show for the authored facings (east/west/southwest/southeast).  Other
        aim angles fall back to the normal ranged render until their art exists. */
-    const _BOW_FACINGS = ['east', 'west', 'southwest', 'southeast', 'south', 'northwest', 'northeast'];
+    const _BOW_FACINGS = ['east', 'west', 'southwest', 'southeast', 'south', 'northwest', 'northeast', 'north'];
     let _bowDir = null;
     if (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS && S._bowShotAng != null
         && !S._extraction && !S._firemaking) {
