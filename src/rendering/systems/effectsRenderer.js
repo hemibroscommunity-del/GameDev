@@ -1204,20 +1204,39 @@ export class EffectsRenderer {
         }
         if (isMelee) {
           /* Forward half-disc (outer reach) + 360° core circle, centred on the
-             player -- the same origin + radii the swing hit test uses. */
+             player -- the same origin + radii the swing hit test uses.
+             v2.3.941: every edge is stroked DARK first then light, and a
+             direction arrow points down the aim through the middle of the
+             half-circle, so the shape reads on light AND dark backgrounds and
+             the swing direction is obvious. */
+          const a0 = aimA - GS_FORWARD_ARC / 2, a1 = aimA + GS_FORWARD_ARC / 2;
+          // Fills (carry the shape on dark bg; the outlines carry it on light).
           gfx.moveTo(P.x, P.y);
-          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, aimA - GS_FORWARD_ARC / 2, aimA + GS_FORWARD_ARC / 2);
+          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1);
           gfx.lineTo(P.x, P.y);
           gfx.fill({ color: 0xffffff, alpha: 0.14 });
           gfx.circle(P.x, P.y, GS_INNER_RADIUS);
           gfx.fill({ color: 0xffffff, alpha: 0.16 });
-          /* Faint outlines (same visual language as the shield arc). */
+          // Direction arrow: shaft from the core edge out to the arc midpoint.
+          const _ac = Math.cos(aimA), _as = Math.sin(aimA);
+          const _tx = P.x + _ac * GS_OUTER_RADIUS * 0.96, _ty = P.y + _as * GS_OUTER_RADIUS * 0.96;
+          const _sx = P.x + _ac * GS_INNER_RADIUS, _sy = P.y + _as * GS_INNER_RADIUS;
+          const _hl = 13, _ha = 0.5;  // arrowhead length + half-angle
+          const _h1x = _tx - Math.cos(aimA - _ha) * _hl, _h1y = _ty - Math.sin(aimA - _ha) * _hl;
+          const _h2x = _tx - Math.cos(aimA + _ha) * _hl, _h2y = _ty - Math.sin(aimA + _ha) * _hl;
+          /* Dark underlay (outlines + arrow) for contrast on light backgrounds. */
           gfx.circle(P.x, P.y, GS_INNER_RADIUS);
-          gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
-          gfx.moveTo(P.x, P.y);
-          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, aimA - GS_FORWARD_ARC / 2, aimA + GS_FORWARD_ARC / 2);
-          gfx.lineTo(P.x, P.y);
-          gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.25 });
+          gfx.moveTo(P.x, P.y); gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1); gfx.lineTo(P.x, P.y);
+          gfx.moveTo(_sx, _sy); gfx.lineTo(_tx, _ty);
+          gfx.moveTo(_h1x, _h1y); gfx.lineTo(_tx, _ty); gfx.lineTo(_h2x, _h2y);
+          gfx.stroke({ color: 0x000000, width: 4, alpha: 0.35 });
+          /* Light overlay on top. */
+          gfx.circle(P.x, P.y, GS_INNER_RADIUS);
+          gfx.moveTo(P.x, P.y); gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1); gfx.lineTo(P.x, P.y);
+          gfx.stroke({ color: 0xffffff, width: 1.5, alpha: 0.55 });
+          gfx.moveTo(_sx, _sy); gfx.lineTo(_tx, _ty);
+          gfx.moveTo(_h1x, _h1y); gfx.lineTo(_tx, _ty); gfx.lineTo(_h2x, _h2y);
+          gfx.stroke({ color: 0xffffff, width: 2, alpha: 0.9 });
         } else {
         /* Ranged / staff: the reach beam (melee now uses the AoE shape above).
            The `: 95` fallback is retained for any non-ranged that reaches here. */
