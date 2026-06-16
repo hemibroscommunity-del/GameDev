@@ -1207,13 +1207,21 @@ export class EffectsRenderer {
         const cosA = Math.cos(aimA), sinA = Math.sin(aimA);
         // Perpendicular unit vector (rotate aim by +90°).
         const perpX = -sinA, perpY = cosA;
+        /* v2.3.938: for a bow, start the beam at the teal grip (where the arrow
+           actually launches from, published by the bow stand-in) instead of the
+           player's feet, so the arrow flies down the MIDDLE of the line of
+           sight rather than parallel-and-offset to it.  Staff/melee keep the
+           feet origin; if no grip has been published yet, fall back to feet. */
+        const _useGrip = slot === 'ranged' && S._bowGripDX != null && S._bowGripDY != null;
+        const originX = _useGrip ? P.x + S._bowGripDX : P.x;
+        const originY = _useGrip ? P.y + S._bowGripDY : P.y;
         const top = [];
         const bot = [];
         for (let i = 0; i <= segments; i++) {
           const t = i / segments;
           const dist = t * lineLen;
-          const bx = P.x + cosA * dist;
-          const by = P.y + sinA * dist;
+          const bx = originX + cosA * dist;
+          const by = originY + sinA * dist;
           // Wave moves backward along the beam over time (phase increases).
           const wavePos = (dist / waveLen) * Math.PI * 2 - phase;
           const topW = halfW + Math.sin(wavePos) * waveAmp;
@@ -2399,6 +2407,11 @@ export class EffectsRenderer {
     if (_grip) {
       S._bowGripX = sp.x + (_grip[0] - cfg.fw / 2) * sp.scale.x;
       S._bowGripY = sp.y + (_grip[1] - cfg.feetY) * Math.abs(sp.scale.y);
+      /* Also publish the grip as an OFFSET from the player so consumers (the
+         line-of-sight beam) can track the player's live position between shots
+         instead of lagging at the last shot's world point. */
+      S._bowGripDX = S._bowGripX - S.player.x;
+      S._bowGripDY = S._bowGripY - S.player.y;
     }
     this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
   }
