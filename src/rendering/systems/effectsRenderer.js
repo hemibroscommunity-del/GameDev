@@ -277,7 +277,7 @@ export class EffectsRenderer {
        the per-frame head crowns in crowns.json. */
     this._swordCfg = {
       south:     { url: '/sprites/player/sword-south.png',     fw: 320, fh: 320, feetY: 270, crownKey: 'sword' },
-      southeast: { url: '/sprites/player/sword-southeast.png', fw: 400, fh: 340, feetY: 285, crownKey: 'sword_se' },
+      southeast: { url: '/sprites/player/sword-southeast.png', fw: 356, fh: 304, feetY: 286, crownKey: 'sword_se' },
     };
     this._swordFrames = {};        // dir -> [Texture]
     this.swordSprite = new Sprite();
