@@ -266,22 +266,32 @@ export class EffectsRenderer {
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
 
     /* v2.3.910: sword-swing stand-in — the owner-supplied swing animation plays
-       at the player during a SOUTH-facing melee swing (same self-contained
-       stand-in pattern as the gathering animations).  Combat logic is untouched;
-       this only swaps the body VISUAL for the swing window.  320x320 frames:
-       the figure's feet sit at y=270, leg-centre at x=160, so the sprite anchors
-       at (0.5, 270/320) to plant the feet on the ground while the blade has room
-       above (windup) and just below (low follow-through). */
+       at the player during a melee swing (same self-contained stand-in pattern
+       as the gathering animations).  Combat logic is untouched; this only swaps
+       the body VISUAL for the swing window.
+       v2.3.912: per-facing sheets (the occluded swing can't be mirrored — a
+       flipped blade would sweep behind the body).  Each sheet is authored with
+       the figure's ground point at frame-centre-x and feet at `feetY`, so the
+       sprite anchors at (0.5, feetY/fh): feet plant on the ground while the blade
+       has room above (windup) and to the side (follow-through).  crownKey maps to
+       the per-frame head crowns in crowns.json. */
+    this._swordCfg = {
+      south:     { url: '/sprites/player/sword-south.png',     fw: 320, fh: 320, feetY: 270, crownKey: 'sword' },
+      southeast: { url: '/sprites/player/sword-southeast.png', fw: 400, fh: 340, feetY: 285, crownKey: 'sword_se' },
+    };
+    this._swordFrames = {};        // dir -> [Texture]
     this.swordSprite = new Sprite();
-    this.swordSprite.anchor.set(0.5, 270 / 320);
+    this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
     this.nodeLayer.addChild(this.swordSprite);
-    this._swordFrames = [];
-    Assets.load('/sprites/player/sword-south.png').then((tex) => {
-      const FW = 320, FH = 320;
-      const n = Math.max(1, Math.round(tex.width / FW));
-      for (let i = 0; i < n; i++) this._swordFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
-    }).catch((err) => console.warn('[sword-south] load failed', err));
+    for (const dir of Object.keys(this._swordCfg)) {
+      const cfg = this._swordCfg[dir];
+      this._swordFrames[dir] = [];
+      Assets.load(cfg.url).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / cfg.fw));
+        for (let i = 0; i < n; i++) this._swordFrames[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
+    }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
        whichever skill stand-in is active (chopper / cook / fire-lighter), which
@@ -299,7 +309,7 @@ export class EffectsRenderer {
        / the stand 182px reference), so the hat matches how it sits idle rather
        than being sized to the lumberjack's small head.  chop 166px, cook 212px,
        fire ~155px in-frame -> these multipliers. */
-    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85, sword: 1.03 };
+    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85, sword: 1.03, sword_se: 1.03 };
     /* crowns.json frame widths MUST match the strip-loading FWs above
        (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
        crown generator with the matching widths or the traits drift off-head. */
@@ -2252,23 +2262,30 @@ export class EffectsRenderer {
    * Self-contained: combat logic / hit detection are untouched. */
   _updateSwordSwing(S, now) {
     if (this.swordSprite) this.swordSprite.visible = false;
-    if (!S || !S._swordSwinging || !S.player || !this.swordSprite || !this._swordFrames.length) return;
-    const n = this._swordFrames.length;
+    if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
+    /* entityRenderer published which facing's swing is active (only the
+       authored facings trigger). */
+    const dir = S._swordSwingDir;
+    const cfg = dir && this._swordCfg[dir];
+    const frames = cfg && this._swordFrames[dir];
+    if (!cfg || !frames || !frames.length) return;
+    const n = frames.length;
     const elapsed = now - (S.swingTimer || now);
     const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
     const sp = this.swordSprite;
-    sp.texture = this._swordFrames[fi];
-    /* Render the figure (~188px body in-frame) at the player's drawn height so
-       it matches the rest of the avatar; the 320 frame scales with it. */
-    const SWORD_BODY_H = 84;            // player body height in world px
-    const s = SWORD_BODY_H / 188;
+    sp.anchor.set(0.5, cfg.feetY / cfg.fh);
+    sp.texture = frames[fi];
+    /* Render the figure (~188px body in-frame) at the avatar's actual drawn
+       height so it matches the rest of the body (published per-facing/zone). */
+    const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
+    const s = bodyH / 188;
     sp.scale.set(s, s);
     sp.x = S.player.x;
     /* Plant the feet where the real avatar's feet were (published by
        entityRenderer); fall back to player.y if not set yet. */
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
-    this._placeSkillTraitsOn('sword', sp, fi, 'south', false);
+    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, 'south', false);
   }
 
   /* ── Extraction cue (v2.3.229) ──

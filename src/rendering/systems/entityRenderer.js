@@ -3406,14 +3406,17 @@ export class EntityRenderer {
        v2.3.854: same for mining -- the pickaxe is baked into the 'mine'
        sheet, so the equipped weapon must not show. */
     const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining'));
-    /* v2.3.910: south-facing melee swing -> play the sword-swing stand-in
-       (effectsRenderer) and hide the real body + weapon for the swing window.
-       Gated on last frame's published render facing ('south' only -- the only
-       direction the swing art exists for), the melee swing flag, and no active
-       gathering/firemaking.  Combat logic is untouched; this is visual only. */
-    const _swordSwing = !!(S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWORD_SWING_MS
-      && S._renderFacing === 'south' && !S._extraction && !S._firemaking);
+    /* v2.3.910: melee swing -> play the sword-swing stand-in (effectsRenderer)
+       and hide the real body + weapon for the swing window.  Gated on the melee
+       swing flag, no active gathering/firemaking, and a facing that has authored
+       swing art (occluded swings can't be mirrored, so each facing needs its own
+       sheet -- v2.3.912 adds southeast).  Combat logic is untouched; visual only. */
+    const _swordDir = (S._renderFacing === 'south' || S._renderFacing === 'southeast')
+      ? S._renderFacing : null;
+    const _swordSwing = !!(_swordDir && S.isSwinging && S.swingTimer
+      && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking);
     S._swordSwinging = _swordSwing;
+    S._swordSwingDir = _swordSwing ? _swordDir : null;
     if (_fishingPose || _swordSwing) {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
@@ -3827,7 +3830,12 @@ export class EntityRenderer {
          floating up.  The body is anchored frame-centre (256-frame, feet row
          221), so feet sit (221-128)*bodyScale below the display origin, then
          scaled by the per-zone display scale. */
-      S._swordFootY = display.y + (221 - 128) * bodyScale * (display.scale.y || 1);
+      const _dscale = display.scale.y || 1;
+      S._swordFootY = display.y + (221 - 128) * bodyScale * _dscale;
+      /* Also publish the avatar's drawn body height (crown-to-foot ~188px in
+         the source frame) so the stand-in renders at the matching size for this
+         facing / zone. */
+      S._swordBodyH = (221 - 33) * bodyScale * _dscale;
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this
