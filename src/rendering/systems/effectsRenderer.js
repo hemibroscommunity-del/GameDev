@@ -275,17 +275,28 @@ export class EffectsRenderer {
        sprite anchors at (0.5, feetY/fh): feet plant on the ground while the blade
        has room above (windup) and to the side (follow-through).  crownKey maps to
        the per-frame head crowns in crowns.json. */
+    /* v2.3.920: the south swing (a big front-facing overhead chop that finishes
+       toward the lower-RIGHT) covers the whole front arc: used as-authored for
+       south AND southeast (finishes right -> reads as down-right), and MIRRORED
+       for southwest (finishes left -> reads as down-left).  The owner preferred
+       the south swing's larger arc over a dedicated SE clip, and reusing it
+       sidesteps the white-background keying issues that SE clip had. */
     this._swordCfg = {
-      south:     { url: '/sprites/player/sword-south.png',     fw: 320, fh: 320, feetY: 270, crownKey: 'sword' },
-      southeast: { url: "/sprites/player/sword-southeast.png", fw: 356, fh: 307, feetY: 286, crownKey: "sword_se" },
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword' },
     };
-    this._swordFrames = {};        // dir -> [Texture]
+    /* facing -> [cfg key, mirror?] */
+    this._swordFacing = {
+      south:     ['south', false],
+      southeast: ['south', false],
+      southwest: ['south', true],
+    };
+    this._swordFrames = {};        // cfg key -> [Texture]
     /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
        constant, so a browser / edge cache (esp. on the stable branch-preview
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 919;
+    const SWORD_ART_VERSION = 920;
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
@@ -2261,19 +2272,21 @@ export class EffectsRenderer {
   }
 
   /* ── Sword swing animation (v2.3.910) ──
-   * Plays the owner's sword-swing at the player during a SOUTH-facing melee
+   * Plays the owner's sword-swing at the player during a front-facing melee
    * swing.  entityRenderer._updatePlayer sets S._swordSwinging (and hides the
-   * real body + weapon) when the swing is active and the player faces south;
-   * here we draw the stand-in and composite the traits onto its head.
-   * Self-contained: combat logic / hit detection are untouched. */
+   * real body + weapon) when the swing is active and the player faces a front
+   * arc; here we draw the stand-in and composite the traits onto its head.
+   * v2.3.920: the south sheet covers south + southeast as-is and southwest
+   * mirrored.  Self-contained: combat logic / hit detection are untouched. */
   _updateSwordSwing(S, now) {
     if (this.swordSprite) this.swordSprite.visible = false;
     if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
-    /* entityRenderer published which facing's swing is active (only the
-       authored facings trigger). */
-    const dir = S._swordSwingDir;
-    const cfg = dir && this._swordCfg[dir];
-    const frames = cfg && this._swordFrames[dir];
+    /* entityRenderer published the active facing; resolve it to a sheet + mirror. */
+    const fmap = this._swordFacing[S._swordSwingDir];
+    if (!fmap) return;
+    const cfg = this._swordCfg[fmap[0]];
+    const mirror = fmap[1];
+    const frames = cfg && this._swordFrames[fmap[0]];
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
     const elapsed = now - (S.swingTimer || now);
@@ -2285,13 +2298,13 @@ export class EffectsRenderer {
        height so it matches the rest of the body (published per-facing/zone). */
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
     const s = bodyH / 188;
-    sp.scale.set(s, s);
+    sp.scale.set(mirror ? -s : s, s);
     sp.x = S.player.x;
     /* Plant the feet where the real avatar's feet were (published by
        entityRenderer); fall back to player.y if not set yet. */
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
-    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, 'south', false);
+    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, 'south', mirror);
   }
 
   /* ── Extraction cue (v2.3.229) ──
