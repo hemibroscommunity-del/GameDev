@@ -280,6 +280,12 @@ export class EffectsRenderer {
       southeast: { url: '/sprites/player/sword-southeast.png', fw: 360, fh: 307, feetY: 286, crownKey: 'sword_se' },
     };
     this._swordFrames = {};        // dir -> [Texture]
+    /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
+       constant, so a browser / edge cache (esp. on the stable branch-preview
+       host) keeps serving a stale sheet after the art changes -- that's what
+       made a fixed sword outline still look white on-device.  Bump this whenever
+       a sword sheet is re-cut, exactly like the player-sprite VERSION. */
+    const SWORD_ART_VERSION = 916;
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
@@ -287,7 +293,7 @@ export class EffectsRenderer {
     for (const dir of Object.keys(this._swordCfg)) {
       const cfg = this._swordCfg[dir];
       this._swordFrames[dir] = [];
-      Assets.load(cfg.url).then((tex) => {
+      Assets.load(cfg.url + '?v=' + SWORD_ART_VERSION).then((tex) => {
         const n = Math.max(1, Math.round(tex.width / cfg.fw));
         for (let i = 0; i < n; i++) this._swordFrames[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
       }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
