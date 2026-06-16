@@ -1294,7 +1294,12 @@ export function updateMonsterCombat(S, deps) {
                 var isStaff = ((_S$rpg10 = S.rpg) === null || _S$rpg10 === void 0 ? void 0 : _S$rpg10.activeSlot) === 'staff';
                 S.arrows.push({
                   ang: arrAngle,
-                  dist: 14,
+                  /* v2.3.937: bow shots nock at the teal grip and launch at the
+                     (early) release -- start near the player and let projectiles.js
+                     hold them at the grip until BOW_RELEASE_MS.  Staff bolts keep
+                     the old immediate feet-origin (dist 14, no fromGrip). */
+                  dist: isStaff ? 14 : 2,
+                  fromGrip: !isStaff,
                   /* v2.3.109: bow's 0.7x flat now lives inside
                      calcWeaponDmg as the 0.6x-0.8x range, so no
                      per-projectile multiplier is needed here. */

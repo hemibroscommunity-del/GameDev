@@ -12,7 +12,7 @@ import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.j
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS } from './entityRenderer.js';
+import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -2376,7 +2376,12 @@ export class EffectsRenderer {
     if (!cfg || !frames || !frames.length) return;
     const n = frames.length;
     const elapsed = now - (S._bowShotAt || now);
-    const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / BOW_SHOT_MS) * n)));
+    /* v2.3.937: quick draw -> the load/pull frames play across BOW_RELEASE_MS,
+       then the final (release) frame holds for the rest of BOW_SHOT_MS.  The
+       arrow launches from the grip at BOW_RELEASE_MS (projectiles.js). */
+    const fi = elapsed < BOW_RELEASE_MS
+      ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
+      : n - 1;
     const sp = this.bowSprite;
     sp.anchor.set(0.5, cfg.feetY / cfg.fh);
     sp.texture = frames[fi];
@@ -2386,6 +2391,15 @@ export class EffectsRenderer {
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
+    /* v2.3.937: publish the teal grip's WORLD position (same anchor math as
+       _placeSkillTraitsOn) so the procedural arrow can launch from the bow
+       rather than the player's feet.  scale.x carries the mirror sign. */
+    const _crowns = this._skillCrowns && this._skillCrowns[cfg.crownKey];
+    const _grip = _crowns && _crowns.grip;
+    if (_grip) {
+      S._bowGripX = sp.x + (_grip[0] - cfg.fw / 2) * sp.scale.x;
+      S._bowGripY = sp.y + (_grip[1] - cfg.feetY) * Math.abs(sp.scale.y);
+    }
     this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
   }
 

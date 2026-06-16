@@ -49,11 +49,24 @@ export function updateArrows(S, deps) {
             /* Derive element/type early so kill logic can use them */
             var projElem = a.element || (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1);
             var isStaffProj = (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) === 'staff' || a.isSpecial && ((_S$rpg15 = S.rpg) === null || _S$rpg15 === void 0 ? void 0 : _S$rpg15.activeSlot) === 'staff';
-            a.dist += a.isStaff ? 5 : 8;
+            /* v2.3.937: bow arrows nock at the teal grip (S._bowGrip{X,Y},
+               published each frame by the bow stand-in) and don't fly until the
+               quick draw reaches its release at BOW_RELEASE_MS (110 ms; mirrors
+               the export in entityRenderer.js -- kept as a literal to avoid a
+               game/ -> rendering/ import).  While nocked, the offset tracks the
+               live grip; at release it freezes so the arrow leaves from the bow.
+               Staff bolts have no fromGrip and behave exactly as before. */
+            var _released = !a.fromGrip || (Date.now() - (S._bowShotAt || 0)) >= 110;
+            if (a.fromGrip && (!_released || a._ox == null) && S._bowGripX != null) {
+              a._ox = S._bowGripX - P.x;
+              a._oy = S._bowGripY - P.y;
+            }
+            var _ox = a._ox || 0, _oy = a._oy || 0;
+            if (_released) a.dist += a.isStaff ? 5 : 8;
             a.life--;
             if (S._aiming || S.lockedTarget && S.lockedTarget.ref) a.ang = curAim;
-            a._renderX = P.x + Math.cos(a.ang) * a.dist;
-            a._renderY = P.y + Math.sin(a.ang) * a.dist;
+            a._renderX = P.x + _ox + Math.cos(a.ang) * a.dist;
+            a._renderY = P.y + _oy + Math.sin(a.ang) * a.dist;
             if (a.life <= 0) return false;
             var hit = false;
             if (S.monsters) S.monsters.forEach(function (m) {

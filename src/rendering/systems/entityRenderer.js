@@ -1121,10 +1121,15 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
    the same window when it draws the stand-in and composites the traits. */
 export const SWORD_SWING_MS = 300;
 
-/* v2.3.925: how long the bow-shoot stand-in plays per ranged shot (its 4
-   frames -- load/draw/release/follow -- map across this window from the shot
-   timestamp S._bowShotAt). */
+/* v2.3.925: how long the bow-shoot stand-in plays per ranged shot (its frames
+   -- load/pull/release -- map across this window from the shot timestamp
+   S._bowShotAt; the release frame then holds for the remainder). */
 export const BOW_SHOT_MS = 360;
+/* v2.3.937: the draw is quick -- load + pull play across this short window and
+   the bow snaps to its release frame by BOW_RELEASE_MS; the procedural arrow
+   launches from the teal grip at that moment (see projectiles.js, which mirrors
+   this value).  Owner: "speed up draw, release early". */
+export const BOW_RELEASE_MS = 110;
 
 /** Place hat + beard + hair (the player's current selection) on a stand-in
  *  skill sprite.  sprites = { hat, beard, hair } owned by the caller. */
