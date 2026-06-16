@@ -282,13 +282,17 @@ export class EffectsRenderer {
        the south swing's larger arc over a dedicated SE clip, and reusing it
        sidesteps the white-background keying issues that SE clip had. */
     this._swordCfg = {
-      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword' },
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south' },
+      east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east' },
     };
-    /* facing -> [cfg key, mirror?].  v2.3.921: SE/SW mirror flipped per owner. */
+    /* facing -> [cfg key, mirror?].  v2.3.921: SE/SW mirror flipped per owner.
+       v2.3.922: east sheet covers east (as-is) + west (mirrored). */
     this._swordFacing = {
       south:     ['south', false],
       southeast: ['south', true],
       southwest: ['south', false],
+      east:      ['east', false],
+      west:      ['east', true],
     };
     this._swordFrames = {};        // cfg key -> [Texture]
     /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
@@ -296,7 +300,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 920;
+    const SWORD_ART_VERSION = 922;
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
@@ -2304,7 +2308,7 @@ export class EffectsRenderer {
        entityRenderer); fall back to player.y if not set yet. */
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
-    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, 'south', mirror);
+    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
   }
 
   /* ── Extraction cue (v2.3.229) ──

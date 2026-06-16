@@ -3411,7 +3411,8 @@ export class EntityRenderer {
        swing flag, no active gathering/firemaking, and a front-arc facing.
        v2.3.920: the south sheet covers south + southeast as-is and southwest
        mirrored (effectsRenderer._swordFacing).  Combat logic untouched; visual only. */
-    const _swordDir = (S._renderFacing === 'south' || S._renderFacing === 'southeast' || S._renderFacing === 'southwest')
+    const _swordDir = (S._renderFacing === 'south' || S._renderFacing === 'southeast' || S._renderFacing === 'southwest'
+      || S._renderFacing === 'east' || S._renderFacing === 'west')
       ? S._renderFacing : null;
     const _swordSwing = !!(_swordDir && S.isSwinging && S.swingTimer
       && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking);
