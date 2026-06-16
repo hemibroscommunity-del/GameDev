@@ -330,7 +330,8 @@ export class EffectsRenderer {
          load/pull/release -- the in-game arrow projectile draws the arrow). */
       southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south' },
       south:     { url: '/sprites/player/bow-south.png',     fw: 146, fh: 252, feetY: 234, crownKey: 'bow_s',  traitDir: 'south' },
-      northwest: { url: '/sprites/player/bow-northwest.png', fw: 244, fh: 266, feetY: 248, crownKey: 'bow_nw', traitDir: 'north' },
+      /* v2.3.930: NW re-cut to the owner's arrow-free art (3 frames). */
+      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north' },
       north:     { url: '/sprites/player/bow-north.png',     fw: 138, fh: 278, feetY: 259, crownKey: 'bow_n',  traitDir: 'north' },
     };
     this._bowFacing = {
@@ -344,7 +345,7 @@ export class EffectsRenderer {
       north:     ['north', false],
     };
     this._bowFrames = {};
-    const BOW_ART_VERSION = 929;
+    const BOW_ART_VERSION = 930;
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
