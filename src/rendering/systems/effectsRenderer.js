@@ -326,7 +326,7 @@ export class EffectsRenderer {
        each (load -> draw -> release -> follow). */
     this._bowCfg = {
       east:      { url: '/sprites/player/bow-east.png',      fw: 342, fh: 260, feetY: 241, crownKey: 'bow_e',  traitDir: 'east' },
-      southwest: { url: '/sprites/player/bow-southwest.png', fw: 254, fh: 252, feetY: 233, crownKey: 'bow_sw', traitDir: 'south' },
+      southwest: { url: '/sprites/player/bow-southwest.png', fw: 198, fh: 251, feetY: 233, crownKey: 'bow_sw', traitDir: 'south' },
       south:     { url: '/sprites/player/bow-south.png',     fw: 146, fh: 252, feetY: 234, crownKey: 'bow_s',  traitDir: 'south' },
       northwest: { url: '/sprites/player/bow-northwest.png', fw: 244, fh: 266, feetY: 248, crownKey: 'bow_nw', traitDir: 'north' },
       north:     { url: '/sprites/player/bow-north.png',     fw: 138, fh: 278, feetY: 259, crownKey: 'bow_n',  traitDir: 'north' },
@@ -342,7 +342,7 @@ export class EffectsRenderer {
       north:     ['north', false],
     };
     this._bowFrames = {};
-    const BOW_ART_VERSION = 928;
+    const BOW_ART_VERSION = 929;
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
