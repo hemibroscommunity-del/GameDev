@@ -19,5 +19,10 @@
   "greatsword-southwest": [86, 24],
   "greatsword-east": [29, 24],
   "greatsword-northeast": [30, 23],
-  "greatsword-north": [25, 21]
+  "greatsword-north": [25, 21],
+  "bow-south": [13, 113],
+  "bow-southwest": [9, 117],
+  "bow-east": [43, 101],
+  "bow-northeast": [28, 112],
+  "bow-north": [17, 104]
 }

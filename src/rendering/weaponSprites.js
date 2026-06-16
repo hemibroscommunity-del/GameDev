@@ -13,7 +13,7 @@ import { Assets } from 'pixi.js';
 
 /* Bump on every weapon-art change so URL-keyed browser/CDN caches
    refetch instead of serving the previous PNG. */
-const SPRITE_VERSION = '2.3.942';
+const SPRITE_VERSION = '2.3.944';
 
 /* v2.3.172: per-gearBase variants. Keys are `${type}:${gearBase}`;
    the bare type key is the fallback for any unmapped gearBase. wood-
@@ -32,6 +32,11 @@ const SHEETS = {
   'greatsword-northeast': { url: `/sprites/weapons/swords/greatsword-northeast.png?v=${SPRITE_VERSION}`, tex: null },
   'greatsword-north':     { url: `/sprites/weapons/swords/greatsword-north.png?v=${SPRITE_VERSION}`,     tex: null },
   bow:          { url: `/sprites/weapons/bows/Bow2.png?v=${SPRITE_VERSION}`,              tex: null },
+  'bow-south':     { url: `/sprites/weapons/bows/bow-south.png?v=${SPRITE_VERSION}`,     tex: null },
+  'bow-southwest': { url: `/sprites/weapons/bows/bow-southwest.png?v=${SPRITE_VERSION}`, tex: null },
+  'bow-east':      { url: `/sprites/weapons/bows/bow-east.png?v=${SPRITE_VERSION}`,      tex: null },
+  'bow-northeast': { url: `/sprites/weapons/bows/bow-northeast.png?v=${SPRITE_VERSION}`, tex: null },
+  'bow-north':     { url: `/sprites/weapons/bows/bow-north.png?v=${SPRITE_VERSION}`,     tex: null },
   staff:        { url: `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${SPRITE_VERSION}`, tex: null },
 };
 
@@ -86,17 +91,17 @@ export function loadWeaponSprites() {
  *  is registered (e.g. sword:wood -> Bamboo); otherwise falls back to
  *  the bare-type entry. */
 export function getWeaponTexture(type, gearBase, dir) {
-  /* v2.3.942: greatsword has per-facing held art keyed greatsword-<dir>. */
-  if (type === 'greatsword' && dir && SHEETS[`greatsword-${dir}`] && SHEETS[`greatsword-${dir}`].tex) {
-    return SHEETS[`greatsword-${dir}`].tex;
+  /* v2.3.942/944: per-facing held art keyed `${type}-${dir}` (greatsword, bow). */
+  if (dir && SHEETS[`${type}-${dir}`] && SHEETS[`${type}-${dir}`].tex) {
+    return SHEETS[`${type}-${dir}`].tex;
   }
   const entry = SHEETS[keyFor(type, gearBase)];
   return (entry && entry.tex) || null;
 }
 
 export function hasWeapon(type, gearBase, dir) {
-  if (type === 'greatsword' && dir && SHEETS[`greatsword-${dir}`]) {
-    return !!SHEETS[`greatsword-${dir}`].tex;
+  if (dir && SHEETS[`${type}-${dir}`]) {
+    return !!SHEETS[`${type}-${dir}`].tex;
   }
   const k = keyFor(type, gearBase);
   return !!(SHEETS[k] && SHEETS[k].tex);

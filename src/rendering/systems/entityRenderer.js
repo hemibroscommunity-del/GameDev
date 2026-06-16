@@ -4086,10 +4086,10 @@ export class EntityRenderer {
            below if the texture isn't loaded yet. v2.3.172 passes
            wpn.gearBase so wood-tier swords pick the bamboo variant. */
         const weaponSprite = display._weaponSprite;
-        /* v2.3.942: the greatsword has per-facing held art selected by the
-           canonical sprite `dir`; the other 3 facings reuse a canonical
+        /* v2.3.942/944: greatsword + bow have per-facing held art selected by
+           the canonical sprite `dir`; the other 3 facings reuse a canonical
            texture flipped by resolveDirection's `mirror` (handled below). */
-        const _gsDir = wpn.type === 'greatsword' ? dir : null;
+        const _gsDir = (wpn.type === 'greatsword' || wpn.type === 'bow') ? dir : null;
         const wpnIconTex = hasWeapon(wpn.type, wpn.gearBase, _gsDir) ? getWeaponTexture(wpn.type, wpn.gearBase, _gsDir) : null;
         if (wpnIconTex) {
           if (weaponSprite.texture !== wpnIconTex) weaponSprite.texture = wpnIconTex;
@@ -4139,7 +4139,7 @@ export class EntityRenderer {
              tuning. Chrome sword stays at 26. */
           const targetH = wpn.type === 'greatsword' ? (_gsDir ? 64 : 36)
                          : wpn.type === 'staff'      ? 34
-                         : wpn.type === 'bow'        ? 28
+                         : wpn.type === 'bow'        ? (_gsDir ? 52 : 28)
                          : isWoodSword                ? 45
                          :                              26;
           const fitScale = targetH / Math.max(8, th);
