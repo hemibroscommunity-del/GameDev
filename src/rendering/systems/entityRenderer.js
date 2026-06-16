@@ -3853,11 +3853,18 @@ export class EntityRenderer {
          221), so feet sit (221-128)*bodyScale below the display origin, then
          scaled by the per-zone display scale. */
       const _dscale = display.scale.y || 1;
-      S._swordFootY = display.y + (221 - 128) * bodyScale * _dscale;
+      /* v2.3.935: always size + plant the stand-in at the IDLE (stand) scale,
+         not the live `bodyScale`.  While moving, `pose` is 'jog' and
+         BODY_DIR_SCALE.jog is much larger than .stand (e.g. east 1.25 vs 0.983),
+         so the stand-in grew when shooting/swinging on the move (north looked
+         exempt only because its jog≈stand).  Using the stand scale here keeps
+         the swing/shoot stand-in idle-sized in every facing. */
+      const _standBodyScale = bodyDirScale('stand', dir) * LOCAL_SCALE;
+      S._swordFootY = display.y + (221 - 128) * _standBodyScale * _dscale;
       /* Also publish the avatar's drawn body height (crown-to-foot ~188px in
          the source frame) so the stand-in renders at the matching size for this
          facing / zone. */
-      S._swordBodyH = (221 - 33) * bodyScale * _dscale;
+      S._swordBodyH = (221 - 33) * _standBodyScale * _dscale;
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this
