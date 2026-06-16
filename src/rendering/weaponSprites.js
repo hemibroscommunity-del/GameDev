@@ -13,16 +13,24 @@ import { Assets } from 'pixi.js';
 
 /* Bump on every weapon-art change so URL-keyed browser/CDN caches
    refetch instead of serving the previous PNG. */
-const SPRITE_VERSION = '2.3.173';
+const SPRITE_VERSION = '2.3.942';
 
 /* v2.3.172: per-gearBase variants. Keys are `${type}:${gearBase}`;
    the bare type key is the fallback for any unmapped gearBase. wood-
    tier swords pick the Bamboo art; higher tiers fall through to
-   Sword1.png. Same pattern can be extended per BLACKSMITH_TIERS. */
+   Sword1.png. Same pattern can be extended per BLACKSMITH_TIERS.
+   v2.3.942: the greatsword has per-FACING held art (owner-drawn, grip
+   pinned via handles.json greatsword-<dir>).  Keys `greatsword-<dir>`
+   for the 5 canonical facings; the other 3 mirror in entityRenderer. */
 const SHEETS = {
   sword:        { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
   'sword:wood': { url: `/sprites/weapons/swords/Bamboo.png?v=${SPRITE_VERSION}`,          tex: null },
   greatsword:   { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
+  'greatsword-south':     { url: `/sprites/weapons/swords/greatsword-south.png?v=${SPRITE_VERSION}`,     tex: null },
+  'greatsword-southwest': { url: `/sprites/weapons/swords/greatsword-southwest.png?v=${SPRITE_VERSION}`, tex: null },
+  'greatsword-east':      { url: `/sprites/weapons/swords/greatsword-east.png?v=${SPRITE_VERSION}`,      tex: null },
+  'greatsword-northeast': { url: `/sprites/weapons/swords/greatsword-northeast.png?v=${SPRITE_VERSION}`, tex: null },
+  'greatsword-north':     { url: `/sprites/weapons/swords/greatsword-north.png?v=${SPRITE_VERSION}`,     tex: null },
   bow:          { url: `/sprites/weapons/bows/Bow2.png?v=${SPRITE_VERSION}`,              tex: null },
   staff:        { url: `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${SPRITE_VERSION}`, tex: null },
 };
@@ -77,12 +85,19 @@ export function loadWeaponSprites() {
  *  when null.  Passing gearBase picks a tier-specific variant when one
  *  is registered (e.g. sword:wood -> Bamboo); otherwise falls back to
  *  the bare-type entry. */
-export function getWeaponTexture(type, gearBase) {
+export function getWeaponTexture(type, gearBase, dir) {
+  /* v2.3.942: greatsword has per-facing held art keyed greatsword-<dir>. */
+  if (type === 'greatsword' && dir && SHEETS[`greatsword-${dir}`] && SHEETS[`greatsword-${dir}`].tex) {
+    return SHEETS[`greatsword-${dir}`].tex;
+  }
   const entry = SHEETS[keyFor(type, gearBase)];
   return (entry && entry.tex) || null;
 }
 
-export function hasWeapon(type, gearBase) {
+export function hasWeapon(type, gearBase, dir) {
+  if (type === 'greatsword' && dir && SHEETS[`greatsword-${dir}`]) {
+    return !!SHEETS[`greatsword-${dir}`].tex;
+  }
   const k = keyFor(type, gearBase);
   return !!(SHEETS[k] && SHEETS[k].tex);
 }

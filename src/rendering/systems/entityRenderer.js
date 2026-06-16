@@ -4086,14 +4086,18 @@ export class EntityRenderer {
            below if the texture isn't loaded yet. v2.3.172 passes
            wpn.gearBase so wood-tier swords pick the bamboo variant. */
         const weaponSprite = display._weaponSprite;
-        const wpnIconTex = hasWeapon(wpn.type, wpn.gearBase) ? getWeaponTexture(wpn.type, wpn.gearBase) : null;
+        /* v2.3.942: the greatsword has per-facing held art selected by the
+           canonical sprite `dir`; the other 3 facings reuse a canonical
+           texture flipped by resolveDirection's `mirror` (handled below). */
+        const _gsDir = wpn.type === 'greatsword' ? dir : null;
+        const wpnIconTex = hasWeapon(wpn.type, wpn.gearBase, _gsDir) ? getWeaponTexture(wpn.type, wpn.gearBase, _gsDir) : null;
         if (wpnIconTex) {
           if (weaponSprite.texture !== wpnIconTex) weaponSprite.texture = wpnIconTex;
           const tw = wpnIconTex.width || 64;
           const th = wpnIconTex.height || 64;
           if (isInCombat) {
             /* In combat — pin grip to hand (existing behavior). */
-            const handle = getWeaponHandle(wpn.type, wpn.gearBase);
+            const handle = getWeaponHandle(wpn.type, wpn.gearBase, _gsDir);
             if (handle) weaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
             else weaponSprite.anchor.set(0.5, 1.0);
             /* v2.3.183: per-facing nudge table for bamboo. The simpler
@@ -4133,7 +4137,7 @@ export class EntityRenderer {
           const isWoodSword = wpn.type === 'sword' && wpn.gearBase === 'wood';
           /* v2.3.181: bamboo shrunk 60 -> 45 (~25% smaller) per user
              tuning. Chrome sword stays at 26. */
-          const targetH = wpn.type === 'greatsword' ? 36
+          const targetH = wpn.type === 'greatsword' ? (_gsDir ? 64 : 36)
                          : wpn.type === 'staff'      ? 34
                          : wpn.type === 'bow'        ? 28
                          : isWoodSword                ? 45
@@ -4157,7 +4161,11 @@ export class EntityRenderer {
             weaponSprite.scale.x = (mirror ? -1 : 1) * fitScale;
           } else {
             weaponSprite.rotation = 0;
-            const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
+            /* v2.3.942: per-facing greatsword art is already drawn for its
+               canonical facing, so flip it only for the truly-mirrored facings
+               (resolveDirection's `mirror`: west/northwest/southeast).  Other
+               weapons keep the single-icon rule (flip for SW/W/NW/N). */
+            const weaponMirror = _gsDir ? mirror : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
           }
           weaponSprite.scale.y = fitScale;

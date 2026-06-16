@@ -14,5 +14,10 @@
   "staff": [
     28,
     40
-  ]
+  ],
+  "greatsword-south": [87, 24],
+  "greatsword-southwest": [86, 24],
+  "greatsword-east": [29, 24],
+  "greatsword-northeast": [30, 23],
+  "greatsword-north": [25, 21]
 }
