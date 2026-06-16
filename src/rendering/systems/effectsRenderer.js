@@ -332,7 +332,8 @@ export class EffectsRenderer {
       south:     { url: '/sprites/player/bow-south.png',     fw: 146, fh: 252, feetY: 234, crownKey: 'bow_s',  traitDir: 'south' },
       /* v2.3.930: NW re-cut to the owner's arrow-free art (3 frames). */
       northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north' },
-      north:     { url: '/sprites/player/bow-north.png',     fw: 138, fh: 278, feetY: 259, crownKey: 'bow_n',  traitDir: 'north' },
+      /* v2.3.931: north re-cut to the owner's arrow-free art (3 frames). */
+      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north' },
     };
     this._bowFacing = {
       east:      ['east', false],
@@ -345,7 +346,7 @@ export class EffectsRenderer {
       north:     ['north', false],
     };
     this._bowFrames = {};
-    const BOW_ART_VERSION = 930;
+    const BOW_ART_VERSION = 931;
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
