@@ -12,7 +12,7 @@ import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.j
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, hideSkillTraits } from './entityRenderer.js';
+import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS } from './entityRenderer.js';
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -265,6 +265,97 @@ export class EffectsRenderer {
       for (let i = 0; i < n; i++) this._fireFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
 
+    /* v2.3.910: sword-swing stand-in — the owner-supplied swing animation plays
+       at the player during a melee swing (same self-contained stand-in pattern
+       as the gathering animations).  Combat logic is untouched; this only swaps
+       the body VISUAL for the swing window.
+       v2.3.912: per-facing sheets (the occluded swing can't be mirrored — a
+       flipped blade would sweep behind the body).  Each sheet is authored with
+       the figure's ground point at frame-centre-x and feet at `feetY`, so the
+       sprite anchors at (0.5, feetY/fh): feet plant on the ground while the blade
+       has room above (windup) and to the side (follow-through).  crownKey maps to
+       the per-frame head crowns in crowns.json. */
+    /* v2.3.920: the south swing (a big front-facing overhead chop that finishes
+       toward the lower-RIGHT) covers the whole front arc: used as-authored for
+       south AND southeast (finishes right -> reads as down-right), and MIRRORED
+       for southwest (finishes left -> reads as down-left).  The owner preferred
+       the south swing's larger arc over a dedicated SE clip, and reusing it
+       sidesteps the white-background keying issues that SE clip had. */
+    this._swordCfg = {
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south' },
+      east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east' },
+      north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north" },
+    };
+    /* facing -> [cfg key, mirror?].  v2.3.921: SE/SW mirror flipped per owner.
+       v2.3.922: east sheet covers east (as-is) + west (mirrored).
+       v2.3.923: north (back view) sheet covers north + northeast (as-is) and
+       northwest (mirrored) -- NE/NW mirror is a first guess, easily flipped. */
+    this._swordFacing = {
+      south:     ['south', false],
+      southeast: ['south', true],
+      southwest: ['south', false],
+      east:      ['east', false],
+      west:      ['east', true],
+      north:     ['north', false],
+      northeast: ['north', false],
+      northwest: ['north', true],
+    };
+    this._swordFrames = {};        // cfg key -> [Texture]
+    /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
+       constant, so a browser / edge cache (esp. on the stable branch-preview
+       host) keeps serving a stale sheet after the art changes -- that's what
+       made a fixed sword outline still look white on-device.  Bump this whenever
+       a sword sheet is re-cut, exactly like the player-sprite VERSION. */
+    const SWORD_ART_VERSION = 924;
+    this.swordSprite = new Sprite();
+    this.swordSprite.anchor.set(0.5, 1);
+    this.swordSprite.visible = false;
+    this.nodeLayer.addChild(this.swordSprite);
+    for (const dir of Object.keys(this._swordCfg)) {
+      const cfg = this._swordCfg[dir];
+      this._swordFrames[dir] = [];
+      Assets.load(cfg.url + '?v=' + SWORD_ART_VERSION).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / cfg.fw));
+        for (let i = 0; i < n; i++) this._swordFrames[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
+    }
+
+    /* v2.3.925: bow-shoot stand-in -- same self-contained pattern as the sword
+       swings, but driven by a ranged-bow shot (S._bowShotAt).  Authored sheets
+       for east + southwest + south; mirror covers west + southeast.  4 frames
+       each (load -> draw -> release -> follow). */
+    this._bowCfg = {
+      east:      { url: '/sprites/player/bow-east.png',      fw: 342, fh: 260, feetY: 241, crownKey: 'bow_e',  traitDir: 'east' },
+      southwest: { url: '/sprites/player/bow-southwest.png', fw: 254, fh: 252, feetY: 233, crownKey: 'bow_sw', traitDir: 'south' },
+      south:     { url: '/sprites/player/bow-south.png',     fw: 146, fh: 252, feetY: 234, crownKey: 'bow_s',  traitDir: 'south' },
+      northwest: { url: '/sprites/player/bow-northwest.png', fw: 244, fh: 266, feetY: 248, crownKey: 'bow_nw', traitDir: 'north' },
+      north:     { url: '/sprites/player/bow-north.png',     fw: 138, fh: 278, feetY: 259, crownKey: 'bow_n',  traitDir: 'north' },
+    };
+    this._bowFacing = {
+      east:      ['east', false],
+      west:      ['east', true],
+      southwest: ['southwest', false],
+      southeast: ['southwest', true],
+      south:     ['south', false],
+      northwest: ['northwest', false],
+      northeast: ['northwest', true],
+      north:     ['north', false],
+    };
+    this._bowFrames = {};
+    const BOW_ART_VERSION = 928;
+    this.bowSprite = new Sprite();
+    this.bowSprite.anchor.set(0.5, 1);
+    this.bowSprite.visible = false;
+    this.nodeLayer.addChild(this.bowSprite);
+    for (const dir of Object.keys(this._bowCfg)) {
+      const cfg = this._bowCfg[dir];
+      this._bowFrames[dir] = [];
+      Assets.load(cfg.url + '?v=' + BOW_ART_VERSION).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / cfg.fw));
+        for (let i = 0; i < n; i++) this._bowFrames[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      }).catch((err) => console.warn('[bow ' + dir + '] load failed', err));
+    }
+
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
        whichever skill stand-in is active (chopper / cook / fire-lighter), which
        otherwise replaces the trait-composed body.  One shared set — only one
@@ -281,7 +372,7 @@ export class EffectsRenderer {
        / the stand 182px reference), so the hat matches how it sits idle rather
        than being sized to the lumberjack's small head.  chop 166px, cook 212px,
        fire ~155px in-frame -> these multipliers. */
-    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85 };
+    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0, bow_nw: 1.0, bow_n: 1.0 };
     /* crowns.json frame widths MUST match the strip-loading FWs above
        (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
        crown generator with the matching widths or the traits drift off-head. */
@@ -321,6 +412,8 @@ export class EffectsRenderer {
     this._updateGatherNodes(S, now);
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
+    this._updateSwordSwing(S, now);
+    this._updateBowShot(S, now);
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
@@ -2223,6 +2316,71 @@ export class EffectsRenderer {
     sp.y = S.player.y + 6;
     sp.visible = true;
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
+  }
+
+  /* ── Sword swing animation (v2.3.910) ──
+   * Plays the owner's sword-swing at the player during a front-facing melee
+   * swing.  entityRenderer._updatePlayer sets S._swordSwinging (and hides the
+   * real body + weapon) when the swing is active and the player faces a front
+   * arc; here we draw the stand-in and composite the traits onto its head.
+   * v2.3.920: the south sheet covers south + southeast as-is and southwest
+   * mirrored.  Self-contained: combat logic / hit detection are untouched. */
+  _updateSwordSwing(S, now) {
+    if (this.swordSprite) this.swordSprite.visible = false;
+    if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
+    /* entityRenderer published the active facing; resolve it to a sheet + mirror. */
+    const fmap = this._swordFacing[S._swordSwingDir];
+    if (!fmap) return;
+    const cfg = this._swordCfg[fmap[0]];
+    const mirror = fmap[1];
+    const frames = cfg && this._swordFrames[fmap[0]];
+    if (!cfg || !frames || !frames.length) return;
+    const n = frames.length;
+    const elapsed = now - (S.swingTimer || now);
+    const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
+    const sp = this.swordSprite;
+    sp.anchor.set(0.5, cfg.feetY / cfg.fh);
+    sp.texture = frames[fi];
+    /* Render the figure (~188px body in-frame) at the avatar's actual drawn
+       height so it matches the rest of the body (published per-facing/zone). */
+    const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
+    const s = bodyH / 188;
+    sp.scale.set(mirror ? -s : s, s);
+    sp.x = S.player.x;
+    /* Plant the feet where the real avatar's feet were (published by
+       entityRenderer); fall back to player.y if not set yet. */
+    sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
+    sp.visible = true;
+    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+  }
+
+  /* ── Bow-shoot animation (v2.3.925) ──
+   * Plays the owner's bow-shoot at the player during a ranged-bow shot.
+   * entityRenderer._updatePlayer sets S._bowShowing + S._bowDir (and hides the
+   * real body + weapon) when a bow shot is active and the aim resolves to an
+   * authored facing.  Same self-contained pattern as the sword swings. */
+  _updateBowShot(S, now) {
+    if (this.bowSprite) this.bowSprite.visible = false;
+    if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
+    const fmap = this._bowFacing[S._bowDir];
+    if (!fmap) return;
+    const cfg = this._bowCfg[fmap[0]];
+    const mirror = fmap[1];
+    const frames = cfg && this._bowFrames[fmap[0]];
+    if (!cfg || !frames || !frames.length) return;
+    const n = frames.length;
+    const elapsed = now - (S._bowShotAt || now);
+    const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / BOW_SHOT_MS) * n)));
+    const sp = this.bowSprite;
+    sp.anchor.set(0.5, cfg.feetY / cfg.fh);
+    sp.texture = frames[fi];
+    const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
+    const s = bodyH / 188;
+    sp.scale.set(mirror ? -s : s, s);
+    sp.x = S.player.x;
+    sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
+    sp.visible = true;
+    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
   }
 
   /* ── Extraction cue (v2.3.229) ──

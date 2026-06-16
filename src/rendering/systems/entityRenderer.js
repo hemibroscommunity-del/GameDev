@@ -1116,6 +1116,16 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
   sprite.visible = true;
 }
 
+/* v2.3.910: how long the sword-swing stand-in plays (the 14-frame swing maps
+   across this window from S.swingTimer).  Exported so effectsRenderer drives
+   the same window when it draws the stand-in and composites the traits. */
+export const SWORD_SWING_MS = 300;
+
+/* v2.3.925: how long the bow-shoot stand-in plays per ranged shot (its 4
+   frames -- load/draw/release/follow -- map across this window from the shot
+   timestamp S._bowShotAt). */
+export const BOW_SHOT_MS = 360;
+
 /** Place hat + beard + hair (the player's current selection) on a stand-in
  *  skill sprite.  sprites = { hat, beard, hair } owned by the caller. */
 export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
@@ -3401,7 +3411,35 @@ export class EntityRenderer {
        v2.3.854: same for mining -- the pickaxe is baked into the 'mine'
        sheet, so the equipped weapon must not show. */
     const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining'));
-    if (_fishingPose) {
+    /* v2.3.910: melee swing -> play the sword-swing stand-in (effectsRenderer)
+       and hide the real body + weapon for the swing window.  Gated on the melee
+       swing flag and no active gathering/firemaking.
+       v2.3.923: all 8 compass facings now have authored swings (south sheet for
+       the front arc, east for E/W, north for the back arc), resolved in
+       effectsRenderer._swordFacing.  Combat logic untouched; visual only. */
+    const _SWORD_FACINGS = ['south', 'southeast', 'southwest', 'east', 'west', 'north', 'northeast', 'northwest'];
+    const _swordDir = _SWORD_FACINGS.includes(S._renderFacing) ? S._renderFacing : null;
+    const _swordSwing = !!(_swordDir && S.isSwinging && S.swingTimer
+      && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking);
+    S._swordSwinging = _swordSwing;
+    S._swordSwingDir = _swordSwing ? _swordDir : null;
+    /* v2.3.925: bow-shoot stand-in -> driven by a ranged-bow shot
+       (S._bowShotAt set in monsterCombat when an arrow fires).  Resolve the
+       shot ANGLE (S._bowShotAng, toward the target) to a compass sector and
+       only show for the authored facings (east/west/southwest/southeast).  Other
+       aim angles fall back to the normal ranged render until their art exists. */
+    const _BOW_FACINGS = ['east', 'west', 'southwest', 'southeast', 'south', 'northwest', 'northeast', 'north'];
+    let _bowDir = null;
+    if (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS && S._bowShotAng != null
+        && !S._extraction && !S._firemaking) {
+      const _bsec = Math.round(S._bowShotAng / (Math.PI / 4));
+      const _bf = SECTORS[((_bsec % 8) + 8) % 8];
+      if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
+    }
+    const _bowShot = !!_bowDir;
+    S._bowShowing = _bowShot;
+    S._bowDir = _bowDir;
+    if (_fishingPose || _swordSwing || _bowShot) {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
       if (display._handCapSprite) display._handCapSprite.visible = false;
@@ -3787,6 +3825,39 @@ export class EntityRenderer {
       display._spriteBody.visible = false;
       body.visible = true;
       display._spritePathRendered = false; _hideBodyRegions(display);
+    }
+
+    /* v2.3.910: during the melee swing the sword-swing stand-in (effectsRenderer)
+       stands in for the avatar's body, so hide the real body + its head traits
+       here.  v2.3.925: same for the bow-shoot stand-in.  _spritePathRendered
+       stays true so the NFT / procedural fallbacks below don't draw a body. */
+    if (_swordSwing || _bowShot) {
+      display._spriteBody.visible = false;
+      body.visible = false;
+      _hideBodyRegions(display);
+      display._spritePathRendered = true;
+      if (display._traitFace) display._traitFace.visible = false;
+      if (display._headwearSprite) display._headwearSprite.visible = false;
+      if (display._facialHairSprite) display._facialHairSprite.visible = false;
+      if (display._hairSprite) display._hairSprite.visible = false;
+      if (display._shirtSprite) display._shirtSprite.visible = false;
+      /* Hide the worn gear too -- otherwise the equipped armour stands in
+         place while the (shirtless) swing stand-in plays above it. */
+      for (const _g of [display._gearShirt, display._gearLegs, display._gearChest,
+                        display._gearShoulders, display._gearHead]) {
+        if (_g) _g.visible = false;
+      }
+      /* Publish the avatar's foot world-Y so the stand-in (effectsRenderer)
+         plants its feet exactly where the real body's feet were, instead of
+         floating up.  The body is anchored frame-centre (256-frame, feet row
+         221), so feet sit (221-128)*bodyScale below the display origin, then
+         scaled by the per-zone display scale. */
+      const _dscale = display.scale.y || 1;
+      S._swordFootY = display.y + (221 - 128) * bodyScale * _dscale;
+      /* Also publish the avatar's drawn body height (crown-to-foot ~188px in
+         the source frame) so the stand-in renders at the matching size for this
+         facing / zone. */
+      S._swordBodyH = (221 - 33) * bodyScale * _dscale;
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this

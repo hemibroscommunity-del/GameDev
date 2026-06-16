@@ -1312,6 +1312,10 @@ export function updateMonsterCombat(S, deps) {
                 if (isStaff) {
                   BT_AUDIO.play('magic-cast', { vol: 0.55 });
                 } else {
+                  /* v2.3.925: drive the bow-shoot stand-in (entityRenderer reads
+                     these to play the load/draw/release frames for the shot). */
+                  S._bowShotAt = Date.now();
+                  S._bowShotAng = arrAngle;
                   BT_AUDIO.play('arrow-fly', { vol: 0.85 });
                 }
               } else if (!S.isSwinging) {
