@@ -3408,12 +3408,12 @@ export class EntityRenderer {
     const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining'));
     /* v2.3.910: melee swing -> play the sword-swing stand-in (effectsRenderer)
        and hide the real body + weapon for the swing window.  Gated on the melee
-       swing flag, no active gathering/firemaking, and a front-arc facing.
-       v2.3.920: the south sheet covers south + southeast as-is and southwest
-       mirrored (effectsRenderer._swordFacing).  Combat logic untouched; visual only. */
-    const _swordDir = (S._renderFacing === 'south' || S._renderFacing === 'southeast' || S._renderFacing === 'southwest'
-      || S._renderFacing === 'east' || S._renderFacing === 'west')
-      ? S._renderFacing : null;
+       swing flag and no active gathering/firemaking.
+       v2.3.923: all 8 compass facings now have authored swings (south sheet for
+       the front arc, east for E/W, north for the back arc), resolved in
+       effectsRenderer._swordFacing.  Combat logic untouched; visual only. */
+    const _SWORD_FACINGS = ['south', 'southeast', 'southwest', 'east', 'west', 'north', 'northeast', 'northwest'];
+    const _swordDir = _SWORD_FACINGS.includes(S._renderFacing) ? S._renderFacing : null;
     const _swordSwing = !!(_swordDir && S.isSwinging && S.swingTimer
       && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking);
     S._swordSwinging = _swordSwing;

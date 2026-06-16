@@ -284,15 +284,21 @@ export class EffectsRenderer {
     this._swordCfg = {
       south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south' },
       east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east' },
+      north: { url: '/sprites/player/sword-north.png', fw: 350, fh: 246, feetY: 230, crownKey: 'sword_n', traitDir: 'north' },
     };
     /* facing -> [cfg key, mirror?].  v2.3.921: SE/SW mirror flipped per owner.
-       v2.3.922: east sheet covers east (as-is) + west (mirrored). */
+       v2.3.922: east sheet covers east (as-is) + west (mirrored).
+       v2.3.923: north (back view) sheet covers north + northeast (as-is) and
+       northwest (mirrored) -- NE/NW mirror is a first guess, easily flipped. */
     this._swordFacing = {
       south:     ['south', false],
       southeast: ['south', true],
       southwest: ['south', false],
       east:      ['east', false],
       west:      ['east', true],
+      north:     ['north', false],
+      northeast: ['north', false],
+      northwest: ['north', true],
     };
     this._swordFrames = {};        // cfg key -> [Texture]
     /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
@@ -300,7 +306,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 922;
+    const SWORD_ART_VERSION = 923;
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
