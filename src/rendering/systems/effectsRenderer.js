@@ -1186,13 +1186,11 @@ export class EffectsRenderer {
         && (S._aiming || isLocked || S.autoAttack)
         && S.player
         && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
-      /* v2.3.939: greatsword shows its wild-swing AoE shape (a 360° core circle
-         + a forward half-disc) instead of the reach beam, so the indicator
-         matches the new hit shape exactly (shared GS_* constants). */
-      const _gsWpn = slot === 'melee' ? (S.rpg && S.rpg.weapon)
-                   : slot === 'staff' ? (S.rpg && (S.rpg.staffWeapon || S.rpg.rangedWeapon))
-                   : (S.rpg && S.rpg.rangedWeapon);
-      const isGreatsword = isMelee && _gsWpn && _gsWpn.type === 'greatsword';
+      /* v2.3.940: melee shows its wild-swing AoE shape (a 360° core circle + a
+         forward half-disc) instead of the reach beam, so the indicator matches
+         the new melee hit shape exactly (shared GS_* constants).  (v2.3.939
+         gated this to the 'greatsword' type, but the default melee weapon is
+         type 'sword' so it never showed -- all melee uses the wild swing.) */
       if (shouldDraw) {
         const P = S.player;
         let aimA;
@@ -1204,7 +1202,7 @@ export class EffectsRenderer {
         } else {
           aimA = 0;
         }
-        if (isGreatsword) {
+        if (isMelee) {
           /* Forward half-disc (outer reach) + 360° core circle, centred on the
              player -- the same origin + radii the swing hit test uses. */
           gfx.moveTo(P.x, P.y);
@@ -1221,9 +1219,8 @@ export class EffectsRenderer {
           gfx.lineTo(P.x, P.y);
           gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.25 });
         } else {
-        /* Non-greatsword: the reach beam.
-           Melee at ~1/3 ranged length so the line reads as "short
-           reach indicator" not "you can hit this far." */
+        /* Ranged / staff: the reach beam (melee now uses the AoE shape above).
+           The `: 95` fallback is retained for any non-ranged that reaches here. */
         const lineLen = isRanged ? 280 : 95;
         const halfW = 2;          // half-width of beam at neutral
         const waveAmp = 1.6;      // edge wave amplitude in px
