@@ -328,6 +328,7 @@ export class EffectsRenderer {
       east:      { url: '/sprites/player/bow-east.png',      fw: 342, fh: 260, feetY: 241, crownKey: 'bow_e',  traitDir: 'east' },
       southwest: { url: '/sprites/player/bow-southwest.png', fw: 254, fh: 252, feetY: 233, crownKey: 'bow_sw', traitDir: 'south' },
       south:     { url: '/sprites/player/bow-south.png',     fw: 146, fh: 252, feetY: 234, crownKey: 'bow_s',  traitDir: 'south' },
+      northwest: { url: '/sprites/player/bow-northwest.png', fw: 244, fh: 266, feetY: 248, crownKey: 'bow_nw', traitDir: 'north' },
     };
     this._bowFacing = {
       east:      ['east', false],
@@ -335,9 +336,11 @@ export class EffectsRenderer {
       southwest: ['southwest', false],
       southeast: ['southwest', true],
       south:     ['south', false],
+      northwest: ['northwest', false],
+      northeast: ['northwest', true],
     };
     this._bowFrames = {};
-    const BOW_ART_VERSION = 926;
+    const BOW_ART_VERSION = 927;
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
@@ -367,7 +370,7 @@ export class EffectsRenderer {
        / the stand 182px reference), so the hat matches how it sits idle rather
        than being sized to the lumberjack's small head.  chop 166px, cook 212px,
        fire ~155px in-frame -> these multipliers. */
-    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0 };
+    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0, bow_nw: 1.0 };
     /* crowns.json frame widths MUST match the strip-loading FWs above
        (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
        crown generator with the matching widths or the traits drift off-head. */
