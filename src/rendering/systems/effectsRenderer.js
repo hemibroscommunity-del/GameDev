@@ -325,7 +325,8 @@ export class EffectsRenderer {
        for east + southwest + south; mirror covers west + southeast.  4 frames
        each (load -> draw -> release -> follow). */
     this._bowCfg = {
-      east:      { url: '/sprites/player/bow-east.png',      fw: 342, fh: 260, feetY: 241, crownKey: 'bow_e',  traitDir: 'east' },
+      /* v2.3.932: east re-cut to the owner's arrow-free art (3 frames). */
+      east:      { url: '/sprites/player/bow-east.png',      fw: 214, fh: 241, feetY: 235, crownKey: 'bow_e',  traitDir: 'east' },
       /* v2.3.929: SW re-cut to the owner's arrow-free art (3 frames:
          load/pull/release -- the in-game arrow projectile draws the arrow). */
       southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south' },
@@ -346,7 +347,7 @@ export class EffectsRenderer {
       north:     ['north', false],
     };
     this._bowFrames = {};
-    const BOW_ART_VERSION = 931;
+    const BOW_ART_VERSION = 932;
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
