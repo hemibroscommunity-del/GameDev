@@ -283,7 +283,7 @@ export class EffectsRenderer {
        the south swing's larger arc over a dedicated SE clip, and reusing it
        sidesteps the white-background keying issues that SE clip had. */
     this._swordCfg = {
-      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south' },
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png' },
       east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east' },
       north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north" },
     };
@@ -302,23 +302,39 @@ export class EffectsRenderer {
       northwest: ['north', true],
     };
     this._swordFrames = {};        // cfg key -> [Texture]
+    /* v2.3.948: optional armored body + separable weapon layers per facing.
+       When present (currently south), the swing draws the armored body instead
+       of the bald baked sheet and layers the recolorable weapon on top. */
+    this._swordArmorFrames = {};
+    this._swordWeaponFrames = {};
     /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
        constant, so a browser / edge cache (esp. on the stable branch-preview
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 924;
+    const SWORD_ART_VERSION = 948;
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
     this.nodeLayer.addChild(this.swordSprite);
+    /* v2.3.948: weapon layer drawn over the armored swing body (kept separate so
+       the sword stays recolorable; the armored sheet has the weapon removed). */
+    this.swordWeaponSprite = new Sprite();
+    this.swordWeaponSprite.anchor.set(0.5, 1);
+    this.swordWeaponSprite.visible = false;
+    this.nodeLayer.addChild(this.swordWeaponSprite);
+    const _loadSwordStrip = (target, dir, url, cfg) => {
+      target[dir] = [];
+      Assets.load(url + '?v=' + SWORD_ART_VERSION).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / cfg.fw));
+        for (let i = 0; i < n; i++) target[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
+    };
     for (const dir of Object.keys(this._swordCfg)) {
       const cfg = this._swordCfg[dir];
-      this._swordFrames[dir] = [];
-      Assets.load(cfg.url + '?v=' + SWORD_ART_VERSION).then((tex) => {
-        const n = Math.max(1, Math.round(tex.width / cfg.fw));
-        for (let i = 0; i < n; i++) this._swordFrames[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
-      }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
+      _loadSwordStrip(this._swordFrames, dir, cfg.url, cfg);
+      if (cfg.armorUrl)  _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
+      if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
     }
 
     /* v2.3.925: bow-shoot stand-in -- same self-contained pattern as the sword
@@ -2380,6 +2396,7 @@ export class EffectsRenderer {
    * mirrored.  Self-contained: combat logic / hit detection are untouched. */
   _updateSwordSwing(S, now) {
     if (this.swordSprite) this.swordSprite.visible = false;
+    if (this.swordWeaponSprite) this.swordWeaponSprite.visible = false;
     if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
     /* entityRenderer published the active facing; resolve it to a sheet + mirror. */
     const fmap = this._swordFacing[S._swordSwingDir];
@@ -2393,7 +2410,6 @@ export class EffectsRenderer {
     const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
     const sp = this.swordSprite;
     sp.anchor.set(0.5, cfg.feetY / cfg.fh);
-    sp.texture = frames[fi];
     /* Render the figure (~188px body in-frame) at the avatar's actual drawn
        height so it matches the rest of the body (published per-facing/zone). */
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
@@ -2404,7 +2420,27 @@ export class EffectsRenderer {
        entityRenderer); fall back to player.y if not set yet. */
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
-    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+    /* v2.3.948: if an armored body sheet exists for this facing, draw it instead
+       of the bald baked sheet, layer the recolorable weapon over it (same frame
+       geometry, so it lines up), and skip the hat/beard/hair composite -- the
+       helmet is the headwear.  Otherwise fall back to the bald sheet + traits. */
+    const armorFrames = this._swordArmorFrames[fmap[0]];
+    const weaponFrames = this._swordWeaponFrames[fmap[0]];
+    if (armorFrames && armorFrames[fi]) {
+      sp.texture = armorFrames[fi];
+      hideSkillTraits(this.skillTraits);
+      if (weaponFrames && weaponFrames[fi]) {
+        const wp = this.swordWeaponSprite;
+        wp.anchor.set(0.5, cfg.feetY / cfg.fh);
+        wp.texture = weaponFrames[fi];
+        wp.scale.set(mirror ? -s : s, s);
+        wp.x = sp.x; wp.y = sp.y;
+        wp.visible = true;
+      }
+    } else {
+      sp.texture = frames[fi];
+      this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+    }
   }
 
   /* ── Bow-shoot animation (v2.3.925) ──
