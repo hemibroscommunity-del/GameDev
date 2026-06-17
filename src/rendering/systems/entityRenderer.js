@@ -4115,8 +4115,24 @@ export class EntityRenderer {
             /* v2.3.208: SW idle only, +3 px right (user reset). */
             const SW_IDLE_NUDGE = (facingIdx === 3 && pose === 'stand') ? 3 : 0;
             const wpnNudgeX = isWoodSwordNudge ? ((WOOD_NUDGE_X[facingIdx] || 0) + SW_IDLE_NUDGE) : 0;
-            weaponSprite.x = wpnX + wpnNudgeX;
-            weaponSprite.y = wpnY;
+            /* v2.3.946: stabilize the held weapon.  The per-frame jog hand
+               anchors are hand-tapped (a few px of noise each frame) and the
+               arm swings, so pinning hard makes the weapon jitter in the hand.
+               Exponentially ease the weapon toward the hand instead of snapping;
+               reset (snap) when the facing / pose / weapon changes so it never
+               slides across the body. */
+            const _txW = wpnX + wpnNudgeX, _tyW = wpnY;
+            const _smKey = facing + '|' + pose + '|' + (wpn.type || '');
+            if (display._wpnSmKey !== _smKey || display._wpnSmX == null) {
+              display._wpnSmX = _txW; display._wpnSmY = _tyW;
+            } else {
+              const _k = 0.3;   // lower = steadier (more lag); higher = snappier
+              display._wpnSmX += (_txW - display._wpnSmX) * _k;
+              display._wpnSmY += (_tyW - display._wpnSmY) * _k;
+            }
+            display._wpnSmKey = _smKey;
+            weaponSprite.x = display._wpnSmX;
+            weaponSprite.y = display._wpnSmY;
           } else {
             /* Sheathed (F4) — center the sprite over the upper torso
                and angle it diagonally across the back. Anchor at the
