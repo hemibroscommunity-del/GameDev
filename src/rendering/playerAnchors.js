@@ -36,8 +36,8 @@
  *   express this directly as anchor.set(hx/srcW, hy/srcH).
  */
 
-const ANCHORS_URL = '/sprites/player/anchors.json?v=15'; /* v15: NE jog hands measured from the wristband marker (v2.3.708) */
-const HANDLES_URL = '/sprites/weapons/handles.json?v=5';
+const ANCHORS_URL = '/sprites/player/anchors.json?v=16'; /* v16: hands re-tapped after the animation re-cut (idle + jog); jog frame counts corrected */
+const HANDLES_URL = '/sprites/weapons/handles.json?v=7'; /* v7: per-facing greatsword + bow grips */
 
 /* v2.3.174: session-2 sprite pipeline shipped 256-px frames and the
    per-direction size bumps meant the old 64-px anchor JSON no longer
@@ -118,8 +118,12 @@ export function getHeadAnchor(pose, dir, frame, mirror) {
 /** Returns [hx, hy] in the weapon icon's own pixel space, or null.
  *  v2.3.172: optional gearBase picks a tier-specific grip when one is
  *  registered (e.g. sword:wood). Falls back to the bare-type entry. */
-export function getWeaponHandle(type, gearBase) {
+export function getWeaponHandle(type, gearBase, dir) {
   if (!weaponHandles) return null;
+  /* v2.3.942/944: per-facing grips keyed `${type}-${dir}` (greatsword, bow). */
+  if (dir && weaponHandles[`${type}-${dir}`]) {
+    return weaponHandles[`${type}-${dir}`];
+  }
   if (gearBase) {
     const variantKey = `${type}:${gearBase}`;
     if (weaponHandles[variantKey]) return weaponHandles[variantKey];

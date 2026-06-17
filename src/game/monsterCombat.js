@@ -21,7 +21,8 @@
 import {
   BT_AUDIO, COMBO_BURST_BONUS, COMBO_NEXT_DURATION_BONUS, COMBO_NEXT_WINDOW_MS,
   COMBO_SPREAD_DURATION_MULT, COMBO_SPREAD_RADIUS, DEATH_GOLD_PENALTY, DEATH_SCATTER_RECOVERY,
-  ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, PVP_THREAT_DURATION,
+  ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
+  GS_INNER_RADIUS, GS_OUTER_RADIUS, PVP_THREAT_DURATION,
   QUEST_CHAINS, QUEST_STATUS, RARE_DROP_CHANCE, RARE_DROP_ITEMS, RARITY_TIERS,
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT,
   SWING_ARC, SWING_COOLDOWN, SWING_RANGE, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
@@ -1294,7 +1295,12 @@ export function updateMonsterCombat(S, deps) {
                 var isStaff = ((_S$rpg10 = S.rpg) === null || _S$rpg10 === void 0 ? void 0 : _S$rpg10.activeSlot) === 'staff';
                 S.arrows.push({
                   ang: arrAngle,
-                  dist: 14,
+                  /* v2.3.937: bow shots nock at the teal grip and launch at the
+                     (early) release -- start near the player and let projectiles.js
+                     hold them at the grip until BOW_RELEASE_MS.  Staff bolts keep
+                     the old immediate feet-origin (dist 14, no fromGrip). */
+                  dist: isStaff ? 14 : 2,
+                  fromGrip: !isStaff,
                   /* v2.3.109: bow's 0.7x flat now lives inside
                      calcWeaponDmg as the 0.6x-0.8x range, so no
                      per-projectile multiplier is needed here. */
@@ -1312,6 +1318,10 @@ export function updateMonsterCombat(S, deps) {
                 if (isStaff) {
                   BT_AUDIO.play('magic-cast', { vol: 0.55 });
                 } else {
+                  /* v2.3.925: drive the bow-shoot stand-in (entityRenderer reads
+                     these to play the load/draw/release frames for the shot). */
+                  S._bowShotAt = Date.now();
+                  S._bowShotAng = arrAngle;
                   BT_AUDIO.play('arrow-fly', { vol: 0.85 });
                 }
               } else if (!S.isSwinging) {
@@ -1337,6 +1347,11 @@ export function updateMonsterCombat(S, deps) {
               var swDir = S._facing || 'down';
               baseAngle = swDir === 'right' ? 0 : swDir === 'up' ? -Math.PI / 2 : swDir === 'left' ? Math.PI : Math.PI / 2;
             }
+            /* v2.3.936: publish the swing angle so the renderer can pick the
+               sword stand-in sheet by DOMINANT AXIS (the big sword covers a
+               wide arc, so 3 sheets cover all angles): more-north -> north,
+               more-south -> south, more-horizontal -> east/west. */
+            S._swingAng = baseAngle;
             /* §5.9 Combo Chain — capture pre-swing state. Burst bonus is
                applied to all hits in this swipe (uniform across the cone);
                spread (count 2+) and extended-status flag (count 3) read the
@@ -1349,6 +1364,18 @@ export function updateMonsterCombat(S, deps) {
                reach. Regular swing keeps the v2.3 SWING_RANGE / SWING_ARC. */
             var _swingRange = S._specialAttack ? SWING_RANGE * 2 : SWING_RANGE;
             var _swingArc   = S._specialAttack ? Math.PI         : SWING_ARC;
+            /* v2.3.940: ALL melee swings are "wild" -- a small 360° core around
+               the player (any angle) UNION a wide forward half-circle at a
+               bigger reach.  Heavy/special -> full 360° spin at the outer reach.
+               (v2.3.939 gated this to the 'greatsword' type, but the default /
+               most-used melee weapon is type 'sword', so it never showed.  The
+               swing path only runs for an equipped melee weapon anyway.) */
+            var _actWpn = S.rpg && getActiveWeapon(S.rpg);
+            var _wildSwing = !!(_actWpn && (_actWpn.type === 'sword' || _actWpn.type === 'greatsword'));
+            var _gsInner = S._specialAttack ? GS_INNER_RADIUS * 1.25 : GS_INNER_RADIUS;
+            var _gsOuter = S._specialAttack ? GS_OUTER_RADIUS * 1.5  : GS_OUTER_RADIUS;
+            var _gsArc   = S._specialAttack ? Math.PI * 2 : GS_FORWARD_ARC;
+            var _maxRange = _wildSwing ? Math.max(_gsInner, _gsOuter) : _swingRange;
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!m.alive || m._hitThisSwing) return;
@@ -1382,12 +1409,18 @@ export function updateMonsterCombat(S, deps) {
                           _archHit === 'mummy' || _archHit === 'skeleton' ? 40 :
                           0;
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
-              if (mDist > _swingRange) return;
+              if (mDist > _maxRange) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
               var angleDiff = mAngle - baseAngle;
               while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
               while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-              if (Math.abs(angleDiff) < _swingArc / 2) {
+              /* v2.3.940: melee = 360° core OR forward half-circle.  (Heavy:
+                 _gsArc = 2π, so the forward test is always true within _gsOuter
+                 -> full spin.)  Non-melee fallback keeps the single cone. */
+              var _inShape = _wildSwing
+                ? (mDist <= _gsInner || (mDist <= _gsOuter && Math.abs(angleDiff) <= _gsArc / 2))
+                : (Math.abs(angleDiff) < _swingArc / 2);
+              if (_inShape) {
                 var _ELEMENTS$collisionRe2;
                 m._hitThisSwing = true;
                 if (!_swingHitTarget) _swingHitTarget = m;

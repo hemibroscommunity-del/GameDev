@@ -1116,6 +1116,21 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
   sprite.visible = true;
 }
 
+/* v2.3.910: how long the sword-swing stand-in plays (the 14-frame swing maps
+   across this window from S.swingTimer).  Exported so effectsRenderer drives
+   the same window when it draws the stand-in and composites the traits. */
+export const SWORD_SWING_MS = 300;
+
+/* v2.3.925: how long the bow-shoot stand-in plays per ranged shot (its frames
+   -- load/pull/release -- map across this window from the shot timestamp
+   S._bowShotAt; the release frame then holds for the remainder). */
+export const BOW_SHOT_MS = 360;
+/* v2.3.937: the draw is quick -- load + pull play across this short window and
+   the bow snaps to its release frame by BOW_RELEASE_MS; the procedural arrow
+   launches from the teal grip at that moment (see projectiles.js, which mirrors
+   this value).  Owner: "speed up draw, release early". */
+export const BOW_RELEASE_MS = 110;
+
 /** Place hat + beard + hair (the player's current selection) on a stand-in
  *  skill sprite.  sprites = { hat, beard, hair } owned by the caller. */
 export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
@@ -3401,7 +3416,46 @@ export class EntityRenderer {
        v2.3.854: same for mining -- the pickaxe is baked into the 'mine'
        sheet, so the equipped weapon must not show. */
     const _fishingPose = !!(S._extraction && (S._extraction.skill === 'fishing' || S._extraction.skill === 'mining'));
-    if (_fishingPose) {
+    /* v2.3.910: melee swing -> play the sword-swing stand-in (effectsRenderer)
+       and hide the real body + weapon for the swing window.  Gated on the melee
+       swing flag and no active gathering/firemaking.
+       v2.3.936: pick the sheet by the DOMINANT AXIS of the swing angle, not the
+       8-way render facing.  The big sword sweeps a wide arc, so 3 sheets cover
+       everything: the north sheet plays for any up-dominant aim (covers NW/N/NE
+       that are "more north"), south for any down-dominant aim, and east/west for
+       any horizontal-dominant aim (so a NE/SE that's "more east than N/S" plays
+       the east swing).  baseAngle is published by monsterCombat (S._swingAng);
+       fall back to the 8-way facing if it isn't set yet.  Visual only. */
+    let _swingAng = S._swingAng;
+    if (_swingAng == null) {
+      const _si = SECTORS.indexOf(S._renderFacing);
+      _swingAng = _si >= 0 ? _si * (Math.PI / 4) : Math.PI / 2;  // SECTORS[i] = i*45deg, south default
+    }
+    const _sdx = Math.cos(_swingAng), _sdy = Math.sin(_swingAng);  // +y = down/south
+    const _swordDir = Math.abs(_sdx) >= Math.abs(_sdy)
+      ? (_sdx >= 0 ? 'east' : 'west')
+      : (_sdy >= 0 ? 'south' : 'north');
+    const _swordSwing = !!(S.isSwinging && S.swingTimer
+      && (now - S.swingTimer) < SWORD_SWING_MS && !S._extraction && !S._firemaking);
+    S._swordSwinging = _swordSwing;
+    S._swordSwingDir = _swordSwing ? _swordDir : null;
+    /* v2.3.925: bow-shoot stand-in -> driven by a ranged-bow shot
+       (S._bowShotAt set in monsterCombat when an arrow fires).  Resolve the
+       shot ANGLE (S._bowShotAng, toward the target) to a compass sector and
+       only show for the authored facings (east/west/southwest/southeast).  Other
+       aim angles fall back to the normal ranged render until their art exists. */
+    const _BOW_FACINGS = ['east', 'west', 'southwest', 'southeast', 'south', 'northwest', 'northeast', 'north'];
+    let _bowDir = null;
+    if (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS && S._bowShotAng != null
+        && !S._extraction && !S._firemaking) {
+      const _bsec = Math.round(S._bowShotAng / (Math.PI / 4));
+      const _bf = SECTORS[((_bsec % 8) + 8) % 8];
+      if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
+    }
+    const _bowShot = !!_bowDir;
+    S._bowShowing = _bowShot;
+    S._bowDir = _bowDir;
+    if (_fishingPose || _swordSwing || _bowShot) {
       if (display._weaponContainer) display._weaponContainer.visible = false;
       if (display._shieldSprite) display._shieldSprite.visible = false;
       if (display._handCapSprite) display._handCapSprite.visible = false;
@@ -3789,6 +3843,46 @@ export class EntityRenderer {
       display._spritePathRendered = false; _hideBodyRegions(display);
     }
 
+    /* v2.3.910: during the melee swing the sword-swing stand-in (effectsRenderer)
+       stands in for the avatar's body, so hide the real body + its head traits
+       here.  v2.3.925: same for the bow-shoot stand-in.  _spritePathRendered
+       stays true so the NFT / procedural fallbacks below don't draw a body. */
+    if (_swordSwing || _bowShot) {
+      display._spriteBody.visible = false;
+      body.visible = false;
+      _hideBodyRegions(display);
+      display._spritePathRendered = true;
+      if (display._traitFace) display._traitFace.visible = false;
+      if (display._headwearSprite) display._headwearSprite.visible = false;
+      if (display._facialHairSprite) display._facialHairSprite.visible = false;
+      if (display._hairSprite) display._hairSprite.visible = false;
+      if (display._shirtSprite) display._shirtSprite.visible = false;
+      /* Hide the worn gear too -- otherwise the equipped armour stands in
+         place while the (shirtless) swing stand-in plays above it. */
+      for (const _g of [display._gearShirt, display._gearLegs, display._gearChest,
+                        display._gearShoulders, display._gearHead]) {
+        if (_g) _g.visible = false;
+      }
+      /* Publish the avatar's foot world-Y so the stand-in (effectsRenderer)
+         plants its feet exactly where the real body's feet were, instead of
+         floating up.  The body is anchored frame-centre (256-frame, feet row
+         221), so feet sit (221-128)*bodyScale below the display origin, then
+         scaled by the per-zone display scale. */
+      const _dscale = display.scale.y || 1;
+      /* v2.3.935: always size + plant the stand-in at the IDLE (stand) scale,
+         not the live `bodyScale`.  While moving, `pose` is 'jog' and
+         BODY_DIR_SCALE.jog is much larger than .stand (e.g. east 1.25 vs 0.983),
+         so the stand-in grew when shooting/swinging on the move (north looked
+         exempt only because its jog≈stand).  Using the stand scale here keeps
+         the swing/shoot stand-in idle-sized in every facing. */
+      const _standBodyScale = bodyDirScale('stand', dir) * LOCAL_SCALE;
+      S._swordFootY = display.y + (221 - 128) * _standBodyScale * _dscale;
+      /* Also publish the avatar's drawn body height (crown-to-foot ~188px in
+         the source frame) so the stand-in renders at the matching size for this
+         facing / zone. */
+      S._swordBodyH = (221 - 33) * _standBodyScale * _dscale;
+    }
+
     /* NFT 360° body — when the regular sprite path didn't render this
        frame (sheets not loaded, sprites disabled) and the player has
        an avatar URL with loaded textures, swap in the NFT cross-fade
@@ -3992,14 +4086,18 @@ export class EntityRenderer {
            below if the texture isn't loaded yet. v2.3.172 passes
            wpn.gearBase so wood-tier swords pick the bamboo variant. */
         const weaponSprite = display._weaponSprite;
-        const wpnIconTex = hasWeapon(wpn.type, wpn.gearBase) ? getWeaponTexture(wpn.type, wpn.gearBase) : null;
+        /* v2.3.942/944: greatsword + bow have per-facing held art selected by
+           the canonical sprite `dir`; the other 3 facings reuse a canonical
+           texture flipped by resolveDirection's `mirror` (handled below). */
+        const _gsDir = (wpn.type === 'greatsword' || wpn.type === 'bow') ? dir : null;
+        const wpnIconTex = hasWeapon(wpn.type, wpn.gearBase, _gsDir) ? getWeaponTexture(wpn.type, wpn.gearBase, _gsDir) : null;
         if (wpnIconTex) {
           if (weaponSprite.texture !== wpnIconTex) weaponSprite.texture = wpnIconTex;
           const tw = wpnIconTex.width || 64;
           const th = wpnIconTex.height || 64;
           if (isInCombat) {
             /* In combat — pin grip to hand (existing behavior). */
-            const handle = getWeaponHandle(wpn.type, wpn.gearBase);
+            const handle = getWeaponHandle(wpn.type, wpn.gearBase, _gsDir);
             if (handle) weaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
             else weaponSprite.anchor.set(0.5, 1.0);
             /* v2.3.183: per-facing nudge table for bamboo. The simpler
@@ -4017,8 +4115,24 @@ export class EntityRenderer {
             /* v2.3.208: SW idle only, +3 px right (user reset). */
             const SW_IDLE_NUDGE = (facingIdx === 3 && pose === 'stand') ? 3 : 0;
             const wpnNudgeX = isWoodSwordNudge ? ((WOOD_NUDGE_X[facingIdx] || 0) + SW_IDLE_NUDGE) : 0;
-            weaponSprite.x = wpnX + wpnNudgeX;
-            weaponSprite.y = wpnY;
+            /* v2.3.946: stabilize the held weapon.  The per-frame jog hand
+               anchors are hand-tapped (a few px of noise each frame) and the
+               arm swings, so pinning hard makes the weapon jitter in the hand.
+               Exponentially ease the weapon toward the hand instead of snapping;
+               reset (snap) when the facing / pose / weapon changes so it never
+               slides across the body. */
+            const _txW = wpnX + wpnNudgeX, _tyW = wpnY;
+            const _smKey = facing + '|' + pose + '|' + (wpn.type || '');
+            if (display._wpnSmKey !== _smKey || display._wpnSmX == null) {
+              display._wpnSmX = _txW; display._wpnSmY = _tyW;
+            } else {
+              const _k = 0.5;   // lower = steadier (more lag/float); higher = snappier
+              display._wpnSmX += (_txW - display._wpnSmX) * _k;
+              display._wpnSmY += (_tyW - display._wpnSmY) * _k;
+            }
+            display._wpnSmKey = _smKey;
+            weaponSprite.x = display._wpnSmX;
+            weaponSprite.y = display._wpnSmY;
           } else {
             /* Sheathed (F4) — center the sprite over the upper torso
                and angle it diagonally across the back. Anchor at the
@@ -4039,9 +4153,9 @@ export class EntityRenderer {
           const isWoodSword = wpn.type === 'sword' && wpn.gearBase === 'wood';
           /* v2.3.181: bamboo shrunk 60 -> 45 (~25% smaller) per user
              tuning. Chrome sword stays at 26. */
-          const targetH = wpn.type === 'greatsword' ? 36
+          const targetH = wpn.type === 'greatsword' ? (_gsDir ? 64 : 36)
                          : wpn.type === 'staff'      ? 34
-                         : wpn.type === 'bow'        ? 28
+                         : wpn.type === 'bow'        ? (_gsDir ? 52 : 28)
                          : isWoodSword                ? 45
                          :                              26;
           const fitScale = targetH / Math.max(8, th);
@@ -4063,7 +4177,11 @@ export class EntityRenderer {
             weaponSprite.scale.x = (mirror ? -1 : 1) * fitScale;
           } else {
             weaponSprite.rotation = 0;
-            const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
+            /* v2.3.942: per-facing greatsword art is already drawn for its
+               canonical facing, so flip it only for the truly-mirrored facings
+               (resolveDirection's `mirror`: west/northwest/southeast).  Other
+               weapons keep the single-icon rule (flip for SW/W/NW/N). */
+            const weaponMirror = _gsDir ? mirror : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
           }
           weaponSprite.scale.y = fitScale;
