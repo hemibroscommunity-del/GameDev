@@ -4126,7 +4126,7 @@ export class EntityRenderer {
             if (display._wpnSmKey !== _smKey || display._wpnSmX == null) {
               display._wpnSmX = _txW; display._wpnSmY = _tyW;
             } else {
-              const _k = 0.5;   // lower = steadier (more lag/float); higher = snappier
+              const _k = 0.7;   // v2.3.950: 0.5 -> 0.7, tighter follow (less float) while still easing out the per-frame hand-anchor jitter
               display._wpnSmX += (_txW - display._wpnSmX) * _k;
               display._wpnSmY += (_tyW - display._wpnSmY) * _k;
             }
@@ -4401,7 +4401,13 @@ export class EntityRenderer {
              from the hand on SW (mirror=true) so the blade tip still
              passes past the body and stays visible. */
           : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
-        const inFront = sheathed ? !inFrontInHand : inFrontInHand;
+        /* v2.3.950: greatsword + bow now render HELD IN HAND during idle/walk
+           (#114), not sheathed on the back, so the on-back inversion no longer
+           applies to them -- it was flipping the SE/NE weapon behind the body.
+           Held weapons always use the in-hand order (SE/NE in front); sword/staff
+           keep the sheathed inversion. */
+        const _heldInHand = wpn && (wpn.type === 'greatsword' || wpn.type === 'bow');
+        const inFront = _heldInHand ? inFrontInHand : (sheathed ? !inFrontInHand : inFrontInHand);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
         /* Pixi setChildIndex removes the child, then inserts at the
