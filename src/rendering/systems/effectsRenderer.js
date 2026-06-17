@@ -348,7 +348,7 @@ export class EffectsRenderer {
          load/pull/release -- the in-game arrow projectile draws the arrow). */
       southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south' },
       /* v2.3.933: south re-cut to the owner's arrow-free art (3 frames). */
-      south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south' },
+      south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south', armorUrl: '/sprites/player/bow-south-armored.png', weaponUrl: '/sprites/player/bow-south-weapon.png' },
       /* v2.3.930: NW re-cut to the owner's arrow-free art (3 frames). */
       northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north' },
       /* v2.3.931: north re-cut to the owner's arrow-free art (3 frames). */
@@ -365,18 +365,32 @@ export class EffectsRenderer {
       north:     ['north', false],
     };
     this._bowFrames = {};
-    const BOW_ART_VERSION = 934;
+    /* v2.3.951: optional armored body + separable bow layers per facing (same
+       pattern as the sword swing).  NOTE the bow armor keeps a BALD head, so
+       the hat/beard/hair still composite (unlike the helmeted sword armor). */
+    this._bowArmorFrames = {};
+    this._bowWeaponFrames = {};
+    const BOW_ART_VERSION = 951;
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
     this.nodeLayer.addChild(this.bowSprite);
+    this.bowWeaponSprite = new Sprite();
+    this.bowWeaponSprite.anchor.set(0.5, 1);
+    this.bowWeaponSprite.visible = false;
+    this.nodeLayer.addChild(this.bowWeaponSprite);
+    const _loadBowStrip = (target, dir, url, cfg) => {
+      target[dir] = [];
+      Assets.load(url + '?v=' + BOW_ART_VERSION).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / cfg.fw));
+        for (let i = 0; i < n; i++) target[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      }).catch((err) => console.warn('[bow ' + dir + '] load failed', err));
+    };
     for (const dir of Object.keys(this._bowCfg)) {
       const cfg = this._bowCfg[dir];
-      this._bowFrames[dir] = [];
-      Assets.load(cfg.url + '?v=' + BOW_ART_VERSION).then((tex) => {
-        const n = Math.max(1, Math.round(tex.width / cfg.fw));
-        for (let i = 0; i < n; i++) this._bowFrames[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
-      }).catch((err) => console.warn('[bow ' + dir + '] load failed', err));
+      _loadBowStrip(this._bowFrames, dir, cfg.url, cfg);
+      if (cfg.armorUrl)  _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
+      if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
     }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
@@ -2450,6 +2464,7 @@ export class EffectsRenderer {
    * authored facing.  Same self-contained pattern as the sword swings. */
   _updateBowShot(S, now) {
     if (this.bowSprite) this.bowSprite.visible = false;
+    if (this.bowWeaponSprite) this.bowWeaponSprite.visible = false;
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     const fmap = this._bowFacing[S._bowDir];
     if (!fmap) return;
@@ -2467,13 +2482,26 @@ export class EffectsRenderer {
       : n - 1;
     const sp = this.bowSprite;
     sp.anchor.set(0.5, cfg.feetY / cfg.fh);
-    sp.texture = frames[fi];
+    /* v2.3.951: armored body sheet (bald head) when present, else the bald
+       baked sheet; the bow is layered over it from the separable weapon sheet. */
+    const armorFrames = this._bowArmorFrames[fmap[0]];
+    const weaponFrames = this._bowWeaponFrames[fmap[0]];
+    const _armored = !!(armorFrames && armorFrames[fi]);
+    sp.texture = _armored ? armorFrames[fi] : frames[fi];
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
     const s = bodyH / 188;
     sp.scale.set(mirror ? -s : s, s);
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
+    if (_armored && weaponFrames && weaponFrames[fi]) {
+      const wp = this.bowWeaponSprite;
+      wp.anchor.set(0.5, cfg.feetY / cfg.fh);
+      wp.texture = weaponFrames[fi];
+      wp.scale.set(mirror ? -s : s, s);
+      wp.x = sp.x; wp.y = sp.y;
+      wp.visible = true;
+    }
     /* v2.3.937: publish the teal grip's WORLD position (same anchor math as
        _placeSkillTraitsOn) so the procedural arrow can launch from the bow
        rather than the player's feet.  scale.x carries the mirror sign. */
