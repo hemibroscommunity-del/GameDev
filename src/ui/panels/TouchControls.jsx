@@ -60,14 +60,15 @@ export function TouchControls(props) {
     style: {
       width: isLandscape ? 90 : 75,
       height: isLandscape ? 90 : 75,
-      /* v2.3.816: floating -- position:fixed so left/top (set on touchstart)
-         place the base CENTRE at the finger; hidden (opacity 0) until then;
-         the whole disc renders at 25% (owner: "75% transparency"). */
-      position: 'fixed',
+      /* v2.3.949: DOCKED -- position:absolute centres the base inside its
+         left-corner zone container (always visible at 50% opacity).  It no
+         longer follows the finger; the knob deflects as a relative drag from
+         the touch origin (see handleJoystickMove). */
+      position: 'absolute',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      opacity: 0,
+      opacity: 0.5,
       pointerEvents: 'none',
       transition: 'opacity 0.12s ease',
       /* v2.3.99: sprite-backed base.  Overrides the rgba bg + border in
@@ -162,13 +163,14 @@ export function TouchControls(props) {
     style: {
       width: isLandscape ? 90 : 75,
       height: isLandscape ? 90 : 75,
-      /* v2.3.816: floating -- position:fixed, hidden until touchstart sets
-         left/top to the finger; whole disc at 25% opacity. */
-      position: 'fixed',
+      /* v2.3.949: DOCKED -- position:absolute centres the base in its right-corner
+         zone container, always visible at 50% opacity; relative-drag from the
+         touch origin (see handleRJoyMove). */
+      position: 'absolute',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      opacity: 0,
+      opacity: 0.5,
       transition: 'opacity 0.12s ease',
       /* v2.3.99: sprite-backed base.  The previous rgba bg + dynamic
          autoAttack border/shadow are gone; auto-attack signal is now a
