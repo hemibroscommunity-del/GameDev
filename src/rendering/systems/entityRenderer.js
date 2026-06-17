@@ -4153,7 +4153,9 @@ export class EntityRenderer {
           const isWoodSword = wpn.type === 'sword' && wpn.gearBase === 'wood';
           /* v2.3.181: bamboo shrunk 60 -> 45 (~25% smaller) per user
              tuning. Chrome sword stays at 26. */
-          const targetH = wpn.type === 'greatsword' ? (_gsDir ? 64 : 36)
+          /* v2.3.948: held greatsword shrunk 64 -> 48 (~25% smaller) per owner.
+             Sheathed (36) and the bow are unchanged. */
+          const targetH = wpn.type === 'greatsword' ? (_gsDir ? 48 : 36)
                          : wpn.type === 'staff'      ? 34
                          : wpn.type === 'bow'        ? (_gsDir ? 52 : 28)
                          : isWoodSword                ? 45
