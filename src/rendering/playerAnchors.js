@@ -36,7 +36,7 @@
  *   express this directly as anchor.set(hx/srcW, hy/srcH).
  */
 
-const ANCHORS_URL = '/sprites/player/anchors.json?v=15'; /* v15: NE jog hands measured from the wristband marker (v2.3.708) */
+const ANCHORS_URL = '/sprites/player/anchors.json?v=16'; /* v16: hands re-tapped after the animation re-cut (idle + jog); jog frame counts corrected */
 const HANDLES_URL = '/sprites/weapons/handles.json?v=7'; /* v7: per-facing greatsword + bow grips */
 
 /* v2.3.174: session-2 sprite pipeline shipped 256-px frames and the
