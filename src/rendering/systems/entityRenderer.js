@@ -4126,7 +4126,7 @@ export class EntityRenderer {
             if (display._wpnSmKey !== _smKey || display._wpnSmX == null) {
               display._wpnSmX = _txW; display._wpnSmY = _tyW;
             } else {
-              const _k = 0.3;   // lower = steadier (more lag); higher = snappier
+              const _k = 0.5;   // lower = steadier (more lag/float); higher = snappier
               display._wpnSmX += (_txW - display._wpnSmX) * _k;
               display._wpnSmY += (_tyW - display._wpnSmY) * _k;
             }
