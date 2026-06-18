@@ -350,9 +350,9 @@ export class EffectsRenderer {
       /* v2.3.933: south re-cut to the owner's arrow-free art (3 frames). */
       south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south', armorUrl: '/sprites/player/bow-south-armored.png', weaponUrl: '/sprites/player/bow-south-weapon.png' },
       /* v2.3.930: NW re-cut to the owner's arrow-free art (3 frames). */
-      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north', armorUrl: '/sprites/player/bow-northwest-armored.png', weaponUrl: '/sprites/player/bow-northwest-weapon.png' },
+      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north', armorUrl: '/sprites/player/bow-northwest-armored.png' },
       /* v2.3.931: north re-cut to the owner's arrow-free art (3 frames). */
-      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north', armorUrl: '/sprites/player/bow-north-armored.png', weaponUrl: '/sprites/player/bow-north-weapon.png' },
+      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north', armorUrl: '/sprites/player/bow-north-armored.png' },
     };
     this._bowFacing = {
       east:      ['east', false],
@@ -371,7 +371,7 @@ export class EffectsRenderer {
        composite is skipped (the helmet is the headwear). */
     this._bowArmorFrames = {};
     this._bowWeaponFrames = {};
-    const BOW_ART_VERSION = 952;
+    const BOW_ART_VERSION = 953;
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
