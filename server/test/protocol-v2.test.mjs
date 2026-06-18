@@ -173,5 +173,22 @@ const zsTown = msgsOfType(ws2, 'zone_state');
 check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTown[0].zone === 'town'
   && zsTown[0].monsters.length === 0 && zsTown[0].nodes.length === 0 && zsTown[0].loot.length === 0);
 
+// ── v2.3.910: combat level is the SUM of the five build-skill levels, and
+// maxHp uses the retuned flat 2.5/combat-level term ──
+{
+  const ps = room.playerState.p2;
+  ps.armor = null;
+  ps.power = 10; ps.vitality = 8; ps.endurance = 0; ps.agility = 4; ps.mind = 3; // sum 25
+  room._recomputeMaxes(ps);
+  check('v2.3.910 combat level = sum of build-skill stats', ps.level === 25, ps.level);
+  // floor(100 + (25-1)*2.5 + 8*10) = 100 + 60 + 80 = 240
+  check('v2.3.910 maxHp uses flat 2.5/level term', ps.maxHp === 240, ps.maxHp);
+  check('v2.3.910 _calcMaxHp(100,0) == 347', room._calcMaxHp(100, 0) === 347, room._calcMaxHp(100, 0));
+  // Over-cap stat sum clamps combat level to 500.
+  ps.power = 600; ps.vitality = 0; ps.agility = 0; ps.mind = 0; ps.endurance = 0;
+  room._recomputeMaxes(ps);
+  check('v2.3.910 combat level clamps at 500', ps.level === 500, ps.level);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

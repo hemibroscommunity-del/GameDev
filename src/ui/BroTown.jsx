@@ -1920,6 +1920,11 @@ export var BroTown = function BroTown(_ref0) {
          retired generic specs (one-time, idempotent). */
       migrateWeaponT2(S.rpg);
       migrateDefenseT2(S.rpg);   /* v2.3.693: backfill the Defense T2 category */
+      /* v2.3.910: combat level is now derived (sum of build-skill levels), set
+         by recalcDerived above.  Seed _lastShownLevel to the current level so
+         the on-kill level-up VFX fires only for levels gained from here on, not
+         a burst for every level the character already has. */
+      if (S.rpg._lastShownLevel == null) S.rpg._lastShownLevel = S.rpg.level || 1;
       /* v2.3.687: restore any orphaned steel piece (worn nowhere, bagged
          nowhere -- e.g. unequipped via the old Equipment-menu toggle) into
          the bag so it's never lost. */

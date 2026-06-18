@@ -1065,8 +1065,18 @@ export class GameRoom {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
-    ps.buildPointsThisLvl = (ps.buildPointsThisLvl || 0) + 1;
-    this._tryLevelUpFromBuildPoints(ps);
+    // v2.3.910: a build-skill stat went up on the client.  Combat level is now
+    // derived from the stat sum, so recompute maxes (which re-derives level)
+    // and, on a level gain, top off the pools.  The exact stat values arrive
+    // via stats_update; this is a best-effort early recompute, and the
+    // authoritative new level reaches the client via the player_state flush.
+    const prevLevel = ps.level || 1;
+    this._recomputeMaxes(ps);
+    if ((ps.level || 1) > prevLevel) {
+      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
+      if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
+    }
     this._saveRpg(session.id, ps);
     this._queuePlayerStateFlush(session.id);
   }
@@ -2390,7 +2400,10 @@ export class GameRoom {
   }
 
   _calcMaxHp(level, vitality) {
-    return 100 + ((level || 1) - 1) * 12 + (vitality || 0) * 10;
+    // v2.3.910: flat per-combat-level HP 12 -> 2.5 (mirrors the client
+    // HP_PER_COMBAT_LEVEL in gameSystems.js) because combat level now climbs
+    // ~5x faster -- it is the sum of the build-skill levels.
+    return Math.floor(100 + ((level || 1) - 1) * 2.5 + (vitality || 0) * 10);
   }
 
   // Armor HP contribution -- mirrors getArmorHp() in
@@ -2417,7 +2430,14 @@ export class GameRoom {
 
   _recomputeMaxes(ps) {
     if (!ps) return;
-    const lvl = ps.level || 1;
+    // v2.3.910: combat level is DERIVED -- the sum of the five use-trained
+    // build-skill levels (power/vitality/endurance/agility/mind = Melee/HP/
+    // Endurance/Bow/Magic), clamped to 500.  Mirrors recalcDerived on the
+    // client and replaces the old 5-build-point gate.
+    ps.level = Math.max(1, Math.min(500,
+      (ps.power || 0) + (ps.vitality || 0) + (ps.endurance || 0)
+      + (ps.agility || 0) + (ps.mind || 0)));
+    const lvl = ps.level;
     const oldMaxHp = ps.maxHp || 100;
     const oldMaxStam = ps.maxStamina || 100;
     const oldMaxMana = ps.maxMana || 100;
@@ -2495,7 +2515,15 @@ export class GameRoom {
       }
     }
     if (statsChanged) {
+      // v2.3.910: stats grew -> derived combat level may have risen; refill
+      // pools on a gain so a level-up restores HP/stamina/mana as before.
+      const prevLevel = ps.level || 1;
       this._recomputeMaxes(ps);
+      if ((ps.level || 1) > prevLevel) {
+        if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+        if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
+        if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
+      }
     }
     // Session-only equipment-derived values flow from client but are
     // capped to per-level bounds.  Without a cap, a cheater can push
@@ -3555,7 +3583,10 @@ export class GameRoom {
             // (their values are tiny), legit veteran SP players see
             // some progression capped (acceptable trade — the user
             // can raise these caps if they hear complaints).
-            const BOOTSTRAP_LEVEL_CAP = 15;
+            // v2.3.910: combat level is now the sum of the build-skill levels
+            // (up to 500), so the first-connect cap rises to match.  The level
+            // is re-derived from the stat sum on the next stats_update anyway.
+            const BOOTSTRAP_LEVEL_CAP = 500;
             const BOOTSTRAP_XP_CAP = 50000;
             const BOOTSTRAP_UT2_CAP = 75;
             const BOOTSTRAP_COINS_CAP = 2000;

@@ -3498,7 +3498,11 @@ export function updateZoneDimensions(zoneId) {
 /* Tier 1: Capacity (permanent) */
 /* Tier 2: Technique (respecable) */
 export const STAT_POINTS_PER_LEVEL = 10; /* 5 Tier1 + 5 Tier2 */
-export const LEVEL_CAP = 100;
+/* v2.3.910: combat level is now the SUM of the build-skill levels (the five
+   use-trained stats), so it climbs ~5x faster than the old 5-build-point gate.
+   Cap raised 100 -> 500 (≈ five skills × ~100) so a fully-built character
+   isn't frozen. See docs/specs/build-skill-progression.md. */
+export const LEVEL_CAP = 500;
 
 /* ═══ GEAR STAT REQUIREMENTS — Tier 1 stat thresholds replace level gating ═══ */
 /* Each gear type requires a specific Tier 1 stat. Threshold = tierIndex × 10. */
@@ -3538,13 +3542,17 @@ export function meetsGearReq(rpg, gearType, tierIndex) {
   return (rpg[req.stat] || 0) >= req.value;
 }
 
-/* Get the stat name for display */
+/* Get the stat name for display.
+   v2.3.910: the five use-trained stats are relabeled as the player-facing
+   "build skills".  Internal keys are unchanged (power/vitality/agility/mind)
+   to avoid a repo-wide rename + keep the forge stat-gates working; only the
+   display labels move to Melee/Bow/Magic/HP. */
 export const STAT_LABELS = {
-  power: 'Power',
-  vitality: 'Vitality',
+  power: 'Melee',
+  vitality: 'HP',
   endurance: 'Endurance',
-  agility: 'Agility',
-  mind: 'Mind'
+  agility: 'Bow',
+  mind: 'Magic'
 };
 
 /* Check stat requirement for a specific item (works with crafted gearBase or dropped tierMult) */
@@ -3624,15 +3632,18 @@ export const WEAPON_CATEGORY = {
 };
 /* Stable category list for UI iteration. */
 export const WEAPON_CATEGORIES = ['sword', 'bow', 'staff'];
+/* v2.3.910: weapon categories are relabeled to match the build-skill names
+   (Melee/Bow/Magic).  Internal category keys stay sword/bow/staff. */
 export const WEAPON_CATEGORY_META = {
-  sword: { label: 'Sword', emoji: '🗡️', blurb: 'Melee blades — fast sword + heavy greatsword.' },
+  sword: { label: 'Melee', emoji: '⚔️', blurb: 'Melee blades — fast sword + heavy greatsword.' },
   bow:   { label: 'Bow',   emoji: '🏹', blurb: 'Ranged physical — precision at distance.' },
-  staff: { label: 'Staff', emoji: '🪄', blurb: 'Magic — AoE detonation, high variance.' },
+  staff: { label: 'Magic', emoji: '✨', blurb: 'Magic — AoE detonation, high variance.' },
 };
 
-/* Points granted per weapon-skill level, and the per-channel cap (mirrors
-   the retired generic-T2 cap of 99). */
-export const WEAPON_PTS_PER_LEVEL = 5;
+/* Points granted per weapon-skill level, and the per-channel cap.
+   v2.3.910: 5 -> 1.  Each build-skill level now grants exactly ONE Tier-2
+   point (and +1 combat level), so the per-category choice is meaningful. */
+export const WEAPON_PTS_PER_LEVEL = 1;
 export const WEAPON_CHANNEL_CAP = 99;
 /* Weapon skill levels are damage-driven: each point of damage dealt by a
    weapon of the category adds this much XP to that category's skill.  1.0
@@ -4728,8 +4739,14 @@ export function createMonster(id, archetype, level, x, y, element) {
 }
 
 /* §3 Resource Formulas */
+/* v2.3.910: combat level now climbs ~5x faster (it's the sum of the build-skill
+   levels), so the flat per-combat-level HP drops 12 -> 2.5 to keep total HP in
+   today's ballpark (12 ÷ 5 = 2.4).  Vitality (the "HP" build skill) still adds
+   10/pt, and since each Vitality point also adds +1 combat level the per-HP-skill
+   total stays ~+12.5, matching the old +10 direct + ⅕-of-a-level. */
+export const HP_PER_COMBAT_LEVEL = 2.5;
 export function calcMaxHp(level, vitality) {
-  return 100 + (level - 1) * 12 + vitality * 10;
+  return Math.floor(100 + (level - 1) * HP_PER_COMBAT_LEVEL + vitality * 10);
 }
 export function calcMaxStam(endurance) {
   return 100 + endurance * 3.0;
@@ -4864,6 +4881,10 @@ export const SPECIAL_ATK_MULT = 2.0;
 export function createDefaultRpg() {
   return {
     level: 1,
+    /* v2.3.910: highest combat level a level-up banner has fired for.  Combat
+       level is derived (sum of build-skill levels); the on-kill VFX loops
+       advance this and celebrate each newly-reached level. */
+    _lastShownLevel: 1,
     xp: 0,
     coins: 50,
     /* Tier 1 — use-trained stats (GDD §1.1).  Start at 0; lifetime
@@ -4969,6 +4990,14 @@ export function createDefaultRpg() {
 
 /* Recalculate derived stats from allocations */
 export function recalcDerived(rpg) {
+  /* v2.3.910: combat level is DERIVED — it is the sum of the five use-trained
+     build-skill levels (Melee/Bow/Magic/HP/Endurance = power/agility/mind/
+     vitality/endurance), clamped to LEVEL_CAP.  This replaces the old
+     5-build-point gate; each build-skill level-up is exactly +1 combat level.
+     (Defense's contribution folds in once the server tracks defenseSkill.) */
+  rpg.level = Math.max(1, Math.min(LEVEL_CAP,
+    (rpg.power || 0) + (rpg.vitality || 0) + (rpg.endurance || 0)
+    + (rpg.agility || 0) + (rpg.mind || 0)));
   rpg.maxHp = calcMaxHp(rpg.level, rpg.vitality);
   /* v2.3.227: armor contributes flat HP scaled by Vitality (1% per pt). */
   rpg.maxHp += getArmorHp(rpg.armor, rpg.vitality);

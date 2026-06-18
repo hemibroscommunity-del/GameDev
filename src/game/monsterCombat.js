@@ -2271,20 +2271,18 @@ export function updateMonsterCombat(S, deps) {
                      refund 90% of damage taken from this monster. */
                   applyMeleeLifesteal(S, _R6, m);
 
-                  /* Check level up — §6.2 tri-phase XP curve.  T1 is
-                     use-trained; T2 still allocated, +5 unspent per level.
-                     A1 gate: requires 5 build points earned since last level. */
-                  while ((_R6._buildPointsThisLvl || 0) >= 5) {
-                    _R6._buildPointsThisLvl -= 5;
-                    _R6.level++;
-                    _R6.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
-                    recalcDerived(_R6);
+                  /* v2.3.910: combat level is DERIVED (sum of build-skill
+                     levels, set in recalcDerived inside addBuildProg above), so
+                     we no longer increment it here -- fire feedback once per
+                     newly-reached level (tracked by _lastShownLevel) + refill. */
+                  while (_R6.level > (_R6._lastShownLevel || 1)) {
+                    _R6._lastShownLevel = (_R6._lastShownLevel || 1) + 1;
                     _R6.hp = _R6.maxHp;
                     _R6.stamina = _R6.maxStamina;
                     _R6.mana = _R6.maxMana;
                     setLevelUpMsg({
                       kind: 'combat',
-                      level: _R6.level,
+                      level: _R6._lastShownLevel,
                       ts: Date.now()
                     });
                     BT_AUDIO.levelUp();
