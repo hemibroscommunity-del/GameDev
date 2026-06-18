@@ -14,6 +14,8 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
+import { getEquip } from '../gearCatalog.js';
+const GEARLAYER_VER = '954';   // cache-bust for the attack-pose gear sheets
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -283,7 +285,11 @@ export class EffectsRenderer {
        the south swing's larger arc over a dedicated SE clip, and reusing it
        sidesteps the white-background keying issues that SE clip had. */
     this._swordCfg = {
-      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png' },
+      /* v2.3.954: south swing also supports the LAYERED gear path -- a bald body
+         (bodyUrl) + equipped chest/legs armour (gear/<slot>/<item>/swing-south.png)
+         + the recolorable weapon, so worn armour shows during the swing via the
+         existing gear slots.  Falls back to armorUrl/bald if bodyUrl missing. */
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing' },
       east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east', armorUrl: '/sprites/player/sword-east-armored.png', weaponUrl: '/sprites/player/sword-east-weapon.png' },
       north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north", armorUrl: "/sprites/player/sword-north-armored.png", weaponUrl: "/sprites/player/sword-north-weapon.png" },
     };
@@ -307,6 +313,11 @@ export class EffectsRenderer {
        of the bald baked sheet and layers the recolorable weapon on top. */
     this._swordArmorFrames = {};
     this._swordWeaponFrames = {};
+    /* v2.3.954: bald body (base) for the layered gear path, + a small size-aware
+       loader/cache for equipped armour layers (gear/<slot>/<item>/<pose>-<dir>.png,
+       sliced by the per-facing frame width since the swing frames aren't 256). */
+    this._swordBodyFrames = {};
+    this._gearStrips = {};   // 'slot/item/pose/dir' -> [Texture] | 'loading' | []
     /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
        constant, so a browser / edge cache (esp. on the stable branch-preview
        host) keeps serving a stale sheet after the art changes -- that's what
@@ -319,6 +330,14 @@ export class EffectsRenderer {
     this.nodeLayer.addChild(this.swordSprite);
     /* v2.3.948: weapon layer drawn over the armored swing body (kept separate so
        the sword stays recolorable; the armored sheet has the weapon removed). */
+    this.swordChestSprite = new Sprite();
+    this.swordChestSprite.anchor.set(0.5, 1);
+    this.swordChestSprite.visible = false;
+    this.nodeLayer.addChild(this.swordChestSprite);
+    this.swordLegsSprite = new Sprite();
+    this.swordLegsSprite.anchor.set(0.5, 1);
+    this.swordLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.swordLegsSprite);
     this.swordWeaponSprite = new Sprite();
     this.swordWeaponSprite.anchor.set(0.5, 1);
     this.swordWeaponSprite.visible = false;
@@ -335,6 +354,7 @@ export class EffectsRenderer {
       _loadSwordStrip(this._swordFrames, dir, cfg.url, cfg);
       if (cfg.armorUrl)  _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
       if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
+      if (cfg.bodyUrl)   _loadSwordStrip(this._swordBodyFrames, dir, cfg.bodyUrl, cfg);
     }
 
     /* v2.3.925: bow-shoot stand-in -- same self-contained pattern as the sword
@@ -2409,9 +2429,33 @@ export class EffectsRenderer {
    * arc; here we draw the stand-in and composite the traits onto its head.
    * v2.3.920: the south sheet covers south + southeast as-is and southwest
    * mirrored.  Self-contained: combat logic / hit detection are untouched. */
+  /* v2.3.954: size-aware loader for an equipped armour layer during attacks.
+     Reads the same gear/<slot>/<item>/<pose>-<dir>.png files as the body gear
+     pipeline, but slices by the per-facing frame width (the attack frames aren't
+     256).  Driven by getEquip(slot).  Returns null while loading / if missing. */
+  _gearStripFrame(slot, item, pose, dir, fw, fi) {
+    if (!item || item === 'none') return null;
+    const key = slot + '/' + item + '/' + pose + '/' + dir;
+    let e = this._gearStrips[key];
+    if (e === undefined) {
+      this._gearStrips[key] = 'loading';
+      Assets.load('/sprites/gear/' + slot + '/' + item + '/' + pose + '-' + dir + '.png?v=' + GEARLAYER_VER).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / fw));
+        const arr = [];
+        for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.height) }));
+        this._gearStrips[key] = arr;
+      }).catch(() => { this._gearStrips[key] = []; });
+      return null;
+    }
+    if (e === 'loading' || !e.length) return null;
+    return e[Math.min(fi, e.length - 1)];
+  }
+
   _updateSwordSwing(S, now) {
     if (this.swordSprite) this.swordSprite.visible = false;
     if (this.swordWeaponSprite) this.swordWeaponSprite.visible = false;
+    if (this.swordChestSprite) this.swordChestSprite.visible = false;
+    if (this.swordLegsSprite) this.swordLegsSprite.visible = false;
     if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
     /* entityRenderer published the active facing; resolve it to a sheet + mirror. */
     const fmap = this._swordFacing[S._swordSwingDir];
@@ -2424,34 +2468,40 @@ export class EffectsRenderer {
     const elapsed = now - (S.swingTimer || now);
     const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
     const sp = this.swordSprite;
-    sp.anchor.set(0.5, cfg.feetY / cfg.fh);
+    const anchorY = cfg.feetY / cfg.fh;
+    sp.anchor.set(0.5, anchorY);
     /* Render the figure (~188px body in-frame) at the avatar's actual drawn
        height so it matches the rest of the body (published per-facing/zone). */
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
     const s = bodyH / 188;
-    sp.scale.set(mirror ? -s : s, s);
+    const sgn = mirror ? -s : s;
+    sp.scale.set(sgn, s);
     sp.x = S.player.x;
-    /* Plant the feet where the real avatar's feet were (published by
-       entityRenderer); fall back to player.y if not set yet. */
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
-    /* v2.3.948: if an armored body sheet exists for this facing, draw it instead
-       of the bald baked sheet, layer the recolorable weapon over it (same frame
-       geometry, so it lines up), and skip the hat/beard/hair composite -- the
-       helmet is the headwear.  Otherwise fall back to the bald sheet + traits. */
+    /* place an overlay sprite with the SAME transform as the body sprite. */
+    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     const armorFrames = this._swordArmorFrames[fmap[0]];
     const weaponFrames = this._swordWeaponFrames[fmap[0]];
-    if (armorFrames && armorFrames[fi]) {
+    const bodyFrames = this._swordBodyFrames[fmap[0]];
+    if (bodyFrames && bodyFrames[fi]) {
+      /* v2.3.954: layered gear path -- bald body + equipped chest/legs armour +
+         the recolorable weapon.  The helmet rides in the chest piece, so skip the
+         hat/beard/hair composite when a chest is worn; show it (bald head) when
+         no chest is equipped. */
+      sp.texture = bodyFrames[fi];
+      const gp = cfg.gearPose || 'swing';
+      const chestTex = this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi);
+      const legsTex  = this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi);
+      place(this.swordChestSprite, chestTex);
+      place(this.swordLegsSprite, legsTex);
+      place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
+      if (chestTex) hideSkillTraits(this.skillTraits);
+      else this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+    } else if (armorFrames && armorFrames[fi]) {
       sp.texture = armorFrames[fi];
       hideSkillTraits(this.skillTraits);
-      if (weaponFrames && weaponFrames[fi]) {
-        const wp = this.swordWeaponSprite;
-        wp.anchor.set(0.5, cfg.feetY / cfg.fh);
-        wp.texture = weaponFrames[fi];
-        wp.scale.set(mirror ? -s : s, s);
-        wp.x = sp.x; wp.y = sp.y;
-        wp.visible = true;
-      }
+      place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
     } else {
       sp.texture = frames[fi];
       this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
