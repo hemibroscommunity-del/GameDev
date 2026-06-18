@@ -324,7 +324,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 950;
+    const SWORD_ART_VERSION = 951;   // 951: removed baked white blade artifact from east swing body frame 5
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
