@@ -15,7 +15,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.j
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
 import { getEquip } from '../gearCatalog.js';
-const GEARLAYER_VER = '968';   // cache-bust for the attack-pose gear sheets (swing-east chest: per-frame nudges, frames 5-8 +3y, 9-11 +15y, 10 +5x)
+const GEARLAYER_VER = '968';   // cache-bust for the attack-pose gear sheets (swing-east chest: per-frame nudges, frames 5-8 +3y, 6 +5x, 9-11 +15y, 10 +5x)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
