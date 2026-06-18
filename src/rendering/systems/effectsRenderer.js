@@ -363,16 +363,16 @@ export class EffectsRenderer {
        each (load -> draw -> release -> follow). */
     this._bowCfg = {
       /* v2.3.932: east re-cut to the owner's arrow-free art (3 frames). */
-      east:      { url: '/sprites/player/bow-east.png',      fw: 214, fh: 241, feetY: 235, crownKey: 'bow_e',  traitDir: 'east', armorUrl: '/sprites/player/bow-east-armored.png', weaponUrl: '/sprites/player/bow-east-weapon.png' },
+      east:      { url: '/sprites/player/bow-east.png',      fw: 214, fh: 241, feetY: 235, crownKey: 'bow_e',  traitDir: 'east', weaponUrl: '/sprites/player/bow-east-weapon.png', bodyUrl: '/sprites/player/bow-east-body.png', gearPose: 'bowshot' },
       /* v2.3.929: SW re-cut to the owner's arrow-free art (3 frames:
          load/pull/release -- the in-game arrow projectile draws the arrow). */
-      southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south', armorUrl: '/sprites/player/bow-southwest-armored.png', weaponUrl: '/sprites/player/bow-southwest-weapon.png' },
+      southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south', weaponUrl: '/sprites/player/bow-southwest-weapon.png', bodyUrl: '/sprites/player/bow-southwest-body.png', gearPose: 'bowshot' },
       /* v2.3.933: south re-cut to the owner's arrow-free art (3 frames). */
-      south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south', armorUrl: '/sprites/player/bow-south-armored.png', weaponUrl: '/sprites/player/bow-south-weapon.png' },
+      south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south', weaponUrl: '/sprites/player/bow-south-weapon.png', bodyUrl: '/sprites/player/bow-south-body.png', gearPose: 'bowshot' },
       /* v2.3.930: NW re-cut to the owner's arrow-free art (3 frames). */
-      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north', armorUrl: '/sprites/player/bow-northwest-armored.png' },
+      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north', weaponUrl: '/sprites/player/bow-northwest-weapon.png', bodyUrl: '/sprites/player/bow-northwest-body.png', gearPose: 'bowshot' },
       /* v2.3.931: north re-cut to the owner's arrow-free art (3 frames). */
-      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north', armorUrl: '/sprites/player/bow-north-armored.png' },
+      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north', weaponUrl: '/sprites/player/bow-north-weapon.png', bodyUrl: '/sprites/player/bow-north-body.png', gearPose: 'bowshot' },
     };
     this._bowFacing = {
       east:      ['east', false],
@@ -391,11 +391,20 @@ export class EffectsRenderer {
        composite is skipped (the helmet is the headwear). */
     this._bowArmorFrames = {};
     this._bowWeaponFrames = {};
-    const BOW_ART_VERSION = 953;
+    this._bowBodyFrames = {};   // v2.3.957: bald body base for the layered gear path
+    const BOW_ART_VERSION = 957;
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
     this.nodeLayer.addChild(this.bowSprite);
+    this.bowChestSprite = new Sprite();
+    this.bowChestSprite.anchor.set(0.5, 1);
+    this.bowChestSprite.visible = false;
+    this.nodeLayer.addChild(this.bowChestSprite);
+    this.bowLegsSprite = new Sprite();
+    this.bowLegsSprite.anchor.set(0.5, 1);
+    this.bowLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.bowLegsSprite);
     this.bowWeaponSprite = new Sprite();
     this.bowWeaponSprite.anchor.set(0.5, 1);
     this.bowWeaponSprite.visible = false;
@@ -412,6 +421,7 @@ export class EffectsRenderer {
       _loadBowStrip(this._bowFrames, dir, cfg.url, cfg);
       if (cfg.armorUrl)  _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
       if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
+      if (cfg.bodyUrl)   _loadBowStrip(this._bowBodyFrames, dir, cfg.bodyUrl, cfg);
     }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
@@ -2517,6 +2527,8 @@ export class EffectsRenderer {
   _updateBowShot(S, now) {
     if (this.bowSprite) this.bowSprite.visible = false;
     if (this.bowWeaponSprite) this.bowWeaponSprite.visible = false;
+    if (this.bowChestSprite) this.bowChestSprite.visible = false;
+    if (this.bowLegsSprite) this.bowLegsSprite.visible = false;
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     const fmap = this._bowFacing[S._bowDir];
     if (!fmap) return;
@@ -2533,26 +2545,34 @@ export class EffectsRenderer {
       ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
       : n - 1;
     const sp = this.bowSprite;
-    sp.anchor.set(0.5, cfg.feetY / cfg.fh);
-    /* v2.3.951: armored body sheet (bald head) when present, else the bald
-       baked sheet; the bow is layered over it from the separable weapon sheet. */
+    const anchorY = cfg.feetY / cfg.fh;
+    sp.anchor.set(0.5, anchorY);
     const armorFrames = this._bowArmorFrames[fmap[0]];
     const weaponFrames = this._bowWeaponFrames[fmap[0]];
-    const _armored = !!(armorFrames && armorFrames[fi]);
-    sp.texture = _armored ? armorFrames[fi] : frames[fi];
+    const bodyFrames = this._bowBodyFrames[fmap[0]];
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
     const s = bodyH / 188;
-    sp.scale.set(mirror ? -s : s, s);
+    const sgn = mirror ? -s : s;
+    sp.scale.set(sgn, s);
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
-    if (_armored && weaponFrames && weaponFrames[fi]) {
-      const wp = this.bowWeaponSprite;
-      wp.anchor.set(0.5, cfg.feetY / cfg.fh);
-      wp.texture = weaponFrames[fi];
-      wp.scale.set(mirror ? -s : s, s);
-      wp.x = sp.x; wp.y = sp.y;
-      wp.visible = true;
+    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
+    /* v2.3.957: layered gear path -- bald body + equipped chest/legs armour +
+       recolorable bow; no helmet, so always composite hat/beard/hair.  Falls back
+       to the armored/bald sheet if no body base for this facing. */
+    let _armored;
+    if (bodyFrames && bodyFrames[fi]) {
+      _armored = false;
+      sp.texture = bodyFrames[fi];
+      const gp = cfg.gearPose || 'bowshot';
+      place(this.bowChestSprite, this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi));
+      place(this.bowLegsSprite,  this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi));
+      place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
+    } else {
+      _armored = !!(armorFrames && armorFrames[fi]);
+      sp.texture = _armored ? armorFrames[fi] : frames[fi];
+      if (_armored) place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
     }
     /* v2.3.937: publish the teal grip's WORLD position (same anchor math as
        _placeSkillTraitsOn) so the procedural arrow can launch from the bow
