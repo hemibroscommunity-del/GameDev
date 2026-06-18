@@ -108,7 +108,13 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               else                                { P.x = midX;             P.y = nH - TILE * 5; }
               /* v2.3.860: entering the World View, spawn by the central town
                  circle (just south of centre), not flung to the ocean edge. */
-              if (bestExit.zoneId === 'worldview') { P.x = midX; P.y = midY + TILE * 7; }
+              /* v2.3.948: hub destinations (worldview AND town) drop the player
+                 just south of centre, clear of the OTHER hub's return-trigger.
+                 Town's worldview-exit sits at the bottom edge (ty 44); the old
+                 dir='north' spawn landed the player at ty 43 -- one tile from that
+                 trigger -- so worldview->town instantly bounced back, spamming the
+                 enter/exit-town messages. Landing near centre breaks the bounce. */
+              if (bestExit.zoneId === 'worldview' || bestExit.zoneId === 'town') { P.x = midX; P.y = midY + TILE * 7; }
               /* Push monsters away from player spawn — minimum 200px distance */
               var _minSpawnDist = 200;
               if (S.monsters) {

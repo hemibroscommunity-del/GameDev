@@ -94,7 +94,10 @@ export const SpecialChargePie = () => {
       zIndex: 31,
       pointerEvents: 'none',
       opacity,
-      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))',
+      /* v2.3.948: drop-shadow removed -- on iOS a CSS drop-shadow filter on a DOM
+         overlay compositing over the WebGL canvas produced grainy "static" on the
+         pie (the next suspect flagged in CLAUDE.md after the strokeDasharray fix).
+         The disk fill + edge stroke below already give it definition. */
     }}>
       <svg viewBox={'0 0 ' + size + ' ' + size} width={size} height={size}>
         <circle cx={cx} cy={cy} r={diskR} fill={DISK_FILL} stroke={DISK_EDGE} strokeWidth={1} />
