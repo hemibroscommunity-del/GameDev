@@ -278,6 +278,4 @@ export const WORLDVIEW_EXITS = [
   { zoneId: 'mist',    tx: 9,  ty: 32, dir: 'sw',    label: 'Mistwood',        color: ELEMENTS.venom.color },
   { zoneId: 'verdant', tx: 10, ty: 16, dir: 'nw',    label: 'Verdant Wilds',   color: '#6abf4f' },
   { zoneId: 'frost',   tx: 16, ty: 12, dir: 'nw',    label: 'Frozen Shore',    color: ELEMENTS.frost.color },
-  /* provisional -- no circle was marked for the Meadow; placed near town. */
-  { zoneId: 'meadow',  tx: 20, ty: 24, dir: 'west',  label: 'Starting Meadow', color: '#5a9a40' },
 ];
