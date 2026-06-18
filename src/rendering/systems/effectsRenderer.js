@@ -15,7 +15,8 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.j
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
 import { getEquip } from '../gearCatalog.js';
-const GEARLAYER_VER = '974';   // cache-bust for the attack-pose gear sheets (swing-north chest+legs: more per-frame nudges, frame 1 down 3, frame 2 left 3)
+import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
+const GEARLAYER_VER = '977';   // cache-bust for the attack-pose gear sheets (chain belt baked onto the waist band, all facings)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -323,7 +324,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 950;
+    const SWORD_ART_VERSION = 951;   // 951: removed baked white blade artifact from east swing body frame 5
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
@@ -349,12 +350,44 @@ export class EffectsRenderer {
         for (let i = 0; i < n; i++) target[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
       }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
     };
+    /* v2.3.975: the attack stand-ins must show the PLAYER'S customized body
+       (skin / pants / shoes chosen at the login menu), not the authored default,
+       so equipped armour sits on the real character instead of reverting to the
+       default skin + olive pants during a swing or bow shot.  Recolor the bald
+       body sheet with the SAME palette pipeline the normal body uses
+       (recolorBodyToCanvas — identity for the default combo), cache the raw
+       image, and rebake whenever the player changes their combo. */
+    this._bodyStrips = [];      // [{ target, dir, url, cfg, ver }]
+    this._bodyImgCache = {};    // url -> HTMLImageElement
+    const _loadImg = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = u; });
+    this._bakeBodyStrip = (rec) => {
+      const img = this._bodyImgCache[rec.url];
+      if (!img) return;
+      const skinT = skinTarget(getSkin()), pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
+      const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null);
+      const source = Texture.from(cv).source;
+      source.scaleMode = 'linear';
+      const n = Math.max(1, Math.round(img.width / rec.cfg.fw));
+      const arr = [];
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * rec.cfg.fw, 0, rec.cfg.fw, rec.cfg.fh) }));
+      rec.target[rec.dir] = arr;
+    };
+    const _loadRecoloredBody = (target, dir, url, cfg, ver) => {
+      target[dir] = [];
+      const rec = { target, dir, url, cfg, ver };
+      this._bodyStrips.push(rec);
+      if (this._bodyImgCache[url]) { this._bakeBodyStrip(rec); return; }
+      _loadImg(url + '?v=' + ver).then((img) => { this._bodyImgCache[url] = img; this._bakeBodyStrip(rec); })
+        .catch((err) => console.warn('[body ' + dir + '] load failed', err));
+    };
+    this._rebakeBodies = () => { for (const rec of this._bodyStrips) this._bakeBodyStrip(rec); };
+    onSkinChange(this._rebakeBodies); onPantsChange(this._rebakeBodies); onShoesChange(this._rebakeBodies);
     for (const dir of Object.keys(this._swordCfg)) {
       const cfg = this._swordCfg[dir];
       _loadSwordStrip(this._swordFrames, dir, cfg.url, cfg);
       if (cfg.armorUrl)  _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
       if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
-      if (cfg.bodyUrl)   _loadSwordStrip(this._swordBodyFrames, dir, cfg.bodyUrl, cfg);
+      if (cfg.bodyUrl)   _loadRecoloredBody(this._swordBodyFrames, dir, cfg.bodyUrl, cfg, SWORD_ART_VERSION);
     }
 
     /* v2.3.925: bow-shoot stand-in -- same self-contained pattern as the sword
@@ -421,7 +454,7 @@ export class EffectsRenderer {
       _loadBowStrip(this._bowFrames, dir, cfg.url, cfg);
       if (cfg.armorUrl)  _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
       if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
-      if (cfg.bodyUrl)   _loadBowStrip(this._bowBodyFrames, dir, cfg.bodyUrl, cfg);
+      if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION);
     }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
