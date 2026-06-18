@@ -15,7 +15,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.j
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
 import { getEquip } from '../gearCatalog.js';
-const GEARLAYER_VER = '965';   // cache-bust for the attack-pose gear sheets (swing-east chest: dehead fix for raised-arm frames + row-2 nudge)
+const GEARLAYER_VER = '966';   // cache-bust for the attack-pose gear sheets (swing-east chest: headless torso from ChatGPT, no flood-fill needed)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
