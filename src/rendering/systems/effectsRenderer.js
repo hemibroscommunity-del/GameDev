@@ -343,16 +343,16 @@ export class EffectsRenderer {
        each (load -> draw -> release -> follow). */
     this._bowCfg = {
       /* v2.3.932: east re-cut to the owner's arrow-free art (3 frames). */
-      east:      { url: '/sprites/player/bow-east.png',      fw: 214, fh: 241, feetY: 235, crownKey: 'bow_e',  traitDir: 'east' },
+      east:      { url: '/sprites/player/bow-east.png',      fw: 214, fh: 241, feetY: 235, crownKey: 'bow_e',  traitDir: 'east', armorUrl: '/sprites/player/bow-east-armored.png', weaponUrl: '/sprites/player/bow-east-weapon.png' },
       /* v2.3.929: SW re-cut to the owner's arrow-free art (3 frames:
          load/pull/release -- the in-game arrow projectile draws the arrow). */
-      southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south' },
+      southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south', armorUrl: '/sprites/player/bow-southwest-armored.png', weaponUrl: '/sprites/player/bow-southwest-weapon.png' },
       /* v2.3.933: south re-cut to the owner's arrow-free art (3 frames). */
       south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south', armorUrl: '/sprites/player/bow-south-armored.png', weaponUrl: '/sprites/player/bow-south-weapon.png' },
       /* v2.3.930: NW re-cut to the owner's arrow-free art (3 frames). */
-      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north' },
+      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north', armorUrl: '/sprites/player/bow-northwest-armored.png', weaponUrl: '/sprites/player/bow-northwest-weapon.png' },
       /* v2.3.931: north re-cut to the owner's arrow-free art (3 frames). */
-      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north' },
+      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north', armorUrl: '/sprites/player/bow-north-armored.png', weaponUrl: '/sprites/player/bow-north-weapon.png' },
     };
     this._bowFacing = {
       east:      ['east', false],
@@ -365,12 +365,13 @@ export class EffectsRenderer {
       north:     ['north', false],
     };
     this._bowFrames = {};
-    /* v2.3.951: optional armored body + separable bow layers per facing (same
-       pattern as the sword swing).  NOTE the bow armor keeps a BALD head, so
-       the hat/beard/hair still composite (unlike the helmeted sword armor). */
+    /* v2.3.952: optional armored body + separable bow layers per facing (same
+       pattern as the sword swing).  All facings authored helmeted with the bow
+       removed, so the bow overlays as a recolorable layer and the hat/beard/hair
+       composite is skipped (the helmet is the headwear). */
     this._bowArmorFrames = {};
     this._bowWeaponFrames = {};
-    const BOW_ART_VERSION = 951;
+    const BOW_ART_VERSION = 952;
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
@@ -2516,7 +2517,10 @@ export class EffectsRenderer {
       S._bowGripDX = S._bowGripX - S.player.x;
       S._bowGripDY = S._bowGripY - S.player.y;
     }
-    this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+    /* v2.3.952: armored bow is helmeted -> skip hat/beard/hair (matches the
+       sword); the bald baked sheet still composites them. */
+    if (_armored) hideSkillTraits(this.skillTraits);
+    else this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
   }
 
   /* ── Extraction cue (v2.3.229) ──
