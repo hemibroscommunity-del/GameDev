@@ -16,7 +16,7 @@ import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
 import { getEquip } from '../gearCatalog.js';
 import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
-const GEARLAYER_VER = '997';   // cache-bust for the attack-pose gear sheets (bow-east nudge right 5 more)
+const GEARLAYER_VER = '998';   // cache-bust for the attack-pose gear sheets (bow chain belt + armor color matched to jog/idle)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
