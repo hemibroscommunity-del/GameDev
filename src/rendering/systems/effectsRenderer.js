@@ -290,8 +290,8 @@ export class EffectsRenderer {
          + the recolorable weapon, so worn armour shows during the swing via the
          existing gear slots.  Falls back to armorUrl/bald if bodyUrl missing. */
       south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing' },
-      east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east', armorUrl: '/sprites/player/sword-east-armored.png', weaponUrl: '/sprites/player/sword-east-weapon.png' },
-      north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north", armorUrl: "/sprites/player/sword-north-armored.png", weaponUrl: "/sprites/player/sword-north-weapon.png" },
+      east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east', armorUrl: '/sprites/player/sword-east-armored.png', weaponUrl: '/sprites/player/sword-east-weapon.png', bodyUrl: '/sprites/player/sword-east-body.png', gearPose: 'swing' },
+      north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north", armorUrl: "/sprites/player/sword-north-armored.png", weaponUrl: "/sprites/player/sword-north-weapon.png", bodyUrl: "/sprites/player/sword-north-body.png", gearPose: "swing" },
     };
     /* facing -> [cfg key, mirror?].  v2.3.921: SE/SW mirror flipped per owner.
        v2.3.922: east sheet covers east (as-is) + west (mirrored).
