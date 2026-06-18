@@ -15,7 +15,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.j
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
 import { getEquip } from '../gearCatalog.js';
-const GEARLAYER_VER = '954';   // cache-bust for the attack-pose gear sheets
+const GEARLAYER_VER = '955';   // cache-bust for the attack-pose gear sheets
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -2496,8 +2496,9 @@ export class EffectsRenderer {
       place(this.swordChestSprite, chestTex);
       place(this.swordLegsSprite, legsTex);
       place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
-      if (chestTex) hideSkillTraits(this.skillTraits);
-      else this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+      /* v2.3.955: no helmets -- the head is always bald, so always composite
+         the player's hat/beard/hair (the chest piece has the head cut out). */
+      this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
     } else if (armorFrames && armorFrames[fi]) {
       sp.texture = armorFrames[fi];
       hideSkillTraits(this.skillTraits);
