@@ -515,6 +515,7 @@ export class EffectsRenderer {
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
     this._updateBowShot(S, now);
+    this._updateRemoteSwordSwings(S, now);
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
@@ -2516,6 +2517,77 @@ export class EffectsRenderer {
     }
     if (e === 'loading' || !e.length) return null;
     return e[Math.min(fi, e.length - 1)];
+  }
+
+  /* v2.3.1011: recolor the sword swing BODY sheet to an arbitrary player's
+     skin/pants/shoes (parallel to _bakeBodyStrip, which only does the LOCAL
+     player) and cache it.  Returns the per-frame Texture[] or null while the
+     base image is still loading. */
+  _remoteBodyFramesFor(o, cfgKey, cfg) {
+    if (!this._remoteBodyCache) this._remoteBodyCache = new Map();
+    const key = cfgKey + '|' + o.skin + '|' + o.pants + '|' + o.shoes;
+    let arr = this._remoteBodyCache.get(key);
+    if (arr) return arr;
+    const img = this._bodyImgCache[cfg.bodyUrl];   // loaded by the local bake
+    if (!img) return null;
+    try {
+      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null);
+      const source = Texture.from(cv).source; source.scaleMode = 'linear';
+      const n = Math.max(1, Math.round(img.width / cfg.fw));
+      arr = [];
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      this._remoteBodyCache.set(key, arr);
+      return arr;
+    } catch (e) { return null; }
+  }
+
+  /* v2.3.1011: render OTHER players' sword/greatsword swing stand-in so the
+     attack looks the same to everyone (MP parity).  SLICE 1 = body only
+     (recolored to their skin); armor / weapon / hair-hat layer on in
+     follow-ups, and the normal remote body is hidden then.  Driven by the
+     broadcast other._swingTs / _swingWpn / _swingAng (Phase 1).
+     REMOTE_SWING_SCALE / _FOOT_DY are first-cut tunables to confirm on the
+     preview (the remote draw scale ~ bodyDirScale*0.421875 ≈ 0.42). */
+  _updateRemoteSwordSwings(S, now) {
+    const REMOTE_SWING_SCALE = 0.45;
+    const REMOTE_SWING_FOOT_DY = 0;
+    if (!this._remoteSwordSprites) this._remoteSwordSprites = new Map();
+    const others = (S && S.others) || {};
+    const active = new Set();
+    for (const id in others) {
+      const o = others[id];
+      if (!o) continue;
+      const wpn = o._swingWpn;
+      const isMelee = !wpn || wpn === 'sword' || wpn === 'greatsword';
+      const elapsed = now - (o._swingTs || 0);
+      if (!isMelee || elapsed < 0 || elapsed >= SWORD_SWING_MS) continue;
+      const ang = (typeof o._swingAng === 'number') ? o._swingAng : 0;
+      const sdx = Math.cos(ang), sdy = Math.sin(ang);
+      const dir4 = Math.abs(sdx) >= Math.abs(sdy) ? (sdx >= 0 ? 'east' : 'west') : (sdy >= 0 ? 'south' : 'north');
+      const fmap = this._swordFacing[dir4];
+      if (!fmap) continue;
+      const cfgKey = fmap[0], mirror = fmap[1];
+      const cfg = this._swordCfg[cfgKey];
+      if (!cfg || !cfg.bodyUrl) continue;
+      const frames = this._remoteBodyFramesFor(o, cfgKey, cfg);
+      if (!frames || !frames.length) continue;
+      const n = frames.length;
+      const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
+      let sp = this._remoteSwordSprites.get(id);
+      if (!sp) { sp = new Sprite(); this.nodeLayer.addChild(sp); this._remoteSwordSprites.set(id, sp); }
+      const anchorY = cfg.feetY / cfg.fh;
+      sp.anchor.set(0.5, anchorY);
+      sp.texture = frames[fi];
+      sp.scale.set(mirror ? -REMOTE_SWING_SCALE : REMOTE_SWING_SCALE, REMOTE_SWING_SCALE);
+      sp.x = (o.renderX != null) ? o.renderX : o.x;
+      sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_SWING_FOOT_DY;
+      sp.visible = true;
+      active.add(id);
+    }
+    /* Hide the stand-in sprites for players who aren't mid-swing. */
+    for (const [id, sp] of this._remoteSwordSprites) {
+      if (!active.has(id)) sp.visible = false;
+    }
   }
 
   _updateSwordSwing(S, now) {
