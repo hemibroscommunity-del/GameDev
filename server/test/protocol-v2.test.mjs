@@ -172,5 +172,43 @@ const zsTown = msgsOfType(ws2, 'zone_state');
 check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTown[0].zone === 'town'
   && zsTown[0].monsters.length === 0 && zsTown[0].nodes.length === 0 && zsTown[0].loot.length === 0);
 
+// ── v2.3.910: combat level is the SUM of the five build-skill levels, and
+// maxHp uses the retuned flat 2.5/combat-level term ──
+{
+  const ps = room.playerState.p2;
+  ps.armor = null;
+  ps.power = 10; ps.vitality = 8; ps.endurance = 0; ps.agility = 4; ps.mind = 3; // sum 25
+  room._recomputeMaxes(ps);
+  check('v2.3.910 combat level = sum of build-skill stats', ps.level === 25, ps.level);
+  // floor(100 + (25-1)*2.5 + 8*10) = 100 + 60 + 80 = 240
+  check('v2.3.910 maxHp uses flat 2.5/level term', ps.maxHp === 240, ps.maxHp);
+  check('v2.3.910 _calcMaxHp(100,0) == 347', room._calcMaxHp(100, 0) === 347, room._calcMaxHp(100, 0));
+  // Over-cap stat sum clamps combat level to 500.
+  ps.power = 600; ps.vitality = 0; ps.agility = 0; ps.mind = 0; ps.endurance = 0;
+  room._recomputeMaxes(ps);
+  check('v2.3.910 combat level clamps at 500', ps.level === 500, ps.level);
+}
+
+// ── v2.3.912: weapon build CHANNELS reach the authoritative damage roll ──
+{
+  const ps = room.playerState.p2;
+  ps.weapon = { type: 'sword', tierMult: 1 };
+  ps.rangedWeapon = null; ps.staffWeapon = null;
+  ps.power = 0;
+  ps.weaponSpecs = {};
+  const capNoSpec = room._maxWeaponDmg(ps, false);            // 6.67 + 0 + 0
+  ps.weaponSpecs = { sword: { edge: 10, precision: 20 } };
+  check('v2.3.912 _wpnDmgChannel reads edge points (perPt 1.0)', room._wpnDmgChannel(ps, 'sword') === 10, room._wpnDmgChannel(ps, 'sword'));
+  check('v2.3.912 _wpnCritPts reads precision points', room._wpnCritPts(ps, 'sword') === 20, room._wpnCritPts(ps, 'sword'));
+  check('v2.3.912 greatsword shares the sword/melee category', room._wpnCat('greatsword') === 'sword', room._wpnCat('greatsword'));
+  const capWithSpec = room._maxWeaponDmg(ps, false);          // +10 from edge
+  check('v2.3.912 damage channel raises the weapon damage cap by +10',
+    Math.abs((capWithSpec - capNoSpec) - 10) < 0.001, [capNoSpec, capWithSpec]);
+  // Specials ignore the damage channel (mirror client calcSpecialDmg).
+  ps.mind = 0;
+  check('v2.3.912 specials are channel-free',
+    Math.abs(room._maxWeaponDmg(ps, true) - capNoSpec) < 0.001, room._maxWeaponDmg(ps, true));
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

@@ -160,8 +160,13 @@ function addBuildProg(R, stat, amount) {
   R._buildProg[stat] = (R._buildProg[stat] || 0) + amount;
   /* v2.3.113: bumped 5x slower per user feedback ("leveling way too
      quickly").  Was Math.max(50, floor(xpRequired/5)) -- now uses
-     full xpRequired with a 200 floor. */
-  var thresh = Math.max(200, Math.floor(xpRequired(R.level)));
+     full xpRequired with a 200 floor.
+     v2.3.910: keyed to the STAT'S OWN level, not combat level, so specializing
+     (one skill 10->11) costs progressively more than a fresh point (3->4) --
+     "pure" builds spend more time for the same combat level than "spread"
+     ones.  (Combat level is now the SUM of the stats, so keying the cost to it
+     would make leveling stall.) */
+  var thresh = Math.max(200, Math.floor(xpRequired(R[stat] || 0)));
   while (R._buildProg[stat] >= thresh) {
     R._buildProg[stat] -= thresh;
     R[stat] = (R[stat] || 0) + 1;

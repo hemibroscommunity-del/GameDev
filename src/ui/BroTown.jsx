@@ -1631,6 +1631,10 @@ export var BroTown = function BroTown(_ref0) {
          a fresh stats_update -- otherwise the worker's view of armor
          goes stale and its echoed player_state silently re-equips. */
       rpgState.armor ? JSON.stringify(rpgState.armor) : 'noarmor',
+      /* v2.3.912: include the weapon build channels so spending a point
+         actually changes the signature and re-emits stats_update (otherwise
+         the worker never learns and channel damage stays client-only). */
+      rpgState.weaponSpecs ? JSON.stringify(rpgState.weaponSpecs) : 'nospecs',
     ].join('|');
     if (S._lastStatsUpdateSig === _sig) return;
     S._lastStatsUpdateSig = _sig;
@@ -1669,6 +1673,11 @@ export var BroTown = function BroTown(_ref0) {
           fortification: rpgState.fortification || 0,
           restoration: rpgState.restoration || 0,
           influence: rpgState.influence || 0,
+          /* v2.3.912: per-weapon-category build channels.  The worker clamps
+             each value to [0,99] and applies the damage + crit channels in its
+             authoritative damage roll, so spent build points speed up real
+             kills (not just client prediction). */
+          weaponSpecs: rpgState.weaponSpecs || {},
         },
       });
     } catch (e) {}
@@ -1920,6 +1929,11 @@ export var BroTown = function BroTown(_ref0) {
          retired generic specs (one-time, idempotent). */
       migrateWeaponT2(S.rpg);
       migrateDefenseT2(S.rpg);   /* v2.3.693: backfill the Defense T2 category */
+      /* v2.3.910: combat level is now derived (sum of build-skill levels), set
+         by recalcDerived above.  Seed _lastShownLevel to the current level so
+         the on-kill level-up VFX fires only for levels gained from here on, not
+         a burst for every level the character already has. */
+      if (S.rpg._lastShownLevel == null) S.rpg._lastShownLevel = S.rpg.level || 1;
       /* v2.3.687: restore any orphaned steel piece (worn nowhere, bagged
          nowhere -- e.g. unequipped via the old Equipment-menu toggle) into
          the bag so it's never lost. */
