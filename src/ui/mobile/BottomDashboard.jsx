@@ -615,7 +615,13 @@ export const BottomDashboard = () => {
           justifyContent: 'center',
         }}>
           <img
-            src={(S && S.myAvatar) || profilePortrait || '/icons/ui/profile.webp?v=2.3.128'}
+            /* Show the player's customized login-picker character first (it
+               matches the in-game body); fall back to an NFT avatar, then the
+               static icon.  Previously S.myAvatar (a stale/pool NFT pick) took
+               priority and showed e.g. a monkey even though the in-game
+               character is the cosmetic bro (the NFT is suppressed in-world
+               when worn armour hides the body). */
+            src={profilePortrait || (S && S.myAvatar) || '/icons/ui/profile.webp?v=2.3.128'}
             alt="Portrait"
             draggable={false}
             style={{
