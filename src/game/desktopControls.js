@@ -35,7 +35,8 @@ export function setupDesktopControls(S, deps) {
     S._isDesktop = window.matchMedia('(pointer:fine)').matches;
     var onKeyDown = function onKeyDown(e) {
       var _document$activeEleme, _S$rpg25;
-      if (((_document$activeEleme = document.activeElement) === null || _document$activeEleme === void 0 ? void 0 : _document$activeEleme.tagName) === 'INPUT') return;
+      var _ae = document.activeElement, _aeTag = _ae && _ae.tagName;
+      if (_aeTag === 'INPUT' || _aeTag === 'TEXTAREA') return; /* typing in a field (chat bar etc.) -- don't drive the game */
       S.keys[e.key] = true;
       S._isDesktop = true; /* any keyboard input confirms desktop */
 
