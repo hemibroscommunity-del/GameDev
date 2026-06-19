@@ -3,7 +3,7 @@ import { BroTown } from './BroTown.jsx';
 import { DebugOverlay } from '../debug/DebugOverlay.jsx';
 import { wheelBus } from './mobile/wheelBus.js';
 import { BottomDashboard } from './mobile/BottomDashboard.jsx';
-import { ChatBar } from './mobile/ChatBar.jsx';
+import { ChatBubble } from './mobile/ChatBubble.jsx';
 import { XpFlyOverlay } from './XpFlyOverlay.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
@@ -518,7 +518,7 @@ export const GameApp = () => {
         }}
       />
       <BottomDashboard />
-      <ChatBar />
+      <ChatBubble />
       {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}
       {/* the bottom dashboard nests their content inside the --dash-h band. */}
       {/* Their buses still exist and are exercised by debug commands.      */}

@@ -1538,20 +1538,9 @@ export var BroTown = function BroTown(_ref0) {
     if (el) el.style.height = initialHeight + 'px';
 
     /* On iOS, the visual viewport shrinks when keyboard opens. We counteract by
-       keeping our wrapper at the original height and scrolling the body to top.
-       v2.3.1012: the scroll-to-top was described here but never implemented, so
-       Safari's involuntary pan-to-reveal-focused-input (when the chat bar gets
-       focus) slid the whole fixed layout up and exposed the black body bg below.
-       Reset every scroll origin so the locked scene never moves; the keyboard
-       just overlays the bottom and the chat bar floats above it (ChatBar.jsx). */
+       keeping our wrapper at the original height and scrolling the body to top. */
     var handleResize = function handleResize() {
       if (el) el.style.height = initialHeight + 'px';
-      try {
-        window.scrollTo(0, 0);
-        if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-        if (el) el.scrollTop = 0;
-      } catch (e) {}
     };
 
     /* Also handle orientation changes — re-lock to new height */
@@ -1565,10 +1554,6 @@ export var BroTown = function BroTown(_ref0) {
       window.visualViewport.addEventListener('resize', handleResize);
       window.visualViewport.addEventListener('scroll', handleResize);
     }
-    /* v2.3.1012: visualViewport's resize can fire after Safari has already
-       panned; focusin catches the jump the instant an input (chat bar etc.)
-       grabs focus, so the scene snaps back before the user sees it move. */
-    window.addEventListener('focusin', handleResize);
     window.addEventListener('resize', handleOrientationChange);
     window.addEventListener('orientationchange', handleOrientationChange);
     return function () {
@@ -1581,7 +1566,6 @@ export var BroTown = function BroTown(_ref0) {
         window.visualViewport.removeEventListener('resize', handleResize);
         window.visualViewport.removeEventListener('scroll', handleResize);
       }
-      window.removeEventListener('focusin', handleResize);
       window.removeEventListener('resize', handleOrientationChange);
       window.removeEventListener('orientationchange', handleOrientationChange);
     };
