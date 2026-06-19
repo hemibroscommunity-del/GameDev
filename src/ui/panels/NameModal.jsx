@@ -136,7 +136,7 @@ export function NameModal(props) {
         items: _objTiles('shoes', SHOES_CATALOG, 'swatch', null, shoesSel, function (id) { setShoes(id); setShoesSel(id); }), colors: null }; } }
     };
     var _catOrder = ['hat', 'hair', 'beard', 'skin', 'shirt', 'pants', 'shoes'];
-    var _ccCats = _catOrder.map(function (k) { return { key: k, label: _catDefs[k].label }; });
+    var _ccCats = _catOrder.map(function (k) { return { key: k, label: _catDefs[k].label, icon: '/ui/welcome/cat/' + k + '.png' }; });
     var _activeKey = _catDefs[activeCat] ? activeCat : 'hat';
     var _built = _catDefs[_activeKey].build();
     var _ccActive = { key: _activeKey, label: _catDefs[_activeKey].label, items: _built.items, colors: _built.colors };
@@ -367,7 +367,8 @@ export function NameModal(props) {
         key: c.key, type: 'button',
         className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : ''),
         onClick: function () { setActiveCat(c.key); }
-      }, c.label);
+      }, /*#__PURE__*/React.createElement("img", { className: "bt-cc-tab-icon", src: c.icon, alt: '', draggable: false }),
+         /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, c.label));
     })), /*#__PURE__*/React.createElement("section", {
       /* Customization drawer — one shared panel under the tabs.  Split
          layout (spec §6): items grid left = "what am I using?", color
