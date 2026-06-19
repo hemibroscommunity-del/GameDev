@@ -156,7 +156,7 @@ export function specialAttack(S) {
       /* Broadcast the special swing so peers render the wider arc +
          gold halo.  The regular auto-swing broadcast path is skipped
          because isSwinging is already true here. */
-      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: now, special: true } });
+      if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: now, special: true, wpn: (activeWpn && activeWpn.type) || 'sword', ang: aimAng } });
     }
 
     /* Power-up sound */

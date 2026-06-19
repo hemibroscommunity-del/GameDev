@@ -1328,9 +1328,11 @@ export function updateMonsterCombat(S, deps) {
                 S.swingTimer = Date.now();
                 S.isSwinging = true;
                 S._specialAttack = false;
+                /* v2.3.1011: defer the player_swing broadcast until S._swingAng
+                   is computed just below, so peers get the weapon + facing and
+                   can render the full stand-in (not just a bare arc). */
+                S._swingBcastPending = true;
                 BT_AUDIO.play(meleeSwingSfx(S.rpg), { vol: 0.55 });
-                /* Broadcast swing to other players */
-                if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: Date.now() } });
               }
             }
           }
@@ -1352,6 +1354,18 @@ export function updateMonsterCombat(S, deps) {
                wide arc, so 3 sheets cover all angles): more-north -> north,
                more-south -> south, more-horizontal -> east/west. */
             S._swingAng = baseAngle;
+            /* v2.3.1011: relay the swing once, with weapon type + angle, so
+               other players render the full sword/greatsword stand-in facing
+               the right way (Phase 1 of MP attack-animation parity). */
+            if (S._swingBcastPending) {
+              S._swingBcastPending = false;
+              if (S.channel) {
+                var _bcWpn = getActiveWeapon(S.rpg);
+                try { S.channel.send({ type: 'broadcast', event: 'player_swing', payload: {
+                  id: S.myId, ts: Date.now(), wpn: (_bcWpn && _bcWpn.type) || 'sword', ang: baseAngle
+                } }); } catch (e) {}
+              }
+            }
             /* §5.9 Combo Chain — capture pre-swing state. Burst bonus is
                applied to all hits in this swipe (uniform across the cone);
                spread (count 2+) and extended-status flag (count 3) read the
