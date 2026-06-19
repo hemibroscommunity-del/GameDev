@@ -1954,6 +1954,20 @@ export var BroTown = function BroTown(_ref0) {
         gearBase: 'wood',
         isVolatile: false
       };
+      /* v2.3.943: swap the untouched starter melee weapon (Bamboo Stick /
+         Wood Sword, type 'sword', wood, common) for a wood-tier greatsword so
+         existing saves get the held greatsword art + the wild swing.  A player
+         who found / forged a different melee weapon keeps it. */
+      if (S.rpg.weapon && S.rpg.weapon.type === 'sword' && S.rpg.weapon.gearBase === 'wood'
+          && S.rpg.weapon.tier === 'common'
+          && (S.rpg.weapon.name === 'Bamboo Stick' || S.rpg.weapon.name === 'Wood Sword')) {
+        S.rpg.weapon = {
+          type: 'greatsword', tier: 'common', tierMult: 1.0,
+          element1: null, element2: null, name: 'Greatsword',
+          gearBase: 'wood', isVolatile: false
+        };
+        recalcDerived(S.rpg);
+      }
       if (!S.rpg.rangedWeapon) S.rpg.rangedWeapon = {
         type: 'bow',
         tier: 'common',
@@ -4865,8 +4879,13 @@ export var BroTown = function BroTown(_ref0) {
     var base = joystickRef.current;
     if (!base) return;
     var rect = base.getBoundingClientRect();
-    var bcx = rect.left + rect.width / 2;
-    var bcy = rect.top + rect.height / 2;
+    /* v2.3.949: docked joystick.  The base sits in its left corner at 50%
+       opacity and no longer follows the finger; deflection is measured from the
+       touch ORIGIN (where the finger went down anywhere in the left zone), so the
+       knob on the docked disc reads as a relative drag in that direction. */
+    var _lts = lTapState.current;
+    var bcx = (_lts && _lts.startX != null) ? _lts.startX : (rect.left + rect.width / 2);
+    var bcy = (_lts && _lts.startY != null) ? _lts.startY : (rect.top + rect.height / 2);
     var rawDx = clientX - bcx;
     var rawDy = clientY - bcy;
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
@@ -4903,8 +4922,9 @@ export var BroTown = function BroTown(_ref0) {
   }, []);
   var handleJoystickEnd = useCallback(function () {
     joystickActive.current = false;
-    /* v2.3.816: fade the floating joystick back out on release. */
-    if (joystickRef.current) joystickRef.current.style.opacity = '0';
+    /* v2.3.949: docked joystick stays visible at 50% on release; just recenter
+       the knob/stick (no fade-out). */
+    if (joystickRef.current) joystickRef.current.style.opacity = '0.5';
     if (knobRef.current) knobRef.current.style.transform = 'translate(-50%,-50%)';
     if (lStickRef.current) {
       lStickRef.current.style.width = '0px';
@@ -4923,8 +4943,12 @@ export var BroTown = function BroTown(_ref0) {
     var base = rJoyRef.current;
     if (!base) return;
     var rect = base.getBoundingClientRect();
-    var bcx = rect.left + rect.width / 2,
-      bcy = rect.top + rect.height / 2;
+    /* v2.3.949: docked combat joystick -- deflection measured from the touch
+       ORIGIN (relative drag from anywhere in the right zone), not the docked
+       base centre. */
+    var _rts = rTapState.current;
+    var bcx = (_rts && _rts.startX != null) ? _rts.startX : (rect.left + rect.width / 2),
+      bcy = (_rts && _rts.startY != null) ? _rts.startY : (rect.top + rect.height / 2);
     var rawDx = clientX - bcx,
       rawDy = clientY - bcy;
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
@@ -4972,8 +4996,8 @@ export var BroTown = function BroTown(_ref0) {
   }, []);
   var handleRJoyEnd = useCallback(function () {
     rJoyActive.current = false;
-    /* v2.3.816: fade the floating joystick back out on release. */
-    if (rJoyRef.current) rJoyRef.current.style.opacity = '0';
+    /* v2.3.949: docked combat joystick stays visible at 50% on release. */
+    if (rJoyRef.current) rJoyRef.current.style.opacity = '0.5';
     if (rKnobRef.current) rKnobRef.current.style.transform = 'translate(-50%,-50%)';
     if (rStickRef.current) {
       rStickRef.current.style.width = '0px';
@@ -5099,15 +5123,9 @@ export var BroTown = function BroTown(_ref0) {
       var lts = lTapState.current;
       lTouchId.current = t.identifier;
       joystickActive.current = true;
-      /* v2.3.816: spawn the movement joystick centered under the finger
-         (base is position:fixed with translate(-50%,-50%), so left/top ARE
-         the centre) and fade it in.  All downstream math reads the base
-         rect, so it tracks the spawn point automatically. */
-      if (joystickRef.current) {
-        joystickRef.current.style.left = t.clientX + 'px';
-        joystickRef.current.style.top = t.clientY + 'px';
-        joystickRef.current.style.opacity = '0.25';
-      }
+      /* v2.3.949: docked joystick -- the base stays in its corner (50% opacity);
+         do NOT move it to the finger.  The touch point recorded below is the
+         deflection origin (handleJoystickMove reads lTapState.startX/Y). */
       lts.startAt = nowMs;
       lts.startX = t.clientX;
       lts.startY = t.clientY;
@@ -5210,14 +5228,9 @@ export var BroTown = function BroTown(_ref0) {
         && (dxLast * dxLast + dyLast * dyLast) < DOUBLE_TAP_MAX_DIST_SQ_PX;
       rTouchId.current = t.identifier;
       rJoyActive.current = true;
-      /* v2.3.816: spawn the combat joystick under the finger (before the
-         double-tap-shield branch so the shield arc + BlockRing orbit the
-         spawn point too). */
-      if (rJoyRef.current) {
-        rJoyRef.current.style.left = t.clientX + 'px';
-        rJoyRef.current.style.top = t.clientY + 'px';
-        rJoyRef.current.style.opacity = '0.25';
-      }
+      /* v2.3.949: docked combat joystick -- base stays in its corner (50%
+         opacity); do NOT move it to the finger.  The touch point recorded below
+         is the deflection origin (handleRJoyMove reads rTapState.startX/Y). */
       rts.startAt = nowMs;
       rts.startX = t.clientX;
       rts.startY = t.clientY;
@@ -5233,12 +5246,12 @@ export var BroTown = function BroTown(_ref0) {
         rShieldGesture.current = true;
         if (rPreviewTimer.current) { clearTimeout(rPreviewTimer.current); rPreviewTimer.current = null; }
         if (rJoyPreviewRef.current) rJoyPreviewRef.current.style.display = 'none';
-        var rect = rJoyRef.current ? rJoyRef.current.getBoundingClientRect() : null;
-        if (rect) {
-          var bcx = rect.left + rect.width / 2;
-          var bcy = rect.top + rect.height / 2;
-          var ang = Math.atan2(t.clientY - bcy, t.clientX - bcx);
+        /* v2.3.949: docked joystick -- the touch starts at the origin, so there's
+           no drag angle yet; seed the shield arc from the last aim and let rM's
+           drag (pivoting on the origin) steer it. */
+        {
           var S2 = stateRef.current;
+          var ang = (S2._lastAimAngle != null) ? S2._lastAimAngle : 0;
           S2._aimAngle = ang;
           S2._shieldAngle = ang;
         }
@@ -5265,13 +5278,13 @@ export var BroTown = function BroTown(_ref0) {
         e.preventDefault();
         if (rShieldGesture.current) {
           /* Shield-mode drag: update the block arc angle from the touch
-             position relative to the right joystick centre.  Don't call
-             handleRJoyMove -- that re-asserts auto-attack which the
+             position relative to the touch ORIGIN (v2.3.949: docked joystick,
+             so the pivot is where the finger went down, not the docked base).
+             Don't call handleRJoyMove -- that re-asserts auto-attack which the
              shield gesture explicitly suppresses. */
-          var rect2 = rJoyRef.current ? rJoyRef.current.getBoundingClientRect() : null;
-          if (rect2) {
-            var bcx2 = rect2.left + rect2.width / 2;
-            var bcy2 = rect2.top + rect2.height / 2;
+          var _rtsSh = rTapState.current;
+          {
+            var bcx2 = _rtsSh.startX, bcy2 = _rtsSh.startY;
             var ang2 = Math.atan2(t.clientY - bcy2, t.clientX - bcx2);
             var Ssh = stateRef.current;
             Ssh._aimAngle = ang2;

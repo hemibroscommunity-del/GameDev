@@ -211,7 +211,7 @@ export class GameRoom {
     // may grab it; pile despawns entirely at DEATH_PILE_TOTAL_MS.
     this.DEATH_PILE_OWNER_MS = 60000;
     this.DEATH_PILE_TOTAL_MS = 120000;
-    this.LOOT_PICKUP_RANGE = 60; // px; was 30, bumped to absorb client/server position lag without silently dropping pickups
+    this.LOOT_PICKUP_RANGE = 90; // px; was 30 -> 60 -> 90.  The client magnetises a pile toward the player from up to 50 px away (groundLoot.js) and fires the pickup once the *pulled* pile is within 20 px, so the player's true distance to the ORIGINAL drop can approach the magnet range; 60 still rejected those (esp. large monsters like the snowman, where the player attacks/stands further from the drop center) as "out of range".  90 covers the magnet range + movement lag.
     // v2.3.846: node_strike proximity gate.  Separate from LOOT_PICKUP_RANGE
     // because the gather STANCE can sit further from the node than a loot
     // pickup: fishing seats the player ~67 px up-right of the pond so the rod
@@ -294,15 +294,15 @@ export class GameRoom {
     // Synced to docs/MAP-REDESIGN.md: meadow 1-10; frost+tidal 8-25;
     // verdant+mist 22-40; desert(sky)+hollows 38-58; thunder+ember 55-80.
     const ZONES = {
-      meadow:  { w:32, h:32, level:[1,10],  element:null,    spawns:[{arch:'fodder',count:10}] },
-      ember:   { w:32, h:32, level:[55,80], element:'flame', spawns:[{arch:'fodder',count:6}] },
-      mist:    { w:32, h:32, level:[22,40], element:'venom', spawns:[] },
-      verdant: { w:32, h:32, level:[22,40], element:null,    spawns:[] },
-      frost:   { w:32, h:32, level:[8,25],  element:'frost', spawns:[{arch:'snowman',count:4}] },
-      thunder: { w:32, h:32, level:[55,80], element:'storm', spawns:[{arch:'fodder',count:6}] },
-      hollows: { w:32, h:32, level:[38,58], element:'stone', spawns:[{arch:'brute',count:4}] },
-      sky:     { w:32, h:32, level:[38,58], element:'wind',  spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
-      tidal:   { w:32, h:32, level:[8,25],  element:'water', spawns:[{arch:'brute',count:3}] },
+      meadow:  { w:32, h:32, level:[1,1],  element:null,    spawns:[{arch:'fodder',count:10}] },
+      ember:   { w:32, h:32, level:[1,1],  element:'flame', spawns:[{arch:'fodder',count:6}] },
+      mist:    { w:32, h:32, level:[1,1],  element:'venom', spawns:[] },
+      verdant: { w:32, h:32, level:[1,1],  element:null,    spawns:[] },
+      frost:   { w:32, h:32, level:[1,1],  element:'frost', spawns:[{arch:'snowman',count:4}] },
+      thunder: { w:32, h:32, level:[1,1],  element:'storm', spawns:[{arch:'fodder',count:6}] },
+      hollows: { w:32, h:32, level:[1,1],  element:'stone', spawns:[{arch:'brute',count:4}] },
+      sky:     { w:32, h:32, level:[1,1],  element:'wind',  spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
+      tidal:   { w:32, h:32, level:[1,1],  element:'water', spawns:[{arch:'brute',count:3}] },
     };
     return ZONES[zoneId] || null;
   }

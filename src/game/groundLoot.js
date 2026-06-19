@@ -67,7 +67,14 @@ export function updateGroundLootPickup(S, deps) {
             var _amPileRecipient = _deathFFA || !loot.recipients || loot.recipients.includes(S.myId);
             /* ═══ LOOT MAGNETISM — pull toward player when close ═══ */
             var magnetRange = 50;
-            if (!_isFodder && _amPileRecipient && !loot._collected && lDist < magnetRange && lDist > 20) {
+            /* v2.3.948: fodder/fireGoblin coins were excluded from magnetism to
+               avoid the "splat-vacuum" (the coin flying to the player on the same
+               frame the death splat plays).  But with no pull-in they required an
+               exact ~20px approach, so they often read as "out of range" while
+               other loot pulled in — the coin-pickup bug.  Let them magnetize too,
+               just gated behind a 220ms delay so the splat finishes first. */
+            var _magnetReady = !_isFodder || (Date.now() - (loot.ts || 0) > 220);
+            if (_magnetReady && _amPileRecipient && !loot._collected && lDist < magnetRange && lDist > 20) {
               var pullStrength = (1 - lDist / magnetRange) * 3;
               var pullAngle = Math.atan2(P.y - loot.y, P.x - loot.x);
               loot.x += Math.cos(pullAngle) * pullStrength;

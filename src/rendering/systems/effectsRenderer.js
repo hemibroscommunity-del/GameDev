@@ -7,12 +7,16 @@ import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyl
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R } from '@/data/constants.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, hideSkillTraits } from './entityRenderer.js';
+import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
+import { getEquip } from '../gearCatalog.js';
+import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
+const GEARLAYER_VER = '1008';   // cache-bust (bow armor: soften heavy black edge outline)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -265,6 +269,194 @@ export class EffectsRenderer {
       for (let i = 0; i < n; i++) this._fireFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
     }).catch((err) => console.warn('[firemaking-strip] load failed', err));
 
+    /* v2.3.910: sword-swing stand-in — the owner-supplied swing animation plays
+       at the player during a melee swing (same self-contained stand-in pattern
+       as the gathering animations).  Combat logic is untouched; this only swaps
+       the body VISUAL for the swing window.
+       v2.3.912: per-facing sheets (the occluded swing can't be mirrored — a
+       flipped blade would sweep behind the body).  Each sheet is authored with
+       the figure's ground point at frame-centre-x and feet at `feetY`, so the
+       sprite anchors at (0.5, feetY/fh): feet plant on the ground while the blade
+       has room above (windup) and to the side (follow-through).  crownKey maps to
+       the per-frame head crowns in crowns.json. */
+    /* v2.3.920: the south swing (a big front-facing overhead chop that finishes
+       toward the lower-RIGHT) covers the whole front arc: used as-authored for
+       south AND southeast (finishes right -> reads as down-right), and MIRRORED
+       for southwest (finishes left -> reads as down-left).  The owner preferred
+       the south swing's larger arc over a dedicated SE clip, and reusing it
+       sidesteps the white-background keying issues that SE clip had. */
+    this._swordCfg = {
+      /* v2.3.954: south swing also supports the LAYERED gear path -- a bald body
+         (bodyUrl) + equipped chest/legs armour (gear/<slot>/<item>/swing-south.png)
+         + the recolorable weapon, so worn armour shows during the swing via the
+         existing gear slots.  Falls back to armorUrl/bald if bodyUrl missing. */
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing' },
+      east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east', armorUrl: '/sprites/player/sword-east-armored.png', weaponUrl: '/sprites/player/sword-east-weapon.png', bodyUrl: '/sprites/player/sword-east-body.png', gearPose: 'swing' },
+      north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north", armorUrl: "/sprites/player/sword-north-armored.png", weaponUrl: "/sprites/player/sword-north-weapon.png", bodyUrl: "/sprites/player/sword-north-body.png", gearPose: "swing" },
+    };
+    /* facing -> [cfg key, mirror?].  v2.3.921: SE/SW mirror flipped per owner.
+       v2.3.922: east sheet covers east (as-is) + west (mirrored).
+       v2.3.923: north (back view) sheet covers north + northeast (as-is) and
+       northwest (mirrored) -- NE/NW mirror is a first guess, easily flipped. */
+    this._swordFacing = {
+      south:     ['south', false],
+      southeast: ['south', true],
+      southwest: ['south', false],
+      east:      ['east', false],
+      west:      ['east', true],
+      north:     ['north', false],
+      northeast: ['north', false],
+      northwest: ['north', true],
+    };
+    this._swordFrames = {};        // cfg key -> [Texture]
+    /* v2.3.948: optional armored body + separable weapon layers per facing.
+       When present (currently south), the swing draws the armored body instead
+       of the bald baked sheet and layers the recolorable weapon on top. */
+    this._swordArmorFrames = {};
+    this._swordWeaponFrames = {};
+    /* v2.3.954: bald body (base) for the layered gear path, + a small size-aware
+       loader/cache for equipped armour layers (gear/<slot>/<item>/<pose>-<dir>.png,
+       sliced by the per-facing frame width since the swing frames aren't 256). */
+    this._swordBodyFrames = {};
+    this._gearStrips = {};   // 'slot/item/pose/dir' -> [Texture] | 'loading' | []
+    /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
+       constant, so a browser / edge cache (esp. on the stable branch-preview
+       host) keeps serving a stale sheet after the art changes -- that's what
+       made a fixed sword outline still look white on-device.  Bump this whenever
+       a sword sheet is re-cut, exactly like the player-sprite VERSION. */
+    const SWORD_ART_VERSION = 951;   // 951: removed baked white blade artifact from east swing body frame 5
+    this.swordSprite = new Sprite();
+    this.swordSprite.anchor.set(0.5, 1);
+    this.swordSprite.visible = false;
+    this.nodeLayer.addChild(this.swordSprite);
+    /* v2.3.948: weapon layer drawn over the armored swing body (kept separate so
+       the sword stays recolorable; the armored sheet has the weapon removed). */
+    this.swordChestSprite = new Sprite();
+    this.swordChestSprite.anchor.set(0.5, 1);
+    this.swordChestSprite.visible = false;
+    this.nodeLayer.addChild(this.swordChestSprite);
+    this.swordLegsSprite = new Sprite();
+    this.swordLegsSprite.anchor.set(0.5, 1);
+    this.swordLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.swordLegsSprite);
+    this.swordWeaponSprite = new Sprite();
+    this.swordWeaponSprite.anchor.set(0.5, 1);
+    this.swordWeaponSprite.visible = false;
+    this.nodeLayer.addChild(this.swordWeaponSprite);
+    const _loadSwordStrip = (target, dir, url, cfg) => {
+      target[dir] = [];
+      Assets.load(url + '?v=' + SWORD_ART_VERSION).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / cfg.fw));
+        for (let i = 0; i < n; i++) target[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
+    };
+    /* v2.3.975: the attack stand-ins must show the PLAYER'S customized body
+       (skin / pants / shoes chosen at the login menu), not the authored default,
+       so equipped armour sits on the real character instead of reverting to the
+       default skin + olive pants during a swing or bow shot.  Recolor the bald
+       body sheet with the SAME palette pipeline the normal body uses
+       (recolorBodyToCanvas — identity for the default combo), cache the raw
+       image, and rebake whenever the player changes their combo. */
+    this._bodyStrips = [];      // [{ target, dir, url, cfg, ver }]
+    this._bodyImgCache = {};    // url -> HTMLImageElement
+    const _loadImg = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = u; });
+    this._bakeBodyStrip = (rec) => {
+      const img = this._bodyImgCache[rec.url];
+      if (!img) return;
+      const skinT = skinTarget(getSkin()), pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
+      const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null);
+      const source = Texture.from(cv).source;
+      source.scaleMode = 'linear';
+      const n = Math.max(1, Math.round(img.width / rec.cfg.fw));
+      const arr = [];
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * rec.cfg.fw, 0, rec.cfg.fw, rec.cfg.fh) }));
+      rec.target[rec.dir] = arr;
+    };
+    const _loadRecoloredBody = (target, dir, url, cfg, ver) => {
+      target[dir] = [];
+      const rec = { target, dir, url, cfg, ver };
+      this._bodyStrips.push(rec);
+      if (this._bodyImgCache[url]) { this._bakeBodyStrip(rec); return; }
+      _loadImg(url + '?v=' + ver).then((img) => { this._bodyImgCache[url] = img; this._bakeBodyStrip(rec); })
+        .catch((err) => console.warn('[body ' + dir + '] load failed', err));
+    };
+    this._rebakeBodies = () => { for (const rec of this._bodyStrips) this._bakeBodyStrip(rec); };
+    onSkinChange(this._rebakeBodies); onPantsChange(this._rebakeBodies); onShoesChange(this._rebakeBodies);
+    for (const dir of Object.keys(this._swordCfg)) {
+      const cfg = this._swordCfg[dir];
+      _loadSwordStrip(this._swordFrames, dir, cfg.url, cfg);
+      if (cfg.armorUrl)  _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
+      if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
+      if (cfg.bodyUrl)   _loadRecoloredBody(this._swordBodyFrames, dir, cfg.bodyUrl, cfg, SWORD_ART_VERSION);
+    }
+
+    /* v2.3.925: bow-shoot stand-in -- same self-contained pattern as the sword
+       swings, but driven by a ranged-bow shot (S._bowShotAt).  Authored sheets
+       for east + southwest + south; mirror covers west + southeast.  4 frames
+       each (load -> draw -> release -> follow). */
+    this._bowCfg = {
+      /* v2.3.932: east re-cut to the owner's arrow-free art (3 frames). */
+      east:      { url: '/sprites/player/bow-east.png',      fw: 214, fh: 241, feetY: 235, crownKey: 'bow_e',  traitDir: 'east', weaponUrl: '/sprites/player/bow-east-weapon.png', bodyUrl: '/sprites/player/bow-east-body.png', gearPose: 'bowshot' },
+      /* v2.3.929: SW re-cut to the owner's arrow-free art (3 frames:
+         load/pull/release -- the in-game arrow projectile draws the arrow). */
+      southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south', weaponUrl: '/sprites/player/bow-southwest-weapon.png', bodyUrl: '/sprites/player/bow-southwest-body.png', gearPose: 'bowshot' },
+      /* v2.3.933: south re-cut to the owner's arrow-free art (3 frames). */
+      south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south', weaponUrl: '/sprites/player/bow-south-weapon.png', bodyUrl: '/sprites/player/bow-south-body.png', gearPose: 'bowshot' },
+      /* v2.3.930: NW re-cut to the owner's arrow-free art (3 frames). */
+      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north', weaponUrl: '/sprites/player/bow-northwest-weapon.png', bodyUrl: '/sprites/player/bow-northwest-body.png', gearPose: 'bowshot' },
+      /* v2.3.931: north re-cut to the owner's arrow-free art (3 frames). */
+      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north', weaponUrl: '/sprites/player/bow-north-weapon.png', bodyUrl: '/sprites/player/bow-north-body.png', gearPose: 'bowshot' },
+    };
+    this._bowFacing = {
+      east:      ['east', false],
+      west:      ['east', true],
+      southwest: ['southwest', false],
+      southeast: ['southwest', true],
+      south:     ['south', false],
+      northwest: ['northwest', false],
+      northeast: ['northwest', true],
+      north:     ['north', false],
+    };
+    this._bowFrames = {};
+    /* v2.3.952: optional armored body + separable bow layers per facing (same
+       pattern as the sword swing).  All facings authored helmeted with the bow
+       removed, so the bow overlays as a recolorable layer and the hat/beard/hair
+       composite is skipped (the helmet is the headwear). */
+    this._bowArmorFrames = {};
+    this._bowWeaponFrames = {};
+    this._bowBodyFrames = {};   // v2.3.957: bald body base for the layered gear path
+    const BOW_ART_VERSION = 957;
+    this.bowSprite = new Sprite();
+    this.bowSprite.anchor.set(0.5, 1);
+    this.bowSprite.visible = false;
+    this.nodeLayer.addChild(this.bowSprite);
+    this.bowChestSprite = new Sprite();
+    this.bowChestSprite.anchor.set(0.5, 1);
+    this.bowChestSprite.visible = false;
+    this.nodeLayer.addChild(this.bowChestSprite);
+    this.bowLegsSprite = new Sprite();
+    this.bowLegsSprite.anchor.set(0.5, 1);
+    this.bowLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.bowLegsSprite);
+    this.bowWeaponSprite = new Sprite();
+    this.bowWeaponSprite.anchor.set(0.5, 1);
+    this.bowWeaponSprite.visible = false;
+    this.nodeLayer.addChild(this.bowWeaponSprite);
+    const _loadBowStrip = (target, dir, url, cfg) => {
+      target[dir] = [];
+      Assets.load(url + '?v=' + BOW_ART_VERSION).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / cfg.fw));
+        for (let i = 0; i < n; i++) target[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      }).catch((err) => console.warn('[bow ' + dir + '] load failed', err));
+    };
+    for (const dir of Object.keys(this._bowCfg)) {
+      const cfg = this._bowCfg[dir];
+      _loadBowStrip(this._bowFrames, dir, cfg.url, cfg);
+      if (cfg.armorUrl)  _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
+      if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
+      if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION);
+    }
+
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
        whichever skill stand-in is active (chopper / cook / fire-lighter), which
        otherwise replaces the trait-composed body.  One shared set — only one
@@ -281,7 +473,7 @@ export class EffectsRenderer {
        / the stand 182px reference), so the hat matches how it sits idle rather
        than being sized to the lumberjack's small head.  chop 166px, cook 212px,
        fire ~155px in-frame -> these multipliers. */
-    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85 };
+    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0, bow_nw: 1.0, bow_n: 1.0 };
     /* crowns.json frame widths MUST match the strip-loading FWs above
        (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
        crown generator with the matching widths or the traits drift off-head. */
@@ -321,6 +513,8 @@ export class EffectsRenderer {
     this._updateGatherNodes(S, now);
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
+    this._updateSwordSwing(S, now);
+    this._updateBowShot(S, now);
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
@@ -1086,6 +1280,11 @@ export class EffectsRenderer {
         && (S._aiming || isLocked || S.autoAttack)
         && S.player
         && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
+      /* v2.3.940: melee shows its wild-swing AoE shape (a 360° core circle + a
+         forward half-disc) instead of the reach beam, so the indicator matches
+         the new melee hit shape exactly (shared GS_* constants).  (v2.3.939
+         gated this to the 'greatsword' type, but the default melee weapon is
+         type 'sword' so it never showed -- all melee uses the wild swing.) */
       if (shouldDraw) {
         const P = S.player;
         let aimA;
@@ -1097,8 +1296,40 @@ export class EffectsRenderer {
         } else {
           aimA = 0;
         }
-        /* Melee at ~1/3 ranged length so the line reads as "short
-           reach indicator" not "you can hit this far." */
+        if (isMelee) {
+          /* Forward half-disc (outer reach) + 360° core circle, centred on the
+             player -- the same origin + radii the swing hit test uses.
+             v2.3.943: toned WAY down per owner ("too much / distracting").
+             Just subtle area fills + a small flat triangle chip sitting on the
+             arc midpoint to show the aim direction (replaces the busy arrow +
+             double outlines). */
+          const a0 = aimA - GS_FORWARD_ARC / 2, a1 = aimA + GS_FORWARD_ARC / 2;
+          gfx.moveTo(P.x, P.y);
+          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1);
+          gfx.lineTo(P.x, P.y);
+          gfx.fill({ color: 0xffffff, alpha: 0.10 });
+          gfx.circle(P.x, P.y, GS_INNER_RADIUS);
+          gfx.fill({ color: 0xffffff, alpha: 0.12 });
+          /* Direction chip: a small flat triangle straddling the arc midpoint,
+             pointing down the aim.  Thin dark edge so it reads on light bg. */
+          const _ac = Math.cos(aimA), _as = Math.sin(aimA);
+          const _px = -_as, _py = _ac;   // perpendicular
+          const _hw = 7;                  // half base width
+          const _tipx = P.x + _ac * (GS_OUTER_RADIUS + 5), _tipy = P.y + _as * (GS_OUTER_RADIUS + 5);
+          const _bx = P.x + _ac * (GS_OUTER_RADIUS - 9),   _by = P.y + _as * (GS_OUTER_RADIUS - 9);
+          gfx.moveTo(_tipx, _tipy);
+          gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
+          gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
+          gfx.closePath();
+          gfx.fill({ color: 0xffffff, alpha: 0.55 });
+          gfx.moveTo(_tipx, _tipy);
+          gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
+          gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
+          gfx.closePath();
+          gfx.stroke({ color: 0x000000, width: 1, alpha: 0.3 });
+        } else {
+        /* Ranged / staff: the reach beam (melee now uses the AoE shape above).
+           The `: 95` fallback is retained for any non-ranged that reaches here. */
         const lineLen = isRanged ? 280 : 95;
         const halfW = 2;          // half-width of beam at neutral
         const waveAmp = 1.6;      // edge wave amplitude in px
@@ -1108,13 +1339,21 @@ export class EffectsRenderer {
         const cosA = Math.cos(aimA), sinA = Math.sin(aimA);
         // Perpendicular unit vector (rotate aim by +90°).
         const perpX = -sinA, perpY = cosA;
+        /* v2.3.938: for a bow, start the beam at the teal grip (where the arrow
+           actually launches from, published by the bow stand-in) instead of the
+           player's feet, so the arrow flies down the MIDDLE of the line of
+           sight rather than parallel-and-offset to it.  Staff/melee keep the
+           feet origin; if no grip has been published yet, fall back to feet. */
+        const _useGrip = slot === 'ranged' && S._bowGripDX != null && S._bowGripDY != null;
+        const originX = _useGrip ? P.x + S._bowGripDX : P.x;
+        const originY = _useGrip ? P.y + S._bowGripDY : P.y;
         const top = [];
         const bot = [];
         for (let i = 0; i <= segments; i++) {
           const t = i / segments;
           const dist = t * lineLen;
-          const bx = P.x + cosA * dist;
-          const by = P.y + sinA * dist;
+          const bx = originX + cosA * dist;
+          const by = originY + sinA * dist;
           // Wave moves backward along the beam over time (phase increases).
           const wavePos = (dist / waveLen) * Math.PI * 2 - phase;
           const topW = halfW + Math.sin(wavePos) * waveAmp;
@@ -1128,6 +1367,7 @@ export class EffectsRenderer {
         for (let i = bot.length - 2; i >= 0; i -= 2) gfx.lineTo(bot[i], bot[i + 1]);
         gfx.closePath();
         gfx.fill({ color: 0xffffff, alpha: 0.2 });
+        }
       }
     }
 
@@ -2223,6 +2463,168 @@ export class EffectsRenderer {
     sp.y = S.player.y + 6;
     sp.visible = true;
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
+  }
+
+  /* ── Sword swing animation (v2.3.910) ──
+   * Plays the owner's sword-swing at the player during a front-facing melee
+   * swing.  entityRenderer._updatePlayer sets S._swordSwinging (and hides the
+   * real body + weapon) when the swing is active and the player faces a front
+   * arc; here we draw the stand-in and composite the traits onto its head.
+   * v2.3.920: the south sheet covers south + southeast as-is and southwest
+   * mirrored.  Self-contained: combat logic / hit detection are untouched. */
+  /* v2.3.954: size-aware loader for an equipped armour layer during attacks.
+     Reads the same gear/<slot>/<item>/<pose>-<dir>.png files as the body gear
+     pipeline, but slices by the per-facing frame width (the attack frames aren't
+     256).  Driven by getEquip(slot).  Returns null while loading / if missing. */
+  _gearStripFrame(slot, item, pose, dir, fw, fi) {
+    if (!item || item === 'none') return null;
+    const key = slot + '/' + item + '/' + pose + '/' + dir;
+    let e = this._gearStrips[key];
+    if (e === undefined) {
+      this._gearStrips[key] = 'loading';
+      Assets.load('/sprites/gear/' + slot + '/' + item + '/' + pose + '-' + dir + '.png?v=' + GEARLAYER_VER).then((tex) => {
+        const n = Math.max(1, Math.round(tex.width / fw));
+        const arr = [];
+        for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.height) }));
+        this._gearStrips[key] = arr;
+      }).catch(() => { this._gearStrips[key] = []; });
+      return null;
+    }
+    if (e === 'loading' || !e.length) return null;
+    return e[Math.min(fi, e.length - 1)];
+  }
+
+  _updateSwordSwing(S, now) {
+    if (this.swordSprite) this.swordSprite.visible = false;
+    if (this.swordWeaponSprite) this.swordWeaponSprite.visible = false;
+    if (this.swordChestSprite) this.swordChestSprite.visible = false;
+    if (this.swordLegsSprite) this.swordLegsSprite.visible = false;
+    if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
+    /* entityRenderer published the active facing; resolve it to a sheet + mirror. */
+    const fmap = this._swordFacing[S._swordSwingDir];
+    if (!fmap) return;
+    const cfg = this._swordCfg[fmap[0]];
+    const mirror = fmap[1];
+    const frames = cfg && this._swordFrames[fmap[0]];
+    if (!cfg || !frames || !frames.length) return;
+    const n = frames.length;
+    const elapsed = now - (S.swingTimer || now);
+    const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
+    const sp = this.swordSprite;
+    const anchorY = cfg.feetY / cfg.fh;
+    sp.anchor.set(0.5, anchorY);
+    /* Render the figure (~188px body in-frame) at the avatar's actual drawn
+       height so it matches the rest of the body (published per-facing/zone). */
+    const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
+    const s = bodyH / 188;
+    const sgn = mirror ? -s : s;
+    sp.scale.set(sgn, s);
+    sp.x = S.player.x;
+    sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
+    sp.visible = true;
+    /* place an overlay sprite with the SAME transform as the body sprite. */
+    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
+    const armorFrames = this._swordArmorFrames[fmap[0]];
+    const weaponFrames = this._swordWeaponFrames[fmap[0]];
+    const bodyFrames = this._swordBodyFrames[fmap[0]];
+    if (bodyFrames && bodyFrames[fi]) {
+      /* v2.3.954: layered gear path -- bald body + equipped chest/legs armour +
+         the recolorable weapon.  The helmet rides in the chest piece, so skip the
+         hat/beard/hair composite when a chest is worn; show it (bald head) when
+         no chest is equipped. */
+      sp.texture = bodyFrames[fi];
+      const gp = cfg.gearPose || 'swing';
+      const chestTex = this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi);
+      const legsTex  = this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi);
+      place(this.swordChestSprite, chestTex);
+      place(this.swordLegsSprite, legsTex);
+      place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
+      /* v2.3.955: no helmets -- the head is always bald, so always composite
+         the player's hat/beard/hair (the chest piece has the head cut out). */
+      this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+    } else if (armorFrames && armorFrames[fi]) {
+      sp.texture = armorFrames[fi];
+      hideSkillTraits(this.skillTraits);
+      place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
+    } else {
+      sp.texture = frames[fi];
+      this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+    }
+  }
+
+  /* ── Bow-shoot animation (v2.3.925) ──
+   * Plays the owner's bow-shoot at the player during a ranged-bow shot.
+   * entityRenderer._updatePlayer sets S._bowShowing + S._bowDir (and hides the
+   * real body + weapon) when a bow shot is active and the aim resolves to an
+   * authored facing.  Same self-contained pattern as the sword swings. */
+  _updateBowShot(S, now) {
+    if (this.bowSprite) this.bowSprite.visible = false;
+    if (this.bowWeaponSprite) this.bowWeaponSprite.visible = false;
+    if (this.bowChestSprite) this.bowChestSprite.visible = false;
+    if (this.bowLegsSprite) this.bowLegsSprite.visible = false;
+    if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
+    const fmap = this._bowFacing[S._bowDir];
+    if (!fmap) return;
+    const cfg = this._bowCfg[fmap[0]];
+    const mirror = fmap[1];
+    const frames = cfg && this._bowFrames[fmap[0]];
+    if (!cfg || !frames || !frames.length) return;
+    const n = frames.length;
+    const elapsed = now - (S._bowShotAt || now);
+    /* v2.3.937: quick draw -> the load/pull frames play across BOW_RELEASE_MS,
+       then the final (release) frame holds for the rest of BOW_SHOT_MS.  The
+       arrow launches from the grip at BOW_RELEASE_MS (projectiles.js). */
+    const fi = elapsed < BOW_RELEASE_MS
+      ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
+      : n - 1;
+    const sp = this.bowSprite;
+    const anchorY = cfg.feetY / cfg.fh;
+    sp.anchor.set(0.5, anchorY);
+    const armorFrames = this._bowArmorFrames[fmap[0]];
+    const weaponFrames = this._bowWeaponFrames[fmap[0]];
+    const bodyFrames = this._bowBodyFrames[fmap[0]];
+    const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
+    const s = bodyH / 188;
+    const sgn = mirror ? -s : s;
+    sp.scale.set(sgn, s);
+    sp.x = S.player.x;
+    sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
+    sp.visible = true;
+    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
+    /* v2.3.957: layered gear path -- bald body + equipped chest/legs armour +
+       recolorable bow; no helmet, so always composite hat/beard/hair.  Falls back
+       to the armored/bald sheet if no body base for this facing. */
+    let _armored;
+    if (bodyFrames && bodyFrames[fi]) {
+      _armored = false;
+      sp.texture = bodyFrames[fi];
+      const gp = cfg.gearPose || 'bowshot';
+      place(this.bowChestSprite, this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi));
+      place(this.bowLegsSprite,  this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi));
+      place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
+    } else {
+      _armored = !!(armorFrames && armorFrames[fi]);
+      sp.texture = _armored ? armorFrames[fi] : frames[fi];
+      if (_armored) place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
+    }
+    /* v2.3.937: publish the teal grip's WORLD position (same anchor math as
+       _placeSkillTraitsOn) so the procedural arrow can launch from the bow
+       rather than the player's feet.  scale.x carries the mirror sign. */
+    const _crowns = this._skillCrowns && this._skillCrowns[cfg.crownKey];
+    const _grip = _crowns && _crowns.grip;
+    if (_grip) {
+      S._bowGripX = sp.x + (_grip[0] - cfg.fw / 2) * sp.scale.x;
+      S._bowGripY = sp.y + (_grip[1] - cfg.feetY) * Math.abs(sp.scale.y);
+      /* Also publish the grip as an OFFSET from the player so consumers (the
+         line-of-sight beam) can track the player's live position between shots
+         instead of lagging at the last shot's world point. */
+      S._bowGripDX = S._bowGripX - S.player.x;
+      S._bowGripDY = S._bowGripY - S.player.y;
+    }
+    /* v2.3.952: armored bow is helmeted -> skip hat/beard/hair (matches the
+       sword); the bald baked sheet still composites them. */
+    if (_armored) hideSkillTraits(this.skillTraits);
+    else this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
   }
 
   /* ── Extraction cue (v2.3.229) ──
