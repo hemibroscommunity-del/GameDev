@@ -136,7 +136,7 @@ export function NameModal(props) {
         items: _objTiles('shoes', SHOES_CATALOG, 'swatch', null, shoesSel, function (id) { setShoes(id); setShoesSel(id); }), colors: null }; } }
     };
     var _catOrder = ['hat', 'hair', 'beard', 'skin', 'shirt', 'pants', 'shoes'];
-    var _ccCats = _catOrder.map(function (k) { return { key: k, label: _catDefs[k].label, icon: '/ui/welcome/cat/' + k + '.png' }; });
+    var _ccCats = _catOrder.map(function (k) { return { key: k, label: _catDefs[k].label, icon: '/ui/welcome/cat/' + k + '.png?v=' + BUILD_INFO.version }; });
     var _activeKey = _catDefs[activeCat] ? activeCat : 'hat';
     var _built = _catDefs[_activeKey].build();
     var _ccActive = { key: _activeKey, label: _catDefs[_activeKey].label, items: _built.items, colors: _built.colors };
