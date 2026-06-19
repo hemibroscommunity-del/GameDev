@@ -298,7 +298,7 @@ input{font-family:inherit}
    neither can collapse again.  The stage's children are all absolutely
    positioned / 100%-sized, so flex height works cleanly and the canvas
    contain+scale adapts to whatever shape falls out. */
-.bt-name-box.bt-cc-box>.bt-cc-stage{flex:4 1 185px;min-height:185px;max-height:380px}
+.bt-name-box.bt-cc-box>.bt-cc-stage{flex:4 1 150px;min-height:150px;max-height:360px}
 /* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right).
@@ -328,7 +328,7 @@ input{font-family:inherit}
   .bt-cc-stage{flex:0 0 auto!important;height:230px}
   /* v2.3.1012: the 4-per-row grid needs a definite height once the menu
      stops flexing; the card scrolls (above) for anything past ~2 rows. */
-  .bt-cc-drawer-items>.bt-cc-drawer-grid{height:168px}
+  .bt-cc-drawer-items>.bt-cc-drawer-grid{height:190px}
 }
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
@@ -467,10 +467,10 @@ input{font-family:inherit}
 /* v2.3.1012: horizontal category tabs (replaces the narrow vertical rail) --
    big thumb targets (>=56px), icon over label, wrap 4+3 across the panel. */
 .bt-cc-tabs{flex:0 0 auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;padding:6px;align-items:stretch;background:rgba(12,9,26,0.45);border-bottom:1px solid #3a3163}
-.bt-cc-tab{flex:0 0 calc((100% - 18px)/4);min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:5px 2px;background:rgba(58,49,99,0.30);border:1.5px solid #3a3163;border-radius:9px;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55)}
+.bt-cc-tab{flex:0 0 calc((100% - 18px)/4);min-height:38px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;padding:4px 4px;background:rgba(58,49,99,0.30);border:1.5px solid #3a3163;border-radius:9px;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55)}
 .bt-cc-tab:active{transform:translateY(1px)}
 .bt-cc-tab--on{background:rgba(91,82,255,0.28);color:#fff;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 10px rgba(245,197,66,.30)}
-.bt-cc-tab-icon{width:26px;height:26px;object-fit:contain;opacity:.82;pointer-events:none}
+.bt-cc-tab-icon{width:20px;height:20px;object-fit:contain;opacity:.85;pointer-events:none}
 .bt-cc-tab--on .bt-cc-tab-icon{opacity:1;filter:drop-shadow(0 0 3px rgba(245,197,66,.55))}
 .bt-cc-tab-label{font-size:12px;line-height:1}
 /* v2.3.829: colors moved to the RIGHT of the objects (owner) — drawer is
@@ -486,7 +486,7 @@ input{font-family:inherit}
 /* v2.3.1012: 4-per-row item grid (was a column-wrap horizontal-scroll strip) --
    bigger tiles, vertical scroll for overflow.  The > * override makes the
    fixed-size tiles from _apTileStyle (BroTown.jsx) fill their grid cell. */
-.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-content:flex-start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
+.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:1 1 auto;min-height:150px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-content:flex-start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
 .bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:100%!important;height:auto!important;aspect-ratio:1/1!important}
 /* v2.3.804/816: the owner's gold divider art (divider.webp) is the
    vertical separator on the colors column's left edge (rotated 90°). */

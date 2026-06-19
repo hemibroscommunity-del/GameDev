@@ -94,7 +94,7 @@ function segmentCells(img, expected) {
     return { x0, x1, y0, y1 };
   });
 }
-function cropSquareCream(img, box, pad = 8, cream = [0xef, 0xe4, 0xc4]) {
+function cropSquareCream(img, box, pad = 8, cream = [0xff, 0xff, 0xff]) {
   const bw = box.x1 - box.x0 + 1, bh = box.y1 - box.y0 + 1;
   const side = Math.max(bw, bh) + pad * 2;
   const out = Buffer.alloc(side * side * 4);
