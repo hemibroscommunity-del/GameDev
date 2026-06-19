@@ -190,5 +190,26 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   check('v2.3.910 combat level clamps at 500', ps.level === 500, ps.level);
 }
 
+// ── v2.3.912: weapon build CHANNELS reach the authoritative damage roll ──
+{
+  const ps = room.playerState.p2;
+  ps.weapon = { type: 'sword', tierMult: 1 };
+  ps.rangedWeapon = null; ps.staffWeapon = null;
+  ps.power = 0;
+  ps.weaponSpecs = {};
+  const capNoSpec = room._maxWeaponDmg(ps, false);            // 6.67 + 0 + 0
+  ps.weaponSpecs = { sword: { edge: 10, precision: 20 } };
+  check('v2.3.912 _wpnDmgChannel reads edge points (perPt 1.0)', room._wpnDmgChannel(ps, 'sword') === 10, room._wpnDmgChannel(ps, 'sword'));
+  check('v2.3.912 _wpnCritPts reads precision points', room._wpnCritPts(ps, 'sword') === 20, room._wpnCritPts(ps, 'sword'));
+  check('v2.3.912 greatsword shares the sword/melee category', room._wpnCat('greatsword') === 'sword', room._wpnCat('greatsword'));
+  const capWithSpec = room._maxWeaponDmg(ps, false);          // +10 from edge
+  check('v2.3.912 damage channel raises the weapon damage cap by +10',
+    Math.abs((capWithSpec - capNoSpec) - 10) < 0.001, [capNoSpec, capWithSpec]);
+  // Specials ignore the damage channel (mirror client calcSpecialDmg).
+  ps.mind = 0;
+  check('v2.3.912 specials are channel-free',
+    Math.abs(room._maxWeaponDmg(ps, true) - capNoSpec) < 0.001, room._maxWeaponDmg(ps, true));
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

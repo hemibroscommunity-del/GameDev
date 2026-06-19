@@ -1215,6 +1215,29 @@ export class GameRoom {
     return T[type] || 6.25;          // fists fallback (was 30)
   }
 
+  // v2.3.912: weapon build-CHANNEL resolution (mirrors WEAPON_CHANNELS in
+  // src/data/gameSystems.js).  Only the damage + crit channels are live.  The
+  // client clamps each channel value to [0,99]; so do we on stats_update.
+  // greatsword shares the 'sword' (melee) category, per WEAPON_CATEGORY.
+  _wpnCat(type) {
+    const C = { greatsword: 'sword', sword: 'sword', bow: 'bow', staff: 'staff' };
+    return C[type] || 'sword';
+  }
+  // Flat base-damage bonus from the type's category damage channel
+  // (edge / drawPower / spellPower), perPt 1.0 — mirror gameSystems.js.
+  _wpnDmgChannel(ps, type) {
+    const K = { sword: 'edge', bow: 'drawPower', staff: 'spellPower' };
+    const cat = this._wpnCat(type);
+    const v = (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
+    return v * 1.0;
+  }
+  // Crit-channel point total (precision / marksmanship / overload).
+  _wpnCritPts(ps, type) {
+    const K = { sword: 'precision', bow: 'marksmanship', staff: 'overload' };
+    const cat = this._wpnCat(type);
+    return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
+  }
+
   // Sell value mirrors the client at BroTown.jsx ~26613:
   //   ceil((tierMult || 1) * (WEAPON_TYPES[type].base || 30) * 0.5)
   _weaponSellValue(weapon) {
@@ -2486,6 +2509,29 @@ export class GameRoom {
         }
       }
     }
+    // v2.3.912: per-weapon-category build channels.  Client-trusted-but-clamped
+    // (same posture as the T1 stats above): copy the known channel keys per
+    // category, each clamped to [0,99] (mirror WEAPON_CHANNEL_CAP), so the
+    // damage + crit channels in _computeAttackDamage are server-authoritative.
+    if (payload.weaponSpecs && typeof payload.weaponSpecs === 'object') {
+      const WCH = {
+        sword: ['edge', 'precision', 'executioner', 'tempo', 'cleave'],
+        bow:   ['drawPower', 'marksmanship', 'headshot', 'piercing', 'longshot'],
+        staff: ['spellPower', 'overload', 'detonation', 'attunement', 'focus'],
+      };
+      if (!ps.weaponSpecs) ps.weaponSpecs = {};
+      for (const cat of Object.keys(WCH)) {
+        const src = payload.weaponSpecs[cat];
+        if (!src || typeof src !== 'object') continue;
+        if (!ps.weaponSpecs[cat]) ps.weaponSpecs[cat] = {};
+        for (const k of WCH[cat]) {
+          if (typeof src[k] === 'number') {
+            const c = Math.max(0, Math.min(99, Math.floor(src[k])));
+            if (ps.weaponSpecs[cat][k] !== c) { ps.weaponSpecs[cat][k] = c; statsChanged = true; }
+          }
+        }
+      }
+    }
     // Armor swap routes through stats_update (not equip_request) because
     // armor lives in a client-only armorStash and the popup mutates it
     // locally before pushing.  Worker accepts the new armor object (or
@@ -3136,7 +3182,11 @@ export class GameRoom {
     // (0.8 ÷ 4.8 = 0.1667) so the cap tracks the new damage scale.
     const statBonus = isSpecial ? ((ps.mind || 0) * 0.1667) : ((ps.power || 0) * 0.1667);
     for (const w of candidates) {
-      const base = (this._weaponBase(w.type) + statBonus) * (w.tierMult || 1);
+      // v2.3.912: include the damage channel (normal swings only, matching
+      // _computeAttackDamage) so a channel-boosted hit isn't rejected by the
+      // anti-cheat ceiling.
+      const dmgChannel = isSpecial ? 0 : this._wpnDmgChannel(ps, w.type);
+      const base = (this._weaponBase(w.type) + statBonus + dmgChannel) * (w.tierMult || 1);
       if (base > max) max = base;
     }
     return max;
@@ -3189,7 +3239,11 @@ export class GameRoom {
                : type === 'bow'   ? (ps.agility || 0)
                : type === 'staff' ? (ps.mind || 0)
                :                    (ps.power || 0);
-    let base = (this._weaponBase(type) + stat * 0.1667) * tierMult; // 0.8 ÷ 4.8
+    // v2.3.912: + weapon damage channel (edge/drawPower/spellPower) so spent
+    // build points raise authoritative damage.  Specials stay channel-free
+    // (mirrors client calcSpecialDmg).
+    const dmgChannel = isSpecial ? 0 : this._wpnDmgChannel(ps, type);
+    let base = (this._weaponBase(type) + stat * 0.1667 + dmgChannel) * tierMult; // 0.8 ÷ 4.8
     // Per-type variance -- same rolls as the client.
     const v = type === 'staff' ? (0.5  + Math.random() * 1.0)
             : type === 'bow'   ? (0.6  + Math.random() * 0.2)
@@ -3199,9 +3253,12 @@ export class GameRoom {
     if (w && w.isVolatile) base *= 1.30;               // §4.7 volatile weapon
     if (this._buffActive(ps, 'damage')) base *= 1.20;  // cooked damage buff (client gameLoop.js:2346)
     // Crit (calcCritChance + calcCritMult).
+    // v2.3.912: crit chance = Power baseline + the weapon CRIT channel
+    // (precision/marksmanship/overload) at +0.5%/pt, capped +30% (linear,
+    // mirrors calcCritChance).  Ferocity is retired; crit mult stays Power-based.
     const P = ps.power || 0, F = ps.ferocity || 0;
     const critChance = Math.max(0, Math.min(1,
-      40 * P / (P + 200) / 100 + 30 * F / (F + 250) / 100));
+      40 * P / (P + 200) / 100 + Math.min(0.30, this._wpnCritPts(ps, type) * 0.005)));
     const isCrit = Math.random() < critChance;
     if (isCrit) base *= (1.5 + P * 0.001 + F * 0.0008);
     return { dmg: Math.max(1, Math.round(base)), isCrit };

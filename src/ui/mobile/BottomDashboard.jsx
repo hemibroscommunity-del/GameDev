@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat, buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcCritMult, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat, weaponDamageBonusFor, weaponCritStatFor, buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
@@ -989,14 +989,23 @@ export const BottomDashboard = () => {
                     const statVal = (slot === 'ranged') ? (R.agility || 0)
                                   : (slot === 'staff')  ? (R.mind || 0)
                                   : (R.power || 0);
-                    const base = (wType.base + statVal * 0.8) * (wpn.tierMult || 1);
+                    /* v2.3.912: match the real combat formula (calcWeaponDmg):
+                       stat coefficient 0.1667 (was a stale 0.8) PLUS the weapon
+                       damage-channel bonus, so spending build points actually
+                       moves this readout and it equals what monsters take. */
+                    const dmgBonus = weaponDamageBonusFor(R, (wpn && wpn.type));
+                    const base = (wType.base + statVal * 0.1667 + dmgBonus) * (wpn.tierMult || 1);
                     let dmgMin, dmgMax, cdMs = SWING_COOLDOWN;
                     if (slot === 'ranged')      { dmgMin = base * 0.6;  dmgMax = base * 0.8;  }
                     else if (slot === 'staff')  { dmgMin = base * 0.5;  dmgMax = base * 1.5;  cdMs += 300; }
                     else                        { dmgMin = base * 0.75; dmgMax = base * 1.25; }
                     dmgMin = Math.round(dmgMin); dmgMax = Math.round(dmgMax);
                     dmgText = (dmgMin === dmgMax) ? String(dmgMin) : `${dmgMin}-${dmgMax}`;
-                    dpsText = ((dmgMin + dmgMax) / 2 / (cdMs / 1000)).toFixed(1);
+                    /* DPS folds in the crit channel: avg dmg / cooldown, scaled by
+                       expected crit (chance × extra crit multiplier). */
+                    const critChance = calcCritChance(R.power || 0, weaponCritStatFor(R, (wpn && wpn.type)));
+                    const critMult = calcCritMult(R.power || 0, 0);
+                    dpsText = ((dmgMin + dmgMax) / 2 / (cdMs / 1000) * (1 + critChance * (critMult - 1))).toFixed(1);
                   }
                   /* Equip slot list — order matches the user's wireframe.
                      v2.3.127 reorder: Row 1 reads Shield · Amulet · Weapon

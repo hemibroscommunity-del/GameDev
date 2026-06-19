@@ -3681,12 +3681,12 @@ export function weaponXpRequired(level) {
    `derive(v)` returns a short readout for the allocation panel. */
 export const WEAPON_CHANNELS = {
   sword: [
-    { key: 'edge',        label: 'Sharpened Edge', role: 'damage',  active: true,  perPt: 0.12,
+    { key: 'edge',        label: 'Sharpened Edge', role: 'damage',  active: true,  perPt: 1.0,
       blurb: '+base damage on every swing.',
-      derive: (v) => '+' + (v * 0.12).toFixed(1) + ' base dmg' },
+      derive: (v) => '+' + v + ' base dmg' },
     { key: 'precision',   label: 'Precision',      role: 'crit',    active: true,
       blurb: 'Crit chance on top of Power.',
-      derive: (v) => '+' + (30 * v / (v + 250)).toFixed(1) + '% crit' },
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
     { key: 'executioner', label: 'Executioner',    role: 'critDmg', active: false,
       blurb: '+crit damage multiplier.', derive: () => 'Soon' },
     { key: 'tempo',       label: 'Tempo',          role: 'atkspd',  active: false,
@@ -3695,12 +3695,12 @@ export const WEAPON_CHANNELS = {
       blurb: 'Wider arc — hit adjacent foes.', derive: () => 'Soon' },
   ],
   bow: [
-    { key: 'drawPower',    label: 'Draw Power',    role: 'damage',  active: true,  perPt: 0.12,
+    { key: 'drawPower',    label: 'Draw Power',    role: 'damage',  active: true,  perPt: 1.0,
       blurb: '+base damage per shot.',
-      derive: (v) => '+' + (v * 0.12).toFixed(1) + ' base dmg' },
+      derive: (v) => '+' + v + ' base dmg' },
     { key: 'marksmanship', label: 'Marksmanship',  role: 'crit',    active: true,
       blurb: 'Crit chance on top of Agility.',
-      derive: (v) => '+' + (30 * v / (v + 250)).toFixed(1) + '% crit' },
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
     { key: 'headshot',     label: 'Headshot',      role: 'critDmg', active: false,
       blurb: '+crit damage multiplier.', derive: () => 'Soon' },
     { key: 'piercing',     label: 'Piercing',      role: 'pierce',  active: false,
@@ -3709,12 +3709,12 @@ export const WEAPON_CHANNELS = {
       blurb: '+range and arrow speed.', derive: () => 'Soon' },
   ],
   staff: [
-    { key: 'spellPower',  label: 'Spell Power',    role: 'damage',  active: true,  perPt: 0.12,
+    { key: 'spellPower',  label: 'Spell Power',    role: 'damage',  active: true,  perPt: 1.0,
       blurb: '+base damage per cast.',
-      derive: (v) => '+' + (v * 0.12).toFixed(1) + ' base dmg' },
+      derive: (v) => '+' + v + ' base dmg' },
     { key: 'overload',    label: 'Overload',       role: 'crit',    active: true,
       blurb: 'Crit chance for magic.',
-      derive: (v) => '+' + (30 * v / (v + 250)).toFixed(1) + '% crit' },
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
     { key: 'detonation',  label: 'Detonation',     role: 'aoe',     active: false,
       blurb: '+AoE targets / cone.', derive: () => 'Soon' },
     { key: 'attunement',  label: 'Attunement',     role: 'status',  active: false,
@@ -3756,6 +3756,14 @@ export function weaponDamageBonusFor(rpg, weaponType) {
     }
   }
   return 0;
+}
+
+/* Crit-channel point total for a specific weapon type's CATEGORY (parallel to
+   weaponDamageBonusFor, so per-slot loadout readouts + the server resolve the
+   same crit channel by weapon type rather than only the active weapon). */
+export function weaponCritStatFor(rpg, weaponType) {
+  var cat = WEAPON_CATEGORY[weaponType] || 'sword';
+  return weaponChannelValueByRole(rpg, cat, 'crit');
 }
 
 /* Flat base-damage bonus from the equipped category's damage channel. */
@@ -4823,8 +4831,10 @@ export function calcCritChance(power, ferocity) {
   var fer = ferocity || 0;
   /* Power baseline: 40 * P / (P + 200).  0->0%, P100->13.3%, P500->28.6%. */
   var pCrit = 40 * pow / (pow + 200) / 100;
-  /* Ferocity additive amp: 30 * F / (F + 250).  0->0%, F100->8.6%, F500->20%. */
-  var fCrit = 30 * fer / (fer + 250) / 100;
+  /* v2.3.912: the 2nd arg is now the weapon CRIT channel (Precision/etc.) and
+     scales linearly at +0.5% per point, hard-capped at +30%, so each point is
+     clearly felt (was the soft 30*F/(F+250) curve).  Ferocity is retired. */
+  var fCrit = Math.min(0.30, fer * 0.005);
   return Math.max(0, Math.min(1, pCrit + fCrit));
 }
 export function calcCritMult(power, ferocity) {
