@@ -606,6 +606,30 @@ export class EffectsRenderer {
       gfx.fill({ color: 0x3498db, alpha: (1 - age) * 0.3 });
     }
 
+    // v2.3.1011: remote players' dodge/lunge/retreat afterimage trail (MP
+    // parity).  Driven by the `player_dodge` broadcast -> other._dodgeRoll;
+    // we synthesize the same blue smear along their dodge path.
+    if (S.others) {
+      for (const oid in S.others) {
+        const o = S.others[oid];
+        if (!o || !o._dodgeRoll) continue;
+        const dage = now - (o._dodgeRoll.startTime || 0);
+        if (dage > 400) { o._dodgeRoll = null; o._dodgeTrail = null; continue; }
+        if (!o._dodgeTrail) o._dodgeTrail = [];
+        const ox = (o.renderX != null) ? o.renderX : o.x;
+        const oy = (o.renderY != null) ? o.renderY : o.y;
+        o._dodgeTrail.push({ x: ox, y: oy, ts: now });
+        const ot = o._dodgeTrail;
+        for (let i = ot.length - 1; i >= 0; i--) {
+          const g = ot[i];
+          const age = (now - g.ts) / 200;
+          if (age >= 1) { ot.splice(i, 1); continue; }
+          gfx.circle(g.x, g.y, 8);
+          gfx.fill({ color: 0x3498db, alpha: (1 - age) * 0.3 });
+        }
+      }
+    }
+
     // General particles (fireflies/pollen)
     if (S._particles) {
       const isNight = S._dayNightCache?.isNight || false;
