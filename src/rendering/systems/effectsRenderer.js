@@ -515,8 +515,11 @@ export class EffectsRenderer {
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
     this._updateBowShot(S, now);
-    this._updateRemoteSwordSwings(S, now);
-    this._updateRemoteBowShots(S, now);
+    /* v2.3.1011: remote attack stand-ins are new + were authored without a
+       runtime here -- guard them so a render error can only drop the stand-in,
+       never white-screen the frame. */
+    try { this._updateRemoteSwordSwings(S, now); } catch (e) { /* skip stand-in */ }
+    try { this._updateRemoteBowShots(S, now); } catch (e) { /* skip stand-in */ }
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
