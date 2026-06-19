@@ -32,16 +32,20 @@ export const ChatBar = () => {
   };
 
   /* Lift the bar above the iOS soft keyboard while focused.  The app wrapper
-     height is locked and the keyboard OVERLAYS the layout (BroTown.jsx), so a
-     bottom-anchored bar would otherwise be hidden behind it.  visualViewport's
-     height shrink tells us the keyboard's height. */
+     height is locked and the keyboard OVERLAYS the layout (BroTown.jsx pins the
+     scene + resets Safari's pan), so a bottom-anchored bar would otherwise be
+     hidden behind the keyboard.  With the default (resizes-visual) viewport the
+     visual viewport shrinks by the keyboard height, so its bottom edge IS the
+     top of the keyboard: bottom = innerHeight - (offsetTop + height).  We never
+     drop below the resting spot (~--dash-h + 12px) so the bar can only rise. */
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const onVV = () => {
       if (!focusedRef.current) { setKbBottom(null); return; }
-      const overlap = window.innerHeight - vv.height - vv.offsetTop;
-      setKbBottom(overlap > 60 ? Math.round(overlap + 8) : null);
+      const restingPx = window.innerHeight * 0.28 + 12; // matches --dash-h:28vh + REST gap
+      const kbInset = window.innerHeight - (vv.offsetTop + vv.height); // ~keyboard height
+      setKbBottom(kbInset > 60 ? Math.round(Math.max(restingPx, kbInset + 8)) : null);
     };
     vv.addEventListener('resize', onVV);
     vv.addEventListener('scroll', onVV);
