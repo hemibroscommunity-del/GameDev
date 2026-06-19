@@ -13,7 +13,7 @@ import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.j
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
 import { getEquip } from '../gearCatalog.js';
 import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
 const GEARLAYER_VER = '1008';   // cache-bust (bow armor: soften heavy black edge outline)
@@ -516,6 +516,7 @@ export class EffectsRenderer {
     this._updateSwordSwing(S, now);
     this._updateBowShot(S, now);
     this._updateRemoteSwordSwings(S, now);
+    this._updateRemoteBowShots(S, now);
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
     this._updateProjectiles(S, now);
@@ -2548,7 +2549,34 @@ export class EffectsRenderer {
      broadcast other._swingTs / _swingWpn / _swingAng (Phase 1).
      REMOTE_SWING_SCALE / _FOOT_DY are first-cut tunables to confirm on the
      preview (the remote draw scale ~ bodyDirScale*0.421875 ≈ 0.42). */
+  /* Lazily allocate a remote player's stand-in sprite SET (body + armour +
+     weapon + the 3 head-trait sprites), z-ordered by creation order. */
+  _ensureRemoteSwordSet(id) {
+    let set = this._remoteSwordSprites.get(id);
+    if (!set) {
+      const mk = () => { const s = new Sprite(); s.visible = false; this.nodeLayer.addChild(s); return s; };
+      set = { body: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+      this._remoteSwordSprites.set(id, set);
+    }
+    return set;
+  }
+
+  /* Parameterized version of _placeSkillTraitsOn: composites an ARBITRARY
+     player's hair/beard/hat (`looks`) at the swing-frame crown, onto their own
+     trait sprites. */
+  _placeSkillTraitsOnFor(skillKey, sp, fi, dir, mirror, looks, traitSprites) {
+    const data = this._skillCrowns && this._skillCrowns[skillKey];
+    if (!data || !data.crowns || !data.crowns.length) { hideSkillTraits(traitSprites); return; }
+    const cr = data.crowns[Math.min(fi, data.crowns.length - 1)];
+    if (!cr) { hideSkillTraits(traitSprites); return; }
+    const cwx = sp.x + (cr[0] - data.fw / 2) * sp.scale.x;
+    const cwy = sp.y + (cr[1] - data.fh) * sp.scale.y;
+    const scaleVal = Math.abs(sp.scale.y) * (this._skillTraitMul[skillKey] || 1);
+    placeSkillTraitsFor(traitSprites, looks, cwx, cwy, dir, mirror, scaleVal);
+  }
+
   _updateRemoteSwordSwings(S, now) {
+    /* First-cut tunables to confirm on the preview (remote draw scale ≈ 0.42). */
     const REMOTE_SWING_SCALE = 0.45;
     const REMOTE_SWING_FOOT_DY = 0;
     if (!this._remoteSwordSprites) this._remoteSwordSprites = new Map();
@@ -2569,24 +2597,137 @@ export class EffectsRenderer {
       const cfgKey = fmap[0], mirror = fmap[1];
       const cfg = this._swordCfg[cfgKey];
       if (!cfg || !cfg.bodyUrl) continue;
-      const frames = this._remoteBodyFramesFor(o, cfgKey, cfg);
-      if (!frames || !frames.length) continue;
-      const n = frames.length;
+      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg);
+      if (!bodyFrames || !bodyFrames.length) continue;
+      const n = bodyFrames.length;
       const fi = Math.max(0, Math.min(n - 1, Math.floor((elapsed / SWORD_SWING_MS) * n)));
-      let sp = this._remoteSwordSprites.get(id);
-      if (!sp) { sp = new Sprite(); this.nodeLayer.addChild(sp); this._remoteSwordSprites.set(id, sp); }
+      const set = this._ensureRemoteSwordSet(id);
+      const sp = set.body;
       const anchorY = cfg.feetY / cfg.fh;
+      const sY = REMOTE_SWING_SCALE;
+      const sgnX = mirror ? -sY : sY;
       sp.anchor.set(0.5, anchorY);
-      sp.texture = frames[fi];
-      sp.scale.set(mirror ? -REMOTE_SWING_SCALE : REMOTE_SWING_SCALE, REMOTE_SWING_SCALE);
+      sp.texture = bodyFrames[fi];
+      sp.scale.set(sgnX, sY);
       sp.x = (o.renderX != null) ? o.renderX : o.x;
       sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_SWING_FOOT_DY;
       sp.visible = true;
+      /* overlay helper: same transform as the body sprite. */
+      const place = (spr, tex) => {
+        if (!spr) return;
+        if (!tex) { spr.visible = false; return; }
+        spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnX, sY);
+        spr.x = sp.x; spr.y = sp.y; spr.visible = true;
+      };
+      const gp = cfg.gearPose || 'swing';
+      const eq = o.equip || {};
+      place(set.legs, this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
+      place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
+      const weaponFrames = this._swordWeaponFrames[cfgKey];
+      place(set.weapon, weaponFrames && weaponFrames[fi]);
+      /* their hair / beard / hat at the swing-frame crown anchor. */
+      const looks = {
+        hair: o.hair, hairColor: o.hairColor,
+        facialhair: o.facialhair, facialHairColor: o.facialHairColor,
+        headwear: o.headwear, hatColor: o.hatColor,
+      };
+      this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits);
       active.add(id);
     }
-    /* Hide the stand-in sprites for players who aren't mid-swing. */
-    for (const [id, sp] of this._remoteSwordSprites) {
-      if (!active.has(id)) sp.visible = false;
+    /* Hide non-swinging sets; destroy sets for players who left (no leak). */
+    for (const [id, set] of this._remoteSwordSprites) {
+      if (active.has(id)) continue;
+      set.body.visible = set.chest.visible = set.legs.visible = set.weapon.visible = false;
+      hideSkillTraits(set.traits);
+      if (!others[id]) {
+        for (const s of [set.body, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
+          try { s.destroy(); } catch (e) {}
+        }
+        this._remoteSwordSprites.delete(id);
+      }
+    }
+  }
+
+  _ensureRemoteBowSet(id) {
+    if (!this._remoteBowSprites) this._remoteBowSprites = new Map();
+    let set = this._remoteBowSprites.get(id);
+    if (!set) {
+      const mk = () => { const s = new Sprite(); s.visible = false; this.nodeLayer.addChild(s); return s; };
+      set = { body: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+      this._remoteBowSprites.set(id, set);
+    }
+    return set;
+  }
+
+  /* v2.3.1011: OTHER players' bow-draw stand-in (MP parity).  Same per-player
+     pooled-sprite + recolor approach as the sword swing, driven by the
+     broadcast other._bowShotAt / _bowShotAng (Phase 1). */
+  _updateRemoteBowShots(S, now) {
+    const REMOTE_BOW_SCALE = 0.45;
+    const REMOTE_BOW_FOOT_DY = 0;
+    const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+    if (!this._remoteBowSprites) this._remoteBowSprites = new Map();
+    const others = (S && S.others) || {};
+    const active = new Set();
+    for (const id in others) {
+      const o = others[id];
+      if (!o || !o._bowShotAt) continue;
+      const elapsed = now - o._bowShotAt;
+      if (elapsed < 0 || elapsed >= BOW_SHOT_MS) continue;
+      const ang = (typeof o._bowShotAng === 'number') ? o._bowShotAng : 0;
+      const dir8 = SECTORS8[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8];
+      const fmap = this._bowFacing[dir8];
+      if (!fmap) continue;
+      const cfgKey = fmap[0], mirror = fmap[1];
+      const cfg = this._bowCfg[cfgKey];
+      if (!cfg || !cfg.bodyUrl) continue;
+      const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg);
+      if (!bodyFrames || !bodyFrames.length) continue;
+      const n = bodyFrames.length;
+      const fi = elapsed < BOW_RELEASE_MS
+        ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
+        : n - 1;
+      const set = this._ensureRemoteBowSet(id);
+      const sp = set.body;
+      const anchorY = cfg.feetY / cfg.fh;
+      const sY = REMOTE_BOW_SCALE;
+      const sgnX = mirror ? -sY : sY;
+      sp.anchor.set(0.5, anchorY);
+      sp.texture = bodyFrames[fi];
+      sp.scale.set(sgnX, sY);
+      sp.x = (o.renderX != null) ? o.renderX : o.x;
+      sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_BOW_FOOT_DY;
+      sp.visible = true;
+      const place = (spr, tex) => {
+        if (!spr) return;
+        if (!tex) { spr.visible = false; return; }
+        spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnX, sY);
+        spr.x = sp.x; spr.y = sp.y; spr.visible = true;
+      };
+      const gp = cfg.gearPose || 'bowshot';
+      const eq = o.equip || {};
+      place(set.legs, this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
+      place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
+      const weaponFrames = this._bowWeaponFrames && this._bowWeaponFrames[cfgKey];
+      place(set.weapon, weaponFrames && weaponFrames[fi]);
+      const looks = {
+        hair: o.hair, hairColor: o.hairColor,
+        facialhair: o.facialhair, facialHairColor: o.facialHairColor,
+        headwear: o.headwear, hatColor: o.hatColor,
+      };
+      this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits);
+      active.add(id);
+    }
+    for (const [id, set] of this._remoteBowSprites) {
+      if (active.has(id)) continue;
+      set.body.visible = set.chest.visible = set.legs.visible = set.weapon.visible = false;
+      hideSkillTraits(set.traits);
+      if (!others[id]) {
+        for (const s of [set.body, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
+          try { s.destroy(); } catch (e) {}
+        }
+        this._remoteBowSprites.delete(id);
+      }
     }
   }
 
