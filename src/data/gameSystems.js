@@ -3645,6 +3645,21 @@ export const WEAPON_CATEGORY_META = {
    point (and +1 combat level), so the per-category choice is meaningful. */
 export const WEAPON_PTS_PER_LEVEL = 1;
 export const WEAPON_CHANNEL_CAP = 99;
+/* v2.3.911: maps a dashboard build-skill stat key to its weapon-category
+   point pool, so the dashboard can flash a skill that has unspent Tier-2
+   points and open the Builds menu to the right tab. */
+export const STAT_TO_WEAPON_CAT = { power: 'sword', agility: 'bow', mind: 'staff' };
+
+/* Unspent Tier-2 points available for a dashboard build-skill cell.
+   power/agility/mind -> weaponUnspent[cat]; defense -> defenseUnspent;
+   vitality/endurance have no categories yet (Phase 2) -> 0. */
+export function buildSkillUnspent(rpg, statKey) {
+  if (!rpg) return 0;
+  if (statKey === 'defense') return rpg.defenseUnspent || 0;
+  var cat = STAT_TO_WEAPON_CAT[statKey];
+  if (!cat) return 0;
+  return (rpg.weaponUnspent && rpg.weaponUnspent[cat]) || 0;
+}
 /* Weapon skill levels are damage-driven: each point of damage dealt by a
    weapon of the category adds this much XP to that category's skill.  1.0
    keeps "xp == damage dealt"; tune here without touching combat code. */

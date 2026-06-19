@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat, buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
@@ -31,7 +31,8 @@ import { LeaderboardPanel }  from './dash/LeaderboardPanel.jsx';
 import { ClanPanel }         from './dash/ClanPanel.jsx';
 import { FeedbackPanel }     from './dash/FeedbackPanel.jsx';
 import { SettingsPanel }     from './dash/SettingsPanel.jsx';
-import { T2Panel }           from './dash/T2Panel.jsx';
+import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
+import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
 // When idle it renders character stats + a 7-icon row.  When the user
@@ -86,12 +87,12 @@ const ICON_SRC = {
 // Defense is the Tier-2 trained skill (rpg.defenseSkill); the others are
 // Tier-1 capacity stats.  Tooltip phrasing per GDD §1.2.
 const CHAR_STATS = [
-  { key: 'power',     label: 'Power',     short: 'POW', iconSrc: '/icons/popups/sword.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Power — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  { key: 'agility',   label: 'Agility',   short: 'AGI', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Agility — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
-  { key: 'mind',      label: 'Mind',      short: 'MIN', iconSrc: '/icons/popups/spell.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Mind — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
+  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/popups/sword.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
+  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
+  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/popups/spell.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
   /* v2.3.112 heart iconScale history dropped; cell centers the value
      regardless of icon size. */
-  { key: 'vitality',  label: 'Vitality',  short: 'VIT', iconSrc: '/icons/popups/heart.png?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'Vitality — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/popups/heart.png?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
      DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.695: dedicated
      shield-crest icon (user-supplied); Endurance moved to the energy bolt so
@@ -575,6 +576,9 @@ export const BottomDashboard = () => {
           dashboard's React tree but its position:fixed inset:0 makes it
           float above the entire app at zIndex 50. */}
       <ItemDetailPopup />
+      {/* v2.3.911: build-skill point-spend confirmation window (floats above
+          the dashboard at zIndex 60, over the Builds menu). */}
+      <SpendPointConfirm />
       <Tooltip text={tooltip} onClose={() => setTooltip('')} />
 
       {/* v2.3.821: the XP bar moved off the bottom trim into the top-right
@@ -1240,9 +1244,24 @@ export const BottomDashboard = () => {
                     else if (s.key === 'mind')      bonusTxt = `+${Math.round(val * 0.8)} magic dmg`;
                     else if (s.key === 'defense')   bonusTxt = `Lv ${val} — block + damage cut`;
                     const tipFull = `${s.label} ${val} → ${bonusTxt}. ${s.tip}`;
+                    /* v2.3.911: unspent Tier-2 points for this build skill.
+                       When > 0 the cell pulses + shows a badge, and tapping it
+                       opens the Builds menu jumped to that skill's tab instead
+                       of just showing the tooltip. */
+                    const unspentPts = buildSkillUnspent(R, s.key);
+                    const openT2Cat = s.key === 'defense' ? 'defense' : STAT_TO_WEAPON_CAT[s.key];
                     return (
                       <div key={'b_' + s.key}
-                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(tipFull); }}
+                        className={unspentPts > 0 ? 'bt-build-flash' : undefined}
+                        onPointerUp={(e) => {
+                          e.stopPropagation();
+                          if (unspentPts > 0 && openT2Cat) {
+                            requestT2Category(openT2Cat);
+                            dashboardPanelBus.push('t2');
+                          } else {
+                            setTooltip(tipFull);
+                          }
+                        }}
                         title={tipFull}
                         style={{
                           position: 'relative',
@@ -1263,6 +1282,15 @@ export const BottomDashboard = () => {
                           touchAction: 'none',
                           minHeight: 0,
                         }}>
+                        {unspentPts > 0 && (
+                          <span style={{
+                            position: 'absolute', top: 1, right: 2,
+                            background: '#5b52ff', color: '#fff',
+                            fontSize: 9, fontWeight: 900,
+                            borderRadius: 7, padding: '0px 4px', lineHeight: 1.4,
+                            pointerEvents: 'none', zIndex: 1,
+                          }}>{unspentPts}</span>
+                        )}
                         <img
                           src={s.iconSrc}
                           alt={s.label}

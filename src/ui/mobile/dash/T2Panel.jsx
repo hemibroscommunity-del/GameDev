@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, rowStyle } from './common.js';
+import { spendConfirmBus } from './spendConfirmBus.js';
 import {
   WEAPON_CATEGORIES,
   WEAPON_CATEGORY_META,
@@ -11,6 +12,12 @@ import {
   DEFENSE_CHANNELS,
   DEFENSE_CHANNEL_CAP,
 } from '../../../data/gameSystems.js';
+
+/* v2.3.911: lets the dashboard open this panel jumped to a specific tab.
+   The dashboard calls requestT2Category(cat) then pushes the 't2' panel;
+   the component consumes the pending value on its next render. */
+let _pendingCat = null;
+export function requestT2Category(cat) { _pendingCat = cat; }
 
 /* v2.3.693: Defense is a 4th tab.  Its data lives in rpg.defenseSkill /
    defenseSpec / defenseUnspent (not the weapon maps) and it trains by
@@ -41,6 +48,11 @@ export const T2Panel = () => {
     const id = setInterval(() => force((v) => v + 1), 250);
     return () => clearInterval(id);
   }, []);
+  /* v2.3.911: if the dashboard asked us to open on a specific tab, adopt it
+     (runs after every render; consumes the pending value once). */
+  useEffect(() => {
+    if (_pendingCat) { setCat(_pendingCat); _pendingCat = null; }
+  });
 
   const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   const R = (S && S.rpg) || null;
@@ -71,23 +83,24 @@ export const T2Panel = () => {
   const need = weaponXpRequired(sk.level || 0);
   const xpPct = need > 0 ? Math.max(0, Math.min(100, ((sk.xp || 0) / need) * 100)) : 0;
 
+  /* v2.3.911: spending now goes through a confirmation window.  Keep the
+     guards here, then hand the channel context to spendConfirmBus; the
+     SpendPointConfirm overlay applies the point (recalcDerived + persist)
+     after the player confirms. */
   const addPoint = (key, active) => {
     if (!active) return;
     if (unspent <= 0) return;
     if ((catSpecs[key] || 0) >= channelCap) return;
-    if (isDef) {
-      if (!R.defenseSpec) R.defenseSpec = {};
-      R.defenseSpec[key] = (R.defenseSpec[key] || 0) + 1;
-      R.defenseUnspent -= 1;
-    } else {
-      if (!R.weaponSpecs) R.weaponSpecs = {};
-      if (!R.weaponSpecs[activeCat]) R.weaponSpecs[activeCat] = {};
-      R.weaponSpecs[activeCat][key] = (R.weaponSpecs[activeCat][key] || 0) + 1;
-      R.weaponUnspent[activeCat] -= 1;
-    }
-    recalcDerived(R);
-    persist(R);
-    force((v) => v + 1);
+    const ch = channels.find((c) => c.key === key);
+    if (!ch) return;
+    spendConfirmBus.open({
+      isDef,
+      cat: activeCat,
+      key,
+      channel: ch,
+      current: (catSpecs[key] || 0),
+      skillLabel: isDef ? DEF_META.label : ((WEAPON_CATEGORY_META[activeCat] || {}).label || activeCat),
+    });
   };
 
   return (
