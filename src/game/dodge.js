@@ -53,6 +53,10 @@ export var doStandardDodge = function (S, R, ang) {
     addBuildUse(R, 'endurance', dodgeCost);
     addBuildUse(R, 'agility', dodgeCost);
     S._dodgeRoll = { angle: ang, startTime: Date.now() };
+    /* v2.3.1011: broadcast so peers see the dodge (trail + movement). */
+    if (S._serverMonsters && S.channel) {
+      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'dodge', angle: ang, ts: Date.now() } }); } catch (e) {}
+    }
     S._hasDodged = true;
     S._dodgeFlash = Date.now();
     if (!S.respawnTimer || Date.now() > S.respawnTimer) S.respawnTimer = Date.now() + 400;
@@ -80,6 +84,10 @@ export var doLunge = function (S, R, ang) {
     /* Reuse the dodge-roll state for visual + i-frames; mark as a lunge so
        the post-dash hit fires on landing. */
     S._dodgeRoll = { angle: dirAng, startTime: Date.now(), kind: 'lunge', targetId: lt.id || null };
+    /* v2.3.1011: broadcast the lunge so peers see it. */
+    if (S._serverMonsters && S.channel) {
+      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'lunge', angle: dirAng, ts: Date.now() } }); } catch (e) {}
+    }
     S._lungeIFramesUntil = Date.now() + (LUNGE_IFRAMES_MS || 150);
     S._dodgeFlash = Date.now();
     S._hasDodged = true;
@@ -126,6 +134,10 @@ export var doRetreatShot = function (S, R, ang) {
        the tradeoff for safety). We mark this on _dodgeRoll so the damage
        interceptor can skip i-frames when checked. */
     S._dodgeRoll = { angle: ang, startTime: Date.now(), kind: 'retreat_shot', noIFrames: true };
+    /* v2.3.1011: broadcast the retreat shot so peers see it. */
+    if (S._serverMonsters && S.channel) {
+      try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'retreat_shot', angle: ang, ts: Date.now() } }); } catch (e) {}
+    }
     S._dodgeFlash = Date.now();
     S._hasDodged = true;
     /* Fire a setup shot at the locked target. */
