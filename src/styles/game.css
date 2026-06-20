@@ -502,9 +502,13 @@ input{font-family:inherit}
    v2.3.1016: up to N across, LEFT-aligned (owner) — equal tracks fill the
    width so the tiles can't overflow; a short final page leaves the empty
    tracks on the right (left-aligned), and every category is one row tall.
-   v2.3.1017: 7 across (10 read too small on a phone, owner). */
-.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(7,1fr);justify-items:stretch;gap:6px;align-content:start;overflow:hidden}
-.bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:100%!important;height:auto!important;aspect-ratio:1/1!important}
+   v2.3.1017: 7 across (10 read too small on a phone, owner).
+   v2.3.1018: the row height is an EXPLICIT viewport-derived clamp (not derived
+   from each cell's aspect-ratio) so it's identical for every category — the
+   aspect-ratio path rounded by ~1-2px between trait menus and the container
+   visibly grew/shrank on each tab change (owner). */
+.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:clamp(32px,9.2vw,44px);justify-items:stretch;gap:6px;align-content:start;overflow:hidden}
+.bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:100%!important;height:100%!important}
 /* v2.3.804/816: the owner's gold divider art (divider.webp) is the
    vertical separator on the colors column's left edge (rotated 90°). */
 .bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1.5px solid #4a4080;padding-left:9px}
@@ -518,7 +522,9 @@ input{font-family:inherit}
    its row — the drawer stays the same height across categories (owner). */
 .bt-cc-pager{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:5px 0 1px;margin-top:auto;min-height:32px;box-sizing:border-box}
 .bt-cc-pager--empty{pointer-events:none}
-.bt-cc-pager-arrow{display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:7px;background:rgba(58,49,99,0.40);border:1.5px solid #4a4080;color:#e7e2ff;font-size:17px;line-height:1;cursor:pointer}
+/* v2.3.1018: wider page buttons (owner) — easier tap targets than the old
+   26px squares. */
+.bt-cc-pager-arrow{display:flex;align-items:center;justify-content:center;width:54px;height:26px;padding:0;border-radius:7px;background:rgba(58,49,99,0.40);border:1.5px solid #4a4080;color:#e7e2ff;font-size:17px;line-height:1;cursor:pointer}
 .bt-cc-pager-arrow:active{transform:translateY(1px)}
 .bt-cc-pager-arrow:disabled{opacity:.32;cursor:default;pointer-events:none}
 /* v2.3.1016: page count as "1/3" shorthand (owner) — replaces the dot row. */
