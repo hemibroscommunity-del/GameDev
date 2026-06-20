@@ -93,7 +93,11 @@ export function NameModal(props) {
         var onSet = function (id) {
           if (collapsed) { _setOpen(setObjOpen, k, true); return; }
           setSel(id); markObjPicked(k);
-          if (id !== 'none') { _setOpen(setObjOpen, k, false); _setOpen(setColOpen, k, true); }
+          /* v2.3.1015: only recolorable categories (those with a spriteCat /
+             colors step) collapse the item grid and advance to colors; the
+             color-only swatch grids (skin/pants/shoes) stay open so the whole
+             row of swatches remains pickable. */
+          if (id !== 'none' && spriteCat) { _setOpen(setObjOpen, k, false); _setOpen(setColOpen, k, true); }
           else { _setOpen(setObjOpen, k, true); }
         };
         return kind === 'thumb' ? _thumbTile(spriteCat, o, sel, onSet, 44) : _swatchTile(o, sel, onSet, 40);
@@ -115,9 +119,24 @@ export function NameModal(props) {
     /* Body-color categories (skin/pants/shoes): the swatches ARE the object
        grid (their catalog 'default' entries carry the sprite's native
        colors), so they have no separate Colors column. */
-    /* v2.3.1013: item-grid pagination (8 per page, mockup's dots + arrows). */
+    /* v2.3.1013: item-grid pagination (dots + ‹ › arrows instead of scroll).
+       v2.3.1015: one row at a time (owner) — items page in 4s, colors in 6s;
+       both reset to page 0 on a category change. */
     var _ccPg = React.useState(0), ccPage = _ccPg[0], setCcPage = _ccPg[1];
-    React.useEffect(function () { setCcPage(0); }, [activeCat]);
+    var _ccCPg = React.useState(0), ccCPage = _ccCPg[0], setCcCPage = _ccCPg[1];
+    React.useEffect(function () { setCcPage(0); setCcCPage(0); }, [activeCat]);
+    /* v2.3.1015: shared pager builder (one row, dots + arrows) for the item
+       and color steps. */
+    var _mkPager = function (count, cur, setFn) {
+      if (count <= 1) return null;
+      return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager" },
+        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: cur <= 0, "aria-label": 'Previous', onClick: function () { setFn(Math.max(0, cur - 1)); } }, "‹"),
+        /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager-dots" },
+          Array.apply(null, { length: count }).map(function (_, i) {
+            return /*#__PURE__*/React.createElement("span", { key: i, className: 'bt-cc-pager-dot' + (i === cur ? ' bt-cc-pager-dot--on' : ''), onClick: function () { setFn(i); } });
+          })),
+        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: cur >= count - 1, "aria-label": 'More', onClick: function () { setFn(Math.min(count - 1, cur + 1)); } }, "›"));
+    };
     var _catDefs = {
       hat: { label: 'Hat', build: function () { return {
         items: _objTiles('hat', HEADWEAR_CATALOG, 'thumb', 'headwear', headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }),
@@ -143,14 +162,24 @@ export function NameModal(props) {
     var _activeKey = _catDefs[activeCat] ? activeCat : 'hat';
     var _built = _catDefs[_activeKey].build();
     var _ccActive = { key: _activeKey, label: _catDefs[_activeKey].label, items: _built.items, colors: _built.colors };
-    /* v2.3.1013: bound the item grid to one page of 8 (2 rows × 4), with the
-       mockup's dot indicators + ‹ › arrows instead of a scroll — keeps the
-       Randomize/Play buttons on screen on small phones. */
-    var _PER = 8;
+    /* v2.3.1015: one row of item previews at a time (owner) — 4 per page, the
+       dots + ‹ › arrows page through the rest. */
+    var _PER = 4;
     var _allItems = _ccActive.items || [];
     var _pageCount = Math.max(1, Math.ceil(_allItems.length / _PER));
     var _pg = Math.min(ccPage, _pageCount - 1);
     var _pageItems = _allItems.slice(_pg * _PER, _pg * _PER + _PER);
+    /* v2.3.1015: the colors step is its own page of swatches (one row of 6),
+       shown ONLY after an item is picked (objOpen[key] === false) — there isn't
+       room to show items and colors together (owner).  Color-only categories
+       (skin/pants/shoes) have no colors step; their swatches stay in the item
+       grid. */
+    var _CPER = 6;
+    var _allColors = _ccActive.colors || [];
+    var _showColors = _allColors.length > 0 && objOpen[_activeKey] === false;
+    var _cPageCount = Math.max(1, Math.ceil(_allColors.length / _CPER));
+    var _cpg = Math.min(ccCPage, _cPageCount - 1);
+    var _cPageItems = _allColors.slice(_cpg * _CPER, _cpg * _CPER + _CPER);
     return /*#__PURE__*/React.createElement("div", {
       className: "bt-name-modal"
     }, /*#__PURE__*/React.createElement("video", {
@@ -384,41 +413,27 @@ export function NameModal(props) {
       }, /*#__PURE__*/React.createElement("img", { className: "bt-cc-tab-icon", src: c.icon, alt: '', draggable: false }),
          /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, c.label));
     })), /*#__PURE__*/React.createElement("section", {
-      /* Customization drawer — one shared panel under the tabs.  Split
-         layout (spec §6): items grid left = "what am I using?", color
-         swatches right = "what color is it?"; the column only renders
-         for categories that support recoloring.  The 'default' swatch
-         tile stays in the grid — it already previews the item's
-         original colors. */
+      /* Customization drawer — ONE panel, ONE step at a time (owner,
+         v2.3.1015): there isn't room to show the item grid and the color
+         swatches together, so the drawer shows the item row until an item is
+         picked, then swaps to the color row (with a ‹ Change … button back to
+         the items).  Color-only categories (skin/pants/shoes) never reach the
+         colors step — their swatch row is the whole picker. */
       className: "bt-cc-drawer"
-    }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-items" },
-      /* v2.3.1014: the per-category items header ("— HAT —") is dropped — the
-         active tab already names the category, so it was redundant.  The
-         "— COLORS —" head on the colors column below is kept (still meaningful). */
-      /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _pageItems),
-      /* v2.3.1013: pager — ‹ arrow, one dot per page (active = current), › arrow.
-         Only shown when the category has more than one page of items. */
-      _pageCount > 1 ? /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager" },
-        /*#__PURE__*/React.createElement("button", {
-          type: 'button', className: "bt-cc-pager-arrow", disabled: _pg <= 0,
-          "aria-label": 'Previous items',
-          onClick: function () { setCcPage(Math.max(0, _pg - 1)); }
-        }, "‹"),
-        /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager-dots" },
-          Array.apply(null, { length: _pageCount }).map(function (_, i) {
-            return /*#__PURE__*/React.createElement("span", {
-              key: i, className: 'bt-cc-pager-dot' + (i === _pg ? ' bt-cc-pager-dot--on' : ''),
-              onClick: function () { setCcPage(i); }
-            });
-          })),
-        /*#__PURE__*/React.createElement("button", {
-          type: 'button', className: "bt-cc-pager-arrow", disabled: _pg >= _pageCount - 1,
-          "aria-label": 'More items',
-          onClick: function () { setCcPage(Math.min(_pageCount - 1, _pg + 1)); }
-        }, "›")) : null),
-    _ccActive.colors ? /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-colors" },
-      /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— COLORS —"),
-      /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _ccActive.colors)) : null)), /*#__PURE__*/React.createElement("button", {
+    }, _showColors
+      ? /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-items bt-cc-step-colors" },
+          /*#__PURE__*/React.createElement("button", {
+            type: 'button', className: "bt-cc-back",
+            onClick: function () { _setOpen(setObjOpen, _activeKey, true); }
+          }, "‹ Change " + _ccActive.label),
+          /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— COLORS —"),
+          /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid bt-cc-grid-colors" }, _cPageItems),
+          _mkPager(_cPageCount, _cpg, setCcCPage))
+      : /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-items" },
+          /* v2.3.1014: the per-category items header ("— HAT —") is dropped —
+             the active tab already names the category. */
+          /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _pageItems),
+          _mkPager(_pageCount, _pg, setCcPage)))), /*#__PURE__*/React.createElement("button", {
       /* Appearance RANDOMIZE — full-width gold row directly under the
          menu it acts on (owner placement, v2.3.794); the name dice above
          rerolls just the name. */
