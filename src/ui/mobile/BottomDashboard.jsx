@@ -1420,11 +1420,12 @@ export const BottomDashboard = () => {
               onClick={() => dashboardPanelBus.toggle('encyclopedia')} />
             <IconButton glyph="journey"   label="Journey"
               onClick={() => dashboardPanelBus.toggle('journey')} />
-            {/* v2.3.1013: Chat replaces Map in the toolbar — opens the
-                over-head chat bubble (ChatBubble.jsx).  No chat PNG asset, so
-                the glyph is the speech-bubble SVG inherited from ChatLauncher. */}
+            {/* v2.3.1015: Chat replaces Map in the toolbar — TOGGLES the
+                over-head chat bubble (ChatBubble.jsx): tap to open, tap again
+                to close.  No chat PNG asset, so the glyph is the speech-bubble
+                SVG inherited from ChatLauncher. */}
             <IconButton label="Chat"
-              onClick={() => chatBubbleBus.setOpen(true)}
+              onClick={() => chatBubbleBus.toggle()}
               node={(
                 <svg width="34" height="34" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="1.6"

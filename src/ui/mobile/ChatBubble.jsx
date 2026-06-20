@@ -57,12 +57,19 @@ export const ChatBubble = () => {
   return (
     <>
       {/* Tap-anywhere-else dismiss layer — pointer-events on, but we
-          stop propagation on the bubble itself so taps inside don't bubble. */}
+          stop propagation on the bubble itself so taps inside don't bubble.
+          v2.3.1015: covers only the play area ABOVE the dashboard (not
+          inset:0), so the toolbar Chat button isn't under it.  Otherwise the
+          tap's pointerdown would close here and pointerup would re-open on the
+          button, defeating the toggle.  Play-area tap still dismisses. */}
       <div
         onPointerDown={close}
         style={{
           position: 'fixed',
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 'var(--dash-h)',
           background: 'transparent',
           zIndex: 95,
         }}
