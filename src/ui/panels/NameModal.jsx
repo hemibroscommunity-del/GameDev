@@ -165,8 +165,9 @@ export function NameModal(props) {
     var _ccActive = { key: _activeKey, label: _catDefs[_activeKey].label, items: _built.items, colors: _built.colors };
     /* v2.3.1015: one row of item previews at a time (owner) — the ‹ › arrows
        page through the rest.
-       v2.3.1016: up to 10 per row, left-aligned (owner). */
-    var _PER = 10;
+       v2.3.1016: up to 10 per row, left-aligned (owner).
+       v2.3.1017: 10 read too small on a phone — back to 7 per row (owner). */
+    var _PER = 7;
     var _allItems = _ccActive.items || [];
     var _pageCount = Math.max(1, Math.ceil(_allItems.length / _PER));
     var _pg = Math.min(ccPage, _pageCount - 1);
@@ -176,7 +177,7 @@ export function NameModal(props) {
        room to show items and colors together (owner).  Color-only categories
        (skin/pants/shoes) have no colors step; their swatches stay in the item
        grid. */
-    var _CPER = 10;
+    var _CPER = 7;
     var _allColors = _ccActive.colors || [];
     var _showColors = _allColors.length > 0 && objOpen[_activeKey] === false;
     var _cPageCount = Math.max(1, Math.ceil(_allColors.length / _CPER));

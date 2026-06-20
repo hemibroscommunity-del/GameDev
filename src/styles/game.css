@@ -499,10 +499,11 @@ input{font-family:inherit}
    v2.3.1014: columns size to the TILES (not 1fr stretch) and the grid centers,
    so two rows of small tiles sit in the frame instead of ballooning to
    container/4 and shoving the pager off (owner).
-   v2.3.1016: up to 10 across, LEFT-aligned (owner) — 10 equal tracks fill the
+   v2.3.1016: up to N across, LEFT-aligned (owner) — equal tracks fill the
    width so the tiles can't overflow; a short final page leaves the empty
-   tracks on the right (left-aligned), and every category is one row tall. */
-.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(10,1fr);justify-items:stretch;gap:4px;align-content:start;overflow:hidden}
+   tracks on the right (left-aligned), and every category is one row tall.
+   v2.3.1017: 7 across (10 read too small on a phone, owner). */
+.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(7,1fr);justify-items:stretch;gap:6px;align-content:start;overflow:hidden}
 .bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:100%!important;height:auto!important;aspect-ratio:1/1!important}
 /* v2.3.804/816: the owner's gold divider art (divider.webp) is the
    vertical separator on the colors column's left edge (rotated 90°). */

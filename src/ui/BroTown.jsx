@@ -1273,10 +1273,12 @@ export var BroTown = function BroTown(_ref0) {
       key: 's_' + opt.id, type: 'button', title: opt.name,
       onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, sz)
     }, opt.id === 'none'
-      /* v2.3.1016: fill the tile like the item thumbnails do — the old
-         fixed sz-14 circle read noticeably smaller than its neighbours in
-         the picker grid (owner). */
-      ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
+      /* v2.3.1016: size relative to the tile (was a fixed sz-14 circle that
+         read smaller than its neighbours, and overflowed once tiles shrank).
+         v2.3.1017: 86% — the trait thumbnails (e.g. hair) carry ~15% of
+         transparent padding, so their art fills ~85% of the tile; matching
+         that makes the dashed 'none' circle the same visual size as them. */
+      ? /*#__PURE__*/React.createElement("div", { style: { width: '86%', height: '86%', borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
       : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
     sel ? _checkBadge() : null);
   };
