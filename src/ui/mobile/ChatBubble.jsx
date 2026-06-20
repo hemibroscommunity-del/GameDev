@@ -89,29 +89,53 @@ export const ChatBubble = () => {
           fontFamily: 'Source Sans 3, sans-serif',
         }}
       >
-        <input
-          ref={inputRef}
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') { submit(); }
-            else if (e.key === 'Escape') { close(); }
-          }}
-          placeholder="Say something…"
-          maxLength={120}
-          style={{
-            width: '100%',
-            padding: '6px 8px',
-            background: 'rgba(0,0,0,0.35)',
-            border: '1px solid rgba(255,255,255,0.18)',
-            borderRadius: 6,
-            color: '#fff',
-            fontFamily: 'inherit',
-            fontSize: 16,
-            outline: 'none',
-            boxSizing: 'border-box',
-          }}
-        />
+        {/* v2.3.1013: input + Send button (Send carried over from the
+            short-lived always-on chat bar).  Enter still submits. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input
+            ref={inputRef}
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { submit(); }
+              else if (e.key === 'Escape') { close(); }
+            }}
+            placeholder="Say something…"
+            maxLength={120}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: '6px 8px',
+              background: 'rgba(0,0,0,0.35)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 6,
+              color: '#fff',
+              fontFamily: 'inherit',
+              fontSize: 16,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          <button
+            onClick={submit}
+            aria-label="Send"
+            style={{
+              flex: '0 0 auto',
+              height: 32,
+              padding: '0 14px',
+              background: val.trim() ? '#3b82f6' : 'rgba(255,255,255,0.10)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 6,
+              color: val.trim() ? '#fff' : '#8890b8',
+              fontFamily: 'inherit',
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Send
+          </button>
+        </div>
         {/* Tail pointing down toward the character. */}
         <div style={{
           position: 'absolute',

@@ -14,6 +14,7 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
+import { chatBubbleBus } from './chatBubbleBus.js';
 import { InventoryPanel, ItemTile }    from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
@@ -254,7 +255,7 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
   );
 };
 
-const IconButton = ({ glyph, label, active, onClick }) => {
+const IconButton = ({ glyph, label, active, onClick, node }) => {
   const src = ICON_SRC[glyph];
   // Use onPointerUp instead of onClick so iOS fires it even when
   // another finger is mid-drag on a joystick.  stopPropagation
@@ -282,17 +283,29 @@ const IconButton = ({ glyph, label, active, onClick }) => {
         touchAction: 'none',
       }}
     >
-      <img
-        src={src}
-        alt={label}
-        draggable={false}
-        style={{
+      {/* v2.3.1013: glyphs without a PNG (e.g. Chat) pass an inline `node`
+          rendered in the 38×38 icon slot instead of an <img>. */}
+      {node ? (
+        <span style={{
           width: 38,
           height: 38,
-          objectFit: 'contain',
-          imageRendering: 'auto',
-        }}
-      />
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>{node}</span>
+      ) : (
+        <img
+          src={src}
+          alt={label}
+          draggable={false}
+          style={{
+            width: 38,
+            height: 38,
+            objectFit: 'contain',
+            imageRendering: 'auto',
+          }}
+        />
+      )}
       <span style={{
         /* v2.3.114: -1 fontSize + inactive labels white. */
         fontSize: 14,
@@ -1407,8 +1420,18 @@ export const BottomDashboard = () => {
               onClick={() => dashboardPanelBus.toggle('encyclopedia')} />
             <IconButton glyph="journey"   label="Journey"
               onClick={() => dashboardPanelBus.toggle('journey')} />
-            <IconButton glyph="map"       label="Map"
-              onClick={() => dashboardPanelBus.toggle('map')} />
+            {/* v2.3.1013: Chat replaces Map in the toolbar — opens the
+                over-head chat bubble (ChatBubble.jsx).  No chat PNG asset, so
+                the glyph is the speech-bubble SVG inherited from ChatLauncher. */}
+            <IconButton label="Chat"
+              onClick={() => chatBubbleBus.setOpen(true)}
+              node={(
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="1.6"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12a8 8 0 0 1-12 6.93L4 20l1.07-5A8 8 0 1 1 21 12z" />
+                </svg>
+              )} />
             <IconButton glyph="more"      label="More"
               onClick={() => dashboardPanelBus.toggle('more')} />
           </div>

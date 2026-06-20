@@ -136,10 +136,15 @@ const LABEL_STYLE = new TextStyle({
 
 /* Emoji-safe label style for chat bubbles, NPC names, etc. that may
    contain user-supplied or game-supplied emoji.  Same iOS WebGL
-   crash class as DMG_STYLE_EMOJI — stripping the dropShadow and
-   falling through to the system emoji font sidesteps the bad path. */
+   crash class as DMG_STYLE_EMOJI — stripping the dropShadow (no stroke
+   here either) sidesteps the bad path.
+   v2.3.1014: text font listed FIRST, emoji fonts as fallback.  Listing
+   an emoji font first made the browser measure the SPACE glyph with the
+   emoji font's oversized advance, blowing out word spacing whenever a
+   string had any non-ASCII char (iOS autocorrect curly quotes, em-dash,
+   accents…).  Per-glyph CSS fallback still renders real emoji. */
 const LABEL_STYLE_EMOJI = new TextStyle({
-  fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Source Sans 3",sans-serif',
+  fontFamily: '"Source Sans 3","Apple Color Emoji","Segoe UI Emoji",sans-serif',
   fontSize: 11,
   fill: '#ffffff',
   align: 'center',
@@ -1438,12 +1443,15 @@ export class EffectsRenderer {
       container.addChild(bg);
       /* v2.3.219: pure black, no drop shadow, no inherited LABEL_STYLE
          effects.  Spec defined inline so nothing leaks in from
-         LABEL_STYLE (which carries a 2 px black blur). */
+         LABEL_STYLE (which carries a 2 px black blur).
+         v2.3.1014: text font FIRST in the emoji branch — emoji-first made
+         the space glyph measure with the emoji font's wide advance, so any
+         non-ASCII char (iOS curly quotes/em-dash) blew out word spacing. */
       const txt = new Text({
         text: '',
         style: {
           fontFamily: hasEmoji
-            ? '"Apple Color Emoji","Segoe UI Emoji","Source Sans 3",sans-serif'
+            ? '"Source Sans 3","Apple Color Emoji","Segoe UI Emoji",sans-serif'
             : 'Source Sans 3, sans-serif',
           fontSize: 11,
           fill: '#000000',
