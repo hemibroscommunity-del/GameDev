@@ -486,9 +486,7 @@ input{font-family:inherit}
 /* v2.3.1015: "‹ Change Hat" — returns from the colors step to the item grid. */
 .bt-cc-back{align-self:center;display:inline-flex;align-items:center;gap:4px;padding:3px 12px;border-radius:8px;background:rgba(58,49,99,0.40);border:1.5px solid #4a4080;color:#e7e2ff;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;cursor:pointer}
 .bt-cc-back:active{transform:translateY(1px)}
-/* v2.3.1015: the color step packs one row of 6 smaller swatches. */
-.bt-cc-drawer-items>.bt-cc-drawer-grid.bt-cc-grid-colors{grid-template-columns:repeat(6,auto)}
-.bt-cc-drawer-items>.bt-cc-drawer-grid.bt-cc-grid-colors>*{width:clamp(28px,8vw,38px)!important}
+/* v2.3.1016: the color step uses the same 10-track left-aligned row as items. */
 /* Item strip: column-wrap fills the available height (1-2 tile rows
    depending on device) then extends rightward; pan-x re-allowed under
    the modal's touch-action:none (the old rail's iOS trick, rotated). */
@@ -501,9 +499,11 @@ input{font-family:inherit}
    v2.3.1014: columns size to the TILES (not 1fr stretch) and the grid centers,
    so two rows of small tiles sit in the frame instead of ballooning to
    container/4 and shoving the pager off (owner).
-   v2.3.1016: 6 across (owner) — smaller tiles so a row of 6 fits a phone. */
-.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(6,auto);justify-content:center;gap:7px;align-content:start;overflow:hidden}
-.bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:clamp(28px,9.2vw,40px)!important;height:auto!important;aspect-ratio:1/1!important}
+   v2.3.1016: up to 10 across, LEFT-aligned (owner) — 10 equal tracks fill the
+   width so the tiles can't overflow; a short final page leaves the empty
+   tracks on the right (left-aligned), and every category is one row tall. */
+.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(10,1fr);justify-items:stretch;gap:4px;align-content:start;overflow:hidden}
+.bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:100%!important;height:auto!important;aspect-ratio:1/1!important}
 /* v2.3.804/816: the owner's gold divider art (divider.webp) is the
    vertical separator on the colors column's left edge (rotated 90°). */
 .bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1.5px solid #4a4080;padding-left:9px}
@@ -513,7 +513,10 @@ input{font-family:inherit}
 .bt-cc-cust-head{flex:0 0 auto;text-align:center;padding:5px 0 3px;font-size:12px;font-weight:800;letter-spacing:.16em;color:var(--gold);text-shadow:0 1px 2px rgba(0,0,0,.6);font-family:'Baloo 2','Source Sans 3',sans-serif}
 /* v2.3.1013: item-grid pager — ‹ › arrows flanking one dot per page, the
    active dot gold.  Sits under the grid, replacing the old vertical scroll. */
-.bt-cc-pager{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:5px 0 1px;margin-top:auto}
+/* v2.3.1016: fixed min-height so the (empty) single-page pager still reserves
+   its row — the drawer stays the same height across categories (owner). */
+.bt-cc-pager{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:5px 0 1px;margin-top:auto;min-height:32px;box-sizing:border-box}
+.bt-cc-pager--empty{pointer-events:none}
 .bt-cc-pager-arrow{display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:7px;background:rgba(58,49,99,0.40);border:1.5px solid #4a4080;color:#e7e2ff;font-size:17px;line-height:1;cursor:pointer}
 .bt-cc-pager-arrow:active{transform:translateY(1px)}
 .bt-cc-pager-arrow:disabled{opacity:.32;cursor:default;pointer-events:none}

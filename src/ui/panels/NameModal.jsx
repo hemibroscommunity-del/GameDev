@@ -127,9 +127,12 @@ export function NameModal(props) {
     React.useEffect(function () { setCcPage(0); setCcCPage(0); }, [activeCat]);
     /* v2.3.1015: shared pager builder (one row, ‹ › arrows) for the item and
        color steps.
-       v2.3.1016: page count shown as shorthand "1/3" (owner) instead of dots. */
+       v2.3.1016: page count shown as shorthand "1/3" (owner) instead of dots.
+       Single-page categories still render the (empty) pager row so the drawer
+       keeps the SAME height whether or not a category paginates — switching
+       tabs no longer makes the container grow/shrink (owner). */
     var _mkPager = function (count, cur, setFn) {
-      if (count <= 1) return null;
+      if (count <= 1) return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager bt-cc-pager--empty", "aria-hidden": true });
       return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager" },
         /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: cur <= 0, "aria-label": 'Previous', onClick: function () { setFn(Math.max(0, cur - 1)); } }, "‹"),
         /*#__PURE__*/React.createElement("span", { className: "bt-cc-pager-count" }, (cur + 1) + "/" + count),
@@ -162,8 +165,8 @@ export function NameModal(props) {
     var _ccActive = { key: _activeKey, label: _catDefs[_activeKey].label, items: _built.items, colors: _built.colors };
     /* v2.3.1015: one row of item previews at a time (owner) — the ‹ › arrows
        page through the rest.
-       v2.3.1016: 6 per row (owner: a row comfortably fits 6). */
-    var _PER = 6;
+       v2.3.1016: up to 10 per row, left-aligned (owner). */
+    var _PER = 10;
     var _allItems = _ccActive.items || [];
     var _pageCount = Math.max(1, Math.ceil(_allItems.length / _PER));
     var _pg = Math.min(ccPage, _pageCount - 1);
@@ -173,7 +176,7 @@ export function NameModal(props) {
        room to show items and colors together (owner).  Color-only categories
        (skin/pants/shoes) have no colors step; their swatches stay in the item
        grid. */
-    var _CPER = 6;
+    var _CPER = 10;
     var _allColors = _ccActive.colors || [];
     var _showColors = _allColors.length > 0 && objOpen[_activeKey] === false;
     var _cPageCount = Math.max(1, Math.ceil(_allColors.length / _CPER));

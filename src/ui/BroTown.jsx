@@ -1273,7 +1273,10 @@ export var BroTown = function BroTown(_ref0) {
       key: 's_' + opt.id, type: 'button', title: opt.name,
       onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, sz)
     }, opt.id === 'none'
-      ? /*#__PURE__*/React.createElement("div", { style: { width: sz - 14, height: sz - 14, borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
+      /* v2.3.1016: fill the tile like the item thumbnails do — the old
+         fixed sz-14 circle read noticeably smaller than its neighbours in
+         the picker grid (owner). */
+      ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
       : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
     sel ? _checkBadge() : null);
   };
