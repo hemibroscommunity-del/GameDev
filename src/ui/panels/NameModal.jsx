@@ -392,7 +392,9 @@ export function NameModal(props) {
          original colors. */
       className: "bt-cc-drawer"
     }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-items" },
-      /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— " + _ccActive.label.toUpperCase() + " —"),
+      /* v2.3.1014: the per-category items header ("— HAT —") is dropped — the
+         active tab already names the category, so it was redundant.  The
+         "— COLORS —" head on the colors column below is kept (still meaningful). */
       /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _pageItems),
       /* v2.3.1013: pager — ‹ arrow, one dot per page (active = current), › arrow.
          Only shown when the category has more than one page of items. */

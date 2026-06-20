@@ -489,9 +489,12 @@ input{font-family:inherit}
    fixed-size tiles from _apTileStyle (BroTown.jsx) fill their grid cell. */
 /* v2.3.1013: the items grid is now bounded to exactly one page (8 = 2×4) by
    the JS slice + pager below it, so it no longer scrolls — content-sized, two
-   rows, clipped.  This keeps Randomize/Play on screen (was overflowing). */
-.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-content:start;overflow:hidden}
-.bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:100%!important;height:auto!important;aspect-ratio:1/1!important}
+   rows, clipped.  This keeps Randomize/Play on screen (was overflowing).
+   v2.3.1014: columns size to the TILES (not 1fr stretch) and the grid centers,
+   so two rows of small tiles sit in the frame instead of ballooning to
+   container/4 and shoving the pager off (owner). */
+.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,auto);justify-content:center;gap:8px;align-content:start;overflow:hidden}
+.bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:clamp(34px,10.5vw,44px)!important;height:auto!important;aspect-ratio:1/1!important}
 /* v2.3.804/816: the owner's gold divider art (divider.webp) is the
    vertical separator on the colors column's left edge (rotated 90°). */
 .bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1.5px solid #4a4080;padding-left:9px}
