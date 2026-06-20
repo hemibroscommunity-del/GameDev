@@ -107,6 +107,10 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.id && S.others[payload.id]) {
                 S.others[payload.id]._swingTs = Date.now();
                 S.others[payload.id]._swingSpecial = !!payload.special;
+                /* v2.3.1011: weapon + angle let the remote render the full
+                   sword/greatsword stand-in facing the right way. */
+                S.others[payload.id]._swingWpn = payload.wpn || null;
+                if (typeof payload.ang === 'number') S.others[payload.id]._swingAng = payload.ang;
               }
               break;
             }
@@ -121,6 +125,12 @@ export function processGameEvent(type, payload, S, deps) {
                 life: payload.isStaff ? 90 : 120,
                 ts: Date.now(), ownerId: payload.id
               });
+              /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw
+                 stand-in (Phase 4 reads _bowShotAt/_bowShotAng). */
+              if (!payload.isStaff && payload.id && S.others[payload.id]) {
+                S.others[payload.id]._bowShotAt = Date.now();
+                S.others[payload.id]._bowShotAng = payload.ang;
+              }
               break;
             }
           case 'player_shield':
@@ -128,6 +138,17 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.id && S.others[payload.id]) {
                 S.others[payload.id]._shieldUp = payload.up;
                 S.others[payload.id]._shieldTs = Date.now();
+              }
+              break;
+            }
+          case 'player_dodge':
+            {
+              /* v2.3.1011: another player dodged/lunged/retreated -- mirror the
+                 local _dodgeRoll shape so the remote render shows the move. */
+              if (payload.id && S.others[payload.id]) {
+                S.others[payload.id]._dodgeRoll = {
+                  angle: payload.angle, kind: payload.kind || 'dodge', startTime: Date.now()
+                };
               }
               break;
             }

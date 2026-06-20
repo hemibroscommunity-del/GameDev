@@ -416,16 +416,15 @@ export function updateArrows(S, deps) {
                        ranged/staff kill is a no-op (activeSlot gate),
                        but we still clear the per-monster damage entry. */
                     applyMeleeLifesteal(S, _R9, m);
-                    /* A1 gate: 5 build points needed for combat level. */
-                    while ((_R9._buildPointsThisLvl || 0) >= 5) {
-                      _R9._buildPointsThisLvl -= 5;
-                      _R9.level++;
-                      _R9.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
-                      recalcDerived(_R9);
+                    /* v2.3.910: combat level is DERIVED (sum of build-skill
+                       levels, set in recalcDerived inside addBuildProg above);
+                       fire feedback once per newly-reached level + refill. */
+                    while (_R9.level > (_R9._lastShownLevel || 1)) {
+                      _R9._lastShownLevel = (_R9._lastShownLevel || 1) + 1;
                       _R9.hp = _R9.maxHp;
                       _R9.stamina = _R9.maxStamina;
                       _R9.mana = _R9.maxMana;
-                      setLevelUpMsg({ kind: 'combat', level: _R9.level, ts: Date.now() });
+                      setLevelUpMsg({ kind: 'combat', level: _R9._lastShownLevel, ts: Date.now() });
                       try { BT_AUDIO.levelUp(); } catch (e) {}
                     }
                     var isCrit = a.dmg > pDmg;

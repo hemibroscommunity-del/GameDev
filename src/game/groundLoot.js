@@ -297,15 +297,14 @@ export function updateGroundLootPickup(S, deps) {
                   size: 1.5 + Math.random()
                 });
               }
-              /* Check level up — §6.2 tri-phase.  T1 is use-trained
-                 via addBuildProg() at combat callsites; T2 still
-                 allocated via the Stats menu (5 points per level).
-                 A1 gate: requires 5 build points earned since last level. */
-              while ((S.rpg._buildPointsThisLvl || 0) >= 5) {
-                S.rpg._buildPointsThisLvl -= 5;
-                S.rpg.level++;
-                S.rpg.unspentT2 = 0; /* T2 retired — weapon points now come from per-category weapon-skill levels */
-                recalcDerived(S.rpg);
+              /* Check level up.
+                 v2.3.910: combat level is DERIVED (sum of the build-skill
+                 levels, set in recalcDerived inside addBuildProg above), so we
+                 no longer increment it here -- we fire the celebratory feedback
+                 once per newly-reached level (tracked by _lastShownLevel) and
+                 refill pools. */
+              while (S.rpg.level > (S.rpg._lastShownLevel || 1)) {
+                S.rpg._lastShownLevel = (S.rpg._lastShownLevel || 1) + 1;
                 S.rpg.hp = S.rpg.maxHp;
                 S.rpg.stamina = S.rpg.maxStamina;
                 S.rpg.mana = S.rpg.maxMana;

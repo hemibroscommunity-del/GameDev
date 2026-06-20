@@ -1065,8 +1065,18 @@ export class GameRoom {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
-    ps.buildPointsThisLvl = (ps.buildPointsThisLvl || 0) + 1;
-    this._tryLevelUpFromBuildPoints(ps);
+    // v2.3.910: a build-skill stat went up on the client.  Combat level is now
+    // derived from the stat sum, so recompute maxes (which re-derives level)
+    // and, on a level gain, top off the pools.  The exact stat values arrive
+    // via stats_update; this is a best-effort early recompute, and the
+    // authoritative new level reaches the client via the player_state flush.
+    const prevLevel = ps.level || 1;
+    this._recomputeMaxes(ps);
+    if ((ps.level || 1) > prevLevel) {
+      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
+      if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
+    }
     this._saveRpg(session.id, ps);
     this._queuePlayerStateFlush(session.id);
   }
@@ -1203,6 +1213,29 @@ export class GameRoom {
     // down 4.8x in lockstep with the client (coins are NOT rescaled).
     const T = { greatsword: 10, sword: 6.67, bow: 7.29, staff: 8.54 };
     return T[type] || 6.25;          // fists fallback (was 30)
+  }
+
+  // v2.3.912: weapon build-CHANNEL resolution (mirrors WEAPON_CHANNELS in
+  // src/data/gameSystems.js).  Only the damage + crit channels are live.  The
+  // client clamps each channel value to [0,99]; so do we on stats_update.
+  // greatsword shares the 'sword' (melee) category, per WEAPON_CATEGORY.
+  _wpnCat(type) {
+    const C = { greatsword: 'sword', sword: 'sword', bow: 'bow', staff: 'staff' };
+    return C[type] || 'sword';
+  }
+  // Flat base-damage bonus from the type's category damage channel
+  // (edge / drawPower / spellPower), perPt 1.0 — mirror gameSystems.js.
+  _wpnDmgChannel(ps, type) {
+    const K = { sword: 'edge', bow: 'drawPower', staff: 'spellPower' };
+    const cat = this._wpnCat(type);
+    const v = (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
+    return v * 1.0;
+  }
+  // Crit-channel point total (precision / marksmanship / overload).
+  _wpnCritPts(ps, type) {
+    const K = { sword: 'precision', bow: 'marksmanship', staff: 'overload' };
+    const cat = this._wpnCat(type);
+    return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
   }
 
   // Sell value mirrors the client at BroTown.jsx ~26613:
@@ -2390,7 +2423,10 @@ export class GameRoom {
   }
 
   _calcMaxHp(level, vitality) {
-    return 100 + ((level || 1) - 1) * 12 + (vitality || 0) * 10;
+    // v2.3.910: flat per-combat-level HP 12 -> 2.5 (mirrors the client
+    // HP_PER_COMBAT_LEVEL in gameSystems.js) because combat level now climbs
+    // ~5x faster -- it is the sum of the build-skill levels.
+    return Math.floor(100 + ((level || 1) - 1) * 2.5 + (vitality || 0) * 10);
   }
 
   // Armor HP contribution -- mirrors getArmorHp() in
@@ -2417,7 +2453,14 @@ export class GameRoom {
 
   _recomputeMaxes(ps) {
     if (!ps) return;
-    const lvl = ps.level || 1;
+    // v2.3.910: combat level is DERIVED -- the sum of the five use-trained
+    // build-skill levels (power/vitality/endurance/agility/mind = Melee/HP/
+    // Endurance/Bow/Magic), clamped to 500.  Mirrors recalcDerived on the
+    // client and replaces the old 5-build-point gate.
+    ps.level = Math.max(1, Math.min(500,
+      (ps.power || 0) + (ps.vitality || 0) + (ps.endurance || 0)
+      + (ps.agility || 0) + (ps.mind || 0)));
+    const lvl = ps.level;
     const oldMaxHp = ps.maxHp || 100;
     const oldMaxStam = ps.maxStamina || 100;
     const oldMaxMana = ps.maxMana || 100;
@@ -2466,6 +2509,29 @@ export class GameRoom {
         }
       }
     }
+    // v2.3.912: per-weapon-category build channels.  Client-trusted-but-clamped
+    // (same posture as the T1 stats above): copy the known channel keys per
+    // category, each clamped to [0,99] (mirror WEAPON_CHANNEL_CAP), so the
+    // damage + crit channels in _computeAttackDamage are server-authoritative.
+    if (payload.weaponSpecs && typeof payload.weaponSpecs === 'object') {
+      const WCH = {
+        sword: ['edge', 'precision', 'executioner', 'tempo', 'cleave'],
+        bow:   ['drawPower', 'marksmanship', 'headshot', 'piercing', 'longshot'],
+        staff: ['spellPower', 'overload', 'detonation', 'attunement', 'focus'],
+      };
+      if (!ps.weaponSpecs) ps.weaponSpecs = {};
+      for (const cat of Object.keys(WCH)) {
+        const src = payload.weaponSpecs[cat];
+        if (!src || typeof src !== 'object') continue;
+        if (!ps.weaponSpecs[cat]) ps.weaponSpecs[cat] = {};
+        for (const k of WCH[cat]) {
+          if (typeof src[k] === 'number') {
+            const c = Math.max(0, Math.min(99, Math.floor(src[k])));
+            if (ps.weaponSpecs[cat][k] !== c) { ps.weaponSpecs[cat][k] = c; statsChanged = true; }
+          }
+        }
+      }
+    }
     // Armor swap routes through stats_update (not equip_request) because
     // armor lives in a client-only armorStash and the popup mutates it
     // locally before pushing.  Worker accepts the new armor object (or
@@ -2495,7 +2561,15 @@ export class GameRoom {
       }
     }
     if (statsChanged) {
+      // v2.3.910: stats grew -> derived combat level may have risen; refill
+      // pools on a gain so a level-up restores HP/stamina/mana as before.
+      const prevLevel = ps.level || 1;
       this._recomputeMaxes(ps);
+      if ((ps.level || 1) > prevLevel) {
+        if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+        if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
+        if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
+      }
     }
     // Session-only equipment-derived values flow from client but are
     // capped to per-level bounds.  Without a cap, a cheater can push
@@ -3108,7 +3182,11 @@ export class GameRoom {
     // (0.8 ÷ 4.8 = 0.1667) so the cap tracks the new damage scale.
     const statBonus = isSpecial ? ((ps.mind || 0) * 0.1667) : ((ps.power || 0) * 0.1667);
     for (const w of candidates) {
-      const base = (this._weaponBase(w.type) + statBonus) * (w.tierMult || 1);
+      // v2.3.912: include the damage channel (normal swings only, matching
+      // _computeAttackDamage) so a channel-boosted hit isn't rejected by the
+      // anti-cheat ceiling.
+      const dmgChannel = isSpecial ? 0 : this._wpnDmgChannel(ps, w.type);
+      const base = (this._weaponBase(w.type) + statBonus + dmgChannel) * (w.tierMult || 1);
       if (base > max) max = base;
     }
     return max;
@@ -3161,7 +3239,11 @@ export class GameRoom {
                : type === 'bow'   ? (ps.agility || 0)
                : type === 'staff' ? (ps.mind || 0)
                :                    (ps.power || 0);
-    let base = (this._weaponBase(type) + stat * 0.1667) * tierMult; // 0.8 ÷ 4.8
+    // v2.3.912: + weapon damage channel (edge/drawPower/spellPower) so spent
+    // build points raise authoritative damage.  Specials stay channel-free
+    // (mirrors client calcSpecialDmg).
+    const dmgChannel = isSpecial ? 0 : this._wpnDmgChannel(ps, type);
+    let base = (this._weaponBase(type) + stat * 0.1667 + dmgChannel) * tierMult; // 0.8 ÷ 4.8
     // Per-type variance -- same rolls as the client.
     const v = type === 'staff' ? (0.5  + Math.random() * 1.0)
             : type === 'bow'   ? (0.6  + Math.random() * 0.2)
@@ -3171,9 +3253,12 @@ export class GameRoom {
     if (w && w.isVolatile) base *= 1.30;               // §4.7 volatile weapon
     if (this._buffActive(ps, 'damage')) base *= 1.20;  // cooked damage buff (client gameLoop.js:2346)
     // Crit (calcCritChance + calcCritMult).
+    // v2.3.912: crit chance = Power baseline + the weapon CRIT channel
+    // (precision/marksmanship/overload) at +0.5%/pt, capped +30% (linear,
+    // mirrors calcCritChance).  Ferocity is retired; crit mult stays Power-based.
     const P = ps.power || 0, F = ps.ferocity || 0;
     const critChance = Math.max(0, Math.min(1,
-      40 * P / (P + 200) / 100 + 30 * F / (F + 250) / 100));
+      40 * P / (P + 200) / 100 + Math.min(0.30, this._wpnCritPts(ps, type) * 0.005)));
     const isCrit = Math.random() < critChance;
     if (isCrit) base *= (1.5 + P * 0.001 + F * 0.0008);
     return { dmg: Math.max(1, Math.round(base)), isCrit };
@@ -3555,7 +3640,10 @@ export class GameRoom {
             // (their values are tiny), legit veteran SP players see
             // some progression capped (acceptable trade — the user
             // can raise these caps if they hear complaints).
-            const BOOTSTRAP_LEVEL_CAP = 15;
+            // v2.3.910: combat level is now the sum of the build-skill levels
+            // (up to 500), so the first-connect cap rises to match.  The level
+            // is re-derived from the stat sum on the next stats_update anyway.
+            const BOOTSTRAP_LEVEL_CAP = 500;
             const BOOTSTRAP_XP_CAP = 50000;
             const BOOTSTRAP_UT2_CAP = 75;
             const BOOTSTRAP_COINS_CAP = 2000;

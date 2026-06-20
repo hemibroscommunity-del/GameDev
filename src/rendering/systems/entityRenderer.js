@@ -1153,6 +1153,29 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal);
 }
 
+/* v2.3.1011: like placeSkillTraits, but for an ARBITRARY player's appearance
+   (passed in `looks`) instead of the local getHair()/getHeadwear() globals --
+   used to composite a REMOTE player's hair/beard/hat onto their attack stand-in
+   (MP parity).  looks = { hair, hairColor, facialhair, facialHairColor,
+   headwear, hatColor }. */
+export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scaleVal) {
+  if (!sprites || !looks) return;
+  let hairEntry = _ensureHairLoaded(looks.hair);
+  const hairCol = getColoredHairTextures(looks.hair, looks.hairColor);
+  if (hairCol && hairEntry) hairEntry = { tex: hairCol, meta: hairEntry.meta };
+  _placeStandaloneTrait(sprites.hair, hairEntry, dir, mirror, cwx, cwy, scaleVal);
+
+  let fhEntry = _ensureFacialHairLoaded(looks.facialhair);
+  const fhCol = getColoredFacialHairTextures(looks.facialhair, looks.facialHairColor);
+  if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta };
+  _placeStandaloneTrait(sprites.beard, fhEntry, dir, mirror, cwx, cwy, scaleVal);
+
+  let hwEntry2 = _ensureHeadwearLoaded(looks.headwear);
+  const hwCol2 = getColoredHatTextures(looks.headwear, looks.hatColor);
+  if (hwCol2 && hwEntry2) hwEntry2 = { tex: hwCol2, meta: hwEntry2.meta };
+  _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal);
+}
+
 /** Hide all three skill-trait sprites (no stand-in active this frame). */
 export function hideSkillTraits(sprites) {
   if (!sprites) return;
@@ -3286,6 +3309,27 @@ export class EntityRenderer {
       }
       /* v2.3.354: beard z-order for remote players (same rule as local). */
       _orderTraitsAndWeapon(display, facingIdx);
+
+      /* v2.3.1011: while this remote is mid sword/greatsword swing, the
+         effectsRenderer stand-in (_updateRemoteSwordSwings) replaces their
+         body + weapon, so hide the normal body / gear / traits / procedural
+         weapon-arc to avoid a double image. */
+      {
+        const _sw = other._swingWpn;
+        const _melee = !_sw || _sw === 'sword' || _sw === 'greatsword';
+        const _meleeSwing = _melee && other._swingTs && (now - other._swingTs) < SWORD_SWING_MS;
+        const _bowDraw = other._bowShotAt && (now - other._bowShotAt) < BOW_SHOT_MS;
+        if (_meleeSwing || _bowDraw) {
+          if (display._spriteBody) display._spriteBody.visible = false;
+          if (body) body.visible = false;
+          _hideBodyRegions(display);
+          for (const _k of ['_headwearSprite', '_facialHairSprite', '_hairSprite', '_shirtSprite',
+            '_gearShirt', '_gearLegs', '_gearChest', '_gearShoulders', '_gearHead']) {
+            if (display[_k]) display[_k].visible = false;
+          }
+          if (display._weaponContainer) display._weaponContainer.visible = false;
+        }
+      }
 
       const nextName = other.name || 'Anon';
       if (display._lastName !== nextName) {

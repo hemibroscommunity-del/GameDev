@@ -3498,7 +3498,11 @@ export function updateZoneDimensions(zoneId) {
 /* Tier 1: Capacity (permanent) */
 /* Tier 2: Technique (respecable) */
 export const STAT_POINTS_PER_LEVEL = 10; /* 5 Tier1 + 5 Tier2 */
-export const LEVEL_CAP = 100;
+/* v2.3.910: combat level is now the SUM of the build-skill levels (the five
+   use-trained stats), so it climbs ~5x faster than the old 5-build-point gate.
+   Cap raised 100 -> 500 (≈ five skills × ~100) so a fully-built character
+   isn't frozen. See docs/specs/build-skill-progression.md. */
+export const LEVEL_CAP = 500;
 
 /* ═══ GEAR STAT REQUIREMENTS — Tier 1 stat thresholds replace level gating ═══ */
 /* Each gear type requires a specific Tier 1 stat. Threshold = tierIndex × 10. */
@@ -3538,13 +3542,17 @@ export function meetsGearReq(rpg, gearType, tierIndex) {
   return (rpg[req.stat] || 0) >= req.value;
 }
 
-/* Get the stat name for display */
+/* Get the stat name for display.
+   v2.3.910: the five use-trained stats are relabeled as the player-facing
+   "build skills".  Internal keys are unchanged (power/vitality/agility/mind)
+   to avoid a repo-wide rename + keep the forge stat-gates working; only the
+   display labels move to Melee/Bow/Magic/HP. */
 export const STAT_LABELS = {
-  power: 'Power',
-  vitality: 'Vitality',
+  power: 'Melee',
+  vitality: 'HP',
   endurance: 'Endurance',
-  agility: 'Agility',
-  mind: 'Mind'
+  agility: 'Bow',
+  mind: 'Magic'
 };
 
 /* Check stat requirement for a specific item (works with crafted gearBase or dropped tierMult) */
@@ -3624,16 +3632,34 @@ export const WEAPON_CATEGORY = {
 };
 /* Stable category list for UI iteration. */
 export const WEAPON_CATEGORIES = ['sword', 'bow', 'staff'];
+/* v2.3.910: weapon categories are relabeled to match the build-skill names
+   (Melee/Bow/Magic).  Internal category keys stay sword/bow/staff. */
 export const WEAPON_CATEGORY_META = {
-  sword: { label: 'Sword', emoji: '🗡️', blurb: 'Melee blades — fast sword + heavy greatsword.' },
+  sword: { label: 'Melee', emoji: '⚔️', blurb: 'Melee blades — fast sword + heavy greatsword.' },
   bow:   { label: 'Bow',   emoji: '🏹', blurb: 'Ranged physical — precision at distance.' },
-  staff: { label: 'Staff', emoji: '🪄', blurb: 'Magic — AoE detonation, high variance.' },
+  staff: { label: 'Magic', emoji: '✨', blurb: 'Magic — AoE detonation, high variance.' },
 };
 
-/* Points granted per weapon-skill level, and the per-channel cap (mirrors
-   the retired generic-T2 cap of 99). */
-export const WEAPON_PTS_PER_LEVEL = 5;
+/* Points granted per weapon-skill level, and the per-channel cap.
+   v2.3.910: 5 -> 1.  Each build-skill level now grants exactly ONE Tier-2
+   point (and +1 combat level), so the per-category choice is meaningful. */
+export const WEAPON_PTS_PER_LEVEL = 1;
 export const WEAPON_CHANNEL_CAP = 99;
+/* v2.3.911: maps a dashboard build-skill stat key to its weapon-category
+   point pool, so the dashboard can flash a skill that has unspent Tier-2
+   points and open the Builds menu to the right tab. */
+export const STAT_TO_WEAPON_CAT = { power: 'sword', agility: 'bow', mind: 'staff' };
+
+/* Unspent Tier-2 points available for a dashboard build-skill cell.
+   power/agility/mind -> weaponUnspent[cat]; defense -> defenseUnspent;
+   vitality/endurance have no categories yet (Phase 2) -> 0. */
+export function buildSkillUnspent(rpg, statKey) {
+  if (!rpg) return 0;
+  if (statKey === 'defense') return rpg.defenseUnspent || 0;
+  var cat = STAT_TO_WEAPON_CAT[statKey];
+  if (!cat) return 0;
+  return (rpg.weaponUnspent && rpg.weaponUnspent[cat]) || 0;
+}
 /* Weapon skill levels are damage-driven: each point of damage dealt by a
    weapon of the category adds this much XP to that category's skill.  1.0
    keeps "xp == damage dealt"; tune here without touching combat code. */
@@ -3655,12 +3681,12 @@ export function weaponXpRequired(level) {
    `derive(v)` returns a short readout for the allocation panel. */
 export const WEAPON_CHANNELS = {
   sword: [
-    { key: 'edge',        label: 'Sharpened Edge', role: 'damage',  active: true,  perPt: 0.12,
+    { key: 'edge',        label: 'Sharpened Edge', role: 'damage',  active: true,  perPt: 1.0,
       blurb: '+base damage on every swing.',
-      derive: (v) => '+' + (v * 0.12).toFixed(1) + ' base dmg' },
+      derive: (v) => '+' + v + ' base dmg' },
     { key: 'precision',   label: 'Precision',      role: 'crit',    active: true,
       blurb: 'Crit chance on top of Power.',
-      derive: (v) => '+' + (30 * v / (v + 250)).toFixed(1) + '% crit' },
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
     { key: 'executioner', label: 'Executioner',    role: 'critDmg', active: false,
       blurb: '+crit damage multiplier.', derive: () => 'Soon' },
     { key: 'tempo',       label: 'Tempo',          role: 'atkspd',  active: false,
@@ -3669,12 +3695,12 @@ export const WEAPON_CHANNELS = {
       blurb: 'Wider arc — hit adjacent foes.', derive: () => 'Soon' },
   ],
   bow: [
-    { key: 'drawPower',    label: 'Draw Power',    role: 'damage',  active: true,  perPt: 0.12,
+    { key: 'drawPower',    label: 'Draw Power',    role: 'damage',  active: true,  perPt: 1.0,
       blurb: '+base damage per shot.',
-      derive: (v) => '+' + (v * 0.12).toFixed(1) + ' base dmg' },
+      derive: (v) => '+' + v + ' base dmg' },
     { key: 'marksmanship', label: 'Marksmanship',  role: 'crit',    active: true,
       blurb: 'Crit chance on top of Agility.',
-      derive: (v) => '+' + (30 * v / (v + 250)).toFixed(1) + '% crit' },
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
     { key: 'headshot',     label: 'Headshot',      role: 'critDmg', active: false,
       blurb: '+crit damage multiplier.', derive: () => 'Soon' },
     { key: 'piercing',     label: 'Piercing',      role: 'pierce',  active: false,
@@ -3683,12 +3709,12 @@ export const WEAPON_CHANNELS = {
       blurb: '+range and arrow speed.', derive: () => 'Soon' },
   ],
   staff: [
-    { key: 'spellPower',  label: 'Spell Power',    role: 'damage',  active: true,  perPt: 0.12,
+    { key: 'spellPower',  label: 'Spell Power',    role: 'damage',  active: true,  perPt: 1.0,
       blurb: '+base damage per cast.',
-      derive: (v) => '+' + (v * 0.12).toFixed(1) + ' base dmg' },
+      derive: (v) => '+' + v + ' base dmg' },
     { key: 'overload',    label: 'Overload',       role: 'crit',    active: true,
       blurb: 'Crit chance for magic.',
-      derive: (v) => '+' + (30 * v / (v + 250)).toFixed(1) + '% crit' },
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
     { key: 'detonation',  label: 'Detonation',     role: 'aoe',     active: false,
       blurb: '+AoE targets / cone.', derive: () => 'Soon' },
     { key: 'attunement',  label: 'Attunement',     role: 'status',  active: false,
@@ -3730,6 +3756,14 @@ export function weaponDamageBonusFor(rpg, weaponType) {
     }
   }
   return 0;
+}
+
+/* Crit-channel point total for a specific weapon type's CATEGORY (parallel to
+   weaponDamageBonusFor, so per-slot loadout readouts + the server resolve the
+   same crit channel by weapon type rather than only the active weapon). */
+export function weaponCritStatFor(rpg, weaponType) {
+  var cat = WEAPON_CATEGORY[weaponType] || 'sword';
+  return weaponChannelValueByRole(rpg, cat, 'crit');
 }
 
 /* Flat base-damage bonus from the equipped category's damage channel. */
@@ -4728,8 +4762,14 @@ export function createMonster(id, archetype, level, x, y, element) {
 }
 
 /* §3 Resource Formulas */
+/* v2.3.910: combat level now climbs ~5x faster (it's the sum of the build-skill
+   levels), so the flat per-combat-level HP drops 12 -> 2.5 to keep total HP in
+   today's ballpark (12 ÷ 5 = 2.4).  Vitality (the "HP" build skill) still adds
+   10/pt, and since each Vitality point also adds +1 combat level the per-HP-skill
+   total stays ~+12.5, matching the old +10 direct + ⅕-of-a-level. */
+export const HP_PER_COMBAT_LEVEL = 2.5;
 export function calcMaxHp(level, vitality) {
-  return 100 + (level - 1) * 12 + vitality * 10;
+  return Math.floor(100 + (level - 1) * HP_PER_COMBAT_LEVEL + vitality * 10);
 }
 export function calcMaxStam(endurance) {
   return 100 + endurance * 3.0;
@@ -4791,8 +4831,10 @@ export function calcCritChance(power, ferocity) {
   var fer = ferocity || 0;
   /* Power baseline: 40 * P / (P + 200).  0->0%, P100->13.3%, P500->28.6%. */
   var pCrit = 40 * pow / (pow + 200) / 100;
-  /* Ferocity additive amp: 30 * F / (F + 250).  0->0%, F100->8.6%, F500->20%. */
-  var fCrit = 30 * fer / (fer + 250) / 100;
+  /* v2.3.912: the 2nd arg is now the weapon CRIT channel (Precision/etc.) and
+     scales linearly at +0.5% per point, hard-capped at +30%, so each point is
+     clearly felt (was the soft 30*F/(F+250) curve).  Ferocity is retired. */
+  var fCrit = Math.min(0.30, fer * 0.005);
   return Math.max(0, Math.min(1, pCrit + fCrit));
 }
 export function calcCritMult(power, ferocity) {
@@ -4864,6 +4906,10 @@ export const SPECIAL_ATK_MULT = 2.0;
 export function createDefaultRpg() {
   return {
     level: 1,
+    /* v2.3.910: highest combat level a level-up banner has fired for.  Combat
+       level is derived (sum of build-skill levels); the on-kill VFX loops
+       advance this and celebrate each newly-reached level. */
+    _lastShownLevel: 1,
     xp: 0,
     coins: 50,
     /* Tier 1 — use-trained stats (GDD §1.1).  Start at 0; lifetime
@@ -4972,6 +5018,14 @@ export function createDefaultRpg() {
 
 /* Recalculate derived stats from allocations */
 export function recalcDerived(rpg) {
+  /* v2.3.910: combat level is DERIVED — it is the sum of the five use-trained
+     build-skill levels (Melee/Bow/Magic/HP/Endurance = power/agility/mind/
+     vitality/endurance), clamped to LEVEL_CAP.  This replaces the old
+     5-build-point gate; each build-skill level-up is exactly +1 combat level.
+     (Defense's contribution folds in once the server tracks defenseSkill.) */
+  rpg.level = Math.max(1, Math.min(LEVEL_CAP,
+    (rpg.power || 0) + (rpg.vitality || 0) + (rpg.endurance || 0)
+    + (rpg.agility || 0) + (rpg.mind || 0)));
   rpg.maxHp = calcMaxHp(rpg.level, rpg.vitality);
   /* v2.3.227: armor contributes flat HP scaled by Vitality (1% per pt). */
   rpg.maxHp += getArmorHp(rpg.armor, rpg.vitality);
