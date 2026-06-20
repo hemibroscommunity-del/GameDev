@@ -125,16 +125,14 @@ export function NameModal(props) {
     var _ccPg = React.useState(0), ccPage = _ccPg[0], setCcPage = _ccPg[1];
     var _ccCPg = React.useState(0), ccCPage = _ccCPg[0], setCcCPage = _ccCPg[1];
     React.useEffect(function () { setCcPage(0); setCcCPage(0); }, [activeCat]);
-    /* v2.3.1015: shared pager builder (one row, dots + arrows) for the item
-       and color steps. */
+    /* v2.3.1015: shared pager builder (one row, ‹ › arrows) for the item and
+       color steps.
+       v2.3.1016: page count shown as shorthand "1/3" (owner) instead of dots. */
     var _mkPager = function (count, cur, setFn) {
       if (count <= 1) return null;
       return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager" },
         /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: cur <= 0, "aria-label": 'Previous', onClick: function () { setFn(Math.max(0, cur - 1)); } }, "‹"),
-        /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager-dots" },
-          Array.apply(null, { length: count }).map(function (_, i) {
-            return /*#__PURE__*/React.createElement("span", { key: i, className: 'bt-cc-pager-dot' + (i === cur ? ' bt-cc-pager-dot--on' : ''), onClick: function () { setFn(i); } });
-          })),
+        /*#__PURE__*/React.createElement("span", { className: "bt-cc-pager-count" }, (cur + 1) + "/" + count),
         /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: cur >= count - 1, "aria-label": 'More', onClick: function () { setFn(Math.min(count - 1, cur + 1)); } }, "›"));
     };
     var _catDefs = {
@@ -162,9 +160,10 @@ export function NameModal(props) {
     var _activeKey = _catDefs[activeCat] ? activeCat : 'hat';
     var _built = _catDefs[_activeKey].build();
     var _ccActive = { key: _activeKey, label: _catDefs[_activeKey].label, items: _built.items, colors: _built.colors };
-    /* v2.3.1015: one row of item previews at a time (owner) — 4 per page, the
-       dots + ‹ › arrows page through the rest. */
-    var _PER = 4;
+    /* v2.3.1015: one row of item previews at a time (owner) — the ‹ › arrows
+       page through the rest.
+       v2.3.1016: 6 per row (owner: a row comfortably fits 6). */
+    var _PER = 6;
     var _allItems = _ccActive.items || [];
     var _pageCount = Math.max(1, Math.ceil(_allItems.length / _PER));
     var _pg = Math.min(ccPage, _pageCount - 1);
