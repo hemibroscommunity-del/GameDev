@@ -16,7 +16,7 @@ import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
 import { getEquip } from '../gearCatalog.js';
 import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
-const GEARLAYER_VER = '1008';   // cache-bust (bow armor: soften heavy black edge outline)
+const GEARLAYER_VER = '1015';   // cache-bust (south swing chest: shift down 13px to sit on the body)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
