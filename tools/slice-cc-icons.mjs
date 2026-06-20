@@ -94,15 +94,31 @@ function segmentCells(img, expected) {
     return { x0, x1, y0, y1 };
   });
 }
-function cropSquareCream(img, box, pad = 8, cream = [0xff, 0xff, 0xff]) {
+function cropSquareFill(img, box, pad = 10) {
+  /* Solid WHITE-FILL glyph (silhouette) with interior detail kept dark, from the
+     owner's outline line-art: flood-fill the exterior, paint everything else
+     white, then re-darken interior detail lines (ink not touching the exterior
+     -> seams/eyes/bands) so the fill reads like the mockup. */
+  const WHITE = [0xff, 0xff, 0xff], DARK = [0x24, 0x1b, 0x3a], INK_T = 90;
   const bw = box.x1 - box.x0 + 1, bh = box.y1 - box.y0 + 1;
   const side = Math.max(bw, bh) + pad * 2;
-  const out = Buffer.alloc(side * side * 4);
   const ox = Math.floor((side - bw) / 2), oy = Math.floor((side - bh) / 2);
-  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
-    const ink = inkiness(img.data, ((box.y0 + y) * img.width + (box.x0 + x)) * 4);
-    const di = ((oy + y) * side + (ox + x)) * 4;
-    out[di] = cream[0]; out[di + 1] = cream[1]; out[di + 2] = cream[2]; out[di + 3] = ink;
+  const ink = new Uint8Array(side * side);
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++)
+    ink[(oy + y) * side + (ox + x)] = inkiness(img.data, ((box.y0 + y) * img.width + (box.x0 + x)) * 4);
+  // flood-fill the exterior (background, low ink) from the 4 corners
+  const ext = new Uint8Array(side * side); const stack = [];
+  const push = (x, y) => { if (x >= 0 && y >= 0 && x < side && y < side) { const i = y * side + x; if (!ext[i] && ink[i] < INK_T) { ext[i] = 1; stack.push(i); } } };
+  push(0, 0); push(side - 1, 0); push(0, side - 1); push(side - 1, side - 1);
+  while (stack.length) { const i = stack.pop(), x = i % side, y = (i / side) | 0; push(x - 1, y); push(x + 1, y); push(x, y - 1); push(x, y + 1); }
+  const isExt = (x, y) => (x >= 0 && y >= 0 && x < side && y < side) ? ext[y * side + x] : 1;
+  const out = Buffer.alloc(side * side * 4);
+  for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) {
+    const i = y * side + x, di = i * 4;
+    if (ext[i]) { out[di + 3] = 0; continue; }                 // exterior -> transparent
+    const interiorDetail = ink[i] >= INK_T && !(isExt(x - 1, y) || isExt(x + 1, y) || isExt(x, y - 1) || isExt(x, y + 1));
+    const c = interiorDetail ? DARK : WHITE;                   // detail dark, silhouette white
+    out[di] = c[0]; out[di + 1] = c[1]; out[di + 2] = c[2]; out[di + 3] = 255;
   }
   return { side, out };
 }
@@ -117,6 +133,27 @@ console.log('img2 cells:', cells2.map((c) => `${c.x1 - c.x0 + 1}x${c.y1 - c.y0 +
 
 const map1 = ['hat', 'hair', 'beard', 'skin', 'pants', 'shoes'];
 mkdirSync('public/ui/welcome/cat', { recursive: true });
-map1.forEach((key, i) => { const { side, out } = cropSquareCream(img1, cells1[i]); writeFileSync(`public/ui/welcome/cat/${key}.png`, encodePNG(side, side, out)); console.log('wrote', key, side + 'px'); });
-{ const { side, out } = cropSquareCream(img2, cells2[4]); writeFileSync('public/ui/welcome/cat/shirt.png', encodePNG(side, side, out)); console.log('wrote', 'shirt', side + 'px'); }
+const icons = [];
+map1.forEach((key, i) => { const r = cropSquareFill(img1, cells1[i]); writeFileSync(`public/ui/welcome/cat/${key}.png`, encodePNG(r.side, r.side, r.out)); icons.push({ key, ...r }); console.log('wrote', key, r.side + 'px'); });
+{ const r = cropSquareFill(img2, cells2[4]); writeFileSync('public/ui/welcome/cat/shirt.png', encodePNG(r.side, r.side, r.out)); icons.splice(4, 0, { key: 'shirt', ...r }); console.log('wrote', 'shirt', r.side + 'px'); }
+
+/* Debug: composite all 7 onto a dark band (matches the tab tone) so the white
+   fills are actually visible to review (white is invisible on a white viewer). */
+{
+  const cell = 64, gap = 6, n = icons.length, W = n * cell + (n + 1) * gap, H = cell + 2 * gap;
+  const bg = [0x2a, 0x24, 0x4a], canvas = Buffer.alloc(W * H * 4);
+  for (let i = 0; i < W * H; i++) { canvas[i * 4] = bg[0]; canvas[i * 4 + 1] = bg[1]; canvas[i * 4 + 2] = bg[2]; canvas[i * 4 + 3] = 255; }
+  icons.forEach((ic, k) => {
+    const cx = gap + k * (cell + gap), cy = gap;
+    for (let y = 0; y < cell; y++) for (let x = 0; x < cell; x++) {
+      const sx = Math.floor(x / cell * ic.side), sy = Math.floor(y / cell * ic.side);
+      const si = (sy * ic.side + sx) * 4, a = ic.out[si + 3]; if (a < 10) continue;
+      const di = ((cy + y) * W + (cx + x)) * 4, af = a / 255;
+      canvas[di] = Math.round(ic.out[si] * af + canvas[di] * (1 - af));
+      canvas[di + 1] = Math.round(ic.out[si + 1] * af + canvas[di + 1] * (1 - af));
+      canvas[di + 2] = Math.round(ic.out[si + 2] * af + canvas[di + 2] * (1 - af));
+    }
+  });
+  writeFileSync('/tmp/cc-icons-preview.png', encodePNG(W, H, canvas));
+}
 console.log('done');

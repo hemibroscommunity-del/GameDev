@@ -115,6 +115,9 @@ export function NameModal(props) {
     /* Body-color categories (skin/pants/shoes): the swatches ARE the object
        grid (their catalog 'default' entries carry the sprite's native
        colors), so they have no separate Colors column. */
+    /* v2.3.1013: item-grid pagination (8 per page, mockup's dots + arrows). */
+    var _ccPg = React.useState(0), ccPage = _ccPg[0], setCcPage = _ccPg[1];
+    React.useEffect(function () { setCcPage(0); }, [activeCat]);
     var _catDefs = {
       hat: { label: 'Hat', build: function () { return {
         items: _objTiles('hat', HEADWEAR_CATALOG, 'thumb', 'headwear', headwearSel, function (id) { setHeadwear(id); setHeadwearSel(id); }),
@@ -140,6 +143,14 @@ export function NameModal(props) {
     var _activeKey = _catDefs[activeCat] ? activeCat : 'hat';
     var _built = _catDefs[_activeKey].build();
     var _ccActive = { key: _activeKey, label: _catDefs[_activeKey].label, items: _built.items, colors: _built.colors };
+    /* v2.3.1013: bound the item grid to one page of 8 (2 rows × 4), with the
+       mockup's dot indicators + ‹ › arrows instead of a scroll — keeps the
+       Randomize/Play buttons on screen on small phones. */
+    var _PER = 8;
+    var _allItems = _ccActive.items || [];
+    var _pageCount = Math.max(1, Math.ceil(_allItems.length / _PER));
+    var _pg = Math.min(ccPage, _pageCount - 1);
+    var _pageItems = _allItems.slice(_pg * _PER, _pg * _PER + _PER);
     return /*#__PURE__*/React.createElement("div", {
       className: "bt-name-modal"
     }, /*#__PURE__*/React.createElement("video", {
@@ -356,7 +367,10 @@ export function NameModal(props) {
          wrapper is also the card's ONE flexing child: the drawer absorbs
          the leftover viewport height. */
       className: "bt-cc-menu"
-    }, /*#__PURE__*/React.createElement("nav", {
+    }, /*#__PURE__*/React.createElement("span", {
+      /* v2.3.1013: gold section header above the tabs (mockup). */
+      className: "bt-cc-cust-head"
+    }, "CUSTOMIZE"), /*#__PURE__*/React.createElement("nav", {
       className: "bt-cc-tabs"
     }, _ccCats.map(function (c) {
       var on = c.key === activeCat;
@@ -379,7 +393,27 @@ export function NameModal(props) {
       className: "bt-cc-drawer"
     }, /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-items" },
       /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— " + _ccActive.label.toUpperCase() + " —"),
-      /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _ccActive.items)),
+      /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _pageItems),
+      /* v2.3.1013: pager — ‹ arrow, one dot per page (active = current), › arrow.
+         Only shown when the category has more than one page of items. */
+      _pageCount > 1 ? /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager" },
+        /*#__PURE__*/React.createElement("button", {
+          type: 'button', className: "bt-cc-pager-arrow", disabled: _pg <= 0,
+          "aria-label": 'Previous items',
+          onClick: function () { setCcPage(Math.max(0, _pg - 1)); }
+        }, "‹"),
+        /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager-dots" },
+          Array.apply(null, { length: _pageCount }).map(function (_, i) {
+            return /*#__PURE__*/React.createElement("span", {
+              key: i, className: 'bt-cc-pager-dot' + (i === _pg ? ' bt-cc-pager-dot--on' : ''),
+              onClick: function () { setCcPage(i); }
+            });
+          })),
+        /*#__PURE__*/React.createElement("button", {
+          type: 'button', className: "bt-cc-pager-arrow", disabled: _pg >= _pageCount - 1,
+          "aria-label": 'More items',
+          onClick: function () { setCcPage(Math.min(_pageCount - 1, _pg + 1)); }
+        }, "›")) : null),
     _ccActive.colors ? /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-colors" },
       /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— COLORS —"),
       /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _ccActive.colors)) : null)), /*#__PURE__*/React.createElement("button", {
