@@ -402,7 +402,7 @@ export function NameModal(props) {
     }, /*#__PURE__*/React.createElement("span", {
       /* v2.3.1013: gold section header above the tabs (mockup). */
       className: "bt-cc-cust-head"
-    }, "CUSTOMIZE"), /*#__PURE__*/React.createElement("nav", {
+    }, "Customize Your Bro"), /*#__PURE__*/React.createElement("nav", {
       className: "bt-cc-tabs"
     }, _ccCats.map(function (c) {
       var on = c.key === activeCat;

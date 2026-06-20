@@ -515,7 +515,7 @@ input{font-family:inherit}
 .bt-cc-drawer-colors>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
 .bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:#9090a8;letter-spacing:.08em;font-family:'Baloo 2','Source Sans 3',sans-serif}
 /* v2.3.1013: CUSTOMIZE section header above the tabs (gold, matches mockup). */
-.bt-cc-cust-head{flex:0 0 auto;text-align:center;padding:5px 0 3px;font-size:12px;font-weight:800;letter-spacing:.16em;color:var(--gold);text-shadow:0 1px 2px rgba(0,0,0,.6);font-family:'Baloo 2','Source Sans 3',sans-serif}
+.bt-cc-cust-head{flex:0 0 auto;text-align:center;padding:5px 0 3px;font-size:12px;font-weight:800;letter-spacing:.10em;color:var(--gold);text-shadow:0 1px 2px rgba(0,0,0,.6);font-family:'Baloo 2','Source Sans 3',sans-serif}
 /* v2.3.1013: item-grid pager — ‹ › arrows flanking one dot per page, the
    active dot gold.  Sits under the grid, replacing the old vertical scroll. */
 /* v2.3.1016: fixed min-height so the (empty) single-page pager still reserves
