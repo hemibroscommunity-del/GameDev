@@ -419,6 +419,78 @@ export const ItemDetailPopup = () => {
     );
   }
 
+  /* v2.3.1016: LEGS picker — mirrors the chest-layers popup but single-layer,
+     so legs can be equipped/unequipped straight from the loadout cell, even
+     when empty.  Equip pulls the unequipped greaves back from the bag if it's
+     there, else equips the catalog default so the button always works. */
+  if (target && target.kind === 'legsArmor') {
+    const legsId = getEquip('legs');
+    const S2 = getState();
+    const R2 = S2 && S2.rpg;
+    const stashedLegs = R2 && R2.gearStash && R2.gearStash.find((g) => g && g.slot === 'legs');
+    const on = legsId !== 'none';
+    const toggleLegs = () => {
+      if (!R2) return;
+      if (on) {
+        if (!R2.gearStash) R2.gearStash = [];
+        R2.gearStash.push({ slot: 'legs', gearId: legsId, name: gearName('legs', legsId) });
+        setEquip('legs', 'none');
+      } else if (stashedLegs) {
+        const idx = R2.gearStash.indexOf(stashedLegs);
+        if (idx >= 0) R2.gearStash.splice(idx, 1);
+        setEquip('legs', stashedLegs.gearId);
+      } else {
+        setEquip('legs', 'steelgreaves');
+      }
+      persist(R2);
+      force((v) => v + 1);
+    };
+    return (
+      <div onPointerDown={() => itemDetailBus.close()}
+        style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
+        <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            left: pos ? pos.left : -9999,
+            top: pos ? pos.top : -9999,
+            width: 200,
+            background: 'rgba(20,22,32,0.98)',
+            border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: 10,
+            padding: 8,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
+          }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,.55)', letterSpacing: 0.5, marginBottom: 5 }}>
+            LEGS
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 6px', borderRadius: 8,
+            background: on ? 'rgba(61,212,151,.07)' : 'rgba(255,255,255,.03)',
+            border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(255,255,255,.08)'}`,
+          }}>
+            <img src="/sprites/gear/icons/steelgreaves.png?v=2.3.685" alt="Steel Greaves" draggable={false}
+              style={{ width: 24, height: 24, imageRendering: 'pixelated',
+                filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: on ? '#3dd497' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? gearName('legs', legsId) : 'Steel Greaves'}</div>
+              <div style={{ fontSize: 7.5, color: 'rgba(255,255,255,.35)' }}>Armour · legs</div>
+            </div>
+            <button type="button"
+              onPointerUp={(e) => { e.stopPropagation(); toggleLegs(); }}
+              style={{
+                padding: '4px 8px', fontSize: 8.5, fontWeight: 700, borderRadius: 6,
+                border: '1px solid rgba(255,255,255,.2)',
+                background: on ? 'rgba(255,94,108,.25)' : 'rgba(61,212,151,.25)',
+                color: '#fff', cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+              }}>{on ? 'Unequip' : 'Equip'}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const resolved = resolveTarget(target);
   if (!resolved) return null;
   const { lockKey, thumb, glyph, name, info, desc, actions } = resolved;

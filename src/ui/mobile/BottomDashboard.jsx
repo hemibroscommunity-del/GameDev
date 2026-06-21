@@ -1131,17 +1131,18 @@ export const BottomDashboard = () => {
                     (id === 'steelplate' || id === 'steelgreaves')
                       ? `/sprites/gear/icons/${id}.png?v=2.3.685`
                       : id === 'tshirt' ? '/sprites/gear/icons/tshirt.png?v=2.3.756' : null;
-                  const onTapGear = (slot) => (anchor) => {
-                    const gearId = getEquip(slot);
-                    if (!gearId || gearId === 'none') return;
-                    itemDetailBus.open({ kind: 'gear', slot, gearId, anchor });
-                  };
                   /* v2.3.756: the CHEST cell holds two layers (armour over
                      shirt).  Its icon shows the TOP visible layer; tapping
                      always opens the two-layer picker, even when empty, so
                      either layer can be re-equipped from here. */
                   const onTapChestLayers = (anchor) => {
                     itemDetailBus.open({ kind: 'chestLayers', anchor });
+                  };
+                  /* v2.3.1016: LEGS cell opens its own picker the same way --
+                     always tappable, so greaves can be (re-)equipped from the
+                     loadout even when the slot is empty. */
+                  const onTapLegsArmor = (anchor) => {
+                    itemDetailBus.open({ kind: 'legsArmor', anchor });
                   };
                   return (
                     <div style={{
@@ -1212,7 +1213,7 @@ export const BottomDashboard = () => {
                           equipped: gearLegsId !== 'none',
                           equippedGlyph: '\u{1F456}',
                           active: gearLegsId !== 'none',
-                          onTap: gearLegsId !== 'none' ? onTapGear('legs') : undefined,
+                          onTap: onTapLegsArmor,
                         })}
                         {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
                         {/* Cape: new back-layer slot (v2.3.692).  Render + equip
