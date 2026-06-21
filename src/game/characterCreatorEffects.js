@@ -42,6 +42,11 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
    cleanup; early-returns (no cleanup) when the modal isn't showing. */
 export function wireSplashPrewarm(showNameModal, introWarmRef) {
   if (!showNameModal) return;
+  /* v2.3.1022: warm the starting-zone (town) map IMMEDIATELY -- it's a single
+     small PNG and is the direct fix for the black-world-on-join flash, so it
+     gets a head start (well before the ≥3s intro dismiss) without competing
+     meaningfully with the welcome theme art. */
+  try { import('@/rendering/tiledMaps.js').then((m) => m.preloadStartZoneMap('town')).catch(function () {}); } catch (e) {}
   /* v2.3.717: prewarm DELAYED 2.5s -- kicking it immediately had the
      game sheets racing the welcome screen's own theme art for
      bandwidth, which is exactly the "modal loads slow" complaint.

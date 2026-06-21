@@ -27,7 +27,8 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame } from '../gearSheets.js';
+import { getGearFrame, getLoadedGearSources } from '../gearSheets.js';
+import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange } from '../gearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -830,6 +831,34 @@ export async function uploadBakedTextures(renderer) {
       _uploadedSources.add(t.source);
     } catch (e) { /* best-effort */ }
     if (++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
+/* v2.3.1022: force-upload the GEAR sheet textures too — idle/jog via the
+   gearSheets cache, swing/bowshot via the Assets cache that
+   effectsRenderer._gearStripFrame reads (warmed by preloadCombatGear).  Their
+   GPU upload was still deferred to first DRAW, so the first armored turn/swing
+   hitched.  Shares _uploadedSources so repeat calls push only new sources, and
+   stays staggered (every 24) to avoid a synchronous upload spike on iOS. */
+export async function uploadGearTextures(renderer) {
+  if (!renderer) return;
+  const up = (source) => {
+    if (!source || _uploadedSources.has(source)) return false;
+    try {
+      if (renderer.texture && typeof renderer.texture.initSource === 'function') renderer.texture.initSource(source);
+      else if (renderer.prepare && typeof renderer.prepare.upload === 'function') renderer.prepare.upload(source);
+      else return false;
+      _uploadedSources.add(source);
+    } catch (e) { /* best-effort */ }
+    return true;
+  };
+  let n = 0;
+  for (const source of getLoadedGearSources()) {
+    if (up(source) && ++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+  for (const url of combatGearUrls()) {
+    const tex = Assets.cache.get(url);
+    if (tex && tex.source && up(tex.source) && ++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
   }
 }
 
