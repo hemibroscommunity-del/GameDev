@@ -298,7 +298,7 @@ input{font-family:inherit}
    neither can collapse again.  The stage's children are all absolutely
    positioned / 100%-sized, so flex height works cleanly and the canvas
    contain+scale adapts to whatever shape falls out. */
-.bt-name-box.bt-cc-box>.bt-cc-stage{flex:3 1 140px;min-height:140px;max-height:300px}
+.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:170px;max-height:420px}
 /* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right).
@@ -315,7 +315,10 @@ input{font-family:inherit}
    the band and the black (owner's gap report).  Default border-box clip
    runs the black under the entire band instead; the gem corners are
    opaque, so nothing peeks. */
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 167px;min-height:167px;display:flex;flex-direction:row;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch;background:#05050c}
+/* v2.3.1013: menu is now content-sized (its grid is bounded to one 2-row page
+   by the pager), so the leftover viewport height goes to the bigger character
+   preview above it instead of an overflowing drawer. */
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;display:flex;flex-direction:column;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch;background:#05050c}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
@@ -324,10 +327,9 @@ input{font-family:inherit}
    flex minimums into clipping. */
 @media (max-height:690px){
   .bt-name-box.bt-cc-box{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
-  .bt-cc-menu{flex:0 0 auto!important}
-  .bt-cc-stage{flex:0 0 auto!important;height:220px}
-  /* column-wrap needs a definite height once the menu stops flexing */
-  .bt-cc-drawer-items>.bt-cc-drawer-grid{height:104px}
+  /* v2.3.1013: menu is already content-sized; just cap the preview so a short
+     webview can page-scroll the whole card rather than crush the stage. */
+  .bt-cc-stage{flex:0 0 auto!important;height:210px}
 }
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
@@ -411,10 +413,10 @@ input{font-family:inherit}
    the 185x480 sword; left/top solve those into wrap-relative % so the
    alignment holds at every logo size — no media override needed. */
 .bt-cc-logo-wrap{flex:none;align-self:center;position:relative}
-.bt-cc-logo{position:relative;z-index:1;width:min(56vw,270px);height:auto;display:block;pointer-events:none}
+.bt-cc-logo{position:relative;z-index:1;width:min(42vw,190px);height:auto;display:block;pointer-events:none}
 .bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){
-  .bt-cc-logo{width:min(44vw,200px)}
+  .bt-cc-logo{width:min(34vw,150px)}
 }
 /* v2.3.827: CSS specular shine — a narrow bright band (the standard
    shimmer gradient) swept across each asset and CLIPPED to the artwork's
@@ -463,27 +465,70 @@ input{font-family:inherit}
 /* v2.3.804: rail/drawer chrome (outer border, radius, opaque panel
    backgrounds) retired — the menu's frame art supplies all of it; only
    the rail/panel separator and a light rail tint remain. */
-.bt-cc-tabs{flex:0 0 78px;display:flex;flex-direction:column;align-items:stretch;background:rgba(12,9,26,0.45);border-right:1px solid #3a3163}
-.bt-cc-tab{flex:1 1 0;min-height:0;padding:2px 6px;background:none;border:none;border-bottom:1px solid #3a3163;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bt-cc-tab:last-child{border-bottom:none}
+/* v2.3.1012: horizontal category tabs (replaces the narrow vertical rail) --
+   big thumb targets (>=56px), icon over label, wrap 4+3 across the panel. */
+.bt-cc-tabs{flex:0 0 auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;padding:6px;align-items:stretch;background:rgba(12,9,26,0.45);border-bottom:1px solid #3a3163}
+.bt-cc-tab{flex:0 0 calc((100% - 18px)/4);min-height:38px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;padding:4px 4px;background:rgba(58,49,99,0.30);border:1.5px solid #3a3163;border-radius:9px;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55)}
 .bt-cc-tab:active{transform:translateY(1px)}
-.bt-cc-tab--on{background:rgba(58,49,99,0.85);color:#fff;box-shadow:inset -3px 0 0 var(--gold)}
+.bt-cc-tab--on{background:rgba(91,82,255,0.28);color:#fff;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 10px rgba(245,197,66,.30)}
+.bt-cc-tab-icon{width:22px;height:22px;object-fit:contain;opacity:.92;pointer-events:none}
+.bt-cc-tab--on .bt-cc-tab-icon{opacity:1;filter:drop-shadow(0 0 3px rgba(245,197,66,.55))}
+.bt-cc-tab-label{font-size:12px;line-height:1}
 /* v2.3.829: colors moved to the RIGHT of the objects (owner) — drawer is
    ROW again: items fill the left and scroll horizontally, the colors
    column docks on the right behind a gold-divider separator and only
    renders at all once a real object is equipped (the _ccActive.colors
    gate in BroTown.jsx; when null, items take the full width). */
-.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:row;gap:8px;padding:8px;box-sizing:border-box}
+/* v2.3.1015: drawer shows ONE step at a time (items OR colors), so it's a
+   single column now — no side-by-side items/colors row (owner: no room). */
+.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;box-sizing:border-box}
 .bt-cc-drawer-items{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:6px}
+/* v2.3.1015: "‹ Change Hat" — returns from the colors step to the item grid. */
+.bt-cc-back{align-self:center;display:inline-flex;align-items:center;gap:4px;padding:3px 12px;border-radius:8px;background:rgba(58,49,99,0.40);border:1.5px solid #4a4080;color:#e7e2ff;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;cursor:pointer}
+.bt-cc-back:active{transform:translateY(1px)}
+/* v2.3.1016: the color step uses the same 10-track left-aligned row as items. */
 /* Item strip: column-wrap fills the available height (1-2 tile rows
    depending on device) then extends rightward; pan-x re-allowed under
    the modal's touch-action:none (the old rail's iOS trick, rotated). */
-.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-x}
+/* v2.3.1012: 4-per-row item grid (was a column-wrap horizontal-scroll strip) --
+   bigger tiles, vertical scroll for overflow.  The > * override makes the
+   fixed-size tiles from _apTileStyle (BroTown.jsx) fill their grid cell. */
+/* v2.3.1013: the items grid is now bounded to exactly one page (8 = 2×4) by
+   the JS slice + pager below it, so it no longer scrolls — content-sized, two
+   rows, clipped.  This keeps Randomize/Play on screen (was overflowing).
+   v2.3.1014: columns size to the TILES (not 1fr stretch) and the grid centers,
+   so two rows of small tiles sit in the frame instead of ballooning to
+   container/4 and shoving the pager off (owner).
+   v2.3.1016: up to N across, LEFT-aligned (owner) — equal tracks fill the
+   width so the tiles can't overflow; a short final page leaves the empty
+   tracks on the right (left-aligned), and every category is one row tall.
+   v2.3.1017: 7 across (10 read too small on a phone, owner).
+   v2.3.1018: the row height is an EXPLICIT viewport-derived clamp (not derived
+   from each cell's aspect-ratio) so it's identical for every category — the
+   aspect-ratio path rounded by ~1-2px between trait menus and the container
+   visibly grew/shrank on each tab change (owner). */
+.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:clamp(32px,9.2vw,44px);justify-items:stretch;gap:6px;align-content:start;overflow:hidden}
+.bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:100%!important;height:100%!important}
 /* v2.3.804/816: the owner's gold divider art (divider.webp) is the
    vertical separator on the colors column's left edge (rotated 90°). */
 .bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1.5px solid #4a4080;padding-left:9px}
 .bt-cc-drawer-colors>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
 .bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:#9090a8;letter-spacing:.08em;font-family:'Baloo 2','Source Sans 3',sans-serif}
+/* v2.3.1013: CUSTOMIZE section header above the tabs (gold, matches mockup). */
+.bt-cc-cust-head{flex:0 0 auto;text-align:center;padding:5px 0 3px;font-size:12px;font-weight:800;letter-spacing:.10em;color:var(--gold);text-shadow:0 1px 2px rgba(0,0,0,.6);font-family:'Baloo 2','Source Sans 3',sans-serif}
+/* v2.3.1013: item-grid pager — ‹ › arrows flanking one dot per page, the
+   active dot gold.  Sits under the grid, replacing the old vertical scroll. */
+/* v2.3.1016: fixed min-height so the (empty) single-page pager still reserves
+   its row — the drawer stays the same height across categories (owner). */
+.bt-cc-pager{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:5px 0 1px;margin-top:auto;min-height:32px;box-sizing:border-box}
+.bt-cc-pager--empty{pointer-events:none}
+/* v2.3.1018: wider page buttons (owner) — easier tap targets than the old
+   26px squares. */
+.bt-cc-pager-arrow{display:flex;align-items:center;justify-content:center;width:54px;height:26px;padding:0;border-radius:7px;background:rgba(58,49,99,0.40);border:1.5px solid #4a4080;color:#e7e2ff;font-size:17px;line-height:1;cursor:pointer}
+.bt-cc-pager-arrow:active{transform:translateY(1px)}
+.bt-cc-pager-arrow:disabled{opacity:.32;cursor:default;pointer-events:none}
+/* v2.3.1016: page count as "1/3" shorthand (owner) — replaces the dot row. */
+.bt-cc-pager-count{min-width:34px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--gold);font-family:'Baloo 2','Source Sans 3',sans-serif;font-variant-numeric:tabular-nums}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}
