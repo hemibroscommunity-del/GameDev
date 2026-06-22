@@ -317,12 +317,14 @@ export const InventoryPanel = () => {
             {shownItems.map(k => (
               <ItemTile key={k} ikey={k} count={inv[k]} />
             ))}
-            {/* Faint empty slots so the bag always reads as a full grid. */}
+            {/* Empty slots so the bag always reads as a full grid of squares.
+                v2.3.1039: recessed dark fill + clearly-visible outline (the old
+                COL.tileBor at .10 alpha vanished against the leather bg). */}
             {Array.from({ length: Math.max(0, SLOTS - usedTiles) }).map((_, i) => (
               <div key={`empty-${i}`} aria-hidden="true" style={{
                 width: '100%', aspectRatio: '1 / 1',
-                background: COL.tile,
-                border: `1px solid ${COL.tileBor}`,
+                background: 'rgba(0,0,0,0.28)',
+                border: '1px solid rgba(255,255,255,0.22)',
                 borderRadius: 6,
               }} />
             ))}

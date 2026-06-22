@@ -429,8 +429,8 @@ const InventoryPreview = () => {
         ))}
         {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
-            background: COL.tile,
-            border: `1px solid ${COL.tileBor}`,
+            background: 'rgba(0,0,0,0.28)',
+            border: '1px solid rgba(255,255,255,0.22)',
             borderRadius: 6,
           }} />
         ))}
