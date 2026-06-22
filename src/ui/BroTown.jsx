@@ -1640,6 +1640,15 @@ export var BroTown = function BroTown(_ref0) {
          actually changes the signature and re-emits stats_update (otherwise
          the worker never learns and channel damage stays client-only). */
       rpgState.weaponSpecs ? JSON.stringify(rpgState.weaponSpecs) : 'nospecs',
+      /* v2.3.1021: weapon/defense SKILL track in the signature so a kill that
+         only levels a weapon skill (or a Tier-2 spend) re-emits stats_update
+         and the worker persists it -- without this a level-up never reaches
+         the server (the sig wouldn't change) and resets on reconnect. */
+      rpgState.weaponSkills ? JSON.stringify(rpgState.weaponSkills) : 'noskills',
+      rpgState.weaponUnspent ? JSON.stringify(rpgState.weaponUnspent) : 'nounspent',
+      rpgState.defenseSkill ? JSON.stringify(rpgState.defenseSkill) : 'nodef',
+      typeof rpgState.defenseUnspent === 'number' ? ('du' + rpgState.defenseUnspent) : 'nodu',
+      rpgState.defenseSpec ? JSON.stringify(rpgState.defenseSpec) : 'nodspec',
     ].join('|');
     if (S._lastStatsUpdateSig === _sig) return;
     S._lastStatsUpdateSig = _sig;
@@ -1683,6 +1692,14 @@ export var BroTown = function BroTown(_ref0) {
              authoritative damage roll, so spent build points speed up real
              kills (not just client prediction). */
           weaponSpecs: rpgState.weaponSpecs || {},
+          /* v2.3.1021: weapon/defense skill track -- reported so the worker
+             persists trained levels / points / channels (durable across
+             reconnect + device).  Worker clamps; pure store-and-echo. */
+          weaponSkills: rpgState.weaponSkills || {},
+          weaponUnspent: rpgState.weaponUnspent || {},
+          defenseSkill: rpgState.defenseSkill || { level: 0, xp: 0 },
+          defenseUnspent: (typeof rpgState.defenseUnspent === 'number') ? rpgState.defenseUnspent : 0,
+          defenseSpec: rpgState.defenseSpec || {},
         },
       });
     } catch (e) {}

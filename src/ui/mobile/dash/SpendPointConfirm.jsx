@@ -45,6 +45,25 @@ export const SpendPointConfirm = () => {
       }
       recalcDerived(R);
       persist(R);
+      /* v2.3.1021: flush the spend to the worker immediately.  This popup
+         mutates S.rpg directly (no setRpgState), so BroTown's React-driven
+         stats_update effect doesn't fire on its own -- and now that the
+         server persists + echoes the weapon/defense skill track, an un-synced
+         spend would be clobbered by the stored copy on the next reconnect.
+         Mirrors ItemDetailPopup._syncArmorChange's direct push; the server
+         applies partial payloads (each field presence-gated) + clamps. */
+      try {
+        if (S && S.channel) {
+          S.channel.send({ type: 'stats_update', payload: {
+            weaponSpecs: R.weaponSpecs || {},
+            weaponUnspent: R.weaponUnspent || {},
+            weaponSkills: R.weaponSkills || {},
+            defenseSpec: R.defenseSpec || {},
+            defenseUnspent: (typeof R.defenseUnspent === 'number') ? R.defenseUnspent : 0,
+            defenseSkill: R.defenseSkill || { level: 0, xp: 0 },
+          } });
+        }
+      } catch (e) {}
     }
     spendConfirmBus.close();
   };
