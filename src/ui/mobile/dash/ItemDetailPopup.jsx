@@ -439,18 +439,18 @@ export const ItemDetailPopup = () => {
        card never scrolls horizontally. */
     const row = (r) => (
       <div key={r.key} style={{
+        flex: '0 0 auto', scrollSnapAlign: 'start',
         display: 'flex', flexDirection: 'column', gap: 5, padding: '7px 8px', borderRadius: 9,
         background: r.on ? 'rgba(125,255,192,.12)' : 'rgba(255,255,255,.06)',
         border: `1px solid ${r.on ? 'rgba(125,255,192,.45)' : 'rgba(255,255,255,.18)'}`,
-        overflow: 'hidden',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
           {r.iconSrc
             ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: 34, height: 34, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
             : <span style={{ width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
-          <div style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, color: r.on ? '#7dffc0' : '#eaf0ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, color: r.on ? '#7dffc0' : '#eaf0ff', lineHeight: 1.15, overflowWrap: 'anywhere' }}>{r.name}</div>
         </div>
-        {r.sub ? <div style={{ fontSize: 9, lineHeight: 1.3, color: 'rgba(230,238,255,.8)' }}>{r.sub}</div> : null}
+        {r.sub ? <div style={{ fontSize: 9, lineHeight: 1.3, color: 'rgba(230,238,255,.8)', overflowWrap: 'anywhere' }}>{r.sub}</div> : null}
         <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
           style={{
             width: '100%', padding: '5px 0', fontSize: 9.5, fontWeight: 800, borderRadius: 6, border: 'none',
@@ -483,7 +483,7 @@ export const ItemDetailPopup = () => {
           <div style={{ flex: '0 0 auto', fontSize: 9.5, fontWeight: 800, color: 'rgba(255,255,255,.85)', letterSpacing: 0.6, marginBottom: 5 }}>{title}</div>
           {rows.length === 0
             ? <div style={{ fontSize: 9, color: 'rgba(230,238,255,.7)', padding: '4px 2px' }}>Nothing to equip here.</div>
-            : <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+            : <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
                 {rows.map(row)}
               </div>}
           {rows.length > 1 && (
