@@ -119,24 +119,57 @@ export function NameModal(props) {
     /* Body-color categories (skin/pants/shoes): the swatches ARE the object
        grid (their catalog 'default' entries carry the sprite's native
        colors), so they have no separate Colors column. */
-    /* v2.3.1013: item-grid pagination (dots + ‹ › arrows instead of scroll).
-       v2.3.1015: one row at a time (owner) — items page in 4s, colors in 6s;
-       both reset to page 0 on a category change. */
-    var _ccPg = React.useState(0), ccPage = _ccPg[0], setCcPage = _ccPg[1];
-    var _ccCPg = React.useState(0), ccCPage = _ccCPg[0], setCcCPage = _ccCPg[1];
-    React.useEffect(function () { setCcPage(0); setCcCPage(0); }, [activeCat]);
-    /* v2.3.1015: shared pager builder (one row, ‹ › arrows) for the item and
-       color steps.
-       v2.3.1016: page count shown as shorthand "1/3" (owner) instead of dots.
-       Single-page categories still render the (empty) pager row so the drawer
-       keeps the SAME height whether or not a category paginates — switching
-       tabs no longer makes the container grow/shrink (owner). */
-    var _mkPager = function (count, cur, setFn) {
-      if (count <= 1) return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager bt-cc-pager--empty", "aria-hidden": true });
+    /* v2.3.1036: the picker is a horizontal SWIPE strip (see game.css
+       .bt-cc-drawer-grid) AND keeps a page indicator: the ‹ 1/3 › pager is
+       driven by the strip's scroll position — arrows scroll by one viewport,
+       the count reflects where you are.  Native scroll keeps tap-vs-swipe clean
+       (a swipe never fires a tile's click). */
+    var _itemStrip = React.useRef(null);
+    var _colorStrip = React.useRef(null);
+    var _ipS = React.useState({ p: 1, n: 1 }), itemPg = _ipS[0], setItemPg = _ipS[1];
+    var _cpS = React.useState({ p: 1, n: 1 }), colorPg = _cpS[0], setColorPg = _cpS[1];
+    /* Item-ALIGNED page metrics: pages map to whole tiles (perView = how many
+       tiles fit a viewport) so the last page always has real tiles -- no blank
+       trailing page from a few px of overflow. */
+    var _metrics = function (el) {
+      if (!el || !el.children || el.children.length === 0) return { perView: 1, step: 1, p: 1, n: 1 };
+      var cw = Math.max(1, el.clientWidth);
+      var k0 = el.children[0];
+      var pitch = el.children.length >= 2 ? Math.max(1, el.children[1].offsetLeft - k0.offsetLeft) : Math.max(1, k0.offsetWidth + 6);
+      var perView = Math.max(1, Math.floor((cw + 6) / pitch));
+      var step = perView * pitch;
+      var n = Math.max(1, Math.ceil(el.children.length / perView));
+      /* The last page's reachable scrollLeft (scrollWidth-clientWidth) is short
+         of (n-1)*step when the final page is partial, so floor(scrollLeft/step)
+         never reaches n -- snap to the last page once scrolled to the end. */
+      var maxScroll = Math.max(0, el.scrollWidth - cw);
+      var p = (el.scrollLeft >= maxScroll - 2) ? n : Math.min(n, Math.floor(el.scrollLeft / step + 0.5) + 1);
+      return { perView: perView, step: step, p: p, n: n };
+    };
+    var _pageOf = function (el) { var m = _metrics(el); return { p: m.p, n: m.n }; };
+    var _onStripScroll = function (setFn) { return function (e) { setFn(_pageOf(e.currentTarget)); }; };
+    /* Re-measure (and reset to page 1) when the category or the item/color step
+       changes — the strip's content width changes with it. */
+    React.useEffect(function () {
+      var el = _itemStrip.current; if (el) { el.scrollLeft = 0; setItemPg(_pageOf(el)); }
+      var ce = _colorStrip.current; if (ce) { ce.scrollLeft = 0; setColorPg(_pageOf(ce)); }
+    }, [activeCat, objOpen]);
+    /* Scroll-driven pager: same .bt-cc-pager chrome, arrows scroll the strip by
+       one page-worth of tiles; the (empty) placeholder keeps the drawer height
+       when there's only one page. */
+    var _mkScrollPager = function (ref, pg) {
+      if (pg.n <= 1) return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager bt-cc-pager--empty", "aria-hidden": true });
+      var _go = function (dir) { return function () {
+        var el = ref.current; if (!el) return;
+        var m = _metrics(el);
+        var target = Math.min(m.n - 1, Math.max(0, (m.p - 1) + dir));
+        var maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+        el.scrollTo({ left: Math.min(target * m.step, maxLeft), behavior: 'smooth' });
+      }; };
       return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager" },
-        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: cur <= 0, "aria-label": 'Previous', onClick: function () { setFn(Math.max(0, cur - 1)); } }, "‹"),
-        /*#__PURE__*/React.createElement("span", { className: "bt-cc-pager-count" }, (cur + 1) + "/" + count),
-        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: cur >= count - 1, "aria-label": 'More', onClick: function () { setFn(Math.min(count - 1, cur + 1)); } }, "›"));
+        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: pg.p <= 1, "aria-label": 'Previous', onClick: _go(-1) }, "‹"),
+        /*#__PURE__*/React.createElement("span", { className: "bt-cc-pager-count" }, pg.p + "/" + pg.n),
+        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: pg.p >= pg.n, "aria-label": 'More', onClick: _go(1) }, "›"));
     };
     var _catDefs = {
       hat: { label: 'Hat', build: function () { return {
@@ -163,26 +196,14 @@ export function NameModal(props) {
     var _activeKey = _catDefs[activeCat] ? activeCat : 'hat';
     var _built = _catDefs[_activeKey].build();
     var _ccActive = { key: _activeKey, label: _catDefs[_activeKey].label, items: _built.items, colors: _built.colors };
-    /* v2.3.1015: one row of item previews at a time (owner) — the ‹ › arrows
-       page through the rest.
-       v2.3.1016: up to 10 per row, left-aligned (owner).
-       v2.3.1017: 10 read too small on a phone — back to 7 per row (owner). */
-    var _PER = 7;
+    /* v2.3.1036: all items live in one horizontal swipe strip; the scroll-driven
+       pager (above) supplies the page count + arrows. */
     var _allItems = _ccActive.items || [];
-    var _pageCount = Math.max(1, Math.ceil(_allItems.length / _PER));
-    var _pg = Math.min(ccPage, _pageCount - 1);
-    var _pageItems = _allItems.slice(_pg * _PER, _pg * _PER + _PER);
-    /* v2.3.1015: the colors step is its own page of swatches (one row of 6),
-       shown ONLY after an item is picked (objOpen[key] === false) — there isn't
-       room to show items and colors together (owner).  Color-only categories
-       (skin/pants/shoes) have no colors step; their swatches stay in the item
-       grid. */
-    var _CPER = 7;
+    /* The colors step is its own swipe strip of swatches, shown ONLY after an
+       item is picked (objOpen[key] === false).  Color-only categories
+       (skin/pants/shoes) have no colors step. */
     var _allColors = _ccActive.colors || [];
     var _showColors = _allColors.length > 0 && objOpen[_activeKey] === false;
-    var _cPageCount = Math.max(1, Math.ceil(_allColors.length / _CPER));
-    var _cpg = Math.min(ccCPage, _cPageCount - 1);
-    var _cPageItems = _allColors.slice(_cpg * _CPER, _cpg * _CPER + _CPER);
     return /*#__PURE__*/React.createElement("div", {
       className: "bt-name-modal"
     }, /*#__PURE__*/React.createElement("video", {
@@ -224,21 +245,9 @@ export function NameModal(props) {
       className: "bt-cc-logo-shine", "aria-hidden": true
     })), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
-    }, /*#__PURE__*/React.createElement("div", {
-      /* Header: call-to-action only — the logo lives in the banner, the
-         divider art was cut for vertical budget (every px here comes out
-         of the drawer), and the build tag moved to the scroll's tail.
-         The class exists so 667pt-class screens can drop the line
-         entirely (game.css media query). */
-      className: "bt-cc-cta", style: { textAlign: 'center' }
-    }, /*#__PURE__*/React.createElement("div", {
-      /* v2.3.738: white + heavy dark halo — gold vanished into the sunlit
-         half of the painted backdrop.
-         v2.3.741: pill backdrop removed (owner: too prominent) — plain
-         white text, the heavy halo carries the contrast. */
-      style: { fontSize: 15, fontWeight: 700, color: '#ffffff', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-        letterSpacing: '.14em', textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
-    }, "CREATE YOUR CHARACTER")), /*#__PURE__*/React.createElement("section", {
+    }, /* v2.3.1034: "CREATE YOUR CHARACTER" caption removed (owner: self-
+         explanatory + distracting). */
+    /*#__PURE__*/React.createElement("section", {
       /* Character SHOWCASE — full-card-width LANDSCAPE stage (spec §3:
          the character is the star; the wide panel leaves negative space
          for future equipped-item previews / ambient effects beside the
@@ -430,24 +439,24 @@ export function NameModal(props) {
             onClick: function () { _setOpen(setObjOpen, _activeKey, true); }
           }, "‹ Change " + _ccActive.label),
           /*#__PURE__*/React.createElement("span", { className: "bt-cc-drawer-head" }, "— COLORS —"),
-          /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid bt-cc-grid-colors" }, _cPageItems),
-          _mkPager(_cPageCount, _cpg, setCcCPage))
+          /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid bt-cc-grid-colors", ref: _colorStrip, onScroll: _onStripScroll(setColorPg) }, _allColors),
+          _mkScrollPager(_colorStrip, colorPg))
       : /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-items" },
           /* v2.3.1014: the per-category items header ("— HAT —") is dropped —
              the active tab already names the category. */
-          /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid" }, _pageItems),
-          _mkPager(_pageCount, _pg, setCcPage)))), /*#__PURE__*/React.createElement("button", {
+          /*#__PURE__*/React.createElement("div", { className: "bt-cc-drawer-grid", ref: _itemStrip, onScroll: _onStripScroll(setItemPg) }, _allItems),
+          _mkScrollPager(_itemStrip, itemPg)))), /*#__PURE__*/React.createElement("button", {
       /* Appearance RANDOMIZE — full-width gold row directly under the
          menu it acts on (owner placement, v2.3.794); the name dice above
          rerolls just the name. */
       type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
       /* v2.3.800: slimmed with the rest of the vertical rhythm. */
-      style: { width: '100%', padding: '4px', minHeight: 34, cursor: 'pointer', borderRadius: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+      style: { width: '100%', padding: '8px', minHeight: 44, cursor: 'pointer', borderRadius: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         background: 'rgba(20,16,40,0.93)', color: 'var(--txt)',
-        fontSize: 16, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+        fontSize: 17, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
         textShadow: '0 1px 2px rgba(0,0,0,.55)' }
-    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
+    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 26, height: 26, flex: '0 0 auto' } }),
     /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("button", {
       onClick: joinTown,
       /* v2.3.725: the owner's painted PLAY art (label baked in); the img is

@@ -286,7 +286,7 @@ input{font-family:inherit}
    taller, so the fixed rows return a few px to the flex regions.
    v2.3.800: gap 6->4 + slimmer top pad (owner: compact the space
    between UI items). */
-.bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;gap:4px;width:100%;flex:1 1 auto;min-height:0;max-width:560px;margin:0 auto;padding:8px 12px 10px;text-align:left;background:none;border:none;box-shadow:none;overflow:hidden}
+.bt-name-box.bt-cc-box{position:relative;display:flex;flex-direction:column;gap:7px;width:100%;flex:1 1 auto;min-height:0;max-width:560px;margin:0 auto;padding:8px 12px 10px;text-align:left;background:none;border:none;box-shadow:none;overflow:hidden}
 .bt-name-box.bt-cc-box>*{flex:0 0 auto}
 /* v2.3.798: the v2.3.797 fixed budget (16:9 stage from WIDTH, fixed
    banner, full-width PLAY) collapsed the drawer to a ~25px sliver on a
@@ -298,7 +298,7 @@ input{font-family:inherit}
    neither can collapse again.  The stage's children are all absolutely
    positioned / 100%-sized, so flex height works cleanly and the canvas
    contain+scale adapts to whatever shape falls out. */
-.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:170px;max-height:420px}
+.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:200px;max-height:480px}
 /* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right).
@@ -412,11 +412,11 @@ input{font-family:inherit}
    hole center (427, 82.5) of the 560x329 logo, gem center (91, 26) of
    the 185x480 sword; left/top solve those into wrap-relative % so the
    alignment holds at every logo size — no media override needed. */
-.bt-cc-logo-wrap{flex:none;align-self:center;position:relative}
-.bt-cc-logo{position:relative;z-index:1;width:min(42vw,190px);height:auto;display:block;pointer-events:none}
+.bt-cc-logo-wrap{flex:none;align-self:flex-start;position:relative;margin-left:4px}
+.bt-cc-logo{position:relative;z-index:1;width:min(32vw,150px);height:auto;display:block;pointer-events:none}
 .bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){
-  .bt-cc-logo{width:min(34vw,150px)}
+  .bt-cc-logo{width:min(26vw,120px)}
 }
 /* v2.3.827: CSS specular shine — a narrow bright band (the standard
    shimmer gradient) swept across each asset and CLIPPED to the artwork's
@@ -507,8 +507,12 @@ input{font-family:inherit}
    from each cell's aspect-ratio) so it's identical for every category — the
    aspect-ratio path rounded by ~1-2px between trait menus and the container
    visibly grew/shrank on each tab change (owner). */
-.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:clamp(32px,9.2vw,44px);justify-items:stretch;gap:6px;align-content:start;overflow:hidden}
-.bt-cc-drawer-items>.bt-cc-drawer-grid>*{width:100%!important;height:100%!important}
+/* v2.3.1035: horizontal SWIPE strip (was a paged 7-col grid) -- all items in
+   one row, scroll left/right with a finger; pan-x re-allowed under the modal's
+   touch-action:none.  Scrollbar hidden (the swipe is the affordance). */
+.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding-bottom:2px;scrollbar-width:none}
+.bt-cc-drawer-items>.bt-cc-drawer-grid::-webkit-scrollbar{display:none}
+.bt-cc-drawer-items>.bt-cc-drawer-grid>*{flex:0 0 auto!important;width:clamp(44px,12vw,52px)!important;height:clamp(44px,12vw,52px)!important}
 /* v2.3.804/816: the owner's gold divider art (divider.webp) is the
    vertical separator on the colors column's left edge (rotated 90°). */
 .bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1.5px solid #4a4080;padding-left:9px}
