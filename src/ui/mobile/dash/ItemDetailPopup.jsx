@@ -309,12 +309,9 @@ export const ItemDetailPopup = () => {
   const [, force] = useState(0);
   const cardRef = useRef(null);
   const [pos, setPos] = useState(null);
-  /* v2.3.1024: "▼ N more" expand toggle for the loadout picker; reset each time
-     a different popup opens so it never starts expanded. */
-  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    const u1 = itemDetailBus.subscribe(() => { setExpanded(false); force((v) => v + 1); });
+    const u1 = itemDetailBus.subscribe(() => force((v) => v + 1));
     const u2 = subscribeLocks(() => force((v) => v + 1));
     return () => { u1(); u2(); };
   }, []);
@@ -436,30 +433,30 @@ export const ItemDetailPopup = () => {
       }
     }
 
-    /* v2.3.1025: show ONE item by default and spend the freed vertical space on
-       a fuller description; the "▼ N more" toggle reveals the rest. */
-    const MAXP = 1;
-    const shown = expanded ? rows : rows.slice(0, MAXP);
-    const extra = rows.length - MAXP;
+    /* v2.3.1026: show one item's worth of detail and SCROLL for the rest (no
+       expand button).  The Equip/Unequip button spans the row's full width so
+       longer labels ("Unequip") always fit; the item name truncates and the
+       card never scrolls horizontally. */
     const row = (r) => (
       <div key={r.key} style={{
-        display: 'flex', flexDirection: 'column', gap: 4, padding: '7px 8px', borderRadius: 9,
+        display: 'flex', flexDirection: 'column', gap: 5, padding: '7px 8px', borderRadius: 9,
         background: r.on ? 'rgba(125,255,192,.12)' : 'rgba(255,255,255,.06)',
         border: `1px solid ${r.on ? 'rgba(125,255,192,.45)' : 'rgba(255,255,255,.18)'}`,
+        overflow: 'hidden',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
           {r.iconSrc
             ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: 34, height: 34, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
             : <span style={{ width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
           <div style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, color: r.on ? '#7dffc0' : '#eaf0ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
-          <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
-            style={{
-              flex: '0 0 auto', padding: '5px 10px', fontSize: 9, fontWeight: 800, borderRadius: 6, border: 'none',
-              background: r.on ? '#d83b4e' : '#1f9d57', /* Unequip = red, Equip = green */
-              color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-            }}>{r.on ? 'Unequip' : 'Equip'}</button>
         </div>
         {r.sub ? <div style={{ fontSize: 9, lineHeight: 1.3, color: 'rgba(230,238,255,.8)' }}>{r.sub}</div> : null}
+        <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
+          style={{
+            width: '100%', padding: '5px 0', fontSize: 9.5, fontWeight: 800, borderRadius: 6, border: 'none',
+            background: r.on ? '#d83b4e' : '#1f9d57', /* Unequip = red, Equip = green */
+            color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+          }}>{r.on ? 'Unequip' : 'Equip'}</button>
       </div>
     );
 
@@ -474,7 +471,7 @@ export const ItemDetailPopup = () => {
       background: 'linear-gradient(155deg, #2f63dd 0%, #234aa8 48%, #16245e 100%)',
       border: '1px solid rgba(140,178,255,0.6)',
       borderRadius: 12, padding: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)',
-      display: 'flex', flexDirection: 'column', boxSizing: 'border-box', zIndex: 51,
+      display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflowX: 'hidden', zIndex: 51,
     };
     const cardStyle = P
       ? { position: 'fixed', left: P.left, top: P.top, width: P.width, maxHeight: P.height, ...cardCommon }
@@ -486,16 +483,11 @@ export const ItemDetailPopup = () => {
           <div style={{ flex: '0 0 auto', fontSize: 9.5, fontWeight: 800, color: 'rgba(255,255,255,.85)', letterSpacing: 0.6, marginBottom: 5 }}>{title}</div>
           {rows.length === 0
             ? <div style={{ fontSize: 9, color: 'rgba(230,238,255,.7)', padding: '4px 2px' }}>Nothing to equip here.</div>
-            : <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto' }}>
-                {shown.map(row)}
+            : <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' }}>
+                {rows.map(row)}
               </div>}
-          {rows.length > MAXP && (
-            <button type="button" onPointerUp={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}
-              style={{
-                flex: '0 0 auto', marginTop: 6, width: '100%', padding: '5px 0', fontSize: 9, fontWeight: 700, borderRadius: 6,
-                border: '1px solid rgba(255,255,255,.22)', background: 'rgba(255,255,255,.14)',
-                color: '#eaf0ff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-              }}>{expanded ? '▲ Show less' : `▼ ${extra} more`}</button>
+          {rows.length > 1 && (
+            <div style={{ flex: '0 0 auto', marginTop: 4, textAlign: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: 0.4, color: 'rgba(230,238,255,.6)', pointerEvents: 'none', userSelect: 'none' }}>⌄ swipe · {rows.length} items</div>
           )}
         </div>
       </div>
