@@ -210,5 +210,50 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
     Math.abs(room._maxWeaponDmg(ps, true) - capNoSpec) < 0.001, room._maxWeaponDmg(ps, true));
 }
 
+// ── v2.3.1021: weapon/defense SKILL-TRACK persistence (level/xp/points/specs) ──
+// Previously these lived only in the browser; now the worker stores + echoes
+// them so they survive reconnect.  Assert: stats_update accepts + clamps,
+// player_state echoes, _saveRpg persists.
+{
+  const ps = room.playerState.p2;
+  room._handleStatsUpdate(room.sessions.get(ws2), {
+    weaponSkills: { sword: { level: 7, xp: 123 }, bow: { level: 999, xp: -5 } },
+    weaponUnspent: { sword: 3, bow: 99999 },
+    defenseSkill: { level: 4, xp: 12 },
+    defenseUnspent: 2,
+    defenseSpec: { bulwark: 5, ironskin: 9999, bogus: 7 },
+  });
+  check('stats_update stores weaponSkills (level clamped [0,99], xp floored at 0)',
+    ps.weaponSkills.sword.level === 7 && ps.weaponSkills.sword.xp === 123
+    && ps.weaponSkills.bow.level === 99 && ps.weaponSkills.bow.xp === 0, ps.weaponSkills);
+  check('stats_update clamps weaponUnspent to [0,999]',
+    ps.weaponUnspent.sword === 3 && ps.weaponUnspent.bow === 999, ps.weaponUnspent);
+  check('stats_update stores defenseSkill, clamps defenseSpec [0,50], drops unknown keys',
+    ps.defenseSkill.level === 4 && ps.defenseSpec.bulwark === 5
+    && ps.defenseSpec.ironskin === 50 && ps.defenseSpec.bogus === undefined,
+    { defenseSkill: ps.defenseSkill, defenseSpec: ps.defenseSpec });
+
+  // player_state echoes the track (unregistered ws => full, non-delta payload).
+  const ws3 = fakeWs('echo');
+  room._sendPlayerState(ws3, 'p2');
+  const echo = msgsOfType(ws3, 'player_state').pop();
+  check('player_state echoes weapon/defense skill track',
+    echo && echo.payload.weaponSkills && echo.payload.weaponSkills.sword.level === 7
+    && echo.payload.weaponUnspent.sword === 3 && echo.payload.defenseSkill.level === 4
+    && echo.payload.defenseUnspent === 2 && echo.payload.defenseSpec.bulwark === 5,
+    echo && Object.keys(echo.payload));
+
+  // _saveRpg persists the track (capture the storage.put bundle).
+  let saved = null;
+  const origPut = room.state.storage.put;
+  room.state.storage.put = async (k, v) => { if (k === 'rpg:p2') saved = v; };
+  await room._saveRpg('p2', ps);
+  room.state.storage.put = origPut;
+  check('_saveRpg persists the weapon/defense skill track',
+    saved && saved.weaponSkills && saved.weaponSkills.sword.level === 7
+    && saved.weaponUnspent.sword === 3 && saved.defenseSkill.level === 4
+    && saved.defenseUnspent === 2 && saved.defenseSpec.bulwark === 5, saved && Object.keys(saved));
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
