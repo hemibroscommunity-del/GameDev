@@ -433,17 +433,16 @@ export const ItemDetailPopup = () => {
       }
     }
 
-    /* v2.3.1029: one item per "page".  Each row is sized to exactly the visible
-       list height, so the whole card (border included) shows at rest and a
-       swipe snaps to the next item.  The name + Equip/Unequip button are pinned
-       (always visible); the description fills the middle and clips if unusually
-       long.  The button spans the full width so "Unequip" always fits. */
+    /* v2.3.1037: one item per "page".  The card is a fixed-height flex column
+       (title / scrolling list / cue); the list takes the leftover space via
+       flex:1, and each row is height:100% of that list -- so a row is exactly
+       one viewport tall regardless of the title/cue size (no fragile pixel
+       math), the whole card border shows at rest, and a swipe snaps to the next
+       item.  Name + Equip/Unequip pinned; description fills the middle. */
     const P = target.panel;
-    const CHROME = 16 /*card padding*/ + 20 /*title*/ + (rows.length > 1 ? 18 /*scroll cue*/ : 0) + 2;
-    const listH = P ? Math.max(72, Math.round(P.height - CHROME)) : null;
     const row = (r) => (
       <div key={r.key} style={{
-        flex: listH ? `0 0 ${listH}px` : '0 0 auto', height: listH || undefined, scrollSnapAlign: 'start',
+        flex: '0 0 auto', height: P ? '100%' : undefined, scrollSnapAlign: 'start',
         display: 'flex', flexDirection: 'column', gap: 4, padding: '7px 8px', borderRadius: 9,
         background: r.on ? 'rgba(125,255,192,.12)' : 'rgba(255,255,255,.06)',
         border: `1px solid ${r.on ? 'rgba(125,255,192,.45)' : 'rgba(255,255,255,.18)'}`,
@@ -498,7 +497,7 @@ export const ItemDetailPopup = () => {
           </div>
           {rows.length === 0
             ? <div style={{ fontSize: 9, color: 'rgba(230,238,255,.7)', padding: '4px 2px' }}>Nothing to equip here.</div>
-            : <div style={{ ...(listH ? { height: listH } : { flex: '1 1 auto', minHeight: 0 }), display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
+            : <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
                 {rows.map(row)}
               </div>}
           {rows.length > 1 && (

@@ -128,11 +128,21 @@ export function NameModal(props) {
     var _colorStrip = React.useRef(null);
     var _ipS = React.useState({ p: 1, n: 1 }), itemPg = _ipS[0], setItemPg = _ipS[1];
     var _cpS = React.useState({ p: 1, n: 1 }), colorPg = _cpS[0], setColorPg = _cpS[1];
-    var _pageOf = function (el) {
-      if (!el) return { p: 1, n: 1 };
+    /* Item-ALIGNED page metrics: pages map to whole tiles (perView = how many
+       tiles fit a viewport) so the last page always has real tiles -- no blank
+       trailing page from a few px of overflow. */
+    var _metrics = function (el) {
+      if (!el || !el.children || el.children.length === 0) return { perView: 1, step: 1, p: 1, n: 1 };
       var cw = Math.max(1, el.clientWidth);
-      return { p: Math.min(Math.ceil(el.scrollWidth / cw), Math.round(el.scrollLeft / cw) + 1), n: Math.max(1, Math.ceil(el.scrollWidth / cw)) };
+      var k0 = el.children[0];
+      var pitch = el.children.length >= 2 ? Math.max(1, el.children[1].offsetLeft - k0.offsetLeft) : Math.max(1, k0.offsetWidth + 6);
+      var perView = Math.max(1, Math.floor((cw + 6) / pitch));
+      var step = perView * pitch;
+      var n = Math.max(1, Math.ceil(el.children.length / perView));
+      var p = Math.min(n, Math.floor(el.scrollLeft / step + 0.5) + 1);
+      return { perView: perView, step: step, p: p, n: n };
     };
+    var _pageOf = function (el) { var m = _metrics(el); return { p: m.p, n: m.n }; };
     var _onStripScroll = function (setFn) { return function (e) { setFn(_pageOf(e.currentTarget)); }; };
     /* Re-measure (and reset to page 1) when the category or the item/color step
        changes — the strip's content width changes with it. */
@@ -141,15 +151,20 @@ export function NameModal(props) {
       var ce = _colorStrip.current; if (ce) { ce.scrollLeft = 0; setColorPg(_pageOf(ce)); }
     }, [activeCat, objOpen]);
     /* Scroll-driven pager: same .bt-cc-pager chrome, arrows scroll the strip by
-       one viewport; the (empty) placeholder keeps the drawer height when there's
-       only one page. */
+       one page-worth of tiles; the (empty) placeholder keeps the drawer height
+       when there's only one page. */
     var _mkScrollPager = function (ref, pg) {
       if (pg.n <= 1) return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager bt-cc-pager--empty", "aria-hidden": true });
-      var _by = function (dir) { return function () { var el = ref.current; if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: 'smooth' }); }; };
+      var _go = function (dir) { return function () {
+        var el = ref.current; if (!el) return;
+        var m = _metrics(el);
+        var target = Math.min(m.n - 1, Math.max(0, (m.p - 1) + dir));
+        el.scrollTo({ left: target * m.step, behavior: 'smooth' });
+      }; };
       return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager" },
-        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: pg.p <= 1, "aria-label": 'Previous', onClick: _by(-1) }, "‹"),
+        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: pg.p <= 1, "aria-label": 'Previous', onClick: _go(-1) }, "‹"),
         /*#__PURE__*/React.createElement("span", { className: "bt-cc-pager-count" }, pg.p + "/" + pg.n),
-        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: pg.p >= pg.n, "aria-label": 'More', onClick: _by(1) }, "›"));
+        /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: pg.p >= pg.n, "aria-label": 'More', onClick: _go(1) }, "›"));
     };
     var _catDefs = {
       hat: { label: 'Hat', build: function () { return {
