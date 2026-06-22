@@ -412,7 +412,7 @@ input{font-family:inherit}
    hole center (427, 82.5) of the 560x329 logo, gem center (91, 26) of
    the 185x480 sword; left/top solve those into wrap-relative % so the
    alignment holds at every logo size — no media override needed. */
-.bt-cc-logo-wrap{flex:none;align-self:center;position:relative}
+.bt-cc-logo-wrap{flex:none;align-self:flex-start;position:relative;margin-left:4px}
 .bt-cc-logo{position:relative;z-index:1;width:min(32vw,150px);height:auto;display:block;pointer-events:none}
 .bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){
