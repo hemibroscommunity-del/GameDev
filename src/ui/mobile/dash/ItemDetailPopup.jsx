@@ -195,7 +195,7 @@ function resolveTarget(target) {
       thumb: gearThumb(target.gearId),
       glyph: target.slot === 'chest' ? '\u{1F9BA}' : '\u{1F456}',
       name: gearName(target.slot, target.gearId),
-      info: 'Worn armour',
+      info: 'Worn armor',
       desc: 'Steel · ' + (target.slot === 'chest' ? 'Chest' : 'Legs'),
       actions: { unequip: true },
     };
@@ -219,7 +219,7 @@ function resolveTarget(target) {
 /* Catalog display name for a gear slot item id. */
 function gearName(slot, gearId) {
   const c = (GEAR_CATALOG[slot] || []).find((g) => g.id === gearId);
-  return (c && c.name) || 'Armour';
+  return (c && c.name) || 'Armor';
 }
 /* Icon PNGs exist for the steel set; other ids fall back to the glyph. */
 function gearThumb(gearId) {
@@ -395,7 +395,7 @@ export const ItemDetailPopup = () => {
     } else if (slot === 'chest' || slot === 'legs') {
       title = slot === 'chest' ? 'CHEST' : 'LEGS';
       if (!R2.gearStash) R2.gearStash = [];
-      const sub = slot === 'chest' ? 'Plate armour · chest · raises defence' : 'Plate greaves · legs · raises defence';
+      const sub = slot === 'chest' ? 'Plate armor · chest · raises defense' : 'Plate greaves · legs · raises defense';
       const mkGearRow = (gearId, on, stashObj) => ({
         key: slot + gearId + (on ? 'E' : 's' + (stashObj ? R2.gearStash.indexOf(stashObj) : 'c')),
         name: gearName(slot, gearId), sub, iconSrc: gearThumb(gearId), on,
@@ -426,34 +426,41 @@ export const ItemDetailPopup = () => {
       if (slot === 'chest') {
         const shirtOn = getEquip('shirt') !== 'none';
         rows.push({
-          key: 'shirt', name: 'T-Shirt', sub: 'Cloth shirt · worn under armour',
+          key: 'shirt', name: 'T-Shirt', sub: 'Cloth shirt · worn under armor',
           iconSrc: '/sprites/gear/icons/tshirt.png?v=2.3.756', on: shirtOn,
           toggle: () => { setEquip('shirt', shirtOn ? 'none' : 'tshirt'); persist(R2); refresh(); },
         });
       }
     }
 
-    /* v2.3.1026: show one item's worth of detail and SCROLL for the rest (no
-       expand button).  The Equip/Unequip button spans the row's full width so
-       longer labels ("Unequip") always fit; the item name truncates and the
-       card never scrolls horizontally. */
+    /* v2.3.1029: one item per "page".  Each row is sized to exactly the visible
+       list height, so the whole card (border included) shows at rest and a
+       swipe snaps to the next item.  The name + Equip/Unequip button are pinned
+       (always visible); the description fills the middle and clips if unusually
+       long.  The button spans the full width so "Unequip" always fits. */
+    const P = target.panel;
+    const CHROME = 16 /*card padding*/ + 20 /*title*/ + (rows.length > 1 ? 18 /*scroll cue*/ : 0) + 2;
+    const listH = P ? Math.max(72, Math.round(P.height - CHROME)) : null;
     const row = (r) => (
       <div key={r.key} style={{
-        flex: '0 0 auto', scrollSnapAlign: 'start',
-        display: 'flex', flexDirection: 'column', gap: 5, padding: '7px 8px', borderRadius: 9,
+        flex: listH ? `0 0 ${listH}px` : '0 0 auto', height: listH || undefined, scrollSnapAlign: 'start',
+        display: 'flex', flexDirection: 'column', gap: 4, padding: '7px 8px', borderRadius: 9,
         background: r.on ? 'rgba(125,255,192,.12)' : 'rgba(255,255,255,.06)',
         border: `1px solid ${r.on ? 'rgba(125,255,192,.45)' : 'rgba(255,255,255,.18)'}`,
+        boxSizing: 'border-box', overflow: 'hidden',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+        <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
           {r.iconSrc
-            ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: 34, height: 34, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
-            : <span style={{ width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
+            ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: 32, height: 32, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
+            : <span style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
           <div style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, color: r.on ? '#7dffc0' : '#eaf0ff', lineHeight: 1.15, overflowWrap: 'anywhere' }}>{r.name}</div>
         </div>
-        {r.sub ? <div style={{ fontSize: 9, lineHeight: 1.3, color: 'rgba(230,238,255,.8)', overflowWrap: 'anywhere' }}>{r.sub}</div> : null}
+        {r.sub
+          ? <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden', fontSize: 9, lineHeight: 1.3, color: 'rgba(230,238,255,.8)', overflowWrap: 'anywhere' }}>{r.sub}</div>
+          : <div style={{ flex: '1 1 auto' }} />}
         <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
           style={{
-            width: '100%', padding: '5px 0', fontSize: 9.5, fontWeight: 800, borderRadius: 6, border: 'none',
+            flex: '0 0 auto', width: '100%', padding: '5px 0', fontSize: 9.5, fontWeight: 800, borderRadius: 6, border: 'none',
             background: r.on ? '#d83b4e' : '#1f9d57', /* Unequip = red, Equip = green */
             color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
           }}>{r.on ? 'Unequip' : 'Equip'}</button>
@@ -466,15 +473,14 @@ export const ItemDetailPopup = () => {
        row list scrolls internally.  The dismiss layer stops ABOVE the dashboard
        so the loadout cells stay tappable: tapping another cell switches the
        picker's slot in place; tapping the play area closes it. */
-    const P = target.panel;
     const cardCommon = {
       background: 'linear-gradient(155deg, #2f63dd 0%, #234aa8 48%, #16245e 100%)',
       border: '1px solid rgba(140,178,255,0.6)',
       borderRadius: 12, padding: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)',
-      display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflowX: 'hidden', zIndex: 51,
+      display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', zIndex: 51,
     };
     const cardStyle = P
-      ? { position: 'fixed', left: P.left, top: P.top, width: P.width, maxHeight: P.height, ...cardCommon }
+      ? { position: 'fixed', left: P.left, top: P.top, width: P.width, height: P.height, ...cardCommon }
       : { position: 'absolute', left: pos ? pos.left : -9999, top: pos ? pos.top : -9999, width: 210, maxHeight: '46vh', ...cardCommon };
     return (
       <div onPointerDown={() => itemDetailBus.close()}
@@ -483,7 +489,7 @@ export const ItemDetailPopup = () => {
           <div style={{ flex: '0 0 auto', fontSize: 9.5, fontWeight: 800, color: 'rgba(255,255,255,.85)', letterSpacing: 0.6, marginBottom: 5 }}>{title}</div>
           {rows.length === 0
             ? <div style={{ fontSize: 9, color: 'rgba(230,238,255,.7)', padding: '4px 2px' }}>Nothing to equip here.</div>
-            : <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
+            : <div style={{ ...(listH ? { height: listH } : { flex: '1 1 auto', minHeight: 0 }), display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
                 {rows.map(row)}
               </div>}
           {rows.length > 1 && (
@@ -573,9 +579,9 @@ export const ItemDetailPopup = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {layerRow('armor', '/sprites/gear/icons/steelplate.png?v=2.3.685',
               armorOn ? gearName('chest', chestId) : (stashedChest ? stashedChest.name : 'Steel Plate'),
-              'Armour · top layer', armorOn, !!stashedChest, toggleArmor)}
+              'Armor · top layer', armorOn, !!stashedChest, toggleArmor)}
             {layerRow('shirt', '/sprites/gear/icons/tshirt.png?v=2.3.756',
-              'T-Shirt', 'Clothing · under armour', shirtOn, true, toggleShirt)}
+              'T-Shirt', 'Clothing · under armor', shirtOn, true, toggleShirt)}
           </div>
         </div>
       </div>
@@ -637,7 +643,7 @@ export const ItemDetailPopup = () => {
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: on ? '#3dd497' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? gearName('legs', legsId) : 'Steel Greaves'}</div>
-              <div style={{ fontSize: 7.5, color: 'rgba(255,255,255,.35)' }}>Armour · legs</div>
+              <div style={{ fontSize: 7.5, color: 'rgba(255,255,255,.35)' }}>Armor · legs</div>
             </div>
             <button type="button"
               onPointerUp={(e) => { e.stopPropagation(); toggleLegs(); }}
