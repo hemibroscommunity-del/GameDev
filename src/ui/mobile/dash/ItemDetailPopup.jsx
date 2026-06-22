@@ -351,7 +351,7 @@ export const ItemDetailPopup = () => {
 
     if (slot === 'weapon') {
       const active = R2.activeSlot || 'melee';
-      title = active === 'ranged' ? 'RANGED' : active === 'staff' ? 'STAFF' : 'MELEE';
+      title = 'WEAPON'; /* melee/ranged/staff all share this slot */
       const prop = active === 'ranged' ? 'rangedWeapon' : active === 'staff' ? 'staffWeapon' : 'weapon';
       const types = active === 'ranged' ? ['bow'] : active === 'staff' ? ['staff'] : ['sword', 'greatsword'];
       if (!R2.weaponStash) R2.weaponStash = [];
@@ -450,33 +450,43 @@ export const ItemDetailPopup = () => {
         </div>
         <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
           style={{
-            padding: '4px 8px', fontSize: 8.5, fontWeight: 700, borderRadius: 6,
-            border: '1px solid rgba(255,255,255,.2)',
-            background: r.on ? 'rgba(255,94,108,.25)' : 'rgba(61,212,151,.25)',
+            flex: '0 0 auto', padding: '4px 8px', fontSize: 8.5, fontWeight: 800, borderRadius: 6,
+            border: 'none',
+            background: r.on ? '#d83b4e' : '#1f9d57', /* Unequip = red, Equip = green */
             color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
           }}>{r.on ? 'Unequip' : 'Equip'}</button>
       </div>
     );
 
+    /* Dock the panel over the BUILD column (target.panel rect) -- a fixed,
+       consistent, rounded card to the RIGHT of the loadout cells.  Capped to
+       the column's own height (== inside the dashboard, never taller), so the
+       row list scrolls internally.  The dismiss layer stops ABOVE the dashboard
+       so the loadout cells stay tappable: tapping another cell switches the
+       picker's slot in place; tapping the play area closes it. */
+    const P = target.panel;
+    const cardCommon = {
+      background: 'rgba(20,22,32,0.98)', border: '1px solid rgba(255,255,255,0.14)',
+      borderRadius: 12, padding: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
+      display: 'flex', flexDirection: 'column', boxSizing: 'border-box', zIndex: 51,
+    };
+    const cardStyle = P
+      ? { position: 'fixed', left: P.left, top: P.top, width: P.width, maxHeight: P.height, ...cardCommon }
+      : { position: 'absolute', left: pos ? pos.left : -9999, top: pos ? pos.top : -9999, width: 210, maxHeight: '46vh', ...cardCommon };
     return (
       <div onPointerDown={() => itemDetailBus.close()}
-        style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
-        <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()}
-          style={{
-            position: 'absolute', left: pos ? pos.left : -9999, top: pos ? pos.top : -9999,
-            width: 210, background: 'rgba(20,22,32,0.98)', border: '1px solid rgba(255,255,255,0.14)',
-            borderRadius: 10, padding: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
-          }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,.55)', letterSpacing: 0.5, marginBottom: 5 }}>{title}</div>
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--dash-h)', background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
+        <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()} style={cardStyle}>
+          <div style={{ flex: '0 0 auto', fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,.55)', letterSpacing: 0.5, marginBottom: 5 }}>{title}</div>
           {rows.length === 0
             ? <div style={{ fontSize: 9, color: COL.muted, padding: '4px 2px' }}>Nothing to equip here.</div>
-            : <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: expanded ? 200 : 'none', overflowY: expanded ? 'auto' : 'visible' }}>
+            : <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto' }}>
                 {shown.map(row)}
               </div>}
           {rows.length > MAXP && (
             <button type="button" onPointerUp={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}
               style={{
-                marginTop: 6, width: '100%', padding: '4px 0', fontSize: 9, fontWeight: 700, borderRadius: 6,
+                flex: '0 0 auto', marginTop: 6, width: '100%', padding: '4px 0', fontSize: 9, fontWeight: 700, borderRadius: 6,
                 border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)',
                 color: '#cfd2e0', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
               }}>{expanded ? '▲ Show less' : `▼ ${extra} more`}</button>

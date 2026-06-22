@@ -470,6 +470,10 @@ export const BottomDashboard = () => {
   const [, force] = useState(0);
   const [tooltip, setTooltip] = useState('');
   const dashRef = useRef(null);
+  /* v2.3.1025: the BUILD/stats column rect -- the loadout equip picker docks
+     over it (to the right of the loadout cells) so switching categories never
+     moves the menu or covers the loadout, and it can't exceed the dashboard. */
+  const buildColRef = useRef(null);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 200);
     return () => clearInterval(id);
@@ -1102,16 +1106,27 @@ export const BottomDashboard = () => {
                   /* v2.3.210: tapping the weapon slot now opens the
                      ItemDetailPopup for the currently-active weapon
                      instead of cycling melee/ranged/staff. */
-                  /* v2.3.1024: every loadout cell now opens the unified picker
-                     (kind:'loadout'), so a slot can be (re-)equipped from its
-                     cell even when empty -- same as chest/legs.  The weapon cell
-                     targets the active slot (melee/ranged/staff). */
-                  const onTapWeapon = (anchor) => {
-                    itemDetailBus.open({ kind: 'loadout', slot: 'weapon', anchor });
+                  /* v2.3.1025: every loadout cell opens the unified picker
+                     (kind:'loadout') docked over the BUILD column (to the right
+                     of the loadout cells), so it never covers the loadout and
+                     stays put while you switch categories.  Tapping the SAME
+                     cell again closes it; tapping a different cell switches the
+                     picker's slot in place. */
+                  const openLoadout = (slot) => (anchor) => {
+                    const st = itemDetailBus.state;
+                    if (st && st.open && st.target && st.target.kind === 'loadout' && st.target.slot === slot) {
+                      itemDetailBus.close();
+                      return;
+                    }
+                    let panel = null;
+                    try {
+                      const r = buildColRef.current && buildColRef.current.getBoundingClientRect();
+                      if (r) panel = { left: r.left, top: r.top, width: r.width, height: r.height };
+                    } catch (_e) {}
+                    itemDetailBus.open({ kind: 'loadout', slot, anchor, panel });
                   };
-                  const onTapShield = (anchor) => {
-                    itemDetailBus.open({ kind: 'loadout', slot: 'shield', anchor });
-                  };
+                  const onTapWeapon = openLoadout('weapon');
+                  const onTapShield = openLoadout('shield');
                   /* v2.3.228: armor slot tap opens the same popup. */
                   const onTapArmor = (anchor) => {
                     if (!R.armor) return;
@@ -1133,12 +1148,8 @@ export const BottomDashboard = () => {
                      shirt).  Its icon shows the TOP visible layer; tapping
                      always opens the two-layer picker, even when empty, so
                      either layer can be re-equipped from here. */
-                  const onTapChestLayers = (anchor) => {
-                    itemDetailBus.open({ kind: 'loadout', slot: 'chest', anchor });
-                  };
-                  const onTapLegsArmor = (anchor) => {
-                    itemDetailBus.open({ kind: 'loadout', slot: 'legs', anchor });
-                  };
+                  const onTapChestLayers = openLoadout('chest');
+                  const onTapLegsArmor = openLoadout('legs');
                   return (
                     <div style={{
                       flex: 1,
@@ -1189,7 +1200,8 @@ export const BottomDashboard = () => {
                           active: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
                           onTap: onTapChestLayers,
                         })}
-                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
+                        {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
+                        {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
                         {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                       </div>
                       {/* Row 2 — Legs · Amulet · Cape.  v2.3.692: legs under
@@ -1225,7 +1237,7 @@ export const BottomDashboard = () => {
                   share one column as a 3-sub-col x 5-row grid.  Build
                   occupies sub-col 1; Life Skills fills sub-cols 2 and 3
                   (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
-              <div style={{
+              <div ref={buildColRef} style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
