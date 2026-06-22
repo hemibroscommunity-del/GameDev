@@ -1279,7 +1279,7 @@ export var BroTown = function BroTown(_ref0) {
          transparent padding, so their art fills ~85% of the tile; matching
          that makes the dashed 'none' circle the same visual size as them. */
       ? /*#__PURE__*/React.createElement("div", { style: { width: '86%', aspectRatio: '1 / 1', borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
-      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, decoding: 'async', style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
     sel ? _checkBadge() : null);
   };
   /* v2.3.797: the collapsed-pill kit (_swOf/_miniThumb/_miniSwatch summary
@@ -1985,7 +1985,7 @@ export var BroTown = function BroTown(_ref0) {
           && (S.rpg.weapon.name === 'Bamboo Stick' || S.rpg.weapon.name === 'Wood Sword')) {
         S.rpg.weapon = {
           type: 'greatsword', tier: 'common', tierMult: 1.0,
-          element1: null, element2: null, name: 'Greatsword',
+          element1: null, element2: null, name: 'Great Sword',
           gearBase: 'wood', isVolatile: false
         };
         recalcDerived(S.rpg);

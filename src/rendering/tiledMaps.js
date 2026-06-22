@@ -106,6 +106,22 @@ export async function loadImageZoneMaps() {
   await Promise.all(tasks);
 }
 
+/** Preload just ONE zone's map image (the starting zone, 'town') into the same
+ *  Pixi Assets cache that tileRenderer reads (Assets.cache.get(url)).  Awaited
+ *  by the intro gate so the ground is painted the instant the overlay lifts —
+ *  otherwise the ground sprite falls back to Texture.EMPTY and the world flashes
+ *  BLACK until the PNG lands.  Only the starting zone (one URL), so the gate
+ *  isn't lengthened by the other 10 maps; those still background-load. */
+export async function preloadStartZoneMap(zoneId = 'town') {
+  const url = IMAGE_ZONE_MAPS[zoneId];
+  if (!url) return;
+  const { Assets } = await import('pixi.js');
+  try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
+  return Assets.load(url).catch((e) => {
+    console.warn('[start-zone] failed to load', url, e && e.message);
+  });
+}
+
 /** Fetch every walkability JSON in WALKABILITY_MAPS.  Returns a
  *  promise resolving to `{ zoneId: grid[][] }` with grid[ty][tx]=true
  *  for walkable, false for blocked.  Failures are logged and skipped

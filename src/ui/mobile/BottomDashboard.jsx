@@ -116,7 +116,7 @@ const LIFE_SKILLS = [
   { key: 'mining',        icon: '⛏',  label: 'Mining',        tip: 'Mining — break ore + zone gems with a pickaxe.' },
   { key: 'woodcutting',   icon: '🪓', label: 'Woodcutting',   tip: 'Woodcutting — chop trees for logs and twigs.' },
   { key: 'farming',       icon: '🌾', label: 'Farming',       tip: 'Farming — plant + harvest crops on owned plots.' },
-  { key: 'blacksmithing', icon: '🔨', label: 'Blacksmithing', tip: 'Blacksmithing — forge weapons, armour, tools.' },
+  { key: 'blacksmithing', icon: '🔨', label: 'Blacksmithing', tip: 'Blacksmithing — forge weapons, armor, tools.' },
   { key: 'woodworking',   icon: '🛠',  label: 'Woodworking',   tip: 'Woodworking — craft bows, staves, furniture from logs.' },
   { key: 'gemCutting',    icon: '💎', label: 'Gem Cutting',   tip: 'Gem Cutting — refine raw gems into polished sockets.' },
   { key: 'enchanting',    icon: '✨', label: 'Enchanting',    tip: 'Enchanting — infuse equipment with elemental effects.' },
@@ -470,6 +470,10 @@ export const BottomDashboard = () => {
   const [, force] = useState(0);
   const [tooltip, setTooltip] = useState('');
   const dashRef = useRef(null);
+  /* v2.3.1025: the BUILD/stats column rect -- the loadout equip picker docks
+     over it (to the right of the loadout cells) so switching categories never
+     moves the menu or covers the loadout, and it can't exceed the dashboard. */
+  const buildColRef = useRef(null);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 200);
     return () => clearInterval(id);
@@ -1102,18 +1106,27 @@ export const BottomDashboard = () => {
                   /* v2.3.210: tapping the weapon slot now opens the
                      ItemDetailPopup for the currently-active weapon
                      instead of cycling melee/ranged/staff. */
-                  const onTapWeapon = (anchor) => {
-                    const slotKey = slot === 'ranged' ? 'rangedWeapon'
-                                  : slot === 'staff'  ? 'staffWeapon'
-                                  : 'weapon';
-                    const wpn = R[slotKey];
-                    if (!wpn) return;
-                    itemDetailBus.open({ kind: 'weapon', slot, wpn, anchor });
+                  /* v2.3.1025: every loadout cell opens the unified picker
+                     (kind:'loadout') docked over the BUILD column (to the right
+                     of the loadout cells), so it never covers the loadout and
+                     stays put while you switch categories.  Tapping the SAME
+                     cell again closes it; tapping a different cell switches the
+                     picker's slot in place. */
+                  const openLoadout = (slot) => (anchor) => {
+                    const st = itemDetailBus.state;
+                    if (st && st.open && st.target && st.target.kind === 'loadout' && st.target.slot === slot) {
+                      itemDetailBus.close();
+                      return;
+                    }
+                    let panel = null;
+                    try {
+                      const r = buildColRef.current && buildColRef.current.getBoundingClientRect();
+                      if (r) panel = { left: r.left, top: r.top, width: r.width, height: r.height };
+                    } catch (_e) {}
+                    itemDetailBus.open({ kind: 'loadout', slot, anchor, panel });
                   };
-                  const onTapShield = (anchor) => {
-                    if (!R.shield) return;
-                    itemDetailBus.open({ kind: 'shield', shield: R.shield, anchor });
-                  };
+                  const onTapWeapon = openLoadout('weapon');
+                  const onTapShield = openLoadout('shield');
                   /* v2.3.228: armor slot tap opens the same popup. */
                   const onTapArmor = (anchor) => {
                     if (!R.armor) return;
@@ -1135,15 +1148,8 @@ export const BottomDashboard = () => {
                      shirt).  Its icon shows the TOP visible layer; tapping
                      always opens the two-layer picker, even when empty, so
                      either layer can be re-equipped from here. */
-                  const onTapChestLayers = (anchor) => {
-                    itemDetailBus.open({ kind: 'chestLayers', anchor });
-                  };
-                  /* v2.3.1016: LEGS cell opens its own picker the same way --
-                     always tappable, so greaves can be (re-)equipped from the
-                     loadout even when the slot is empty. */
-                  const onTapLegsArmor = (anchor) => {
-                    itemDetailBus.open({ kind: 'legsArmor', anchor });
-                  };
+                  const onTapChestLayers = openLoadout('chest');
+                  const onTapLegsArmor = openLoadout('legs');
                   return (
                     <div style={{
                       flex: 1,
@@ -1194,8 +1200,9 @@ export const BottomDashboard = () => {
                           active: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
                           onTap: onTapChestLayers,
                         })}
-                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
-                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: R.shield ? onTapShield : undefined })}
+                        {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
+                        {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
+                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                       </div>
                       {/* Row 2 — Legs · Amulet · Cape.  v2.3.692: legs under
                           chest, jewelry + the new back slot fill the row. */}
@@ -1230,7 +1237,7 @@ export const BottomDashboard = () => {
                   share one column as a 3-sub-col x 5-row grid.  Build
                   occupies sub-col 1; Life Skills fills sub-cols 2 and 3
                   (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
-              <div style={{
+              <div ref={buildColRef} style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',

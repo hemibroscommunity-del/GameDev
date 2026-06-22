@@ -1,5 +1,6 @@
 import { drawCharacterPortrait, prewarmPortraitDirs } from '@/rendering/characterPortrait.js';
 import { prewarmBaseSheets } from '@/rendering/pixiRenderer.js';
+import { preloadTraitThumbs } from '@/rendering/traitThumbs.js';
 import { setHairColor, hairColorTarget } from '@/rendering/traits/hairColorCatalog.js';
 import { hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
 import { facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -42,6 +43,15 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
    cleanup; early-returns (no cleanup) when the modal isn't showing. */
 export function wireSplashPrewarm(showNameModal, introWarmRef) {
   if (!showNameModal) return;
+  /* v2.3.1022: warm the starting-zone (town) map IMMEDIATELY -- it's a single
+     small PNG and is the direct fix for the black-world-on-join flash, so it
+     gets a head start (well before the ≥3s intro dismiss) without competing
+     meaningfully with the welcome theme art. */
+  try { import('@/rendering/tiledMaps.js').then((m) => m.preloadStartZoneMap('town')).catch(function () {}); } catch (e) {}
+  /* v2.3.1023: warm the trait thumbnails (hair/hat/beard/shirt) up front so the
+     customizer's category tiles appear instantly instead of fetching on tab
+     open.  Cheap now that the thumbs are shrunk to 128px (~191KB total). */
+  try { preloadTraitThumbs(); } catch (e) {}
   /* v2.3.717: prewarm DELAYED 2.5s -- kicking it immediately had the
      game sheets racing the welcome screen's own theme art for
      bandwidth, which is exactly the "modal loads slow" complaint.

@@ -4,7 +4,7 @@
  */
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
-import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
+import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
 import { EffectsRenderer } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadTileAssets } from './tileAssets.js';
@@ -16,8 +16,9 @@ import { loadSnowmanSprites } from './snowmanSprites.js';
 import { loadAllVariantSprites } from './monsterVariantSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
 import { loadShieldSprites } from './shieldSprites.js';
-import { loadImageZoneMaps } from './tiledMaps.js';
+import { loadImageZoneMaps, preloadStartZoneMap } from './tiledMaps.js';
 import { preloadGear } from './gearSheets.js';
+import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
 import { Assets } from 'pixi.js';
 
@@ -51,6 +52,14 @@ export function preloadPlayerAssets() {
     loadPlayerAnchors(),
     preloadGear(),
     preloadBodyAll(),
+    /* v2.3.1022: hold the intro until the starting-zone (town) map is in the
+       Assets cache -> no black-ground flash on join.  Warmed early at modal
+       time, so this is a cached/in-flight await (~0ms) unless the network is
+       genuinely slow. */
+    preloadStartZoneMap('town'),
+    /* v2.3.1022: warm the swing/bowshot gear sheets (network-only, parallel)
+       so the first armored attack doesn't cold-load mid-combat. */
+    preloadCombatGear(),
   ]).then((results) =>
     /* Bake the armored-body masked frames while the intro overlay is still
        up (needs the body + gear sheets above resolved first), so the
@@ -67,6 +76,11 @@ export function preloadPlayerAssets() {
       /* v2.3.701: force GPU upload of the baked textures behind the intro
          so early play doesn't pay lazy first-draw upload stalls. */
       .then(() => uploadBakedTextures(_appRef && _appRef.renderer).catch(() => {}))
+      /* v2.3.1022: also GPU-upload the gear sheets (idle/jog + the preloaded
+         swing/bowshot strips) so a first armored turn/swing doesn't pay a
+         lazy first-draw upload.  Staggered + dedup'd; appended here so it runs
+         after the bake and never blocks the parallel network preloads above. */
+      .then(() => uploadGearTextures(_appRef && _appRef.renderer).catch(() => {}))
       .then(() => results)
   );
 }
