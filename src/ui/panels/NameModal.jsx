@@ -139,7 +139,11 @@ export function NameModal(props) {
       var perView = Math.max(1, Math.floor((cw + 6) / pitch));
       var step = perView * pitch;
       var n = Math.max(1, Math.ceil(el.children.length / perView));
-      var p = Math.min(n, Math.floor(el.scrollLeft / step + 0.5) + 1);
+      /* The last page's reachable scrollLeft (scrollWidth-clientWidth) is short
+         of (n-1)*step when the final page is partial, so floor(scrollLeft/step)
+         never reaches n -- snap to the last page once scrolled to the end. */
+      var maxScroll = Math.max(0, el.scrollWidth - cw);
+      var p = (el.scrollLeft >= maxScroll - 2) ? n : Math.min(n, Math.floor(el.scrollLeft / step + 0.5) + 1);
       return { perView: perView, step: step, p: p, n: n };
     };
     var _pageOf = function (el) { var m = _metrics(el); return { p: m.p, n: m.n }; };
@@ -159,7 +163,8 @@ export function NameModal(props) {
         var el = ref.current; if (!el) return;
         var m = _metrics(el);
         var target = Math.min(m.n - 1, Math.max(0, (m.p - 1) + dir));
-        el.scrollTo({ left: target * m.step, behavior: 'smooth' });
+        var maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+        el.scrollTo({ left: Math.min(target * m.step, maxLeft), behavior: 'smooth' });
       }; };
       return /*#__PURE__*/React.createElement("div", { className: "bt-cc-pager" },
         /*#__PURE__*/React.createElement("button", { type: 'button', className: "bt-cc-pager-arrow", disabled: pg.p <= 1, "aria-label": 'Previous', onClick: _go(-1) }, "‹"),
