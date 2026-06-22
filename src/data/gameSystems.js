@@ -3587,7 +3587,7 @@ export const WEAPON_TYPES = {
     range: 50,
     type: 'melee',
     arc: Math.PI * 0.85,
-    label: 'Greatsword',
+    label: 'Great Sword',
     emoji: '⚔️'
   },
   sword: {
@@ -4968,7 +4968,7 @@ export function createDefaultRpg() {
       tierMult: 1.0,
       element1: null,
       element2: null,
-      name: 'Greatsword',
+      name: 'Great Sword',
       isVolatile: false,
       gearBase: 'wood'
     },

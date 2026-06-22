@@ -65,6 +65,20 @@ export function getGearFrame(slot, item, pose, dir, frameIdx) {
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
+/** Unique TextureSources of every gear sheet baked so far (idle/jog stand sets).
+ *  Lets the renderer force-GPU-upload them during the loading screen (mirrors
+ *  the masked-body uploadBakedTextures) so a first armored turn doesn't pay a
+ *  lazy first-draw upload.  All frames of a sheet share one source. */
+export function getLoadedGearSources() {
+  const sources = new Set();
+  for (const entry of Object.values(_sheets)) {
+    if (Array.isArray(entry) && entry.length && entry[0] && entry[0].source) {
+      sources.add(entry[0].source);
+    }
+  }
+  return sources;
+}
+
 /** Pre-bake a slot's spawn-pose sheets (all base dirs) to avoid a first-frame
  *  gap, mirroring playerSkins.prewarmBody. */
 export function prewarmGear(slot, item) {
