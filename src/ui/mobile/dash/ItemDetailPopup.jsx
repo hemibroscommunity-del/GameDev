@@ -309,9 +309,12 @@ export const ItemDetailPopup = () => {
   const [, force] = useState(0);
   const cardRef = useRef(null);
   const [pos, setPos] = useState(null);
+  /* v2.3.1024: "▼ N more" expand toggle for the loadout picker; reset each time
+     a different popup opens so it never starts expanded. */
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    const u1 = itemDetailBus.subscribe(() => force((v) => v + 1));
+    const u1 = itemDetailBus.subscribe(() => { setExpanded(false); force((v) => v + 1); });
     const u2 = subscribeLocks(() => force((v) => v + 1));
     return () => { u1(); u2(); };
   }, []);
@@ -330,6 +333,158 @@ export const ItemDetailPopup = () => {
 
   if (!itemDetailBus.state.open) return null;
   const target = itemDetailBus.state.target;
+
+  /* v2.3.1024: unified LOADOUT picker for every equip slot (weapon / shield /
+     chest / legs).  Lists the items you own for that slot as equip/unequip
+     rows; shows the top 2 and a "▼ N more" toggle to reveal the rest so a big
+     stash never overflows the card.  Stays open so you can swap freely; tap
+     outside / Escape closes.  Supersedes the chestLayers/legsArmor blocks below
+     (now unreachable — the chest/legs cells open this instead). */
+  if (target && target.kind === 'loadout') {
+    const S2 = getState();
+    const R2 = S2 && S2.rpg;
+    if (!R2) return null;
+    const slot = target.slot;
+    const refresh = () => force((v) => v + 1);
+    const rows = [];
+    let title = '';
+
+    if (slot === 'weapon') {
+      const active = R2.activeSlot || 'melee';
+      title = active === 'ranged' ? 'RANGED' : active === 'staff' ? 'STAFF' : 'MELEE';
+      const prop = active === 'ranged' ? 'rangedWeapon' : active === 'staff' ? 'staffWeapon' : 'weapon';
+      const types = active === 'ranged' ? ['bow'] : active === 'staff' ? ['staff'] : ['sword', 'greatsword'];
+      if (!R2.weaponStash) R2.weaponStash = [];
+      const mkRow = (w, on) => ({
+        key: 'w' + (w.name || w.type || '') + R2.weaponStash.indexOf(w) + (on ? 'E' : ''),
+        name: w.name || ((tierLabel(w) || '') + ' ' + (w.type || 'weapon')).trim(),
+        sub: [tierLabel(w), w.type].filter(Boolean).join(' · '),
+        iconSrc: weaponThumb(w), glyph: '⚔️', on,
+        toggle: () => {
+          if (on) { R2.weaponStash.push(w); R2[prop] = null; }
+          else {
+            const i = R2.weaponStash.indexOf(w); if (i >= 0) R2.weaponStash.splice(i, 1);
+            if (R2[prop]) R2.weaponStash.push(R2[prop]);
+            R2[prop] = w; R2.activeSlot = active;
+          }
+          persist(R2); refresh();
+        },
+      });
+      if (R2[prop]) rows.push(mkRow(R2[prop], true));
+      for (const w of R2.weaponStash.filter((x) => x && types.indexOf(x.type) >= 0)) rows.push(mkRow(w, false));
+    } else if (slot === 'shield') {
+      title = 'SHIELD';
+      if (!R2.shieldStash) R2.shieldStash = [];
+      const mkRow = (sh, on) => ({
+        key: 'sh' + (sh.name || '') + R2.shieldStash.indexOf(sh) + (on ? 'E' : ''),
+        name: sh.name || ((tierLabel(sh) || 'Wood') + ' Shield'),
+        sub: 'Hold to block', iconSrc: shieldThumb(sh), glyph: '🛡️', on,
+        toggle: () => {
+          if (on) { R2.shieldStash.push(sh); R2.shield = null; }
+          else {
+            const i = R2.shieldStash.indexOf(sh); if (i >= 0) R2.shieldStash.splice(i, 1);
+            if (R2.shield) R2.shieldStash.push(R2.shield);
+            R2.shield = sh;
+          }
+          persist(R2); refresh();
+        },
+      });
+      if (R2.shield) rows.push(mkRow(R2.shield, true));
+      for (const sh of R2.shieldStash) rows.push(mkRow(sh, false));
+    } else if (slot === 'chest' || slot === 'legs') {
+      title = slot === 'chest' ? 'CHEST' : 'LEGS';
+      if (!R2.gearStash) R2.gearStash = [];
+      const sub = slot === 'chest' ? 'Armour · chest' : 'Armour · legs';
+      const mkGearRow = (gearId, on, stashObj) => ({
+        key: slot + gearId + (on ? 'E' : 's' + (stashObj ? R2.gearStash.indexOf(stashObj) : 'c')),
+        name: gearName(slot, gearId), sub, iconSrc: gearThumb(gearId), on,
+        toggle: () => {
+          if (on) {
+            R2.gearStash.push({ slot, gearId, name: gearName(slot, gearId) });
+            setEquip(slot, 'none');
+          } else {
+            if (stashObj) { const i = R2.gearStash.indexOf(stashObj); if (i >= 0) R2.gearStash.splice(i, 1); }
+            const prev = getEquip(slot);
+            if (prev !== 'none') R2.gearStash.push({ slot, gearId: prev, name: gearName(slot, prev) });
+            setEquip(slot, gearId);
+          }
+          persist(R2); refresh();
+        },
+      });
+      const curId = getEquip(slot);
+      if (curId !== 'none') rows.push(mkGearRow(curId, true, null));
+      for (const g of R2.gearStash.filter((g) => g && g.slot === slot)) rows.push(mkGearRow(g.gearId, false, g));
+      /* Own nothing for this slot? still offer the catalog options so it can
+         always be filled from the loadout. */
+      if (!rows.length) {
+        for (const c of (GEAR_CATALOG[slot] || [])) {
+          if (c && c.id && c.id !== 'none') rows.push(mkGearRow(c.id, false, null));
+        }
+      }
+      /* Chest also carries the optional t-shirt under-layer. */
+      if (slot === 'chest') {
+        const shirtOn = getEquip('shirt') !== 'none';
+        rows.push({
+          key: 'shirt', name: 'T-Shirt', sub: 'Clothing · under armour',
+          iconSrc: '/sprites/gear/icons/tshirt.png?v=2.3.756', on: shirtOn,
+          toggle: () => { setEquip('shirt', shirtOn ? 'none' : 'tshirt'); persist(R2); refresh(); },
+        });
+      }
+    }
+
+    const MAXP = 2;
+    const shown = expanded ? rows : rows.slice(0, MAXP);
+    const extra = rows.length - MAXP;
+    const row = (r) => (
+      <div key={r.key} style={{
+        display: 'flex', alignItems: 'center', gap: 6, padding: '5px 6px', borderRadius: 8,
+        background: r.on ? 'rgba(61,212,151,.07)' : 'rgba(255,255,255,.03)',
+        border: `1px solid ${r.on ? 'rgba(61,212,151,.3)' : 'rgba(255,255,255,.08)'}`,
+      }}>
+        {r.iconSrc
+          ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: 24, height: 24, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
+          : <span style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, opacity: r.on ? 1 : 0.5, userSelect: 'none' }}>{r.glyph || '▫'}</span>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: r.on ? '#3dd497' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
+          <div style={{ fontSize: 7.5, color: 'rgba(255,255,255,.35)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.sub}</div>
+        </div>
+        <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
+          style={{
+            padding: '4px 8px', fontSize: 8.5, fontWeight: 700, borderRadius: 6,
+            border: '1px solid rgba(255,255,255,.2)',
+            background: r.on ? 'rgba(255,94,108,.25)' : 'rgba(61,212,151,.25)',
+            color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+          }}>{r.on ? 'Unequip' : 'Equip'}</button>
+      </div>
+    );
+
+    return (
+      <div onPointerDown={() => itemDetailBus.close()}
+        style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
+        <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute', left: pos ? pos.left : -9999, top: pos ? pos.top : -9999,
+            width: 210, background: 'rgba(20,22,32,0.98)', border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: 10, padding: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
+          }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,.55)', letterSpacing: 0.5, marginBottom: 5 }}>{title}</div>
+          {rows.length === 0
+            ? <div style={{ fontSize: 9, color: COL.muted, padding: '4px 2px' }}>Nothing to equip here.</div>
+            : <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: expanded ? 200 : 'none', overflowY: expanded ? 'auto' : 'visible' }}>
+                {shown.map(row)}
+              </div>}
+          {rows.length > MAXP && (
+            <button type="button" onPointerUp={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}
+              style={{
+                marginTop: 6, width: '100%', padding: '4px 0', fontSize: 9, fontWeight: 700, borderRadius: 6,
+                border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.05)',
+                color: '#cfd2e0', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+              }}>{expanded ? '▲ Show less' : `▼ ${extra} more`}</button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   /* v2.3.756: the CHEST loadout slot holds TWO layers -- armour worn OVER the
      t-shirt.  Tapping it opens this two-row picker instead of a single-item

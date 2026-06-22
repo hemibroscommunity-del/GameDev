@@ -1102,17 +1102,15 @@ export const BottomDashboard = () => {
                   /* v2.3.210: tapping the weapon slot now opens the
                      ItemDetailPopup for the currently-active weapon
                      instead of cycling melee/ranged/staff. */
+                  /* v2.3.1024: every loadout cell now opens the unified picker
+                     (kind:'loadout'), so a slot can be (re-)equipped from its
+                     cell even when empty -- same as chest/legs.  The weapon cell
+                     targets the active slot (melee/ranged/staff). */
                   const onTapWeapon = (anchor) => {
-                    const slotKey = slot === 'ranged' ? 'rangedWeapon'
-                                  : slot === 'staff'  ? 'staffWeapon'
-                                  : 'weapon';
-                    const wpn = R[slotKey];
-                    if (!wpn) return;
-                    itemDetailBus.open({ kind: 'weapon', slot, wpn, anchor });
+                    itemDetailBus.open({ kind: 'loadout', slot: 'weapon', anchor });
                   };
                   const onTapShield = (anchor) => {
-                    if (!R.shield) return;
-                    itemDetailBus.open({ kind: 'shield', shield: R.shield, anchor });
+                    itemDetailBus.open({ kind: 'loadout', slot: 'shield', anchor });
                   };
                   /* v2.3.228: armor slot tap opens the same popup. */
                   const onTapArmor = (anchor) => {
@@ -1136,13 +1134,10 @@ export const BottomDashboard = () => {
                      always opens the two-layer picker, even when empty, so
                      either layer can be re-equipped from here. */
                   const onTapChestLayers = (anchor) => {
-                    itemDetailBus.open({ kind: 'chestLayers', anchor });
+                    itemDetailBus.open({ kind: 'loadout', slot: 'chest', anchor });
                   };
-                  /* v2.3.1016: LEGS cell opens its own picker the same way --
-                     always tappable, so greaves can be (re-)equipped from the
-                     loadout even when the slot is empty. */
                   const onTapLegsArmor = (anchor) => {
-                    itemDetailBus.open({ kind: 'legsArmor', anchor });
+                    itemDetailBus.open({ kind: 'loadout', slot: 'legs', anchor });
                   };
                   return (
                     <div style={{
@@ -1195,7 +1190,7 @@ export const BottomDashboard = () => {
                           onTap: onTapChestLayers,
                         })}
                         {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
-                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: R.shield ? onTapShield : undefined })}
+                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                       </div>
                       {/* Row 2 — Legs · Amulet · Cape.  v2.3.692: legs under
                           chest, jewelry + the new back slot fill the row. */}
