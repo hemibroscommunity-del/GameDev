@@ -222,10 +222,21 @@ export const InventoryPanel = () => {
     ? visible
     : visible.filter(k => classify(k) === filter);
 
+  /* v2.3.1032: surface stash items + slot accounting up here so the BAG
+     header count and the grid (with empty-slot fillers) share one source. */
+  const SLOTS = 32;
+  const stashWpns    = (filter === 'all' || filter === 'weapon') ? ((S?.rpg?.weaponStash) || []) : [];
+  const stashShields = (filter === 'all' || filter === 'armor')  ? ((S?.rpg?.shieldStash) || []) : [];
+  const stashArmors  = (filter === 'all' || filter === 'armor')  ? ((S?.rpg?.armorStash) || []) : [];
+  const stashGears   = (filter === 'all' || filter === 'armor')  ? ((S?.rpg?.gearStash) || []) : [];
+  const stashCount = stashWpns.length + stashShields.length + stashArmors.length + stashGears.length;
+  const shownItems = filtered.slice(0, Math.max(0, SLOTS - stashCount));
+  const usedTiles = stashCount + shownItems.length;
+
   return (
     <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
 
-      {/* Filter strip — icon-only chips. */}
+      {/* Filter strip — labeled category chips (glyph + name). */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
         {CATEGORIES.map(c => {
           const active = c.id === filter;
@@ -234,19 +245,28 @@ export const InventoryPanel = () => {
               onClick={() => setFilter(c.id)}
               title={c.label}
               style={{
-                flex: 1,
+                flex: 1, minWidth: 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
                 padding: '4px 0',
                 background: active ? COL.accent : 'transparent',
                 color: active ? '#fff' : COL.muted,
                 border: `1px solid ${active ? COL.accent : COL.tileBor}`,
-                borderRadius: 4,
+                borderRadius: 5,
                 fontFamily: 'inherit',
-                fontSize: 16,
                 cursor: 'pointer',
               }}
-            >{c.glyph}</button>
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>
+              <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.02em' }}>{c.label}</span>
+            </button>
           );
         })}
+      </div>
+
+      {/* Slot count. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '0 2px 5px', color: COL.muted }}>
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em' }}>BAG</span>
+        <span style={{ fontSize: 11 }}>{Math.min(usedTiles, SLOTS)} / {SLOTS}</span>
       </div>
 
       {/* v2.3.761: leather backdrop (owner art) behind the bag's cell grid;
@@ -261,33 +281,22 @@ export const InventoryPanel = () => {
         flex: 1,
         minHeight: 0,
       }}>
-      {(() => {
-        /* v2.3.210: surface stash weapons + shields in the bag grid
-           so the popup's Equip action has somewhere to come from. */
-        const stashWpns = (filter === 'all' || filter === 'weapon')
-          ? ((S?.rpg?.weaponStash) || [])
-          : [];
-        const stashShields = (filter === 'all' || filter === 'armor')
-          ? ((S?.rpg?.shieldStash) || [])
-          : [];
-        /* v2.3.228: armor stash tiles. */
-        const stashArmors = (filter === 'all' || filter === 'armor')
-          ? ((S?.rpg?.armorStash) || [])
-          : [];
-        /* v2.3.685: unequipped WORN gear (steel chest/legs from the Loadout)
-           -- Equip from the popup puts it back on. */
-        const stashGears = (filter === 'all' || filter === 'armor')
-          ? ((S?.rpg?.gearStash) || [])
-          : [];
-        const totalTiles = stashWpns.length + stashShields.length + stashArmors.length + stashGears.length + filtered.length;
-        if (totalTiles === 0) {
-          return (
-            <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
-              {filter === 'all' ? 'Bag is empty.' : 'No items in this category.'}
+      {usedTiles === 0
+        ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 8px', textAlign: 'center', color: COL.muted }}>
+            <img src="/icons/ui/bag.png?v=2.3.115" alt="" draggable={false}
+              style={{ width: 46, height: 46, opacity: 0.4, filter: 'grayscale(1)' }} />
+            <div style={{ fontSize: 13, fontWeight: 700 }}>
+              {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
             </div>
-          );
-        }
-        return (
+            {filter === 'all' && (
+              <div style={{ fontSize: 10.5, color: 'rgba(136,144,184,0.78)', maxWidth: 220 }}>
+                Defeat monsters and gather materials to fill it up.
+              </div>
+            )}
+          </div>
+        )
+        : (
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(8, 1fr)',
@@ -305,12 +314,20 @@ export const InventoryPanel = () => {
             {stashGears.map((g, i) => (
               <StashTile key={`sg-${i}`} kind="stashGear" obj={g} index={i} />
             ))}
-            {filtered.slice(0, 32 - stashWpns.length - stashShields.length - stashArmors.length - stashGears.length).map(k => (
+            {shownItems.map(k => (
               <ItemTile key={k} ikey={k} count={inv[k]} />
             ))}
+            {/* Faint empty slots so the bag always reads as a full grid. */}
+            {Array.from({ length: Math.max(0, SLOTS - usedTiles) }).map((_, i) => (
+              <div key={`empty-${i}`} aria-hidden="true" style={{
+                width: '100%', aspectRatio: '1 / 1',
+                background: COL.tile,
+                border: `1px solid ${COL.tileBor}`,
+                borderRadius: 6,
+              }} />
+            ))}
           </div>
-        );
-      })()}
+        )}
       </div>
     </div>
   );

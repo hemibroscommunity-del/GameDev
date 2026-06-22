@@ -236,7 +236,7 @@ export function NameModal(props) {
          half of the painted backdrop.
          v2.3.741: pill backdrop removed (owner: too prominent) — plain
          white text, the heavy halo carries the contrast. */
-      style: { fontSize: 15, fontWeight: 700, color: '#ffffff', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+      style: { fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.82)', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
         letterSpacing: '.14em', textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
     }, "CREATE YOUR CHARACTER")), /*#__PURE__*/React.createElement("section", {
       /* Character SHOWCASE — full-card-width LANDSCAPE stage (spec §3:
@@ -442,12 +442,12 @@ export function NameModal(props) {
          rerolls just the name. */
       type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
       /* v2.3.800: slimmed with the rest of the vertical rhythm. */
-      style: { width: '100%', padding: '4px', minHeight: 34, cursor: 'pointer', borderRadius: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+      style: { width: '100%', padding: '8px', minHeight: 44, cursor: 'pointer', borderRadius: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         background: 'rgba(20,16,40,0.93)', color: 'var(--txt)',
-        fontSize: 16, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
+        fontSize: 17, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
         textShadow: '0 1px 2px rgba(0,0,0,.55)' }
-    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
+    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 26, height: 26, flex: '0 0 auto' } }),
     /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("button", {
       onClick: joinTown,
       /* v2.3.725: the owner's painted PLAY art (label baked in); the img is
