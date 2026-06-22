@@ -224,21 +224,9 @@ export function NameModal(props) {
       className: "bt-cc-logo-shine", "aria-hidden": true
     })), /*#__PURE__*/React.createElement("div", {
       className: "bt-name-box bt-cc-box"
-    }, /*#__PURE__*/React.createElement("div", {
-      /* Header: call-to-action only — the logo lives in the banner, the
-         divider art was cut for vertical budget (every px here comes out
-         of the drawer), and the build tag moved to the scroll's tail.
-         The class exists so 667pt-class screens can drop the line
-         entirely (game.css media query). */
-      className: "bt-cc-cta", style: { textAlign: 'center' }
-    }, /*#__PURE__*/React.createElement("div", {
-      /* v2.3.738: white + heavy dark halo — gold vanished into the sunlit
-         half of the painted backdrop.
-         v2.3.741: pill backdrop removed (owner: too prominent) — plain
-         white text, the heavy halo carries the contrast. */
-      style: { fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.82)', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-        letterSpacing: '.14em', textShadow: '0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.8), 0 0 18px rgba(0,0,0,.5)' }
-    }, "CREATE YOUR CHARACTER")), /*#__PURE__*/React.createElement("section", {
+    }, /* v2.3.1034: "CREATE YOUR CHARACTER" caption removed (owner: self-
+         explanatory + distracting). */
+    /*#__PURE__*/React.createElement("section", {
       /* Character SHOWCASE — full-card-width LANDSCAPE stage (spec §3:
          the character is the star; the wide panel leaves negative space
          for future equipped-item previews / ambient effects beside the
