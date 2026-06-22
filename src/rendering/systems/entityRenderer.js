@@ -15,7 +15,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
-import { getAnchor, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
+import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { TRAIT_CATEGORIES, resolveBodyAnchor } from '../traitCategories.js';
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
@@ -3244,7 +3244,12 @@ export class EntityRenderer {
           if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88 * 0.6;
           else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03 * 0.6;
           const animFrame = display._animFrame || 0;
-          const hand = display._animPose ? getAnchor(display._animPose, dir, animFrame, mirror) : null;
+          /* v2.3.1040: forward-hand pick for the doubled half-cycle jogs (east/NE). */
+          const _jogFwd = display._animPose === 'jog' && (dir === 'east' || dir === 'northeast');
+          const hand = display._animPose
+            ? (_jogFwd ? (getJogForwardHand(dir, animFrame) || getAnchor(display._animPose, dir, animFrame, mirror))
+                       : getAnchor(display._animPose, dir, animFrame, mirror))
+            : null;
           let wpnX = 0, wpnY = 0;
           if (hand) {
             const ax = mirror ? (SHEET_W - hand[0]) : hand[0];
@@ -4030,8 +4035,12 @@ export class EntityRenderer {
          negative scale lands on the visual right-hand side of the
          mirrored character.  Old single-anchor data is treated as
          right-hand-only and used regardless of mirror flag. */
+      /* v2.3.1040: doubled half-cycle jogs (east/NE) pin the weapon to whichever
+         hand is forward this frame, so it stops "kicking up" on the back-swing. */
+      const _jogFwd = display._animPose === 'jog' && (dir === 'east' || dir === 'northeast');
       const hand = (spritesAvailable && display._animPose)
-        ? getAnchor(display._animPose, dir, animFrame, mirror)
+        ? (_jogFwd ? (getJogForwardHand(dir, animFrame) || getAnchor(display._animPose, dir, animFrame, mirror))
+                   : getAnchor(display._animPose, dir, animFrame, mirror))
         : null;
       let wpnX, wpnY;
       if (hand) {
