@@ -167,7 +167,10 @@ export function NameModal(props) {
        page through the rest.
        v2.3.1016: up to 10 per row, left-aligned (owner).
        v2.3.1017: 10 read too small on a phone — back to 7 per row (owner). */
-    var _PER = 7;
+    /* v2.3.1035: all items on one page -> a single horizontal swipe-scroll row
+       (no pagination); useful for long lists like hats. The pager below renders
+       its empty placeholder (count===1) so the drawer height is unchanged. */
+    var _PER = 999;
     var _allItems = _ccActive.items || [];
     var _pageCount = Math.max(1, Math.ceil(_allItems.length / _PER));
     var _pg = Math.min(ccPage, _pageCount - 1);
@@ -177,7 +180,7 @@ export function NameModal(props) {
        room to show items and colors together (owner).  Color-only categories
        (skin/pants/shoes) have no colors step; their swatches stay in the item
        grid. */
-    var _CPER = 7;
+    var _CPER = 999;
     var _allColors = _ccActive.colors || [];
     var _showColors = _allColors.length > 0 && objOpen[_activeKey] === false;
     var _cPageCount = Math.max(1, Math.ceil(_allColors.length / _CPER));

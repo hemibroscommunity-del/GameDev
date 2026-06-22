@@ -402,47 +402,39 @@ const InventoryPreview = () => {
       }}
       title="Tap to open Bag"
     >
-      {tiles.length === 0 ? (
-        /* v2.3.696: BAG header in the LOADOUT/BUILD ColHeader treatment --
-           only while the preview is empty; once items land, the header
-           yields its row so all 6 tile cells fit (per user). */
-        <>
-          <ColHeader>Bag</ColHeader>
-          <div style={{
-            flex: 1,
-            color: COL.muted,
-            fontSize: 11,
-            textAlign: 'center',
-            padding: '10px 4px 0',
-            opacity: 0.7,
-          }}>
-            Empty.<br />Tap to open.
-          </div>
-        </>
-      ) : (
-        <div style={{
-          flex: 1,
-          minHeight: 0,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridTemplateRows: 'repeat(3, 1fr)',
-          gap: 4,
-        }}>
-          {tiles.map(k => (
-            <ItemTile
-              key={k}
-              ikey={k}
-              count={inv[k]}
-              style={{
-                /* Drop the hardcoded 1:1 aspect ratio so the tile fits
-                   whatever shape the grid cell is. */
-                aspectRatio: 'auto',
-                height: '100%',
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {/* v2.3.1035: always show the 2x3 slot grid (matching the full Bag's
+          square slots) -- items first, then faint empty slots fill to 6, so
+          the preview always reads as an inventory grid (even when empty). The
+          whole card stays tappable to open the Bag. */}
+      <div style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gridTemplateRows: 'repeat(3, 1fr)',
+        gap: 4,
+      }}>
+        {tiles.map(k => (
+          <ItemTile
+            key={k}
+            ikey={k}
+            count={inv[k]}
+            style={{
+              /* Drop the hardcoded 1:1 aspect ratio so the tile fits
+                 whatever shape the grid cell is. */
+              aspectRatio: 'auto',
+              height: '100%',
+            }}
+          />
+        ))}
+        {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
+          <div key={`pe-${i}`} aria-hidden="true" style={{
+            background: COL.tile,
+            border: `1px solid ${COL.tileBor}`,
+            borderRadius: 6,
+          }} />
+        ))}
+      </div>
     </div>
   );
 };
