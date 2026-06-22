@@ -1968,7 +1968,7 @@ export var BroTown = function BroTown(_ref0) {
           && (S.rpg.weapon.name === 'Bamboo Stick' || S.rpg.weapon.name === 'Wood Sword')) {
         S.rpg.weapon = {
           type: 'greatsword', tier: 'common', tierMult: 1.0,
-          element1: null, element2: null, name: 'Greatsword',
+          element1: null, element2: null, name: 'Great Sword',
           gearBase: 'wood', isVolatile: false
         };
         recalcDerived(S.rpg);

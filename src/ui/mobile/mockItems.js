@@ -38,7 +38,7 @@ export const makeItem = (type, opts = {}) => {
     ...(function () {
       if (type !== 'armor') return { slot: null, gearId: opts.gearId || null };
       const slot = opts.slot || pick(['chest', 'legs']);
-      const GEAR_BY_SLOT = { chest: ['steelplate', 'testplate'], legs: ['steelgreaves'] };
+      const GEAR_BY_SLOT = { chest: ['steelplate'], legs: ['steelgreaves'] };
       const gearId = opts.gearId || pick(GEAR_BY_SLOT[slot] || ['steelplate']);
       return { slot, gearId };
     })(),

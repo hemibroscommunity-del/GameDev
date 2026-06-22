@@ -354,7 +354,7 @@ export const ItemDetailPopup = () => {
       if (!R2.weaponStash) R2.weaponStash = [];
       const mkRow = (w, on) => {
         const dr = weaponDmgRange(w);
-        const base = [tierLabel(w), w.type].filter(Boolean).join(' ');
+        const base = [tierLabel(w), (WEAPON_TYPES[w.type] && WEAPON_TYPES[w.type].label) || w.type].filter(Boolean).join(' ');
         return {
           key: 'w' + (w.name || w.type || '') + R2.weaponStash.indexOf(w) + (on ? 'E' : ''),
           name: w.name || ((tierLabel(w) || '') + ' ' + (w.type || 'weapon')).trim(),

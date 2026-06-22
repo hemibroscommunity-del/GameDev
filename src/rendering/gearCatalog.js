@@ -9,9 +9,9 @@ import { onShirtChange } from './traits/shirtCatalog.js';
 
 export const GEAR_SLOTS = ['shirt', 'legs', 'chest', 'shoulders'];
 
-/* Per-slot catalog.  v2.3.503: a single 'testplate' chest piece (an aligned
-   steel vest baked from the body frames by tools/make_test_gear.py) to prove
-   the layered renderer before real gear art exists.
+/* Per-slot catalog.  v2.3.503 seeded a throwaway 'testplate' chest piece to
+   prove the layered renderer; v2.3.1029 removed it (steelplate is the only
+   chest armour now).
    v2.3.613: helmet/head slot removed -- the head/face is always shown (player
    identity) and only chest + legs plate are equippable. */
 /* v2.3.748: 'shirt' slot (PoC) -- the t-shirt as a LAYERED overlay drawn under
@@ -22,8 +22,7 @@ export const GEAR_SLOTS = ['shirt', 'legs', 'chest', 'shoulders'];
 export const GEAR_CATALOG = {
   shirt: [{ id: 'none', name: 'None' }, { id: 'tshirt', name: 'T-Shirt' }],
   legs: [{ id: 'none', name: 'None' }, { id: 'steelgreaves', name: 'Steel Greaves' }],
-  chest: [{ id: 'none', name: 'None' }, { id: 'testplate', name: 'Test Plate' },
-          { id: 'steelplate', name: 'Steel Plate' }],
+  chest: [{ id: 'none', name: 'None' }, { id: 'steelplate', name: 'Steel Plate' }],
   shoulders: [{ id: 'none', name: 'None' }],
 };
 
