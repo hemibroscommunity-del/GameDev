@@ -85,7 +85,7 @@ export function wireSpriteSheets(stateRef, refs) {
     /* Per-weapon handle pixel (built by public/tools/weapon-anchor.html).
        Without this the renderer assumes the handle is at the bottom-center
        of the weapon image — wrong for diagonally-drawn sources. */
-    fetch('/sprites/weapons/handles.json?v=1')
+    fetch('/sprites/weapons/handles.json?v=2')
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) { if (j) weaponHandlesRef.current = j; })
       .catch(function () { /* missing — fall back to bottom-center */ });
