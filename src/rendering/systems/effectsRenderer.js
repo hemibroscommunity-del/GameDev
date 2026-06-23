@@ -329,7 +329,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 951;   // 951: removed baked white blade artifact from east swing body frame 5
+    const SWORD_ART_VERSION = 1046;   // 1041: metal sword — north swing weapon strip re-arted (south/east pending); 951: removed baked white blade artifact from east swing body frame 5
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
@@ -2636,6 +2636,8 @@ export class EffectsRenderer {
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       const weaponFrames = this._swordWeaponFrames[cfgKey];
       place(set.weapon, weaponFrames && weaponFrames[fi]);
+      /* v2.3.1047: north swings hold the blade on the far side -> behind body. */
+      this._orderSwingWeapon(set.weapon, set.body, set.chest, cfgKey === 'north');
       /* their hair / beard / hat at the swing-frame crown anchor. */
       const looks = {
         hair: o.hair, hairColor: o.hairColor,
@@ -2742,6 +2744,21 @@ export class EffectsRenderer {
     }
   }
 
+  /* v2.3.1047: per-facing z-order for the swing weapon.  `behind` (north /
+     back-to-camera facings) drops the blade just below the body so the body +
+     gear occlude it; otherwise the weapon rides on top of the body + gear. */
+  _orderSwingWeapon(wsp, body, topGear, behind) {
+    const layer = wsp && wsp.parent; if (!layer) return;
+    const wi = layer.getChildIndex(wsp);
+    if (behind) {
+      const bi = layer.getChildIndex(body);
+      if (wi > bi) layer.setChildIndex(wsp, bi);
+    } else {
+      const gi = layer.getChildIndex(topGear);
+      if (wi < gi) layer.setChildIndex(wsp, gi);
+    }
+  }
+
   _updateSwordSwing(S, now) {
     if (this.swordSprite) this.swordSprite.visible = false;
     if (this.swordWeaponSprite) this.swordWeaponSprite.visible = false;
@@ -2790,6 +2807,11 @@ export class EffectsRenderer {
       /* v2.3.955: no helmets -- the head is always bald, so always composite
          the player's hat/beard/hair (the chest piece has the head cut out). */
       this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
+      /* v2.3.1047: NORTH swings face away from the camera with the sword held
+         on the FAR side of the body, so the body must occlude the blade -- drop
+         the weapon BEHIND the body.  Every other facing keeps it in front (on
+         top of body + gear). */
+      this._orderSwingWeapon(this.swordWeaponSprite, sp, this.swordLegsSprite, fmap[0] === 'north');
     } else if (armorFrames && armorFrames[fi]) {
       sp.texture = armorFrames[fi];
       hideSkillTraits(this.skillTraits);
