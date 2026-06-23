@@ -46,8 +46,7 @@ function keyGold(reg, w, h) {
   }
 }
 /* keep the largest opaque component that isn't a thin grid-line sliver. */
-function keepSword(reg, w, h) {
-  const lab = new Int32Array(w * h).fill(-1); const op = (i) => reg[i*4+3] > 24; const comps = [];
+function keepSword(reg, w, h) {  const lab = new Int32Array(w * h).fill(-1); const op = (i) => reg[i*4+3] > 24; const comps = [];
   for (let s = 0; s < w * h; s++) {
     if (!op(s) || lab[s] >= 0) continue;
     let n = 0, x0 = w, y0 = h, x1 = 0, y1 = 0; const st = [s]; lab[s] = comps.length;
@@ -58,6 +57,28 @@ function keepSword(reg, w, h) {
   for (const c of comps) { const line = (c.bh<=6 && c.bw>0.5*w) || (c.bw<=6 && c.bh>0.5*h); if (line) continue; if (c.n>bestN){bestN=c.n;best=c.id;} }
   for (let i = 0; i < w * h; i++) if (op(i) && lab[i] !== best) reg[i*4+3] = 0;
   return bestN;
+}
+/* Alpha-bleed: keyed pixels keep dark RGB under alpha 0, which PixiJS's
+   bilinear scaling samples into a dark fringe ("black shadow") at sword edges.
+   Dilate the visible colour outward into the transparent margin (alpha stays 0)
+   so the filter only ever samples sword-coloured texels. */
+function alphaBleed(buf, w, h, iters) {
+  const has = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) if (buf[i*4+3] > 8) has[i] = 1;
+  for (let it = 0; it < iters; it++) {
+    const add = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x; if (has[i]) continue;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const nx = x+dx, ny = y+dy; if (nx<0||ny<0||nx>=w||ny>=h) continue;
+        const j = ny*w+nx; if (has[j]) { r += buf[j*4]; g += buf[j*4+1]; b += buf[j*4+2]; n++; }
+      }
+      if (n) { buf[i*4] = Math.round(r/n); buf[i*4+1] = Math.round(g/n); buf[i*4+2] = Math.round(b/n); add.push(i); }
+    }
+    for (const i of add) has[i] = 1;
+    if (!add.length) break;
+  }
 }
 
 const input = process.argv[2], dir = process.argv[3], wantPreview = process.argv.includes('--preview');
@@ -87,6 +108,7 @@ for (let f = 0; f < N; f++) {
     const di = (oy*(N*FW)+(f*FW+ox))*4; if (al>0){strip[di]=Math.round(ar/al);strip[di+1]=Math.round(ag/al);strip[di+2]=Math.round(ab/al);strip[di+3]=Math.round(255*al/n);}
   }
 }
+alphaBleed(strip, N * FW, FH, 8);   // kill the dark-fringe halo under bilinear scaling
 const outPath = `public/sprites/player/sword-${dir}-weapon.png`;
 writeFileSync(outPath, encodePNG(N * FW, FH, strip));
 console.log(`${outPath}: ${N*FW}x${FH}, bg=${opaqueBg?'navy-keyed':'alpha'}, kept px/frame: ${cov.join(', ')}`);
