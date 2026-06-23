@@ -108,6 +108,27 @@ function cropResize(img, box, outH) {
   return { W: outW, H: outH, data: out };
 }
 
+/* Dilate visible colour outward into the transparent margin (alpha stays 0) so
+   bilinear downscaling never samples the black RGB left under transparent pixels. */
+function alphaBleed(buf, w, h, iters) {
+  const has = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) if (buf[i * 4 + 3] > 8) has[i] = 1;
+  for (let it = 0; it < iters; it++) {
+    const add = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x; if (has[i]) continue;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const jj = ny * w + nx; if (has[jj]) { r += buf[jj * 4]; g += buf[jj * 4 + 1]; b += buf[jj * 4 + 2]; n++; }
+      }
+      if (n) { buf[i * 4] = Math.round(r / n); buf[i * 4 + 1] = Math.round(g / n); buf[i * 4 + 2] = Math.round(b / n); add.push(i); }
+    }
+    for (const i of add) has[i] = 1;
+    if (!add.length) break;
+  }
+}
+
 const U = '/root/.claude/uploads/645f2769-9752-5084-8246-3d550d10a284';
 /* user order: south, southwest, east, northeast, north */
 const JOBS = [
@@ -125,6 +146,9 @@ for (const j of JOBS) {
   const img = cutout(decodePNG(readFileSync(`${U}/${j.file}`)));
   const box = bbox(img);
   const r = cropResize(img, box, OUT_H);
+  alphaBleed(r.data, r.W, r.H, 14);   // v2.3.1043: bleed sword colour into the
+  // transparent margin so the held sword's hard downscale (200->48) doesn't
+  // sample the black-under-transparent RGB into a dark fringe on the blade.
   writeFileSync(`${outDir}/greatsword-${j.dir}.png`, encodePNG(r.W, r.H, r.data));
   // re-express the old normalized grip anchor in the NEW image's pixels.
   const nx = Math.round((j.old.hx / j.old.w) * r.W);
