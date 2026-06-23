@@ -7,7 +7,7 @@ import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyl
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R } from '@/data/constants.js';
-import { GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
@@ -1336,11 +1336,23 @@ export class EffectsRenderer {
              spanning the swing breadth, with the small direction chip sitting on
              its midpoint so the arrow reads as resting on top of the arc. */
           const a0 = aimA - GS_FORWARD_ARC / 2, a1 = aimA + GS_FORWARD_ARC / 2;
-          /* breadth arc — thin dark edge under a white line so it reads on any bg. */
-          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1);
-          gfx.stroke({ color: 0x000000, width: 3, alpha: 0.22 });
-          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1);
-          gfx.stroke({ color: 0xffffff, width: 2, alpha: 0.5 });
+          /* v2.3.1050: outline the TRUE hit area as one thin line (no fill) so it
+             actually represents the swing reach: the forward half-disc rim
+             (GS_OUTER_RADIUS) joined to the 360° core circle (GS_INNER_RADIUS)
+             behind via short radial steps at the sides -- exactly the union the
+             swing hit test uses.  Faint dark edge under a white line. */
+          const _c0 = Math.cos(a0), _s0 = Math.sin(a0), _c1 = Math.cos(a1), _s1 = Math.sin(a1);
+          const _shape = () => {
+            gfx.moveTo(P.x + _c0 * GS_OUTER_RADIUS, P.y + _s0 * GS_OUTER_RADIUS);
+            gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1);                 // forward rim
+            gfx.lineTo(P.x + _c1 * GS_INNER_RADIUS, P.y + _s1 * GS_INNER_RADIUS); // step in
+            gfx.arc(P.x, P.y, GS_INNER_RADIUS, a1, a0 + Math.PI * 2);  // core behind
+            gfx.lineTo(P.x + _c0 * GS_OUTER_RADIUS, P.y + _s0 * GS_OUTER_RADIUS); // step out
+          };
+          _shape();
+          gfx.stroke({ color: 0x000000, width: 3, alpha: 0.20 });
+          _shape();
+          gfx.stroke({ color: 0xffffff, width: 1.5, alpha: 0.42 });
           /* Direction chip: a small flat triangle straddling the arc midpoint,
              pointing down the aim.  Thin dark edge so it reads on light bg. */
           const _ac = Math.cos(aimA), _as = Math.sin(aimA);
