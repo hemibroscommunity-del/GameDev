@@ -45,6 +45,17 @@ function keyGold(reg, w, h) {
     if (r > 165 && g > 110 && b < 135 && r > b + 45 && g > b + 18) reg[i*4+3] = 0;
   }
 }
+/* Clear the number-band + grid-border margins that leak into the cropped art
+   region after the editor's (often non-uniform) resize.  The sword is centred,
+   so a top/bottom/side margin wipe removes the leaked number + border slivers
+   without touching it — and stops keepSword from mistaking a fat border line
+   for the sword in the small early-swing frames. */
+function clearMargins(reg, w, h, top, bot, side) {
+  const ty = Math.round(h * top), by = Math.round(h * (1 - bot)), sx = Math.round(w * side);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (y < ty || y >= by || x < sx || x >= w - sx) reg[(y*w+x)*4+3] = 0;
+  }
+}
 /* keep the largest opaque component that isn't a thin grid-line sliver. */
 function keepSword(reg, w, h) {  const lab = new Int32Array(w * h).fill(-1); const op = (i) => reg[i*4+3] > 24; const comps = [];
   for (let s = 0; s < w * h; s++) {
@@ -54,7 +65,7 @@ function keepSword(reg, w, h) {  const lab = new Int32Array(w * h).fill(-1); con
     comps.push({ id: comps.length, n, bw: x1-x0+1, bh: y1-y0+1 });
   }
   let best = -1, bestN = 0;
-  for (const c of comps) { const line = (c.bh<=6 && c.bw>0.5*w) || (c.bw<=6 && c.bh>0.5*h); if (line) continue; if (c.n>bestN){bestN=c.n;best=c.id;} }
+  for (const c of comps) { const line = (c.bh<=14 && c.bw>0.5*w) || (c.bw<=14 && c.bh>0.5*h); if (line) continue; if (c.n>bestN){bestN=c.n;best=c.id;} }
   for (let i = 0; i < w * h; i++) if (op(i) && lab[i] !== best) reg[i*4+3] = 0;
   return bestN;
 }
@@ -98,8 +109,13 @@ for (let f = 0; f < N; f++) {
   const aw = Math.round((fx1 - fx0) * cellW), ah = Math.round((fy1 - fy0) * cellH);
   const reg = Buffer.alloc(aw * ah * 4);
   for (let y = 0; y < ah; y++) for (let x = 0; x < aw; x++) { const sx = ax0+x, sy = ay0+y, di = (y*aw+x)*4; if (sx<0||sy<0||sx>=src.W||sy>=src.H) continue; const si = (sy*src.W+sx)*4; reg[di]=src.data[si];reg[di+1]=src.data[si+1];reg[di+2]=src.data[si+2];reg[di+3]=src.data[si+3]; }
-  if (opaqueBg) keyNavy(reg, aw, ah);
+  /* Always key the bluish navy/border pixels: a transparent return still has
+     the grid's blue BORDERS (opaque), which otherwise connect into a rectangle
+     that keepSword mistakes for the sword in the small early-swing frames.
+     Neutral steel + brown grip aren't bluish, so they survive either way. */
+  keyNavy(reg, aw, ah);
   keyGold(reg, aw, ah);
+  clearMargins(reg, aw, ah, 0.14, 0.0, 0.0);   // wipe the leaked number band
   cov.push(keepSword(reg, aw, ah));
   for (let oy = 0; oy < FH; oy++) for (let ox = 0; ox < FW; ox++) {
     const sx0 = Math.floor(ox*aw/FW), sx1 = Math.max(sx0+1, Math.floor((ox+1)*aw/FW));
