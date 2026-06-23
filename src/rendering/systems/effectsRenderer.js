@@ -7,7 +7,7 @@ import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyl
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/index.js';
+import { GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
@@ -1331,19 +1331,16 @@ export class EffectsRenderer {
           aimA = 0;
         }
         if (isMelee) {
-          /* Forward half-disc (outer reach) + 360° core circle, centred on the
-             player -- the same origin + radii the swing hit test uses.
-             v2.3.943: toned WAY down per owner ("too much / distracting").
-             Just subtle area fills + a small flat triangle chip sitting on the
-             arc midpoint to show the aim direction (replaces the busy arrow +
-             double outlines). */
+          /* v2.3.1049: owner — drop the brightened swing AREA (the forward
+             half-disc + the 360° core circle).  Keep just a thin ARC OUTLINE
+             spanning the swing breadth, with the small direction chip sitting on
+             its midpoint so the arrow reads as resting on top of the arc. */
           const a0 = aimA - GS_FORWARD_ARC / 2, a1 = aimA + GS_FORWARD_ARC / 2;
-          gfx.moveTo(P.x, P.y);
+          /* breadth arc — thin dark edge under a white line so it reads on any bg. */
           gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1);
-          gfx.lineTo(P.x, P.y);
-          gfx.fill({ color: 0xffffff, alpha: 0.10 });
-          gfx.circle(P.x, P.y, GS_INNER_RADIUS);
-          gfx.fill({ color: 0xffffff, alpha: 0.12 });
+          gfx.stroke({ color: 0x000000, width: 3, alpha: 0.22 });
+          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1);
+          gfx.stroke({ color: 0xffffff, width: 2, alpha: 0.5 });
           /* Direction chip: a small flat triangle straddling the arc midpoint,
              pointing down the aim.  Thin dark edge so it reads on light bg. */
           const _ac = Math.cos(aimA), _as = Math.sin(aimA);
@@ -1355,12 +1352,12 @@ export class EffectsRenderer {
           gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
           gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
           gfx.closePath();
-          gfx.fill({ color: 0xffffff, alpha: 0.55 });
+          gfx.fill({ color: 0xffffff, alpha: 0.7 });
           gfx.moveTo(_tipx, _tipy);
           gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
           gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
           gfx.closePath();
-          gfx.stroke({ color: 0x000000, width: 1, alpha: 0.3 });
+          gfx.stroke({ color: 0x000000, width: 1, alpha: 0.35 });
         } else {
         /* Ranged / staff: the reach beam (melee now uses the AoE shape above).
            The `: 95` fallback is retained for any non-ranged that reaches here. */
