@@ -1356,8 +1356,8 @@ export class EffectsRenderer {
              per the charge-pie drop-shadow incident).  Arrow stays below. */
           if (meleeSwinging) {
             const p = Math.max(0, Math.min(1, (now - (S.swingTimer || now)) / SWORD_SWING_MS));
-            const a = 0.34 * Math.sin(p * Math.PI);   // swell-in then fade-out
-            const grow = 1 + 0.13 * p;                // gust pushes outward as it fades
+            const a = 0.07 * Math.sin(p * Math.PI);   // swell-in then fade-out -- very subtle (owner: almost unnoticeable)
+            const grow = 1 + 0.08 * p;                // slight outward drift
             if (a > 0.004) {
               const LAYERS = [[12, 0.22], [8, 0.34], [4, 0.5], [0, 0.72]]; // [+px, weight] outer→inner
               for (const [pad, w] of LAYERS) {
