@@ -117,7 +117,7 @@ const chinXs = []; for (let i = 0; i < N; i++) chinXs.push(chinX(i));
    skin) is rock-stable (~82 every frame), so this is a STABLE neckline anchor.
    The chest-plate top — used before — swings up ~15px on the lunge frames even
    though the body's neck doesn't, which made the shirt "bounce" vertically. */
-const NECK_FROM_CROWN = 38;
+const NECK_FROM_CROWN = 41;   // collar sits this far below the head crown -> just clear of the chin
 function bodyNeck(fi) {
   const skin = (R, G, B, A) => A > 80 && R - G > 40 && G - B > 15 && R > 140;
   for (let y = 60; y < 160; y++) {
@@ -174,6 +174,12 @@ function cellBuffer(idx) {
     if (n > bestN) { bestN = n; best = id; }
   }
   for (let i = 0; i < W * H; i++) if (alp[i] && lab[i] !== best) alp[i] = 0;   // despeckle
+  /* Full vertical extent of the cleaned blob (collar -> hem).  We lock THIS to
+     the body neck->waist so the collar (which floats a few px above the torso
+     band and bounced into the chin mid-swing) sits at a constant neck level. */
+  let fTop = -1, fBot = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (alp[y * W + x]) { if (fTop < 0) fTop = y; fBot = y; }
+  if (fTop < 0) { fTop = miny; fBot = maxy; }
   /* Robust torso band: per-row width of the main blob; the neckline/hem are the
      first/last rows wide enough to be torso (>= BAND_FRAC of the widest row), so
      a thin raised sleeve above the shoulders isn't mistaken for the collar. */
@@ -198,7 +204,7 @@ function cellBuffer(idx) {
     const t = Math.min(1, val[i] / maxV);
     val[i] = Math.round(FILL_TARGET * Math.pow(t, OUTLINE_GAMMA));
   }
-  return { W, H, val, alp, sxC, collarX, sTop, sBot };
+  return { W, H, val, alp, sxC, collarX, sTop, sBot, fTop, fBot };
 }
 
 /* bilinear sample of (val, alp) at fractional cell-local (lx, ly). */
@@ -229,12 +235,14 @@ function renderFrame(buf, fi, sx = SCALE_X) {
   /* horizontal: pin the shirt's COLLAR centre under the CHIN (stable head x),
      not the swaying torso/plate centre. */
   const tx = chinXs[fi] + DX + nud.dx;
-  /* vertical: frame band [neckY,waistY] <- shirt torso band [sTop,sBot]. */
-  const vSpan = (buf.sBot - buf.sTop) || 1;
+  /* vertical: map the shirt's FULL extent [fTop,fBot] (collar -> hem) onto
+     [neckY,waistY].  Locking the full top (not the torso band) pins the collar
+     at a constant neck level, so it can't float up into the chin mid-swing. */
+  const vSpan = (buf.fBot - buf.fTop) || 1;
   const out = Buffer.alloc(FW * FH * 4);
   for (let fy = 0; fy < FH; fy++) for (let fx = 0; fx < FW; fx++) {
     const lx = (fx - tx) / sx + buf.collarX;
-    const ly = buf.sTop + (fy - neckY) * (vSpan / ((waistY - neckY) || 1));
+    const ly = buf.fTop + (fy - neckY) * (vSpan / ((waistY - neckY) || 1));
     const [v, a] = sample(buf, lx, ly);
     const o = (fy * FW + fx) * 4;
     const val = Math.round(v);
