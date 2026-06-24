@@ -113,6 +113,25 @@ function chinX(fi) {
 }
 const chinXs = []; for (let i = 0; i < N; i++) chinXs.push(chinX(i));
 
+/* NECK y per frame = head crown + a fixed depth.  The crown (topmost central
+   skin) is rock-stable (~82 every frame), so this is a STABLE neckline anchor.
+   The chest-plate top — used before — swings up ~15px on the lunge frames even
+   though the body's neck doesn't, which made the shirt "bounce" vertically. */
+const NECK_FROM_CROWN = 38;
+function bodyNeck(fi) {
+  const skin = (R, G, B, A) => A > 80 && R - G > 40 && G - B > 15 && R > 140;
+  for (let y = 60; y < 160; y++) {
+    let c = 0;
+    for (let x = 110; x < 210; x++) {
+      const i = (y * bodyImg.width + (fi * FW + x)) * 4;
+      if (skin(bodyImg.data[i], bodyImg.data[i + 1], bodyImg.data[i + 2], bodyImg.data[i + 3])) c++;
+    }
+    if (c > 6) return y + NECK_FROM_CROWN;   // crown found -> neck a fixed depth below
+  }
+  return plateCenters[fi].top;   // fallback
+}
+const bodyNecks = []; for (let i = 0; i < N; i++) bodyNecks.push(bodyNeck(i));
+
 /* Per-cell white-base buffer (+ shirt bbox centre in cell-local space). */
 function cellBuffer(idx) {
   const col = idx % COLS, row = Math.floor(idx / COLS);
@@ -202,11 +221,11 @@ function sample(buf, lx, ly) {
 /* Render one 320x320 frame: shirt centre (buf.sx, buf.sy) maps to the plate
    (torso) centre for frame fi, uniformly scaled. */
 function renderFrame(buf, fi, sx = SCALE_X) {
-  const p = plateCenters[fi];
-  /* neck target = plate top (≈ base of neck); waist target = BODY pants-top (the
-     true waist — the plate bottom is its skirt, well below the waist). */
+  /* Vertical band targets, both from STABLE body landmarks so the shirt doesn't
+     bounce: neck = head crown + fixed depth; waist = body pants-top.  (The chest
+     plate, used before, swings independently of the body and caused the bounce.) */
   const nud = NUDGE[fi] || { dx: 0, dy: 0 };
-  const neckY = p.top + NECK_DY + nud.dy, waistY = bodyWaists[fi] + WAIST_DY + nud.dy;
+  const neckY = bodyNecks[fi] + NECK_DY + nud.dy, waistY = bodyWaists[fi] + WAIST_DY + nud.dy;
   /* horizontal: pin the shirt's COLLAR centre under the CHIN (stable head x),
      not the swaying torso/plate centre. */
   const tx = chinXs[fi] + DX + nud.dx;
