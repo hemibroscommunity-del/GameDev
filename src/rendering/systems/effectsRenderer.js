@@ -15,6 +15,8 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.j
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
 import { getEquip } from '../gearCatalog.js';
+import { getShirt } from '../traits/shirtCatalog.js';
+import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 
@@ -334,6 +336,13 @@ export class EffectsRenderer {
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
     this.nodeLayer.addChild(this.swordSprite);
+    /* v2.3.1050: tinted shirt under-layer for the swing (mirrors the idle paper-doll
+       shirt in entityRenderer._placeGear).  Added BEFORE the chest so it renders
+       beneath any torso plate; it's hidden whenever a chest piece is worn. */
+    this.swordShirtSprite = new Sprite();
+    this.swordShirtSprite.anchor.set(0.5, 1);
+    this.swordShirtSprite.visible = false;
+    this.nodeLayer.addChild(this.swordShirtSprite);
     /* v2.3.948: weapon layer drawn over the armored swing body (kept separate so
        the sword stays recolorable; the armored sheet has the weapon removed). */
     this.swordChestSprite = new Sprite();
@@ -435,6 +444,11 @@ export class EffectsRenderer {
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
     this.nodeLayer.addChild(this.bowSprite);
+    /* v2.3.1050: tinted shirt under-layer for the bow shot (under the chest). */
+    this.bowShirtSprite = new Sprite();
+    this.bowShirtSprite.anchor.set(0.5, 1);
+    this.bowShirtSprite.visible = false;
+    this.nodeLayer.addChild(this.bowShirtSprite);
     this.bowChestSprite = new Sprite();
     this.bowChestSprite.anchor.set(0.5, 1);
     this.bowChestSprite.visible = false;
@@ -2531,6 +2545,22 @@ export class EffectsRenderer {
     return e[Math.min(fi, e.length - 1)];
   }
 
+  /* v2.3.1050: shared shirt-layer placement for the swing/bow stand-ins.
+     Mirrors entityRenderer._placeGear's shirt rule: the white-base shirt sheet
+     is shown only when a shirt trait is selected AND no chest plate is worn
+     (the plate isn't a strict superset of the shirt silhouette), tinted to the
+     player's chosen shirt colour.  `place` is the caller's transform helper.
+     Returns nothing; toggles the sprite's visibility/texture/tint. */
+  _placeSwingShirt(spr, place, shirtId, chestId, gp, dir, fw, fi, colorId) {
+    const hidden = chestId && chestId !== 'none';
+    const tex = hidden ? null : this._gearStripFrame('shirt', shirtId, gp, dir, fw, fi);
+    place(spr, tex);
+    if (tex) {
+      const t = shirtFill(shirtId, colorId);
+      spr.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
+    }
+  }
+
   /* v2.3.1011: recolor the sword swing BODY sheet to an arbitrary player's
      skin/pants/shoes (parallel to _bakeBodyStrip, which only does the LOCAL
      player) and cache it.  Returns the per-frame Texture[] or null while the
@@ -2566,7 +2596,8 @@ export class EffectsRenderer {
     let set = this._remoteSwordSprites.get(id);
     if (!set) {
       const mk = () => { const s = new Sprite(); s.visible = false; this.nodeLayer.addChild(s); return s; };
-      set = { body: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+      /* v2.3.1050: `shirt` created right after the body so it sits under legs/chest. */
+      set = { body: mk(), shirt: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
       this._remoteSwordSprites.set(id, set);
     }
     return set;
@@ -2632,6 +2663,9 @@ export class EffectsRenderer {
       };
       const gp = cfg.gearPose || 'swing';
       const eq = o.equip || {};
+      /* v2.3.1050: their tinted shirt under-layer (folder always 'tshirt' when shirted). */
+      const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
+      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor);
       place(set.legs, this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       const weaponFrames = this._swordWeaponFrames[cfgKey];
@@ -2650,10 +2684,10 @@ export class EffectsRenderer {
     /* Hide non-swinging sets; destroy sets for players who left (no leak). */
     for (const [id, set] of this._remoteSwordSprites) {
       if (active.has(id)) continue;
-      set.body.visible = set.chest.visible = set.legs.visible = set.weapon.visible = false;
+      set.body.visible = set.shirt.visible = set.chest.visible = set.legs.visible = set.weapon.visible = false;
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.body, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
+        for (const s of [set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
           try { s.destroy(); } catch (e) {}
         }
         this._remoteSwordSprites.delete(id);
@@ -2666,7 +2700,8 @@ export class EffectsRenderer {
     let set = this._remoteBowSprites.get(id);
     if (!set) {
       const mk = () => { const s = new Sprite(); s.visible = false; this.nodeLayer.addChild(s); return s; };
-      set = { body: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+      /* v2.3.1050: `shirt` created right after the body so it sits under legs/chest. */
+      set = { body: mk(), shirt: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
       this._remoteBowSprites.set(id, set);
     }
     return set;
@@ -2719,6 +2754,9 @@ export class EffectsRenderer {
       };
       const gp = cfg.gearPose || 'bowshot';
       const eq = o.equip || {};
+      /* v2.3.1050: their tinted shirt under-layer (folder always 'tshirt' when shirted). */
+      const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
+      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor);
       place(set.legs, this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       const weaponFrames = this._bowWeaponFrames && this._bowWeaponFrames[cfgKey];
@@ -2733,10 +2771,10 @@ export class EffectsRenderer {
     }
     for (const [id, set] of this._remoteBowSprites) {
       if (active.has(id)) continue;
-      set.body.visible = set.chest.visible = set.legs.visible = set.weapon.visible = false;
+      set.body.visible = set.shirt.visible = set.chest.visible = set.legs.visible = set.weapon.visible = false;
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.body, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
+        for (const s of [set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
           try { s.destroy(); } catch (e) {}
         }
         this._remoteBowSprites.delete(id);
@@ -2764,6 +2802,7 @@ export class EffectsRenderer {
     if (this.swordWeaponSprite) this.swordWeaponSprite.visible = false;
     if (this.swordChestSprite) this.swordChestSprite.visible = false;
     if (this.swordLegsSprite) this.swordLegsSprite.visible = false;
+    if (this.swordShirtSprite) this.swordShirtSprite.visible = false;
     if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
     /* entityRenderer published the active facing; resolve it to a sheet + mirror. */
     const fmap = this._swordFacing[S._swordSwingDir];
@@ -2801,6 +2840,7 @@ export class EffectsRenderer {
       const gp = cfg.gearPose || 'swing';
       const chestTex = this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi);
       const legsTex  = this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi);
+      this._placeSwingShirt(this.swordShirtSprite, place, getShirt(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
       place(this.swordChestSprite, chestTex);
       place(this.swordLegsSprite, legsTex);
       place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
@@ -2832,6 +2872,7 @@ export class EffectsRenderer {
     if (this.bowWeaponSprite) this.bowWeaponSprite.visible = false;
     if (this.bowChestSprite) this.bowChestSprite.visible = false;
     if (this.bowLegsSprite) this.bowLegsSprite.visible = false;
+    if (this.bowShirtSprite) this.bowShirtSprite.visible = false;
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     const fmap = this._bowFacing[S._bowDir];
     if (!fmap) return;
@@ -2869,6 +2910,7 @@ export class EffectsRenderer {
       _armored = false;
       sp.texture = bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
+      this._placeSwingShirt(this.bowShirtSprite, place, getShirt(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
       place(this.bowChestSprite, this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi));
       place(this.bowLegsSprite,  this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi));
       place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
