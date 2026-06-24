@@ -379,7 +379,6 @@ const InventoryPreview = () => {
      image (handle/strap above, buckle below, thin leather sides) so the slots
      sit inside the window.  Tune on preview. */
   const SLOT = '/icons/ui/item-slot.png?v=2.3.1056';
-  const FUR_INSET = { top: '19%', bottom: '9%', left: '20%', right: '20%' };
   return (
     <div
       /* v2.3.845: id lets the catch-flight animation (effectsRenderer
@@ -399,27 +398,26 @@ const InventoryPreview = () => {
       }}
       title="Tap to open Bag"
     >
-      {/* 6 slots (2 cols x 3 rows of square frames) inset into the bag opening;
-          items first, then empty frames fill to 6 so it always reads as a bag.
-          Slots are height-driven squares so they stay square and fit the cell. */}
+      {/* 6 slots as a no-gap 2-col x 3-row block of square frames, sized to fill
+          the bag (width 70%, aspect 2:3 -> square cells) and centred slightly low
+          in the opening. Items first, then empty frames fill to 6. */}
       <div style={{
         position: 'absolute',
-        top: FUR_INSET.top, bottom: FUR_INSET.bottom,
-        left: FUR_INSET.left, right: FUR_INSET.right,
+        left: '15%', right: '15%',          /* width 70% of the card */
+        top: '52%', transform: 'translateY(-50%)',   /* centred, a touch low */
+        aspectRatio: '2 / 3',               /* with 2x3 grid -> square cells */
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
         gridTemplateRows: 'repeat(3, 1fr)',
-        gap: 4,
-        alignItems: 'center',
-        justifyItems: 'center',
+        gap: 0,
       }}>
         {tiles.map(k => (
           <ItemTile key={k} ikey={k} count={inv[k]} frame={SLOT}
-            style={{ height: '100%', width: 'auto', maxWidth: '100%', aspectRatio: '1 / 1' }} />
+            style={{ width: '100%', height: '100%' }} />
         ))}
         {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
-            height: '100%', width: 'auto', maxWidth: '100%', aspectRatio: '1 / 1',
+            width: '100%', height: '100%',
             background: `url(${SLOT}) center/100% 100% no-repeat`,
           }} />
         ))}
