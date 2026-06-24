@@ -4,4 +4,4 @@
  * both the renderer (effectsRenderer) and the preloader (combatGear) can share
  * the exact same string without importing each other (avoids an import cycle)
  * and without the two URLs drifting out of sync (which would double-fetch). */
-export const GEARLAYER_VER = '1020';   /* 1020: shirt swing-south locks the COLLAR (full top) to a constant neck just below the chin, killing the mid-swing rise into the chin; 1019: neckline to head crown */
+export const GEARLAYER_VER = '1021';   /* 1021: shirt swing-south uses ONE constant transform for all frames (collar pinned, fixed scale) -> no per-frame bounce/flicker; 1020: collar lock */
