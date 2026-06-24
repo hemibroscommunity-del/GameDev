@@ -45,6 +45,7 @@ const FW = 320, FH = 320, N = 14, COLS = 5, ROWS = 3;
    is a fixed fitted width (X scale) centred on the torso.  Verified by printed
    residuals, then visually signed off on the deployed preview. */
 const SCALE_X = 1.35;  // horizontal upscale (fitted width)
+const CHIN_CLEAR = 6;  // px the collar sits below the detected neck (clear of the chin)
 const DX = 0;          // horizontal nudge vs the torso centre (frame-x)
 const NECK_DY = 0;     // nudge the neckline target up(-)/down(+) from the plate top
 const WAIST_DY = 0;    // nudge the hem target up(-)/down(+) from the plate bottom
@@ -113,6 +114,25 @@ function chinX(fi) {
 }
 const chinXs = []; for (let i = 0; i < N; i++) chinXs.push(chinX(i));
 
+/* NECK y per frame = head crown + a fixed depth.  The crown (topmost central
+   skin) is rock-stable (~82 every frame), so this is a STABLE neckline anchor.
+   The chest-plate top — used before — swings up ~15px on the lunge frames even
+   though the body's neck doesn't, which made the shirt "bounce" vertically. */
+const NECK_FROM_CROWN = 41;   // collar sits this far below the head crown -> just clear of the chin
+function bodyNeck(fi) {
+  const skin = (R, G, B, A) => A > 80 && R - G > 40 && G - B > 15 && R > 140;
+  for (let y = 60; y < 160; y++) {
+    let c = 0;
+    for (let x = 110; x < 210; x++) {
+      const i = (y * bodyImg.width + (fi * FW + x)) * 4;
+      if (skin(bodyImg.data[i], bodyImg.data[i + 1], bodyImg.data[i + 2], bodyImg.data[i + 3])) c++;
+    }
+    if (c > 6) return y + NECK_FROM_CROWN;   // crown found -> neck a fixed depth below
+  }
+  return plateCenters[fi].top;   // fallback
+}
+const bodyNecks = []; for (let i = 0; i < N; i++) bodyNecks.push(bodyNeck(i));
+
 /* Per-cell white-base buffer (+ shirt bbox centre in cell-local space). */
 function cellBuffer(idx) {
   const col = idx % COLS, row = Math.floor(idx / COLS);
@@ -155,6 +175,12 @@ function cellBuffer(idx) {
     if (n > bestN) { bestN = n; best = id; }
   }
   for (let i = 0; i < W * H; i++) if (alp[i] && lab[i] !== best) alp[i] = 0;   // despeckle
+  /* Full vertical extent of the cleaned blob (collar -> hem).  We lock THIS to
+     the body neck->waist so the collar (which floats a few px above the torso
+     band and bounced into the chin mid-swing) sits at a constant neck level. */
+  let fTop = -1, fBot = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (alp[y * W + x]) { if (fTop < 0) fTop = y; fBot = y; }
+  if (fTop < 0) { fTop = miny; fBot = maxy; }
   /* Robust torso band: per-row width of the main blob; the neckline/hem are the
      first/last rows wide enough to be torso (>= BAND_FRAC of the widest row), so
      a thin raised sleeve above the shoulders isn't mistaken for the collar. */
@@ -179,7 +205,7 @@ function cellBuffer(idx) {
     const t = Math.min(1, val[i] / maxV);
     val[i] = Math.round(FILL_TARGET * Math.pow(t, OUTLINE_GAMMA));
   }
-  return { W, H, val, alp, sxC, collarX, sTop, sBot };
+  return { W, H, val, alp, sxC, collarX, sTop, sBot, fTop, fBot };
 }
 
 /* bilinear sample of (val, alp) at fractional cell-local (lx, ly). */
@@ -201,21 +227,19 @@ function sample(buf, lx, ly) {
 
 /* Render one 320x320 frame: shirt centre (buf.sx, buf.sy) maps to the plate
    (torso) centre for frame fi, uniformly scaled. */
-function renderFrame(buf, fi, sx = SCALE_X) {
-  const p = plateCenters[fi];
-  /* neck target = plate top (≈ base of neck); waist target = BODY pants-top (the
-     true waist — the plate bottom is its skirt, well below the waist). */
+function renderFrame(buf, fi) {
+  /* CONSTANT transform (same for every frame): pin the shirt's collar
+     (collarX, fTop) to the fixed (COLLAR_X, NECK_Y) at a fixed scale (SCALE_X
+     across, SY down).  No per-frame target -> the collar is rock-steady (no
+     bounce/flicker); the sleeve/twist animation is whatever the art drew.
+     Per-frame NUDGE still applies for manual tweaks. */
   const nud = NUDGE[fi] || { dx: 0, dy: 0 };
-  const neckY = p.top + NECK_DY + nud.dy, waistY = bodyWaists[fi] + WAIST_DY + nud.dy;
-  /* horizontal: pin the shirt's COLLAR centre under the CHIN (stable head x),
-     not the swaying torso/plate centre. */
-  const tx = chinXs[fi] + DX + nud.dx;
-  /* vertical: frame band [neckY,waistY] <- shirt torso band [sTop,sBot]. */
-  const vSpan = (buf.sBot - buf.sTop) || 1;
+  const tx = COLLAR_X + DX + nud.dx;
+  const ty = NECK_Y + NECK_DY + nud.dy;
   const out = Buffer.alloc(FW * FH * 4);
   for (let fy = 0; fy < FH; fy++) for (let fx = 0; fx < FW; fx++) {
-    const lx = (fx - tx) / sx + buf.collarX;
-    const ly = buf.sTop + (fy - neckY) * (vSpan / ((waistY - neckY) || 1));
+    const lx = (fx - tx) / SCALE_X + buf.collarX;
+    const ly = (fy - ty) / SY + buf.fTop;
     const [v, a] = sample(buf, lx, ly);
     const o = (fy * FW + fx) * 4;
     const val = Math.round(v);
@@ -224,8 +248,22 @@ function renderFrame(buf, fi, sx = SCALE_X) {
   return out;
 }
 
+/* Precompute every frame's cell buffer, then derive ONE constant transform from
+   the medians of the body landmarks + source shirt height.  Using a single
+   transform for all 14 frames means zero per-frame placement variation -> the
+   shirt can't bounce or flicker; the sleeve/twist motion comes purely from the
+   art.  (The torso is stable through the south swing, so per-frame tracking
+   isn't needed and only injected jitter.) */
+const bufs = []; for (let i = 0; i < N; i++) bufs.push(cellBuffer(i));
+const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+const COLLAR_X = median(chinXs);                         // collar centred under the (stable) chin
+const NECK_Y = median(bodyNecks) + CHIN_CLEAR;           // collar sits just clear of the chin
+const WAIST_Y = median(bodyWaists);                      // hem at the true waist
+const MED_H = median(bufs.map(b => b.fBot - b.fTop)) || 1;
+const SY = (WAIST_Y - NECK_Y) / MED_H;                   // constant vertical scale: neck->waist on average
+
 const frames = [];
-for (let i = 0; i < N; i++) frames.push(renderFrame(cellBuffer(i), i));
+for (let i = 0; i < N; i++) frames.push(renderFrame(bufs[i], i));
 
 // assemble horizontal strip
 const SW = N * FW;
