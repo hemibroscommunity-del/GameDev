@@ -1324,8 +1324,12 @@ export class EffectsRenderer {
       const isRanged = slot === 'ranged' || slot === 'staff';
       const isMelee = !isRanged; /* covers explicit 'melee' + legacy unset slot */
       const isLocked = !!(S.lockedTarget && S.lockedTarget.ref);
-      const shouldDraw = (isRanged || isMelee)
-        && (S._aiming || isLocked || S.autoAttack)
+      const aimState = (S._aiming || isLocked || S.autoAttack);
+      /* v2.3.1051: the melee hit-area shows as a swing WIND gust only while
+         actually swinging, so include that as a draw trigger (a manual tap-swing
+         isn't necessarily in an aim state). */
+      const meleeSwinging = isMelee && !!S._swordSwinging;
+      const shouldDraw = (isRanged ? aimState : (aimState || meleeSwinging))
         && S.player
         && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
       /* v2.3.940: melee shows its wild-swing AoE shape (a 360° core circle + a
@@ -1341,23 +1345,41 @@ export class EffectsRenderer {
           aimA = Math.atan2((lt.y || 0) - P.y, (lt.x || 0) - P.x);
         } else if (S._aimAngle != null) {
           aimA = S._aimAngle;
+        } else if (S._facingAngle != null) {
+          aimA = S._facingAngle;   // tap-swing with no active aim: use body facing
         } else {
           aimA = 0;
         }
         if (isMelee) {
-          /* Forward half-disc (outer reach) + 360° core circle, centred on the
-             player -- the same origin + radii the swing hit test uses.
-             v2.3.943: toned WAY down per owner ("too much / distracting").
-             Just subtle area fills + a small flat triangle chip sitting on the
-             arc midpoint to show the aim direction (replaces the busy arrow +
-             double outlines). */
           const a0 = aimA - GS_FORWARD_ARC / 2, a1 = aimA + GS_FORWARD_ARC / 2;
-          gfx.moveTo(P.x, P.y);
-          gfx.arc(P.x, P.y, GS_OUTER_RADIUS, a0, a1);
-          gfx.lineTo(P.x, P.y);
-          gfx.fill({ color: 0xffffff, alpha: 0.10 });
-          gfx.circle(P.x, P.y, GS_INNER_RADIUS);
-          gfx.fill({ color: 0xffffff, alpha: 0.12 });
+          const _c0 = Math.cos(a0), _s0 = Math.sin(a0), _c1 = Math.cos(a1), _s1 = Math.sin(a1);
+          /* The exact hit-test union: forward half-disc rim (oR) joined to the
+             360° core (iR) behind, via radial steps at the sides.  Parameterised
+             by radii so the wind gust can swell outward. */
+          const _shape = (oR, iR) => {
+            gfx.moveTo(P.x + _c0 * oR, P.y + _s0 * oR);
+            gfx.arc(P.x, P.y, oR, a0, a1);                  // forward rim
+            gfx.lineTo(P.x + _c1 * iR, P.y + _s1 * iR);     // step in
+            gfx.arc(P.x, P.y, iR, a1, a0 + Math.PI * 2);    // core behind
+            gfx.lineTo(P.x + _c0 * oR, P.y + _s0 * oR);     // step out
+          };
+          /* v2.3.1051: swing WIND -- a soft filled gust in the shape of the hit
+             area, shown ONLY during the swing.  It swells outward and fades over
+             the swing window (owner: mimic the wind of the swing).  Softness is
+             faked with a few concentric fills (no WebGL blur filter -- iOS-safe
+             per the charge-pie drop-shadow incident).  Arrow stays below. */
+          if (meleeSwinging) {
+            const p = Math.max(0, Math.min(1, (now - (S.swingTimer || now)) / SWORD_SWING_MS));
+            const a = 0.07 * Math.sin(p * Math.PI);   // swell-in then fade-out -- very subtle (owner: almost unnoticeable)
+            const grow = 1 + 0.08 * p;                // slight outward drift
+            if (a > 0.004) {
+              const LAYERS = [[12, 0.22], [8, 0.34], [4, 0.5], [0, 0.72]]; // [+px, weight] outer→inner
+              for (const [pad, w] of LAYERS) {
+                _shape(GS_OUTER_RADIUS * grow + pad, GS_INNER_RADIUS * grow + pad);
+                gfx.fill({ color: 0xeaf3ff, alpha: a * w });
+              }
+            }
+          }
           /* Direction chip: a small flat triangle straddling the arc midpoint,
              pointing down the aim.  Thin dark edge so it reads on light bg. */
           const _ac = Math.cos(aimA), _as = Math.sin(aimA);
@@ -1369,12 +1391,12 @@ export class EffectsRenderer {
           gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
           gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
           gfx.closePath();
-          gfx.fill({ color: 0xffffff, alpha: 0.55 });
+          gfx.fill({ color: 0xffffff, alpha: 0.7 });
           gfx.moveTo(_tipx, _tipy);
           gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
           gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
           gfx.closePath();
-          gfx.stroke({ color: 0x000000, width: 1, alpha: 0.3 });
+          gfx.stroke({ color: 0x000000, width: 1, alpha: 0.35 });
         } else {
         /* Ranged / staff: the reach beam (melee now uses the AoE shape above).
            The `: 95` fallback is retained for any non-ranged that reaches here. */
