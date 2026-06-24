@@ -782,10 +782,10 @@ export const BottomDashboard = () => {
               {/* ── Left column — hybrid card: HP/MP/END chip row +
                   Crit/Move derived stats + session summary (Zone, Kills,
                   Playtime).  v2.3.126: portrait migrated to the top-right
-                  HUD; this column narrowed (flex 0.85) so Loadout
-                  (flex 1.35) gets the slack. */}
+                  HUD.  v2.3.1060: all three dashboard columns share equal
+                  width (flex 1) so Bag / Loadout / Build line up. */}
               <div style={{
-                flex: 0.85,
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -944,7 +944,7 @@ export const BottomDashboard = () => {
                   Weapon slot still cycles activeSlot on tap (the
                   floating WeaponSwapBar was unmounted in v2.3.125). */}
               <div style={{
-                flex: 1.35,
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
