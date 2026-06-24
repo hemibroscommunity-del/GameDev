@@ -378,7 +378,7 @@ const InventoryPreview = () => {
      slot-frame art; FUR_INSET is the opening's bounds as a fraction of the bag
      image (handle/strap above, buckle below, thin leather sides) so the slots
      sit inside the window.  Tune on preview. */
-  const SLOT = '/icons/ui/loadout-slot.png?v=2.3.1059';
+  const SLOT = '/icons/ui/gray-slot.png?v=2.3.1061';
   return (
     <div
       /* v2.3.845: id lets the catch-flight animation (effectsRenderer
