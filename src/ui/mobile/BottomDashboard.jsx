@@ -379,7 +379,7 @@ const InventoryPreview = () => {
      image (handle/strap above, buckle below, thin leather sides) so the slots
      sit inside the window.  Tune on preview. */
   const SLOT = '/icons/ui/item-slot.png?v=2.3.1056';
-  const FUR_INSET = { top: '14%', bottom: '14%', left: '20%', right: '20%' };
+  const FUR_INSET = { top: '19%', bottom: '9%', left: '20%', right: '20%' };
   return (
     <div
       /* v2.3.845: id lets the catch-flight animation (effectsRenderer
