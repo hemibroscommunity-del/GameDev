@@ -373,6 +373,13 @@ const InventoryPreview = () => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
   };
+  /* v2.3.1056: owner's leather-bag art as the quick-bag panel, with 6 ornate
+     item-slot frames laid into the bag's central "fur" opening.  SLOT is the
+     slot-frame art; FUR_INSET is the opening's bounds as a fraction of the bag
+     image (handle/strap above, buckle below, thin leather sides) so the slots
+     sit inside the window.  Tune on preview. */
+  const SLOT = '/icons/ui/item-slot.png?v=2.3.1056';
+  const FUR_INSET = { top: '14%', bottom: '14%', left: '20%', right: '20%' };
   return (
     <div
       /* v2.3.845: id lets the catch-flight animation (effectsRenderer
@@ -381,57 +388,39 @@ const InventoryPreview = () => {
       id="bt-bag-target"
       onPointerUp={openFullBag}
       style={{
-        /* v2.3.162: zero inner padding + zero flex gap. The only outer
-           whitespace around the tile grid is the column wrapper's
-           padding:4. Matching the grid's gap:4 below makes every gap
-           in the preview the same: cell-to-cell, cell-to-edge. The
-           Bag label header from v2.3.155 came out for the same reason
-           (its margin broke the top-edge uniformity); the whole card
-           is tappable so the label was redundant anyway. */
         flex: 1,
         minHeight: 0,
-        display: 'flex',
-        flexDirection: 'column',
+        position: 'relative',
         cursor: 'pointer',
-        /* v2.3.761: leather backdrop (owner art) behind the quick-bag tiles;
-           a touch of padding so the texture's border reads as the frame. */
-        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
+        /* owner bag art; stretched to the card (matches prior bag-bg behaviour). */
+        backgroundImage: `url(/icons/ui/bag-panel.png?v=2.3.1056)`,
         backgroundSize: '100% 100%',
-        borderRadius: 6,
-        padding: 3,
+        backgroundRepeat: 'no-repeat',
       }}
       title="Tap to open Bag"
     >
-      {/* v2.3.1035: always show the 2x3 slot grid (matching the full Bag's
-          square slots) -- items first, then faint empty slots fill to 6, so
-          the preview always reads as an inventory grid (even when empty). The
-          whole card stays tappable to open the Bag. */}
+      {/* 6 slots (2 cols x 3 rows of square frames) inset into the bag opening;
+          items first, then empty frames fill to 6 so it always reads as a bag.
+          Slots are height-driven squares so they stay square and fit the cell. */}
       <div style={{
-        flex: 1,
-        minHeight: 0,
+        position: 'absolute',
+        top: FUR_INSET.top, bottom: FUR_INSET.bottom,
+        left: FUR_INSET.left, right: FUR_INSET.right,
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
         gridTemplateRows: 'repeat(3, 1fr)',
         gap: 4,
+        alignItems: 'center',
+        justifyItems: 'center',
       }}>
         {tiles.map(k => (
-          <ItemTile
-            key={k}
-            ikey={k}
-            count={inv[k]}
-            style={{
-              /* Drop the hardcoded 1:1 aspect ratio so the tile fits
-                 whatever shape the grid cell is. */
-              aspectRatio: 'auto',
-              height: '100%',
-            }}
-          />
+          <ItemTile key={k} ikey={k} count={inv[k]} frame={SLOT}
+            style={{ height: '100%', width: 'auto', maxWidth: '100%', aspectRatio: '1 / 1' }} />
         ))}
         {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
-            background: 'rgba(0,0,0,0.28)',
-            border: '1px solid rgba(255,255,255,0.22)',
-            borderRadius: 6,
+            height: '100%', width: 'auto', maxWidth: '100%', aspectRatio: '1 / 1',
+            background: `url(${SLOT}) center/100% 100% no-repeat`,
           }} />
         ))}
       </div>

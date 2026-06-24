@@ -98,9 +98,13 @@ export const iconFor = (key) => {
   return '◇';
 };
 
-export const ItemTile = ({ ikey, count, style: styleOverride }) => {
+export const ItemTile = ({ ikey, count, style: styleOverride, frame }) => {
   const cat = classify(ikey);
   const color = TIER_COLOR[cat === 'weapon' ? 'rare' : cat === 'armor' ? 'uncommon' : 'common'] || COL.muted;
+  /* v2.3.1056: `frame` (a slot-frame PNG url) renders the tile inside the
+     owner's ornate item-slot art instead of the flat bordered box; the item
+     icon shrinks to sit within the frame's inner window. */
+  const framed = !!frame;
   /* v2.3.177 (F3): every tile opens the ItemDetailPopup -- cook /
      eat / lock all flow through the popup's action buttons now,
      so the inline tap handlers for fish are deprecated. The popup
@@ -120,9 +124,9 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
   return (
     <div onPointerUp={handleTap} style={{
       width: '100%', aspectRatio: '1 / 1',
-      background: COL.tile,
-      border: `1.5px solid ${color}`,
-      borderRadius: 6,
+      background: framed ? `url(${frame}) center/100% 100% no-repeat` : COL.tile,
+      border: framed ? 'none' : `1.5px solid ${color}`,
+      borderRadius: framed ? 0 : 6,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -136,9 +140,11 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
     }} title={ikey}>
       {(() => {
         const thumb = thumbFor(ikey);
+        /* framed slots have an ornate border, so the icon sits in the inner ~60%. */
+        const sz = framed ? '60%' : '85%';
         return thumb
           ? <img src={thumb} alt={ikey} draggable={false}
-              style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
+              style={{ width: sz, height: sz, objectFit: 'contain', imageRendering: 'auto' }} />
           : <span>{iconFor(ikey)}</span>;
       })()}
       {count > 1 && (
