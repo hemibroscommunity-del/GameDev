@@ -241,7 +241,7 @@ input{font-family:inherit}
    screen was slow to dress) and the sky darkened so the card pops. */
 /* v2.3.791: flex-direction:column — the full-bleed banner strip stacks
    above the card (card stays centered via its margin:auto). */
-.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
 /* v2.3.824: animated vista loop fills the modal behind everything; the
    modal's bg.webp stays the under-layer fallback.
    v2.3.826: z-index:0 -> -1 (owner: objects still hidden).  A <video> gets
@@ -298,7 +298,7 @@ input{font-family:inherit}
    neither can collapse again.  The stage's children are all absolutely
    positioned / 100%-sized, so flex height works cleanly and the canvas
    contain+scale adapts to whatever shape falls out. */
-.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:200px;max-height:480px}
+.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:150px;max-height:480px}
 /* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right).
@@ -412,7 +412,12 @@ input{font-family:inherit}
    hole center (427, 82.5) of the 560x329 logo, gem center (91, 26) of
    the 185x480 sword; left/top solve those into wrap-relative % so the
    alignment holds at every logo size — no media override needed. */
-.bt-cc-logo-wrap{flex:none;align-self:flex-start;position:relative;margin-left:4px}
+/* v2.3.1066: the corner logo is taken OUT OF FLOW (absolute upper-left) so it
+   no longer reserves a full-width row at the top of the column -- the card
+   (and the character) shift up into that space.  No region is resized; the
+   stage/menu keep their sizes (owner: "just shift everything up, don't change
+   window sizes").  The logo sits over the stage's empty top-left sky. */
+.bt-cc-logo-wrap{position:absolute;top:max(6px,env(safe-area-inset-top));left:max(6px,env(safe-area-inset-left));z-index:3;pointer-events:none}
 .bt-cc-logo{position:relative;z-index:1;width:min(32vw,150px);height:auto;display:block;pointer-events:none}
 .bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){

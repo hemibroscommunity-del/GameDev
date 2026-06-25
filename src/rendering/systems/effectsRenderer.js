@@ -297,7 +297,7 @@ export class EffectsRenderer {
          (bodyUrl) + equipped chest/legs armour (gear/<slot>/<item>/swing-south.png)
          + the recolorable weapon, so worn armour shows during the swing via the
          existing gear slots.  Falls back to armorUrl/bald if bodyUrl missing. */
-      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing' },
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing', bodyScale: 0.92, bodyScaleX: 0.95 },
       east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east', armorUrl: '/sprites/player/sword-east-armored.png', weaponUrl: '/sprites/player/sword-east-weapon.png', bodyUrl: '/sprites/player/sword-east-body.png', gearPose: 'swing' },
       north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north", armorUrl: "/sprites/player/sword-north-armored.png", weaponUrl: "/sprites/player/sword-north-weapon.png", bodyUrl: "/sprites/player/sword-north-body.png", gearPose: "swing" },
     };
@@ -331,7 +331,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 1048;   // 1041: metal sword — north swing weapon strip re-arted (south/east pending); 951: removed baked white blade artifact from east swing body frame 5
+    const SWORD_ART_VERSION = 1054;   // 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
@@ -439,7 +439,7 @@ export class EffectsRenderer {
     this._bowArmorFrames = {};
     this._bowWeaponFrames = {};
     this._bowBodyFrames = {};   // v2.3.957: bald body base for the layered gear path
-    const BOW_ART_VERSION = 957;
+    const BOW_ART_VERSION = 958;   // 958: bow recolored magenta->dark brown body, cyan->black handle (all directions, held + bow-shot strips)
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
@@ -2842,8 +2842,17 @@ export class EffectsRenderer {
     /* Render the figure (~188px body in-frame) at the avatar's actual drawn
        height so it matches the rest of the body (published per-facing/zone). */
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
-    const s = bodyH / 188;
-    const sgn = mirror ? -s : s;
+    /* v2.3.1067: optional per-direction scale trim (cfg.bodyScale) -- south's
+       figure read a touch large once its full legs were restored, so it gets a
+       small reduction.  Scales body+shirt+armour+weapon+traits together (they
+       all derive from this `s`); feet stay planted via the feetY anchor. */
+    const s = bodyH / 188 * (cfg.bodyScale || 1);
+    /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
+       Narrows x only (height stays `s`); overlays inherit it via `sgn` in
+       place(), and traits re-center on the narrower head (their position uses
+       sp.scale.x) while keeping their height-based size (sp.scale.y). */
+    const sx = s * (cfg.bodyScaleX || 1);
+    const sgn = mirror ? -sx : sx;
     sp.scale.set(sgn, s);
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;

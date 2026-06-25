@@ -362,13 +362,12 @@ const InventoryPreview = () => {
   const lockedOrder = invLockedKeysInOrder().filter(k => visible.includes(k));
   const unlockedRest = visible.filter(k => !lockedOrder.includes(k));
   visible = lockedOrder.concat(unlockedRest);
-  /* 2-col x 3-row grid (6 tiles). v2.3.159 capped at 4 because 6
-     square tiles overflowed; v2.3.160 keeps 6 but constrains the grid
-     to fill the column's available height and wraps each tile in a
-     square sized to the smaller of cell width or cell height. Tiles
-     stay square; they just scale down when row height < column width
-     / 2 so the whole grid fits the column's overflow:hidden clip. */
-  const tiles = visible.slice(0, 6);
+  /* 3-col x 3-row grid (9 tiles). v2.3.1057: now that all three dashboard
+     columns are equal width, the quick-bag is a 3-col square grid matching
+     the Loadout slots; a third row fits cleanly when the block is anchored
+     to the top of the column. Items fill first, then faint empty slots pad
+     out to 9 so it always reads as an inventory grid. */
+  const tiles = visible.slice(0, 9);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
@@ -402,33 +401,33 @@ const InventoryPreview = () => {
       }}
       title="Tap to open Bag"
     >
-      {/* v2.3.1035: always show the 2x3 slot grid (matching the full Bag's
-          square slots) -- items first, then faint empty slots fill to 6, so
-          the preview always reads as an inventory grid (even when empty). The
-          whole card stays tappable to open the Bag. */}
+      {/* v2.3.1057: 3-col x 3-row slot grid mirroring the Loadout column's
+          square grid (same 3 columns, same gap:3).  With all three columns
+          equal width, each square comes out the exact loadout square size.
+          Tiles stay square (ItemTile's default aspectRatio 1/1); the block
+          is centered vertically (alignContent:center) under the BAG title so
+          the leftover column height splits evenly above/below the 3x3 block
+          instead of pooling beneath it.  Items first, then faint empty slots
+          fill to 9 so it always reads as an inventory grid. */}
       <div style={{
         flex: 1,
         minHeight: 0,
         display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gridTemplateRows: 'repeat(3, 1fr)',
-        gap: 4,
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridAutoRows: 'min-content',
+        alignContent: 'center',
+        gap: 3,
       }}>
         {tiles.map(k => (
           <ItemTile
             key={k}
             ikey={k}
             count={inv[k]}
-            style={{
-              /* Drop the hardcoded 1:1 aspect ratio so the tile fits
-                 whatever shape the grid cell is. */
-              aspectRatio: 'auto',
-              height: '100%',
-            }}
           />
         ))}
-        {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
+        {Array.from({ length: Math.max(0, 9 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
+            aspectRatio: '1 / 1',
             background: 'rgba(0,0,0,0.28)',
             border: '1px solid rgba(255,255,255,0.22)',
             borderRadius: 6,
@@ -798,7 +797,12 @@ export const BottomDashboard = () => {
                   HUD; this column narrowed (flex 0.85) so Loadout
                   (flex 1.35) gets the slack. */}
               <div style={{
-                flex: 0.85,
+                /* v2.3.1057: all three columns (Bag / Loadout / Build) are
+                   now equal width (flex 1 each) so the quick-bag squares,
+                   the loadout slots, and the build cells all line up at the
+                   same size -- the bag and loadout both being 3-col grids
+                   with the same gap means their squares come out identical. */
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -812,6 +816,10 @@ export const BottomDashboard = () => {
                    bottom border at narrow heights. */
                 overflow: 'hidden',
               }}>
+                {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders
+                    (sits on the red container tint; the leather-backed grid
+                    renders below). */}
+                <ColHeader>Bag</ColHeader>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
                     compact inventory preview. The derived stats it used
                     to show (Crit / Block / Zone / Kills / Time) are
@@ -955,9 +963,11 @@ export const BottomDashboard = () => {
                   grid.  v2.3.126 widened to flex 1.35 (was 1) using the
                   slack freed by the left column shrinking to 0.85.
                   Weapon slot still cycles activeSlot on tap (the
-                  floating WeaponSwapBar was unmounted in v2.3.125). */}
+                  floating WeaponSwapBar was unmounted in v2.3.125).
+                  v2.3.1057: flex 1.35 -> 1 so Bag / Loadout / Build are all
+                  equal width. */}
               <div style={{
-                flex: 1.35,
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -1142,44 +1152,64 @@ export const BottomDashboard = () => {
                      either layer can be re-equipped from here. */
                   const onTapChestLayers = openLoadout('chest');
                   const onTapLegsArmor = openLoadout('legs');
+                  /* v2.3.1069: worn-equipment defense readout.  NOTE: armor is
+                     currently cosmetic -- the only def value is the placeholder
+                     `def:5` per piece in gearCatalog; actual damage mitigation
+                     is server-authoritative and not yet wired to chest/legs.
+                     This line just surfaces what's equipped (chest + legs ×5)
+                     so the loadout shows an "effect" number; the real mechanic
+                     is a follow-up (see chat). */
+                  const armorDef = (gearChestId !== 'none' ? 5 : 0) + (gearLegsId !== 'none' ? 5 : 0);
                   return (
+                    /* v2.3.1069: the loadout is now ONE 3-row grid that mirrors
+                       the quick-bag's 3x3 (same 3 columns, gridAutoRows:min-content
+                       square cells, alignContent:center, gap:3, padding:3) so the
+                       two panels share row geometry.  Row 1 is a full-width data
+                       cell sized to ~one square tall (aspectRatio) holding the
+                       DMG/DPS + DEF readouts; rows 2-3 are the six equipment slots
+                       -- which therefore line up EXACTLY with the bag's bottom two
+                       rows of squares. */
                     <div style={{
                       flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4,
                       minHeight: 0,
-                      padding: '2px 2px 0',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gridAutoRows: 'min-content',
+                      alignContent: 'center',
+                      gap: 3,
+                      padding: 3,
                     }}>
-                      {/* DMG / DPS readout — single centered line. */}
-                      <div
-                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
-                        title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                        style={{
-                          fontSize: 11,
-                          color: COL.text,
-                          letterSpacing: '.02em',
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          cursor: 'pointer',
-                          touchAction: 'none',
-                        }}>
-                        <span style={{ color: COL.muted }}>DMG </span>{dmgText}
-                        <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
-                      </div>
-                      {/* Row 1 — Chest · Weapon · Shield.  v2.3.692: reordered
-                          per user so armour leads and the active weapon sits
-                          centre, shield right (mirrors the equip silhouette). */}
+                      {/* Row 1 — data cell spanning all three columns, ~one
+                          square tall so the grid reads as 3 rows (aspectRatio
+                          ≈ full-width / square; tune if a hair off). */}
                       <div style={{
-                        flex: 1,
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: 3,
+                        gridColumn: '1 / -1',
+                        aspectRatio: '3.18 / 1',
                         minHeight: 0,
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 2,
                       }}>
-                        {slotCell({
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
+                          title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
+                          style={{ fontSize: 11, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted }}>DMG </span>{dmgText}
+                          <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
+                        </div>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip('Defense from worn armor (chest + legs). Placeholder for now — armor does not yet reduce damage.'); }}
+                          title="Defense from worn armor"
+                          style={{ fontSize: 11, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted }}>DEF </span>+{armorDef}
+                        </div>
+                      </div>
+                      {/* Rows 2-3 — the six equipment slots (Chest·Weapon·Shield
+                          / Legs·Amulet·Cape). */}
+                      {slotCell({
                           k: 'chest',
                           label: 'CHEST',
                           /* v2.3.756: top visible layer -- armour over
@@ -1195,16 +1225,6 @@ export const BottomDashboard = () => {
                         {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
                         {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
                         {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
-                      </div>
-                      {/* Row 2 — Legs · Amulet · Cape.  v2.3.692: legs under
-                          chest, jewelry + the new back slot fill the row. */}
-                      <div style={{
-                        flex: 1,
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: 3,
-                        minHeight: 0,
-                      }}>
                         {slotCell({
                           k: 'legs',
                           label: 'LEGS',
@@ -1219,7 +1239,6 @@ export const BottomDashboard = () => {
                             flow land in Phase 2; cell shows as empty for now. */}
                         {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
                       </div>
-                    </div>
                   );
                 })()}
               </div>
