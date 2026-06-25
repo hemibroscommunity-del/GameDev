@@ -241,7 +241,7 @@ input{font-family:inherit}
    screen was slow to dress) and the sky darkened so the card pops. */
 /* v2.3.791: flex-direction:column — the full-bleed banner strip stacks
    above the card (card stays centered via its margin:auto). */
-.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:center;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
+.bt-name-modal{position:fixed;inset:0;z-index:9999;background:url('/ui/welcome/bg.webp') center/cover no-repeat,#0d0a1d;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:100dvh;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none}
 /* v2.3.824: animated vista loop fills the modal behind everything; the
    modal's bg.webp stays the under-layer fallback.
    v2.3.826: z-index:0 -> -1 (owner: objects still hidden).  A <video> gets
@@ -298,7 +298,7 @@ input{font-family:inherit}
    neither can collapse again.  The stage's children are all absolutely
    positioned / 100%-sized, so flex height works cleanly and the canvas
    contain+scale adapts to whatever shape falls out. */
-.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:200px;max-height:480px}
+.bt-name-box.bt-cc-box>.bt-cc-stage{flex:3 1 auto;min-height:200px;max-height:560px}
 /* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right).
@@ -318,7 +318,7 @@ input{font-family:inherit}
 /* v2.3.1013: menu is now content-sized (its grid is bounded to one 2-row page
    by the pager), so the leftover viewport height goes to the bigger character
    preview above it instead of an overflowing drawer. */
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;display:flex;flex-direction:column;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch;background:#05050c}
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:2 1 auto;min-height:120px;overflow:hidden;display:flex;flex-direction:column;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch;background:#05050c}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
@@ -330,6 +330,11 @@ input{font-family:inherit}
   /* v2.3.1013: menu is already content-sized; just cap the preview so a short
      webview can page-scroll the whole card rather than crush the stage. */
   .bt-cc-stage{flex:0 0 auto!important;height:210px}
+  /* v2.3.1065: restore content-sizing for the menu under the page-scroll
+     fallback (it's flex:2 + internal scroll at full height) so a short
+     webview scrolls the whole card instead of internally clipping the
+     picker.  Full selector wins specificity without !important. */
+  .bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;overflow:visible;min-height:0}
 }
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
