@@ -402,33 +402,32 @@ const InventoryPreview = () => {
       }}
       title="Tap to open Bag"
     >
-      {/* v2.3.1035: always show the 2x3 slot grid (matching the full Bag's
-          square slots) -- items first, then faint empty slots fill to 6, so
-          the preview always reads as an inventory grid (even when empty). The
-          whole card stays tappable to open the Bag. */}
+      {/* v2.3.1056: 3-col x 2-row slot grid mirroring the Loadout column's
+          square grid (same 3 columns, same gap:3).  Now that the bag column
+          is the same width as Loadout, each square comes out the exact
+          loadout square size.  Tiles stay square (ItemTile's default
+          aspectRatio 1/1); the block is centered vertically so the squares
+          sit consistently with the loadout cells.  Items first, then faint
+          empty slots fill to 6 so it always reads as an inventory grid. */}
       <div style={{
         flex: 1,
         minHeight: 0,
         display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gridTemplateRows: 'repeat(3, 1fr)',
-        gap: 4,
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridAutoRows: 'min-content',
+        alignContent: 'center',
+        gap: 3,
       }}>
         {tiles.map(k => (
           <ItemTile
             key={k}
             ikey={k}
             count={inv[k]}
-            style={{
-              /* Drop the hardcoded 1:1 aspect ratio so the tile fits
-                 whatever shape the grid cell is. */
-              aspectRatio: 'auto',
-              height: '100%',
-            }}
           />
         ))}
         {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
+            aspectRatio: '1 / 1',
             background: 'rgba(0,0,0,0.28)',
             border: '1px solid rgba(255,255,255,0.22)',
             borderRadius: 6,
@@ -798,7 +797,11 @@ export const BottomDashboard = () => {
                   HUD; this column narrowed (flex 0.85) so Loadout
                   (flex 1.35) gets the slack. */}
               <div style={{
-                flex: 0.85,
+                /* v2.3.1056: bag column widened to match the Loadout column
+                   (both flex 1.35) so the two panels are the same width and
+                   the quick-bag squares can render at the exact loadout
+                   square size (see InventoryPreview's 3-col grid). */
+                flex: 1.35,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
