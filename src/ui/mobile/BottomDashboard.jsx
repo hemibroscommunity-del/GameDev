@@ -405,16 +405,17 @@ const InventoryPreview = () => {
           square grid (same 3 columns, same gap:3).  With all three columns
           equal width, each square comes out the exact loadout square size.
           Tiles stay square (ItemTile's default aspectRatio 1/1); the block
-          is anchored to the TOP of the column (alignContent:start) so the
-          third row fits cleanly.  Items first, then faint empty slots fill
-          to 9 so it always reads as an inventory grid. */}
+          is centered vertically (alignContent:center) under the BAG title so
+          the leftover column height splits evenly above/below the 3x3 block
+          instead of pooling beneath it.  Items first, then faint empty slots
+          fill to 9 so it always reads as an inventory grid. */}
       <div style={{
         flex: 1,
         minHeight: 0,
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gridAutoRows: 'min-content',
-        alignContent: 'start',
+        alignContent: 'center',
         gap: 3,
       }}>
         {tiles.map(k => (
@@ -815,6 +816,10 @@ export const BottomDashboard = () => {
                    bottom border at narrow heights. */
                 overflow: 'hidden',
               }}>
+                {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders
+                    (sits on the red container tint; the leather-backed grid
+                    renders below). */}
+                <ColHeader>Bag</ColHeader>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
                     compact inventory preview. The derived stats it used
                     to show (Crit / Block / Zone / Kills / Time) are
@@ -1152,9 +1157,12 @@ export const BottomDashboard = () => {
                       flex: 1,
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 4,
+                      /* v2.3.1065: uniform 3px gap + even 2px padding all round
+                         so the slot grid below is evenly spaced (the DMG line
+                         sits the same 3px above it). */
+                      gap: 3,
                       minHeight: 0,
-                      padding: '2px 2px 0',
+                      padding: 2,
                     }}>
                       {/* DMG / DPS readout — single centered line. */}
                       <div
@@ -1174,13 +1182,16 @@ export const BottomDashboard = () => {
                         <span style={{ color: COL.muted }}>DMG </span>{dmgText}
                         <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
                       </div>
-                      {/* Row 1 — Chest · Weapon · Shield.  v2.3.692: reordered
-                          per user so armour leads and the active weapon sits
-                          centre, shield right (mirrors the equip silhouette). */}
+                      {/* v2.3.1065: one 3-col x 2-row grid for all six slots
+                          (Chest·Weapon·Shield / Legs·Amulet·Cape) -- a single
+                          grid gives a uniform gap in BOTH axes, so the squares
+                          are evenly spaced (the two-separate-rows layout had a
+                          4px row gap vs 3px column gap = uneven). */}
                       <div style={{
                         flex: 1,
                         display: 'grid',
                         gridTemplateColumns: 'repeat(3, 1fr)',
+                        gridTemplateRows: 'repeat(2, 1fr)',
                         gap: 3,
                         minHeight: 0,
                       }}>
@@ -1200,16 +1211,6 @@ export const BottomDashboard = () => {
                         {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
                         {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
                         {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
-                      </div>
-                      {/* Row 2 — Legs · Amulet · Cape.  v2.3.692: legs under
-                          chest, jewelry + the new back slot fill the row. */}
-                      <div style={{
-                        flex: 1,
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: 3,
-                        minHeight: 0,
-                      }}>
                         {slotCell({
                           k: 'legs',
                           label: 'LEGS',
