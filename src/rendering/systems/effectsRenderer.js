@@ -331,7 +331,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 1052;   // 1052: re-register the naked-sheet rebuild with a UNIFORM per-direction scale + per-frame FEET anchor taken from the original full sheets (sword excluded) -- the 1051 pass scaled/anchored each frame to the holey body bbox, which made the swing bounce + resize; 1051: rebuilt bodies from clean naked sheets; 1050: leg restore from full sheets; 1049: filled holes in north pants; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
+    const SWORD_ART_VERSION = 1053;   // 1053: revert sword-{south,east,north}-body.png to the clean #132 originals -- the 1050-1052 rebuild attempts (full-sheet leg restore + naked-sheet re-derive) broke layer anchoring and added cell-bg contamination; back to a known-good baseline (correct placement, all layers aligned). Pre-existing mid-swing pants holes remain for a future, careful pass; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
