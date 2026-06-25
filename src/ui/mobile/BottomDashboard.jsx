@@ -1132,7 +1132,7 @@ export const BottomDashboard = () => {
                       /* no-gap 2-col x 3-row block of gray slots, filling the panel
                          window (aspect 2:3 -> square cells), centred in the opening. */
                       position: 'absolute',
-                      left: '26%', right: '26%', top: '34%',
+                      left: '26%', right: '26%', top: '31.5%',
                       aspectRatio: '2 / 3',
                       display: 'grid',
                       gridTemplateColumns: 'repeat(2, 1fr)',
