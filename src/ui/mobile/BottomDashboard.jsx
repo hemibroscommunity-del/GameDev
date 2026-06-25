@@ -362,13 +362,12 @@ const InventoryPreview = () => {
   const lockedOrder = invLockedKeysInOrder().filter(k => visible.includes(k));
   const unlockedRest = visible.filter(k => !lockedOrder.includes(k));
   visible = lockedOrder.concat(unlockedRest);
-  /* 2-col x 3-row grid (6 tiles). v2.3.159 capped at 4 because 6
-     square tiles overflowed; v2.3.160 keeps 6 but constrains the grid
-     to fill the column's available height and wraps each tile in a
-     square sized to the smaller of cell width or cell height. Tiles
-     stay square; they just scale down when row height < column width
-     / 2 so the whole grid fits the column's overflow:hidden clip. */
-  const tiles = visible.slice(0, 6);
+  /* 3-col x 3-row grid (9 tiles). v2.3.1057: now that all three dashboard
+     columns are equal width, the quick-bag is a 3-col square grid matching
+     the Loadout slots; a third row fits cleanly when the block is anchored
+     to the top of the column. Items fill first, then faint empty slots pad
+     out to 9 so it always reads as an inventory grid. */
+  const tiles = visible.slice(0, 9);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
@@ -402,20 +401,20 @@ const InventoryPreview = () => {
       }}
       title="Tap to open Bag"
     >
-      {/* v2.3.1056: 3-col x 2-row slot grid mirroring the Loadout column's
-          square grid (same 3 columns, same gap:3).  Now that the bag column
-          is the same width as Loadout, each square comes out the exact
-          loadout square size.  Tiles stay square (ItemTile's default
-          aspectRatio 1/1); the block is centered vertically so the squares
-          sit consistently with the loadout cells.  Items first, then faint
-          empty slots fill to 6 so it always reads as an inventory grid. */}
+      {/* v2.3.1057: 3-col x 3-row slot grid mirroring the Loadout column's
+          square grid (same 3 columns, same gap:3).  With all three columns
+          equal width, each square comes out the exact loadout square size.
+          Tiles stay square (ItemTile's default aspectRatio 1/1); the block
+          is anchored to the TOP of the column (alignContent:start) so the
+          third row fits cleanly.  Items first, then faint empty slots fill
+          to 9 so it always reads as an inventory grid. */}
       <div style={{
         flex: 1,
         minHeight: 0,
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gridAutoRows: 'min-content',
-        alignContent: 'center',
+        alignContent: 'start',
         gap: 3,
       }}>
         {tiles.map(k => (
@@ -425,7 +424,7 @@ const InventoryPreview = () => {
             count={inv[k]}
           />
         ))}
-        {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
+        {Array.from({ length: Math.max(0, 9 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
             aspectRatio: '1 / 1',
             background: 'rgba(0,0,0,0.28)',
@@ -797,11 +796,12 @@ export const BottomDashboard = () => {
                   HUD; this column narrowed (flex 0.85) so Loadout
                   (flex 1.35) gets the slack. */}
               <div style={{
-                /* v2.3.1056: bag column widened to match the Loadout column
-                   (both flex 1.35) so the two panels are the same width and
-                   the quick-bag squares can render at the exact loadout
-                   square size (see InventoryPreview's 3-col grid). */
-                flex: 1.35,
+                /* v2.3.1057: all three columns (Bag / Loadout / Build) are
+                   now equal width (flex 1 each) so the quick-bag squares,
+                   the loadout slots, and the build cells all line up at the
+                   same size -- the bag and loadout both being 3-col grids
+                   with the same gap means their squares come out identical. */
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -958,9 +958,11 @@ export const BottomDashboard = () => {
                   grid.  v2.3.126 widened to flex 1.35 (was 1) using the
                   slack freed by the left column shrinking to 0.85.
                   Weapon slot still cycles activeSlot on tap (the
-                  floating WeaponSwapBar was unmounted in v2.3.125). */}
+                  floating WeaponSwapBar was unmounted in v2.3.125).
+                  v2.3.1057: flex 1.35 -> 1 so Bag / Loadout / Build are all
+                  equal width. */}
               <div style={{
-                flex: 1.35,
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
