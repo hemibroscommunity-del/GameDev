@@ -1182,16 +1182,21 @@ export const BottomDashboard = () => {
                         <span style={{ color: COL.muted }}>DMG </span>{dmgText}
                         <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
                       </div>
-                      {/* v2.3.1065: one 3-col x 2-row grid for all six slots
-                          (Chest·Weapon·Shield / Legs·Amulet·Cape) -- a single
-                          grid gives a uniform gap in BOTH axes, so the squares
-                          are evenly spaced (the two-separate-rows layout had a
-                          4px row gap vs 3px column gap = uneven). */}
+                      {/* v2.3.1066: one 3-col grid for all six slots
+                          (Chest·Weapon·Shield / Legs·Amulet·Cape), mirroring
+                          the quick-bag grid EXACTLY: width-driven square cells
+                          (gridAutoRows:min-content so each slotCell's
+                          aspectRatio 1/1 wins instead of stretching to a 1fr
+                          row), centered vertically, uniform 3px gap.  The old
+                          repeat(2,1fr) rows stretched the cells into uneven
+                          rectangles. */}
                       <div style={{
                         flex: 1,
+                        minHeight: 0,
                         display: 'grid',
                         gridTemplateColumns: 'repeat(3, 1fr)',
-                        gridTemplateRows: 'repeat(2, 1fr)',
+                        gridAutoRows: 'min-content',
+                        alignContent: 'center',
                         gap: 3,
                         minHeight: 0,
                       }}>
