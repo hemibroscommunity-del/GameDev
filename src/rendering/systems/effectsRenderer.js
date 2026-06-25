@@ -297,7 +297,7 @@ export class EffectsRenderer {
          (bodyUrl) + equipped chest/legs armour (gear/<slot>/<item>/swing-south.png)
          + the recolorable weapon, so worn armour shows during the swing via the
          existing gear slots.  Falls back to armorUrl/bald if bodyUrl missing. */
-      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing' },
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing', bodyScale: 0.92 },
       east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east', armorUrl: '/sprites/player/sword-east-armored.png', weaponUrl: '/sprites/player/sword-east-weapon.png', bodyUrl: '/sprites/player/sword-east-body.png', gearPose: 'swing' },
       north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north", armorUrl: "/sprites/player/sword-north-armored.png", weaponUrl: "/sprites/player/sword-north-weapon.png", bodyUrl: "/sprites/player/sword-north-body.png", gearPose: "swing" },
     };
@@ -2842,7 +2842,11 @@ export class EffectsRenderer {
     /* Render the figure (~188px body in-frame) at the avatar's actual drawn
        height so it matches the rest of the body (published per-facing/zone). */
     const bodyH = (S._swordBodyH != null) ? S._swordBodyH : 84;
-    const s = bodyH / 188;
+    /* v2.3.1067: optional per-direction scale trim (cfg.bodyScale) -- south's
+       figure read a touch large once its full legs were restored, so it gets a
+       small reduction.  Scales body+shirt+armour+weapon+traits together (they
+       all derive from this `s`); feet stay planted via the feetY anchor. */
+    const s = bodyH / 188 * (cfg.bodyScale || 1);
     const sgn = mirror ? -s : s;
     sp.scale.set(sgn, s);
     sp.x = S.player.x;
