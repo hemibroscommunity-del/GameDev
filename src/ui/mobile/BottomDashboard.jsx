@@ -1152,54 +1152,64 @@ export const BottomDashboard = () => {
                      either layer can be re-equipped from here. */
                   const onTapChestLayers = openLoadout('chest');
                   const onTapLegsArmor = openLoadout('legs');
+                  /* v2.3.1069: worn-equipment defense readout.  NOTE: armor is
+                     currently cosmetic -- the only def value is the placeholder
+                     `def:5` per piece in gearCatalog; actual damage mitigation
+                     is server-authoritative and not yet wired to chest/legs.
+                     This line just surfaces what's equipped (chest + legs ×5)
+                     so the loadout shows an "effect" number; the real mechanic
+                     is a follow-up (see chat). */
+                  const armorDef = (gearChestId !== 'none' ? 5 : 0) + (gearLegsId !== 'none' ? 5 : 0);
                   return (
+                    /* v2.3.1069: the loadout is now ONE 3-row grid that mirrors
+                       the quick-bag's 3x3 (same 3 columns, gridAutoRows:min-content
+                       square cells, alignContent:center, gap:3, padding:3) so the
+                       two panels share row geometry.  Row 1 is a full-width data
+                       cell sized to ~one square tall (aspectRatio) holding the
+                       DMG/DPS + DEF readouts; rows 2-3 are the six equipment slots
+                       -- which therefore line up EXACTLY with the bag's bottom two
+                       rows of squares. */
                     <div style={{
                       flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      /* v2.3.1065: uniform 3px gap + even 2px padding all round
-                         so the slot grid below is evenly spaced (the DMG line
-                         sits the same 3px above it). */
-                      gap: 3,
                       minHeight: 0,
-                      padding: 2,
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gridAutoRows: 'min-content',
+                      alignContent: 'center',
+                      gap: 3,
+                      padding: 3,
                     }}>
-                      {/* DMG / DPS readout — single centered line. */}
-                      <div
-                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
-                        title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                        style={{
-                          fontSize: 11,
-                          color: COL.text,
-                          letterSpacing: '.02em',
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          cursor: 'pointer',
-                          touchAction: 'none',
-                        }}>
-                        <span style={{ color: COL.muted }}>DMG </span>{dmgText}
-                        <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
-                      </div>
-                      {/* v2.3.1066: one 3-col grid for all six slots
-                          (Chest·Weapon·Shield / Legs·Amulet·Cape), mirroring
-                          the quick-bag grid EXACTLY: width-driven square cells
-                          (gridAutoRows:min-content so each slotCell's
-                          aspectRatio 1/1 wins instead of stretching to a 1fr
-                          row), centered vertically, uniform 3px gap.  The old
-                          repeat(2,1fr) rows stretched the cells into uneven
-                          rectangles. */}
+                      {/* Row 1 — data cell spanning all three columns, ~one
+                          square tall so the grid reads as 3 rows (aspectRatio
+                          ≈ full-width / square; tune if a hair off). */}
                       <div style={{
-                        flex: 1,
+                        gridColumn: '1 / -1',
+                        aspectRatio: '3.18 / 1',
                         minHeight: 0,
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gridAutoRows: 'min-content',
-                        alignContent: 'center',
-                        gap: 3,
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 2,
                       }}>
-                        {slotCell({
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
+                          title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
+                          style={{ fontSize: 11, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted }}>DMG </span>{dmgText}
+                          <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
+                        </div>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip('Defense from worn armor (chest + legs). Placeholder for now — armor does not yet reduce damage.'); }}
+                          title="Defense from worn armor"
+                          style={{ fontSize: 11, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted }}>DEF </span>+{armorDef}
+                        </div>
+                      </div>
+                      {/* Rows 2-3 — the six equipment slots (Chest·Weapon·Shield
+                          / Legs·Amulet·Cape). */}
+                      {slotCell({
                           k: 'chest',
                           label: 'CHEST',
                           /* v2.3.756: top visible layer -- armour over
@@ -1229,7 +1239,6 @@ export const BottomDashboard = () => {
                             flow land in Phase 2; cell shows as empty for now. */}
                         {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
                       </div>
-                    </div>
                   );
                 })()}
               </div>
