@@ -13,7 +13,7 @@ import { Assets } from 'pixi.js';
 
 /* Bump on every weapon-art change so URL-keyed browser/CDN caches
    refetch instead of serving the previous PNG. */
-const SPRITE_VERSION = '2.3.1043b';
+const SPRITE_VERSION = '2.3.1065';
 
 /* v2.3.172: per-gearBase variants. Keys are `${type}:${gearBase}`;
    the bare type key is the fallback for any unmapped gearBase. wood-
