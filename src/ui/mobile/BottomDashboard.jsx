@@ -789,14 +789,8 @@ export const BottomDashboard = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
-                padding: 4,
-                borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.14)',
-                background: 'rgba(255,100,100,0.04)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
-                /* v2.3.129: clip overflow so the Kills row (and any other
-                   session-summary row) doesn't bleed past the column's
-                   bottom border at narrow heights. */
+                /* v2.3.1068: no container chrome -- the bag panel art stands alone
+                   (owner direction: equal-width panels, no back container). */
                 overflow: 'hidden',
               }}>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
@@ -1035,7 +1029,7 @@ export const BottomDashboard = () => {
                       style={{
                         position: 'relative',
                         width: '100%',
-                        height: '100%',
+                        aspectRatio: '1 / 1',   /* width-driven square -> never squished */
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1129,14 +1123,13 @@ export const BottomDashboard = () => {
                   const onTapLegsArmor = openLoadout('legs');
                   return (
                     <div style={{
-                      /* no-gap 2-col x 3-row block of gray slots, filling the panel
-                         window (aspect 2:3 -> square cells), centred in the opening. */
+                      /* no-gap 2-col block of gray slots in the panel window. Each
+                         slot is a width-driven square (aspectRatio on the cell), so
+                         the rows auto-size and the 2nd column can't get squished. */
                       position: 'absolute',
                       left: '26%', right: '26%', top: '31.5%',
-                      aspectRatio: '2 / 3',
                       display: 'grid',
                       gridTemplateColumns: 'repeat(2, 1fr)',
-                      gridTemplateRows: 'repeat(3, 1fr)',
                       gap: 0,
                     }}>
                       {/* Weapon · Shield / Chest · Legs / Amulet · Cape */}
