@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { COL, TIER_COLOR, panelStyle, getState } from './common.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
+import { getBagEntries } from './bagModel.js';
 
 // Category filter chips — icon-only.  "All" comes first so the player
 // always opens the bag with everything visible.
@@ -149,19 +150,19 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
         }}>{count}</span>
       )}
       {locked && (
-        /* v2.3.177: lock glyph in the upper-right corner of locked
-           tiles. Matches the popup's lock-glyph styling. */
+        /* v2.3.177: anchor glyph in the upper-right corner of anchored
+           tiles. Matches the popup's anchor-glyph styling.
+           v2.3.1070: ⚓ replaces the old "L" -- an anchored item stays
+           pinned to the bag instead of scrolling off with recency. */
         <span style={{
           position: 'absolute', top: 1, right: 1,
-          width: 12, height: 12,
+          width: 14, height: 14,
           background: 'rgba(15,17,26,0.92)',
           border: '1px solid #f5c542',
           borderRadius: 3,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 9, color: '#f5c542',
-          fontWeight: 900,
-          lineHeight: 1,
-        }}>L</span>
+          fontSize: 9, lineHeight: 1,
+        }}>⚓</span>
       )}
     </div>
   );
@@ -170,13 +171,6 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
 export const InventoryPanel = () => {
   const [, force] = useState(0);
   const [filter, setFilter] = useState('all');
-  // Component-local recency tracking: every time we see a key's count
-  // increase versus the previous frame, that key bubbles to the front
-  // of recentRef.current.  This is the cheapest way to honour
-  // "most recent items appear in upper-left" without modifying every
-  // pickup site in the game loop.
-  const recentRef = useRef([]);
-  const prevCountRef = useRef({});
 
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
@@ -184,7 +178,6 @@ export const InventoryPanel = () => {
   }, []);
 
   const S = getState();
-  const inv = (S?.rpg?.inventory) || {};
 
   /* v2.3.687: self-healing gear stash -- restore any orphaned steel piece
      (e.g. unequipped via the Equipment menu's toggle, which predates the
@@ -197,41 +190,18 @@ export const InventoryPanel = () => {
     } catch (e) { /* reconcile is best-effort */ }
   }
 
-  // Diff against last frame — bubble up any key whose count increased.
-  const prev = prevCountRef.current;
-  const recents = recentRef.current.slice();
-  for (const [k, n] of Object.entries(inv)) {
-    if ((prev[k] || 0) < n) {
-      const idx = recents.indexOf(k);
-      if (idx >= 0) recents.splice(idx, 1);
-      recents.unshift(k);
-    }
-  }
-  // Stitch in any keys we haven't seen yet (e.g. on initial mount with a
-  // pre-populated inventory) at the back so they're still visible.
-  for (const k of Object.keys(inv)) {
-    if (!recents.includes(k)) recents.push(k);
-  }
-  // Drop keys whose count is 0 / missing.
-  const visible = recents.filter(k => (inv[k] || 0) > 0);
-  recentRef.current = visible;
-  prevCountRef.current = { ...inv };
-
-  // Apply the active category filter.
+  /* v2.3.1070: the bag (full panel) and the quick-bag preview now read the
+     SAME ordered entry list, so they always match.  Unequipped Loadout gear
+     rides in this list as stash entries -- taking an item off therefore drops
+     it straight into both surfaces, newest-first (unless anchored). */
+  const entries = getBagEntries(S?.rpg);
   const filtered = filter === 'all'
-    ? visible
-    : visible.filter(k => classify(k) === filter);
+    ? entries
+    : entries.filter(e => e.cat === filter);
 
-  /* v2.3.1032: surface stash items + slot accounting up here so the BAG
-     header count and the grid (with empty-slot fillers) share one source. */
   const SLOTS = 32;
-  const stashWpns    = (filter === 'all' || filter === 'weapon') ? ((S?.rpg?.weaponStash) || []) : [];
-  const stashShields = (filter === 'all' || filter === 'armor')  ? ((S?.rpg?.shieldStash) || []) : [];
-  const stashArmors  = (filter === 'all' || filter === 'armor')  ? ((S?.rpg?.armorStash) || []) : [];
-  const stashGears   = (filter === 'all' || filter === 'armor')  ? ((S?.rpg?.gearStash) || []) : [];
-  const stashCount = stashWpns.length + stashShields.length + stashArmors.length + stashGears.length;
-  const shownItems = filtered.slice(0, Math.max(0, SLOTS - stashCount));
-  const usedTiles = stashCount + shownItems.length;
+  const shownItems = filtered.slice(0, SLOTS);
+  const usedTiles = shownItems.length;
 
   return (
     <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
@@ -302,20 +272,8 @@ export const InventoryPanel = () => {
             gridTemplateColumns: 'repeat(8, 1fr)',
             gap: 6,
           }}>
-            {stashWpns.map((wpn, i) => (
-              <StashTile key={`sw-${i}`} kind="stashWeapon" obj={wpn} index={i} />
-            ))}
-            {stashShields.map((sh, i) => (
-              <StashTile key={`ss-${i}`} kind="stashShield" obj={sh} index={i} />
-            ))}
-            {stashArmors.map((ar, i) => (
-              <StashTile key={`sa-${i}`} kind="stashArmor" obj={ar} index={i} />
-            ))}
-            {stashGears.map((g, i) => (
-              <StashTile key={`sg-${i}`} kind="stashGear" obj={g} index={i} />
-            ))}
-            {shownItems.map(k => (
-              <ItemTile key={k} ikey={k} count={inv[k]} />
+            {shownItems.map((e, i) => (
+              <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} />
             ))}
             {/* Empty slots so the bag always reads as a full grid of squares.
                 v2.3.1039: recessed dark fill + clearly-visible outline (the old
@@ -335,10 +293,23 @@ export const InventoryPanel = () => {
   );
 };
 
+/* v2.3.1070: dispatch a shared bag entry to the right tile so the quick-bag
+   preview and the full Bag panel render identical tiles from one list. */
+export const BagTile = ({ entry }) => {
+  if (!entry) return null;
+  if (entry.kind === 'item') {
+    return <ItemTile ikey={entry.key} count={entry.count} />;
+  }
+  return <StashTile kind={entry.kind} obj={entry.obj} index={entry.index} />;
+};
+
 /* Stash tile for an unequipped weapon or shield.  Opens the popup
    with the stashWeapon / stashShield kind so the Equip action wires
    it back into the matching loadout slot. */
 const StashTile = ({ kind, obj, index }) => {
+  /* v2.3.1070: anchored stash items show the same ⚓ badge as inventory
+     tiles -- the popup anchors them under the matching index-based key. */
+  const locked = itemIsLocked(`${kind}_${index}`);
   const handleTap = (e) => {
     e.stopPropagation();
     let anchor = null;
@@ -390,6 +361,17 @@ const StashTile = ({ kind, obj, index }) => {
         ? <img src={thumb} alt="" draggable={false}
             style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
         : <span style={{ fontSize: 18 }}>{fallbackGlyph}</span>}
+      {locked && (
+        <span style={{
+          position: 'absolute', top: 1, right: 1,
+          width: 14, height: 14,
+          background: 'rgba(15,17,26,0.92)',
+          border: '1px solid #f5c542',
+          borderRadius: 3,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 9, lineHeight: 1,
+        }}>⚓</span>
+      )}
     </div>
   );
 };
