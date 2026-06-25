@@ -950,7 +950,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1062: owner's Loadout panel art is the column background
                    (its banner shows the "LOADOUT" title); the 6 equip slots
                    overlay its opening as gray-slot frames (see the return). */
-                backgroundImage: 'url(/icons/ui/loadout-panel.png?v=2.3.1062)',
+                backgroundImage: 'url(/icons/ui/loadout-panel.png?v=2.3.1063)',
                 backgroundSize: '100% 100%',
                 backgroundRepeat: 'no-repeat',
               }}>
@@ -1016,10 +1016,15 @@ export const BottomDashboard = () => {
                      text since there's no PNG art yet. */
                   const shieldSrc = R.shield ? '/sprites/shields/wood-shield-front.png?v=2.3.198' : null;
                   const armorSrc = null; /* No chest-armor PNG sprite yet. */
-                  /* Plain function (not a React component) so React doesn't
-                     see a fresh component-type identity on every render and
-                     remount the cells.  Called as slotCell({...}) below. */
-                  const slotCell = ({ k, label, iconSrc, onTap, active, equipped, equippedGlyph }) => (
+                  /* v2.3.1063: the Loadout panel art has its 6 slots baked in
+                     (3 cols x 2 rows, light-gray).  Each interactive cell is a
+                     TRANSPARENT overlay positioned on its baked slot (col,row),
+                     showing the equipped icon + a gold glow when active.
+                     Plain function (not a React component) so cells don't remount. */
+                  const SLOT_COLS = ['12.4%', '39.6%', '66.8%'];
+                  const SLOT_ROWS = ['31.1%', '59.7%'];
+                  const SLOT_W = '20.6%', SLOT_H = '22.2%';
+                  const slotCell = ({ k, label, iconSrc, onTap, active, equipped, equippedGlyph, col, row }) => (
                     <div key={k}
                       onPointerUp={onTap ? (e) => {
                         e.stopPropagation();
@@ -1032,20 +1037,18 @@ export const BottomDashboard = () => {
                       } : undefined}
                       title={label}
                       style={{
-                        position: 'relative',
+                        position: 'absolute',
+                        left: SLOT_COLS[col], top: SLOT_ROWS[row],
+                        width: SLOT_W, height: SLOT_H,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        /* v2.3.1062: gray-slot frame art; active slot gets a gold glow. */
-                        background: 'url(/icons/ui/gray-slot.png?v=2.3.1062) center/100% 100% no-repeat',
-                        boxShadow: active ? '0 0 8px 2px rgba(245,199,70,0.6)' : 'none',
+                        /* slot frame is baked into the panel art -> cell is transparent;
+                           active slot gets a gold glow. */
+                        borderRadius: '14%',
+                        boxShadow: active ? '0 0 9px 2px rgba(245,199,70,0.6)' : 'none',
                         cursor: onTap ? 'pointer' : 'default',
                         touchAction: 'none',
-                        minWidth: 0,
-                        minHeight: 0,
-                        height: '100%',
-                        width: 'auto',
-                        aspectRatio: '1 / 1',
                       }}>
                       {iconSrc ? (
                         <img
@@ -1131,69 +1134,33 @@ export const BottomDashboard = () => {
                   const onTapLegsArmor = openLoadout('legs');
                   return (
                     <div style={{ position: 'absolute', inset: 0 }}>
-                      {/* DMG / DPS readout — sits in the gap under the panel banner. */}
-                      <div
-                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
-                        title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                        style={{
-                          position: 'absolute',
-                          top: '18.5%', left: 0, right: 0,
-                          fontSize: 10,
-                          color: COL.text,
-                          letterSpacing: '.02em',
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          cursor: 'pointer',
-                          touchAction: 'none',
-                          textShadow: '0 1px 2px #000',
-                        }}>
-                        <span style={{ color: COL.muted }}>DMG </span>{dmgText}
-                        <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
-                      </div>
-                      {/* v2.3.1062: 6 equip slots as gray-slot frames laid into the
-                          panel opening (2 cols x 3 rows), placement matched to the
-                          panel art.  Order: Weapon · Shield / Chest · Legs /
-                          Amulet · Cape. */}
-                      <div style={{
-                        position: 'absolute',
-                        top: '23.5%', bottom: '7.5%', left: '12.5%', right: '12.5%',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, 1fr)',
-                        gridTemplateRows: 'repeat(3, 1fr)',
-                        gap: 4,
-                        alignItems: 'center',
-                        justifyItems: 'center',
-                      }}>
-                        {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
-                        {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
-                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
-                        {slotCell({
-                          k: 'chest',
-                          label: 'CHEST',
-                          /* v2.3.756: top visible layer -- armour over shirt; legacy stats-armor fallback last */
-                          iconSrc: gearChestId !== 'none' ? gearIconSrc(gearChestId)
-                                 : gearShirtId !== 'none' ? gearIconSrc(gearShirtId)
-                                 : armorSrc,
-                          equipped: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
-                          equippedGlyph: '\u{1F9BA}',
-                          active: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
-                          onTap: onTapChestLayers,
-                        })}
-                        {slotCell({
-                          k: 'legs',
-                          label: 'LEGS',
-                          iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId) : null,
-                          equipped: gearLegsId !== 'none',
-                          equippedGlyph: '\u{1F456}',
-                          active: gearLegsId !== 'none',
-                          onTap: onTapLegsArmor,
-                        })}
-                        {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
-                        {/* Cape: new back-layer slot (v2.3.692).  Render + equip flow land in Phase 2. */}
-                        {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
-                      </div>
+                      {/* 6 equip slots overlaid on the panel's baked slots (3 cols x
+                          2 rows): Chest · Weapon · Shield / Legs · Amulet · Cape. */}
+                      {slotCell({
+                        k: 'chest', label: 'CHEST', col: 0, row: 0,
+                        /* v2.3.756: top visible layer -- armour over shirt; legacy stats-armor fallback last */
+                        iconSrc: gearChestId !== 'none' ? gearIconSrc(gearChestId)
+                               : gearShirtId !== 'none' ? gearIconSrc(gearShirtId)
+                               : armorSrc,
+                        equipped: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
+                        equippedGlyph: '\u{1F9BA}',
+                        active: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
+                        onTap: onTapChestLayers,
+                      })}
+                      {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
+                      {slotCell({ k: 'weapon', label: 'WEAPON', col: 1, row: 0, iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
+                      {slotCell({ k: 'shield', label: 'SHIELD', col: 2, row: 0, iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
+                      {slotCell({
+                        k: 'legs', label: 'LEGS', col: 0, row: 1,
+                        iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId) : null,
+                        equipped: gearLegsId !== 'none',
+                        equippedGlyph: '\u{1F456}',
+                        active: gearLegsId !== 'none',
+                        onTap: onTapLegsArmor,
+                      })}
+                      {slotCell({ k: 'amulet', label: 'AMULET', col: 1, row: 1, iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
+                      {/* Cape: new back-layer slot (v2.3.692).  Render + equip flow land in Phase 2. */}
+                      {slotCell({ k: 'cape', label: 'CAPE', col: 2, row: 1, iconSrc: null, active: false })}
                     </div>
                   );
                 })()}
