@@ -373,12 +373,6 @@ const InventoryPreview = () => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
   };
-  /* v2.3.1056: owner's leather-bag art as the quick-bag panel, with 6 ornate
-     item-slot frames laid into the bag's central "fur" opening.  SLOT is the
-     slot-frame art; FUR_INSET is the opening's bounds as a fraction of the bag
-     image (handle/strap above, buckle below, thin leather sides) so the slots
-     sit inside the window.  Tune on preview. */
-  const SLOT = '/icons/ui/gray-slot.png?v=2.3.1061';
   return (
     <div
       /* v2.3.845: id lets the catch-flight animation (effectsRenderer
@@ -387,38 +381,57 @@ const InventoryPreview = () => {
       id="bt-bag-target"
       onPointerUp={openFullBag}
       style={{
+        /* v2.3.162: zero inner padding + zero flex gap. The only outer
+           whitespace around the tile grid is the column wrapper's
+           padding:4. Matching the grid's gap:4 below makes every gap
+           in the preview the same: cell-to-cell, cell-to-edge. The
+           Bag label header from v2.3.155 came out for the same reason
+           (its margin broke the top-edge uniformity); the whole card
+           is tappable so the label was redundant anyway. */
         flex: 1,
         minHeight: 0,
-        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
         cursor: 'pointer',
-        /* owner bag art; stretched to the card (matches prior bag-bg behaviour). */
-        backgroundImage: `url(/icons/ui/bag-panel.png?v=2.3.1056)`,
+        /* v2.3.761: leather backdrop (owner art) behind the quick-bag tiles;
+           a touch of padding so the texture's border reads as the frame. */
+        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
         backgroundSize: '100% 100%',
-        backgroundRepeat: 'no-repeat',
+        borderRadius: 6,
+        padding: 3,
       }}
       title="Tap to open Bag"
     >
-      {/* 6 slots as a no-gap 2-col x 3-row block of square frames, sized to fill
-          the bag (width 70%, aspect 2:3 -> square cells) and centred slightly low
-          in the opening. Items first, then empty frames fill to 6. */}
+      {/* v2.3.1035: always show the 2x3 slot grid (matching the full Bag's
+          square slots) -- items first, then faint empty slots fill to 6, so
+          the preview always reads as an inventory grid (even when empty). The
+          whole card stays tappable to open the Bag. */}
       <div style={{
-        position: 'absolute',
-        left: '15%', right: '15%',          /* width 70% of the card */
-        top: '52%', transform: 'translateY(-50%)',   /* centred, a touch low */
-        aspectRatio: '2 / 3',               /* with 2x3 grid -> square cells */
+        flex: 1,
+        minHeight: 0,
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
         gridTemplateRows: 'repeat(3, 1fr)',
-        gap: 0,
+        gap: 4,
       }}>
         {tiles.map(k => (
-          <ItemTile key={k} ikey={k} count={inv[k]} frame={SLOT}
-            style={{ width: '100%', height: '100%' }} />
+          <ItemTile
+            key={k}
+            ikey={k}
+            count={inv[k]}
+            style={{
+              /* Drop the hardcoded 1:1 aspect ratio so the tile fits
+                 whatever shape the grid cell is. */
+              aspectRatio: 'auto',
+              height: '100%',
+            }}
+          />
         ))}
         {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
-            width: '100%', height: '100%',
-            background: `url(${SLOT}) center/100% 100% no-repeat`,
+            background: 'rgba(0,0,0,0.28)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            borderRadius: 6,
           }} />
         ))}
       </div>
@@ -782,15 +795,21 @@ export const BottomDashboard = () => {
               {/* ── Left column — hybrid card: HP/MP/END chip row +
                   Crit/Move derived stats + session summary (Zone, Kills,
                   Playtime).  v2.3.126: portrait migrated to the top-right
-                  HUD.  v2.3.1060: all three dashboard columns share equal
-                  width (flex 1) so Bag / Loadout / Build line up. */}
+                  HUD; this column narrowed (flex 0.85) so Loadout
+                  (flex 1.35) gets the slack. */}
               <div style={{
-                flex: 1,
+                flex: 0.85,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
-                /* v2.3.1068: no container chrome -- the bag panel art stands alone
-                   (owner direction: equal-width panels, no back container). */
+                padding: 4,
+                borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(255,100,100,0.04)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
+                /* v2.3.129: clip overflow so the Kills row (and any other
+                   session-summary row) doesn't bleed past the column's
+                   bottom border at narrow heights. */
                 overflow: 'hidden',
               }}>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
@@ -938,16 +957,17 @@ export const BottomDashboard = () => {
                   Weapon slot still cycles activeSlot on tap (the
                   floating WeaponSwapBar was unmounted in v2.3.125). */}
               <div style={{
-                flex: 1,
-                position: 'relative',
+                flex: 1.35,
+                display: 'flex',
+                flexDirection: 'column',
                 minWidth: 0,
-                /* v2.3.1062: owner's Loadout panel art is the column background
-                   (its banner shows the "LOADOUT" title); the 6 equip slots
-                   overlay its opening as gray-slot frames (see the return). */
-                backgroundImage: 'url(/icons/ui/loadout-panel.png?v=2.3.1064)',
-                backgroundSize: '100% 100%',
-                backgroundRepeat: 'no-repeat',
+                padding: 4,
+                borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.14)',
+                background: 'rgba(120,110,255,0.04)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
               }}>
+                <ColHeader>Loadout</ColHeader>
                 {(() => {
                   /* DMG/DPS calc — mirrors WeaponSwapBar.readState() so the
                      numbers match what combat actually rolls.  Stat driver
@@ -1010,10 +1030,9 @@ export const BottomDashboard = () => {
                      text since there's no PNG art yet. */
                   const shieldSrc = R.shield ? '/sprites/shields/wood-shield-front.png?v=2.3.198' : null;
                   const armorSrc = null; /* No chest-armor PNG sprite yet. */
-                  /* v2.3.1064: this Loadout panel art is an open frame (no baked
-                     slots), so the 6 equip cells are the SAME gray-slot frame used
-                     by the bag, in a no-gap 2x3 block in the window (see return).
-                     Plain function (not a React component) so cells don't remount. */
+                  /* Plain function (not a React component) so React doesn't
+                     see a fresh component-type identity on every render and
+                     remount the cells.  Called as slotCell({...}) below. */
                   const slotCell = ({ k, label, iconSrc, onTap, active, equipped, equippedGlyph }) => (
                     <div key={k}
                       onPointerUp={onTap ? (e) => {
@@ -1028,16 +1047,18 @@ export const BottomDashboard = () => {
                       title={label}
                       style={{
                         position: 'relative',
-                        width: '100%',
-                        aspectRatio: '1 / 1',   /* width-driven square -> never squished */
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        /* gray-slot frame art (same as the bag); active slot gets a gold glow. */
-                        background: 'url(/icons/ui/gray-slot.png?v=2.3.1064) center/100% 100% no-repeat',
-                        boxShadow: active ? '0 0 8px 2px rgba(245,199,70,0.6)' : 'none',
+                        borderRadius: 4,
+                        background: active ? 'rgba(245,199,70,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: active ? '1px solid rgba(245,199,70,0.7)' : '1px solid rgba(255,255,255,0.08)',
+                        boxShadow: active ? 'inset 0 0 6px rgba(245,199,70,0.3)' : 'none',
                         cursor: onTap ? 'pointer' : 'default',
                         touchAction: 'none',
+                        minWidth: 0,
+                        minHeight: 0,
+                        aspectRatio: '1 / 1',
                       }}>
                       {iconSrc ? (
                         <img
@@ -1045,8 +1066,8 @@ export const BottomDashboard = () => {
                           alt={label}
                           draggable={false}
                           style={{
-                            width: '62%',
-                            height: '62%',
+                            width: '85%',
+                            height: '85%',
                             objectFit: 'contain',
                             imageRendering: 'pixelated',
                             opacity: equipped === false ? 0.35 : 1,
@@ -1123,41 +1144,81 @@ export const BottomDashboard = () => {
                   const onTapLegsArmor = openLoadout('legs');
                   return (
                     <div style={{
-                      /* no-gap 2-col block of gray slots in the panel window. Each
-                         slot is a width-driven square (aspectRatio on the cell), so
-                         the rows auto-size and the 2nd column can't get squished. */
-                      position: 'absolute',
-                      left: '26%', right: '26%', top: '31.5%',
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: 0,
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      minHeight: 0,
+                      padding: '2px 2px 0',
                     }}>
-                      {/* Weapon · Shield / Chest · Legs / Amulet · Cape */}
-                      {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
-                      {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
-                      {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
-                      {slotCell({
-                        k: 'chest', label: 'CHEST',
-                        /* v2.3.756: top visible layer -- armour over shirt; legacy stats-armor fallback last */
-                        iconSrc: gearChestId !== 'none' ? gearIconSrc(gearChestId)
-                               : gearShirtId !== 'none' ? gearIconSrc(gearShirtId)
-                               : armorSrc,
-                        equipped: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
-                        equippedGlyph: '\u{1F9BA}',
-                        active: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
-                        onTap: onTapChestLayers,
-                      })}
-                      {slotCell({
-                        k: 'legs', label: 'LEGS',
-                        iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId) : null,
-                        equipped: gearLegsId !== 'none',
-                        equippedGlyph: '\u{1F456}',
-                        active: gearLegsId !== 'none',
-                        onTap: onTapLegsArmor,
-                      })}
-                      {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
-                      {/* Cape: new back-layer slot (v2.3.692).  Render + equip flow land in Phase 2. */}
-                      {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
+                      {/* DMG / DPS readout — single centered line. */}
+                      <div
+                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
+                        title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
+                        style={{
+                          fontSize: 11,
+                          color: COL.text,
+                          letterSpacing: '.02em',
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          cursor: 'pointer',
+                          touchAction: 'none',
+                        }}>
+                        <span style={{ color: COL.muted }}>DMG </span>{dmgText}
+                        <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
+                      </div>
+                      {/* Row 1 — Chest · Weapon · Shield.  v2.3.692: reordered
+                          per user so armour leads and the active weapon sits
+                          centre, shield right (mirrors the equip silhouette). */}
+                      <div style={{
+                        flex: 1,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: 3,
+                        minHeight: 0,
+                      }}>
+                        {slotCell({
+                          k: 'chest',
+                          label: 'CHEST',
+                          /* v2.3.756: top visible layer -- armour over
+                             shirt; legacy stats-armor fallback last */
+                          iconSrc: gearChestId !== 'none' ? gearIconSrc(gearChestId)
+                                 : gearShirtId !== 'none' ? gearIconSrc(gearShirtId)
+                                 : armorSrc,
+                          equipped: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
+                          equippedGlyph: '\u{1F9BA}',
+                          active: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
+                          onTap: onTapChestLayers,
+                        })}
+                        {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
+                        {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
+                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
+                      </div>
+                      {/* Row 2 — Legs · Amulet · Cape.  v2.3.692: legs under
+                          chest, jewelry + the new back slot fill the row. */}
+                      <div style={{
+                        flex: 1,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: 3,
+                        minHeight: 0,
+                      }}>
+                        {slotCell({
+                          k: 'legs',
+                          label: 'LEGS',
+                          iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId) : null,
+                          equipped: gearLegsId !== 'none',
+                          equippedGlyph: '\u{1F456}',
+                          active: gearLegsId !== 'none',
+                          onTap: onTapLegsArmor,
+                        })}
+                        {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
+                        {/* Cape: new back-layer slot (v2.3.692).  Render + equip
+                            flow land in Phase 2; cell shows as empty for now. */}
+                        {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
+                      </div>
                     </div>
                   );
                 })()}
