@@ -297,7 +297,7 @@ export class EffectsRenderer {
          (bodyUrl) + equipped chest/legs armour (gear/<slot>/<item>/swing-south.png)
          + the recolorable weapon, so worn armour shows during the swing via the
          existing gear slots.  Falls back to armorUrl/bald if bodyUrl missing. */
-      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing', bodyScale: 0.92 },
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing', bodyScale: 0.92, bodyScaleX: 0.95 },
       east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east', armorUrl: '/sprites/player/sword-east-armored.png', weaponUrl: '/sprites/player/sword-east-weapon.png', bodyUrl: '/sprites/player/sword-east-body.png', gearPose: 'swing' },
       north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north", armorUrl: "/sprites/player/sword-north-armored.png", weaponUrl: "/sprites/player/sword-north-weapon.png", bodyUrl: "/sprites/player/sword-north-body.png", gearPose: "swing" },
     };
@@ -2847,7 +2847,12 @@ export class EffectsRenderer {
        small reduction.  Scales body+shirt+armour+weapon+traits together (they
        all derive from this `s`); feet stay planted via the feetY anchor. */
     const s = bodyH / 188 * (cfg.bodyScale || 1);
-    const sgn = mirror ? -s : s;
+    /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
+       Narrows x only (height stays `s`); overlays inherit it via `sgn` in
+       place(), and traits re-center on the narrower head (their position uses
+       sp.scale.x) while keeping their height-based size (sp.scale.y). */
+    const sx = s * (cfg.bodyScaleX || 1);
+    const sgn = mirror ? -sx : sx;
     sp.scale.set(sgn, s);
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
