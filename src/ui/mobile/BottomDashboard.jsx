@@ -1198,7 +1198,6 @@ export const BottomDashboard = () => {
                         gridAutoRows: 'min-content',
                         alignContent: 'center',
                         gap: 3,
-                        minHeight: 0,
                       }}>
                         {slotCell({
                           k: 'chest',
