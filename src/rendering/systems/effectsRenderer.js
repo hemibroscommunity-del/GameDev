@@ -411,16 +411,16 @@ export class EffectsRenderer {
        each (load -> draw -> release -> follow). */
     this._bowCfg = {
       /* v2.3.932: east re-cut to the owner's arrow-free art (3 frames). */
-      east:      { url: '/sprites/player/bow-east.png',      fw: 214, fh: 241, feetY: 235, crownKey: 'bow_e',  traitDir: 'east', weaponUrl: '/sprites/player/bow-east-weapon.png', bodyUrl: '/sprites/player/bow-east-body.png', gearPose: 'bowshot' },
+      east:      { url: '/sprites/player/bow-east.png',      fw: 214, fh: 241, feetY: 235, crownKey: 'bow_e',  traitDir: 'east', weaponUrl: '/sprites/player/bow-east-weapon.png', bodyUrl: '/sprites/player/bow-east-body.png', torsoUrl: '/sprites/player/bow-east-torso.png', gearPose: 'bowshot' },
       /* v2.3.929: SW re-cut to the owner's arrow-free art (3 frames:
          load/pull/release -- the in-game arrow projectile draws the arrow). */
-      southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south', weaponUrl: '/sprites/player/bow-southwest-weapon.png', bodyUrl: '/sprites/player/bow-southwest-body.png', gearPose: 'bowshot' },
+      southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south', weaponUrl: '/sprites/player/bow-southwest-weapon.png', bodyUrl: '/sprites/player/bow-southwest-body.png', torsoUrl: '/sprites/player/bow-southwest-torso.png', gearPose: 'bowshot' },
       /* v2.3.933: south re-cut to the owner's arrow-free art (3 frames). */
       south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south', weaponUrl: '/sprites/player/bow-south-weapon.png', bodyUrl: '/sprites/player/bow-south-body.png', torsoUrl: '/sprites/player/bow-south-torso.png', gearPose: 'bowshot' },
       /* v2.3.930: NW re-cut to the owner's arrow-free art (3 frames). */
-      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north', weaponUrl: '/sprites/player/bow-northwest-weapon.png', bodyUrl: '/sprites/player/bow-northwest-body.png', gearPose: 'bowshot' },
+      northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north', weaponUrl: '/sprites/player/bow-northwest-weapon.png', bodyUrl: '/sprites/player/bow-northwest-body.png', torsoUrl: '/sprites/player/bow-northwest-torso.png', gearPose: 'bowshot' },
       /* v2.3.931: north re-cut to the owner's arrow-free art (3 frames). */
-      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north', weaponUrl: '/sprites/player/bow-north-weapon.png', bodyUrl: '/sprites/player/bow-north-body.png', gearPose: 'bowshot' },
+      north:     { url: '/sprites/player/bow-north.png',     fw: 122, fh: 260, feetY: 254, crownKey: 'bow_n',  traitDir: 'north', weaponUrl: '/sprites/player/bow-north-weapon.png', bodyUrl: '/sprites/player/bow-north-body.png', torsoUrl: '/sprites/player/bow-north-torso.png', gearPose: 'bowshot' },
     };
     this._bowFacing = {
       east:      ['east', false],
@@ -2957,9 +2957,13 @@ export class EffectsRenderer {
          sliding.  Same foot-plant + scale as the stand-in => aligns by
          construction; the legs sprite anchors at the 256-frame's feet row (221). */
       const _torsoFrames = this._bowTorsoFrames[fmap[0]];
-      const _jogLegs = !!S._bowJogLegs && fmap[0] === 'south' && _torsoFrames && _torsoFrames[fi];
+      const _jogLegs = !!S._bowJogLegs && _torsoFrames && _torsoFrames[fi];
       if (_jogLegs) {
         const _jdir = S._bodyAnimDir || 'south', _jfr = S._bodyAnimFrame || 0;
+        /* the jog legs come from the BODY's own dir/frame, so flip them by the
+           BODY's mirror (published separately) -- NOT the bow stand-in's `sgn`,
+           which is the bow facing's mirror and would double-flip on west/SE/NE. */
+        const _legSgn = (S._bodyAnimMirror ? -1 : 1) * s;
         /* jog body legs (naked) -- anchored at the 256-frame feet row (221), same
            foot-plant + scale as the stand-in so it lines up by construction. */
         const legTex = getBodyFrame(getSkin(), getPants(), getShoes(), 'jog', _jdir, _jfr, null, 'none');
@@ -2976,14 +2980,14 @@ export class EffectsRenderer {
           if (!cropped) { try { cropped = new Texture({ source: legTex.source, frame: new Rectangle(0, 150, 256, 106) }); } catch (e) { cropped = legTex; } cache.set(legTex.source, cropped); }
           jl.texture = cropped;
           jl.anchor.set(0.5, (221 - 150) / 106);   // feet row within the crop
-          jl.scale.set(sgn, s); jl.x = sp.x; jl.y = sp.y; jl.tint = 0xffffff; jl.visible = true;
+          jl.scale.set(_legSgn, s); jl.x = sp.x; jl.y = sp.y; jl.tint = 0xffffff; jl.visible = true;
         }
         /* worn leg ARMOUR over the jog legs (gear sheet is pixel-aligned to the
            jog body frame), so the plate strides with the legs instead of sitting
            static in front. */
         const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
         const jg = this.bowJogLegsGearSprite;
-        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(sgn, s); jg.x = sp.x; jg.y = sp.y; jg.tint = 0xffffff; jg.visible = true; }
+        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_legSgn, s); jg.x = sp.x; jg.y = sp.y; jg.tint = 0xffffff; jg.visible = true; }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';

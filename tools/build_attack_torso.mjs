@@ -10,7 +10,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { decode, encode } from './png.mjs';
 
-const SHEETS = [['bow-south', 130, 234, 3]];
+const SHEETS = [
+  ['bow-south', 130, 234, 3], ['bow-southwest', 154, 233, 3], ['bow-east', 214, 241, 3],
+  ['bow-north', 122, 260, 3], ['bow-northwest', 160, 248, 3],
+];
 const OVERLAP = 6;   // keep a few px of the body's own waistband past the waist to hide the seam
 const isPants = (r, g, b, a) => a > 80 && Math.abs(r - g) < 32 && g - b > 22 && r < 170 && b < 120;
 

@@ -3813,7 +3813,7 @@ export class EntityRenderer {
         display._animFrame = frameIdx;
         /* v2.3.1072: publish the live jog frame so the bow stand-in can composite
            animated legs under its torso (jogging-legs-during-attack). */
-        S._bodyAnimFrame = frameIdx; S._bodyAnimDir = dir; S._bodyMoving = (pose === 'jog');
+        S._bodyAnimFrame = frameIdx; S._bodyAnimDir = dir; S._bodyMoving = (pose === 'jog'); S._bodyAnimMirror = mirror;
         /* The v2.3.576 window.__btHideArmor debug toggle was retired in
            v2.3.678 (armour visibility is governed by the equip slots); its
            reads were removed in the v2.3.688 cleanup. */
