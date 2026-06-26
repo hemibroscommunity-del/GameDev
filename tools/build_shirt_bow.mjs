@@ -171,13 +171,26 @@ function bodyLandmarks(body, cfg, fi) {
   if (crown < 0) crown = Math.round(FH * 0.17);
   const neckY = crown + NECK_FROM_CROWN;
   if (waist < 0 || waist <= neckY) waist = neckY + Math.round(FH * 0.28);
-  /* torso center-x + width = body pixels in the neck->waist band. */
-  let minx = FW, maxx = -1, sx = 0, n = 0;
-  for (let y = neckY; y <= waist; y++) for (let x = 0; x < FW; x++) {
-    const i = (y * BW + (fi * FW + x)) * 4; if (body.data[i + 3] > 60) { if (x < minx) minx = x; if (x > maxx) maxx = x; sx += x; n++; }
+  /* torso center-x + width = the CENTRAL contiguous opaque run per row across
+     the neck->waist band, taken as the median.  A full-row bbox would swallow
+     the extended bow-arms (which are separated from the torso by gaps) and fit
+     the shirt far too wide; the central run is just the trunk. */
+  const op = (x, y) => x >= 0 && x < FW && body.data[(y * BW + (fi * FW + x)) * 4 + 3] > 60;
+  const runs = []; let cxSum = 0, cxN = 0;
+  for (let y = neckY; y <= waist; y++) {
+    let rmin = FW, rmax = -1;
+    for (let x = 0; x < FW; x++) if (op(x, y)) { if (x < rmin) rmin = x; if (x > rmax) rmax = x; }
+    if (rmax < rmin) continue;
+    let mid = Math.round((rmin + rmax) / 2);
+    if (!op(mid, y)) { for (let k = 1; k < FW; k++) { if (op(mid - k, y)) { mid -= k; break; } if (op(mid + k, y)) { mid += k; break; } } }
+    let lo = mid, hi = mid;
+    while (op(lo - 1, y)) lo--;
+    while (op(hi + 1, y)) hi++;
+    runs.push(hi - lo); cxSum += (lo + hi) / 2; cxN++;
   }
-  const cx = n ? sx / n : FW / 2;
-  const torsoW = maxx >= minx ? (maxx - minx) : Math.round(FW * 0.5);
+  runs.sort((a, b) => a - b);
+  const torsoW = runs.length ? runs[runs.length >> 1] : Math.round(FW * 0.5);
+  const cx = cxN ? cxSum / cxN : FW / 2;
   return { neckY, waistY: waist, cx, torsoW };
 }
 
