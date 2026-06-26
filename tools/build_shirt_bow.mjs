@@ -54,8 +54,14 @@ const DIRS = {
 /* ── tone shaping (match stand/jog/swing shirt sheets) ──────────────────────── */
 const FILL_TARGET = 245;
 const OUTLINE_GAMMA = 1.5;
-const TORSO_FILL = 1.15;   // shirt width = median hip width x this (shoulders read a touch wider than the hips)
-const NECK_FROM_CROWN = 30; // collar sits this far below the head crown (bow heads sit lower than swing)
+/* ── per-direction alignment tunables (owner-directed) ───────────────────────
+   The shirt is placed by ONE uniform transform that aligns the drawn character
+   to the game body via head-crown + pants-bottom (vertical) and pants-center
+   (horizontal).  These nudges fine-tune without distorting it:
+   +NUDGE_Y moves the shirt DOWN, +NUDGE_X moves it RIGHT, SCALE_FUDGE>1 grows it. */
+const NUDGE_X = 0;
+const NUDGE_Y = 0;
+const SCALE_FUDGE = 1.0;
 const BAND_FRAC = 0.30;
 
 /* ── source-cell shirt isolation ────────────────────────────────────────────── */
@@ -154,39 +160,42 @@ function cellShirt(g, cfg, idx) {
   return { W, H, alp, val, collarX, sTop, sBot, fTop, fBot, torsoW: maxW };
 }
 
-/* ── body landmarks per frame ───────────────────────────────────────────────── */
+/* ── landmarks: head crown (top skin), pants-bottom (lowest olive), pants center.
+   Only these two vertical anchors + the horizontal pants center are used -- they
+   are the rock-stable ones (head-band / waist-band detection is noisy and was
+   distorting the shirt).  The SAME detector reads the game-body frame and the
+   owner's source cell, so the drawn character lines up with the body. ─────────── */
+const _isSkin = (r, g, b, a) => a > 80 && r - g > 40 && g - b > 15 && r > 140;
+const _isPants = (r, g, b, a) => a > 80 && Math.abs(r - g) < 32 && g - b > 22 && r < 170 && b < 120;
+function regionLandmarks(img, ox, oy, W, H, margin) {
+  const BW = img.width;
+  let crown = -1, feet = -1, pSx = 0, pN = 0;
+  for (let y = 0; y < H; y++) {
+    let skinRow = 0, pantRow = 0;
+    for (let x = 0; x < W; x++) {
+      if (x < margin || x >= W - margin || y < margin || y >= H - margin) continue;
+      const i = ((oy + y) * BW + (ox + x)) * 4;
+      const r = img.data[i], g = img.data[i + 1], b = img.data[i + 2], a = img.data[i + 3];
+      if (_isSkin(r, g, b, a)) skinRow++;
+      if (_isPants(r, g, b, a)) { pantRow++; pSx += x; pN++; }
+    }
+    if (crown < 0 && skinRow > 2) crown = y;       // first head row
+    if (pantRow > 3) feet = y;                      // lowest substantial pants row
+  }
+  if (crown < 0) crown = Math.round(H * 0.17);
+  if (feet < 0) feet = Math.round(H * 0.85);
+  return { crown, feet, pantCx: pN ? pSx / pN : W / 2 };
+}
 function bodyLandmarks(body, cfg, fi) {
-  const { fw: FW, fh: FH } = cfg; const BW = body.width;
-  const isSkin = (r, g, b, a) => a > 80 && r - g > 40 && g - b > 15 && r > 140;
-  const isPants = (r, g, b, a) => a > 80 && Math.abs(r - g) < 32 && g - b > 22 && r < 170 && b < 120;
-  let crown = -1, waist = -1;
-  for (let y = 0; y < FH && crown < 0; y++) {
-    let c = 0; for (let x = 0; x < FW; x++) { const i = (y * BW + (fi * FW + x)) * 4; if (isSkin(body.data[i], body.data[i + 1], body.data[i + 2], body.data[i + 3])) c++; }
-    if (c > 2) crown = y;
-  }
-  for (let y = (crown < 0 ? 0 : crown) + 20; y < FH && waist < 0; y++) {
-    let c = 0; for (let x = 0; x < FW; x++) { const i = (y * BW + (fi * FW + x)) * 4; if (isPants(body.data[i], body.data[i + 1], body.data[i + 2], body.data[i + 3])) c++; }
-    if (c > 3) waist = y;
-  }
-  if (crown < 0) crown = Math.round(FH * 0.17);
-  const neckY = crown + NECK_FROM_CROWN;
-  if (waist < 0 || waist <= neckY) waist = neckY + Math.round(FH * 0.28);
-  /* width reference = the PANTS (hip) bbox just below the waist.  This is
-     arm-free and rock-stable across the draw cycle (verified: south = 47px,
-     center 65 on all 3 frames), unlike the neck->waist torso band which the
-     extended bow-arms inflate and destabilise (collapsing the shirt to a sliver
-     on the full-draw frame).  renderDir() fixes ONE width per direction from the
-     median of these so the shirt can't jump frame-to-frame; the per-frame hip
-     center still lets it track any lean. */
-  let hminx = FW, hmaxx = -1;
-  const hbTop = waist + 2, hbBot = Math.min(FH - 1, waist + 18);
-  for (let y = hbTop; y <= hbBot; y++) for (let x = 0; x < FW; x++) {
-    const i = (y * BW + (fi * FW + x)) * 4;
-    if (isPants(body.data[i], body.data[i + 1], body.data[i + 2], body.data[i + 3])) { if (x < hminx) hminx = x; if (x > hmaxx) hmaxx = x; }
-  }
-  const hipW = hmaxx >= hminx ? (hmaxx - hminx) : Math.round(FW * 0.36);
-  const hipCx = hmaxx >= hminx ? (hminx + hmaxx) / 2 : FW / 2;
-  return { neckY, waistY: waist, hipCx, hipW };
+  return regionLandmarks(body, fi * cfg.fw, 0, cfg.fw, cfg.fh, 0);
+}
+function srcLandmarks(g, cfg, idx) {
+  const cpw = g.width / cfg.cols, cph = g.height / cfg.rows;
+  const ox = Math.round(idx * cpw), oy = Math.round(cfg.row * cph);
+  const W = Math.round(cpw), H = Math.round(cph);
+  const L = regionLandmarks(g, ox, oy, W, H, Math.round(Math.min(W, H) * 0.04));
+  if (cfg.flipX) L.pantCx = (W - 1) - L.pantCx;     // shirt buffer is flipped to match
+  return L;
 }
 
 /* bilinear sample */
@@ -207,30 +216,27 @@ function renderDir(dir, opts = {}) {
   const g = decode(readFileSync(cfg.src));
   const body = decode(readFileSync(cfg.body));
   const { fw: FW, fh: FH, n: N } = cfg;
-  /* pass 1: landmarks for every frame -> ONE constant shirt width for the whole
-     direction (median hip width x fill, so shoulders read a touch wider than the
-     hips).  This is what kills the frame-to-frame width jump. */
-  const Ls = []; for (let fi = 0; fi < N; fi++) Ls.push(bodyLandmarks(body, cfg, fi));
-  const med = (arr) => { const s = [...arr].sort((a, b) => a - b); return s[s.length >> 1]; };
-  const widthTarget = med(Ls.map((L) => L.hipW)) * TORSO_FILL;
   const frames = [];
   const dbg = [];
   for (let fi = 0; fi < N; fi++) {
-    const s = cellShirt(g, cfg, fi);
-    const L = Ls[fi];
-    const SY = (L.waistY - L.neckY) / Math.max(1, (s.fBot - s.fTop));
-    const SX = widthTarget / Math.max(1, s.torsoW);   // output width == widthTarget for every frame
+    const s = cellShirt(g, cfg, fi);            // isolated shirt buffer (flipped if flipX)
+    const SL = srcLandmarks(g, cfg, fi);         // drawn-character anchors
+    const BL = bodyLandmarks(body, cfg, fi);     // game-body anchors
+    /* ONE uniform scale from the full crown->pants-bottom height (the stable
+       span); map crown->crown and pants-center->pants-center.  No per-axis
+       distortion -- the shirt keeps the proportions the owner drew. */
+    const scale = ((BL.feet - BL.crown) / Math.max(1, (SL.feet - SL.crown))) * SCALE_FUDGE;
     const out = Buffer.alloc(FW * FH * 4);
     for (let fy = 0; fy < FH; fy++) for (let fx = 0; fx < FW; fx++) {
-      const lx = (fx - L.hipCx) / SX + s.collarX;
-      const ly = (fy - L.neckY) / SY + s.fTop;
-      const [v, a] = sample(s, lx, ly);
+      const sx = (fx - (BL.pantCx + NUDGE_X)) / scale + SL.pantCx;
+      const sy = (fy - (BL.crown + NUDGE_Y)) / scale + SL.crown;
+      const [v, a] = sample(s, sx, sy);
       if (a <= 4) continue;
       const o = (fy * FW + fx) * 4; const vv = Math.round(v);
       out[o] = vv; out[o + 1] = vv; out[o + 2] = vv; out[o + 3] = Math.round(a);
     }
     frames.push(out);
-    dbg.push({ fi, neckY: L.neckY, waistY: L.waistY, hipCx: Math.round(L.hipCx), hipW: L.hipW, wTarget: Math.round(widthTarget), SX: SX.toFixed(2), SY: SY.toFixed(2) });
+    dbg.push({ fi, srcCrown: SL.crown, srcFeet: SL.feet, srcCx: Math.round(SL.pantCx), bodyCrown: BL.crown, bodyFeet: BL.feet, bodyCx: Math.round(BL.pantCx), scale: scale.toFixed(3) });
   }
   // assemble strip
   const SW = N * FW;
@@ -245,18 +251,27 @@ function renderDir(dir, opts = {}) {
   console.table(dbg);
 
   if (opts.preview) {
-    const BW = N * FW;
-    const board = Buffer.alloc(BW * FH * 4);
-    for (let fi = 0; fi < N; fi++) for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+    /* Faithful preview: the tinted shirt composited over the ACTUAL colored body
+       sprite, scaled 2x (nearest) -- this is what the game shows.  Judge from
+       THIS, not a grey board. */
+    const SCALE = 2;
+    const PW = N * FW * SCALE, PH = FH * SCALE;
+    const board = Buffer.alloc(PW * PH * 4);
+    for (let fi = 0; fi < N; fi++) for (let py = 0; py < PH; py++) for (let px = 0; px < FW * SCALE; px++) {
+      const x = (px / SCALE) | 0, y = (py / SCALE) | 0;
       const bsrc = (y * body.width + (fi * FW + x)) * 4;
-      let r = 40, gg = 44, b = 52;
-      if (body.data[bsrc + 3] > 20) { const bl = Math.round(0.3 * body.data[bsrc] + 0.59 * body.data[bsrc + 1] + 0.11 * body.data[bsrc + 2]); r = gg = b = Math.round(60 + bl * 0.5); }
-      const fs = (y * FW + x) * 4; const f = frames[fi];
-      if (f[fs + 3] > 20) { const t = f[fs] / 255, al = f[fs + 3] / 255; r = Math.round(r * (1 - al) + (60 * t + 20) * al); gg = Math.round(gg * (1 - al) + (120 * t + 20) * al); b = Math.round(b * (1 - al) + (220 * t + 35) * al); }
-      const d = (y * BW + (fi * FW + x)) * 4; board[d] = r; board[d + 1] = gg; board[d + 2] = b; board[d + 3] = 255;
+      let r = 28, gg = 32, b = 40;                         // dark backdrop
+      if (body.data[bsrc + 3] > 20) { r = body.data[bsrc]; gg = body.data[bsrc + 1]; b = body.data[bsrc + 2]; }
+      const f = frames[fi]; const fs = (y * FW + x) * 4;
+      if (f[fs + 3] > 20) {                                 // tint grayscale shirt -> cyan tee
+        const t = f[fs] / 255, al = f[fs + 3] / 255;
+        const sr = 40 * t + 12, sg = 150 * t + 28, sb = 205 * t + 40;
+        r = Math.round(r * (1 - al) + sr * al); gg = Math.round(gg * (1 - al) + sg * al); b = Math.round(b * (1 - al) + sb * al);
+      }
+      const d = (py * PW + (fi * FW * SCALE + px)) * 4; board[d] = r; board[d + 1] = gg; board[d + 2] = b; board[d + 3] = 255;
     }
     const PV = `tools/_bowshirt_${dir}_preview.png`;
-    writeFileSync(PV, encode({ width: BW, height: FH, data: board }));
+    writeFileSync(PV, encode({ width: PW, height: PH, data: board }));
     console.log('preview ->', PV);
   }
 }
