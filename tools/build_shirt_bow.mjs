@@ -54,7 +54,7 @@ const DIRS = {
 /* ── tone shaping (match stand/jog/swing shirt sheets) ──────────────────────── */
 const FILL_TARGET = 245;
 const OUTLINE_GAMMA = 1.5;
-const TORSO_FILL = 0.92;   // fraction of body torso width the shirt is fitted to
+const TORSO_FILL = 1.15;   // shirt width = median hip width x this (shoulders read a touch wider than the hips)
 const NECK_FROM_CROWN = 30; // collar sits this far below the head crown (bow heads sit lower than swing)
 const BAND_FRAC = 0.30;
 
@@ -171,27 +171,22 @@ function bodyLandmarks(body, cfg, fi) {
   if (crown < 0) crown = Math.round(FH * 0.17);
   const neckY = crown + NECK_FROM_CROWN;
   if (waist < 0 || waist <= neckY) waist = neckY + Math.round(FH * 0.28);
-  /* torso center-x + width = the CENTRAL contiguous opaque run per row across
-     the neck->waist band, taken as the median.  A full-row bbox would swallow
-     the extended bow-arms (which are separated from the torso by gaps) and fit
-     the shirt far too wide; the central run is just the trunk. */
-  const op = (x, y) => x >= 0 && x < FW && body.data[(y * BW + (fi * FW + x)) * 4 + 3] > 60;
-  const runs = []; let cxSum = 0, cxN = 0;
-  for (let y = neckY; y <= waist; y++) {
-    let rmin = FW, rmax = -1;
-    for (let x = 0; x < FW; x++) if (op(x, y)) { if (x < rmin) rmin = x; if (x > rmax) rmax = x; }
-    if (rmax < rmin) continue;
-    let mid = Math.round((rmin + rmax) / 2);
-    if (!op(mid, y)) { for (let k = 1; k < FW; k++) { if (op(mid - k, y)) { mid -= k; break; } if (op(mid + k, y)) { mid += k; break; } } }
-    let lo = mid, hi = mid;
-    while (op(lo - 1, y)) lo--;
-    while (op(hi + 1, y)) hi++;
-    runs.push(hi - lo); cxSum += (lo + hi) / 2; cxN++;
+  /* width reference = the PANTS (hip) bbox just below the waist.  This is
+     arm-free and rock-stable across the draw cycle (verified: south = 47px,
+     center 65 on all 3 frames), unlike the neck->waist torso band which the
+     extended bow-arms inflate and destabilise (collapsing the shirt to a sliver
+     on the full-draw frame).  renderDir() fixes ONE width per direction from the
+     median of these so the shirt can't jump frame-to-frame; the per-frame hip
+     center still lets it track any lean. */
+  let hminx = FW, hmaxx = -1;
+  const hbTop = waist + 2, hbBot = Math.min(FH - 1, waist + 18);
+  for (let y = hbTop; y <= hbBot; y++) for (let x = 0; x < FW; x++) {
+    const i = (y * BW + (fi * FW + x)) * 4;
+    if (isPants(body.data[i], body.data[i + 1], body.data[i + 2], body.data[i + 3])) { if (x < hminx) hminx = x; if (x > hmaxx) hmaxx = x; }
   }
-  runs.sort((a, b) => a - b);
-  const torsoW = runs.length ? runs[runs.length >> 1] : Math.round(FW * 0.5);
-  const cx = cxN ? cxSum / cxN : FW / 2;
-  return { neckY, waistY: waist, cx, torsoW };
+  const hipW = hmaxx >= hminx ? (hmaxx - hminx) : Math.round(FW * 0.36);
+  const hipCx = hmaxx >= hminx ? (hminx + hmaxx) / 2 : FW / 2;
+  return { neckY, waistY: waist, hipCx, hipW };
 }
 
 /* bilinear sample */
@@ -212,16 +207,22 @@ function renderDir(dir, opts = {}) {
   const g = decode(readFileSync(cfg.src));
   const body = decode(readFileSync(cfg.body));
   const { fw: FW, fh: FH, n: N } = cfg;
+  /* pass 1: landmarks for every frame -> ONE constant shirt width for the whole
+     direction (median hip width x fill, so shoulders read a touch wider than the
+     hips).  This is what kills the frame-to-frame width jump. */
+  const Ls = []; for (let fi = 0; fi < N; fi++) Ls.push(bodyLandmarks(body, cfg, fi));
+  const med = (arr) => { const s = [...arr].sort((a, b) => a - b); return s[s.length >> 1]; };
+  const widthTarget = med(Ls.map((L) => L.hipW)) * TORSO_FILL;
   const frames = [];
   const dbg = [];
   for (let fi = 0; fi < N; fi++) {
     const s = cellShirt(g, cfg, fi);
-    const L = bodyLandmarks(body, cfg, fi);
+    const L = Ls[fi];
     const SY = (L.waistY - L.neckY) / Math.max(1, (s.fBot - s.fTop));
-    const SX = (L.torsoW * TORSO_FILL) / Math.max(1, s.torsoW);
+    const SX = widthTarget / Math.max(1, s.torsoW);   // output width == widthTarget for every frame
     const out = Buffer.alloc(FW * FH * 4);
     for (let fy = 0; fy < FH; fy++) for (let fx = 0; fx < FW; fx++) {
-      const lx = (fx - L.cx) / SX + s.collarX;
+      const lx = (fx - L.hipCx) / SX + s.collarX;
       const ly = (fy - L.neckY) / SY + s.fTop;
       const [v, a] = sample(s, lx, ly);
       if (a <= 4) continue;
@@ -229,7 +230,7 @@ function renderDir(dir, opts = {}) {
       out[o] = vv; out[o + 1] = vv; out[o + 2] = vv; out[o + 3] = Math.round(a);
     }
     frames.push(out);
-    dbg.push({ fi, neckY: L.neckY, waistY: L.waistY, cx: Math.round(L.cx), torsoW: L.torsoW, SX: SX.toFixed(2), SY: SY.toFixed(2) });
+    dbg.push({ fi, neckY: L.neckY, waistY: L.waistY, hipCx: Math.round(L.hipCx), hipW: L.hipW, wTarget: Math.round(widthTarget), SX: SX.toFixed(2), SY: SY.toFixed(2) });
   }
   // assemble strip
   const SW = N * FW;
