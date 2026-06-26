@@ -3504,7 +3504,13 @@ export class EntityRenderer {
        any horizontal-dominant aim (so a NE/SE that's "more east than N/S" plays
        the east swing).  baseAngle is published by monsterCombat (S._swingAng);
        fall back to the 8-way facing if it isn't set yet.  Visual only. */
-    let _swingAng = S._swingAng;
+    /* v2.3.1071: follow LIVE aim each frame so a mid-swing rotation re-points the
+       body instead of freezing at the swing-start facing. Fall back to the locked
+       swing angle, then the 8-way facing. The frame index stays time-based, so a
+       direction switch just hands off to the new sheet at the same frame. */
+    let _swingAng = (S._aimAngle != null) ? S._aimAngle
+                  : (S._lastAimAngle != null) ? S._lastAimAngle
+                  : S._swingAng;
     if (_swingAng == null) {
       const _si = SECTORS.indexOf(S._renderFacing);
       _swingAng = _si >= 0 ? _si * (Math.PI / 4) : Math.PI / 2;  // SECTORS[i] = i*45deg, south default
@@ -3526,7 +3532,13 @@ export class EntityRenderer {
     let _bowDir = null;
     if (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS && S._bowShotAng != null
         && !S._extraction && !S._firemaking) {
-      const _bsec = Math.round(S._bowShotAng / (Math.PI / 4));
+      /* v2.3.1071: the body pose follows LIVE aim during the shot window (the
+         arrow keeps its fire-time angle S._bowShotAng), so a rapid turn re-points
+         the bro instead of freezing at the shot's original facing. */
+      const _aimNow = (S._aimAngle != null) ? S._aimAngle
+                    : (S._lastAimAngle != null) ? S._lastAimAngle
+                    : S._bowShotAng;
+      const _bsec = Math.round(_aimNow / (Math.PI / 4));
       const _bf = SECTORS[((_bsec % 8) + 8) % 8];
       if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
     }
