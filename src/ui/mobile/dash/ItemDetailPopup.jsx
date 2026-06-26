@@ -916,6 +916,8 @@ export const ItemDetailPopup = () => {
               : <span>{glyph}</span>}
           </div>
           {locked && (
+            /* v2.3.1070: ⚓ anchor glyph replaces the old "L" -- an anchored
+               item stays pinned to the bag instead of scrolling off. */
             <div style={{
               position: 'absolute', top: 2, right: 2,
               width: 18, height: 18,
@@ -923,9 +925,8 @@ export const ItemDetailPopup = () => {
               border: '1px solid #f5c542',
               borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, color: '#f5c542',
-              fontWeight: 900,
-            }}>L</div>
+              fontSize: 12, lineHeight: 1,
+            }}>⚓</div>
           )}
         </div>
 
@@ -958,7 +959,7 @@ export const ItemDetailPopup = () => {
           {actions.equip    && <button onClick={onEquip}   style={buttonStyle('primary')}>Equip</button>}
           {actions.unequip  && <button onClick={onUnequip} style={buttonStyle('danger')}>Unequip</button>}
           <button onClick={onToggleLock} style={buttonStyle()}>
-            {locked ? 'Unlock' : 'Lock'}
+            {locked ? '⚓ Unanchor' : '⚓ Anchor'}
           </button>
           <button onClick={onClose} style={buttonStyle()}>X</button>
         </div>

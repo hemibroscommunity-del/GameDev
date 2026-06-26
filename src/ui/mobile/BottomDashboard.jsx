@@ -15,10 +15,11 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { chatBubbleBus } from './chatBubbleBus.js';
-import { InventoryPanel, ItemTile }    from './dash/InventoryPanel.jsx';
+import { InventoryPanel, BagTile }     from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
-import { lockedKeysInOrder as invLockedKeysInOrder, subscribe as subscribeInvLocks } from './dash/inventoryLocks.js';
+import { subscribe as subscribeInvLocks } from './dash/inventoryLocks.js';
+import { getBagEntries }               from './dash/bagModel.js';
 import { SelfPanel }         from './dash/SelfPanel.jsx';
 import { JourneyPanel }      from './dash/JourneyPanel.jsx';
 import { MapPanel }          from './dash/MapPanel.jsx';
@@ -327,47 +328,25 @@ const IconButton = ({ glyph, label, active, onClick, node }) => {
    Recents-tracking mirrors InventoryPanel.jsx so the same item ordering
    logic shows up here. */
 const InventoryPreview = () => {
-  const recentRef = useRef([]);
-  const prevCountRef = useRef({});
   const [, force] = useState(0);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
     return () => clearInterval(id);
   }, []);
-  /* v2.3.177 (F3): re-render whenever a lock toggles so the locked-
-     first sort below picks up the change without waiting for the
-     400ms timer. */
+  /* v2.3.177 (F3): re-render whenever an anchor toggles so the anchored-
+     first sort picks up the change without waiting for the 400ms timer. */
   useEffect(() => subscribeInvLocks(() => force(v => v + 1)), []);
   const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
-  const inv = (S && S.rpg && S.rpg.inventory) || {};
-  /* Bubble keys whose count increased since last frame to the front. */
-  const prev = prevCountRef.current;
-  const recents = recentRef.current.slice();
-  for (const k of Object.keys(inv)) {
-    const n = inv[k];
-    if ((prev[k] || 0) < n) {
-      const idx = recents.indexOf(k);
-      if (idx >= 0) recents.splice(idx, 1);
-      recents.unshift(k);
-    }
-  }
-  for (const k of Object.keys(inv)) {
-    if (!recents.includes(k)) recents.push(k);
-  }
-  let visible = recents.filter(k => (inv[k] || 0) > 0);
-  recentRef.current = visible;
-  prevCountRef.current = { ...inv };
-  /* Sort: locked keys first (in lock-order so the oldest lock pins
-     to the top-left), then the recents order for the rest. */
-  const lockedOrder = invLockedKeysInOrder().filter(k => visible.includes(k));
-  const unlockedRest = visible.filter(k => !lockedOrder.includes(k));
-  visible = lockedOrder.concat(unlockedRest);
+  /* v2.3.1070: the quick-bag preview reads the SAME shared entry list as the
+     full Bag panel, so the two always match -- unequipped Loadout gear shows
+     up here the moment it's taken off, newest-first (unless anchored). */
+  const entries = getBagEntries(S && S.rpg);
   /* 3-col x 3-row grid (9 tiles). v2.3.1057: now that all three dashboard
      columns are equal width, the quick-bag is a 3-col square grid matching
      the Loadout slots; a third row fits cleanly when the block is anchored
      to the top of the column. Items fill first, then faint empty slots pad
      out to 9 so it always reads as an inventory grid. */
-  const tiles = visible.slice(0, 9);
+  const tiles = entries.slice(0, 9);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
@@ -418,11 +397,10 @@ const InventoryPreview = () => {
         alignContent: 'center',
         gap: 3,
       }}>
-        {tiles.map(k => (
-          <ItemTile
-            key={k}
-            ikey={k}
-            count={inv[k]}
+        {tiles.map((e, i) => (
+          <BagTile
+            key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`}
+            entry={e}
           />
         ))}
         {Array.from({ length: Math.max(0, 9 - tiles.length) }).map((_, i) => (
