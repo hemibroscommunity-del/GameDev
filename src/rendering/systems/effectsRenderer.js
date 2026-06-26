@@ -19,6 +19,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, getBodyFrame, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
 import { getGearFrame } from '../gearSheets.js';
+import { cycleMs as jogCycleMs, frameCount as jogFrameCount } from '../playerSprites.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
@@ -2959,11 +2960,23 @@ export class EffectsRenderer {
       const _torsoFrames = this._bowTorsoFrames[fmap[0]];
       const _jogLegs = !!S._bowJogLegs && _torsoFrames && _torsoFrames[fi];
       if (_jogLegs) {
-        const _jdir = S._bodyAnimDir || 'south', _jfr = S._bodyAnimFrame || 0;
-        /* the jog legs come from the BODY's own dir/frame, so flip them by the
-           BODY's mirror (published separately) -- NOT the bow stand-in's `sgn`,
-           which is the bow facing's mirror and would double-flip on west/SE/NE. */
-        const _legSgn = (S._bodyAnimMirror ? -1 : 1) * s;
+        const _jdir = S._bodyAnimDir || 'south';
+        /* v2.3.1073: compute the jog frame from `now` here -- the published
+           S._bodyAnimFrame can stall during the shot (legs freeze).  Match the
+           body's cadence (jog runs ~2x slower while attacking) and reverse it when
+           backpedalling (moving opposite aim) so it tracks the normal body. */
+        const _fc = jogFrameCount('jog', _jdir) || 24;
+        const _armoredCad = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
+        const _cyc = (jogCycleMs('jog', _jdir, _armoredCad) || 700) * 2;
+        let _raw = Math.floor((now / _cyc) * _fc) % _fc;
+        let _back = false;
+        if (S._aimAngle != null && S.player) { const _d = (S.player.vx || 0) * Math.cos(S._aimAngle) + (S.player.vy || 0) * Math.sin(S._aimAngle); _back = _d < 0; }
+        const _jfr = _back ? ((_fc - 1) - _raw) : _raw;
+        /* legs flip by the BODY's mirror (NOT the bow facing's `sgn`, which would
+           double-flip west/SE/NE) and scale by the JOG body height (the bow art is
+           jog-sized; the stand height read ~25% small for east). */
+        const _legS = (S._jogBodyH != null ? S._jogBodyH : (S._swordBodyH || 84)) / 188;
+        const _legSgn = (S._bodyAnimMirror ? -1 : 1) * _legS;
         /* jog body legs (naked) -- anchored at the 256-frame feet row (221), same
            foot-plant + scale as the stand-in so it lines up by construction. */
         const legTex = getBodyFrame(getSkin(), getPants(), getShoes(), 'jog', _jdir, _jfr, null, 'none');
@@ -2980,14 +2993,14 @@ export class EffectsRenderer {
           if (!cropped) { try { cropped = new Texture({ source: legTex.source, frame: new Rectangle(0, 150, 256, 106) }); } catch (e) { cropped = legTex; } cache.set(legTex.source, cropped); }
           jl.texture = cropped;
           jl.anchor.set(0.5, (221 - 150) / 106);   // feet row within the crop
-          jl.scale.set(_legSgn, s); jl.x = sp.x; jl.y = sp.y; jl.tint = 0xffffff; jl.visible = true;
+          jl.scale.set(_legSgn, _legS); jl.x = sp.x; jl.y = sp.y; jl.tint = 0xffffff; jl.visible = true;
         }
         /* worn leg ARMOUR over the jog legs (gear sheet is pixel-aligned to the
            jog body frame), so the plate strides with the legs instead of sitting
            static in front. */
         const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
         const jg = this.bowJogLegsGearSprite;
-        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_legSgn, s); jg.x = sp.x; jg.y = sp.y; jg.tint = 0xffffff; jg.visible = true; }
+        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_legSgn, _legS); jg.x = sp.x; jg.y = sp.y; jg.tint = 0xffffff; jg.visible = true; }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';

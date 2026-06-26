@@ -3982,6 +3982,10 @@ export class EntityRenderer {
          the source frame) so the stand-in renders at the matching size for this
          facing / zone. */
       S._swordBodyH = (221 - 33) * _standBodyScale * _dscale;
+      /* v2.3.1073: jog-scaled body height for the composited jog legs -- the bow
+         art per direction is drawn jog-sized, so legs scaled by the STAND height
+         read ~25% small (east jog 1.25 vs stand 0.983).  Use the JOG dir-scale. */
+      S._jogBodyH = (221 - 33) * bodyDirScale('jog', dir) * LOCAL_SCALE * _dscale;
       /* v2.3.1072: tell the bow stand-in to swap to the leg-erased torso strip and
          composite jogging legs underneath while MOVING (effectsRenderer restricts
          this to the south facing for now via fmap).  Gate on the function-scope
