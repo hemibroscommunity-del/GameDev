@@ -2975,13 +2975,16 @@ export class EffectsRenderer {
         /* legs flip by the BODY's mirror (NOT the bow facing's `sgn`, which would
            double-flip west/SE/NE) and scale by the JOG body height (the bow art is
            jog-sized; the stand height read ~25% small for east). */
-        /* per-facing fine-tune (the bow art is drawn at different sizes per dir, so
-           the jog dir-scale doesn't match it 1:1).  east: jog overshoots ~13%.
-           southwest: jog barely boosts (1.0 vs stand .983) so SE/SW read small ->
-           boost.  Keyed by fmap[0], so each covers its mirror (west / southeast). */
-        const _legAdj = ({ east: 0.87, southwest: 1.2 })[fmap[0]] || 1;
-        const _legS = ((S._jogBodyH != null ? S._jogBodyH : (S._swordBodyH || 84)) / 188) * _legAdj;
-        const _legSgn = (S._bodyAnimMirror ? -1 : 1) * _legS;
+        /* per-facing scale fine-tune.  The bow art is drawn at different sizes per
+           dir, AND the bare body-leg frames vs the leg-ARMOUR frames have different
+           native sizes -- so they need SEPARATE knobs (with leg armour on, the bare
+           legs are hidden, so only _gearAdj shows).  Keyed by fmap[0] => each covers
+           its mirror (west / southeast). */
+        const _legBase = (S._jogBodyH != null ? S._jogBodyH : (S._swordBodyH || 84)) / 188;
+        const _bodyAdj = ({ east: 0.87 })[fmap[0]] || 1;                 // bare jog legs (body frame)
+        const _gearAdj = ({ east: 1.0, southwest: 1.02 })[fmap[0]] || 1; // worn leg armour (gear frame)
+        const _bodyS = _legBase * _bodyAdj, _gearS = _legBase * _gearAdj;
+        const _mir = S._bodyAnimMirror ? -1 : 1;
         /* jog body legs (naked) -- anchored at the 256-frame feet row (221), same
            foot-plant + scale as the stand-in so it lines up by construction. */
         const legTex = getBodyFrame(getSkin(), getPants(), getShoes(), 'jog', _jdir, _jfr, null, 'none');
@@ -3006,14 +3009,14 @@ export class EffectsRenderer {
           }
           jl.texture = cropped;
           jl.anchor.set(0.5, (221 - TOP) / (256 - TOP));   // feet row (221) within the crop
-          jl.scale.set(_legSgn, _legS); jl.x = sp.x; jl.y = sp.y; jl.tint = 0xffffff; jl.visible = true;
+          jl.scale.set(_mir * _bodyS, _bodyS); jl.x = sp.x; jl.y = sp.y; jl.tint = 0xffffff; jl.visible = true;
         }
         /* worn leg ARMOUR over the jog legs (gear sheet is pixel-aligned to the
            jog body frame), so the plate strides with the legs instead of sitting
            static in front. */
         const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
         const jg = this.bowJogLegsGearSprite;
-        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_legSgn, _legS); jg.x = sp.x; jg.y = sp.y; jg.tint = 0xffffff; jg.visible = true; }
+        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_mir * _gearS, _gearS); jg.x = sp.x; jg.y = sp.y; jg.tint = 0xffffff; jg.visible = true; }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
