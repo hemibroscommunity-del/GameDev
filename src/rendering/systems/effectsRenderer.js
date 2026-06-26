@@ -2964,7 +2964,10 @@ export class EffectsRenderer {
            foot-plant + scale as the stand-in so it lines up by construction. */
         const legTex = getBodyFrame(getSkin(), getPants(), getShoes(), 'jog', _jdir, _jfr, null, 'none');
         const jl = this.bowJogLegsSprite;
-        if (legTex && jl) {
+        /* skip the bare jog legs when leg armour is worn -- the plate covers them
+           and the body underneath only risks poke-through artifacts (matches how
+           the normal masked body hides the body under worn plates). */
+        if (legTex && jl && getEquip('legs') === 'none') {
           /* crop to the LEGS band (rows 150..256 of the 256 frame) so the jog
              torso/arms don't show behind the bow torso; cache the sub-texture per
              source so we don't rebuild it every frame. */
