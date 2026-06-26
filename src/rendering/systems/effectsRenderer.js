@@ -2982,7 +2982,7 @@ export class EffectsRenderer {
            its mirror (west / southeast). */
         const _legBase = (S._jogBodyH != null ? S._jogBodyH : (S._swordBodyH || 84)) / 188;
         const _bodyAdj = ({ east: 0.87 })[fmap[0]] || 1;                 // bare jog legs (body frame)
-        const _gearAdj = ({ east: 1.0, southwest: 1.02 })[fmap[0]] || 1; // worn leg armour (gear frame)
+        const _gearAdj = ({ east: 1.1, southwest: 1.1 })[fmap[0]] || 1; // worn leg armour (gear frame)
         const _bodyS = _legBase * _bodyAdj, _gearS = _legBase * _gearAdj;
         const _mir = S._bodyAnimMirror ? -1 : 1;
         /* jog body legs (naked) -- anchored at the 256-frame feet row (221), same
