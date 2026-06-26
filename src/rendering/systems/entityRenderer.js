@@ -3803,6 +3803,9 @@ export class EntityRenderer {
         display._animPose = pose;
         display._animDir = dir;
         display._animFrame = frameIdx;
+        /* v2.3.1072: publish the live jog frame so the bow stand-in can composite
+           animated legs under its torso (jogging-legs-during-attack). */
+        S._bodyAnimFrame = frameIdx; S._bodyAnimDir = dir; S._bodyMoving = (pose === 'jog');
         /* The v2.3.576 window.__btHideArmor debug toggle was retired in
            v2.3.678 (armour visibility is governed by the equip slots); its
            reads were removed in the v2.3.688 cleanup. */
@@ -3971,6 +3974,10 @@ export class EntityRenderer {
          the source frame) so the stand-in renders at the matching size for this
          facing / zone. */
       S._swordBodyH = (221 - 33) * _standBodyScale * _dscale;
+      /* v2.3.1072: tell the bow stand-in to swap to the leg-erased torso strip and
+         composite jogging legs underneath -- only for the SOUTH shot while moving
+         (first pass; other facings still play the full static stand-in). */
+      S._bowJogLegs = _bowShot && S._bodyAnimDir === 'south' && !!S._bodyMoving;
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this

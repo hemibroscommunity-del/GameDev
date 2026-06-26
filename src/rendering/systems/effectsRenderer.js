@@ -17,7 +17,7 @@ import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, SWORD_SWING_MS,
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
+import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, getBodyFrame, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
@@ -415,7 +415,7 @@ export class EffectsRenderer {
          load/pull/release -- the in-game arrow projectile draws the arrow). */
       southwest: { url: '/sprites/player/bow-southwest.png', fw: 154, fh: 233, feetY: 227, crownKey: 'bow_sw', traitDir: 'south', weaponUrl: '/sprites/player/bow-southwest-weapon.png', bodyUrl: '/sprites/player/bow-southwest-body.png', gearPose: 'bowshot' },
       /* v2.3.933: south re-cut to the owner's arrow-free art (3 frames). */
-      south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south', weaponUrl: '/sprites/player/bow-south-weapon.png', bodyUrl: '/sprites/player/bow-south-body.png', gearPose: 'bowshot' },
+      south:     { url: '/sprites/player/bow-south.png',     fw: 130, fh: 234, feetY: 228, crownKey: 'bow_s',  traitDir: 'south', weaponUrl: '/sprites/player/bow-south-weapon.png', bodyUrl: '/sprites/player/bow-south-body.png', torsoUrl: '/sprites/player/bow-south-torso.png', gearPose: 'bowshot' },
       /* v2.3.930: NW re-cut to the owner's arrow-free art (3 frames). */
       northwest: { url: '/sprites/player/bow-northwest.png', fw: 160, fh: 248, feetY: 242, crownKey: 'bow_nw', traitDir: 'north', weaponUrl: '/sprites/player/bow-northwest-weapon.png', bodyUrl: '/sprites/player/bow-northwest-body.png', gearPose: 'bowshot' },
       /* v2.3.931: north re-cut to the owner's arrow-free art (3 frames). */
@@ -439,7 +439,13 @@ export class EffectsRenderer {
     this._bowArmorFrames = {};
     this._bowWeaponFrames = {};
     this._bowBodyFrames = {};   // v2.3.957: bald body base for the layered gear path
+    this._bowTorsoFrames = {};  // v2.3.1072: leg-erased torso strips for the jog-legs composite
     const BOW_ART_VERSION = 958;   // 958: bow recolored magenta->dark brown body, cyan->black handle (all directions, held + bow-shot strips)
+    /* v2.3.1072: animated jog legs drawn UNDER the bow torso while moving so the
+       feet stride instead of sliding.  Added BEFORE bowSprite => drawn under it. */
+    this.bowJogLegsSprite = new Sprite();
+    this.bowJogLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.bowJogLegsSprite);
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
@@ -474,6 +480,7 @@ export class EffectsRenderer {
       if (cfg.armorUrl)  _loadBowStrip(this._bowArmorFrames, dir, cfg.armorUrl, cfg);
       if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
       if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION);
+      if (cfg.torsoUrl)  _loadRecoloredBody(this._bowTorsoFrames, dir, cfg.torsoUrl, cfg, BOW_ART_VERSION);
     }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
@@ -2903,6 +2910,7 @@ export class EffectsRenderer {
     if (this.bowWeaponSprite) this.bowWeaponSprite.visible = false;
     if (this.bowChestSprite) this.bowChestSprite.visible = false;
     if (this.bowLegsSprite) this.bowLegsSprite.visible = false;
+    if (this.bowJogLegsSprite) this.bowJogLegsSprite.visible = false;
     if (this.bowShirtSprite) this.bowShirtSprite.visible = false;
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     const fmap = this._bowFacing[S._bowDir];
@@ -2939,7 +2947,26 @@ export class EffectsRenderer {
     let _armored;
     if (bodyFrames && bodyFrames[fi]) {
       _armored = false;
-      sp.texture = bodyFrames[fi];
+      /* v2.3.1072: jogging-legs composite (south, while moving) -- draw animated
+         jog legs UNDER a leg-erased torso strip so the feet stride instead of
+         sliding.  Same foot-plant + scale as the stand-in => aligns by
+         construction; the legs sprite anchors at the 256-frame's feet row (221). */
+      const _torsoFrames = this._bowTorsoFrames[fmap[0]];
+      const _jogLegs = !!S._bowJogLegs && fmap[0] === 'south' && _torsoFrames && _torsoFrames[fi];
+      if (_jogLegs) {
+        const legTex = getBodyFrame(getSkin(), getPants(), getShoes(), 'jog', (S._bodyAnimDir || 'south'), (S._bodyAnimFrame || 0), null, 'none');
+        const jl = this.bowJogLegsSprite;
+        if (legTex && jl) {
+          jl.texture = legTex;
+          jl.anchor.set(0.5, 221 / 256);   // feet row of the 256 body frame -> plant point
+          jl.scale.set(sgn, s);
+          jl.x = sp.x; jl.y = sp.y;
+          jl.tint = 0xffffff;
+          jl.visible = true;
+          if (jl.parent) jl.parent.setChildIndex(jl, this.nodeLayer.getChildIndex(sp));  // keep just under the torso
+        }
+      }
+      sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
       this._placeSwingShirt(this.bowShirtSprite, place, getShirt(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
       place(this.bowChestSprite, this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi));
