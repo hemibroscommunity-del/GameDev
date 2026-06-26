@@ -450,7 +450,15 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
         dilCtx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, 0, 256, 256);
     }
     ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
-    for (let dy = -dilate; dy <= dilate; dy++)
+    /* v2.3.1073: only dilate the erase DOWNWARD when a leg plate is also worn to
+       fill the over-erased band.  With chest-only (no leg plate), the downward
+       dilation ate the bare waist/upper-leg just below the chest plate -- a
+       transparent GAP between torso and legs, most visible while jogging (the
+       jog torso/leg junction shifts).  Cap dy<=0 there so the bare body fills the
+       waist; the leg-plate case keeps full dilation (the plate hides the band). */
+    const _hasLegPlate = worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+    const _dyMax = _hasLegPlate ? dilate : 0;
+    for (let dy = -dilate; dy <= _dyMax; dy++)
       ctx.drawImage(dilCv, 0, dy);
     ctx.globalCompositeOperation = 'source-over';
     if (neckY > 0) {                                     // restore the head+neck band
