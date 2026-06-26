@@ -3029,16 +3029,18 @@ export class EffectsRenderer {
         const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
         const jg = this.bowJogLegsGearSprite;
         if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_mir * _gearS, _gearS); jg.x = sp.x; jg.y = sp.y + _gearNudgeY; jg.tint = 0xffffff; jg.visible = true; }
-        /* v2.3.1075: jog-pose chain belt over the waist -- the bowshot chest's
-           mail skirt sits too high and leaves a gap above the jog legs.  Crop the
-           jog chest sheet to the belt band (BTOP down) so only the larger skirt
-           shows; drop the torso/arms above it (the bowshot chest keeps the aiming
-           arms).  Pixel-aligned to the jog body frame, so it scales/plants exactly
-           like the jog legs gear (shares _gearS + the foot plant + nudge). */
+        /* v2.3.1076: jog-pose chain belt BRIDGING the chest->legs gap.  The belt
+           must span from the bowshot chest's bottom DOWN to the (down-nudged) jog
+           legs, so unlike the legs it does NOT ride down with _gearNudgeY -- it
+           stays up at the chest waist (its own _beltNudgeY, default 0) and a taller
+           crop (BTOP=120) lets the skirt overlap up under the chest and down over
+           the leg tops.  Forced to the FRONT each frame so it sits over the torso /
+           chest (a back-facing belt didn't cover the gap). */
         const beltTex = getGearFrame('chest', getEquip('chest'), 'jog', _jdir, _jfr);
         const jb = this.bowJogBeltSprite;
         if (beltTex && jb && getEquip('chest') !== 'none') {
-          const BTOP = 145;   // crop top: at the waist, below the jog arms
+          const BTOP = 120;   // taller: overlaps up under the chest + down over the legs
+          const _beltNudgeY = ({ east: 0, southwest: 0 })[fmap[0]] || 0;
           let bcache = this._beltSubCache || (this._beltSubCache = new WeakMap());
           let bcrop = bcache.get(beltTex);
           if (!bcrop) {
@@ -3048,7 +3050,8 @@ export class EffectsRenderer {
           }
           jb.texture = bcrop;
           jb.anchor.set(0.5, (221 - BTOP) / (256 - BTOP));   // feet row (221) within the crop
-          jb.scale.set(_mir * _gearS, _gearS); jb.x = sp.x; jb.y = sp.y + _gearNudgeY; jb.tint = 0xffffff; jb.visible = true;
+          jb.scale.set(_mir * _gearS, _gearS); jb.x = sp.x; jb.y = sp.y + _beltNudgeY; jb.tint = 0xffffff; jb.visible = true;
+          this.nodeLayer.setChildIndex(jb, this.nodeLayer.children.length - 1);   // in front of the torso/chest
         }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
