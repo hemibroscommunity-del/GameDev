@@ -2975,7 +2975,11 @@ export class EffectsRenderer {
         /* legs flip by the BODY's mirror (NOT the bow facing's `sgn`, which would
            double-flip west/SE/NE) and scale by the JOG body height (the bow art is
            jog-sized; the stand height read ~25% small for east). */
-        const _legAdj = ({ east: 0.87 })[fmap[0]] || 1;   // per-facing fine-tune (owner: east ~10-15% too big at full jog scale); covers west (mirrors east)
+        /* per-facing fine-tune (the bow art is drawn at different sizes per dir, so
+           the jog dir-scale doesn't match it 1:1).  east: jog overshoots ~13%.
+           southwest: jog barely boosts (1.0 vs stand .983) so SE/SW read small ->
+           boost.  Keyed by fmap[0], so each covers its mirror (west / southeast). */
+        const _legAdj = ({ east: 0.87, southwest: 1.2 })[fmap[0]] || 1;
         const _legS = ((S._jogBodyH != null ? S._jogBodyH : (S._swordBodyH || 84)) / 188) * _legAdj;
         const _legSgn = (S._bodyAnimMirror ? -1 : 1) * _legS;
         /* jog body legs (naked) -- anchored at the 256-frame feet row (221), same
