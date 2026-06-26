@@ -464,6 +464,14 @@ export class EffectsRenderer {
     this.bowChestSprite.anchor.set(0.5, 1);
     this.bowChestSprite.visible = false;
     this.nodeLayer.addChild(this.bowChestSprite);
+    /* v2.3.1075: jog-pose chain belt (the chest sheet's mail skirt) draped over
+       the waist during a MOVING bow shot.  The bowshot-pose chest's belt sits too
+       high/small and leaves a gap above the jogging legs; the jog belt is larger
+       and bridges it.  Cropped to the belt band (drops the torso/arms) and drawn
+       OVER the bowshot chest, so the bow-aiming arms stay intact. */
+    this.bowJogBeltSprite = new Sprite();
+    this.bowJogBeltSprite.visible = false;
+    this.nodeLayer.addChild(this.bowJogBeltSprite);
     this.bowLegsSprite = new Sprite();
     this.bowLegsSprite.anchor.set(0.5, 1);
     this.bowLegsSprite.visible = false;
@@ -2917,6 +2925,7 @@ export class EffectsRenderer {
     if (this.bowLegsSprite) this.bowLegsSprite.visible = false;
     if (this.bowJogLegsSprite) this.bowJogLegsSprite.visible = false;
     if (this.bowJogLegsGearSprite) this.bowJogLegsGearSprite.visible = false;
+    if (this.bowJogBeltSprite) this.bowJogBeltSprite.visible = false;
     if (this.bowShirtSprite) this.bowShirtSprite.visible = false;
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     const fmap = this._bowFacing[S._bowDir];
@@ -3020,6 +3029,27 @@ export class EffectsRenderer {
         const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
         const jg = this.bowJogLegsGearSprite;
         if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_mir * _gearS, _gearS); jg.x = sp.x; jg.y = sp.y + _gearNudgeY; jg.tint = 0xffffff; jg.visible = true; }
+        /* v2.3.1075: jog-pose chain belt over the waist -- the bowshot chest's
+           mail skirt sits too high and leaves a gap above the jog legs.  Crop the
+           jog chest sheet to the belt band (BTOP down) so only the larger skirt
+           shows; drop the torso/arms above it (the bowshot chest keeps the aiming
+           arms).  Pixel-aligned to the jog body frame, so it scales/plants exactly
+           like the jog legs gear (shares _gearS + the foot plant + nudge). */
+        const beltTex = getGearFrame('chest', getEquip('chest'), 'jog', _jdir, _jfr);
+        const jb = this.bowJogBeltSprite;
+        if (beltTex && jb && getEquip('chest') !== 'none') {
+          const BTOP = 145;   // crop top: at the waist, below the jog arms
+          let bcache = this._beltSubCache || (this._beltSubCache = new WeakMap());
+          let bcrop = bcache.get(beltTex);
+          if (!bcrop) {
+            try { const f = beltTex.frame; bcrop = new Texture({ source: beltTex.source, frame: new Rectangle(f.x, f.y + BTOP, f.width, f.height - BTOP) }); }
+            catch (e) { bcrop = beltTex; }
+            bcache.set(beltTex, bcrop);
+          }
+          jb.texture = bcrop;
+          jb.anchor.set(0.5, (221 - BTOP) / (256 - BTOP));   // feet row (221) within the crop
+          jb.scale.set(_mir * _gearS, _gearS); jb.x = sp.x; jb.y = sp.y + _gearNudgeY; jb.tint = 0xffffff; jb.visible = true;
+        }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
