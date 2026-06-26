@@ -11,6 +11,7 @@ import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip } from '../../../rendering/gearCatalog.js';
+import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import {
   WEAPON_TYPES,
   SWING_COOLDOWN,
@@ -52,8 +53,11 @@ function weaponThumb(wpn) {
   const v = '2.3.210';
   if (wpn.type === 'bow')   return `/sprites/weapons/bows/Bow2.png?v=${v}`;
   if (wpn.type === 'staff') return `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${v}`;
+  /* v2.3.1070: starter (wood) sword shows a clean mini steel-sword icon
+     (east-view frame lifted from sword-east-weapon.png) instead of the old
+     bamboo-stick render. */
   return wpn.gearBase === 'wood'
-    ? `/sprites/weapons/swords/Bamboo.png?v=${v}`
+    ? `/sprites/weapons/swords/steel-sword-east.png?v=2.3.1070`
     : `/sprites/weapons/swords/Sword1.png?v=${v}`;
 }
 
@@ -428,7 +432,10 @@ export const ItemDetailPopup = () => {
         rows.push({
           key: 'shirt', name: 'T-Shirt', sub: 'Cloth shirt · worn under armor',
           iconSrc: '/sprites/gear/icons/tshirt.png?v=2.3.756', on: shirtOn,
-          toggle: () => { setEquip('shirt', shirtOn ? 'none' : 'tshirt'); persist(R2); refresh(); },
+          /* v2.3.1070: drive the MASTER shirt store (setShirt) so the swing
+             renderer -- which reads getShirt() -- sees the change; setEquip
+             keeps the gear mirror in lockstep even when setShirt dedupes. */
+          toggle: () => { const nv = shirtOn ? 'none' : 'tshirt'; setShirt(nv); setEquip('shirt', nv); persist(R2); refresh(); },
         });
       }
     }
@@ -534,7 +541,11 @@ export const ItemDetailPopup = () => {
       force((v) => v + 1);
     };
     const toggleShirt = () => {
-      setEquip('shirt', shirtId !== 'none' ? 'none' : 'tshirt');
+      /* v2.3.1070: see note above -- master setShirt() drives the renderer,
+         setEquip() mirrors into the gear store. */
+      const nv = shirtId !== 'none' ? 'none' : 'tshirt';
+      setShirt(nv);
+      setEquip('shirt', nv);
       force((v) => v + 1);
     };
     const armorOn = chestId !== 'none';
