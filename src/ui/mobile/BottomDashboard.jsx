@@ -1007,7 +1007,7 @@ export const BottomDashboard = () => {
                   const slotIconSrc = !wpn ? null
                                      : slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.3.173'
                                      : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.png?v=2.3.173'
-                                     : isWoodSword     ? '/sprites/weapons/swords/Bamboo.png?v=2.3.173'
+                                     : isWoodSword     ? '/sprites/weapons/swords/steel-sword-east.png?v=2.3.1070' /* v2.3.1070: mini steel-sword icon, not bamboo */
                                      :                    '/sprites/weapons/swords/Sword1.png?v=2.3.173';
                   let dmgText = '0', dpsText = '0.0';
                   if (wType) {

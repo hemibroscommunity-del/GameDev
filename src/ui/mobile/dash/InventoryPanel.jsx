@@ -368,7 +368,7 @@ const StashTile = ({ kind, obj, index }) => {
     ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.png?v=${v}` : null)
     : obj && obj.type === 'bow'   ? `/sprites/weapons/bows/Bow2.png?v=${v}`
     : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${v}`
-    : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/Bamboo.png?v=${v}`
+    : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/steel-sword-east.png?v=2.3.1070` /* v2.3.1070: mini steel-sword icon, not bamboo */
     : `/sprites/weapons/swords/Sword1.png?v=${v}`;
   const color = TIER_COLOR.rare;
   const fallbackGlyph = kind === 'stashShield' ? '\u{1F6E1}'
