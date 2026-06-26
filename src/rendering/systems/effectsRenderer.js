@@ -2982,7 +2982,10 @@ export class EffectsRenderer {
            its mirror (west / southeast). */
         const _legBase = (S._jogBodyH != null ? S._jogBodyH : (S._swordBodyH || 84)) / 188;
         const _bodyAdj = ({ east: 0.87 })[fmap[0]] || 1;                 // bare jog legs (body frame)
-        const _gearAdj = ({ east: 1.1, southwest: 1.1 })[fmap[0]] || 1; // worn leg armour (gear frame)
+        const _gearAdj = ({ east: 1.155, southwest: 1.1 })[fmap[0]] || 1; // worn leg armour (gear frame)
+        /* v2.3.1074: per-facing DOWNWARD nudge (px) on the leg plate -- east + SE/SW
+           read too high vs the foot plant; lower the plate without rescaling it. */
+        const _gearNudgeY = ({ east: 10, southwest: 10 })[fmap[0]] || 0;
         const _bodyS = _legBase * _bodyAdj, _gearS = _legBase * _gearAdj;
         const _mir = S._bodyAnimMirror ? -1 : 1;
         /* jog body legs (naked) -- anchored at the 256-frame feet row (221), same
@@ -3016,7 +3019,7 @@ export class EffectsRenderer {
            static in front. */
         const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
         const jg = this.bowJogLegsGearSprite;
-        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_mir * _gearS, _gearS); jg.x = sp.x; jg.y = sp.y; jg.tint = 0xffffff; jg.visible = true; }
+        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_mir * _gearS, _gearS); jg.x = sp.x; jg.y = sp.y + _gearNudgeY; jg.tint = 0xffffff; jg.visible = true; }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
