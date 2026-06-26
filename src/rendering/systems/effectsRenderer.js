@@ -2975,7 +2975,8 @@ export class EffectsRenderer {
         /* legs flip by the BODY's mirror (NOT the bow facing's `sgn`, which would
            double-flip west/SE/NE) and scale by the JOG body height (the bow art is
            jog-sized; the stand height read ~25% small for east). */
-        const _legS = (S._jogBodyH != null ? S._jogBodyH : (S._swordBodyH || 84)) / 188;
+        const _legAdj = ({ east: 0.87 })[fmap[0]] || 1;   // per-facing fine-tune (owner: east ~10-15% too big at full jog scale); covers west (mirrors east)
+        const _legS = ((S._jogBodyH != null ? S._jogBodyH : (S._swordBodyH || 84)) / 188) * _legAdj;
         const _legSgn = (S._bodyAnimMirror ? -1 : 1) * _legS;
         /* jog body legs (naked) -- anchored at the 256-frame feet row (221), same
            foot-plant + scale as the stand-in so it lines up by construction. */
@@ -2985,14 +2986,22 @@ export class EffectsRenderer {
            and the body underneath only risks poke-through artifacts (matches how
            the normal masked body hides the body under worn plates). */
         if (legTex && jl && getEquip('legs') === 'none') {
-          /* crop to the LEGS band (rows 150..256 of the 256 frame) so the jog
-             torso/arms don't show behind the bow torso; cache the sub-texture per
-             source so we don't rebuild it every frame. */
+          /* crop to the LEGS band so the jog torso/arms don't show behind the bow
+             torso.  v2.3.1073: crop relative to the frame's OWN rect (legTex.frame)
+             -- the jog frames share one atlas source, so a fixed (0,150) origin
+             read the same region every frame => legs froze.  Start at the HIP
+             (TOP=135) so the leg top overlaps up under the torso strip and the seam
+             can't show.  Cache by the per-frame texture (not its source). */
+          const TOP = 135;
           let cache = this._legSubCache || (this._legSubCache = new WeakMap());
-          let cropped = cache.get(legTex.source);
-          if (!cropped) { try { cropped = new Texture({ source: legTex.source, frame: new Rectangle(0, 150, 256, 106) }); } catch (e) { cropped = legTex; } cache.set(legTex.source, cropped); }
+          let cropped = cache.get(legTex);
+          if (!cropped) {
+            try { const f = legTex.frame; cropped = new Texture({ source: legTex.source, frame: new Rectangle(f.x, f.y + TOP, f.width, f.height - TOP) }); }
+            catch (e) { cropped = legTex; }
+            cache.set(legTex, cropped);
+          }
           jl.texture = cropped;
-          jl.anchor.set(0.5, (221 - 150) / 106);   // feet row within the crop
+          jl.anchor.set(0.5, (221 - TOP) / (256 - TOP));   // feet row (221) within the crop
           jl.scale.set(_legSgn, _legS); jl.x = sp.x; jl.y = sp.y; jl.tint = 0xffffff; jl.visible = true;
         }
         /* worn leg ARMOUR over the jog legs (gear sheet is pixel-aligned to the
