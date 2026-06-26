@@ -3975,9 +3975,10 @@ export class EntityRenderer {
          facing / zone. */
       S._swordBodyH = (221 - 33) * _standBodyScale * _dscale;
       /* v2.3.1072: tell the bow stand-in to swap to the leg-erased torso strip and
-         composite jogging legs underneath -- only for the SOUTH shot while moving
-         (first pass; other facings still play the full static stand-in). */
-      S._bowJogLegs = _bowShot && S._bodyAnimDir === 'south' && !!S._bodyMoving;
+         composite jogging legs underneath while MOVING (effectsRenderer restricts
+         this to the south facing for now via fmap).  Gate on the function-scope
+         isMoving (reliable) rather than the published _bodyMoving. */
+      S._bowJogLegs = _bowShot && isMoving;
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this

@@ -18,6 +18,7 @@ import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, getBodyFrame, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
+import { getGearFrame } from '../gearSheets.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
@@ -446,6 +447,9 @@ export class EffectsRenderer {
     this.bowJogLegsSprite = new Sprite();
     this.bowJogLegsSprite.visible = false;
     this.nodeLayer.addChild(this.bowJogLegsSprite);
+    this.bowJogLegsGearSprite = new Sprite();   // worn leg armour, animated over the jog legs
+    this.bowJogLegsGearSprite.visible = false;
+    this.nodeLayer.addChild(this.bowJogLegsGearSprite);
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
@@ -2911,6 +2915,7 @@ export class EffectsRenderer {
     if (this.bowChestSprite) this.bowChestSprite.visible = false;
     if (this.bowLegsSprite) this.bowLegsSprite.visible = false;
     if (this.bowJogLegsSprite) this.bowJogLegsSprite.visible = false;
+    if (this.bowJogLegsGearSprite) this.bowJogLegsGearSprite.visible = false;
     if (this.bowShirtSprite) this.bowShirtSprite.visible = false;
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     const fmap = this._bowFacing[S._bowDir];
@@ -2954,23 +2959,34 @@ export class EffectsRenderer {
       const _torsoFrames = this._bowTorsoFrames[fmap[0]];
       const _jogLegs = !!S._bowJogLegs && fmap[0] === 'south' && _torsoFrames && _torsoFrames[fi];
       if (_jogLegs) {
-        const legTex = getBodyFrame(getSkin(), getPants(), getShoes(), 'jog', (S._bodyAnimDir || 'south'), (S._bodyAnimFrame || 0), null, 'none');
+        const _jdir = S._bodyAnimDir || 'south', _jfr = S._bodyAnimFrame || 0;
+        /* jog body legs (naked) -- anchored at the 256-frame feet row (221), same
+           foot-plant + scale as the stand-in so it lines up by construction. */
+        const legTex = getBodyFrame(getSkin(), getPants(), getShoes(), 'jog', _jdir, _jfr, null, 'none');
         const jl = this.bowJogLegsSprite;
         if (legTex && jl) {
-          jl.texture = legTex;
-          jl.anchor.set(0.5, 221 / 256);   // feet row of the 256 body frame -> plant point
-          jl.scale.set(sgn, s);
-          jl.x = sp.x; jl.y = sp.y;
-          jl.tint = 0xffffff;
-          jl.visible = true;
-          if (jl.parent) jl.parent.setChildIndex(jl, this.nodeLayer.getChildIndex(sp));  // keep just under the torso
+          /* crop to the LEGS band (rows 150..256 of the 256 frame) so the jog
+             torso/arms don't show behind the bow torso; cache the sub-texture per
+             source so we don't rebuild it every frame. */
+          let cache = this._legSubCache || (this._legSubCache = new WeakMap());
+          let cropped = cache.get(legTex.source);
+          if (!cropped) { try { cropped = new Texture({ source: legTex.source, frame: new Rectangle(0, 150, 256, 106) }); } catch (e) { cropped = legTex; } cache.set(legTex.source, cropped); }
+          jl.texture = cropped;
+          jl.anchor.set(0.5, (221 - 150) / 106);   // feet row within the crop
+          jl.scale.set(sgn, s); jl.x = sp.x; jl.y = sp.y; jl.tint = 0xffffff; jl.visible = true;
         }
+        /* worn leg ARMOUR over the jog legs (gear sheet is pixel-aligned to the
+           jog body frame), so the plate strides with the legs instead of sitting
+           static in front. */
+        const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
+        const jg = this.bowJogLegsGearSprite;
+        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(sgn, s); jg.x = sp.x; jg.y = sp.y; jg.tint = 0xffffff; jg.visible = true; }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
       this._placeSwingShirt(this.bowShirtSprite, place, getShirt(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
       place(this.bowChestSprite, this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi));
-      place(this.bowLegsSprite,  this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi));
+      place(this.bowLegsSprite,  _jogLegs ? null : this._gearStripFrame('legs', getEquip('legs'), gp, fmap[0], cfg.fw, fi));
       place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
     } else {
       _armored = !!(armorFrames && armorFrames[fi]);
