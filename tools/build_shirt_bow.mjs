@@ -37,16 +37,17 @@ const DIRS = {
     body: 'public/sprites/player/bow-southwest-body.png', fw: 154, fh: 233, n: 3,
   },
   east: {
-    src: 'tools/bowshirt_src/grid_north_ne_east.png', cols: 3, rows: 3, row: 2, flipX: false,
+    /* dedicated single-direction sheet (3 frames in a row). */
+    src: 'tools/bowshirt_src/east.png', cols: 3, rows: 1, row: 0, flipX: false,
     body: 'public/sprites/player/bow-east-body.png', fw: 214, fh: 241, n: 3,
   },
   north: {
-    src: 'tools/bowshirt_src/grid_north_ne_east.png', cols: 3, rows: 3, row: 0, flipX: false,
+    src: 'tools/bowshirt_src/north.png', cols: 3, rows: 1, row: 0, flipX: false,
     body: 'public/sprites/player/bow-north-body.png', fw: 122, fh: 260, n: 3,
   },
   northwest: {
-    /* owner drew NORTHEAST (grid row 1); flip horizontally to author NW. */
-    src: 'tools/bowshirt_src/grid_north_ne_east.png', cols: 3, rows: 3, row: 1, flipX: true,
+    /* owner provided a dedicated NORTHWEST sheet (back view, aiming up-left). */
+    src: 'tools/bowshirt_src/northwest.png', cols: 3, rows: 1, row: 0, flipX: false,
     body: 'public/sprites/player/bow-northwest-body.png', fw: 160, fh: 248, n: 3,
   },
 };
