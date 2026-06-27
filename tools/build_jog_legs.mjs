@@ -60,21 +60,25 @@ for (const dir of DIRS) {
     for (let y = y0; y < H; y++) for (let x = 0; x < 256; x++) {
       if (kill[idx(x, y)]) { const i = (y * W + (x0 + x)) * 4; d[i] = d[i + 1] = d[i + 2] = d[i + 3] = 0; }
     }
-    /* Pass 3 -> fill the ABOVE-waist band [y0, waist) with PANTS extended up, per
-       column, so the renderer's overlap fills the diagonal-run gap with pants (not
-       skin, so no hands can return).  Only columns that actually have a leg below. */
-    for (let x = 0; x < 256; x++) {
-      let src = -1;
-      for (let y = waist; y < Math.min(waist + 5, H); y++) {
+    /* Pass 3 -> fill the ABOVE-waist band [y0, waist) with a SOLID block of pants so
+       the renderer's overlap fills the diagonal-run gap with pants (not skin -> no
+       hands return).  The hips are a solid mass at the waist, so fill the whole hip
+       SPAN with ONE representative pants colour, alpha 255 -- a per-column copy left
+       thin transparent columns where outline/AA fell (the faint "barcode"). */
+    const cols = [];   // representative pants samples from just below the belt
+    for (let y = waist + 2; y < Math.min(waist + 14, H); y++) for (let x = 0; x < 256; x++) {
+      const i = (y * W + (x0 + x)) * 4;
+      if (d[i + 3] > 150 && Math.max(d[i], d[i + 1], d[i + 2]) > 85 && !isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) cols.push([d[i], d[i + 1], d[i + 2]]);
+    }
+    if (cols.length) {
+      cols.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
+      const [cr, cg, cb] = cols[Math.floor(cols.length / 2)];   // median pants colour
+      // hip span = opaque extent of the waistband row
+      let minX = 256, maxX = -1;
+      for (let x = 0; x < 256; x++) { const i = (waist * W + (x0 + x)) * 4; if (d[i + 3] > 120) { if (x < minX) minX = x; if (x > maxX) maxX = x; } }
+      for (let y = y0; y < waist; y++) for (let x = minX; x <= maxX; x++) {
         const i = (y * W + (x0 + x)) * 4;
-        if (d[i + 3] > 120 && !isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) { src = y; break; }
-      }
-      if (src < 0) continue;
-      const si = (src * W + (x0 + x)) * 4;
-      const r = d[si], g = d[si + 1], b = d[si + 2];
-      for (let y = y0; y < waist; y++) {
-        const i = (y * W + (x0 + x)) * 4;
-        d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255; filled++;
+        d[i] = cr; d[i + 1] = cg; d[i + 2] = cb; d[i + 3] = 255; filled++;
       }
     }
   }
