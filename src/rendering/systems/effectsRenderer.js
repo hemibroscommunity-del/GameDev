@@ -3001,7 +3001,14 @@ export class EffectsRenderer {
            (bowTorsoCutRow) so the join is ONE shared line every frame. */
         const _cutRow = bowTorsoCutRow(fmap[0], fi);
         const _yMeet = sp.y + (_cutRow - cfg.feetY) * s;   // world Y of the torso's bottom edge
-        const _ov = 4;                                     // px (256-frame) drawn UP under the torso (hidden) so no hairline gap
+        /* v2.3.1081: on ANGLED runs the waistline is diagonal, so a horizontal cut
+           leaves a wedge of missing torso skin on the leaning side.  Tuck more of
+           the legs' HIP (skin) up under the torso (bigger _ov fills the wedge with
+           the right colour), and enlarge the legs for the diagonal facings so they
+           cover any directional misalignment (_legMul keyed by movement dir; covers
+           SE via southwest, NW via northeast). */
+        const _ov = 10;                                    // px (256-frame) of hip drawn UP under the torso
+        const _legMul = ({ southwest: 1.12, northeast: 1.12 })[_jdir] || 1;
         const _waist = jogWaistRow(_jdir, _jfr);
         const _legArr = this._bowJogLegFrames[_jdir];
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
@@ -3022,14 +3029,14 @@ export class EffectsRenderer {
           }
           jl.texture = cropped;
           jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));   // waist row sits on the meet line
-          jl.scale.set(_mir * s, s); jl.x = sp.x; jl.y = _yMeet; jl.tint = 0xffffff; jl.visible = true;
+          jl.scale.set(_mir * s * _legMul, s * _legMul); jl.x = sp.x; jl.y = _yMeet; jl.tint = 0xffffff; jl.visible = true;
         }
         /* worn leg ARMOUR -- pixel-aligned to the jog body frame, so its waist row
            is the same jogWaistRow; anchor there and land it on the same meet line
            at the same scale, so plate + bare legs share the torso's waist. */
         const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
         const jg = this.bowJogLegsGearSprite;
-        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, _waist / 256); jg.scale.set(_mir * s, s); jg.x = sp.x; jg.y = _yMeet; jg.tint = 0xffffff; jg.visible = true; }
+        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, _waist / 256); jg.scale.set(_mir * s * _legMul, s * _legMul); jg.x = sp.x; jg.y = _yMeet; jg.tint = 0xffffff; jg.visible = true; }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
