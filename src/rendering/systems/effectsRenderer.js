@@ -3018,7 +3018,7 @@ export class EffectsRenderer {
         /* v2.3.1084: per-facing size trim for the jog legs (bare AND worn armour)
            -- the leg frames read a touch off per facing.  Owner-tuned; southwest
            covers SE via mirror. */
-        const _legSizeMul = ({ east: 1.236, southwest: 0.90, north: 0.90 })[_jdir] || 1;
+        const _legSizeMul = ({ east: 1.36, southwest: 0.90, north: 0.90 })[_jdir] || 1;
         const _legScale = s * _legMul * _legSizeMul;
         /* v2.3.1085: per-facing horizontal nudge to line the legs up under the
            torso (frame px, + = right; * _mir so the mirrored facing shifts the
