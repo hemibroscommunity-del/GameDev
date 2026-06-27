@@ -464,14 +464,6 @@ export class EffectsRenderer {
     this.bowChestSprite.anchor.set(0.5, 1);
     this.bowChestSprite.visible = false;
     this.nodeLayer.addChild(this.bowChestSprite);
-    /* v2.3.1075: jog-pose chain belt (the chest sheet's mail skirt) draped over
-       the waist during a MOVING bow shot.  The bowshot-pose chest's belt sits too
-       high/small and leaves a gap above the jogging legs; the jog belt is larger
-       and bridges it.  Cropped to the belt band (drops the torso/arms) and drawn
-       OVER the bowshot chest, so the bow-aiming arms stay intact. */
-    this.bowJogBeltSprite = new Sprite();
-    this.bowJogBeltSprite.visible = false;
-    this.nodeLayer.addChild(this.bowJogBeltSprite);
     this.bowLegsSprite = new Sprite();
     this.bowLegsSprite.anchor.set(0.5, 1);
     this.bowLegsSprite.visible = false;
@@ -2925,7 +2917,6 @@ export class EffectsRenderer {
     if (this.bowLegsSprite) this.bowLegsSprite.visible = false;
     if (this.bowJogLegsSprite) this.bowJogLegsSprite.visible = false;
     if (this.bowJogLegsGearSprite) this.bowJogLegsGearSprite.visible = false;
-    if (this.bowJogBeltSprite) this.bowJogBeltSprite.visible = false;
     if (this.bowShirtSprite) this.bowShirtSprite.visible = false;
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     const fmap = this._bowFacing[S._bowDir];
@@ -2991,10 +2982,7 @@ export class EffectsRenderer {
            its mirror (west / southeast). */
         const _legBase = (S._jogBodyH != null ? S._jogBodyH : (S._swordBodyH || 84)) / 188;
         const _bodyAdj = ({ east: 0.87 })[fmap[0]] || 1;                 // bare jog legs (body frame)
-        const _gearAdj = ({ east: 1.155, southwest: 1.1 })[fmap[0]] || 1; // worn leg armour (gear frame)
-        /* v2.3.1074: per-facing DOWNWARD nudge (px) on the leg plate -- east + SE/SW
-           read too high vs the foot plant; lower the plate without rescaling it. */
-        const _gearNudgeY = ({ east: 10, southwest: 10 })[fmap[0]] || 0;
+        const _gearAdj = ({ east: 1.1, southwest: 1.1 })[fmap[0]] || 1; // worn leg armour (gear frame)
         const _bodyS = _legBase * _bodyAdj, _gearS = _legBase * _gearAdj;
         const _mir = S._bodyAnimMirror ? -1 : 1;
         /* jog body legs (naked) -- anchored at the 256-frame feet row (221), same
@@ -3028,31 +3016,7 @@ export class EffectsRenderer {
            static in front. */
         const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
         const jg = this.bowJogLegsGearSprite;
-        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_mir * _gearS, _gearS); jg.x = sp.x; jg.y = sp.y + _gearNudgeY; jg.tint = 0xffffff; jg.visible = true; }
-        /* v2.3.1076: jog-pose chain belt BRIDGING the chest->legs gap.  The belt
-           must span from the bowshot chest's bottom DOWN to the (down-nudged) jog
-           legs, so unlike the legs it does NOT ride down with _gearNudgeY -- it
-           stays up at the chest waist (its own _beltNudgeY, default 0) and a taller
-           crop (BTOP=120) lets the skirt overlap up under the chest and down over
-           the leg tops.  Forced to the FRONT each frame so it sits over the torso /
-           chest (a back-facing belt didn't cover the gap). */
-        const beltTex = getGearFrame('chest', getEquip('chest'), 'jog', _jdir, _jfr);
-        const jb = this.bowJogBeltSprite;
-        if (beltTex && jb && getEquip('chest') !== 'none') {
-          const BTOP = 120;   // taller: overlaps up under the chest + down over the legs
-          const _beltNudgeY = ({ east: 0, southwest: 0 })[fmap[0]] || 0;
-          let bcache = this._beltSubCache || (this._beltSubCache = new WeakMap());
-          let bcrop = bcache.get(beltTex);
-          if (!bcrop) {
-            try { const f = beltTex.frame; bcrop = new Texture({ source: beltTex.source, frame: new Rectangle(f.x, f.y + BTOP, f.width, f.height - BTOP) }); }
-            catch (e) { bcrop = beltTex; }
-            bcache.set(beltTex, bcrop);
-          }
-          jb.texture = bcrop;
-          jb.anchor.set(0.5, (221 - BTOP) / (256 - BTOP));   // feet row (221) within the crop
-          jb.scale.set(_mir * _gearS, _gearS); jb.x = sp.x; jb.y = sp.y + _beltNudgeY; jb.tint = 0xffffff; jb.visible = true;
-          this.nodeLayer.setChildIndex(jb, this.nodeLayer.children.length - 1);   // in front of the torso/chest
-        }
+        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, 221 / 256); jg.scale.set(_mir * _gearS, _gearS); jg.x = sp.x; jg.y = sp.y; jg.tint = 0xffffff; jg.visible = true; }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
