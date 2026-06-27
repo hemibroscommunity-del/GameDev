@@ -20,6 +20,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, getBodyFrame, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
 import { getGearFrame } from '../gearSheets.js';
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount } from '../playerSprites.js';
+import { jogWaistRow } from '../jogWaist.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
@@ -2996,10 +2997,13 @@ export class EffectsRenderer {
           /* crop to the LEGS band so the jog torso/arms don't show behind the bow
              torso.  v2.3.1073: crop relative to the frame's OWN rect (legTex.frame)
              -- the jog frames share one atlas source, so a fixed (0,150) origin
-             read the same region every frame => legs froze.  Start at the HIP
-             (TOP=135) so the leg top overlaps up under the torso strip and the seam
-             can't show.  Cache by the per-frame texture (not its source). */
-          const TOP = 135;
+             read the same region every frame => legs froze.  Cache by the per-frame
+             texture (not its source).
+             v2.3.1077: cut at the TRUE per-frame waist (jogWaistRow) instead of a
+             fixed row -- the run cycle bobs the body up to ~19px, so a fixed cut
+             left the lower torso/belly on the legs sprite on the low-bob frames
+             (the "top half on the bottom half" duplication).  Clean separation. */
+          const TOP = jogWaistRow(_jdir, _jfr);
           let cache = this._legSubCache || (this._legSubCache = new WeakMap());
           let cropped = cache.get(legTex);
           if (!cropped) {
