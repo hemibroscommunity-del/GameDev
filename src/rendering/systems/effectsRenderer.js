@@ -445,14 +445,6 @@ export class EffectsRenderer {
     this._bowBodyFrames = {};   // v2.3.957: bald body base for the layered gear path
     this._bowTorsoFrames = {};  // v2.3.1072: leg-erased torso strips for the jog-legs composite
     const BOW_ART_VERSION = 959;   // 959: torso strips re-cut at the skin->pants line (jog-legs seam). 958: bow recolored magenta->dark brown, cyan->black handle
-    /* v2.3.1072: animated jog legs drawn UNDER the bow torso while moving so the
-       feet stride instead of sliding.  Added BEFORE bowSprite => drawn under it. */
-    this.bowJogLegsSprite = new Sprite();
-    this.bowJogLegsSprite.visible = false;
-    this.nodeLayer.addChild(this.bowJogLegsSprite);
-    this.bowJogLegsGearSprite = new Sprite();   // worn leg armour, animated over the jog legs
-    this.bowJogLegsGearSprite.visible = false;
-    this.nodeLayer.addChild(this.bowJogLegsGearSprite);
     this.bowSprite = new Sprite();
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
@@ -470,6 +462,16 @@ export class EffectsRenderer {
     this.bowLegsSprite.anchor.set(0.5, 1);
     this.bowLegsSprite.visible = false;
     this.nodeLayer.addChild(this.bowLegsSprite);
+    /* v2.3.1082: animated jog legs drawn OVER the bow torso/chest (added AFTER
+       them) so the lower half drapes over the torso's waist cut -- this hides the
+       diagonal-run seam instead of being clipped by it.  Still UNDER the weapon so
+       the bow stays in hand.  Gear added after the bare legs => plate over legs. */
+    this.bowJogLegsSprite = new Sprite();
+    this.bowJogLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.bowJogLegsSprite);
+    this.bowJogLegsGearSprite = new Sprite();   // worn leg armour, animated over the jog legs
+    this.bowJogLegsGearSprite.visible = false;
+    this.nodeLayer.addChild(this.bowJogLegsGearSprite);
     this.bowWeaponSprite = new Sprite();
     this.bowWeaponSprite.anchor.set(0.5, 1);
     this.bowWeaponSprite.visible = false;
