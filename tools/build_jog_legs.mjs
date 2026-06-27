@@ -16,7 +16,10 @@ import { jogWaistRow } from '../src/rendering/jogWaist.js';
 
 const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
 // warm skin: r clearly > g > b.  Olive pants have r ~= g (r-g small) -> excluded.
-const isSkin = (r, g, b, a) => a > 100 && r - g > 15 && r - b > 25 && r > 85;
+// Combine a broad test with the EXACT recolour _isSkin (playerSkins.js) so no
+// pixel the recolour would tint as skin survives below the waist.
+const _recolorIsSkin = (r, g, b, a) => a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25;
+const isSkin = (r, g, b, a) => (a > 100 && r - g > 15 && r - b > 25 && r > 85) || _recolorIsSkin(r, g, b, a);
 // near-black outline pixel
 const isDark = (r, g, b, a) => a > 90 && Math.max(r, g, b) < 80;
 const DILATE = 3;     // px of outline removed around erased skin
@@ -65,10 +68,14 @@ for (const dir of DIRS) {
        hands return).  The hips are a solid mass at the waist, so fill the whole hip
        SPAN with ONE representative pants colour, alpha 255 -- a per-column copy left
        thin transparent columns where outline/AA fell (the faint "barcode"). */
-    const cols = [];   // representative pants samples from just below the belt
-    for (let y = waist + 2; y < Math.min(waist + 14, H); y++) for (let x = 0; x < 256; x++) {
-      const i = (y * W + (x0 + x)) * 4;
-      if (d[i + 3] > 150 && Math.max(d[i], d[i + 1], d[i + 2]) > 85 && !isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) cols.push([d[i], d[i + 1], d[i + 2]]);
+    /* sample only pixels that the RECOLOUR pipeline classifies as pants
+       (playerSkins.recolorBodyToCanvas: a>180 && g>=r-10 && g>b+8 && r<150).
+       These cannot trip its _isSkin test (which needs r-g>25), so the fill is
+       never retinted to skin -- fixes the skin-coloured rectangle that flashed. */
+    const cols = [];
+    for (let y = waist + 2; y < Math.min(waist + 16, H); y++) for (let x = 0; x < 256; x++) {
+      const i = (y * W + (x0 + x)), r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], a = d[i * 4 + 3];
+      if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) cols.push([r, g, b]);
     }
     if (cols.length) {
       cols.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
