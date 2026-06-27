@@ -497,7 +497,7 @@ export class EffectsRenderer {
        Recolored to the player's combo via the same pipeline.  Keyed by MOVEMENT
        dir (the 5 source dirs), not the bow facing. */
     this._bowJogLegFrames = {};
-    const JOG_LEGS_VERSION = 4;   // 4: fill samples recolour-pants only + erase recolour-skin (no skin flash). 3: solid fill
+    const JOG_LEGS_VERSION = 5;   // 5: drop the synthetic pants-fill rectangle (lift + real pants cover the seam)
     for (const dir of ['south', 'east', 'north', 'northeast', 'southwest']) {
       _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { fw: 256, fh: 256 }, JOG_LEGS_VERSION);
     }

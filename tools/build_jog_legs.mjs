@@ -30,7 +30,7 @@ for (const dir of DIRS) {
   const im = decode(readFileSync(`public/sprites/player/jog-${dir}.png`));
   const { width: W, height: H, data: d } = im;
   const N = Math.round(W / 256);
-  let erasedSkin = 0, erasedOutline = 0, filled = 0;
+  let erasedSkin = 0, erasedOutline = 0;
   for (let fi = 0; fi < N; fi++) {
     const waist = jogWaistRow(dir, fi);
     const y0 = Math.max(0, waist - TOP_PAD);   // clear from a bit ABOVE the waist down
@@ -59,36 +59,14 @@ for (const dir of DIRS) {
       }
       for (const k of add) { kill[k] = 1; erasedOutline++; }
     }
-    // apply erase
+    // apply erase -- everything at/above the waist that was skin/hand is now
+    // transparent, so with the legs drawn OVER the torso the torso shows through
+    // there (no synthetic fill rectangle).  The real (shaded) pants below the
+    // waist, lifted up by the renderer, cover the seam.
     for (let y = y0; y < H; y++) for (let x = 0; x < 256; x++) {
       if (kill[idx(x, y)]) { const i = (y * W + (x0 + x)) * 4; d[i] = d[i + 1] = d[i + 2] = d[i + 3] = 0; }
     }
-    /* Pass 3 -> fill the ABOVE-waist band [y0, waist) with a SOLID block of pants so
-       the renderer's overlap fills the diagonal-run gap with pants (not skin -> no
-       hands return).  The hips are a solid mass at the waist, so fill the whole hip
-       SPAN with ONE representative pants colour, alpha 255 -- a per-column copy left
-       thin transparent columns where outline/AA fell (the faint "barcode"). */
-    /* sample only pixels that the RECOLOUR pipeline classifies as pants
-       (playerSkins.recolorBodyToCanvas: a>180 && g>=r-10 && g>b+8 && r<150).
-       These cannot trip its _isSkin test (which needs r-g>25), so the fill is
-       never retinted to skin -- fixes the skin-coloured rectangle that flashed. */
-    const cols = [];
-    for (let y = waist + 2; y < Math.min(waist + 16, H); y++) for (let x = 0; x < 256; x++) {
-      const i = (y * W + (x0 + x)), r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], a = d[i * 4 + 3];
-      if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) cols.push([r, g, b]);
-    }
-    if (cols.length) {
-      cols.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
-      const [cr, cg, cb] = cols[Math.floor(cols.length / 2)];   // median pants colour
-      // hip span = opaque extent of the waistband row
-      let minX = 256, maxX = -1;
-      for (let x = 0; x < 256; x++) { const i = (waist * W + (x0 + x)) * 4; if (d[i + 3] > 120) { if (x < minX) minX = x; if (x > maxX) maxX = x; } }
-      for (let y = y0; y < waist; y++) for (let x = minX; x <= maxX; x++) {
-        const i = (y * W + (x0 + x)) * 4;
-        d[i] = cr; d[i + 1] = cg; d[i + 2] = cb; d[i + 3] = 255; filled++;
-      }
-    }
   }
   writeFileSync(`public/sprites/player/jog-${dir}-legs.png`, encode({ width: W, height: H, data: d }));
-  console.log(`wrote jog-${dir}-legs.png  (${N} frames; skin ${erasedSkin} + outline ${erasedOutline} erased, ${filled} pants-filled)`);
+  console.log(`wrote jog-${dir}-legs.png  (${N} frames; skin ${erasedSkin} + outline ${erasedOutline} erased)`);
 }
