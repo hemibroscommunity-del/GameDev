@@ -3019,6 +3019,12 @@ export class EffectsRenderer {
            -- the leg frames read a touch off per facing.  Owner-tuned; southwest
            covers SE via mirror. */
         const _legSizeMul = ({ east: 1.177, southwest: 0.90 })[_jdir] || 1;
+        const _legScale = s * _legMul * _legSizeMul;
+        /* v2.3.1085: per-facing horizontal nudge to line the legs up under the
+           torso (frame px, + = right; * _mir so the mirrored facing shifts the
+           matching way; * _legScale so it tracks zoom + leg size). */
+        const _legNudgeX = ({ east: 10 })[_jdir] || 0;
+        const _legDX = _mir * _legNudgeX * _legScale;
         const _waist = jogWaistRow(_jdir, _jfr);
         const _legArr = this._bowJogLegFrames[_jdir];
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
@@ -3039,14 +3045,14 @@ export class EffectsRenderer {
           }
           jl.texture = cropped;
           jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));   // waist row sits on the meet line
-          jl.scale.set(_mir * s * _legMul * _legSizeMul, s * _legMul * _legSizeMul); jl.x = sp.x; jl.y = _yMeet; jl.tint = 0xffffff; jl.visible = true;
+          jl.scale.set(_mir * _legScale, _legScale); jl.x = sp.x + _legDX; jl.y = _yMeet; jl.tint = 0xffffff; jl.visible = true;
         }
         /* worn leg ARMOUR -- pixel-aligned to the jog body frame, so its waist row
            is the same jogWaistRow; anchor there and land it on the same meet line
            at the same scale, so plate + bare legs share the torso's waist. */
         const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
         const jg = this.bowJogLegsGearSprite;
-        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, _waist / 256); jg.scale.set(_mir * s * _legMul * _legSizeMul, s * _legMul * _legSizeMul); jg.x = sp.x; jg.y = _yMeet; jg.tint = 0xffffff; jg.visible = true; }
+        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, _waist / 256); jg.scale.set(_mir * _legScale, _legScale); jg.x = sp.x + _legDX; jg.y = _yMeet; jg.tint = 0xffffff; jg.visible = true; }
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
