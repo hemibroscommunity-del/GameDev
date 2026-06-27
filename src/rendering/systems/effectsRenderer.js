@@ -495,7 +495,7 @@ export class EffectsRenderer {
        Recolored to the player's combo via the same pipeline.  Keyed by MOVEMENT
        dir (the 5 source dirs), not the bow facing. */
     this._bowJogLegFrames = {};
-    const JOG_LEGS_VERSION = 1;
+    const JOG_LEGS_VERSION = 2;   // 2: erase skin+hand-outlines below waist, pants-fill the overlap band
     for (const dir of ['south', 'east', 'north', 'northeast', 'southwest']) {
       _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { fw: 256, fh: 256 }, JOG_LEGS_VERSION);
     }
