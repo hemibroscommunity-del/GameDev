@@ -3015,6 +3015,10 @@ export class EffectsRenderer {
            SE via southwest, NW via northeast). */
         const _ov = 10;                                    // px (256-frame) of hip drawn UP under the torso
         const _legMul = ({ southwest: 1.12, northeast: 1.12 })[_jdir] || 1;
+        /* v2.3.1084: per-facing size trim for the NAKED legs only (the bare body
+           leg frames read a touch off per facing vs the gear).  Owner-tuned;
+           southwest covers SE via mirror. */
+        const _bareMul = ({ east: 1.10, southwest: 0.90 })[_jdir] || 1;
         const _waist = jogWaistRow(_jdir, _jfr);
         const _legArr = this._bowJogLegFrames[_jdir];
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
@@ -3035,7 +3039,7 @@ export class EffectsRenderer {
           }
           jl.texture = cropped;
           jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));   // waist row sits on the meet line
-          jl.scale.set(_mir * s * _legMul, s * _legMul); jl.x = sp.x; jl.y = _yMeet; jl.tint = 0xffffff; jl.visible = true;
+          jl.scale.set(_mir * s * _legMul * _bareMul, s * _legMul * _bareMul); jl.x = sp.x; jl.y = _yMeet; jl.tint = 0xffffff; jl.visible = true;
         }
         /* worn leg ARMOUR -- pixel-aligned to the jog body frame, so its waist row
            is the same jogWaistRow; anchor there and land it on the same meet line
