@@ -17,7 +17,7 @@ import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, SWORD_SWING_MS,
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, getBodyFrame, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
+import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
 import { getGearFrame } from '../gearSheets.js';
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
@@ -488,6 +488,16 @@ export class EffectsRenderer {
       if (cfg.weaponUrl) _loadBowStrip(this._bowWeaponFrames, dir, cfg.weaponUrl, cfg);
       if (cfg.bodyUrl)   _loadRecoloredBody(this._bowBodyFrames, dir, cfg.bodyUrl, cfg, BOW_ART_VERSION);
       if (cfg.torsoUrl)  _loadRecoloredBody(this._bowTorsoFrames, dir, cfg.torsoUrl, cfg, BOW_ART_VERSION);
+    }
+    /* v2.3.1080: arm-erased jog LEG sheets (jog-<dir>-legs.png) for the jog-legs
+       composite -- the jog fists swung below the waist and showed as ghost hands
+       beside the legs; baked sheets have the below-waist skin (fists) erased.
+       Recolored to the player's combo via the same pipeline.  Keyed by MOVEMENT
+       dir (the 5 source dirs), not the bow facing. */
+    this._bowJogLegFrames = {};
+    const JOG_LEGS_VERSION = 1;
+    for (const dir of ['south', 'east', 'north', 'northeast', 'southwest']) {
+      _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { fw: 256, fh: 256 }, JOG_LEGS_VERSION);
     }
 
     /* v2.3.867: the player's traits (hat / beard / hair) composited onto
@@ -2993,7 +3003,8 @@ export class EffectsRenderer {
         const _yMeet = sp.y + (_cutRow - cfg.feetY) * s;   // world Y of the torso's bottom edge
         const _ov = 4;                                     // px (256-frame) drawn UP under the torso (hidden) so no hairline gap
         const _waist = jogWaistRow(_jdir, _jfr);
-        const legTex = getBodyFrame(getSkin(), getPants(), getShoes(), 'jog', _jdir, _jfr, null, 'none');
+        const _legArr = this._bowJogLegFrames[_jdir];
+        const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         const jl = this.bowJogLegsSprite;
         /* skip the bare jog legs when leg armour is worn -- the plate covers them. */
         if (legTex && jl && getEquip('legs') === 'none') {
