@@ -3018,7 +3018,7 @@ export class EffectsRenderer {
         /* v2.3.1084: per-facing size trim for the jog legs (bare AND worn armour)
            -- the leg frames read a touch off per facing.  Owner-tuned; southwest
            covers SE via mirror. */
-        const _legSizeMul = ({ east: 1.10, southwest: 0.90 })[_jdir] || 1;
+        const _legSizeMul = ({ east: 1.177, southwest: 0.90 })[_jdir] || 1;
         const _waist = jogWaistRow(_jdir, _jfr);
         const _legArr = this._bowJogLegFrames[_jdir];
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
