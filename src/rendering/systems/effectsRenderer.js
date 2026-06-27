@@ -444,7 +444,7 @@ export class EffectsRenderer {
     this._bowWeaponFrames = {};
     this._bowBodyFrames = {};   // v2.3.957: bald body base for the layered gear path
     this._bowTorsoFrames = {};  // v2.3.1072: leg-erased torso strips for the jog-legs composite
-    const BOW_ART_VERSION = 958;   // 958: bow recolored magenta->dark brown body, cyan->black handle (all directions, held + bow-shot strips)
+    const BOW_ART_VERSION = 959;   // 959: torso strips re-cut at the skin->pants line (jog-legs seam). 958: bow recolored magenta->dark brown, cyan->black handle
     /* v2.3.1072: animated jog legs drawn UNDER the bow torso while moving so the
        feet stride instead of sliding.  Added BEFORE bowSprite => drawn under it. */
     this.bowJogLegsSprite = new Sprite();

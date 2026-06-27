@@ -9,17 +9,25 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { decode } from './png.mjs';
 
 const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
-// olive pants in the base sheet: r~=g, clearly above blue, mid-dark
-const isPants = (r, g, b, a) => a > 120 && Math.abs(r - g) < 22 && r - b > 22 && b < 95 && r > 45 && r < 150;
+// warm skin: clearly above blue, bright (recolor-invariant skin->pants boundary).
+// MUST match tools/build_attack_torso.mjs so the torso cut and the leg crop land
+// on the same anatomical line.
+const isSkin = (r, g, b, a) => a > 140 && r > 150 && r - b > 35 && r >= g - 6 && g >= b - 6;
 
+/* Waist = the skin->pants line: central belly columns, median of each column's
+   first non-skin row below the torso. */
 function detectWaist(im, fi) {
   const { width: W, data: d } = im;
-  for (let y = 96; y < 210; y++) {
-    let c = 0;
-    for (let x = 0; x < 256; x++) { const i = (y * W + (fi * 256 + x)) * 4; if (isPants(d[i], d[i + 1], d[i + 2], d[i + 3])) c++; }
-    if (c > 6) return y;
+  const x0 = Math.round(256 * 0.40), x1 = Math.round(256 * 0.60);
+  const rows = [];
+  for (let x = x0; x <= x1; x++) {
+    let last = -1;
+    for (let y = 90; y < 215; y++) { const i = (y * W + (fi * 256 + x)) * 4; if (isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) last = y; }
+    if (last > 0) rows.push(last + 1);
   }
-  return 150;
+  if (!rows.length) return 150;
+  rows.sort((a, b) => a - b);
+  return rows[Math.floor(rows.length / 2)];
 }
 
 const table = {};
