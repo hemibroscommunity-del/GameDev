@@ -3002,7 +3002,11 @@ export class EffectsRenderer {
            own scale (s) and land the legs' waist row on the torso's CUT row
            (bowTorsoCutRow) so the join is ONE shared line every frame. */
         const _cutRow = bowTorsoCutRow(fmap[0], fi);
-        const _yMeet = sp.y + (_cutRow - cfg.feetY) * s;   // world Y of the torso's bottom edge
+        /* v2.3.1083: lift the legs UP a few px past the torso cut so the (on-top)
+           pants band overlaps the torso's bottom edge and closes the residual seam
+           gap.  Scaled by s so it holds at any zoom. */
+        const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut
+        const _yMeet = sp.y + (_cutRow - cfg.feetY) * s - _LEG_LIFT * s;   // world Y where the legs' waist sits
         /* v2.3.1081: on ANGLED runs the waistline is diagonal, so a horizontal cut
            leaves a wedge of missing torso skin on the leaning side.  Tuck more of
            the legs' HIP (skin) up under the torso (bigger _ov fills the wedge with
