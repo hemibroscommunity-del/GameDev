@@ -19,7 +19,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
 import { getGearFrame } from '../gearSheets.js';
-import { cycleMs as jogCycleMs, frameCount as jogFrameCount } from '../playerSprites.js';
+import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
@@ -2630,6 +2630,65 @@ export class EffectsRenderer {
     } catch (e) { return null; }
   }
 
+  /* v2.3.1087: recolor ANY already-loaded body-style sheet (torso strip / jog-leg
+     sheet) to a remote player's combo, sliced into fw-wide frames.  Mirrors
+     _remoteBodyFramesFor but generic over url/fw/fh.  The source image must have
+     been loaded into _bodyImgCache by the local bake (it is: bow torso strips +
+     jog-<dir>-legs sheets are loaded at construction). */
+  _remoteSheetFramesFor(o, url, fw, fh) {
+    if (!this._remoteSheetCache) this._remoteSheetCache = new Map();
+    const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes;
+    let arr = this._remoteSheetCache.get(key);
+    if (arr) return arr;
+    const img = this._bodyImgCache[url];
+    if (!img) return null;
+    try {
+      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null);
+      const source = Texture.from(cv).source; source.scaleMode = 'linear';
+      const n = Math.max(1, Math.round(img.width / fw));
+      arr = [];
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * fw, 0, fw, fh) }));
+      this._remoteSheetCache.set(key, arr);
+      return arr;
+    } catch (e) { return null; }
+  }
+
+  /* v2.3.1087: shared jog-legs placement for the bow stand-in -- used by BOTH the
+     local player (_updateBowShot) and remote players (_updateRemoteBowShots) so
+     they look identical (MP parity).  Positions the bare-leg sprite `jl` (cropped,
+     only when no leg armour) and the leg-armour sprite `jg`, aligned so the legs'
+     waist row lands on the torso's CUT row at the torso's own scale `s`.  See
+     docs/specs/jog-legs-attack-composite.md.  All the owner-tuned per-facing knobs
+     live HERE (one source of truth). */
+  _placeJogLegs(jl, jg, opts) {
+    const { legTex, gearFrame, fi, fmap0, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour } = opts;
+    const _cutRow = bowTorsoCutRow(fmap0, fi);
+    const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut (closes seam)
+    const _ov = 10;         // frame px of leg drawn UP under the torso
+    const _yMeet = footY + (_cutRow - feetY) * s - _LEG_LIFT * s;
+    const _legMul = ({ southwest: 1.12, northeast: 1.12 })[jdir] || 1;     // diagonal gap fill
+    const _legSizeMul = ({ east: 1.36, southwest: 0.90, north: 0.90 })[jdir] || 1;  // per-facing size trim
+    const _legScale = s * _legMul * _legSizeMul;
+    const _legNudgeX = ({ east: 10 })[jdir] || 0;                          // per-facing x line-up
+    const _legDX = mir * _legNudgeX * _legScale;
+    const _waist = jogWaistRow(jdir, jfr);
+    if (legTex && jl && !hasLegArmour) {
+      const TOP = Math.max(0, _waist - _ov);
+      let cache = this._legSubCache || (this._legSubCache = new WeakMap());
+      let cropped = cache.get(legTex);
+      if (!cropped) {
+        try { const f = legTex.frame; cropped = new Texture({ source: legTex.source, frame: new Rectangle(f.x, f.y + TOP, f.width, f.height - TOP) }); }
+        catch (e) { cropped = legTex; }
+        cache.set(legTex, cropped);
+      }
+      jl.texture = cropped;
+      jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));
+      jl.scale.set(mir * _legScale, _legScale); jl.x = x + _legDX; jl.y = _yMeet; jl.tint = 0xffffff; jl.visible = true;
+    } else if (jl) { jl.visible = false; }
+    if (gearFrame && jg) { jg.texture = gearFrame; jg.anchor.set(0.5, _waist / 256); jg.scale.set(mir * _legScale, _legScale); jg.x = x + _legDX; jg.y = _yMeet; jg.tint = 0xffffff; jg.visible = true; }
+    else if (jg) { jg.visible = false; }
+  }
+
   /* v2.3.1011: render OTHER players' sword/greatsword swing stand-in so the
      attack looks the same to everyone (MP parity).  SLICE 1 = body only
      (recolored to their skin); armor / weapon / hair-hat layer on in
@@ -2747,8 +2806,10 @@ export class EffectsRenderer {
     let set = this._remoteBowSprites.get(id);
     if (!set) {
       const mk = () => { const s = new Sprite(); s.visible = false; this.nodeLayer.addChild(s); return s; };
-      /* v2.3.1050: `shirt` created right after the body so it sits under legs/chest. */
-      set = { body: mk(), shirt: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+      /* v2.3.1087: jogLegs/jogLegsGear created FIRST so they sit UNDER the body
+         (torso in front), matching the local player.  `shirt` after the body so it
+         sits under legs/chest. */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), shirt: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
       this._remoteBowSprites.set(id, set);
     }
     return set;
@@ -2787,8 +2848,20 @@ export class EffectsRenderer {
       const anchorY = cfg.feetY / cfg.fh;
       const sY = REMOTE_BOW_SCALE;
       const sgnX = mirror ? -sY : sY;
+      /* v2.3.1087: jogging legs while this remote is MOVING -- swap the body to the
+         leg-erased torso strip and composite recolored jog legs under it (same
+         _placeJogLegs helper + tuning as the local player).  Gate on the remote's
+         broadcast velocity; movement dir -> base jog dir + mirror. */
+      const _stale = !o._lastUpdate || (now - o._lastUpdate) > 150;
+      const _vmag = Math.max(Math.abs(o._smoothVx || 0), Math.abs(o._smoothVy || 0));
+      const _moving = !_stale && _vmag > 0.03;
+      const _rd = resolveDirection(o._renderFacing || o._moveFacing8 || 'south');
+      const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', 256, 256);
+      const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
-      sp.texture = bodyFrames[fi];
+      sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
       sp.scale.set(sgnX, sY);
       sp.x = (o.renderX != null) ? o.renderX : o.x;
       sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_BOW_FOOT_DY;
@@ -2804,7 +2877,7 @@ export class EffectsRenderer {
       /* v2.3.1050: their tinted shirt under-layer (folder always 'tshirt' when shirted). */
       const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
       this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor);
-      place(set.legs, this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
+      place(set.legs, _jog ? null : this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       const weaponFrames = this._bowWeaponFrames && this._bowWeaponFrames[cfgKey];
       place(set.weapon, weaponFrames && weaponFrames[fi]);
@@ -2814,14 +2887,30 @@ export class EffectsRenderer {
         headwear: o.headwear, hatColor: o.hatColor,
       };
       this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits);
+      /* composite the jog legs under the torso strip (or hide them). */
+      if (_jog) {
+        const _fc = jogFrameCount('jog', _jdir) || 24;
+        const _armoredCad = eq.chest && eq.chest !== 'none' && eq.legs && eq.legs !== 'none';
+        const _cyc = (jogCycleMs('jog', _jdir, _armoredCad) || 700) * 2;
+        const _raw = Math.floor((now / _cyc) * _fc) % _fc;
+        const _d = (o._smoothVx || 0) * Math.cos(ang) + (o._smoothVy || 0) * Math.sin(ang);   // backpedal when moving opposite aim
+        const _jfr = _d < 0 ? ((_fc - 1) - _raw) : _raw;
+        const legTex = _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length];
+        this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
+          legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
+          fi, fmap0: cfgKey, jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: sp.y,
+          feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'),
+        });
+      } else { set.jogLegs.visible = false; set.jogLegsGear.visible = false; }
       active.add(id);
     }
     for (const [id, set] of this._remoteBowSprites) {
       if (active.has(id)) continue;
       set.body.visible = set.shirt.visible = set.chest.visible = set.legs.visible = set.weapon.visible = false;
+      set.jogLegs.visible = set.jogLegsGear.visible = false;
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
+        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
           try { s.destroy(); } catch (e) {}
         }
         this._remoteBowSprites.delete(id);
@@ -2994,64 +3083,15 @@ export class EffectsRenderer {
            legs are hidden, so only _gearAdj shows).  Keyed by fmap[0] => each covers
            its mirror (west / southeast). */
         const _mir = S._bodyAnimMirror ? -1 : 1;
-        /* v2.3.1078: align the jog legs to the torso EXACTLY each frame.  Top (bow
-           torso strip) and bottom (jog legs) are DIFFERENT art at DIFFERENT scales,
-           so the old jog-scaled, foot-planted legs met the torso at an inconsistent
-           waist -> per-frame gaps AND overlaps.  Fix: draw the legs at the TORSO's
-           own scale (s) and land the legs' waist row on the torso's CUT row
-           (bowTorsoCutRow) so the join is ONE shared line every frame. */
-        const _cutRow = bowTorsoCutRow(fmap[0], fi);
-        /* v2.3.1083: lift the legs UP a few px past the torso cut so the (on-top)
-           pants band overlaps the torso's bottom edge and closes the residual seam
-           gap.  Scaled by s so it holds at any zoom. */
-        const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut
-        const _yMeet = sp.y + (_cutRow - cfg.feetY) * s - _LEG_LIFT * s;   // world Y where the legs' waist sits
-        /* v2.3.1081: on ANGLED runs the waistline is diagonal, so a horizontal cut
-           leaves a wedge of missing torso skin on the leaning side.  Tuck more of
-           the legs' HIP (skin) up under the torso (bigger _ov fills the wedge with
-           the right colour), and enlarge the legs for the diagonal facings so they
-           cover any directional misalignment (_legMul keyed by movement dir; covers
-           SE via southwest, NW via northeast). */
-        const _ov = 10;                                    // px (256-frame) of hip drawn UP under the torso
-        const _legMul = ({ southwest: 1.12, northeast: 1.12 })[_jdir] || 1;
-        /* v2.3.1084: per-facing size trim for the jog legs (bare AND worn armour)
-           -- the leg frames read a touch off per facing.  Owner-tuned; southwest
-           covers SE via mirror. */
-        const _legSizeMul = ({ east: 1.36, southwest: 0.90, north: 0.90 })[_jdir] || 1;
-        const _legScale = s * _legMul * _legSizeMul;
-        /* v2.3.1085: per-facing horizontal nudge to line the legs up under the
-           torso (frame px, + = right; * _mir so the mirrored facing shifts the
-           matching way; * _legScale so it tracks zoom + leg size). */
-        const _legNudgeX = ({ east: 10 })[_jdir] || 0;
-        const _legDX = _mir * _legNudgeX * _legScale;
-        const _waist = jogWaistRow(_jdir, _jfr);
+        /* Align + size the legs via the shared helper (same code path remote
+           players use, so they look identical). */
         const _legArr = this._bowJogLegFrames[_jdir];
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
-        const jl = this.bowJogLegsSprite;
-        /* skip the bare jog legs when leg armour is worn -- the plate covers them. */
-        if (legTex && jl && getEquip('legs') === 'none') {
-          /* crop at (waist - overlap): the few px above the waist tuck UNDER the
-             opaque torso strip (drawn on top), so the seam can't gap or show belly.
-             Crop relative to the frame's OWN rect (jog frames share one atlas
-             source); cache by the per-frame texture. */
-          const TOP = Math.max(0, _waist - _ov);
-          let cache = this._legSubCache || (this._legSubCache = new WeakMap());
-          let cropped = cache.get(legTex);
-          if (!cropped) {
-            try { const f = legTex.frame; cropped = new Texture({ source: legTex.source, frame: new Rectangle(f.x, f.y + TOP, f.width, f.height - TOP) }); }
-            catch (e) { cropped = legTex; }
-            cache.set(legTex, cropped);
-          }
-          jl.texture = cropped;
-          jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));   // waist row sits on the meet line
-          jl.scale.set(_mir * _legScale, _legScale); jl.x = sp.x + _legDX; jl.y = _yMeet; jl.tint = 0xffffff; jl.visible = true;
-        }
-        /* worn leg ARMOUR -- pixel-aligned to the jog body frame, so its waist row
-           is the same jogWaistRow; anchor there and land it on the same meet line
-           at the same scale, so plate + bare legs share the torso's waist. */
-        const legGear = getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr);
-        const jg = this.bowJogLegsGearSprite;
-        if (legGear && jg) { jg.texture = legGear; jg.anchor.set(0.5, _waist / 256); jg.scale.set(_mir * _legScale, _legScale); jg.x = sp.x + _legDX; jg.y = _yMeet; jg.tint = 0xffffff; jg.visible = true; }
+        this._placeJogLegs(this.bowJogLegsSprite, this.bowJogLegsGearSprite, {
+          legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
+          fi, fmap0: fmap[0], jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: sp.y,
+          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none',
+        });
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
