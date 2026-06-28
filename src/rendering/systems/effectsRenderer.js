@@ -22,6 +22,7 @@ import { getGearFrame } from '../gearSheets.js';
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
+import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
@@ -301,9 +302,9 @@ export class EffectsRenderer {
          (bodyUrl) + equipped chest/legs armour (gear/<slot>/<item>/swing-south.png)
          + the recolorable weapon, so worn armour shows during the swing via the
          existing gear slots.  Falls back to armorUrl/bald if bodyUrl missing. */
-      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', gearPose: 'swing', bodyScale: 0.92, bodyScaleX: 0.95 },
-      east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east', armorUrl: '/sprites/player/sword-east-armored.png', weaponUrl: '/sprites/player/sword-east-weapon.png', bodyUrl: '/sprites/player/sword-east-body.png', gearPose: 'swing' },
-      north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north", armorUrl: "/sprites/player/sword-north-armored.png", weaponUrl: "/sprites/player/sword-north-weapon.png", bodyUrl: "/sprites/player/sword-north-body.png", gearPose: "swing" },
+      south: { url: '/sprites/player/sword-south.png', fw: 320, fh: 320, feetY: 270, crownKey: 'sword',   traitDir: 'south', armorUrl: '/sprites/player/sword-south-armored.png', weaponUrl: '/sprites/player/sword-south-weapon.png', bodyUrl: '/sprites/player/sword-south-body.png', torsoUrl: '/sprites/player/sword-south-torso.png', gearPose: 'swing', bodyScale: 0.92, bodyScaleX: 0.95 },
+      east:  { url: '/sprites/player/sword-east.png',  fw: 402, fh: 246, feetY: 223, crownKey: 'sword_e', traitDir: 'east', armorUrl: '/sprites/player/sword-east-armored.png', weaponUrl: '/sprites/player/sword-east-weapon.png', bodyUrl: '/sprites/player/sword-east-body.png', torsoUrl: '/sprites/player/sword-east-torso.png', gearPose: 'swing' },
+      north: { url: "/sprites/player/sword-north.png", fw: 340, fh: 227, feetY: 211, crownKey: "sword_n", traitDir: "north", armorUrl: "/sprites/player/sword-north-armored.png", weaponUrl: "/sprites/player/sword-north-weapon.png", bodyUrl: "/sprites/player/sword-north-body.png", torsoUrl: "/sprites/player/sword-north-torso.png", gearPose: "swing" },
     };
     /* facing -> [cfg key, mirror?].  v2.3.921: SE/SW mirror flipped per owner.
        v2.3.922: east sheet covers east (as-is) + west (mirrored).
@@ -329,13 +330,21 @@ export class EffectsRenderer {
        loader/cache for equipped armour layers (gear/<slot>/<item>/<pose>-<dir>.png,
        sliced by the per-facing frame width since the swing frames aren't 256). */
     this._swordBodyFrames = {};
+    this._swordTorsoFrames = {};   // v2.3.1088: leg-erased torso strips for the sword jog-legs composite
     this._gearStrips = {};   // 'slot/item/pose/dir' -> [Texture] | 'loading' | []
     /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
        constant, so a browser / edge cache (esp. on the stable branch-preview
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 1054;   // 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
+    const SWORD_ART_VERSION = 1088;   // 1088: leg-erased torso strips (sword jog-legs composite); 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
+    /* v2.3.1088: jog legs drawn UNDER the sword torso (added BEFORE swordSprite). */
+    this.swordJogLegsSprite = new Sprite();
+    this.swordJogLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.swordJogLegsSprite);
+    this.swordJogLegsGearSprite = new Sprite();
+    this.swordJogLegsGearSprite.visible = false;
+    this.nodeLayer.addChild(this.swordJogLegsGearSprite);
     this.swordSprite = new Sprite();
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
@@ -406,6 +415,7 @@ export class EffectsRenderer {
       if (cfg.armorUrl)  _loadSwordStrip(this._swordArmorFrames, dir, cfg.armorUrl, cfg);
       if (cfg.weaponUrl) _loadSwordStrip(this._swordWeaponFrames, dir, cfg.weaponUrl, cfg);
       if (cfg.bodyUrl)   _loadRecoloredBody(this._swordBodyFrames, dir, cfg.bodyUrl, cfg, SWORD_ART_VERSION);
+      if (cfg.torsoUrl)  _loadRecoloredBody(this._swordTorsoFrames, dir, cfg.torsoUrl, cfg, SWORD_ART_VERSION);
     }
 
     /* v2.3.925: bow-shoot stand-in -- same self-contained pattern as the sword
@@ -2661,15 +2671,18 @@ export class EffectsRenderer {
      docs/specs/jog-legs-attack-composite.md.  All the owner-tuned per-facing knobs
      live HERE (one source of truth). */
   _placeJogLegs(jl, jg, opts) {
-    const { legTex, gearFrame, fi, fmap0, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour } = opts;
-    const _cutRow = bowTorsoCutRow(fmap0, fi);
+    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow' } = opts;
     const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut (closes seam)
     const _ov = 10;         // frame px of leg drawn UP under the torso
-    const _yMeet = footY + (_cutRow - feetY) * s - _LEG_LIFT * s;
-    const _legMul = ({ southwest: 1.12, northeast: 1.12 })[jdir] || 1;     // diagonal gap fill
-    const _legSizeMul = ({ east: 1.36, southwest: 0.90, north: 0.90 })[jdir] || 1;  // per-facing size trim
+    const _yMeet = footY + (cutRow - feetY) * s - _LEG_LIFT * s;
+    /* per-facing knobs are WEAPON-specific (the bow + sword torsos are framed
+       differently, so the legs need their own size/line-up per weapon). */
+    const _SIZE = weapon === 'sword' ? {} : { east: 1.36, southwest: 0.90, north: 0.90 };
+    const _NUDGE = weapon === 'sword' ? {} : { east: 10 };
+    const _legMul = ({ southwest: 1.12, northeast: 1.12 })[jdir] || 1;     // diagonal gap fill (shared)
+    const _legSizeMul = _SIZE[jdir] || 1;                                  // per-facing size trim
     const _legScale = s * _legMul * _legSizeMul;
-    const _legNudgeX = ({ east: 10 })[jdir] || 0;                          // per-facing x line-up
+    const _legNudgeX = _NUDGE[jdir] || 0;                                  // per-facing x line-up
     const _legDX = mir * _legNudgeX * _legScale;
     const _waist = jogWaistRow(jdir, jfr);
     if (legTex && jl && !hasLegArmour) {
@@ -2898,7 +2911,7 @@ export class EffectsRenderer {
         const legTex = _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length];
         this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
           legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
-          fi, fmap0: cfgKey, jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: sp.y,
+          cutRow: bowTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: sp.y,
           feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'),
         });
       } else { set.jogLegs.visible = false; set.jogLegsGear.visible = false; }
@@ -2939,6 +2952,8 @@ export class EffectsRenderer {
     if (this.swordChestSprite) this.swordChestSprite.visible = false;
     if (this.swordLegsSprite) this.swordLegsSprite.visible = false;
     if (this.swordShirtSprite) this.swordShirtSprite.visible = false;
+    if (this.swordJogLegsSprite) this.swordJogLegsSprite.visible = false;
+    if (this.swordJogLegsGearSprite) this.swordJogLegsGearSprite.visible = false;
     if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
     /* entityRenderer published the active facing; resolve it to a sheet + mirror. */
     const fmap = this._swordFacing[S._swordSwingDir];
@@ -2981,10 +2996,15 @@ export class EffectsRenderer {
          the recolorable weapon.  The helmet rides in the chest piece, so skip the
          hat/beard/hair composite when a chest is worn; show it (bald head) when
          no chest is equipped. */
-      sp.texture = bodyFrames[fi];
+      /* v2.3.1088: jogging-legs composite while MOVING -- swap to the leg-erased
+         torso strip and draw animated jog legs under it (same _placeJogLegs helper
+         + sheets as the bow).  Restricted to facings that have a torso strip. */
+      const _torsoFrames = this._swordTorsoFrames[fmap[0]];
+      const _jog = !!S._swordJogLegs && _torsoFrames && _torsoFrames[fi];
+      sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'swing';
       const chestTex = this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi);
-      const legsTex  = this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi);
+      const legsTex  = _jog ? null : this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi);
       this._placeSwingShirt(this.swordShirtSprite, place, getShirt(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
       place(this.swordChestSprite, chestTex);
       place(this.swordLegsSprite, legsTex);
@@ -2997,6 +3017,24 @@ export class EffectsRenderer {
          the weapon BEHIND the body.  Every other facing keeps it in front (on
          top of body + gear). */
       this._orderSwingWeapon(this.swordWeaponSprite, sp, this.swordLegsSprite, fmap[0] === 'north');
+      if (_jog) {
+        const _jdir = S._bodyAnimDir || 'south';
+        const _fc = jogFrameCount('jog', _jdir) || 24;
+        const _armoredCad = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
+        const _cyc = (jogCycleMs('jog', _jdir, _armoredCad) || 700) * 2;
+        const _raw = Math.floor((now / _cyc) * _fc) % _fc;
+        let _back = false;
+        if (S._aimAngle != null && S.player) { const _d = (S.player.vx || 0) * Math.cos(S._aimAngle) + (S.player.vy || 0) * Math.sin(S._aimAngle); _back = _d < 0; }
+        const _jfr = _back ? ((_fc - 1) - _raw) : _raw;
+        const _mir = S._bodyAnimMirror ? -1 : 1;
+        const _legArr = this._bowJogLegFrames[_jdir];
+        const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
+        this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
+          legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
+          cutRow: swordTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: sp.y,
+          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword',
+        });
+      }
     } else if (armorFrames && armorFrames[fi]) {
       sp.texture = armorFrames[fi];
       hideSkillTraits(this.skillTraits);
@@ -3089,7 +3127,7 @@ export class EffectsRenderer {
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         this._placeJogLegs(this.bowJogLegsSprite, this.bowJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
-          fi, fmap0: fmap[0], jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: sp.y,
+          cutRow: bowTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: sp.y,
           feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none',
         });
       }
