@@ -3103,8 +3103,9 @@ export class EffectsRenderer {
        size but re-anchor to the SCALED torso's waist (torsoScale below) so the
        seam stays closed -- growing the figure would have enlarged the legs too. */
     const _torsoOnlyAdj = _nakedSeam ? (({ east: 1.15 })[fmap[0]] || 1) : 1;
-    /* drop ONLY the torso a few world-px (south) onto the legs, legs unchanged. */
-    const _torsoDY = _nakedSeam ? (({ south: 8 })[fmap[0]] || 0) : 0;
+    /* nudge ONLY the torso vertically a few world-px (legs unchanged). +y down,
+       -y up.  east: lift the torso ~5px.  (south's drop was reverted -- too low.) */
+    const _torsoDY = _nakedSeam ? (({ east: -5 })[fmap[0]] || 0) : 0;
     const s = bodyH / 188 * (cfg.bodyScale || 1);
     /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
        Narrows x only (height stays `s`); overlays inherit it via `sgn` in
