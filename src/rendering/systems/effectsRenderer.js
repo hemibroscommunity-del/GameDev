@@ -2744,7 +2744,7 @@ export class EffectsRenderer {
      docs/specs/jog-legs-attack-composite.md.  All the owner-tuned per-facing knobs
      live HERE (one source of truth). */
   _placeJogLegs(jl, jg, opts) {
-    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow', seamLift = 0, torsoScale = 1 } = opts;
+    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow', seamLift = 0, torsoScale = 1, legSizeAdj = 1 } = opts;
     const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut (closes seam)
     const _ov = 10;         // frame px of leg drawn UP under the torso
     /* per-facing DOWNWARD nudge (frame px, sword only for now; southwest covers SE
@@ -2763,7 +2763,7 @@ export class EffectsRenderer {
     const _NUDGE = weapon === 'sword' ? { east: 10 } : { east: 10 };
     const _legMul = ({ southwest: 1.12, northeast: 1.12 })[jdir] || 1;     // diagonal gap fill (shared)
     const _legSizeMul = _SIZE[jdir] || 1;                                  // per-facing size trim
-    const _legScale = s * _legMul * _legSizeMul;
+    const _legScale = s * _legMul * _legSizeMul * legSizeAdj;              // legSizeAdj: naked-only caller tweak
     const _legNudgeX = _NUDGE[jdir] || 0;                                  // per-facing x line-up
     const _legDX = mir * _legNudgeX * _legScale;
     const _waist = jogWaistRow(jdir, jfr);
@@ -3106,6 +3106,8 @@ export class EffectsRenderer {
     /* nudge ONLY the torso vertically a few world-px (legs unchanged). +y down,
        -y up.  east: lift the torso ~5px.  (south's drop was reverted -- too low.) */
     const _torsoDY = _nakedSeam ? (({ east: -5 })[fmap[0]] || 0) : 0;
+    /* grow ONLY the jog legs a touch (south) to cover the small waist gap. */
+    const _legSizeAdj = _nakedSeam ? (({ south: 1.05 })[fmap[0]] || 1) : 1;
     const s = bodyH / 188 * (cfg.bodyScale || 1);
     /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
        Narrows x only (height stays `s`); overlays inherit it via `sgn` in
@@ -3173,7 +3175,7 @@ export class EffectsRenderer {
         this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
           cutRow: swordTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: _baseFootY,
-          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword', seamLift: _seamLift, torsoScale: _torsoOnlyAdj,
+          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword', seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj,
         });
       }
     } else if (armorFrames && armorFrames[fi]) {
