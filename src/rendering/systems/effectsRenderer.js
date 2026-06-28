@@ -576,6 +576,9 @@ export class EffectsRenderer {
     try { this._updateRemoteBowShots(S, now); } catch (e) { /* skip stand-in */ }
     this._updateFishingHole(S, now);
     this._updateExtractionCue(S, now);
+    /* v2.3.1092: full-character harvest stand-ins for OTHER players
+       (chop/cook/fire). Guarded like the remote attack stand-ins. */
+    try { this._updateRemoteExtraction(S, now); } catch (e) { /* skip remote skill stand-in */ }
     this._updateProjectiles(S, now);
     this._updateTelegraphs(S, now);
     this._updateOverlays(S, now);
@@ -2571,6 +2574,72 @@ export class EffectsRenderer {
     sp.y = S.player.y + 6;
     sp.visible = true;
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
+  }
+
+  /* v2.3.1092: harvest stand-ins for OTHER players.  When a peer broadcasts a
+     stand-in activity (other._ex === 'chop' | 'cook' | 'fire'), entityRenderer
+     hides their body container; here we draw the matching full-character sprite
+     at their position, the remote analogue of _updateExtractionCue's chopper /
+     _updateExtractionCue's cook / _updateFiremaking's fire figure.  Per-player
+     sprites are pooled by id (multiple peers can gather at once) and reused; a
+     peer's sprites are destroyed when they leave.  mine/fish need no stand-in --
+     those are body poses handled in entityRenderer.  Reuses the already-loaded
+     _chopFrames / _cookFrames / _fireFrames strips.  Traits (hair/hat) are not
+     composited onto the remote figure yet (generic body), unlike the local
+     player's. */
+  _updateRemoteExtraction(S, now) {
+    if (!this._remoteSkillSprites) this._remoteSkillSprites = new Map();
+    const pool = this._remoteSkillSprites;
+    const others = (S && S.others) || {};
+    const zone = (S && S.currentZone) || 'town';
+    /* hide every pooled sprite up front; the active ones re-show below. */
+    for (const ent of pool.values()) {
+      if (ent.chop) ent.chop.visible = false;
+      if (ent.cook) ent.cook.visible = false;
+      if (ent.fire) ent.fire.visible = false;
+    }
+    /* drawn-height / frame cadence -- copied from the LOCAL figures so a remote
+       gatherer reads at the same size: chopper (_updateExtractionCue, 84px @
+       45ms), cook (41px @ 60ms), fire (_updateFiremaking, 88px @ 55ms). */
+    const SPEC = {
+      chop: { frames: this._chopFrames, h: 84, ms: 45 },
+      cook: { frames: this._cookFrames, h: 41, ms: 60 },
+      fire: { frames: this._fireFrames, h: 88, ms: 55 },
+    };
+    for (const id in others) {
+      const o = others[id];
+      if (!o || o._isDead) continue;
+      const code = o._ex;
+      if (code !== 'chop' && code !== 'cook' && code !== 'fire') continue;
+      if ((o.zone || o.z || 'town') !== zone) continue;
+      const spec = SPEC[code];
+      if (!spec.frames || !spec.frames.length) continue;
+      let ent = pool.get(id);
+      if (!ent) { ent = {}; pool.set(id, ent); }
+      let sp = ent[code];
+      if (!sp) {
+        sp = new Sprite();
+        sp.anchor.set(0.5, 1);          // bottom-centre stands on the ground
+        this.nodeLayer.addChild(sp);
+        ent[code] = sp;
+      }
+      const fi = Math.floor(now / spec.ms) % spec.frames.length;
+      sp.texture = spec.frames[fi];
+      const s = spec.h / 220;
+      sp.scale.set(s, s);
+      sp.x = (o.renderX != null ? o.renderX : o.x) || 0;
+      sp.y = ((o.renderY != null ? o.renderY : o.y) || 0) + 6;
+      sp.visible = true;
+    }
+    /* reap sprites for peers who left the room. */
+    for (const [id, ent] of pool) {
+      if (!others[id]) {
+        if (ent.chop) ent.chop.destroy();
+        if (ent.cook) ent.cook.destroy();
+        if (ent.fire) ent.fire.destroy();
+        pool.delete(id);
+      }
+    }
   }
 
   /* ── Sword swing animation (v2.3.910) ──

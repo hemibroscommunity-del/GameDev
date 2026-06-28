@@ -3961,7 +3961,22 @@ export var BroTown = function BroTown(_ref0) {
            (turning to aim without moving) so remote clients see the turn --
            the move payload now carries the true rendered facing (f). */
         var _facingChanged = S._renderFacing && S._renderFacing !== S._lastBroadcastFacing;
-        if (now - S.lastBroadcast > 33 && (isMoving || _facingChanged)) {
+        /* v2.3.1092: broadcast the current harvest/extraction activity so other
+           players SEE this player mining/chopping/fishing/cooking/lighting a
+           fire. Harvesting is stationary, so the move gate (movement OR facing
+           change) would never fire while gathering — add an extraction-change
+           trigger plus a ~500ms heartbeat so a peer that joins mid-harvest
+           picks it up promptly. Codes: mine|chop|fish|cook|fire (null = none). */
+        var _exSkill = (S._extraction && (S._extraction.status === 'waiting' || S._extraction.status === 'ready')) ? S._extraction.skill : null;
+        var _exCode = S._firemaking ? 'fire'
+          : _exSkill === 'mining' ? 'mine'
+          : _exSkill === 'woodcutting' ? 'chop'
+          : _exSkill === 'fishing' ? 'fish'
+          : _exSkill === 'cooking' ? 'cook'
+          : null;
+        var _exChanged = _exCode !== (S._lastBroadcastEx || null);
+        var _exHeartbeat = !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
+        if (now - S.lastBroadcast > 33 && (isMoving || _facingChanged || _exChanged || _exHeartbeat)) {
           S.lastBroadcast = now;
           S._lastBroadcastFacing = S._renderFacing;
           if (S.channel) {
@@ -3993,9 +4008,13 @@ export var BroTown = function BroTown(_ref0) {
                      the 2s `track` below + the player_update remap. */
                   eqc: getEquip('chest'),
                   eql: getEquip('legs'),
-                  eqs: getEquip('shoulders')
+                  eqs: getEquip('shoulders'),
+                  /* v2.3.1092: current harvest activity (null when not gathering). */
+                  ex: _exCode
                 }
               });
+              S._lastBroadcastEx = _exCode;
+              if (_exCode) S._lastExBroadcast = now;
             }
             if (S.channel && (!S._lastTrack || Date.now() - S._lastTrack > 2000)) {
               var _rpg$lifeSkills7, _rpg$lifeSkills$pets, _rpg$_anniversaryItem, _rpg$armor, _rpg$shield, _rpg$amulet, _rpg$_compStats, _rpg$_compStats2, _rpg$_compStats3, _rpg$_compStats4, _rpg$_compStats5, _rpg$_compStats6, _rpg$_compStats7, _rpg$_compStats8, _S$_clanData2, _S$_clanData3, _S$_clanData4;
