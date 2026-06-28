@@ -2674,7 +2674,10 @@ export class EffectsRenderer {
     const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow' } = opts;
     const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut (closes seam)
     const _ov = 10;         // frame px of leg drawn UP under the torso
-    const _yMeet = footY + (cutRow - feetY) * s - _LEG_LIFT * s;
+    /* per-facing DOWNWARD nudge (frame px, sword only for now; southwest covers SE
+       via mirror, east covers west). */
+    const _DOWN = weapon === 'sword' ? ({ south: 10, southwest: 10, east: 10 }) : {};
+    const _yMeet = footY + (cutRow - feetY) * s - _LEG_LIFT * s + (_DOWN[jdir] || 0) * s;
     /* per-facing knobs -- own tunable set per weapon.  The SWORD seeds from the
        bow's corrections (same leg art) and can diverge as the owner calibrates. */
     const _SIZE = weapon === 'sword'
