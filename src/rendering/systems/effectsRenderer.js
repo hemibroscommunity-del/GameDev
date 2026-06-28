@@ -2774,11 +2774,13 @@ export class EffectsRenderer {
       const sY = REMOTE_SWING_SCALE;
       const sgnX = mirror ? -sY : sY;
       /* v2.3.1088: jogging legs while this remote is MOVING -- swap the body to the
-         leg-erased torso strip and composite jog legs under it (same as the bow). */
+         leg-erased torso strip and composite jog legs under it (same as the bow).
+         v2.3.1093: legs face the SAME direction as the torso (the swing facing
+         dir4), not the remote's movement facing -- upper/lower body aligned. */
       const _stale = !o._lastUpdate || (now - o._lastUpdate) > 150;
       const _vmag = Math.max(Math.abs(o._smoothVx || 0), Math.abs(o._smoothVy || 0));
       const _moving = !_stale && _vmag > 0.03;
-      const _rd = resolveDirection(o._renderFacing || o._moveFacing8 || 'south');
+      const _rd = resolveDirection(dir4);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
       const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
       const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', 256, 256);
@@ -2896,11 +2898,13 @@ export class EffectsRenderer {
       /* v2.3.1087: jogging legs while this remote is MOVING -- swap the body to the
          leg-erased torso strip and composite recolored jog legs under it (same
          _placeJogLegs helper + tuning as the local player).  Gate on the remote's
-         broadcast velocity; movement dir -> base jog dir + mirror. */
+         broadcast velocity.  v2.3.1093: legs face the SAME direction as the torso
+         (the shot facing dir8), not the remote's movement facing, so upper and
+         lower body stay aligned per facing. */
       const _stale = !o._lastUpdate || (now - o._lastUpdate) > 150;
       const _vmag = Math.max(Math.abs(o._smoothVx || 0), Math.abs(o._smoothVy || 0));
       const _moving = !_stale && _vmag > 0.03;
-      const _rd = resolveDirection(o._renderFacing || o._moveFacing8 || 'south');
+      const _rd = resolveDirection(dir8);
       const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
       const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
       const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', 256, 256);
@@ -3050,7 +3054,13 @@ export class EffectsRenderer {
          top of body + gear). */
       this._orderSwingWeapon(this.swordWeaponSprite, sp, this.swordLegsSprite, fmap[0] === 'north');
       if (_jog) {
-        const _jdir = S._bodyAnimDir || 'south';
+        /* v2.3.1093: legs face the SAME direction as the torso (the swing
+           facing), not the movement direction -- upper and lower body stay
+           aligned per facing.  Jog dir+mirror come from the swing's real facing
+           via resolveDirection (which also maps the torso's north-diagonal
+           convention onto the jog sheets'). */
+        const _rd = resolveDirection(S._swordSwingDir);
+        const _jdir = _rd.dir;
         const _fc = jogFrameCount('jog', _jdir) || 24;
         const _armoredCad = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
         const _cyc = (jogCycleMs('jog', _jdir, _armoredCad) || 700) * 2;
@@ -3058,7 +3068,7 @@ export class EffectsRenderer {
         let _back = false;
         if (S._aimAngle != null && S.player) { const _d = (S.player.vx || 0) * Math.cos(S._aimAngle) + (S.player.vy || 0) * Math.sin(S._aimAngle); _back = _d < 0; }
         const _jfr = _back ? ((_fc - 1) - _raw) : _raw;
-        const _mir = S._bodyAnimMirror ? -1 : 1;
+        const _mir = _rd.mirror ? -1 : 1;
         const _legArr = this._bowJogLegFrames[_jdir];
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
@@ -3132,11 +3142,17 @@ export class EffectsRenderer {
       const _torsoFrames = this._bowTorsoFrames[fmap[0]];
       const _jogLegs = !!S._bowJogLegs && _torsoFrames && _torsoFrames[fi];
       if (_jogLegs) {
-        const _jdir = S._bodyAnimDir || 'south';
+        /* v2.3.1093: the legs face the SAME direction as the torso (the aim
+           facing), not the movement direction -- upper and lower body stay in
+           alignment per facing.  Derive the jog leg dir+mirror from the bow's
+           real aim via resolveDirection (which also maps the torso's
+           north-diagonal convention to the jog sheets' convention). */
+        const _rd = resolveDirection(S._bowDir);
+        const _jdir = _rd.dir;
         /* v2.3.1073: compute the jog frame from `now` here -- the published
            S._bodyAnimFrame can stall during the shot (legs freeze).  Match the
            body's cadence (jog runs ~2x slower while attacking) and reverse it when
-           backpedalling (moving opposite aim) so it tracks the normal body. */
+           backpedalling (moving opposite aim) so the stride reads backward. */
         const _fc = jogFrameCount('jog', _jdir) || 24;
         const _armoredCad = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
         const _cyc = (jogCycleMs('jog', _jdir, _armoredCad) || 700) * 2;
@@ -3144,15 +3160,15 @@ export class EffectsRenderer {
         let _back = false;
         if (S._aimAngle != null && S.player) { const _d = (S.player.vx || 0) * Math.cos(S._aimAngle) + (S.player.vy || 0) * Math.sin(S._aimAngle); _back = _d < 0; }
         const _jfr = _back ? ((_fc - 1) - _raw) : _raw;
-        /* legs flip by the BODY's mirror (NOT the bow facing's `sgn`, which would
-           double-flip west/SE/NE) and scale by the JOG body height (the bow art is
+        /* legs flip by the aim facing's mirror (from resolveDirection above, so
+           they match the torso), and scale by the JOG body height (the bow art is
            jog-sized; the stand height read ~25% small for east). */
         /* per-facing scale fine-tune.  The bow art is drawn at different sizes per
            dir, AND the bare body-leg frames vs the leg-ARMOUR frames have different
            native sizes -- so they need SEPARATE knobs (with leg armour on, the bare
            legs are hidden, so only _gearAdj shows).  Keyed by fmap[0] => each covers
            its mirror (west / southeast). */
-        const _mir = S._bodyAnimMirror ? -1 : 1;
+        const _mir = _rd.mirror ? -1 : 1;
         /* Align + size the legs via the shared helper (same code path remote
            players use, so they look identical). */
         const _legArr = this._bowJogLegFrames[_jdir];
