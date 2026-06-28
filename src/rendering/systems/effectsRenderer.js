@@ -2675,10 +2675,12 @@ export class EffectsRenderer {
     const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut (closes seam)
     const _ov = 10;         // frame px of leg drawn UP under the torso
     const _yMeet = footY + (cutRow - feetY) * s - _LEG_LIFT * s;
-    /* per-facing knobs are WEAPON-specific (the bow + sword torsos are framed
-       differently, so the legs need their own size/line-up per weapon). */
-    const _SIZE = weapon === 'sword' ? {} : { east: 1.36, southwest: 0.90, north: 0.90 };
-    const _NUDGE = weapon === 'sword' ? {} : { east: 10 };
+    /* per-facing knobs -- own tunable set per weapon.  The SWORD seeds from the
+       bow's corrections (same leg art) and can diverge as the owner calibrates. */
+    const _SIZE = weapon === 'sword'
+      ? { east: 1.36, southwest: 0.90, north: 0.90 }
+      : { east: 1.36, southwest: 0.90, north: 0.90 };
+    const _NUDGE = weapon === 'sword' ? { east: 10 } : { east: 10 };
     const _legMul = ({ southwest: 1.12, northeast: 1.12 })[jdir] || 1;     // diagonal gap fill (shared)
     const _legSizeMul = _SIZE[jdir] || 1;                                  // per-facing size trim
     const _legScale = s * _legMul * _legSizeMul;
