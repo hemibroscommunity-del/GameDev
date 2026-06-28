@@ -2891,6 +2891,27 @@ export class EntityRenderer {
     }
   }
 
+  /* v2.3.1091: zone perspective player-scale -- the Overlook/vista "world
+     view" shrink that makes avatars tiny while travelling. Shared by the
+     LOCAL player and REMOTE players from each one's own position, so everyone
+     shrinks together on a vista map. Previously only the local avatar shrank
+     and other players stayed full size, dwarfing the tiny landscape. Absent
+     playerScale => 1 (normal in-zone sizing, unchanged). */
+  _zonePscale(S, x, y) {
+    const _z = ZONES[S.currentZone];
+    const ps = _z && _z.playerScale;
+    if (typeof ps === 'number') return ps;
+    if (ps && typeof ps === 'object') {
+      const cx = (_z.w * TILE) / 2, cy = (_z.h * TILE) / 2;
+      const d = Math.min(1, Math.hypot(x - cx, y - cy) / (Math.hypot(cx, cy) || 1));
+      const near = ps.near != null ? ps.near : 0.6;
+      const far = ps.far != null ? ps.far : 0.3;
+      const curve = ps.curve != null ? ps.curve : 1; // <1 shrinks faster as you leave centre
+      return near + (far - near) * Math.pow(d, curve);
+    }
+    return 1;
+  }
+
   _updateOtherPlayers(S, now) {
     const others = S.others || {};
     const activeIds = new Set();
@@ -2910,6 +2931,18 @@ export class EntityRenderer {
       // Use pre-computed interpolated position
       display.x = other.renderX || other.x || 0;
       display.y = other.renderY || other.y || 0;
+
+      /* v2.3.1091: apply the same per-zone perspective shrink the local
+         player gets, computed from THIS remote's own position, so other
+         players also become tiny on a vista map ("world view") instead of
+         dwarfing the landscape. Normal zones have no playerScale => 1 (other
+         players keep their correct in-zone size). The body's horizontal flip
+         lives on the inner _spriteBody, so scaling the container uniformly
+         here doesn't disturb facing. */
+      {
+        const pscale = this._zonePscale(S, display.x, display.y);
+        if (display.scale.x !== pscale) display.scale.set(pscale);
+      }
 
       /* Death state — play the death sprite animation (player crumbles
          into a skeleton then a pile of bones) until player_respawned
@@ -3426,20 +3459,10 @@ export class EntityRenderer {
        maps (e.g. the Overlook) so it doesn't dwarf the landscape.
        zone.playerScale is either a flat number, or { near, far } to scale by
        distance from the zone centre (bigger at the plateau, smaller toward the
-       distant edges). Absent => 1 (normal). */
+       distant edges). Absent => 1 (normal). v2.3.1091: extracted to
+       _zonePscale and shared with the remote-player path. */
     {
-      const _z = ZONES[S.currentZone];
-      const ps = _z && _z.playerScale;
-      let pscale = 1;
-      if (typeof ps === 'number') pscale = ps;
-      else if (ps && typeof ps === 'object') {
-        const cx = (_z.w * TILE) / 2, cy = (_z.h * TILE) / 2;
-        const d = Math.min(1, Math.hypot(P.x - cx, P.y - cy) / (Math.hypot(cx, cy) || 1));
-        const near = ps.near != null ? ps.near : 0.6;
-        const far = ps.far != null ? ps.far : 0.3;
-        const curve = ps.curve != null ? ps.curve : 1; // <1 shrinks faster as you leave centre
-        pscale = near + (far - near) * Math.pow(d, curve);
-      }
+      const pscale = this._zonePscale(S, P.x, P.y);
       if (display.scale.x !== pscale) display.scale.set(pscale);
     }
 
