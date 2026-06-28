@@ -3991,6 +3991,9 @@ export class EntityRenderer {
          this to the south facing for now via fmap).  Gate on the function-scope
          isMoving (reliable) rather than the published _bodyMoving. */
       S._bowJogLegs = _bowShot && isMoving;
+      /* v2.3.1088: same for the sword swing -- jog the legs under the swing torso
+         strip while moving instead of sliding. */
+      S._swordJogLegs = _swordSwing && isMoving;
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this
