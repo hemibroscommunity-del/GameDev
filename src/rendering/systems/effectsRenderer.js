@@ -2720,8 +2720,9 @@ export class EffectsRenderer {
     let set = this._remoteSwordSprites.get(id);
     if (!set) {
       const mk = () => { const s = new Sprite(); s.visible = false; this.nodeLayer.addChild(s); return s; };
-      /* v2.3.1050: `shirt` created right after the body so it sits under legs/chest. */
-      set = { body: mk(), shirt: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+      /* v2.3.1088: jogLegs/jogLegsGear first so they sit UNDER the body (torso in
+         front).  `shirt` after the body so it sits under legs/chest. */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), shirt: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
       this._remoteSwordSprites.set(id, set);
     }
     return set;
@@ -2772,8 +2773,18 @@ export class EffectsRenderer {
       const anchorY = cfg.feetY / cfg.fh;
       const sY = REMOTE_SWING_SCALE;
       const sgnX = mirror ? -sY : sY;
+      /* v2.3.1088: jogging legs while this remote is MOVING -- swap the body to the
+         leg-erased torso strip and composite jog legs under it (same as the bow). */
+      const _stale = !o._lastUpdate || (now - o._lastUpdate) > 150;
+      const _vmag = Math.max(Math.abs(o._smoothVx || 0), Math.abs(o._smoothVy || 0));
+      const _moving = !_stale && _vmag > 0.03;
+      const _rd = resolveDirection(o._renderFacing || o._moveFacing8 || 'south');
+      const _jdir = _rd.dir, _rmir = _rd.mirror ? -1 : 1;
+      const _torsoFrames = cfg.torsoUrl ? this._remoteSheetFramesFor(o, cfg.torsoUrl, cfg.fw, cfg.fh) : null;
+      const _legArr = this._remoteSheetFramesFor(o, '/sprites/player/jog-' + _jdir + '-legs.png', 256, 256);
+      const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
-      sp.texture = bodyFrames[fi];
+      sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
       sp.scale.set(sgnX, sY);
       sp.x = (o.renderX != null) ? o.renderX : o.x;
       sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_SWING_FOOT_DY;
@@ -2790,7 +2801,7 @@ export class EffectsRenderer {
       /* v2.3.1050: their tinted shirt under-layer (folder always 'tshirt' when shirted). */
       const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
       this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor);
-      place(set.legs, this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
+      place(set.legs, _jog ? null : this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       const weaponFrames = this._swordWeaponFrames[cfgKey];
       place(set.weapon, weaponFrames && weaponFrames[fi]);
@@ -2803,15 +2814,31 @@ export class EffectsRenderer {
         headwear: o.headwear, hatColor: o.hatColor,
       };
       this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits);
+      /* composite the jog legs under the torso strip (or hide them). */
+      if (_jog) {
+        const _fc = jogFrameCount('jog', _jdir) || 24;
+        const _armoredCad = eq.chest && eq.chest !== 'none' && eq.legs && eq.legs !== 'none';
+        const _cyc = (jogCycleMs('jog', _jdir, _armoredCad) || 700) * 2;
+        const _raw = Math.floor((now / _cyc) * _fc) % _fc;
+        const _d = (o._smoothVx || 0) * Math.cos(ang) + (o._smoothVy || 0) * Math.sin(ang);   // backpedal when moving opposite the swing
+        const _jfr = _d < 0 ? ((_fc - 1) - _raw) : _raw;
+        const legTex = _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length];
+        this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
+          legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
+          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: sp.y,
+          feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), weapon: 'sword',
+        });
+      } else { set.jogLegs.visible = false; set.jogLegsGear.visible = false; }
       active.add(id);
     }
     /* Hide non-swinging sets; destroy sets for players who left (no leak). */
     for (const [id, set] of this._remoteSwordSprites) {
       if (active.has(id)) continue;
       set.body.visible = set.shirt.visible = set.chest.visible = set.legs.visible = set.weapon.visible = false;
+      set.jogLegs.visible = set.jogLegsGear.visible = false;
       hideSkillTraits(set.traits);
       if (!others[id]) {
-        for (const s of [set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
+        for (const s of [set.jogLegs, set.jogLegsGear, set.body, set.shirt, set.legs, set.chest, set.weapon, set.traits.hair, set.traits.beard, set.traits.hat]) {
           try { s.destroy(); } catch (e) {}
         }
         this._remoteSwordSprites.delete(id);
