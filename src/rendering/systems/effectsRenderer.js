@@ -1037,6 +1037,10 @@ export class EffectsRenderer {
       if (!a._renderX) continue;
       const elemColor = a._projElem && ELEMENTS[a._projElem] ? cssToHex(ELEMENTS[a._projElem].color) : 0xc8c8d0;
       const fadeA = Math.min(1, a.life / 20);
+      /* v2.3.1095: a planted/falling arrow is stuck in the world -- no motion
+         trail, and it ignores the live aim-bend so it sits rock-steady. */
+      const _stuckPose = a.planted || a.planting;
+      const _angB = a.ang + (_stuckPose ? 0 : bend);
 
       /* Motion-blur trail — push the current position into a small
          ring buffer per arrow, then draw fading line segments back
@@ -1046,7 +1050,7 @@ export class EffectsRenderer {
          Stuck arrows / hit arrows don't need this.
          Bow heavy attacks (isSpecial without _isStaffProj) keep the
          arrow trail style — the orb trail belongs to staff/ice. */
-      this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice);
+      if (!_stuckPose) this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice);
 
       const isBowHeavy = a.isSpecial && !a._isStaffProj && !a.ice;
       if (isBowHeavy) {
@@ -1062,7 +1066,7 @@ export class EffectsRenderer {
         gfx.fill({ color: elemColor, alpha: fadeA * 0.45 });
         gfx.circle(a._renderX, a._renderY, 15);
         gfx.fill({ color: 0xfff2a8, alpha: fadeA * 0.55 });
-        this._drawArrow(gfx, a._renderX, a._renderY, a.ang + bend, elemColor, fadeA, 3);
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 3);
       } else if (a.isSpecial || a.ice) {
         /* Staff special / ice — bigger yellow glow ring so specials
            read as distinct from regular projectiles. Three concentric
@@ -1090,7 +1094,7 @@ export class EffectsRenderer {
            local-coords-friendly.  ang_eff = a.ang + bend so arrows
            in flight visibly tilt in the direction the player is
            rotating their aim. */
-        this._drawArrow(gfx, a._renderX, a._renderY, a.ang + bend, elemColor, fadeA);
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA);
       }
     }
 
@@ -3080,19 +3084,32 @@ export class EffectsRenderer {
        figure read a touch large once its full legs were restored, so it gets a
        small reduction.  Scales body+shirt+armour+weapon+traits together (they
        all derive from this `s`); feet stay planted via the feetY anchor. */
-    const s = bodyH / 188 * (cfg.bodyScale || 1);
+    /* v2.3.1094: naked-only (no chest/leg armour) per-facing seam tuning for the
+       sword jog composite. _figureAdj grows the WHOLE figure (torso+legs stay
+       aligned by construction); _torsoOnlyAdj grows JUST the torso (legs keep
+       `s`). Owner-tuned: south figure +5%, east torso +25% to close the bare
+       torso<->waist gap. Armoured swings: both 1 (the plates cover the seam and
+       are tuned separately). */
+    const _nakedSeam = getEquip('chest') === 'none' && getEquip('legs') === 'none';
+    const _figureAdj = _nakedSeam ? (({ south: 1.05 })[fmap[0]] || 1) : 1;
+    const _torsoOnlyAdj = _nakedSeam ? (({ east: 1.25 })[fmap[0]] || 1) : 1;
+    const s = bodyH / 188 * (cfg.bodyScale || 1) * _figureAdj;
     /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
        Narrows x only (height stays `s`); overlays inherit it via `sgn` in
        place(), and traits re-center on the narrower head (their position uses
        sp.scale.x) while keeping their height-based size (sp.scale.y). */
     const sx = s * (cfg.bodyScaleX || 1);
-    const sgn = mirror ? -sx : sx;
-    sp.scale.set(sgn, s);
+    /* v2.3.1094: the torso renders at sT (s × _torsoOnlyAdj) so naked east can
+       grow the upper body without moving the legs (they keep `s`). For south
+       _torsoOnlyAdj is 1 and the +5% lives in `s`, so torso+legs grow together. */
+    const sT = s * _torsoOnlyAdj;
+    const sgnT = mirror ? -(sx * _torsoOnlyAdj) : (sx * _torsoOnlyAdj);
+    sp.scale.set(sgnT, sT);
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
     /* place an overlay sprite with the SAME transform as the body sprite. */
-    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
+    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnT, sT); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     const armorFrames = this._swordArmorFrames[fmap[0]];
     const weaponFrames = this._swordWeaponFrames[fmap[0]];
     const bodyFrames = this._swordBodyFrames[fmap[0]];
