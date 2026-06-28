@@ -299,6 +299,11 @@ export function setupWebSocket(ctx) {
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
                     S.others[pid]._lastUpdate = Date.now();
+                    /* v2.3.1092: current harvest activity (mine|chop|fish|cook|
+                       fire, or null). Drives the remote body pose / skill
+                       stand-in in the renderer. Absent (old server) => leave
+                       untouched. */
+                    if (data.ex !== undefined) S.others[pid]._ex = data.ex || null;
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
@@ -1597,6 +1602,9 @@ export function setupWebSocket(ctx) {
               eqc: p.eqc,
               eql: p.eql,
               eqs: p.eqs,
+              /* v2.3.1092: forward the harvest activity code so the server can
+                 relay it and peers can render this player gathering. */
+              ex: p.ex !== undefined ? p.ex : null,
               z: p.z || p.zone,
               vx: p.vx || 0,
               vy: p.vy || 0,

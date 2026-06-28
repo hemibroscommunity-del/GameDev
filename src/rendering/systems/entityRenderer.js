@@ -2917,6 +2917,9 @@ export class EntityRenderer {
          corpse reads cleanly.  Fall back to a fade+tilt visual if the
          sheet hasn't loaded yet. */
       if (other._isDead) {
+        /* v2.3.1092: a harvest stand-in may have hidden this container last
+           frame; the corpse renders through it, so restore visibility. */
+        if (!display.visible) display.visible = true;
         /* v2.3.809: self-heal a missed corpse-clear.  player_respawned is a
            one-shot peer broadcast -- an observer that was frozen,
            reconnecting, or joined after the respawn never receives it, so
@@ -3037,12 +3040,25 @@ export class EntityRenderer {
          Dropping it makes remote facing match local. */
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
-      const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
+      /* v2.3.1092: remote harvest activity broadcast by the gatherer.
+         mine/fish render as the SAME south-only body poses the local player
+         uses; chop/cook/fire are full-character STAND-INS drawn in
+         effectsRenderer (_updateRemoteExtraction), so the whole body container
+         is hidden while one is active (mirrors the local player's _chopHide). */
+      const _rex = other._ex || null;
+      const _rexStandIn = _rex === 'chop' || _rex === 'cook' || _rex === 'fire';
+      const _rexBodyPose = _rex === 'mine' ? 'mine' : _rex === 'fish' ? 'fish' : null;
+      if (display.visible === _rexStandIn) display.visible = !_rexStandIn;
+      const pose = _rexBodyPose
+        ? _rexBodyPose
+        : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'));
       const spritesAvailable = hasPose(pose) || hasPose('stand');
       let useSprite = false;
-      if (spritesAvailable) {
+      if (!_rexStandIn && spritesAvailable) {
         const spriteBody = display._spriteBody;
-        const { dir, mirror } = resolveDirection(facing);
+        let { dir, mirror } = resolveDirection(facing);
+        /* mine/fish frames are authored south-only -> force south, no mirror. */
+        if (pose === 'mine' || pose === 'fish') { dir = 'south'; mirror = false; }
         let frameIdx = 0;
         if (pose === 'jog') {
           /* Frame count is per-direction now (24-35) — pulled from
@@ -3056,6 +3072,11 @@ export class EntityRenderer {
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
+        } else if (pose === 'mine' || pose === 'fish') {
+          /* v2.3.1092: loop the south-only gather cycle off `now`, same cadence
+             as the local player's mine/fish pose. */
+          const fc = playerFrameCount(pose, 'south') || (pose === 'mine' ? 14 : 32);
+          frameIdx = Math.floor((now / cycleMs(pose, 'south')) * fc) % fc;
         }
         /* v2.3.389: remote players render in their own skin tone.
            v2.3.399: + their pants / shoes colors.
