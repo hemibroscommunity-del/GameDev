@@ -54,7 +54,7 @@ import { CookPanel } from './panels/buildings/CookPanel.jsx';
 import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
-import { MINE_SPOT_R } from '@/data/constants.js';
+import { MINE_SPOT_R, WORLD_ZOOM } from '@/data/constants.js';
 import { IntroVideo } from './IntroVideo.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
@@ -2822,8 +2822,12 @@ export var BroTown = function BroTown(_ref0) {
         if (false) {
           return;
         }
-        var W = canvas.width / (window.devicePixelRatio || 1);
-        var H = canvas.height / (window.devicePixelRatio || 1);
+        /* v2.3.1090: enlarge the logical viewport by WORLD_ZOOM so camera
+           centring/clamping matches the zoomed-out render (renderFrame.js
+           scales the world by 1/WORLD_ZOOM). Both must use the same W/H or
+           the player drifts off-centre. */
+        var W = (canvas.width / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
+        var H = (canvas.height / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
         var P = S.player;
         var K = S.keys;
 
@@ -5982,8 +5986,12 @@ export var BroTown = function BroTown(_ref0) {
          dpr; PixiJS: worldContainer.scale 1.0 because BroTown passes
          viewW=cssW so cssW/viewW=1.0).  World coords map 1:1 to CSS
          pixels after camera offset. */
-      var SCALE_X = 1.0;
-      var SCALE_Y = 1.0;
+      /* v2.3.1090: world->CSS scale follows the renderer's actual world scale
+         (1/WORLD_ZOOM, e.g. 0.8 when zoomed out), published each frame by
+         pixiRenderer. Hardcoding 1.0 here made taps miss once the world was
+         zoomed out. Falls back to 1.0 before the first render. */
+      var SCALE_X = S._worldScaleX || 1.0;
+      var SCALE_Y = S._worldScaleY || 1.0;
       /* TEMP DIAGNOSTIC — remove once tap-to-lock is confirmed working. */
       if (window.__broTapLog) {
         var monstersAlive = (S.monsters || []).filter(function (m) { return m.alive; });

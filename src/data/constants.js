@@ -1,6 +1,17 @@
 /* ═══ CORE CONSTANTS ═══ */
 export const TILE = 32;
 
+/* v2.3.1090: world zoom-out factor. The logical viewport (W/H) is enlarged by
+   this factor so the renderer shows WORLD_ZOOM× more world than CSS pixels,
+   which makes the world scale = cssW/viewW = 1/WORLD_ZOOM (e.g. 0.8 at 1.25).
+   Restores the historical "0.8 world scale" feel the game shipped with before
+   the viewport lost its 1.25 factor and everything read 20% too big/zoomed-in.
+   Consumed by BOTH the render call (src/game/renderFrame.js) and the camera
+   centering (src/ui/BroTown.jsx) so the two stay consistent; world<->screen
+   conversions (tap-to-lock) read the published S._worldScaleX/Y instead of
+   assuming 1.0, so they track this automatically. Tune on the preview. */
+export const WORLD_ZOOM = 1.25;
+
 /* Ore is mined from one tile NORTH of the vein (so the south-facing swing
    lines up over the rock). The player must stand within MINE_SPOT_R of that
    spot for the Mine action to be offered. Shared by the marker + the gate. */
