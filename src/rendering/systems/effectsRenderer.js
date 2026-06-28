@@ -2744,13 +2744,15 @@ export class EffectsRenderer {
      docs/specs/jog-legs-attack-composite.md.  All the owner-tuned per-facing knobs
      live HERE (one source of truth). */
   _placeJogLegs(jl, jg, opts) {
-    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow' } = opts;
+    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow', seamLift = 0 } = opts;
     const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut (closes seam)
     const _ov = 10;         // frame px of leg drawn UP under the torso
     /* per-facing DOWNWARD nudge (frame px, sword only for now; southwest covers SE
        via mirror, east covers west). */
     const _DOWN = weapon === 'sword' ? ({ south: 20, southwest: 20, east: 20 }) : {};
-    const _yMeet = footY + (cutRow - feetY) * s - _LEG_LIFT * s + (_DOWN[jdir] || 0) * s;
+    /* v2.3.1096: seamLift raises the legs further UP into the torso (frame px) to
+       close the naked east/south sword seam without moving the torso. */
+    const _yMeet = footY + (cutRow - feetY) * s - (_LEG_LIFT + seamLift) * s + (_DOWN[jdir] || 0) * s;
     /* per-facing knobs -- own tunable set per weapon.  The SWORD seeds from the
        bow's corrections (same leg art) and can diverge as the owner calibrates. */
     const _SIZE = weapon === 'sword'
@@ -3084,32 +3086,29 @@ export class EffectsRenderer {
        figure read a touch large once its full legs were restored, so it gets a
        small reduction.  Scales body+shirt+armour+weapon+traits together (they
        all derive from this `s`); feet stay planted via the feetY anchor. */
-    /* v2.3.1094: naked-only (no chest/leg armour) per-facing seam tuning for the
-       sword jog composite. _figureAdj grows the WHOLE figure (torso+legs stay
-       aligned by construction); _torsoOnlyAdj grows JUST the torso (legs keep
-       `s`). Owner-tuned: south figure +5%, east torso +25% to close the bare
-       torso<->waist gap. Armoured swings: both 1 (the plates cover the seam and
-       are tuned separately). */
+    /* v2.3.1096: naked-only (no chest/leg armour) per-facing seam fix for the
+       sword jog composite. The bare torso<->waist seam shows a transparent gap
+       on east/west + south because the legs sit a touch BELOW the torso's waist
+       cut. Fix by RAISING the legs up into the torso by _seamLift frame-px while
+       leaving the torso anchored where it is. (v2.3.1094 tried SCALING the torso
+       up; feet-anchored, that only lifted the torso's waist AWAY from the legs
+       and widened the gap -- the "torso jumps off the legs" report.) Armoured
+       swings unaffected. Owner-tuned per facing; east covers west via mirror. */
     const _nakedSeam = getEquip('chest') === 'none' && getEquip('legs') === 'none';
-    const _figureAdj = _nakedSeam ? (({ south: 1.05 })[fmap[0]] || 1) : 1;
-    const _torsoOnlyAdj = _nakedSeam ? (({ east: 1.25 })[fmap[0]] || 1) : 1;
-    const s = bodyH / 188 * (cfg.bodyScale || 1) * _figureAdj;
+    const _seamLift = _nakedSeam ? (({ east: 10, south: 10 })[fmap[0]] || 0) : 0;
+    const s = bodyH / 188 * (cfg.bodyScale || 1);
     /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
        Narrows x only (height stays `s`); overlays inherit it via `sgn` in
        place(), and traits re-center on the narrower head (their position uses
        sp.scale.x) while keeping their height-based size (sp.scale.y). */
     const sx = s * (cfg.bodyScaleX || 1);
-    /* v2.3.1094: the torso renders at sT (s × _torsoOnlyAdj) so naked east can
-       grow the upper body without moving the legs (they keep `s`). For south
-       _torsoOnlyAdj is 1 and the +5% lives in `s`, so torso+legs grow together. */
-    const sT = s * _torsoOnlyAdj;
-    const sgnT = mirror ? -(sx * _torsoOnlyAdj) : (sx * _torsoOnlyAdj);
-    sp.scale.set(sgnT, sT);
+    const sgn = mirror ? -sx : sx;
+    sp.scale.set(sgn, s);
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.visible = true;
     /* place an overlay sprite with the SAME transform as the body sprite. */
-    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnT, sT); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
+    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     const armorFrames = this._swordArmorFrames[fmap[0]];
     const weaponFrames = this._swordWeaponFrames[fmap[0]];
     const bodyFrames = this._swordBodyFrames[fmap[0]];
@@ -3160,7 +3159,7 @@ export class EffectsRenderer {
         this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
           cutRow: swordTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: sp.y,
-          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword',
+          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword', seamLift: _seamLift,
         });
       }
     } else if (armorFrames && armorFrames[fi]) {
