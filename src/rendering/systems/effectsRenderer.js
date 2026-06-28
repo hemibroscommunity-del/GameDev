@@ -2676,7 +2676,7 @@ export class EffectsRenderer {
     const _ov = 10;         // frame px of leg drawn UP under the torso
     /* per-facing DOWNWARD nudge (frame px, sword only for now; southwest covers SE
        via mirror, east covers west). */
-    const _DOWN = weapon === 'sword' ? ({ south: 10, southwest: 10, east: 10 }) : {};
+    const _DOWN = weapon === 'sword' ? ({ south: 20, southwest: 20, east: 20 }) : {};
     const _yMeet = footY + (cutRow - feetY) * s - _LEG_LIFT * s + (_DOWN[jdir] || 0) * s;
     /* per-facing knobs -- own tunable set per weapon.  The SWORD seeds from the
        bow's corrections (same leg art) and can diverge as the owner calibrates. */
