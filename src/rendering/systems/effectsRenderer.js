@@ -2744,15 +2744,17 @@ export class EffectsRenderer {
      docs/specs/jog-legs-attack-composite.md.  All the owner-tuned per-facing knobs
      live HERE (one source of truth). */
   _placeJogLegs(jl, jg, opts) {
-    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow', seamLift = 0 } = opts;
+    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow', seamLift = 0, torsoScale = 1 } = opts;
     const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut (closes seam)
     const _ov = 10;         // frame px of leg drawn UP under the torso
     /* per-facing DOWNWARD nudge (frame px, sword only for now; southwest covers SE
        via mirror, east covers west). */
     const _DOWN = weapon === 'sword' ? ({ south: 20, southwest: 20, east: 20 }) : {};
     /* v2.3.1096: seamLift raises the legs further UP into the torso (frame px) to
-       close the naked east/south sword seam without moving the torso. */
-    const _yMeet = footY + (cutRow - feetY) * s - (_LEG_LIFT + seamLift) * s + (_DOWN[jdir] || 0) * s;
+       close the naked east/south sword seam without moving the torso.
+       v2.3.1097: torsoScale scales the (cutRow-feetY) term so the legs track a
+       SIZE-scaled torso's waist (naked east 1.15x) while keeping their own size. */
+    const _yMeet = footY + (cutRow - feetY) * s * torsoScale - (_LEG_LIFT + seamLift) * s + (_DOWN[jdir] || 0) * s;
     /* per-facing knobs -- own tunable set per weapon.  The SWORD seeds from the
        bow's corrections (same leg art) and can diverge as the owner calibrates. */
     const _SIZE = weapon === 'sword'
@@ -3095,20 +3097,31 @@ export class EffectsRenderer {
        and widened the gap -- the "torso jumps off the legs" report.) Armoured
        swings unaffected. Owner-tuned per facing; east covers west via mirror. */
     const _nakedSeam = getEquip('chest') === 'none' && getEquip('legs') === 'none';
+    /* raise the legs into the torso to close the bare waist seam (east+south). */
     const _seamLift = _nakedSeam ? (({ east: 10, south: 10 })[fmap[0]] || 0) : 0;
+    /* grow ONLY the torso (east, covers west via mirror). The legs keep their own
+       size but re-anchor to the SCALED torso's waist (torsoScale below) so the
+       seam stays closed -- growing the figure would have enlarged the legs too. */
+    const _torsoOnlyAdj = _nakedSeam ? (({ east: 1.15 })[fmap[0]] || 1) : 1;
+    /* drop ONLY the torso a few world-px (south) onto the legs, legs unchanged. */
+    const _torsoDY = _nakedSeam ? (({ south: 8 })[fmap[0]] || 0) : 0;
     const s = bodyH / 188 * (cfg.bodyScale || 1);
     /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
        Narrows x only (height stays `s`); overlays inherit it via `sgn` in
        place(), and traits re-center on the narrower head (their position uses
        sp.scale.x) while keeping their height-based size (sp.scale.y). */
     const sx = s * (cfg.bodyScaleX || 1);
-    const sgn = mirror ? -sx : sx;
-    sp.scale.set(sgn, s);
+    /* v2.3.1097: naked east grows the torso 15% (sT); the legs keep their own
+       size but re-anchor to the scaled waist via torsoScale so the seam holds. */
+    const sT = s * _torsoOnlyAdj;
+    const sgnT = mirror ? -(sx * _torsoOnlyAdj) : (sx * _torsoOnlyAdj);
+    sp.scale.set(sgnT, sT);
+    const _baseFootY = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     sp.x = S.player.x;
-    sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
+    sp.y = _baseFootY + _torsoDY;   // south drops the torso onto the legs (legs use _baseFootY)
     sp.visible = true;
     /* place an overlay sprite with the SAME transform as the body sprite. */
-    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
+    const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnT, sT); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     const armorFrames = this._swordArmorFrames[fmap[0]];
     const weaponFrames = this._swordWeaponFrames[fmap[0]];
     const bodyFrames = this._swordBodyFrames[fmap[0]];
@@ -3158,8 +3171,8 @@ export class EffectsRenderer {
         const legTex = (_legArr && _legArr.length) ? _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length] : null;
         this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
-          cutRow: swordTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: sp.y,
-          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword', seamLift: _seamLift,
+          cutRow: swordTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: _baseFootY,
+          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword', seamLift: _seamLift, torsoScale: _torsoOnlyAdj,
         });
       }
     } else if (armorFrames && armorFrames[fi]) {
