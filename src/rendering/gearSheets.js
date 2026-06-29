@@ -24,7 +24,8 @@ const FRAME_H = 256;
 /* v2.3.1053: + pickup-south sheets for chest/steelplate, legs/steelgreaves,
    and shirt/tshirt -- the loot-pickup freeze pose now shows the recoloured
    shirt + equipped plate instead of the bare body (owner-drawn art). */
-const GEAR_VERSION = '2.3.1053';
+/* v2.3.1054: pickup greaves rescaled +25% (owner) -- bump to refetch the PNG. */
+const GEAR_VERSION = '2.3.1054';
 
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};

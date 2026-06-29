@@ -1028,6 +1028,21 @@ function _placeBodyRegions(display, sb, bodyTex, show) {
 function _hideBodyRegions(display) {
   for (const k of ['_bodyHead', '_bodyTorso', '_bodyLegs']) if (display[k]) display[k].visible = false;
 }
+/* v2.3.1053: when a chest/shoulder plate is worn, the body is one masked sprite
+   drawn BELOW the gear, so a pose that brings the head down into the plate (the
+   loot-pickup crouch faces the camera and bends forward) lets the pauldrons/
+   collar cover the bare head.  Re-draw just the HEAD region from the unmasked
+   body texture and lift it above the chest/shoulder gear (still below gearHead
+   so a future helmet wins).  Cheap: one region slice + an index move only when
+   it isn't already raised.  No-op (and hides the extra head) when unarmored. */
+function _raiseHeadAboveGear(display, sb, bodyTex, hasPlate) {
+  const hd = display._bodyHead;
+  if (!hd) return;
+  if (!hasPlate || !bodyTex) { hd.visible = false; return; }
+  _placeBodyRegions(display, sb, bodyTex, { head: true, torso: false, legs: false });
+  const sh = display._gearShoulders;
+  if (sh) { const hi = display.getChildIndex(hd), gi = display.getChildIndex(sh); if (hi < gi) display.setChildIndex(hd, gi); }
+}
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
 const _hairMaskCache = {};
@@ -3096,6 +3111,8 @@ export class EntityRenderer {
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           spriteBody.visible = true;
+          /* v2.3.1053: keep the head above a worn chest/shoulder plate. */
+          _raiseHeadAboveGear(display, spriteBody, tex, (_oEq.chest && _oEq.chest !== 'none') || (_oEq.shoulders && _oEq.shoulders !== 'none'));
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
@@ -3806,6 +3823,8 @@ export class EntityRenderer {
         }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         spriteBody.visible = true;
+        /* v2.3.1053: keep the head above a worn chest/shoulder plate. */
+        _raiseHeadAboveGear(display, spriteBody, tex, (getEquip('chest') !== 'none') || (getEquip('shoulders') !== 'none'));
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
