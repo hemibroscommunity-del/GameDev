@@ -19,6 +19,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
 import { getGearFrame } from '../gearSheets.js';
+import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
@@ -337,7 +338,7 @@ export class EffectsRenderer {
        host) keeps serving a stale sheet after the art changes -- that's what
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
-    const SWORD_ART_VERSION = 1098;   // 1098: waist re-cut at the true torso->pants boundary (pants-confirmed) so the shirtless east torso isn't chopped at a body line; 1088: leg-erased torso strips (sword jog-legs composite); 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
+    const SWORD_ART_VERSION = 1099;   // 1099: sword-south/-east stand-in strips stored half-res on disk (upscaled in-loader) to shrink the download; 1098: waist re-cut at the true torso->pants boundary (pants-confirmed) so the shirtless east torso isn't chopped at a body line; 1088: leg-erased torso strips (sword jog-legs composite); 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
     /* v2.3.1088: jog legs drawn UNDER the sword torso (added BEFORE swordSprite). */
     this.swordJogLegsSprite = new Sprite();
     this.swordJogLegsSprite.visible = false;
@@ -372,9 +373,18 @@ export class EffectsRenderer {
     this.nodeLayer.addChild(this.swordWeaponSprite);
     const _loadSwordStrip = (target, dir, url, cfg) => {
       target[dir] = [];
-      Assets.load(url + '?v=' + SWORD_ART_VERSION).then((tex) => {
-        const n = Math.max(1, Math.round(tex.width / cfg.fw));
-        for (let i = 0; i < n; i++) target[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
+      /* v2.3.1112: load via <img> + nearest-upscale to the authored frame height
+         so a sheet stored downscaled-on-disk (half-res, to shrink the download)
+         is restored to cfg.fh before slicing -- keeps frame widths (cfg.fw) and
+         feetY/crown maths valid.  No-op for any sheet already >= cfg.fh, so the
+         not-yet-downscaled facings (e.g. sword-north) pass straight through. */
+      _loadImg(url + '?v=' + SWORD_ART_VERSION).then((rawImg) => {
+        const img = upscaleToFrameHeight(rawImg, cfg.fh);
+        const source = Texture.from(img).source;
+        source.scaleMode = 'linear';
+        const w = img.naturalWidth || img.width;
+        const n = Math.max(1, Math.round(w / cfg.fw));
+        for (let i = 0; i < n; i++) target[dir].push(new Texture({ source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
       }).catch((err) => console.warn('[sword ' + dir + '] load failed', err));
     };
     /* v2.3.975: the attack stand-ins must show the PLAYER'S customized body
