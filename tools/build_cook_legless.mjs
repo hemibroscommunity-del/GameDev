@@ -59,14 +59,28 @@ const isBoot=(r,g,b,y)=> (Math.max(r,g,b)-Math.min(r,g,b))<38 && Math.max(r,g,b)
   const cook=await load('/cook'); const W=cook.naturalWidth,H=cook.naturalHeight;
   const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{willReadFrequently:true});
   x.drawImage(cook,0,0); const id=x.getImageData(0,0,W,H); const d=id.data;
-  // per column, find the topmost olive BELOW the waist; from there down, erase
-  // only leg material (pants / leg-skin / boots) -- the pan (dark metal, gray
-  // rim above the boot line, and orange food) is left untouched.
+  const isSkin=(r,g,b)=> r>150 && g>=120 && r>g && g>=b && (r-b)>35;
+  const isFood=(r,g,b)=> r>175 && g<130 && b<100;
+  // pan metal = NEUTRAL grey/dark (low saturation). The olive pants are dark but
+  // SATURATED (g>b), so they're excluded -> the flood can't leak into the legs.
+  const isPanBody=(r,g,b)=>{ const mx=Math.max(r,g,b),mn=Math.min(r,g,b); return (mx-mn)<30 && mx<185; };
+  // --- 1. PAN mask: flood from the food out through the pot metal/rim so the
+  // cook keeps holding the pan after the legs are wiped. Bounded ABOVE the boots
+  // (y<=186) so it can't run down into the dark boots. ---
+  const pan=new Uint8Array(W*H); const st=[];
+  for(let i=0;i<W*H;i++){ const y=(i/W)|0; if(y<118||y>186) continue; const o=i*4; if(d[o+3]>120 && isFood(d[o],d[o+1],d[o+2])){ pan[i]=1; st.push(i); } }
+  while(st.length){ const i=st.pop(); const y=(i/W)|0, X=i%W;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const nx=X+dx, ny=y+dy; if(nx<0||nx>=W||ny<118||ny>186) continue; const j=ny*W+nx; if(pan[j])continue; const o=j*4; if(d[o+3]<120)continue; const r=d[o],g=d[o+1],b=d[o+2]; if(isFood(r,g,b)||isPanBody(r,g,b)){ pan[j]=1; st.push(j); } } }
+  // --- 2. erase each leg column FULLY (fill + outline cap + boots), preserving
+  // the pan. A leg column has pants below the waist; wipe from the top of the
+  // leg silhouette (walk up through the dark outline above the pants, stopping
+  // at skin/torso) down to the foot. ---
   for(let f=0;f<NF;f++){ for(let lx=0;lx<FW;lx++){ const X=f*FW+lx; let top=-1;
     for(let y=WAIST;y<H;y++){ const o=(y*W+X)*4; if(isOlive(d[o],d[o+1],d[o+2],d[o+3])){ top=y; break; } }
-    if(top<0) continue; top=Math.max(WAIST,top-CUT);
-    for(let y=top;y<H;y++){ const o=(y*W+X)*4; const a=d[o+3]; if(!a) continue; const r=d[o],g=d[o+1],b=d[o+2];
-      if(isOlive(r,g,b,a)||isLegSkin(r,g,b)||isBoot(r,g,b,y)) d[o+3]=0; } } }
+    if(top<0) continue;
+    // walk the wipe-top up through the leg's dark outline (not skin, not pan)
+    while(top>WAIST){ const o=((top-1)*W+X)*4; if(d[o+3]<120) break; const r=d[o],g=d[o+1],b=d[o+2]; if(isSkin(r,g,b)||pan[(top-1)*W+X]) break; top--; }
+    for(let y=top;y<H;y++){ const i=y*W+X; if(pan[i]) continue; d[i*4+3]=0; } } }
   x.putImageData(id,0,0);
   const webp = c.toDataURL('image/webp',0.92).split(',')[1];
 
