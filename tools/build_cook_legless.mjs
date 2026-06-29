@@ -46,7 +46,11 @@ const FW=213, FH=220, NF=24, CUT=${CUT};
 function load(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src;});}
 const WAIST=118;   // never erase above this (protects the torso from false hits)
 const BOOT_Y=180;  // gray below here is boots (erase); above is the pan rim (keep)
-const isOlive=(r,g,b,a)=> a>60 && g>b+12 && r>b && Math.max(r,g,b)<150 && g>50;
+// Pants are olive/khaki (r≈g, b notably lower) across a wide brightness range
+// (sampled ~96,96,48 up to brighter highlights). Match by HUE, not brightness,
+// so no pant shade survives -- while excluding skin/food (r≫g), boots/pan-gray
+// (g≈b) and near-white.
+const isOlive=(r,g,b,a)=> a>60 && (g>=b+12) && Math.abs(r-g)<30 && r>b && Math.max(r,g,b)<205;
 // leg materials to erase: olive pants, bare leg SKIN (orange, greener than the
 // red-orange pan food so food survives), and gray BOOTS (low-sat, low only).
 const isLegSkin=(r,g,b)=> r>150 && g>=125 && r>g && g>=b && (r-b)>40;

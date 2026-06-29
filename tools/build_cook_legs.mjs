@@ -122,8 +122,10 @@ const isOlive=(r,g,b,a)=> a>60 && g>b+12 && r>b && Math.max(r,g,b)<150 && g>50;
   for(let i=0;i<18;i++){ if(armor[i]&&!armor[i].bad) continue;
     let rep=null; for(let r=1;r<18;r++){ if(armor[i-r]&&!armor[i-r].bad){rep=armor[i-r];break;} if(armor[i+r]&&!armor[i+r].bad){rep=armor[i+r];break;} }
     if(rep){ armor[i]=rep; healed++; } }
-  // frame 2's greave spacing reads too wide (owner) -> reuse the adjacent pose
-  if(armor[3]&&!armor[3].bad) armor[2]=armor[3]; else if(armor[1]) armor[2]=armor[1];
+  // frames 2 & 3 read with the greaves spaced too wide (owner) -> reuse the
+  // nearest narrower neighbour pose.
+  if(armor[1]) armor[2]=armor[1];
+  if(armor[4]&&!armor[4].bad) armor[3]=armor[4]; else if(armor[1]) armor[3]=armor[1];
   // frames 18-23 reuse the last good frame
   const last=armor[17]||armor[16]||armor[filled-1];
   for(let i=18;i<NF;i++) armor.push(last);
