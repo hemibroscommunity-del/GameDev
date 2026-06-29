@@ -338,6 +338,12 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
     if (tex) {
       if (spr.texture !== tex) spr.texture = tex;
       spr.x = sb.x; spr.y = sb.y;
+      /* v2.3.1056: legs-only pickup -- drop the greaves so they sit on the bare
+         legs like shin guards (owner-tuned: 10px, 20px in the deepest-crouch
+         last-row frames 24-28).  Full set keeps them aligned to the cuirass. */
+      if (_GEAR_SLOTS[s][0] === 'legs' && pose === 'pickup' && (!equip || !equip.chest || equip.chest === 'none')) {
+        spr.y += (frameIdx >= 24 ? 20 : 10) * sb.scale.y;
+      }
       spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
         const t = equip && equip.shirtTint;
@@ -3201,9 +3207,12 @@ export class EntityRenderer {
             }
           }
           if (_rworn.length) {
-            const _rfull = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0)
-                        && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
-            const _mt = (pose === 'pickup' && _rfull) ? _sectionErasedBody(tex, _rworn) : _maskedBodyFrame(tex, _rworn, 6);
+            const _rlegsW = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
+            const _rchestW = _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
+            let _mt;
+            if (pose === 'pickup' && _rlegsW && _rchestW) _mt = _sectionErasedBody(tex, _rworn);
+            else if (pose === 'pickup' && _rlegsW && !_rchestW) _mt = tex;   // shin-guard overlay over bare legs
+            else _mt = _maskedBodyFrame(tex, _rworn, 6);
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           spriteBody.visible = true;
@@ -3913,15 +3922,19 @@ export class EntityRenderer {
            on' bug. */
         let _bodyTex;
         try {
-          /* v2.3.1056: section-erase ONLY for the full set (chest AND legs).
-             Then every limb below the neck is armoured, so dropping the whole
-             body section is safe and kills the greave pokes.  With only one
-             piece worn, a bare limb sits in that section (bare legs under a
-             chest, bare arms beside greaves), so fall back to the per-pixel
-             mask which keeps them.  Head overlay handles the head either way. */
-          const _fullArmor = _worn.some(w => w.k && w.k.indexOf('legs:') === 0)
-                          && _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
-          _bodyTex = _worn.length ? ((pose === 'pickup' && _fullArmor) ? _sectionErasedBody(tex, _worn) : _maskedBodyFrame(tex, _worn, 6)) : tex;
+          /* v2.3.1056: pickup body strategy by loadout.
+             - full set (chest+legs): section-erase -- every limb is armoured, so
+               drop the whole body section (kills greave pokes).
+             - legs-only: RAW body -- the greaves are shin guards over the bare
+               legs (offset in _placeGear); erasing would cut the bare arms and
+               leave a halo, so keep the body untouched.
+             - else (chest-only / other poses): per-pixel masked body. */
+          const _legsW = _worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+          const _chestW = _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
+          if (!_worn.length) _bodyTex = tex;
+          else if (pose === 'pickup' && _legsW && _chestW) _bodyTex = _sectionErasedBody(tex, _worn);
+          else if (pose === 'pickup' && _legsW && !_chestW) _bodyTex = tex;
+          else _bodyTex = _maskedBodyFrame(tex, _worn, 6);
         } catch (e) {
           _bodyTex = tex;
         }
