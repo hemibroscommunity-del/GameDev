@@ -339,10 +339,14 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
       if (spr.texture !== tex) spr.texture = tex;
       spr.x = sb.x; spr.y = sb.y;
       /* v2.3.1056: legs-only pickup -- drop the greaves so they sit on the bare
-         legs like shin guards (owner-tuned: 10px, 20px in the deepest-crouch
-         last-row frames 24-28).  Full set keeps them aligned to the cuirass. */
+         legs like shin guards (owner-tuned per crouch depth).  Full set keeps
+         them aligned to the cuirass. */
       if (_GEAR_SLOTS[s][0] === 'legs' && pose === 'pickup' && (!equip || !equip.chest || equip.chest === 'none')) {
-        spr.y += (frameIdx >= 24 ? 20 : 10) * sb.scale.y;
+        let _dy = 10;                                   // frames 0-17
+        if (frameIdx >= 18 && frameIdx <= 23) _dy = 5;  // fourth row -- up 5
+        else if (frameIdx >= 24) _dy = 20;              // last row
+        if (frameIdx === 28) _dy = 30;                  // very last frame -- 10 lower
+        spr.y += _dy * sb.scale.y;
       }
       spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
