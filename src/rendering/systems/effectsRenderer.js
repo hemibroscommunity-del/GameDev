@@ -264,12 +264,49 @@ export class EffectsRenderer {
     this.cookSprite.anchor.set(0.5, 1);
     this.cookSprite.visible = false;
     this.nodeLayer.addChild(this.cookSprite);
+    /* v2.3.1113: shirt layer for the cook stand-in -- the player's selected
+       shirt, drawn over the bald cook torso and tinted to their shirt colour
+       (same white-base + Pixi-tint path the sword/bow stand-ins use). Added
+       AFTER cookSprite so it composites on top of the body; the head traits
+       (hat/hair/beard) are placed separately and sit above both. Sheet:
+       /sprites/gear/shirt/<item>/cook-south.png, a 24-frame 213x220 strip
+       pixel-aligned to cook-strip.webp. */
+    this.cookShirtSprite = new Sprite();
+    this.cookShirtSprite.anchor.set(0.5, 1);
+    this.cookShirtSprite.visible = false;
+    this.nodeLayer.addChild(this.cookShirtSprite);
+    /* v2.3.1114: leg-armour layer for the cook stand-in -- the equipped greaves
+       drawn over the cook's legs, untinted (armour keeps its own metal colour),
+       shown only when leg armour is equipped. Same 24-frame 213x220 cook strip
+       at /sprites/gear/legs/<item>/cook-south.png. */
+    this.cookLegsSprite = new Sprite();
+    this.cookLegsSprite.anchor.set(0.5, 1);
+    this.cookLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.cookLegsSprite);
+    /* v2.3.1115: chest-armour layer for the cook stand-in -- the equipped plate
+       (+ armoured arms) drawn over the torso, untinted, shown only when chest
+       armour is equipped. Same 24-frame 213x220 cook strip at
+       /sprites/gear/chest/<item>/cook-south.png. Added last so it composites
+       over the body + shirt. */
+    this.cookChestSprite = new Sprite();
+    this.cookChestSprite.anchor.set(0.5, 1);
+    this.cookChestSprite.visible = false;
+    this.nodeLayer.addChild(this.cookChestSprite);
     this._cookFrames = [];
     Assets.load('/sprites/skills/cook-strip.webp').then((tex) => {
       const FW = 213, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._cookFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
     }).catch((err) => console.warn('[cook-strip] load failed', err));
+    /* v2.3.1114: legs-erased cook body, swapped in when leg armour is equipped so
+       the bare mannequin legs don't show behind/through the greaves (the pan is
+       preserved). Same 213x220 frame layout as cook-strip. */
+    this._cookLeglessFrames = [];
+    Assets.load('/sprites/skills/cook-strip-legless.webp').then((tex) => {
+      const FW = 213, FH = 220;
+      const n = Math.max(1, Math.round(tex.width / FW));
+      for (let i = 0; i < n; i++) this._cookLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+    }).catch((err) => console.warn('[cook-strip-legless] load failed', err));
 
     this.fireSprite = new Sprite();
     this.fireSprite.anchor.set(0.5, 1);
@@ -3358,6 +3395,9 @@ export class EffectsRenderer {
        below still waits for 'ready'. */
     if (this.chopSprite) this.chopSprite.visible = false;
     if (this.cookSprite) this.cookSprite.visible = false;
+    if (this.cookShirtSprite) this.cookShirtSprite.visible = false;
+    if (this.cookLegsSprite) this.cookLegsSprite.visible = false;
+    if (this.cookChestSprite) this.cookChestSprite.visible = false;
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
@@ -3430,12 +3470,34 @@ export class EffectsRenderer {
       const COOK_H = 41, COOK_FRAME_MS = 60;   // v2.3.896: ~50% smaller (owner: was too large)
       const sp = this.cookSprite;
       const cookFi = Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
-      sp.texture = this._cookFrames[cookFi];
+      /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
+         bare legs don't peek out behind the greaves; otherwise the normal body. */
+      const _legsOn = getEquip('legs') !== 'none' && this._cookLeglessFrames.length === this._cookFrames.length;
+      sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
       const s = COOK_H / 220;
       sp.scale.set(s, s);
       sp.x = node.x - 7;                        // halved with the size so the pan still sits over the fire
       sp.y = node.y + 8;
       sp.visible = true;
+      /* v2.3.1113: draw the player's shirt over the cook torso, copying the
+         cook sprite's exact transform so the 213x220 shirt frame aligns with
+         the body frame-for-frame. Hidden when no shirt is selected or a chest
+         plate is worn (handled inside _placeSwingShirt). */
+      const placeCookShirt = (s, t) => {
+        if (!s) return;
+        if (!t) { s.visible = false; return; }
+        s.anchor.set(0.5, 1); s.texture = t;
+        s.scale.set(sp.scale.x, sp.scale.y); s.x = sp.x; s.y = sp.y; s.visible = true;
+      };
+      this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, getShirt(), getEquip('chest'), 'cook', 'south', 213, cookFi, getShirtColor());
+      /* v2.3.1114: equipped leg armour over the cook's legs (untinted; the
+         greaves keep their own metal colour). _gearStripFrame returns null when
+         no legs are equipped, so placeCookShirt hides the sprite. */
+      placeCookShirt(this.cookLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'cook', 'south', 213, cookFi));
+      /* v2.3.1115: equipped chest plate over the cook's torso (untinted). Drawn
+         after the shirt (which _placeSwingShirt already hides when a chest plate
+         is worn) so the plate replaces it. */
+      placeCookShirt(this.cookChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'cook', 'south', 213, cookFi));
       this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
     /* The floating tool + swipe cue + pips only appear once the swipe
