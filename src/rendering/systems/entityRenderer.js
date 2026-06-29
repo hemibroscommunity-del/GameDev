@@ -348,10 +348,10 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
         if (frameIdx === 28) _dy = 30;                  // very last frame -- 10 lower
         spr.y += _dy * sb.scale.y;
       }
-      /* v2.3.1056: torso-only pickup -- drop the cuirass 10px in the deepest-
+      /* v2.3.1056: torso-only pickup -- drop the cuirass 18px in the deepest-
          crouch last row (frames 24-28) so it sits on the bent torso. */
       if (_GEAR_SLOTS[s][0] === 'chest' && pose === 'pickup' && frameIdx >= 24 && (!equip || !equip.legs || equip.legs === 'none')) {
-        spr.y += 10 * sb.scale.y;
+        spr.y += 18 * sb.scale.y;
       }
       spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
