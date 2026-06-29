@@ -411,59 +411,6 @@ function _bodyRegionTex(bodyTex, region) {
   }
   return m[region];
 }
-/* v2.3.1055: SECTION erase (loot-pickup only).  The per-pixel masked body
-   (below) erases only under the plate + a 6px halo, so where AI drift makes the
-   plate narrower than the bare body the mannequin pokes out behind it (feet
-   below the greaves, legs in the deep crouch).  For the pickup pose the head is
-   a separate overlay, so we can drop the WHOLE armoured section of the body
-   instead of pixel-matching: erase the body full-width from the worn gear's top
-   row down (to the feet if legs are worn, else to the waist for a chest-only
-   torso).  No drift can show because no body is left under the plate.  Cached
-   per (body-frame, loadout) like the masked body.  South-pose only (called from
-   the pickup branch); falls back to the raw body if pixel access fails. */
-const _sectionBodyCache = new Map();
-const _gearTopRow = (worn) => {
-  const gcv = document.createElement('canvas'); gcv.width = 256; gcv.height = 256;
-  const gctx = gcv.getContext('2d');
-  let hasLegs = false;
-  for (const w of worn) {
-    if (w.k && w.k.indexOf('legs:') === 0) hasLegs = true;
-    const gt = w.tex, gr = gt && gt.source && gt.source.resource; if (!gr) continue;
-    const gf = gt.frame; gctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, 0, 0, 256, 256);
-  }
-  const gd = gctx.getImageData(0, 0, 256, 256).data;
-  let top = 256;
-  for (let y = 0; y < 256 && top === 256; y++) for (let x = 0; x < 256; x++) if (gd[(y * 256 + x) * 4 + 3] > 40) { top = y; break; }
-  return { top, hasLegs };
-};
-function _sectionErasedBody(bodyTex, worn) {
-  if (!bodyTex || !worn.length) return bodyTex;
-  let bres; try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { bres = null; }
-  if (!bres) return bodyTex;
-  const key = (bodyTex.uid != null ? bodyTex.uid : '') + '|sec|' + worn.map(w => w.k).join(',');
-  const hit = _sectionBodyCache.get(key);
-  if (hit) { _sectionBodyCache.delete(key); _sectionBodyCache.set(key, hit); return hit; }
-  try {
-    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
-    const ctx = cv.getContext('2d');
-    const bf = bodyTex.frame;
-    ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
-    const img = ctx.getImageData(0, 0, 256, 256); const d = img.data;
-    let figTop = 256, figBot = -1;
-    for (let y = 0; y < 256; y++) { let any = false; for (let x = 0; x < 256; x++) if (d[(y * 256 + x) * 4 + 3] > 40) { any = true; break; } if (any) { if (y < figTop) figTop = y; figBot = y; } }
-    if (figBot <= figTop) return bodyTex;   // backing pixels not ready -- retry next frame
-    const { top: gearTop, hasLegs } = _gearTopRow(worn);
-    if (gearTop === 256) return bodyTex;
-    const eraseTop = Math.max(0, gearTop - 2);
-    const eraseBot = hasLegs ? 256 : Math.round(figTop + 0.585 * (figBot - figTop));   // legs -> to the feet; chest-only -> to the waist
-    for (let y = eraseTop; y < eraseBot && y < 256; y++) for (let x = 0; x < 256; x++) d[(y * 256 + x) * 4 + 3] = 0;
-    ctx.putImageData(img, 0, 0);
-    const tex = Texture.from(cv); if (tex.source) tex.source.scaleMode = 'linear';
-    _sectionBodyCache.set(key, tex);
-    if (_sectionBodyCache.size > 64) { const fk = _sectionBodyCache.keys().next().value; const ft = _sectionBodyCache.get(fk); _sectionBodyCache.delete(fk); try { ft.destroy && ft.destroy(true); } catch (e) {} }
-    return tex;
-  } catch (e) { return bodyTex; }
-}
 
 /* v2.3.611: masked body.  The AI-drawn armour frames are a few px off the body
    frames, so the body pokes past the plate edges.  Erase the body wherever the
@@ -3331,18 +3278,17 @@ export class EntityRenderer {
               if (_gt) _rworn.push({ k: _sl + ':' + _it, tex: _gt });
             }
           }
+          let _rfull = false;
           if (_rworn.length) {
             const _rlegsW = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
             const _rchestW = _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
-            let _mt;
-            if (pose === 'pickup' && _rlegsW && _rchestW) _mt = _sectionErasedBody(tex, _rworn);
-            else if (pose === 'pickup') _mt = tex;   // partial armor: raw body, gear overlays it
-            else _mt = _maskedBodyFrame(tex, _rworn, 6);
+            _rfull = pose === 'pickup' && _rlegsW && _rchestW;   // v2.3.1057: hide body, head overlay + gear render it (no bake)
+            const _mt = (pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6);
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
-          spriteBody.visible = true;
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
           _placePickupHead(display, spriteBody, pose, dir, frameIdx);
+          spriteBody.visible = !(_rfull && !!_getPickupHeadFrame(pose, dir, frameIdx));
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
@@ -4059,28 +4005,27 @@ export class EntityRenderer {
            loop, freezing the early procedural placeholder (color-disc head, no
            hat/beard) on screen -- the 'invisible head when joining with armour
            on' bug. */
+        /* v2.3.1057: pickup body strategy -- NO per-frame canvas bake.  The old
+           section-erase baked a fresh 256x256 texture for all 29 frames inside
+           the 0.5s freeze (29 GPU uploads in a burst -> black flashes + frame
+           drops, and its cache-evict destroy() killed in-use textures = crash
+           after several pickups).  Instead:
+           - full set: hide the raw body once the head-overlay sheet is ready --
+             the head overlay + chest/leg gear render the whole figure (no
+             mannequin pokes, no bake).  Body stays visible until the sheet
+             loads so we never flash headless.
+           - partial / no armor: raw body, gear overlays it.
+           Non-pickup armoured poses keep the existing masked body. */
+        const _legsW = _worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+        const _chestW = _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
         let _bodyTex;
         try {
-          /* v2.3.1056: pickup body strategy by loadout.
-             - full set (chest+legs): section-erase -- every limb is armoured, so
-               drop the whole body section (kills greave pokes).
-             - legs-only: RAW body -- the greaves are shin guards over the bare
-               legs (offset in _placeGear); erasing would cut the bare arms and
-               leave a halo, so keep the body untouched.
-             - else (chest-only / other poses): per-pixel masked body. */
-          const _legsW = _worn.some(w => w.k && w.k.indexOf('legs:') === 0);
-          const _chestW = _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
-          if (!_worn.length) _bodyTex = tex;
-          else if (pose === 'pickup' && _legsW && _chestW) _bodyTex = _sectionErasedBody(tex, _worn);
-          else if (pose === 'pickup') _bodyTex = tex;   // partial armor (chest-only / legs-only): raw body, gear overlays it (no erase halo/gap)
-          else _bodyTex = _maskedBodyFrame(tex, _worn, 6);
-        } catch (e) {
-          _bodyTex = tex;
-        }
+          _bodyTex = (!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6);
+        } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
-        spriteBody.visible = true;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
         _placePickupHead(display, spriteBody, pose, dir, frameIdx);
+        spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!_getPickupHeadFrame(pose, dir, frameIdx));
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
