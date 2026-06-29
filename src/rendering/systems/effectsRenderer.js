@@ -283,6 +283,15 @@ export class EffectsRenderer {
     this.cookLegsSprite.anchor.set(0.5, 1);
     this.cookLegsSprite.visible = false;
     this.nodeLayer.addChild(this.cookLegsSprite);
+    /* v2.3.1115: chest-armour layer for the cook stand-in -- the equipped plate
+       (+ armoured arms) drawn over the torso, untinted, shown only when chest
+       armour is equipped. Same 24-frame 213x220 cook strip at
+       /sprites/gear/chest/<item>/cook-south.png. Added last so it composites
+       over the body + shirt. */
+    this.cookChestSprite = new Sprite();
+    this.cookChestSprite.anchor.set(0.5, 1);
+    this.cookChestSprite.visible = false;
+    this.nodeLayer.addChild(this.cookChestSprite);
     this._cookFrames = [];
     Assets.load('/sprites/skills/cook-strip.webp').then((tex) => {
       const FW = 213, FH = 220;
@@ -3388,6 +3397,7 @@ export class EffectsRenderer {
     if (this.cookSprite) this.cookSprite.visible = false;
     if (this.cookShirtSprite) this.cookShirtSprite.visible = false;
     if (this.cookLegsSprite) this.cookLegsSprite.visible = false;
+    if (this.cookChestSprite) this.cookChestSprite.visible = false;
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
@@ -3484,6 +3494,10 @@ export class EffectsRenderer {
          greaves keep their own metal colour). _gearStripFrame returns null when
          no legs are equipped, so placeCookShirt hides the sprite. */
       placeCookShirt(this.cookLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'cook', 'south', 213, cookFi));
+      /* v2.3.1115: equipped chest plate over the cook's torso (untinted). Drawn
+         after the shirt (which _placeSwingShirt already hides when a chest plate
+         is worn) so the plate replaces it. */
+      placeCookShirt(this.cookChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'cook', 'south', 213, cookFi));
       this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
     /* The floating tool + swipe cue + pips only appear once the swipe
