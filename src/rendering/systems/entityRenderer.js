@@ -1203,26 +1203,6 @@ export function hideSkillTraits(sprites) {
    Shared by local + remote (remote displays simply lack the hand/shield
    sprites, so those are skipped). */
 function _orderTraitsAndWeapon(display, facingIdx) {
-  /* --- Body over worn armour (v2.3.1054) ---
-     The body is ONE masked sprite: _maskedBodyFrame erases every region the
-     worn chest/legs plate covers, so under a full set the sprite is reduced to
-     just the HEAD (and any un-armoured region stays).  Drawn BELOW the gear it
-     let the pauldrons/collar cover the head -- and worse in the loot-pickup
-     crouch, where the head leaves the top of the frame so a fixed head-row
-     slice can't catch it.  Lift the whole masked body ABOVE the worn gear (same
-     setChildIndex-to-highest-ref trick as the beard): the erased torso/legs are
-     transparent so the plate shows through, while the head + any bare region
-     render on top.  No-op when no plate is worn (gear sprites hidden). */
-  {
-    const sbdy = display._spriteBody;
-    if (sbdy && sbdy.visible) {
-      let gref = -1;
-      for (const s of [display._gearLegs, display._gearChest, display._gearShoulders]) {
-        if (s && s.visible) gref = Math.max(gref, display.getChildIndex(s));
-      }
-      if (gref >= 0) { const bi = display.getChildIndex(sbdy); if (bi < gref) display.setChildIndex(sbdy, gref); }
-    }
-  }
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
