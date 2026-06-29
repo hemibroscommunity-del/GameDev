@@ -19,21 +19,35 @@ function crc32(b){let c=~0;for(let i=0;i<b.length;i++){c^=b[i];for(let k=0;k<8;k
 function chunk(t,d){const l=Buffer.alloc(4);l.writeUInt32BE(d.length);const td=Buffer.concat([Buffer.from(t,'ascii'),d]);const cr=Buffer.alloc(4);cr.writeUInt32BE(crc32(td));return Buffer.concat([l,td,cr]);}
 function encodePNG(W,H,rgba){const sig=Buffer.from([137,80,78,71,13,10,26,10]);const ih=Buffer.alloc(13);ih.writeUInt32BE(W,0);ih.writeUInt32BE(H,4);ih[8]=8;ih[9]=6;const st=W*4;const raw=Buffer.alloc(H*(st+1));for(let y=0;y<H;y++){raw[y*(st+1)]=0;rgba.copy(raw,y*(st+1)+1,y*st,y*st+st);}return Buffer.concat([sig,chunk('IHDR',ih),chunk('IDAT',zlib.deflateSync(raw,{level:9})),chunk('IEND',Buffer.alloc(0))]);}
 
-const FW = 256, FH = 256, HEADH = 54;   // head height below the figure top (tracks the crouch)
+/* A fixed top-N-rows slice grabs the shoulders once the crouch foreshortens the
+   figure (the head and shoulders end up at the same height).  Instead, track a
+   HEAD-WIDTH window down from the crown: each row keeps only the body pixels
+   inside a ~48px column centred on the head, and the centre follows the head as
+   it bends (clamped so it can't jump out to a shoulder).  Pixels outside the
+   window (the wider shoulders) are dropped, so the whole head is kept and the
+   shoulders are excluded in every frame. */
+const FW = 256, FH = 256, HALF = 24, HEADH = 48, FOLLOW = 4;
 const src = decodePNG(readFileSync('public/sprites/player/pickup-south.png'));
+const A = (fx, x, y) => src.data[(y*src.W + fx + x)*4+3];
 const N = Math.round(src.W / FW);
 const out = Buffer.alloc(N * FW * FH * 4);
 const SW = N * FW;
 for (let f = 0; f < N; f++) {
   const fx = f * FW;
-  /* figure top for this frame (head crown) */
-  let figTop = FH;
-  for (let y = 0; y < FH && figTop === FH; y++) for (let x = 0; x < FW; x++) if (src.data[(y*src.W + fx + x)*4+3] > 40) { figTop = y; break; }
-  const cut = figTop + HEADH;
-  for (let y = 0; y < cut && y < FH; y++) for (let x = 0; x < FW; x++) {
-    const si = (y*src.W + fx + x)*4; if (src.data[si+3] === 0) continue;
-    const di = (y*SW + fx + x)*4;
-    out[di]=src.data[si]; out[di+1]=src.data[si+1]; out[di+2]=src.data[si+2]; out[di+3]=src.data[si+3];
+  /* figure top (head crown) + its horizontal centre */
+  let figTop = FH, cx = 128;
+  for (let y = 0; y < FH && figTop === FH; y++) { let minx = FW, maxx = -1; for (let x = 0; x < FW; x++) if (A(fx, x, y) > 40) { if (x < minx) minx = x; if (x > maxx) maxx = x; } if (maxx >= 0) { figTop = y; cx = (minx + maxx) / 2; } }
+  let prev = cx;
+  for (let y = figTop; y < figTop + HEADH && y < FH; y++) {
+    const lo = Math.round(prev - HALF), hi = Math.round(prev + HALF);
+    let sx = 0, n = 0;
+    for (let x = Math.max(0, lo); x <= Math.min(FW - 1, hi); x++) {
+      if (A(fx, x, y) <= 0) continue;
+      const si = (y*src.W + fx + x)*4, di = (y*SW + fx + x)*4;
+      out[di]=src.data[si]; out[di+1]=src.data[si+1]; out[di+2]=src.data[si+2]; out[di+3]=src.data[si+3];
+      sx += x; n++;
+    }
+    if (n) { let c = sx / n; if (c > prev + FOLLOW) c = prev + FOLLOW; if (c < prev - FOLLOW) c = prev - FOLLOW; prev = c; }
   }
 }
 writeFileSync('public/sprites/player/pickup-south-head.png', encodePNG(SW, FH, out));

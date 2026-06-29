@@ -1090,7 +1090,7 @@ function _hideBodyRegions(display) {
    so the whole head always shows.  South-only, matching the pose; other dirs
    404 -> [] and the masked body's own head is used.  Reuses the dormant
    _bodyHead region sprite (anchor 0.5/0.5, full-frame texture). */
-const PICKUP_HEAD_VER = '2.3.1055';
+const PICKUP_HEAD_VER = '2.3.1056';   /* v2.3.1056: window-tracked head (drops shoulders in the crouch) */
 const _pickupHeadSheets = {};   // 'pose-dir' -> [Texture] | 'loading' | []
 function _getPickupHeadFrame(pose, dir, frameIdx) {
   if (pose !== 'pickup') return null;
@@ -3201,7 +3201,8 @@ export class EntityRenderer {
             }
           }
           if (_rworn.length) {
-            const _mt = pose === 'pickup' ? _sectionErasedBody(tex, _rworn) : _maskedBodyFrame(tex, _rworn, 6);
+            const _rlegsWorn = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
+            const _mt = (pose === 'pickup' && _rlegsWorn) ? _sectionErasedBody(tex, _rworn) : _maskedBodyFrame(tex, _rworn, 6);
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           spriteBody.visible = true;
@@ -3911,7 +3912,12 @@ export class EntityRenderer {
            on' bug. */
         let _bodyTex;
         try {
-          _bodyTex = _worn.length ? (pose === 'pickup' ? _sectionErasedBody(tex, _worn) : _maskedBodyFrame(tex, _worn, 6)) : tex;
+          /* v2.3.1056: section-erase only when LEGS are armoured (the poke-prone
+             case -- greaves narrower than the legs).  Chest-only keeps the
+             per-pixel mask so the bare legs stay connected to the cuirass (no
+             waist gap).  Head overlay handles the head either way. */
+          const _legsWorn = _worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+          _bodyTex = _worn.length ? ((pose === 'pickup' && _legsWorn) ? _sectionErasedBody(tex, _worn) : _maskedBodyFrame(tex, _worn, 6)) : tex;
         } catch (e) {
           _bodyTex = tex;
         }
