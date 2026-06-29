@@ -1028,6 +1028,48 @@ function _placeBodyRegions(display, sb, bodyTex, show) {
 function _hideBodyRegions(display) {
   for (const k of ['_bodyHead', '_bodyTorso', '_bodyLegs']) if (display[k]) display[k].visible = false;
 }
+/* v2.3.1055: per-frame HEAD overlay for the loot-pickup pose.  The crouch drops
+   the head below the masked body's neck-restore band AND under the raised arm
+   plate, so an armoured player's head was cut to a sliver.  A head-only sheet
+   (pickup-<dir>-head.png -- head pixels per frame, transparent elsewhere) is
+   drawn at the body transform and lifted ABOVE the gear in _orderTraitsAndWeapon
+   so the whole head always shows.  South-only, matching the pose; other dirs
+   404 -> [] and the masked body's own head is used.  Reuses the dormant
+   _bodyHead region sprite (anchor 0.5/0.5, full-frame texture). */
+const PICKUP_HEAD_VER = '2.3.1055';
+const _pickupHeadSheets = {};   // 'pose-dir' -> [Texture] | 'loading' | []
+function _getPickupHeadFrame(pose, dir, frameIdx) {
+  if (pose !== 'pickup') return null;
+  const key = pose + '-' + dir;
+  const e = _pickupHeadSheets[key];
+  if (e === undefined) {
+    _pickupHeadSheets[key] = 'loading';
+    Assets.load('/sprites/player/' + key + '-head.png?v=' + PICKUP_HEAD_VER).then((tex) => {
+      if (tex && tex.source) tex.source.scaleMode = 'linear';
+      const n = Math.max(1, Math.floor(tex.width / 256));
+      const arr = [];
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * 256, 0, 256, 256) }));
+      _pickupHeadSheets[key] = arr;
+    }).catch(() => { _pickupHeadSheets[key] = []; });
+    return null;
+  }
+  if (e === 'loading' || !e.length) return null;
+  return e[((frameIdx % e.length) + e.length) % e.length];
+}
+/* Place the pickup head overlay on the (reused) _bodyHead sprite at the body
+   sprite's exact transform.  No-op (leaves _bodyHead as the caller left it --
+   hidden) outside the pickup pose or before the sheet loads. */
+function _placePickupHead(display, sb, pose, dir, frameIdx) {
+  const hd = display._bodyHead;
+  if (!hd || !sb) return;
+  const t = _getPickupHeadFrame(pose, dir, frameIdx);
+  if (!t) return;
+  if (hd.texture !== t) hd.texture = t;
+  hd.x = sb.x; hd.y = sb.y;
+  hd.scale.x = sb.scale.x; hd.scale.y = sb.scale.y;
+  hd.tint = 0xffffff;
+  hd.visible = true;
+}
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
 const _hairMaskCache = {};
@@ -1203,6 +1245,18 @@ export function hideSkillTraits(sprites) {
    Shared by local + remote (remote displays simply lack the hand/shield
    sprites, so those are skipped). */
 function _orderTraitsAndWeapon(display, facingIdx) {
+  /* --- Pickup head overlay above the worn plate (v2.3.1055) ---
+     _placePickupHead put the head-only sheet on _bodyHead; lift it above the
+     body + worn gear so the raised arm/pauldron plate can't cover it. Same
+     setChildIndex-to-highest-visible-ref move the beard uses just below. */
+  const phead = display._bodyHead;
+  if (phead && phead.visible) {
+    let ref = -1;
+    for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
+      if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
+    }
+    if (ref >= 0) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
+  }
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
@@ -1225,6 +1279,7 @@ function _orderTraitsAndWeapon(display, facingIdx) {
          highest reference index lands the beard directly above it. */
       let ref = display.getChildIndex(display._spriteBody);
       for (const s of [display._gearLegs, display._gearChest, display._gearShoulders,
+                       display._bodyHead,   /* v2.3.1055: pickup head overlay */
                        display._handCapSprite, display._handArmSprite,
                        display._shieldSprite]) {
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
@@ -3096,6 +3151,8 @@ export class EntityRenderer {
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           spriteBody.visible = true;
+          /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
+          _placePickupHead(display, spriteBody, pose, dir, frameIdx);
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
@@ -3806,6 +3863,8 @@ export class EntityRenderer {
         }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         spriteBody.visible = true;
+        /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
+        _placePickupHead(display, spriteBody, pose, dir, frameIdx);
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
