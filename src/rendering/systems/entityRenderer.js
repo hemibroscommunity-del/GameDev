@@ -3789,10 +3789,13 @@ export class EntityRenderer {
            the frame index is unchanged). Cadence therefore follows the
            animation: quicker for N/S/E/NE, slower for the long SW/SE cycle. */
         const _FOOT_FRAMES = {
-          east: [1, 15], west: [1, 15],
+          /* v2.3.1106: east nudged +2 (was reading a tad early); SW/SE second
+             plant fixed 12 -> 17 (the real left-foot plant -- 12 sat mid-swing
+             so that footfall was silent). */
+          east: [3, 17], west: [3, 17],
           south: [0, 13], north: [0, 11],
           northeast: [9, 21], northwest: [9, 21],
-          southwest: [2, 12], southeast: [2, 12],
+          southwest: [2, 17], southeast: [2, 17],
         };
         const _contacts = _FOOT_FRAMES[dir] || _FOOT_FRAMES.south;
         /* Edge-trigger: fire once when the animation first lands on a plant
