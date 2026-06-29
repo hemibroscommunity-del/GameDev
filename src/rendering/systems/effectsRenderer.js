@@ -31,7 +31,7 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
 const POPUP_ICONS = {};
 const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
 Promise.all(POPUP_ICON_KEYS.map((k) =>
-  Assets.load('/icons/popups/' + k + '.png').then((tex) => { POPUP_ICONS[k] = tex; })
+  Assets.load('/icons/popups/' + k + '.webp').then((tex) => { POPUP_ICONS[k] = tex; })
 )).catch((err) => console.warn('[popup-icons] load failed', err));
 
 /* Elemental shard icons -- one PNG per zone, served from
@@ -40,7 +40,7 @@ Promise.all(POPUP_ICON_KEYS.map((k) =>
    the overlay. */
 const SHARD_ICONS = {};
 Promise.all(Object.values(ZONE_SHARDS).map((s) =>
-  Assets.load('/icons/shards/' + s.key + '.png').then((tex) => { SHARD_ICONS[s.key] = tex; })
+  Assets.load('/icons/shards/' + s.key + '.webp').then((tex) => { SHARD_ICONS[s.key] = tex; })
 )).catch((err) => console.warn('[shard-icons] load failed', err));
 
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is

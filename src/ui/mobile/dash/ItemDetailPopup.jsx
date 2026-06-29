@@ -228,7 +228,7 @@ function gearName(slot, gearId) {
 /* Icon PNGs exist for the steel set; other ids fall back to the glyph. */
 function gearThumb(gearId) {
   return (gearId === 'steelplate' || gearId === 'steelgreaves')
-    ? '/sprites/gear/icons/' + gearId + '.png?v=2.3.685'
+    ? '/sprites/gear/icons/' + gearId + '.webp?v=2.3.685'
     : null;
 }
 

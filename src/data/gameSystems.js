@@ -5324,19 +5324,12 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     } catch (e) {}
   },
   beep: function beep(freq, dur, vol, type) {
-    if (!this.ctx || this.muted) return;
-    try {
-      var o = this.ctx.createOscillator();
-      var g = this.ctx.createGain();
-      o.type = type || 'sine';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(vol || 0.1, this.ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + (dur || 0.1));
-      o.connect(g);
-      g.connect(this._out());
-      o.start();
-      o.stop(this.ctx.currentTime + (dur || 0.1) + 0.05);
-    } catch (e) {}
+    /* v2.3.1103: DISABLED. The owner removed all procedurally-synthesised
+       audio ("worse than nothing"). beep() is the oscillator primitive behind
+       every synth SFX (hit/collect/footstep/levelUp/status/etc.), so a single
+       no-op here silences all of them at once while leaving the call sites and
+       the real file-based SFX (SFX_MANIFEST / playFile) untouched. */
+    return;
   },
   /* Play a one-shot audio file (mp3/ogg).  Caches an HTMLAudioElement
      per URL as a template, then clones for each play so multiple
@@ -5615,20 +5608,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     }, 300);
   },
   bgNote: function bgNote(freq) {
-    var dur = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.8;
-    if (!this.ctx || this.muted) return;
-    try {
-      var o = this.ctx.createOscillator();
-      var g = this.ctx.createGain();
-      o.type = 'sine';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0.02, this.ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
-      o.connect(g);
-      g.connect(this._out());
-      o.start();
-      o.stop(this.ctx.currentTime + dur);
-    } catch (e) {}
+    /* v2.3.1103: DISABLED with the rest of the procedural synth (see beep). */
+    return;
   }
 }, "_ambientOsc", null), "_ambientGain", null), "_ambientLfo", null), "_currentZoneAmbient", null), "_ambientOsc2", null), "_ambientGain2", null), "_ambientLfo2", null), "startZoneAmbient", function startZoneAmbient(zoneId) {
   if (!this.ctx || this.muted) return;
@@ -5692,186 +5673,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     }
     return;
   }
-  var zone = ZONES[zoneId];
-  if (!zone) return;
-  try {
-    /* Primary drone — base atmosphere */
-    var ambientParams = {
-      town: {
-        freq: 220,
-        type: 'sine',
-        vol: 0.008,
-        lfo: 0.5
-      },
-      meadow: {
-        freq: 180,
-        type: 'sine',
-        vol: 0.006,
-        lfo: 0.3
-      },
-      flame: {
-        freq: 80,
-        type: 'sawtooth',
-        vol: 0.010,
-        lfo: 2.0
-      },
-      frost: {
-        freq: 300,
-        type: 'sine',
-        vol: 0.007,
-        lfo: 0.8
-      },
-      water: {
-        freq: 250,
-        type: 'triangle',
-        vol: 0.008,
-        lfo: 1.2
-      },
-      venom: {
-        freq: 100,
-        type: 'sawtooth',
-        vol: 0.009,
-        lfo: 1.5
-      },
-      storm: {
-        freq: 150,
-        type: 'square',
-        vol: 0.006,
-        lfo: 3.0
-      },
-      stone: {
-        freq: 60,
-        type: 'triangle',
-        vol: 0.008,
-        lfo: 0.4
-      },
-      wind: {
-        freq: 400,
-        type: 'sine',
-        vol: 0.005,
-        lfo: 2.5
-      },
-      dark: {
-        freq: 55,
-        type: 'sawtooth',
-        vol: 0.012,
-        lfo: 0.6
-      },
-      light: {
-        freq: 520,
-        type: 'sine',
-        vol: 0.006,
-        lfo: 0.3
-      }
-    };
-    /* Secondary texture — adds depth and character */
-    var ambientParams2 = {
-      flame: {
-        freq: 160,
-        type: 'triangle',
-        vol: 0.004,
-        lfo: 0.3
-      },
-      /* crackling undertone */
-      frost: {
-        freq: 600,
-        type: 'sine',
-        vol: 0.003,
-        lfo: 0.15
-      },
-      /* high wind whistle */
-      water: {
-        freq: 120,
-        type: 'sine',
-        vol: 0.004,
-        lfo: 0.8
-      },
-      /* deep current */
-      venom: {
-        freq: 200,
-        type: 'square',
-        vol: 0.003,
-        lfo: 0.7
-      },
-      /* insect buzz */
-      storm: {
-        freq: 300,
-        type: 'sawtooth',
-        vol: 0.003,
-        lfo: 5.0
-      },
-      /* crackling static */
-      stone: {
-        freq: 40,
-        type: 'sine',
-        vol: 0.005,
-        lfo: 0.1
-      },
-      /* deep rumble */
-      wind: {
-        freq: 800,
-        type: 'sine',
-        vol: 0.002,
-        lfo: 4.0
-      },
-      /* high whistling */
-      dark: {
-        freq: 110,
-        type: 'square',
-        vol: 0.004,
-        lfo: 0.2
-      },
-      /* ominous pulse */
-      light: {
-        freq: 1040,
-        type: 'sine',
-        vol: 0.002,
-        lfo: 0.5
-      } /* crystalline overtone */
-    };
-    var elem = zone.element || (zoneId === 'town' ? 'town' : 'meadow');
-    var params = ambientParams[elem] || ambientParams.town;
-    var o = this.ctx.createOscillator();
-    var g = this.ctx.createGain();
-    o.type = params.type;
-    o.frequency.value = params.freq;
-    g.gain.value = params.vol;
-    o.connect(g);
-    var lfo = this.ctx.createOscillator();
-    var lfoG = this.ctx.createGain();
-    lfo.frequency.value = params.lfo;
-    lfoG.gain.value = params.freq * 0.05;
-    lfo.connect(lfoG);
-    lfoG.connect(o.frequency);
-    g.connect(this._out());
-    o.start();
-    lfo.start();
-    this._ambientOsc = o;
-    this._ambientGain = g;
-    this._ambientLfo = lfo;
-    /* Secondary oscillator — adds texture */
-    var p2 = ambientParams2[elem];
-    if (p2) {
-      var o2 = this.ctx.createOscillator();
-      var g2 = this.ctx.createGain();
-      o2.type = p2.type;
-      o2.frequency.value = p2.freq;
-      g2.gain.value = p2.vol;
-      o2.connect(g2);
-      var lfo2 = this.ctx.createOscillator();
-      var lfoG2 = this.ctx.createGain();
-      lfo2.frequency.value = p2.lfo;
-      lfoG2.gain.value = p2.freq * 0.08;
-      lfo2.connect(lfoG2);
-      lfoG2.connect(o2.frequency);
-      g2.connect(this._out());
-      o2.start();
-      lfo2.start();
-      this._ambientOsc2 = o2;
-      this._ambientGain2 = g2;
-      this._ambientLfo2 = lfo2;
-    }
-  } catch (e) {}
+  /* v2.3.1103: procedural oscillator DRONE disabled — the owner removed all
+     synthesised audio ("worse than nothing"). When ZONE_MUSIC has a real track
+     (above) it still plays; with none, the zone is simply silent instead of
+     droning. setCombatIntensity() no-ops safely (it guards on _ambientGain). */
+  return;
 }), "stopAmbient", function stopAmbient(fadeMusic) {
   try {
     if (this._ambientOsc) {
