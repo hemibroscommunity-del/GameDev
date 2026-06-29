@@ -3786,7 +3786,7 @@ export class EntityRenderer {
            250 ms interval reads as a proper jog/run tempo and lines up with the
            feet hitting the ground.  Aim/shield (useAimDirection) halves the
            leg speed, so stretch the interval to match (~375 ms). */
-        const _stepMs = useAimDirection ? 375 : 250;
+        const _stepMs = useAimDirection ? 750 : 500;
         if (typeof window !== 'undefined' && window.BT_AUDIO) {
           if (display._lastFootstepAt === undefined) display._lastFootstepAt = 0;
           if (now - display._lastFootstepAt >= _stepMs) {
