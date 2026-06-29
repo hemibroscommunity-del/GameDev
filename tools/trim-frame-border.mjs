@@ -1,12 +1,13 @@
-/* Clear a thin border ring from every frame of a 256x256 sprite strip.
+/* Clear leftover grid-border LINES from every frame of a 256x256 sprite strip.
  *
- * The repack of the chest gear left a ~2px grid-border line on the top/bottom
- * (and sporadic left/right) edge of each frame -- it renders as a "frame box"
- * around the armored character.  The armor art is inset from the frame edge, so
- * trimming the outer RING px to transparent removes the border without touching
- * the armor.
+ * The repack of the chest gear left thin near-full-frame grid lines (some at the
+ * very edge, some inset a few px) that render as a "frame box" around the armored
+ * character.  A fixed-ring trim misses the inset ones, so instead detect them by
+ * coverage: the character art is only ~90px wide/tall, so any ROW or COLUMN that
+ * is near-fully opaque (> THRESH of 256 px) is a border line, never art -- clear
+ * it.  Also clears the outer 2px ring for any sub-threshold edge fringe.
  *
- * Run: node tools/trim-frame-border.mjs <strip.png> [ring=2]
+ * Run: node tools/trim-frame-border.mjs <strip.png> [thresh=170]
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import zlib from 'node:zlib';
@@ -16,21 +17,23 @@ function crc32(b){let c=~0;for(let i=0;i<b.length;i++){c^=b[i];for(let k=0;k<8;k
 function chunk(t,d){const l=Buffer.alloc(4);l.writeUInt32BE(d.length);const td=Buffer.concat([Buffer.from(t,'ascii'),d]);const cr=Buffer.alloc(4);cr.writeUInt32BE(crc32(td));return Buffer.concat([l,td,cr]);}
 function encodePNG(W,H,rgba){const sig=Buffer.from([137,80,78,71,13,10,26,10]);const ih=Buffer.alloc(13);ih.writeUInt32BE(W,0);ih.writeUInt32BE(H,4);ih[8]=8;ih[9]=6;const st=W*4;const raw=Buffer.alloc(H*(st+1));for(let y=0;y<H;y++){raw[y*(st+1)]=0;rgba.copy(raw,y*(st+1)+1,y*st,y*st+st);}return Buffer.concat([sig,chunk('IHDR',ih),chunk('IDAT',zlib.deflateSync(raw,{level:9})),chunk('IEND',Buffer.alloc(0))]);}
 
-const FW = 256, FH = 256;
+const FW = 256, FH = 256, RING = 2;
 const input = process.argv[2];
-const RING = parseInt(process.argv[3] || '2', 10);
-if (!input) { console.error('usage: trim-frame-border.mjs <strip.png> [ring=2]'); process.exit(1); }
+const THRESH = parseInt(process.argv[3] || '170', 10);
+if (!input) { console.error('usage: trim-frame-border.mjs <strip.png> [thresh=170]'); process.exit(1); }
 const s = decodePNG(readFileSync(input));
 const N = Math.round(s.W / FW);
+const op = (fx, x, y) => s.data[(y * s.W + fx + x) * 4 + 3] > 20;
+const clr = (fx, x, y) => { const i = (y * s.W + fx + x) * 4; if (s.data[i+3] !== 0) { s.data[i+3] = 0; return 1; } return 0; };
 let cleared = 0;
 for (let f = 0; f < N; f++) {
   const fx = f * FW;
-  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
-    if (x < RING || x >= FW - RING || y < RING || y >= FH - RING) {
-      const i = (y * s.W + fx + x) * 4;
-      if (s.data[i+3] !== 0) { s.data[i+3] = 0; cleared++; }
-    }
-  }
+  /* near-full rows -> border lines */
+  for (let y = 0; y < FH; y++) { let c = 0; for (let x = 0; x < FW; x++) if (op(fx, x, y)) c++; if (c > THRESH) for (let x = 0; x < FW; x++) cleared += clr(fx, x, y); }
+  /* near-full cols -> border lines */
+  for (let x = 0; x < FW; x++) { let c = 0; for (let y = 0; y < FH; y++) if (op(fx, x, y)) c++; if (c > THRESH) for (let y = 0; y < FH; y++) cleared += clr(fx, x, y); }
+  /* outer ring sweep for any leftover edge fringe */
+  for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) if (x < RING || x >= FW - RING || y < RING || y >= FH - RING) cleared += clr(fx, x, y);
 }
 writeFileSync(input, encodePNG(s.W, s.H, s.data));
 console.log(`${input}: trimmed ${RING}px ring on ${N} frames, cleared ${cleared} px`);
