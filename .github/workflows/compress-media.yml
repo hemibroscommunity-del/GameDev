@@ -1,14 +1,15 @@
-# One-shot media compressor (v2.3.1111). This sandbox has no ffmpeg, so the
-# game's videos shipped uncompressed (~9.7MB). Run this workflow manually
-# (Actions tab -> "Compress media" -> Run workflow, or via the API) to re-encode
-# them smaller, iOS-Safari-compatible H.264, and commit the result back to the
-# branch. Re-runnable and idempotent: it keeps a file only if it actually got
-# smaller.
+# Runner-side media compressor (v2.3.1112). This sandbox has no ffmpeg, so a
+# few media assets shipped large. This workflow runs ffmpeg on a GitHub runner
+# and commits the smaller result back to the branch.
+#
+# Videos were already compressed in an earlier run (committed once); that step
+# has been REMOVED so re-runs don't re-encode the already-H.264 mp4s and lose a
+# generation of quality each time. This run now only handles audio (SFX).
 name: Compress media
 # Runs when THIS workflow file is pushed (so it fires once when added/edited and
-# its own video commit doesn't re-trigger it), or manually. Bump the comment
-# below to re-run on a later push.
-# rerun-token: 2
+# its own media commit doesn't re-trigger it), or manually. Bump the token to
+# re-run on a later push.
+# rerun-token: 3
 on:
   push:
     paths:
@@ -27,33 +28,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Show ffmpeg
         run: ffmpeg -version | head -1
-      - name: Re-encode videos (H.264, faststart, max 720w)
-        run: |
-          set -e
-          VIDS="
-            public/ui/welcome/bg-loop.mp4
-            public/intro/loading-island.mp4
-            public/intro/loading-reef.mp4
-            public/minigames/mining/extract-success.mp4
-            public/minigames/mining/extract-fail.mp4
-          "
-          for f in $VIDS; do
-            [ -f "$f" ] || { echo "skip (missing) $f"; continue; }
-            before=$(stat -c%s "$f")
-            # iOS-compatible: H.264 high, yuv420p, +faststart; cap width at 720
-            # (keeps aspect, even dims); re-encode audio low or none if absent.
-            ffmpeg -y -loglevel error -i "$f" \
-              -c:v libx264 -profile:v high -crf 30 -preset slow -pix_fmt yuv420p \
-              -vf "scale='min(720,iw)':-2" -movflags +faststart \
-              -c:a aac -b:a 96k "$f.tmp.mp4"
-            after=$(stat -c%s "$f.tmp.mp4")
-            if [ "$after" -lt "$before" ]; then
-              mv "$f.tmp.mp4" "$f"
-              echo "$f: $((before/1024))KB -> $((after/1024))KB"
-            else
-              rm -f "$f.tmp.mp4"; echo "$f: kept original ($((before/1024))KB)"
-            fi
-          done
       - name: Compress SFX (.wav/.flac -> AAC .m4a) + trim footstep
         run: |
           set -e
@@ -63,16 +37,18 @@ jobs:
           # still points at them); a follow-up code commit flips the manifest to
           # .m4a and deletes the originals. decodeAudioData on iOS Safari decodes
           # AAC natively, so playback is unchanged.
+          # NOTE: -nostdin is REQUIRED inside `while read` — ffmpeg otherwise
+          # consumes the loop's stdin and eats the next filename's first char.
           find public/sfx -type f \( -name '*.wav' -o -name '*.flac' \) | while read -r f; do
             out="${f%.*}.m4a"
-            ffmpeg -y -loglevel error -i "$f" -c:a aac -b:a 96k -movflags +faststart "$out"
+            ffmpeg -nostdin -y -loglevel error -i "$f" -c:a aac -b:a 96k -movflags +faststart "$out"
             echo "$(basename "$f") -> $(basename "$out") ($(($(stat -c%s "$f")/1024))KB -> $(($(stat -c%s "$out")/1024))KB)"
           done
           # The footstep clip is a 25 s continuous walk; the game only ever plays
           # its first ~0.75 s (two isolated footfalls). Trim to 0.8 s in place.
           FS=public/sfx/footstep/footstep-v2.mp3
           if [ -f "$FS" ]; then
-            ffmpeg -y -loglevel error -i "$FS" -t 0.8 -c:a libmp3lame -b:a 128k "$FS.tmp.mp3"
+            ffmpeg -nostdin -y -loglevel error -i "$FS" -t 0.8 -c:a libmp3lame -b:a 128k "$FS.tmp.mp3"
             if [ "$(stat -c%s "$FS.tmp.mp3")" -lt "$(stat -c%s "$FS")" ]; then
               mv "$FS.tmp.mp3" "$FS"; echo "footstep-v2.mp3 trimmed to 0.8s"
             else
@@ -85,8 +61,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/
           if git diff --cached --quiet; then
-            echo "no video shrank; nothing to commit"
+            echo "nothing changed; nothing to commit"
           else
-            git commit -m "Compress videos with ffmpeg (H.264, ~720w) — smaller download"
+            git commit -m "Compress SFX to AAC .m4a + trim footstep (ffmpeg) — smaller download"
             git push origin HEAD:${{ github.ref_name }}
           fi
