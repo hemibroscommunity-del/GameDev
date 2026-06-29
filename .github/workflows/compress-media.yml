@@ -1,0 +1,65 @@
+# One-shot media compressor (v2.3.1111). This sandbox has no ffmpeg, so the
+# game's videos shipped uncompressed (~9.7MB). Run this workflow manually
+# (Actions tab -> "Compress media" -> Run workflow, or via the API) to re-encode
+# them smaller, iOS-Safari-compatible H.264, and commit the result back to the
+# branch. Re-runnable and idempotent: it keeps a file only if it actually got
+# smaller.
+name: Compress media
+# Runs when THIS workflow file is pushed (so it fires once when added/edited and
+# its own video commit doesn't re-trigger it), or manually. Bump the comment
+# below to re-run on a later push.
+# rerun-token: 1
+on:
+  push:
+    paths:
+      - '.github/workflows/compress-media.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Show ffmpeg
+        run: ffmpeg -version | head -1
+      - name: Re-encode videos (H.264, faststart, max 720w)
+        run: |
+          set -e
+          VIDS="
+            public/ui/welcome/bg-loop.mp4
+            public/intro/loading-island.mp4
+            public/intro/loading-reef.mp4
+            public/minigames/mining/extract-success.mp4
+            public/minigames/mining/extract-fail.mp4
+          "
+          for f in $VIDS; do
+            [ -f "$f" ] || { echo "skip (missing) $f"; continue; }
+            before=$(stat -c%s "$f")
+            # iOS-compatible: H.264 high, yuv420p, +faststart; cap width at 720
+            # (keeps aspect, even dims); re-encode audio low or none if absent.
+            ffmpeg -y -loglevel error -i "$f" \
+              -c:v libx264 -profile:v high -crf 30 -preset slow -pix_fmt yuv420p \
+              -vf "scale='min(720,iw)':-2" -movflags +faststart \
+              -c:a aac -b:a 96k "$f.tmp.mp4"
+            after=$(stat -c%s "$f.tmp.mp4")
+            if [ "$after" -lt "$before" ]; then
+              mv "$f.tmp.mp4" "$f"
+              echo "$f: $((before/1024))KB -> $((after/1024))KB"
+            else
+              rm -f "$f.tmp.mp4"; echo "$f: kept original ($((before/1024))KB)"
+            fi
+          done
+      - name: Commit + push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/
+          if git diff --cached --quiet; then
+            echo "no video shrank; nothing to commit"
+          else
+            git commit -m "Compress videos with ffmpeg (H.264, ~720w) — smaller download"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
