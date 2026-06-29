@@ -2828,6 +2828,11 @@ export var BroTown = function BroTown(_ref0) {
            the player drifts off-centre. */
         var W = (canvas.width / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
         var H = (canvas.height / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
+        /* v2.3.1095: publish the logical world-viewport size so the projectile
+           sim can tell when an arrow nears the visible screen edge (camera.x/y
+           is the viewport's top-left in world coords). */
+        S._viewW = W;
+        S._viewH = H;
         var P = S.player;
         var K = S.keys;
 
