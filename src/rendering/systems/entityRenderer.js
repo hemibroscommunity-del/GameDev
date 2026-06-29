@@ -1028,21 +1028,6 @@ function _placeBodyRegions(display, sb, bodyTex, show) {
 function _hideBodyRegions(display) {
   for (const k of ['_bodyHead', '_bodyTorso', '_bodyLegs']) if (display[k]) display[k].visible = false;
 }
-/* v2.3.1053: when a chest/shoulder plate is worn, the body is one masked sprite
-   drawn BELOW the gear, so a pose that brings the head down into the plate (the
-   loot-pickup crouch faces the camera and bends forward) lets the pauldrons/
-   collar cover the bare head.  Re-draw just the HEAD region from the unmasked
-   body texture and lift it above the chest/shoulder gear (still below gearHead
-   so a future helmet wins).  Cheap: one region slice + an index move only when
-   it isn't already raised.  No-op (and hides the extra head) when unarmored. */
-function _raiseHeadAboveGear(display, sb, bodyTex, hasPlate) {
-  const hd = display._bodyHead;
-  if (!hd) return;
-  if (!hasPlate || !bodyTex) { hd.visible = false; return; }
-  _placeBodyRegions(display, sb, bodyTex, { head: true, torso: false, legs: false });
-  const sh = display._gearShoulders;
-  if (sh) { const hi = display.getChildIndex(hd), gi = display.getChildIndex(sh); if (hi < gi) display.setChildIndex(hd, gi); }
-}
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
 const _hairMaskCache = {};
@@ -1218,6 +1203,26 @@ export function hideSkillTraits(sprites) {
    Shared by local + remote (remote displays simply lack the hand/shield
    sprites, so those are skipped). */
 function _orderTraitsAndWeapon(display, facingIdx) {
+  /* --- Body over worn armour (v2.3.1054) ---
+     The body is ONE masked sprite: _maskedBodyFrame erases every region the
+     worn chest/legs plate covers, so under a full set the sprite is reduced to
+     just the HEAD (and any un-armoured region stays).  Drawn BELOW the gear it
+     let the pauldrons/collar cover the head -- and worse in the loot-pickup
+     crouch, where the head leaves the top of the frame so a fixed head-row
+     slice can't catch it.  Lift the whole masked body ABOVE the worn gear (same
+     setChildIndex-to-highest-ref trick as the beard): the erased torso/legs are
+     transparent so the plate shows through, while the head + any bare region
+     render on top.  No-op when no plate is worn (gear sprites hidden). */
+  {
+    const sbdy = display._spriteBody;
+    if (sbdy && sbdy.visible) {
+      let gref = -1;
+      for (const s of [display._gearLegs, display._gearChest, display._gearShoulders]) {
+        if (s && s.visible) gref = Math.max(gref, display.getChildIndex(s));
+      }
+      if (gref >= 0) { const bi = display.getChildIndex(sbdy); if (bi < gref) display.setChildIndex(sbdy, gref); }
+    }
+  }
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
@@ -3111,8 +3116,6 @@ export class EntityRenderer {
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           spriteBody.visible = true;
-          /* v2.3.1053: keep the head above a worn chest/shoulder plate. */
-          _raiseHeadAboveGear(display, spriteBody, tex, (_oEq.chest && _oEq.chest !== 'none') || (_oEq.shoulders && _oEq.shoulders !== 'none'));
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
@@ -3823,8 +3826,6 @@ export class EntityRenderer {
         }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         spriteBody.visible = true;
-        /* v2.3.1053: keep the head above a worn chest/shoulder plate. */
-        _raiseHeadAboveGear(display, spriteBody, tex, (getEquip('chest') !== 'none') || (getEquip('shoulders') !== 'none'));
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
