@@ -3104,10 +3104,11 @@ export class EffectsRenderer {
        seam stays closed -- growing the figure would have enlarged the legs too. */
     const _torsoOnlyAdj = _nakedSeam ? (({ east: 1.15 })[fmap[0]] || 1) : 1;
     /* nudge ONLY the torso vertically a few world-px (legs unchanged). +y down,
-       -y up.  east: lift the torso ~5px.  (south's drop was reverted -- too low.) */
-    const _torsoDY = _nakedSeam ? (({ east: -5 })[fmap[0]] || 0) : 0;
-    /* grow ONLY the jog legs a touch (south) to cover the small waist gap. */
-    const _legSizeAdj = _nakedSeam ? (({ south: 1.05 })[fmap[0]] || 1) : 1;
+       -y up.  east: drop the torso 10px onto the legs to close the waist gap
+       (re-tuned after the east waist was re-cut fuller). */
+    const _torsoDY = _nakedSeam ? (({ east: 10 })[fmap[0]] || 0) : 0;
+    /* grow ONLY the jog legs to help cover the waist gap (south + east). */
+    const _legSizeAdj = _nakedSeam ? (({ south: 1.05, east: 1.10 })[fmap[0]] || 1) : 1;
     const s = bodyH / 188 * (cfg.bodyScale || 1);
     /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
        Narrows x only (height stays `s`); overlays inherit it via `sgn` in
