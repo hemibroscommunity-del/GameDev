@@ -557,7 +557,15 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
 /** Preload the recolored body for the current combo across all base dirs for
  *  stand + jog, so an UNARMOURED player (or any moment the body shows) never
  *  flashes the default-skin frame when first turning/jogging in a direction.
- *  Resolves immediately for the default combo (base sheets are used as-is). */
+ *  Resolves immediately for the default combo (base sheets are used as-is).
+ *  v2.3.1110: also prewarm the SOUTH-ONLY pickup + mine poses.  These bake
+ *  lazily on first use, and their freeze windows are short (pickup 0.5s, mine
+ *  loops) -- before this, the very first loot pickup / mining swing showed the
+ *  raw default-tan body for the whole bake (getBodyFrame returns the
+ *  un-recolored frame while a sheet loads), so a custom-skin player flashed
+ *  the default skin on every first pickup.  Both poses are camera-locked to
+ *  south (entityRenderer forces facing='south' during the freeze), so only the
+ *  -south sheet exists / is ever requested. */
 export function preloadBodyAll() {
   /* v2.3.756: baked shirt retired -- the body always bakes SHIRTLESS (the
      layered shirt is a separate tinted gear sprite).  The shirt machinery
@@ -566,12 +574,15 @@ export function preloadBodyAll() {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   if (!skinT && !pantsT && !shoesT) return Promise.resolve(); /* default combo */
   const tasks = [];
+  const prewarm = (pose, dir) => {
+    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/none|' + pose + '/' + dir;
+    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null));
+  };
   for (const pose of ['stand', 'jog']) {
-    for (const dir of SOURCE_DIRS) {
-      const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/none|' + pose + '/' + dir;
-      if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null));
-    }
+    for (const dir of SOURCE_DIRS) prewarm(pose, dir);
   }
+  /* south-only poses (no other dir exists) */
+  for (const pose of ['pickup', 'mine']) prewarm(pose, 'south');
   return Promise.all(tasks);
 }
 
