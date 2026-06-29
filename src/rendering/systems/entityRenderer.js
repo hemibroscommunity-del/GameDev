@@ -3201,8 +3201,9 @@ export class EntityRenderer {
             }
           }
           if (_rworn.length) {
-            const _rlegsWorn = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
-            const _mt = (pose === 'pickup' && _rlegsWorn) ? _sectionErasedBody(tex, _rworn) : _maskedBodyFrame(tex, _rworn, 6);
+            const _rfull = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0)
+                        && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
+            const _mt = (pose === 'pickup' && _rfull) ? _sectionErasedBody(tex, _rworn) : _maskedBodyFrame(tex, _rworn, 6);
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           spriteBody.visible = true;
@@ -3912,12 +3913,15 @@ export class EntityRenderer {
            on' bug. */
         let _bodyTex;
         try {
-          /* v2.3.1056: section-erase only when LEGS are armoured (the poke-prone
-             case -- greaves narrower than the legs).  Chest-only keeps the
-             per-pixel mask so the bare legs stay connected to the cuirass (no
-             waist gap).  Head overlay handles the head either way. */
-          const _legsWorn = _worn.some(w => w.k && w.k.indexOf('legs:') === 0);
-          _bodyTex = _worn.length ? ((pose === 'pickup' && _legsWorn) ? _sectionErasedBody(tex, _worn) : _maskedBodyFrame(tex, _worn, 6)) : tex;
+          /* v2.3.1056: section-erase ONLY for the full set (chest AND legs).
+             Then every limb below the neck is armoured, so dropping the whole
+             body section is safe and kills the greave pokes.  With only one
+             piece worn, a bare limb sits in that section (bare legs under a
+             chest, bare arms beside greaves), so fall back to the per-pixel
+             mask which keeps them.  Head overlay handles the head either way. */
+          const _fullArmor = _worn.some(w => w.k && w.k.indexOf('legs:') === 0)
+                          && _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
+          _bodyTex = _worn.length ? ((pose === 'pickup' && _fullArmor) ? _sectionErasedBody(tex, _worn) : _maskedBodyFrame(tex, _worn, 6)) : tex;
         } catch (e) {
           _bodyTex = tex;
         }
