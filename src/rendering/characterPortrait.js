@@ -199,7 +199,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      shirt is the layered white-base sheet tinted to the picked color and
      composited on top -- exactly what the game renders.  Null color = white
      tee (matches the in-game default tint). */
-  ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null), 0, 0);
+  ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME), 0, 0);
   if (shirtImg) {
     let layer = shirtImg;
     if (shirtColor) {

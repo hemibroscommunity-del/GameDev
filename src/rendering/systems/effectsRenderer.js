@@ -391,10 +391,10 @@ export class EffectsRenderer {
       const img = this._bodyImgCache[rec.url];
       if (!img) return;
       const skinT = skinTarget(getSkin()), pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
-      const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null);
+      const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, rec.cfg.fh);
       const source = Texture.from(cv).source;
       source.scaleMode = 'linear';
-      const n = Math.max(1, Math.round(img.width / rec.cfg.fw));
+      const n = Math.max(1, Math.round(cv.width / rec.cfg.fw));
       const arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * rec.cfg.fw, 0, rec.cfg.fw, rec.cfg.fh) }));
       rec.target[rec.dir] = arr;
@@ -2703,9 +2703,9 @@ export class EffectsRenderer {
     const img = this._bodyImgCache[cfg.bodyUrl];   // loaded by the local bake
     if (!img) return null;
     try {
-      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null);
+      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, cfg.fh);
       const source = Texture.from(cv).source; source.scaleMode = 'linear';
-      const n = Math.max(1, Math.round(img.width / cfg.fw));
+      const n = Math.max(1, Math.round(cv.width / cfg.fw));
       arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
       this._remoteBodyCache.set(key, arr);
@@ -2726,9 +2726,9 @@ export class EffectsRenderer {
     const img = this._bodyImgCache[url];
     if (!img) return null;
     try {
-      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null);
+      const cv = recolorBodyToCanvas(img, skinTarget(o.skin), pantsTarget(o.pants), shoesTarget(o.shoes), null, fh);
       const source = Texture.from(cv).source; source.scaleMode = 'linear';
-      const n = Math.max(1, Math.round(img.width / fw));
+      const n = Math.max(1, Math.round(cv.width / fw));
       arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * fw, 0, fw, fh) }));
       this._remoteSheetCache.set(key, arr);
