@@ -24,9 +24,9 @@ export async function loadTileAssets() {
   // terrain is 1024×1024 which can fail on Canvas renderer, and we use
   // individual building PNGs from Extra/ instead of the base sheet)
   const results = await Promise.allSettled([
-    Assets.load(BASE + 'TX_Tileset_Grass.png'),
-    Assets.load(BASE + 'TX_Tileset_Dirt.png'),
-    Assets.load(BASE + 'TX_Village_Plant.png'),
+    Assets.load(BASE + 'TX_Tileset_Grass.webp'),
+    Assets.load(BASE + 'TX_Tileset_Dirt.webp'),
+    Assets.load(BASE + 'TX_Village_Plant.webp'),
   ]);
 
   const grassBase = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -81,26 +81,26 @@ export async function loadTileAssets() {
 
   // --- Building sprites (individual PNGs from Extra/) ---
   const buildingFiles = {
-    house01: 'TX_Village_Building_-_House_01.png',
-    house02: 'TX_Village_Building_-_House_02.png',
-    house03: 'TX_Village_Building_-_House_03.png',
-    house04: 'TX_Village_Building_-_House_04.png',
-    house05: 'TX_Village_Building_-_House_05.png',
-    house06: 'TX_Village_Building_-_House_06.png',
-    house07: 'TX_Village_Building_-_House_07.png',
-    house08: 'TX_Village_Building_-_House_08.png',
-    house09: 'TX_Village_Building_-_House_09.png',
-    house10: 'TX_Village_Building_-_House_10.png',
-    house11: 'TX_Village_Building_-_House_11.png',
-    house12: 'TX_Village_Building_-_House_12.png',
-    house13: 'TX_Village_Building_-_House_13.png',
-    house14: 'TX_Village_Building_-_House_14.png',
-    house15: 'TX_Village_Building_-_House_15.png',
-    barn:    'TX_Village_Building_-_Barn_01.png',
-    blacksmith: 'TX_Village_Building_-_Blacksmith_01.png',
-    chapel:  'TX_Village_Building_-_Chapel_01.png',
-    tower:   'TX_Village_Building_-_Tower_01.png',
-    warehouse: 'TX_Village_Building_-_Warehouse_01.png',
+    house01: 'TX_Village_Building_-_House_01.webp',
+    house02: 'TX_Village_Building_-_House_02.webp',
+    house03: 'TX_Village_Building_-_House_03.webp',
+    house04: 'TX_Village_Building_-_House_04.webp',
+    house05: 'TX_Village_Building_-_House_05.webp',
+    house06: 'TX_Village_Building_-_House_06.webp',
+    house07: 'TX_Village_Building_-_House_07.webp',
+    house08: 'TX_Village_Building_-_House_08.webp',
+    house09: 'TX_Village_Building_-_House_09.webp',
+    house10: 'TX_Village_Building_-_House_10.webp',
+    house11: 'TX_Village_Building_-_House_11.webp',
+    house12: 'TX_Village_Building_-_House_12.webp',
+    house13: 'TX_Village_Building_-_House_13.webp',
+    house14: 'TX_Village_Building_-_House_14.webp',
+    house15: 'TX_Village_Building_-_House_15.webp',
+    barn:    'TX_Village_Building_-_Barn_01.webp',
+    blacksmith: 'TX_Village_Building_-_Blacksmith_01.webp',
+    chapel:  'TX_Village_Building_-_Chapel_01.webp',
+    tower:   'TX_Village_Building_-_Tower_01.webp',
+    warehouse: 'TX_Village_Building_-_Warehouse_01.webp',
   };
 
   const buildingSprites = {};

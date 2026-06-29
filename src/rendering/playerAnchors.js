@@ -37,7 +37,7 @@
  */
 
 const ANCHORS_URL = '/sprites/player/anchors.json?v=16'; /* v16: hands re-tapped after the animation re-cut (idle + jog); jog frame counts corrected */
-const HANDLES_URL = '/sprites/weapons/handles.json?v=7'; /* v7: per-facing greatsword + bow grips */
+const HANDLES_URL = '/sprites/weapons/handles.json?v=8'; /* v8: metal greatsword art re-grip (re-pinned for new sprites) */
 
 /* v2.3.174: session-2 sprite pipeline shipped 256-px frames and the
    per-direction size bumps meant the old 64-px anchor JSON no longer
@@ -93,6 +93,28 @@ export function getAnchor(pose, dir, frame, mirror) {
   }
   if (!raw) return null;
   return [raw[0] * ANCHOR_SCALE, raw[1] * ANCHOR_SCALE];
+}
+
+/** v2.3.1040: pick the FORWARD (swing-leading) hand for the doubled half-cycle
+ *  jogs (east / northeast), so a held weapon rides the hand that's out front
+ *  and low instead of the one swinging up-and-back -- which made the sword
+ *  "kick up" behind the runner.  These sheets play one clean half-stride twice
+ *  (v68/v2.3.705), so the SAME arm cycles forward→back; switching the weapon to
+ *  whichever hand is further forward (larger sheet-x; the smoothed weapon
+ *  position turns the switch into a hand-off as the arms cross) keeps it
+ *  reading as a natural carry.  Returns [x,y] in current sprite space, or null.
+ *  The caller still applies the body mirror (ax = SHEET_W - x) for W/NW. */
+export function getJogForwardHand(dir, frame) {
+  if (!anchors) return null;
+  const list = anchors['jog-' + dir];
+  if (!list || list.length === 0) return null;
+  const entry = list[Math.min(frame, list.length - 1)];
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+  const r = (entry.r && entry.r.length === 2) ? entry.r : null;
+  const l = (entry.l && entry.l.length === 2) ? entry.l : null;
+  const pick = (r && l) ? (r[0] >= l[0] ? r : l) : (r || l);
+  if (!pick) return null;
+  return [pick[0] * ANCHOR_SCALE, pick[1] * ANCHOR_SCALE];
 }
 
 /** v2.3.257 (Bro-NFT Phase 1): per-frame HEAD anchor used by the

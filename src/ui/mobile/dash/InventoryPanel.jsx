@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { COL, TIER_COLOR, panelStyle, getState } from './common.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
+import { getBagEntries } from './bagModel.js';
 
 // Category filter chips — icon-only.  "All" comes first so the player
 // always opens the bag with everything visible.
@@ -32,30 +33,30 @@ export const classify = (key) => {
 // actually caught/crafted.  Currently only fish-08 is wired — map all
 // fish_* inventory keys to its frame-0 thumbnail; expand once additional
 // fish sprites are wired into the minigame.
-const WOOD_THUMB = '/icons/wood/wood-log.png';
-const BURNT_DUST_THUMB = '/icons/cook/burnt-dust.png';
-const SLIME_REMNANTS_THUMB = '/icons/monsters/slime-remnants.png';
-const SNOWMAN_REMNANTS_THUMB = '/icons/monsters/snowman-remnants.png';
-const FIRE_GOBLIN_REMNANTS_THUMB = '/icons/monsters/fire-goblin-remnants.png';
-const SKELETON_REMNANTS_THUMB = '/icons/monsters/skeleton-remnants.png';
+const WOOD_THUMB = '/icons/wood/wood-log.webp';
+const BURNT_DUST_THUMB = '/icons/cook/burnt-dust.webp';
+const SLIME_REMNANTS_THUMB = '/icons/monsters/slime-remnants.webp';
+const SNOWMAN_REMNANTS_THUMB = '/icons/monsters/snowman-remnants.webp';
+const FIRE_GOBLIN_REMNANTS_THUMB = '/icons/monsters/fire-goblin-remnants.webp';
+const SKELETON_REMNANTS_THUMB = '/icons/monsters/skeleton-remnants.webp';
 /* Per-tier fish thumbnails (raw + cooked).  Order matters in thumbFor:
    match longer prefixes first so e.g. fish_clownfish doesn't fall
    through to the generic fish_ branch. Add an entry per tier; the
    generic 'fish' / 'cooked_fish' fallbacks catch unmapped tiers. */
 const FISH_THUMBS = {
-  fish_clownfish: '/icons/fish/fish-clownfish.png',
+  fish_clownfish: '/icons/fish/fish-clownfish.webp',
 };
 const COOKED_FISH_THUMBS = {
-  cooked_fish_clownfish: '/icons/cook/cooked-fish-clownfish.png',
+  cooked_fish_clownfish: '/icons/cook/cooked-fish-clownfish.webp',
 };
-const FISH_THUMB_DEFAULT = '/icons/fish/fish-minnow.png';
-const COOKED_FISH_THUMB_DEFAULT = '/icons/cook/cooked-fish-minnow.png';
+const FISH_THUMB_DEFAULT = '/icons/fish/fish-minnow.webp';
+const COOKED_FISH_THUMB_DEFAULT = '/icons/cook/cooked-fish-minnow.webp';
 const ORE_THUMBS = {
-  ore_copper_ore: '/icons/ore/ore-copper.png',
+  ore_copper_ore: '/icons/ore/ore-copper.webp',
 };
-const ORE_THUMB_DEFAULT = '/icons/ore/ore-copper.png';
-const FISHING_POLE_THUMB = '/icons/tools/fishing-pole.png';
-/* Elemental shards: one PNG per zone, all under /icons/shards/<key>.png
+const ORE_THUMB_DEFAULT = '/icons/ore/ore-copper.webp';
+const FISHING_POLE_THUMB = '/icons/tools/fishing-pole.webp';
+/* Elemental shards: one PNG per zone, all under /icons/shards/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
    shard_ember, ...).  thumbFor() takes the shard_ prefix branch
    below so any zone we add later just needs the PNG dropped in --
@@ -70,7 +71,7 @@ export const thumbFor = (key) => {
   if (k.startsWith('wood_'))        return WOOD_THUMB;
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
-  if (k.startsWith('shard_'))       return `/icons/shards/${k}.png`;
+  if (k.startsWith('shard_'))       return `/icons/shards/${k}.webp`;
   if (k === 'fishing_pole')         return FISHING_POLE_THUMB;
   if (k === 'slime-remnants')       return SLIME_REMNANTS_THUMB;
   if (k === 'fire-goblin-remnants') return FIRE_GOBLIN_REMNANTS_THUMB;
@@ -149,19 +150,19 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
         }}>{count}</span>
       )}
       {locked && (
-        /* v2.3.177: lock glyph in the upper-right corner of locked
-           tiles. Matches the popup's lock-glyph styling. */
+        /* v2.3.177: anchor glyph in the upper-right corner of anchored
+           tiles. Matches the popup's anchor-glyph styling.
+           v2.3.1070: ⚓ replaces the old "L" -- an anchored item stays
+           pinned to the bag instead of scrolling off with recency. */
         <span style={{
           position: 'absolute', top: 1, right: 1,
-          width: 12, height: 12,
+          width: 14, height: 14,
           background: 'rgba(15,17,26,0.92)',
           border: '1px solid #f5c542',
           borderRadius: 3,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 9, color: '#f5c542',
-          fontWeight: 900,
-          lineHeight: 1,
-        }}>L</span>
+          fontSize: 9, lineHeight: 1,
+        }}>⚓</span>
       )}
     </div>
   );
@@ -170,13 +171,6 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
 export const InventoryPanel = () => {
   const [, force] = useState(0);
   const [filter, setFilter] = useState('all');
-  // Component-local recency tracking: every time we see a key's count
-  // increase versus the previous frame, that key bubbles to the front
-  // of recentRef.current.  This is the cheapest way to honour
-  // "most recent items appear in upper-left" without modifying every
-  // pickup site in the game loop.
-  const recentRef = useRef([]);
-  const prevCountRef = useRef({});
 
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
@@ -184,7 +178,6 @@ export const InventoryPanel = () => {
   }, []);
 
   const S = getState();
-  const inv = (S?.rpg?.inventory) || {};
 
   /* v2.3.687: self-healing gear stash -- restore any orphaned steel piece
      (e.g. unequipped via the Equipment menu's toggle, which predates the
@@ -197,35 +190,23 @@ export const InventoryPanel = () => {
     } catch (e) { /* reconcile is best-effort */ }
   }
 
-  // Diff against last frame — bubble up any key whose count increased.
-  const prev = prevCountRef.current;
-  const recents = recentRef.current.slice();
-  for (const [k, n] of Object.entries(inv)) {
-    if ((prev[k] || 0) < n) {
-      const idx = recents.indexOf(k);
-      if (idx >= 0) recents.splice(idx, 1);
-      recents.unshift(k);
-    }
-  }
-  // Stitch in any keys we haven't seen yet (e.g. on initial mount with a
-  // pre-populated inventory) at the back so they're still visible.
-  for (const k of Object.keys(inv)) {
-    if (!recents.includes(k)) recents.push(k);
-  }
-  // Drop keys whose count is 0 / missing.
-  const visible = recents.filter(k => (inv[k] || 0) > 0);
-  recentRef.current = visible;
-  prevCountRef.current = { ...inv };
-
-  // Apply the active category filter.
+  /* v2.3.1070: the bag (full panel) and the quick-bag preview now read the
+     SAME ordered entry list, so they always match.  Unequipped Loadout gear
+     rides in this list as stash entries -- taking an item off therefore drops
+     it straight into both surfaces, newest-first (unless anchored). */
+  const entries = getBagEntries(S?.rpg);
   const filtered = filter === 'all'
-    ? visible
-    : visible.filter(k => classify(k) === filter);
+    ? entries
+    : entries.filter(e => e.cat === filter);
+
+  const SLOTS = 32;
+  const shownItems = filtered.slice(0, SLOTS);
+  const usedTiles = shownItems.length;
 
   return (
     <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
 
-      {/* Filter strip — icon-only chips. */}
+      {/* Filter strip — labeled category chips (glyph + name). */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
         {CATEGORIES.map(c => {
           const active = c.id === filter;
@@ -234,19 +215,28 @@ export const InventoryPanel = () => {
               onClick={() => setFilter(c.id)}
               title={c.label}
               style={{
-                flex: 1,
+                flex: 1, minWidth: 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
                 padding: '4px 0',
                 background: active ? COL.accent : 'transparent',
                 color: active ? '#fff' : COL.muted,
                 border: `1px solid ${active ? COL.accent : COL.tileBor}`,
-                borderRadius: 4,
+                borderRadius: 5,
                 fontFamily: 'inherit',
-                fontSize: 16,
                 cursor: 'pointer',
               }}
-            >{c.glyph}</button>
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>
+              <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.02em' }}>{c.label}</span>
+            </button>
           );
         })}
+      </div>
+
+      {/* Slot count. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '0 2px 5px', color: COL.muted }}>
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em' }}>BAG</span>
+        <span style={{ fontSize: 11 }}>{Math.min(usedTiles, SLOTS)} / {SLOTS}</span>
       </div>
 
       {/* v2.3.761: leather backdrop (owner art) behind the bag's cell grid;
@@ -254,72 +244,72 @@ export const InventoryPanel = () => {
           v2.3.762: flex:1 so the leather fills the panel's FULL height in
           the expanded view (it used to stop at the last tile row). */}
       <div style={{
-        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
+        backgroundImage: 'url(/icons/ui/bag-bg.webp?v=2.3.761)',
         backgroundSize: '100% 100%',
         borderRadius: 8,
         padding: 8,
         flex: 1,
         minHeight: 0,
       }}>
-      {(() => {
-        /* v2.3.210: surface stash weapons + shields in the bag grid
-           so the popup's Equip action has somewhere to come from. */
-        const stashWpns = (filter === 'all' || filter === 'weapon')
-          ? ((S?.rpg?.weaponStash) || [])
-          : [];
-        const stashShields = (filter === 'all' || filter === 'armor')
-          ? ((S?.rpg?.shieldStash) || [])
-          : [];
-        /* v2.3.228: armor stash tiles. */
-        const stashArmors = (filter === 'all' || filter === 'armor')
-          ? ((S?.rpg?.armorStash) || [])
-          : [];
-        /* v2.3.685: unequipped WORN gear (steel chest/legs from the Loadout)
-           -- Equip from the popup puts it back on. */
-        const stashGears = (filter === 'all' || filter === 'armor')
-          ? ((S?.rpg?.gearStash) || [])
-          : [];
-        const totalTiles = stashWpns.length + stashShields.length + stashArmors.length + stashGears.length + filtered.length;
-        if (totalTiles === 0) {
-          return (
-            <div style={{ color: COL.muted, fontSize: 15, textAlign: 'center', padding: '14px 0' }}>
-              {filter === 'all' ? 'Bag is empty.' : 'No items in this category.'}
+      {usedTiles === 0
+        ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 8px', textAlign: 'center', color: COL.muted }}>
+            <img src="/icons/ui/bag.webp?v=2.3.115" alt="" draggable={false}
+              style={{ width: 46, height: 46, opacity: 0.4, filter: 'grayscale(1)' }} />
+            <div style={{ fontSize: 13, fontWeight: 700 }}>
+              {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
             </div>
-          );
-        }
-        return (
+            {filter === 'all' && (
+              <div style={{ fontSize: 10.5, color: 'rgba(136,144,184,0.78)', maxWidth: 220 }}>
+                Defeat monsters and gather materials to fill it up.
+              </div>
+            )}
+          </div>
+        )
+        : (
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(8, 1fr)',
             gap: 6,
           }}>
-            {stashWpns.map((wpn, i) => (
-              <StashTile key={`sw-${i}`} kind="stashWeapon" obj={wpn} index={i} />
+            {shownItems.map((e, i) => (
+              <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} />
             ))}
-            {stashShields.map((sh, i) => (
-              <StashTile key={`ss-${i}`} kind="stashShield" obj={sh} index={i} />
-            ))}
-            {stashArmors.map((ar, i) => (
-              <StashTile key={`sa-${i}`} kind="stashArmor" obj={ar} index={i} />
-            ))}
-            {stashGears.map((g, i) => (
-              <StashTile key={`sg-${i}`} kind="stashGear" obj={g} index={i} />
-            ))}
-            {filtered.slice(0, 32 - stashWpns.length - stashShields.length - stashArmors.length - stashGears.length).map(k => (
-              <ItemTile key={k} ikey={k} count={inv[k]} />
+            {/* Empty slots so the bag always reads as a full grid of squares.
+                v2.3.1039: recessed dark fill + clearly-visible outline (the old
+                COL.tileBor at .10 alpha vanished against the leather bg). */}
+            {Array.from({ length: Math.max(0, SLOTS - usedTiles) }).map((_, i) => (
+              <div key={`empty-${i}`} aria-hidden="true" style={{
+                width: '100%', aspectRatio: '1 / 1',
+                background: 'rgba(0,0,0,0.28)',
+                border: '1px solid rgba(255,255,255,0.22)',
+                borderRadius: 6,
+              }} />
             ))}
           </div>
-        );
-      })()}
+        )}
       </div>
     </div>
   );
+};
+
+/* v2.3.1070: dispatch a shared bag entry to the right tile so the quick-bag
+   preview and the full Bag panel render identical tiles from one list. */
+export const BagTile = ({ entry }) => {
+  if (!entry) return null;
+  if (entry.kind === 'item') {
+    return <ItemTile ikey={entry.key} count={entry.count} />;
+  }
+  return <StashTile kind={entry.kind} obj={entry.obj} index={entry.index} />;
 };
 
 /* Stash tile for an unequipped weapon or shield.  Opens the popup
    with the stashWeapon / stashShield kind so the Equip action wires
    it back into the matching loadout slot. */
 const StashTile = ({ kind, obj, index }) => {
+  /* v2.3.1070: anchored stash items show the same ⚓ badge as inventory
+     tiles -- the popup anchors them under the matching index-based key. */
+  const locked = itemIsLocked(`${kind}_${index}`);
   const handleTap = (e) => {
     e.stopPropagation();
     let anchor = null;
@@ -342,15 +332,15 @@ const StashTile = ({ kind, obj, index }) => {
   const v = '2.3.211';
   const thumb = kind === 'stashGear'
     ? ((obj && (obj.gearId === 'steelplate' || obj.gearId === 'steelgreaves'))
-        ? `/sprites/gear/icons/${obj.gearId}.png?v=2.3.685` : null)
+        ? `/sprites/gear/icons/${obj.gearId}.webp?v=2.3.685` : null)
     : kind === 'stashArmor'
     ? null /* no armor sprites yet -- glyph fallback below */
     : kind === 'stashShield'
-    ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.png?v=${v}` : null)
-    : obj && obj.type === 'bow'   ? `/sprites/weapons/bows/Bow2.png?v=${v}`
-    : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${v}`
-    : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/Bamboo.png?v=${v}`
-    : `/sprites/weapons/swords/Sword1.png?v=${v}`;
+    ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.webp?v=${v}` : null)
+    : obj && obj.type === 'bow'   ? `/sprites/weapons/bows/Bow2.webp?v=${v}`
+    : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.webp?v=${v}`
+    : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070` /* v2.3.1070: mini steel-sword icon, not bamboo */
+    : `/sprites/weapons/swords/Sword1.webp?v=${v}`;
   const color = TIER_COLOR.rare;
   const fallbackGlyph = kind === 'stashShield' ? '\u{1F6E1}'
                       : kind === 'stashArmor'  ? '\u{1F9BA}'
@@ -371,6 +361,17 @@ const StashTile = ({ kind, obj, index }) => {
         ? <img src={thumb} alt="" draggable={false}
             style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
         : <span style={{ fontSize: 18 }}>{fallbackGlyph}</span>}
+      {locked && (
+        <span style={{
+          position: 'absolute', top: 1, right: 1,
+          width: 14, height: 14,
+          background: 'rgba(15,17,26,0.92)',
+          border: '1px solid #f5c542',
+          borderRadius: 3,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 9, lineHeight: 1,
+        }}>⚓</span>
+      )}
     </div>
   );
 };

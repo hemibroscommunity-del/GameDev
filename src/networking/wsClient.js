@@ -220,7 +220,18 @@ export function setupWebSocket(ctx) {
             rpgQuests: (S.rpg && S.rpg._quests) || {},
             rpgQuestFlags: (S.rpg && S.rpg._questFlags) || {},
             rpgQuestKills: (S.rpg && S.rpg._questKills) || {},
-            rpgAchievementPoints: (S.rpg && typeof S.rpg.achievementPoints === 'number') ? S.rpg.achievementPoints : 0
+            rpgAchievementPoints: (S.rpg && typeof S.rpg.achievementPoints === 'number') ? S.rpg.achievementPoints : 0,
+            /* v2.3.1021: weapon/defense skill track bootstrap.  Used on first
+               connect (and as the migration fallback for existing players
+               whose stored record predates server persistence) so trained
+               weapon-skill levels / points / channels are captured server-side
+               instead of staying localStorage-only. */
+            rpgWeaponSkills: (S.rpg && S.rpg.weaponSkills) || {},
+            rpgWeaponUnspent: (S.rpg && S.rpg.weaponUnspent) || {},
+            rpgWeaponSpecs: (S.rpg && S.rpg.weaponSpecs) || {},
+            rpgDefenseSkill: (S.rpg && S.rpg.defenseSkill) || { level: 0, xp: 0 },
+            rpgDefenseUnspent: (S.rpg && typeof S.rpg.defenseUnspent === 'number') ? S.rpg.defenseUnspent : 0,
+            rpgDefenseSpec: (S.rpg && S.rpg.defenseSpec) || {}
           }
         }));
         var welcomeMsg = {
@@ -288,6 +299,11 @@ export function setupWebSocket(ctx) {
                     S.others[pid]._vx = (data.vx || 0) / 100;
                     S.others[pid]._vy = (data.vy || 0) / 100;
                     S.others[pid]._lastUpdate = Date.now();
+                    /* v2.3.1092: current harvest activity (mine|chop|fish|cook|
+                       fire, or null). Drives the remote body pose / skill
+                       stand-in in the renderer. Absent (old server) => leave
+                       untouched. */
+                    if (data.ex !== undefined) S.others[pid]._ex = data.ex || null;
                     /* v2.3.599: live equip -> the renderer reads other.equip
                        (nested), so rebuild it from the broadcast eqc/eql/eqs
                        whenever present, keeping armour on/off in sync. */
@@ -791,6 +807,19 @@ export function setupWebSocket(ctx) {
               if (msg.payload._questFlags && typeof msg.payload._questFlags === 'object') S.rpg._questFlags = msg.payload._questFlags;
               if (msg.payload._questKills && typeof msg.payload._questKills === 'object') S.rpg._questKills = msg.payload._questKills;
               if (typeof msg.payload.achievementPoints === 'number') S.rpg.achievementPoints = msg.payload.achievementPoints;
+              /* v2.3.1021: weapon/defense skill track -- worker is now the
+                 durable store.  Adopt the echoed values (present-gated) so a
+                 reconnect / device switch restores trained levels / points /
+                 channels.  In protocol v2 these only arrive in a delta when
+                 they actually changed server-side (which only happens right
+                 after the client itself reported them via stats_update), so
+                 mid-session this is idempotent and never stomps live training. */
+              if (msg.payload.weaponSkills && typeof msg.payload.weaponSkills === 'object') S.rpg.weaponSkills = msg.payload.weaponSkills;
+              if (msg.payload.weaponUnspent && typeof msg.payload.weaponUnspent === 'object') S.rpg.weaponUnspent = msg.payload.weaponUnspent;
+              if (msg.payload.weaponSpecs && typeof msg.payload.weaponSpecs === 'object') S.rpg.weaponSpecs = msg.payload.weaponSpecs;
+              if (msg.payload.defenseSkill && typeof msg.payload.defenseSkill === 'object') S.rpg.defenseSkill = msg.payload.defenseSkill;
+              if (typeof msg.payload.defenseUnspent === 'number') S.rpg.defenseUnspent = msg.payload.defenseUnspent;
+              if (msg.payload.defenseSpec && typeof msg.payload.defenseSpec === 'object') S.rpg.defenseSpec = msg.payload.defenseSpec;
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
@@ -1573,6 +1602,9 @@ export function setupWebSocket(ctx) {
               eqc: p.eqc,
               eql: p.eql,
               eqs: p.eqs,
+              /* v2.3.1092: forward the harvest activity code so the server can
+                 relay it and peers can render this player gathering. */
+              ex: p.ex !== undefined ? p.ex : null,
               z: p.z || p.zone,
               vx: p.vx || 0,
               vy: p.vy || 0,

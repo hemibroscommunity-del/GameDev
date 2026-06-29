@@ -1,9 +1,9 @@
 /* Weapon icon sprite loader for the Pixi renderer.
  *
  * Mirrors the Canvas 2D path in BroTown.jsx ~1346:
- *   sword / greatsword → /sprites/weapons/swords/Sword1.png
- *   bow                → /sprites/weapons/bows/Bow2.png
- *   staff              → /sprites/weapons/staffs/Wizard%20Staff2.png
+ *   sword / greatsword → /sprites/weapons/swords/Sword1.webp
+ *   bow                → /sprites/weapons/bows/Bow2.webp
+ *   staff              → /sprites/weapons/staffs/Wizard%20Staff2.webp
  *
  * Each PNG is a single-frame icon (not a strip).  Loaded as a Pixi
  * Texture and reused by all weapon sprites in the renderer.
@@ -13,7 +13,7 @@ import { Assets } from 'pixi.js';
 
 /* Bump on every weapon-art change so URL-keyed browser/CDN caches
    refetch instead of serving the previous PNG. */
-const SPRITE_VERSION = '2.3.944';
+const SPRITE_VERSION = '2.3.1073';   // 1073: re-added black outline to all bow art (recolor had stripped it)
 
 /* v2.3.172: per-gearBase variants. Keys are `${type}:${gearBase}`;
    the bare type key is the fallback for any unmapped gearBase. wood-
@@ -23,21 +23,21 @@ const SPRITE_VERSION = '2.3.944';
    pinned via handles.json greatsword-<dir>).  Keys `greatsword-<dir>`
    for the 5 canonical facings; the other 3 mirror in entityRenderer. */
 const SHEETS = {
-  sword:        { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
-  'sword:wood': { url: `/sprites/weapons/swords/Bamboo.png?v=${SPRITE_VERSION}`,          tex: null },
-  greatsword:   { url: `/sprites/weapons/swords/Sword1.png?v=${SPRITE_VERSION}`,          tex: null },
-  'greatsword-south':     { url: `/sprites/weapons/swords/greatsword-south.png?v=${SPRITE_VERSION}`,     tex: null },
-  'greatsword-southwest': { url: `/sprites/weapons/swords/greatsword-southwest.png?v=${SPRITE_VERSION}`, tex: null },
-  'greatsword-east':      { url: `/sprites/weapons/swords/greatsword-east.png?v=${SPRITE_VERSION}`,      tex: null },
-  'greatsword-northeast': { url: `/sprites/weapons/swords/greatsword-northeast.png?v=${SPRITE_VERSION}`, tex: null },
-  'greatsword-north':     { url: `/sprites/weapons/swords/greatsword-north.png?v=${SPRITE_VERSION}`,     tex: null },
-  bow:          { url: `/sprites/weapons/bows/Bow2.png?v=${SPRITE_VERSION}`,              tex: null },
-  'bow-south':     { url: `/sprites/weapons/bows/bow-south.png?v=${SPRITE_VERSION}`,     tex: null },
-  'bow-southwest': { url: `/sprites/weapons/bows/bow-southwest.png?v=${SPRITE_VERSION}`, tex: null },
-  'bow-east':      { url: `/sprites/weapons/bows/bow-east.png?v=${SPRITE_VERSION}`,      tex: null },
-  'bow-northeast': { url: `/sprites/weapons/bows/bow-northeast.png?v=${SPRITE_VERSION}`, tex: null },
-  'bow-north':     { url: `/sprites/weapons/bows/bow-north.png?v=${SPRITE_VERSION}`,     tex: null },
-  staff:        { url: `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${SPRITE_VERSION}`, tex: null },
+  sword:        { url: `/sprites/weapons/swords/Sword1.webp?v=${SPRITE_VERSION}`,          tex: null },
+  'sword:wood': { url: `/sprites/weapons/swords/Bamboo.webp?v=${SPRITE_VERSION}`,          tex: null },
+  greatsword:   { url: `/sprites/weapons/swords/Sword1.webp?v=${SPRITE_VERSION}`,          tex: null },
+  'greatsword-south':     { url: `/sprites/weapons/swords/greatsword-south.webp?v=${SPRITE_VERSION}`,     tex: null },
+  'greatsword-southwest': { url: `/sprites/weapons/swords/greatsword-southwest.webp?v=${SPRITE_VERSION}`, tex: null },
+  'greatsword-east':      { url: `/sprites/weapons/swords/greatsword-east.webp?v=${SPRITE_VERSION}`,      tex: null },
+  'greatsword-northeast': { url: `/sprites/weapons/swords/greatsword-northeast.webp?v=${SPRITE_VERSION}`, tex: null },
+  'greatsword-north':     { url: `/sprites/weapons/swords/greatsword-north.webp?v=${SPRITE_VERSION}`,     tex: null },
+  bow:          { url: `/sprites/weapons/bows/Bow2.webp?v=${SPRITE_VERSION}`,              tex: null },
+  'bow-south':     { url: `/sprites/weapons/bows/bow-south.webp?v=${SPRITE_VERSION}`,     tex: null },
+  'bow-southwest': { url: `/sprites/weapons/bows/bow-southwest.webp?v=${SPRITE_VERSION}`, tex: null },
+  'bow-east':      { url: `/sprites/weapons/bows/bow-east.webp?v=${SPRITE_VERSION}`,      tex: null },
+  'bow-northeast': { url: `/sprites/weapons/bows/bow-northeast.webp?v=${SPRITE_VERSION}`, tex: null },
+  'bow-north':     { url: `/sprites/weapons/bows/bow-north.webp?v=${SPRITE_VERSION}`,     tex: null },
+  staff:        { url: `/sprites/weapons/staffs/Wizard%20Staff2.webp?v=${SPRITE_VERSION}`, tex: null },
 };
 
 function keyFor(type, gearBase) {

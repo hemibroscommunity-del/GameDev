@@ -15,10 +15,11 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { chatBubbleBus } from './chatBubbleBus.js';
-import { InventoryPanel, ItemTile }    from './dash/InventoryPanel.jsx';
+import { InventoryPanel, BagTile }     from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
-import { lockedKeysInOrder as invLockedKeysInOrder, subscribe as subscribeInvLocks } from './dash/inventoryLocks.js';
+import { subscribe as subscribeInvLocks } from './dash/inventoryLocks.js';
+import { getBagEntries }               from './dash/bagModel.js';
 import { SelfPanel }         from './dash/SelfPanel.jsx';
 import { JourneyPanel }      from './dash/JourneyPanel.jsx';
 import { MapPanel }          from './dash/MapPanel.jsx';
@@ -64,22 +65,22 @@ const COL = {
 // every browser (the bytes haven't changed -- the suffix just busts
 // the URL-based cache key).
 const BAR_IMG = {
-  hp:   '/icons/ui/bar-hp.png?v=2.3.115',
-  mp:   '/icons/ui/bar-mp.png?v=2.3.115',
-  stam: '/icons/ui/bar-stam.png?v=2.3.115',
-  xp:   '/icons/ui/bar-xp.png?v=2.3.115',
+  hp:   '/icons/ui/bar-hp.webp?v=2.3.115',
+  mp:   '/icons/ui/bar-mp.webp?v=2.3.115',
+  stam: '/icons/ui/bar-stam.webp?v=2.3.115',
+  xp:   '/icons/ui/bar-xp.webp?v=2.3.115',
 };
 
 // Toolbar icon source.  Each glyph is a separate PNG sliced from the
 // user-supplied mockup screenshots by tools/slice_toolbar_icons.py
 // (first batch) and tools/slice_more_icons.py (second batch).
 const ICON_SRC = {
-  inventory: '/icons/ui/bag.png?v=2.3.115',
-  friends:   '/icons/ui/friends.png?v=2.3.115',
-  codex:     '/icons/ui/codex.png?v=2.3.115',
-  journey:   '/icons/ui/journey.png?v=2.3.115',
-  map:       '/icons/ui/map.png?v=2.3.115',
-  more:      '/icons/ui/more.png?v=2.3.115',
+  inventory: '/icons/ui/bag.webp?v=2.3.115',
+  friends:   '/icons/ui/friends.webp?v=2.3.115',
+  codex:     '/icons/ui/codex.webp?v=2.3.115',
+  journey:   '/icons/ui/journey.webp?v=2.3.115',
+  map:       '/icons/ui/map.webp?v=2.3.115',
+  more:      '/icons/ui/more.webp?v=2.3.115',
 };
 
 // Character build stats shown in the middle dashboard column, ordered for a
@@ -88,19 +89,19 @@ const ICON_SRC = {
 // Defense is the Tier-2 trained skill (rpg.defenseSkill); the others are
 // Tier-1 capacity stats.  Tooltip phrasing per GDD §1.2.
 const CHAR_STATS = [
-  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/popups/sword.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
-  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/popups/spell.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
+  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/popups/sword.webp?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
+  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/popups/arrow.webp?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
+  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/popups/spell.webp?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
   /* v2.3.112 heart iconScale history dropped; cell centers the value
      regardless of icon size. */
-  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/popups/heart.png?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/popups/heart.webp?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
      DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.695: dedicated
      shield-crest icon (user-supplied); Endurance moved to the energy bolt so
      the two no longer share shield imagery.  v2.3.696: DEF and END swapped --
      bottom row reads Vitality · Defense · Endurance per user. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/popups/shield-defense.png?v=2.3.695',       pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/popups/energy.png?v=2.3.695',               pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/popups/shield-defense.webp?v=2.3.695',       pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/popups/energy.webp?v=2.3.695',               pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
 ];
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
@@ -116,7 +117,7 @@ const LIFE_SKILLS = [
   { key: 'mining',        icon: '⛏',  label: 'Mining',        tip: 'Mining — break ore + zone gems with a pickaxe.' },
   { key: 'woodcutting',   icon: '🪓', label: 'Woodcutting',   tip: 'Woodcutting — chop trees for logs and twigs.' },
   { key: 'farming',       icon: '🌾', label: 'Farming',       tip: 'Farming — plant + harvest crops on owned plots.' },
-  { key: 'blacksmithing', icon: '🔨', label: 'Blacksmithing', tip: 'Blacksmithing — forge weapons, armour, tools.' },
+  { key: 'blacksmithing', icon: '🔨', label: 'Blacksmithing', tip: 'Blacksmithing — forge weapons, armor, tools.' },
   { key: 'woodworking',   icon: '🛠',  label: 'Woodworking',   tip: 'Woodworking — craft bows, staves, furniture from logs.' },
   { key: 'gemCutting',    icon: '💎', label: 'Gem Cutting',   tip: 'Gem Cutting — refine raw gems into polished sockets.' },
   { key: 'enchanting',    icon: '✨', label: 'Enchanting',    tip: 'Enchanting — infuse equipment with elemental effects.' },
@@ -327,48 +328,25 @@ const IconButton = ({ glyph, label, active, onClick, node }) => {
    Recents-tracking mirrors InventoryPanel.jsx so the same item ordering
    logic shows up here. */
 const InventoryPreview = () => {
-  const recentRef = useRef([]);
-  const prevCountRef = useRef({});
   const [, force] = useState(0);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
     return () => clearInterval(id);
   }, []);
-  /* v2.3.177 (F3): re-render whenever a lock toggles so the locked-
-     first sort below picks up the change without waiting for the
-     400ms timer. */
+  /* v2.3.177 (F3): re-render whenever an anchor toggles so the anchored-
+     first sort picks up the change without waiting for the 400ms timer. */
   useEffect(() => subscribeInvLocks(() => force(v => v + 1)), []);
   const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
-  const inv = (S && S.rpg && S.rpg.inventory) || {};
-  /* Bubble keys whose count increased since last frame to the front. */
-  const prev = prevCountRef.current;
-  const recents = recentRef.current.slice();
-  for (const k of Object.keys(inv)) {
-    const n = inv[k];
-    if ((prev[k] || 0) < n) {
-      const idx = recents.indexOf(k);
-      if (idx >= 0) recents.splice(idx, 1);
-      recents.unshift(k);
-    }
-  }
-  for (const k of Object.keys(inv)) {
-    if (!recents.includes(k)) recents.push(k);
-  }
-  let visible = recents.filter(k => (inv[k] || 0) > 0);
-  recentRef.current = visible;
-  prevCountRef.current = { ...inv };
-  /* Sort: locked keys first (in lock-order so the oldest lock pins
-     to the top-left), then the recents order for the rest. */
-  const lockedOrder = invLockedKeysInOrder().filter(k => visible.includes(k));
-  const unlockedRest = visible.filter(k => !lockedOrder.includes(k));
-  visible = lockedOrder.concat(unlockedRest);
-  /* 2-col x 3-row grid (6 tiles). v2.3.159 capped at 4 because 6
-     square tiles overflowed; v2.3.160 keeps 6 but constrains the grid
-     to fill the column's available height and wraps each tile in a
-     square sized to the smaller of cell width or cell height. Tiles
-     stay square; they just scale down when row height < column width
-     / 2 so the whole grid fits the column's overflow:hidden clip. */
-  const tiles = visible.slice(0, 6);
+  /* v2.3.1070: the quick-bag preview reads the SAME shared entry list as the
+     full Bag panel, so the two always match -- unequipped Loadout gear shows
+     up here the moment it's taken off, newest-first (unless anchored). */
+  const entries = getBagEntries(S && S.rpg);
+  /* 3-col x 3-row grid (9 tiles). v2.3.1057: now that all three dashboard
+     columns are equal width, the quick-bag is a 3-col square grid matching
+     the Loadout slots; a third row fits cleanly when the block is anchored
+     to the top of the column. Items fill first, then faint empty slots pad
+     out to 9 so it always reads as an inventory grid. */
+  const tiles = entries.slice(0, 9);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
@@ -395,54 +373,45 @@ const InventoryPreview = () => {
         cursor: 'pointer',
         /* v2.3.761: leather backdrop (owner art) behind the quick-bag tiles;
            a touch of padding so the texture's border reads as the frame. */
-        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
+        backgroundImage: 'url(/icons/ui/bag-bg.webp?v=2.3.761)',
         backgroundSize: '100% 100%',
         borderRadius: 6,
         padding: 3,
       }}
       title="Tap to open Bag"
     >
-      {tiles.length === 0 ? (
-        /* v2.3.696: BAG header in the LOADOUT/BUILD ColHeader treatment --
-           only while the preview is empty; once items land, the header
-           yields its row so all 6 tile cells fit (per user). */
-        <>
-          <ColHeader>Bag</ColHeader>
-          <div style={{
-            flex: 1,
-            color: COL.muted,
-            fontSize: 11,
-            textAlign: 'center',
-            padding: '10px 4px 0',
-            opacity: 0.7,
-          }}>
-            Empty.<br />Tap to open.
-          </div>
-        </>
-      ) : (
-        <div style={{
-          flex: 1,
-          minHeight: 0,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gridTemplateRows: 'repeat(3, 1fr)',
-          gap: 4,
-        }}>
-          {tiles.map(k => (
-            <ItemTile
-              key={k}
-              ikey={k}
-              count={inv[k]}
-              style={{
-                /* Drop the hardcoded 1:1 aspect ratio so the tile fits
-                   whatever shape the grid cell is. */
-                aspectRatio: 'auto',
-                height: '100%',
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {/* v2.3.1057: 3-col x 3-row slot grid mirroring the Loadout column's
+          square grid (same 3 columns, same gap:3).  With all three columns
+          equal width, each square comes out the exact loadout square size.
+          Tiles stay square (ItemTile's default aspectRatio 1/1); the block
+          is centered vertically (alignContent:center) under the BAG title so
+          the leftover column height splits evenly above/below the 3x3 block
+          instead of pooling beneath it.  Items first, then faint empty slots
+          fill to 9 so it always reads as an inventory grid. */}
+      <div style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridAutoRows: 'min-content',
+        alignContent: 'center',
+        gap: 3,
+      }}>
+        {tiles.map((e, i) => (
+          <BagTile
+            key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`}
+            entry={e}
+          />
+        ))}
+        {Array.from({ length: Math.max(0, 9 - tiles.length) }).map((_, i) => (
+          <div key={`pe-${i}`} aria-hidden="true" style={{
+            aspectRatio: '1 / 1',
+            background: 'rgba(0,0,0,0.28)',
+            border: '1px solid rgba(255,255,255,0.22)',
+            borderRadius: 6,
+          }} />
+        ))}
+      </div>
     </div>
   );
 };
@@ -470,6 +439,10 @@ export const BottomDashboard = () => {
   const [, force] = useState(0);
   const [tooltip, setTooltip] = useState('');
   const dashRef = useRef(null);
+  /* v2.3.1025: the BUILD/stats column rect -- the loadout equip picker docks
+     over it (to the right of the loadout cells) so switching categories never
+     moves the menu or covers the loadout, and it can't exceed the dashboard. */
+  const buildColRef = useRef(null);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 200);
     return () => clearInterval(id);
@@ -684,7 +657,7 @@ export const BottomDashboard = () => {
           gap: 4,
         }}>
           <img
-            src="/icons/popups/gold.png"
+            src="/icons/popups/gold.webp"
             alt=""
             style={{
               width: 16,
@@ -802,7 +775,12 @@ export const BottomDashboard = () => {
                   HUD; this column narrowed (flex 0.85) so Loadout
                   (flex 1.35) gets the slack. */}
               <div style={{
-                flex: 0.85,
+                /* v2.3.1057: all three columns (Bag / Loadout / Build) are
+                   now equal width (flex 1 each) so the quick-bag squares,
+                   the loadout slots, and the build cells all line up at the
+                   same size -- the bag and loadout both being 3-col grids
+                   with the same gap means their squares come out identical. */
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -816,6 +794,10 @@ export const BottomDashboard = () => {
                    bottom border at narrow heights. */
                 overflow: 'hidden',
               }}>
+                {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders
+                    (sits on the red container tint; the leather-backed grid
+                    renders below). */}
+                <ColHeader>Bag</ColHeader>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
                     compact inventory preview. The derived stats it used
                     to show (Crit / Block / Zone / Kills / Time) are
@@ -959,9 +941,11 @@ export const BottomDashboard = () => {
                   grid.  v2.3.126 widened to flex 1.35 (was 1) using the
                   slack freed by the left column shrinking to 0.85.
                   Weapon slot still cycles activeSlot on tap (the
-                  floating WeaponSwapBar was unmounted in v2.3.125). */}
+                  floating WeaponSwapBar was unmounted in v2.3.125).
+                  v2.3.1057: flex 1.35 -> 1 so Bag / Loadout / Build are all
+                  equal width. */}
               <div style={{
-                flex: 1.35,
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -999,10 +983,10 @@ export const BottomDashboard = () => {
                      after Unequip, R[slot] is null so wpn is null and
                      the cell should show no icon (UNARMED). */
                   const slotIconSrc = !wpn ? null
-                                     : slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.3.173'
-                                     : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.png?v=2.3.173'
-                                     : isWoodSword     ? '/sprites/weapons/swords/Bamboo.png?v=2.3.173'
-                                     :                    '/sprites/weapons/swords/Sword1.png?v=2.3.173';
+                                     : slot === 'ranged' ? '/sprites/weapons/bows/Bow2.webp?v=2.3.173'
+                                     : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.webp?v=2.3.173'
+                                     : isWoodSword     ? '/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070' /* v2.3.1070: mini steel-sword icon, not bamboo */
+                                     :                    '/sprites/weapons/swords/Sword1.webp?v=2.3.173';
                   let dmgText = '0', dpsText = '0.0';
                   if (wType) {
                     const statVal = (slot === 'ranged') ? (R.agility || 0)
@@ -1032,7 +1016,7 @@ export const BottomDashboard = () => {
                      position (top-right) while defense-y slots flank it.
                      Row 2: Chest · Legs.  Leg & amulet still placeholder
                      text since there's no PNG art yet. */
-                  const shieldSrc = R.shield ? '/sprites/shields/wood-shield-front.png?v=2.3.198' : null;
+                  const shieldSrc = R.shield ? '/sprites/shields/wood-shield-front.webp?v=2.3.198' : null;
                   const armorSrc = null; /* No chest-armor PNG sprite yet. */
                   /* Plain function (not a React component) so React doesn't
                      see a fresh component-type identity on every render and
@@ -1102,18 +1086,27 @@ export const BottomDashboard = () => {
                   /* v2.3.210: tapping the weapon slot now opens the
                      ItemDetailPopup for the currently-active weapon
                      instead of cycling melee/ranged/staff. */
-                  const onTapWeapon = (anchor) => {
-                    const slotKey = slot === 'ranged' ? 'rangedWeapon'
-                                  : slot === 'staff'  ? 'staffWeapon'
-                                  : 'weapon';
-                    const wpn = R[slotKey];
-                    if (!wpn) return;
-                    itemDetailBus.open({ kind: 'weapon', slot, wpn, anchor });
+                  /* v2.3.1025: every loadout cell opens the unified picker
+                     (kind:'loadout') docked over the BUILD column (to the right
+                     of the loadout cells), so it never covers the loadout and
+                     stays put while you switch categories.  Tapping the SAME
+                     cell again closes it; tapping a different cell switches the
+                     picker's slot in place. */
+                  const openLoadout = (slot) => (anchor) => {
+                    const st = itemDetailBus.state;
+                    if (st && st.open && st.target && st.target.kind === 'loadout' && st.target.slot === slot) {
+                      itemDetailBus.close();
+                      return;
+                    }
+                    let panel = null;
+                    try {
+                      const r = buildColRef.current && buildColRef.current.getBoundingClientRect();
+                      if (r) panel = { left: r.left, top: r.top, width: r.width, height: r.height };
+                    } catch (_e) {}
+                    itemDetailBus.open({ kind: 'loadout', slot, anchor, panel });
                   };
-                  const onTapShield = (anchor) => {
-                    if (!R.shield) return;
-                    itemDetailBus.open({ kind: 'shield', shield: R.shield, anchor });
-                  };
+                  const onTapWeapon = openLoadout('weapon');
+                  const onTapShield = openLoadout('shield');
                   /* v2.3.228: armor slot tap opens the same popup. */
                   const onTapArmor = (anchor) => {
                     if (!R.armor) return;
@@ -1129,58 +1122,72 @@ export const BottomDashboard = () => {
                   const gearShirtId = getEquip('shirt');
                   const gearIconSrc = (id) =>
                     (id === 'steelplate' || id === 'steelgreaves')
-                      ? `/sprites/gear/icons/${id}.png?v=2.3.685`
-                      : id === 'tshirt' ? '/sprites/gear/icons/tshirt.png?v=2.3.756' : null;
-                  const onTapGear = (slot) => (anchor) => {
-                    const gearId = getEquip(slot);
-                    if (!gearId || gearId === 'none') return;
-                    itemDetailBus.open({ kind: 'gear', slot, gearId, anchor });
-                  };
+                      ? `/sprites/gear/icons/${id}.webp?v=2.3.685`
+                      : id === 'tshirt' ? '/sprites/gear/icons/tshirt.webp?v=2.3.756' : null;
                   /* v2.3.756: the CHEST cell holds two layers (armour over
                      shirt).  Its icon shows the TOP visible layer; tapping
                      always opens the two-layer picker, even when empty, so
                      either layer can be re-equipped from here. */
-                  const onTapChestLayers = (anchor) => {
-                    itemDetailBus.open({ kind: 'chestLayers', anchor });
-                  };
+                  const onTapChestLayers = openLoadout('chest');
+                  const onTapLegsArmor = openLoadout('legs');
+                  /* v2.3.1069: worn-equipment defense readout.  NOTE: armor is
+                     currently cosmetic -- the only def value is the placeholder
+                     `def:5` per piece in gearCatalog; actual damage mitigation
+                     is server-authoritative and not yet wired to chest/legs.
+                     This line just surfaces what's equipped (chest + legs ×5)
+                     so the loadout shows an "effect" number; the real mechanic
+                     is a follow-up (see chat). */
+                  const armorDef = (gearChestId !== 'none' ? 5 : 0) + (gearLegsId !== 'none' ? 5 : 0);
                   return (
+                    /* v2.3.1069: the loadout is now ONE 3-row grid that mirrors
+                       the quick-bag's 3x3 (same 3 columns, gridAutoRows:min-content
+                       square cells, alignContent:center, gap:3, padding:3) so the
+                       two panels share row geometry.  Row 1 is a full-width data
+                       cell sized to ~one square tall (aspectRatio) holding the
+                       DMG/DPS + DEF readouts; rows 2-3 are the six equipment slots
+                       -- which therefore line up EXACTLY with the bag's bottom two
+                       rows of squares. */
                     <div style={{
                       flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 4,
                       minHeight: 0,
-                      padding: '2px 2px 0',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gridAutoRows: 'min-content',
+                      alignContent: 'center',
+                      gap: 3,
+                      padding: 3,
                     }}>
-                      {/* DMG / DPS readout — single centered line. */}
-                      <div
-                        onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
-                        title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                        style={{
-                          fontSize: 11,
-                          color: COL.text,
-                          letterSpacing: '.02em',
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          cursor: 'pointer',
-                          touchAction: 'none',
-                        }}>
-                        <span style={{ color: COL.muted }}>DMG </span>{dmgText}
-                        <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
-                      </div>
-                      {/* Row 1 — Chest · Weapon · Shield.  v2.3.692: reordered
-                          per user so armour leads and the active weapon sits
-                          centre, shield right (mirrors the equip silhouette). */}
+                      {/* Row 1 — data cell spanning all three columns, ~one
+                          square tall so the grid reads as 3 rows (aspectRatio
+                          ≈ full-width / square; tune if a hair off). */}
                       <div style={{
-                        flex: 1,
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: 3,
+                        gridColumn: '1 / -1',
+                        aspectRatio: '3.18 / 1',
                         minHeight: 0,
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 2,
                       }}>
-                        {slotCell({
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
+                          title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
+                          style={{ fontSize: 11, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted }}>DMG </span>{dmgText}
+                          <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
+                        </div>
+                        <div
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip('Defense from worn armor (chest + legs). Placeholder for now — armor does not yet reduce damage.'); }}
+                          title="Defense from worn armor"
+                          style={{ fontSize: 11, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted }}>DEF </span>+{armorDef}
+                        </div>
+                      </div>
+                      {/* Rows 2-3 — the six equipment slots (Chest·Weapon·Shield
+                          / Legs·Amulet·Cape). */}
+                      {slotCell({
                           k: 'chest',
                           label: 'CHEST',
                           /* v2.3.756: top visible layer -- armour over
@@ -1193,18 +1200,9 @@ export const BottomDashboard = () => {
                           active: gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor,
                           onTap: onTapChestLayers,
                         })}
-                        {slotCell({ k: 'weapon', label: slotLabel, iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
-                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: R.shield ? onTapShield : undefined })}
-                      </div>
-                      {/* Row 2 — Legs · Amulet · Cape.  v2.3.692: legs under
-                          chest, jewelry + the new back slot fill the row. */}
-                      <div style={{
-                        flex: 1,
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: 3,
-                        minHeight: 0,
-                      }}>
+                        {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
+                        {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
+                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                         {slotCell({
                           k: 'legs',
                           label: 'LEGS',
@@ -1212,14 +1210,13 @@ export const BottomDashboard = () => {
                           equipped: gearLegsId !== 'none',
                           equippedGlyph: '\u{1F456}',
                           active: gearLegsId !== 'none',
-                          onTap: gearLegsId !== 'none' ? onTapGear('legs') : undefined,
+                          onTap: onTapLegsArmor,
                         })}
                         {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
                         {/* Cape: new back-layer slot (v2.3.692).  Render + equip
                             flow land in Phase 2; cell shows as empty for now. */}
                         {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
                       </div>
-                    </div>
                   );
                 })()}
               </div>
@@ -1229,7 +1226,7 @@ export const BottomDashboard = () => {
                   share one column as a 3-sub-col x 5-row grid.  Build
                   occupies sub-col 1; Life Skills fills sub-cols 2 and 3
                   (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
-              <div style={{
+              <div ref={buildColRef} style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',

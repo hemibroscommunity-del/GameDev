@@ -191,7 +191,6 @@ export const GameApp = () => {
       const mock = generateMockInventory(24);
       const extraArmor = [
         makeItem('armor', { name: 'Steel Plate',    slot: 'chest', gearId: 'steelplate' }),
-        makeItem('armor', { name: 'Test Plate',     slot: 'chest', gearId: 'testplate' }),
         makeItem('armor', { name: 'Steel Greaves',  slot: 'legs',  gearId: 'steelgreaves' }),
       ];
       const avail = [...mock, ...extraArmor, ...gearItems].filter(g => !equippedIds.has(g.id));

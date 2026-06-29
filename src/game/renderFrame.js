@@ -14,6 +14,7 @@
    the same src/debug/ target from this module as it did from src/ui/.
    S is stateRef.current. */
 import { perfTracker } from '@/debug/perfTracker.js';
+import { WORLD_ZOOM } from '@/data/constants.js';
 
 export function renderFrame(S, deps) {
   var pixiRef = deps.pixiRef,
@@ -23,8 +24,11 @@ export function renderFrame(S, deps) {
     _perfDelta = deps.perfDelta;
         var _simEndT = performance.now();
         if (pixiRef.current) {
-          var W = canvas.width / (window.devicePixelRatio || 1);
-          var H = canvas.height / (window.devicePixelRatio || 1);
+          /* v2.3.1090: enlarge the logical viewport by WORLD_ZOOM so the
+             world renders zoomed OUT (scale = cssW/viewW = 1/WORLD_ZOOM).
+             Must match the camera-centering W/H in BroTown.jsx. */
+          var W = (canvas.width / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
+          var H = (canvas.height / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
           try {
             pixiRef.current.update(S, W, H, nfts);
             S.__pixiErrStreak = 0;

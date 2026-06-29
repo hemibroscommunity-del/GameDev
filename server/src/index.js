@@ -2144,6 +2144,77 @@ export class GameRoom {
     }
   }
 
+  // v2.3.1021: weapon/defense SKILL-TRACK persistence (level / xp / unspent
+  // points / channel allocations).  Previously these lived ONLY in the
+  // browser's localStorage -- never saved server-side, loaded on join, or
+  // echoed in player_state -- so a reconnect, device switch, or cache clear
+  // reset a player's trained weapon-skill levels to 0.  Now the server is
+  // the durable store: the client trains (awardWeaponXp) + spends locally and
+  // reports via stats_update / the join payload; the server clamps + stores +
+  // echoes.  Pure store-and-echo -- the only field that affects combat is
+  // weaponSpecs, which keeps its own authoritative [0,99] clamp in
+  // _handleStatsUpdate / _computeAttackDamage, so trusting client level/xp
+  // here opens no damage exploit beyond what weaponSpecs already allows.
+  static get _WEAPON_SKILL_CATS() { return ['sword', 'bow', 'staff']; }
+  static get _DEFENSE_CHANNEL_KEYS() { return ['bulwark', 'ironskin', 'thorns', 'secondwind', 'poise']; }
+  _sanitizeWeaponSkills(src) {
+    const out = {};
+    if (!src || typeof src !== 'object') return out;
+    for (const cat of GameRoom._WEAPON_SKILL_CATS) {
+      const s = src[cat];
+      if (!s || typeof s !== 'object') continue;
+      out[cat] = {
+        level: Math.max(0, Math.min(99, Math.floor(Number(s.level) || 0))),
+        xp: Math.max(0, Math.min(1e8, Number(s.xp) || 0)),
+      };
+    }
+    return out;
+  }
+  _sanitizeWeaponUnspent(src) {
+    const out = {};
+    if (!src || typeof src !== 'object') return out;
+    for (const cat of GameRoom._WEAPON_SKILL_CATS) {
+      if (typeof src[cat] === 'number') out[cat] = Math.max(0, Math.min(999, Math.floor(src[cat])));
+    }
+    return out;
+  }
+  _sanitizeDefenseSkill(src) {
+    if (!src || typeof src !== 'object') return { level: 0, xp: 0 };
+    return {
+      level: Math.max(0, Math.min(99, Math.floor(Number(src.level) || 0))),
+      xp: Math.max(0, Math.min(1e8, Number(src.xp) || 0)),
+    };
+  }
+  _sanitizeDefenseSpec(src) {
+    const out = {};
+    if (!src || typeof src !== 'object') return out;
+    for (const k of GameRoom._DEFENSE_CHANNEL_KEYS) {
+      if (typeof src[k] === 'number') out[k] = Math.max(0, Math.min(50, Math.floor(src[k])));
+    }
+    return out;
+  }
+  // Mirror of the WCH clamp in _handleStatsUpdate, factored out so the join /
+  // migration paths apply the SAME [0,99] channel clamp (weaponSpecs feeds the
+  // authoritative damage roll, so it can't be stored raw from a join payload).
+  _sanitizeWeaponSpecs(src) {
+    const WCH = {
+      sword: ['edge', 'precision', 'executioner', 'tempo', 'cleave'],
+      bow:   ['drawPower', 'marksmanship', 'headshot', 'piercing', 'longshot'],
+      staff: ['spellPower', 'overload', 'detonation', 'attunement', 'focus'],
+    };
+    const out = {};
+    if (!src || typeof src !== 'object') return out;
+    for (const cat of Object.keys(WCH)) {
+      const s = src[cat];
+      if (!s || typeof s !== 'object') continue;
+      out[cat] = {};
+      for (const k of WCH[cat]) {
+        if (typeof s[k] === 'number') out[cat][k] = Math.max(0, Math.min(99, Math.floor(s[k])));
+      }
+    }
+    return out;
+  }
+
   async _saveRpg(playerId, ps) {
     if (!playerId || !ps) return;
     this._pruneBuffs(ps);
@@ -2206,6 +2277,13 @@ export class GameRoom {
         // would otherwise let them claim 'perfect' indefinitely
         // by cycling the WS connection between batches).
         _perfectHistory: Array.isArray(ps._perfectHistory) ? ps._perfectHistory : [],
+        // v2.3.1021: weapon/defense skill track -- durable now (was localStorage-only).
+        weaponSkills: ps.weaponSkills || {},
+        weaponUnspent: ps.weaponUnspent || {},
+        weaponSpecs: ps.weaponSpecs || {},
+        defenseSkill: ps.defenseSkill || { level: 0, xp: 0 },
+        defenseUnspent: ps.defenseUnspent || 0,
+        defenseSpec: ps.defenseSpec || {},
       });
     } catch (e) {}
   }
@@ -2266,6 +2344,16 @@ export class GameRoom {
           _questFlags: ps._questFlags || {},
           _questKills: ps._questKills || {},
           achievementPoints: ps.achievementPoints || 0,
+          // v2.3.1021: weapon/defense skill track echoed so a reconnecting
+          // client restores its trained levels / points / channels instead
+          // of falling back to the localStorage copy (which a device switch
+          // or cache clear loses).
+          weaponSkills: ps.weaponSkills || {},
+          weaponUnspent: ps.weaponUnspent || {},
+          weaponSpecs: ps.weaponSpecs || {},
+          defenseSkill: ps.defenseSkill || { level: 0, xp: 0 },
+          defenseUnspent: ps.defenseUnspent || 0,
+          defenseSpec: ps.defenseSpec || {},
       };
       const session = this.sessions.get(ws);
       let payload = full;
@@ -2531,6 +2619,26 @@ export class GameRoom {
           }
         }
       }
+    }
+    // v2.3.1021: weapon/defense SKILL TRACK (level / xp / unspent points and
+    // the defense channels).  Pure persistence -- client-trained, the server
+    // just stores the reported value (sanitized) so it survives reconnect.
+    // These don't feed _recomputeMaxes, so they don't toggle statsChanged
+    // (no pool refill); _saveRpg below persists them regardless.
+    if (payload.weaponSkills && typeof payload.weaponSkills === 'object') {
+      ps.weaponSkills = this._sanitizeWeaponSkills(payload.weaponSkills);
+    }
+    if (payload.weaponUnspent && typeof payload.weaponUnspent === 'object') {
+      ps.weaponUnspent = this._sanitizeWeaponUnspent(payload.weaponUnspent);
+    }
+    if (payload.defenseSkill && typeof payload.defenseSkill === 'object') {
+      ps.defenseSkill = this._sanitizeDefenseSkill(payload.defenseSkill);
+    }
+    if (typeof payload.defenseUnspent === 'number') {
+      ps.defenseUnspent = Math.max(0, Math.min(999, Math.floor(payload.defenseUnspent)));
+    }
+    if (payload.defenseSpec && typeof payload.defenseSpec === 'object') {
+      ps.defenseSpec = this._sanitizeDefenseSpec(payload.defenseSpec);
     }
     // Armor swap routes through stats_update (not equip_request) because
     // armor lives in a client-only armorStash and the popup mutates it
@@ -3629,6 +3737,26 @@ export class GameRoom {
             // window survives reconnects.  Stale entries (>60s old)
             // get pruned on the next _ratedHarvestAccuracy call.
             this.playerState[msg.id]._perfectHistory = Array.isArray(stored._perfectHistory) ? stored._perfectHistory : [];
+            // v2.3.1021: weapon/defense skill track.  These were never
+            // persisted before this slice, so an existing player's stored
+            // record has none -- fall back to the join payload (their current
+            // localStorage copy) the first time, so the migration CAPTURES
+            // their trained levels instead of zeroing them.  Once stored, the
+            // stored copy wins on every later reconnect.
+            const _md = msg.data || {};
+            this.playerState[msg.id].weaponSkills = (stored.weaponSkills && Object.keys(stored.weaponSkills).length)
+              ? this._sanitizeWeaponSkills(stored.weaponSkills) : this._sanitizeWeaponSkills(_md.rpgWeaponSkills);
+            this.playerState[msg.id].weaponUnspent = (stored.weaponUnspent && Object.keys(stored.weaponUnspent).length)
+              ? this._sanitizeWeaponUnspent(stored.weaponUnspent) : this._sanitizeWeaponUnspent(_md.rpgWeaponUnspent);
+            this.playerState[msg.id].weaponSpecs = (stored.weaponSpecs && Object.keys(stored.weaponSpecs).length)
+              ? this._sanitizeWeaponSpecs(stored.weaponSpecs) : this._sanitizeWeaponSpecs(_md.rpgWeaponSpecs);
+            this.playerState[msg.id].defenseSkill = (stored.defenseSkill && typeof stored.defenseSkill === 'object')
+              ? this._sanitizeDefenseSkill(stored.defenseSkill) : this._sanitizeDefenseSkill(_md.rpgDefenseSkill);
+            this.playerState[msg.id].defenseUnspent = (typeof stored.defenseUnspent === 'number')
+              ? Math.max(0, Math.min(999, Math.floor(stored.defenseUnspent)))
+              : Math.max(0, Math.min(999, Math.floor(Number(_md.rpgDefenseUnspent) || 0)));
+            this.playerState[msg.id].defenseSpec = (stored.defenseSpec && Object.keys(stored.defenseSpec).length)
+              ? this._sanitizeDefenseSpec(stored.defenseSpec) : this._sanitizeDefenseSpec(_md.rpgDefenseSpec);
           } else {
             // First-connect bootstrap caps.  Stored values (the
             // branch above) win on reconnect; this branch only runs
@@ -3737,6 +3865,17 @@ export class GameRoom {
             this.playerState[msg.id].achievementPoints = Math.max(0, Math.min(99999,
               (msg.data && typeof msg.data.rpgAchievementPoints === 'number') ? Math.floor(msg.data.rpgAchievementPoints) : 0));
             this.playerState[msg.id]._perfectHistory = [];
+            // v2.3.1021: weapon/defense skill track -- bootstrap from the join
+            // payload on first connect (sanitized), then persisted below.
+            {
+              const _md = msg.data || {};
+              this.playerState[msg.id].weaponSkills = this._sanitizeWeaponSkills(_md.rpgWeaponSkills);
+              this.playerState[msg.id].weaponUnspent = this._sanitizeWeaponUnspent(_md.rpgWeaponUnspent);
+              this.playerState[msg.id].weaponSpecs = this._sanitizeWeaponSpecs(_md.rpgWeaponSpecs);
+              this.playerState[msg.id].defenseSkill = this._sanitizeDefenseSkill(_md.rpgDefenseSkill);
+              this.playerState[msg.id].defenseUnspent = Math.max(0, Math.min(999, Math.floor(Number(_md.rpgDefenseUnspent) || 0)));
+              this.playerState[msg.id].defenseSpec = this._sanitizeDefenseSpec(_md.rpgDefenseSpec);
+            }
             await this._saveRpg(msg.id, this.playerState[msg.id]);
           }
           // Session-only equipment-derived values.  Always read from join
@@ -3873,6 +4012,10 @@ export class GameRoom {
             if (msg.eqc !== undefined) ps.eqc = msg.eqc;
             if (msg.eql !== undefined) ps.eql = msg.eql;
             if (msg.eqs !== undefined) ps.eqs = msg.eqs;
+            /* v2.3.1092: harvest activity code (mine|chop|fish|cook|fire, or
+               null). Pure presentation state relayed to peers so they can see
+               this player gathering; not authoritative over loot/XP. */
+            if (msg.ex !== undefined) ps.ex = msg.ex || null;
             if (msg.dodging !== undefined) ps.dodging = !!msg.dodging;
             if (msg.blocking !== undefined) ps.blocking = !!msg.blocking;
             if (msg.dead !== undefined) ps.dead = !!msg.dead;
@@ -4388,7 +4531,7 @@ export class GameRoom {
         const players = {};
         for (const id of this.dirtyPlayers) {
           const ps = this.playerState[id];
-          if (ps) players[id] = { x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy, f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs };
+          if (ps) players[id] = { x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy, f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs, ex: ps.ex };
         }
         delta.players = players;
         this.dirtyPlayers.clear();

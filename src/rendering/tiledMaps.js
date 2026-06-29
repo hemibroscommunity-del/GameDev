@@ -33,18 +33,22 @@ export const IMAGE_ZONE_MAPS = {
      is gone.  town_v8.jpg fallback for blocked-autoplay; animated
      overlay through VIDEO_ZONE_MAPS.town below.  Bump suffix on next
      change to bust browser/CDN caches. */
-  town:    '/maps/town_v15.png',   /* new walled town with buildings (normal avatar size) */
-  worldview: '/maps/worldview_v1.png',   /* zoomed-out hub: trails branch to every region (speck avatar) */
-  frost:   '/maps/frost_v5.png',   /* redesign: meadow-coast -> deep-ice transition */
-  meadow:  '/maps/meadow_v6.png',   /* redesign: new painterly meadow (scaled to 1024 world) */
-  thunder: '/maps/thunder_v5.png',   /* redesign: metallic/electric buried-machine peaks */
-  tidal:   '/maps/tidal_v6.png',   /* redesign: arrival-by-sea cave island */
-  mist:    '/maps/mist_v5.png',   /* redesign: poison swamp, living edge -> toxic deep */
-  hollows: '/maps/hollows_v6.png',   /* redesign: underground crystal cavern */
-  ember:   '/maps/ember_v6.png',   /* redesign: volcanic, scorched fringe -> molten heart */
-  sky:     '/maps/sky_v5.png',   /* redesign: warm desert, scrub fringe -> dune sea */
-  farm_home: '/maps/farm_v1.png',   /* redesign: cozy sunlit farm grotto (newly image-backed) */
-  verdant: '/maps/verdant_v1.png',   /* redesign: new Flora spoke */
+  /* v2.3.1103: all zone maps re-encoded PNG -> WebP q82 (~35MB -> ~4MB) to
+     shrink the download. WebP decodes fine in Pixi Assets.load + <img> on
+     iOS Safari 14+. Dimensions unchanged (1024x1024), so world bounds and the
+     walkability grids still align. */
+  town:    '/maps/town_v15.webp',   /* new walled town with buildings (normal avatar size) */
+  worldview: '/maps/worldview_v1.webp',   /* zoomed-out hub: trails branch to every region (speck avatar) */
+  frost:   '/maps/frost_v5.webp',   /* redesign: meadow-coast -> deep-ice transition */
+  meadow:  '/maps/meadow_v6.webp',   /* redesign: new painterly meadow (scaled to 1024 world) */
+  thunder: '/maps/thunder_v5.webp',   /* redesign: metallic/electric buried-machine peaks */
+  tidal:   '/maps/tidal_v6.webp',   /* redesign: arrival-by-sea cave island */
+  mist:    '/maps/mist_v5.webp',   /* redesign: poison swamp, living edge -> toxic deep */
+  hollows: '/maps/hollows_v6.webp',   /* redesign: underground crystal cavern */
+  ember:   '/maps/ember_v6.webp',   /* redesign: volcanic, scorched fringe -> molten heart */
+  sky:     '/maps/sky_v5.webp',   /* redesign: warm desert, scrub fringe -> dune sea */
+  farm_home: '/maps/farm_v1.webp',   /* redesign: cozy sunlit farm grotto (newly image-backed) */
+  verdant: '/maps/verdant_v1.webp',   /* redesign: new Flora spoke */
 };
 
 /** Zones that play a looping video as their map texture.  When a zone
@@ -104,6 +108,22 @@ export async function loadImageZoneMaps() {
     })
   );
   await Promise.all(tasks);
+}
+
+/** Preload just ONE zone's map image (the starting zone, 'town') into the same
+ *  Pixi Assets cache that tileRenderer reads (Assets.cache.get(url)).  Awaited
+ *  by the intro gate so the ground is painted the instant the overlay lifts —
+ *  otherwise the ground sprite falls back to Texture.EMPTY and the world flashes
+ *  BLACK until the PNG lands.  Only the starting zone (one URL), so the gate
+ *  isn't lengthened by the other 10 maps; those still background-load. */
+export async function preloadStartZoneMap(zoneId = 'town') {
+  const url = IMAGE_ZONE_MAPS[zoneId];
+  if (!url) return;
+  const { Assets } = await import('pixi.js');
+  try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
+  return Assets.load(url).catch((e) => {
+    console.warn('[start-zone] failed to load', url, e && e.message);
+  });
 }
 
 /** Fetch every walkability JSON in WALKABILITY_MAPS.  Returns a

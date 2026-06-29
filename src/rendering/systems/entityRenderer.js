@@ -15,7 +15,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
-import { getAnchor, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
+import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { TRAIT_CATEGORIES, resolveBodyAnchor } from '../traitCategories.js';
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
@@ -27,7 +27,8 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame } from '../gearSheets.js';
+import { getGearFrame, getLoadedGearSources } from '../gearSheets.js';
+import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange } from '../gearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -42,14 +43,14 @@ let _hudBarLoadStarted = false;
 function _ensureHudBarTextures() {
   if (_hudBarLoadStarted) return;
   _hudBarLoadStarted = true;
-  Assets.load(`/icons/ui/bar-hp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
-  Assets.load(`/icons/ui/bar-mp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
-  Assets.load(`/icons/ui/bar-stam.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
-  Assets.load(`/icons/popups/heart.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heart = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-hp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-mp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-stam.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
+  Assets.load(`/icons/popups/heart.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heart = t; }).catch(() => {});
   /* v2.3.214: white-fill heart for the player HP indicator so we can
      tint by HP tier (red asset can't be tinted to green/yellow because
      tint multiplies). */
-  Assets.load(`/icons/popups/heart-white.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
+  Assets.load(`/icons/popups/heart-white.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
 }
 
 /* v2.3.261 (Bro-NFT Phase 4): trait textures for the local player's
@@ -150,6 +151,21 @@ function _ensureBodyData() {
    by the mirrored side (e.g. crownNudge.west) without disturbing the
    un-mirrored side. */
 const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'southeast' };
+
+/* v2.3.1106: per-direction jog FOOT-PLANT frames (footstep SFX fires when the
+   animation lands on one). Module-scope so the jog render path doesn't allocate
+   a fresh object + arrays every frame (that per-frame garbage was a likely
+   source of periodic GC hitches). resolveDirection only ever yields the 5 base
+   dirs; mirror keys kept for clarity. */
+const JOG_FOOT_FRAMES = {
+  east: [3, 17], west: [3, 17],
+  south: [0, 13], north: [0, 11],
+  northeast: [9, 21], northwest: [9, 21],
+  /* v2.3.1107: SW/SE is a DOUBLE-stride loop (~1656ms, ~2x the other dirs), so
+     it has FOUR foot-plants per cycle, not two. [2,17] left the middle two
+     silent and bunched the audible pair into a "first two replay". */
+  southwest: [2, 8, 13, 18], southeast: [2, 8, 13, 18],
+};
 
 /* v2.3.537: per-(pose,dir) body render scale, DERIVED from silhouette
    measurement -- replaces the old hand-tuned bump stack (v2.3.164-171:
@@ -526,7 +542,15 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
         dilCtx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, 0, 256, 256);
     }
     ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
-    for (let dy = -dilate; dy <= dilate; dy++)
+    /* v2.3.1073: only dilate the erase DOWNWARD when a leg plate is also worn to
+       fill the over-erased band.  With chest-only (no leg plate), the downward
+       dilation ate the bare waist/upper-leg just below the chest plate -- a
+       transparent GAP between torso and legs, most visible while jogging (the
+       jog torso/leg junction shifts).  Cap dy<=0 there so the bare body fills the
+       waist; the leg-plate case keeps full dilation (the plate hides the band). */
+    const _hasLegPlate = worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+    const _dyMax = _hasLegPlate ? dilate : 0;
+    for (let dy = -dilate; dy <= _dyMax; dy++)
       ctx.drawImage(dilCv, 0, dy);
     ctx.globalCompositeOperation = 'source-over';
     if (neckY > 0) {                                     // restore the head+neck band
@@ -907,6 +931,34 @@ export async function uploadBakedTextures(renderer) {
       _uploadedSources.add(t.source);
     } catch (e) { /* best-effort */ }
     if (++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
+/* v2.3.1022: force-upload the GEAR sheet textures too — idle/jog via the
+   gearSheets cache, swing/bowshot via the Assets cache that
+   effectsRenderer._gearStripFrame reads (warmed by preloadCombatGear).  Their
+   GPU upload was still deferred to first DRAW, so the first armored turn/swing
+   hitched.  Shares _uploadedSources so repeat calls push only new sources, and
+   stays staggered (every 24) to avoid a synchronous upload spike on iOS. */
+export async function uploadGearTextures(renderer) {
+  if (!renderer) return;
+  const up = (source) => {
+    if (!source || _uploadedSources.has(source)) return false;
+    try {
+      if (renderer.texture && typeof renderer.texture.initSource === 'function') renderer.texture.initSource(source);
+      else if (renderer.prepare && typeof renderer.prepare.upload === 'function') renderer.prepare.upload(source);
+      else return false;
+      _uploadedSources.add(source);
+    } catch (e) { /* best-effort */ }
+    return true;
+  };
+  let n = 0;
+  for (const source of getLoadedGearSources()) {
+    if (up(source) && ++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+  for (const url of combatGearUrls()) {
+    const tex = Assets.cache.get(url);
+    if (tex && tex.source && up(tex.source) && ++n % 24 === 0) await new Promise((r) => setTimeout(r, 0));
   }
 }
 
@@ -1353,7 +1405,11 @@ function _orderTraitsAndWeapon(display, facingIdx) {
          face).  setChildIndex removes-then-inserts, so inserting at the
          highest reference index lands the beard directly above it. */
       let ref = display.getChildIndex(display._spriteBody);
-      for (const s of [display._gearLegs, display._gearChest, display._gearShoulders,
+      /* v2.3.1099: include the SHIRT (_gearShirt) -- the beard hangs over the
+         chest, so on toward-camera facings it must sit above the t-shirt too,
+         not just the armour. Without it, a shirt worn with no armour rendered
+         OVER the beard (beard "behind the t-shirt" on south). */
+      for (const s of [display._gearShirt, display._gearLegs, display._gearChest, display._gearShoulders,
                        display._bodyHead,   /* v2.3.1055: pickup head overlay */
                        display._handCapSprite, display._handArmSprite,
                        display._shieldSprite]) {
@@ -1905,7 +1961,7 @@ function createPlayerDisplay() {
   container.addChild(nameText);
 
   /* Combat-bar HUD anchored above the head (v2.3.107).  Each bar
-     is a pill-shaped Sprite using the same /icons/ui/bar-*.png
+     is a pill-shaped Sprite using the same /icons/ui/bar-*.webp
      artwork the bottom dashboard's XP bar uses, so the in-world
      readout matches the dashboard chrome exactly.  A dim overlay
      Graphics sits on top of the right (empty) portion of each bar
@@ -2986,6 +3042,27 @@ export class EntityRenderer {
     }
   }
 
+  /* v2.3.1091: zone perspective player-scale -- the Overlook/vista "world
+     view" shrink that makes avatars tiny while travelling. Shared by the
+     LOCAL player and REMOTE players from each one's own position, so everyone
+     shrinks together on a vista map. Previously only the local avatar shrank
+     and other players stayed full size, dwarfing the tiny landscape. Absent
+     playerScale => 1 (normal in-zone sizing, unchanged). */
+  _zonePscale(S, x, y) {
+    const _z = ZONES[S.currentZone];
+    const ps = _z && _z.playerScale;
+    if (typeof ps === 'number') return ps;
+    if (ps && typeof ps === 'object') {
+      const cx = (_z.w * TILE) / 2, cy = (_z.h * TILE) / 2;
+      const d = Math.min(1, Math.hypot(x - cx, y - cy) / (Math.hypot(cx, cy) || 1));
+      const near = ps.near != null ? ps.near : 0.6;
+      const far = ps.far != null ? ps.far : 0.3;
+      const curve = ps.curve != null ? ps.curve : 1; // <1 shrinks faster as you leave centre
+      return near + (far - near) * Math.pow(d, curve);
+    }
+    return 1;
+  }
+
   _updateOtherPlayers(S, now) {
     const others = S.others || {};
     const activeIds = new Set();
@@ -3006,12 +3083,27 @@ export class EntityRenderer {
       display.x = other.renderX || other.x || 0;
       display.y = other.renderY || other.y || 0;
 
+      /* v2.3.1091: apply the same per-zone perspective shrink the local
+         player gets, computed from THIS remote's own position, so other
+         players also become tiny on a vista map ("world view") instead of
+         dwarfing the landscape. Normal zones have no playerScale => 1 (other
+         players keep their correct in-zone size). The body's horizontal flip
+         lives on the inner _spriteBody, so scaling the container uniformly
+         here doesn't disturb facing. */
+      {
+        const pscale = this._zonePscale(S, display.x, display.y);
+        if (display.scale.x !== pscale) display.scale.set(pscale);
+      }
+
       /* Death state — play the death sprite animation (player crumbles
          into a skeleton then a pile of bones) until player_respawned
          clears _isDead.  Hide weapon/shield/NFT/procedural body so the
          corpse reads cleanly.  Fall back to a fade+tilt visual if the
          sheet hasn't loaded yet. */
       if (other._isDead) {
+        /* v2.3.1092: a harvest stand-in may have hidden this container last
+           frame; the corpse renders through it, so restore visibility. */
+        if (!display.visible) display.visible = true;
         /* v2.3.809: self-heal a missed corpse-clear.  player_respawned is a
            one-shot peer broadcast -- an observer that was frozen,
            reconnecting, or joined after the respawn never receives it, so
@@ -3132,12 +3224,25 @@ export class EntityRenderer {
          Dropping it makes remote facing match local. */
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
-      const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
+      /* v2.3.1092: remote harvest activity broadcast by the gatherer.
+         mine/fish render as the SAME south-only body poses the local player
+         uses; chop/cook/fire are full-character STAND-INS drawn in
+         effectsRenderer (_updateRemoteExtraction), so the whole body container
+         is hidden while one is active (mirrors the local player's _chopHide). */
+      const _rex = other._ex || null;
+      const _rexStandIn = _rex === 'chop' || _rex === 'cook' || _rex === 'fire';
+      const _rexBodyPose = _rex === 'mine' ? 'mine' : _rex === 'fish' ? 'fish' : null;
+      if (display.visible === _rexStandIn) display.visible = !_rexStandIn;
+      const pose = _rexBodyPose
+        ? _rexBodyPose
+        : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'));
       const spritesAvailable = hasPose(pose) || hasPose('stand');
       let useSprite = false;
-      if (spritesAvailable) {
+      if (!_rexStandIn && spritesAvailable) {
         const spriteBody = display._spriteBody;
-        const { dir, mirror } = resolveDirection(facing);
+        let { dir, mirror } = resolveDirection(facing);
+        /* mine/fish frames are authored south-only -> force south, no mirror. */
+        if (pose === 'mine' || pose === 'fish') { dir = 'south'; mirror = false; }
         let frameIdx = 0;
         if (pose === 'jog') {
           /* Frame count is per-direction now (24-35) — pulled from
@@ -3151,6 +3256,11 @@ export class EntityRenderer {
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
+        } else if (pose === 'mine' || pose === 'fish') {
+          /* v2.3.1092: loop the south-only gather cycle off `now`, same cadence
+             as the local player's mine/fish pose. */
+          const fc = playerFrameCount(pose, 'south') || (pose === 'mine' ? 14 : 32);
+          frameIdx = Math.floor((now / cycleMs(pose, 'south')) * fc) % fc;
         }
         /* v2.3.389: remote players render in their own skin tone.
            v2.3.399: + their pants / shoes colors.
@@ -3354,7 +3464,12 @@ export class EntityRenderer {
           if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88 * 0.6;
           else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03 * 0.6;
           const animFrame = display._animFrame || 0;
-          const hand = display._animPose ? getAnchor(display._animPose, dir, animFrame, mirror) : null;
+          /* v2.3.1040: forward-hand pick for the doubled half-cycle jogs (east/NE). */
+          const _jogFwd = display._animPose === 'jog' && (dir === 'east' || dir === 'northeast');
+          const hand = display._animPose
+            ? (_jogFwd ? (getJogForwardHand(dir, animFrame) || getAnchor(display._animPose, dir, animFrame, mirror))
+                       : getAnchor(display._animPose, dir, animFrame, mirror))
+            : null;
           let wpnX = 0, wpnY = 0;
           if (hand) {
             const ax = mirror ? (SHEET_W - hand[0]) : hand[0];
@@ -3523,20 +3638,10 @@ export class EntityRenderer {
        maps (e.g. the Overlook) so it doesn't dwarf the landscape.
        zone.playerScale is either a flat number, or { near, far } to scale by
        distance from the zone centre (bigger at the plateau, smaller toward the
-       distant edges). Absent => 1 (normal). */
+       distant edges). Absent => 1 (normal). v2.3.1091: extracted to
+       _zonePscale and shared with the remote-player path. */
     {
-      const _z = ZONES[S.currentZone];
-      const ps = _z && _z.playerScale;
-      let pscale = 1;
-      if (typeof ps === 'number') pscale = ps;
-      else if (ps && typeof ps === 'object') {
-        const cx = (_z.w * TILE) / 2, cy = (_z.h * TILE) / 2;
-        const d = Math.min(1, Math.hypot(P.x - cx, P.y - cy) / (Math.hypot(cx, cy) || 1));
-        const near = ps.near != null ? ps.near : 0.6;
-        const far = ps.far != null ? ps.far : 0.3;
-        const curve = ps.curve != null ? ps.curve : 1; // <1 shrinks faster as you leave centre
-        pscale = near + (far - near) * Math.pow(d, curve);
-      }
+      const pscale = this._zonePscale(S, P.x, P.y);
       if (display.scale.x !== pscale) display.scale.set(pscale);
     }
 
@@ -3609,7 +3714,13 @@ export class EntityRenderer {
        any horizontal-dominant aim (so a NE/SE that's "more east than N/S" plays
        the east swing).  baseAngle is published by monsterCombat (S._swingAng);
        fall back to the 8-way facing if it isn't set yet.  Visual only. */
-    let _swingAng = S._swingAng;
+    /* v2.3.1071: follow LIVE aim each frame so a mid-swing rotation re-points the
+       body instead of freezing at the swing-start facing. Fall back to the locked
+       swing angle, then the 8-way facing. The frame index stays time-based, so a
+       direction switch just hands off to the new sheet at the same frame. */
+    let _swingAng = (S._aimAngle != null) ? S._aimAngle
+                  : (S._lastAimAngle != null) ? S._lastAimAngle
+                  : S._swingAng;
     if (_swingAng == null) {
       const _si = SECTORS.indexOf(S._renderFacing);
       _swingAng = _si >= 0 ? _si * (Math.PI / 4) : Math.PI / 2;  // SECTORS[i] = i*45deg, south default
@@ -3631,7 +3742,13 @@ export class EntityRenderer {
     let _bowDir = null;
     if (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS && S._bowShotAng != null
         && !S._extraction && !S._firemaking) {
-      const _bsec = Math.round(S._bowShotAng / (Math.PI / 4));
+      /* v2.3.1071: the body pose follows LIVE aim during the shot window (the
+         arrow keeps its fire-time angle S._bowShotAng), so a rapid turn re-points
+         the bro instead of freezing at the shot's original facing. */
+      const _aimNow = (S._aimAngle != null) ? S._aimAngle
+                    : (S._lastAimAngle != null) ? S._lastAimAngle
+                    : S._bowShotAng;
+      const _bsec = Math.round(_aimNow / (Math.PI / 4));
       const _bf = SECTORS[((_bsec % 8) + 8) % 8];
       if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
     }
@@ -3816,19 +3933,23 @@ export class EntityRenderer {
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
-        /* v2.3.839: footstep SFX locked to the jog animation.  The jog
-           sheet is ONE half-stride (one step) played each effectiveCycle,
-           so fire exactly one footstep per cycle -- the sound now matches
-           the visible stride exactly.  Naked uses a shorter cycleMs, so
-           its steps come quicker: a naturally lighter tempo, no separate
-           timer needed.  Aim/shield doubles effectiveCycle, so steps slow
-           with the animation too. */
-        const _jogCycle = Math.floor(now / effectiveCycle);
-        if (display._jogCycle !== _jogCycle) {
-          if (display._jogCycle !== undefined && typeof window !== 'undefined' && window.BT_AUDIO) {
+        /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
+           direction's jog loop, so the sound lands exactly when a foot hits the
+           ground -- a fixed timer never lined up because the per-direction
+           cycles differ (0.8-1.66 s) and have their plants at different phases.
+           Frame indices below were read from the per-direction jog sheets
+           (tools/sheet_montage.mjs); two plants per full stride. Mirrored dirs
+           (west/nw/se) reuse their base sheet's frames (mirroring is scale.x,
+           the frame index is unchanged). Cadence therefore follows the
+           animation: quicker for N/S/E/NE, slower for the long SW/SE cycle. */
+        const _contacts = JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south;
+        /* Edge-trigger: fire once when the animation first lands on a plant
+           frame (works forward + backpedal; the jog advances <=1 frame/tick). */
+        if (display._prevJogFrame !== frameIdx) {
+          if (_contacts.indexOf(frameIdx) !== -1 && typeof window !== 'undefined' && window.BT_AUDIO) {
             window.BT_AUDIO.footstep(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none');
           }
-          display._jogCycle = _jogCycle;
+          display._prevJogFrame = frameIdx;
         }
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;
@@ -3896,6 +4017,9 @@ export class EntityRenderer {
         display._animPose = pose;
         display._animDir = dir;
         display._animFrame = frameIdx;
+        /* v2.3.1072: publish the live jog frame so the bow stand-in can composite
+           animated legs under its torso (jogging-legs-during-attack). */
+        S._bodyAnimFrame = frameIdx; S._bodyAnimDir = dir; S._bodyMoving = (pose === 'jog'); S._bodyAnimMirror = mirror;
         /* The v2.3.576 window.__btHideArmor debug toggle was retired in
            v2.3.678 (armour visibility is governed by the equip slots); its
            reads were removed in the v2.3.688 cleanup. */
@@ -4078,6 +4202,18 @@ export class EntityRenderer {
          the source frame) so the stand-in renders at the matching size for this
          facing / zone. */
       S._swordBodyH = (221 - 33) * _standBodyScale * _dscale;
+      /* v2.3.1073: jog-scaled body height for the composited jog legs -- the bow
+         art per direction is drawn jog-sized, so legs scaled by the STAND height
+         read ~25% small (east jog 1.25 vs stand 0.983).  Use the JOG dir-scale. */
+      S._jogBodyH = (221 - 33) * bodyDirScale('jog', dir) * LOCAL_SCALE * _dscale;
+      /* v2.3.1072: tell the bow stand-in to swap to the leg-erased torso strip and
+         composite jogging legs underneath while MOVING (effectsRenderer restricts
+         this to the south facing for now via fmap).  Gate on the function-scope
+         isMoving (reliable) rather than the published _bodyMoving. */
+      S._bowJogLegs = _bowShot && isMoving;
+      /* v2.3.1088: same for the sword swing -- jog the legs under the swing torso
+         strip while moving instead of sliding. */
+      S._swordJogLegs = _swordSwing && isMoving;
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this
@@ -4154,8 +4290,12 @@ export class EntityRenderer {
          negative scale lands on the visual right-hand side of the
          mirrored character.  Old single-anchor data is treated as
          right-hand-only and used regardless of mirror flag. */
+      /* v2.3.1040: doubled half-cycle jogs (east/NE) pin the weapon to whichever
+         hand is forward this frame, so it stops "kicking up" on the back-swing. */
+      const _jogFwd = display._animPose === 'jog' && (dir === 'east' || dir === 'northeast');
       const hand = (spritesAvailable && display._animPose)
-        ? getAnchor(display._animPose, dir, animFrame, mirror)
+        ? (_jogFwd ? (getJogForwardHand(dir, animFrame) || getAnchor(display._animPose, dir, animFrame, mirror))
+                   : getAnchor(display._animPose, dir, animFrame, mirror))
         : null;
       let wpnX, wpnY;
       if (hand) {
@@ -5099,7 +5239,7 @@ export class EntityRenderer {
   /* Combat-bar HUD above the player sprite (v2.3.107).  Three
      pill-shaped Sprites stacked closest-to-head first: HP, Mana,
      Energy on top.  Each one reuses the dashboard's bar artwork
-     (/icons/ui/bar-hp.png etc) so the in-world readout matches the
+     (/icons/ui/bar-hp.webp etc) so the in-world readout matches the
      XP bar in the dashboard.  A small dim overlay on the right
      portion of each pill shows the unfilled fraction.  No backdrop
      -- the pills float directly on the canvas.

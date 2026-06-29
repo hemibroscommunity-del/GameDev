@@ -3587,7 +3587,7 @@ export const WEAPON_TYPES = {
     range: 50,
     type: 'melee',
     arc: Math.PI * 0.85,
-    label: 'Greatsword',
+    label: 'Great Sword',
     emoji: '⚔️'
   },
   sword: {
@@ -4968,7 +4968,7 @@ export function createDefaultRpg() {
       tierMult: 1.0,
       element1: null,
       element2: null,
-      name: 'Greatsword',
+      name: 'Great Sword',
       isVolatile: false,
       gearBase: 'wood'
     },
@@ -5284,19 +5284,13 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _zoneMusicGain: null,
   _zoneMusicBuffers: {}, /* { [trackUrl]: AudioBuffer } cache */
   _zoneMusicUrl: null,   /* current track url; abandons stale fetches */
-  ZONE_MUSIC: {
-    /* v2.3.825: town theme swapped to the owner's new pixel-world track. */
-    town: '/audio/music/town-theme-v2.mp3',
-    meadow: '/audio/music/meadow-zone.mp3',
-    frost: '/audio/music/frost-zone.mp3',
-    thunder: '/audio/music/thunder-zone.mp3',
-    ember: '/audio/music/ember-zone.mp3',
-    mist: '/audio/music/mist-zone.mp3',
-    hollows: '/audio/music/hollows-zone.mp3',
-    tidal: '/audio/music/tidal-zone.mp3',
-    sky: '/audio/music/desert-winds.mp3',
-    farm_home: '/audio/music/town-theme.mp3',
-  },
+  /* v2.3.1103: EMPTIED — the owner removed all background music tracks
+     (~40 MB) to shrink the download. With no entry here, startZoneAmbient()
+     falls through to the low-volume procedural oscillator drone (generated,
+     zero bytes) for every zone, so there's no music fetch and nothing 404s.
+     To restore a track, re-add `<zoneId>: '/audio/music/<file>.mp3'` AND
+     ship the file back into public/audio/music/. */
+  ZONE_MUSIC: {},
   init: function init() {
     if (this.ctx) return;
     try {
@@ -5330,19 +5324,12 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     } catch (e) {}
   },
   beep: function beep(freq, dur, vol, type) {
-    if (!this.ctx || this.muted) return;
-    try {
-      var o = this.ctx.createOscillator();
-      var g = this.ctx.createGain();
-      o.type = type || 'sine';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(vol || 0.1, this.ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + (dur || 0.1));
-      o.connect(g);
-      g.connect(this._out());
-      o.start();
-      o.stop(this.ctx.currentTime + (dur || 0.1) + 0.05);
-    } catch (e) {}
+    /* v2.3.1103: DISABLED. The owner removed all procedurally-synthesised
+       audio ("worse than nothing"). beep() is the oscillator primitive behind
+       every synth SFX (hit/collect/footstep/levelUp/status/etc.), so a single
+       no-op here silences all of them at once while leaving the call sites and
+       the real file-based SFX (SFX_MANIFEST / playFile) untouched. */
+    return;
   },
   /* Play a one-shot audio file (mp3/ogg).  Caches an HTMLAudioElement
      per URL as a template, then clones for each play so multiple
@@ -5433,21 +5420,24 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   },
   footstep: function footstep(armored) {
     if (!this.ctx || this.muted) return;
-    /* v2.3.836: real footstep samples (extracted from the owner's videos).
-       `armored` is set by the caller from the equipped gear.  A little
-       volume + pitch jitter keeps repeated steps from machine-gunning.
-       Falls back to the old synth tick until the sample preloads. */
-    var key = armored ? 'footstep-armored' : 'footstep-naked';
-    if (this._samples && this._samples[key]) {
-      /* v2.3.839: 80% quieter than before (×0.2). */
-      if (armored) {
-        this.play(key, { vol: (0.4 + Math.random() * 0.12) * 0.2, pitchVar: 0.12 });
-      } else {
-        /* naked reads lighter -- slightly up-pitched as well as quieter. */
-        this.play(key, { vol: (0.3 + Math.random() * 0.1) * 0.2, rate: 1.05 + (Math.random() - 0.5) * 0.12 });
-      }
+    /* v2.3.1104: owner-supplied footstep. The source is a 25 s continuous
+       walking clip, so we ISOLATE just the first step (offset 0 -> 0.22 s) and
+       fire it once per jog cycle on foot-strike. `armored` (from equipped gear)
+       only varies the feel: armoured a touch louder + lower-pitched, bare
+       lighter + slightly up-pitched. Per-step vol/pitch jitter stops repeated
+       steps from machine-gunning the same waveform. */
+    if (!(this._samples && this._samples['footstep-v2'])) return;
+    /* v2.3.1105: alternate TWO distinct steps isolated from the walking clip
+       (the first two footfalls -- a natural left/right pair) so successive
+       steps don't reuse one identical waveform. */
+    if (this._footToggle === undefined) this._footToggle = 0;
+    var two = (this._footToggle++ & 1);
+    var off = two ? 0.57 : 0.0;
+    var dur = two ? 0.18 : 0.22;
+    if (armored) {
+      this.play('footstep-v2', { offset: off, duration: dur, vol: 0.34 + Math.random() * 0.06, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
     } else {
-      this.beep(180 + Math.random() * 40, 0.02, 0.02, 'triangle');
+      this.play('footstep-v2', { offset: off, duration: dur, vol: 0.26 + Math.random() * 0.05, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
     }
   },
   enterBuilding: function enterBuilding() {
@@ -5621,20 +5611,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     }, 300);
   },
   bgNote: function bgNote(freq) {
-    var dur = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0.8;
-    if (!this.ctx || this.muted) return;
-    try {
-      var o = this.ctx.createOscillator();
-      var g = this.ctx.createGain();
-      o.type = 'sine';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0.02, this.ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
-      o.connect(g);
-      g.connect(this._out());
-      o.start();
-      o.stop(this.ctx.currentTime + dur);
-    } catch (e) {}
+    /* v2.3.1103: DISABLED with the rest of the procedural synth (see beep). */
+    return;
   }
 }, "_ambientOsc", null), "_ambientGain", null), "_ambientLfo", null), "_currentZoneAmbient", null), "_ambientOsc2", null), "_ambientGain2", null), "_ambientLfo2", null), "startZoneAmbient", function startZoneAmbient(zoneId) {
   if (!this.ctx || this.muted) return;
@@ -5698,186 +5676,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     }
     return;
   }
-  var zone = ZONES[zoneId];
-  if (!zone) return;
-  try {
-    /* Primary drone — base atmosphere */
-    var ambientParams = {
-      town: {
-        freq: 220,
-        type: 'sine',
-        vol: 0.008,
-        lfo: 0.5
-      },
-      meadow: {
-        freq: 180,
-        type: 'sine',
-        vol: 0.006,
-        lfo: 0.3
-      },
-      flame: {
-        freq: 80,
-        type: 'sawtooth',
-        vol: 0.010,
-        lfo: 2.0
-      },
-      frost: {
-        freq: 300,
-        type: 'sine',
-        vol: 0.007,
-        lfo: 0.8
-      },
-      water: {
-        freq: 250,
-        type: 'triangle',
-        vol: 0.008,
-        lfo: 1.2
-      },
-      venom: {
-        freq: 100,
-        type: 'sawtooth',
-        vol: 0.009,
-        lfo: 1.5
-      },
-      storm: {
-        freq: 150,
-        type: 'square',
-        vol: 0.006,
-        lfo: 3.0
-      },
-      stone: {
-        freq: 60,
-        type: 'triangle',
-        vol: 0.008,
-        lfo: 0.4
-      },
-      wind: {
-        freq: 400,
-        type: 'sine',
-        vol: 0.005,
-        lfo: 2.5
-      },
-      dark: {
-        freq: 55,
-        type: 'sawtooth',
-        vol: 0.012,
-        lfo: 0.6
-      },
-      light: {
-        freq: 520,
-        type: 'sine',
-        vol: 0.006,
-        lfo: 0.3
-      }
-    };
-    /* Secondary texture — adds depth and character */
-    var ambientParams2 = {
-      flame: {
-        freq: 160,
-        type: 'triangle',
-        vol: 0.004,
-        lfo: 0.3
-      },
-      /* crackling undertone */
-      frost: {
-        freq: 600,
-        type: 'sine',
-        vol: 0.003,
-        lfo: 0.15
-      },
-      /* high wind whistle */
-      water: {
-        freq: 120,
-        type: 'sine',
-        vol: 0.004,
-        lfo: 0.8
-      },
-      /* deep current */
-      venom: {
-        freq: 200,
-        type: 'square',
-        vol: 0.003,
-        lfo: 0.7
-      },
-      /* insect buzz */
-      storm: {
-        freq: 300,
-        type: 'sawtooth',
-        vol: 0.003,
-        lfo: 5.0
-      },
-      /* crackling static */
-      stone: {
-        freq: 40,
-        type: 'sine',
-        vol: 0.005,
-        lfo: 0.1
-      },
-      /* deep rumble */
-      wind: {
-        freq: 800,
-        type: 'sine',
-        vol: 0.002,
-        lfo: 4.0
-      },
-      /* high whistling */
-      dark: {
-        freq: 110,
-        type: 'square',
-        vol: 0.004,
-        lfo: 0.2
-      },
-      /* ominous pulse */
-      light: {
-        freq: 1040,
-        type: 'sine',
-        vol: 0.002,
-        lfo: 0.5
-      } /* crystalline overtone */
-    };
-    var elem = zone.element || (zoneId === 'town' ? 'town' : 'meadow');
-    var params = ambientParams[elem] || ambientParams.town;
-    var o = this.ctx.createOscillator();
-    var g = this.ctx.createGain();
-    o.type = params.type;
-    o.frequency.value = params.freq;
-    g.gain.value = params.vol;
-    o.connect(g);
-    var lfo = this.ctx.createOscillator();
-    var lfoG = this.ctx.createGain();
-    lfo.frequency.value = params.lfo;
-    lfoG.gain.value = params.freq * 0.05;
-    lfo.connect(lfoG);
-    lfoG.connect(o.frequency);
-    g.connect(this._out());
-    o.start();
-    lfo.start();
-    this._ambientOsc = o;
-    this._ambientGain = g;
-    this._ambientLfo = lfo;
-    /* Secondary oscillator — adds texture */
-    var p2 = ambientParams2[elem];
-    if (p2) {
-      var o2 = this.ctx.createOscillator();
-      var g2 = this.ctx.createGain();
-      o2.type = p2.type;
-      o2.frequency.value = p2.freq;
-      g2.gain.value = p2.vol;
-      o2.connect(g2);
-      var lfo2 = this.ctx.createOscillator();
-      var lfoG2 = this.ctx.createGain();
-      lfo2.frequency.value = p2.lfo;
-      lfoG2.gain.value = p2.freq * 0.08;
-      lfo2.connect(lfoG2);
-      lfoG2.connect(o2.frequency);
-      g2.connect(this._out());
-      o2.start();
-      lfo2.start();
-      this._ambientOsc2 = o2;
-      this._ambientGain2 = g2;
-      this._ambientLfo2 = lfo2;
-    }
-  } catch (e) {}
+  /* v2.3.1103: procedural oscillator DRONE disabled — the owner removed all
+     synthesised audio ("worse than nothing"). When ZONE_MUSIC has a real track
+     (above) it still plays; with none, the zone is simply silent instead of
+     droning. setCombatIntensity() no-ops safely (it guards on _ambientGain). */
+  return;
 }), "stopAmbient", function stopAmbient(fadeMusic) {
   try {
     if (this._ambientOsc) {
@@ -5937,8 +5740,10 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   } catch (e) {}
 });
 
-/* ─── Sample-based SFX (real WAV files) ────────────────────────────────────
-   Loaded on demand from /sfx/<group>/<name>.wav. Playback is gated by the
+/* ─── Sample-based SFX (real audio files) ──────────────────────────────────
+   Loaded on demand from /sfx/<group>/<name>.m4a (AAC; re-encoded from the
+   original uncompressed .wav by the compress-media workflow to shrink the
+   download — decodeAudioData on iOS Safari decodes AAC natively). Playback is gated by the
    audio context unlocking (mobile/Safari require a user gesture before any
    audio plays). BT_AUDIO.unlock() should be called from the first touch /
    click and is idempotent. */
@@ -5950,28 +5755,36 @@ BT_AUDIO.SFX_MANIFEST = {
   /* v2.3.836: real footstep SFX isolated from the owner's videos --
      naked (softer thud) vs armored (metallic clank); chosen per-step
      from the player's equipped gear in visualSystems.js. */
-  'footstep-naked':   '/sfx/footstep/footstep-naked.wav',
-  'footstep-armored': '/sfx/footstep/footstep-armored.wav',
-  'sword-swing':   '/sfx/sword/sword-swing.wav',
+  /* v2.3.1104: owner-supplied footstep. The source clip is 25 s of continuous
+     walking; footstep() isolates just the FIRST step (offset 0, dur ~0.22 s)
+     and fires it once per jog cycle on foot-strike. Used for both armoured and
+     bare (footstep() varies vol/pitch between them). */
+  'footstep-v2':      '/sfx/footstep/footstep-v2.mp3',
+  'sword-swing':   '/sfx/sword/sword-swing.m4a',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */
-  'bamboo-swing':  '/sfx/sword/bamboo-swing.wav',
-  'sword-hit':     '/sfx/sword/sword-hit.wav',   /* reserved for grand-slam hits only */
-  'sword-hit2':    '/sfx/sword/sword-hit2.flac', /* regular hit alternation */
-  'sword-hit3':    '/sfx/sword/sword-hit3.wav',  /* regular hit alternation */
-  'bow-pullback':  '/sfx/bow/bow-pullback.wav',
-  'arrow-fly':     '/sfx/bow/arrow-fly.wav',
-  'arrow-hit':     '/sfx/bow/arrow-hit.wav',
-  'magic-cast':    '/sfx/magic/magic-cast.wav',
-  'magic-hit':     '/sfx/magic/magic-hit.wav',
-  'magic-hit2':    '/sfx/magic/magic-hit2.wav',
-  'monster-death': '/sfx/monster/Monster death-bony.wav',
-  'slime-projectile-hit': '/sfx/monster/slime-projectile-hit.wav',
-  'monster-hit':   '/sfx/monster/monster-hit.wav',
-  'shield-block':  '/sfx/shield/shield-block.wav?v=2',
-  'fishing-lure-drop':   '/sfx/fishing/lure-drop.wav',
-  'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.wav',
-  'fishing-reeling':     '/sfx/fishing/reeling.wav',
+  'bamboo-swing':  '/sfx/sword/bamboo-swing.m4a',
+  'sword-hit':     '/sfx/sword/sword-hit.m4a',   /* reserved for grand-slam hits only */
+  'sword-hit2':    '/sfx/sword/sword-hit2.m4a', /* regular hit alternation */
+  'sword-hit3':    '/sfx/sword/sword-hit3.m4a',  /* regular hit alternation */
+  'bow-pullback':  '/sfx/bow/bow-pullback.m4a',
+  'arrow-fly':     '/sfx/bow/arrow-fly.m4a',
+  'arrow-hit':     '/sfx/bow/arrow-hit.m4a',
+  'magic-cast':    '/sfx/magic/magic-cast.m4a',
+  'magic-hit':     '/sfx/magic/magic-hit.m4a',
+  'magic-hit2':    '/sfx/magic/magic-hit2.m4a',
+  'monster-death': '/sfx/monster/Monster death-bony.m4a',
+  'slime-projectile-hit': '/sfx/monster/slime-projectile-hit.m4a',
+  'monster-hit':   '/sfx/monster/monster-hit.m4a',
+  /* v2.3.1104: owner-supplied metallic CLANG for when a monster strikes the
+     hero while WEARING ARMOUR. Two variants alternated by monsterHitHero() for
+     variety; leading silence trimmed via offset so the hit lands immediately. */
+  'armor-hit-1':   '/sfx/monster/armor-hit-1.mp3',
+  'armor-hit-2':   '/sfx/monster/armor-hit-2.mp3',
+  'shield-block':  '/sfx/shield/shield-block.m4a?v=2',
+  'fishing-lure-drop':   '/sfx/fishing/lure-drop.m4a',
+  'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.m4a',
+  'fishing-reeling':     '/sfx/fishing/reeling.m4a',
   /* Slime death splat — routed through Web Audio so it plays without
      hitting the per-element HTMLAudio autoplay policy that was
      blocking new Audio().play() in the render loop. */
@@ -5982,7 +5795,7 @@ BT_AUDIO.SFX_MANIFEST = {
      out) so it matches deathMs and doesn't trail past the bone-
      pile settle.  Plays via BT_AUDIO.monsterDeath. */
   'skeleton-death': '/audio/skeleton-death.mp3?v=2',
-  'snowman-hit':   '/sfx/monster/snowman-hit.wav?v=3',
+  'snowman-hit':   '/sfx/monster/snowman-hit.m4a?v=3',
   /* v2.3.849: timber crash for a felled tree (woodcutting success) — the
      "great" cut-down sound; wired into the extraction reward in
      lifeSkillRewards.js. */
@@ -6003,6 +5816,27 @@ BT_AUDIO._magicHitToggle = 0;
 BT_AUDIO.magicHit = function (opts) {
   var key = (this._magicHitToggle++ & 1) ? 'magic-hit2' : 'magic-hit';
   this.play(key, opts);
+};
+/* v2.3.1104: monster-strikes-hero SFX. When the hero is wearing armour, play
+   one of two owner-supplied metallic CLANGs, alternating for variety (and
+   trimming each file's leading silence via offset so the hit lands instantly).
+   With no armour — or before the metal samples have preloaded — fall back to
+   the generic 'monster-hit'. */
+BT_AUDIO._armorHitToggle = 0;
+/* v2.3.1108: fallbackKey lets ranged hits keep their own splat when unarmoured
+   (e.g. 'slime-projectile-hit') while still clanging when armoured. Defaults to
+   the melee 'monster-hit'. */
+BT_AUDIO.monsterHitHero = function (armored, opts, fallbackKey) {
+  if (armored && this._samples && (this._samples['armor-hit-1'] || this._samples['armor-hit-2'])) {
+    var two = (this._armorHitToggle++ & 1);
+    var key = two ? 'armor-hit-2' : 'armor-hit-1';
+    var off = two ? 0.06 : 0.12; /* trim each clip's leading silence */
+    var o = opts ? Object.assign({}, opts) : {};
+    o.offset = off;
+    this.play(key, o);
+  } else {
+    this.play(fallbackKey || 'monster-hit', opts);
+  }
 };
 BT_AUDIO.monsterDeath = function (arch, opts) {
   /* No-op for slimes (fodder).  The splat SFX is owned by the render-
@@ -6123,7 +5957,15 @@ BT_AUDIO.play = function (key, opts) {
     g.gain.value = (opts && opts.vol != null) ? opts.vol : 0.6;
     src.connect(g);
     g.connect(this._out());
-    src.start(0);
+    /* v2.3.1104: optional offset/duration so a sound can be ISOLATED to a
+       slice of its file at runtime (no re-encoding needed) -- e.g. play just
+       the first footstep out of a 25 s walking clip, or trim the leading
+       silence off a hit sample. Web Audio start(when, offset, duration). */
+    var _off = (opts && opts.offset) || 0;
+    var _dur = (opts && opts.duration != null) ? opts.duration : null;
+    if (_dur != null) src.start(0, _off, _dur);
+    else if (_off) src.start(0, _off);
+    else src.start(0);
     /* Return a handle so callers that need to cut a sample short
        (e.g. fishing reel sound when the catch completes mid-clip)
        can stop playback early. Most callers ignore the return value. */

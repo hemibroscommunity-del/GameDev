@@ -54,7 +54,7 @@ import { CookPanel } from './panels/buildings/CookPanel.jsx';
 import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
-import { MINE_SPOT_R } from '@/data/constants.js';
+import { MINE_SPOT_R, WORLD_ZOOM } from '@/data/constants.js';
 import { IntroVideo } from './IntroVideo.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
@@ -269,7 +269,7 @@ export var BroTown = function BroTown(_ref0) {
      in zones with slimes (meadow, ember).  Same recipe as zone music. */
   var slimeIdleAudioRef = useRef({ buffer: null, source: null, gain: null });
   /* Per-zone themed-ground tile sheets — small repeatable swatches
-     loaded from public/sprites/tiles/ground-<elem>.png and converted
+     loaded from public/sprites/tiles/ground-<elem>.webp and converted
      into CanvasPattern objects on first frame so the canvas-2D render
      can fill the floor with createPattern instead of a solid color. */
   /* Per-zone themed tree sprites — replaces the procedural trunk+canopy
@@ -1279,7 +1279,7 @@ export var BroTown = function BroTown(_ref0) {
          transparent padding, so their art fills ~85% of the tile; matching
          that makes the dashed 'none' circle the same visual size as them. */
       ? /*#__PURE__*/React.createElement("div", { style: { width: '86%', aspectRatio: '1 / 1', borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
-      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, decoding: 'async', style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
     sel ? _checkBadge() : null);
   };
   /* v2.3.797: the collapsed-pill kit (_swOf/_miniThumb/_miniSwatch summary
@@ -1640,6 +1640,15 @@ export var BroTown = function BroTown(_ref0) {
          actually changes the signature and re-emits stats_update (otherwise
          the worker never learns and channel damage stays client-only). */
       rpgState.weaponSpecs ? JSON.stringify(rpgState.weaponSpecs) : 'nospecs',
+      /* v2.3.1021: weapon/defense SKILL track in the signature so a kill that
+         only levels a weapon skill (or a Tier-2 spend) re-emits stats_update
+         and the worker persists it -- without this a level-up never reaches
+         the server (the sig wouldn't change) and resets on reconnect. */
+      rpgState.weaponSkills ? JSON.stringify(rpgState.weaponSkills) : 'noskills',
+      rpgState.weaponUnspent ? JSON.stringify(rpgState.weaponUnspent) : 'nounspent',
+      rpgState.defenseSkill ? JSON.stringify(rpgState.defenseSkill) : 'nodef',
+      typeof rpgState.defenseUnspent === 'number' ? ('du' + rpgState.defenseUnspent) : 'nodu',
+      rpgState.defenseSpec ? JSON.stringify(rpgState.defenseSpec) : 'nodspec',
     ].join('|');
     if (S._lastStatsUpdateSig === _sig) return;
     S._lastStatsUpdateSig = _sig;
@@ -1683,6 +1692,14 @@ export var BroTown = function BroTown(_ref0) {
              authoritative damage roll, so spent build points speed up real
              kills (not just client prediction). */
           weaponSpecs: rpgState.weaponSpecs || {},
+          /* v2.3.1021: weapon/defense skill track -- reported so the worker
+             persists trained levels / points / channels (durable across
+             reconnect + device).  Worker clamps; pure store-and-echo. */
+          weaponSkills: rpgState.weaponSkills || {},
+          weaponUnspent: rpgState.weaponUnspent || {},
+          defenseSkill: rpgState.defenseSkill || { level: 0, xp: 0 },
+          defenseUnspent: (typeof rpgState.defenseUnspent === 'number') ? rpgState.defenseUnspent : 0,
+          defenseSpec: rpgState.defenseSpec || {},
         },
       });
     } catch (e) {}
@@ -1968,7 +1985,7 @@ export var BroTown = function BroTown(_ref0) {
           && (S.rpg.weapon.name === 'Bamboo Stick' || S.rpg.weapon.name === 'Wood Sword')) {
         S.rpg.weapon = {
           type: 'greatsword', tier: 'common', tierMult: 1.0,
-          element1: null, element2: null, name: 'Greatsword',
+          element1: null, element2: null, name: 'Great Sword',
           gearBase: 'wood', isVolatile: false
         };
         recalcDerived(S.rpg);
@@ -2805,8 +2822,17 @@ export var BroTown = function BroTown(_ref0) {
         if (false) {
           return;
         }
-        var W = canvas.width / (window.devicePixelRatio || 1);
-        var H = canvas.height / (window.devicePixelRatio || 1);
+        /* v2.3.1090: enlarge the logical viewport by WORLD_ZOOM so camera
+           centring/clamping matches the zoomed-out render (renderFrame.js
+           scales the world by 1/WORLD_ZOOM). Both must use the same W/H or
+           the player drifts off-centre. */
+        var W = (canvas.width / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
+        var H = (canvas.height / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
+        /* v2.3.1095: publish the logical world-viewport size so the projectile
+           sim can tell when an arrow nears the visible screen edge (camera.x/y
+           is the viewport's top-left in world coords). */
+        S._viewW = W;
+        S._viewH = H;
         var P = S.player;
         var K = S.keys;
 
@@ -3940,7 +3966,22 @@ export var BroTown = function BroTown(_ref0) {
            (turning to aim without moving) so remote clients see the turn --
            the move payload now carries the true rendered facing (f). */
         var _facingChanged = S._renderFacing && S._renderFacing !== S._lastBroadcastFacing;
-        if (now - S.lastBroadcast > 33 && (isMoving || _facingChanged)) {
+        /* v2.3.1092: broadcast the current harvest/extraction activity so other
+           players SEE this player mining/chopping/fishing/cooking/lighting a
+           fire. Harvesting is stationary, so the move gate (movement OR facing
+           change) would never fire while gathering — add an extraction-change
+           trigger plus a ~500ms heartbeat so a peer that joins mid-harvest
+           picks it up promptly. Codes: mine|chop|fish|cook|fire (null = none). */
+        var _exSkill = (S._extraction && (S._extraction.status === 'waiting' || S._extraction.status === 'ready')) ? S._extraction.skill : null;
+        var _exCode = S._firemaking ? 'fire'
+          : _exSkill === 'mining' ? 'mine'
+          : _exSkill === 'woodcutting' ? 'chop'
+          : _exSkill === 'fishing' ? 'fish'
+          : _exSkill === 'cooking' ? 'cook'
+          : null;
+        var _exChanged = _exCode !== (S._lastBroadcastEx || null);
+        var _exHeartbeat = !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
+        if (now - S.lastBroadcast > 33 && (isMoving || _facingChanged || _exChanged || _exHeartbeat)) {
           S.lastBroadcast = now;
           S._lastBroadcastFacing = S._renderFacing;
           if (S.channel) {
@@ -3972,9 +4013,13 @@ export var BroTown = function BroTown(_ref0) {
                      the 2s `track` below + the player_update remap. */
                   eqc: getEquip('chest'),
                   eql: getEquip('legs'),
-                  eqs: getEquip('shoulders')
+                  eqs: getEquip('shoulders'),
+                  /* v2.3.1092: current harvest activity (null when not gathering). */
+                  ex: _exCode
                 }
               });
+              S._lastBroadcastEx = _exCode;
+              if (_exCode) S._lastExBroadcast = now;
             }
             if (S.channel && (!S._lastTrack || Date.now() - S._lastTrack > 2000)) {
               var _rpg$lifeSkills7, _rpg$lifeSkills$pets, _rpg$_anniversaryItem, _rpg$armor, _rpg$shield, _rpg$amulet, _rpg$_compStats, _rpg$_compStats2, _rpg$_compStats3, _rpg$_compStats4, _rpg$_compStats5, _rpg$_compStats6, _rpg$_compStats7, _rpg$_compStats8, _S$_clanData2, _S$_clanData3, _S$_clanData4;
@@ -5965,8 +6010,12 @@ export var BroTown = function BroTown(_ref0) {
          dpr; PixiJS: worldContainer.scale 1.0 because BroTown passes
          viewW=cssW so cssW/viewW=1.0).  World coords map 1:1 to CSS
          pixels after camera offset. */
-      var SCALE_X = 1.0;
-      var SCALE_Y = 1.0;
+      /* v2.3.1090: world->CSS scale follows the renderer's actual world scale
+         (1/WORLD_ZOOM, e.g. 0.8 when zoomed out), published each frame by
+         pixiRenderer. Hardcoding 1.0 here made taps miss once the world was
+         zoomed out. Falls back to 1.0 before the first render. */
+      var SCALE_X = S._worldScaleX || 1.0;
+      var SCALE_Y = S._worldScaleY || 1.0;
       /* TEMP DIAGNOSTIC — remove once tap-to-lock is confirmed working. */
       if (window.__broTapLog) {
         var monstersAlive = (S.monsters || []).filter(function (m) { return m.alive; });

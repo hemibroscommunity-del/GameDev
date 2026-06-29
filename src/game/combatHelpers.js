@@ -39,13 +39,13 @@ var BUILD_LABELS = {
   agility: 'Archery', mind: 'Magic',
 };
 /* Icon for each stat's level-up banner. Combat falls through to
-   '/icons/popups/xp.png' in the banner render itself. */
+   '/icons/popups/xp.webp' in the banner render itself. */
 var BUILD_ICONS = {
-  power:     '/icons/popups/sword.png',
-  vitality:  '/icons/popups/heart.png',
-  endurance: '/icons/ui/bar-stam.png',
-  agility:   '/icons/popups/arrow.png',
-  mind:      '/icons/popups/spell.png',
+  power:     '/icons/popups/sword.webp',
+  vitality:  '/icons/popups/heart.webp',
+  endurance: '/icons/ui/bar-stam.webp',
+  agility:   '/icons/popups/arrow.webp',
+  mind:      '/icons/popups/spell.webp',
 };
 
 /* ─── Peer damage-number smoothing (spec: smooth-peer-damage-numbers.md) ───

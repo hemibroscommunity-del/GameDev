@@ -18,6 +18,7 @@ import {
   resolveCollision, rollPassiveDodge, spawnWeaponHitFX
 } from '@/data/index.js';
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -42,6 +43,10 @@ export function updateArrows(S, deps) {
           }
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
+            /* v2.3.1095: PLANTED -- the arrow reached the screen edge / max
+               range, arced down, and is stuck in the ground.  Hold its frozen
+               world position, take no hits, and remove ~2 s after planting. */
+            if (a.planted) return (Date.now() - a.plantedAt) < 2000;
             /* v2.3.213: fall back to inert object when unarmed so
                arrow tick doesn't crash on .type/.tierMult reads. */
             var activeWpn = (S.rpg && getActiveWeapon(S.rpg)) || { element1: null, element2: null };
@@ -56,18 +61,61 @@ export function updateArrows(S, deps) {
                game/ -> rendering/ import).  While nocked, the offset tracks the
                live grip; at release it freezes so the arrow leaves from the bow.
                Staff bolts have no fromGrip and behave exactly as before. */
-            var _released = !a.fromGrip || (Date.now() - (S._bowShotAt || 0)) >= 110;
+            /* v2.3.1095: release is LATCHED per arrow from its own birth time.
+               It used to read the GLOBAL S._bowShotAt, so firing a NEW arrow
+               reset _released for every in-flight arrow -- they snapped back to
+               the grip and froze for 110 ms ("arrows freeze mid-flight"). */
+            if (a._bornTs == null) a._bornTs = Date.now();
+            if (!a._released) a._released = !a.fromGrip || (Date.now() - a._bornTs) >= 110;
+            var _released = a._released;
             if (a.fromGrip && (!_released || a._ox == null) && S._bowGripX != null) {
               a._ox = S._bowGripX - P.x;
               a._oy = S._bowGripY - P.y;
             }
             var _ox = a._ox || 0, _oy = a._oy || 0;
+            /* v2.3.1095: PLANTING -- past the screen edge / max range, flight is
+               over.  Arc sharply downward in ABSOLUTE world coords (decoupled
+               from the player) and plant once it has dropped a little; the
+               `planted` early-return above then holds it for ~2 s.  No hits while
+               falling. */
+            if (a.planting) {
+              a._fallVy = (a._fallVy || 0) + 0.9;
+              a._plantY = (a._plantY != null ? a._plantY : a._plantStartY) + a._fallVy;
+              a._renderX = a._plantX;
+              a._renderY = a._plantY;
+              a.ang = a.ang + (Math.PI / 2 - a.ang) * 0.35;   // rotate to straight-down
+              if (a._plantY - a._plantStartY >= 26) {
+                a.planted = true; a.plantedAt = Date.now(); a.ang = Math.PI / 2;
+              }
+              return true;
+            }
             if (_released) a.dist += a.isStaff ? 5 : 8;
             a.life--;
             if (S._aiming || S.lockedTarget && S.lockedTarget.ref) a.ang = curAim;
             a._renderX = P.x + _ox + Math.cos(a.ang) * a.dist;
             a._renderY = P.y + _oy + Math.sin(a.ang) * a.dist;
             if (a.life <= 0) return false;
+            /* v2.3.1095: range / screen-edge limit (regular arrows, not staff
+               magic).  Once a flying arrow nears the visible edge or exceeds the
+               max flight distance, begin the downward plant rather than flying
+               on forever. camera.x/y is the viewport top-left in world coords. */
+            if (!a.isStaff && _released) {
+              var _edge = false;
+              if (typeof S._viewW === 'number' && typeof S._viewH === 'number' && S.camera) {
+                var _em = 24;
+                _edge = a._renderX < S.camera.x + _em || a._renderX > S.camera.x + S._viewW - _em
+                     || a._renderY < S.camera.y + _em || a._renderY > S.camera.y + S._viewH - _em;
+              }
+              if (_edge || a.dist > 900) {
+                a.planting = true;
+                a._plantX = a._renderX;
+                a._plantStartY = a._renderY;
+                a._plantY = a._renderY;
+                a._fallVy = 2;        // initial downward kick -> "sharply downward"
+                a.life = 999;         // plantedAt governs removal now, not life
+                return true;
+              }
+            }
             var hit = false;
             if (S.monsters) S.monsters.forEach(function (m) {
               /* Non-piercing arrows bail after the first hit (default).
@@ -593,7 +641,7 @@ export function updateSlimeProjectiles(S) {
             _R6P.hp -= proj.rawDmg;
             trackMonsterDamage(S, proj.ownerId, proj.rawDmg);
             if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: proj.rawDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
-            try { BT_AUDIO.play('slime-projectile-hit', { vol: 0.7 }); } catch (e) {}
+            try { BT_AUDIO.monsterHitHero(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none', { vol: 0.7 }, 'slime-projectile-hit'); } catch (e) {}
             S.lastDamageTaken = Date.now();
             S._hitFlash = Date.now();
             if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: proj.rawDmg } });
