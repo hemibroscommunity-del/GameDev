@@ -1259,7 +1259,11 @@ function _orderTraitsAndWeapon(display, facingIdx) {
          face).  setChildIndex removes-then-inserts, so inserting at the
          highest reference index lands the beard directly above it. */
       let ref = display.getChildIndex(display._spriteBody);
-      for (const s of [display._gearLegs, display._gearChest, display._gearShoulders,
+      /* v2.3.1099: include the SHIRT (_gearShirt) -- the beard hangs over the
+         chest, so on toward-camera facings it must sit above the t-shirt too,
+         not just the armour. Without it, a shirt worn with no armour rendered
+         OVER the beard (beard "behind the t-shirt" on south). */
+      for (const s of [display._gearShirt, display._gearLegs, display._gearChest, display._gearShoulders,
                        display._handCapSprite, display._handArmSprite,
                        display._shieldSprite]) {
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
