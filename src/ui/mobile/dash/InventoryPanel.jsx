@@ -33,30 +33,30 @@ export const classify = (key) => {
 // actually caught/crafted.  Currently only fish-08 is wired — map all
 // fish_* inventory keys to its frame-0 thumbnail; expand once additional
 // fish sprites are wired into the minigame.
-const WOOD_THUMB = '/icons/wood/wood-log.png';
-const BURNT_DUST_THUMB = '/icons/cook/burnt-dust.png';
-const SLIME_REMNANTS_THUMB = '/icons/monsters/slime-remnants.png';
-const SNOWMAN_REMNANTS_THUMB = '/icons/monsters/snowman-remnants.png';
-const FIRE_GOBLIN_REMNANTS_THUMB = '/icons/monsters/fire-goblin-remnants.png';
-const SKELETON_REMNANTS_THUMB = '/icons/monsters/skeleton-remnants.png';
+const WOOD_THUMB = '/icons/wood/wood-log.webp';
+const BURNT_DUST_THUMB = '/icons/cook/burnt-dust.webp';
+const SLIME_REMNANTS_THUMB = '/icons/monsters/slime-remnants.webp';
+const SNOWMAN_REMNANTS_THUMB = '/icons/monsters/snowman-remnants.webp';
+const FIRE_GOBLIN_REMNANTS_THUMB = '/icons/monsters/fire-goblin-remnants.webp';
+const SKELETON_REMNANTS_THUMB = '/icons/monsters/skeleton-remnants.webp';
 /* Per-tier fish thumbnails (raw + cooked).  Order matters in thumbFor:
    match longer prefixes first so e.g. fish_clownfish doesn't fall
    through to the generic fish_ branch. Add an entry per tier; the
    generic 'fish' / 'cooked_fish' fallbacks catch unmapped tiers. */
 const FISH_THUMBS = {
-  fish_clownfish: '/icons/fish/fish-clownfish.png',
+  fish_clownfish: '/icons/fish/fish-clownfish.webp',
 };
 const COOKED_FISH_THUMBS = {
-  cooked_fish_clownfish: '/icons/cook/cooked-fish-clownfish.png',
+  cooked_fish_clownfish: '/icons/cook/cooked-fish-clownfish.webp',
 };
-const FISH_THUMB_DEFAULT = '/icons/fish/fish-minnow.png';
-const COOKED_FISH_THUMB_DEFAULT = '/icons/cook/cooked-fish-minnow.png';
+const FISH_THUMB_DEFAULT = '/icons/fish/fish-minnow.webp';
+const COOKED_FISH_THUMB_DEFAULT = '/icons/cook/cooked-fish-minnow.webp';
 const ORE_THUMBS = {
-  ore_copper_ore: '/icons/ore/ore-copper.png',
+  ore_copper_ore: '/icons/ore/ore-copper.webp',
 };
-const ORE_THUMB_DEFAULT = '/icons/ore/ore-copper.png';
-const FISHING_POLE_THUMB = '/icons/tools/fishing-pole.png';
-/* Elemental shards: one PNG per zone, all under /icons/shards/<key>.png
+const ORE_THUMB_DEFAULT = '/icons/ore/ore-copper.webp';
+const FISHING_POLE_THUMB = '/icons/tools/fishing-pole.webp';
+/* Elemental shards: one PNG per zone, all under /icons/shards/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
    shard_ember, ...).  thumbFor() takes the shard_ prefix branch
    below so any zone we add later just needs the PNG dropped in --
@@ -71,7 +71,7 @@ export const thumbFor = (key) => {
   if (k.startsWith('wood_'))        return WOOD_THUMB;
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
-  if (k.startsWith('shard_'))       return `/icons/shards/${k}.png`;
+  if (k.startsWith('shard_'))       return `/icons/shards/${k}.webp`;
   if (k === 'fishing_pole')         return FISHING_POLE_THUMB;
   if (k === 'slime-remnants')       return SLIME_REMNANTS_THUMB;
   if (k === 'fire-goblin-remnants') return FIRE_GOBLIN_REMNANTS_THUMB;
@@ -244,7 +244,7 @@ export const InventoryPanel = () => {
           v2.3.762: flex:1 so the leather fills the panel's FULL height in
           the expanded view (it used to stop at the last tile row). */}
       <div style={{
-        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
+        backgroundImage: 'url(/icons/ui/bag-bg.webp?v=2.3.761)',
         backgroundSize: '100% 100%',
         borderRadius: 8,
         padding: 8,
@@ -254,7 +254,7 @@ export const InventoryPanel = () => {
       {usedTiles === 0
         ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 8px', textAlign: 'center', color: COL.muted }}>
-            <img src="/icons/ui/bag.png?v=2.3.115" alt="" draggable={false}
+            <img src="/icons/ui/bag.webp?v=2.3.115" alt="" draggable={false}
               style={{ width: 46, height: 46, opacity: 0.4, filter: 'grayscale(1)' }} />
             <div style={{ fontSize: 13, fontWeight: 700 }}>
               {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
@@ -332,15 +332,15 @@ const StashTile = ({ kind, obj, index }) => {
   const v = '2.3.211';
   const thumb = kind === 'stashGear'
     ? ((obj && (obj.gearId === 'steelplate' || obj.gearId === 'steelgreaves'))
-        ? `/sprites/gear/icons/${obj.gearId}.png?v=2.3.685` : null)
+        ? `/sprites/gear/icons/${obj.gearId}.webp?v=2.3.685` : null)
     : kind === 'stashArmor'
     ? null /* no armor sprites yet -- glyph fallback below */
     : kind === 'stashShield'
-    ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.png?v=${v}` : null)
-    : obj && obj.type === 'bow'   ? `/sprites/weapons/bows/Bow2.png?v=${v}`
-    : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${v}`
-    : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/steel-sword-east.png?v=2.3.1070` /* v2.3.1070: mini steel-sword icon, not bamboo */
-    : `/sprites/weapons/swords/Sword1.png?v=${v}`;
+    ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.webp?v=${v}` : null)
+    : obj && obj.type === 'bow'   ? `/sprites/weapons/bows/Bow2.webp?v=${v}`
+    : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.webp?v=${v}`
+    : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070` /* v2.3.1070: mini steel-sword icon, not bamboo */
+    : `/sprites/weapons/swords/Sword1.webp?v=${v}`;
   const color = TIER_COLOR.rare;
   const fallbackGlyph = kind === 'stashShield' ? '\u{1F6E1}'
                       : kind === 'stashArmor'  ? '\u{1F9BA}'

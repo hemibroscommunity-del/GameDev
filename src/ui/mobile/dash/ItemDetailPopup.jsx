@@ -51,19 +51,19 @@ function tierLabel(wpn) {
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
   const v = '2.3.210';
-  if (wpn.type === 'bow')   return `/sprites/weapons/bows/Bow2.png?v=${v}`;
-  if (wpn.type === 'staff') return `/sprites/weapons/staffs/Wizard%20Staff2.png?v=${v}`;
+  if (wpn.type === 'bow')   return `/sprites/weapons/bows/Bow2.webp?v=${v}`;
+  if (wpn.type === 'staff') return `/sprites/weapons/staffs/Wizard%20Staff2.webp?v=${v}`;
   /* v2.3.1070: starter (wood) sword shows a clean mini steel-sword icon
      (east-view frame lifted from sword-east-weapon.png) instead of the old
      bamboo-stick render. */
   return wpn.gearBase === 'wood'
-    ? `/sprites/weapons/swords/steel-sword-east.png?v=2.3.1070`
-    : `/sprites/weapons/swords/Sword1.png?v=${v}`;
+    ? `/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070`
+    : `/sprites/weapons/swords/Sword1.webp?v=${v}`;
 }
 
 function shieldThumb(shield) {
   const v = '2.3.211';
-  if (shield && shield.gearBase === 'wood') return `/sprites/shields/wood-shield-front.png?v=${v}`;
+  if (shield && shield.gearBase === 'wood') return `/sprites/shields/wood-shield-front.webp?v=${v}`;
   return null; /* no metal-shield art slot yet; popup falls back to glyph */
 }
 
@@ -228,7 +228,7 @@ function gearName(slot, gearId) {
 /* Icon PNGs exist for the steel set; other ids fall back to the glyph. */
 function gearThumb(gearId) {
   return (gearId === 'steelplate' || gearId === 'steelgreaves')
-    ? '/sprites/gear/icons/' + gearId + '.png?v=2.3.685'
+    ? '/sprites/gear/icons/' + gearId + '.webp?v=2.3.685'
     : null;
 }
 
@@ -431,7 +431,7 @@ export const ItemDetailPopup = () => {
         const shirtOn = getEquip('shirt') !== 'none';
         rows.push({
           key: 'shirt', name: 'T-Shirt', sub: 'Cloth shirt · worn under armor',
-          iconSrc: '/sprites/gear/icons/tshirt.png?v=2.3.756', on: shirtOn,
+          iconSrc: '/sprites/gear/icons/tshirt.webp?v=2.3.756', on: shirtOn,
           /* v2.3.1070: drive the MASTER shirt store (setShirt) so the swing
              renderer -- which reads getShirt() -- sees the change; setEquip
              keeps the gear mirror in lockstep even when setShirt dedupes. */
@@ -596,10 +596,10 @@ export const ItemDetailPopup = () => {
             CHEST — LAYERS
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {layerRow('armor', '/sprites/gear/icons/steelplate.png?v=2.3.685',
+            {layerRow('armor', '/sprites/gear/icons/steelplate.webp?v=2.3.685',
               armorOn ? gearName('chest', chestId) : (stashedChest ? stashedChest.name : 'Steel Plate'),
               'Armor · top layer', armorOn, !!stashedChest, toggleArmor)}
-            {layerRow('shirt', '/sprites/gear/icons/tshirt.png?v=2.3.756',
+            {layerRow('shirt', '/sprites/gear/icons/tshirt.webp?v=2.3.756',
               'T-Shirt', 'Clothing · under armor', shirtOn, true, toggleShirt)}
           </div>
         </div>
@@ -657,7 +657,7 @@ export const ItemDetailPopup = () => {
             background: on ? 'rgba(61,212,151,.07)' : 'rgba(255,255,255,.03)',
             border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(255,255,255,.08)'}`,
           }}>
-            <img src="/sprites/gear/icons/steelgreaves.png?v=2.3.685" alt="Steel Greaves" draggable={false}
+            <img src="/sprites/gear/icons/steelgreaves.webp?v=2.3.685" alt="Steel Greaves" draggable={false}
               style={{ width: 24, height: 24, imageRendering: 'pixelated',
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>

@@ -43,14 +43,14 @@ let _hudBarLoadStarted = false;
 function _ensureHudBarTextures() {
   if (_hudBarLoadStarted) return;
   _hudBarLoadStarted = true;
-  Assets.load(`/icons/ui/bar-hp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
-  Assets.load(`/icons/ui/bar-mp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
-  Assets.load(`/icons/ui/bar-stam.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
-  Assets.load(`/icons/popups/heart.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heart = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-hp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-mp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-stam.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
+  Assets.load(`/icons/popups/heart.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heart = t; }).catch(() => {});
   /* v2.3.214: white-fill heart for the player HP indicator so we can
      tint by HP tier (red asset can't be tinted to green/yellow because
      tint multiplies). */
-  Assets.load(`/icons/popups/heart-white.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
+  Assets.load(`/icons/popups/heart-white.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
 }
 
 /* v2.3.261 (Bro-NFT Phase 4): trait textures for the local player's
@@ -151,6 +151,21 @@ function _ensureBodyData() {
    by the mirrored side (e.g. crownNudge.west) without disturbing the
    un-mirrored side. */
 const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'southeast' };
+
+/* v2.3.1106: per-direction jog FOOT-PLANT frames (footstep SFX fires when the
+   animation lands on one). Module-scope so the jog render path doesn't allocate
+   a fresh object + arrays every frame (that per-frame garbage was a likely
+   source of periodic GC hitches). resolveDirection only ever yields the 5 base
+   dirs; mirror keys kept for clarity. */
+const JOG_FOOT_FRAMES = {
+  east: [3, 17], west: [3, 17],
+  south: [0, 13], north: [0, 11],
+  northeast: [9, 21], northwest: [9, 21],
+  /* v2.3.1107: SW/SE is a DOUBLE-stride loop (~1656ms, ~2x the other dirs), so
+     it has FOUR foot-plants per cycle, not two. [2,17] left the middle two
+     silent and bunched the audible pair into a "first two replay". */
+  southwest: [2, 8, 13, 18], southeast: [2, 8, 13, 18],
+};
 
 /* v2.3.537: per-(pose,dir) body render scale, DERIVED from silhouette
    measurement -- replaces the old hand-tuned bump stack (v2.3.164-171:
@@ -1814,7 +1829,7 @@ function createPlayerDisplay() {
   container.addChild(nameText);
 
   /* Combat-bar HUD anchored above the head (v2.3.107).  Each bar
-     is a pill-shaped Sprite using the same /icons/ui/bar-*.png
+     is a pill-shaped Sprite using the same /icons/ui/bar-*.webp
      artwork the bottom dashboard's XP bar uses, so the in-world
      readout matches the dashboard chrome exactly.  A dim overlay
      Graphics sits on top of the right (empty) portion of each bar
@@ -3779,19 +3794,23 @@ export class EntityRenderer {
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
-        /* v2.3.839: footstep SFX locked to the jog animation.  The jog
-           sheet is ONE half-stride (one step) played each effectiveCycle,
-           so fire exactly one footstep per cycle -- the sound now matches
-           the visible stride exactly.  Naked uses a shorter cycleMs, so
-           its steps come quicker: a naturally lighter tempo, no separate
-           timer needed.  Aim/shield doubles effectiveCycle, so steps slow
-           with the animation too. */
-        const _jogCycle = Math.floor(now / effectiveCycle);
-        if (display._jogCycle !== _jogCycle) {
-          if (display._jogCycle !== undefined && typeof window !== 'undefined' && window.BT_AUDIO) {
+        /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
+           direction's jog loop, so the sound lands exactly when a foot hits the
+           ground -- a fixed timer never lined up because the per-direction
+           cycles differ (0.8-1.66 s) and have their plants at different phases.
+           Frame indices below were read from the per-direction jog sheets
+           (tools/sheet_montage.mjs); two plants per full stride. Mirrored dirs
+           (west/nw/se) reuse their base sheet's frames (mirroring is scale.x,
+           the frame index is unchanged). Cadence therefore follows the
+           animation: quicker for N/S/E/NE, slower for the long SW/SE cycle. */
+        const _contacts = JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south;
+        /* Edge-trigger: fire once when the animation first lands on a plant
+           frame (works forward + backpedal; the jog advances <=1 frame/tick). */
+        if (display._prevJogFrame !== frameIdx) {
+          if (_contacts.indexOf(frameIdx) !== -1 && typeof window !== 'undefined' && window.BT_AUDIO) {
             window.BT_AUDIO.footstep(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none');
           }
-          display._jogCycle = _jogCycle;
+          display._prevJogFrame = frameIdx;
         }
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;
@@ -5067,7 +5086,7 @@ export class EntityRenderer {
   /* Combat-bar HUD above the player sprite (v2.3.107).  Three
      pill-shaped Sprites stacked closest-to-head first: HP, Mana,
      Energy on top.  Each one reuses the dashboard's bar artwork
-     (/icons/ui/bar-hp.png etc) so the in-world readout matches the
+     (/icons/ui/bar-hp.webp etc) so the in-world readout matches the
      XP bar in the dashboard.  A small dim overlay on the right
      portion of each pill shows the unfilled fraction.  No backdrop
      -- the pills float directly on the canvas.

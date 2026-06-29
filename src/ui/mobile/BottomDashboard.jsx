@@ -65,22 +65,22 @@ const COL = {
 // every browser (the bytes haven't changed -- the suffix just busts
 // the URL-based cache key).
 const BAR_IMG = {
-  hp:   '/icons/ui/bar-hp.png?v=2.3.115',
-  mp:   '/icons/ui/bar-mp.png?v=2.3.115',
-  stam: '/icons/ui/bar-stam.png?v=2.3.115',
-  xp:   '/icons/ui/bar-xp.png?v=2.3.115',
+  hp:   '/icons/ui/bar-hp.webp?v=2.3.115',
+  mp:   '/icons/ui/bar-mp.webp?v=2.3.115',
+  stam: '/icons/ui/bar-stam.webp?v=2.3.115',
+  xp:   '/icons/ui/bar-xp.webp?v=2.3.115',
 };
 
 // Toolbar icon source.  Each glyph is a separate PNG sliced from the
 // user-supplied mockup screenshots by tools/slice_toolbar_icons.py
 // (first batch) and tools/slice_more_icons.py (second batch).
 const ICON_SRC = {
-  inventory: '/icons/ui/bag.png?v=2.3.115',
-  friends:   '/icons/ui/friends.png?v=2.3.115',
-  codex:     '/icons/ui/codex.png?v=2.3.115',
-  journey:   '/icons/ui/journey.png?v=2.3.115',
-  map:       '/icons/ui/map.png?v=2.3.115',
-  more:      '/icons/ui/more.png?v=2.3.115',
+  inventory: '/icons/ui/bag.webp?v=2.3.115',
+  friends:   '/icons/ui/friends.webp?v=2.3.115',
+  codex:     '/icons/ui/codex.webp?v=2.3.115',
+  journey:   '/icons/ui/journey.webp?v=2.3.115',
+  map:       '/icons/ui/map.webp?v=2.3.115',
+  more:      '/icons/ui/more.webp?v=2.3.115',
 };
 
 // Character build stats shown in the middle dashboard column, ordered for a
@@ -89,19 +89,19 @@ const ICON_SRC = {
 // Defense is the Tier-2 trained skill (rpg.defenseSkill); the others are
 // Tier-1 capacity stats.  Tooltip phrasing per GDD §1.2.
 const CHAR_STATS = [
-  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/popups/sword.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/popups/arrow.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
-  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/popups/spell.png?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
+  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/popups/sword.webp?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
+  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/popups/arrow.webp?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
+  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/popups/spell.webp?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
   /* v2.3.112 heart iconScale history dropped; cell centers the value
      regardless of icon size. */
-  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/popups/heart.png?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/popups/heart.webp?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
      DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.695: dedicated
      shield-crest icon (user-supplied); Endurance moved to the energy bolt so
      the two no longer share shield imagery.  v2.3.696: DEF and END swapped --
      bottom row reads Vitality · Defense · Endurance per user. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/popups/shield-defense.png?v=2.3.695',       pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/popups/energy.png?v=2.3.695',               pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/popups/shield-defense.webp?v=2.3.695',       pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/popups/energy.webp?v=2.3.695',               pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
 ];
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
@@ -373,7 +373,7 @@ const InventoryPreview = () => {
         cursor: 'pointer',
         /* v2.3.761: leather backdrop (owner art) behind the quick-bag tiles;
            a touch of padding so the texture's border reads as the frame. */
-        backgroundImage: 'url(/icons/ui/bag-bg.png?v=2.3.761)',
+        backgroundImage: 'url(/icons/ui/bag-bg.webp?v=2.3.761)',
         backgroundSize: '100% 100%',
         borderRadius: 6,
         padding: 3,
@@ -657,7 +657,7 @@ export const BottomDashboard = () => {
           gap: 4,
         }}>
           <img
-            src="/icons/popups/gold.png"
+            src="/icons/popups/gold.webp"
             alt=""
             style={{
               width: 16,
@@ -983,10 +983,10 @@ export const BottomDashboard = () => {
                      after Unequip, R[slot] is null so wpn is null and
                      the cell should show no icon (UNARMED). */
                   const slotIconSrc = !wpn ? null
-                                     : slot === 'ranged' ? '/sprites/weapons/bows/Bow2.png?v=2.3.173'
-                                     : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.png?v=2.3.173'
-                                     : isWoodSword     ? '/sprites/weapons/swords/steel-sword-east.png?v=2.3.1070' /* v2.3.1070: mini steel-sword icon, not bamboo */
-                                     :                    '/sprites/weapons/swords/Sword1.png?v=2.3.173';
+                                     : slot === 'ranged' ? '/sprites/weapons/bows/Bow2.webp?v=2.3.173'
+                                     : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.webp?v=2.3.173'
+                                     : isWoodSword     ? '/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070' /* v2.3.1070: mini steel-sword icon, not bamboo */
+                                     :                    '/sprites/weapons/swords/Sword1.webp?v=2.3.173';
                   let dmgText = '0', dpsText = '0.0';
                   if (wType) {
                     const statVal = (slot === 'ranged') ? (R.agility || 0)
@@ -1016,7 +1016,7 @@ export const BottomDashboard = () => {
                      position (top-right) while defense-y slots flank it.
                      Row 2: Chest · Legs.  Leg & amulet still placeholder
                      text since there's no PNG art yet. */
-                  const shieldSrc = R.shield ? '/sprites/shields/wood-shield-front.png?v=2.3.198' : null;
+                  const shieldSrc = R.shield ? '/sprites/shields/wood-shield-front.webp?v=2.3.198' : null;
                   const armorSrc = null; /* No chest-armor PNG sprite yet. */
                   /* Plain function (not a React component) so React doesn't
                      see a fresh component-type identity on every render and
@@ -1122,8 +1122,8 @@ export const BottomDashboard = () => {
                   const gearShirtId = getEquip('shirt');
                   const gearIconSrc = (id) =>
                     (id === 'steelplate' || id === 'steelgreaves')
-                      ? `/sprites/gear/icons/${id}.png?v=2.3.685`
-                      : id === 'tshirt' ? '/sprites/gear/icons/tshirt.png?v=2.3.756' : null;
+                      ? `/sprites/gear/icons/${id}.webp?v=2.3.685`
+                      : id === 'tshirt' ? '/sprites/gear/icons/tshirt.webp?v=2.3.756' : null;
                   /* v2.3.756: the CHEST cell holds two layers (armour over
                      shirt).  Its icon shows the TOP visible layer; tapping
                      always opens the two-layer picker, even when empty, so

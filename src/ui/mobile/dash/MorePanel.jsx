@@ -3,18 +3,18 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
 import { COL, panelStyle } from './common.js';
 
-// Sliced from public/icons/ui/dashboard-mockup-new0.jpg via
+// Sliced from public/icons/ui/dashboard-mockup-new0.webp via
 // tools/slice_more_icons.py.  Falls back to glyph if the image fails.
 const TILES = [
-  { id: 'self',        src: '/icons/ui/playercard.png',  label: 'Self',     glyph: '🪪' },
+  { id: 'self',        src: '/icons/ui/playercard.webp',  label: 'Self',     glyph: '🪪' },
   { id: 'stats',       src: null,                        label: 'Stats',    glyph: '📊' },
   /* v2.3.609: per-weapon-category build allocation (replaces generic specs). */
   { id: 't2',          src: null,                        label: 'Weapons',  glyph: '⚔️' },
-  { id: 'leaderboard', src: '/icons/ui/leaderboard.png', label: 'Ranks',    glyph: '🏆' },
-  { id: 'clan',        src: '/icons/ui/clan.png',        label: 'Clan',     glyph: '🛡' },
-  { id: 'guild',       src: '/icons/ui/guild.png',       label: 'Guild',    glyph: '⚒' },
-  { id: 'feedback',    src: '/icons/ui/feedback.png',    label: 'Feedback', glyph: '💬' },
-  { id: 'settings',    src: '/icons/ui/settings.png',    label: 'Settings', glyph: '⚙' },
+  { id: 'leaderboard', src: '/icons/ui/leaderboard.webp', label: 'Ranks',    glyph: '🏆' },
+  { id: 'clan',        src: '/icons/ui/clan.webp',        label: 'Clan',     glyph: '🛡' },
+  { id: 'guild',       src: '/icons/ui/guild.webp',       label: 'Guild',    glyph: '⚒' },
+  { id: 'feedback',    src: '/icons/ui/feedback.webp',    label: 'Feedback', glyph: '💬' },
+  { id: 'settings',    src: '/icons/ui/settings.webp',    label: 'Settings', glyph: '⚙' },
   /* v2.3.225: opens the annotated controls tutorial via its bus
      instead of pushing a dashboard panel. */
   { id: 'controls',    src: null,                        label: 'Controls', glyph: '?' },

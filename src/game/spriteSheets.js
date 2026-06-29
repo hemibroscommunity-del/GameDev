@@ -58,10 +58,10 @@ export function wireSpriteSheets(stateRef, refs) {
        icon. */
     var wsheets = {};
     var wMap = {
-      sword:      '/sprites/weapons/swords/Sword1.png',
-      greatsword: '/sprites/weapons/swords/Sword1.png',
-      bow:        '/sprites/weapons/bows/Bow2.png',
-      staff:      '/sprites/weapons/staffs/Wizard%20Staff2.png',
+      sword:      '/sprites/weapons/swords/Sword1.webp',
+      greatsword: '/sprites/weapons/swords/Sword1.webp',
+      bow:        '/sprites/weapons/bows/Bow2.webp',
+      staff:      '/sprites/weapons/staffs/Wizard%20Staff2.webp',
     };
     var wTotal = Object.keys(wMap).length, wLoaded = 0;
     Object.keys(wMap).forEach(function (type) {
