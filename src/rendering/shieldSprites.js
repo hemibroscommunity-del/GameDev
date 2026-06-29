@@ -13,9 +13,9 @@ import { Assets } from 'pixi.js';
 const SPRITE_VERSION = '2.3.198';
 
 const SHEETS = {
-  front: { url: `/sprites/shields/wood-shield-front.png?v=${SPRITE_VERSION}`, tex: null },
-  '3q':  { url: `/sprites/shields/wood-shield-3q.png?v=${SPRITE_VERSION}`,    tex: null },
-  side:  { url: `/sprites/shields/wood-shield-side.png?v=${SPRITE_VERSION}`,  tex: null },
+  front: { url: `/sprites/shields/wood-shield-front.webp?v=${SPRITE_VERSION}`, tex: null },
+  '3q':  { url: `/sprites/shields/wood-shield-3q.webp?v=${SPRITE_VERSION}`,    tex: null },
+  side:  { url: `/sprites/shields/wood-shield-side.webp?v=${SPRITE_VERSION}`,  tex: null },
 };
 
 let loadPromise = null;

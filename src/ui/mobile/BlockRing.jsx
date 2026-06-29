@@ -22,9 +22,9 @@ const COMMITMENT_GAP_MS = 75;
 // `equippedShield` lookup should swap these out.
 const SHIELD_SPRITE_VERSION = '2.3.198';
 const SHIELD_SPRITES = {
-  front: `/sprites/shields/wood-shield-front.png?v=${SHIELD_SPRITE_VERSION}`,
-  '3q':  `/sprites/shields/wood-shield-3q.png?v=${SHIELD_SPRITE_VERSION}`,
-  side:  `/sprites/shields/wood-shield-side.png?v=${SHIELD_SPRITE_VERSION}`,
+  front: `/sprites/shields/wood-shield-front.webp?v=${SHIELD_SPRITE_VERSION}`,
+  '3q':  `/sprites/shields/wood-shield-3q.webp?v=${SHIELD_SPRITE_VERSION}`,
+  side:  `/sprites/shields/wood-shield-side.webp?v=${SHIELD_SPRITE_VERSION}`,
 };
 // Same sector → (view, mirror) mapping the in-game renderer uses
 // (see shieldSprites.js#getShieldFrame). Keeps the joystick icon in sync

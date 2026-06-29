@@ -12,7 +12,7 @@
  * in thumbFor().  Colors should track the zone palette so the player
  * can read which shard belongs to which zone at a glance. */
 
-/* Colors match the artwork in /icons/shards/<key>.png so the floating
+/* Colors match the artwork in /icons/shards/<key>.webp so the floating
    "+ <Shard>" pickup popup reads the same hue as the gem the player
    just saw on the loot pile.  Thunder reads gold (not the violet
    storm-zone palette) and sky reads seafoam (not the pale-blue wind
@@ -65,5 +65,5 @@ export function rollHarvestShard(zoneId) {
 /* Public asset path for a shard key.  Matches the layout produced by
    tools/shards/build_shards.py. */
 export function shardIconPath(shardKey) {
-  return shardKey ? `/icons/shards/${shardKey}.png` : null;
+  return shardKey ? `/icons/shards/${shardKey}.webp` : null;
 }

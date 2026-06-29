@@ -44,9 +44,9 @@ Promise.all(Object.values(ZONE_SHARDS).map((s) =>
    tier-sized (tier.size ≈ 6-12 px), so each sprite is scaled to a target
    pixel height tuned to feel right next to the player sprite. */
 const NODE_SPRITE_SOURCES = {
-  tree:     '/sprites/trees/tree-pine.png',
-  fishSpot: '/sprites/world/fish-spot.png',
-  oreVein:  '/sprites/world/ore-vein.png',
+  tree:     '/sprites/trees/tree-pine.webp',
+  fishSpot: '/sprites/world/fish-spot.webp',
+  oreVein:  '/sprites/world/ore-vein.webp',
 };
 const NODE_SPRITE_TEX = {};
 /* Target render heights in world px at tierStep 1, scaled up with tier. */
@@ -70,7 +70,7 @@ const ORE_BREAK_DURATION_MS = 700;
 const ORE_BREAK_FILL = 0.45;
 const ORE_BREAK_ANCHOR_Y = 0.78;
 let ORE_BREAK_TEX = null;
-Assets.load('/sprites/world/ore-vein-break.png?v=1').then((tex) => {
+Assets.load('/sprites/world/ore-vein-break.webp?v=1').then((tex) => {
   if (!tex || !tex.source) return;
   tex.source.scaleMode = 'linear';
   tex.source.autoGenerateMipmaps = true;
@@ -91,7 +91,7 @@ const ORE_BREAK_SPLIT_FRAME = 7;
 /* Copper ore icon (same asset the inventory uses) — floats out of the broken
    node as a "collected" pop. All ores currently share the copper thumb. */
 let ORE_ICON_TEX = null;
-Assets.load('/icons/ore/ore-copper.png').then((tex) => {
+Assets.load('/icons/ore/ore-copper.webp').then((tex) => {
   if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
 }).catch((err) => console.warn('[ore-icon] load failed', err));
 
@@ -243,7 +243,7 @@ export class EffectsRenderer {
     this.nodeLayer.addChild(this.chopSprite);
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
-    Assets.load('/sprites/skills/chop-strip.png').then((tex) => {
+    Assets.load('/sprites/skills/chop-strip.webp').then((tex) => {
       const FW = 240, FH = 220;  // per-frame size of chop-strip.png
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
@@ -259,7 +259,7 @@ export class EffectsRenderer {
     this.cookSprite.visible = false;
     this.nodeLayer.addChild(this.cookSprite);
     this._cookFrames = [];
-    Assets.load('/sprites/skills/cook-strip.png').then((tex) => {
+    Assets.load('/sprites/skills/cook-strip.webp').then((tex) => {
       const FW = 213, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._cookFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
@@ -270,7 +270,7 @@ export class EffectsRenderer {
     this.fireSprite.visible = false;
     this.nodeLayer.addChild(this.fireSprite);
     this._fireFrames = [];
-    Assets.load('/sprites/skills/firemaking-strip.png').then((tex) => {
+    Assets.load('/sprites/skills/firemaking-strip.webp').then((tex) => {
       const FW = 161, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._fireFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));

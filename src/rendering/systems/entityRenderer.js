@@ -43,14 +43,14 @@ let _hudBarLoadStarted = false;
 function _ensureHudBarTextures() {
   if (_hudBarLoadStarted) return;
   _hudBarLoadStarted = true;
-  Assets.load(`/icons/ui/bar-hp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
-  Assets.load(`/icons/ui/bar-mp.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
-  Assets.load(`/icons/ui/bar-stam.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
-  Assets.load(`/icons/popups/heart.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heart = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-hp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.hp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-mp.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.mp = t; }).catch(() => {});
+  Assets.load(`/icons/ui/bar-stam.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.stam = t; }).catch(() => {});
+  Assets.load(`/icons/popups/heart.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heart = t; }).catch(() => {});
   /* v2.3.214: white-fill heart for the player HP indicator so we can
      tint by HP tier (red asset can't be tinted to green/yellow because
      tint multiplies). */
-  Assets.load(`/icons/popups/heart-white.png?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
+  Assets.load(`/icons/popups/heart-white.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
 }
 
 /* v2.3.261 (Bro-NFT Phase 4): trait textures for the local player's
@@ -1802,7 +1802,7 @@ function createPlayerDisplay() {
   container.addChild(nameText);
 
   /* Combat-bar HUD anchored above the head (v2.3.107).  Each bar
-     is a pill-shaped Sprite using the same /icons/ui/bar-*.png
+     is a pill-shaped Sprite using the same /icons/ui/bar-*.webp
      artwork the bottom dashboard's XP bar uses, so the in-world
      readout matches the dashboard chrome exactly.  A dim overlay
      Graphics sits on top of the right (empty) portion of each bar
@@ -4984,7 +4984,7 @@ export class EntityRenderer {
   /* Combat-bar HUD above the player sprite (v2.3.107).  Three
      pill-shaped Sprites stacked closest-to-head first: HP, Mana,
      Energy on top.  Each one reuses the dashboard's bar artwork
-     (/icons/ui/bar-hp.png etc) so the in-world readout matches the
+     (/icons/ui/bar-hp.webp etc) so the in-world readout matches the
      XP bar in the dashboard.  A small dim overlay on the right
      portion of each pill shows the unfilled fraction.  No backdrop
      -- the pills float directly on the canvas.

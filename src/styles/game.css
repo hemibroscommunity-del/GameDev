@@ -447,7 +447,7 @@ input{font-family:inherit}
    rotated/scaled so different stars carry each phase, opacity-oscillating
    in opposition.  Replaces the night.mp4 clip whose decode path tinted
    the black backdrop cyan on device. */
-.bt-cc-stars{position:absolute;inset:0;background:url('/ui/welcome/stars.png') center/cover no-repeat;pointer-events:none;animation:bt-cc-tw 1.7s ease-in-out infinite alternate}
+.bt-cc-stars{position:absolute;inset:0;background:url('/ui/welcome/stars.webp') center/cover no-repeat;pointer-events:none;animation:bt-cc-tw 1.7s ease-in-out infinite alternate}
 .bt-cc-stars--b{transform:scale(1.4) rotate(180deg);animation-delay:-.85s}
 /* v2.3.737: deep 0.05..1 swing — the original .25..1 over 2.6s read as a
    static field (the opposed layers kept total brightness ~constant). */

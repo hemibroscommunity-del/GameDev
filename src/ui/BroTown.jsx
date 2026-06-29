@@ -269,7 +269,7 @@ export var BroTown = function BroTown(_ref0) {
      in zones with slimes (meadow, ember).  Same recipe as zone music. */
   var slimeIdleAudioRef = useRef({ buffer: null, source: null, gain: null });
   /* Per-zone themed-ground tile sheets — small repeatable swatches
-     loaded from public/sprites/tiles/ground-<elem>.png and converted
+     loaded from public/sprites/tiles/ground-<elem>.webp and converted
      into CanvasPattern objects on first frame so the canvas-2D render
      can fill the floor with createPattern instead of a solid color. */
   /* Per-zone themed tree sprites — replaces the procedural trunk+canopy

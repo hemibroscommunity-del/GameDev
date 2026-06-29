@@ -13,7 +13,7 @@ import { controlsTutorialBus } from './controlsTutorialBus.js';
                 "L" left of target, "R" right, "T" above, "B" below
 
    Coordinates were eyeballed against the v2.3.221 screenshot at
-   public/ui/controls-screenshot.jpeg.  Tweak in this file if the
+   public/ui/controls-screenshot.webp.  Tweak in this file if the
    game's HUD changes meaningfully. */
 const CALLOUTS = [
   { target: { x: 50,  y: 9  }, label: 'Zone',     desc: 'Current area + level range',     anchor: 'B' },
@@ -36,7 +36,7 @@ const COL = {
   muted:   '#9a978c',
 };
 
-const SCREENSHOT_URL = '/ui/controls-screenshot.jpeg?v=1';
+const SCREENSHOT_URL = '/ui/controls-screenshot.webp?v=1';
 
 /* Translate an anchor letter to (dx, dy) percent offsets for the bubble. */
 function anchorOffset(anchor) {

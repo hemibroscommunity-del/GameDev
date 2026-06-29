@@ -234,7 +234,7 @@ function applyWoodReward(S, node, result, deps) {
        the bottom-left inventory, so the harvest reads as "collected".
        Pure DOM (document.body, like the resume spinner) — world->screen is
        node minus camera (the world canvas is pinned top-left, 1:1). */
-    _flyResourceToInventory(S, node.x, node.y - 24, '/icons/wood/wood-log.png');
+    _flyResourceToInventory(S, node.x, node.y - 24, '/icons/wood/wood-log.webp');
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the

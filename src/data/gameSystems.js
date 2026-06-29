@@ -5284,19 +5284,13 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _zoneMusicGain: null,
   _zoneMusicBuffers: {}, /* { [trackUrl]: AudioBuffer } cache */
   _zoneMusicUrl: null,   /* current track url; abandons stale fetches */
-  ZONE_MUSIC: {
-    /* v2.3.825: town theme swapped to the owner's new pixel-world track. */
-    town: '/audio/music/town-theme-v2.mp3',
-    meadow: '/audio/music/meadow-zone.mp3',
-    frost: '/audio/music/frost-zone.mp3',
-    thunder: '/audio/music/thunder-zone.mp3',
-    ember: '/audio/music/ember-zone.mp3',
-    mist: '/audio/music/mist-zone.mp3',
-    hollows: '/audio/music/hollows-zone.mp3',
-    tidal: '/audio/music/tidal-zone.mp3',
-    sky: '/audio/music/desert-winds.mp3',
-    farm_home: '/audio/music/town-theme.mp3',
-  },
+  /* v2.3.1103: EMPTIED — the owner removed all background music tracks
+     (~40 MB) to shrink the download. With no entry here, startZoneAmbient()
+     falls through to the low-volume procedural oscillator drone (generated,
+     zero bytes) for every zone, so there's no music fetch and nothing 404s.
+     To restore a track, re-add `<zoneId>: '/audio/music/<file>.mp3'` AND
+     ship the file back into public/audio/music/. */
+  ZONE_MUSIC: {},
   init: function init() {
     if (this.ctx) return;
     try {

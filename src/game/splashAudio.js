@@ -26,25 +26,12 @@ export function wireTorchCrackle(showNameModal) {
   };
 }
 
-/* Splash theme music — held in themeAudioRef so it KEEPS PLAYING through
-   the loading screen (IntroVideo hands it off); deliberately NOT stopped on
-   the modal's cleanup. start() is a no-op if already armed. */
+/* Splash theme music — DISABLED (v2.3.1103). The owner removed all
+   background music to shrink the download (theme.m4a was 3.5 MB; the zone
+   tracks ~40 MB). This is now a no-op: themeAudioRef stays null, which every
+   reader already guards (`if (themeAudioRef.current)`), so the loading-screen
+   hand-off and modal cleanup are unaffected. The export + signature are kept
+   so call sites in BroTown.jsx don't need to change. */
 export function wireThemeMusic(showNameModal, themeAudioRef) {
-  if (!showNameModal) return;
-  var start = function () {
-    try {
-      if (themeAudioRef.current) return;
-      var au = new Audio('/ui/welcome/theme.m4a');
-      au.loop = true;
-      au.volume = 0.4;
-      au.play().catch(function () {});
-      themeAudioRef.current = au;
-    } catch (e) {}
-  };
-  window.addEventListener('pointerdown', start, { once: true });
-  return function () {
-    window.removeEventListener('pointerdown', start);
-    /* deliberately NOT stopping the theme here — it carries into the
-       loading screen; IntroVideo (or the skip-intro path) hands it off. */
-  };
+  return undefined;
 }

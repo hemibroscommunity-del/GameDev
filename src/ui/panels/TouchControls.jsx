@@ -75,7 +75,7 @@ export function TouchControls(props) {
          game.css with the metal-ring + center-hole art the user uploaded.
          No overflow:hidden -- the stick + knob layer on top and don't
          need clipping, the sprite art handles its own rim. */
-      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.102)',
+      backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -98,7 +98,7 @@ export function TouchControls(props) {
       marginTop: -16,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.102)',
+      backgroundImage: 'url(/sprites/joystick/stick.webp?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -117,7 +117,7 @@ export function TouchControls(props) {
          knob much larger relative to the outer ring (user request). */
       width: isLandscape ? 48 : 42,
       height: isLandscape ? 48 : 42,
-      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.102)',
+      backgroundImage: 'url(/sprites/joystick/knob.webp?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -177,7 +177,7 @@ export function TouchControls(props) {
          separate red-ring overlay rendered below.  borderRadius kept
          so the hit-test shape stays circular. */
       borderRadius: '50%',
-      backgroundImage: 'url(/sprites/joystick/base.png?v=2.3.102)',
+      backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -240,7 +240,7 @@ export function TouchControls(props) {
       marginTop: -16,
       transformOrigin: '0% 50%',
       transform: 'rotate(0rad)',
-      backgroundImage: 'url(/sprites/joystick/stick.png?v=2.3.102)',
+      backgroundImage: 'url(/sprites/joystick/stick.webp?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
@@ -262,7 +262,7 @@ export function TouchControls(props) {
       transform: 'translate(-50%,-50%)',
       width: isLandscape ? 48 : 42,
       height: isLandscape ? 48 : 42,
-      backgroundImage: 'url(/sprites/joystick/knob.png?v=2.3.102)',
+      backgroundImage: 'url(/sprites/joystick/knob.webp?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
