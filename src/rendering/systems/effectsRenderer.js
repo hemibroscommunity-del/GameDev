@@ -2841,6 +2841,18 @@ export class EffectsRenderer {
       const cfgKey = fmap[0], mirror = fmap[1];
       const cfg = this._swordCfg[cfgKey];
       if (!cfg || !cfg.bodyUrl) continue;
+      /* v2.3.1100: MP parity for the naked sword-swing seam tuning -- mirror the
+         per-facing knobs from the local _updateSwordSwing so OTHER players see
+         the same gap-free composite. Gated on the remote's NAKED state (no chest
+         / leg armour); keyed by the swing facing (cfgKey). */
+      const eq = o.equip || {};
+      const _nakedSeam = (!eq.chest || eq.chest === 'none') && (!eq.legs || eq.legs === 'none');
+      const _seamLift = _nakedSeam ? (({ east: 10, south: 10 })[cfgKey] || 0) : 0;
+      const _torsoOnlyAdj = _nakedSeam ? (({ east: 1.15 })[cfgKey] || 1) : 1;
+      const _torsoDY = _nakedSeam ? (({ east: 5, south: 5 })[cfgKey] || 0) : 0;
+      const _legSizeAdj = _nakedSeam ? (({ south: 1.20, east: 1.10, north: 1.12 })[cfgKey] || 1) : 1;
+      const _legShiftX = _nakedSeam ? (({ north: 0, south: 3 })[cfgKey] || 0) : 0;
+      const _legShiftY = _nakedSeam ? (({ south: 2 })[cfgKey] || 0) : 0;
       const bodyFrames = this._remoteBodyFramesFor(o, cfgKey, cfg);
       if (!bodyFrames || !bodyFrames.length) continue;
       const n = bodyFrames.length;
@@ -2849,7 +2861,6 @@ export class EffectsRenderer {
       const sp = set.body;
       const anchorY = cfg.feetY / cfg.fh;
       const sY = REMOTE_SWING_SCALE;
-      const sgnX = mirror ? -sY : sY;
       /* v2.3.1088: jogging legs while this remote is MOVING -- swap the body to the
          leg-erased torso strip and composite jog legs under it (same as the bow).
          v2.3.1093: legs face the SAME direction as the torso (the swing facing
@@ -2864,19 +2875,24 @@ export class EffectsRenderer {
       const _jog = !!(_moving && _torsoFrames && _torsoFrames[fi] && _legArr && _legArr.length);
       sp.anchor.set(0.5, anchorY);
       sp.texture = _jog ? _torsoFrames[fi] : bodyFrames[fi];
-      sp.scale.set(sgnX, sY);
+      /* v2.3.1100: naked east grows the torso (sT) with the legs re-anchoring via
+         torsoScale; the torso also drops by _torsoDY while the legs keep the
+         un-nudged foot row (_baseFootY). */
+      const sT = sY * _torsoOnlyAdj;
+      const sgnT = mirror ? -(sY * _torsoOnlyAdj) : (sY * _torsoOnlyAdj);
+      sp.scale.set(sgnT, sT);
+      const _baseFootY = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_SWING_FOOT_DY;
       sp.x = (o.renderX != null) ? o.renderX : o.x;
-      sp.y = ((o.renderY != null) ? o.renderY : o.y) + REMOTE_SWING_FOOT_DY;
+      sp.y = _baseFootY + _torsoDY;
       sp.visible = true;
       /* overlay helper: same transform as the body sprite. */
       const place = (spr, tex) => {
         if (!spr) return;
         if (!tex) { spr.visible = false; return; }
-        spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnX, sY);
+        spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnT, sT);
         spr.x = sp.x; spr.y = sp.y; spr.visible = true;
       };
       const gp = cfg.gearPose || 'swing';
-      const eq = o.equip || {};
       /* v2.3.1050: their tinted shirt under-layer (folder always 'tshirt' when shirted). */
       const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
       this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor);
@@ -2904,8 +2920,9 @@ export class EffectsRenderer {
         const legTex = _legArr[((_jfr % _legArr.length) + _legArr.length) % _legArr.length];
         this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
           legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
-          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: sp.y,
+          cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: _baseFootY,
           feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), weapon: 'sword',
+          seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
         });
       } else { set.jogLegs.visible = false; set.jogLegsGear.visible = false; }
       active.add(id);
