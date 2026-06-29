@@ -43,7 +43,9 @@ export default defineConfig({
       return {
         name: 'optimize-dist-images',
         apply: 'build',
-        configResolved(c) { outDir = c.build.outDir; },
+        /* resolve to an ABSOLUTE dir -- build.outDir is configured relative to
+           root ('src'), so walking it raw missed every file (0 PNGs). */
+        configResolved(c) { outDir = path.resolve(c.root, c.build.outDir); },
         async closeBundle() {
           let sharp;
           try { sharp = (await import('sharp')).default; }
