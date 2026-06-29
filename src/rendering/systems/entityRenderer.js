@@ -161,7 +161,10 @@ const JOG_FOOT_FRAMES = {
   east: [3, 17], west: [3, 17],
   south: [0, 13], north: [0, 11],
   northeast: [9, 21], northwest: [9, 21],
-  southwest: [2, 17], southeast: [2, 17],
+  /* v2.3.1107: SW/SE is a DOUBLE-stride loop (~1656ms, ~2x the other dirs), so
+     it has FOUR foot-plants per cycle, not two. [2,17] left the middle two
+     silent and bunched the audible pair into a "first two replay". */
+  southwest: [2, 8, 13, 18], southeast: [2, 8, 13, 18],
 };
 
 /* v2.3.537: per-(pose,dir) body render scale, DERIVED from silhouette
