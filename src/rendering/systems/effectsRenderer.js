@@ -275,6 +275,14 @@ export class EffectsRenderer {
     this.cookShirtSprite.anchor.set(0.5, 1);
     this.cookShirtSprite.visible = false;
     this.nodeLayer.addChild(this.cookShirtSprite);
+    /* v2.3.1114: leg-armour layer for the cook stand-in -- the equipped greaves
+       drawn over the cook's legs, untinted (armour keeps its own metal colour),
+       shown only when leg armour is equipped. Same 24-frame 213x220 cook strip
+       at /sprites/gear/legs/<item>/cook-south.png. */
+    this.cookLegsSprite = new Sprite();
+    this.cookLegsSprite.anchor.set(0.5, 1);
+    this.cookLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.cookLegsSprite);
     this._cookFrames = [];
     Assets.load('/sprites/skills/cook-strip.webp').then((tex) => {
       const FW = 213, FH = 220;
@@ -3370,6 +3378,7 @@ export class EffectsRenderer {
     if (this.chopSprite) this.chopSprite.visible = false;
     if (this.cookSprite) this.cookSprite.visible = false;
     if (this.cookShirtSprite) this.cookShirtSprite.visible = false;
+    if (this.cookLegsSprite) this.cookLegsSprite.visible = false;
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
@@ -3459,6 +3468,10 @@ export class EffectsRenderer {
         s.scale.set(sp.scale.x, sp.scale.y); s.x = sp.x; s.y = sp.y; s.visible = true;
       };
       this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, getShirt(), getEquip('chest'), 'cook', 'south', 213, cookFi, getShirtColor());
+      /* v2.3.1114: equipped leg armour over the cook's legs (untinted; the
+         greaves keep their own metal colour). _gearStripFrame returns null when
+         no legs are equipped, so placeCookShirt hides the sprite. */
+      placeCookShirt(this.cookLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'cook', 'south', 213, cookFi));
       this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
     /* The floating tool + swipe cue + pips only appear once the swipe
