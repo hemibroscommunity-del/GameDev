@@ -122,13 +122,12 @@ const isOlive=(r,g,b,a)=> a>60 && g>b+12 && r>b && Math.max(r,g,b)<150 && g>50;
   for(let i=0;i<18;i++){ if(armor[i]&&!armor[i].bad) continue;
     let rep=null; for(let r=1;r<18;r++){ if(armor[i-r]&&!armor[i-r].bad){rep=armor[i-r];break;} if(armor[i+r]&&!armor[i+r].bad){rep=armor[i+r];break;} }
     if(rep){ armor[i]=rep; healed++; } }
-  // frames 2 & 3 read with the greaves spaced too wide (owner) -> reuse the
-  // nearest narrower neighbour pose.
-  if(armor[1]) armor[2]=armor[1];
-  if(armor[4]&&!armor[4].bad) armor[3]=armor[4]; else if(armor[1]) armor[3]=armor[1];
-  // frames 18-23 reuse the last good frame
-  const last=armor[17]||armor[16]||armor[filled-1];
-  for(let i=18;i<NF;i++) armor.push(last);
+  // owner: the per-source-frame greave spacing varies and one frame keeps coming
+  // back with a huge gap -> just use the FIRST clean frame's greaves for every
+  // frame. The legs barely move during cooking, and each frame is still placed
+  // at its own per-frame leg position (legCx), so it still tracks the body.
+  const f0 = armor.find(a => a && !a.bad) || armor[0];
+  for(let i=0;i<NF;i++) armor[i]=f0;
 
   // cook leg center per frame
   const cook=dataOf(await load('/cook')); const CKW=cook.W, CKD=cook.d; const legCx=[];
