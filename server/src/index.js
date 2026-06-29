@@ -4012,6 +4012,10 @@ export class GameRoom {
             if (msg.eqc !== undefined) ps.eqc = msg.eqc;
             if (msg.eql !== undefined) ps.eql = msg.eql;
             if (msg.eqs !== undefined) ps.eqs = msg.eqs;
+            /* v2.3.1092: harvest activity code (mine|chop|fish|cook|fire, or
+               null). Pure presentation state relayed to peers so they can see
+               this player gathering; not authoritative over loot/XP. */
+            if (msg.ex !== undefined) ps.ex = msg.ex || null;
             if (msg.dodging !== undefined) ps.dodging = !!msg.dodging;
             if (msg.blocking !== undefined) ps.blocking = !!msg.blocking;
             if (msg.dead !== undefined) ps.dead = !!msg.dead;
@@ -4527,7 +4531,7 @@ export class GameRoom {
         const players = {};
         for (const id of this.dirtyPlayers) {
           const ps = this.playerState[id];
-          if (ps) players[id] = { x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy, f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs };
+          if (ps) players[id] = { x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy, f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs, ex: ps.ex };
         }
         delta.players = players;
         this.dirtyPlayers.clear();

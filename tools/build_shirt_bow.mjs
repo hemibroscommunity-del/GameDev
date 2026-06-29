@@ -52,9 +52,12 @@ const DIRS = {
   },
 };
 
-/* ── tone shaping (match stand/jog/swing shirt sheets) ──────────────────────── */
-const FILL_TARGET = 245;
-const OUTLINE_GAMMA = 1.5;
+/* ── tone shaping ── matched to the idle stand/jog shirt sheets (mean grayscale
+   ~204) so the SAME shirtFill() tint reads identically in attack and idle.  The
+   old 245/1.5 curve baked the bow shirt ~30 levels darker, so the chosen colour
+   looked off mid-shot.  Linear (gamma 1.0) at a slightly higher fill lands ~204. */
+const FILL_TARGET = 250;
+const OUTLINE_GAMMA = 1.0;
 /* ── per-direction alignment tunables (owner-directed) ───────────────────────
    The shirt is placed by ONE uniform transform that aligns the drawn character
    to the game body via head-crown + pants-bottom (vertical) and pants-center
@@ -199,6 +202,29 @@ function srcLandmarks(g, cfg, idx) {
   return L;
 }
 
+/* Output despeckle: drop isolated opaque components smaller than minSize so the
+   only thing left in the sheet is the shirt body -- removes stray bow/AA specks
+   that survive the source isolation and would render as in-game noise. */
+function despeckle(out, W, H, minSize) {
+  const lab = new Int32Array(W * H).fill(-1);
+  const op = (i) => out[i * 4 + 3] > 0;
+  const comps = [];
+  const st = [];
+  for (let i = 0; i < W * H; i++) {
+    if (!op(i) || lab[i] >= 0) continue;
+    const id = comps.length; const px = [i]; let n = 0; lab[i] = id; st.length = 0; st.push(i);
+    while (st.length) {
+      const p = st.pop(); n++; const x = p % W, y = (p / W) | 0;
+      const nb = [];
+      if (x > 0) nb.push(p - 1); if (x < W - 1) nb.push(p + 1);
+      if (y > 0) nb.push(p - W); if (y < H - 1) nb.push(p + W);
+      for (const q of nb) if (op(q) && lab[q] < 0) { lab[q] = id; st.push(q); px.push(q); }
+    }
+    comps.push({ n, px });
+  }
+  for (const c of comps) if (c.n < minSize) for (const p of c.px) out[p * 4 + 3] = 0;
+}
+
 /* bilinear sample */
 function sample(buf, lx, ly) {
   const { W, H, val, alp } = buf;
@@ -232,10 +258,11 @@ function renderDir(dir, opts = {}) {
       const sx = (fx - (BL.pantCx + NUDGE_X)) / scale + SL.pantCx;
       const sy = (fy - (BL.crown + NUDGE_Y)) / scale + SL.crown;
       const [v, a] = sample(s, sx, sy);
-      if (a <= 4) continue;
+      if (a < 110) continue;   // binarize alpha: crisp edges, no faint semi-transparent "static" specks (idle sheets are fully binary)
       const o = (fy * FW + fx) * 4; const vv = Math.round(v);
-      out[o] = vv; out[o + 1] = vv; out[o + 2] = vv; out[o + 3] = Math.round(a);
+      out[o] = vv; out[o + 1] = vv; out[o + 2] = vv; out[o + 3] = 255;
     }
+    despeckle(out, FW, FH, 120);  // strip stray bow-string / AA specks; the shirt body is one large blob so a high floor is safe
     frames.push(out);
     dbg.push({ fi, srcCrown: SL.crown, srcFeet: SL.feet, srcCx: Math.round(SL.pantCx), bodyCrown: BL.crown, bodyFeet: BL.feet, bodyCx: Math.round(BL.pantCx), scale: scale.toFixed(3) });
   }

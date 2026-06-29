@@ -255,5 +255,31 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
     && saved.defenseUnspent === 2 && saved.defenseSpec.bulwark === 5, saved && Object.keys(saved));
 }
 
+// ── v2.3.1092: harvest-activity (ex) relay ──
+// A stationary gatherer broadcasts an `ex` code on its move; the server stores
+// it and relays it in the tick `players` delta so peers can render the
+// activity.  Same store path covers v1 + v2 (one shared players object).
+{
+  // Same-position move (no teleport -> accepted) carrying ex='chop'.
+  const p1 = room.playerState.p1;
+  await room.webSocketMessage(ws1, JSON.stringify({ type: 'move', x: p1.x, y: p1.y, z: 'meadow', ex: 'chop' }));
+  check('move stores harvest activity on playerState', room.playerState.p1.ex === 'chop', room.playerState.p1.ex);
+
+  ws1.sent.length = 0; ws2.sent.length = 0;
+  room.startTickLoop();
+  await new Promise((r) => setTimeout(r, 80));
+  clearInterval(room.tickInterval); room.tickInterval = null;
+  const exTick1 = msgsOfType(ws1, 'tick').find((t) => t.players && t.players.p1);
+  const exTick2 = msgsOfType(ws2, 'tick').find((t) => t.players && t.players.p1);
+  check('v1 tick relays harvest activity', !!exTick1 && exTick1.players.p1.ex === 'chop',
+    exTick1 && exTick1.players.p1 && exTick1.players.p1.ex);
+  check('v2 tick relays harvest activity', !!exTick2 && exTick2.players.p1.ex === 'chop',
+    exTick2 && exTick2.players.p1 && exTick2.players.p1.ex);
+
+  // Clearing it (ex:null) relays the cleared value so peers stop the stand-in.
+  await room.webSocketMessage(ws1, JSON.stringify({ type: 'move', x: p1.x, y: p1.y, z: 'meadow', ex: null }));
+  check('move clears harvest activity', room.playerState.p1.ex === null, room.playerState.p1.ex);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

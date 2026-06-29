@@ -450,7 +450,15 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
         dilCtx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, dx, 0, 256, 256);
     }
     ctx.globalCompositeOperation = 'destination-out';   // erase body under the armour
-    for (let dy = -dilate; dy <= dilate; dy++)
+    /* v2.3.1073: only dilate the erase DOWNWARD when a leg plate is also worn to
+       fill the over-erased band.  With chest-only (no leg plate), the downward
+       dilation ate the bare waist/upper-leg just below the chest plate -- a
+       transparent GAP between torso and legs, most visible while jogging (the
+       jog torso/leg junction shifts).  Cap dy<=0 there so the bare body fills the
+       waist; the leg-plate case keeps full dilation (the plate hides the band). */
+    const _hasLegPlate = worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+    const _dyMax = _hasLegPlate ? dilate : 0;
+    for (let dy = -dilate; dy <= _dyMax; dy++)
       ctx.drawImage(dilCv, 0, dy);
     ctx.globalCompositeOperation = 'source-over';
     if (neckY > 0) {                                     // restore the head+neck band
@@ -1251,7 +1259,11 @@ function _orderTraitsAndWeapon(display, facingIdx) {
          face).  setChildIndex removes-then-inserts, so inserting at the
          highest reference index lands the beard directly above it. */
       let ref = display.getChildIndex(display._spriteBody);
-      for (const s of [display._gearLegs, display._gearChest, display._gearShoulders,
+      /* v2.3.1099: include the SHIRT (_gearShirt) -- the beard hangs over the
+         chest, so on toward-camera facings it must sit above the t-shirt too,
+         not just the armour. Without it, a shirt worn with no armour rendered
+         OVER the beard (beard "behind the t-shirt" on south). */
+      for (const s of [display._gearShirt, display._gearLegs, display._gearChest, display._gearShoulders,
                        display._handCapSprite, display._handArmSprite,
                        display._shieldSprite]) {
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
@@ -2883,6 +2895,27 @@ export class EntityRenderer {
     }
   }
 
+  /* v2.3.1091: zone perspective player-scale -- the Overlook/vista "world
+     view" shrink that makes avatars tiny while travelling. Shared by the
+     LOCAL player and REMOTE players from each one's own position, so everyone
+     shrinks together on a vista map. Previously only the local avatar shrank
+     and other players stayed full size, dwarfing the tiny landscape. Absent
+     playerScale => 1 (normal in-zone sizing, unchanged). */
+  _zonePscale(S, x, y) {
+    const _z = ZONES[S.currentZone];
+    const ps = _z && _z.playerScale;
+    if (typeof ps === 'number') return ps;
+    if (ps && typeof ps === 'object') {
+      const cx = (_z.w * TILE) / 2, cy = (_z.h * TILE) / 2;
+      const d = Math.min(1, Math.hypot(x - cx, y - cy) / (Math.hypot(cx, cy) || 1));
+      const near = ps.near != null ? ps.near : 0.6;
+      const far = ps.far != null ? ps.far : 0.3;
+      const curve = ps.curve != null ? ps.curve : 1; // <1 shrinks faster as you leave centre
+      return near + (far - near) * Math.pow(d, curve);
+    }
+    return 1;
+  }
+
   _updateOtherPlayers(S, now) {
     const others = S.others || {};
     const activeIds = new Set();
@@ -2903,12 +2936,27 @@ export class EntityRenderer {
       display.x = other.renderX || other.x || 0;
       display.y = other.renderY || other.y || 0;
 
+      /* v2.3.1091: apply the same per-zone perspective shrink the local
+         player gets, computed from THIS remote's own position, so other
+         players also become tiny on a vista map ("world view") instead of
+         dwarfing the landscape. Normal zones have no playerScale => 1 (other
+         players keep their correct in-zone size). The body's horizontal flip
+         lives on the inner _spriteBody, so scaling the container uniformly
+         here doesn't disturb facing. */
+      {
+        const pscale = this._zonePscale(S, display.x, display.y);
+        if (display.scale.x !== pscale) display.scale.set(pscale);
+      }
+
       /* Death state — play the death sprite animation (player crumbles
          into a skeleton then a pile of bones) until player_respawned
          clears _isDead.  Hide weapon/shield/NFT/procedural body so the
          corpse reads cleanly.  Fall back to a fade+tilt visual if the
          sheet hasn't loaded yet. */
       if (other._isDead) {
+        /* v2.3.1092: a harvest stand-in may have hidden this container last
+           frame; the corpse renders through it, so restore visibility. */
+        if (!display.visible) display.visible = true;
         /* v2.3.809: self-heal a missed corpse-clear.  player_respawned is a
            one-shot peer broadcast -- an observer that was frozen,
            reconnecting, or joined after the respawn never receives it, so
@@ -3029,12 +3077,25 @@ export class EntityRenderer {
          Dropping it makes remote facing match local. */
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
-      const pose = isHit ? 'hit' : (isMoving ? 'jog' : 'stand');
+      /* v2.3.1092: remote harvest activity broadcast by the gatherer.
+         mine/fish render as the SAME south-only body poses the local player
+         uses; chop/cook/fire are full-character STAND-INS drawn in
+         effectsRenderer (_updateRemoteExtraction), so the whole body container
+         is hidden while one is active (mirrors the local player's _chopHide). */
+      const _rex = other._ex || null;
+      const _rexStandIn = _rex === 'chop' || _rex === 'cook' || _rex === 'fire';
+      const _rexBodyPose = _rex === 'mine' ? 'mine' : _rex === 'fish' ? 'fish' : null;
+      if (display.visible === _rexStandIn) display.visible = !_rexStandIn;
+      const pose = _rexBodyPose
+        ? _rexBodyPose
+        : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'));
       const spritesAvailable = hasPose(pose) || hasPose('stand');
       let useSprite = false;
-      if (spritesAvailable) {
+      if (!_rexStandIn && spritesAvailable) {
         const spriteBody = display._spriteBody;
-        const { dir, mirror } = resolveDirection(facing);
+        let { dir, mirror } = resolveDirection(facing);
+        /* mine/fish frames are authored south-only -> force south, no mirror. */
+        if (pose === 'mine' || pose === 'fish') { dir = 'south'; mirror = false; }
         let frameIdx = 0;
         if (pose === 'jog') {
           /* Frame count is per-direction now (24-35) — pulled from
@@ -3048,6 +3109,11 @@ export class EntityRenderer {
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
+        } else if (pose === 'mine' || pose === 'fish') {
+          /* v2.3.1092: loop the south-only gather cycle off `now`, same cadence
+             as the local player's mine/fish pose. */
+          const fc = playerFrameCount(pose, 'south') || (pose === 'mine' ? 14 : 32);
+          frameIdx = Math.floor((now / cycleMs(pose, 'south')) * fc) % fc;
         }
         /* v2.3.389: remote players render in their own skin tone.
            v2.3.399: + their pants / shoes colors.
@@ -3418,20 +3484,10 @@ export class EntityRenderer {
        maps (e.g. the Overlook) so it doesn't dwarf the landscape.
        zone.playerScale is either a flat number, or { near, far } to scale by
        distance from the zone centre (bigger at the plateau, smaller toward the
-       distant edges). Absent => 1 (normal). */
+       distant edges). Absent => 1 (normal). v2.3.1091: extracted to
+       _zonePscale and shared with the remote-player path. */
     {
-      const _z = ZONES[S.currentZone];
-      const ps = _z && _z.playerScale;
-      let pscale = 1;
-      if (typeof ps === 'number') pscale = ps;
-      else if (ps && typeof ps === 'object') {
-        const cx = (_z.w * TILE) / 2, cy = (_z.h * TILE) / 2;
-        const d = Math.min(1, Math.hypot(P.x - cx, P.y - cy) / (Math.hypot(cx, cy) || 1));
-        const near = ps.near != null ? ps.near : 0.6;
-        const far = ps.far != null ? ps.far : 0.3;
-        const curve = ps.curve != null ? ps.curve : 1; // <1 shrinks faster as you leave centre
-        pscale = near + (far - near) * Math.pow(d, curve);
-      }
+      const pscale = this._zonePscale(S, P.x, P.y);
       if (display.scale.x !== pscale) display.scale.set(pscale);
     }
 
@@ -3504,7 +3560,13 @@ export class EntityRenderer {
        any horizontal-dominant aim (so a NE/SE that's "more east than N/S" plays
        the east swing).  baseAngle is published by monsterCombat (S._swingAng);
        fall back to the 8-way facing if it isn't set yet.  Visual only. */
-    let _swingAng = S._swingAng;
+    /* v2.3.1071: follow LIVE aim each frame so a mid-swing rotation re-points the
+       body instead of freezing at the swing-start facing. Fall back to the locked
+       swing angle, then the 8-way facing. The frame index stays time-based, so a
+       direction switch just hands off to the new sheet at the same frame. */
+    let _swingAng = (S._aimAngle != null) ? S._aimAngle
+                  : (S._lastAimAngle != null) ? S._lastAimAngle
+                  : S._swingAng;
     if (_swingAng == null) {
       const _si = SECTORS.indexOf(S._renderFacing);
       _swingAng = _si >= 0 ? _si * (Math.PI / 4) : Math.PI / 2;  // SECTORS[i] = i*45deg, south default
@@ -3526,7 +3588,13 @@ export class EntityRenderer {
     let _bowDir = null;
     if (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS && S._bowShotAng != null
         && !S._extraction && !S._firemaking) {
-      const _bsec = Math.round(S._bowShotAng / (Math.PI / 4));
+      /* v2.3.1071: the body pose follows LIVE aim during the shot window (the
+         arrow keeps its fire-time angle S._bowShotAng), so a rapid turn re-points
+         the bro instead of freezing at the shot's original facing. */
+      const _aimNow = (S._aimAngle != null) ? S._aimAngle
+                    : (S._lastAimAngle != null) ? S._lastAimAngle
+                    : S._bowShotAng;
+      const _bsec = Math.round(_aimNow / (Math.PI / 4));
       const _bf = SECTORS[((_bsec % 8) + 8) % 8];
       if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
     }
@@ -3791,6 +3859,9 @@ export class EntityRenderer {
         display._animPose = pose;
         display._animDir = dir;
         display._animFrame = frameIdx;
+        /* v2.3.1072: publish the live jog frame so the bow stand-in can composite
+           animated legs under its torso (jogging-legs-during-attack). */
+        S._bodyAnimFrame = frameIdx; S._bodyAnimDir = dir; S._bodyMoving = (pose === 'jog'); S._bodyAnimMirror = mirror;
         /* The v2.3.576 window.__btHideArmor debug toggle was retired in
            v2.3.678 (armour visibility is governed by the equip slots); its
            reads were removed in the v2.3.688 cleanup. */
@@ -3959,6 +4030,18 @@ export class EntityRenderer {
          the source frame) so the stand-in renders at the matching size for this
          facing / zone. */
       S._swordBodyH = (221 - 33) * _standBodyScale * _dscale;
+      /* v2.3.1073: jog-scaled body height for the composited jog legs -- the bow
+         art per direction is drawn jog-sized, so legs scaled by the STAND height
+         read ~25% small (east jog 1.25 vs stand 0.983).  Use the JOG dir-scale. */
+      S._jogBodyH = (221 - 33) * bodyDirScale('jog', dir) * LOCAL_SCALE * _dscale;
+      /* v2.3.1072: tell the bow stand-in to swap to the leg-erased torso strip and
+         composite jogging legs underneath while MOVING (effectsRenderer restricts
+         this to the south facing for now via fmap).  Gate on the function-scope
+         isMoving (reliable) rather than the published _bodyMoving. */
+      S._bowJogLegs = _bowShot && isMoving;
+      /* v2.3.1088: same for the sword swing -- jog the legs under the swing torso
+         strip while moving instead of sliding. */
+      S._swordJogLegs = _swordSwing && isMoving;
     }
 
     /* NFT 360° body — when the regular sprite path didn't render this
