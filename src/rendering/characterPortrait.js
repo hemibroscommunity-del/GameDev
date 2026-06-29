@@ -17,6 +17,7 @@
 
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import { SPRITE_VERSION } from './playerSprites.js';
+import { getHatRef } from './traits/hatColorCatalog.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 
 const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
@@ -61,7 +62,7 @@ function loadBodyTops() {
 /* ── recolor helpers (return a 256-canvas) ──
    Body (skin + pants + shoes) reuses playerSkins.recolorBodyToCanvas so the
    preview matches the in-game recolor exactly. */
-export function recolorHairToCanvas(img, hairColor) {
+export function recolorHairToCanvas(img, hairColor, refOverride) {
   const cv = document.createElement('canvas');
   cv.width = img.width; cv.height = img.height;
   const ctx = cv.getContext('2d', { willReadFrequently: true });
@@ -74,15 +75,22 @@ export function recolorHairToCanvas(img, hairColor) {
      black outline dark, consistent with the rest of the character's outline).
      NOTE: this collapses very dark sprites (the long-hair sheet is ~88% pure
      black) into a black band when given a light color -- that style restricts
-     its color picker to dark options for this reason (see BroTown hair colors). */
-  let sum = 0, n = 0, maxL = 1;
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] > 30) {
-      const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-      sum += l; n++; if (l > maxL) maxL = l;
+     its color picker to dark options for this reason (see BroTown hair colors).
+     v2.3.1109: refOverride lets the caller pass ONE shared reference for all of
+     a multi-direction trait (e.g. a hat across its 5 facings) so the recoloured
+     tone is identical per angle instead of drifting with each sheet's own
+     outline-vs-fabric pixel mix. */
+  let ref = refOverride;
+  if (!ref) {
+    let sum = 0, n = 0, maxL = 1;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] > 30) {
+        const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        sum += l; n++; if (l > maxL) maxL = l;
+      }
     }
+    ref = Math.max(1, n ? (sum / n) * 1.15 : maxL);
   }
-  const ref = Math.max(1, n ? (sum / n) * 1.15 : maxL);
   const tr = hairColor[0], tg = hairColor[1], tb = hairColor[2];
   for (let i = 0; i < d.length; i += 4) {
     if (d[i + 3] > 30) {
@@ -160,7 +168,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      stages (body-tops -> body sprite -> traits), so on a cold load the preview
      sat blank-white for ~3 network round-trips; now it's one.  All loads are
      cached after the first draw, so later redraws/rotations are instant. */
-  const [bodyTops, bodyImg, shirtImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg] = await Promise.all([
+  const [bodyTops, bodyImg, shirtImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef] = await Promise.all([
     loadBodyTops(),
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`),
     /* v2.3.757: the LAYERED shirt sheet (white-base, tinted below) -- the
@@ -176,6 +184,9 @@ export async function drawCharacterPortrait(canvas, opts) {
     /* hat's hair-clip mask (downward-filled helmet silhouette) -- present
        only for hats with clipsHair; 404 -> null -> no clipping. */
     wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    /* v2.3.1109: one shared recolour reference across the hat's facings so the
+       preview's hat shade is identical per angle AND matches the in-game hat. */
+    (wantHw && hatColor) ? getHatRef(headwear).catch(() => 0) : 0,
   ]);
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
 
@@ -233,7 +244,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     }
     ctx.drawImage(hairCv, 0, 0);
   }
-  if (hwImg && hwMeta) placeTrait(ctx, hatColor ? recolorHairToCanvas(hwImg, hatColor) : hwImg, hwMeta, crown, DIR);
+  if (hwImg && hwMeta) placeTrait(ctx, hatColor ? recolorHairToCanvas(hwImg, hatColor, hatRef) : hwImg, hwMeta, crown, DIR);
   ctx.restore();
   if (canvas.__pseq !== seq) return;   /* a newer draw superseded this one */
   canvas.width = FRAME; canvas.height = FRAME;
