@@ -1310,11 +1310,16 @@ function _orderTraitsAndWeapon(display, facingIdx) {
      setChildIndex-to-highest-visible-ref move the beard uses just below. */
   const phead = display._bodyHead;
   if (phead && phead.visible) {
-    let ref = -1;
-    for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
-      if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
-    }
-    if (ref >= 0) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
+    /* v2.3.1116: guarded -- getChildIndex throws if a referenced sprite isn't a
+       child of `display` (a transient layout state), and this runs every frame
+       during the loot freeze, so an unguarded throw freezes the whole game. */
+    try {
+      let ref = -1;
+      for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
+        if (s && s.visible && s.parent === display) ref = Math.max(ref, display.getChildIndex(s));
+      }
+      if (ref >= 0 && phead.parent === display) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
+    } catch (e) { /* leave head where it is this frame */ }
   }
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
@@ -3271,9 +3276,12 @@ export class EntityRenderer {
             const _mt = (pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6);
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
-          /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
-          _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx);
-          spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
+          /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
+             v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
+          try {
+            _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx);
+            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
+          } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
@@ -4008,9 +4016,14 @@ export class EntityRenderer {
           _bodyTex = (!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6);
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
-        /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
-        _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
-        spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
+        /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
+           v2.3.1116: guarded -- the loot freeze runs every frame, so a throw here
+           (a bad overlay texture, a recolor hiccup) would freeze the whole game
+           loop, not just the head.  On failure: no overlay, body stays visible. */
+        try {
+          _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
+          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
+        } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
