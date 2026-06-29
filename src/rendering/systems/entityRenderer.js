@@ -3779,20 +3779,29 @@ export class EntityRenderer {
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
-        /* v2.3.1104: footstep CADENCE is a fixed ~250 ms timer while jogging,
-           not one-per-animation-cycle.  The jog cycles run 0.8-1.66 s per
-           direction, so one step per cycle landed a lone footfall every ~1 s --
-           far too sparse and out of sync with the rapid leg motion.  A steady
-           250 ms interval reads as a proper jog/run tempo and lines up with the
-           feet hitting the ground.  Aim/shield (useAimDirection) halves the
-           leg speed, so stretch the interval to match (~375 ms). */
-        const _stepMs = useAimDirection ? 600 : 400;
-        if (typeof window !== 'undefined' && window.BT_AUDIO) {
-          if (display._lastFootstepAt === undefined) display._lastFootstepAt = 0;
-          if (now - display._lastFootstepAt >= _stepMs) {
+        /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
+           direction's jog loop, so the sound lands exactly when a foot hits the
+           ground -- a fixed timer never lined up because the per-direction
+           cycles differ (0.8-1.66 s) and have their plants at different phases.
+           Frame indices below were read from the per-direction jog sheets
+           (tools/sheet_montage.mjs); two plants per full stride. Mirrored dirs
+           (west/nw/se) reuse their base sheet's frames (mirroring is scale.x,
+           the frame index is unchanged). Cadence therefore follows the
+           animation: quicker for N/S/E/NE, slower for the long SW/SE cycle. */
+        const _FOOT_FRAMES = {
+          east: [1, 15], west: [1, 15],
+          south: [0, 13], north: [0, 11],
+          northeast: [9, 21], northwest: [9, 21],
+          southwest: [2, 12], southeast: [2, 12],
+        };
+        const _contacts = _FOOT_FRAMES[dir] || _FOOT_FRAMES.south;
+        /* Edge-trigger: fire once when the animation first lands on a plant
+           frame (works forward + backpedal; the jog advances <=1 frame/tick). */
+        if (display._prevJogFrame !== frameIdx) {
+          if (_contacts.indexOf(frameIdx) !== -1 && typeof window !== 'undefined' && window.BT_AUDIO) {
             window.BT_AUDIO.footstep(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none');
-            display._lastFootstepAt = now;
           }
+          display._prevJogFrame = frameIdx;
         }
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;
