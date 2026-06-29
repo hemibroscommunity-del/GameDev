@@ -3779,19 +3779,20 @@ export class EntityRenderer {
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
-        /* v2.3.839: footstep SFX locked to the jog animation.  The jog
-           sheet is ONE half-stride (one step) played each effectiveCycle,
-           so fire exactly one footstep per cycle -- the sound now matches
-           the visible stride exactly.  Naked uses a shorter cycleMs, so
-           its steps come quicker: a naturally lighter tempo, no separate
-           timer needed.  Aim/shield doubles effectiveCycle, so steps slow
-           with the animation too. */
-        const _jogCycle = Math.floor(now / effectiveCycle);
-        if (display._jogCycle !== _jogCycle) {
-          if (display._jogCycle !== undefined && typeof window !== 'undefined' && window.BT_AUDIO) {
+        /* v2.3.1104: footstep CADENCE is a fixed ~250 ms timer while jogging,
+           not one-per-animation-cycle.  The jog cycles run 0.8-1.66 s per
+           direction, so one step per cycle landed a lone footfall every ~1 s --
+           far too sparse and out of sync with the rapid leg motion.  A steady
+           250 ms interval reads as a proper jog/run tempo and lines up with the
+           feet hitting the ground.  Aim/shield (useAimDirection) halves the
+           leg speed, so stretch the interval to match (~375 ms). */
+        const _stepMs = useAimDirection ? 375 : 250;
+        if (typeof window !== 'undefined' && window.BT_AUDIO) {
+          if (display._lastFootstepAt === undefined) display._lastFootstepAt = 0;
+          if (now - display._lastFootstepAt >= _stepMs) {
             window.BT_AUDIO.footstep(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none');
+            display._lastFootstepAt = now;
           }
-          display._jogCycle = _jogCycle;
         }
       } else if (pose === 'hit') {
         const hitT = (now - (S._hitFlash || 0)) / 250;
