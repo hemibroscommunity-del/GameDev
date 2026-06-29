@@ -5821,7 +5821,10 @@ BT_AUDIO.magicHit = function (opts) {
    With no armour — or before the metal samples have preloaded — fall back to
    the generic 'monster-hit'. */
 BT_AUDIO._armorHitToggle = 0;
-BT_AUDIO.monsterHitHero = function (armored, opts) {
+/* v2.3.1108: fallbackKey lets ranged hits keep their own splat when unarmoured
+   (e.g. 'slime-projectile-hit') while still clanging when armoured. Defaults to
+   the melee 'monster-hit'. */
+BT_AUDIO.monsterHitHero = function (armored, opts, fallbackKey) {
   if (armored && this._samples && (this._samples['armor-hit-1'] || this._samples['armor-hit-2'])) {
     var two = (this._armorHitToggle++ & 1);
     var key = two ? 'armor-hit-2' : 'armor-hit-1';
@@ -5830,7 +5833,7 @@ BT_AUDIO.monsterHitHero = function (armored, opts) {
     o.offset = off;
     this.play(key, o);
   } else {
-    this.play('monster-hit', opts);
+    this.play(fallbackKey || 'monster-hit', opts);
   }
 };
 BT_AUDIO.monsterDeath = function (arch, opts) {
