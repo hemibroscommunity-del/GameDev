@@ -178,8 +178,10 @@ const JOG_FOOT_FRAMES = {
    larger size the user dialed in as the target).  Stand and jog measured
    separately because the run bends the legs (a deep stride is not a height
    change).  Mirror dirs (W<-E, NW<-NE, SE<-SW) share their base value.
-   hit/pickup/attack keep the old behavior (no armor on them yet; east-hit
-   stays slightly smaller per the original tuning). */
+   hit/attack keep the old behavior (no armor on them yet; east-hit
+   stays slightly smaller per the original tuning).  v2.3.1053: pickup now
+   ships chest/legs/shirt gear sheets (south-only) -- the gear shares the
+   body transform, so it scales with the pose's default and needs no entry. */
 const BODY_DIR_SCALE = {
   /* v2.3.541: south -3% (1.130->1.096), north -2% (1.150->1.127) per user.
      v2.3.548: NE idle 1.130->0.98 -- the armored figure (tall NE helmet +
@@ -352,6 +354,27 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
     if (tex) {
       if (spr.texture !== tex) spr.texture = tex;
       spr.x = sb.x; spr.y = sb.y;
+      /* v2.3.1056: legs-only pickup -- drop the greaves so they sit on the bare
+         legs like shin guards (owner-tuned per crouch depth).  Full set keeps
+         them aligned to the cuirass. */
+      if (_GEAR_SLOTS[s][0] === 'legs' && pose === 'pickup' && (!equip || !equip.chest || equip.chest === 'none')) {
+        let _dy = 10;                                   // frames 0-17
+        if (frameIdx >= 18 && frameIdx <= 23) _dy = 5;  // fourth row -- up 5
+        else if (frameIdx >= 24) _dy = 20;              // last row
+        if (frameIdx === 28) _dy = 30;                  // very last frame -- 10 lower
+        spr.y += _dy * sb.scale.y;
+      }
+      /* v2.3.1056: torso-only pickup -- drop the cuirass 18px in the deepest-
+         crouch last row (frames 24-28) so it sits on the bent torso. */
+      if (_GEAR_SLOTS[s][0] === 'chest' && pose === 'pickup' && frameIdx >= 24 && (!equip || !equip.legs || equip.legs === 'none')) {
+        spr.y += 18 * sb.scale.y;
+      }
+      /* v2.3.1056: shirt -- drop 15px in the deepest-crouch last 5 frames
+         (24-28) so it sits on the bent torso (shows only when no chest plate;
+         applies to shirt-only and legs+shirt). */
+      if (_GEAR_SLOTS[s][0] === 'shirt' && pose === 'pickup' && frameIdx >= 24) {
+        spr.y += 15 * sb.scale.y;
+      }
       spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
         const t = equip && equip.shirtTint;
@@ -388,6 +411,60 @@ function _bodyRegionTex(bodyTex, region) {
   }
   return m[region];
 }
+/* v2.3.1055: SECTION erase (loot-pickup only).  The per-pixel masked body
+   (below) erases only under the plate + a 6px halo, so where AI drift makes the
+   plate narrower than the bare body the mannequin pokes out behind it (feet
+   below the greaves, legs in the deep crouch).  For the pickup pose the head is
+   a separate overlay, so we can drop the WHOLE armoured section of the body
+   instead of pixel-matching: erase the body full-width from the worn gear's top
+   row down (to the feet if legs are worn, else to the waist for a chest-only
+   torso).  No drift can show because no body is left under the plate.  Cached
+   per (body-frame, loadout) like the masked body.  South-pose only (called from
+   the pickup branch); falls back to the raw body if pixel access fails. */
+const _sectionBodyCache = new Map();
+const _gearTopRow = (worn) => {
+  const gcv = document.createElement('canvas'); gcv.width = 256; gcv.height = 256;
+  const gctx = gcv.getContext('2d');
+  let hasLegs = false;
+  for (const w of worn) {
+    if (w.k && w.k.indexOf('legs:') === 0) hasLegs = true;
+    const gt = w.tex, gr = gt && gt.source && gt.source.resource; if (!gr) continue;
+    const gf = gt.frame; gctx.drawImage(gr, gf.x, gf.y, gf.width, gf.height, 0, 0, 256, 256);
+  }
+  const gd = gctx.getImageData(0, 0, 256, 256).data;
+  let top = 256;
+  for (let y = 0; y < 256 && top === 256; y++) for (let x = 0; x < 256; x++) if (gd[(y * 256 + x) * 4 + 3] > 40) { top = y; break; }
+  return { top, hasLegs };
+};
+function _sectionErasedBody(bodyTex, worn) {
+  if (!bodyTex || !worn.length) return bodyTex;
+  let bres; try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { bres = null; }
+  if (!bres) return bodyTex;
+  const key = (bodyTex.uid != null ? bodyTex.uid : '') + '|sec|' + worn.map(w => w.k).join(',');
+  const hit = _sectionBodyCache.get(key);
+  if (hit) { _sectionBodyCache.delete(key); _sectionBodyCache.set(key, hit); return hit; }
+  try {
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
+    const ctx = cv.getContext('2d');
+    const bf = bodyTex.frame;
+    ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
+    const img = ctx.getImageData(0, 0, 256, 256); const d = img.data;
+    let figTop = 256, figBot = -1;
+    for (let y = 0; y < 256; y++) { let any = false; for (let x = 0; x < 256; x++) if (d[(y * 256 + x) * 4 + 3] > 40) { any = true; break; } if (any) { if (y < figTop) figTop = y; figBot = y; } }
+    if (figBot <= figTop) return bodyTex;   // backing pixels not ready -- retry next frame
+    const { top: gearTop, hasLegs } = _gearTopRow(worn);
+    if (gearTop === 256) return bodyTex;
+    const eraseTop = Math.max(0, gearTop - 2);
+    const eraseBot = hasLegs ? 256 : Math.round(figTop + 0.585 * (figBot - figTop));   // legs -> to the feet; chest-only -> to the waist
+    for (let y = eraseTop; y < eraseBot && y < 256; y++) for (let x = 0; x < 256; x++) d[(y * 256 + x) * 4 + 3] = 0;
+    ctx.putImageData(img, 0, 0);
+    const tex = Texture.from(cv); if (tex.source) tex.source.scaleMode = 'linear';
+    _sectionBodyCache.set(key, tex);
+    if (_sectionBodyCache.size > 64) { const fk = _sectionBodyCache.keys().next().value; const ft = _sectionBodyCache.get(fk); _sectionBodyCache.delete(fk); try { ft.destroy && ft.destroy(true); } catch (e) {} }
+    return tex;
+  } catch (e) { return bodyTex; }
+}
+
 /* v2.3.611: masked body.  The AI-drawn armour frames are a few px off the body
    frames, so the body pokes past the plate edges.  Erase the body wherever the
    worn armour (dilated by `dilate` px to swallow the misalignment) covers, so it
@@ -1078,6 +1155,48 @@ function _placeBodyRegions(display, sb, bodyTex, show) {
 function _hideBodyRegions(display) {
   for (const k of ['_bodyHead', '_bodyTorso', '_bodyLegs']) if (display[k]) display[k].visible = false;
 }
+/* v2.3.1055: per-frame HEAD overlay for the loot-pickup pose.  The crouch drops
+   the head below the masked body's neck-restore band AND under the raised arm
+   plate, so an armoured player's head was cut to a sliver.  A head-only sheet
+   (pickup-<dir>-head.png -- head pixels per frame, transparent elsewhere) is
+   drawn at the body transform and lifted ABOVE the gear in _orderTraitsAndWeapon
+   so the whole head always shows.  South-only, matching the pose; other dirs
+   404 -> [] and the masked body's own head is used.  Reuses the dormant
+   _bodyHead region sprite (anchor 0.5/0.5, full-frame texture). */
+const PICKUP_HEAD_VER = '2.3.1056';   /* v2.3.1056: window-tracked head (drops shoulders in the crouch) */
+const _pickupHeadSheets = {};   // 'pose-dir' -> [Texture] | 'loading' | []
+function _getPickupHeadFrame(pose, dir, frameIdx) {
+  if (pose !== 'pickup') return null;
+  const key = pose + '-' + dir;
+  const e = _pickupHeadSheets[key];
+  if (e === undefined) {
+    _pickupHeadSheets[key] = 'loading';
+    Assets.load('/sprites/player/' + key + '-head.png?v=' + PICKUP_HEAD_VER).then((tex) => {
+      if (tex && tex.source) tex.source.scaleMode = 'linear';
+      const n = Math.max(1, Math.floor(tex.width / 256));
+      const arr = [];
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * 256, 0, 256, 256) }));
+      _pickupHeadSheets[key] = arr;
+    }).catch(() => { _pickupHeadSheets[key] = []; });
+    return null;
+  }
+  if (e === 'loading' || !e.length) return null;
+  return e[((frameIdx % e.length) + e.length) % e.length];
+}
+/* Place the pickup head overlay on the (reused) _bodyHead sprite at the body
+   sprite's exact transform.  No-op (leaves _bodyHead as the caller left it --
+   hidden) outside the pickup pose or before the sheet loads. */
+function _placePickupHead(display, sb, pose, dir, frameIdx) {
+  const hd = display._bodyHead;
+  if (!hd || !sb) return;
+  const t = _getPickupHeadFrame(pose, dir, frameIdx);
+  if (!t) return;
+  if (hd.texture !== t) hd.texture = t;
+  hd.x = sb.x; hd.y = sb.y;
+  hd.scale.x = sb.scale.x; hd.scale.y = sb.scale.y;
+  hd.tint = 0xffffff;
+  hd.visible = true;
+}
 /* Per-hat silhouette masks for hair clipping (helmet's outline filled
    downward from its top edge).  Keyed by hat id; loaded lazily. */
 const _hairMaskCache = {};
@@ -1253,6 +1372,18 @@ export function hideSkillTraits(sprites) {
    Shared by local + remote (remote displays simply lack the hand/shield
    sprites, so those are skipped). */
 function _orderTraitsAndWeapon(display, facingIdx) {
+  /* --- Pickup head overlay above the worn plate (v2.3.1055) ---
+     _placePickupHead put the head-only sheet on _bodyHead; lift it above the
+     body + worn gear so the raised arm/pauldron plate can't cover it. Same
+     setChildIndex-to-highest-visible-ref move the beard uses just below. */
+  const phead = display._bodyHead;
+  if (phead && phead.visible) {
+    let ref = -1;
+    for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
+      if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
+    }
+    if (ref >= 0) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
+  }
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
@@ -1279,6 +1410,7 @@ function _orderTraitsAndWeapon(display, facingIdx) {
          not just the armour. Without it, a shirt worn with no armour rendered
          OVER the beard (beard "behind the t-shirt" on south). */
       for (const s of [display._gearShirt, display._gearLegs, display._gearChest, display._gearShoulders,
+                       display._bodyHead,   /* v2.3.1055: pickup head overlay */
                        display._handCapSprite, display._handArmSprite,
                        display._shieldSprite]) {
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
@@ -3200,10 +3332,17 @@ export class EntityRenderer {
             }
           }
           if (_rworn.length) {
-            const _mt = _maskedBodyFrame(tex, _rworn, 6);
+            const _rlegsW = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
+            const _rchestW = _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
+            let _mt;
+            if (pose === 'pickup' && _rlegsW && _rchestW) _mt = _sectionErasedBody(tex, _rworn);
+            else if (pose === 'pickup') _mt = tex;   // partial armor: raw body, gear overlays it
+            else _mt = _maskedBodyFrame(tex, _rworn, 6);
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           spriteBody.visible = true;
+          /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
+          _placePickupHead(display, spriteBody, pose, dir, frameIdx);
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
@@ -3922,12 +4061,26 @@ export class EntityRenderer {
            on' bug. */
         let _bodyTex;
         try {
-          _bodyTex = _worn.length ? _maskedBodyFrame(tex, _worn, 6) : tex;
+          /* v2.3.1056: pickup body strategy by loadout.
+             - full set (chest+legs): section-erase -- every limb is armoured, so
+               drop the whole body section (kills greave pokes).
+             - legs-only: RAW body -- the greaves are shin guards over the bare
+               legs (offset in _placeGear); erasing would cut the bare arms and
+               leave a halo, so keep the body untouched.
+             - else (chest-only / other poses): per-pixel masked body. */
+          const _legsW = _worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+          const _chestW = _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
+          if (!_worn.length) _bodyTex = tex;
+          else if (pose === 'pickup' && _legsW && _chestW) _bodyTex = _sectionErasedBody(tex, _worn);
+          else if (pose === 'pickup') _bodyTex = tex;   // partial armor (chest-only / legs-only): raw body, gear overlays it (no erase halo/gap)
+          else _bodyTex = _maskedBodyFrame(tex, _worn, 6);
         } catch (e) {
           _bodyTex = tex;
         }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         spriteBody.visible = true;
+        /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
+        _placePickupHead(display, spriteBody, pose, dir, frameIdx);
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
