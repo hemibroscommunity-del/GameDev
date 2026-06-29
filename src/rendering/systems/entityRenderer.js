@@ -152,6 +152,18 @@ function _ensureBodyData() {
    un-mirrored side. */
 const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'southeast' };
 
+/* v2.3.1106: per-direction jog FOOT-PLANT frames (footstep SFX fires when the
+   animation lands on one). Module-scope so the jog render path doesn't allocate
+   a fresh object + arrays every frame (that per-frame garbage was a likely
+   source of periodic GC hitches). resolveDirection only ever yields the 5 base
+   dirs; mirror keys kept for clarity. */
+const JOG_FOOT_FRAMES = {
+  east: [3, 17], west: [3, 17],
+  south: [0, 13], north: [0, 11],
+  northeast: [9, 21], northwest: [9, 21],
+  southwest: [2, 17], southeast: [2, 17],
+};
+
 /* v2.3.537: per-(pose,dir) body render scale, DERIVED from silhouette
    measurement -- replaces the old hand-tuned bump stack (v2.3.164-171:
    N/S/E *1.10, NE *1.05/*1.0815, etc).  Goal: equal on-screen character
@@ -3788,16 +3800,7 @@ export class EntityRenderer {
            (west/nw/se) reuse their base sheet's frames (mirroring is scale.x,
            the frame index is unchanged). Cadence therefore follows the
            animation: quicker for N/S/E/NE, slower for the long SW/SE cycle. */
-        const _FOOT_FRAMES = {
-          /* v2.3.1106: east nudged +2 (was reading a tad early); SW/SE second
-             plant fixed 12 -> 17 (the real left-foot plant -- 12 sat mid-swing
-             so that footfall was silent). */
-          east: [3, 17], west: [3, 17],
-          south: [0, 13], north: [0, 11],
-          northeast: [9, 21], northwest: [9, 21],
-          southwest: [2, 17], southeast: [2, 17],
-        };
-        const _contacts = _FOOT_FRAMES[dir] || _FOOT_FRAMES.south;
+        const _contacts = JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south;
         /* Edge-trigger: fire once when the animation first lands on a plant
            frame (works forward + backpedal; the jog advances <=1 frame/tick). */
         if (display._prevJogFrame !== frameIdx) {
