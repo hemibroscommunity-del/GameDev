@@ -15,6 +15,7 @@
 
 import { Rectangle, Texture } from 'pixi.js';
 import { GEAR_SLOTS, getEquip } from './gearCatalog.js';
+import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled gear sheets to the 256px frame */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -39,7 +40,10 @@ function buildSheet(key, slot, item, pose, dir) {
   _sheets[key] = 'loading';
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
      that want to await a full preload don't hang on a 404. */
-  return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}`).then(img => {
+  return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}`).then(rawImg => {
+    /* restore a downscaled-on-disk gear sheet to the 256px frame (no-op for any
+       native >=256 sheet, so the variable-height combat poses are untouched) */
+    const img = upscaleToFrameHeight(rawImg, FRAME_H);
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
     src.autoGenerateMipmaps = true;

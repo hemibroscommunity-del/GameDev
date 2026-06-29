@@ -18,6 +18,7 @@
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
+import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
 
 const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
@@ -212,17 +213,20 @@ export async function drawCharacterPortrait(canvas, opts) {
      tee (matches the in-game default tint). */
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME), 0, 0);
   if (shirtImg) {
-    let layer = shirtImg;
+    /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
+       (these drawImage calls read a 256x256 source rect). No-op at native. */
+    const shirtUp = upscaleToFrameHeight(shirtImg, FRAME);
+    let layer = shirtUp;
     if (shirtColor) {
       const sc = document.createElement('canvas');
       sc.width = FRAME; sc.height = FRAME;
       const sctx = sc.getContext('2d');
-      sctx.drawImage(shirtImg, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+      sctx.drawImage(shirtUp, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
       sctx.globalCompositeOperation = 'multiply';
       sctx.fillStyle = `rgb(${shirtColor[0]},${shirtColor[1]},${shirtColor[2]})`;
       sctx.fillRect(0, 0, FRAME, FRAME);
       sctx.globalCompositeOperation = 'destination-in';
-      sctx.drawImage(shirtImg, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+      sctx.drawImage(shirtUp, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
       layer = sc;
     }
     ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
