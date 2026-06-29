@@ -289,6 +289,15 @@ export class EffectsRenderer {
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._cookFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
     }).catch((err) => console.warn('[cook-strip] load failed', err));
+    /* v2.3.1114: legs-erased cook body, swapped in when leg armour is equipped so
+       the bare mannequin legs don't show behind/through the greaves (the pan is
+       preserved). Same 213x220 frame layout as cook-strip. */
+    this._cookLeglessFrames = [];
+    Assets.load('/sprites/skills/cook-strip-legless.webp').then((tex) => {
+      const FW = 213, FH = 220;
+      const n = Math.max(1, Math.round(tex.width / FW));
+      for (let i = 0; i < n; i++) this._cookLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+    }).catch((err) => console.warn('[cook-strip-legless] load failed', err));
 
     this.fireSprite = new Sprite();
     this.fireSprite.anchor.set(0.5, 1);
@@ -3451,7 +3460,10 @@ export class EffectsRenderer {
       const COOK_H = 41, COOK_FRAME_MS = 60;   // v2.3.896: ~50% smaller (owner: was too large)
       const sp = this.cookSprite;
       const cookFi = Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
-      sp.texture = this._cookFrames[cookFi];
+      /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
+         bare legs don't peek out behind the greaves; otherwise the normal body. */
+      const _legsOn = getEquip('legs') !== 'none' && this._cookLeglessFrames.length === this._cookFrames.length;
+      sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
       const s = COOK_H / 220;
       sp.scale.set(s, s);
       sp.x = node.x - 7;                        // halved with the size so the pan still sits over the fire
