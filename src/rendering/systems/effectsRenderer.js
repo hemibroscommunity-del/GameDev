@@ -264,6 +264,17 @@ export class EffectsRenderer {
     this.cookSprite.anchor.set(0.5, 1);
     this.cookSprite.visible = false;
     this.nodeLayer.addChild(this.cookSprite);
+    /* v2.3.1113: shirt layer for the cook stand-in -- the player's selected
+       shirt, drawn over the bald cook torso and tinted to their shirt colour
+       (same white-base + Pixi-tint path the sword/bow stand-ins use). Added
+       AFTER cookSprite so it composites on top of the body; the head traits
+       (hat/hair/beard) are placed separately and sit above both. Sheet:
+       /sprites/gear/shirt/<item>/cook-south.png, a 24-frame 213x220 strip
+       pixel-aligned to cook-strip.webp. */
+    this.cookShirtSprite = new Sprite();
+    this.cookShirtSprite.anchor.set(0.5, 1);
+    this.cookShirtSprite.visible = false;
+    this.nodeLayer.addChild(this.cookShirtSprite);
     this._cookFrames = [];
     Assets.load('/sprites/skills/cook-strip.webp').then((tex) => {
       const FW = 213, FH = 220;
@@ -3358,6 +3369,7 @@ export class EffectsRenderer {
        below still waits for 'ready'. */
     if (this.chopSprite) this.chopSprite.visible = false;
     if (this.cookSprite) this.cookSprite.visible = false;
+    if (this.cookShirtSprite) this.cookShirtSprite.visible = false;
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
@@ -3436,6 +3448,17 @@ export class EffectsRenderer {
       sp.x = node.x - 7;                        // halved with the size so the pan still sits over the fire
       sp.y = node.y + 8;
       sp.visible = true;
+      /* v2.3.1113: draw the player's shirt over the cook torso, copying the
+         cook sprite's exact transform so the 213x220 shirt frame aligns with
+         the body frame-for-frame. Hidden when no shirt is selected or a chest
+         plate is worn (handled inside _placeSwingShirt). */
+      const placeCookShirt = (s, t) => {
+        if (!s) return;
+        if (!t) { s.visible = false; return; }
+        s.anchor.set(0.5, 1); s.texture = t;
+        s.scale.set(sp.scale.x, sp.scale.y); s.x = sp.x; s.y = sp.y; s.visible = true;
+      };
+      this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, getShirt(), getEquip('chest'), 'cook', 'south', 213, cookFi, getShirtColor());
       this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
     /* The floating tool + swipe cue + pips only appear once the swipe
