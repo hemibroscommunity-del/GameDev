@@ -18,6 +18,7 @@ import {
   resolveCollision, rollPassiveDodge, spawnWeaponHitFX
 } from '@/data/index.js';
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -640,7 +641,7 @@ export function updateSlimeProjectiles(S) {
             _R6P.hp -= proj.rawDmg;
             trackMonsterDamage(S, proj.ownerId, proj.rawDmg);
             if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: proj.rawDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
-            try { BT_AUDIO.play('slime-projectile-hit', { vol: 0.7 }); } catch (e) {}
+            try { BT_AUDIO.monsterHitHero(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none', { vol: 0.7 }, 'slime-projectile-hit'); } catch (e) {}
             S.lastDamageTaken = Date.now();
             S._hitFlash = Date.now();
             if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: proj.rawDmg } });

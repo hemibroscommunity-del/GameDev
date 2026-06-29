@@ -74,20 +74,60 @@ function loadImg(url) {
   });
 }
 
+/* Mean luminance of opaque pixels across SEVERAL images (×1.15), so all of a
+   hat's facings share ONE recolour reference. Keying every direction off the
+   same ref makes the chosen hat colour land on the same tone per angle instead
+   of drifting with each sheet's own outline-to-fabric pixel ratio. */
+function _pooledRef(imgs) {
+  let sum = 0, n = 0, maxL = 1;
+  for (const img of imgs) {
+    if (!img) continue;
+    const cv = document.createElement('canvas');
+    cv.width = img.width; cv.height = img.height;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] > 30) {
+        const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        sum += l; n++; if (l > maxL) maxL = l;
+      }
+    }
+  }
+  return Math.max(1, n ? (sum / n) * 1.15 : maxL);
+}
+
+/* hatId -> shared pooled reference luminance (cached across colours + reused by
+   the character-creator portrait so its hat shade matches the in-game one). */
+const _refCache = {};
+export function getHatRef(hatId) {
+  if (!hatId || hatId === 'none') return Promise.resolve(0);
+  if (_refCache[hatId]) return Promise.resolve(_refCache[hatId]);
+  return Promise.all(DIRS.map(dir =>
+    loadImg(`/sprites/traits/headwear/${hatId}/${dir}.png?v=${TRAIT_VER}`).then(img => img).catch(() => null)
+  )).then(imgs => (_refCache[hatId] = _pooledRef(imgs)));
+}
+
 function build(hatId, colorId) {
   const target = hatColorTarget(colorId);
   const key = hatId + '/' + colorId;
   _cache[key] = 'loading';
   const tex = {};
-  Promise.all(DIRS.map(async dir => {
-    try {
-      const img = await loadImg(`/sprites/traits/headwear/${hatId}/${dir}.png?v=${TRAIT_VER}`);
-      const cv = recolorHairToCanvas(img, target);
+  /* Load every facing FIRST, derive one shared reference, then recolour each
+     with it -> identical tone per angle. */
+  Promise.all(DIRS.map(dir =>
+    loadImg(`/sprites/traits/headwear/${hatId}/${dir}.png?v=${TRAIT_VER}`).then(img => ({ dir, img })).catch(() => ({ dir, img: null }))
+  )).then(loaded => {
+    const ref = _refCache[hatId] || (_refCache[hatId] = _pooledRef(loaded.map(l => l.img)));
+    for (const { dir, img } of loaded) {
+      if (!img) continue; /* dir missing -> renderer falls back */
+      const cv = recolorHairToCanvas(img, target, ref);
       const t = Texture.from(cv);
       if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
       tex[dir] = t;
-    } catch (e) { /* dir missing -> renderer falls back */ }
-  })).then(() => { _cache[key] = tex; });
+    }
+    _cache[key] = tex;
+  });
 }
 
 /** Recolored hat texture map for (hatId, colorId), or null for the default

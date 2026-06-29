@@ -47,6 +47,7 @@ function parseArgs(argv) {
     else if (a === '--scale') o.scale = parseFloat(argv[++i]);
     else if (a === '--outdir') o.outdir = argv[++i];
     else if (a === '--replace') o.replace = true;
+    else if (a === '--nearest') o.nearest = true; // nearest-neighbour resample (preserve exact palette for recolour-safe downscales)
     else if (a === '--force') o.force = true;   // write the webp even if it's not smaller (keeps a PNG->WebP migration's references consistent)
     else o.files.push(a);
   }
@@ -165,7 +166,7 @@ async function main() {
 
 function PAGE(opts) {
   return `<!doctype html><meta charset=utf8><body><script>
-const FORMAT=${JSON.stringify(opts.format)}, Q=${opts.q/100}, SCALE=${opts.scale};
+const FORMAT=${JSON.stringify(opts.format)}, Q=${opts.q/100}, SCALE=${opts.scale}, NEAREST=${opts.nearest ? 'true' : 'false'};
 const log=(m)=>{try{fetch('/log',{method:'POST',body:String(m)})}catch(e){}};
 function loadImg(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error('img load '+src));im.src=src;});}
 function toBlob(c){return new Promise((res)=>{c.toBlob(res, FORMAT==='png'?'image/png':'image/webp', Q);});}
@@ -178,7 +179,7 @@ function toBlob(c){return new Promise((res)=>{c.toBlob(res, FORMAT==='png'?'imag
       const w=Math.max(1,Math.round(im.naturalWidth*SCALE));
       const h=Math.max(1,Math.round(im.naturalHeight*SCALE));
       const c=document.createElement('canvas'); c.width=w; c.height=h;
-      const ctx=c.getContext('2d'); ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+      const ctx=c.getContext('2d'); ctx.imageSmoothingEnabled=!NEAREST; ctx.imageSmoothingQuality='high';
       ctx.clearRect(0,0,w,h); ctx.drawImage(im,0,0,w,h);
       const blob=await toBlob(c);
       const buf=await blob.arrayBuffer();

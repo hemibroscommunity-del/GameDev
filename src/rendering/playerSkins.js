@@ -20,6 +20,7 @@
 
 import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION } from './playerSprites.js';
+import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 export const SKIN_CATALOG = [
@@ -443,7 +444,13 @@ function _torsoBands(d, w, h, frameW, frames) {
   return shirtPx;
 }
 
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT) {
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH) {
+  /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
+     a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
+     skin/pants/shoes pixel thresholds + frame math are unchanged. The attack
+     stand-in strips have their OWN heights (227-320px), so the height is passed
+     per-caller, not assumed 256. No-op for full-res / native art. */
+  if (targetH) img = upscaleToFrameHeight(img, targetH);
   const cv = document.createElement('canvas');
   cv.width = img.width; cv.height = img.height;
   const ctx = cv.getContext('2d');
@@ -496,7 +503,8 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}`).then(img => {
-    const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT);
+    /* body poses are 256px frames; restore if stored smaller on disk */
+    const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
     src.autoGenerateMipmaps = true;

@@ -5740,8 +5740,10 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   } catch (e) {}
 });
 
-/* ─── Sample-based SFX (real WAV files) ────────────────────────────────────
-   Loaded on demand from /sfx/<group>/<name>.wav. Playback is gated by the
+/* ─── Sample-based SFX (real audio files) ──────────────────────────────────
+   Loaded on demand from /sfx/<group>/<name>.m4a (AAC; re-encoded from the
+   original uncompressed .wav by the compress-media workflow to shrink the
+   download — decodeAudioData on iOS Safari decodes AAC natively). Playback is gated by the
    audio context unlocking (mobile/Safari require a user gesture before any
    audio plays). BT_AUDIO.unlock() should be called from the first touch /
    click and is idempotent. */
@@ -5758,31 +5760,31 @@ BT_AUDIO.SFX_MANIFEST = {
      and fires it once per jog cycle on foot-strike. Used for both armoured and
      bare (footstep() varies vol/pitch between them). */
   'footstep-v2':      '/sfx/footstep/footstep-v2.mp3',
-  'sword-swing':   '/sfx/sword/sword-swing.wav',
+  'sword-swing':   '/sfx/sword/sword-swing.m4a',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */
-  'bamboo-swing':  '/sfx/sword/bamboo-swing.wav',
-  'sword-hit':     '/sfx/sword/sword-hit.wav',   /* reserved for grand-slam hits only */
-  'sword-hit2':    '/sfx/sword/sword-hit2.flac', /* regular hit alternation */
-  'sword-hit3':    '/sfx/sword/sword-hit3.wav',  /* regular hit alternation */
-  'bow-pullback':  '/sfx/bow/bow-pullback.wav',
-  'arrow-fly':     '/sfx/bow/arrow-fly.wav',
-  'arrow-hit':     '/sfx/bow/arrow-hit.wav',
-  'magic-cast':    '/sfx/magic/magic-cast.wav',
-  'magic-hit':     '/sfx/magic/magic-hit.wav',
-  'magic-hit2':    '/sfx/magic/magic-hit2.wav',
-  'monster-death': '/sfx/monster/Monster death-bony.wav',
-  'slime-projectile-hit': '/sfx/monster/slime-projectile-hit.wav',
-  'monster-hit':   '/sfx/monster/monster-hit.wav',
+  'bamboo-swing':  '/sfx/sword/bamboo-swing.m4a',
+  'sword-hit':     '/sfx/sword/sword-hit.m4a',   /* reserved for grand-slam hits only */
+  'sword-hit2':    '/sfx/sword/sword-hit2.m4a', /* regular hit alternation */
+  'sword-hit3':    '/sfx/sword/sword-hit3.m4a',  /* regular hit alternation */
+  'bow-pullback':  '/sfx/bow/bow-pullback.m4a',
+  'arrow-fly':     '/sfx/bow/arrow-fly.m4a',
+  'arrow-hit':     '/sfx/bow/arrow-hit.m4a',
+  'magic-cast':    '/sfx/magic/magic-cast.m4a',
+  'magic-hit':     '/sfx/magic/magic-hit.m4a',
+  'magic-hit2':    '/sfx/magic/magic-hit2.m4a',
+  'monster-death': '/sfx/monster/Monster death-bony.m4a',
+  'slime-projectile-hit': '/sfx/monster/slime-projectile-hit.m4a',
+  'monster-hit':   '/sfx/monster/monster-hit.m4a',
   /* v2.3.1104: owner-supplied metallic CLANG for when a monster strikes the
      hero while WEARING ARMOUR. Two variants alternated by monsterHitHero() for
      variety; leading silence trimmed via offset so the hit lands immediately. */
   'armor-hit-1':   '/sfx/monster/armor-hit-1.mp3',
   'armor-hit-2':   '/sfx/monster/armor-hit-2.mp3',
-  'shield-block':  '/sfx/shield/shield-block.wav?v=2',
-  'fishing-lure-drop':   '/sfx/fishing/lure-drop.wav',
-  'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.wav',
-  'fishing-reeling':     '/sfx/fishing/reeling.wav',
+  'shield-block':  '/sfx/shield/shield-block.m4a?v=2',
+  'fishing-lure-drop':   '/sfx/fishing/lure-drop.m4a',
+  'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.m4a',
+  'fishing-reeling':     '/sfx/fishing/reeling.m4a',
   /* Slime death splat — routed through Web Audio so it plays without
      hitting the per-element HTMLAudio autoplay policy that was
      blocking new Audio().play() in the render loop. */
@@ -5793,7 +5795,7 @@ BT_AUDIO.SFX_MANIFEST = {
      out) so it matches deathMs and doesn't trail past the bone-
      pile settle.  Plays via BT_AUDIO.monsterDeath. */
   'skeleton-death': '/audio/skeleton-death.mp3?v=2',
-  'snowman-hit':   '/sfx/monster/snowman-hit.wav?v=3',
+  'snowman-hit':   '/sfx/monster/snowman-hit.m4a?v=3',
   /* v2.3.849: timber crash for a felled tree (woodcutting success) — the
      "great" cut-down sound; wired into the extraction reward in
      lifeSkillRewards.js. */
@@ -5821,7 +5823,10 @@ BT_AUDIO.magicHit = function (opts) {
    With no armour — or before the metal samples have preloaded — fall back to
    the generic 'monster-hit'. */
 BT_AUDIO._armorHitToggle = 0;
-BT_AUDIO.monsterHitHero = function (armored, opts) {
+/* v2.3.1108: fallbackKey lets ranged hits keep their own splat when unarmoured
+   (e.g. 'slime-projectile-hit') while still clanging when armoured. Defaults to
+   the melee 'monster-hit'. */
+BT_AUDIO.monsterHitHero = function (armored, opts, fallbackKey) {
   if (armored && this._samples && (this._samples['armor-hit-1'] || this._samples['armor-hit-2'])) {
     var two = (this._armorHitToggle++ & 1);
     var key = two ? 'armor-hit-2' : 'armor-hit-1';
@@ -5830,7 +5835,7 @@ BT_AUDIO.monsterHitHero = function (armored, opts) {
     o.offset = off;
     this.play(key, o);
   } else {
-    this.play('monster-hit', opts);
+    this.play(fallbackKey || 'monster-hit', opts);
   }
 };
 BT_AUDIO.monsterDeath = function (arch, opts) {
