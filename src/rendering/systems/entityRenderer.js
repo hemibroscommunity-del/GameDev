@@ -353,11 +353,11 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
       if (_GEAR_SLOTS[s][0] === 'chest' && pose === 'pickup' && frameIdx >= 24 && (!equip || !equip.legs || equip.legs === 'none')) {
         spr.y += 18 * sb.scale.y;
       }
-      /* v2.3.1056: shirt -- drop 10px in the deepest-crouch last 5 frames
+      /* v2.3.1056: shirt -- drop 15px in the deepest-crouch last 5 frames
          (24-28) so it sits on the bent torso (shows only when no chest plate;
          applies to shirt-only and legs+shirt). */
       if (_GEAR_SLOTS[s][0] === 'shirt' && pose === 'pickup' && frameIdx >= 24) {
-        spr.y += 10 * sb.scale.y;
+        spr.y += 15 * sb.scale.y;
       }
       spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
