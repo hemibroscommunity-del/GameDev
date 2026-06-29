@@ -25,7 +25,7 @@ export const BOW_TORSO_CUT = {
   ],
   "northwest": [
     155,
-    155,
+    156,
     155
   ]
 };

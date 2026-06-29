@@ -27,18 +27,42 @@ const GROUPS = [
     ],
   },
 ];
-// warm skin: clearly above blue, bright, R>=G>=B-ish (recolor-invariant boundary)
-const isSkin = (r, g, b, a) => a > 140 && r > 150 && r - b > 35 && r >= g - 6 && g >= b - 6;
+/* warm skin INCLUDING darker tan/orange shading (muscle lines, shadows) on the
+   bare torso -- the real torso<->pants boundary is the BLACK OUTLINE above the
+   olive pants, NOT a darker tan/orange body line.  v2.3.1098: dropped the old
+   `r>150` brightness floor (it stopped at shaded lower abs -> the waist was
+   detected at a muscle line and the shirtless east torso got chopped).  Keep it
+   recolor-invariant: warm = r clearly above g (excludes olive pants, where
+   g>=r) and well above b (excludes the near-grey/black outline). */
+const isSkin = (r, g, b, a) => a > 120 && (r - g) > 15 && (r - b) > 28 && g >= b - 8;
+/* olive pants: r ~= g (low warm separation), g clearly above b, mid/low bright.
+   Used to confirm a skin row is the TRUE torso->pants boundary. */
+const isPants = (r, g, b, a) => a > 150 && Math.abs(r - g) < 18 && (g - b) > 12 && r < 165 && g < 165;
 
-/* Waist = the skin->pants line: scan the central belly columns, take each
-   column's lowest skin row, return the median + 1 (first non-skin row). */
+/* Waist = the torso->pants line.  v2.3.1098: a column's lowest skin row only
+   counts if OLIVE PANTS sit just below it (across the black outline).  This
+   ignores (a) the torso's front edge / sword arm, which on a profile (east)
+   swing ends in mid-air well ABOVE the waist and used to drag the median up and
+   chop the shirtless torso, and (b) darker tan/orange body lines mid-torso.
+   Only the black-outline-above-pants boundary is the real waist. */
 function detectWaist(d, W, FW, FH, fi) {
-  const x0 = Math.round(FW * 0.40), x1 = Math.round(FW * 0.60);
+  const x0 = Math.round(FW * 0.38), x1 = Math.round(FW * 0.62);
   const rows = [];
   for (let x = x0; x <= x1; x++) {
-    let last = -1;
-    for (let y = Math.round(FH * 0.30); y < FH; y++) { const i = (y * W + (fi * FW + x)) * 4; if (isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) last = y; }
-    if (last > 0) rows.push(last + 1);
+    let waist = -1;
+    for (let y = Math.round(FH * 0.30); y < FH; y++) {
+      const i = (y * W + (fi * FW + x)) * 4;
+      if (!isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) continue;
+      /* require olive pants within ~9px below (the black outline sits between),
+         so body edges / arms that fade to transparency don't qualify. */
+      let pantsBelow = false;
+      for (let yy = y + 1; yy <= Math.min(FH - 1, y + 9); yy++) {
+        const j = (yy * W + (fi * FW + x)) * 4;
+        if (isPants(d[j], d[j + 1], d[j + 2], d[j + 3])) { pantsBelow = true; break; }
+      }
+      if (pantsBelow) waist = y + 1;   // lowest skin row that truly meets pants
+    }
+    if (waist > 0) rows.push(waist);
   }
   if (!rows.length) return Math.round(FH * 0.62);
   rows.sort((a, b) => a - b);
