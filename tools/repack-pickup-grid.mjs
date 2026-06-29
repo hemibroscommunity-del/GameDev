@@ -23,7 +23,9 @@ function encodePNG(W,H,rgba){const sig=Buffer.from([137,80,78,71,13,10,26,10]);c
 const FW = 256, FH = 256, N = 29, COLS = 6, ROWS = 5;
 
 const isNavy = (r,g,b) => (r+g+b)/3 < 95 && b > r + 6;            // label band / border
-const isStudio = (r,g,b) => Math.min(r,g,b) > 200 && (Math.max(r,g,b)-Math.min(r,g,b)) < 22; // light grey bg
+/* studio bg is a tight light grey (~235); armor highlights sit <=225 and are
+   slightly less neutral, so this only matches the true backdrop. */
+const isStudio = (r,g,b) => Math.min(r,g,b) > 224 && (Math.max(r,g,b)-Math.min(r,g,b)) < 18;
 
 const input = process.argv[2], outPath = process.argv[3] || '/tmp/pickup-repacked.png';
 const wantPreview = process.argv.includes('--preview');
@@ -79,13 +81,26 @@ for (let f = 0; f < N; f++) {
   const [aTop, aBot] = rowArt[gr];
   const aLeft = Math.round(gc * colW), aRight = Math.round((gc + 1) * colW);
   const aw = aRight - aLeft, ah = aBot - aTop;
-  /* lift the source cell into a keyed RGBA buffer */
+  /* lift the source cell into an opaque RGBA buffer, then FLOOD the bg in from
+     the border so interior armor highlights (which can be light grey too) are
+     never punched out -- only backdrop connected to the edge is removed. */
   const reg = Buffer.alloc(aw * ah * 4);
   for (let y = 0; y < ah; y++) for (let x = 0; x < aw; x++) {
     const [r,g,b] = at(aLeft + x, aTop + y); const di = (y*aw+x)*4;
-    if (isStudio(r,g,b) || isNavy(r,g,b)) { reg[di+3] = 0; continue; }
     reg[di]=r; reg[di+1]=g; reg[di+2]=b; reg[di+3]=255;
   }
+  const isBg = (i) => isStudio(reg[i*4],reg[i*4+1],reg[i*4+2]) || isNavy(reg[i*4],reg[i*4+1],reg[i*4+2]);
+  const seen = new Uint8Array(aw*ah); const q = [];
+  /* seed from any bg pixel in the outer RING (not just the 1px edge): the cell's
+     literal border is the grid line / label-band transition, so studio bg only
+     starts a few px in. RING must stay outside the centred character. */
+  const RING = 12;
+  for (let y = 0; y < ah; y++) for (let x = 0; x < aw; x++) {
+    if (x >= RING && x < aw-RING && y >= RING && y < ah-RING) continue;
+    const i = y*aw+x; if (!seen[i] && isBg(i)) { seen[i]=1; reg[i*4+3]=0; q.push(i); }
+  }
+  while (q.length) { const i = q.pop(); const x = i%aw, y = (i/aw)|0;
+    for (const [nx,ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]) { if (nx<0||ny<0||nx>=aw||ny>=ah) continue; const j=ny*aw+nx; if (!seen[j] && isBg(j)) { seen[j]=1; reg[j*4+3]=0; q.push(j); } } }
   cleanup(reg, aw, ah);
   let k = 0; for (let i = 0; i < aw*ah; i++) if (reg[i*4+3] > 24) k++;
   kept.push(k);

@@ -162,8 +162,10 @@ const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'so
    larger size the user dialed in as the target).  Stand and jog measured
    separately because the run bends the legs (a deep stride is not a height
    change).  Mirror dirs (W<-E, NW<-NE, SE<-SW) share their base value.
-   hit/pickup/attack keep the old behavior (no armor on them yet; east-hit
-   stays slightly smaller per the original tuning). */
+   hit/attack keep the old behavior (no armor on them yet; east-hit
+   stays slightly smaller per the original tuning).  v2.3.1053: pickup now
+   ships chest/legs/shirt gear sheets (south-only) -- the gear shares the
+   body transform, so it scales with the pose's default and needs no entry. */
 const BODY_DIR_SCALE = {
   /* v2.3.541: south -3% (1.130->1.096), north -2% (1.150->1.127) per user.
      v2.3.548: NE idle 1.130->0.98 -- the armored figure (tall NE helmet +
