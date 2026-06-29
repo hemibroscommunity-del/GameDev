@@ -2744,7 +2744,7 @@ export class EffectsRenderer {
      docs/specs/jog-legs-attack-composite.md.  All the owner-tuned per-facing knobs
      live HERE (one source of truth). */
   _placeJogLegs(jl, jg, opts) {
-    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow', seamLift = 0, torsoScale = 1, legSizeAdj = 1, legShiftX = 0 } = opts;
+    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow', seamLift = 0, torsoScale = 1, legSizeAdj = 1, legShiftX = 0, legShiftY = 0 } = opts;
     const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut (closes seam)
     const _ov = 10;         // frame px of leg drawn UP under the torso
     /* per-facing DOWNWARD nudge (frame px, sword only for now; southwest covers SE
@@ -2778,9 +2778,9 @@ export class EffectsRenderer {
       }
       jl.texture = cropped;
       jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));
-      jl.scale.set(mir * _legScale, _legScale); jl.x = x + _legDX + legShiftX; jl.y = _yMeet; jl.tint = 0xffffff; jl.visible = true;
+      jl.scale.set(mir * _legScale, _legScale); jl.x = x + _legDX + legShiftX; jl.y = _yMeet + legShiftY; jl.tint = 0xffffff; jl.visible = true;
     } else if (jl) { jl.visible = false; }
-    if (gearFrame && jg) { jg.texture = gearFrame; jg.anchor.set(0.5, _waist / 256); jg.scale.set(mir * _legScale, _legScale); jg.x = x + _legDX + legShiftX; jg.y = _yMeet; jg.tint = 0xffffff; jg.visible = true; }
+    if (gearFrame && jg) { jg.texture = gearFrame; jg.anchor.set(0.5, _waist / 256); jg.scale.set(mir * _legScale, _legScale); jg.x = x + _legDX + legShiftX; jg.y = _yMeet + legShiftY; jg.tint = 0xffffff; jg.visible = true; }
     else if (jg) { jg.visible = false; }
   }
 
@@ -3110,6 +3110,8 @@ export class EffectsRenderer {
     const _legSizeAdj = _nakedSeam ? (({ south: 1.20, east: 1.10, north: 1.12 })[fmap[0]] || 1) : 1;
     /* shift ONLY the jog legs horizontally (screen px; -x = left, +x = right). */
     const _legShiftX = _nakedSeam ? (({ north: 0, south: 3 })[fmap[0]] || 0) : 0;
+    /* shift ONLY the jog legs vertically (screen px; +y = down). south: down 2px. */
+    const _legShiftY = _nakedSeam ? (({ south: 2 })[fmap[0]] || 0) : 0;
     const s = bodyH / 188 * (cfg.bodyScale || 1);
     /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
        Narrows x only (height stays `s`); overlays inherit it via `sgn` in
@@ -3177,7 +3179,7 @@ export class EffectsRenderer {
         this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
           cutRow: swordTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: _baseFootY,
-          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword', seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX,
+          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword', seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
         });
       }
     } else if (armorFrames && armorFrames[fi]) {
