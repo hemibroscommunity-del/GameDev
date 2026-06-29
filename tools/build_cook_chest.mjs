@@ -19,9 +19,9 @@ const COOK = 'public/sprites/skills/cook-strip.webp';
 const OUT_SHEET = 'public/sprites/gear/chest/steelplate/cook-south.png';
 const SCRATCH = '/tmp/claude-0/-home-user-GameDev/67ac1d82-015e-5dc1-bc02-24d0bfd493a3/scratchpad';
 const APPLY = process.env.APPLY === '1';
-const YTOP = +(process.env.YTOP || 90);
+const YTOP = +(process.env.YTOP || 70);
 const SCALE = +(process.env.SCALE || 0.9);
-const XOFF = +(process.env.XOFF || 0);
+const XOFF = +(process.env.XOFF ?? -10);
 
 let result = null, done = false;
 const server = http.createServer(async (req, res) => {
