@@ -537,6 +537,50 @@ export function getSkinnedFrame(skinId, pose, dir, frameIdx) {
   return getBodyFrame(skinId, 'default', 'default', pose, dir, frameIdx);
 }
 
+/* v2.3.1116: loot-pickup HEAD overlay, RECOLORED.  pickup-<dir>-head.png holds
+   the head pixels per frame (transparent elsewhere); entityRenderer draws it
+   ABOVE the gear so an armoured player's deep-crouch head isn't clipped to a
+   sliver.  It used to be loaded RAW and drawn untinted, so the head/face always
+   showed the DEFAULT tan skin while the recolored body below wore the chosen
+   skin -- the head "reverted" to default on every pickup, for armoured AND
+   bare players.  Recolor it through the SAME pipeline as the body so the head
+   matches exactly.  The sheet ships full-res 256px, so recolorBodyToCanvas's
+   upscale is a no-op; only skin (and any pants/shoes) pixels exist in the head
+   region, so the body's skin retint lands and nothing else shifts.  Cached per
+   (skin/pants/shoes) combo + (pose,dir) so local and remote players -- who may
+   wear different skins -- don't collide.  The default combo recolors to an
+   unchanged copy (every _retint is gated on a non-null target), matching the
+   old raw behaviour. */
+const _pickupHeadSheets = {};   // 'skin/pants/shoes|pose-dir' -> [Texture] | 'loading' | []
+function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT) {
+  _pickupHeadSheets[key] = 'loading';
+  return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}`).then(img => {
+    const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H);
+    const src = Texture.from(cv).source;
+    src.scaleMode = 'linear';
+    src.autoGenerateMipmaps = true;
+    const frames = Math.max(1, Math.floor(cv.width / FRAME_W));
+    const out = [];
+    for (let i = 0; i < frames; i++) {
+      out.push(new Texture({ source: src, frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H) }));
+    }
+    _pickupHeadSheets[key] = out;
+  }).catch(() => { _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */ });
+}
+/** Recolored loot-pickup head-overlay frame for (skin, pants, shoes, pose, dir,
+ *  frameIdx).  Returns null outside the pickup pose, while the sheet bakes, or
+ *  when no head sheet exists for that dir (only -south ships) -- the caller then
+ *  leaves the body's own head showing. */
+export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx) {
+  if (pose !== 'pickup') return null;
+  const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+  const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '-' + dir;
+  const entry = _pickupHeadSheets[key];
+  if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT); return null; }
+  if (entry === 'loading' || !entry.length) return null;
+  return entry[((frameIdx % entry.length) + entry.length) % entry.length];
+}
+
 /* Pre-warm the local player's recolored body sheets so the correct skin is
    baked BEFORE the player first renders -- otherwise getBodyFrame falls back
    to the default (un-recolored) frame for the first frame(s) while the async
@@ -558,7 +602,7 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
  *  stand + jog, so an UNARMOURED player (or any moment the body shows) never
  *  flashes the default-skin frame when first turning/jogging in a direction.
  *  Resolves immediately for the default combo (base sheets are used as-is).
- *  v2.3.1110: also prewarm the SOUTH-ONLY pickup + mine poses.  These bake
+ *  v2.3.1116: also prewarm the SOUTH-ONLY pickup + mine poses.  These bake
  *  lazily on first use, and their freeze windows are short (pickup 0.5s, mine
  *  loops) -- before this, the very first loot pickup / mining swing showed the
  *  raw default-tan body for the whole bake (getBodyFrame returns the
@@ -583,6 +627,11 @@ export function preloadBodyAll() {
   }
   /* south-only poses (no other dir exists) */
   for (const pose of ['pickup', 'mine']) prewarm(pose, 'south');
+  /* v2.3.1116: prewarm the recolored pickup HEAD overlay too (south-only), so
+     the first pickup doesn't flash a default-tan head over the chosen-skin
+     body while the overlay bakes. */
+  const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
+  if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
   return Promise.all(tasks);
 }
 

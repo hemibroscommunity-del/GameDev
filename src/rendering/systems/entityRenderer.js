@@ -21,7 +21,7 @@ import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
 import { getHair } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame, preloadBodyVariant } from '../playerSkins.js';
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant } from '../playerSkins.js';
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
@@ -1110,33 +1110,18 @@ function _hideBodyRegions(display) {
    so the whole head always shows.  South-only, matching the pose; other dirs
    404 -> [] and the masked body's own head is used.  Reuses the dormant
    _bodyHead region sprite (anchor 0.5/0.5, full-frame texture). */
-const PICKUP_HEAD_VER = '2.3.1056';   /* v2.3.1056: window-tracked head (drops shoulders in the crouch) */
-const _pickupHeadSheets = {};   // 'pose-dir' -> [Texture] | 'loading' | []
-function _getPickupHeadFrame(pose, dir, frameIdx) {
-  if (pose !== 'pickup') return null;
-  const key = pose + '-' + dir;
-  const e = _pickupHeadSheets[key];
-  if (e === undefined) {
-    _pickupHeadSheets[key] = 'loading';
-    Assets.load('/sprites/player/' + key + '-head.png?v=' + PICKUP_HEAD_VER).then((tex) => {
-      if (tex && tex.source) tex.source.scaleMode = 'linear';
-      const n = Math.max(1, Math.floor(tex.width / 256));
-      const arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * 256, 0, 256, 256) }));
-      _pickupHeadSheets[key] = arr;
-    }).catch(() => { _pickupHeadSheets[key] = []; });
-    return null;
-  }
-  if (e === 'loading' || !e.length) return null;
-  return e[((frameIdx % e.length) + e.length) % e.length];
-}
+/* v2.3.1116: the pickup head-overlay sheet now loads + recolors through
+   playerSkins.getPickupHeadFrame (combo-aware), so an armoured OR bare player's
+   head matches their chosen skin instead of reverting to the default tan it was
+   drawn in.  The old raw Assets.load + global _pickupHeadSheets cache lived
+   here; it ignored the skin entirely. */
 /* Place the pickup head overlay on the (reused) _bodyHead sprite at the body
    sprite's exact transform.  No-op (leaves _bodyHead as the caller left it --
    hidden) outside the pickup pose or before the sheet loads. */
-function _placePickupHead(display, sb, pose, dir, frameIdx) {
+function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx) {
   const hd = display._bodyHead;
   if (!hd || !sb) return;
-  const t = _getPickupHeadFrame(pose, dir, frameIdx);
+  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx);
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -3287,8 +3272,8 @@ export class EntityRenderer {
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
-          _placePickupHead(display, spriteBody, pose, dir, frameIdx);
-          spriteBody.visible = !(_rfull && !!_getPickupHeadFrame(pose, dir, frameIdx));
+          _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx);
+          spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
@@ -4024,8 +4009,8 @@ export class EntityRenderer {
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
-        _placePickupHead(display, spriteBody, pose, dir, frameIdx);
-        spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!_getPickupHeadFrame(pose, dir, frameIdx));
+        _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
+        spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
