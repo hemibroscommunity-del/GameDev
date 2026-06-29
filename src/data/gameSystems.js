@@ -5420,21 +5420,17 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   },
   footstep: function footstep(armored) {
     if (!this.ctx || this.muted) return;
-    /* v2.3.836: real footstep samples (extracted from the owner's videos).
-       `armored` is set by the caller from the equipped gear.  A little
-       volume + pitch jitter keeps repeated steps from machine-gunning.
-       Falls back to the old synth tick until the sample preloads. */
-    var key = armored ? 'footstep-armored' : 'footstep-naked';
-    if (this._samples && this._samples[key]) {
-      /* v2.3.839: 80% quieter than before (×0.2). */
-      if (armored) {
-        this.play(key, { vol: (0.4 + Math.random() * 0.12) * 0.2, pitchVar: 0.12 });
-      } else {
-        /* naked reads lighter -- slightly up-pitched as well as quieter. */
-        this.play(key, { vol: (0.3 + Math.random() * 0.1) * 0.2, rate: 1.05 + (Math.random() - 0.5) * 0.12 });
-      }
+    /* v2.3.1104: owner-supplied footstep. The source is a 25 s continuous
+       walking clip, so we ISOLATE just the first step (offset 0 -> 0.22 s) and
+       fire it once per jog cycle on foot-strike. `armored` (from equipped gear)
+       only varies the feel: armoured a touch louder + lower-pitched, bare
+       lighter + slightly up-pitched. Per-step vol/pitch jitter stops repeated
+       steps from machine-gunning the same waveform. */
+    if (!(this._samples && this._samples['footstep-v2'])) return;
+    if (armored) {
+      this.play('footstep-v2', { offset: 0, duration: 0.22, vol: 0.34 + Math.random() * 0.06, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
     } else {
-      this.beep(180 + Math.random() * 40, 0.02, 0.02, 'triangle');
+      this.play('footstep-v2', { offset: 0, duration: 0.22, vol: 0.26 + Math.random() * 0.05, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
     }
   },
   enterBuilding: function enterBuilding() {
@@ -5750,8 +5746,11 @@ BT_AUDIO.SFX_MANIFEST = {
   /* v2.3.836: real footstep SFX isolated from the owner's videos --
      naked (softer thud) vs armored (metallic clank); chosen per-step
      from the player's equipped gear in visualSystems.js. */
-  'footstep-naked':   '/sfx/footstep/footstep-naked.wav',
-  'footstep-armored': '/sfx/footstep/footstep-armored.wav',
+  /* v2.3.1104: owner-supplied footstep. The source clip is 25 s of continuous
+     walking; footstep() isolates just the FIRST step (offset 0, dur ~0.22 s)
+     and fires it once per jog cycle on foot-strike. Used for both armoured and
+     bare (footstep() varies vol/pitch between them). */
+  'footstep-v2':      '/sfx/footstep/footstep-v2.mp3',
   'sword-swing':   '/sfx/sword/sword-swing.wav',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */
@@ -5768,6 +5767,11 @@ BT_AUDIO.SFX_MANIFEST = {
   'monster-death': '/sfx/monster/Monster death-bony.wav',
   'slime-projectile-hit': '/sfx/monster/slime-projectile-hit.wav',
   'monster-hit':   '/sfx/monster/monster-hit.wav',
+  /* v2.3.1104: owner-supplied metallic CLANG for when a monster strikes the
+     hero while WEARING ARMOUR. Two variants alternated by monsterHitHero() for
+     variety; leading silence trimmed via offset so the hit lands immediately. */
+  'armor-hit-1':   '/sfx/monster/armor-hit-1.mp3',
+  'armor-hit-2':   '/sfx/monster/armor-hit-2.mp3',
   'shield-block':  '/sfx/shield/shield-block.wav?v=2',
   'fishing-lure-drop':   '/sfx/fishing/lure-drop.wav',
   'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.wav',
@@ -5803,6 +5807,24 @@ BT_AUDIO._magicHitToggle = 0;
 BT_AUDIO.magicHit = function (opts) {
   var key = (this._magicHitToggle++ & 1) ? 'magic-hit2' : 'magic-hit';
   this.play(key, opts);
+};
+/* v2.3.1104: monster-strikes-hero SFX. When the hero is wearing armour, play
+   one of two owner-supplied metallic CLANGs, alternating for variety (and
+   trimming each file's leading silence via offset so the hit lands instantly).
+   With no armour — or before the metal samples have preloaded — fall back to
+   the generic 'monster-hit'. */
+BT_AUDIO._armorHitToggle = 0;
+BT_AUDIO.monsterHitHero = function (armored, opts) {
+  if (armored && this._samples && (this._samples['armor-hit-1'] || this._samples['armor-hit-2'])) {
+    var two = (this._armorHitToggle++ & 1);
+    var key = two ? 'armor-hit-2' : 'armor-hit-1';
+    var off = two ? 0.06 : 0.12; /* trim each clip's leading silence */
+    var o = opts ? Object.assign({}, opts) : {};
+    o.offset = off;
+    this.play(key, o);
+  } else {
+    this.play('monster-hit', opts);
+  }
 };
 BT_AUDIO.monsterDeath = function (arch, opts) {
   /* No-op for slimes (fodder).  The splat SFX is owned by the render-
@@ -5923,7 +5945,15 @@ BT_AUDIO.play = function (key, opts) {
     g.gain.value = (opts && opts.vol != null) ? opts.vol : 0.6;
     src.connect(g);
     g.connect(this._out());
-    src.start(0);
+    /* v2.3.1104: optional offset/duration so a sound can be ISOLATED to a
+       slice of its file at runtime (no re-encoding needed) -- e.g. play just
+       the first footstep out of a 25 s walking clip, or trim the leading
+       silence off a hit sample. Web Audio start(when, offset, duration). */
+    var _off = (opts && opts.offset) || 0;
+    var _dur = (opts && opts.duration != null) ? opts.duration : null;
+    if (_dur != null) src.start(0, _off, _dur);
+    else if (_off) src.start(0, _off);
+    else src.start(0);
     /* Return a handle so callers that need to cut a sample short
        (e.g. fishing reel sound when the catch completes mid-clip)
        can stop playback early. Most callers ignore the return value. */

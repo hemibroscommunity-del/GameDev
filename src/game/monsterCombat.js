@@ -34,6 +34,7 @@ import {
   rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, tickStatuses, updateZoneDimensions
 } from '@/data/index.js';
 import { MONSTER_VARIANTS, baseArchetypeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
+import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
@@ -507,7 +508,7 @@ export function updateMonsterCombat(S, deps) {
                       if (blocked) {
                         try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
-                        try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
+                        try { BT_AUDIO.monsterHitHero(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none', { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
                         S._hitFlash = Date.now();
                         if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: finalDmg } });
@@ -575,7 +576,7 @@ export function updateMonsterCombat(S, deps) {
                       if (_blocked) {
                         try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
-                        try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
+                        try { BT_AUDIO.monsterHitHero(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none', { vol: 0.85 }); } catch (e) {}
                         S.lastDamageTaken = Date.now();
                         S._hitFlash = Date.now();
                         if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _finalDmg } });
@@ -670,7 +671,7 @@ export function updateMonsterCombat(S, deps) {
                   if (_blocked2) {
                     try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                   } else {
-                    try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
+                    try { BT_AUDIO.monsterHitHero(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none', { vol: 0.85 }); } catch (e) {}
                     S.lastDamageTaken = Date.now();
                   }
                   S.screenShake = 6;
@@ -872,7 +873,7 @@ export function updateMonsterCombat(S, deps) {
                     if (shielded) {
                       try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                     } else {
-                      try { BT_AUDIO.play('monster-hit', { vol: 0.85 }); } catch (e) {}
+                      try { BT_AUDIO.monsterHitHero(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none', { vol: 0.85 }); } catch (e) {}
                       S.lastDamageTaken = Date.now();
                       S._hitFlash = Date.now();
                       if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: dmgTaken } });
