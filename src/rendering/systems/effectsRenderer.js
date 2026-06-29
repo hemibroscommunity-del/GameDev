@@ -3107,9 +3107,9 @@ export class EffectsRenderer {
        -y up.  east+south: drop the torso onto the legs to close the waist gap. */
     const _torsoDY = _nakedSeam ? (({ east: 5, south: 5 })[fmap[0]] || 0) : 0;
     /* grow ONLY the jog legs to help cover the waist gap (per facing). */
-    const _legSizeAdj = _nakedSeam ? (({ south: 1.20, east: 1.10, north: 1.25 })[fmap[0]] || 1) : 1;
-    /* shift ONLY the jog legs horizontally (screen px; -x = left). north: left 5px. */
-    const _legShiftX = _nakedSeam ? (({ north: -5 })[fmap[0]] || 0) : 0;
+    const _legSizeAdj = _nakedSeam ? (({ south: 1.20, east: 1.10, north: 1.20 })[fmap[0]] || 1) : 1;
+    /* shift ONLY the jog legs horizontally (screen px; -x = left, +x = right). */
+    const _legShiftX = _nakedSeam ? (({ north: -8, south: 3 })[fmap[0]] || 0) : 0;
     const s = bodyH / 188 * (cfg.bodyScale || 1);
     /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
        Narrows x only (height stays `s`); overlays inherit it via `sgn` in
