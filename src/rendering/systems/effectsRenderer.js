@@ -3108,7 +3108,7 @@ export class EffectsRenderer {
        (re-tuned after the east waist was re-cut fuller). */
     const _torsoDY = _nakedSeam ? (({ east: 5 })[fmap[0]] || 0) : 0;
     /* grow ONLY the jog legs to help cover the waist gap (south + east). */
-    const _legSizeAdj = _nakedSeam ? (({ south: 1.15, east: 1.10 })[fmap[0]] || 1) : 1;
+    const _legSizeAdj = _nakedSeam ? (({ south: 1.25, east: 1.10, north: 1.25 })[fmap[0]] || 1) : 1;
     const s = bodyH / 188 * (cfg.bodyScale || 1);
     /* v2.3.1068: width-only trim (cfg.bodyScaleX) -- south read a touch wide.
        Narrows x only (height stays `s`); overlays inherit it via `sgn` in
