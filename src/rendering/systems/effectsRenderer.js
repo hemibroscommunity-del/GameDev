@@ -127,9 +127,11 @@ const IMPACT_ROOT_Y = 0.586;
    it; the 64-px sprite reaches ~51 px above, so torso centre ≈ 19 px up).  The
    root anchor is placed here, and the plume erupts outward from it. */
 const IMPACT_CENTER_DY = 19;
-/* One-shot flash: play the 6 frames once over this window, then dispose.
-   v2.3.1126: 420 -> 210 (owner) so the burst snaps ~2x faster on contact. */
-const IMPACT_DURATION_MS = 210;
+/* One-shot flash: play the frames once over this window, then dispose.
+   v2.3.1126: 420 -> 210 (owner) so the burst snaps faster on contact.
+   v2.3.1128: 210 -> 420 (owner) -- the directional eruption read too fast;
+   half-speed lets the plume rise and settle. */
+const IMPACT_DURATION_MS = 420;
 /* Lazy-loaded (v2.3.1124): the sheet is ~2 MB, so it's only fetched the first
    time a snowman is actually on screen (zone entry) -- not at startup, where
    town has no snowmen.  Keeps the "no eager preloading" memory/download budget. */
