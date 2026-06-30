@@ -15,18 +15,16 @@ import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import sharp from 'sharp';
 
-/* Trees whose loaders go through the WebP-aware helpers (loadWebpOrPng /
-   loadTextureWebpOrPng), with per-tree WebP options:
-   - player/gear: LOSSLESS (exact pixels) -- the recolor classifies skin/pants/
-     shoes by exact RGB and the masked-body bake keys on alpha edges, so a lossy
-     re-encode would corrupt them.
-   - monsters: LOSSY q90 -- monster sprites render as-is (never recolored or
-     masked), so lossy is safe and MUCH smaller on their detailed art (lossless
-     only saved ~8%). alphaQuality 100 keeps the transparent edges clean. */
+/* Player + gear sheets -> LOSSLESS WebP (exact pixels: the recolor classifies
+   skin/pants/shoes by exact RGB and the masked-body bake keys on alpha edges, so
+   a lossy re-encode would corrupt them).  These are flat pixel art with lots of
+   transparency, so lossless WebP is ~41-54% smaller than PNG.
+   NOTE: monsters were tried and REVERTED -- their detailed strips don't compress
+   (lossless saved ~8%, and lossy q90 came out LARGER than the PNG), so converting
+   them made the download worse. Keep them as PNG. */
 const ROOTS = [
-  ['public/sprites/player',   { lossless: true, effort: 6 }],
-  ['public/sprites/gear',     { lossless: true, effort: 6 }],
-  ['public/sprites/monsters', { quality: 90, alphaQuality: 100, effort: 6 }],
+  ['public/sprites/player', { lossless: true, effort: 6 }],
+  ['public/sprites/gear',   { lossless: true, effort: 6 }],
 ];
 const REPO = process.env.GITHUB_WORKSPACE || process.cwd();
 

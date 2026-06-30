@@ -14,7 +14,6 @@
  */
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
-import { loadTextureWebpOrPng } from './webpImage.js'; /* v2.3.1122: WebP w/ PNG fallback */
 
 const FRAME_W = 128;
 const FRAME_H = 128;
@@ -60,7 +59,7 @@ function dirShort(dir) {
 
 async function loadOne(dir) {
   try {
-    const tex = await loadTextureWebpOrPng(`/sprites/monsters/snowman/snowman-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
+    const tex = await Assets.load(`/sprites/monsters/snowman/snowman-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const frames = [];
@@ -78,7 +77,7 @@ async function loadOne(dir) {
 
 async function loadRemnants() {
   try {
-    const tex = await loadTextureWebpOrPng(`/sprites/monsters/snowman-remnants.png?v=${SPRITE_VERSION}`);
+    const tex = await Assets.load(`/sprites/monsters/snowman-remnants.png?v=${SPRITE_VERSION}`);
     if (tex && tex.source) remnantsTex = tex;
   } catch {
     /* missing — caller falls back to procedural coin pile */
@@ -87,7 +86,7 @@ async function loadRemnants() {
 
 async function loadStrip(url, into) {
   try {
-    const tex = await loadTextureWebpOrPng(url);
+    const tex = await Assets.load(url);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const list = [];

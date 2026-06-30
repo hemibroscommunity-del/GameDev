@@ -11,7 +11,6 @@
  */
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
-import { loadTextureWebpOrPng } from './webpImage.js'; /* v2.3.1122: WebP w/ PNG fallback */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -40,7 +39,7 @@ let loadPromise = null;
 
 async function loadStrip(url, into, key) {
   try {
-    const tex = await loadTextureWebpOrPng(url);
+    const tex = await Assets.load(url);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const frames = [];
@@ -56,14 +55,14 @@ async function loadStrip(url, into, key) {
 
 async function loadRemnants() {
   try {
-    const tex = await loadTextureWebpOrPng(`/sprites/monsters/skeleton/remnants.png?v=${SPRITE_VERSION}`);
+    const tex = await Assets.load(`/sprites/monsters/skeleton/remnants.png?v=${SPRITE_VERSION}`);
     if (tex && tex.source) remnantsTex = tex;
   } catch { /* missing -- effectsRenderer falls back to slime splat */ }
 }
 
 async function loadDeathStrip() {
   try {
-    const tex = await loadTextureWebpOrPng(`/sprites/monsters/skeleton/death.png?v=${SPRITE_VERSION}`);
+    const tex = await Assets.load(`/sprites/monsters/skeleton/death.png?v=${SPRITE_VERSION}`);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     for (let i = 0; i < count; i++) {
