@@ -122,8 +122,9 @@ const IMPACT_FULL_W = 140;
 /* Center-mass offset above the snowman container origin (feet sit ~13 px below
    it; the 64-px sprite reaches ~51 px above, so torso centre ≈ 19 px up). */
 const IMPACT_CENTER_DY = 19;
-/* One-shot flash: play the 6 frames once over this window, then dispose. */
-const IMPACT_DURATION_MS = 420;
+/* One-shot flash: play the 6 frames once over this window, then dispose.
+   v2.3.1126: 420 -> 210 (owner) so the burst snaps ~2x faster on contact. */
+const IMPACT_DURATION_MS = 210;
 /* Lazy-loaded (v2.3.1124): the sheet is ~2 MB, so it's only fetched the first
    time a snowman is actually on screen (zone entry) -- not at startup, where
    town has no snowmen.  Keeps the "no eager preloading" memory/download budget. */
