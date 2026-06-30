@@ -552,19 +552,53 @@ export function getSkinnedFrame(skinId, pose, dir, frameIdx) {
    unchanged copy (every _retint is gated on a non-null target), matching the
    old raw behaviour. */
 const _pickupHeadSheets = {};   // 'skin/pants/shoes|pose-dir' -> [Texture] | 'loading' | []
+/* v2.3.1117: head overlay is downscaled HEAD_DS x before it becomes a texture.
+   It only ever renders at the small pickup-pose scale, so a full 7424x256 source
+   (~7.6MB GPU + mipmaps) was wildly oversized -- a big contributor to iPhone
+   Safari losing the WebGL context after several armoured pickups.  At /2 it is
+   ~1.9MB, and the caller (entityRenderer._placePickupHead) reads the frame size
+   back off the texture and scales up to match the 256px body, so alignment is
+   automatic and HEAD_DS can change here without touching the renderer.  Recolor
+   still runs at full 256px (recolorBodyToCanvas upscales for stable pixel
+   thresholds); only the FINAL display texture is shrunk. */
+const HEAD_DS = 2;
+function _pickupHeadCap() {
+  /* Bound the cache: a player who changes skin/pants/shoes mid-session would
+     otherwise accumulate one head sheet per combo forever.  Evict the oldest
+     (insertion order) baked entry; destroy its source on a 30s delay so an
+     in-use texture is never killed mid-frame (same guard as _maskedBodyCache). */
+  const keys = Object.keys(_pickupHeadSheets);
+  if (keys.length <= 6) return;
+  for (const k of keys) {
+    const e = _pickupHeadSheets[k];
+    if (!Array.isArray(e) || !e.length) continue;   // skip 'loading'/empty
+    delete _pickupHeadSheets[k];
+    const src = e[0] && e[0].source;
+    if (src) setTimeout(() => { try { src.destroy(); } catch (err) { /* ignore */ } }, 30000);
+    break;
+  }
+}
 function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT) {
   _pickupHeadSheets[key] = 'loading';
   return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}`).then(img => {
-    const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H);
+    const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H);
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(full.width / HEAD_DS));
+    cv.height = Math.max(1, Math.round(full.height / HEAD_DS));
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = true;   // bilinear downscale -> clean small head
+    ctx.drawImage(full, 0, 0, cv.width, cv.height);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
-    src.autoGenerateMipmaps = true;
-    const frames = Math.max(1, Math.floor(cv.width / FRAME_W));
+    src.autoGenerateMipmaps = false;    // single render scale -> mipmaps are wasted VRAM
+    const fw = Math.max(1, Math.round(FRAME_W / HEAD_DS)), fh = Math.max(1, Math.round(FRAME_H / HEAD_DS));
+    const frames = Math.max(1, Math.floor(cv.width / fw));
     const out = [];
     for (let i = 0; i < frames; i++) {
-      out.push(new Texture({ source: src, frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H) }));
+      out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
     }
     _pickupHeadSheets[key] = out;
+    _pickupHeadCap();
   }).catch(() => { _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */ });
 }
 /** Recolored loot-pickup head-overlay frame for (skin, pants, shoes, pose, dir,
@@ -602,14 +636,9 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
  *  stand + jog, so an UNARMOURED player (or any moment the body shows) never
  *  flashes the default-skin frame when first turning/jogging in a direction.
  *  Resolves immediately for the default combo (base sheets are used as-is).
- *  v2.3.1116: also prewarm the SOUTH-ONLY pickup + mine poses.  These bake
- *  lazily on first use, and their freeze windows are short (pickup 0.5s, mine
- *  loops) -- before this, the very first loot pickup / mining swing showed the
- *  raw default-tan body for the whole bake (getBodyFrame returns the
- *  un-recolored frame while a sheet loads), so a custom-skin player flashed
- *  the default skin on every first pickup.  Both poses are camera-locked to
- *  south (entityRenderer forces facing='south' during the freeze), so only the
- *  -south sheet exists / is ever requested. */
+ *  v2.3.1117: stand + jog ONLY.  Pickup/mine/head are deliberately NOT prewarmed
+ *  -- see the note inside; their resident GPU cost outweighed avoiding a brief
+ *  first-use skin flash on iPhone. */
 export function preloadBodyAll() {
   /* v2.3.756: baked shirt retired -- the body always bakes SHIRTLESS (the
      layered shirt is a separate tinted gear sprite).  The shirt machinery
@@ -625,13 +654,14 @@ export function preloadBodyAll() {
   for (const pose of ['stand', 'jog']) {
     for (const dir of SOURCE_DIRS) prewarm(pose, dir);
   }
-  /* south-only poses (no other dir exists) */
-  for (const pose of ['pickup', 'mine']) prewarm(pose, 'south');
-  /* v2.3.1116: prewarm the recolored pickup HEAD overlay too (south-only), so
-     the first pickup doesn't flash a default-tan head over the chosen-skin
-     body while the overlay bakes. */
-  const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
-  if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
+  /* v2.3.1117: do NOT prewarm pickup/mine/head here.  Forcing those sheets
+     resident at spawn added ~25MB of GPU textures to an armoured session (the
+     pickup body + mine body + the full-res head overlay), which on iPhone Safari
+     pushed the page past its WebGL memory budget -- the context was then lost
+     (black screen + auto-restore) after a few loot pickups.  These poses bake
+     lazily on first use instead; the brief first-pickup default-skin frame is a
+     fair trade for not blowing the VRAM budget.  (mine in particular was pure
+     waste during a loot-only session.) */
   return Promise.all(tasks);
 }
 

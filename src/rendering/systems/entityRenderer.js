@@ -1125,7 +1125,13 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
-  hd.scale.x = sb.scale.x; hd.scale.y = sb.scale.y;
+  /* v2.3.1117: the head sheet is baked DOWNSCALED to save VRAM, so its frame is
+     smaller than the body's 256px frame.  Scale up by 256/frame so the overlay
+     still lands exactly on the body (both anchored 0.5/0.5); reads the size off
+     the texture so it tracks whatever downscale playerSkins uses. */
+  const _fw = (t.frame && t.frame.width) || 256;
+  const _fh = (t.frame && t.frame.height) || 256;
+  hd.scale.x = sb.scale.x * (256 / _fw); hd.scale.y = sb.scale.y * (256 / _fh);
   hd.tint = 0xffffff;
   hd.visible = true;
 }
