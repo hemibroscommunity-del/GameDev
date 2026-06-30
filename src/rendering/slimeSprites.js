@@ -17,6 +17,7 @@
  */
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
+import { loadTextureWebpOrPng } from './webpImage.js'; /* v2.3.1122: WebP w/ PNG fallback */
 
 const FRAME_W = 128;
 const FRAME_H = 128;
@@ -40,7 +41,7 @@ let loadPromise = null;
 async function loadSheet(state) {
   const entry = SHEETS[state];
   try {
-    const tex = await Assets.load(entry.url);
+    const tex = await loadTextureWebpOrPng(entry.url);
     if (!tex || !tex.source) return;
     /* Frame count = source width / FRAME_W.  v5 idle/death are 24 frames
        (3072×128), v2 shoot ≈ 8 frames (1024×128), v1 hit ≈ 8.  Using the

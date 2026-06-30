@@ -15,9 +15,9 @@ import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import sharp from 'sharp';
 
-/* v1 scope: the two biggest PNG trees that flow through the WebP-aware loaders
-   (playerSprites / playerSkins / gearSheets). Monsters + traits come later. */
-const ROOTS = ['public/sprites/player', 'public/sprites/gear'];
+/* Trees whose loaders go through the WebP-aware helpers (loadWebpOrPng /
+   loadTextureWebpOrPng). v2.3.1122: player + gear + monsters. */
+const ROOTS = ['public/sprites/player', 'public/sprites/gear', 'public/sprites/monsters'];
 const REPO = process.env.GITHUB_WORKSPACE || process.cwd();
 
 function* walkPng(dir) {

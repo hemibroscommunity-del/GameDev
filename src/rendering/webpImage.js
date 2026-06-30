@@ -25,3 +25,14 @@ export function loadWebpOrPng(pngUrl) {
   if (webpUrl === pngUrl) return _img(pngUrl);
   return _img(webpUrl).catch(() => _img(pngUrl));
 }
+
+/* v2.3.1122: same WebP-with-PNG-fallback, but for Pixi's Assets.load() (returns
+   a Texture) -- used by the monster/trait loaders that go through Assets rather
+   than `new Image()`. Drop-in for `Assets.load(pngUrl)`. */
+export async function loadTextureWebpOrPng(pngUrl) {
+  const { Assets } = await import('pixi.js');
+  const webpUrl = (typeof pngUrl === 'string') ? pngUrl.replace(/\.png(\?|#|$)/i, '.webp$1') : pngUrl;
+  if (webpUrl === pngUrl) return Assets.load(pngUrl);
+  try { return await Assets.load(webpUrl); }
+  catch (e) { return Assets.load(pngUrl); }
+}

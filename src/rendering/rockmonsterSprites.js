@@ -8,6 +8,7 @@
  */
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
+import { loadTextureWebpOrPng } from './webpImage.js'; /* v2.3.1122: WebP w/ PNG fallback */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -31,7 +32,7 @@ let loadPromise = null;
 
 async function loadStrip(url, key) {
   try {
-    const tex = await Assets.load(url);
+    const tex = await loadTextureWebpOrPng(url);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const frames = [];
