@@ -111,7 +111,10 @@ Assets.load('/icons/ore/ore-copper.webp').then((tex) => {
 const IMPACT_FRAME_W = 192;
 const IMPACT_FRAME_H = 1024;
 const IMPACT_SRC_FROM = 0;
-const IMPACT_SRC_TO = 8;          /* exclusive — all 8 frames (grow -> peak -> settle) */
+/* v2.3.1130: the sheet is a DOUBLE pulse (per-frame density [6,23,53,78,62,100,
+   39,6] peaks at f3, dips at f4, peaks again at f5), so playing all 8 erupted
+   twice.  End on the FIRST peak: frames 0..3 only. */
+const IMPACT_SRC_TO = 4;          /* exclusive — frames 0..3, rise to the first peak */
 const IMPACT_FRAMES = IMPACT_SRC_TO - IMPACT_SRC_FROM;
 /* Sizing: scale by a target on-screen plume HEIGHT (the effect is a vertical
    column, so height reads better than frame width).  IMPACT_CONTENT_H is the
@@ -130,8 +133,10 @@ const IMPACT_CENTER_DY = 19;
 /* One-shot flash: play the frames once over this window, then dispose.
    v2.3.1126: 420 -> 210 (owner) so the burst snaps faster on contact.
    v2.3.1128: 210 -> 420 (owner) -- the directional eruption read too fast;
-   half-speed lets the plume rise and settle. */
-const IMPACT_DURATION_MS = 420;
+   half-speed lets the plume rise and settle.
+   v2.3.1130: 420 -> 210 alongside the 8->4 frame trim, keeping the same ~52ms/
+   frame pace the owner approved (was 420/8; now 210/4). */
+const IMPACT_DURATION_MS = 210;
 /* v2.3.1129: minimum gap between eruptions ON THE SAME snowman.  A single weapon
    can't hit faster than the ~200ms swing/fire cooldown, so this never drops a
    real hit, but it collapses any near-simultaneous double-stamp (e.g. two
