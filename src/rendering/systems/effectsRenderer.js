@@ -101,26 +101,31 @@ Assets.load('/icons/ore/ore-copper.webp').then((tex) => {
   if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
 }).catch((err) => console.warn('[ore-icon] load failed', err));
 
-/* Snowman get-hit impact (v2.3.1124): a one-shot ice-burst flash played
-   centered on a snowman's torso each time it's hit.  Owner-uploaded sheet is a
-   4×2 grid of 384×256 frames; only frames 3-8 (the burst, after the two empty
-   wind-up frames) are used, sliced row-major.  Mirrors the ore-break pattern:
-   carve the frames up front, then spawn/advance one-shot sprites. */
-const IMPACT_FRAME_W = 384;
-const IMPACT_FRAME_H = 256;
-const IMPACT_GRID_COLS = 4;
-/* Source frame indices to keep (owner: "only use frames 3-8") — the leading
-   two frames are an empty/near-empty wind-up, so start at index 2. */
-const IMPACT_SRC_FROM = 2;
-const IMPACT_SRC_TO = 8;          /* exclusive — keeps indices 2..7 (6 frames) */
+/* Snowman get-hit impact (v2.3.1127): a one-shot ice-burst ERUPTION played at a
+   snowman's torso each time it's hit, ROTATED so the plume shoots along the
+   attack direction (attack from below -> plume up; from above -> plume down;
+   from a side -> plume sideways).  Owner-uploaded sheet is a single row of 8
+   frames, 192×1024 each; the upward plume is the "north" base art.  The burst
+   column sits at y≈301-600 of the 1024-tall frame, its root (base) at y≈600.
+   Mirrors the ore-break pattern: carve frames up front, then spawn/advance. */
+const IMPACT_FRAME_W = 192;
+const IMPACT_FRAME_H = 1024;
+const IMPACT_SRC_FROM = 0;
+const IMPACT_SRC_TO = 8;          /* exclusive — all 8 frames (grow -> peak -> settle) */
 const IMPACT_FRAMES = IMPACT_SRC_TO - IMPACT_SRC_FROM;
-/* Full-size on-screen WIDTH of the frame box (world px).  The visible burst
-   fills only the centre of the mostly-transparent frame.  v2.3.1125: doubled
-   70 -> 140 (owner pass) so melee/magic read bigger AND the 50% arrow burst
-   (now a 70px box, was 35px) is actually visible on a phone.  Owner-tunable. */
-const IMPACT_FULL_W = 140;
+/* Sizing: scale by a target on-screen plume HEIGHT (the effect is a vertical
+   column, so height reads better than frame width).  IMPACT_CONTENT_H is the
+   burst column's height within the frame (y≈301-600 ≈ 300 px); IMPACT_PLUME_H is
+   the full-size on-screen height (~1.5× the 64-px snowman).  Arrows render at
+   sizeMul 0.5.  Owner-tunable. */
+const IMPACT_CONTENT_H = 300;
+const IMPACT_PLUME_H = 96;
+/* Normalised Y of the burst root (base) within the frame — the sprite anchors
+   here so the plume pivots/erupts from one point under rotation. */
+const IMPACT_ROOT_Y = 0.586;
 /* Center-mass offset above the snowman container origin (feet sit ~13 px below
-   it; the 64-px sprite reaches ~51 px above, so torso centre ≈ 19 px up). */
+   it; the 64-px sprite reaches ~51 px above, so torso centre ≈ 19 px up).  The
+   root anchor is placed here, and the plume erupts outward from it. */
 const IMPACT_CENTER_DY = 19;
 /* One-shot flash: play the 6 frames once over this window, then dispose.
    v2.3.1126: 420 -> 210 (owner) so the burst snaps ~2x faster on contact. */
@@ -133,17 +138,15 @@ let _impactLoadStarted = false;
 function ensureImpactTex() {
   if (_impactLoadStarted) return;
   _impactLoadStarted = true;
-  Assets.load('/sprites/monsters/snowman/impact.png?v=1').then((tex) => {
+  Assets.load('/sprites/monsters/snowman/impact.png?v=2').then((tex) => {
     if (!tex || !tex.source) return;
     tex.source.scaleMode = 'linear';
     tex.source.autoGenerateMipmaps = true;
     const arr = [];
     for (let i = IMPACT_SRC_FROM; i < IMPACT_SRC_TO; i++) {
-      const col = i % IMPACT_GRID_COLS;
-      const row = Math.floor(i / IMPACT_GRID_COLS);
       arr.push(new Texture({
         source: tex.source,
-        frame: new Rectangle(col * IMPACT_FRAME_W, row * IMPACT_FRAME_H, IMPACT_FRAME_W, IMPACT_FRAME_H),
+        frame: new Rectangle(i * IMPACT_FRAME_W, 0, IMPACT_FRAME_W, IMPACT_FRAME_H),
       }));
     }
     IMPACT_TEX = arr;
@@ -2480,8 +2483,14 @@ export class EffectsRenderer {
     if (!IMPACT_TEX) return;
     if (!this._snowmanImpacts) this._snowmanImpacts = [];
     const sp = new Sprite(IMPACT_TEX[0]);
-    sp.anchor.set(0.5, 0.5);
-    sp.scale.set((IMPACT_FULL_W / IMPACT_FRAME_W) * sizeMul);
+    /* Anchor at the burst root so the plume pivots/erupts from one point. */
+    sp.anchor.set(0.5, IMPACT_ROOT_Y);
+    sp.scale.set((IMPACT_PLUME_H / IMPACT_CONTENT_H) * sizeMul);
+    /* Rotate the up-pointing base art to point along the attack direction.
+       Base art points up (-PI/2); rotation = attackAngle + PI/2 maps
+       north->0, south->PI, east->PI/2, west->-PI/2.  No angle -> up. */
+    const ang = (m._impactAngle != null ? m._impactAngle : -Math.PI / 2);
+    sp.rotation = ang + Math.PI / 2;
     sp.x = (m.x != null ? m.x : m.renderX) || 0;
     sp.y = ((m.y != null ? m.y : m.renderY) || 0) - IMPACT_CENTER_DY;
     /* particleLayer renders above entities/player, so the flash sits over the

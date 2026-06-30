@@ -197,6 +197,10 @@ export function processGameEvent(type, payload, S, deps) {
                   if (payload.attackerId !== S.myId && (hitM.archetype || hitM.type) === 'snowman') {
                     hitM._impactAt = Date.now();
                     hitM._impactScale = 1;
+                    /* v2.3.1127: peer weapon/facing unknown -> default the eruption
+                       plume to "up". Set explicitly so a stale angle from an earlier
+                       OWN hit on this snowman doesn't carry over. */
+                    hitM._impactAngle = -Math.PI / 2;
                   }
                   /* Show damage number (skip our own — we already show it
                      locally).  Peer numbers go through the smoothing queue so
