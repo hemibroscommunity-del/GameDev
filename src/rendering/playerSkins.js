@@ -21,6 +21,7 @@
 import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION } from './playerSprites.js';
 import { upscaleToFrameHeight, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM */
+import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 export const SKIN_CATALOG = [
@@ -490,14 +491,10 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH)
   return cv;
 }
 
-function loadImg(url) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = rej;
-    im.src = url;
-  });
-}
+/* v2.3.1122: load through the WebP-preferring helper (PNG fallback).  Used by
+   buildBodySheet + _buildPickupHeadSheet, both of which feed recolorBodyToCanvas
+   -- the WebP is LOSSLESS so the recolour's exact-RGB classification is intact. */
+function loadImg(url) { return loadWebpOrPng(url); }
 
 function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
   _bodySheets[sheetKey] = 'loading';

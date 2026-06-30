@@ -16,6 +16,7 @@
 import { Rectangle, Texture } from 'pixi.js';
 import { GEAR_SLOTS, getEquip } from './gearCatalog.js';
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled gear sheets to the 256px frame */
+import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -31,14 +32,8 @@ const GEAR_VERSION = '2.3.1058';
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};
 
-function loadImg(url) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = rej;
-    im.src = url;
-  });
-}
+/* v2.3.1122: WebP-preferring load (PNG fallback) for the gear sheets. */
+function loadImg(url) { return loadWebpOrPng(url); }
 
 function buildSheet(key, slot, item, pose, dir) {
   _sheets[key] = 'loading';
