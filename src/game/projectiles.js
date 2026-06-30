@@ -218,6 +218,9 @@ export function updateArrows(S, deps) {
                   }
                   if (_hitArchR === 'snowman' && m.curHp > 0) {
                     try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
+                    /* v2.3.1124: stamp an ice-burst impact flash -- full size for
+                       staff/magic, 50% for arrows (effectsRenderer reads these). */
+                    m._impactAt = Date.now(); m._impactScale = isStaffProj ? 1 : 0.5;
                   }
                 }
                 /* Count-based weight: 1 per landed projectile.  Bow hits

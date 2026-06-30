@@ -189,6 +189,15 @@ export function processGameEvent(type, payload, S, deps) {
                      locked the bar percentage at 100%. */
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
                   hitM._hitFlash = Date.now();
+                  /* v2.3.1124: ice-burst impact flash on snowmen for PEER hits
+                     only -- our own hits stamp _impactAt at the local melee/
+                     projectile site (with the real weapon size), so stamping
+                     here too would double-flash.  Peer weapon is unknown, so
+                     default to full size. */
+                  if (payload.attackerId !== S.myId && (hitM.archetype || hitM.type) === 'snowman') {
+                    hitM._impactAt = Date.now();
+                    hitM._impactScale = 1;
+                  }
                   /* Show damage number (skip our own — we already show it
                      locally).  Peer numbers go through the smoothing queue so
                      a coalesced burst drips out at a live cadence instead of

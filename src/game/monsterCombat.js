@@ -1587,6 +1587,9 @@ export function updateMonsterCombat(S, deps) {
                   }
                   if (_hitArch === 'snowman' && m.curHp > 0) {
                     try { BT_AUDIO.play('snowman-hit', { vol: 0.7 }); } catch (e) {}
+                    /* v2.3.1124: stamp a full-size ice-burst impact flash for
+                       this melee hit (effectsRenderer reads _impactAt/_impactScale). */
+                    m._impactAt = Date.now(); m._impactScale = 1;
                   }
                 }
                 /* Count-based weight: 1 per landed hit (Power for melee).
