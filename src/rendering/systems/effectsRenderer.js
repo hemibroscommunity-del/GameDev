@@ -115,9 +115,10 @@ const IMPACT_SRC_FROM = 2;
 const IMPACT_SRC_TO = 8;          /* exclusive — keeps indices 2..7 (6 frames) */
 const IMPACT_FRAMES = IMPACT_SRC_TO - IMPACT_SRC_FROM;
 /* Full-size on-screen WIDTH of the frame box (world px).  The visible burst
-   fills only the centre of the mostly-transparent frame, so this reads as
-   ~half the snowman torso.  Owner-tunable on the preview. */
-const IMPACT_FULL_W = 70;
+   fills only the centre of the mostly-transparent frame.  v2.3.1125: doubled
+   70 -> 140 (owner pass) so melee/magic read bigger AND the 50% arrow burst
+   (now a 70px box, was 35px) is actually visible on a phone.  Owner-tunable. */
+const IMPACT_FULL_W = 140;
 /* Center-mass offset above the snowman container origin (feet sit ~13 px below
    it; the 64-px sprite reaches ~51 px above, so torso centre ≈ 19 px up). */
 const IMPACT_CENTER_DY = 19;
