@@ -16,8 +16,18 @@ import { join, extname } from 'node:path';
 import sharp from 'sharp';
 
 /* Trees whose loaders go through the WebP-aware helpers (loadWebpOrPng /
-   loadTextureWebpOrPng). v2.3.1122: player + gear + monsters. */
-const ROOTS = ['public/sprites/player', 'public/sprites/gear', 'public/sprites/monsters'];
+   loadTextureWebpOrPng), with per-tree WebP options:
+   - player/gear: LOSSLESS (exact pixels) -- the recolor classifies skin/pants/
+     shoes by exact RGB and the masked-body bake keys on alpha edges, so a lossy
+     re-encode would corrupt them.
+   - monsters: LOSSY q90 -- monster sprites render as-is (never recolored or
+     masked), so lossy is safe and MUCH smaller on their detailed art (lossless
+     only saved ~8%). alphaQuality 100 keeps the transparent edges clean. */
+const ROOTS = [
+  ['public/sprites/player',   { lossless: true, effort: 6 }],
+  ['public/sprites/gear',     { lossless: true, effort: 6 }],
+  ['public/sprites/monsters', { quality: 90, alphaQuality: 100, effort: 6 }],
+];
 const REPO = process.env.GITHUB_WORKSPACE || process.cwd();
 
 function* walkPng(dir) {
@@ -29,13 +39,13 @@ function* walkPng(dir) {
 }
 
 let n = 0, pngTotal = 0, webpTotal = 0;
-for (const rel of ROOTS) {
+for (const [rel, webpOpts] of ROOTS) {
   const root = join(REPO, rel);
   if (!existsSync(root)) { console.log('skip (missing):', rel); continue; }
   for (const png of walkPng(root)) {
     const webp = png.replace(/\.png$/i, '.webp');
     const pngSize = statSync(png).size;
-    await sharp(png).webp({ lossless: true, effort: 6 }).toFile(webp);
+    await sharp(png).webp(webpOpts).toFile(webp);
     const webpSize = statSync(webp).size;
     n++; pngTotal += pngSize; webpTotal += webpSize;
     console.log(`${png.replace(REPO + '/', '')}: ${(pngSize / 1024).toFixed(0)}KB -> ${(webpSize / 1024).toFixed(0)}KB`);
