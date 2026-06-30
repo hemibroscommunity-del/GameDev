@@ -55,7 +55,13 @@ export function downscaleByFactor(src, ds = DISPLAY_DS) {
   cv.width = Math.max(1, Math.round(w / ds));
   cv.height = Math.max(1, Math.round(h / ds));
   const ctx = cv.getContext('2d');
-  ctx.imageSmoothingEnabled = true;   // bilinear -> clean small display texture
+  ctx.imageSmoothingEnabled = true;
+  /* v2.3.1121: HIGH-quality resampling. The default ('low', a cheap 2x2 bilinear)
+     mangled thin high-contrast lines on the 2x downscale -- the dark shoe outline
+     read as "chewed up". 'high' uses a wider/Lanczos-like kernel that preserves
+     thin edges; the bake is one-time (behind the loading screen / lazy), so the
+     extra cost is negligible. */
+  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(src, 0, 0, cv.width, cv.height);
   return cv;
 }
