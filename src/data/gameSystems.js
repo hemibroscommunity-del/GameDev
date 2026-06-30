@@ -5844,7 +5844,10 @@ BT_AUDIO.monsterDeath = function (arch, opts) {
      here too was layering the "old death sound" on top of the splat. */
   if (arch === 'fodder') return;
   if (arch === 'snowman') {
-    this.play('snowman-death', opts || { vol: 0.65 });
+    /* v2.3.1129: the snow-explosion sample has a ~0.13 s quiet lead-in before
+       the bang (measured: global_gain jumps to peak at frame 5).  Trim it via
+       offset so the explosion lands the instant the snowman dies. */
+    this.play('snowman-death', opts || { vol: 0.65, offset: 0.13 });
     return;
   }
   if (arch === 'skeleton') {

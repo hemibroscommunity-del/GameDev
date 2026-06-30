@@ -132,6 +132,11 @@ const IMPACT_CENTER_DY = 19;
    v2.3.1128: 210 -> 420 (owner) -- the directional eruption read too fast;
    half-speed lets the plume rise and settle. */
 const IMPACT_DURATION_MS = 420;
+/* v2.3.1129: minimum gap between eruptions ON THE SAME snowman.  A single weapon
+   can't hit faster than the ~200ms swing/fire cooldown, so this never drops a
+   real hit, but it collapses any near-simultaneous double-stamp (e.g. two
+   players landing at once) into one plume so the effect can't visibly duplicate. */
+const IMPACT_MIN_GAP_MS = 150;
 /* Lazy-loaded (v2.3.1124): the sheet is ~2 MB, so it's only fetched the first
    time a snowman is actually on screen (zone entry) -- not at startup, where
    town has no snowmen.  Keeps the "no eager preloading" memory/download budget. */
@@ -2474,7 +2479,11 @@ export class EffectsRenderer {
         if (!_impactLoadStarted && (m.archetype || m.type) === 'snowman') ensureImpactTex();
         if (IMPACT_TEX && m._impactAt && m._impactAt !== m._impactSpawned) {
           m._impactSpawned = m._impactAt;
-          this._spawnSnowmanImpact(m, m._impactScale || 1, now);
+          /* Collapse near-simultaneous stamps so one hit can't double-flash. */
+          if (now - (m._impactLastSpawn || 0) >= IMPACT_MIN_GAP_MS) {
+            m._impactLastSpawn = now;
+            this._spawnSnowmanImpact(m, m._impactScale || 1, now);
+          }
         }
       }
     }
