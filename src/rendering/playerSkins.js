@@ -513,7 +513,10 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
     const cv = downscaleByFactor(full, DISPLAY_DS);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
-    src.autoGenerateMipmaps = false;
+    /* v2.3.1121: mipmaps ON -- the downscaled body still renders ~1.2x minified;
+       without a mip chain the thin shoe outline crawled while JOGGING.  Cheap on
+       the 4x-smaller texture. */
+    src.autoGenerateMipmaps = true;
     const fw = Math.max(1, Math.round(FRAME_W / DISPLAY_DS));
     const fh = Math.max(1, Math.round(FRAME_H / DISPLAY_DS));
     const out = [];

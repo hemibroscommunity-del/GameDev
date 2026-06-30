@@ -789,6 +789,10 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
      downscaled to the DISPLAY size, matching the bare body + gear so sb.scale's
      DISPLAY_DS factor lands it correctly. */
   const t = Texture.from(downscaleByFactor(cv, DISPLAY_DS));
+  /* v2.3.1121: mipmaps on the masked (armoured) body too, so the shoe outline /
+     bare-skin edges don't crawl while jogging in armour (same fix as the bare
+     body sheets). Cheap on the downscaled texture. */
+  try { if (t.source) t.source.autoGenerateMipmaps = true; } catch (e) { /* best-effort */ }
   _maskedBodyCache.set(key, t);
   if (_bs && _bt0) { _bs.count++; _bs.ms += (performance.now() - _bt0); }
   /* v2.3.689: cap 600 -> 256.  Each entry is a 256x256 RGBA texture (256KB

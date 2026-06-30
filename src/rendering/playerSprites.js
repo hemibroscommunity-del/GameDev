@@ -169,12 +169,15 @@ async function loadSheet(pose, dir) {
     const _fullW = normalized.naturalWidth || normalized.width || 0;
     const frames = deriveFrameCount(pose, { source: { width: _fullW } });
     /* v2.3.1120: store the DISPLAY texture at 256/DISPLAY_DS px (the figure shows
-       ~100px on a phone) -> ~DISPLAY_DS^2 less VRAM.  Mipmaps off: post-downscale
-       the figure renders ~1:1, so the mip chain is wasted VRAM. */
+       ~100px on a phone) -> ~DISPLAY_DS^2 less VRAM.
+       v2.3.1121: mipmaps back ON.  The 128px frame still renders ~1.2x minified
+       and, while JOGGING, the sub-pixel motion made the thin shoe outline crawl
+       ("chewed up") without a mip chain.  Mipmaps on the small texture cost ~33%
+       of an already 4x-smaller texture -- worth it to kill the jog shimmer. */
     const small = downscaleByFactor(normalized, DISPLAY_DS);
     const source = Texture.from(small).source;
     source.scaleMode = 'linear';
-    source.autoGenerateMipmaps = false;
+    source.autoGenerateMipmaps = true;
     const fw = Math.max(1, Math.round(FRAME_W / DISPLAY_DS));
     const fh = Math.max(1, Math.round(FRAME_H / DISPLAY_DS));
     const out = [];
