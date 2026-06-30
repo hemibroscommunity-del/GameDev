@@ -22,6 +22,7 @@ import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
 import { getHair } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant } from '../playerSkins.js';
+import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
@@ -362,20 +363,24 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
         if (frameIdx >= 18 && frameIdx <= 23) _dy = 5;  // fourth row -- up 5
         else if (frameIdx >= 24) _dy = 20;              // last row
         if (frameIdx === 28) _dy = 30;                  // very last frame -- 10 lower
-        spr.y += _dy * sb.scale.y;
+        spr.y += _dy * sb.scale.y / DISPLAY_DS;          // v2.3.1120: _dy is 256-space; sb.scale carries the DISPLAY_DS factor
       }
       /* v2.3.1056: torso-only pickup -- drop the cuirass 18px in the deepest-
          crouch last row (frames 24-28) so it sits on the bent torso. */
       if (_GEAR_SLOTS[s][0] === 'chest' && pose === 'pickup' && frameIdx >= 24 && (!equip || !equip.legs || equip.legs === 'none')) {
-        spr.y += 18 * sb.scale.y;
+        spr.y += 18 * sb.scale.y / DISPLAY_DS;           // v2.3.1120: 256-space offset
       }
       /* v2.3.1056: shirt -- drop 15px in the deepest-crouch last 5 frames
          (24-28) so it sits on the bent torso (shows only when no chest plate;
          applies to shirt-only and legs+shirt). */
       if (_GEAR_SLOTS[s][0] === 'shirt' && pose === 'pickup' && frameIdx >= 24) {
-        spr.y += 15 * sb.scale.y;
+        spr.y += 15 * sb.scale.y / DISPLAY_DS;           // v2.3.1120: 256-space offset
       }
-      spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
+      /* v2.3.1120: gear sheets are NOT display-downscaled (still 256), but the
+         body transform sb.scale carries the DISPLAY_DS factor for the smaller
+         body -- divide it back out so the 256 gear renders at the right size and
+         stays pixel-aligned over the body. */
+      spr.scale.x = sb.scale.x / DISPLAY_DS; spr.scale.y = sb.scale.y / DISPLAY_DS;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
         const t = equip && equip.shirtTint;
         spr.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
@@ -406,7 +411,11 @@ function _bodyRegionTex(bodyTex, region) {
   if (!m) { m = {}; _regionTexCache.set(bodyTex, m); }
   if (!m[region]) {
     const f = bodyTex.frame; const [r0, r1] = REGION_ROWS[region];
-    try { m[region] = new Texture({ source: bodyTex.source, frame: new Rectangle(f.x, f.y + r0, f.width, r1 - r0) }); }
+    /* v2.3.1120: REGION_ROWS are 256-space; the DISPLAY frame may be downscaled,
+       so map the band rows into the actual (possibly smaller) frame height. */
+    const _rsc = f.height / 256;
+    const rr0 = Math.round(r0 * _rsc), rr1 = Math.round(r1 * _rsc);
+    try { m[region] = new Texture({ source: bodyTex.source, frame: new Rectangle(f.x, f.y + rr0, f.width, rr1 - rr0) }); }
     catch (e) { m[region] = bodyTex; }
   }
   return m[region];
@@ -775,7 +784,11 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
       }
     } catch (e) { /* silhouette confinement is best-effort */ }
   } catch (e) { return bodyTex; }
-  const t = Texture.from(cv);
+  /* v2.3.1120: the bake runs entirely at 256 internally (all the tuned neck /
+     dilation / ghost-hand math untouched); only the FINAL composited texture is
+     downscaled to the DISPLAY size, matching the bare body + gear so sb.scale's
+     DISPLAY_DS factor lands it correctly. */
+  const t = Texture.from(downscaleByFactor(cv, DISPLAY_DS));
   _maskedBodyCache.set(key, t);
   if (_bs && _bt0) { _bs.count++; _bs.ms += (performance.now() - _bt0); }
   /* v2.3.689: cap 600 -> 256.  Each entry is a 256x256 RGBA texture (256KB
@@ -1105,7 +1118,7 @@ function _placeBodyRegions(display, sb, bodyTex, show) {
     const [r0, r1] = REGION_ROWS[region];
     spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
     spr.x = sb.x;
-    spr.y = sb.y + ((r0 + r1) / 2 - 128) * sb.scale.y;   // band's centre in the body's own transform
+    spr.y = sb.y + ((r0 + r1) / 2 - 128) * sb.scale.y / DISPLAY_DS;   // band's centre in the body's own transform (v2.3.1120: r0/r1 are 256-space)
     spr.tint = sb.tint;
     spr.visible = true;
     anyShown = true;
@@ -1144,7 +1157,10 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
      the texture so it tracks whatever downscale playerSkins uses. */
   const _fw = (t.frame && t.frame.width) || 256;
   const _fh = (t.frame && t.frame.height) || 256;
-  hd.scale.x = sb.scale.x * (256 / _fw); hd.scale.y = sb.scale.y * (256 / _fh);
+  /* v2.3.1120: head sheet is HEAD_DS-downscaled; the 256/_fw ratio brings it up
+     to a 256-space figure, then /DISPLAY_DS undoes the DISPLAY_DS factor sb.scale
+     now carries (so head matches the body whatever the two downscales are). */
+  hd.scale.x = sb.scale.x * (256 / _fw) / DISPLAY_DS; hd.scale.y = sb.scale.y * (256 / _fh) / DISPLAY_DS;
   hd.tint = 0xffffff;
   hd.visible = true;
 }
@@ -3258,8 +3274,8 @@ export class EntityRenderer {
           /* v2.3.537: derived per-(pose,dir) scale, shared with the local
              player path via bodyDirScale (silhouette-height normalization). */
           const sizeMul = bodyDirScale(pose, dir) * 0.421875; /* v2.3.741: +20% with the local player */
-          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
-          spriteBody.scale.y = sizeMul;
+          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * DISPLAY_DS;   // v2.3.1120: DISPLAY-downscaled body textures
+          spriteBody.scale.y = sizeMul * DISPLAY_DS;
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
           body.visible = false;
@@ -3985,8 +4001,13 @@ export class EntityRenderer {
            invisible reference (position + scale); the visible body is the three
            region sprites and the gear, all sharing this transform so they stay
            pixel-aligned (no cloning). */
-        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale;
-        spriteBody.scale.y = bodyScale;
+        /* v2.3.1120: the body/gear/region DISPLAY textures are DISPLAY_DS-smaller,
+           so the shared transform scales up by DISPLAY_DS to keep the on-screen
+           size identical.  Traits/weapons place via the 256-space bodyScale (not
+           sb.scale), so they're unaffected; gear/regions copy sb.scale and are
+           themselves downscaled, so they stay aligned. */
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * DISPLAY_DS;
+        spriteBody.scale.y = bodyScale * DISPLAY_DS;
         spriteBody.tint = 0xffffff;
         _placeGear(display, {
           shirt: getEquip('shirt'), legs: getEquip('legs'),

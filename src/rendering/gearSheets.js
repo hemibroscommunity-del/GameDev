@@ -48,6 +48,11 @@ function buildSheet(key, slot, item, pose, dir) {
     /* restore a downscaled-on-disk gear sheet to the 256px frame (no-op for any
        native >=256 sheet, so the variable-height combat poses are untouched) */
     const img = upscaleToFrameHeight(rawImg, FRAME_H);
+    /* v2.3.1120: gear stays at the FULL 256 frame (NOT display-downscaled like the
+       body).  Gear is also consumed by the combat swing/bowshot stand-ins
+       (effectsRenderer) at 256, so downscaling it here would shrink the legs there;
+       instead the MAIN renderer's _placeGear divides the body transform by
+       DISPLAY_DS to render this 256 gear at the right size over the smaller body. */
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
     src.autoGenerateMipmaps = true;

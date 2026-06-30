@@ -19,7 +19,7 @@
  */
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
-import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame */
+import { upscaleToFrameHeight, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame; v2.3.1120: downscale the final DISPLAY texture for VRAM */
 
 /* v2.3.166: bumped from 128 to 256 per user request.  256 source +
    plain Lanczos (no outline overlay) gives a more naturally-rendered
@@ -164,17 +164,24 @@ async function loadSheet(pose, dir) {
       im.src = url;
     });
     const normalized = upscaleToFrameHeight(img, FRAME_H);
-    const source = Texture.from(normalized).source;
-    /* v2.3.163: LINEAR sampler + mipmaps so the source downscales smoothly to
-       the ~64px display target instead of blocky NEAREST. */
+    /* v2.3.1120: frame COUNT comes from the full-res (256-space) width BEFORE the
+       display downscale, so the per-direction jog count is unchanged. */
+    const _fullW = normalized.naturalWidth || normalized.width || 0;
+    const frames = deriveFrameCount(pose, { source: { width: _fullW } });
+    /* v2.3.1120: store the DISPLAY texture at 256/DISPLAY_DS px (the figure shows
+       ~100px on a phone) -> ~DISPLAY_DS^2 less VRAM.  Mipmaps off: post-downscale
+       the figure renders ~1:1, so the mip chain is wasted VRAM. */
+    const small = downscaleByFactor(normalized, DISPLAY_DS);
+    const source = Texture.from(small).source;
     source.scaleMode = 'linear';
-    source.autoGenerateMipmaps = true;
-    const frames = deriveFrameCount(pose, { source });
+    source.autoGenerateMipmaps = false;
+    const fw = Math.max(1, Math.round(FRAME_W / DISPLAY_DS));
+    const fh = Math.max(1, Math.round(FRAME_H / DISPLAY_DS));
     const out = [];
     for (let i = 0; i < frames; i++) {
       out.push(new Texture({
         source,
-        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
+        frame: new Rectangle(i * fw, 0, fw, fh),
       }));
     }
     manifest[pose][dir] = out;

@@ -20,7 +20,7 @@
 
 import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION } from './playerSprites.js';
-import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour */
+import { upscaleToFrameHeight, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 export const SKIN_CATALOG = [
@@ -503,15 +503,22 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}`).then(img => {
-    /* body poses are 256px frames; restore if stored smaller on disk */
-    const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H);
+    /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
+       runs at full 256 (exact skin/pants/shoes pixel thresholds). */
+    const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H);
+    /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY
+       texture to 256/DISPLAY_DS px (the figure shows ~100px on a phone).  Mipmaps
+       off -- renders ~1:1 post-downscale, so the mip chain is wasted VRAM. */
+    const frames = Math.max(1, Math.floor(full.width / FRAME_W));
+    const cv = downscaleByFactor(full, DISPLAY_DS);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
-    src.autoGenerateMipmaps = true;
-    const frames = Math.max(1, Math.floor(cv.width / FRAME_W));
+    src.autoGenerateMipmaps = false;
+    const fw = Math.max(1, Math.round(FRAME_W / DISPLAY_DS));
+    const fh = Math.max(1, Math.round(FRAME_H / DISPLAY_DS));
     const out = [];
     for (let i = 0; i < frames; i++) {
-      out.push(new Texture({ source: src, frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H) }));
+      out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
     }
     _bodySheets[sheetKey] = out;
   }).catch(() => { _bodySheets[sheetKey] = []; /* missing -> caller falls back */ });
