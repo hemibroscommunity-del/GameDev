@@ -68,6 +68,24 @@ function loadImg(url) {
   });
 }
 
+/* v2.3.1119: bound the recolor cache (see hairColorCatalog for rationale) --
+   LRU cap with a 30s-deferred source destroy. */
+const _CACHE_CAP = 12;
+function _capCache() {
+  const keys = Object.keys(_cache);
+  if (keys.length <= _CACHE_CAP) return;
+  for (const k of keys) {
+    const e = _cache[k];
+    if (e === 'loading') continue;
+    delete _cache[k];
+    setTimeout(() => {
+      try { for (const dir in e) { const t = e[dir]; if (t && t.source) t.source.destroy(); } }
+      catch (err) { /* ignore */ }
+    }, 30000);
+    break;
+  }
+}
+
 function build(fhId, colorId) {
   const target = facialHairColorTarget(colorId);
   const key = fhId + '/' + colorId;
@@ -81,7 +99,7 @@ function build(fhId, colorId) {
       if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
       tex[dir] = t;
     } catch (e) { /* dir missing -> renderer falls back */ }
-  })).then(() => { _cache[key] = tex; });
+  })).then(() => { _cache[key] = tex; _capCache(); });
 }
 
 /** Recolored beard texture map for (fhId, colorId), or null for the default
@@ -92,5 +110,7 @@ export function getColoredFacialHairTextures(fhId, colorId) {
   const e = _cache[key];
   if (e === undefined) { build(fhId, colorId); return null; }
   if (e === 'loading') return null;
+  /* LRU touch: keep actively-rendered beards out of the eviction front. */
+  delete _cache[key]; _cache[key] = e;
   return e;
 }

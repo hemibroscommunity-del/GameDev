@@ -13,10 +13,9 @@ import { loadPlayerAnchors } from './playerAnchors.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { loadSnowmanSprites } from './snowmanSprites.js';
-import { loadAllVariantSprites } from './monsterVariantSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
 import { loadShieldSprites } from './shieldSprites.js';
-import { loadImageZoneMaps, preloadStartZoneMap } from './tiledMaps.js';
+import { preloadStartZoneMap } from './tiledMaps.js';
 import { preloadGear } from './gearSheets.js';
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
@@ -143,19 +142,27 @@ export async function initPixiRenderer(canvas) {
   loadSlimeSprites().catch((err) => console.warn('Slime sprites failed to load, using procedural fallback:', err));
   // Snowman monsters — 5 source directional stills (W / NW / SE rendered by mirror).
   loadSnowmanSprites().catch((err) => console.warn('Snowman sprites failed to load, using procedural fallback:', err));
-  // All registered monster variants (fire goblin, future zone skins, etc.)
-  // -- single batched preload, each variant module handles its own assets.
-  loadAllVariantSprites().catch((err) => console.warn('Monster variant sprites failed to load, using base archetype fallback:', err));
+  /* v2.3.1119: monster variant sheets (fire goblin, mummy, skeleton, ...) now
+     load LAZILY per-variant on first sighting (variantSpritesFor kicks the load),
+     not as one batched preload at startup.  Town has no monsters, so this keeps
+     ~10-20MB of variant textures out of the town session entirely -- they were a
+     dead weight on the iPhone's WebGL budget.  Each variant still falls back to
+     the base archetype until its sheet lands. */
   // Weapon icons (sword / bow / staff).
   loadWeaponSprites().catch((err) => console.warn('Weapon sprites failed to load, using procedural fallback:', err));
   // Shield (front / 3-quarter / side wood-shield views).
   loadShieldSprites().catch((err) => console.warn('Shield sprites failed to load, using procedural arc fallback:', err));
   // Per-frame hand anchors + weapon grip points.
   loadPlayerAnchors().catch((err) => console.warn('Player anchors failed to load, using procedural fallback:', err));
-  /* Preload single-image zone maps (frost, etc.) so the Sprite has
-     a real texture by the time the user enters the zone — without
-     this, Texture.from(url) in Pixi v8 yields a blank placeholder. */
-  loadImageZoneMaps().catch((err) => console.warn('Image zone maps failed to load:', err));
+  /* v2.3.1119: zone maps load PER-ZONE on entry, not all 12 up front.  Each
+     1024x1024 map is ~4MB of VRAM decoded; preloading all 12 pinned ~48MB
+     resident even in town (you only ever see one zone), a big chunk of the
+     iPhone WebGL-budget pressure.  tileRenderer.rebuild() already self-heals a
+     cache miss (kicks Assets.load(imageUrl) and swaps the texture in when it
+     resolves -- see the single-image zone path), so dropping the bulk preload
+     just means the current zone's map loads on entry.  The STARTING zone (town)
+     stays gated by preloadStartZoneMap('town') below, so spawn never flashes
+     black; other zones paint after a brief first-entry load and stay cached. */
 
   let currentZone = null;
   let currentMap = null;

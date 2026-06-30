@@ -72,6 +72,28 @@ function loadImg(url) {
   });
 }
 
+/* v2.3.1119: cap the recolor cache so a crowded multiplayer zone can't grow it
+   without bound (one ~1MB, 5-dir entry per unique hair+colour appearance).  LRU:
+   the getter re-touches its key so active appearances stay resident; eviction
+   takes the oldest cold entry and destroys its texture sources after 30s
+   (deferred so an in-use texture is never killed mid-frame -- same guard as
+   entityRenderer's masked-body cache). */
+const _CACHE_CAP = 12;
+function _capCache() {
+  const keys = Object.keys(_cache);
+  if (keys.length <= _CACHE_CAP) return;
+  for (const k of keys) {
+    const e = _cache[k];
+    if (e === 'loading') continue;        // never evict an in-flight bake
+    delete _cache[k];
+    setTimeout(() => {
+      try { for (const dir in e) { const t = e[dir]; if (t && t.source) t.source.destroy(); } }
+      catch (err) { /* ignore */ }
+    }, 30000);
+    break;
+  }
+}
+
 function build(hairId, colorId) {
   const target = hairColorTarget(colorId);
   const key = hairId + '/' + colorId;
@@ -85,7 +107,7 @@ function build(hairId, colorId) {
       if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
       tex[dir] = t;
     } catch (e) { /* dir missing -> renderer falls back */ }
-  })).then(() => { _cache[key] = tex; });
+  })).then(() => { _cache[key] = tex; _capCache(); });
 }
 
 /** Recolored hair texture map for (hairId, colorId), or null for the default
@@ -101,5 +123,7 @@ export function getColoredHairTextures(hairId, colorId) {
   const e = _cache[key];
   if (e === undefined) { build(hairId, colorId); return null; }
   if (e === 'loading') return null;
+  /* LRU touch: move this key to newest so _capCache evicts a genuinely cold one. */
+  delete _cache[key]; _cache[key] = e;
   return e;
 }
