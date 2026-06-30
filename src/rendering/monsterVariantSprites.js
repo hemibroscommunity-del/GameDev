@@ -119,8 +119,12 @@ export const VARIANT_SPRITES = {
   },
 };
 
-/* Boot helper — preload every registered variant's sprites in
-   parallel.  pixiRenderer calls this once at startup. */
+/* Boot helper — preload every registered variant's sprites in parallel.
+   v2.3.1119: NO LONGER called at startup (kept for any explicit warm).  Variant
+   sheets now load lazily per-variant the first time that variant is rendered
+   (see variantSpritesFor), so a town session -- which has no monsters -- never
+   pays for the ~10-20MB of variant textures.  Each variant's load() caches
+   internally, so per-variant kicks are idempotent. */
 export function loadAllVariantSprites() {
   return Promise.all(
     Object.values(VARIANT_SPRITES)
@@ -129,6 +133,17 @@ export function loadAllVariantSprites() {
   );
 }
 
+/* v2.3.1119: track which variants we've already kicked a load for, so the
+   per-frame render lookup fires each variant's load() exactly once. */
+const _variantLoadKicked = new Set();
 export function variantSpritesFor(variantKey) {
-  return (variantKey && VARIANT_SPRITES[variantKey]) || null;
+  const v = (variantKey && VARIANT_SPRITES[variantKey]) || null;
+  /* Lazy first-sighting load: the renderer calls this every frame for a visible
+     monster; kick the variant's own loader once and let it fall back to the base
+     archetype until the sheets land. */
+  if (v && v.load && !_variantLoadKicked.has(variantKey)) {
+    _variantLoadKicked.add(variantKey);
+    try { Promise.resolve(v.load()).catch(() => {}); } catch (e) { /* ignore */ }
+  }
+  return v;
 }

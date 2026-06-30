@@ -21,7 +21,8 @@ import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
 import { getHair } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame, preloadBodyVariant } from '../playerSkins.js';
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant } from '../playerSkins.js';
+import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
@@ -362,20 +363,24 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
         if (frameIdx >= 18 && frameIdx <= 23) _dy = 5;  // fourth row -- up 5
         else if (frameIdx >= 24) _dy = 20;              // last row
         if (frameIdx === 28) _dy = 30;                  // very last frame -- 10 lower
-        spr.y += _dy * sb.scale.y;
+        spr.y += _dy * sb.scale.y / DISPLAY_DS;          // v2.3.1120: _dy is 256-space; sb.scale carries the DISPLAY_DS factor
       }
       /* v2.3.1056: torso-only pickup -- drop the cuirass 18px in the deepest-
          crouch last row (frames 24-28) so it sits on the bent torso. */
       if (_GEAR_SLOTS[s][0] === 'chest' && pose === 'pickup' && frameIdx >= 24 && (!equip || !equip.legs || equip.legs === 'none')) {
-        spr.y += 18 * sb.scale.y;
+        spr.y += 18 * sb.scale.y / DISPLAY_DS;           // v2.3.1120: 256-space offset
       }
       /* v2.3.1056: shirt -- drop 15px in the deepest-crouch last 5 frames
          (24-28) so it sits on the bent torso (shows only when no chest plate;
          applies to shirt-only and legs+shirt). */
       if (_GEAR_SLOTS[s][0] === 'shirt' && pose === 'pickup' && frameIdx >= 24) {
-        spr.y += 15 * sb.scale.y;
+        spr.y += 15 * sb.scale.y / DISPLAY_DS;           // v2.3.1120: 256-space offset
       }
-      spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
+      /* v2.3.1120: gear sheets are NOT display-downscaled (still 256), but the
+         body transform sb.scale carries the DISPLAY_DS factor for the smaller
+         body -- divide it back out so the 256 gear renders at the right size and
+         stays pixel-aligned over the body. */
+      spr.scale.x = sb.scale.x / DISPLAY_DS; spr.scale.y = sb.scale.y / DISPLAY_DS;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
         const t = equip && equip.shirtTint;
         spr.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
@@ -406,7 +411,11 @@ function _bodyRegionTex(bodyTex, region) {
   if (!m) { m = {}; _regionTexCache.set(bodyTex, m); }
   if (!m[region]) {
     const f = bodyTex.frame; const [r0, r1] = REGION_ROWS[region];
-    try { m[region] = new Texture({ source: bodyTex.source, frame: new Rectangle(f.x, f.y + r0, f.width, r1 - r0) }); }
+    /* v2.3.1120: REGION_ROWS are 256-space; the DISPLAY frame may be downscaled,
+       so map the band rows into the actual (possibly smaller) frame height. */
+    const _rsc = f.height / 256;
+    const rr0 = Math.round(r0 * _rsc), rr1 = Math.round(r1 * _rsc);
+    try { m[region] = new Texture({ source: bodyTex.source, frame: new Rectangle(f.x, f.y + rr0, f.width, rr1 - rr0) }); }
     catch (e) { m[region] = bodyTex; }
   }
   return m[region];
@@ -775,7 +784,15 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
       }
     } catch (e) { /* silhouette confinement is best-effort */ }
   } catch (e) { return bodyTex; }
-  const t = Texture.from(cv);
+  /* v2.3.1120: the bake runs entirely at 256 internally (all the tuned neck /
+     dilation / ghost-hand math untouched); only the FINAL composited texture is
+     downscaled to the DISPLAY size, matching the bare body + gear so sb.scale's
+     DISPLAY_DS factor lands it correctly. */
+  const t = Texture.from(downscaleByFactor(cv, DISPLAY_DS));
+  /* v2.3.1121: mipmaps on the masked (armoured) body too, so the shoe outline /
+     bare-skin edges don't crawl while jogging in armour (same fix as the bare
+     body sheets). Cheap on the downscaled texture. */
+  try { if (t.source) t.source.autoGenerateMipmaps = true; } catch (e) { /* best-effort */ }
   _maskedBodyCache.set(key, t);
   if (_bs && _bt0) { _bs.count++; _bs.ms += (performance.now() - _bt0); }
   /* v2.3.689: cap 600 -> 256.  Each entry is a 256x256 RGBA texture (256KB
@@ -851,7 +868,10 @@ export function planPrewarmProgress() {
     for (const dir of DIRS) per += playerFrameCount(pose, dir) || 1;
   }
   const anyWorn = ['chest', 'legs'].some((sl) => { const it = getEquip(sl); return it && it !== 'none'; });
-  prewarmProgress.total = per * ((anyWorn ? 1 : 0) + 3);   // current set + 3 alt sets
+  /* v2.3.1118: the alt-worn pass now bakes only the WORN loadout (1 set), not 3
+     speculative families.  So the planned work is the masked pass + that one set,
+     both gated on actually wearing armour (an unarmoured player bakes neither). */
+  prewarmProgress.total = per * (anyWorn ? 2 : 0);   // masked pass + worn-set alt pass
 }
 
 /* v2.3.701: force-upload the baked masked-body textures to the GPU while the
@@ -996,17 +1016,27 @@ export async function prewarmAltWornSets(opts) {
     await new Promise((r) => setTimeout(r, 5000));
     if (seq !== _altPrewarmSeq) return;
   }
-  const chestId = getEquip('chest') !== 'none' ? getEquip('chest') : 'steelplate';
-  const legsId = getEquip('legs') !== 'none' ? getEquip('legs') : 'steelgreaves';
+  /* v2.3.1118: prewarm ONLY the actually-worn loadout.  The old version baked
+     THREE masked-armour families up front (full + chest-only + legs-only) and,
+     worse, defaulted to steelplate/steelgreaves for an UNARMOURED player -- so it
+     forced ~115MB of speculative masked frames into the iPhone's ~100-200MB WebGL
+     budget for gear the player isn't even wearing.  That memory pressure is a
+     prime cause of the general slowdown + WebGL context loss.  Skip entirely when
+     nothing is worn; otherwise bake just the worn pieces.  The chest-only /
+     legs-only transitional families bake lazily on the first equip change --
+     _schedulePrewarm (frame-budgeted) + the lazy first-sighting bake already cover
+     that, at the cost of a small one-time hitch on that first swap. */
+  const chestId = getEquip('chest') !== 'none' ? getEquip('chest') : null;
+  const legsId = getEquip('legs') !== 'none' ? getEquip('legs') : null;
+  if (!chestId && !legsId) return;               // nothing worn -> nothing to warm
   /* v2.3.756: baked shirt retired -- only the shirtless body sheets exist
      now, so there is a single variant to warm. */
   try { await preloadBodyVariant(null, 'none'); } catch (e) { /* best-effort */ }
   if (seq !== _altPrewarmSeq) return;            // superseded by a newer kick
-  const SETS = [
-    { worn: [['chest', chestId], ['legs', legsId]], full: true },
-    { worn: [['chest', chestId]], full: false },
-    { worn: [['legs', legsId]], full: false },
-  ];
+  const _wornNow = [];
+  if (chestId) _wornNow.push(['chest', chestId]);
+  if (legsId) _wornNow.push(['legs', legsId]);
+  const SETS = [{ worn: _wornNow, full: !!(chestId && legsId) }];
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
   let sinceYield = 0;
   for (const set of SETS) {
@@ -1092,7 +1122,7 @@ function _placeBodyRegions(display, sb, bodyTex, show) {
     const [r0, r1] = REGION_ROWS[region];
     spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
     spr.x = sb.x;
-    spr.y = sb.y + ((r0 + r1) / 2 - 128) * sb.scale.y;   // band's centre in the body's own transform
+    spr.y = sb.y + ((r0 + r1) / 2 - 128) * sb.scale.y / DISPLAY_DS;   // band's centre in the body's own transform (v2.3.1120: r0/r1 are 256-space)
     spr.tint = sb.tint;
     spr.visible = true;
     anyShown = true;
@@ -1110,37 +1140,31 @@ function _hideBodyRegions(display) {
    so the whole head always shows.  South-only, matching the pose; other dirs
    404 -> [] and the masked body's own head is used.  Reuses the dormant
    _bodyHead region sprite (anchor 0.5/0.5, full-frame texture). */
-const PICKUP_HEAD_VER = '2.3.1056';   /* v2.3.1056: window-tracked head (drops shoulders in the crouch) */
-const _pickupHeadSheets = {};   // 'pose-dir' -> [Texture] | 'loading' | []
-function _getPickupHeadFrame(pose, dir, frameIdx) {
-  if (pose !== 'pickup') return null;
-  const key = pose + '-' + dir;
-  const e = _pickupHeadSheets[key];
-  if (e === undefined) {
-    _pickupHeadSheets[key] = 'loading';
-    Assets.load('/sprites/player/' + key + '-head.png?v=' + PICKUP_HEAD_VER).then((tex) => {
-      if (tex && tex.source) tex.source.scaleMode = 'linear';
-      const n = Math.max(1, Math.floor(tex.width / 256));
-      const arr = [];
-      for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * 256, 0, 256, 256) }));
-      _pickupHeadSheets[key] = arr;
-    }).catch(() => { _pickupHeadSheets[key] = []; });
-    return null;
-  }
-  if (e === 'loading' || !e.length) return null;
-  return e[((frameIdx % e.length) + e.length) % e.length];
-}
+/* v2.3.1116: the pickup head-overlay sheet now loads + recolors through
+   playerSkins.getPickupHeadFrame (combo-aware), so an armoured OR bare player's
+   head matches their chosen skin instead of reverting to the default tan it was
+   drawn in.  The old raw Assets.load + global _pickupHeadSheets cache lived
+   here; it ignored the skin entirely. */
 /* Place the pickup head overlay on the (reused) _bodyHead sprite at the body
    sprite's exact transform.  No-op (leaves _bodyHead as the caller left it --
    hidden) outside the pickup pose or before the sheet loads. */
-function _placePickupHead(display, sb, pose, dir, frameIdx) {
+function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx) {
   const hd = display._bodyHead;
   if (!hd || !sb) return;
-  const t = _getPickupHeadFrame(pose, dir, frameIdx);
+  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx);
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
-  hd.scale.x = sb.scale.x; hd.scale.y = sb.scale.y;
+  /* v2.3.1117: the head sheet is baked DOWNSCALED to save VRAM, so its frame is
+     smaller than the body's 256px frame.  Scale up by 256/frame so the overlay
+     still lands exactly on the body (both anchored 0.5/0.5); reads the size off
+     the texture so it tracks whatever downscale playerSkins uses. */
+  const _fw = (t.frame && t.frame.width) || 256;
+  const _fh = (t.frame && t.frame.height) || 256;
+  /* v2.3.1120: head sheet is HEAD_DS-downscaled; the 256/_fw ratio brings it up
+     to a 256-space figure, then /DISPLAY_DS undoes the DISPLAY_DS factor sb.scale
+     now carries (so head matches the body whatever the two downscales are). */
+  hd.scale.x = sb.scale.x * (256 / _fw) / DISPLAY_DS; hd.scale.y = sb.scale.y * (256 / _fh) / DISPLAY_DS;
   hd.tint = 0xffffff;
   hd.visible = true;
 }
@@ -1325,11 +1349,16 @@ function _orderTraitsAndWeapon(display, facingIdx) {
      setChildIndex-to-highest-visible-ref move the beard uses just below. */
   const phead = display._bodyHead;
   if (phead && phead.visible) {
-    let ref = -1;
-    for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
-      if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
-    }
-    if (ref >= 0) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
+    /* v2.3.1116: guarded -- getChildIndex throws if a referenced sprite isn't a
+       child of `display` (a transient layout state), and this runs every frame
+       during the loot freeze, so an unguarded throw freezes the whole game. */
+    try {
+      let ref = -1;
+      for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
+        if (s && s.visible && s.parent === display) ref = Math.max(ref, display.getChildIndex(s));
+      }
+      if (ref >= 0 && phead.parent === display) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
+    } catch (e) { /* leave head where it is this frame */ }
   }
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
@@ -3249,8 +3278,8 @@ export class EntityRenderer {
           /* v2.3.537: derived per-(pose,dir) scale, shared with the local
              player path via bodyDirScale (silhouette-height normalization). */
           const sizeMul = bodyDirScale(pose, dir) * 0.421875; /* v2.3.741: +20% with the local player */
-          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul;
-          spriteBody.scale.y = sizeMul;
+          spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * DISPLAY_DS;   // v2.3.1120: DISPLAY-downscaled body textures
+          spriteBody.scale.y = sizeMul * DISPLAY_DS;
           spriteBody.tint = 0xffffff;
           spriteBody.visible = true;
           body.visible = false;
@@ -3286,9 +3315,12 @@ export class EntityRenderer {
             const _mt = (pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6);
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
-          /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
-          _placePickupHead(display, spriteBody, pose, dir, frameIdx);
-          spriteBody.visible = !(_rfull && !!_getPickupHeadFrame(pose, dir, frameIdx));
+          /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
+             v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
+          try {
+            _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx);
+            spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
+          } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
@@ -3973,8 +4005,13 @@ export class EntityRenderer {
            invisible reference (position + scale); the visible body is the three
            region sprites and the gear, all sharing this transform so they stay
            pixel-aligned (no cloning). */
-        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale;
-        spriteBody.scale.y = bodyScale;
+        /* v2.3.1120: the body/gear/region DISPLAY textures are DISPLAY_DS-smaller,
+           so the shared transform scales up by DISPLAY_DS to keep the on-screen
+           size identical.  Traits/weapons place via the 256-space bodyScale (not
+           sb.scale), so they're unaffected; gear/regions copy sb.scale and are
+           themselves downscaled, so they stay aligned. */
+        spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * DISPLAY_DS;
+        spriteBody.scale.y = bodyScale * DISPLAY_DS;
         spriteBody.tint = 0xffffff;
         _placeGear(display, {
           shirt: getEquip('shirt'), legs: getEquip('legs'),
@@ -4023,9 +4060,14 @@ export class EntityRenderer {
           _bodyTex = (!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6);
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
-        /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon). */
-        _placePickupHead(display, spriteBody, pose, dir, frameIdx);
-        spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!_getPickupHeadFrame(pose, dir, frameIdx));
+        /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
+           v2.3.1116: guarded -- the loot freeze runs every frame, so a throw here
+           (a bad overlay texture, a recolor hiccup) would freeze the whole game
+           loop, not just the head.  On failure: no overlay, body stays visible. */
+        try {
+          _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
+          spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
+        } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path

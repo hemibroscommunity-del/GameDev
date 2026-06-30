@@ -20,7 +20,8 @@
 
 import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION } from './playerSprites.js';
-import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour */
+import { upscaleToFrameHeight, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM */
+import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 export const SKIN_CATALOG = [
@@ -490,28 +491,34 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH)
   return cv;
 }
 
-function loadImg(url) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = rej;
-    im.src = url;
-  });
-}
+/* v2.3.1122: load through the WebP-preferring helper (PNG fallback).  Used by
+   buildBodySheet + _buildPickupHeadSheet, both of which feed recolorBodyToCanvas
+   -- the WebP is LOSSLESS so the recolour's exact-RGB classification is intact. */
+function loadImg(url) { return loadWebpOrPng(url); }
 
 function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}`).then(img => {
-    /* body poses are 256px frames; restore if stored smaller on disk */
-    const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H);
+    /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
+       runs at full 256 (exact skin/pants/shoes pixel thresholds). */
+    const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H);
+    /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY
+       texture to 256/DISPLAY_DS px (the figure shows ~100px on a phone).  Mipmaps
+       off -- renders ~1:1 post-downscale, so the mip chain is wasted VRAM. */
+    const frames = Math.max(1, Math.floor(full.width / FRAME_W));
+    const cv = downscaleByFactor(full, DISPLAY_DS);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
+    /* v2.3.1121: mipmaps ON -- the downscaled body still renders ~1.2x minified;
+       without a mip chain the thin shoe outline crawled while JOGGING.  Cheap on
+       the 4x-smaller texture. */
     src.autoGenerateMipmaps = true;
-    const frames = Math.max(1, Math.floor(cv.width / FRAME_W));
+    const fw = Math.max(1, Math.round(FRAME_W / DISPLAY_DS));
+    const fh = Math.max(1, Math.round(FRAME_H / DISPLAY_DS));
     const out = [];
     for (let i = 0; i < frames; i++) {
-      out.push(new Texture({ source: src, frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H) }));
+      out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
     }
     _bodySheets[sheetKey] = out;
   }).catch(() => { _bodySheets[sheetKey] = []; /* missing -> caller falls back */ });
@@ -537,6 +544,84 @@ export function getSkinnedFrame(skinId, pose, dir, frameIdx) {
   return getBodyFrame(skinId, 'default', 'default', pose, dir, frameIdx);
 }
 
+/* v2.3.1116: loot-pickup HEAD overlay, RECOLORED.  pickup-<dir>-head.png holds
+   the head pixels per frame (transparent elsewhere); entityRenderer draws it
+   ABOVE the gear so an armoured player's deep-crouch head isn't clipped to a
+   sliver.  It used to be loaded RAW and drawn untinted, so the head/face always
+   showed the DEFAULT tan skin while the recolored body below wore the chosen
+   skin -- the head "reverted" to default on every pickup, for armoured AND
+   bare players.  Recolor it through the SAME pipeline as the body so the head
+   matches exactly.  The sheet ships full-res 256px, so recolorBodyToCanvas's
+   upscale is a no-op; only skin (and any pants/shoes) pixels exist in the head
+   region, so the body's skin retint lands and nothing else shifts.  Cached per
+   (skin/pants/shoes) combo + (pose,dir) so local and remote players -- who may
+   wear different skins -- don't collide.  The default combo recolors to an
+   unchanged copy (every _retint is gated on a non-null target), matching the
+   old raw behaviour. */
+const _pickupHeadSheets = {};   // 'skin/pants/shoes|pose-dir' -> [Texture] | 'loading' | []
+/* v2.3.1117: head overlay is downscaled HEAD_DS x before it becomes a texture.
+   It only ever renders at the small pickup-pose scale, so a full 7424x256 source
+   (~7.6MB GPU + mipmaps) was wildly oversized -- a big contributor to iPhone
+   Safari losing the WebGL context after several armoured pickups.  At /2 it is
+   ~1.9MB, and the caller (entityRenderer._placePickupHead) reads the frame size
+   back off the texture and scales up to match the 256px body, so alignment is
+   automatic and HEAD_DS can change here without touching the renderer.  Recolor
+   still runs at full 256px (recolorBodyToCanvas upscales for stable pixel
+   thresholds); only the FINAL display texture is shrunk. */
+const HEAD_DS = 2;
+function _pickupHeadCap() {
+  /* Bound the cache: a player who changes skin/pants/shoes mid-session would
+     otherwise accumulate one head sheet per combo forever.  Evict the oldest
+     (insertion order) baked entry; destroy its source on a 30s delay so an
+     in-use texture is never killed mid-frame (same guard as _maskedBodyCache). */
+  const keys = Object.keys(_pickupHeadSheets);
+  if (keys.length <= 6) return;
+  for (const k of keys) {
+    const e = _pickupHeadSheets[k];
+    if (!Array.isArray(e) || !e.length) continue;   // skip 'loading'/empty
+    delete _pickupHeadSheets[k];
+    const src = e[0] && e[0].source;
+    if (src) setTimeout(() => { try { src.destroy(); } catch (err) { /* ignore */ } }, 30000);
+    break;
+  }
+}
+function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT) {
+  _pickupHeadSheets[key] = 'loading';
+  return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}`).then(img => {
+    const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H);
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(full.width / HEAD_DS));
+    cv.height = Math.max(1, Math.round(full.height / HEAD_DS));
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = true;   // bilinear downscale -> clean small head
+    ctx.drawImage(full, 0, 0, cv.width, cv.height);
+    const src = Texture.from(cv).source;
+    src.scaleMode = 'linear';
+    src.autoGenerateMipmaps = false;    // single render scale -> mipmaps are wasted VRAM
+    const fw = Math.max(1, Math.round(FRAME_W / HEAD_DS)), fh = Math.max(1, Math.round(FRAME_H / HEAD_DS));
+    const frames = Math.max(1, Math.floor(cv.width / fw));
+    const out = [];
+    for (let i = 0; i < frames; i++) {
+      out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
+    }
+    _pickupHeadSheets[key] = out;
+    _pickupHeadCap();
+  }).catch(() => { _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */ });
+}
+/** Recolored loot-pickup head-overlay frame for (skin, pants, shoes, pose, dir,
+ *  frameIdx).  Returns null outside the pickup pose, while the sheet bakes, or
+ *  when no head sheet exists for that dir (only -south ships) -- the caller then
+ *  leaves the body's own head showing. */
+export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx) {
+  if (pose !== 'pickup') return null;
+  const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+  const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '-' + dir;
+  const entry = _pickupHeadSheets[key];
+  if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT); return null; }
+  if (entry === 'loading' || !entry.length) return null;
+  return entry[((frameIdx % entry.length) + entry.length) % entry.length];
+}
+
 /* Pre-warm the local player's recolored body sheets so the correct skin is
    baked BEFORE the player first renders -- otherwise getBodyFrame falls back
    to the default (un-recolored) frame for the first frame(s) while the async
@@ -557,7 +642,10 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
 /** Preload the recolored body for the current combo across all base dirs for
  *  stand + jog, so an UNARMOURED player (or any moment the body shows) never
  *  flashes the default-skin frame when first turning/jogging in a direction.
- *  Resolves immediately for the default combo (base sheets are used as-is). */
+ *  Resolves immediately for the default combo (base sheets are used as-is).
+ *  v2.3.1118: stand + jog (all dirs) + the south-only pickup body & head overlay.
+ *  Mine stays lazy -- see the notes inside for why pickup/head are cheap to
+ *  prewarm now but mine and the full-res head were not. */
 export function preloadBodyAll() {
   /* v2.3.756: baked shirt retired -- the body always bakes SHIRTLESS (the
      layered shirt is a separate tinted gear sprite).  The shirt machinery
@@ -566,12 +654,25 @@ export function preloadBodyAll() {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   if (!skinT && !pantsT && !shoesT) return Promise.resolve(); /* default combo */
   const tasks = [];
+  const prewarm = (pose, dir) => {
+    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/none|' + pose + '/' + dir;
+    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null));
+  };
   for (const pose of ['stand', 'jog']) {
-    for (const dir of SOURCE_DIRS) {
-      const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/none|' + pose + '/' + dir;
-      if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null));
-    }
+    for (const dir of SOURCE_DIRS) prewarm(pose, dir);
   }
+  /* v2.3.1118: prewarm the pickup BODY + (downscaled) HEAD behind the intro, so
+     the first armoured loot pickup doesn't hitch while they bake mid-play (the
+     v2.3.1117 lazy bake traded the spawn cost for an in-play frame-rate dip on
+     the first few pickups).  This is safe now: it does NOT raise the post-pickup
+     memory PEAK -- those sheets bake on first use anyway, so prewarming only
+     moves the one-time bake earlier, it doesn't add anything resident that lazy
+     baking wouldn't.  The actual VRAM fix that stopped the iOS context loss was
+     shrinking the head (v2.3.1117) and dropping the mine sheet -- and MINE stays
+     lazy here (irrelevant to looting, pure VRAM waste otherwise). */
+  prewarm('pickup', 'south');
+  const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
+  if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
   return Promise.all(tasks);
 }
 

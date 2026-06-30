@@ -19,7 +19,8 @@
  */
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
-import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame */
+import { upscaleToFrameHeight, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame; v2.3.1120: downscale the final DISPLAY texture for VRAM */
+import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
 /* v2.3.166: bumped from 128 to 256 per user request.  256 source +
    plain Lanczos (no outline overlay) gives a more naturally-rendered
@@ -157,24 +158,29 @@ async function loadSheet(pose, dir) {
        nearest-upscaled back to the 256px logical frame when it's stored
        smaller on disk. No-op for full-res art (upscaleToFrameHeight returns
        the image untouched when already >= 256 tall). */
-    const img = await new Promise((res, rej) => {
-      const im = new Image();
-      im.onload = () => res(im);
-      im.onerror = rej;
-      im.src = url;
-    });
+    const img = await loadWebpOrPng(url);   // v2.3.1122: WebP w/ PNG fallback
     const normalized = upscaleToFrameHeight(img, FRAME_H);
-    const source = Texture.from(normalized).source;
-    /* v2.3.163: LINEAR sampler + mipmaps so the source downscales smoothly to
-       the ~64px display target instead of blocky NEAREST. */
+    /* v2.3.1120: frame COUNT comes from the full-res (256-space) width BEFORE the
+       display downscale, so the per-direction jog count is unchanged. */
+    const _fullW = normalized.naturalWidth || normalized.width || 0;
+    const frames = deriveFrameCount(pose, { source: { width: _fullW } });
+    /* v2.3.1120: store the DISPLAY texture at 256/DISPLAY_DS px (the figure shows
+       ~100px on a phone) -> ~DISPLAY_DS^2 less VRAM.
+       v2.3.1121: mipmaps back ON.  The 128px frame still renders ~1.2x minified
+       and, while JOGGING, the sub-pixel motion made the thin shoe outline crawl
+       ("chewed up") without a mip chain.  Mipmaps on the small texture cost ~33%
+       of an already 4x-smaller texture -- worth it to kill the jog shimmer. */
+    const small = downscaleByFactor(normalized, DISPLAY_DS);
+    const source = Texture.from(small).source;
     source.scaleMode = 'linear';
     source.autoGenerateMipmaps = true;
-    const frames = deriveFrameCount(pose, { source });
+    const fw = Math.max(1, Math.round(FRAME_W / DISPLAY_DS));
+    const fh = Math.max(1, Math.round(FRAME_H / DISPLAY_DS));
     const out = [];
     for (let i = 0; i < frames; i++) {
       out.push(new Texture({
         source,
-        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
+        frame: new Rectangle(i * fw, 0, fw, fh),
       }));
     }
     manifest[pose][dir] = out;
