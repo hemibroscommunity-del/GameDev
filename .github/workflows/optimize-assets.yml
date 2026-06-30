@@ -1,0 +1,40 @@
+name: Optimize sprite assets
+
+# Converts sprite-sheet PNGs to LOSSLESS WebP (smaller downloads) and commits the
+# .webp next to the .png. Runs on CI because the dev sandbox has no image tooling.
+# Triggered when the converter/workflow changes (push) or manually. The commit it
+# makes only touches public/sprites (not the path-filtered files), so it does not
+# re-trigger itself.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/optimize-sprites.mjs'
+      - '.github/workflows/optimize-assets.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install sharp
+        run: npm i --no-save sharp@0.33.5
+      - name: Convert PNG -> lossless WebP
+        run: node tools/optimize-sprites.mjs
+      - name: Commit WebP copies
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/sprites
+          if git diff --cached --quiet; then
+            echo "No WebP changes to commit."
+          else
+            git commit -m "chore: lossless WebP sprite copies for smaller downloads"
+            git push
+          fi
