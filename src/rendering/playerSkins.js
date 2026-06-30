@@ -636,9 +636,9 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
  *  stand + jog, so an UNARMOURED player (or any moment the body shows) never
  *  flashes the default-skin frame when first turning/jogging in a direction.
  *  Resolves immediately for the default combo (base sheets are used as-is).
- *  v2.3.1117: stand + jog ONLY.  Pickup/mine/head are deliberately NOT prewarmed
- *  -- see the note inside; their resident GPU cost outweighed avoiding a brief
- *  first-use skin flash on iPhone. */
+ *  v2.3.1118: stand + jog (all dirs) + the south-only pickup body & head overlay.
+ *  Mine stays lazy -- see the notes inside for why pickup/head are cheap to
+ *  prewarm now but mine and the full-res head were not. */
 export function preloadBodyAll() {
   /* v2.3.756: baked shirt retired -- the body always bakes SHIRTLESS (the
      layered shirt is a separate tinted gear sprite).  The shirt machinery
@@ -654,14 +654,18 @@ export function preloadBodyAll() {
   for (const pose of ['stand', 'jog']) {
     for (const dir of SOURCE_DIRS) prewarm(pose, dir);
   }
-  /* v2.3.1117: do NOT prewarm pickup/mine/head here.  Forcing those sheets
-     resident at spawn added ~25MB of GPU textures to an armoured session (the
-     pickup body + mine body + the full-res head overlay), which on iPhone Safari
-     pushed the page past its WebGL memory budget -- the context was then lost
-     (black screen + auto-restore) after a few loot pickups.  These poses bake
-     lazily on first use instead; the brief first-pickup default-skin frame is a
-     fair trade for not blowing the VRAM budget.  (mine in particular was pure
-     waste during a loot-only session.) */
+  /* v2.3.1118: prewarm the pickup BODY + (downscaled) HEAD behind the intro, so
+     the first armoured loot pickup doesn't hitch while they bake mid-play (the
+     v2.3.1117 lazy bake traded the spawn cost for an in-play frame-rate dip on
+     the first few pickups).  This is safe now: it does NOT raise the post-pickup
+     memory PEAK -- those sheets bake on first use anyway, so prewarming only
+     moves the one-time bake earlier, it doesn't add anything resident that lazy
+     baking wouldn't.  The actual VRAM fix that stopped the iOS context loss was
+     shrinking the head (v2.3.1117) and dropping the mine sheet -- and MINE stays
+     lazy here (irrelevant to looting, pure VRAM waste otherwise). */
+  prewarm('pickup', 'south');
+  const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
+  if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
   return Promise.all(tasks);
 }
 
