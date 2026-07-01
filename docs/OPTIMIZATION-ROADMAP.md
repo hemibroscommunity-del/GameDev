@@ -49,27 +49,30 @@ regression would ship silently. This PR adds two suites alongside
 `npm test` in `server/` now runs all three files, so the existing
 `server-ci.yml` gate picks them up with no workflow change.
 
-## P2 — Remaining trust gaps (one small PR each, after P1)
+## P2 — Remaining trust gaps
 
-In order of impact:
+Items 1–3 shipped in the v2.3.1104 hardening PR; item 4 remains open.
 
-1. **Equipment ownership on sell** (`_handleSellWeapon`, ~line 1250): the
-   server trusts that the weapon at the given stash index is legitimate.
-   Validate the stash slot contents against server-known weapon shapes
-   (type in the known table, tierMult within forge bounds) before paying
-   coins.
-2. **Weapon/armor object trust on join and stats_update**: `tierMult` is
-   clamped (armor ≤ 8) but the weapon object itself is client-supplied.
-   Same validation as (1) applies.
-3. **Minigame outcomes** (cook/fish/mine accuracy): partially mitigated —
-   "perfect" claims are rate-limited to 10/min (`_ratedHarvestAccuracy`,
-   ~line 947) and fishing/wood yield is capped at 1 regardless. Cooking
-   (`cook_request`) still assumes the client won the minigame; add a
-   plausibility rate limit like the harvest one.
-4. **Elemental damage follow-up**: `_computeAttackDamage` deliberately
-   omits amulet elemDmg / elementalMastery / combo damage (comment at
-   ~line 3325). Elemental builds currently do weapon-only authoritative
-   damage. Needs a server-side elemental status model — bigger slice.
+1. ~~**Weapon blob trust on join/load**~~ **(done, v2.3.1104)**: weapon
+   objects from the first-connect bootstrap and legacy stored records now
+   pass through `_sanitizeWeapon` (tierMult clamped to the legit forge
+   range, ≤ 8). This mattered more than first assessed: since v2.3.912
+   the server's own damage roll multiplies by tierMult, so a forged blob
+   inflated *authoritative* damage, not just cosmetic numbers.
+2. ~~**Sell overpay**~~ **(done, v2.3.1104)**: `_weaponSellValue` clamps
+   tierMult defensively, so a stale pre-clamp stored blob can't cash out
+   at forged value.
+3. ~~**Cooking minigame cadence**~~ **(done, v2.3.1104)**: `cook_request`
+   is rate-limited to 20/min per player (mirrors the Slice-18 harvest
+   limit); excess requests drop without consuming the fish, and the
+   history persists in the rpg blob so reconnect-cycling can't reset the
+   window. The outcome (`kind`) itself is still client-trusted — full
+   closure needs server-side minigame simulation.
+4. **Elemental damage follow-up (open)**: `_computeAttackDamage`
+   deliberately omits amulet elemDmg / elementalMastery / combo damage
+   (comment near the function). Elemental builds currently do weapon-only
+   authoritative damage. Needs a server-side elemental status model —
+   bigger slice.
 
 ## P3 — Client smoke test in CI
 
