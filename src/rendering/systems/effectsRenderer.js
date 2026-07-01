@@ -101,6 +101,70 @@ Assets.load('/icons/ore/ore-copper.webp').then((tex) => {
   if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
 }).catch((err) => console.warn('[ore-icon] load failed', err));
 
+/* Snowman get-hit impact (v2.3.1127): a one-shot ice-burst ERUPTION played at a
+   snowman's torso each time it's hit, ROTATED so the plume shoots along the
+   attack direction (attack from below -> plume up; from above -> plume down;
+   from a side -> plume sideways).  Owner-uploaded sheet is a single row of 8
+   frames, 192×1024 each; the upward plume is the "north" base art.  The burst
+   column sits at y≈301-600 of the 1024-tall frame, its root (base) at y≈600.
+   Mirrors the ore-break pattern: carve frames up front, then spawn/advance. */
+const IMPACT_FRAME_W = 192;
+const IMPACT_FRAME_H = 1024;
+const IMPACT_SRC_FROM = 0;
+/* v2.3.1130: the sheet is a DOUBLE pulse (per-frame density [6,23,53,78,62,100,
+   39,6] peaks at f3, dips at f4, peaks again at f5), so playing all 8 erupted
+   twice.  End on the FIRST peak: frames 0..3 only. */
+const IMPACT_SRC_TO = 4;          /* exclusive — frames 0..3, rise to the first peak */
+const IMPACT_FRAMES = IMPACT_SRC_TO - IMPACT_SRC_FROM;
+/* Sizing: scale by a target on-screen plume HEIGHT (the effect is a vertical
+   column, so height reads better than frame width).  IMPACT_CONTENT_H is the
+   burst column's height within the frame (y≈301-600 ≈ 300 px); IMPACT_PLUME_H is
+   the full-size on-screen height (~1.5× the 64-px snowman).  Arrows render at
+   sizeMul 0.5.  Owner-tunable. */
+const IMPACT_CONTENT_H = 300;
+const IMPACT_PLUME_H = 96;
+/* Normalised Y of the burst root (base) within the frame — the sprite anchors
+   here so the plume pivots/erupts from one point under rotation. */
+const IMPACT_ROOT_Y = 0.586;
+/* Center-mass offset above the snowman container origin (feet sit ~13 px below
+   it; the 64-px sprite reaches ~51 px above, so torso centre ≈ 19 px up).  The
+   root anchor is placed here, and the plume erupts outward from it. */
+const IMPACT_CENTER_DY = 19;
+/* One-shot flash: play the frames once over this window, then dispose.
+   v2.3.1126: 420 -> 210 (owner) so the burst snaps faster on contact.
+   v2.3.1128: 210 -> 420 (owner) -- the directional eruption read too fast;
+   half-speed lets the plume rise and settle.
+   v2.3.1130: 420 -> 210 alongside the 8->4 frame trim, keeping the same ~52ms/
+   frame pace the owner approved (was 420/8; now 210/4). */
+const IMPACT_DURATION_MS = 210;
+/* v2.3.1129: minimum gap between eruptions ON THE SAME snowman.  A single weapon
+   can't hit faster than the ~200ms swing/fire cooldown, so this never drops a
+   real hit, but it collapses any near-simultaneous double-stamp (e.g. two
+   players landing at once) into one plume so the effect can't visibly duplicate. */
+const IMPACT_MIN_GAP_MS = 150;
+/* Lazy-loaded (v2.3.1124): the sheet is ~2 MB, so it's only fetched the first
+   time a snowman is actually on screen (zone entry) -- not at startup, where
+   town has no snowmen.  Keeps the "no eager preloading" memory/download budget. */
+let IMPACT_TEX = null;
+let _impactLoadStarted = false;
+function ensureImpactTex() {
+  if (_impactLoadStarted) return;
+  _impactLoadStarted = true;
+  Assets.load('/sprites/monsters/snowman/impact.png?v=2').then((tex) => {
+    if (!tex || !tex.source) return;
+    tex.source.scaleMode = 'linear';
+    tex.source.autoGenerateMipmaps = true;
+    const arr = [];
+    for (let i = IMPACT_SRC_FROM; i < IMPACT_SRC_TO; i++) {
+      arr.push(new Texture({
+        source: tex.source,
+        frame: new Rectangle(i * IMPACT_FRAME_W, 0, IMPACT_FRAME_W, IMPACT_FRAME_H),
+      }));
+    }
+    IMPACT_TEX = arr;
+  }).catch((err) => console.warn('[snowman-impact] load failed', err));
+}
+
 const DMG_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 14,
@@ -612,6 +676,7 @@ export class EffectsRenderer {
     this._updateGroundLoot(S, now);
     this._updateGroundSplatter(S);
     this._updateGatherNodes(S, now);
+    this._updateMonsterImpacts(S, now);
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
@@ -2399,6 +2464,76 @@ export class EffectsRenderer {
 
     this._advanceOreBreaks(now);
     this._advanceItemPops(now);
+  }
+
+  /* Snowman get-hit impact (v2.3.1124).  Combat code (melee/projectile hit
+     sites + the peer monster_hit handler) stamps `m._impactAt` (and a size
+     `m._impactScale`: 1 for melee/magic, 0.5 for arrows) on a snowman each
+     time it's hit.  We spawn one flash per fresh stamp — tracking the last
+     spawned timestamp on the monster dedups the own-hit local stamp against
+     any later server echo (which only stamps peer hits), so a hit never
+     double-flashes. */
+  _updateMonsterImpacts(S, now) {
+    const monsters = S && S.monsters;
+    if (monsters) {
+      for (let i = 0; i < monsters.length; i++) {
+        const m = monsters[i];
+        if (!m) continue;
+        /* Kick the (lazy) sheet load as soon as a snowman is on screen, so the
+           texture is ready before the first hit lands. */
+        if (!_impactLoadStarted && (m.archetype || m.type) === 'snowman') ensureImpactTex();
+        if (IMPACT_TEX && m._impactAt && m._impactAt !== m._impactSpawned) {
+          m._impactSpawned = m._impactAt;
+          /* Collapse near-simultaneous stamps so one hit can't double-flash. */
+          if (now - (m._impactLastSpawn || 0) >= IMPACT_MIN_GAP_MS) {
+            m._impactLastSpawn = now;
+            this._spawnSnowmanImpact(m, m._impactScale || 1, now);
+          }
+        }
+      }
+    }
+    this._advanceSnowmanImpacts(now);
+  }
+
+  _spawnSnowmanImpact(m, sizeMul, now) {
+    if (!IMPACT_TEX) return;
+    if (!this._snowmanImpacts) this._snowmanImpacts = [];
+    const sp = new Sprite(IMPACT_TEX[0]);
+    /* Anchor at the burst root so the plume pivots/erupts from one point. */
+    sp.anchor.set(0.5, IMPACT_ROOT_Y);
+    sp.scale.set((IMPACT_PLUME_H / IMPACT_CONTENT_H) * sizeMul);
+    /* Rotate the up-pointing base art to point along the attack direction.
+       Base art points up (-PI/2); rotation = attackAngle + PI/2 maps
+       north->0, south->PI, east->PI/2, west->-PI/2.  No angle -> up. */
+    const ang = (m._impactAngle != null ? m._impactAngle : -Math.PI / 2);
+    sp.rotation = ang + Math.PI / 2;
+    sp.x = (m.x != null ? m.x : m.renderX) || 0;
+    sp.y = ((m.y != null ? m.y : m.renderY) || 0) - IMPACT_CENTER_DY;
+    /* particleLayer renders above entities/player, so the flash sits over the
+       snowman, and it's world-space so it lands at the snowman's position. */
+    this.particleLayer.addChild(sp);
+    this._snowmanImpacts.push({ sp, startedAt: now });
+  }
+
+  /* Advance + retire active snowman impacts: play the strip once, then dispose
+     (an impact flash leaves nothing behind). */
+  _advanceSnowmanImpacts(now) {
+    const list = this._snowmanImpacts;
+    if (!list || !list.length || !IMPACT_TEX) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i];
+      const t = now - fx.startedAt;
+      if (t >= IMPACT_DURATION_MS || fx.sp.destroyed) {
+        if (!fx.sp.destroyed) {
+          if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp);
+          fx.sp.destroy();
+        }
+        list.splice(i, 1);
+        continue;
+      }
+      const idx = Math.min(IMPACT_FRAMES - 1, Math.floor((t / IMPACT_DURATION_MS) * IMPACT_FRAMES));
+      fx.sp.texture = IMPACT_TEX[idx];
+    }
   }
 
   /* Spawn a one-shot ore-vein break animation at a depleted node.  Sized to
