@@ -3614,12 +3614,10 @@ export class EffectsRenderer {
         spr.scale.set(chopSign < 0 ? -sL : sL, sL);
         spr.x = sp.x; spr.y = sp.y; spr.visible = true;
       };
-      /* Shirt shown only when NO chest plate is worn (the plate replaces it).
-         Left untinted -- the owner's chop shirt art is a fixed colour, not a
-         white recolour base like the paper-doll shirt. */
-      placeChopLayer(this.chopShirtSprite,
-        getEquip('chest') === 'none' ? this._gearStripFrame('shirt', getShirt(), 'chop', 'west', 480, k) : null);
-      if (this.chopShirtSprite) this.chopShirtSprite.tint = 0xffffff;
+      /* Shirt: paper-doll recolour -- the chop shirt art is a grayscale base, so
+         _placeSwingShirt tints it to the player's chosen shirt colour (and hides
+         it when a chest plate is worn, which replaces it). */
+      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, getShirt(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor());
       placeChopLayer(this.chopLegsSprite,  this._gearStripFrame('legs',  getEquip('legs'),  'chop', 'west', 480, k));
       placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', 480, k));
       /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
