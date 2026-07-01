@@ -533,8 +533,9 @@ export function processGameEvent(type, payload, S, deps) {
               var dmgTaken2 = (typeof payload.dmgTaken === 'number' && S._serverMonsters)
                 ? payload.dmgTaken
                 : Math.max(1, mDmg - pDef2 * 0.3);
-              var inArc = isAttackInShieldArc(S, _atkX, _atkY);
-              if (S._shieldUp && inArc) {
+              /* v2.3.1110: omnidirectional block (owner decision) -- the arc
+                 test made this fallback disagree with the server's omni rule. */
+              if (S._shieldUp) {
                 /* Full block: no damage through.  (Was partial via
                    calcBlockReduction; user request is "the damage gets
                    blocked.")  In MP the server already skipped the
@@ -573,7 +574,8 @@ export function processGameEvent(type, payload, S, deps) {
                   player: { x: Math.round(S.player.x), y: Math.round(S.player.y) },
                   dist: Math.round(_atkDist),
                   shieldUp: !!S._shieldUp,
-                  inArc: inArc,
+                  /* v2.3.1110: arc retired -- block is omnidirectional */
+                  inArc: !!S._shieldUp,
                 });
               } catch (e) {}
               /* v2.3.248: player sprite hit-flash on MP server-monster

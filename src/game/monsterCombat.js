@@ -415,15 +415,21 @@ export function updateMonsterCombat(S, deps) {
                    player's center -- visually overshoots the player.
                    Reference the monster's body center for chase so the
                    55 px gate is measured center-to-center. */
-                var _bodyOffsetN = (arch === 'fodder') ? 40 :
-                                   (arch === 'fireGoblin') ? 28 :
-                                   (arch === 'mummy' || arch === 'skeleton') ? 48 :
-                                   0;
-                var _chDyN = P.y - (m.y - _bodyOffsetN);
-                var _chDistN = Math.sqrt(chDx * chDx + _chDyN * _chDyN);
-                if (_chDistN > 55) {
-                  m.x += chDx / _chDistN * m.spd * moveMult;
-                  m.y += _chDyN / _chDistN * m.spd * moveMult;
+                /* v2.3.1110: unified stop ring -- mirror the SERVER's tuned
+                   metric exactly (server/src/index.js _tickMonsters:
+                   ATTACK_RANGE 45, Y_SCALE 3 on the raw feet-anchored dy;
+                   keep in sync).  The old client-only model (body-center
+                   offset + 55 px circle) stopped these variants ~55 px away
+                   on N/S approaches but only ~27 px on E/W -- the reported
+                   "monsters stop further away north/south".  Every monster
+                   now stops at the same owner-tuned ring: ~45 px E/W,
+                   ~15 px N/S, regardless of which side drives its AI. */
+                var _chDyN = P.y - m.y;
+                var _ringDist = Math.sqrt(chDx * chDx + (_chDyN * 3) * (_chDyN * 3));
+                if (_ringDist > 45) {
+                  var _moveDist = Math.sqrt(chDx * chDx + _chDyN * _chDyN) || 1;
+                  m.x += chDx / _moveDist * m.spd * moveMult;
+                  m.y += _chDyN / _moveDist * m.spd * moveMult;
                 }
               }
 
@@ -491,7 +497,7 @@ export function updateMonsterCombat(S, deps) {
                     }
                     /* Dodging or shielding avoids damage */
                     var dodged = S._dodgeRoll;
-                    var blocked = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
+                    var blocked = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional (owner: unify on the server rule) */
                     if (distToP < slamRange && !invuln && !dodged) {
                       var slamDmg = Math.ceil(m.dmg * 1.5);
                       var finalDmg = blocked ? 0 : slamDmg;
@@ -653,7 +659,7 @@ export function updateMonsterCombat(S, deps) {
                 /* Charge hit detection */
                 if (distToP < 20 && !invuln) {
                   var chargeDmg = Math.ceil(m.dmg * 1.5);
-                  var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
+                  var _blocked2 = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
                   /* v2.3.232 (Phase 2): block is full negation now; the
                      old partial-block reduction via calcBlockReduction
                      was the last site reading the Fortification scale. */
@@ -708,7 +714,7 @@ export function updateMonsterCombat(S, deps) {
                   /* Telegraph done — execute attack */
                   m._telegraphUntil = null;
                   m._atkCd = Date.now();
-                  var shielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
+                  var shielded = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
                   var rawDmg = Math.max(1, m.dmg);
                   /* §18.1 Food buff — resist reduces incoming damage */
                   if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.85));
