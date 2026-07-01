@@ -57,7 +57,10 @@ jobs:
         run: nohup npx wrangler dev --port 8787 > ../wrangler.log 2>&1 &
         working-directory: server
       - name: Start vite preview (serves dist/ on 4173)
-        run: nohup npm run preview -- --port 4173 --strictPort > preview.log 2>&1 &
+        # --host 127.0.0.1 pins the IPv4 loopback: with the default
+        # "localhost" host, the runner binds ::1 only and the readiness
+        # probe below (127.0.0.1) never connects.
+        run: nohup npm run preview -- --port 4173 --strictPort --host 127.0.0.1 > preview.log 2>&1 &
       - name: Wait for servers (lobby probe doubles as DO cold-start warm-up)
         run: |
           for i in $(seq 1 60); do
