@@ -1194,12 +1194,12 @@ export class GameRoom {
   //   weaponStash    -- array of stored weapons (max WEAPON_STASH_MAX = 8)
   //
   // This slice stores equipment as opaque objects the client provided.
-  // Server doesn't yet compute weapon stats (base damage, tier mult,
-  // etc.) -- that mirror lands in the "server-computed damage" slice.
-  // The cheat closure here is "is this a fake item?": with equipment
-  // server-tracked, future slices can validate that a sold weapon
-  // actually exists in the player's stash / active slot before
-  // crediting coins or pushing to the marketplace.
+  // v2.3.1104: no longer fully opaque -- weapon blobs pass through
+  // _sanitizeWeapon (tierMult clamp) at every entry point (first-connect
+  // bootstrap, stored-record load), because server-computed damage
+  // (v2.3.912) and sell value both multiply by tierMult.  Sales are
+  // paid from the server-tracked stash entry, never a client-supplied
+  // object.
   //
   // Mirror of WEAPON_TYPES base damage values from
   // src/data/gameSystems.js.  Used for sell-value math and (later)
@@ -1238,11 +1238,43 @@ export class GameRoom {
     return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
   }
 
+  // v2.3.1104: weapon-blob sanitizer (P2 of docs/OPTIMIZATION-ROADMAP.md).
+  // Weapon objects enter server state from the client on first-connect
+  // bootstrap (and legacy stored blobs predate any validation).  Since
+  // v2.3.912 the server's own damage roll multiplies by tierMult, so a
+  // forged { tierMult: 9999 } blob inflates AUTHORITATIVE damage and
+  // sell value -- the old "opaque blobs are harmless" comment stopped
+  // being true when server-computed damage shipped.
+  //
+  // Clamp tierMult to [0, 8] (max legit forge tier is worldbreaker at
+  // 7.84; mirrors the armor clamp in _handleStatsUpdate).  Deliberately
+  // does NOT reject unknown weapon types: they already fall back to the
+  // fists base (6.25) in _weaponBase, and nulling them would destroy
+  // legit items if the client ships a new type before this table learns
+  // about it.
+  _sanitizeWeapon(w) {
+    if (!w || typeof w !== 'object') return null;
+    const out = { ...w };
+    out.tierMult = (typeof out.tierMult === 'number' && out.tierMult > 0)
+      ? Math.min(8, out.tierMult) : 1;
+    return out;
+  }
+
+  _sanitizeWeaponList(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(0, this.WEAPON_STASH_CAP)
+      .map((w) => this._sanitizeWeapon(w))
+      .filter(Boolean);
+  }
+
   // Sell value mirrors the client at BroTown.jsx ~26613:
   //   ceil((tierMult || 1) * (WEAPON_TYPES[type].base || 30) * 0.5)
+  // v2.3.1104: tierMult bounded via _sanitizeWeapon at every entry
+  // point; clamp again here so a stale stored blob can't overpay.
   _weaponSellValue(weapon) {
     if (!weapon) return 0;
-    const tierMult = (typeof weapon.tierMult === 'number' && weapon.tierMult > 0) ? weapon.tierMult : 1;
+    const tierMult = (typeof weapon.tierMult === 'number' && weapon.tierMult > 0)
+      ? Math.min(8, weapon.tierMult) : 1;
     const base = this._weaponBase(weapon.type);
     return Math.max(1, Math.ceil(tierMult * base * 0.5));
   }
@@ -1827,13 +1859,37 @@ export class GameRoom {
   // inventory + lifeSkills with the authoritative values.
   //
   // Trusts the client on `kind` (the minigame outcome).  Closing that
-  // needs server-side minigame validation -- separate slice.
+  // fully needs server-side minigame validation -- separate slice.
+  //
+  // v2.3.1104: rate-limited (P2 of docs/OPTIMIZATION-ROADMAP.md), same
+  // posture as the Slice-18 harvest limit: the server can't simulate
+  // the pan minigame, but it CAN bound the cadence.  Each cook takes
+  // several seconds of minigame; 20/min (one per 3 s) is well above
+  // legit play, so a script hammering cook_request to convert a fish
+  // stockpile + farm cooking XP at inhuman speed gets throttled.
+  // Excess requests are dropped WITHOUT consuming the fish, and we
+  // echo player_state so the client's optimistic local outcome snaps
+  // back to the authoritative inventory.
+  _cookRateOk(ps) {
+    const now = Date.now();
+    if (!Array.isArray(ps._cookHistory)) ps._cookHistory = [];
+    ps._cookHistory = ps._cookHistory.filter((t) => (now - t) < 60000);
+    if (ps._cookHistory.length >= 20) return false;
+    ps._cookHistory.push(now);
+    return true;
+  }
+
   _handleCookRequest(session, payload) {
     if (!session || !session.id) return;
     const { fishKey, kind } = payload || {};
     if (typeof fishKey !== 'string' || !fishKey.startsWith('fish_')) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
+    if (!this._cookRateOk(ps)) {
+      const ws = this._wsBySessionId(session.id);
+      if (ws) this._sendPlayerState(ws, session.id);
+      return;
+    }
     if (!ps.inventory) ps.inventory = {};
     if ((ps.inventory[fishKey] || 0) <= 0) return;
     ps.inventory[fishKey] -= 1;
@@ -2277,6 +2333,9 @@ export class GameRoom {
         // would otherwise let them claim 'perfect' indefinitely
         // by cycling the WS connection between batches).
         _perfectHistory: Array.isArray(ps._perfectHistory) ? ps._perfectHistory : [],
+        // v2.3.1104: cook rate-limit history, same reconnect-cycling
+        // rationale as _perfectHistory above.
+        _cookHistory: Array.isArray(ps._cookHistory) ? ps._cookHistory : [],
         // v2.3.1021: weapon/defense skill track -- durable now (was localStorage-only).
         weaponSkills: ps.weaponSkills || {},
         weaponUnspent: ps.weaponUnspent || {},
@@ -3715,12 +3774,14 @@ export class GameRoom {
             this.playerState[msg.id].mana = typeof stored.mana === 'number' ? stored.mana : 100;
             this.playerState[msg.id].maxMana = typeof stored.maxMana === 'number' ? stored.maxMana : 100;
             this.playerState[msg.id]._buffs = (stored._buffs && typeof stored._buffs === 'object') ? { ...stored._buffs } : {};
-            // Equipment from stored.  Server doesn't validate the
-            // shape of these blobs -- just preserves what was last
-            // persisted.  Stash truncated to cap.
-            this.playerState[msg.id].weapon = stored.weapon || null;
-            this.playerState[msg.id].rangedWeapon = stored.rangedWeapon || null;
-            this.playerState[msg.id].staffWeapon = stored.staffWeapon || null;
+            // Equipment from stored.  v2.3.1104: weapon blobs are
+            // re-sanitized on load too -- records persisted before the
+            // bootstrap clamp existed may carry forged tierMult values;
+            // this heals them on the next reconnect.  Stash truncated
+            // to cap.
+            this.playerState[msg.id].weapon = this._sanitizeWeapon(stored.weapon);
+            this.playerState[msg.id].rangedWeapon = this._sanitizeWeapon(stored.rangedWeapon);
+            this.playerState[msg.id].staffWeapon = this._sanitizeWeapon(stored.staffWeapon);
             this.playerState[msg.id].activeSlot = stored.activeSlot || 'melee';
             // v2.3.249: Leather Armor removed from the game.  Strip
             // any persisted leather armor on load so pre-existing saves
@@ -3728,7 +3789,7 @@ export class GameRoom {
             this.playerState[msg.id].armor = (stored.armor && stored.armor.name === 'Leather Armor') ? null : (stored.armor || null);
             this.playerState[msg.id].shield = stored.shield || null;
             this.playerState[msg.id].amulet = stored.amulet || null;
-            this.playerState[msg.id].weaponStash = Array.isArray(stored.weaponStash) ? stored.weaponStash.slice(0, this.WEAPON_STASH_CAP) : [];
+            this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(stored.weaponStash);
             this.playerState[msg.id]._quests = (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {};
             this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
             this.playerState[msg.id]._questKills = (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {};
@@ -3737,6 +3798,7 @@ export class GameRoom {
             // window survives reconnects.  Stale entries (>60s old)
             // get pruned on the next _ratedHarvestAccuracy call.
             this.playerState[msg.id]._perfectHistory = Array.isArray(stored._perfectHistory) ? stored._perfectHistory : [];
+            this.playerState[msg.id]._cookHistory = Array.isArray(stored._cookHistory) ? stored._cookHistory : [];
             // v2.3.1021: weapon/defense skill track.  These were never
             // persisted before this slice, so an existing player's stored
             // record has none -- fall back to the join payload (their current
@@ -3811,14 +3873,15 @@ export class GameRoom {
             this.playerState[msg.id].mana = (msg.data && typeof msg.data.rpgMana === 'number') ? msg.data.rpgMana : 100;
             this.playerState[msg.id].maxMana = (msg.data && typeof msg.data.rpgMaxMana === 'number') ? msg.data.rpgMaxMana : 100;
             this.playerState[msg.id]._buffs = {};
-            // Equipment bootstrap.  No first-connect cap on the
-            // equipment blobs themselves -- they're opaque objects
-            // and any "cheating" of weapon stats would only matter
-            // once we compute damage server-side (later slice).
+            // Equipment bootstrap.  v2.3.1104: weapon blobs are now
+            // SANITIZED on entry (tierMult clamped to the legit forge
+            // range) because server-computed damage (v2.3.912) and
+            // sell value both multiply by tierMult -- the old "opaque
+            // blobs are harmless" posture stopped being true.
             // Stash truncated to cap to prevent join-time inflation.
-            this.playerState[msg.id].weapon = (msg.data && msg.data.rpgWeapon && typeof msg.data.rpgWeapon === 'object') ? { ...msg.data.rpgWeapon } : null;
-            this.playerState[msg.id].rangedWeapon = (msg.data && msg.data.rpgRangedWeapon && typeof msg.data.rpgRangedWeapon === 'object') ? { ...msg.data.rpgRangedWeapon } : null;
-            this.playerState[msg.id].staffWeapon = (msg.data && msg.data.rpgStaffWeapon && typeof msg.data.rpgStaffWeapon === 'object') ? { ...msg.data.rpgStaffWeapon } : null;
+            this.playerState[msg.id].weapon = this._sanitizeWeapon(msg.data && msg.data.rpgWeapon);
+            this.playerState[msg.id].rangedWeapon = this._sanitizeWeapon(msg.data && msg.data.rpgRangedWeapon);
+            this.playerState[msg.id].staffWeapon = this._sanitizeWeapon(msg.data && msg.data.rpgStaffWeapon);
             this.playerState[msg.id].activeSlot = (msg.data && typeof msg.data.rpgActiveSlot === 'string') ? msg.data.rpgActiveSlot : 'melee';
             // v2.3.249: drop leather armor from the first-connect bootstrap too.
             {
@@ -3827,7 +3890,7 @@ export class GameRoom {
             }
             this.playerState[msg.id].shield = (msg.data && msg.data.rpgShield && typeof msg.data.rpgShield === 'object') ? { ...msg.data.rpgShield } : null;
             this.playerState[msg.id].amulet = (msg.data && msg.data.rpgAmulet && typeof msg.data.rpgAmulet === 'object') ? { ...msg.data.rpgAmulet } : null;
-            this.playerState[msg.id].weaponStash = (msg.data && Array.isArray(msg.data.rpgWeaponStash)) ? msg.data.rpgWeaponStash.slice(0, this.WEAPON_STASH_CAP) : [];
+            this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(msg.data && msg.data.rpgWeaponStash);
             // Quest state bootstrap (slice 17).  Trust shape but not
             // size -- a cheater could pass a 10000-entry _questKills
             // map to inflate storage.  Strip non-numeric values and
@@ -3865,6 +3928,7 @@ export class GameRoom {
             this.playerState[msg.id].achievementPoints = Math.max(0, Math.min(99999,
               (msg.data && typeof msg.data.rpgAchievementPoints === 'number') ? Math.floor(msg.data.rpgAchievementPoints) : 0));
             this.playerState[msg.id]._perfectHistory = [];
+            this.playerState[msg.id]._cookHistory = [];
             // v2.3.1021: weapon/defense skill track -- bootstrap from the join
             // payload on first connect (sanitized), then persisted below.
             {

@@ -241,5 +241,64 @@ const psB = room.playerState.pb;
     && creditB && creditB.payload.coins === 30 && !creditB.payload.skull, creditB && creditB.payload);
 }
 
+// ── 6. v2.3.1104 weapon-blob sanitation (roadmap P2) ──
+// Since v2.3.912 the server's own damage roll and the sell value both
+// multiply by tierMult, so a forged blob at first connect inflates
+// AUTHORITATIVE numbers.  Bootstrap and stored-load now sanitize.
+{
+  const wsZ = fakeWs('forger');
+  room.sessions.set(wsZ, baseSession());
+  await room.webSocketMessage(wsZ, JSON.stringify({
+    type: 'join', id: 'pz', name: 'Forger', protocolVersion: 2, data: {
+      x: -100000, y: -100000, z: 'meadow',
+      rpgWeapon: { type: 'greatsword', tierMult: 9999 },
+      rpgWeaponStash: [{ type: 'sword', tierMult: 500 }, 'junk', null, { type: 'bow' }],
+    },
+  }));
+  const psZ = room.playerState.pz;
+  check('sanitize: bootstrap weapon tierMult clamps to 8 (max forge tier 7.84)',
+    psZ.weapon && psZ.weapon.tierMult === 8, psZ.weapon);
+  check('sanitize: bootstrap stash clamps tiers, drops non-object junk',
+    Array.isArray(psZ.weaponStash) && psZ.weaponStash.length === 2
+    && psZ.weaponStash[0].tierMult === 8 && psZ.weaponStash[1].type === 'bow'
+    && psZ.weaponStash[1].tierMult === 1, psZ.weaponStash);
+
+  // Sell overpay: a stale stored blob (persisted before the clamp
+  // existed) can't cash out at forged value — _weaponSellValue clamps
+  // again defensively.  ceil(8 * 6.67 * 0.5) = 27 coins, not ~33k.
+  psZ.weaponStash = [{ type: 'sword', tierMult: 9999 }];
+  psZ.coins = 0; psZ.dead = false; psZ.dying = false; psZ.disconnected = false;
+  room._handleSellWeapon(room.sessions.get(wsZ), { stashIdx: 0 });
+  check('sanitize: sell value clamped to legit tier range', psZ.coins === 27
+    && psZ.weaponStash.length === 0, { coins: psZ.coins, stash: psZ.weaponStash.length });
+}
+
+// ── 7. v2.3.1104 cook_request rate limit (20/min, roadmap P2) ──
+// The pan-minigame outcome is client-trusted; the server bounds the
+// CADENCE so a script can't convert a fish stockpile + farm cooking XP
+// at inhuman speed.  Excess requests drop without consuming the fish.
+{
+  const ps = room.playerState.pz;
+  ps.inventory = { fish_minnow: 30 };
+  ps._cookHistory = [];
+  const wsZ = [...room.sessions.entries()].find(([, s]) => s.id === 'pz')[0];
+  for (let i = 0; i < 25; i++) {
+    await room.webSocketMessage(wsZ, JSON.stringify({ type: 'cook_request', payload: { fishKey: 'fish_minnow', kind: 'cooked' } }));
+  }
+  check('cook: only 20 requests per minute consume fish', ps.inventory.fish_minnow === 10, ps.inventory.fish_minnow);
+  check('cook: cooked output matches the 20 accepted', ps.inventory.cooked_fish_minnow === 20, ps.inventory.cooked_fish_minnow);
+
+  // History persists via _saveRpg so cycling the WS connection can't
+  // reset the 60-second window (same posture as _perfectHistory).
+  let saved = null;
+  const origPut = room.state.storage.put;
+  room.state.storage.put = async (k, v) => { if (k === 'rpg:pz') saved = v; };
+  await room._saveRpg('pz', ps);
+  room.state.storage.put = origPut;
+  check('cook: rate-limit history persisted in the rpg blob',
+    saved && Array.isArray(saved._cookHistory) && saved._cookHistory.length === 20,
+    saved && saved._cookHistory && saved._cookHistory.length);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
