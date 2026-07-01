@@ -5,6 +5,8 @@
  *   - built client served at :4173   (npm run build && npm run preview)
  *   - local worker at :8787          (cd server && npx wrangler dev --port 8787)
  *   - chrome-headless-shell at /tmp/chrome-headless-shell-linux64/
+ *     (v2.3.1105: qa-smoke.mjs can also use QA_CHROME env or a
+ *     playwright-managed browser; the other harnesses still need /tmp)
  *
  * Usage:  node tools/qa/run-all.mjs            # full suite
  *         node tools/qa/run-all.mjs husk gl    # only scripts matching a term

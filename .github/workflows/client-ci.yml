@@ -1,14 +1,28 @@
-# Client CI — lint + build on every PR (v2.3.765).
+# Client CI — lint + build + runtime smoke on every PR.
 #
 # Born from the v2.3.756 incident: an out-of-scope const reference shipped to
 # production as a per-frame ReferenceError.  `eslint src` (no-undef + a few
 # correctness rules, see eslint.config.js) catches that class before merge;
-# the build catches parse/import breakage.  The deeper runtime smoke test
-# (tools/qa-smoke.mjs) needs a browser and stays a session-side tool.
+# the build catches parse/import breakage.
+#
+# v2.3.1105: the runtime smoke test (tools/qa/qa-smoke.mjs) now runs in CI
+# too — it boots the BUILT client against a LOCAL worker (`wrangler dev`,
+# Miniflare — no Cloudflare account/token needed; the only bindings are
+# SQLite-backed Durable Objects, fully emulated), joins as "QA Bot", walks
+# for ~1 min, and fails on: never joined, any uncaught page error, or a
+# captured crash log.  This is the only client<->worker integration gate,
+# so server/** changes trigger this workflow as well.
 name: Client CI
 on:
   pull_request:
-    paths: ['src/**', 'package.json', 'eslint.config.js']
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'eslint.config.js'
+      - 'vite.config.js'
+      - 'tools/qa/qa-smoke.mjs'
+      - 'server/**'
+      - '.github/workflows/client-ci.yml'
 jobs:
   lint-build:
     runs-on: ubuntu-latest
@@ -19,3 +33,59 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: server
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium-headless-shell
+      - name: Start local worker (wrangler dev, Miniflare)
+        run: nohup npx wrangler dev --port 8787 > ../wrangler.log 2>&1 &
+        working-directory: server
+      - name: Start vite preview (serves dist/ on 4173)
+        run: nohup npm run preview -- --port 4173 --strictPort > preview.log 2>&1 &
+      - name: Wait for servers (lobby probe doubles as DO cold-start warm-up)
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8787/api/lobby > /dev/null && break
+            if [ "$i" = 60 ]; then echo "worker never came up"; cat wrangler.log; exit 1; fi
+            sleep 1
+          done
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4173/ > /dev/null && break
+            if [ "$i" = 30 ]; then echo "preview never came up"; cat preview.log; exit 1; fi
+            sleep 1
+          done
+      - name: Run smoke test (one retry; second attempt gets a warmed DO)
+        env:
+          QA_WS_URL: ws://127.0.0.1:8787
+        run: |
+          node tools/qa/qa-smoke.mjs > qa-smoke.json \
+            || { echo "first attempt failed, retrying"; node tools/qa/qa-smoke.mjs > qa-smoke.json; }
+      - name: Show smoke output
+        if: always()
+        run: cat qa-smoke.json || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: qa-smoke-failure
+          path: |
+            qa-smoke.json
+            /tmp/qa-login.png
+            wrangler.log
+            preview.log
+          if-no-files-found: ignore
