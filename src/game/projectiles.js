@@ -604,7 +604,7 @@ export function updateSlimeProjectiles(S) {
                actual attacker direction. */
             var _atkFromX = P.x - Math.cos(proj.ang) * 50;
             var _atkFromY = P.y - Math.sin(proj.ang) * 50;
-            var pShielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, _atkFromX, _atkFromY);
+            var pShielded = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
             if (pShielded) {
               try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
               S.dmgNumbers.push({

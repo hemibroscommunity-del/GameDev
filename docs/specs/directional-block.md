@@ -1,5 +1,14 @@
 # Brotown UI Spec Reference — Directional Block Ring + Shield Mechanics
 
+> **v2.3.1110 (owner decision): block DIRECTIONALITY is retired.** All block
+> resolution — server monsters, client-AI variants, projectiles, bosses — is
+> now omnidirectional (shield up = blocked, no ±60° facing test), unifying on
+> the rule the server already adopted for reliability (client/server position
+> drift made the arc test miss). The block RING UI, parry timing, stamina
+> drain, and shield-equipment mechanics below remain valid; only the
+> facing-arc requirement is dropped. `isAttackInShieldArc` stays in
+> combatHelpers for a possible future skill-mode revival.
+
 Complete implementation spec for the directional block ring around the right joystick, the parry-on-timing mechanic integrated with it, and the shield equipment role. All dimensions assume portrait mobile per §15 (~380×760 viewport). This spec slots alongside §1.7d (utility wheel) and §1.7e (inventory surface) and extends §15 (combat HUD) with the new defensive layer.
 
 **Unified-state model.** Brotown has no separate combat and non-combat UI states. The HUD is constant: joysticks, block ring, shortcut edges, and utility wheel trigger are all present at all times. The world never pauses — this is an MMO, and server simulation continues regardless of what menu the player has open. The block ring and all combat surfaces are therefore ambient by default and activate on input, not on state transition.

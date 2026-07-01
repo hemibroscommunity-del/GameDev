@@ -497,7 +497,7 @@ export function updateMonsterCombat(S, deps) {
                     }
                     /* Dodging or shielding avoids damage */
                     var dodged = S._dodgeRoll;
-                    var blocked = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
+                    var blocked = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional (owner: unify on the server rule) */
                     if (distToP < slamRange && !invuln && !dodged) {
                       var slamDmg = Math.ceil(m.dmg * 1.5);
                       var finalDmg = blocked ? 0 : slamDmg;
@@ -659,7 +659,7 @@ export function updateMonsterCombat(S, deps) {
                 /* Charge hit detection */
                 if (distToP < 20 && !invuln) {
                   var chargeDmg = Math.ceil(m.dmg * 1.5);
-                  var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
+                  var _blocked2 = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
                   /* v2.3.232 (Phase 2): block is full negation now; the
                      old partial-block reduction via calcBlockReduction
                      was the last site reading the Fortification scale. */
@@ -714,7 +714,7 @@ export function updateMonsterCombat(S, deps) {
                   /* Telegraph done — execute attack */
                   m._telegraphUntil = null;
                   m._atkCd = Date.now();
-                  var shielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
+                  var shielded = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
                   var rawDmg = Math.max(1, m.dmg);
                   /* §18.1 Food buff — resist reduces incoming damage */
                   if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.85));
