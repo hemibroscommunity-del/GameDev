@@ -21,6 +21,7 @@ on:
       - 'eslint.config.js'
       - 'vite.config.js'
       - 'tools/qa/qa-smoke.mjs'
+      - 'tools/qa/qa-facing.mjs'
       - 'server/**'
       - '.github/workflows/client-ci.yml'
 jobs:
@@ -79,15 +80,24 @@ jobs:
         run: |
           node tools/qa/qa-smoke.mjs > qa-smoke.json \
             || { echo "first attempt failed, retrying"; node tools/qa/qa-smoke.mjs > qa-smoke.json; }
+      - name: Run facing regression (two sessions; v2.3.1109)
+        env:
+          QA_WS_URL: ws://127.0.0.1:8787
+        run: |
+          node tools/qa/qa-facing.mjs > qa-facing.json \
+            || { echo "first attempt failed, retrying"; node tools/qa/qa-facing.mjs > qa-facing.json; }
       - name: Show smoke output
         if: always()
-        run: cat qa-smoke.json || true
+        run: |
+          cat qa-smoke.json || true
+          cat qa-facing.json || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: qa-smoke-failure
           path: |
             qa-smoke.json
+            qa-facing.json
             /tmp/qa-login.png
             wrangler.log
             preview.log
