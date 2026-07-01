@@ -75,7 +75,7 @@ jobs:
           done
       - name: Run smoke test (one retry; second attempt gets a warmed DO)
         env:
-          QA_WS_URL: ws://127.0.0.1:8787
+          QA_WS_URL: ws://127.0.0.1:9999  # RED-TEST scratch commit — must fail
         run: |
           node tools/qa/qa-smoke.mjs > qa-smoke.json \
             || { echo "first attempt failed, retrying"; node tools/qa/qa-smoke.mjs > qa-smoke.json; }
