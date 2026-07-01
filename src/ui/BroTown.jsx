@@ -3981,11 +3981,36 @@ export var BroTown = function BroTown(_ref0) {
           : null;
         var _exChanged = _exCode !== (S._lastBroadcastEx || null);
         var _exHeartbeat = !!_exCode && (now - (S._lastExBroadcast || 0) > 500);
-        if (now - S.lastBroadcast > 33 && (isMoving || _facingChanged || _exChanged || _exHeartbeat)) {
+        /* v2.3.1107: explicit REST packet on the moving->stopped edge.
+           Stopping used to be signaled by SILENCE (the gate below only fires
+           while moving), so peers never got a final vx=0/vy=0 + resting
+           position -- their copy coasted on decaying velocity PAST the real
+           spot, and the position-delta facing fallback then read the
+           convergence as walking backwards.  The staleness timeout, velocity
+           snap-to-zero and hysteresis (v2.3.840) all compensate for that
+           missing packet; this sends the packet.  P.vx/vy are already 0 on
+           the stop frame, so the normal payload below carries the rest state. */
+        /* Latched (not edge-only): if the 22ms throttle blocks the exact stop
+           frame, the pending flag holds the rest packet for the next slot
+           instead of dropping it until the keepalive. Cleared on actual send. */
+        if (S._wasMovingBcast && !isMoving) S._restPending = true;
+        S._wasMovingBcast = !!isMoving;
+        var _justStopped = !!S._restPending;
+        /* v2.3.1107: 1 Hz idle keepalive -- same medicine v2.3.1092 gave the
+           harvest code (`ex`).  If a facing/rest broadcast is ever lost or a
+           peer joins mid-idle, the next keepalive self-heals within a second
+           instead of leaving the remote stuck on stale facing forever. */
+        var _idleKeepalive = now - S.lastBroadcast > 1000;
+        /* v2.3.1107: 33ms -> 22ms send throttle, matching the server's 22ms
+           tick.  At 33ms roughly every third server tick relayed a stale
+           position; matching cadences means every tick can carry fresh data.
+           Delta ticks keep the cost small; revisit if iPhone battery/network
+           profiling ever flags it. */
+        if ((now - S.lastBroadcast > 22 && (isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped)) || _idleKeepalive) {
           S.lastBroadcast = now;
           S._lastBroadcastFacing = S._renderFacing;
           if (S.channel) {
-            if (S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 33)) {
+            if (S.channel && (!S._lastMoveBroadcast || Date.now() - S._lastMoveBroadcast > 22)) {
               S._lastMoveBroadcast = Date.now();
               /* Calculate effective velocity — use dodge direction during roll */
               var bcastVx = P.vx;
@@ -4020,6 +4045,7 @@ export var BroTown = function BroTown(_ref0) {
               });
               S._lastBroadcastEx = _exCode;
               if (_exCode) S._lastExBroadcast = now;
+              S._restPending = false; /* v2.3.1107: rest packet delivered */
             }
             if (S.channel && (!S._lastTrack || Date.now() - S._lastTrack > 2000)) {
               var _rpg$lifeSkills7, _rpg$lifeSkills$pets, _rpg$_anniversaryItem, _rpg$armor, _rpg$shield, _rpg$amulet, _rpg$_compStats, _rpg$_compStats2, _rpg$_compStats3, _rpg$_compStats4, _rpg$_compStats5, _rpg$_compStats6, _rpg$_compStats7, _rpg$_compStats8, _S$_clanData2, _S$_clanData3, _S$_clanData4;
