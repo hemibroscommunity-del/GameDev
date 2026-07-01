@@ -4079,12 +4079,18 @@ export class GameRoom {
           // blocking/dodging/dead while teleporting.
           if (accept) {
             ps.x = msg.x; ps.y = msg.y;
-            ps.d = msg.d || ps.d; ps.z = newZone;
+            /* v2.3.1107: accept any DEFINED d/f, not just truthy -- today
+               both are non-empty strings so `||` worked, but a future
+               numeric encoding (0 = north) would silently stop relaying.
+               null/undefined still mean "no update" (client sends f: null
+               when it has no facing yet). */
+            if (msg.d !== undefined && msg.d !== null) ps.d = msg.d;
+            ps.z = newZone;
             ps.vx = msg.vx || 0; ps.vy = msg.vy || 0;
             /* v2.3.840: persist the sender's 8-way facing + live equip so
                the tick can relay them -- peers render the correct jog
                direction and live armour on/off. */
-            if (msg.f) ps.f = msg.f;
+            if (msg.f !== undefined && msg.f !== null) ps.f = msg.f;
             if (msg.eqc !== undefined) ps.eqc = msg.eqc;
             if (msg.eql !== undefined) ps.eql = msg.eql;
             if (msg.eqs !== undefined) ps.eqs = msg.eqs;

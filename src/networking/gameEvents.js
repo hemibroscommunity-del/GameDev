@@ -21,6 +21,20 @@ import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifes
 import { handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
+/* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
+   entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
+   remote's BODY facing with the angle carried by its action events
+   (swing/dodge/bow) -- those angles were applied to the action stand-in
+   only, so under broadcast latency the body could face one way while the
+   swing pointed another.  The next move broadcast (sender's own `f`)
+   overwrites this, so it's a between-packets correction, never a fork. */
+var _FACING8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+function _reconcileFacing(other, ang) {
+  if (!other || typeof ang !== 'number' || !isFinite(ang)) return;
+  var sector = Math.round(ang / (Math.PI / 4));
+  other._renderFacing = _FACING8[((sector % 8) + 8) % 8];
+}
+
 export function processGameEvent(type, payload, S, deps) {
   var setRpgState = deps.setRpgState,
     pixiRef = deps.pixiRef,
@@ -111,6 +125,8 @@ export function processGameEvent(type, payload, S, deps) {
                    sword/greatsword stand-in facing the right way. */
                 S.others[payload.id]._swingWpn = payload.wpn || null;
                 if (typeof payload.ang === 'number') S.others[payload.id]._swingAng = payload.ang;
+                /* v2.3.1107: point the body the same way as the swing. */
+                _reconcileFacing(S.others[payload.id], payload.ang);
               }
               break;
             }
@@ -130,6 +146,8 @@ export function processGameEvent(type, payload, S, deps) {
               if (!payload.isStaff && payload.id && S.others[payload.id]) {
                 S.others[payload.id]._bowShotAt = Date.now();
                 S.others[payload.id]._bowShotAng = payload.ang;
+                /* v2.3.1107: point the body the same way as the bow shot. */
+                _reconcileFacing(S.others[payload.id], payload.ang);
               }
               break;
             }
@@ -149,6 +167,13 @@ export function processGameEvent(type, payload, S, deps) {
                 S.others[payload.id]._dodgeRoll = {
                   angle: payload.angle, kind: payload.kind || 'dodge', startTime: Date.now()
                 };
+                /* v2.3.1107: dodge/lunge re-point the body along the dash.
+                   retreat_shot is EXCLUDED: it dashes away while firing AT
+                   the target -- its player_projectile event (which follows
+                   immediately) carries the correct shooting facing. */
+                if (payload.kind !== 'retreat_shot') {
+                  _reconcileFacing(S.others[payload.id], payload.angle);
+                }
               }
               break;
             }
