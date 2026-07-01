@@ -1,0 +1,245 @@
+/* Anti-cheat validation test — runs the GameRoom with mocked Durable
+ * Object state and fake sessions, and checks the server-side gates that
+ * were previously untested (2026-07-01 optimization roadmap, P1):
+ *   1. Movement anti-teleport: oversized position deltas are dropped
+ *      (position AND flags), zone changes bypass the gate.
+ *   2. PvP attack clamping: range/arc/dmgBase/critChance are bounded,
+ *      dead attackers can't fire, blocked hits deal 0.
+ *   3. stats_update: T1 stats clamp to the per-level cap, T2 stats cap
+ *      at 99, client-pushed maxHp is ignored, armor tierMult clamps.
+ *   4. Harvest "perfect" rate limit: 10/min, excess downgrades to good.
+ *   5. Loot pickup gates: recipient, range, zone, dead, double-claim,
+ *      contribution shares, first-picker inventory.
+ */
+import { GameRoom } from '../src/index.js';
+
+const mockState = {
+  storage: {
+    get: async () => undefined,
+    put: async () => {},
+    list: async () => new Map(),
+    delete: async () => {},
+  },
+  getWebSockets: () => [],
+  acceptWebSocket: () => {},
+};
+const mockEnv = {
+  LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) },
+};
+
+function fakeWs(label) {
+  return { label, sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} };
+}
+function msgsOfType(ws, type) { return ws.sent.filter((m) => m.type === type); }
+
+let failures = 0;
+function check(name, cond, detail) {
+  if (cond) { console.log('PASS', name); }
+  else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail) : ''); }
+}
+
+const room = new GameRoom(mockState, mockEnv);
+
+const wsA = fakeWs('attacker');
+const wsB = fakeWs('victim');
+const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+room.sessions.set(wsA, baseSession());
+room.sessions.set(wsB, baseSession());
+
+// Join far from any spawn so monster AI stays idle (same trick as the
+// protocol test) and the players don't take incidental damage.
+const joinData = { x: -100000, y: -100000, z: 'meadow' };
+await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'pa', name: 'Attacker', protocolVersion: 2, data: { ...joinData } }));
+await room.webSocketMessage(wsB, JSON.stringify({ type: 'join', id: 'pb', name: 'Victim', protocolVersion: 2, data: { ...joinData } }));
+
+const psA = room.playerState.pa;
+const psB = room.playerState.pb;
+
+// ── 1. Movement anti-teleport gate ──
+{
+  // First move is always accepted (no prior lastMoveAt to delta from).
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'meadow' }));
+  check('first move accepted', psA.x === 1000 && psA.y === 1000, { x: psA.x, y: psA.y });
+
+  // Immediate 5000 px jump: far beyond 500 px/s * dt + 80 px burst.
+  // The cheat move also tries to flip blocking/dead — on reject the
+  // server must drop EVERYTHING, not just the position.
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 6000, y: 1000, z: 'meadow', blocking: true, dead: true }));
+  check('teleport move rejected (position kept)', psA.x === 1000 && psA.y === 1000, { x: psA.x, y: psA.y });
+  check('teleport move rejected (flags not flipped)', !psA.blocking && !psA.dead,
+    { blocking: psA.blocking, dead: psA.dead });
+
+  // Small step within the burst allowance is accepted even back-to-back.
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1050, y: 1000, z: 'meadow' }));
+  check('legit small move accepted', psA.x === 1050, { x: psA.x });
+
+  // Zone change bypasses the delta gate (players legitimately jump to
+  // the new zone's spawn coords).
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 90000, y: 90000, z: 'frost' }));
+  check('zone-change move bypasses gate', psA.z === 'frost' && psA.x === 90000, { z: psA.z, x: psA.x });
+
+  // Move back to meadow for the rest of the suite.
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 1000, y: 1000, z: 'meadow' }));
+}
+
+// ── 2. PvP attack clamping ──
+{
+  // Give the attacker a real weapon so the damage cap is weapon-based.
+  psA.weapon = { type: 'sword', tierMult: 1 };
+  psA.rangedWeapon = null; psA.staffWeapon = null;
+  psA.power = 0; psA.mind = 0; psA.ferocity = 0; psA.weaponSpecs = {};
+  psB.agility = 0;           // no passive dodge -> deterministic hit
+  psB.blocking = false; psB.dodging = false; psB.dead = false;
+  psB._zoneEntryGraceUntil = 0;
+  psB.maxHp = 1000000; psB.hp = 1000000;   // survive the hit; death flow tested elsewhere
+  psB.z = psA.z = 'meadow';
+  psA.dying = false; psA.dead = false;
+  room.stateHistory.pb = [];               // force current-state resolution
+
+  const dmgCap = room._maxDmgForAttacker(psA, false);
+
+  // Victim at 500 px: inside the cheater's claimed 99999 range but
+  // outside the 250 px server cap -> no hit at all.
+  psA.x = 0; psA.y = 0; psB.x = 500; psB.y = 0;
+  room.eventBuffer.length = 0;
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 99999, arc: 99, angle: 0, dmgBase: 99999, critChance: 99999 });
+  check('pvp: 99999-px range claim clamped (no hit at 500 px)',
+    room.eventBuffer.filter((e) => e.type === 'pvp_hit').length === 0, room.eventBuffer);
+
+  // Victim at 200 px: inside both the claim and the cap -> hit lands,
+  // but dmgBase is clamped to the attacker's weapon-aware cap and
+  // critChance 99999 clamps to 100 (guaranteed crit, 1.5x+).
+  psB.x = 200;
+  room.eventBuffer.length = 0;
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 99999, arc: 99, angle: 0, dmgBase: 99999, critChance: 99999 });
+  const hit = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+  check('pvp: hit lands at 200 px with clamped dmgBase', !!hit && hit.payload.dmgBase <= dmgCap,
+    hit && { dmgBase: hit.payload.dmgBase, cap: dmgCap });
+  check('pvp: critChance clamps to 100 (hit is a crit)', !!hit && hit.payload.isCrit === true, hit && hit.payload);
+  check('pvp: damage taken bounded by cap * 1.5 crit', !!hit && hit.payload.dmgTaken <= Math.ceil(dmgCap * 1.5),
+    hit && { dmgTaken: hit.payload.dmgTaken, bound: Math.ceil(dmgCap * 1.5) });
+
+  // Blocking victim takes zero.
+  psB.blocking = true;
+  room.eventBuffer.length = 0;
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
+  const blockedHit = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+  check('pvp: blocked hit deals 0', !!blockedHit && blockedHit.payload.blocked === true && blockedHit.payload.dmgTaken === 0,
+    blockedHit && blockedHit.payload);
+  psB.blocking = false;
+
+  // Dead attackers can't fire.
+  psA.dead = true;
+  room.eventBuffer.length = 0;
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
+  check('pvp: dead attacker rejected', room.eventBuffer.filter((e) => e.type === 'pvp_hit').length === 0);
+  psA.dead = false;
+}
+
+// ── 3. stats_update clamping ──
+{
+  const lvl = psA.level || 1;
+  const cap = room._statCap(lvl);   // max(20, level*10+20)
+  const maxHpBefore = psA.maxHp;
+
+  room._handleStatsUpdate(room.sessions.get(wsA), { vitality: 99999, maxHp: 99999 });
+  check('stats_update: T1 stat clamps to level*10+20 cap', psA.vitality === cap, { vitality: psA.vitality, cap });
+  check('stats_update: client-pushed maxHp ignored (server recomputes)',
+    psA.maxHp !== 99999 && psA.maxHp === room._calcMaxHp(psA.level, psA.vitality),
+    { maxHp: psA.maxHp, before: maxHpBefore });
+
+  room._handleStatsUpdate(room.sessions.get(wsA), { ferocity: 99999, restoration: -5 });
+  check('stats_update: T2 stat caps at 99', psA.ferocity === 99, psA.ferocity);
+  check('stats_update: negative stat floors at 0', psA.restoration === 0, psA.restoration);
+
+  // Armor: tierMult clamps to 8, Leather Armor rejected outright.
+  room._handleStatsUpdate(room.sessions.get(wsA), { armor: { name: 'Forged Blob', tierMult: 999 } });
+  check('stats_update: armor tierMult clamps to 8', psA.armor && psA.armor.tierMult === 8, psA.armor);
+  room._handleStatsUpdate(room.sessions.get(wsA), { armor: { name: 'Leather Armor', tierMult: 1 } });
+  check('stats_update: Leather Armor rejected (v2.3.249 removal)', psA.armor === null, psA.armor);
+}
+
+// ── 4. Harvest "perfect" rate limit (10/min, excess -> good) ──
+{
+  const ps = { _perfectHistory: [] };
+  let perfects = 0;
+  for (let i = 0; i < 12; i++) {
+    if (room._ratedHarvestAccuracy(ps, 'perfect') === 'perfect') perfects++;
+  }
+  check('harvest: only 10 perfect claims per minute accepted', perfects === 10, perfects);
+  check('harvest: 11th+ claim downgrades to good', room._ratedHarvestAccuracy(ps, 'perfect') === 'good');
+  check('harvest: non-perfect claims pass through untouched', room._ratedHarvestAccuracy(ps, 'good') === 'good'
+    && room._ratedHarvestAccuracy(ps, undefined) === 'ok');
+}
+
+// ── 5. Loot pickup gates ──
+{
+  // Hand-crafted monster-kill pile: pa has a 70% share, pb 30%.
+  const pile = {
+    lootId: 'test-pile-1', zone: 'meadow', x: 1000, y: 1000,
+    coins: 100, skull: 'mummy', shard: null,
+    recipients: ['pa', 'pb'], shares: { pa: 0.7, pb: 0.3 },
+    killerName: 'Attacker', ts: Date.now(), inventoryClaimed: false, claimedBy: {},
+  };
+  if (!room.loot.meadow) room.loot.meadow = [];
+  room.loot.meadow.push(pile);
+
+  const rejectedReasons = (ws) => msgsOfType(ws, 'loot_pickup_rejected').map((m) => m.payload.reason);
+
+  psA.z = 'meadow'; psA.dead = false; psA.disconnected = false;
+  psB.z = 'meadow'; psB.dead = false; psB.disconnected = false;
+
+  // Out of range (LOOT_PICKUP_RANGE = 90 px).
+  psA.x = pile.x + 200; psA.y = pile.y;
+  wsA.sent.length = 0;
+  room._handleLootPickup(room.sessions.get(wsA), { lootId: pile.lootId, zone: 'meadow' });
+  check('loot: out-of-range pickup rejected', rejectedReasons(wsA).includes('out-of-range'), rejectedReasons(wsA));
+
+  // Wrong zone.
+  psA.x = pile.x; psA.z = 'frost';
+  wsA.sent.length = 0;
+  room._handleLootPickup(room.sessions.get(wsA), { lootId: pile.lootId, zone: 'meadow' });
+  check('loot: wrong-zone pickup rejected', rejectedReasons(wsA).includes('wrong-zone'), rejectedReasons(wsA));
+  psA.z = 'meadow';
+
+  // Dead players can't loot.
+  psA.dead = true;
+  wsA.sent.length = 0;
+  room._handleLootPickup(room.sessions.get(wsA), { lootId: pile.lootId, zone: 'meadow' });
+  check('loot: dead pickup rejected', rejectedReasons(wsA).includes('dead'), rejectedReasons(wsA));
+  psA.dead = false;
+
+  // Non-recipient can't loot someone else's kill.
+  const wsC = fakeWs('outsider');
+  room.sessions.set(wsC, { ...baseSession(), id: 'pc', name: 'Outsider' });
+  room.playerState.pc = { x: pile.x, y: pile.y, z: 'meadow', dead: false, disconnected: false, coins: 0 };
+  room._handleLootPickup(room.sessions.get(wsC), { lootId: pile.lootId, zone: 'meadow' });
+  check('loot: non-recipient rejected', rejectedReasons(wsC).includes('not-recipient'), rejectedReasons(wsC));
+
+  // Legit pickup: pa gets 70 coins + the skull (first picker).
+  psA.x = pile.x; psA.y = pile.y;
+  const coinsBeforeA = psA.coins || 0;
+  wsA.sent.length = 0;
+  room._handleLootPickup(room.sessions.get(wsA), { lootId: pile.lootId, zone: 'meadow' });
+  const creditA = msgsOfType(wsA, 'loot_credit')[0];
+  check('loot: share-weighted coin credit (70%)', (psA.coins || 0) - coinsBeforeA === 70
+    && creditA && creditA.payload.coins === 70, creditA && creditA.payload);
+  check('loot: first picker gets the skull', creditA && creditA.payload.skull === 'mummy', creditA && creditA.payload);
+
+  // Double-claim by the same player is rejected.
+  wsA.sent.length = 0;
+  room._handleLootPickup(room.sessions.get(wsA), { lootId: pile.lootId, zone: 'meadow' });
+  check('loot: double-claim rejected', rejectedReasons(wsA).includes('already-claimed'), rejectedReasons(wsA));
+
+  // Second recipient gets their 30% share but NOT the claimed skull.
+  psB.x = pile.x; psB.y = pile.y;
+  const coinsBeforeB = psB.coins || 0;
+  wsB.sent.length = 0;
+  room._handleLootPickup(room.sessions.get(wsB), { lootId: pile.lootId, zone: 'meadow' });
+  const creditB = msgsOfType(wsB, 'loot_credit')[0];
+  check('loot: second recipient gets 30% coins, no skull', (psB.coins || 0) - coinsBeforeB === 30
+    && creditB && creditB.payload.coins === 30 && !creditB.payload.skull, creditB && creditB.payload);
+}
+
+console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
+process.exit(failures === 0 ? 0 : 1);
