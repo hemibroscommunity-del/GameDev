@@ -74,15 +74,19 @@ Items 1–3 shipped in the v2.3.1104 hardening PR; item 4 remains open.
    authoritative damage. Needs a server-side elemental status model —
    bigger slice.
 
-## P3 — Client smoke test in CI
+## P3 — Client smoke test in CI (done, v2.3.1105)
 
-`tools/qa/qa-smoke.mjs` (Playwright: boot, join, walk, capture crash log)
-exists but never runs automatically. Wire it into `client-ci.yml`:
-build → `vite preview` → run the smoke script against it. Playwright +
-Chromium install cleanly on GitHub Actions runners. This is the only
-automated runtime check the client can have (there is no unit suite), and
-it would have caught the v2.3.756 class of shipped ReferenceError at PR
-time.
+Shipped: `client-ci.yml` now has a `smoke` job that builds the client,
+stands up a LOCAL worker (`wrangler dev`/Miniflare — no Cloudflare token;
+the DO bindings are fully emulated), serves the build with `vite preview`,
+and runs `tools/qa/qa-smoke.mjs` against the pair. The script gained a
+real exit code (fails on: never joined, any uncaught page error, or a
+captured crash log), a `QA_WS_URL` override so CI never touches the
+production worker, and a browser-resolution chain (`QA_CHROME` env → the
+session /tmp shell → playwright's managed browser). Because the smoke is
+the only client↔worker integration gate, `server/**` changes trigger it
+too. It would have caught the v2.3.756 class of shipped ReferenceError at
+PR time.
 
 ## P4 — Server decomposition (only after P1 is merged)
 

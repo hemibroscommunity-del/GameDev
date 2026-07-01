@@ -1,6 +1,11 @@
 import { chromium } from 'playwright-core';
+import { existsSync } from 'node:fs';
 
-const EXE = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
+// v2.3.1105: browser resolution — QA_CHROME env > the session-side /tmp
+// shell (when present) > undefined, which lets playwright-core pick its
+// managed browser (the CI path after `npx playwright install`).
+const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
+const EXE = process.env.QA_CHROME || (existsSync(SHELL) ? SHELL : undefined);
 const URL = 'http://localhost:4173/';
 const events = [];
 const log = (kind, msg) => { events.push({ t: Date.now(), kind, msg: String(msg).slice(0, 300) }); };
@@ -13,6 +18,13 @@ const page = await browser.newPage({ viewport: { width: 844, height: 390 } }); /
 page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) log('console.' + m.type(), m.text()); });
 page.on('pageerror', (e) => log('PAGEERROR', e.message));
 page.on('requestfailed', (r) => log('requestfailed', r.url().slice(0, 120) + ' :: ' + (r.failure()?.errorText || '')));
+
+// v2.3.1105: point the client at a local worker when QA_WS_URL is set
+// (CI runs `wrangler dev` on :8787) — same addInitScript pattern as the
+// other harnesses.  Unset -> unchanged default (production worker).
+if (process.env.QA_WS_URL) {
+  await page.addInitScript(`window.BROTOWN_WS_URL = ${JSON.stringify(process.env.QA_WS_URL)};`);
+}
 
 await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForTimeout(6000);
@@ -58,5 +70,11 @@ if (joined) {
   }
 }
 const crashlog = await page.evaluate(() => localStorage.getItem('bt-crashlog')).catch(() => null);
-console.log(JSON.stringify({ joined, heap, crashlog, events }, null, 1));
+const pageErrors = events.filter((e) => e.kind === 'PAGEERROR').length;
+console.log(JSON.stringify({ joined, pageErrors, heap, crashlog, events }, null, 1));
 await browser.close();
+// v2.3.1105: real exit code so CI (and run-all.mjs fail-fast, which keys
+// off exit status) can gate on this.  Fail on: never joined, any
+// uncaught page error (the v2.3.756 incident class), or a crash log.
+// console.error / requestfailed stay informational — too flaky to gate.
+process.exit(!joined || pageErrors > 0 || crashlog ? 1 : 0);
