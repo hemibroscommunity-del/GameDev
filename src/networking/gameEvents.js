@@ -574,7 +574,8 @@ export function processGameEvent(type, payload, S, deps) {
                   player: { x: Math.round(S.player.x), y: Math.round(S.player.y) },
                   dist: Math.round(_atkDist),
                   shieldUp: !!S._shieldUp,
-                  inArc: inArc,
+                  /* v2.3.1110: arc retired -- block is omnidirectional */
+                  inArc: !!S._shieldUp,
                 });
               } catch (e) {}
               /* v2.3.248: player sprite hit-flash on MP server-monster
