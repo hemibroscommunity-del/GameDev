@@ -208,6 +208,31 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     psA.stamina === 0 && psA.blocking === false, { stamina: psA.stamina, blocking: psA.blocking });
 }
 
+// ── 6b. v2.3.1110: monster<->monster separation ──
+// Chase/wander have no body collision; the tick now runs a gentle
+// pairwise push so aggro-stacked monsters can't merge into one blob.
+{
+  // Deterministic layout: spawn positions are random per DO wake, so
+  // pin every monster far apart first, then overlap exactly one pair.
+  meadowMonsters.forEach((m, i) => {
+    m.x = 200 + i * 100; m.y = 200;
+    m.spawnX = m.x; m.spawnY = m.y; // stay inside the wander leash
+  });
+  const m1 = meadowMonsters[3];
+  const m2 = meadowMonsters[4];
+  m1.alive = true; m2.alive = true;
+  m1.x = 5000; m1.y = 5000; m2.x = 5002; m2.y = 5000;   // overlapping (2 px apart)
+  m1.spawnX = 5000; m1.spawnY = 5000; m2.spawnX = 5002; m2.spawnY = 5000;
+  const m3 = meadowMonsters[0];
+  const farX = m3.x, farY = m3.y;                        // far monster must not move
+  room._tickMonsters();
+  const dx = m2.x - m1.x, dy = m2.y - m1.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  check('separation: overlapping monsters pushed apart to >= 22px', dist >= 21.9, dist);
+  check('separation: non-overlapping monster untouched', m3.x === farX && m3.y === farY,
+    { before: [farX, farY], after: [m3.x, m3.y] });
+}
+
 // ── 7. Event buffer cap on the tick broadcast ──
 {
   room.eventBuffer.length = 0;

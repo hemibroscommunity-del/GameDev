@@ -415,15 +415,21 @@ export function updateMonsterCombat(S, deps) {
                    player's center -- visually overshoots the player.
                    Reference the monster's body center for chase so the
                    55 px gate is measured center-to-center. */
-                var _bodyOffsetN = (arch === 'fodder') ? 40 :
-                                   (arch === 'fireGoblin') ? 28 :
-                                   (arch === 'mummy' || arch === 'skeleton') ? 48 :
-                                   0;
-                var _chDyN = P.y - (m.y - _bodyOffsetN);
-                var _chDistN = Math.sqrt(chDx * chDx + _chDyN * _chDyN);
-                if (_chDistN > 55) {
-                  m.x += chDx / _chDistN * m.spd * moveMult;
-                  m.y += _chDyN / _chDistN * m.spd * moveMult;
+                /* v2.3.1110: unified stop ring -- mirror the SERVER's tuned
+                   metric exactly (server/src/index.js _tickMonsters:
+                   ATTACK_RANGE 45, Y_SCALE 3 on the raw feet-anchored dy;
+                   keep in sync).  The old client-only model (body-center
+                   offset + 55 px circle) stopped these variants ~55 px away
+                   on N/S approaches but only ~27 px on E/W -- the reported
+                   "monsters stop further away north/south".  Every monster
+                   now stops at the same owner-tuned ring: ~45 px E/W,
+                   ~15 px N/S, regardless of which side drives its AI. */
+                var _chDyN = P.y - m.y;
+                var _ringDist = Math.sqrt(chDx * chDx + (_chDyN * 3) * (_chDyN * 3));
+                if (_ringDist > 45) {
+                  var _moveDist = Math.sqrt(chDx * chDx + _chDyN * _chDyN) || 1;
+                  m.x += chDx / _moveDist * m.spd * moveMult;
+                  m.y += _chDyN / _moveDist * m.spd * moveMult;
                 }
               }
 

@@ -3141,20 +3141,39 @@ export var BroTown = function BroTown(_ref0) {
            top of you, you can always walk back out.  Body centre uses the
            same per-archetype Y offset as tap-to-lock so the solid footprint
            lines up with the sprite you see. */
+        /* v2.3.1110: per-archetype body centre + radius, fixed for the tall
+           client-AI variants.  The old table gave fireGoblin/mummy/skeleton
+           an 8 px disc at the FEET of a ~96 px sprite (offset 0) -- players
+           slid straight through the torso, which read as "no collision".
+           Offsets now match the chase/tap-lock tables in monsterCombat.js
+           (fodder 40, fireGoblin 28, mummy/skeleton 48, snowman 19); the
+           variant radius covers the visible torso without intruding on the
+           45 px attack ring. */
+        var _monBody = function (_m) {
+          var _arch = _m.archetype || _m.type;
+          var _off = _arch === 'fodder' ? 40
+            : _arch === 'snowman' ? 19
+            : _arch === 'fireGoblin' ? 28
+            : (_arch === 'mummy' || _arch === 'skeleton') ? 48
+            : 0;
+          var _r = _arch === 'snowman' ? 13
+            : _arch === 'fodder' ? 8
+            : MONSTER_VARIANTS[_arch] ? 14
+            : 32;
+          return { by: _m.y - _off, r: _r };
+        };
         var _monBlock = function (curX, curY, px, py) {
           var ms = S.monsters;
           if (!ms) return false;
           for (var _mi = 0; _mi < ms.length; _mi++) {
             var _m = ms[_mi];
             if (!_m || !_m.alive) continue;
-            var _arch = _m.archetype || _m.type;
-            var _by = _m.y - (_arch === 'fodder' ? 40 : _arch === 'snowman' ? 19 : 0);
-            var _mr = _arch === 'snowman' ? 13 : (_arch === 'fodder' || MONSTER_VARIANTS[_arch]) ? 8 : 32;
-            var _rr = _mr + hs;
-            var _ndx = px - _m.x, _ndy = py - _by;
+            var _b = _monBody(_m);
+            var _rr = _b.r + hs;
+            var _ndx = px - _m.x, _ndy = py - _b.by;
             var _nd2 = _ndx * _ndx + _ndy * _ndy;
             if (_nd2 < _rr * _rr) {
-              var _cdx = curX - _m.x, _cdy = curY - _by;
+              var _cdx = curX - _m.x, _cdy = curY - _b.by;
               if (_nd2 < _cdx * _cdx + _cdy * _cdy) return true; /* moving deeper in */
             }
           }
@@ -3168,6 +3187,32 @@ export var BroTown = function BroTown(_ref0) {
             sy = P.y + (S._slideVy || 0);
           if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y)) P.x = sx;
           if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy)) P.y = sy;
+        }
+        /* v2.3.1110: PUSH-OUT -- _monBlock only stops the player moving
+           deeper; a server-driven monster can still walk INTO the player
+           (its movement is worker-side and has no player collision).  When
+           a monster body overlaps the player, nudge the player outward a
+           couple of px per frame (tile-collision permitting) so the two
+           bodies separate instead of coexisting.  Gentle on purpose: reads
+           as being shouldered aside, and stays far under the server's
+           anti-teleport allowance. */
+        if (S.monsters) {
+          for (var _pmi = 0; _pmi < S.monsters.length; _pmi++) {
+            var _pm = S.monsters[_pmi];
+            if (!_pm || !_pm.alive) continue;
+            var _pb = _monBody(_pm);
+            var _pdx = P.x - _pm.x, _pdy = P.y - _pb.by;
+            var _pd2 = _pdx * _pdx + _pdy * _pdy;
+            var _prr = _pb.r + hs;
+            if (_pd2 > 0.01 && _pd2 < _prr * _prr) {
+              var _pd = Math.sqrt(_pd2);
+              var _pushX = P.x + (_pdx / _pd) * 2;
+              var _pushY = P.y + (_pdy / _pd) * 2;
+              if (!isSolid(_pushX - hs, P.y - hs) && !isSolid(_pushX + hs, P.y + hs)) P.x = _pushX;
+              if (!isSolid(P.x - hs, _pushY - hs) && !isSolid(P.x + hs, _pushY + hs)) P.y = _pushY;
+              break; /* one shove per frame is enough */
+            }
+          }
         }
         var _zone = ZONES[S.currentZone];
         var ZONE_W = _zone.w * TILE,
@@ -4001,12 +4046,22 @@ export var BroTown = function BroTown(_ref0) {
            peer joins mid-idle, the next keepalive self-heals within a second
            instead of leaving the remote stuck on stale facing forever. */
         var _idleKeepalive = now - S.lastBroadcast > 1000;
+        /* v2.3.1110: shield up/down must broadcast IMMEDIATELY.  The
+           authoritative ps.blocking rides ONLY on move packets (the wsClient
+           shim injects blocking: !!S._shieldUp into every move) and raising
+           a shield while standing still fired none of the gate conditions --
+           the server kept applying full monster/PvP damage for up to 1 s
+           (until the idle keepalive) while the shield was visibly up.  This
+           was the dominant "blocking sometimes doesn't work" mechanism, and
+           it also starved the PvP lag-comp history of the blocking flag. */
+        var _blockNow = !!S._shieldUp;
+        var _blockChanged = _blockNow !== !!S._lastBroadcastBlocking;
         /* v2.3.1107: 33ms -> 22ms send throttle, matching the server's 22ms
            tick.  At 33ms roughly every third server tick relayed a stale
            position; matching cadences means every tick can carry fresh data.
            Delta ticks keep the cost small; revisit if iPhone battery/network
            profiling ever flags it. */
-        if ((now - S.lastBroadcast > 22 && (isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped)) || _idleKeepalive) {
+        if ((now - S.lastBroadcast > 22 && (isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped || _blockChanged)) || _idleKeepalive) {
           S.lastBroadcast = now;
           S._lastBroadcastFacing = S._renderFacing;
           if (S.channel) {
@@ -4046,6 +4101,7 @@ export var BroTown = function BroTown(_ref0) {
               S._lastBroadcastEx = _exCode;
               if (_exCode) S._lastExBroadcast = now;
               S._restPending = false; /* v2.3.1107: rest packet delivered */
+              S._lastBroadcastBlocking = _blockNow; /* v2.3.1110 */
             }
             if (S.channel && (!S._lastTrack || Date.now() - S._lastTrack > 2000)) {
               var _rpg$lifeSkills7, _rpg$lifeSkills$pets, _rpg$_anniversaryItem, _rpg$armor, _rpg$shield, _rpg$amulet, _rpg$_compStats, _rpg$_compStats2, _rpg$_compStats3, _rpg$_compStats4, _rpg$_compStats5, _rpg$_compStats6, _rpg$_compStats7, _rpg$_compStats8, _S$_clanData2, _S$_clanData3, _S$_clanData4;
@@ -4142,7 +4198,13 @@ export var BroTown = function BroTown(_ref0) {
           if (!S._serverMonsters) {
             S.rpg.stamina = Math.max(0, (S.rpg.stamina || 0) - 0.167);
           }
-          S.shieldEnd = Date.now() + 100;
+          /* v2.3.1110: 100 -> 250 ms rolling window.  Every client-side
+             block check gates on Date.now() < shieldEnd, and the window is
+             refreshed only by this rAF loop -- a single frame hitch over
+             100 ms (common on iPhone) silently expired the block while the
+             shield was still up.  250 ms rides out hitches; release paths
+             still zero it immediately. */
+          S.shieldEnd = Date.now() + 250;
           if (S.rpg.stamina <= 0) {
             S.rpg.stamina = 0;
             S._shieldUp = false;

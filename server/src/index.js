@@ -802,6 +802,36 @@ export class GameRoom {
           }
         }
       }
+
+      // v2.3.1110: monster<->monster separation.  Chase + wander have no
+      // body collision, so several monsters aggroing one player stack
+      // into a single visual blob ("walking through each other").  One
+      // gentle pairwise pass per tick: if two live monsters' feet are
+      // within MIN_SEP, push each half the overlap apart.  O(n^2) with
+      // n <= ~14 per zone (~100 pair checks) -- negligible at 45 Hz.
+      // Player<->monster separation stays client-side (the _monBlock
+      // push-out in BroTown.jsx) so the server never shoves a player.
+      {
+        const MIN_SEP = 22;
+        for (let i = 0; i < monsters.length; i++) {
+          const a = monsters[i];
+          if (!a.alive) continue;
+          for (let j = i + 1; j < monsters.length; j++) {
+            const b = monsters[j];
+            if (!b.alive) continue;
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 >= MIN_SEP * MIN_SEP || d2 < 0.0001) continue;
+            const d = Math.sqrt(d2);
+            const push = (MIN_SEP - d) / 2;
+            const ux = dx / d, uy = dy / d;
+            a.x -= ux * push; a.y -= uy * push;
+            b.x += ux * push; b.y += uy * push;
+            this._markMonsterDirty(zoneId, a.id);
+            this._markMonsterDirty(zoneId, b.id);
+          }
+        }
+      }
     }
   }
 

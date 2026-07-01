@@ -86,6 +86,16 @@ clearInterval(room.tickInterval); room.tickInterval = null;
 // per-entity narrowing this block asserts.
 const meadowMonsters = room.monsters['meadow'];
 for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 60000;
+// v2.3.1110: spread the monsters out -- the tick's new pairwise
+// separation pass (22 px min) would dirty any randomly-overlapping
+// spawn pair and break the per-entity narrowing assertions below.
+// Same spirit as the wander freeze above: deterministic dirty sets.
+meadowMonsters.forEach((m, i) => {
+  m.x = 200 + i * 100; m.y = 200;
+  m.spawnX = m.x; m.spawnY = m.y; // keep inside the wander leash: the
+  // leash pull-back (WANDER_LEASH) ignores the pause and would walk a
+  // displaced monster home, dirtying it.
+});
 const target = meadowMonsters[0];
 await room.webSocketMessage(ws1, JSON.stringify({ type: 'monster_damage', payload: { monsterId: target.id, zone: 'meadow', dmg: 3 } }));
 const meadowNodes = room._ensureZoneNodes('meadow');
