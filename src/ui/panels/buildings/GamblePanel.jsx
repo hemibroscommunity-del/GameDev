@@ -107,6 +107,22 @@ export function GamblePanel(props) {
       if (!wager || wager < GAMBLE_MIN_BET) return;
       var R = stateRef.current.rpg;
       if (R.coins < wager) return;
+      /* v2.3.1124: gamble-settling workers (caps.gamble) roll and pay
+         server-side -- send the request and let the private
+         gamble_result event (gameEvents.js) drive the popups while the
+         player_state echo carries the coins.  The local roll below was
+         the player being their own house; it survives only for legacy
+         workers. */
+      if (stateRef.current._serverCaps && stateRef.current._serverCaps.gamble) {
+        if (stateRef.current.channel) {
+          stateRef.current.channel.send({
+            type: 'broadcast',
+            event: 'gamble_request',
+            payload: { wager: wager }
+          });
+        }
+        return;
+      }
       if (!R._compStats) R._compStats = createDefaultCompStats();
       R.coins -= wager;
       R._compStats.totalGambled += wager;

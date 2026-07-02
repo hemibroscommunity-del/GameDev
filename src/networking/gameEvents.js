@@ -116,6 +116,46 @@ export function processGameEvent(type, payload, S, deps) {
               handleEmoteEvent(payload, S);
               break;
             }
+          case 'gamble_result':
+            {
+              /* v2.3.1124: server-rolled gamble outcome (private).  The
+                 coins already moved server-side and arrive via the
+                 authoritative player_state echo -- this event only
+                 drives the win/loss feedback, mirroring the visuals the
+                 legacy local roll produced (GamblePanel). */
+              var _gR = S.rpg;
+              if (!_gR) break;
+              if (!_gR._compStats) _gR._compStats = createDefaultCompStats();
+              _gR._compStats.totalGambled += payload.wager || 0;
+              _gR._compStats.totalGoldSpent += payload.wager || 0;
+              if (payload.won) {
+                _gR._compStats.totalGambleWon += payload.payout || 0;
+                _gR._compStats.totalGoldEarned += payload.payout || 0;
+                S._gambleResult = { won: true, amount: payload.payout || 0, ts: Date.now() };
+                S.dmgNumbers.push({
+                  x: S.player.x,
+                  y: S.player.y - 30,
+                  text: '+' + (payload.payout || 0) + 'g!',
+                  color: '#3dd497',
+                  ts: Date.now()
+                });
+                S.screenShake = 3;
+                BT_AUDIO.collect();
+              } else {
+                _gR._compStats.totalGambleLost += payload.wager || 0;
+                S._gambleResult = { won: false, amount: payload.wager || 0, ts: Date.now() };
+                S.dmgNumbers.push({
+                  x: S.player.x,
+                  y: S.player.y - 30,
+                  text: '-' + (payload.wager || 0) + 'g',
+                  color: '#ff5e6c',
+                  ts: Date.now()
+                });
+                BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+              }
+              setRpgState(_objectSpread({}, _gR));
+              break;
+            }
           case 'inbox_delivered':
             {
               /* v2.3.1117: offline mail landed (market refund, trade
