@@ -126,6 +126,12 @@ export const duelMethods = {
     this._duels.delete(duel.id);
     if (this._pvpConsent) this._pvpConsent.delete(this._pvpPairKey(duel.a, duel.b));
     this.eventBuffer.push({ type: 'duel_end', payload: { winner: winnerId, loser: loserId, wager: duel.wager, how } });
+    // v2.3.1126: arena matches ride the duel machine -- notify the
+    // bracket so kills, forfeits, and shot-clock timeouts all advance
+    // it through the same server-observed path.
+    if (duel.arenaMatch && this._arenaOnMatchResolved) {
+      this._arenaOnMatchResolved(duel.arenaMatch, winnerId, how);
+    }
     if (duel.wager > 0) {
       // Fire-and-forget settle; converges via opId idempotency + the
       // pot-stamp check in the stale-escrow sweep.
@@ -171,6 +177,21 @@ export const duelMethods = {
         if (d.status === 'active' && d.awayId && d.graceUntil && now > d.graceUntil) {
           const winner = d.a === d.awayId ? d.b : d.a;
           this._resolveDuel(d, winner, d.awayId, 'forfeit');
+          continue;
+        }
+        // v2.3.1126: optional shot-clock.  Before this, a duel where
+        // nobody died stayed 'active' FOREVER -- the consent pair
+        // silently expired while _duelFor kept blocking both players
+        // from any new duel (latent deadlock; fatal for arena
+        // brackets, which set expiresAt ~3 min).  Tiebreak needs no
+        // new state: the server owns hp -- higher hp/maxHp fraction
+        // wins, coin flip on an exact tie.
+        if (d.status === 'active' && d.expiresAt && now > d.expiresAt) {
+          const psA = this.playerState[d.a], psB = this.playerState[d.b];
+          const fA = psA ? (psA.hp || 0) / (psA.maxHp || 100) : -1;
+          const fB = psB ? (psB.hp || 0) / (psB.maxHp || 100) : -1;
+          const winner = fA === fB ? (Math.random() < 0.5 ? d.a : d.b) : (fA > fB ? d.a : d.b);
+          this._resolveDuel(d, winner, winner === d.a ? d.b : d.a, 'timeout');
         }
       }
     }
