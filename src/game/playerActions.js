@@ -8,7 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { SWING_COOLDOWN, SPECIAL_ATK_MULT, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg } from '@/data/index.js';
+import { SWING_COOLDOWN, SPECIAL_ATK_MULT, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, monsterBodyY } from '@/data/index.js';
 import { addBuildUse } from '@/game/combatHelpers.js';
 
 export function swingAttack(S) {
@@ -80,7 +80,8 @@ export function specialAttack(S) {
     var aimAng = S._aimAngle || 0;
     if (S.lockedTarget && S.lockedTarget.ref) {
       var lt = S.lockedTarget.ref;
-      aimAng = Math.atan2((lt.y || 0) - S.player.y, (lt.x || 0) - S.player.x);
+      /* v2.3.1111: aim at the body centre (see monsterCombat aim note). */
+      aimAng = Math.atan2((monsterBodyY(lt) || 0) - S.player.y, (lt.x || 0) - S.player.x);
     }
     if (activeWpn.type === 'bow') {
       /* BOW heavy — large elemental arrow in swipe direction.  Renders

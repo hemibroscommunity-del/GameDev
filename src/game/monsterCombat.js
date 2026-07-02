@@ -31,7 +31,8 @@ import {
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
   getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
   getShieldStats, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
-  rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, tickStatuses, updateZoneDimensions
+  rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, tickStatuses, updateZoneDimensions,
+  monsterBodyY,
 } from '@/data/index.js';
 import { MONSTER_VARIANTS, baseArchetypeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
@@ -1291,7 +1292,13 @@ export function updateMonsterCombat(S, deps) {
                 var arrAngle;
                 if (S.lockedTarget && S.lockedTarget.ref) {
                   var _lt = S.lockedTarget.ref;
-                  arrAngle = Math.atan2((_lt.y || 0) - P.y, (_lt.x || 0) - P.x);
+                  /* v2.3.1111: aim at the BODY CENTRE, not the feet -- the
+                     projectile hit-test uses the body-centre Y, and a
+                     feet-aimed shot rode below the hit circle for the tall
+                     archetypes (fodder gap 40 > arrow radius 26; mummy/
+                     skeleton 48 > 40) -- locked bow shots systematically
+                     missed while wider staff bolts mostly connected. */
+                  arrAngle = Math.atan2((monsterBodyY(_lt) || 0) - P.y, (_lt.x || 0) - P.x);
                 } else if (S._aiming && S._aimAngle != null) {
                   arrAngle = S._aimAngle;
                 } else {

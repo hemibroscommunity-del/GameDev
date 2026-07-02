@@ -5989,18 +5989,21 @@ export var BroTown = function BroTown(_ref0) {
             var _cssX = t.clientX - _rect.left;
             var _cssY = t.clientY - _rect.top;
             var _cx = _S.camera.x, _cy = _S.camera.y;
+            /* v2.3.1111: this MOBILE tap path never got the v2.3.1090
+               world-scale fix that onClick below has -- it compared raw
+               world px to CSS px, so with WORLD_ZOOM 1.25 every tap was
+               ~25% radially off (only monsters near the camera origin
+               could be tapped).  Apply the same published renderer scale. */
+            var _tapSX = _S._worldScaleX || 1.0;
+            var _tapSY = _S._worldScaleY || 1.0;
             if (_S.monsters) {
               var _closest = null, _closestDist = 40;
               _S.monsters.forEach(function (m) {
                 if (!m.alive) return;
-                /* Match the melee/projectile hit-Y shift so the tap
-                   target lines up with the visible slime body, not the
-                   feet-level m.y point. */
-                var _archTap = m.archetype || m.type;
-                var _mTapY = _archTap === 'fodder' ? m.y - 40
-                           : _archTap === 'snowman' ? m.y - 19
-                           : m.y;
-                var _msx = m.x - _cx, _msy = _mTapY - _cy;
+                /* v2.3.1111: shared body-centre table (was missing the
+                   tall variants -- tapping a mummy torso tested its feet). */
+                var _mTapY = DATA.monsterBodyY(m);
+                var _msx = (m.x - _cx) * _tapSX, _msy = (_mTapY - _cy) * _tapSY;
                 var _d = Math.sqrt(Math.pow(_cssX - _msx, 2) + Math.pow(_cssY - _msy, 2));
                 if (_d < _closestDist) { _closestDist = _d; _closest = m; }
               });
@@ -6128,12 +6131,9 @@ export var BroTown = function BroTown(_ref0) {
           closestDist = 40;
         S.monsters.forEach(function (m) {
           if (!m.alive) return;
-          /* Match the melee/projectile hit-Y shift so taps line up with
-             the visible body, not the feet-level m.y point. */
-          var _archTap = m.archetype || m.type;
-          var _mTapY = _archTap === 'fodder' ? m.y - 40
-                     : _archTap === 'snowman' ? m.y - 19
-                     : m.y;
+          /* v2.3.1111: shared body-centre table (the inline copy was
+             missing fireGoblin/mummy/skeleton). */
+          var _mTapY = DATA.monsterBodyY(m);
           var msx = (m.x - cx) * SCALE_X;
           var msy = (_mTapY - cy) * SCALE_Y;
           var d = Math.sqrt(Math.pow(cssX - msx, 2) + Math.pow(cssY - msy, 2));

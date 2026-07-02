@@ -6859,3 +6859,23 @@ export const PVP_THREAT_DURATION = PVP_THREAT_BASE_COUNTDOWN; /* compat */
 export const NPC_DATA = [];
 /* PLAYER_COLORS moved to constants.js */
 
+
+/* v2.3.1111: SINGLE SOURCE for the monster body-centre Y offset.  Monster
+   sprites are feet-anchored (entityRenderer anchor 0.5/1.0), so m.y is the
+   FEET of a tall sprite and the visible body centre sits this many px
+   above it.  Four hand-maintained copies of this table had drifted apart
+   (tap-to-lock x2, projectile hit-test, melee hit) -- the tap handlers
+   were missing the tall variants entirely (taps on a mummy's torso tested
+   a circle at its feet and never locked), and projectile AIM used raw
+   feet-level m.y while the HIT test used the body centre, making locked
+   bow shots fly under the hitbox.  Every consumer now reads this. */
+export function monsterBodyOffsetY(archOrType) {
+  return archOrType === 'fodder' ? 40
+    : (archOrType === 'mummy' || archOrType === 'skeleton') ? 48
+    : archOrType === 'fireGoblin' ? 28
+    : archOrType === 'snowman' ? 19
+    : 0;
+}
+export function monsterBodyY(m) {
+  return m.y - monsterBodyOffsetY(m.archetype || m.type);
+}
