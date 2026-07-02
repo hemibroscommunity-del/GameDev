@@ -2136,6 +2136,106 @@ export class GameRoom {
     }
   }
 
+  /* ═══ v2.3.1116: PERSISTENT IDENTITY (PR1 of the heavy-systems plan) ═══
+   * The auth record lives in its OWN storage key ('auth:<id>'), NOT inside
+   * the rpg blob -- _saveRpg rewrites the blob from a fixed field list and
+   * would silently drop any extra field on the next save. */
+
+  // SHA-256 hex of the passphrase, domain-separated with a version prefix
+  // so the scheme can rotate ('btv2|...') without ambiguity.  The digest
+  // is compared with === : a timing leak on a hash comparison doesn't help
+  // recover a preimage, and the real online risk (join-spam brute force of
+  // the ~6x10^8 phrase space) is handled by the lockout below.
+  async _phraseHash(phrase) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('btv1|' + phrase));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async _verifyJoinAuth(id, phrase) {
+    const now = Date.now();
+    if (!this._authFails) this._authFails = new Map(); // in-memory: a deploy reset just clears lockouts
+    const rec = this._authFails.get(id);
+    if (rec && rec.until > now) return false; // lockout window active
+    const auth = await this.state.storage.get('auth:' + id);
+    if (!auth) {
+      // Unregistered id.  Register when the client proves it owns a
+      // phrase; otherwise allow as a legacy/guest throwaway.  Ids that
+      // predate this slice (random per-pageload) are unknowable and
+      // valueless, so grandfathering them unauthenticated is safe --
+      // and every post-slice client sends a phrase, so real characters
+      // get locked at their first join.
+      if (phrase) {
+        await this.state.storage.put('auth:' + id, { pfHash: await this._phraseHash(phrase), createdAt: now });
+      }
+      return true;
+    }
+    if (phrase && (await this._phraseHash(phrase)) === auth.pfHash) {
+      this._authFails.delete(id);
+      return true;
+    }
+    // Failed verify: count toward the brute-force lockout (5 fails ->
+    // 60s).  Keyed by target id, so an attacker hammering someone's id
+    // locks the ATTACK out; the owner's correct phrase clears it.
+    const f = this._authFails.get(id) || { count: 0, until: 0 };
+    f.count += 1;
+    if (f.count >= 5) { f.until = now + 60000; f.count = 0; }
+    this._authFails.set(id, f);
+    return false;
+  }
+
+  /* ═══ v2.3.1116: PvP CONSENT (interim until the PR6 duel machine) ═══
+   * A pair earns consent when the server RELAYS both halves of a
+   * handshake: duel_request from A targeting B, then duel_accept from B
+   * targeting A (or pvp_threat + accepted threat_response).  Each half
+   * must arrive on its own sender's session, so neither side can forge
+   * the other's consent.  In-memory on purpose: a worker deploy wiping
+   * it just ends duels -- no value at risk (wagers are PR6 + storage). */
+  _pvpPairKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+
+  _observePvpConsent(fromId, msg) {
+    const t = msg.type;
+    if (t !== 'duel_request' && t !== 'duel_accept' && t !== 'pvp_threat' && t !== 'threat_response') return;
+    const target = msg.payload && msg.payload.target;
+    if (!target || typeof target !== 'string' || target === fromId) return;
+    const now = Date.now();
+    if (!this._pvpChallenges) this._pvpChallenges = new Map(); // 'challenger>target' -> expiry
+    if (!this._pvpConsent) this._pvpConsent = new Map();       // pairKey -> expiry
+    if (t === 'duel_request' || t === 'pvp_threat') {
+      this._pvpChallenges.set(fromId + '>' + target, now + 120000); // 2 min to accept
+      return;
+    }
+    if (t === 'threat_response' && !(msg.payload && msg.payload.accepted)) return;
+    // duel_accept / accepted threat_response: only valid against a live
+    // challenge from the OTHER side -- a unilateral "accept" with no
+    // matching request consents to nothing.
+    const chal = this._pvpChallenges.get(target + '>' + fromId);
+    if (chal && chal > now) {
+      this._pvpChallenges.delete(target + '>' + fromId);
+      this._pvpConsent.set(this._pvpPairKey(fromId, target), now + 10 * 60 * 1000);
+    }
+  }
+
+  _pvpAllowed(attackerId, targetId, zone) {
+    const zc = ZONES[zone];
+    if (zc && zc.lawless) return true; // open-PvP wilderness (data.js flag)
+    if (!this._pvpConsent) return false;
+    const until = this._pvpConsent.get(this._pvpPairKey(attackerId, targetId));
+    return !!(until && until > Date.now());
+  }
+
+  _clearPvpConsent(id) {
+    if (this._pvpConsent) {
+      for (const k of [...this._pvpConsent.keys()]) {
+        if (k.split('|').includes(id)) this._pvpConsent.delete(k);
+      }
+    }
+    if (this._pvpChallenges) {
+      for (const k of [...this._pvpChallenges.keys()]) {
+        if (k.split('>').includes(id)) this._pvpChallenges.delete(k);
+      }
+    }
+  }
+
   // v2.3.769: records bootstrapped from pre-fix clients carry lifeSkills
   // with ARRAYS object-spread into plain objects (pets: {0:..}) and null
   // into {} (activePet) -- the client-side merge bug that caused the
@@ -2819,6 +2919,10 @@ export class GameRoom {
     ps.dead = true;
     ps.respawnAt = Date.now() + 5000;
     ps.dmgFromMonster = {};
+    // v2.3.1116: death ends any duel/threat consent this player was
+    // party to -- the survivor can't keep hitting them through the
+    // respawn.  (PR6 replaces this with the real duel resolution.)
+    this._clearPvpConsent(playerId);
     // Spawn a pickable death pile at the death location carrying the
     // player's entire general inventory (mummy remains, fish, wood,
     // etc.).  Equipped loadout (weapon / rangedWeapon / staffWeapon /
@@ -3737,6 +3841,27 @@ export class GameRoom {
 
     switch (msg.type) {
       case 'join':
+        // v2.3.1116: identity auth gate.  Runs BEFORE the eviction loop
+        // below on purpose -- player ids are broadcast to the whole room
+        // (player_join / state_sync), so before this gate existed anyone
+        // could read a victim's id off the wire, join with it, evict
+        // their live session, AND own their stored progress.  Rules:
+        //   - id with a stored auth record: the join must carry the
+        //     matching passphrase or it's rejected without touching the
+        //     existing session or playerState.
+        //   - unregistered id: allowed through (v1 / legacy clients never
+        //     send a phrase -- the deploy-order safety property), and the
+        //     auth record is stamped when a phrase IS provided, locking
+        //     the id from then on.
+        if (msg.id) {
+          const _authOk = await this._verifyJoinAuth(msg.id, typeof msg.phrase === 'string' ? msg.phrase : null);
+          if (!_authOk) {
+            try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
+            try { ws.close(4003, 'auth'); } catch {}
+            this.sessions.delete(ws);
+            return;
+          }
+        }
         // v2.3.702: EVICT any lingering session with the same player id.
         // A reconnect (worker-deploy bounce, iOS tab suspend/resume)
         // re-joins with the same stable passphrase id while the old
@@ -4411,6 +4536,11 @@ export class GameRoom {
         // get rebroadcast normally.
         if (PRIVILEGED_EVENTS.has(msg.type)) break;
         if (session.id) {
+          // v2.3.1116: the duel/threat handshakes are still client-
+          // relayed (full server machine is PR6), but the gate in
+          // _resolvePvPAttack needs to know consent happened -- observe
+          // the relayed halves as they pass through.
+          this._observePvpConsent(session.id, msg);
           msg.from = session.id;
           this.eventBuffer.push(msg);
         }
@@ -4452,6 +4582,13 @@ export class GameRoom {
       if (targetId === attackerId) continue;
       if (targetPs.z !== attackerPs.z) continue; // different zone
       if (targetPs.dead || targetPs.disconnected) continue;
+      // v2.3.1116: consent gate.  Damage lands only in lawless zones
+      // (data.js ZONES flag) or between a consented pair (duel /
+      // accepted threat).  Town and any unknown zone fail CLOSED --
+      // town was never in ZONES, and before this gate that meant "no
+      // rule at all": anyone could gank anyone in town with a full
+      // death-pile drop.  Duels still work in town via the pair.
+      if (!this._pvpAllowed(attackerId, targetId, attackerPs.z)) continue;
 
       // §16.12 — Look up target's historical state
       const history = this.stateHistory[targetId];
@@ -4528,6 +4665,7 @@ export class GameRoom {
       delete this.stateHistory[session.id];
       delete this.extractions[session.id];
       this.dirtyPlayers.delete(session.id);
+      this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
       this.broadcastAll({ type: 'player_leave', id: session.id });
       this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
     }
