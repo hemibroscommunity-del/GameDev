@@ -39,6 +39,10 @@ import { marketMethods } from './market.js';
 // handshake stays, but the room intercepts it and moves the goods
 // itself (see trade.js header for the duplication engine this kills).
 import { tradeMethods } from './trade.js';
+// v2.3.1121 (heavy-systems PR6): duel machine -- real state machine with
+// deploy-proof wager escrow; replaces the PR1 interim consent handling
+// for duels (threat consent stays interim).
+import { duelMethods } from './duel.js';
 
 export default {
   async fetch(request, env) {
@@ -132,6 +136,8 @@ const PRIVILEGED_EVENTS = new Set([
   // grant anything (credits are server-persisted before it's sent) but
   // it drives "you received X" UI, so don't let clients spoof it.
   'inbox_delivered', 'join_rejected',
+  // v2.3.1121: duel resolution is server-emitted only.
+  'duel_end',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -2257,21 +2263,24 @@ export class GameRoom {
   _pvpPairKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
 
   _observePvpConsent(fromId, msg) {
+    // v2.3.1121: duel_request/duel_accept moved to the duel machine
+    // (duel.js _interceptDuel, which registers the consent pair itself).
+    // This observer now covers only the still-relayed THREAT handshake.
     const t = msg.type;
-    if (t !== 'duel_request' && t !== 'duel_accept' && t !== 'pvp_threat' && t !== 'threat_response') return;
+    if (t !== 'pvp_threat' && t !== 'threat_response') return;
     const target = msg.payload && msg.payload.target;
     if (!target || typeof target !== 'string' || target === fromId) return;
     const now = Date.now();
     if (!this._pvpChallenges) this._pvpChallenges = new Map(); // 'challenger>target' -> expiry
     if (!this._pvpConsent) this._pvpConsent = new Map();       // pairKey -> expiry
-    if (t === 'duel_request' || t === 'pvp_threat') {
+    if (t === 'pvp_threat') {
       this._pvpChallenges.set(fromId + '>' + target, now + 120000); // 2 min to accept
       return;
     }
-    if (t === 'threat_response' && !(msg.payload && msg.payload.accepted)) return;
-    // duel_accept / accepted threat_response: only valid against a live
-    // challenge from the OTHER side -- a unilateral "accept" with no
-    // matching request consents to nothing.
+    if (!(msg.payload && msg.payload.accepted)) return;
+    // Accepted threat_response: only valid against a live challenge
+    // from the OTHER side -- a unilateral "accept" with no matching
+    // threat consents to nothing.
     const chal = this._pvpChallenges.get(target + '>' + fromId);
     if (chal && chal > now) {
       this._pvpChallenges.delete(target + '>' + fromId);
@@ -3205,18 +3214,26 @@ export class GameRoom {
     ps.dead = true;
     ps.respawnAt = Date.now() + 5000;
     ps.dmgFromMonster = {};
-    // v2.3.1116: death ends any duel/threat consent this player was
-    // party to -- the survivor can't keep hitting them through the
-    // respawn.  (PR6 replaces this with the real duel resolution.)
+    // v2.3.1121: resolve any active duel FIRST -- a clean duel kill
+    // (cause 'pvp:<opponent>') pays the pot to the winner and is
+    // protected: no death pile, no inventory wipe, per the promise the
+    // duel popup makes ("No item loss").  Any other death mid-duel
+    // (monster, environment) still forfeits the pot but dies normally.
+    const _duelKill = this._duelOnDeath(playerId, cause);
+    // v2.3.1116: death ends any remaining threat consent this player
+    // was party to -- the survivor can't keep hitting them through the
+    // respawn.  (Duel pairs already cleared by the resolution above.)
     this._clearPvpConsent(playerId);
-    // Spawn a pickable death pile at the death location carrying the
-    // player's entire general inventory (mummy remains, fish, wood,
-    // etc.).  Equipped loadout (weapon / rangedWeapon / staffWeapon /
-    // armor / shield / amulet) and weaponStash are NOT included.
-    // Anyone in the zone can pick the pile up; despawns after 60 s.
-    // Spawn BEFORE the inventory wipe so we capture the items.
-    this._spawnDeathPile(ps, playerId);
-    ps.inventory = {};
+    if (!_duelKill) {
+      // Spawn a pickable death pile at the death location carrying the
+      // player's entire general inventory (mummy remains, fish, wood,
+      // etc.).  Equipped loadout (weapon / rangedWeapon / staffWeapon /
+      // armor / shield / amulet) and weaponStash are NOT included.
+      // Anyone in the zone can pick the pile up; despawns after 60 s.
+      // Spawn BEFORE the inventory wipe so we capture the items.
+      this._spawnDeathPile(ps, playerId);
+      ps.inventory = {};
+    }
     this._saveRpg(playerId, ps);
     this._queuePlayerStateFlush(playerId);
     const ws = this._wsBySessionId(playerId);
@@ -4424,6 +4441,12 @@ export class GameRoom {
         // below, so the first snapshot the client renders already
         // includes the credits.
         await this._drainInbox(msg.id, ws);
+        // v2.3.1121: duel bookkeeping on (re)join -- clear a reconnect
+        // grace window if this player dropped mid-duel, and kick the
+        // rate-limited orphaned-wager sweep (fire-and-forget; refunds
+        // land via the inbox path above on the NEXT join).
+        this._duelOnRejoin(msg.id);
+        this._duelEscrowSweep();
         this.broadcastExcept(ws, { type: 'player_join', id: msg.id, name: msg.name, data: msg.data });
         // Send current state + monsters for player's zone
         const joinZone = msg.data?.z || 'town';
@@ -4853,10 +4876,20 @@ export class GameRoom {
             msg = await this._interceptTrade(session.id, msg);
             if (!msg) break;
           }
-          // v2.3.1116: the duel/threat handshakes are still client-
-          // relayed (full server machine is PR6), but the gate in
+          // v2.3.1121: duels are a real server machine now (escrowed
+          // wagers, no-drop kills, reconnect grace -- see duel.js).
+          // The intercept validates/activates and annotates the accept,
+          // or drops forged handshakes.  Null means "don't relay".
+          if (msg.type === 'duel_request' || msg.type === 'duel_wager_request'
+            || msg.type === 'duel_accept' || msg.type === 'duel_decline') {
+            msg = await this._interceptDuel(session.id, msg);
+            if (!msg) break;
+          }
+          // v2.3.1116: the THREAT handshake is still client-relayed
+          // (red-skull machine deliberately deferred), but the gate in
           // _resolvePvPAttack needs to know consent happened -- observe
-          // the relayed halves as they pass through.
+          // the relayed halves as they pass through.  (Duel consent
+          // moved to the machine above in v2.3.1121.)
           this._observePvpConsent(session.id, msg);
           msg.from = session.id;
           this.eventBuffer.push(msg);
@@ -4982,6 +5015,11 @@ export class GameRoom {
       delete this.stateHistory[session.id];
       delete this.extractions[session.id];
       this.dirtyPlayers.delete(session.id);
+      // v2.3.1121: an active duel gets a 15s reconnect grace (iOS tab
+      // suspends and deploy bounces are routine) before _tickDuels
+      // forfeits it -- so this runs BEFORE the consent clear, which
+      // would otherwise end the fight unconditionally.
+      this._duelOnDisconnect(session.id);
       this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
       this.broadcastAll({ type: 'player_leave', id: session.id });
       this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
@@ -5030,6 +5068,10 @@ export class GameRoom {
       // Player respawn tick — flip dying=>alive when respawnAt elapses.
       // Cheap; iterates active player entries.
       this._tickPlayerRespawn();
+
+      // v2.3.1121: duel housekeeping — expire stale challenges, enforce
+      // the 15s reconnect-grace forfeit.  Cheap map walks.
+      this._tickDuels(Date.now());
 
       // HP regen tick — every 30 server ticks (~670 ms at TICK_RATE=22).
       // Skip when no one needs healing to avoid wasted iteration.
@@ -5195,3 +5237,5 @@ export class GameRoom {
 Object.assign(GameRoom.prototype, marketMethods);
 // v2.3.1119: trade settlement mixin (same pattern).
 Object.assign(GameRoom.prototype, tradeMethods);
+// v2.3.1121: duel machine mixin.
+Object.assign(GameRoom.prototype, duelMethods);

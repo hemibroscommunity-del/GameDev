@@ -1313,6 +1313,29 @@ export function processGameEvent(type, payload, S, deps) {
               }
               break;
             }
+          case 'duel_end':
+            {
+              /* v2.3.1121: server duel resolution (kill / death /
+                 forfeit).  The pot (if any) was settled server-side --
+                 winner's gold arrives via player_state echo or mail.
+                 This just closes out the local duel state + tells the
+                 participants how it ended. */
+              if (payload.winner === S.myId || payload.loser === S.myId) {
+                var _won = payload.winner === S.myId;
+                S._activeDuel = null;
+                S._inDuel = null;
+                S.dmgNumbers.push({
+                  x: S.player.x,
+                  y: S.player.y - 40,
+                  text: _won ? ('DUEL WON!' + (payload.wager ? ' +' + payload.wager * 2 + 'g' : ''))
+                    : (payload.how === 'forfeit' ? 'Duel forfeited' : 'Duel lost' + (payload.wager ? ' -' + payload.wager + 'g' : '')),
+                  color: _won ? '#f5c542' : '#ff5e6c',
+                  ts: Date.now()
+                });
+                if (_won) BT_AUDIO.levelUp();else BT_AUDIO.beep(180, 0.1, 0.15, 'triangle');
+              }
+              break;
+            }
           case 'duel_decline':
             {
               if (payload.target === S.myId) S.dmgNumbers.push({
