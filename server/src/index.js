@@ -35,6 +35,10 @@ import {
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
 import { marketMethods } from './market.js';
+// v2.3.1119 (heavy-systems PR4): server-settled trades -- the relay
+// handshake stays, but the room intercepts it and moves the goods
+// itself (see trade.js header for the duplication engine this kills).
+import { tradeMethods } from './trade.js';
 
 export default {
   async fetch(request, env) {
@@ -4377,6 +4381,12 @@ export class GameRoom {
         const zoneLootForJoin = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._zoneLootForWire(joinZone) : [];
         ws.send(JSON.stringify({
           type: 'state_sync',
+          // v2.3.1119: capability advertisement.  Clients gate their
+          // legacy client-side settlement paths on these flags so old
+          // workers keep old behavior (deploy-order safety).  WS-flow
+          // capabilities go here; HTTP flows use per-response flags
+          // (marketplace settled:true, v2.3.1118).
+          caps: { trade: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -4784,6 +4794,14 @@ export class GameRoom {
         // get rebroadcast normally.
         if (PRIVILEGED_EVENTS.has(msg.type)) break;
         if (session.id) {
+          // v2.3.1119: trades keep the relay handshake but the room now
+          // settles them -- the intercept validates at commit, moves the
+          // goods, and annotates the accept with settled:true (or drops
+          // forged/replayed accepts entirely).  Null means "don't relay".
+          if (msg.type === 'trade_offer' || msg.type === 'trade_accept') {
+            msg = await this._interceptTrade(session.id, msg);
+            if (!msg) break;
+          }
           // v2.3.1116: the duel/threat handshakes are still client-
           // relayed (full server machine is PR6), but the gate in
           // _resolvePvPAttack needs to know consent happened -- observe
@@ -5124,3 +5142,5 @@ export class GameRoom {
 // v2.3.1118: mix the marketplace methods into GameRoom (see the
 // market.js header for the fold rationale + re-extraction path).
 Object.assign(GameRoom.prototype, marketMethods);
+// v2.3.1119: trade settlement mixin (same pattern).
+Object.assign(GameRoom.prototype, tradeMethods);
