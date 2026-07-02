@@ -186,12 +186,18 @@ export function updateMonsterCombat(S, deps) {
               m.alive = false;
               m.respawnAt = Date.now() + 30000;
               m.statuses = {};
-              /* Quest kill tracking */
-              if (_R6._questKills === undefined) _R6._questKills = {};
-              Object.keys(QUEST_CHAINS).forEach(function (qid) {
-                var _R6$_quests;
-                if (((_R6$_quests = _R6._quests) === null || _R6$_quests === void 0 ? void 0 : _R6$_quests[qid]) === QUEST_STATUS.active) _R6._questKills[qid] = (_R6._questKills[qid] || 0) + 1;
-              });
+              /* Quest kill tracking.  v2.3.1120: questTrack workers own
+                 _questKills (objective-aware increments, echoed on the
+                 same kill flush) -- this legacy loop counted EVERY
+                 active quest on ANY kill and would fight the
+                 authoritative echo.  Legacy workers only. */
+              if (!(S._serverCaps && S._serverCaps.questTrack)) {
+                if (_R6._questKills === undefined) _R6._questKills = {};
+                Object.keys(QUEST_CHAINS).forEach(function (qid) {
+                  var _R6$_quests;
+                  if (((_R6$_quests = _R6._quests) === null || _R6$_quests === void 0 ? void 0 : _R6$_quests[qid]) === QUEST_STATUS.active) _R6._questKills[qid] = (_R6._questKills[qid] || 0) + 1;
+                });
+              }
               /* Death feedback */
               S.dmgNumbers.push({
                 x: m.x,
@@ -1943,12 +1949,15 @@ export function updateMonsterCombat(S, deps) {
                   m.statuses = {};
                   BT_AUDIO.monsterDeath(m && m.archetype);
 
-                  /* §19.1 Quest kill tracking */
-                  if (_R6._questKills === undefined) _R6._questKills = {};
-                  Object.keys(QUEST_CHAINS).forEach(function (qid) {
-                    var _R6$_quests2;
-                    if (((_R6$_quests2 = _R6._quests) === null || _R6$_quests2 === void 0 ? void 0 : _R6$_quests2[qid]) === QUEST_STATUS.active) _R6._questKills[qid] = (_R6._questKills[qid] || 0) + 1;
-                  });
+                  /* §19.1 Quest kill tracking (v2.3.1120: legacy workers
+                     only -- see the gate comment at the melee site). */
+                  if (!(S._serverCaps && S._serverCaps.questTrack)) {
+                    if (_R6._questKills === undefined) _R6._questKills = {};
+                    Object.keys(QUEST_CHAINS).forEach(function (qid) {
+                      var _R6$_quests2;
+                      if (((_R6$_quests2 = _R6._quests) === null || _R6$_quests2 === void 0 ? void 0 : _R6$_quests2[qid]) === QUEST_STATUS.active) _R6._questKills[qid] = (_R6._questKills[qid] || 0) + 1;
+                    });
+                  }
 
                   /* ═══ THE GRAND SLAM — §Creative Vision: scaled cinematic micro-event ═══ */
                   var isGrandSlam = isCrit;

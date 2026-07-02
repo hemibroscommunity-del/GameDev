@@ -64,12 +64,24 @@ export const SHOP_ITEMS = {
       whetstone:     { cost: 35, effect: 'dmgBuff' },
     };
 
+/* v2.3.1120: declarative quest objectives.  An entry WITH `objective`
+ * is server-verified: the GameRoom increments its counter (kill credit
+ * loop / harvest credit) and _handleQuestTurnIn refuses to pay until
+ * it's met.  Entries WITHOUT one stay client-trusted -- their signals
+ * (building visits, dungeon clears, collision discoveries, crafting
+ * flags, pet counts) only exist client-side today; add objectives here
+ * one quest at a time as those signals move server-side.  Types:
+ *   {type:'kill',   arch:null|'<archetype>', count:N}  -- monster kills
+ *   {type:'gather', count:N}                           -- node harvests
+ *   {type:'flag', flag} / {type:'collect', invKey, count} -- reserved;
+ *   NOTE flag-type must NOT be wired to server _questFlags writes until
+ *   flags are server-owned (see docs/specs/quests.md clobber hazard). */
 export const QUEST_REWARDS = {
       mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
-      mayor_2:    {gold:100, xp:80,  next:'mayor_3'},
+      mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
       mayor_3:    {gold:300, xp:200, next:null},
       trader_1:   {gold:25,  xp:20,  next:'trader_2'},
-      trader_2:   {gold:75,  xp:50,  next:'trader_3'},
+      trader_2:   {gold:75,  xp:50,  next:'trader_3', objective:{type:'gather', count:3}},
       trader_3:   {gold:150, xp:100, next:null},
       enchant_1:  {gold:50,  xp:40,  next:'enchant_2'},
       enchant_2:  {gold:200, xp:150, next:'enchant_3'},
