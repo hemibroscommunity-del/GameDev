@@ -321,6 +321,25 @@ export class EffectsRenderer {
       }
     }).catch((err) => console.warn('[chop-strip] load failed', err));
 
+    /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
+       stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
+       equipped.  Layers are 12-frame 480x440 (2x) strips at
+       /sprites/gear/<slot>/<item>/chop-west.png, pixel-aligned to the chop body's
+       frames 12-23.  Added AFTER chopSprite so they composite on top; body first,
+       then shirt, legs, chest (chest last / on top). */
+    this.chopShirtSprite = new Sprite();
+    this.chopShirtSprite.anchor.set(0.5, 1);
+    this.chopShirtSprite.visible = false;
+    this.nodeLayer.addChild(this.chopShirtSprite);
+    this.chopLegsSprite = new Sprite();
+    this.chopLegsSprite.anchor.set(0.5, 1);
+    this.chopLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.chopLegsSprite);
+    this.chopChestSprite = new Sprite();
+    this.chopChestSprite.anchor.set(0.5, 1);
+    this.chopChestSprite.visible = false;
+    this.nodeLayer.addChild(this.chopChestSprite);
+
     /* v2.3.853: cook character (shown at the campfire during a cooking
        extraction) + firemaking character (shown at the player while lighting
        a fire) — same world-space sprite pattern as the chopper. */
@@ -3529,6 +3548,9 @@ export class EffectsRenderer {
        ~4s wind-up before the swipe window opens) — the graphic swipe cue
        below still waits for 'ready'. */
     if (this.chopSprite) this.chopSprite.visible = false;
+    if (this.chopShirtSprite) this.chopShirtSprite.visible = false;
+    if (this.chopLegsSprite) this.chopLegsSprite.visible = false;
+    if (this.chopChestSprite) this.chopChestSprite.visible = false;
     if (this.cookSprite) this.cookSprite.visible = false;
     if (this.cookShirtSprite) this.cookShirtSprite.visible = false;
     if (this.cookLegsSprite) this.cookLegsSprite.visible = false;
@@ -3566,32 +3588,51 @@ export class EffectsRenderer {
       const CHOP_H = 84;          // drawn height (~player scale); tune to taste
       const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
-      const CHOP_STRIKE_FRAME = 10; // frame where the axe drives into the trunk
+      /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --
+         the owner's armour gear layers only cover those poses, so the base loop
+         is trimmed to match.  A shorter loop than the old full 24-frame swing. */
+      const CHOP_BASE = 12, CHOP_COUNT = 12;
+      const CHOP_STRIKE_K = 9;    // frame WITHIN the 12 where the axe bites (sfx)
       const sp = this.chopSprite;
-      const fi = Math.floor(now / CHOP_FRAME_MS) % this._chopFrames.length;
+      const k = Math.floor(now / CHOP_FRAME_MS) % CHOP_COUNT;
+      const fi = Math.min(this._chopFrames.length - 1, CHOP_BASE + k);
       sp.texture = this._chopFrames[fi];
       const s = CHOP_H / 220;
       sp.scale.set(chopSign < 0 ? -s : s, s);  // flip to face the trunk
       sp.x = node.x - chopSign * CHOP_OFFSET;
       sp.y = node.y + 6;
       sp.visible = true;
+      /* v2.3.1131: gear layers over the lumberjack (mirror of the cook stand-in),
+         gated on equipped gear and copying the body transform.  The layer strips
+         are 2x (480x440), so they render at half the body's scale factor to reach
+         the same on-screen height, and use the SAME flip sign as the body. */
+      const sL = CHOP_H / 440;
+      const placeChopLayer = (spr, t) => {
+        if (!spr) return;
+        if (!t) { spr.visible = false; return; }
+        spr.anchor.set(0.5, 1); spr.texture = t;
+        spr.scale.set(chopSign < 0 ? -sL : sL, sL);
+        spr.x = sp.x; spr.y = sp.y; spr.visible = true;
+      };
+      /* Shirt: paper-doll recolour -- the chop shirt art is a grayscale base, so
+         _placeSwingShirt tints it to the player's chosen shirt colour (and hides
+         it when a chest plate is worn, which replaces it). */
+      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, getShirt(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor());
+      placeChopLayer(this.chopLegsSprite,  this._gearStripFrame('legs',  getEquip('legs'),  'chop', 'west', 480, k));
+      placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', 480, k));
       /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
-         none).  Fires once per loop — only on the transition INTO the
-         strike frame (the steps hold it for ~2-3 render frames).
-         v2.3.848: reuse the generic melee weapon-hit sound (BT_AUDIO.swordHit
-         — what a strike on any monster plays), and delay it ~0.2s so it
-         lands with the visible bite rather than ahead of the swing (owner). */
-      if (fi === CHOP_STRIKE_FRAME && this._chopLastFrame !== CHOP_STRIKE_FRAME) {
+         none).  Fires once per loop — only on the transition INTO the strike
+         frame.  v2.3.848: reuse the melee 'sword-hit3' sample, delayed ~0.2s so
+         it lands with the visible bite. */
+      if (k === CHOP_STRIKE_K && this._chopLastFrame !== CHOP_STRIKE_K) {
         try {
           setTimeout(function () {
             var _a = (typeof window !== 'undefined') && window.BT_AUDIO;
-            /* v2.3.850: the melee hit alternates two samples; owner wants
-               the other one for wood — 'sword-hit3' (not 'sword-hit2'). */
             if (_a && _a.play) _a.play('sword-hit3', { vol: 0.55 });
           }, 200);
         } catch (e) {}
       }
-      this._chopLastFrame = fi;
+      this._chopLastFrame = k;
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree
          is on the player's left, i.e. chopSign<0 -> render the west view. */
       this._placeSkillTraitsOn('chop', sp, fi, 'east', chopSign < 0);
