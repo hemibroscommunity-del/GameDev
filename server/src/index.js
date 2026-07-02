@@ -1425,6 +1425,29 @@ export class GameRoom {
     if (ws) this._sendPlayerState(ws, session.id);
   }
 
+  // v2.3.1120: increment quest progress counters for every active quest
+  // whose declarative objective (data.js QUEST_REWARDS) matches this
+  // signal.  kind: 'kill' (arch = monster archetype) | 'gather'.
+  // The server is the SOLE writer of _questKills now (client increment
+  // sites are gated off by caps.questTrack), so the wholesale
+  // player_state echo/adopt of the map is safe.
+  _creditQuestObjective(playerId, kind, arch) {
+    const ps = this.playerState[playerId];
+    if (!ps || !ps._quests) return;
+    const table = this._QUEST_REWARDS_DATA();
+    let changed = false;
+    for (const [qid, status] of Object.entries(ps._quests)) {
+      if (status !== 'active') continue;
+      const obj = table[qid] && table[qid].objective;
+      if (!obj || obj.type !== kind) continue;
+      if (kind === 'kill' && obj.arch && obj.arch !== arch) continue;
+      if (!ps._questKills) ps._questKills = {};
+      ps._questKills[qid] = Math.min(99999, (ps._questKills[qid] || 0) + 1);
+      changed = true;
+    }
+    if (changed) this._queuePlayerStateFlush(playerId);
+  }
+
   _handleQuestTurnIn(session, payload) {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
@@ -1439,6 +1462,21 @@ export class GameRoom {
     // a cheater can't reclaim the reward by spamming the event,
     // and can't claim a quest they never accepted.
     if (ps._quests[questId] !== 'active') return;
+    // v2.3.1120: verify the declarative objective before paying.  The
+    // old handler validated only the state transition and trusted the
+    // completion claim (free gold/XP/AP on request).  Quests without
+    // an objective stay client-trusted -- see data.js QUEST_REWARDS
+    // header for the whitelist rationale.
+    const _obj = reward.objective;
+    if (_obj) {
+      if (_obj.type === 'kill' || _obj.type === 'gather') {
+        if (((ps._questKills && ps._questKills[questId]) || 0) < (_obj.count || 1)) return;
+      } else if (_obj.type === 'collect') {
+        if (((ps.inventory && ps.inventory[_obj.invKey]) || 0) < (_obj.count || 1)) return;
+      } else if (_obj.type === 'flag') {
+        if (!(ps._questFlags && ps._questFlags[_obj.flag])) return;
+      }
+    }
     ps._quests[questId] = 'turnedIn';
     ps.coins = (ps.coins || 0) + (reward.gold || 0);
     // XP via _addCombatXp so level-up logic runs (including
@@ -2070,6 +2108,12 @@ export class GameRoom {
     if (shard) {
       ps.inventory[shard] = (ps.inventory[shard] || 0) + 1;
     }
+
+    // v2.3.1120: gather-objective quest credit (trader_2 et al).  The
+    // client never counted harvests at all -- its only _questKills
+    // writers were the kill sites, which wrongly advanced this quest
+    // on kills.  The player_state send below carries the new counter.
+    this._creditQuestObjective(session.id, 'gather', null);
 
     this._saveRpg(session.id, ps);
 
@@ -3966,6 +4010,13 @@ export class GameRoom {
       for (const rid of xpRecipients) {
         const recipPs = this.playerState[rid];
         if (!recipPs) continue;
+        // v2.3.1120: server-authoritative quest kill counters.  Every XP
+        // recipient with an active kill-objective quest gets credit (the
+        // client used to count EVERY active quest on ANY kill -- kills
+        // were advancing trader_2, a gathering quest).  Quest-id keyed,
+        // exactly the shape the client predicates read; the flush below
+        // echoes it, so the progress UI updates on the same tick.
+        this._creditQuestObjective(rid, 'kill', m.arch);
         const share = shares[rid] || 0;
         const xpForRecipient = Math.round((m.xp || 0) * share);
         if (xpForRecipient <= 0) continue;
@@ -4386,7 +4437,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true },
+          caps: { trade: true, questTrack: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({

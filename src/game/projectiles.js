@@ -446,11 +446,15 @@ export function updateArrows(S, deps) {
                   try { BT_AUDIO.monsterDeath(m && m.archetype); } catch (e) {}
                   if (S.rpg) {
                     var _R9 = S.rpg;
-                    if (!_R9._questKills) _R9._questKills = {};
-                    Object.keys(QUEST_CHAINS).forEach(function (qid) {
-                      var _R9$_quests;
-                      if (((_R9$_quests = _R9._quests) === null || _R9$_quests === void 0 ? void 0 : _R9$_quests[qid]) === QUEST_STATUS.active) _R9._questKills[qid] = (_R9._questKills[qid] || 0) + 1;
-                    });
+                    /* v2.3.1120: questTrack workers own _questKills --
+                       legacy workers only (see monsterCombat.js gate). */
+                    if (!(S._serverCaps && S._serverCaps.questTrack)) {
+                      if (!_R9._questKills) _R9._questKills = {};
+                      Object.keys(QUEST_CHAINS).forEach(function (qid) {
+                        var _R9$_quests;
+                        if (((_R9$_quests = _R9._quests) === null || _R9$_quests === void 0 ? void 0 : _R9$_quests[qid]) === QUEST_STATUS.active) _R9._questKills[qid] = (_R9._questKills[qid] || 0) + 1;
+                      });
+                    }
                     /* XP grant; gold rides on the loot drop only (no
                        direct grant + popup pair anymore — the pickup is
                        the only gold path now). */
