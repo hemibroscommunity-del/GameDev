@@ -16,7 +16,7 @@
    body is untouched. Returns the effect cleanup (or undefined when gated
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
-import { getDeviceNonce } from '@/networking/index.js';
+import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
@@ -119,6 +119,15 @@ export function setupWebSocket(ctx) {
         ws.send(JSON.stringify({
           type: 'join',
           id: S.myId,
+          /* v2.3.1116: identity proof.  bp_ ids carry the passphrase so
+             the worker can verify (or first-time register) ownership of
+             the id.  Guest/random ids send none -- the worker treats
+             them as unregistered throwaways (same as legacy clients). */
+          phrase: (function () {
+            try {
+              return (S.myId && S.myId.indexOf('bp_') === 0) ? (localStorage.getItem('bt_passphrase') || undefined) : undefined;
+            } catch (e) { return undefined; }
+          })(),
           name: S.myName,
           /* v2.3.694: device correlation nonce {id, env} for the server's
              multi-account / bot-fleet anomaly tracker.  Old workers ignore it. */
@@ -504,6 +513,31 @@ export function setupWebSocket(ctx) {
                   }
                 }
               }
+              break;
+            }
+          case 'join_rejected':
+            {
+              /* v2.3.1116: the worker refused our id -- the stored
+                 passphrase doesn't match its auth record (tampered
+                 localStorage, or a 31-bit id collision with an earlier
+                 registrant).  Mint a fresh identity ONCE and let the
+                 auto-reconnect (the server closes the socket after
+                 rejecting -> onclose -> scheduleReconnect) rejoin under
+                 it.  A second rejection means something is genuinely
+                 wrong -- stop churning identities and surface it. */
+              try {
+                S._authRejects = (S._authRejects || 0) + 1;
+                if (S._authRejects <= 1 && S.myId && S.myId.indexOf('bp_') === 0) {
+                  var _newPf = generatePassphrase();
+                  localStorage.setItem('bt_passphrase', _newPf);
+                  /* The old character is unreachable under the new id --
+                     drop the stale cache so the rejoin starts clean. */
+                  localStorage.removeItem('bt_rpg');
+                  S.myId = passphraseToId(_newPf);
+                } else {
+                  console.error('[bt] join rejected by server (auth) -- not retrying');
+                }
+              } catch (e) {}
               break;
             }
           case 'state_sync':

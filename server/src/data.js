@@ -25,16 +25,23 @@ export const ARCHETYPES = {
       snowman:  { hpMult: 1.3, dmgMult: 1.1, spdMult: 0.8, emoji: '⛄', color: '#b0d8f0' },
     };
 
+/* v2.3.1116: `lawless` = open PvP without consent (GDD §26.4 posture).
+ * All current wilderness zones are flagged lawless, which PRESERVES the
+ * shipped behavior (client marks only town/farm_home `safe`; everywhere
+ * else free-fire was live).  The gate in _resolvePvPAttack fail-closes
+ * on any zone NOT in this table -- town and farm_home were never listed
+ * here, so unconsented town PvP (with full death-pile drops) dies with
+ * this flag.  Duels still work in town via the consent pair. */
 export const ZONES = {
-      meadow:  { w:32, h:32, level:[1,1],  element:null,    spawns:[{arch:'fodder',count:10}] },
-      ember:   { w:32, h:32, level:[1,1],  element:'flame', spawns:[{arch:'fodder',count:6}] },
-      mist:    { w:32, h:32, level:[1,1],  element:'venom', spawns:[] },
-      verdant: { w:32, h:32, level:[1,1],  element:null,    spawns:[] },
-      frost:   { w:32, h:32, level:[1,1],  element:'frost', spawns:[{arch:'snowman',count:4}] },
-      thunder: { w:32, h:32, level:[1,1],  element:'storm', spawns:[{arch:'fodder',count:6}] },
-      hollows: { w:32, h:32, level:[1,1],  element:'stone', spawns:[{arch:'brute',count:4}] },
-      sky:     { w:32, h:32, level:[1,1],  element:'wind',  spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
-      tidal:   { w:32, h:32, level:[1,1],  element:'water', spawns:[{arch:'brute',count:3}] },
+      meadow:  { w:32, h:32, level:[1,1],  element:null,    lawless:true, spawns:[{arch:'fodder',count:10}] },
+      ember:   { w:32, h:32, level:[1,1],  element:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },
+      mist:    { w:32, h:32, level:[1,1],  element:'venom', lawless:true, spawns:[] },
+      verdant: { w:32, h:32, level:[1,1],  element:null,    lawless:true, spawns:[] },
+      frost:   { w:32, h:32, level:[1,1],  element:'frost', lawless:true, spawns:[{arch:'snowman',count:4}] },
+      thunder: { w:32, h:32, level:[1,1],  element:'storm', lawless:true, spawns:[{arch:'fodder',count:6}] },
+      hollows: { w:32, h:32, level:[1,1],  element:'stone', lawless:true, spawns:[{arch:'brute',count:4}] },
+      sky:     { w:32, h:32, level:[1,1],  element:'wind',  lawless:true, spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
+      tidal:   { w:32, h:32, level:[1,1],  element:'water', lawless:true, spawns:[{arch:'brute',count:3}] },
     };
 
 export const FISH_TIERS = [

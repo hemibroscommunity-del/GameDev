@@ -313,7 +313,27 @@ export var BroTown = function BroTown(_ref0) {
     chatLog: [],
     chatBubbles: {},
     /* {playerId: {text, ts}} */
-    myId: Math.random().toString(36).slice(2, 10),
+    /* v2.3.1116: persistent identity -- stable id derived from a stored
+       passphrase (silently generated on first boot) instead of a fresh
+       random per pageload.  The worker keys rpg storage by this id, so
+       progress finally survives reloads.  ?guest=1 escapes to the old
+       throwaway-random id (needed to test multiplayer with two tabs in
+       ONE browser: two tabs share localStorage, so they'd share an id
+       and evict each other by design).  Falls back to random when
+       localStorage is unavailable (some private-mode configurations). */
+    myId: (function () {
+      try {
+        if (/[?&]guest=1\b/.test(window.location.search)) return Math.random().toString(36).slice(2, 10);
+        var _pf = localStorage.getItem('bt_passphrase');
+        if (!_pf) {
+          _pf = generatePassphrase();
+          localStorage.setItem('bt_passphrase', _pf);
+        }
+        return passphraseToId(_pf);
+      } catch (e) {
+        return Math.random().toString(36).slice(2, 10);
+      }
+    })(),
     myName: '',
     myColor: PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)],
     myAvatar: null,
@@ -5695,23 +5715,35 @@ export var BroTown = function BroTown(_ref0) {
     }
     S.bodyTorso = bodyTorsoColor;
     S.bodyLegs = bodyLegColor;
-    /* Clear old data — fresh start for everyone */
+    /* v2.3.1116: persistent identity -- bt_passphrase / bt_rpg / bt_stats
+       / bt_tutorial / bt_codex are NO LONGER wiped on PLAY.  The old
+       "fresh start for everyone" wipe was the demo-reset posture, and it
+       was the reason nothing could ever persist: it deleted the passphrase
+       (so every session joined under a fresh random id) and the rpg cache
+       on every single PLAY click.  The server's stored record is
+       authoritative on reconnect (state_sync overwrites); the local copy
+       below is just the fast-start cache, same as the boot initializer.
+       Room state still clears so wsClient never locks to a stale room
+       (v2.3.222 removed the room code input field). */
     try {
-      localStorage.removeItem('bt_rpg');
-      localStorage.removeItem('bt_passphrase');
-      localStorage.removeItem('bt_stats');
-      localStorage.removeItem('bt_tutorial');
-      localStorage.removeItem('bt_codex');
-      localStorage.removeItem('bt_player');
-      /* Room state -- always clear sticky on a fresh PLAY click so we
-         auto-route to the next open room.  v2.3.222 removed the room
-         code input field; bt_room_code stays cleared so wsClient never
-         locks to a specific room. */
       localStorage.removeItem('bt_room');
       localStorage.removeItem('bt_room_code');
     } catch (e) {}
-    /* Fresh RPG state for all players */
-    S.rpg = createDefaultRpg();
+    /* RPG state: reuse the cached copy when it's the current stat system
+       (same `power` check as the boot initializer at ~line 1920); fresh
+       otherwise.  Guests (?guest=1) always start fresh -- their random id
+       has no server record, and bootstrapping the main identity's cached
+       values onto a throwaway would just be confusing. */
+    var _cachedRpg = null;
+    try {
+      if (!/[?&]guest=1\b/.test(window.location.search)) {
+        _cachedRpg = JSON.parse(localStorage.getItem('bt_rpg'));
+      }
+    } catch (e) {}
+    S.rpg = (_cachedRpg && _cachedRpg.power !== undefined) ? _cachedRpg : createDefaultRpg();
+    if (!S.rpg.inventory) S.rpg.inventory = {};
+    if (!S.rpg.lifeSkills) S.rpg.lifeSkills = createDefaultLifeSkills();
+    S.rpg.lifeSkills = migrateLifeSkills(S.rpg.lifeSkills);
     recalcDerived(S.rpg);
     setRpgState(_objectSpread({}, S.rpg));
     /* Persist */
