@@ -128,6 +128,16 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const resisted = room._applyDamage(ps, 100, false);
   check('applyDamage: resist buff shaves 5%', resisted.dmgTaken === 95 && ps.hp === 5, resisted);
   ps._buffs = {};
+
+  // v2.3.1113: Iron Skin defense channel -- -0.5%/pt, cap -25%.
+  ps.hp = 100; ps.defenseSpec = { ironskin: 50 };
+  const ironed = room._applyDamage(ps, 100, false);
+  check('applyDamage: Iron Skin 50pts cuts 25%', ironed.dmgTaken === 75 && ps.hp === 25, ironed);
+  ps.defenseSpec = { ironskin: 999 };   // over-cap spec (legacy blob) still capped at 25%
+  ps.hp = 100;
+  const ironCap = room._applyDamage(ps, 100, false);
+  check('applyDamage: Iron Skin cap holds at 25% for over-cap spec', ironCap.dmgTaken === 75, ironCap);
+  ps.defenseSpec = {};
 }
 
 // ── 4. Melee lifesteal refund + reason codes ──

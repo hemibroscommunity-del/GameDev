@@ -32,6 +32,7 @@ import {
   getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
   getShieldStats, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
   rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, tickStatuses, updateZoneDimensions,
+  trainDefense, applyIronSkin,
   monsterBodyY,
 } from '@/data/index.js';
 import { MONSTER_VARIANTS, baseArchetypeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
@@ -754,6 +755,17 @@ export function updateMonsterCombat(S, deps) {
                     });
                   }
                   var dmgTaken = (shielded || _passiveDodge) ? 0 : rawDmg;
+                  /* v2.3.1113: Iron Skin (defense channel, -0.5%/pt, cap
+                     -25%) goes live on the local-AI path; the server
+                     mirrors it in _applyDamage for worker-driven damage. */
+                  if (dmgTaken > 0) dmgTaken = applyIronSkin(_R6, dmgTaken);
+                  /* v2.3.1113: defense-loop revival -- block trains at full
+                     rate, taken damage at quarter rate.  attackerLevel null
+                     skips the ±5 gate while all monsters are level 1 (see
+                     gameEvents note / BALANCE-PLAN BF-1). */
+                  var _defUpLoc = trainDefense(_R6, shielded ? rawDmg : 0, _passiveDodge ? 0 : dmgTaken, null, false);
+                  if (_defUpLoc) S.dmgNumbers.push({ x: P.x, y: P.y - 34,
+                    text: '🛡️ Defense Lv ' + _defUpLoc.level, color: '#60a5fa', ts: Date.now() + 2 });
                   /* ═══ FODDER SLIMES — RANGED PROJECTILE ATTACK ═══
                      Spawn a slime-orb projectile aimed at the player's
                      position right now. Damage isn't applied here — it

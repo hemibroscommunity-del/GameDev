@@ -161,15 +161,17 @@ When that slice lands:
 - ElementalMastery (retired stat) does NOT return; Attunement/Detonation
   channels (§4) are its successors.
 
-## 7. Defense loop revival (bug-class finding)
+## 7. Defense loop revival (done, v2.3.1113)
 
-`awardDefenseXp` and `trainDefense` are **never called** — the defense
-skill cannot level through play, so Bulwark points can never be earned and
-`applyIronSkin` is dead code. This looks like an unfinished wiring, not a
-decision. Future PR (small): award defense XP on server-confirmed blocks
-(×1.0 of blocked damage) and unblocked hits taken (×0.25), per the
-build-skill spec; activate Iron Skin in `_applyDamage`'s client mirror.
-Until then the Defense column of the 6×5 grid is decorative.
+Shipped: `trainDefense` now fires on every block (server-confirmed,
+fallback, local-AI melee, projectile — ×1.0 of prevented damage) and on
+every unblocked hit taken (×0.25), granting defenseUnspent points on
+level-up. Iron Skin is live in both the server's `_applyDamage`
+(authoritative MP damage, spec clamped [0,50] → cap −25%) and the
+client's local-AI/projectile paths. The ±5 valid-threat gate is bypassed
+(attackerLevel null) while all monsters are pinned to level 1 — re-enable
+alongside BF-1 when zone levels unpin. Thorns/Second Wind/Poise remain
+"Soon" channels budgeted in §4.
 
 ## 8. Formal retirement of the old T2 stats
 

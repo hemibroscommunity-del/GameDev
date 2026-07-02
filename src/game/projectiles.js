@@ -16,7 +16,7 @@ import {
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
   resolveCollision, rollPassiveDodge, spawnWeaponHitFX,
-  monsterBodyY, monsterBodyOffsetY,
+  monsterBodyY, monsterBodyOffsetY, trainDefense, applyIronSkin,
 } from '@/data/index.js';
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
@@ -629,6 +629,8 @@ export function updateSlimeProjectiles(S) {
                   size: 1.5 + Math.random(),
                 });
               }
+              /* v2.3.1113: blocked projectile trains defense (full rate). */
+              trainDefense(_R6P, proj.rawDmg, 0, null, false);
               return false;
             }
             /* v2.3.234 (Phase 4): Agility passive dodge on projectiles too. */
@@ -640,17 +642,23 @@ export function updateSlimeProjectiles(S) {
               });
               return false;
             }
-            _R6P.hp -= proj.rawDmg;
-            trackMonsterDamage(S, proj.ownerId, proj.rawDmg);
-            if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: proj.rawDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
+            /* v2.3.1113: Iron Skin cut + quarter-rate defense XP on the
+               taken hit (see monsterCombat note re attackerLevel null). */
+            var _projDmg = applyIronSkin(_R6P, proj.rawDmg);
+            var _defUpPj = trainDefense(_R6P, 0, _projDmg, null, false);
+            if (_defUpPj) S.dmgNumbers.push({ x: P.x, y: P.y - 34,
+              text: '🛡️ Defense Lv ' + _defUpPj.level, color: '#60a5fa', ts: Date.now() + 2 });
+            _R6P.hp -= _projDmg;
+            trackMonsterDamage(S, proj.ownerId, _projDmg);
+            if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: _projDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
             try { BT_AUDIO.monsterHitHero(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none', { vol: 0.7 }, 'slime-projectile-hit'); } catch (e) {}
             S.lastDamageTaken = Date.now();
             S._hitFlash = Date.now();
-            if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: proj.rawDmg } });
-            if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', proj.rawDmg);
+            if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _projDmg } });
+            if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', _projDmg);
             S.dmgNumbers.push({
               x: P.x, y: P.y - 20,
-              text: '-' + proj.rawDmg,
+              text: '-' + _projDmg,
               color: '#fff',
               ts: Date.now(),
             });
