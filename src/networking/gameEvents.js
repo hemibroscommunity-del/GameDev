@@ -116,6 +116,41 @@ export function processGameEvent(type, payload, S, deps) {
               handleEmoteEvent(payload, S);
               break;
             }
+          case 'inbox_delivered':
+            {
+              /* v2.3.1117: offline mail landed (market refund, trade
+                 payout, wager return).  The credits are already applied
+                 server-side and arrive via the authoritative player_state
+                 echo -- this event only drives the "you received X"
+                 system message.  A dedicated mail panel can replace this
+                 later; the payload shape is docs/specs/inbox-escrow.md. */
+              var _inbEntries = (payload && payload.entries) || [];
+              for (var _ie = 0; _ie < _inbEntries.length; _ie++) {
+                var _e = _inbEntries[_ie] || {};
+                var _ep = _e.payload || {};
+                var _what = _e.kind === 'gold' ? '+' + (_ep.amount || 0) + ' gold'
+                  : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
+                  : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
+                  : 'a delivery';
+                S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [{
+                  id: 'inbox-' + Date.now() + '-' + _ie,
+                  name: '',
+                  text: '📫 You received ' + _what + (_e.note ? ' (' + _e.note + ')' : ''),
+                  ts: Date.now()
+                }]);
+              }
+              if (_inbEntries.length && setChatLog) setChatLog(_toConsumableArray(S.chatLog));
+              if (payload && payload.queued) {
+                S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [{
+                  id: 'inbox-q-' + Date.now(),
+                  name: '',
+                  text: '📫 ' + payload.queued + ' more deliveries waiting (weapon stash is full)',
+                  ts: Date.now()
+                }]);
+                if (setChatLog) setChatLog(_toConsumableArray(S.chatLog));
+              }
+              break;
+            }
           case 'player_swing':
             {
               if (payload.id && S.others[payload.id]) {
