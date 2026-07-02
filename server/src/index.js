@@ -43,6 +43,10 @@ import { tradeMethods } from './trade.js';
 // deploy-proof wager escrow; replaces the PR1 interim consent handling
 // for duels (threat consent stays interim).
 import { duelMethods } from './duel.js';
+// v2.3.1125 (Wave 2 PR9): clan registry + server-scored wars -- clans
+// leave localStorage, war kills are counted from the server's own PvP
+// death resolution (see clans.js header).
+import { clanMethods } from './clans.js';
 
 export default {
   async fetch(request, env) {
@@ -141,6 +145,11 @@ const PRIVILEGED_EVENTS = new Set([
   // v2.3.1124: gamble outcomes are server-rolled + privately sent;
   // forging one at the room is pure grief-popup surface.
   'gamble_result',
+  // v2.3.1125: clan registry echoes + war referee emissions.  NOTE
+  // deny-listing clan_war_kill/end breaks OLD-client peer-scored wars
+  // against this worker -- accepted, that relay was pure forgery
+  // surface (each client scored its own kills and paid itself).
+  'clan_state', 'clan_error', 'clan_war_kill', 'clan_war_end',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -3262,6 +3271,9 @@ export class GameRoom {
     // duel popup makes ("No item loss").  Any other death mid-duel
     // (monster, environment) still forfeits the pot but dies normally.
     const _duelKill = this._duelOnDeath(playerId, cause);
+    // v2.3.1125: clan-war scoring rides the same server-resolved death
+    // (cause 'pvp:<attacker>'); duel kills are excluded inside the hook.
+    this._warOnDeath(playerId, cause);
     // v2.3.1116: death ends any remaining threat consent this player
     // was party to -- the survivor can't keep hitting them through the
     // respawn.  (Duel pairs already cleared by the resolution above.)
@@ -4489,6 +4501,15 @@ export class GameRoom {
         // land via the inbox path above on the NEXT join).
         this._duelOnRejoin(msg.id);
         this._duelEscrowSweep();
+        // v2.3.1125: authoritative clan tag -- the registry overrides
+        // whatever the client stuffed in its cosmetics (msg.data is the
+        // same object session.data / playerState spread / player_join
+        // broadcast all read).  Also the lazy war-resolve hook, and the
+        // clan snapshot echo so the client's panel has server truth.
+        await this._clansEnsure();
+        this._clanStampTag(msg.id, msg.data);
+        this._clanStampTag(msg.id, this.playerState[msg.id]);
+        this._clanSendState(msg.id);
         this.broadcastExcept(ws, { type: 'player_join', id: msg.id, name: msg.name, data: msg.data });
         // Send current state + monsters for player's zone
         const joinZone = msg.data?.z || 'town';
@@ -4502,7 +4523,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -4694,6 +4715,10 @@ export class GameRoom {
 
       case 'track':
         if (session.id) {
+          // v2.3.1125: the registry owns the clan tag -- override the
+          // client-supplied cosmetics BEFORE they merge/broadcast (this
+          // blind merge was the tag-forgery hole).
+          this._clanStampTag(session.id, msg.data);
           session.data = { ...session.data, ...msg.data };
           if (this.playerState[session.id]) Object.assign(this.playerState[session.id], msg.data);
           this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: msg.data });
@@ -4806,6 +4831,25 @@ export class GameRoom {
         if (session.id) {
           this._handleGambleRequest(session, msg.payload || msg);
         }
+        break;
+
+      // v2.3.1125: clan commands -- registry + war referee live in
+      // clans.js.  Explicit cases (not relays) so forged messages meet
+      // validation instead of the rebroadcast branch.
+      case 'clan_create':
+        if (session.id) await this._handleClanCreate(session, msg.payload || msg);
+        break;
+      case 'clan_join_accept':
+        if (session.id) await this._handleClanJoinAccept(session, msg.payload || msg);
+        break;
+      case 'clan_leave':
+        if (session.id) await this._handleClanLeave(session);
+        break;
+      case 'clan_kick':
+        if (session.id) await this._handleClanKick(session, msg.payload || msg);
+        break;
+      case 'clan_war_declare':
+        if (session.id) await this._handleClanWarDeclare(session, msg.payload || msg);
         break;
 
       case 'cook_recipe':
@@ -4935,6 +4979,12 @@ export class GameRoom {
             || msg.type === 'duel_accept' || msg.type === 'duel_decline') {
             msg = await this._interceptDuel(session.id, msg);
             if (!msg) break;
+          }
+          // v2.3.1125: clan_invite stays a relay (the target's popup
+          // UI renders it) -- record the pending half so a later
+          // clan_join_accept can be validated per-sender-session.
+          if (msg.type === 'clan_invite') {
+            await this._observeClanInvite(session.id, msg);
           }
           // v2.3.1116: the THREAT handshake is still client-relayed
           // (red-skull machine deliberately deferred), but the gate in
@@ -5124,6 +5174,10 @@ export class GameRoom {
       // the 15s reconnect-grace forfeit.  Cheap map walks.
       this._tickDuels(Date.now());
 
+      // v2.3.1125: clan-war endings (30-min timer; also resolved lazily
+      // on wake for wars that end in an empty room).
+      this._tickClanWars(Date.now());
+
       // HP regen tick — every 30 server ticks (~670 ms at TICK_RATE=22).
       // Skip when no one needs healing to avoid wasted iteration.
       regenCounter++;
@@ -5290,3 +5344,5 @@ Object.assign(GameRoom.prototype, marketMethods);
 Object.assign(GameRoom.prototype, tradeMethods);
 // v2.3.1121: duel machine mixin.
 Object.assign(GameRoom.prototype, duelMethods);
+// v2.3.1125: clan registry + war referee mixin.
+Object.assign(GameRoom.prototype, clanMethods);
