@@ -156,6 +156,181 @@ export function processGameEvent(type, payload, S, deps) {
               setRpgState(_objectSpread({}, _gR));
               break;
             }
+          case 'dungeon_started':
+            {
+              /* v2.3.1127: the worker accepted our dungeon_start (config
+                 re-validated + clamped server-side) and pre-spawned wave
+                 1 into a private instance zone.  Build the local arena
+                 exactly like the legacy launchDungeon did, register a
+                 synthetic ZONES entry so every ZONES[S.currentZone]
+                 deref keeps working while we're inside, and step into
+                 the instance -- the move's zone change makes the server
+                 reply with zone_state, which flips S._serverMonsters
+                 and delivers the wave. */
+              if (!payload || !payload.zone) break;
+              var _dCfg = payload.cfg || {};
+              var _ddW = _dCfg.width || 25,
+                _ddH = _dCfg.height || 20;
+              S._preDungeonPos = { x: S.player.x, y: S.player.y };
+              var _ddMap = Array.from({ length: _ddH }, function () { return Array(_ddW).fill(0); });
+              for (var _ddx = 0; _ddx < _ddW; _ddx++) { _ddMap[0][_ddx] = 7; _ddMap[_ddH - 1][_ddx] = 7; }
+              for (var _ddy = 0; _ddy < _ddH; _ddy++) { _ddMap[_ddy][0] = 7; _ddMap[_ddy][_ddW - 1] = 7; }
+              var _ddMX = Math.floor(_ddW / 2),
+                _ddMY = Math.floor(_ddH / 2);
+              for (var _ddx2 = 1; _ddx2 < _ddW - 1; _ddx2++) _ddMap[_ddMY][_ddx2] = 1;
+              for (var _ddy2 = 1; _ddy2 < _ddH - 1; _ddy2++) _ddMap[_ddy2][_ddMX] = 1;
+              for (var _ddi = 0; _ddi < Math.floor(_ddW * _ddH * 0.08); _ddi++) {
+                _ddMap[2 + Math.floor(Math.random() * (_ddH - 4))][2 + Math.floor(Math.random() * (_ddW - 4))] = 1;
+              }
+              _ddMap[_ddH - 1][_ddMX] = 9;
+              _ddMap[_ddH - 1][_ddMX + 1] = 9;
+              S.map = _ddMap;
+              globalThis.TOWN_W = _ddW * TILE;
+              globalThis.TOWN_H = _ddH * TILE;
+              globalThis.COLS = _ddW;
+              globalThis.ROWS = _ddH;
+              /* Synthetic zone entry: not safe (combat works), not
+                 lawless (PvP fails closed server-side anyway), empty
+                 spawns (spawnMonstersForZone guards on it).  Tagged
+                 _instance so exit paths only ever delete what we added
+                 and the Encyclopedia can filter it. */
+              ZONES[payload.zone] = {
+                id: payload.zone, name: _dCfg.name || 'Dungeon', w: _ddW, h: _ddH,
+                level: [_dCfg.monsterLevel || 1, _dCfg.monsterLevel || 1],
+                element: _dCfg.element || null, safe: false, spawns: [], _instance: true
+              };
+              S._dungeonZone = S.currentZone; /* return zone for the tile-9 exit */
+              S.currentZone = payload.zone;
+              S._serverDungeon = payload.zone;
+              S._inDungeon = true;
+              S._inCustomDungeon = true;
+              S._customDungeonConfig = _dCfg;
+              S._dungeonDepth = 'shallow';
+              S._dungeonWave = 0;
+              S._dungeonMaxWaves = _dCfg.waves || 3;
+              S._dungeonBossSpawned = false;
+              S._dungeonComplete = false;
+              S.monsters = [];
+              S.gatherNodes = [];
+              S.groundLoot = [];
+              if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
+              S.hitParticles = [];
+              S.deathExplosions = [];
+              S.arrows = [];
+              S.player.x = _ddMX * TILE;
+              S.player.y = (_ddH - 3) * TILE;
+              S._zoneWipe = Date.now();
+              /* Step into the instance NOW (not on the next joystick
+                 packet) so the wave-1 zone_state arrives immediately. */
+              if (S.channel) {
+                try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+              }
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 50,
+                text: _dCfg.name || 'Dungeon', color: '#a070e0', ts: Date.now()
+              });
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 35,
+                text: 'Wave 1/' + (_dCfg.waves || 3), color: 'rgba(255,255,255,.5)', ts: Date.now()
+              });
+              BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
+              break;
+            }
+          case 'dungeon_wave':
+            {
+              /* Server cleared the wave-advance check; the fresh wave
+                 arrives via a zone_state re-push right before this. */
+              if (!payload || payload.zone !== S._serverDungeon) break;
+              S._dungeonWave = (payload.wave || 1) - 1;
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 40,
+                text: 'Wave ' + (payload.wave || 1) + '/' + (payload.total || S._dungeonMaxWaves),
+                color: '#ff5e6c', ts: Date.now()
+              });
+              BT_AUDIO.beep(300, 0.1, 0.15, 'sawtooth');
+              S.screenShake = 4;
+              break;
+            }
+          case 'dungeon_boss':
+            {
+              if (!payload || payload.zone !== S._serverDungeon) break;
+              S._dungeonBossSpawned = true;
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 50,
+                text: 'BOSS FIGHT!', color: '#ff5e6c', ts: Date.now()
+              });
+              BT_AUDIO.beep(100, 0.25, 0.3, 'sawtooth');
+              S.screenShake = 8;
+              break;
+            }
+          case 'dungeon_complete':
+            {
+              /* Rewards are settled server-side (coins ride the
+                 authoritative player_state echo; XP is the server's
+                 analytics counter) -- this event drives the win
+                 feedback and the 3s return-home, mirroring the legacy
+                 dungeonWaves completion visuals. */
+              if (!payload || payload.zone !== S._serverDungeon) break;
+              S._dungeonComplete = true;
+              var _dcR = S.rpg;
+              if (_dcR) {
+                if (!_dcR._compStats) _dcR._compStats = createDefaultCompStats();
+                if (payload.boss) _dcR._compStats.dungeonsCleared++;
+                _dcR._compStats.totalGoldEarned += payload.gold || 0;
+                setRpgState(_objectSpread({}, _dcR));
+              }
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 60,
+                text: 'DUNGEON CLEARED!', color: '#f5c542', ts: Date.now()
+              });
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 45,
+                text: '+' + (payload.gold || 0) + 'G +' + (payload.xp || 0) + 'XP',
+                color: '#f5c542', ts: Date.now()
+              });
+              BT_AUDIO.levelUp();
+              S.screenShake = 10;
+              setTimeout(function () {
+                if (!S._serverDungeon) return; /* already left via the exit tile */
+                if (ZONES[S._serverDungeon] && ZONES[S._serverDungeon]._instance) delete ZONES[S._serverDungeon];
+                S._serverDungeon = null;
+                S._inDungeon = false;
+                S._inCustomDungeon = false;
+                S._customDungeonConfig = null;
+                S._serverMonsters = false;
+                S.currentZone = 'farm_home';
+                updateZoneDimensions('farm_home');
+                S.map = generateZoneMap('farm_home');
+                var _fz = ZONES.farm_home;
+                globalThis.TOWN_W = _fz.w * TILE;
+                globalThis.TOWN_H = _fz.h * TILE;
+                globalThis.COLS = _fz.w;
+                globalThis.ROWS = _fz.h;
+                S.monsters = [];
+                S.gatherNodes = [];
+                S.groundLoot = [];
+                S.hitParticles = [];
+                S.deathExplosions = [];
+                S.arrows = [];
+                S.player.x = Math.floor(_fz.w / 2) * TILE;
+                S.player.y = (_fz.h - 4) * TILE;
+                S._zoneWipe = Date.now();
+                if (S.channel) {
+                  try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: 'farm_home', vx: 0, vy: 0 } }); } catch (e) {}
+                }
+              }, 3000);
+              break;
+            }
+          case 'dungeon_error':
+            {
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 30,
+                text: (payload && payload.message) || 'Dungeon unavailable',
+                color: '#ff5e6c', ts: Date.now()
+              });
+              BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+              break;
+            }
           case 'inbox_delivered':
             {
               /* v2.3.1117: offline mail landed (market refund, trade

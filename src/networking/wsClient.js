@@ -968,6 +968,19 @@ export function setupWebSocket(ctx) {
                  clear local death state.  hp/stamina/mana are restored
                  server-side and arrive via the player_state that fires
                  alongside this event. */
+              /* v2.3.1127: dying inside a dungeon leaves it -- clear
+                 the dungeon flags the legacy path left stale (harmless
+                 then, but a stale _serverDungeon would suppress the
+                 local wave engine and pin the synthetic ZONES entry). */
+              if (S._serverDungeon) {
+                if (ZONES[S._serverDungeon] && ZONES[S._serverDungeon]._instance) delete ZONES[S._serverDungeon];
+                S._serverDungeon = null;
+              }
+              S._inDungeon = false;
+              S._inCustomDungeon = false;
+              S._customDungeonConfig = null;
+              S._dungeonComplete = false;
+              S._dungeonBossSpawned = false;
               S.currentZone = (msg.payload && msg.payload.zone) || 'town';
               updateZoneDimensions(S.currentZone);
               BT_AUDIO.startZoneAmbient(S.currentZone);

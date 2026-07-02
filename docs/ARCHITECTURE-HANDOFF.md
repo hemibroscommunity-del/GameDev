@@ -224,17 +224,18 @@ forge/loot handlers; weapon blobs gain `quality`/`hardness`/`temper`
 fields (they're opaque blobs — sanitizers must learn the new fields or
 they'll strip them: check `_sanitizeWeapon`).
 
-### F. Dungeon instancing
-Today: dungeon monsters are CLIENT-spawned (`dungeonWaves.js`), rewards
-self-credited (phantom), standard path dead since v2.3.54. Real design
-choice: (a) folded instances — dungeon = a dynamic zone id in the same
-GameRoom (`dungeon:<pid>:<n>`), server spawns waves via the existing
-zone-monster machinery, party of ≤4 shares the zone; or (b) DO-per-
-instance (real isolation, but crosses the no-cross-DO-settlement rule —
-rewards must be granted by mail on completion messages back to the room).
-Recommend (a) first — the zone system already lazy-spawns per zone id.
-Danger: zone ids are load-bearing strings everywhere (client rendering,
-ZONES tables); an unknown-zone fail-closed audit is required.
+### F. Dungeon instancing — SHIPPED v2.3.1127 (folded instances)
+Built as recommended: `server/src/dungeon.js`, spec in
+`docs/specs/dungeons.md`. Instance = zone id `dungeon:<id>` riding the
+unmodified combat stack (`_activeZones` ticks it, zone_state delivers
+waves, `_resolveMonsterKill` pays kills; one-line `noRespawn` guard was
+the only core change). Client registers a synthetic `ZONES[zone]` entry
+while inside (deleted on every exit path) — that was the unknown-zone
+audit's answer. Successor follow-ups: boss ABILITIES are not ported
+(server bosses are stat-scaled chase-and-swing only — slam/charge/
+summon live in dead client AI); runs are memory-only (deploy mid-run
+evaporates it, exit tile always works); loot piles die with the
+instance sweep.
 
 ### G. Pet capture validation
 Client-only today (`MenuBar.jsx:233-297`): trap consumed + `createPet`
