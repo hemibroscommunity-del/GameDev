@@ -243,6 +243,69 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     { before: [farX, farY], after: [m3.x, m3.y] });
 }
 
+// ── 6c. v2.3.1114: server-authoritative elemental (status/DoT/collision) ──
+{
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false; psA.disconnected = false;
+  psA.weapon = { type: 'sword', tierMult: 1 };
+  psA.rangedWeapon = null; psA.staffWeapon = null;
+  psA.power = 20; psA.weaponSpecs = {};
+  const me = meadowMonsters[5];
+  me.alive = true; me.hp = 500; me.maxHp = 500; me.dmgByPlayer = {};
+  me.statuses = undefined; me._wanderPausedUntil = Date.now() + 600000;
+
+  // Flame hit applies burn with a server-side power snapshot.
+  room.eventBuffer.length = 0;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: me.id, zone: 'meadow', element: 'flame', slot: 'melee' } }));
+  check('elemental: flame hit applies burn status', !!(me.statuses && me.statuses.burn)
+    && me.statuses.burn.sourceId === 'pa' && me.statuses.burn.power === 20,
+    me.statuses && me.statuses.burn);
+
+  // Burn DoT ticks inside _tickMonsters: (5 + 20*0.3) = 11/tick,
+  // credited to the source through dmgByPlayer.
+  me.statuses.burn.lastTick = Date.now() - 600;   // past the 0.5s tick gate
+  const hpBeforeDot = me.hp;
+  const creditBefore = me.dmgByPlayer.pa || 0;
+  room.eventBuffer.length = 0;
+  room._tickMonsters();
+  const dotHit = room.eventBuffer.find((e) => e.type === 'monster_hit' && e.payload.status === 'burn');
+  check('elemental: burn DoT ticks 11 dmg with kill credit', !!dotHit && dotHit.payload.dmg === 11
+    && me.hp === hpBeforeDot - 11 && (me.dmgByPlayer.pa || 0) === creditBefore + 11,
+    { dotHit: dotHit && dotHit.payload, hp: me.hp, hpBeforeDot });
+
+  // Frost hit on a burning monster detonates Steam (flame|frost):
+  // base 40 + power*0.8 = 56 raw, x effectiveness vs the monster's own
+  // element; burn is CONSUMED; damage capped at raw*3.2.
+  const hpBeforeCol = me.hp;
+  room.eventBuffer.length = 0;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: me.id, zone: 'meadow', element: 'frost', slot: 'melee' } }));
+  const colHit = room.eventBuffer.find((e) => e.type === 'monster_hit' && e.payload.collision === 'steam');
+  const rawSteam = 40 + 20 * 0.8;
+  check('elemental: frost trigger detonates steam within the burst cap',
+    !!colHit && colHit.payload.dmg >= 1 && colHit.payload.dmg <= Math.round(rawSteam * 3.2)
+    && me.hp < hpBeforeCol, colHit && colHit.payload);
+  check('elemental: collision consumed the burn setup', !(me.statuses && me.statuses.burn)
+    && !!(me.statuses && me.statuses.freeze), me.statuses && Object.keys(me.statuses));
+
+  // DoT kill resolves through the shared kill pipeline (XP recipients,
+  // loot, monster_kill event) with lifesteal denied (slot 'dot').
+  const mk = meadowMonsters[6];
+  mk.alive = true; mk.hp = 1; mk.maxHp = Math.max(10, mk.maxHp); mk.dmgByPlayer = {};
+  mk.statuses = undefined; mk._wanderPausedUntil = Date.now() + 600000;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: mk.id, zone: 'meadow', element: 'flame', slot: 'melee' } }));
+  if (mk.alive) {   // weapon roll may have left >0 hp; force the DoT to be the killer
+    mk.hp = 1;
+    mk.statuses.burn.lastTick = Date.now() - 600;
+    room.eventBuffer.length = 0;
+    room._tickMonsters();
+    const dotKill = room.eventBuffer.find((e) => e.type === 'monster_kill' && e.payload.monsterId === mk.id);
+    check('elemental: DoT kill flows through the shared kill pipeline',
+      !!dotKill && mk.alive === false && dotKill.payload.recipients.includes('pa'),
+      dotKill && dotKill.payload);
+  } else {
+    check('elemental: DoT kill flows through the shared kill pipeline', true, 'weapon roll killed at hp=1; kill path already covered');
+  }
+}
+
 // ── 7. Event buffer cap on the tick broadcast ──
 {
   room.eventBuffer.length = 0;

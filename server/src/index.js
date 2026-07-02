@@ -20,6 +20,12 @@ export { Leaderboard } from './leaderboard.js';
 export { Arena } from './arena.js';
 export { Feedback } from './feedback.js';
 
+// v2.3.1114: server-authoritative elemental model (statuses / DoT /
+// collisions) -- see elemental.js header for what is and isn't ported.
+import {
+  ELEMENT_STATUS, applyElementStatus, tickElementStatuses, resolveElementCollision,
+} from './elemental.js';
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -786,6 +792,36 @@ export class GameRoom {
               m.y += (dyw / distw) * m.spd;
               this._markMonsterDirty(zoneId, m.id);
             }
+          }
+        }
+      }
+
+      // v2.3.1114: elemental status tick -- burn/root DoT + expiry.
+      // Damage flows through the same overkill clamp / contribution /
+      // kill pipeline as weapon hits, so DoT kills award XP, gold and
+      // loot exactly like a landed blow.  DoT kills resolve with slot
+      // 'dot' so melee lifesteal correctly denies ('not-melee').
+      for (const m of monsters) {
+        if (!m.alive || !m.statuses) continue;
+        const dotEvents = tickElementStatuses(m, this.TICK_RATE / 1000, now);
+        for (const ev of dotEvents) {
+          if (m.hp <= 0) break;
+          const dotDmg = Math.min(ev.dmg, Math.max(0, m.hp));
+          if (dotDmg <= 0) continue;
+          m.hp -= dotDmg;
+          if (!m.dmgByPlayer) m.dmgByPlayer = {};
+          m.dmgByPlayer[ev.sourceId] = (m.dmgByPlayer[ev.sourceId] || 0) + dotDmg;
+          this._markMonsterDirty(zoneId, m.id);
+          this.eventBuffer.push({
+            type: 'monster_hit',
+            payload: {
+              monsterId: m.id, zone: zoneId, dmg: dotDmg, isCrit: false,
+              attackerId: ev.sourceId, status: ev.statusId,
+              hpPct: Math.max(0, m.hp / m.maxHp),
+            },
+          });
+          if (m.hp <= 0) {
+            this._resolveMonsterKill(zoneId, m, ev.sourceId, this.playerState[ev.sourceId], 'dot');
           }
         }
       }
@@ -3505,6 +3541,38 @@ export class GameRoom {
     if (!m.dmgByPlayer) m.dmgByPlayer = {};
     m.dmgByPlayer[session.id] = (m.dmgByPlayer[session.id] || 0) + actualDmg;
 
+    // v2.3.1114: SERVER-AUTHORITATIVE ELEMENTAL.  The wire already carried
+    // `element` (destructured above) but the server ignored it -- burns,
+    // roots and collision detonations only ever mutated the client's local
+    // hp prediction, which the next authoritative tick overwrote.  Mirror
+    // of the client order (monsterCombat.js:1478/1548): the hit's own
+    // status applies first, then a collision consumes the OLDEST
+    // different-element status already on the monster.
+    if (m.hp > 0 && element && ELEMENT_STATUS[element] && attackerPs) {
+      const _now = Date.now();
+      applyElementStatus(m, element, session.id, attackerPs.power || 0, _now);
+      // Volatile mirrors _computeAttackDamage's slot resolution.
+      const _eff = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
+        ? slot : (attackerPs.activeSlot || 'melee');
+      const _w = _eff === 'ranged' ? attackerPs.rangedWeapon
+               : _eff === 'staff' ? attackerPs.staffWeapon
+               : attackerPs.weapon;
+      const col = resolveElementCollision(m, element, attackerPs, !!(_w && _w.isVolatile), _now);
+      if (col) {
+        const colDmg = Math.min(col.dmg, Math.max(0, m.hp));
+        m.hp -= colDmg;
+        m.dmgByPlayer[session.id] += colDmg;
+        this.eventBuffer.push({
+          type: 'monster_hit',
+          payload: {
+            monsterId: m.id, zone, dmg: colDmg, isCrit: false,
+            attackerId: session.id, collision: col.id,
+            hpPct: Math.max(0, m.hp / m.maxHp),
+          },
+        });
+      }
+    }
+
     // Sticky-aggro override -- being hit pulls the monster onto its
     // attacker regardless of proximity, so a player sniping with a bow
     // from outside MONSTER_AGGRO_RANGE doesn't just see the mummy
@@ -3559,8 +3627,17 @@ export class GameRoom {
       }
     });
 
-    // Kill check
-    if (m.hp <= 0) {
+    // Kill check -- resolution moved VERBATIM to _resolveMonsterKill
+    // (v2.3.1114) so the elemental DoT/collision path can share the same
+    // contribution/loot/XP/lifesteal pipeline.
+    if (m.hp <= 0) this._resolveMonsterKill(zone, m, session.id, attackerPs, slot);
+  }
+
+  // v2.3.1114: kill resolution -- moved verbatim from _handleMonsterDamage
+  // (session.id -> killerId, attackerPs -> killerPs; behavior-frozen).
+  // Shared by weapon kills and elemental DoT/collision kills.  DoT kills
+  // pass slot 'dot' so melee lifesteal correctly denies ('not-melee').
+  _resolveMonsterKill(zone, m, killerId, killerPs, slot) {
       m.alive = false;
       m.respawnAt = Date.now() + this.RESPAWN_TIME;
 
@@ -3585,9 +3662,9 @@ export class GameRoom {
       // Fallback: if every contributor dropped out (dead/left zone),
       // fall back to last-hit credit so the loot doesn't vanish.
       if (xpRecipients.length === 0) {
-        xpRecipients.push(session.id);
-        goldRecipients.push(session.id);
-        shares[session.id] = 1.0;
+        xpRecipients.push(killerId);
+        goldRecipients.push(killerId);
+        shares[killerId] = 1.0;
       }
 
       this.eventBuffer.push({
@@ -3595,7 +3672,7 @@ export class GameRoom {
         payload: {
           monsterId: m.id,
           zone,
-          killerId: session.id,
+          killerId: killerId,
           xp: m.xp,
           gold: m.gold,
           level: m.level,
@@ -3620,7 +3697,7 @@ export class GameRoom {
       // _handleLootPickup).  The client still applies the credit to
       // local rpg state -- moving that store to the worker is a
       // follow-up slice.
-      const pile = this._spawnLootForKill(zone, m, session.id, goldRecipients, shares);
+      const pile = this._spawnLootForKill(zone, m, killerId, goldRecipients, shares);
       if (pile) {
         this.eventBuffer.push({
           type: 'loot_drop',
@@ -3681,25 +3758,25 @@ export class GameRoom {
       // Pass the wire-sent slot through so a desktop slot-select user
       // whose server-side activeSlot didn't get the set_active_slot
       // update still gets the heal on a real melee swing.
-      const { refund, reason } = this._applyMeleeLifesteal(attackerPs, m.id, slot);
+      const { refund, reason } = this._applyMeleeLifesteal(killerPs, m.id, slot);
       // Emit lifesteal_credit even when refund is 0 so the client can
       // log the reason and the user can tell whether the gate failed
       // (vs. the heal landing silently because they were already at
       // max hp).
-      const killerWs = this._wsBySessionId(session.id);
+      const killerWs = this._wsBySessionId(killerId);
       if (killerWs) {
         try {
           killerWs.send(JSON.stringify({
             type: 'lifesteal_credit',
             payload: {
-              playerId: session.id,
+              playerId: killerId,
               monsterId: m.id,
               refund,
               reason,
               // Echo the resolved slot + activeSlot so a stale-state
               // debug session has the full picture.
               slot: slot || null,
-              activeSlot: (attackerPs && attackerPs.activeSlot) || null,
+              activeSlot: (killerPs && killerPs.activeSlot) || null,
             },
           }));
         } catch (e) {}
@@ -3707,16 +3784,15 @@ export class GameRoom {
           // Persist the post-heal hp.  Without a fresh _saveRpg the
           // xpRecipients loop above already wrote the pre-heal hp to
           // storage, so a reconnect would reload the lower value.
-          this._saveRpg(session.id, attackerPs);
+          this._saveRpg(killerId, killerPs);
           // Push player_state synchronously so the bumped hp lands the
           // same tick instead of waiting for _flushPendingPlayerStates.
-          this._sendPlayerState(killerWs, session.id);
+          this._sendPlayerState(killerWs, killerId);
         }
       }
 
       // Clear contribution tracking for the next life of this monster.
       m.dmgByPlayer = {};
-    }
   }
 
   async fetch(request) {

@@ -239,7 +239,11 @@ export function updateArrows(S, deps) {
                 }
                 if (S._serverMonsters && S.channel) {
                   S.channel.send({ type: 'monster_damage', payload: {
-                    monsterId: m.id, zone: S.currentZone, element: null,
+                    /* v2.3.1114: carry the projectile's element -- the
+                       server now drives authoritative statuses/DoT/
+                       collisions from it (melee always sent it; this was
+                       null, so bow/staff builds had no server elemental). */
+                    monsterId: m.id, zone: S.currentZone, element: projElem || null,
                     /* Arrow path = ranged; worker uses this to deny the
                        melee-only lifesteal even if activeSlot drifted.
                        Ranged shots are never "special" (swipe is melee),
