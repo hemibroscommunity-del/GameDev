@@ -138,6 +138,9 @@ const PRIVILEGED_EVENTS = new Set([
   'inbox_delivered', 'join_rejected',
   // v2.3.1121: duel resolution is server-emitted only.
   'duel_end',
+  // v2.3.1124: gamble outcomes are server-rolled + privately sent;
+  // forging one at the room is pure grief-popup surface.
+  'gamble_result',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -1842,6 +1845,45 @@ export class GameRoom {
   _getShopItem(itemId) {
 
     return SHOP_ITEMS[itemId] || null;
+  }
+
+  /* ═══ v2.3.1124: SERVER-SETTLED GAMBLING (Wave 2 PR8; spec in
+   * docs/specs/gambling.md) ═══
+   *
+   * The Gamble Hall roll used to be the PLAYER'S OWN Math.random() with
+   * a local 2x self-credit (GamblePanel.jsx) -- phantom today, but a
+   * solo infinite-gold faucet the moment any settlement trusted it.
+   * The server rolls and settles in ONE mutation on live state: no
+   * escrow, no opId, no crash window (ARCHITECTURE-HANDOFF rule 8) --
+   * a resent request is legitimately a new roll, bounded by the rate
+   * limit.  Constants mirror src/data/items.js GAMBLE_* (keep in sync).
+   * ps._lastGambleAt is deliberately NOT in the _saveRpg field list, so
+   * the rate-limit window is in-memory only (a deploy reset loses
+   * nothing).  Invalid requests are ignored silently -- the panel's own
+   * client gates keep legitimate players from ever sending them. */
+  _handleGambleRequest(session, payload) {
+    if (!session || !session.id) return;
+    const ps = this.playerState[session.id];
+    if (!ps || ps.dying || ps.dead || ps.disconnected) return;
+    const wager = Math.floor(Number(payload && payload.wager));
+    if (!Number.isFinite(wager) || wager < 10 || wager > 10000) return;
+    const now = Date.now();
+    if (ps._lastGambleAt && now - ps._lastGambleAt < 2000) return;
+    if ((ps.coins || 0) < wager) return;
+    ps._lastGambleAt = now;
+    const won = Math.random() < 0.40; // GAMBLE_WIN_CHANCE mirror
+    ps.coins += won ? wager : -wager;
+    this._saveRpg(session.id, ps);
+    this._queuePlayerStateFlush(session.id);
+    const ws = this._wsBySessionId(session.id);
+    if (ws) {
+      try {
+        ws.send(JSON.stringify({
+          type: 'gamble_result',
+          payload: { won, wager, payout: won ? wager * 2 : 0 },
+        }));
+      } catch (e) { /* echo carries the coins either way */ }
+    }
   }
 
   _handleShopPurchase(session, payload) {
@@ -4460,7 +4502,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true },
+          caps: { trade: true, questTrack: true, gamble: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -4754,6 +4796,15 @@ export class GameRoom {
         // coins + applies effect (pool restore or inventory grant).
         if (session.id) {
           this._handleShopPurchase(session, msg.payload || msg);
+        }
+        break;
+
+      case 'gamble_request':
+        // v2.3.1124: the Gamble Hall roll -- server rolls and settles
+        // (see _handleGambleRequest; the client's own Math.random was
+        // the old "house").
+        if (session.id) {
+          this._handleGambleRequest(session, msg.payload || msg);
         }
         break;
 
