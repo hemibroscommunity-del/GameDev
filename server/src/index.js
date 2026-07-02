@@ -31,6 +31,10 @@ import {
   ARCHETYPES, ZONES, FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS,
   QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS,
 } from './data.js';
+// v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
+// escrow-at-placement settlement under one DO's input gates.  Methods
+// are mixed into the class below (see market.js header for why).
+import { marketMethods } from './market.js';
 
 export default {
   async fetch(request, env) {
@@ -65,8 +69,16 @@ export default {
       return new Response(JSON.stringify({ room: 'brotown-1' }), { headers: corsHeaders });
     }
 
+    // v2.3.1118: the order book lives in the GameRoom now (escrow needs
+    // the same DO that owns the player wallets -- see market.js).  Route
+    // to the shared room, honoring the ?room=X escape hatch so a qa1
+    // session's market ops land in the DO that holds its blobs.  The old
+    // global Marketplace DO is retired from routing (class still
+    // exported for the wrangler binding; its stale orders were
+    // prototype throwaways).
     if (url.pathname.startsWith('/api/market')) {
-      return env.MARKETPLACE.get(env.MARKETPLACE.idFromName('global')).fetch(request);
+      const mktRoom = url.searchParams.get('room') || 'brotown-1';
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(mktRoom)).fetch(request);
     }
 
     if (url.pathname.startsWith('/api/leaderboard')) {
@@ -4040,6 +4052,11 @@ export class GameRoom {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    // v2.3.1118: marketplace HTTP surface (order book lives in this DO
+    // now -- see market.js).  Before the Upgrade check like _room_count.
+    if (url.pathname.startsWith('/api/market')) {
+      return this._marketFetch(request);
+    }
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 426 });
     }
@@ -5103,3 +5120,7 @@ export class GameRoom {
   getAllPlayerData() { const r = {}; for (const [, s] of this.sessions) { if (s.id) r[s.id] = { ...this.playerState[s.id], name: s.name, ...s.data }; } return r; }
   getPlayerCount() { let c = 0; for (const [, s] of this.sessions) { if (s.id) c++; } return c; }
 }
+
+// v2.3.1118: mix the marketplace methods into GameRoom (see the
+// market.js header for the fold rationale + re-extraction path).
+Object.assign(GameRoom.prototype, marketMethods);

@@ -36,6 +36,16 @@ export function ExchangePanel(props) {
     setMktSubtype = props.setMktSubtype,
     setMktTier = props.setMktTier;
   var _BLACKSMITH_TIERS$mkt, _BLACKSMITH_TIERS$mkt2, _MKT_CATEGORIES$mktCa, _R$weaponStash, _WEAPON_TYPES$mktSubt, _WEAPON_TYPES$o, _WEAPON_TYPES$st, _WEAPON_TYPES$st2, _WEAPON_TYPES$sw, _WOODWORKING_TIERS$mk, _WOODWORKING_TIERS$mk2, _data$cancelled, _data$cancelled2, _data$matchedOrder;
+  /* v2.3.1118: market ops are settled by the GameRoom DO now, so every
+     call carries the session's room -- a ?room=qa1 tester's escrow must
+     land in the DO that holds their wallet, not brotown-1's. */
+  var _mktRoom = function _mktRoom() {
+    try {
+      return encodeURIComponent(stateRef.current._currentRoom || 'brotown-1');
+    } catch (e) {
+      return 'brotown-1';
+    }
+  };
   return React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 16,
@@ -49,7 +59,7 @@ export function ExchangePanel(props) {
       color: 'rgba(255,255,255,.35)',
       marginBottom: 6
     }
-  }, "\uD83D\uDCB0 ", rpgState.coins, "G \xB7 Cross-room buy & sell \xB7 Orders expire in 1hr"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDCB0 ", rpgState.coins, "G \xB7 Buy & sell \xB7 Listings last 24h, refunds by mail"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 2,
@@ -378,7 +388,7 @@ export function ExchangePanel(props) {
             _context0.p = 5;
             tierLabel = ((_BLACKSMITH_TIERS$mkt = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt.label) || ((_WOODWORKING_TIERS$mk = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk === void 0 ? void 0 : _WOODWORKING_TIERS$mk.label) || mktTier;
             _context0.n = 6;
-            return fetch(BT_API_BASE + '/api/market/place', {
+            return fetch(BT_API_BASE + '/api/market/place?room=' + _mktRoom(), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
@@ -392,6 +402,10 @@ export function ExchangePanel(props) {
                 element2: mktElement2,
                 price: mktPrice,
                 item: sellItem,
+                /* v2.3.1118: settling workers escrow the weapon out of
+                   the SERVER's stash copy by this index and ignore the
+                   `item` blob above (kept for legacy workers). */
+                stashIndex: mktSellItem,
                 tierLabel: tierLabel,
                 playerName: S.myName,
                 playerId: S.myId
@@ -416,42 +430,59 @@ export function ExchangePanel(props) {
             });
             return _context0.a(2);
           case 8:
-            /* Apply client-side effects */
-            if (mktMode === 'buy') {
-              R.coins -= mktPrice; /* escrow */
-              if (R._compStats) R._compStats.totalGoldSpent += mktPrice;
+            /* v2.3.1118: settlement is SERVER-SIDE when the worker sends
+               settled: true -- escrow was taken at placement from the
+               server's own copies, and match payouts/refunds arrive via
+               the authoritative player_state echo (or the inbox when a
+               party is offline).  The client-side mutations below were
+               the self-credit hole (free duplication with devtools);
+               they now run ONLY against a legacy worker without the
+               flag, keeping both deploy orders safe. */
+            if (!data.settled) {
+              /* Legacy worker: apply client-side effects */
+              if (mktMode === 'buy') {
+                R.coins -= mktPrice; /* escrow */
+              }
+              if (mktMode === 'sell' && mktSellItem !== null) {
+                R.weaponStash.splice(mktSellItem, 1);
+              }
+              if (data.matched) {
+                if (mktMode === 'buy') {
+                  refund = mktPrice - data.execPrice;
+                  if (refund > 0) R.coins += refund;
+                  if ((_data$matchedOrder = data.matchedOrder) !== null && _data$matchedOrder !== void 0 && _data$matchedOrder.item) {
+                    if (!R.weaponStash) R.weaponStash = [];
+                    R.weaponStash.push(data.matchedOrder.item);
+                  }
+                } else {
+                  R.coins += data.execPrice;
+                }
+              }
+              setRpgState(_objectSpread({}, R));
+              try {
+                localStorage.setItem('bt_rpg', JSON.stringify(R));
+              } catch (e) {}
             }
-            if (mktMode === 'sell' && mktSellItem !== null) {
-              R.weaponStash.splice(mktSellItem, 1);
-              setMktSellItem(null);
+            /* _compStats gold tallies stay client-tracked on both paths
+               (cosmetic lifetime counters, not wallet state). */
+            if (data.matched) {
+              if (R._compStats) {
+                if (mktMode === 'buy') R._compStats.totalGoldSpent += data.execPrice;
+                else R._compStats.totalGoldEarned += data.execPrice;
+              }
+            } else if (R._compStats && mktMode === 'buy') {
+              R._compStats.totalGoldSpent += mktPrice;
             }
+            if (mktMode === 'sell' && mktSellItem !== null) setMktSellItem(null);
             if (data.matched) {
               execPrice = data.execPrice;
-              if (mktMode === 'buy') {
-                refund = mktPrice - execPrice;
-                if (refund > 0) R.coins += refund;
-                if ((_data$matchedOrder = data.matchedOrder) !== null && _data$matchedOrder !== void 0 && _data$matchedOrder.item) {
-                  if (!R.weaponStash) R.weaponStash = [];
-                  R.weaponStash.push(data.matchedOrder.item);
-                }
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 30,
-                  text: 'Bought for ' + execPrice + 'G!',
-                  color: '#3dd497',
-                  ts: Date.now()
-                });
-              } else {
-                R.coins += execPrice;
-                if (R._compStats) R._compStats.totalGoldEarned += execPrice;
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 30,
-                  text: 'Sold for ' + execPrice + 'G!',
-                  color: '#3dd497',
-                  ts: Date.now()
-                });
-              }
+              S.dmgNumbers.push({
+                x: S.player.x,
+                y: S.player.y - 30,
+                text: (mktMode === 'buy' ? 'Bought for ' : 'Sold for ') + execPrice + 'G!',
+                color: '#3dd497',
+                ts: Date.now()
+              });
               BT_AUDIO.collect();
             } else {
               S.dmgNumbers.push({
@@ -463,14 +494,10 @@ export function ExchangePanel(props) {
               });
               BT_AUDIO.beep(500, 0.05, 0.08, 'sine');
             }
-            setRpgState(_objectSpread({}, R));
-            try {
-              localStorage.setItem('bt_rpg', JSON.stringify(R));
-            } catch (e) {}
             /* Refresh order book from server */
             _context0.p = 9;
             _context0.n = 10;
-            return fetch(BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier);
+            return fetch(BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom());
           case 10:
             ob = _context0.v;
             _context0.n = 11;
@@ -536,7 +563,7 @@ export function ExchangePanel(props) {
     var refreshKey = mktMode + mktCategory + mktSubtype + mktTier;
     if (S._mktLastRefresh !== refreshKey) {
       S._mktLastRefresh = refreshKey;
-      var endpoint = mktMode === 'orders' ? BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) : BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier;
+      var endpoint = mktMode === 'orders' ? BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom() : BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom();
       fetch(endpoint).then(function (r) {
         return r.json();
       }).then(function (d) {
@@ -560,7 +587,7 @@ export function ExchangePanel(props) {
     }, "\uD83D\uDCCA Order Book \u2014 ", ((_BLACKSMITH_TIERS$mkt2 = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt2 === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt2.label) || ((_WOODWORKING_TIERS$mk2 = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk2 === void 0 ? void 0 : _WOODWORKING_TIERS$mk2.label) || mktTier, " ", ((_WEAPON_TYPES$mktSubt = WEAPON_TYPES[mktSubtype]) === null || _WEAPON_TYPES$mktSubt === void 0 ? void 0 : _WEAPON_TYPES$mktSubt.label) || mktSubtype), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         S._mktLastRefresh = null; /* force refresh */
-        fetch(BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier).then(function (r) {
+        fetch(BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom()).then(function (r) {
           return r.json();
         }).then(function (d) {
           if (d.ok) setMktOrders(d.orders);
@@ -686,7 +713,7 @@ export function ExchangePanel(props) {
     }, "Your Active Orders (", filtered.length, ")"), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         S._mktLastRefresh = null;
-        fetch(BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId)).then(function (r) {
+        fetch(BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom()).then(function (r) {
           return r.json();
         }).then(function (d) {
           if (d.ok) setMktOrders(d.orders);
@@ -762,7 +789,7 @@ export function ExchangePanel(props) {
               case 0:
                 _context1.p = 0;
                 _context1.n = 1;
-                return fetch(BT_API_BASE + '/api/market/cancel?id=' + o.id + '&playerId=' + encodeURIComponent(S.myId), {
+                return fetch(BT_API_BASE + '/api/market/cancel?id=' + o.id + '&playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom(), {
                   method: 'DELETE'
                 });
               case 1:
@@ -772,17 +799,24 @@ export function ExchangePanel(props) {
               case 2:
                 data = _context1.v;
                 if (data.ok) {
-                  R2 = stateRef.current.rpg;
-                  /* Refund gold for buys, return item for sells */
-                  if (((_data$cancelled = data.cancelled) === null || _data$cancelled === void 0 ? void 0 : _data$cancelled.type) === 'buy') R2.coins += data.cancelled.price;
-                  if (((_data$cancelled2 = data.cancelled) === null || _data$cancelled2 === void 0 ? void 0 : _data$cancelled2.type) === 'sell' && data.cancelled.item) {
-                    if (!R2.weaponStash) R2.weaponStash = [];
-                    R2.weaponStash.push(data.cancelled.item);
+                  /* v2.3.1118: settling workers refund the escrow
+                     server-side (player_state echo / inbox carries it);
+                     the local refund below is the legacy-worker path
+                     only -- double-crediting against a settling worker
+                     was the duplication hole. */
+                  if (!data.settled) {
+                    R2 = stateRef.current.rpg;
+                    /* Refund gold for buys, return item for sells */
+                    if (((_data$cancelled = data.cancelled) === null || _data$cancelled === void 0 ? void 0 : _data$cancelled.type) === 'buy') R2.coins += data.cancelled.price;
+                    if (((_data$cancelled2 = data.cancelled) === null || _data$cancelled2 === void 0 ? void 0 : _data$cancelled2.type) === 'sell' && data.cancelled.item) {
+                      if (!R2.weaponStash) R2.weaponStash = [];
+                      R2.weaponStash.push(data.cancelled.item);
+                    }
+                    setRpgState(_objectSpread({}, R2));
+                    try {
+                      localStorage.setItem('bt_rpg', JSON.stringify(R2));
+                    } catch (e) {}
                   }
-                  setRpgState(_objectSpread({}, R2));
-                  try {
-                    localStorage.setItem('bt_rpg', JSON.stringify(R2));
-                  } catch (e) {}
                   S.dmgNumbers.push({
                     x: S.player.x,
                     y: S.player.y - 30,
@@ -792,7 +826,7 @@ export function ExchangePanel(props) {
                   });
                   /* Refresh */
                   S._mktLastRefresh = null;
-                  fetch(BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId)).then(function (r) {
+                  fetch(BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom()).then(function (r) {
                     return r.json();
                   }).then(function (d) {
                     if (d.ok) setMktOrders(d.orders);
