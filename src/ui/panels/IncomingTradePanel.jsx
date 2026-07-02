@@ -114,14 +114,22 @@ export function IncomingTradePanel(props) {
     onClick: function onClick() {
       var S = stateRef.current;
       var R = S.rpg;
-      /* Accept: add offered items to our inventory */
-      Object.entries(incomingTrade.offer || {}).forEach(function (_ref157) {
-        var _ref158 = _slicedToArray(_ref157, 2),
-          k = _ref158[0],
-          v = _ref158[1];
-        if (k === '_gold') R.coins += v;else if (R.inventory) R.inventory[k] = (R.inventory[k] || 0) + v;
-      });
-      setRpgState(_objectSpread({}, R));
+      /* v2.3.1119: settlement-aware workers (caps.trade) move the goods
+         server-side when they relay our accept -- the credit arrives via
+         inbox_delivered + the authoritative player_state echo.  The
+         local mint below was HALF of the trade duplication engine (the
+         sender was never debited); it now runs only against a legacy
+         worker. */
+      if (!(S._serverCaps && S._serverCaps.trade)) {
+        /* Accept: add offered items to our inventory */
+        Object.entries(incomingTrade.offer || {}).forEach(function (_ref157) {
+          var _ref158 = _slicedToArray(_ref157, 2),
+            k = _ref158[0],
+            v = _ref158[1];
+          if (k === '_gold') R.coins += v;else if (R.inventory) R.inventory[k] = (R.inventory[k] || 0) + v;
+        });
+        setRpgState(_objectSpread({}, R));
+      }
       /* Notify sender */
       if (S.channel) S.channel.send({
         type: 'broadcast',

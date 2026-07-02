@@ -542,6 +542,11 @@ export function setupWebSocket(ctx) {
             }
           case 'state_sync':
             {
+              /* v2.3.1119: server capability flags.  Settlement-aware
+                 workers advertise what THEY handle (caps.trade etc.);
+                 the legacy client-side credit paths stay in place but
+                 only run when the server hasn't claimed the job. */
+              S._serverCaps = msg.caps || {};
               var others = {};
               for (var _i34 = 0, _Object$entries6 = Object.entries(msg.players); _i34 < _Object$entries6.length; _i34++) {
                 var _Object$entries6$_i = _slicedToArray(_Object$entries6[_i34], 2),

@@ -944,14 +944,25 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.target === S.myId) {
                 var _R = S.rpg;
                 if (!_R) break;
-                var offer = payload.offer;
-                if (offer.coins) _R.coins = (_R.coins || 0) + offer.coins;
-                if (offer.items && _R.inventory) Object.entries(offer.items).forEach(function (_ref10) {
-                  var _ref11 = _slicedToArray(_ref10, 2),
-                    k = _ref11[0],
-                    v = _ref11[1];
-                  _R.inventory[k] = (_R.inventory[k] || 0) + v;
-                });
+                /* v2.3.1119: this is the SENDER hearing their offer was
+                   accepted.  The old mint below was the other half of
+                   the trade duplication engine -- the GIVER credited
+                   themselves the goods they just gave away (it also
+                   read a shape that trade offers never had, offer.coins
+                   / offer.items vs the real {itemKey: qty, _gold}).
+                   Settlement-aware workers annotate the relay with
+                   settled:true and have already debited us server-side;
+                   the legacy mint stays only for old workers. */
+                if (!payload.settled) {
+                  var offer = payload.offer || {};
+                  if (offer.coins) _R.coins = (_R.coins || 0) + offer.coins;
+                  if (offer.items && _R.inventory) Object.entries(offer.items).forEach(function (_ref10) {
+                    var _ref11 = _slicedToArray(_ref10, 2),
+                      k = _ref11[0],
+                      v = _ref11[1];
+                    _R.inventory[k] = (_R.inventory[k] || 0) + v;
+                  });
+                }
                 S.dmgNumbers.push({
                   x: S.player.x,
                   y: S.player.y - 40,
