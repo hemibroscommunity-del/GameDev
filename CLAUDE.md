@@ -4,14 +4,28 @@ Read this first. It encodes context that is expensive to rediscover.
 
 ## What this repo is
 
-A real-time multiplayer ARPG, fully contained in this one repository:
+A real-time **100% server-based multiplayer** ARPG, fully contained in
+this one repository. There is no single-player mode and never will be
+(owner directive, 2026-07-02) — any client-local game logic is a legacy
+remnant to migrate server-side, not a mode to preserve.
 
 - **Client** — Vite + React + PixiJS (WebGL). Entry `src/main.jsx`, game
   UI/loop in `src/ui/BroTown.jsx`, rendering in `src/rendering/`,
-  networking in `src/net/wsClient.js`, data tables in `src/data/`.
-- **Server** — `server/` is a Cloudflare Worker (Durable Objects:
-  GameRoom, Marketplace, Leaderboard, Arena, Feedback). See
-  `server/README.md` for run/test/deploy/rollback.
+  networking in `src/networking/` (`wsClient.js` connection + message
+  switch, `gameEvents.js` event dispatcher, `index.js` identity/API
+  base), data tables in `src/data/`.
+- **Server** — `server/` is a Cloudflare Worker. Live Durable Objects:
+  **GameRoom** (one shared room `brotown-1` — world, combat, economy
+  settlement, clans/arena/market order book all live HERE), Leaderboard,
+  Feedback. The Marketplace and Arena DO classes still exist for their
+  wrangler bindings but are **retired from routing** — their logic was
+  folded into the GameRoom (see `docs/ARCHITECTURE-HANDOFF.md`).
+- **Heavy-systems architecture (v2.3.1116+):** persistent identity,
+  offline mail/escrow, server-settled marketplace/trades/quests/duels.
+  Before touching the server, read **`docs/ARCHITECTURE-HANDOFF.md`** —
+  it is the charter of load-bearing conventions (storage-key registry,
+  opId idempotency, caps/settled deploy-order flags, DO concurrency
+  rules) plus the prioritized successor backlog.
 - **Docs** — the root `README.md` is the Master Game Design Document
   (GDD), NOT a setup guide; don't put tooling docs in it.
   `docs/specs/*.md` holds implementation specs for shipped features.
@@ -20,10 +34,13 @@ A real-time multiplayer ARPG, fully contained in this one repository:
   thinking only, describing many systems that were never built and
   missing many that were. NEVER use them as a blueprint to change,
   "fix", or "restore" game behavior. Code is the source of truth.
-  Current, trustworthy docs: `docs/REBUILD-PLAN.md`,
-  `docs/WIRE-PROTOCOL.md`, `docs/STATE-SCHEMA.md`, `docs/specs/*.md`.
-  Content-facing systems found in code may also be dormant (quests,
-  collectibles) — confirm with the owner before building on one.
+  Current, trustworthy docs: `docs/ARCHITECTURE-HANDOFF.md`,
+  `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
+  `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
+  decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
+  v2.3.1116 — trust for shape, not for the new systems).
+  Content-facing systems found in code may also be dormant
+  (collectibles) — confirm with the owner before building on one.
 
 The server previously lived in a separate `brotown-server` repo, now
 archived. Do not push there or build patches against it.
@@ -60,21 +77,31 @@ Two protocol versions coexist; both must keep working:
 - The client keeps v1 handlers as fallback so it works against any
   worker version. Preserve this on both sides — it is the safety
   property that makes client and server deployable in either order.
-- Server is authoritative for damage, HP, loot, XP, inventory. Client
-  damage popups are local prediction; `monster_hit` from the server is
-  the truth. New client→server events must be denied by default
-  unless added deliberately (see `PRIVILEGED_EVENTS` in
-  `server/src/index.js`).
+- Server is authoritative for damage, HP, loot, XP, inventory, coins,
+  quest progress, and ALL economy settlement (market/trade/duel — see
+  `docs/ARCHITECTURE-HANDOFF.md`). Client damage popups are local
+  prediction; `monster_hit` from the server is the truth. New
+  client→server events must be denied by default unless added
+  deliberately, and every server-EMITTED event type must be added to
+  `PRIVILEGED_EVENTS` in `server/src/index.js` or clients can forge it.
+- Deploy-order safety: servers advertise capabilities in
+  `state_sync.caps` (WS) / `settled: true` (HTTP); clients gate their
+  legacy paths on them. Preserve this on both sides.
+- Identity: stable per-browser `bp_` ids from a silent passphrase
+  (`bt_passphrase`); two tabs share one identity by design — test
+  multiplayer with `?guest=1` on the second tab.
 
 ## Testing
 
-- Server: `cd server && npm test` — runs
-  `test/protocol-v2.test.mjs`, the GameRoom against mocked DO storage
-  with one v1 + one v2 session (14 assertions). Extend it when
-  touching the wire format.
-- Client: no test suite; verify via the PR preview URL. Primary
-  platform is **iPhone Safari** — test touch controls, not just
-  desktop.
+- Server: `cd server && npm test` — eight zero-dependency suites
+  (protocol-v2, anticheat, combat-lifecycle, identity, inbox, market,
+  trade, quests, duel; 200+ assertions) against a mocked DO storage.
+  Every new system adds a suite; extend the nearest one when touching
+  its wire format.
+- Client: no unit suite; CI runs a two-session Playwright smoke harness
+  (`tools/qa/qa-smoke.mjs`, `qa-facing.mjs`) plus lint + build on every
+  PR, and the Pages bot posts a preview URL. Primary platform is
+  **iPhone Safari** — test touch controls, not just desktop.
 
 ## Conventions
 
