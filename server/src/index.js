@@ -47,6 +47,10 @@ import { duelMethods } from './duel.js';
 // leave localStorage, war kills are counted from the server's own PvP
 // death resolution (see clans.js header).
 import { clanMethods } from './clans.js';
+// v2.3.1126 (Wave 2 PR10): the Gladiator Arena on the duel backbone --
+// server-observed match results, escrowed entries (see gladiator.js
+// header; the old Arena DO is retired from routing below).
+import { arenaMethods } from './gladiator.js';
 
 export default {
   async fetch(request, env) {
@@ -97,8 +101,14 @@ export default {
       return env.LEADERBOARD.get(env.LEADERBOARD.idFromName('global')).fetch(request);
     }
 
+    // v2.3.1126: the arena lives in the GameRoom now (matches are
+    // duels; entries escrow against the same wallets the room owns --
+    // see gladiator.js).  The old Arena DO is retired from routing,
+    // class kept exported for the wrangler binding (the marketplace.js
+    // precedent).  Honor ?room= like /ws and /api/market.
     if (url.pathname.startsWith('/api/arena')) {
-      return env.ARENA.get(env.ARENA.idFromName('global')).fetch(request);
+      const arenaRoom = url.searchParams.get('room') || 'brotown-1';
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(arenaRoom)).fetch(request);
     }
 
     if (url.pathname.startsWith('/api/feedback')) {
@@ -150,6 +160,9 @@ const PRIVILEGED_EVENTS = new Set([
   // against this worker -- accepted, that relay was pure forgery
   // surface (each client scored its own kills and paid itself).
   'clan_state', 'clan_error', 'clan_war_kill', 'clan_war_end',
+  // v2.3.1126: arena referee emissions (results are server-observed
+  // duel outcomes; the old client-claimed /result was the forgery).
+  'arena_match_start', 'arena_match_result', 'arena_tournament_complete',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -1249,6 +1262,7 @@ export class GameRoom {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
+    if (ps._arenaMatch) return; // v2.3.1126: no healing during an arena match (GDD §43)
     if (!ps.inventory) ps.inventory = {};
     if ((ps.inventory[invKey] || 0) <= 0) return;
     const heal = this._fishHealAmount(invKey);
@@ -1807,6 +1821,9 @@ export class GameRoom {
     const dur = (recipe.duration || 0) * 1000;
     const endsAt = Date.now() + dur;
     if (recipe.buff === 'heal') {
+      // v2.3.1126: dead data today (no recipe carries buff:'heal') but
+      // gated anyway -- arena matches disable healing (GDD §43).
+      if (ps._arenaMatch) return;
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
       ps.hp = Math.min(ps.maxHp, (ps.hp || 0) + (recipe.power || 0));
     } else if (recipe.buff === 'regen') {
@@ -1912,6 +1929,10 @@ export class GameRoom {
     // Apply effect.  Pool restores clamp to max; trap grants inventory;
     // dmgBuff is transient client-only (server doesn't track buff timers).
     if (item.effect === 'healFish') {
+      // v2.3.1126: no healing during an arena match (GDD §43).  The
+      // coins were already spent above -- matching the eat_request
+      // consume-anyway posture would be wrong here, so refund.
+      if (ps._arenaMatch) { ps.coins += finalCost; return; }
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
       if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
       ps.hp = Math.min(ps.maxHp, ps.hp + (item.power || 23));
@@ -3368,7 +3389,12 @@ export class GameRoom {
       // zones.  Lifesteal + eating remain the only heals while fighting;
       // walking back to town tops you off in ~7 s so a fresh expedition
       // doesn't start at the HP you happened to limp home with.
-      if ((ps.z === 'town' || ps.z === 'farm_home') && ps.hp < ps.maxHp) {
+      // v2.3.1126: GATED during an active arena match (GDD §43 "healing
+      // disabled") -- arena fights happen in town, and 10% maxHp per
+      // regen tick would make them literally unendable for non-burst
+      // builds.  HP only; stamina/mana below keep regenerating so
+      // blocking still works.
+      if (!ps._arenaMatch && (ps.z === 'town' || ps.z === 'farm_home') && ps.hp < ps.maxHp) {
         const heal = Math.max(1, Math.ceil(ps.maxHp * 0.10));
         const beforeHp = ps.hp;
         ps.hp = Math.min(ps.maxHp, ps.hp + heal);
@@ -4183,6 +4209,10 @@ export class GameRoom {
     if (url.pathname.startsWith('/api/market')) {
       return this._marketFetch(request);
     }
+    // v2.3.1126: arena HTTP surface (same fold -- see gladiator.js).
+    if (url.pathname.startsWith('/api/arena')) {
+      return this._arenaFetch(request);
+    }
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 426 });
     }
@@ -4501,6 +4531,7 @@ export class GameRoom {
         // land via the inbox path above on the NEXT join).
         this._duelOnRejoin(msg.id);
         this._duelEscrowSweep();
+        this._arenaEntrySweep(); // v2.3.1126: refund entries orphaned by a deploy
         // v2.3.1125: authoritative clan tag -- the registry overrides
         // whatever the client stuffed in its cosmetics (msg.data is the
         // same object session.data / playerState spread / player_join
@@ -4523,7 +4554,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -5178,6 +5209,10 @@ export class GameRoom {
       // on wake for wars that end in an empty room).
       this._tickClanWars(Date.now());
 
+      // v2.3.1126: arena housekeeping -- gather timer, deferred match
+      // activation, post-completion cleanup.
+      this._tickArena(Date.now());
+
       // HP regen tick — every 30 server ticks (~670 ms at TICK_RATE=22).
       // Skip when no one needs healing to avoid wasted iteration.
       regenCounter++;
@@ -5346,3 +5381,5 @@ Object.assign(GameRoom.prototype, tradeMethods);
 Object.assign(GameRoom.prototype, duelMethods);
 // v2.3.1125: clan registry + war referee mixin.
 Object.assign(GameRoom.prototype, clanMethods);
+// v2.3.1126: gladiator arena mixin.
+Object.assign(GameRoom.prototype, arenaMethods);

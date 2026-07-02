@@ -92,8 +92,13 @@ export function PartyPanel(props) {
             });
             return _context8.a(2);
           case 1:
-            R.coins -= ARENA_ENTRY_FEE;
-            if (R._compStats) R._compStats.totalGoldSpent += ARENA_ENTRY_FEE;
+            /* v2.3.1126: arena-capable workers escrow the entry fee
+               server-side (settled join responses) -- the local debit/
+               refund pair below is the legacy-worker path only. */
+            if (!(S._serverCaps && S._serverCaps.arena)) {
+              R.coins -= ARENA_ENTRY_FEE;
+              if (R._compStats) R._compStats.totalGoldSpent += ARENA_ENTRY_FEE;
+            }
             _context8.p = 2;
             _context8.n = 3;
             return fetch(BT_API_BASE + '/api/arena/join', {
@@ -118,7 +123,7 @@ export function PartyPanel(props) {
               _context8.n = 5;
               break;
             }
-            R.coins += ARENA_ENTRY_FEE;
+            if (!(S._serverCaps && S._serverCaps.arena)) R.coins += ARENA_ENTRY_FEE;
             S.dmgNumbers.push({
               x: S.player.x,
               y: S.player.y - 30,
@@ -148,7 +153,7 @@ export function PartyPanel(props) {
           case 6:
             _context8.p = 6;
             _t7 = _context8.v;
-            R.coins += ARENA_ENTRY_FEE;
+            if (!(S._serverCaps && S._serverCaps.arena)) R.coins += ARENA_ENTRY_FEE;
             S.dmgNumbers.push({
               x: S.player.x,
               y: S.player.y - 30,
@@ -224,7 +229,7 @@ export function PartyPanel(props) {
               })
             });
           case 2:
-            S.rpg.coins += ARENA_ENTRY_FEE; /* refund */
+            if (!(S._serverCaps && S._serverCaps.arena)) S.rpg.coins += ARENA_ENTRY_FEE; /* legacy refund; settling workers refund server-side */
             setArenaStatus({
               ok: true,
               status: 'none'

@@ -1315,8 +1315,15 @@ export function processGameEvent(type, payload, S, deps) {
                     ts: Date.now()
                   });
                 }
-                /* §ARENA — Report arena match result if this was an arena fight */
-                if (S._arenaMatch && (payload.from === S._arenaMatch.p1 || payload.from === S._arenaMatch.p2)) {
+                /* §ARENA — Report arena match result if this was an arena fight.
+                   v2.3.1126: refereeing workers (caps.arena) observe match
+                   outcomes from their own duel resolution -- the client-claimed
+                   winnerId POST below was the collusion hole (two clients could
+                   trade fake wins), and the win/champion self-credit was
+                   phantom.  Legacy workers only; the new flow renders from the
+                   privileged arena_match_result / arena_tournament_complete
+                   events instead. */
+                if (!(S._serverCaps && S._serverCaps.arena) && S._arenaMatch && (payload.from === S._arenaMatch.p1 || payload.from === S._arenaMatch.p2)) {
                   var match = S._arenaMatch;
                   var loserId = payload.from; /* the person who sent pvp_confirmed with died=true is confirming WE killed THEM */
                   /* Actually: pvp_confirmed target=us, from=attacker. If died=true, the attacker got a kill confirmation.
@@ -1381,6 +1388,74 @@ export function processGameEvent(type, payload, S, deps) {
                     }
                   }).catch(function () {});
                 }
+              }
+              break;
+            }
+          case 'arena_match_start':
+            {
+              /* v2.3.1126: the referee paired us -- server-observed
+                 arena flow (spec: docs/specs/arena.md).  Damage works
+                 via the duel consent pair; healing is server-gated. */
+              S.dmgNumbers.push({
+                x: S.player.x,
+                y: S.player.y - 50,
+                text: '⚔️ ARENA R' + (payload.round || 1) + ': fight ' + (payload.opponentName || '???') + '!',
+                color: '#f5c542',
+                ts: Date.now()
+              });
+              BT_AUDIO.beep(300, 0.15, 0.2, 'sawtooth');
+              S.screenShake = 5;
+              break;
+            }
+          case 'arena_match_result':
+            {
+              if (payload.winner === S.myId) {
+                S.dmgNumbers.push({
+                  x: S.player.x,
+                  y: S.player.y - 60,
+                  text: 'Arena win! (' + (payload.how || 'kill') + ')',
+                  color: '#3dd497',
+                  ts: Date.now()
+                });
+                BT_AUDIO.collect();
+              } else if (payload.loser === S.myId) {
+                S.dmgNumbers.push({
+                  x: S.player.x,
+                  y: S.player.y - 60,
+                  text: 'Eliminated from the arena',
+                  color: '#ff5e6c',
+                  ts: Date.now()
+                });
+              }
+              break;
+            }
+          case 'arena_tournament_complete':
+            {
+              var _champ = payload.champion || {};
+              if (_champ.playerId === S.myId && S.rpg) {
+                /* Gold arrives via _creditPlayer (player_state echo /
+                   mail).  The title stays client-granted for now --
+                   titles aren't server-owned yet (handoff backlog). */
+                if (!S.rpg._titles) S.rpg._titles = [];
+                if (!S.rpg._titles.includes('Gladiator')) S.rpg._titles.push('Gladiator');
+                S.dmgNumbers.push({
+                  x: S.player.x,
+                  y: S.player.y - 80,
+                  text: 'GLADIATOR CHAMPION!',
+                  color: '#f5c542',
+                  ts: Date.now()
+                });
+                BT_AUDIO.levelUp();
+                S.screenShake = 10;
+                setRpgState(_objectSpread({}, S.rpg));
+              } else if (_champ.playerName) {
+                S.dmgNumbers.push({
+                  x: S.player.x,
+                  y: S.player.y - 50,
+                  text: '🏆 ' + _champ.playerName + ' is the Gladiator champion!',
+                  color: '#f5c542',
+                  ts: Date.now()
+                });
               }
               break;
             }
