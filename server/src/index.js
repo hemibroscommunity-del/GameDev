@@ -34,36 +34,23 @@ export default {
       return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room)).fetch(request);
     }
 
-    // Lobby pick -- scans the numbered room list and returns the first
-    // room under LOBBY_SOFT_CAP, or a fresh room past the scan range
-    // if every existing room is at cap.  Client calls this once before
-    // opening the WebSocket so we don't need ?room=X user input.  An
-    // explicit ?room=X URL query bypasses lobby entirely (escape hatch
-    // for testing / private friend sessions).
+    // v2.3.1112 (owner directive): ONE SHARED ROOM for everyone.  The old
+    // lobby sharded players across brotown-1..10 by scanning room counts,
+    // and a probe hiccup or count blip could split two players who joined
+    // seconds apart into different rooms -- invisible to each other with
+    // no error anywhere (confirmed live: two tabs landed in different
+    // rooms; forcing ?room=qa1 on both made them see each other).  At
+    // prototype scale everyone belongs together; every lobby call now
+    // returns the same room.  The ?room=X URL query stays as the escape
+    // hatch for testing / private sessions.  Re-introduce sharding (the
+    // scan loop is in git history at v2.3.1111) only when concurrent
+    // population approaches MAX_PLAYERS=60, and prefer explicit shard
+    // assignment over count-probing when that day comes.
+    // Room name 'brotown-1' (not 'brotown') on purpose: the old lobby's
+    // first pick was brotown-1, so that DO holds the existing players'
+    // stored progress (rpg blobs live per GameRoom DO).
     if (url.pathname === '/api/lobby') {
-      const PREFIX = 'brotown';
-      const SOFT_CAP = 50;       // 10-player headroom under MAX_PLAYERS=60
-      const SCAN_ROOMS = 10;     // existing pool to scan before minting fresh
-      for (let i = 1; i <= SCAN_ROOMS; i++) {
-        const room = PREFIX + '-' + i;
-        try {
-          const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(room));
-          const probe = await stub.fetch(new Request('https://internal/_room_count'));
-          if (probe.ok) {
-            const { count } = await probe.json();
-            if (typeof count === 'number' && count < SOFT_CAP) {
-              return new Response(JSON.stringify({ room, count }), { headers: corsHeaders });
-            }
-          }
-        } catch (e) {
-          // Probe failed (cold start hiccup, network blip) -- skip this
-          // room and try the next.  A room that won't respond shouldn't
-          // block lobby pick.
-        }
-      }
-      // All scanned rooms at/above cap -- mint the next number so new
-      // joiners spill into a fresh DO instead of jamming an existing one.
-      return new Response(JSON.stringify({ room: PREFIX + '-' + (SCAN_ROOMS + 1) }), { headers: corsHeaders });
+      return new Response(JSON.stringify({ room: 'brotown-1' }), { headers: corsHeaders });
     }
 
     if (url.pathname.startsWith('/api/market')) {
