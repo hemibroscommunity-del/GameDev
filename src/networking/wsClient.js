@@ -288,6 +288,33 @@ export function setupWebSocket(ctx) {
                     pid = _Object$entries5$_i[0],
                     data = _Object$entries5$_i[1];
                   if (pid === S.myId) continue;
+                  /* v2.3.1112: SELF-HEALING peer presence.  Peer entries were
+                     created ONLY by the player_join event -- iOS Safari
+                     suspends background tabs completely, so a join that
+                     happened while this tab was suspended was missed forever:
+                     ticks and player_update both skipped unknown ids, and no
+                     later message ever re-created the entry ("1 online" in
+                     one tab, "2 online" in the other).  The tick players
+                     delta now CREATES unknown peers with placeholder
+                     cosmetics; the peer's 2s track relay (player_update)
+                     fills in name/avatar/gear moments later.  With the 1 Hz
+                     idle keepalive every live player appears in a tick at
+                     least once per second, so a resumed tab converges fast. */
+                  if (!S.others[pid]) {
+                    S.others[pid] = {
+                      x: data.x, y: data.y, _serverX: data.x, _serverY: data.y,
+                      renderX: data.x, renderY: data.y,
+                      name: 'Anon', color: '#888', avatar: null,
+                      dir: data.d || 'down', bt: '#2563eb', bl: '#1e3a5f',
+                      headwear: null, facialhair: null, hair: null, skin: null,
+                      hairColor: null, hatColor: null, facialHairColor: null,
+                      shirt: null, shirtColor: null,
+                      equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
+                      pants: null, shoes: null, rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
+                      bodySize: 'slim', zone: data.z || 'town',
+                    };
+                    setPlayerCount(Object.keys(S.others).length + 1);
+                  }
                   if (S.others[pid]) {
                     S.others[pid].x = data.x;
                     S.others[pid].y = data.y;
@@ -325,6 +352,26 @@ export function setupWebSocket(ctx) {
                     });
                     if (S.others[pid]._posBuffer.length > 20) S.others[pid]._posBuffer.shift();
                   }
+                }
+              }
+              /* v2.3.1112: GHOST SWEEP -- the symmetric bug to the missed
+                 join: a peer who LEFT while this tab was suspended never got
+                 its player_leave processed, leaving a frozen ghost forever.
+                 With the 1 Hz idle keepalive every live player refreshes
+                 _lastUpdate at least once a second, so an entry silent for
+                 10s is gone from the room.  Swept at most once per second. */
+              {
+                var _gsNow = Date.now();
+                if (!S._lastGhostSweep || _gsNow - S._lastGhostSweep > 1000) {
+                  S._lastGhostSweep = _gsNow;
+                  var _gsIds = Object.keys(S.others);
+                  var _gsRemoved = false;
+                  for (var _gsi = 0; _gsi < _gsIds.length; _gsi++) {
+                    var _gsO = S.others[_gsIds[_gsi]];
+                    if (!_gsO._lastUpdate) { _gsO._lastUpdate = _gsNow; continue; } /* grace for fresh entries */
+                    if (_gsNow - _gsO._lastUpdate > 10000) { delete S.others[_gsIds[_gsi]]; _gsRemoved = true; }
+                  }
+                  if (_gsRemoved) setPlayerCount(Object.keys(S.others).length + 1);
                 }
               }
               // §16.10 — Process batched game events
@@ -1053,6 +1100,18 @@ export function setupWebSocket(ctx) {
             }
           case 'player_update':
             {
+              /* v2.3.1112: create unknown peers from the track relay too --
+                 it carries the full cosmetics, so a peer discovered this way
+                 renders correctly immediately (see the tick-create note). */
+              if (!S.others[msg.id] && msg.id !== S.myId && msg.data) {
+                S.others[msg.id] = {
+                  x: 0, y: 0, renderX: 0, renderY: 0, name: 'Anon', color: '#888',
+                  avatar: null, dir: 'down', bt: '#2563eb', bl: '#1e3a5f',
+                  equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
+                  rpgLv: 1, rpgHp: 50, rpgMaxHp: 50, bodySize: 'slim', zone: 'town',
+                };
+                setPlayerCount(Object.keys(S.others).length + 1);
+              }
               if (S.others[msg.id]) {
                 Object.assign(S.others[msg.id], msg.data);
                 /* v2.3.599: track relays carry flat eqc/eql/eqs; rebuild the
