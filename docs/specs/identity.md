@@ -39,6 +39,13 @@ any foreign field. Follow this rule for all future per-player metadata
 
 ## PvP consent gate
 
+> **⚠ Partially superseded (v2.3.1121):** the duel half of this section
+> describes the PR1 interim observer. Duel consent now lives in the duel
+> machine (`server/src/duel.js`, spec `docs/specs/duels.md`) — the
+> observer described below handles ONLY the threat handshake
+> (`pvp_threat`/`threat_response`). The lawless-zone gate and
+> fail-closed default are unchanged and still live here.
+
 `_resolvePvPAttack` now skips any target unless:
 
 - the zone has `lawless: true` in `server/src/data.js` ZONES (all nine

@@ -180,11 +180,48 @@ gameplay authority must instead get a real server case.
 | `player_hurt_by_monster` / `monster_dmg_at` / `player_died_to_monster` | Peer combat-feedback visuals (drive the peer damage-number smoothing queue) | ~3646 / ~3666 / ~3683 |
 | `player_respawned` | Peer corpse-clear (deliberately not privileged — see Security model) | ~3721 |
 | `stunned` | Stun visual/state relay | ~3836 |
-| `trade_offer` / `trade_accept` / `trade_reject` | Player trading handshake | ~3841–3876 |
-| `duel_request` / `duel_accept` / `duel_decline` / `duel_wager_request` | Duel handshake | ~4188–4262 |
-| `pvp_confirmed` / `pvp_threat` / `threat_response` | PvP consent flow | ~4067 / ~4225 / ~4243 |
+| `trade_offer` / `trade_accept` / `trade_reject` | Trading handshake — **since v2.3.1119 the server INTERCEPTS this relay and settles the trade itself** (see Settlement layer below); forged/replayed accepts are dropped, honored accepts are relayed with `settled: true` | ~3841–3876 |
+| `duel_request` / `duel_accept` / `duel_decline` / `duel_wager_request` | Duel handshake — **since v2.3.1121 intercepted by the server duel machine** (wager escrow, server-resolved outcomes); accepts relayed with `settled: true` + authoritative `wager` | ~4188–4262 |
+| `pvp_confirmed` / `pvp_threat` / `threat_response` | PvP consent flow (threat handshake still relay-observed — the red-skull machine is deferred) | ~4067 / ~4225 / ~4243 |
 | `clan_war_declare` / `clan_war_kill` / `clan_war_end` | Clan war state relay | ~3745–3795 |
 | `arena_bet` | Arena betting relay | ~3737 (see Quirks) |
+
+## Settlement layer (v2.3.1116+ — heavy-systems architecture)
+
+Added after the sections above were written; full detail lives in
+`docs/specs/*.md` and the conventions in `docs/ARCHITECTURE-HANDOFF.md`.
+Summary of the wire-visible changes:
+
+**Join / identity (identity.md):**
+- `join` gains `phrase` (the silent passphrase for `bp_` ids; absent for
+  legacy/guest ids). Rejected auth → server sends `join_rejected
+  {reason:'auth'}` then closes with code 4003; the client mints a fresh
+  identity once and reconnects.
+- `state_sync` gains `caps` (e.g. `{trade: true, questTrack: true}`) —
+  the server's capability advertisement. Clients store `S._serverCaps`
+  and run legacy client-side credit paths ONLY when the server hasn't
+  claimed the job. HTTP responses use `settled: true` for the same
+  purpose. This is the deploy-order safety mechanism; preserve it.
+
+**New server→client messages (all in `PRIVILEGED_EVENTS`):**
+
+| Type | Purpose | Spec |
+|---|---|---|
+| `join_rejected` | Identity auth refusal (then close 4003) | identity.md |
+| `inbox_delivered` | Offline-mail delivery: `{entries: [{kind, payload, note, source}], queued}` | inbox-escrow.md |
+| `duel_end` | Server duel resolution: `{winner, loser, wager, how: kill\|death\|forfeit}` | duels.md |
+
+**Marketplace HTTP (worker routes `/api/market/*` to the GameRoom now;
+the standalone Marketplace DO is retired from routing):**
+- `POST /api/market/place` body gains `stashIndex` (sells escrow from the
+  SERVER's stash copy; the `item` blob is ignored). All mutating
+  responses carry `settled: true`.
+- New `GET /api/market/history?category&subtype&tier` →
+  `{history: [{p, ts}], avg, last}` (last 50 executions).
+- All market calls carry `&room=` so escrow lands in the caller's room.
+
+**Quest counters:** `player_state._questKills` is server-authored
+(quests.md); client increment sites are gated on `caps.questTrack`.
 
 ## Known quirks (documented, deliberately not "fixed" here)
 
@@ -196,7 +233,7 @@ gameplay authority must instead get a real server case.
 - **`player_attack`** appears both as an accepted server case (~3828) and a
   dispatcher case (~3985) — the server processes it and it is also relayed
   for remote swing rendering.
-- **`src/networking/wsClient.js` drift**: contains an obsolete room-walking
-  scheme and none of the v2 handlers. Dead code; do not extend it
-  (REBUILD-PLAN Phase 1 deletes it, Phase 5 rebuilds it from the live
-  inline client).
+- **`src/networking/wsClient.js` is the LIVE client** since REBUILD-PLAN
+  Phase 5 (v2.3.784) — the old "dead code, do not extend" warning
+  referred to the pre-Phase-5 copy. An inline comment inside the file
+  still carries the historical warning; fixes land in this file.
