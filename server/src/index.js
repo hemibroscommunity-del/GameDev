@@ -2519,6 +2519,15 @@ export class GameRoom {
     if (this._buffActive(ps, 'resist')) {
       dmgTaken = Math.max(1, Math.ceil(dmgTaken * (1 - 0.05)));
     }
+    // v2.3.1113: Iron Skin (defense channel, -0.5%/pt, cap -25%) -- mirror
+    // of applyIronSkin in src/data/gameSystems.js.  ps.defenseSpec is
+    // client-trained but server-clamped [0,50] via _sanitizeDefenseSpec,
+    // so the cut is bounded.  Part of the defense-loop revival: the
+    // channel existed since v2.3.1021 but was never consumed anywhere.
+    const _ironskin = (ps.defenseSpec && ps.defenseSpec.ironskin) || 0;
+    if (_ironskin > 0) {
+      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.25, _ironskin * 0.005))));
+    }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
     ps.hp = Math.max(0, ps.hp - dmgTaken);
