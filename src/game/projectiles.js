@@ -15,7 +15,8 @@ import {
   BT_AUDIO, COMBO_NEXT_DURATION_BONUS, ELEMENTS, QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
-  resolveCollision, rollPassiveDodge, spawnWeaponHitFX
+  resolveCollision, rollPassiveDodge, spawnWeaponHitFX,
+  monsterBodyY, monsterBodyOffsetY,
 } from '@/data/index.js';
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
@@ -34,7 +35,8 @@ export function updateArrows(S, deps) {
           var curAim;
           if (S.lockedTarget && S.lockedTarget.ref) {
             var lt2 = S.lockedTarget.ref;
-            curAim = Math.atan2((lt2.y || 0) - P.y, (lt2.x || 0) - P.x);
+            /* v2.3.1111: home toward the body centre the hit-test uses. */
+            curAim = Math.atan2((monsterBodyY(lt2) || 0) - P.y, (lt2.x || 0) - P.x);
           } else if (S._aiming) {
             curAim = S._aimAngle || 0;
           } else {
@@ -131,39 +133,34 @@ export function updateArrows(S, deps) {
                  at m.y + 13), visual center ~19 px above m.y and arms
                  that extend outward — needs both the y-offset and a
                  wider radius. */
+              /* v2.3.1111: Y offsets now come from the shared body-centre
+                 table (monsterBodyOffsetY -- same values this block carried
+                 inline).  Radii stay per-archetype below. */
               var _archProj = m.archetype || m.type;
-              var _mProjY = m.y;
               var _hitR = a.isStaff ? 30 : 18;
               if (_archProj === 'fodder') {
-                _mProjY = m.y - 40;
                 /* Slime body is wider than the 18 px default — bump
                    the radius so arrows that visually hit the body
                    register.  Same intuition as the melee +20 bonus. */
                 _hitR = a.isStaff ? 38 : 26;
               } else if (_archProj === 'fireGoblin') {
-                /* Goblin's visible body sits ~26-30 px above m.y
-                   (sprite anchor at feet, body extends upward 64 px
-                   tall on screen).  Without this offset, arrows aimed
-                   at the body whiff and only feet-level shots
-                   register -- the source of the "arrows beneath the
-                   sprite" bug.  Wider hit radius too for the upright
-                   torso silhouette. */
-                _mProjY = m.y - 28;
                 _hitR = a.isStaff ? 40 : 26;
               } else if (_archProj === 'snowman') {
-                _mProjY = m.y - 19;
                 _hitR = a.isStaff ? 44 : 32;
               } else if (_archProj === 'mummy' || _archProj === 'skeleton') {
-                /* 96 px sprite anchored at feet -- aim at mid-body
-                   ~48 px up, wide hit radius to cover the full
-                   figure height plus a bit (user reported hitbox
-                   was "way too small"). */
-                _mProjY = m.y - 48;
                 _hitR = a.isStaff ? 50 : 40;
               }
               /* v2.3.222: special arrow has 3x damage radius. */
               if (a.isSpecial) _hitR *= 3;
-              if (Math.sqrt(Math.pow(m.x - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
+              /* v2.3.1111: hit-test against the RENDERED position when the
+                 monster is interpolating (server-driven monsters draw at
+                 renderX/Y, trailing the logic m.x by ~4 frames of motion) --
+                 a visually-on-target shot at a walking monster used to miss
+                 in the travel direction because the hitbox led the sprite. */
+              var _hitX = (typeof m.renderX === 'number') ? m.renderX : m.x;
+              var _hitBaseY = (typeof m.renderY === 'number') ? m.renderY : m.y;
+              var _mProjY = _hitBaseY - monsterBodyOffsetY(_archProj);
+              if (Math.sqrt(Math.pow(_hitX - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
                 a.hitIds.add(m.id);
                 var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
                 if (arrowElem) {
