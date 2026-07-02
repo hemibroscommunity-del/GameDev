@@ -4113,9 +4113,15 @@ export function applyStatus(target, statusId, source, now) {
   return true;
 }
 
-/* Tick all statuses on a target. Applies DoT damage. Returns array of expired status IDs. */
-export function tickStatuses(target, dt, now, rpg) {
+/* Tick all statuses on a target. Applies DoT damage. Returns array of expired status IDs.
+   v2.3.1114: opts.applyHp=false keeps duration bookkeeping + FX timing but
+   skips the local curHp mutation and DoT popup -- used for SERVER-driven
+   monsters now that the worker ticks authoritative DoT and its monster_hit
+   events carry the damage (the local mutation was a misprediction the next
+   tick overwrote, and would now double the popups). */
+export function tickStatuses(target, dt, now, rpg, opts) {
   if (!target.statuses) return [];
+  var applyHp = !opts || opts.applyHp !== false;
   var expired = [];
   var emMult = rpg ? 1 + (rpg.elementalMastery || 0) * 0.0015 : 1;
   for (var _i28 = 0, _Object$entries = Object.entries(target.statuses); _i28 < _Object$entries.length; _i28++) {
@@ -4131,7 +4137,7 @@ export function tickStatuses(target, dt, now, rpg) {
       var dotDmg = 0;
       if (id === 'burn') dotDmg = (5 + ((rpg === null || rpg === void 0 ? void 0 : rpg.power) || 0) * 0.3) * emMult;
       if (id === 'root') dotDmg = (3 + ((rpg === null || rpg === void 0 ? void 0 : rpg.power) || 0) * 0.15) * emMult;
-      if (dotDmg > 0) {
+      if (dotDmg > 0 && applyHp) {
         target.curHp = (target.curHp || target.hp) - Math.round(dotDmg);
         target._lastDotDmg = {
           amount: Math.round(dotDmg),

@@ -146,20 +146,27 @@ GDD §4.6c verbatim, flagged for a future server-side PR:
   weapon object; `_sanitizeWeapon` clamps hardness to [0,5]; the
   HardeningLedger is an append-only array in the same blob (§17.5).
 
-## 6. Elemental — prerequisite and ceilings
+## 6. Elemental — server-authoritative core (done, v2.3.1114)
 
-All elemental damage is client-side today; the server deliberately computes
-weapon-only damage (`_computeAttackDamage` comment). **Elemental balance is
-meaningless in multiplayer until the server owns it** (roadmap P2 item 4).
-When that slice lands:
+Shipped: `server/src/elemental.js` (tables extracted programmatically from
+the client module) + GameRoom wiring. Statuses apply from the `element`
+already on the wire (arrows now populate theirs); burn/root DoT ticks in
+`_tickMonsters` with kill credit through the shared `_resolveMonsterKill`
+pipeline (extracted verbatim; DoT kills deny melee lifesteal via slot
+'dot'); collisions detonate on the oldest different-element status with
+resonance × volatile × effectiveness, clamped to INV-16's 3.2× burst cap.
+Client keeps duration/FX bookkeeping but no longer mutates server-monster
+HP (the old cosmetic misprediction). Discovery before this slice:
+**elemental damage did nothing at all against server monsters** — DoT and
+collisions were pure client mispredictions.
 
-- Effectiveness (×1.25 / ×0.75 circle) and collisions stay OUT of the
-  auto-attack formula — collision pipeline only.
-- Adopted ceilings: INV-13 resonance ≤2.8× base collision; INV-16 combo
-  burst ≤3.2×; INV-02 mana sustainability (regen alone can't sustain
-  swipe triggers — collisions are the caster mana loop).
-- ElementalMastery (retired stat) does NOT return; Attunement/Detonation
-  channels (§4) are its successors.
+Still client-side (candidates for later slices): resonance-streak mana
+restore (self-buff), amulet elemDmg / hexer curse on the auto-attack roll,
+CC movement effects on server AI (freeze/root/slow don't slow server
+monsters yet), peer-visible status FX (each client only sees its own
+applied statuses). ElementalMastery stays retired; Attunement/Detonation
+channels (§4) are its successors. INV-02 mana sustainability remains a
+sim TODO.
 
 ## 7. Defense loop revival (done, v2.3.1113)
 

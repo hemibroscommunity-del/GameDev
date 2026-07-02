@@ -126,8 +126,11 @@ export function updateMonsterCombat(S, deps) {
               return;
             }
 
-            /* §9 — Tick statuses (DoT damage, expiry) */
-            var expired = tickStatuses(m, 16.7 / 1000, Date.now(), _R6);
+            /* §9 — Tick statuses (DoT damage, expiry).
+               v2.3.1114: for server-driven monsters the WORKER ticks
+               authoritative DoT (its monster_hit events carry the damage
+               + popups); local tick keeps only duration/FX bookkeeping. */
+            var expired = tickStatuses(m, 16.7 / 1000, Date.now(), _R6, { applyHp: !S._serverMonsters });
 
             /* ═══ ELEMENT STATUS OVERLAY — ambient particles on statused monsters ═══ */
             if (m.statuses && m.alive) {
