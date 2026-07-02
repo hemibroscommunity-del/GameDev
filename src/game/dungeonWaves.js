@@ -16,6 +16,14 @@ import { ZONES, TILE, ELEMENTS, DEPTH_CONFIG, BT_AUDIO, createMonster, createDef
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 export function updateDungeonWaves(S, deps) {
+  /* v2.3.1127: server-authoritative dungeon instances.  When the run
+     lives on the worker (S._serverDungeon set by the dungeon_started
+     handler in gameEvents.js), wave advancement, boss spawn, and the
+     completion rewards are all server-owned -- the client receives
+     dungeon_wave / dungeon_boss / dungeon_complete events instead of
+     running this loop.  The legacy body below stays for the
+     caps-gated fallback path (old workers). */
+  if (S._serverDungeon) return;
   var stateRef = deps.stateRef,
     setRpgState = deps.setRpgState;
   var P = S.player;

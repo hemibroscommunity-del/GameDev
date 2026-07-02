@@ -209,7 +209,11 @@ Summary of the wire-visible changes:
 |---|---|---|
 | `join_rejected` | Identity auth refusal (then close 4003) | identity.md |
 | `inbox_delivered` | Offline-mail delivery: `{entries: [{kind, payload, note, source}], queued}` | inbox-escrow.md |
-| `duel_end` | Server duel resolution: `{winner, loser, wager, how: kill\|death\|forfeit}` | duels.md |
+| `duel_end` | Server duel resolution: `{winner, loser, wager, how: kill\|death\|forfeit\|timeout}` | duels.md |
+| `gamble_result` | Server-rolled gamble outcome (private): `{won, wager, payout}` | gambling.md |
+| `clan_state` / `clan_error` / `clan_war_kill` / `clan_war_end` | Clan registry echo + war referee | clans.md |
+| `arena_match_start` / `arena_match_result` / `arena_tournament_complete` | Arena bracket (matches are duels) | arena.md |
+| `dungeon_started` / `dungeon_wave` / `dungeon_boss` / `dungeon_complete` / `dungeon_error` | Instanced dungeons (private; `dungeon_start` c→s case) | dungeons.md |
 
 **Marketplace HTTP (worker routes `/api/market/*` to the GameRoom now;
 the standalone Marketplace DO is retired from routing):**

@@ -51,6 +51,10 @@ import { clanMethods } from './clans.js';
 // server-observed match results, escrowed entries (see gladiator.js
 // header; the old Arena DO is retired from routing below).
 import { arenaMethods } from './gladiator.js';
+// v2.3.1127 (PR12): server-authoritative instanced dungeons -- folded
+// instances riding zone ids the ZONES table doesn't know (see
+// dungeon.js header for why that makes the whole combat stack free).
+import { dungeonMethods } from './dungeon.js';
 
 export default {
   async fetch(request, env) {
@@ -163,6 +167,9 @@ const PRIVILEGED_EVENTS = new Set([
   // v2.3.1126: arena referee emissions (results are server-observed
   // duel outcomes; the old client-claimed /result was the forgery).
   'arena_match_start', 'arena_match_result', 'arena_tournament_complete',
+  // v2.3.1127: dungeon instance lifecycle (server-spawned waves,
+  // server-settled completion rewards -- see dungeon.js).
+  'dungeon_started', 'dungeon_wave', 'dungeon_boss', 'dungeon_complete', 'dungeon_error',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -4031,7 +4038,10 @@ export class GameRoom {
   // pass slot 'dot' so melee lifesteal correctly denies ('not-melee').
   _resolveMonsterKill(zone, m, killerId, killerPs, slot) {
       m.alive = false;
-      m.respawnAt = Date.now() + this.RESPAWN_TIME;
+      // v2.3.1127: dungeon-instance monsters never respawn -- a cleared
+      // wave must STAY cleared or _tickDungeons can't advance (the
+      // respawn check requires respawnAt > 0, so 0 means "stay dead").
+      m.respawnAt = m.noRespawn ? 0 : Date.now() + this.RESPAWN_TIME;
 
       // GDD §7 — contribution-weighted XP/gold distribution.
       // DPS share = dmgByPlayer[id] / m.maxHp.  We also require the
@@ -4554,7 +4564,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -4852,6 +4862,16 @@ export class GameRoom {
         // coins + applies effect (pool restore or inventory grant).
         if (session.id) {
           this._handleShopPurchase(session, msg.payload || msg);
+        }
+        break;
+
+      case 'dungeon_start':
+        // v2.3.1127: server-authoritative dungeon instances -- the
+        // worker validates/clamps the client's Dungeon Workshop config
+        // and spawns the run into a private 'dungeon:<id>' zone (see
+        // dungeon.js; the client-spawned path stays as caps fallback).
+        if (session.id) {
+          this._handleDungeonStart(session, msg.payload || msg);
         }
         break;
 
@@ -5213,6 +5233,10 @@ export class GameRoom {
       // activation, post-completion cleanup.
       this._tickArena(Date.now());
 
+      // v2.3.1127: dungeon instances -- wave advancement on all-dead,
+      // boss spawn, completion settlement, empty-instance sweep.
+      this._tickDungeons(Date.now());
+
       // HP regen tick — every 30 server ticks (~670 ms at TICK_RATE=22).
       // Skip when no one needs healing to avoid wasted iteration.
       regenCounter++;
@@ -5383,3 +5407,5 @@ Object.assign(GameRoom.prototype, duelMethods);
 Object.assign(GameRoom.prototype, clanMethods);
 // v2.3.1126: gladiator arena mixin.
 Object.assign(GameRoom.prototype, arenaMethods);
+// v2.3.1127 (PR12): instanced dungeons -- see dungeon.js.
+Object.assign(GameRoom.prototype, dungeonMethods);

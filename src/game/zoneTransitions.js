@@ -480,6 +480,23 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           var _S$map$pty2;
           var dTile = (_S$map$pty2 = S.map[pty]) === null || _S$map$pty2 === void 0 ? void 0 : _S$map$pty2[ptx];
           if (dTile === 9) {
+            /* v2.3.1127: abandoning a server-dungeon instance --
+               restore the real zone BEFORE the legacy regen below
+               reads S.currentZone, drop the synthetic ZONES entry,
+               and tell the worker we left (the emptied instance is
+               swept server-side; no partial rewards). */
+            if (S._serverDungeon) {
+              if (ZONES[S._serverDungeon] && ZONES[S._serverDungeon]._instance) delete ZONES[S._serverDungeon];
+              S.currentZone = S._dungeonZone || 'town';
+              S._serverDungeon = null;
+              S._inCustomDungeon = false;
+              S._customDungeonConfig = null;
+              S._serverMonsters = false;
+              S.monsters = [];
+              if (S.channel) {
+                try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+              }
+            }
             /* Exit dungeon — return to combat zone at current depth */
             S._inDungeon = false;
             S._dungeonComplete = false;

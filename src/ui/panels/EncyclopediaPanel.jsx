@@ -617,7 +617,12 @@ export function EncyclopediaPanel(props) {
       color: 'rgba(255,255,255,.3)',
       marginBottom: 6
     }
-  }, "Visited ", visitedZones.size, "/", Object.keys(ZONES).length, " zones"), Object.values(ZONES).map(function (zone) {
+  }, "Visited ", visitedZones.size, "/", Object.values(ZONES).filter(function (z) {
+    /* v2.3.1127: hide transient server-dungeon instance entries */
+    return !z._instance;
+  }).length, " zones"), Object.values(ZONES).filter(function (z) {
+    return !z._instance;
+  }).map(function (zone) {
     var visited = visitedZones.has(zone.id) || zone.id === 'town';
     var elem = zone.element ? ELEMENTS[zone.element] : null;
     var sec = zone.secondary ? ELEMENTS[zone.secondary] : null;

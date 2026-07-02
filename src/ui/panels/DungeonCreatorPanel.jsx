@@ -830,6 +830,27 @@ export function DungeonCreatorPanel(props) {
       if (launchErrors.length > 0) return;
       var S = stateRef.current,
         P = S.player;
+      /* v2.3.1127: server-authoritative dungeons.  When the worker
+         advertises caps.dungeon, the run is requested from the server
+         (it re-validates the config, spawns the waves into a private
+         instance zone, and settles the completion rewards) -- the
+         arena visuals are built when dungeon_started comes back
+         (gameEvents.js).  The local spawn below stays as the fallback
+         for old workers, per the deploy-order safety rule. */
+      if (S._serverCaps && S._serverCaps.dungeon && S.channel) {
+        try {
+          S.channel.send({ type: 'broadcast', event: 'dungeon_start', payload: { config: config } });
+        } catch (e) {}
+        S.dmgNumbers.push({
+          x: P.x,
+          y: P.y - 30,
+          text: 'Entering dungeon...',
+          color: '#a070e0',
+          ts: Date.now()
+        });
+        setShowDungeonCreator(false);
+        return;
+      }
       var terrain = DUNGEON_TERRAIN_PACKS.find(function (t) {
         return t.id === config.terrain;
       }) || DUNGEON_TERRAIN_PACKS[0];
