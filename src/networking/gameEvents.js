@@ -873,6 +873,54 @@ export function processGameEvent(type, payload, S, deps) {
               S._remoteBets.push(payload);
               break;
             }
+          case 'clan_invite':
+            {
+              /* v2.3.1125: incoming invites used to have NO handler --
+                 joining a clan was impossible.  Park the invite; the
+                 Clan panel's no-clan view renders the accept button
+                 (sends clan_join_accept, validated server-side). */
+              if (payload.target === S.myId && !S._clanData) {
+                S._pendingClanInvite = {
+                  inviter: payload.from,
+                  fromName: payload.fromName || 'Someone',
+                  clanName: payload.clanName || '',
+                  clanTag: payload.clanTag || '?',
+                  ts: Date.now()
+                };
+                S.dmgNumbers.push({
+                  x: S.player.x,
+                  y: S.player.y - 40,
+                  text: '[' + S._pendingClanInvite.clanTag + '] clan invite! (open Clans)',
+                  color: '#a78bfa',
+                  ts: Date.now()
+                });
+                BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+              }
+              break;
+            }
+          case 'clan_state':
+            {
+              /* v2.3.1125: the server's clan registry echo -- cache it
+                 where the panel reads (S._clanData) and where the boot
+                 path caches (bt_clan).  null = not in a clan. */
+              S._clanData = payload.clan || null;
+              try {
+                if (payload.clan) localStorage.setItem('bt_clan', JSON.stringify(payload.clan));
+                else localStorage.removeItem('bt_clan');
+              } catch (e) {}
+              break;
+            }
+          case 'clan_error':
+            {
+              if (payload && payload.text) S.dmgNumbers.push({
+                x: S.player.x,
+                y: S.player.y - 30,
+                text: payload.text,
+                color: '#ff5e6c',
+                ts: Date.now()
+              });
+              break;
+            }
           case 'clan_war_declare':
             {
               /* Another clan declared war — check if we're the target */
@@ -930,7 +978,12 @@ export function processGameEvent(type, payload, S, deps) {
               S._activeClanWar.winner = payload.winner;
               var isWinner = S._clanData && payload.winner === S._clanData.tag;
               var reward = isWinner ? CLAN_WAR_REWARDS.winner : CLAN_WAR_REWARDS.loser;
-              if (S.rpg) {
+              /* v2.3.1125: clan-capable workers pay war rewards
+                 server-side via the mail/escrow plumbing (gold arrives
+                 through inbox_delivered + the player_state echo) -- the
+                 local mint below was the other half of the forgeable
+                 peer war.  Legacy workers only. */
+              if (!(S._serverCaps && S._serverCaps.clans) && S.rpg) {
                 S.rpg.coins += reward.gold;
                 S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + reward.ap;
                 if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += reward.gold;
@@ -1227,8 +1280,12 @@ export function processGameEvent(type, payload, S, deps) {
                 BT_AUDIO.collect();
                 if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
                 S.rpg._compStats.pvpKills++;
-                /* §CW — Score clan war kill */
-                if (S._activeClanWar && S._activeClanWar.status === 'active' && S.currentZone === S._activeClanWar.zone) {
+                /* §CW — Score clan war kill.  v2.3.1125: clan-capable
+                   workers referee wars themselves (the server observes
+                   its own pvp deaths and emits clan_war_kill) -- this
+                   self-scoring block was half of the forgeable peer war
+                   and runs only against legacy workers. */
+                if (!(S._serverCaps && S._serverCaps.clans) && S._activeClanWar && S._activeClanWar.status === 'active' && S.currentZone === S._activeClanWar.zone) {
                   var _S$_clanData, _S$rpg4;
                   var _war2 = S._activeClanWar;
                   var isChallenger = ((_S$_clanData = S._clanData) === null || _S$_clanData === void 0 ? void 0 : _S$_clanData.tag) === _war2.challenger.tag;

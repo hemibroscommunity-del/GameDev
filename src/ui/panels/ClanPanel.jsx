@@ -81,7 +81,46 @@ export function ClanPanel(props) {
     onClick: function onClick() {
       return setClanCreateMode(true);
     }
-  }, "\uD83C\uDFF0 Create Clan (", CLAN_CREATE_COST, "g)"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83C\uDFF0 Create Clan (", CLAN_CREATE_COST, "g)"), (function () {
+    /* v2.3.1125: incoming invite acceptance.  clan_invite broadcasts
+       used to go nowhere -- no client handler existed, so joining a
+       clan was impossible.  gameEvents now parks the invite on
+       S._pendingClanInvite; this button sends the server-validated
+       clan_join_accept (clans.md).  Registry-capable workers echo
+       clan_state on success. */
+    var _inv = stateRef.current._pendingClanInvite;
+    if (!_inv || Date.now() - _inv.ts > 120000) return null;
+    return /*#__PURE__*/React.createElement("button", {
+      style: {
+        width: '100%',
+        padding: '10px',
+        borderRadius: 8,
+        border: '1px solid #3dd497',
+        fontSize: 12,
+        fontWeight: 800,
+        background: 'rgba(61,212,151,.15)',
+        color: '#3dd497',
+        cursor: 'pointer',
+        marginBottom: 8
+      },
+      onClick: function onClick() {
+        var S = stateRef.current;
+        if (S.channel) S.channel.send({
+          type: 'broadcast',
+          event: 'clan_join_accept',
+          payload: { inviter: _inv.inviter }
+        });
+        S._pendingClanInvite = null;
+        S.dmgNumbers.push({
+          x: S.player.x,
+          y: S.player.y - 30,
+          text: 'Joining [' + _inv.clanTag + ']...',
+          color: '#3dd497',
+          ts: Date.now()
+        });
+      }
+    }, "\u2705 Accept invite: [", _inv.clanTag, "] ", _inv.clanName, " (from ", _inv.fromName, ")");
+  })(), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
       color: 'rgba(255,255,255,.3)'
@@ -198,6 +237,32 @@ export function ClanPanel(props) {
             y: stateRef.current.player.y - 30,
             text: 'Need ' + CLAN_CREATE_COST + 'g',
             color: '#ff5e6c',
+            ts: Date.now()
+          });
+          return;
+        }
+        /* v2.3.1125: registry-capable workers own clan creation -- the
+           server validates name/tag uniqueness, debits the 500g, and
+           echoes clan_state (which gameEvents caches to S._clanData +
+           bt_clan).  The local debit+mint below is the legacy-worker
+           path only. */
+        if (stateRef.current._serverCaps && stateRef.current._serverCaps.clans) {
+          if (stateRef.current.channel) stateRef.current.channel.send({
+            type: 'broadcast',
+            event: 'clan_create',
+            payload: {
+              name: name,
+              tag: tag,
+              color1: CLAN_COLORS[2],
+              color2: CLAN_COLORS[3]
+            }
+          });
+          setClanCreateMode(false);
+          stateRef.current.dmgNumbers.push({
+            x: stateRef.current.player.x,
+            y: stateRef.current.player.y - 40,
+            text: 'Founding [' + tag + ']...',
+            color: '#a78bfa',
             ts: Date.now()
           });
           return;
@@ -682,20 +747,37 @@ export function ClanPanel(props) {
         });
         return;
       }
-      var war = createClanWar(clanData, target, zone);
-      /* Add self to war */
-      war.challenger.members.push(S.myId);
-      S._activeClanWar = war;
-      /* Broadcast war declaration */
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'clan_war_declare',
-        payload: {
-          war: war,
-          challengerTag: clanData.tag,
-          defenderTag: target.tag
-        }
-      });
+      /* v2.3.1125: referee-capable workers BUILD the war themselves
+         (authoritative id/clock/scores) and broadcast it back in this
+         same shape -- setting a local war object here would leave this
+         client tracking a war id the server's clan_war_kill events
+         never match.  Send the declare and let the echo set
+         S._activeClanWar (gameEvents challenger branch). */
+      if (S._serverCaps && S._serverCaps.clans) {
+        if (S.channel) S.channel.send({
+          type: 'broadcast',
+          event: 'clan_war_declare',
+          payload: {
+            defenderTag: target.tag,
+            zone: zone
+          }
+        });
+      } else {
+        var war = createClanWar(clanData, target, zone);
+        /* Add self to war */
+        war.challenger.members.push(S.myId);
+        S._activeClanWar = war;
+        /* Broadcast war declaration */
+        if (S.channel) S.channel.send({
+          type: 'broadcast',
+          event: 'clan_war_declare',
+          payload: {
+            war: war,
+            challengerTag: clanData.tag,
+            defenderTag: target.tag
+          }
+        });
+      }
       S.dmgNumbers.push({
         x: S.player.x,
         y: S.player.y - 40,
