@@ -5334,6 +5334,20 @@ export var BroTown = function BroTown(_ref0) {
             lts.lastEndAt = endT;
             lts.lastX = t.clientX;
             lts.lastY = t.clientY;
+            /* v2.3.1122: forward the tap to the canvas as a synthetic
+               click, exactly like the right zone (rE) has done since
+               v2.3.816 -- the floating zones sit OVER the canvas, so
+               without this the tap-to-lock-on hit-test never heard
+               about taps on the LEFT half of the screen at all (the
+               reported "lock-on only works on the right side" bug).
+               Only the FIRST tap forwards; the second tap of a
+               weapon-cycle double-tap doesn't, so a double-tap on a
+               monster doesn't lock-then-instantly-unlock it. */
+            try {
+              if (canvasRef.current) {
+                canvasRef.current.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY }));
+              }
+            } catch (err) {}
             /* Show the NEXT weapon slot as a preview inside the disc
                so the player can confirm the swap target before
                committing to the second tap.  Window auto-closes
