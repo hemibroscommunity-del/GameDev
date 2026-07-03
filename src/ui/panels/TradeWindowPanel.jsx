@@ -59,7 +59,9 @@ export function TradeWindowPanel(props) {
   useEffect(() => {
     if (trade2 && trade2.offers && trade2.offers[myId]) setStage({ ...trade2.offers[myId] });
     else setStage({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    /* deps intentionally just the session id: mid-session trade2_state
+       echoes must NOT clobber the local staging the player is editing
+       (the server echo of our own set would bounce the cursor). */
   }, [sessionId]);
 
   if (!trade2) return null;
