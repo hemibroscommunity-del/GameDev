@@ -117,12 +117,13 @@ export const ZONES = {
     element: 'wind', secondary: 'frost', level: [38, 58], music: 'sky', safe: false,
     /* v2.3.855: warm desert palette (replaces the old cool "Sky Reaches" blue-grey). */
     palette: { ground: '#c2a060', path: '#b08a4a', accent: '#9c6a38' },
-    /* fodder count is the seed for the mummy variant -- ZONE_VARIANT_MAP.sky
-       remaps every fodder spawn here to a mummy that transforms to a
-       skeleton at 50% HP (see monsterVariants.js).  Kept stalker/hexer/
-       volatile for variety; if you want pure mummies in Desert Winds,
-       drop the other entries. */
-    spawns: [{ arch: 'fodder', count: 6 }, { arch: 'stalker', count: 4 }, { arch: 'hexer', count: 3 }, { arch: 'volatile', count: 3 }],
+    /* ZONE_VARIANT_MAP.sky remaps every archetype here to a mummy that
+       transforms to a skeleton at 50% HP (see monsterVariants.js).
+       v2.3.1144: dropped the extra fodder×6 that only existed client-side —
+       the server table (authoritative for spawns since server monsters
+       shipped) never had it, so MP players already saw the 10-monster mix;
+       zones.test.mjs now asserts the two tables stay in lockstep. */
+    spawns: [{ arch: 'stalker', count: 4 }, { arch: 'hexer', count: 3 }, { arch: 'volatile', count: 3 }],
     atmosphere: { tint: 'rgba(210,165,90,0.05)', vignette: 'rgba(150,100,40,0.08)' },
     enemyEmoji: { fodder: '🌬️', brute: '🦅', swarm: '🕊️', volatile: '🌪️', stalker: '🦉', hexer: '☁️', sentinel: '🗼' }
   },

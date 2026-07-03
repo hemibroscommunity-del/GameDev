@@ -2871,10 +2871,17 @@ export class EntityRenderer {
       }
       display._lastHpPct = hpPct;
 
-      // Level text — only update when level changes.
-      if (m.level !== display._lastLvl) {
+      // Level text — only update when level or danger state changes.
+      // v2.3.1144: red fill when the monster is 5+ combat levels above
+      // the player.  Zones unpinned in v2.3.1140 with NO entry gating
+      // (owner call: death is the teacher) — this tint is the one danger
+      // signal a player gets before engaging.
+      const _plvlDanger = m.level != null && m.level >= ((S.rpg && S.rpg.level) || 1) + 5;
+      if (m.level !== display._lastLvl || _plvlDanger !== display._lastLvlDanger) {
         display._lastLvl = m.level;
+        display._lastLvlDanger = _plvlDanger;
         display._lvlText.text = `Lv${m.level}`;
+        display._lvlText.style.fill = _plvlDanger ? '#ef4444' : '#ffffff';
       }
 
       /* Single dynamic Graphics — clear once and redraw all dynamic bits

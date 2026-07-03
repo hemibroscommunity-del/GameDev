@@ -361,15 +361,20 @@ export class GameRoom {
     } catch {}
   }
 
-  // Monster stat scaling (mirrors client-side monsterStat)
+  // Monster stat scaling (mirrors client-side monsterStat).
+  // v2.3.1144: rewritten from the iterative loop to the client's CLOSED
+  // form, which ceils at the L30/L65 phase breaks.  The loop ceiled only
+  // once at the end, so past L30 the two drifted (e.g. brute L35 base
+  // HP: client 66, server 65) — invisible while every monster was L1,
+  // but a real prediction desync once v2.3.1140 unpinned the bands to
+  // L100.  The server is authoritative for monster stats, so the mirror
+  // must be exact — zones.test.mjs asserts parity at the boundaries.
   _monsterStat(base, level, r1, r2, r3) {
-    let v = base;
-    for (let i = 1; i < level; i++) {
-      if (i < 30) v *= r1;
-      else if (i < 65) v *= r2;
-      else v *= r3;
-    }
-    return Math.ceil(v);
+    if (level <= 30) return Math.ceil(base * Math.pow(r1, level - 1));
+    const at30 = Math.ceil(base * Math.pow(r1, 29));
+    if (level <= 65) return Math.ceil(at30 * Math.pow(r2, level - 30));
+    const at65 = Math.ceil(at30 * Math.pow(r2, 35));
+    return Math.ceil(at65 * Math.pow(r3, level - 65));
   }
 
   // Archetype definitions (mirrors client ARCHETYPES — keep in sync

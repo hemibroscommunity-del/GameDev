@@ -8333,7 +8333,10 @@ export var BroTown = function BroTown(_ref0) {
         updateZoneDimensions('shadow');
         BT_AUDIO.startZoneAmbient('shadow');
         S2.map = generateZoneMap('shadow');
-        S2.monsters = spawnMonstersForZone(ZONES.shadow, 60);
+        /* v2.3.1144: levelMod 60 dropped — the zone band is a real [81,100]
+           since v2.3.1140, so the old +60 (a stand-in while bands were
+           pinned [1,1]) spawned L141-160 monsters on this SP-fallback path. */
+        S2.monsters = spawnMonstersForZone(ZONES.shadow);
         S2.gatherNodes = spawnGatherNodes('shadow', 'core');
         S2._currentDepth = 'core';
         P2.x = 20 * TILE;
@@ -8380,7 +8383,8 @@ export var BroTown = function BroTown(_ref0) {
         updateZoneDimensions('radiant');
         BT_AUDIO.startZoneAmbient('radiant');
         S2.map = generateZoneMap('radiant');
-        S2.monsters = spawnMonstersForZone(ZONES.radiant, 60);
+        /* v2.3.1144: levelMod 60 dropped — see the shadow branch note. */
+        S2.monsters = spawnMonstersForZone(ZONES.radiant);
         S2.gatherNodes = spawnGatherNodes('radiant', 'core');
         S2._currentDepth = 'core';
         P2.x = 20 * TILE;

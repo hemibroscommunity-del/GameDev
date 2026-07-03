@@ -2636,7 +2636,7 @@ Continuous. All ceil(). Base Goblin L1: 40HP, 8Dmg, 10XP, 5Gold.
 
 | Stat | Base | R_RAMP (L1–30) | R_PLATEAU (L31–65) | R_ENDGAME (L66–100) |
 |------|:----:|:---------------:|:-------------------:|:--------------------:|
-| HP | 40 | 1.065 | 1.035 | 1.025 |
+| HP | 40 | 1.052 | 1.035 | 1.025 |
 | Damage | 8 | 1.045 | 1.025 | 1.018 |
 | XP | 10 | 1.045 | 1.025 | 1.018 |
 | Gold | 5 | 1.035 | 1.020 | 1.015 |
@@ -2774,7 +2774,7 @@ The audit gates are intentionally targeted at brutes rather than fodder because 
 | 65 | T13 | 73 | ~401 | 1,244 | 3.10 | ~4s |
 | 100 | T20 | 110 | ~763 | 2,949 | 3.87 | ~5s |
 
-**v12.8 calibration methodology.** The kill counts above were computed from first principles using: the §4.4 weapon damage formula (`weapon_damage = (weapon_base + Power × 0.8) × material_tier_mult`, no element tier multiplier), weapon_base 35 for a reference Greatsword, Normal quality (1.00×), Hardness 0, material tier multiplier interpolated linearly from 1.0× at T1 to 6.2× at T20, the §6.1 monster HP scaling formula (base 40, ramp 1.065, plateau 1.035, endgame 1.025), and the §6.3 Brute archetype 1.5× HP modifier. The level-appropriate median Power values were computed from the linear formula above. Every number in the table is reproducible from these inputs. **A planned audit validator script (proposed name `audit-validator.py`, not yet authored) would perform this calculation whenever §4.4, §6.1, §6.3, or §24 is edited.** Until the script exists, the calculation is reproduced by hand during each audit pass.
+**v12.8 calibration methodology.** The kill counts above were computed from first principles using: the §4.4 weapon damage formula (`weapon_damage = (weapon_base + Power × 0.8) × material_tier_mult`, no element tier multiplier), weapon_base 35 for a reference Greatsword, Normal quality (1.00×), Hardness 0, material tier multiplier interpolated linearly from 1.0× at T1 to 6.2× at T20, the §6.1 monster HP scaling formula (base 40, ramp 1.052 (v2.3.1140; was 1.065 pre-BF-1), plateau 1.035, endgame 1.025), and the §6.3 Brute archetype 1.5× HP modifier. The level-appropriate median Power values were computed from the linear formula above. Every number in the table is reproducible from these inputs. **A planned audit validator script (proposed name `audit-validator.py`, not yet authored) would perform this calculation whenever §4.4, §6.1, §6.3, or §24 is edited.** Until the script exists, the calculation is reproduced by hand during each audit pass.
 
 **Audit gate target ranges (CANONICAL under v12.8):**
 
