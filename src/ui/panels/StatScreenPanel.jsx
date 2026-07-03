@@ -264,5 +264,5 @@ export function StatScreenPanel(props) {
       marginTop: 8,
       lineHeight: 1.6
     }
-  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, getWeaponCritStat(rpgState)) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, getWeaponCritDmgStat(rpgState)).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(getDefenseBlockBonus(rpgState), rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0).toFixed(1), "u/s")));
+  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, getWeaponCritStat(rpgState)) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, getWeaponCritDmgStat(rpgState)).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(getDefenseBlockBonus(rpgState), rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0, (rpgState.enduranceSpec || {}).swiftness || 0).toFixed(1), "u/s")));
 }

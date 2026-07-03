@@ -140,8 +140,23 @@ Shipped per-point values (sim-validated; deltas from the proposal noted):
 | Defense | Second Wind | heal 1% maxHp/pt after surviving, cap 50%, 10s cd | **LIVE 1137** — REPRICED from 0.5%/pt: DF-02 gate showed +12% EHP vs Iron Skin's +33%; 1%/pt lands +27% |
 | Defense | Poise | -1%/pt stun duration, cap -50% | **LIVE 1137** — client-only (stuns gate local input only) |
 | Defense | Bulwark | -1%/pt block stamina cost (both sites), cap -50% | **REPURPOSED 1153** — block-% identity was unreachable under full-block-invuln (§7); now block *uptime*: 2× blocked hits per stamina bar at cap (sim gate DF-03) |
-| HP | Vigor / Second Wind* / Recovery / Lifeblood / Resilience | see spec Phases 2-3 | grid not built (\*the shipped Second Wind lives under Defense per DEFENSE_CHANNELS) |
-| Endurance | Stamina/Conditioning/Swiftness/Evasion/Reflexes | spec Phase 4 | grid not built — Evasion must SHARE the 30% dodge cap |
+| HP | Vigor | +0.5%/pt maxHp (incl. armor HP), cap +25% | **LIVE 1154** — server `_recomputeMaxes` + client recalcDerived; sim gate HP-01 prices it inside the Iron Skin band |
+| HP | Recovery | +1%/pt on DISCRETE heals (food, Second Wind), cap +50% | **LIVE 1154** — deliberately NOT on the 90% melee-lifesteal refund (would exceed 100% and mint infinite sustain) |
+| HP | Lifeblood | on-kill heal 0.5%/pt maxHp, cap 25% | **LIVE 1154** — killing-blow attribution in `_resolveMonsterKill` |
+| HP | Resilience | — | ships "Soon" (nothing to consume — monsters don't crit); 5th slot stays reserved, Second Wind stays under Defense |
+| Endurance | Stamina | +1%/pt maxStamina, cap +50% | **LIVE 1154** |
+| Endurance | Conditioning | +1%/pt stamina regen, cap +50% | **LIVE 1154** — the `restoration` stamina successor |
+| Endurance | Swiftness | +0.2%/pt move speed, cap +10% | **LIVE 1154** — client-owned; max legit speed rises ~276→~304 px/s, under the 500 px/s anti-teleport bound |
+| Endurance | Evasion | +0.2%/pt dodge, **SHARED 30% cap with agility** | **LIVE 1154** — the §4 shared-cap hard rule, enforced in one `min()` both sides; sim gate EN-01 proves no stacking past the cap |
+| Endurance | Reflexes | — | ships "Soon" (dodge-roll timing is client-stamped; waits for server-owned dodge) |
+
+Grid economy (v2.3.1154): points accrue **+1 per stat level** (vitality →
+HP pool, endurance → Endurance pool; retroactive backfill migration for
+existing saves), channel cap 50, and the server enforces a **budget
+clamp** `sum(spec) ≤ governing stat` the weapon grids never had —
+vitality/endurance are `_statCap`-clamped, so INV-26 is enforceable here
+at zero extra trust. Client spending is deploy-order gated on
+`caps.hpEndGrids`.
 
 Sim findings worth knowing (channel-pricing section, L35/mythril cell):
 - **FIXED v2.3.1153:** the legacy damage channel (+1 flat/pt, pre-tier-mult)

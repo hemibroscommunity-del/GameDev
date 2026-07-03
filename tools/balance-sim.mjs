@@ -25,7 +25,7 @@ import {
   calcWeaponDmg, calcCritChance, calcCritMult, calcMaxHp,
   monsterStat, MONSTER_HP_CURVE, ARCHETYPES, WEAPON_TYPES, BLACKSMITH_TIERS,
   SPECIAL_ATK_MULT, LUNGE_DAMAGE_MULT, HP_PER_COMBAT_LEVEL,
-  DAMAGE_CHANNEL_PCT,
+  DAMAGE_CHANNEL_PCT, passiveDodgeChance, getVigorMult,
 } from '../src/data/gameSystems.js';
 
 /* ── args ── */
@@ -180,15 +180,29 @@ for (const build of BUILDS) {
   }
 }
 
-/* EHP per build (dodge-adjusted; block excluded — Bulwark untrainable today). */
+/* EHP per build (dodge-adjusted; block is full negation — uptime, not EHP).
+   v2.3.1154: a "tank+grids" row joins the spread — the tank build with its
+   HP/Endurance grid points spent into Vigor + Evasion (budget: 1 pt per
+   stat level, channel cap 50) — so INV-06 finally exercises the grids at
+   every audit level instead of only below L15. */
 console.log('\n' + pad('build', 18) + pad('maxHp', 8) + pad('dodge%', 8) + pad('EHP', 8));
 const ehps = BUILDS.map((b) => {
   const hp = calcMaxHp(LEVEL, b.vitality);
-  const dodge = Math.min(b.agility * 0.0008, 0.30);
+  const dodge = passiveDodgeChance(b.agility, 0);
   const ehp = hp / (1 - dodge);
   console.log(pad(b.name, 18) + pad(hp, 8) + pad(num(dodge * 100), 8) + pad(num(ehp, 0), 8));
   return ehp;
 });
+{
+  const tank = BUILDS[2]; // 60% vit / 30% pwr / 10% end
+  const vigorPts = Math.min(50, tank.vitality);
+  const evasionPts = Math.min(50, tank.endurance);
+  const gHp = Math.floor(calcMaxHp(LEVEL, tank.vitality) * getVigorMult({ hpSpec: { vigor: vigorPts } }));
+  const gDodge = passiveDodgeChance(tank.agility, evasionPts);
+  const gEhp = gHp / (1 - gDodge);
+  console.log(pad('tank+grids', 18) + pad(gHp, 8) + pad(num(gDodge * 100), 8) + pad(num(gEhp, 0), 8));
+  ehps.push(gEhp);
+}
 
 /* ── invariant gates ── */
 const failures = [];
@@ -312,6 +326,24 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   console.log(pad('bulwark 50 (v2.3.1153, block stamina)', 42) + bwBase + ' -> ' + bw50 + ' blocked hits per stamina bar');
   check('DF-03', 'bulwark 50 doubles blocked hits per stamina bar (2x uptime)',
     bw50 >= bwBase * 2 && bw50 <= bwBase * 2.5, `${bwBase} -> ${bw50}`);
+
+  /* ── HP/Endurance grids (v2.3.1154) at the same reference cell ──
+     Vigor is EHP priced against the Iron Skin yardstick; Evasion proves
+     the shared 30% dodge cap (the §4 hard rule) — the whole point of the
+     gate is that channel completion CANNOT push past agility's cap. */
+  const vigorUplift = (getVigorMult({ hpSpec: { vigor: 50 } }) - 1) * 100; // +25% maxHp == +25% EHP
+  console.log(pad('vigor 50 (v2.3.1154, HP grid)', 42) + '+' + num(vigorUplift) + '% EHP');
+  check('HP-01', 'vigor lands in the Iron Skin band (0.5x-2x of +33% EHP)',
+    vigorUplift >= ironUplift * 0.5 && vigorUplift <= ironUplift * 2,
+    `+${num(vigorUplift)}% vs yardstick +${num(ironUplift)}%`);
+  const capAgi = 375; // 375 × 0.0008 = 30% — at the cap from agility alone
+  const dodgeAtCap = passiveDodgeChance(capAgi, 0);
+  const dodgeStacked = passiveDodgeChance(capAgi, 50);
+  const dodgeEvOnly = passiveDodgeChance(0, 50);
+  console.log(pad('evasion 50 (v2.3.1154, Endurance grid)', 42) + '+' + num(dodgeEvOnly * 100) + '% dodge alone; ' + num(dodgeStacked * 100) + '% stacked on capped agility');
+  check('EN-01', 'evasion SHARES the 30% dodge cap with agility (no stacking past it)',
+    dodgeAtCap === 0.30 && dodgeStacked === 0.30 && Math.abs(dodgeEvOnly - 0.10) < 1e-9,
+    `capped ${num(dodgeAtCap * 100)}%, stacked ${num(dodgeStacked * 100)}%, alone ${num(dodgeEvOnly * 100)}%`);
 }
 
 /* Layer-budget report: ceiling of each loot layer at this cell. */

@@ -3656,10 +3656,12 @@ export const STAT_TO_WEAPON_CAT = { power: 'sword', agility: 'bow', mind: 'staff
 
 /* Unspent Tier-2 points available for a dashboard build-skill cell.
    power/agility/mind -> weaponUnspent[cat]; defense -> defenseUnspent;
-   vitality/endurance have no categories yet (Phase 2) -> 0. */
+   v2.3.1154: vitality/endurance -> the HP/Endurance grid pools. */
 export function buildSkillUnspent(rpg, statKey) {
   if (!rpg) return 0;
   if (statKey === 'defense') return rpg.defenseUnspent || 0;
+  if (statKey === 'vitality') return rpg.hpUnspent || 0;
+  if (statKey === 'endurance') return rpg.enduranceUnspent || 0;
   var cat = STAT_TO_WEAPON_CAT[statKey];
   if (!cat) return 0;
   return (rpg.weaponUnspent && rpg.weaponUnspent[cat]) || 0;
@@ -4103,6 +4105,116 @@ export function migrateDefenseT2(rpg) {
   rpg.defenseSpec.bulwark = Math.min(DEFENSE_CHANNEL_CAP, rpg.defenseSpec.bulwark || 0);
   rpg.defenseSpec.ironskin = Math.min(DEFENSE_CHANNEL_CAP, rpg.defenseSpec.ironskin || 0);
   return rpg;
+}
+
+/* ═══ v2.3.1154: HP + ENDURANCE GRIDS (BALANCE-PLAN spec Phases 2/4) ═══
+   The last two build skills get channels.  Points accrue +1 per stat
+   level (vitality for HP, endurance for Endurance — WEAPON_PTS_PER_LEVEL
+   parity, granted in addBuildProg at the stat-increment crossing) with a
+   retroactive backfill for existing saves (migrateGrids + the server's
+   backfill-grid-points migration).  Channel cap 50 like the Defense
+   grid; the SERVER additionally budget-clamps sum(spec) <= stat.
+   Consumption is server-authoritative for everything that touches the
+   authoritative pools/damage (vigor, recovery, lifeblood, stamina,
+   conditioning, evasion); swiftness is client-owned movement (safe under
+   the worker's 500 px/s anti-teleport bound — +10% lifts max legit speed
+   ~276 -> ~304 px/s).  resilience/reflexes ship "Soon": resilience has
+   nothing to consume (monsters don't crit), reflexes waits for
+   server-owned dodge-roll timing. */
+export const GRID_CHANNEL_CAP = 50;
+export const HP_CHANNELS = [
+  { key: 'vigor',      label: 'Vigor',      role: 'maxhp',    active: true,  perPt: 0.5,
+    blurb: 'A deeper health pool — scales armor HP too.',
+    derive: (v) => '+' + Math.min(25, v * 0.5).toFixed(1) + '% max HP' },
+  { key: 'recovery',   label: 'Recovery',   role: 'healboost', active: true, perPt: 1.0,
+    blurb: 'Food, Second Wind and other heals restore more.',
+    derive: (v) => '+' + Math.min(50, v) + '% healing received' },
+  { key: 'lifeblood',  label: 'Lifeblood',  role: 'killheal', active: true,  perPt: 0.5,
+    blurb: 'Every killing blow restores health.',
+    derive: (v) => 'heal ' + Math.min(25, v * 0.5).toFixed(1) + '% HP on kill' },
+  { key: 'resilience', label: 'Resilience', role: 'resilience', active: false, perPt: 0,
+    blurb: 'Shrug off the nastiest hits.',
+    derive: (v) => String(v) },
+];
+export const ENDURANCE_CHANNELS = [
+  { key: 'stamina',      label: 'Deep Lungs',   role: 'maxstam',   active: true,  perPt: 1.0,
+    blurb: 'A bigger stamina pool.',
+    derive: (v) => '+' + Math.min(50, v) + '% max stamina' },
+  { key: 'conditioning', label: 'Conditioning', role: 'stamregen', active: true,  perPt: 1.0,
+    blurb: 'Stamina comes back faster.',
+    derive: (v) => '+' + Math.min(50, v) + '% stamina regen' },
+  { key: 'swiftness',    label: 'Swiftness',    role: 'movespd',   active: true,  perPt: 0.2,
+    blurb: 'Move faster everywhere.',
+    derive: (v) => '+' + Math.min(10, v * 0.2).toFixed(1) + '% move speed' },
+  { key: 'evasion',      label: 'Evasion',      role: 'dodge',     active: true,  perPt: 0.2,
+    blurb: 'Dodge more hits — shares the 30% cap with Agility.',
+    derive: (v) => '+' + (v * 0.2).toFixed(1) + '% dodge (30% cap)' },
+  { key: 'reflexes',     label: 'Reflexes',     role: 'reflexes',  active: false, perPt: 0,
+    blurb: 'Longer dodge-roll invulnerability.',
+    derive: (v) => String(v) },
+];
+
+/* Fresh grid scaffolding for a new character. */
+export function createDefaultGrids() {
+  var hp = {}, en = {};
+  HP_CHANNELS.forEach(function (ch) { hp[ch.key] = 0; });
+  ENDURANCE_CHANNELS.forEach(function (ch) { en[ch.key] = 0; });
+  return { hpSpec: hp, hpUnspent: 0, enduranceSpec: en, enduranceUnspent: 0 };
+}
+
+/* Backfill grid fields on an existing save.  Idempotent — only fills
+   ABSENT pools; the retroactive grant is 1 point per stat level minus
+   points already spent (mirror of the server's backfill-grid-points
+   migration). */
+export function migrateGrids(rpg) {
+  if (!rpg) return rpg;
+  if (!rpg.hpSpec) rpg.hpSpec = {};
+  if (!rpg.enduranceSpec) rpg.enduranceSpec = {};
+  var sum = function (spec, defs) {
+    return defs.reduce(function (a, ch) {
+      var v = spec[ch.key];
+      return a + (typeof v === 'number' ? Math.max(0, Math.min(GRID_CHANNEL_CAP, Math.floor(v))) : 0);
+    }, 0);
+  };
+  HP_CHANNELS.forEach(function (ch) {
+    rpg.hpSpec[ch.key] = Math.max(0, Math.min(GRID_CHANNEL_CAP, Math.floor(rpg.hpSpec[ch.key] || 0)));
+  });
+  ENDURANCE_CHANNELS.forEach(function (ch) {
+    rpg.enduranceSpec[ch.key] = Math.max(0, Math.min(GRID_CHANNEL_CAP, Math.floor(rpg.enduranceSpec[ch.key] || 0)));
+  });
+  if (rpg.hpUnspent == null) rpg.hpUnspent = Math.max(0, Math.floor(rpg.vitality || 0) - sum(rpg.hpSpec, HP_CHANNELS));
+  if (rpg.enduranceUnspent == null) rpg.enduranceUnspent = Math.max(0, Math.floor(rpg.endurance || 0) - sum(rpg.enduranceSpec, ENDURANCE_CHANNELS));
+  return rpg;
+}
+
+/* Deploy-order gate (the v2.3.1119 caps pattern): recalcDerived applies
+   the grid pool multipliers only while the connected worker advertises
+   caps.hpEndGrids — an old worker's player_state echo would stomp a
+   locally-boosted maxHp/maxStamina every flush otherwise.  Defaults ON
+   so offline tools (balance sim, tests) and the pre-join window compute
+   full values; wsClient flips it from state_sync. */
+var _gridCapsEnabled = true;
+export function setGridCapsEnabled(on) { _gridCapsEnabled = !!on; }
+export function isGridCapsEnabled() { return _gridCapsEnabled; }
+
+/* Grid channel multipliers — mirror the server helpers in index.js. */
+export function getVigorMult(rpg) {
+  return 1 + Math.min(0.25, ((rpg && rpg.hpSpec && rpg.hpSpec.vigor) || 0) * 0.005);
+}
+export function getRecoveryMult(rpg) {
+  return 1 + Math.min(0.50, ((rpg && rpg.hpSpec && rpg.hpSpec.recovery) || 0) * 0.01);
+}
+export function getStaminaGridMult(rpg) {
+  return 1 + Math.min(0.50, ((rpg && rpg.enduranceSpec && rpg.enduranceSpec.stamina) || 0) * 0.01);
+}
+export function getConditioningMult(rpg) {
+  return 1 + Math.min(0.50, ((rpg && rpg.enduranceSpec && rpg.enduranceSpec.conditioning) || 0) * 0.01);
+}
+export function getSwiftnessMult(rpg) {
+  return 1 + Math.min(0.10, ((rpg && rpg.enduranceSpec && rpg.enduranceSpec.swiftness) || 0) * 0.002);
+}
+export function getEvasionPts(rpg) {
+  return (rpg && rpg.enduranceSpec && rpg.enduranceSpec.evasion) || 0;
 }
 
 /* §4.6 Rarity Tiers */
@@ -5053,9 +5165,14 @@ export function calcBlockReduction(_legacyBulwark, shield) {
   return Math.min(0.75, base);
 }
 
-/* §2.5 Movement */
-export function calcMoveSpeed(agility) {
-  return 5.0 * (1 + Math.min(agility * 0.0012, 0.60));
+/* §2.5 Movement.
+   v2.3.1154: optional swiftnessPts arg (Endurance grid, +0.2%/pt cap
+   +10%) — a separate multiplicative layer, NOT inside agility's 60%
+   cap, because move speed is client-owned and the combined ceiling
+   still clears the worker's 500 px/s anti-teleport bound (~304 px/s
+   max legit).  Legacy single-arg calls are unchanged. */
+export function calcMoveSpeed(agility, swiftnessPts) {
+  return 5.0 * (1 + Math.min(agility * 0.0012, 0.60)) * (1 + Math.min(0.10, (swiftnessPts || 0) * 0.002));
 }
 
 /* v2.3.234 (Phase 4): all special attacks scale with Mind regardless of
@@ -5076,9 +5193,15 @@ export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
 /* v2.3.234 (Phase 4): passive dodge chance.  Returns true if the
    incoming hit should be evaded entirely (0 dmg).  Cap at 30% so even
    pure-Agility builds still take some hits. */
-export function rollPassiveDodge(agility) {
-  var pct = Math.min((agility || 0) * 0.0008, 0.30);
-  return Math.random() < pct;
+/* v2.3.1154: the dodge fraction is factored out (the balance sim gates
+   on it) and gains the Endurance-grid Evasion term (+0.2%/pt) INSIDE
+   the shared 30% cap — the BALANCE-PLAN §4 hard rule for stacking
+   sources.  Mirrors the server's _applyDamage dodge line. */
+export function passiveDodgeChance(agility, evasionPts) {
+  return Math.min((agility || 0) * 0.0008 + (evasionPts || 0) * 0.002, 0.30);
+}
+export function rollPassiveDodge(agility, evasionPts) {
+  return Math.random() < passiveDodgeChance(agility, evasionPts);
 }
 
 /* §6.2 XP Required — tri-phase */
@@ -5145,6 +5268,8 @@ export function createDefaultRpg() {
     ...createDefaultWeaponT2(),
     /* Tier 2 — Defense category (trained by blocking / mitigating). */
     ...createDefaultDefenseT2(),
+    /* v2.3.1154 — HP + Endurance grids (points from vitality/endurance levels). */
+    ...createDefaultGrids(),
     /* Derived (recalculated) */
     hp: 100,
     maxHp: 100,
@@ -5227,6 +5352,15 @@ export function recalcDerived(rpg) {
   /* v2.3.227: armor contributes flat HP scaled by Vitality (1% per pt). */
   rpg.maxHp += getArmorHp(rpg.armor, rpg.vitality);
   rpg.maxStamina = calcMaxStam(rpg.endurance);
+  /* v2.3.1154: HP-grid Vigor and Endurance-grid Stamina multiply the
+     pools (matching the server's _recomputeMaxes order: after armor HP,
+     before the amulet flat bonus below).  Gated on the worker's
+     caps.hpEndGrids so an old worker's echo can't fight the local
+     value — see setGridCapsEnabled. */
+  if (isGridCapsEnabled()) {
+    rpg.maxHp = Math.floor(rpg.maxHp * getVigorMult(rpg));
+    rpg.maxStamina = Math.floor(rpg.maxStamina * getStaminaGridMult(rpg));
+  }
   rpg.maxMana = calcMaxMana(rpg.mind);
 
   /* §4 Amulet stat bonuses — applied to derived stats */

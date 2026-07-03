@@ -7,10 +7,14 @@ import {
   WEAPON_CHANNELS,
   WEAPON_CHANNEL_CAP,
   weaponXpRequired,
+  xpRequired,
   activeWeaponCategory,
   recalcDerived,
   DEFENSE_CHANNELS,
   DEFENSE_CHANNEL_CAP,
+  HP_CHANNELS,
+  ENDURANCE_CHANNELS,
+  GRID_CHANNEL_CAP,
 } from '../../../data/gameSystems.js';
 
 /* v2.3.911: lets the dashboard open this panel jumped to a specific tab.
@@ -25,6 +29,24 @@ export function requestT2Category(cat) { _pendingCat = cat; }
    identical so it shares the tab strip + channel rows below. */
 const DEF_TAB = 'defense';
 const DEF_META = { label: 'Defense', emoji: '\u{1F6E1}' };
+
+/* v2.3.1154: HP + Endurance grid tabs.  Unlike the weapon/defense skills
+   these have no separate skill track — the STAT is the level (vitality /
+   endurance, use-trained via addBuildProg) and each stat level grants
+   +1 point into the matching pool.  Spending is gated on the worker's
+   caps.hpEndGrids (deploy-order safety): against an old worker the
+   channels render as "Soon" so points can't be spent into multipliers
+   the worker would stomp. */
+const GRID_TABS = {
+  hp: {
+    stat: 'vitality', label: 'HP', emoji: '❤️',
+    channels: HP_CHANNELS, specKey: 'hpSpec', poolKey: 'hpUnspent',
+  },
+  endurance: {
+    stat: 'endurance', label: 'Endur.', emoji: '⚡',
+    channels: ENDURANCE_CHANNELS, specKey: 'enduranceSpec', poolKey: 'enduranceUnspent',
+  },
+};
 
 function persist(R) {
   try {
@@ -69,18 +91,31 @@ export const T2Panel = () => {
   /* Default the selected tab to whatever's equipped right now. */
   const activeCat = cat || activeWeaponCategory(R);
   const isDef = activeCat === DEF_TAB;
+  const gridTab = GRID_TABS[activeCat] || null;
   const skills = R.weaponSkills || {};
   const specs = R.weaponSpecs || {};
   const pools = R.weaponUnspent || {};
 
-  /* Source the selected tab's skill / spec / pool / channels from either the
-     Defense fields or the weapon maps. */
-  const sk = isDef ? (R.defenseSkill || { level: 0, xp: 0 }) : (skills[activeCat] || { level: 0, xp: 0 });
-  const catSpecs = isDef ? (R.defenseSpec || {}) : (specs[activeCat] || {});
-  const unspent = isDef ? (R.defenseUnspent || 0) : (pools[activeCat] || 0);
-  const channels = isDef ? DEFENSE_CHANNELS : (WEAPON_CHANNELS[activeCat] || []);
-  const channelCap = isDef ? DEFENSE_CHANNEL_CAP : WEAPON_CHANNEL_CAP;
-  const need = weaponXpRequired(sk.level || 0);
+  /* v2.3.1154: grid spending is caps-gated (see GRID_TABS comment).
+     Offline / pre-worker sessions stay live (legacy client-local play). */
+  const gridsLive = !S.channel || !!(S._serverCaps && S._serverCaps.hpEndGrids);
+
+  /* Source the selected tab's skill / spec / pool / channels from the
+     Defense fields, a grid tab, or the weapon maps. */
+  const sk = gridTab
+    ? { level: R[gridTab.stat] || 0, xp: (R._buildProg && R._buildProg[gridTab.stat]) || 0 }
+    : isDef ? (R.defenseSkill || { level: 0, xp: 0 }) : (skills[activeCat] || { level: 0, xp: 0 });
+  const catSpecs = gridTab ? (R[gridTab.specKey] || {}) : isDef ? (R.defenseSpec || {}) : (specs[activeCat] || {});
+  const unspent = gridTab ? (R[gridTab.poolKey] || 0) : isDef ? (R.defenseUnspent || 0) : (pools[activeCat] || 0);
+  const channels = gridTab
+    ? (gridsLive ? gridTab.channels : gridTab.channels.map((ch) => ({ ...ch, active: false })))
+    : isDef ? DEFENSE_CHANNELS : (WEAPON_CHANNELS[activeCat] || []);
+  const channelCap = gridTab ? GRID_CHANNEL_CAP : isDef ? DEFENSE_CHANNEL_CAP : WEAPON_CHANNEL_CAP;
+  /* Grid tabs level via the STAT's own training curve (addBuildProg
+     threshold); weapon/defense tabs keep their damage-driven curve. */
+  const need = gridTab
+    ? Math.max(200, Math.floor(xpRequired(sk.level || 0)))
+    : weaponXpRequired(sk.level || 0);
   const xpPct = need > 0 ? Math.max(0, Math.min(100, ((sk.xp || 0) / need) * 100)) : 0;
 
   /* v2.3.911: spending now goes through a confirmation window.  Keep the
@@ -95,11 +130,15 @@ export const T2Panel = () => {
     if (!ch) return;
     spendConfirmBus.open({
       isDef,
+      /* v2.3.1154: grid tabs hand the confirm popup their field names so
+         it can apply the point generically. */
+      gridSpecKey: gridTab ? gridTab.specKey : null,
+      gridPoolKey: gridTab ? gridTab.poolKey : null,
       cat: activeCat,
       key,
       channel: ch,
       current: (catSpecs[key] || 0),
-      skillLabel: isDef ? DEF_META.label : ((WEAPON_CATEGORY_META[activeCat] || {}).label || activeCat),
+      skillLabel: gridTab ? gridTab.label : isDef ? DEF_META.label : ((WEAPON_CATEGORY_META[activeCat] || {}).label || activeCat),
     });
   };
 
@@ -118,20 +157,26 @@ export const T2Panel = () => {
           </div>
           <div style={{ fontSize: 11, color: COL.muted, marginTop: 2 }}>
             {/* v2.3.1133: label caught up with v2.3.910's 1-pt-per-level change */}
-            {isDef
-              ? 'Block & mitigate hits to level Defense. Each level = +1 point.'
-              : 'Deal damage to level a weapon. Each level = +1 point.'}
+            {gridTab
+              ? (gridTab.stat === 'vitality'
+                ? 'Taking part in combat trains Vitality. Each level = +1 point.'
+                : 'Sprinting, blocking & rolling train Endurance. Each level = +1 point.')
+              : isDef
+                ? 'Block & mitigate hits to level Defense. Each level = +1 point.'
+                : 'Deal damage to level a weapon. Each level = +1 point.'}
           </div>
         </div>
       </div>
 
-      {/* Category tabs — weapon categories + the Defense tab (v2.3.693). */}
+      {/* Category tabs — weapon categories + Defense (v2.3.693) + the
+          HP/Endurance grids (v2.3.1154). */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-        {[...WEAPON_CATEGORIES, DEF_TAB].map((c) => {
+        {[...WEAPON_CATEGORIES, DEF_TAB, ...Object.keys(GRID_TABS)].map((c) => {
           const cIsDef = c === DEF_TAB;
-          const meta = cIsDef ? DEF_META : (WEAPON_CATEGORY_META[c] || { label: c, emoji: '' });
-          const lvl = cIsDef ? ((R.defenseSkill && R.defenseSkill.level) || 0) : ((skills[c] && skills[c].level) || 0);
-          const p = cIsDef ? (R.defenseUnspent || 0) : (pools[c] || 0);
+          const cGrid = GRID_TABS[c] || null;
+          const meta = cGrid ? cGrid : cIsDef ? DEF_META : (WEAPON_CATEGORY_META[c] || { label: c, emoji: '' });
+          const lvl = cGrid ? (R[cGrid.stat] || 0) : cIsDef ? ((R.defenseSkill && R.defenseSkill.level) || 0) : ((skills[c] && skills[c].level) || 0);
+          const p = cGrid ? (R[cGrid.poolKey] || 0) : cIsDef ? (R.defenseUnspent || 0) : (pools[c] || 0);
           const sel = c === activeCat;
           return (
             <button
@@ -173,7 +218,7 @@ export const T2Panel = () => {
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, color: COL.muted, marginBottom: 3 }}>
-            {(isDef ? DEF_META : (WEAPON_CATEGORY_META[activeCat] || {})).label} skill · Lv {sk.level || 0}
+            {(gridTab || (isDef ? DEF_META : (WEAPON_CATEGORY_META[activeCat] || {}))).label} skill · Lv {sk.level || 0}
             {(sk.level || 0) >= 99 ? ' (Max)' : ` · ${Math.round(xpPct)}% to next`}
           </div>
           <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
@@ -191,6 +236,14 @@ export const T2Panel = () => {
           {unspent} pts
         </div>
       </div>
+
+      {/* v2.3.1154: old-worker notice — grid channels render as "Soon"
+          until the connected worker advertises caps.hpEndGrids. */}
+      {gridTab && !gridsLive && (
+        <div style={{ fontSize: 11, color: COL.gold, marginBottom: 8 }}>
+          Unlocking with the next server update — your points are safe.
+        </div>
+      )}
 
       {/* Channels */}
       {channels.map((ch) => {

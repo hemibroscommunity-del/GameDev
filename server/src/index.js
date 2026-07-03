@@ -1443,7 +1443,8 @@ export class GameRoom {
     if (ps._arenaMatch) return; // v2.3.1126: no healing during an arena match (GDD §43)
     if (!ps.inventory) ps.inventory = {};
     if ((ps.inventory[invKey] || 0) <= 0) return;
-    const heal = this._fishHealAmount(invKey);
+    // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
+    const heal = Math.ceil(this._fishHealAmount(invKey) * this._recoveryMult(ps));
     if (heal <= 0) return;
     // Decrement inventory + apply heal.  Heal is "wasted" if at max;
     // we still consume the item to match client semantics (the click
@@ -2909,6 +2910,12 @@ export class GameRoom {
   // here opens no damage exploit beyond what weaponSpecs already allows.
   static get _WEAPON_SKILL_CATS() { return ['sword', 'bow', 'staff']; }
   static get _DEFENSE_CHANNEL_KEYS() { return ['bulwark', 'ironskin', 'thorns', 'secondwind', 'poise']; }
+  // v2.3.1154: HP + Endurance grids (BALANCE-PLAN spec Phases 2/4) — the
+  // last two build skills get channels.  resilience/reflexes are stored
+  // but inert ("Soon"): resilience has nothing to consume (monsters
+  // don't crit), reflexes waits for server-owned dodge-roll timing.
+  static get _HP_CHANNEL_KEYS() { return ['vigor', 'recovery', 'lifeblood', 'resilience']; }
+  static get _ENDURANCE_CHANNEL_KEYS() { return ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes']; }
   _sanitizeWeaponSkills(src) {
     const out = {};
     if (!src || typeof src !== 'object') return out;
@@ -2944,6 +2951,59 @@ export class GameRoom {
       if (typeof src[k] === 'number') out[k] = Math.max(0, Math.min(50, Math.floor(src[k])));
     }
     return out;
+  }
+  // v2.3.1154: HP/Endurance grid sanitizer — [0,50] per channel like the
+  // defense grid, PLUS a budget clamp the weapon grids never had:
+  // sum(spec) <= the governing stat (points accrue 1/stat-level, and
+  // vitality/endurance are server-clamped via _statCap, so INV-26 is
+  // ENFORCEABLE here at zero extra trust).  Overspend is truncated in
+  // canonical key order, deterministically on both sides.
+  _sanitizeGridSpec(src, keys, budget) {
+    const out = {};
+    if (!src || typeof src !== 'object') return out;
+    const cap = (typeof budget === 'number') ? Math.max(0, Math.floor(budget)) : Infinity;
+    let sum = 0;
+    for (const k of keys) {
+      if (typeof src[k] !== 'number') continue;
+      let v = Math.max(0, Math.min(50, Math.floor(src[k])));
+      if (sum + v > cap) v = Math.max(0, cap - sum);
+      out[k] = v;
+      sum += v;
+    }
+    return out;
+  }
+  _sanitizeHpSpec(src, ps) {
+    return this._sanitizeGridSpec(src, GameRoom._HP_CHANNEL_KEYS, ps ? (ps.vitality || 0) : undefined);
+  }
+  _sanitizeEnduranceSpec(src, ps) {
+    return this._sanitizeGridSpec(src, GameRoom._ENDURANCE_CHANNEL_KEYS, ps ? (ps.endurance || 0) : undefined);
+  }
+  // Grid channel multipliers, mirrored in src/data/gameSystems.js.
+  // Vigor +0.5%/pt maxHp (cap +25%); Recovery +1%/pt on DISCRETE heals
+  // (cap +50%) — deliberately NOT on the melee-lifesteal refund, which
+  // already returns 90% of damage taken (any boost pushes it past 100%
+  // and mints infinite melee sustain); Stamina +1%/pt maxStamina (cap
+  // +50%); Conditioning +1%/pt stamina regen (cap +50%); Evasion
+  // +0.2%/pt dodge SHARING the 30% cap with agility (BALANCE-PLAN §4
+  // shared-caps hard rule); Lifeblood on-kill heal 0.5%/pt maxHp (cap
+  // 25%).
+  _vigorMult(ps) {
+    return 1 + Math.min(0.25, ((ps && ps.hpSpec && ps.hpSpec.vigor) || 0) * 0.005);
+  }
+  _recoveryMult(ps) {
+    return 1 + Math.min(0.50, ((ps && ps.hpSpec && ps.hpSpec.recovery) || 0) * 0.01);
+  }
+  _staminaGridMult(ps) {
+    return 1 + Math.min(0.50, ((ps && ps.enduranceSpec && ps.enduranceSpec.stamina) || 0) * 0.01);
+  }
+  _conditioningMult(ps) {
+    return 1 + Math.min(0.50, ((ps && ps.enduranceSpec && ps.enduranceSpec.conditioning) || 0) * 0.01);
+  }
+  _evasionDodge(ps) {
+    return ((ps && ps.enduranceSpec && ps.enduranceSpec.evasion) || 0) * 0.002;
+  }
+  _lifebloodFrac(ps) {
+    return Math.min(0.25, ((ps && ps.hpSpec && ps.hpSpec.lifeblood) || 0) * 0.005);
   }
   // Mirror of the WCH clamp in _handleStatsUpdate, factored out so the join /
   // migration paths apply the SAME [0,99] channel clamp (weaponSpecs feeds the
@@ -3039,6 +3099,11 @@ export class GameRoom {
         defenseSkill: ps.defenseSkill || { level: 0, xp: 0 },
         defenseUnspent: ps.defenseUnspent || 0,
         defenseSpec: ps.defenseSpec || {},
+        // v2.3.1154: HP/Endurance grid track.
+        hpSpec: ps.hpSpec || {},
+        hpUnspent: ps.hpUnspent || 0,
+        enduranceSpec: ps.enduranceSpec || {},
+        enduranceUnspent: ps.enduranceUnspent || 0,
         // v2.3.1152: schema stamp -- the ONE field allowed beyond the
         // gameplay list (ARCHITECTURE-HANDOFF rule 1 exception).  The
         // CONSTANT, never ps._v: a blob written by current code is
@@ -3115,6 +3180,12 @@ export class GameRoom {
           defenseSkill: ps.defenseSkill || { level: 0, xp: 0 },
           defenseUnspent: ps.defenseUnspent || 0,
           defenseSpec: ps.defenseSpec || {},
+          // v2.3.1154: HP/Endurance grid track echoed for the same
+          // reconnect-restore reason as the weapon/defense track above.
+          hpSpec: ps.hpSpec || {},
+          hpUnspent: ps.hpUnspent || 0,
+          enduranceSpec: ps.enduranceSpec || {},
+          enduranceUnspent: ps.enduranceUnspent || 0,
       };
       const session = this.sessions.get(ws);
       let payload = full;
@@ -3180,7 +3251,11 @@ export class GameRoom {
     }
     // Phase 4: Agility passive dodge roll.  Cap 30% so pure-Agility
     // builds still eat ~70% of hits.
-    const dodgePct = Math.min((ps.agility || 0) * 0.0008, 0.30);
+    // v2.3.1154: + Endurance-grid Evasion (+0.2%/pt) INSIDE the same
+    // min() — the BALANCE-PLAN §4 shared-cap hard rule: stacking dodge
+    // sources share the one 30% cap so channel completion can't
+    // compound past INV-06.  Mirrors client passiveDodgeChance.
+    const dodgePct = Math.min((ps.agility || 0) * 0.0008 + this._evasionDodge(ps), 0.30);
     if (Math.random() < dodgePct) {
       ps.lastDamageAt = Date.now();
       return { dmgTaken: 0, dodged: true };
@@ -3219,7 +3294,9 @@ export class GameRoom {
     if (ps.hp > 0 && _sw > 0) {
       const _nowSw = Date.now();
       if (!ps._secondWindReadyAt || _nowSw >= ps._secondWindReadyAt) {
-        secondWind = Math.round((ps.maxHp || 100) * Math.min(0.50, _sw * 0.01));
+        // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap
+        // +50%) — Second Wind is Recovery's flagship synergy.
+        secondWind = Math.round((ps.maxHp || 100) * Math.min(0.50, _sw * 0.01) * this._recoveryMult(ps));
         if (secondWind > 0) {
           ps.hp = Math.min(ps.maxHp, ps.hp + secondWind);
           ps._secondWindReadyAt = _nowSw + 10000;
@@ -3348,8 +3425,11 @@ export class GameRoom {
     const oldMaxHp = ps.maxHp || 100;
     const oldMaxStam = ps.maxStamina || 100;
     const oldMaxMana = ps.maxMana || 100;
-    ps.maxHp = this._calcMaxHp(lvl, ps.vitality || 0) + this._armorHp(ps.armor, ps.vitality || 0);
-    ps.maxStamina = this._calcMaxStamina(ps.endurance || 0);
+    // v2.3.1154: HP-grid Vigor (+0.5%/pt, cap +25%) multiplies the WHOLE
+    // pool including armor HP; Endurance-grid Stamina (+1%/pt, cap +50%)
+    // multiplies maxStamina.  Mirrors recalcDerived on the client.
+    ps.maxHp = Math.floor((this._calcMaxHp(lvl, ps.vitality || 0) + this._armorHp(ps.armor, ps.vitality || 0)) * this._vigorMult(ps));
+    ps.maxStamina = Math.floor(this._calcMaxStamina(ps.endurance || 0) * this._staminaGridMult(ps));
     ps.maxMana = this._calcMaxMana(ps.mind || 0);
     // Clamp current values into the new ranges.
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
@@ -3435,6 +3515,32 @@ export class GameRoom {
     }
     if (payload.defenseSpec && typeof payload.defenseSpec === 'object') {
       ps.defenseSpec = this._sanitizeDefenseSpec(payload.defenseSpec);
+    }
+    // v2.3.1154: HP/Endurance grid track.  Same client-trained-but-
+    // clamped posture as weaponSpecs, plus the grid budget clamp
+    // (sum <= governing stat; see _sanitizeGridSpec).  UNLIKE the
+    // v2.3.1021 store-and-echo fields these FLIP statsChanged: vigor
+    // and stamina feed _recomputeMaxes, so a spend must recompute the
+    // pools the same tick it lands.
+    if (payload.hpSpec && typeof payload.hpSpec === 'object') {
+      const next = this._sanitizeHpSpec(payload.hpSpec, ps);
+      if (JSON.stringify(next) !== JSON.stringify(ps.hpSpec || {})) {
+        ps.hpSpec = next;
+        statsChanged = true;
+      }
+    }
+    if (typeof payload.hpUnspent === 'number') {
+      ps.hpUnspent = Math.max(0, Math.min(999, Math.floor(payload.hpUnspent)));
+    }
+    if (payload.enduranceSpec && typeof payload.enduranceSpec === 'object') {
+      const next = this._sanitizeEnduranceSpec(payload.enduranceSpec, ps);
+      if (JSON.stringify(next) !== JSON.stringify(ps.enduranceSpec || {})) {
+        ps.enduranceSpec = next;
+        statsChanged = true;
+      }
+    }
+    if (typeof payload.enduranceUnspent === 'number') {
+      ps.enduranceUnspent = Math.max(0, Math.min(999, Math.floor(payload.enduranceUnspent)));
     }
     // Armor swap routes through stats_update (not equip_request) because
     // armor lives in a client-only armorStash and the popup mutates it
@@ -3720,7 +3826,8 @@ export class GameRoom {
           const stRestMult = 1 + (ps.restoration || 0) * 0.001;
           // Phase 2 of the T1/T2 spec: Endurance multiplies stamina regen.
           const stEndMult = 1 + (ps.endurance || 0) * 0.002;
-          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stRestMult * stEndMult));
+          // v2.3.1154: × Endurance-grid Conditioning (+1%/pt, cap +50%).
+          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stRestMult * stEndMult * this._conditioningMult(ps)));
           const beforeSt = ps.stamina;
           ps.stamina = Math.min(ps.maxStamina, ps.stamina + stHeal);
           if (ps.stamina !== beforeSt) changed = true;
@@ -4674,6 +4781,19 @@ export class GameRoom {
         this._queuePlayerStateFlush(rid);
       }
 
+      // v2.3.1154: LIFEBLOOD (HP grid) -- on-kill heal, 0.5%/pt of maxHp
+      // (cap 25% at 50 pts), killing-blow attribution like lifesteal
+      // below.  Applied BEFORE lifesteal so both heals ride the same
+      // _saveRpg/player_state flush; deliberately NOT multiplied by
+      // Recovery (a %-maxHp heal scaling with another %-heal channel
+      // would double-dip the same grid's budget).  Skips dead killers.
+      if (killerPs && killerPs.hp > 0) {
+        const _lbFrac = this._lifebloodFrac(killerPs);
+        if (_lbFrac > 0) {
+          const _lbMax = killerPs.maxHp || 100;
+          killerPs.hp = Math.min(_lbMax, killerPs.hp + Math.max(1, Math.round(_lbMax * _lbFrac)));
+        }
+      }
       // Melee lifesteal -- refund 90% of net damage the killer took
       // from this monster, if the kill was struck with melee.  Heals
       // the killer (last-hit attribution); party members who tagged
@@ -4683,6 +4803,8 @@ export class GameRoom {
       // Pass the wire-sent slot through so a desktop slot-select user
       // whose server-side activeSlot didn't get the set_active_slot
       // update still gets the heal on a real melee swing.
+      // (v2.3.1154: the 90% refund is deliberately NOT Recovery-boosted
+      // -- see _recoveryMult's comment; >100% refunds mint sustain.)
       const { refund, reason } = this._applyMeleeLifesteal(killerPs, m.id, slot);
       // Emit lifesteal_credit even when refund is 0 so the client can
       // log the reason and the user can tell whether the gate failed
@@ -5089,7 +5211,35 @@ export class GameRoom {
                 _ps[s] = this._clampStat(joinVal, _lvl);
               }
             }
-            // Server-owned max values: compute from clamped raw stats.
+            // v2.3.1154: HP/Endurance grid track -- ingested HERE (after
+            // the raw-stat loop above) because the budget clamp in
+            // _sanitizeGridSpec reads the final clamped vitality/
+            // endurance.  Stored wins; else the join payload seeds
+            // (first connect / pre-grid stored records).  Absent unspent
+            // pools BACKFILL to stat-level minus points-already-spent --
+            // the boundary heal twin of the backfill-grid-points
+            // migration (client payloads are unmigrated writers).
+            {
+              const _md2 = msg.data || {};
+              _ps.hpSpec = (stored && stored.hpSpec && Object.keys(stored.hpSpec).length)
+                ? this._sanitizeHpSpec(stored.hpSpec, _ps) : this._sanitizeHpSpec(_md2.rpgHpSpec, _ps);
+              _ps.enduranceSpec = (stored && stored.enduranceSpec && Object.keys(stored.enduranceSpec).length)
+                ? this._sanitizeEnduranceSpec(stored.enduranceSpec, _ps) : this._sanitizeEnduranceSpec(_md2.rpgEnduranceSpec, _ps);
+              const _sumSpec = (o) => Object.values(o || {}).reduce((a, v) => a + (v || 0), 0);
+              _ps.hpUnspent = (stored && typeof stored.hpUnspent === 'number')
+                ? Math.max(0, Math.min(999, Math.floor(stored.hpUnspent)))
+                : (typeof _md2.rpgHpUnspent === 'number')
+                  ? Math.max(0, Math.min(999, Math.floor(_md2.rpgHpUnspent)))
+                  : Math.max(0, (_ps.vitality || 0) - _sumSpec(_ps.hpSpec));
+              _ps.enduranceUnspent = (stored && typeof stored.enduranceUnspent === 'number')
+                ? Math.max(0, Math.min(999, Math.floor(stored.enduranceUnspent)))
+                : (typeof _md2.rpgEnduranceUnspent === 'number')
+                  ? Math.max(0, Math.min(999, Math.floor(_md2.rpgEnduranceUnspent)))
+                  : Math.max(0, (_ps.endurance || 0) - _sumSpec(_ps.enduranceSpec));
+            }
+            // Server-owned max values: compute from clamped raw stats
+            // (v2.3.1154: and the grid specs ingested just above --
+            // vigor/stamina feed the pool formulas).
             // Persisted hp / stamina / mana already loaded above; clamp
             // them to the recomputed maxes here.
             this._recomputeMaxes(_ps);
@@ -5168,7 +5318,13 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, ..._liveFlags },
+          // v2.3.1154: hpEndGrids -- the client gates HP/Endurance grid
+          // spending AND its local vigor/stamina pool multipliers on this
+          // flag, so a new client against an old worker shows the grids
+          // as "Soon" instead of computing pools the worker's
+          // player_state echo would stomp every flush (deploy-order
+          // safety, the v2.3.1119 caps pattern).
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, ..._liveFlags },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({

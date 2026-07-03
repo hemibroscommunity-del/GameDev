@@ -158,6 +158,7 @@ const {
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
   migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction, getBlockStaminaMult,
+  migrateGrids, getConditioningMult,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
@@ -1676,6 +1677,12 @@ export var BroTown = function BroTown(_ref0) {
       rpgState.defenseSkill ? JSON.stringify(rpgState.defenseSkill) : 'nodef',
       typeof rpgState.defenseUnspent === 'number' ? ('du' + rpgState.defenseUnspent) : 'nodu',
       rpgState.defenseSpec ? JSON.stringify(rpgState.defenseSpec) : 'nodspec',
+      /* v2.3.1154: HP/Endurance grid track in the signature so a grid
+         spend (or point grant) re-emits stats_update. */
+      rpgState.hpSpec ? JSON.stringify(rpgState.hpSpec) : 'nohp',
+      typeof rpgState.hpUnspent === 'number' ? ('hu' + rpgState.hpUnspent) : 'nohu',
+      rpgState.enduranceSpec ? JSON.stringify(rpgState.enduranceSpec) : 'noen',
+      typeof rpgState.enduranceUnspent === 'number' ? ('eu' + rpgState.enduranceUnspent) : 'noeu',
     ].join('|');
     if (S._lastStatsUpdateSig === _sig) return;
     S._lastStatsUpdateSig = _sig;
@@ -1727,6 +1734,13 @@ export var BroTown = function BroTown(_ref0) {
           defenseSkill: rpgState.defenseSkill || { level: 0, xp: 0 },
           defenseUnspent: (typeof rpgState.defenseUnspent === 'number') ? rpgState.defenseUnspent : 0,
           defenseSpec: rpgState.defenseSpec || {},
+          /* v2.3.1154: HP/Endurance grid track.  Worker clamps [0,50]
+             per channel PLUS the grid budget (sum <= governing stat);
+             vigor/stamina feed its authoritative pool recompute. */
+          hpSpec: rpgState.hpSpec || {},
+          hpUnspent: (typeof rpgState.hpUnspent === 'number') ? rpgState.hpUnspent : 0,
+          enduranceSpec: rpgState.enduranceSpec || {},
+          enduranceUnspent: (typeof rpgState.enduranceUnspent === 'number') ? rpgState.enduranceUnspent : 0,
         },
       });
     } catch (e) {}
@@ -1978,6 +1992,7 @@ export var BroTown = function BroTown(_ref0) {
          retired generic specs (one-time, idempotent). */
       migrateWeaponT2(S.rpg);
       migrateDefenseT2(S.rpg);   /* v2.3.693: backfill the Defense T2 category */
+      migrateGrids(S.rpg);       /* v2.3.1154: backfill the HP/Endurance grids */
       /* v2.3.910: combat level is now derived (sum of build-skill levels), set
          by recalcDerived above.  Seed _lastShownLevel to the current level so
          the on-kill level-up VFX fires only for levels gained from here on, not
@@ -3042,7 +3057,9 @@ export var BroTown = function BroTown(_ref0) {
            art and was retired alongside the Snowman build button. */
 
         /* Agility-based movement speed */
-        var baseSpd = S.rpg ? calcMoveSpeed(S.rpg.agility || 0) / 5.0 * SPEED : SPEED;
+        /* v2.3.1154: + Swiftness channel (Endurance grid, cap +10%) --
+           client-owned; stays under the worker's 500 px/s move bound. */
+        var baseSpd = S.rpg ? calcMoveSpeed(S.rpg.agility || 0, (S.rpg.enduranceSpec || {}).swiftness || 0) / 5.0 * SPEED : SPEED;
         /* Food buff speed bonus */
         var spdBuff = S._spdBuff && Date.now() < S._spdBuff ? 1.15 : 1.0;
         /* Amulet move speed bonus */
@@ -3812,7 +3829,9 @@ export var BroTown = function BroTown(_ref0) {
             var stRestMult = 1 + (_R7.restoration || 0) * 0.001;
             var stEndMult = 1 + (_R7.endurance || 0) * 0.002;
             var stAmuletMult = ((_R7$_amuletBonus = _R7._amuletBonus) === null || _R7$_amuletBonus === void 0 ? void 0 : _R7$_amuletBonus.stat) === 'staminaRegen' ? 1 + _R7._amuletBonus.value / 100 : 1;
-            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stRestMult * stEndMult * regenMult * stAmuletMult);
+            /* v2.3.1154: × Conditioning (Endurance grid) -- mirrors the
+               worker's regen tick. */
+            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stRestMult * stEndMult * regenMult * stAmuletMult * getConditioningMult(_R7));
           }
           /* Mana regen — §3.4: OOC 2.5%/s after 2s × Restoration × Mind.
              v2.3.234 (Phase 4): Mind speeds up the recharge alongside
@@ -3831,7 +3850,8 @@ export var BroTown = function BroTown(_ref0) {
              v2.3.232 (Phase 2): Endurance multiplies combat regen too. */
           if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
             var _stEndMult8 = 1 + (_R8.endurance || 0) * 0.002;
-            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8);
+            /* v2.3.1154: × Conditioning, same as the OOC branch above. */
+            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8 * getConditioningMult(_R8));
           }
           /* Slow mana regen in combat — 1%/s × Mind.
              v2.3.234 (Phase 4): Mind multiplies combat regen too. */

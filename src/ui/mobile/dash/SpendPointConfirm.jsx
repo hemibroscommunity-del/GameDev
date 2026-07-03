@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
-import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP } from '../../../data/gameSystems.js';
+import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP, GRID_CHANNEL_CAP } from '../../../data/gameSystems.js';
 
 /* v2.3.911: confirmation window for spending a build-skill Tier-2 point.
    Shows the channel's current effect vs the effect after +1 (via the
@@ -28,7 +28,17 @@ export const SpendPointConfirm = () => {
     const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
     const R = S && S.rpg;
     if (R) {
-      if (t.isDef) {
+      if (t.gridSpecKey) {
+        /* v2.3.1154: HP/Endurance grid spend — the panel passes the rpg
+           field names (hpSpec/hpUnspent or enduranceSpec/enduranceUnspent)
+           so this stays generic.  Server re-clamps [0,50] + the grid
+           budget (sum <= governing stat). */
+        if (!R[t.gridSpecKey]) R[t.gridSpecKey] = {};
+        if ((R[t.gridPoolKey] || 0) > 0 && (R[t.gridSpecKey][t.key] || 0) < GRID_CHANNEL_CAP) {
+          R[t.gridSpecKey][t.key] = (R[t.gridSpecKey][t.key] || 0) + 1;
+          R[t.gridPoolKey] -= 1;
+        }
+      } else if (t.isDef) {
         if (!R.defenseSpec) R.defenseSpec = {};
         if ((R.defenseUnspent || 0) > 0 && (R.defenseSpec[t.key] || 0) < DEFENSE_CHANNEL_CAP) {
           R.defenseSpec[t.key] = (R.defenseSpec[t.key] || 0) + 1;
@@ -61,6 +71,11 @@ export const SpendPointConfirm = () => {
             defenseSpec: R.defenseSpec || {},
             defenseUnspent: (typeof R.defenseUnspent === 'number') ? R.defenseUnspent : 0,
             defenseSkill: R.defenseSkill || { level: 0, xp: 0 },
+            /* v2.3.1154: HP/Endurance grid track rides the same flush. */
+            hpSpec: R.hpSpec || {},
+            hpUnspent: (typeof R.hpUnspent === 'number') ? R.hpUnspent : 0,
+            enduranceSpec: R.enduranceSpec || {},
+            enduranceUnspent: (typeof R.enduranceUnspent === 'number') ? R.enduranceUnspent : 0,
           } });
         }
       } catch (e) {}
