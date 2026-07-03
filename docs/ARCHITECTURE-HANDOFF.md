@@ -53,6 +53,8 @@ extended.
    | `arena_stake:<tid>:<mid>:<pid>` | escrowed sponsorship stake | sponsorship.md |
    | `guild_claims:<pid>` | `{skillKey: completedCount}` quest-ladder claims | guild-quests.md |
    | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
+   | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |
+   | `harden_h5_log` | global H5-mint timestamps, 90-day window (INV-27) | hardening.md |
 
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every
@@ -225,16 +227,20 @@ A party system is UI + a roster: invite/accept handshake (duel pattern),
 or a privileged event. Optional later: contribution-role weighting.
 Danger: don't touch the share math without re-running the §7 predicates.
 
-### E. Hardening v1 + quality grades (BALANCE-PLAN §4/§5 — numbers ready)
-Quality: server-rolls at loot/craft time (§4.6b table: 90.1/9/0.9%,
-Godly 1-in-400k, roll once, immutable); mystery reveal = server
-pre-commits grade at drop (anti-cheat §17.4). Hardening: §4.6c ladder
-80/20/5/1/0.5%, cost `500g × 4^level`, Temper counters at 20/50/100,
-failure resets (depth softened by Temper), Blacksmith gate
-`floor(skill/5)`, INV-27 rate counter. Both live server-side in the
-forge/loot handlers; weapon blobs gain `quality`/`hardness`/`temper`
-fields (they're opaque blobs — sanitizers must learn the new fields or
-they'll strip them: check `_sanitizeWeapon`).
+### E. Hardening v1 + quality grades — SHIPPED v2.3.1131
+Built per the adopted BALANCE-PLAN numbers: `server/src/hardening.js`,
+spec in `docs/specs/hardening.md`. Quality rolls at the FORGE only
+(the sole server weapon mint — monster weapon drops are still
+client-minted, so join-ingested client blobs are STRIPPED of the new
+fields; a forged godly would raise its own damage ceiling). Hardening
+ladder + temper pity + `floor(skill/5)` access gate + ledgers
+(`harden_ledger:<pid>`, global `harden_h5_log` INV-27 window). The
+sanitizer learned the fields with a two-posture contract (clamp stored
+/ strip client-supplied). NAME COLLISION: the client's legacy "Harden"
+button is the hardenBonus AFFIX system — distinct fields, never merge.
+Successor follow-ups: server-side weapon-drop migration unlocks
+drop-time quality + mystery reveals (§4.6b.ii); sell value deliberately
+ignores the new layers.
 
 ### F. Dungeon instancing — SHIPPED v2.3.1127 (folded instances)
 Built as recommended: `server/src/dungeon.js`, spec in

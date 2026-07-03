@@ -93,12 +93,12 @@ Two protocol versions coexist; both must keep working:
 
 ## Testing
 
-- Server: `cd server && npm test` — seventeen zero-dependency suites
+- Server: `cd server && npm test` — eighteen zero-dependency suites
   (protocol-v2, anticheat, combat-lifecycle, identity, inbox, market,
   trade, quests, duel, gamble, clans, arena, dungeon, sponsorship,
-  guilds, threat, pets; 380+ assertions) against a mocked DO storage.
-  Every new system adds a suite; extend the nearest one when touching
-  its wire format.
+  guilds, threat, pets, hardening; 400+ assertions) against a mocked
+  DO storage. Every new system adds a suite; extend the nearest one
+  when touching its wire format.
 - Client: no unit suite; CI runs a two-session Playwright smoke harness
   (`tools/qa/qa-smoke.mjs`, `qa-facing.mjs`) plus lint + build on every
   PR, and the Pages bot posts a preview URL. Primary platform is

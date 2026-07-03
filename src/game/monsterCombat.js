@@ -65,7 +65,7 @@ export function updateMonsterCombat(S, deps) {
             element1: null, element2: null, name: 'Unarmed'
           };
           var wpnType = WEAPON_TYPES[_activeWpn.type] || WEAPON_TYPES.greatsword;
-          var pDmg = calcWeaponDmg(_activeWpn.type, _R6 || {}, _activeWpn.tierMult);
+          var pDmg = calcWeaponDmg(_activeWpn.type, _R6 || {}, _activeWpn.tierMult, _activeWpn);
           /* Snapshot the un-modified base — the "block N" popup compares
              the final dmg against this so any negative modifier (curse,
              level-diff scaling, future debuffs) shows up without needing
@@ -1561,7 +1561,7 @@ export function updateMonsterCombat(S, deps) {
                    use pDmg (Power-based for melee).  Variance is rolled
                    per-hit so different monsters in a sweep can take
                    slightly different damage. */
-                var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult) : pDmg;
+                var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult, _activeWpn) : pDmg;
                 var dmg = Math.round((isCrit ? _specBase * critMult : _specBase) * specialMult * _comboBurst);
                 /* §12.2 cert — first time the combo-burst multiplier (>1) actually lands. */
                 if (_comboBurst > 1) masteryEarnCert('first-combo-burst');

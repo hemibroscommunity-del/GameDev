@@ -93,7 +93,7 @@ export var doLunge = function (S, R, ang) {
     S._hasDodged = true;
     /* Hit on arrival — reduced damage, applies element_1 status (setup). */
     var activeWpn = getActiveWeapon(R);
-    var pDmg = calcWeaponDmg(activeWpn.type || 'sword', R || {}, activeWpn.tierMult || 1);
+    var pDmg = calcWeaponDmg(activeWpn.type || 'sword', R || {}, activeWpn.tierMult || 1, activeWpn);
     var lDmg = Math.max(1, Math.round(pDmg * (LUNGE_DAMAGE_MULT || 0.6)));
     setTimeout(function () {
       if (!lt.alive) return;
@@ -144,7 +144,7 @@ export var doRetreatShot = function (S, R, ang) {
     var P = S.player;
     var aimAng = Math.atan2(lt.y - P.y, lt.x - P.x);
     var activeWpn = getActiveWeapon(R);
-    var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R || {}, activeWpn.tierMult || 1);
+    var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R || {}, activeWpn.tierMult || 1, activeWpn);
     var shotDmg = Math.max(1, Math.round(pDmg * (RETREAT_SHOT_DAMAGE_MULT || 0.5)));
     var slot = R.activeSlot || 'ranged';
     var isStaff = slot === 'staff';

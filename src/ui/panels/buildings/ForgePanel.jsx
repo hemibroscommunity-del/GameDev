@@ -229,7 +229,44 @@ export function ForgePanel(props) {
         } catch (e) {}
       }
     }, "Forge (", ((_stateRef$current12 = stateRef.current) === null || _stateRef$current12 === void 0 ? void 0 : _stateRef$current12._bsType) === 'sword' ? 'Sword' : 'Greatsword', ")"));
-  }), function (_rpgState$lifeSkills24) {
+  }), function () {
+    /* v2.3.1131: SS4.6c HARDENING -- the server-rolled H0->H5 ladder
+       (harden_weapon -> hardening.js).  DISTINCT from the legacy
+       "Harden" affix button below (weapon.hardenBonus): this one is
+       the numeric damage layer (weapon.hardness), gold-only cost,
+       odds fixed by ladder rung (skill gates ACCESS, never odds).
+       Result popups arrive via harden_result (gameEvents.js); the
+       weapon state itself rides the authoritative player_state echo. */
+    var _Sh = stateRef.current;
+    if (!(_Sh._serverCaps && _Sh._serverCaps.harden && _Sh.channel)) return null;
+    var hw = rpgState.weapon;
+    if (!hw) return null;
+    var hLvl = typeof hw.hardness === 'number' ? hw.hardness : 0;
+    var hMaxed = hLvl >= 5;
+    var hOdds = [80, 20, 5, 1, 0.5][Math.min(hLvl, 4)];
+    var hCost = 500 * Math.pow(4, hLvl);
+    var hTemper = hw.temper || 0;
+    var hAfford = (rpgState.coins || 0) >= hCost;
+    return /*#__PURE__*/React.createElement("div", {
+      style: { marginTop: 8, padding: 8, borderRadius: 8, background: 'rgba(245,197,66,.06)', border: '1px solid rgba(245,197,66,.18)' }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 10, fontWeight: 700, color: '#f5c542', marginBottom: 3 }
+    }, "\u2692\uFE0F Hardening: ", hw.name, " \u2014 H", hLvl, "/5"), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 8, color: 'rgba(255,255,255,.4)', marginBottom: 4 }
+    }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it)"), !hMaxed && /*#__PURE__*/React.createElement("button", {
+      style: {
+        width: '100%', padding: '5px 0', borderRadius: 5, fontSize: 9, fontWeight: 800,
+        border: '1px solid rgba(245,197,66,.3)',
+        background: hAfford ? 'rgba(245,197,66,.12)' : 'rgba(255,255,255,.02)',
+        color: hAfford ? '#f5c542' : 'rgba(255,255,255,.2)',
+        cursor: hAfford ? 'pointer' : 'not-allowed'
+      },
+      onClick: function onClick() {
+        if (!hAfford) return;
+        try { _Sh.channel.send({ type: 'broadcast', event: 'harden_weapon', payload: { slot: 'weapon' } }); } catch (e) {}
+      }
+    }, "Attempt H", hLvl + 1, " (", hCost, "G \xB7 ", hOdds, "%)"));
+  }(), function (_rpgState$lifeSkills24) {
     var wpn = rpgState.weapon;
     if (!(wpn !== null && wpn !== void 0 && wpn.gearBase)) return /*#__PURE__*/React.createElement("div", {
       style: {

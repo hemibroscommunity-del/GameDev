@@ -71,7 +71,7 @@ export function InventoryPanel(props) {
     var wt = WEAPON_TYPES[wpn.type];
     var rt = RARITY_TIERS[wpn.tier];
     var isActive = rpgState.activeSlot === slot || slot === 'melee' && rpgState.activeSlot !== 'ranged';
-    var dmg = Math.round(calcWeaponDmg(wpn.type, rpgState || {}, wpn.tierMult));
+    var dmg = Math.round(calcWeaponDmg(wpn.type, rpgState || {}, wpn.tierMult, wpn));
     return /*#__PURE__*/React.createElement("div", {
       key: slot,
       style: {
@@ -113,7 +113,7 @@ export function InventoryPanel(props) {
         fontSize: 8,
         color: 'rgba(255,255,255,.4)'
       }
-    }, rt === null || rt === void 0 ? void 0 : rt.label, " ", wt === null || wt === void 0 ? void 0 : wt.label, " \xB7 ", wpn.tierMult, "\xD7 mult"))), /*#__PURE__*/React.createElement("div", {
+    }, rt === null || rt === void 0 ? void 0 : rt.label, " ", wt === null || wt === void 0 ? void 0 : wt.label, " \xB7 ", wpn.tierMult, "\xD7 mult", wpn.quality && wpn.quality !== 'normal' ? ' \xB7 ' + wpn.quality.toUpperCase() + (wpn.quality === 'godly' ? ' \u2728' : wpn.quality === 'elite' ? ' \u2B50' : '') : '', wpn.hardness ? ' \xB7 H' + wpn.hardness : ''))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 8,
@@ -496,8 +496,8 @@ export function InventoryPanel(props) {
     var srt = RARITY_TIERS[sw.tier];
     var isRanged = (swt === null || swt === void 0 ? void 0 : swt.type) === 'ranged';
     var current = isRanged ? rpgState.rangedWeapon : rpgState.weapon;
-    var stashDmg = Math.round(calcWeaponDmg(sw.type, rpgState || {}, sw.tierMult));
-    var curDmg = current ? Math.round(calcWeaponDmg(current.type, rpgState || {}, current.tierMult)) : 0;
+    var stashDmg = Math.round(calcWeaponDmg(sw.type, rpgState || {}, sw.tierMult, sw));
+    var curDmg = current ? Math.round(calcWeaponDmg(current.type, rpgState || {}, current.tierMult, current)) : 0;
     var dmgDiff = stashDmg - curDmg;
     var stashSpd = (swt === null || swt === void 0 ? void 0 : swt.speed) || 1;
     var curSpd = current ? ((_WEAPON_TYPES$current = WEAPON_TYPES[current.type]) === null || _WEAPON_TYPES$current === void 0 ? void 0 : _WEAPON_TYPES$current.speed) || 1 : 1;

@@ -92,7 +92,7 @@ export function specialAttack(S) {
          it overlaps -- hitIds prevents double-hits on the same target. */
       if (!S.arrows) S.arrows = [];
       /* v2.3.234 (Phase 4): specials scale with Mind, not weapon stat. */
-      var wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult);
+      var wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn);
       S.arrows.push({
         ang: aimAng,
         dist: 14,
@@ -120,7 +120,7 @@ export function specialAttack(S) {
          bows) and the projectile renders as magic, not a physical arrow. */
       if (!S.arrows) S.arrows = [];
       /* v2.3.234 (Phase 4): staff special damage scales with Mind. */
-      var _wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult);
+      var _wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn);
       for (var si = -1; si <= 1; si++) {
         S.arrows.push({
           ang: aimAng + si * 0.25,
