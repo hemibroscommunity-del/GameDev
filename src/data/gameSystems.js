@@ -3981,9 +3981,16 @@ export const DEFENSE_XP_BLOCKED = 1.0;
 export const DEFENSE_XP_TAKEN = 0.25;
 
 export const DEFENSE_CHANNELS = [
-  { key: 'bulwark',   label: 'Bulwark',     role: 'block',     active: true,  perPt: 1.0,
-    blurb: '+1% block on a successful block.',
-    derive: (v) => '+' + v + '% block (25→' + Math.min(75, 25 + v) + '%)' },
+  /* v2.3.1153: BULWARK repurposed — block STAMINA efficiency, −1%/pt on
+     both block stamina costs (the per-blocked-hit 15 and the shield-hold
+     drain), cap −50%.  Its original block-% identity died when blocks
+     became full negation (v2.3.232, owner request; reaffirmed 2026-07-03),
+     which left the channel inert.  SERVER-owned at both cost sites
+     (_blockStaminaMult; the per-hit cost rides the wire as staminaDrain);
+     the legacy local-drain path mirrors via getBlockStaminaMult. */
+  { key: 'bulwark',   label: 'Bulwark',     role: 'blockstam', active: true,  perPt: 1.0,
+    blurb: 'Blocking costs less stamina — hold your shield longer.',
+    derive: (v) => '−' + Math.min(50, v) + '% block stamina cost' },
   { key: 'ironskin',  label: 'Iron Skin',   role: 'dmgreduce', active: true,  perPt: 0.5,
     blurb: '−0.5% damage taken from every hit.',
     derive: (v) => '−' + (v * 0.5).toFixed(1) + '% dmg taken' },
@@ -4013,8 +4020,16 @@ export const DEFENSE_CHANNELS = [
 export function getDefenseSpec(rpg, key) {
   return (rpg && rpg.defenseSpec && rpg.defenseSpec[key]) || 0;
 }
-/* Block % bonus the player's Bulwark channel adds (whole percent == points). */
-export function getDefenseBlockBonus(rpg) { return getDefenseSpec(rpg, 'bulwark'); }
+/* v2.3.1153: Bulwark no longer adds block % (see the channel entry) —
+   this returns 0 so every legacy readout ("Block: X%") reports the real
+   base+shield block figure without touching its call sites. */
+export function getDefenseBlockBonus() { return 0; }
+/* v2.3.1153: Bulwark — multiplier on block stamina costs (−1%/pt, cap
+   −50%).  Mirror of server _blockStaminaMult; used by the legacy local
+   shield-drain path (BroTown rAF loop) for prediction. */
+export function getBlockStaminaMult(rpg) {
+  return 1 - Math.min(0.50, getDefenseSpec(rpg, 'bulwark') * 0.01);
+}
 /* Iron Skin flat damage-taken reduction as a 0..0.25 fraction. */
 export function getIronSkinReduction(rpg) {
   return Math.min(0.25, getDefenseSpec(rpg, 'ironskin') * 0.005);
@@ -5022,12 +5037,14 @@ export function calcCritMult(power, critDmgPts) {
   return 1.5 + (power || 0) * 0.001 + (critDmgPts || 0) * 0.008;
 }
 
-/* §2.3 Block.  v2.3.693: the first arg is now the Defense BULWARK channel
-   point total (whole percent each), replacing the retired Fortification stat:
-   base 25% + 1% per Bulwark point + the shield's own block bonus, hard cap 75%.
-   Simple mental math: "25% + your Bulwark points = your block %". */
-export function calcBlockReduction(bulwark, shield) {
-  var base = 0.25 + (bulwark || 0) * 0.01;
+/* §2.3 Block.  v2.3.1153: the Bulwark term is gone — Bulwark now buys
+   block STAMINA efficiency (getBlockStaminaMult), not block %, because
+   blocks have been full negation since v2.3.232 and a block-% channel
+   had nothing to modify.  base 25% + the shield's own block bonus, cap
+   75%.  First arg retained (ignored) so legacy call sites don't break;
+   getDefenseBlockBonus now returns 0 for the same reason. */
+export function calcBlockReduction(_legacyBulwark, shield) {
+  var base = 0.25;
   /* Shield gear bonus */
   if (shield) {
     var ss = getShieldStats(shield);

@@ -216,6 +216,18 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   room._tickPlayerRegen();
   check('regen: shield drain hits 0 and auto-releases the block',
     psA.stamina === 0 && psA.blocking === false, { stamina: psA.stamina, blocking: psA.blocking });
+
+  // v2.3.1153: Bulwark block-stamina efficiency also discounts the
+  // shield-HOLD drain (5/tick -> 3 at 50 pts; floored at 1 so holding
+  // a shield is never free).
+  psA.blocking = true; psA.stamina = 100; psA.defenseSpec = { bulwark: 50 };
+  room._tickPlayerRegen();
+  check('bulwark: 50 pts discount the shield-hold drain (5 -> 3/tick)',
+    psA.stamina === 97, psA.stamina);
+  check('bulwark: helper mult floors at -50%', Math.abs(room._blockStaminaMult(psA) - 0.5) < 1e-9
+    && Math.abs(room._blockStaminaMult({ defenseSpec: { bulwark: 999 } }) - 0.5) < 1e-9,
+    room._blockStaminaMult(psA));
+  psA.blocking = false; psA.defenseSpec = {};
 }
 
 // ── 6b. v2.3.1110: monster<->monster separation ──

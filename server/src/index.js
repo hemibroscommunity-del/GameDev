@@ -817,8 +817,12 @@ export class GameRoom {
               // Block cost: 15 stamina (mirrors client at BroTown.jsx:2663).
               // Server is authoritative for stamina now, so deduct here
               // and echo via player_state so the bar visibly drops.
+              // v2.3.1153: × Bulwark block-stamina efficiency (−1%/pt,
+              // cap −50%).  The exact cost rides the wire as
+              // staminaDrain below, so pre-fix clients render the
+              // discounted number correctly with zero client changes.
               const blockerPs = this.playerState[nearest.id];
-              const staminaCost = 15;
+              const staminaCost = Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)));
               if (blockerPs && typeof blockerPs.stamina === 'number') {
                 blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
                 this._saveRpg(nearest.id, blockerPs);
@@ -1532,6 +1536,18 @@ export class GameRoom {
   _attuneMult(ps) {
     const pts = (ps && ps.weaponSpecs && ps.weaponSpecs.staff && ps.weaponSpecs.staff.attunement) || 0;
     return 1 + Math.min(99, pts) * 0.005;
+  }
+  // v2.3.1153: BULWARK repurposed — block stamina efficiency, −1%/pt on
+  // both block stamina costs (per-blocked-hit AND shield-hold drain),
+  // cap −50% at the [0,50] defenseSpec clamp.  The channel's original
+  // block-%-mitigation identity died when full-block-invuln shipped
+  // (owner directive, v2.3.232; reaffirmed 2026-07-03 — blocks stay
+  // 100%), leaving Bulwark inert since v2.3.1021.  New identity: "hold
+  // your shield twice as long, block twice as many hits."  defenseSpec
+  // is client-trained but server-clamped, so the discount is bounded.
+  _blockStaminaMult(ps) {
+    const pts = (ps && ps.defenseSpec && ps.defenseSpec.bulwark) || 0;
+    return 1 - Math.min(0.50, Math.min(50, pts) * 0.01);
   }
 
   // v2.3.1104: weapon-blob sanitizer (P2 of docs/OPTIMIZATION-ROADMAP.md).
@@ -3688,10 +3704,12 @@ export class GameRoom {
       // Stamina: shield drain takes priority over regen.  When blocking,
       // drain ~5/tick and auto-release at 0 (mirrors client behavior at
       // BroTown.jsx:9370 -- 0.167 stamina/frame at 60 fps).
+      // v2.3.1153: × Bulwark block-stamina efficiency (−1%/pt, cap −50%),
+      // floored at 1 so holding a shield is never free.
       if (typeof ps.maxStamina === 'number' && typeof ps.stamina === 'number') {
         if (ps.blocking && ps.stamina > 0) {
           const beforeSt = ps.stamina;
-          ps.stamina = Math.max(0, ps.stamina - 5);
+          ps.stamina = Math.max(0, ps.stamina - Math.max(1, Math.round(5 * this._blockStaminaMult(ps))));
           if (ps.stamina !== beforeSt) changed = true;
           if (ps.stamina <= 0) {
             // Auto-release shield to match client's drop-at-0 behavior.
