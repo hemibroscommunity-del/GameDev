@@ -61,6 +61,9 @@ import { guildMethods } from './guilds.js';
 // v2.3.1129 (PR13): threat machine -- server countdown/cooldown,
 // ignore/expiry consent, Call Guards levy + storage-backed gear lock.
 import { threatMethods } from './threat.js';
+// v2.3.1130 (PR14): server-validated pet capture -- trap consumption,
+// server monster HP/range checks, sanitized pet minting.
+import { petMethods } from './pets.js';
 
 export default {
   async fetch(request, env) {
@@ -182,6 +185,8 @@ const PRIVILEGED_EVENTS = new Set([
   'guild_quest_result', 'guild_quest_error',
   // v2.3.1129: threat-machine emissions (guard fines, lock notices).
   'threat_penalty', 'threat_expired', 'gear_locked',
+  // v2.3.1130: pet-capture outcomes are server-rolled + private.
+  'pet_capture_result',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -4560,6 +4565,9 @@ export class GameRoom {
             this.playerState[msg.id]._gearLockUntil = _gl;
           }
         }
+        // v2.3.1130: sanitize server-held pets + one-time adoption of
+        // legacy client-side captures (see pets.js header).
+        this._petsAdoptOnJoin(this.playerState[msg.id], msg.data);
         // v2.3.1125: authoritative clan tag -- the registry overrides
         // whatever the client stuffed in its cosmetics (msg.data is the
         // same object session.data / playerState spread / player_join
@@ -4582,7 +4590,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -4899,6 +4907,16 @@ export class GameRoom {
         // GuildPanel's local mint stays as caps fallback).
         if (session.id) {
           await this._handleGuildTurnIn(session, msg.payload || msg);
+        }
+        break;
+
+      case 'pet_capture':
+        // v2.3.1130: server-validated capture -- checks the SERVER's
+        // monster hp/range, consumes a basic_trap (finally), rolls
+        // server-side, and removes the monster for everyone (see
+        // pets.js; the client's local roll stays as caps fallback).
+        if (session.id) {
+          this._handlePetCapture(session, msg.payload || msg);
         }
         break;
 
@@ -5457,3 +5475,5 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 Object.assign(GameRoom.prototype, guildMethods);
 // v2.3.1129 (PR13): threat machine -- see threat.js.
 Object.assign(GameRoom.prototype, threatMethods);
+// v2.3.1130 (PR14): pet capture -- see pets.js.
+Object.assign(GameRoom.prototype, petMethods);

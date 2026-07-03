@@ -249,14 +249,18 @@ summon live in dead client AI); runs are memory-only (deploy mid-run
 evaporates it, exit tile always works); loot piles die with the
 instance sweep.
 
-### G. Pet capture validation
-Client-only today (`MenuBar.jsx:233-297`): trap consumed + `createPet`
-locally; server passively persists `lifeSkills.pets`. Server slice:
-`pet_capture {monsterId}` handler validating monster <20% hp + trap in
-inventory + Trapping level vs tier, then writing the pet server-side.
-Danger: `lifeSkills` sub-maps (pets/gems) are client-merge-preserved —
-moving them to server-authored requires the same sole-writer transition
-used for `_questKills` (caps flag + gate client writers).
+### G. Pet capture validation — SHIPPED v2.3.1130
+Built (and the exploration found it worse than this note assumed:
+traps were NEVER consumed, and the captured monster only died on the
+capturer's screen). `server/src/pets.js`, spec in `docs/specs/pets.md`:
+pet_capture validates the SERVER's monster hp/range + consumes one
+basic_trap per attempt + rolls server-side + removes the monster for
+everyone; join-time `_sanitizePets` + one-time legacy adoption; the
+lifeSkills-echo "stomp" is now the intended authoritative flow under
+caps.pets. Successor follow-ups: pet evolution/enchant are still
+client blob edits (sanitize-on-join covers them); the pet loot vacuum
+is echo-stomped theatre — route it through the real loot_pickup path
+to make pets economically real.
 
 ### H. Two-sided trade window
 The current trade is a one-directional gift. Build a both-stage-both-

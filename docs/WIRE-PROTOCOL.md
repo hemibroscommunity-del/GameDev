@@ -217,6 +217,7 @@ Summary of the wire-visible changes:
 | `arena_stake_placed` / `arena_stake_result` / `arena_stake_error` | Sponsorship stakes (private; `arena_sponsor` c→s case; legacy `arena_bet` relay stays cosmetic) | sponsorship.md |
 | `guild_quest_result` / `guild_quest_error` | Guild-quest turn-ins (private; `guild_quest_turn_in` c→s case) | guild-quests.md |
 | `threat_penalty` / `threat_expired` / `gear_locked` | Threat machine (pvp_threat/threat_response stay relays, intercepted + annotated with server countdown/settled/levy) | threats.md |
+| `pet_capture_result` | Server-rolled pet capture (private; `pet_capture` c→s case; consumes a basic_trap) | pets.md |
 
 **Marketplace HTTP (worker routes `/api/market/*` to the GameRoom now;
 the standalone Marketplace DO is retired from routing):**

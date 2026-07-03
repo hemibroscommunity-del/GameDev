@@ -1883,6 +1883,54 @@ export function processGameEvent(type, payload, S, deps) {
               });
               break;
             }
+          case 'pet_capture_result':
+            {
+              /* v2.3.1130: server-rolled capture outcome (private).
+                 On success the pet already sits in the authoritative
+                 lifeSkills echo (the per-key merge adopts it) -- this
+                 event only drives the feedback the legacy local roll
+                 drew (MenuBar). */
+              if (!payload) break;
+              if (payload.captured && payload.pet) {
+                var _pcPet = payload.pet;
+                S.lockedTarget = null;
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 35,
+                  text: 'Captured ' + _pcPet.name + '!',
+                  color: '#3dd497', ts: Date.now()
+                });
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 50,
+                  text: (_pcPet.emoji || '') + ' ' + _pcPet.archetype + ' Lv' + _pcPet.level,
+                  color: _pcPet.color || '#3dd497', ts: Date.now()
+                });
+                BT_AUDIO.collect();
+                setTimeout(function () { return BT_AUDIO.beep(523, 0.1, 0.08, 'sine'); }, 100);
+                setTimeout(function () { return BT_AUDIO.beep(659, 0.1, 0.08, 'sine'); }, 200);
+                if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
+              } else if (payload.error) {
+                var _pcMsg = {
+                  'no-monster': 'Lock a weak monster first!',
+                  'too-healthy': 'Too healthy! (<20% HP)',
+                  'too-far': 'Too far away!',
+                  'slots-full': 'Pet slots full!',
+                  'no-trap': 'Need a trap! (Vendor sells them)',
+                  'not-now': 'Cannot trap right now'
+                }[payload.error] || 'Capture failed';
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 30,
+                  text: _pcMsg, color: '#ff5e6c', ts: Date.now()
+                });
+                BT_AUDIO.beep(200, 0.08, 0.12, 'square');
+              } else {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 30,
+                  text: 'Escaped!', color: '#ff5e6c', ts: Date.now()
+                });
+                BT_AUDIO.beep(200, 0.08, 0.12, 'square');
+              }
+              break;
+            }
           case 'gear_locked':
             {
               /* v2.3.1129: an equip attempt was rejected by the guard
