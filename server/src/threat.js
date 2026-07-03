@@ -69,6 +69,10 @@ export const threatMethods = {
    * duel/trade pattern).  Returns the message to rebroadcast or null
    * (forged/expired/cooldown halves are dropped, never relayed). */
   async _interceptThreat(fromId, msg) {
+    // v2.3.1146: live-ops kill switch.  Return null (DROP, rule 15) --
+    // relaying while "disabled" would trigger legacy client-side threat
+    // handling on the receiving end.
+    if (this._flagOn && this._flagOn('disable_threats')) return null;
     const payload = msg.payload || {};
     const target = payload.target;
     if (!target || typeof target !== 'string' || target === fromId) return null;

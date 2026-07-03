@@ -119,6 +119,11 @@ export const dungeonMethods = {
   // in-memory, no storage awaits, so it runs atomically within its
   // webSocketMessage event.
   _handleDungeonStart(session, payload) {
+    // v2.3.1146: live-ops kill switch (dungeon_error is already in
+    // PRIVILEGED_EVENTS; the client renders the message).
+    if (this._flagOn && this._flagOn('disable_dungeons')) {
+      return this._dungeonError(session.id, 'disabled', 'Dungeons are temporarily disabled');
+    }
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead) {
       return this._dungeonError(session.id, 'not-now', 'Cannot start a dungeon right now');

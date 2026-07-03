@@ -112,39 +112,27 @@ export const adminMethods = {
       }
 
       if (request.method === 'GET' && path === '/economy') {
-        // Full-prefix lists.  Fine at room scale (tens-hundreds of
-        // blobs, SQLite-backed DO = one query each, input gate holds);
-        // revisit with maintained aggregates if blobs exceed ~thousands.
-        const blobs = await this.state.storage.list({ prefix: 'rpg:' });
-        let totalGold = 0;
-        const players = [];
-        for (const [k, b] of blobs) {
-          const coins = (b && b.coins) || 0;
-          totalGold += coins;
-          players.push({ id: k.slice(4), coins, level: (b && b.level) || 1 });
+        // v2.3.1146: aggregation factored into _economySnapshot
+        // (liveops.js) so the daily metrics tripwire shares it.  Scale
+        // note unchanged: full-prefix lists are fine at room scale;
+        // revisit with maintained aggregates beyond ~thousands of blobs.
+        const s = await this._economySnapshot();
+        // Tripwire surface: last 7 daily snapshots + day-over-day
+        // delta; alert when |Δ totalGold| exceeds ALERT_PCT (a sudden
+        // supply jump is the dupe-exploit signature).
+        const all = await this.state.storage.list({ prefix: 'metrics:' });
+        const days = [...all.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).slice(-7)
+          .map(([k, v]) => ({ day: k.slice(8), ...v }));
+        let delta = null;
+        let alert = false;
+        if (days.length >= 2) {
+          const prev = days[days.length - 2].totalGold;
+          const latest = days[days.length - 1].totalGold;
+          const pct = prev > 0 ? ((latest - prev) / prev) * 100 : (latest > 0 ? 100 : 0);
+          delta = { totalGoldPct: Math.round(pct * 10) / 10 };
+          alert = Math.abs(pct) > 25;
         }
-        players.sort((a, b) => b.coins - a.coins);
-        const orders = await this.state.storage.list({ prefix: 'mkt_order:' });
-        let escrowedGold = 0;
-        for (const [, o] of orders) {
-          if (o && o.side === 'buy') escrowedGold += (o.price || 0) * (o.qty || 1);
-        }
-        const inboxes = await this.state.storage.list({ prefix: 'inbox:' });
-        let pendingEntries = 0;
-        for (const [, box] of inboxes) pendingEntries += Array.isArray(box) ? box.length : 0;
-        const h5log = (await this.state.storage.get('harden_h5_log')) || [];
-        const jackpot = (await this.state.storage.get('jackpot:draw')) || null;
-        return json({
-          ok: true,
-          playerBlobs: blobs.size,
-          totalGold,
-          top10: players.slice(0, 10),
-          market: { openOrders: orders.size, escrowedGold },
-          inbox: { inboxes: inboxes.size, pendingEntries },
-          hardenH5Mints: h5log.length,
-          jackpot: jackpot ? { period: jackpot.period, pool: jackpot.pool, entrants: Object.keys(jackpot.entries || {}).length } : null,
-          ts: Date.now(),
-        });
+        return json({ ok: true, ...s, history: days, delta, alert });
       }
 
       if (request.method === 'GET' && path === '/player') {
@@ -242,6 +230,11 @@ export const adminMethods = {
         const log = (await this.state.storage.get('admin_log')) || [];
         return json({ ok: true, log });
       }
+
+      // v2.3.1146: live-ops sub-routes (flags/announce) -- auth already
+      // passed above; liveops.js returns null for paths it doesn't own.
+      const lo = await this._liveopsRoutes(request, url, path, json);
+      if (lo) return lo;
 
       return json({ ok: false, error: 'Not found' }, 404);
     } catch (err) {
