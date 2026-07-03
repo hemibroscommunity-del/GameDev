@@ -33,6 +33,8 @@ import { LeaderboardPanel }  from './dash/LeaderboardPanel.jsx';
 import { ClanPanel }         from './dash/ClanPanel.jsx';
 import { FeedbackPanel }     from './dash/FeedbackPanel.jsx';
 import { SettingsPanel }     from './dash/SettingsPanel.jsx';
+/* v2.3.1143: account panel -- Login Key display + device transfer. */
+import { AccountPanel }      from './dash/AccountPanel.jsx';
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 
@@ -431,6 +433,8 @@ const PANELS = {
   clan:         { title: 'Clan',        Component: ClanPanel },
   feedback:     { title: 'Feedback',    Component: FeedbackPanel },
   settings:     { title: 'Settings',    Component: SettingsPanel },
+  /* v2.3.1143: Login Key display + device transfer. */
+  account:      { title: 'Account',     Component: AccountPanel },
   /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
   t2:           { title: 'Weapons',     Component: T2Panel },
 };

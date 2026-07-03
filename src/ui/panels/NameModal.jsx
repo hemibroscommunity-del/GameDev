@@ -1,5 +1,10 @@
 import React from 'react';
 import { BUILD_INFO } from '../BuildBadge.jsx';
+/* v2.3.1143: account login -- "Already have a character?" entry point
+   for a player on a NEW device, who lands on this splash with a fresh
+   silent identity and needs a way in with their saved Login Key before
+   pressing PLAY (which would start binding progress to the fresh one). */
+import { AccountModal } from '../account/AccountModal.jsx';
 import { PANTS_CATALOG, SHOES_CATALOG, SKIN_CATALOG, setPants, setShoes, setSkin } from '@/rendering/playerSkins.js';
 import { FACIALHAIR_CATALOG, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { FACIALHAIR_COLOR_CATALOG, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -128,6 +133,8 @@ export function NameModal(props) {
     var _colorStrip = React.useRef(null);
     var _ipS = React.useState({ p: 1, n: 1 }), itemPg = _ipS[0], setItemPg = _ipS[1];
     var _cpS = React.useState({ p: 1, n: 1 }), colorPg = _cpS[0], setColorPg = _cpS[1];
+    /* v2.3.1143: Login Key overlay toggle (self-contained -- no BroTown prop). */
+    var _acS = React.useState(false), showAccount = _acS[0], setShowAccount = _acS[1];
     /* Item-ALIGNED page metrics: pages map to whole tiles (perView = how many
        tiles fit a viewport) so the last page always has real tiles -- no blank
        trailing page from a few px of overflow. */
@@ -472,7 +479,24 @@ export function NameModal(props) {
         borderRadius: 12,
         cursor: 'pointer'
       }
-    }), /*#__PURE__*/React.createElement("div", {
+    }), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1143: returning-player door.  Text link under PLAY -- the
+         quiet counterpart to the big CTA, for the player who already
+         has a character and just needs to enter their Login Key. */
+      type: 'button',
+      onClick: function () { setShowAccount(true); },
+      style: {
+        marginTop: 4,
+        background: 'none',
+        border: 'none',
+        color: 'var(--txt2)',
+        fontFamily: 'Source Sans 3, sans-serif',
+        fontSize: 14,
+        textDecoration: 'underline',
+        cursor: 'pointer',
+        padding: '6px 0'
+      }
+    }, "Already have a character? Log in with your Login Key"), /*#__PURE__*/React.createElement("div", {
       /* v2.3.797: build tag moved out of the header to the scroll's tail
          end (header px now belongs to the drawer). */
       style: {
@@ -482,5 +506,7 @@ export function NameModal(props) {
         letterSpacing: '.06em',
         textAlign: 'center'
       }
-    }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)));
+    }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
+      onClose: function () { setShowAccount(false); }
+    }));
 }

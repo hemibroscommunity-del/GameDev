@@ -76,6 +76,9 @@ import { hardeningMethods } from './hardening.js';
 // sessions on the validate-at-commit core (the gift handshake in
 // trade.js stays untouched for old clients; see trade2.js header).
 import { trade2Methods } from './trade2.js';
+// v2.3.1143: account-login pre-flight -- read-only Login Key check so
+// the client can validate a typed key before switching identity.
+import { accountMethods } from './account.js';
 
 export default {
   async fetch(request, env) {
@@ -134,6 +137,15 @@ export default {
     if (url.pathname.startsWith('/api/arena')) {
       const arenaRoom = url.searchParams.get('room') || 'brotown-1';
       return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(arenaRoom)).fetch(request);
+    }
+
+    // v2.3.1143: account-login pre-flight (Login Key check).  Lives in
+    // the GameRoom because auth:<id>/rpg:<id> records are per-room DO
+    // storage.  Read-only endpoint -- see account.js header for why the
+    // client must pre-flight instead of blind write+reload.
+    if (url.pathname.startsWith('/api/account')) {
+      const acctRoom = url.searchParams.get('room') || 'brotown-1';
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(acctRoom)).fetch(request);
     }
 
     if (url.pathname.startsWith('/api/feedback')) {
@@ -4586,6 +4598,10 @@ export class GameRoom {
     if (url.pathname.startsWith('/api/arena')) {
       return this._arenaFetch(request);
     }
+    // v2.3.1143: account-login pre-flight -- see account.js.
+    if (url.pathname.startsWith('/api/account')) {
+      return this._accountFetch(request);
+    }
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 426 });
     }
@@ -5865,3 +5881,5 @@ Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.
 Object.assign(GameRoom.prototype, trade2Methods);
+// v2.3.1143: account-login pre-flight -- see account.js.
+Object.assign(GameRoom.prototype, accountMethods);
