@@ -912,6 +912,11 @@ export function PartyPanel(props) {
     }, b.playerName, " bet ", b.amount, "G on ", b.targetName);
   }))), (arenaTournament === null || arenaTournament === void 0 ? void 0 : arenaTournament.status) === 'complete' && arenaBets.length > 0 && function (_arenaTournament$cham) {
     var S = stateRef.current;
+    /* v2.3.1128: server-settled sponsorship -- stakes escrow at
+       placement and pay off the server-observed result
+       (arena_stake_result in gameEvents.js); the local pot-split
+       mint below stays only for old workers. */
+    if (S._serverCaps && S._serverCaps.sponsor) return null;
     if (S._betsResolved === arenaTournament.id) return null;
     S._betsResolved = arenaTournament.id;
     var myBets = arenaBets.filter(function (b) {
@@ -1167,6 +1172,9 @@ export function PartyPanel(props) {
     }, b.playerId === stateRef.current.myId ? 'You' : b.playerId.slice(0, 4), " \u2192 ", b.targetName, ": ", b.amount, "G");
   }))), arenaTournament && arenaTournament.status === 'complete' && arenaTournament.champion && function () {
     var S = stateRef.current;
+    /* v2.3.1128: server-settled sponsorship -- see the pot-split gate
+       above; this 2x champion mint is the same legacy-only fallback. */
+    if (S._serverCaps && S._serverCaps.sponsor) return null;
     /* Check if we have a winning bet */
     if (!S._betPayoutChecked || S._betPayoutChecked !== arenaTournament.id) {
       S._betPayoutChecked = arenaTournament.id;
@@ -1308,6 +1316,25 @@ export function PartyPanel(props) {
         var S2 = stateRef.current,
           R = S2.rpg;
         if (!R || !arenaBetTarget || R.coins < arenaBetAmount) return;
+        /* v2.3.1128: server-settled sponsorship (GDD §44).  The worker
+           escrows the stake against the open current-round match
+           containing the picked gladiator and pays 3x off the
+           server-observed result; ack/outcome popups arrive via
+           arena_stake_placed / arena_stake_result (gameEvents.js).
+           The local debit + 1.8x self-mint below stay only for old
+           workers. */
+        if (S2._serverCaps && S2._serverCaps.sponsor && S2.channel) {
+          try {
+            S2.channel.send({ type: 'broadcast', event: 'arena_sponsor', payload: { targetId: arenaBetTarget, amount: arenaBetAmount } });
+          } catch (e) {}
+          setArenaBets(function (prev) {
+            return [].concat(_toConsumableArray(prev), [{ playerId: S2.myId, amount: arenaBetAmount, targetPlayerId: arenaBetTarget, round: arenaTournament.round, ts: Date.now(), _serverStake: true, _resolved: true }]);
+          });
+          if (!S2.stats._betsMade) S2.stats._betsMade = 0;
+          S2.stats._betsMade++;
+          BT_AUDIO.beep(600, 0.05, 0.08, 'sine');
+          return;
+        }
         R.coins -= arenaBetAmount;
         if (R._compStats) R._compStats.totalGoldSpent += arenaBetAmount;
         var bet = {
@@ -1351,6 +1378,9 @@ export function PartyPanel(props) {
     }, "\uD83C\uDFB2 Place Bet")));
   }(), function () {
     var S = stateRef.current;
+    /* v2.3.1128: server-settled sponsorship -- the 1.8x self-mint
+       below is legacy-only (see the caps gate on placement above). */
+    if (S._serverCaps && S._serverCaps.sponsor) return null;
     if (arenaTournament && arenaBets.length > 0) {
       var lastBet = arenaBets[arenaBets.length - 1];
       /* Check if the round the bet was for has completed */

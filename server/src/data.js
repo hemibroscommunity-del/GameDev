@@ -149,3 +149,23 @@ export const WOODWORKING_TIERS = {
       voidtimber:   {minLvl:91,slots:2, wood:'void_timber',  woodCost:22, goldCost:3200, tierMult:7.04, statReq:180},
       worldbreaker: {minLvl:96,slots:2, wood:'voidwood',     woodCost:25, goldCost:4200, tierMult:7.84, statReq:190},
     };
+
+/* v2.3.1128: guild-quest ladder + valid guild skills (Wave 2 PR11).
+ *   GUILD_QUESTS <-> src/data/gameSystems.js GUILD_QUESTS (index order
+ *   IS the ladder -- claims count under 'guild_claims:<pid>' indexes
+ *   into this array; never reorder, only append)
+ *   GUILD_SKILLS <-> src/data/gameSystems.js SKILL_GUILDS keys        */
+export const GUILD_SKILLS = [
+  'woodcutting', 'fishing', 'mining', 'farming', 'cooking',
+  'blacksmithing', 'woodworking', 'gemCutting', 'enchanting', 'trapping',
+];
+export const GUILD_QUESTS = [
+  { checkLvl: 5,   gold: 30,   ap: 10 },
+  { checkLvl: 15,  gold: 80,   ap: 25 },
+  { checkLvl: 30,  gold: 150,  ap: 40 },
+  { checkLvl: 50,  gold: 300,  ap: 75 },
+  { checkLvl: 70,  gold: 500,  ap: 150 },
+  { checkLvl: 90,  gold: 800,  ap: 250 },
+  { checkLvl: 100, gold: 1200, ap: 400 },
+  { checkLvl: 150, gold: 2000, ap: 750 },
+];

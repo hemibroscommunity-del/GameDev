@@ -49,6 +49,14 @@ export const ARENA = {
   GATHER_MS: 60000,        // start timer from the first join
   MATCH_MS: 180000,        // per-match shot-clock (duel.expiresAt)
   STALE_ENTRY_MS: 600000,  // orphaned entry age before the sweep refunds
+  // v2.3.1128 (PR11): sponsorship -- 3x stakes on matches (GDD §44).
+  // A won stake mints 2x extra from the house (same deliberate faucet
+  // posture as CHAMPION_REWARD; tune STAKE_MULT to change it).  A lost
+  // stake goes to the WINNING competitor, not the house.
+  STAKE_MIN: 10,           // mirrors client ARENA_BET_MIN
+  STAKE_MAX: 5000,         // mirrors client ARENA_BET_MAX
+  STAKE_MULT: 3,           // GDD §44 "sponsorship pays triple"
+  STALE_STAKE_MS: 600000,  // orphaned stake age before the sweep refunds
 };
 
 export const arenaMethods = {
@@ -90,14 +98,42 @@ export const arenaMethods = {
   },
 
   // Old arena.js sanitizeTournament shape (what PartyPanel renders).
+  // v2.3.1128: PR10 shipped a shape that only PARTIALLY matched it --
+  // status said 'running' where the client gates on 'active', players
+  // carried playerId/playerName where the betting UI reads id/name/
+  // level/color, and recentMatches/champion.id didn't exist, so the
+  // whole spectator-betting surface silently rendered nothing against
+  // the new worker.  Emit a SUPERSET of both shapes: the old
+  // sanitizeTournament fields (id/name/level/color/wins, status
+  // 'active'|'complete', recentMatches with winnerId, champion.id) AND
+  // the PR10 fields (playerId/playerName, matches[] with ids -- which
+  // sponsorship targets).
   _arenaWire() {
     const t = this._arena;
     if (!t || t.status === 'gathering') return null;
+    const wireP = (p) => {
+      const ps = this.playerState[p.playerId];
+      return {
+        playerId: p.playerId, playerName: p.playerName,
+        id: p.playerId, name: p.playerName,
+        level: (ps && ps.level) || 1,
+        color: (ps && ps.color) || '#f5c542',
+        eliminated: !!p.eliminated,
+        wins: t.matches.filter((m) => m.winner === p.playerId).length,
+      };
+    };
     return {
-      id: t.id, status: t.status, round: t.round,
-      players: t.players.map((p) => ({ playerId: p.playerId, playerName: p.playerName, eliminated: !!p.eliminated })),
+      id: t.id,
+      status: t.status === 'running' ? 'active' : t.status,
+      round: t.round,
+      maxRounds: Math.ceil(Math.log2(Math.max(2, t.players.length))),
+      playerCount: t.players.length,
+      remaining: t.players.filter((p) => !p.eliminated).length,
+      players: t.players.map(wireP),
       matches: t.matches.map((m) => ({ id: m.id, round: m.round, p1: m.a, p2: m.b, p1Name: m.aName, p2Name: m.bName, winner: m.winner || null, status: m.winner ? 'complete' : (m.active ? 'active' : 'pending') })),
-      champion: t.champion || null,
+      currentMatches: t.matches.filter((m) => !m.winner && m.round === t.round).map((m) => ({ id: m.id, round: m.round, p1: m.a, p2: m.b })),
+      recentMatches: t.matches.filter((m) => m.winner).slice(-10).map((m) => ({ id: m.id, round: m.round, p1: m.a, p2: m.b, winnerId: m.winner, loserId: m.a === m.winner ? m.b : m.a, ts: 0 })),
+      champion: t.champion ? { ...t.champion, id: t.champion.playerId, name: t.champion.playerName } : null,
     };
   },
 
@@ -230,6 +266,77 @@ export const arenaMethods = {
     return Math.random() < 0.5 ? m.a : m.b;
   },
 
+  /* v2.3.1128 (PR11): sponsorship.  Spectators stake gold on a
+   * competitor in an unresolved match; the stake escrows immediately
+   * and settles ONLY off the server-observed result in
+   * _arenaOnMatchResolved -- never off the legacy arena_bet relay,
+   * which remains cosmetic display (handoff item A's danger note).
+   * One stake per sponsor per match; competitors can't sponsor their
+   * own match.  Runs inside one webSocketMessage event awaiting only
+   * storage, so the winner-check at the top can't go stale mid-way
+   * (input gates). */
+  async _handleArenaSponsor(session, payload) {
+    const err = (code, message) => {
+      const ws = this._wsBySessionId(session.id);
+      if (ws) { try { ws.send(JSON.stringify({ type: 'arena_stake_error', payload: { code, message } })); } catch (e) {} }
+    };
+    const t = this._arena;
+    if (!t || t.status !== 'running') return err('no-tournament', 'No tournament running');
+    const targetId = payload && payload.targetId;
+    // matchId optional: the round-bet UI picks a PLAYER, so resolve
+    // the open current-round match containing them when it's omitted.
+    let m;
+    if (payload && payload.matchId) {
+      m = t.matches.find((x) => x.id === payload.matchId);
+    } else {
+      m = t.matches.find((x) => !x.winner && x.round === t.round && (x.a === targetId || x.b === targetId));
+    }
+    if (!m || m.winner) return err('no-match', 'That match is not open for stakes');
+    if (targetId !== m.a && targetId !== m.b) return err('bad-target', 'That gladiator is not in this match');
+    if (session.id === m.a || session.id === m.b) return err('own-match', 'Competitors cannot sponsor their own match');
+    const amount = Math.floor(Number(payload && payload.amount));
+    if (!Number.isFinite(amount) || amount < ARENA.STAKE_MIN || amount > ARENA.STAKE_MAX) {
+      return err('bad-amount', 'Stake ' + ARENA.STAKE_MIN + '-' + ARENA.STAKE_MAX + 'g');
+    }
+    const key = 'arena_stake:' + t.id + ':' + m.id + ':' + session.id;
+    if (await this.state.storage.get(key)) return err('already-staked', 'One stake per match');
+    const debit = await this._escrowDebitGold(session.id, amount, 'arenastake:' + t.id + ':' + m.id + ':' + session.id);
+    if (!debit.ok) return err('no-gold', 'Need ' + amount + 'g');
+    await this.state.storage.put(key, { tid: t.id, matchId: m.id, sponsorId: session.id, targetId, amount, ts: Date.now() });
+    const ws = this._wsBySessionId(session.id);
+    if (ws) {
+      try {
+        ws.send(JSON.stringify({ type: 'arena_stake_placed', payload: { matchId: m.id, targetId, targetName: targetId === m.a ? m.aName : m.bName, amount } }));
+      } catch (e) {}
+    }
+  },
+
+  /* Stake settlement for one resolved match.  Fire-and-forget from
+   * _arenaOnMatchResolved; converges via opId idempotency + the
+   * stamp-checking sweep (a crash between credit and delete cannot
+   * double-pay).  Backed the winner -> sponsor gets STAKE_MULT x.
+   * Backed the loser -> the stake goes to the winning competitor. */
+  async _arenaSettleStakes(tid, matchId, winnerId) {
+    try {
+      const stakes = await this.state.storage.list({ prefix: 'arena_stake:' + tid + ':' + matchId + ':' });
+      for (const [k, rec] of stakes) {
+        const won = rec.targetId === winnerId;
+        if (won) {
+          await this._creditPlayer(rec.sponsorId, { opId: 'arenastakewin:' + tid + ':' + matchId + ':' + rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: rec.amount * ARENA.STAKE_MULT }, note: 'sponsorship paid off' });
+        } else {
+          await this._creditPlayer(winnerId, { opId: 'arenastakeloss:' + tid + ':' + matchId + ':' + rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: rec.amount }, note: 'claimed a failed sponsorship' });
+        }
+        await this.state.storage.delete(k);
+        const ws = this._wsBySessionId(rec.sponsorId);
+        if (ws) {
+          try {
+            ws.send(JSON.stringify({ type: 'arena_stake_result', payload: { matchId, targetId: rec.targetId, won, amount: rec.amount, payout: won ? rec.amount * ARENA.STAKE_MULT : 0 } }));
+          } catch (e) {}
+        }
+      }
+    } catch (e) { /* sweep repairs */ }
+  },
+
   /* Called from _resolveDuel when the duel carries an arenaMatch tag --
    * kill, forfeit, disconnect-grace expiry, and shot-clock timeout all
    * funnel here.  Never called with a client-supplied winner. */
@@ -240,6 +347,9 @@ export const arenaMethods = {
     if (!m || m.winner) return;
     m.winner = winnerId;
     m.active = false;
+    // v2.3.1128: settle this match's sponsorship stakes off the
+    // server-observed winner (fire-and-forget; opId-idempotent).
+    this._arenaSettleStakes(t.id, m.id, winnerId).catch(() => {});
     for (const pid of [m.a, m.b]) {
       const ps = this.playerState[pid];
       if (ps && ps._arenaMatch === m.id) delete ps._arenaMatch;
@@ -315,6 +425,29 @@ export const arenaMethods = {
         if (now - (rec.paidAt || 0) < ARENA.STALE_ENTRY_MS) continue;
         if (await this._opSeen('arenapot:' + tid)) { await this.state.storage.delete(k); continue; }
         await this._creditPlayer(pid, { opId: 'arenarefund:' + tid + ':' + pid, source: 'arena', kind: 'gold', payload: { amount: rec.wager || ARENA.ENTRY_FEE }, note: 'arena voided (server restart)' });
+        await this.state.storage.delete(k);
+      }
+    } catch (e) { /* best-effort */ }
+  },
+
+  /* v2.3.1128 (PR11): orphaned-stake refund, the entry-sweep pattern.
+   * A deploy wipes the in-memory bracket while stake escrows persist.
+   * If the match DID settle (either win/loss opId stamped), only the
+   * record is deleted -- never refund on top of a payout (rule 6). */
+  async _arenaStakeSweep() {
+    const now = Date.now();
+    if (this._lastStakeSweep && now - this._lastStakeSweep < 300000) return;
+    this._lastStakeSweep = now;
+    try {
+      const stakes = await this.state.storage.list({ prefix: 'arena_stake:' });
+      for (const [k, rec] of stakes) {
+        if (this._arena && this._arena.id === rec.tid) continue; // live tournament
+        if (now - (rec.ts || 0) < ARENA.STALE_STAKE_MS) continue;
+        const settled = (await this._opSeen('arenastakewin:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId))
+          || (await this._opSeen('arenastakeloss:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId));
+        if (!settled) {
+          await this._creditPlayer(rec.sponsorId, { opId: 'arenastakerefund:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: rec.amount }, note: 'sponsorship voided (server restart)' });
+        }
         await this.state.storage.delete(k);
       }
     } catch (e) { /* best-effort */ }

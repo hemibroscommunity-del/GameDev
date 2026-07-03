@@ -240,6 +240,17 @@ export function GuildPanel(props) {
       onClick: function onClick() {
         var R = stateRef.current.rpg,
           S = stateRef.current;
+        /* v2.3.1128: server-verified guild quests.  The worker checks
+           the ladder + skill level against ITS OWN lifeSkills numbers
+           and pays gold/AP authoritatively; completion visuals arrive
+           via guild_quest_result (gameEvents.js).  The local mint
+           below stays only for old workers. */
+        if (S._serverCaps && S._serverCaps.guilds && S.channel) {
+          try {
+            S.channel.send({ type: 'broadcast', event: 'guild_quest_turn_in', payload: { skill: key } });
+          } catch (e) {}
+          return;
+        }
         if (!R._guildProgress) R._guildProgress = {};
         var completed = R._guildProgress[key] || 0;
         R._guildProgress[key] = completed + 1;

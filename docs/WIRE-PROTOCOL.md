@@ -214,6 +214,8 @@ Summary of the wire-visible changes:
 | `clan_state` / `clan_error` / `clan_war_kill` / `clan_war_end` | Clan registry echo + war referee | clans.md |
 | `arena_match_start` / `arena_match_result` / `arena_tournament_complete` | Arena bracket (matches are duels) | arena.md |
 | `dungeon_started` / `dungeon_wave` / `dungeon_boss` / `dungeon_complete` / `dungeon_error` | Instanced dungeons (private; `dungeon_start` c→s case) | dungeons.md |
+| `arena_stake_placed` / `arena_stake_result` / `arena_stake_error` | Sponsorship stakes (private; `arena_sponsor` c→s case; legacy `arena_bet` relay stays cosmetic) | sponsorship.md |
+| `guild_quest_result` / `guild_quest_error` | Guild-quest turn-ins (private; `guild_quest_turn_in` c→s case) | guild-quests.md |
 
 **Marketplace HTTP (worker routes `/api/market/*` to the GameRoom now;
 the standalone Marketplace DO is retired from routing):**

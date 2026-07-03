@@ -10,7 +10,7 @@
    - React setters + the effect-scoped _buildServerPile arrive via `deps`
      (destructured to the original names so the body is untouched).
    S is stateRef.current. */
-import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, updateZoneDimensions, generateZoneMap, trainDefense } from '@/data/index.js';
+import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { rollMonsterShard } from '@/data/shards.js';
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
@@ -326,6 +326,113 @@ export function processGameEvent(type, payload, S, deps) {
               S.dmgNumbers.push({
                 x: S.player.x, y: S.player.y - 30,
                 text: (payload && payload.message) || 'Dungeon unavailable',
+                color: '#ff5e6c', ts: Date.now()
+              });
+              BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+              break;
+            }
+          case 'arena_stake_placed':
+            {
+              /* v2.3.1128: the worker escrowed our sponsorship stake
+                 (gold already debited server-side; the player_state
+                 echo shows it).  Private ack -- just the confirm UI. */
+              if (!payload) break;
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 30,
+                text: 'Staked ' + (payload.amount || 0) + 'G on ' + (payload.targetName || 'a gladiator'),
+                color: '#f5c542', ts: Date.now()
+              });
+              break;
+            }
+          case 'arena_stake_result':
+            {
+              /* v2.3.1128: server-observed match settled our stake --
+                 3x credit already applied via _creditPlayer (or the
+                 stake went to the winning competitor).  Visuals only. */
+              if (!payload) break;
+              var _stR = S.rpg;
+              if (payload.won) {
+                if (_stR && _stR._compStats) _stR._compStats.totalGoldEarned += payload.payout || 0;
+                if (!S.stats._betsWon) S.stats._betsWon = 0;
+                S.stats._betsWon++;
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 50,
+                  text: 'SPONSORSHIP PAID! +' + (payload.payout || 0) + 'G',
+                  color: '#3dd497', ts: Date.now()
+                });
+                BT_AUDIO.collect();
+              } else {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 50,
+                  text: 'Stake lost (-' + (payload.amount || 0) + 'G)',
+                  color: '#ff5e6c', ts: Date.now()
+                });
+              }
+              if (_stR) setRpgState(_objectSpread({}, _stR));
+              break;
+            }
+          case 'arena_stake_error':
+            {
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 30,
+                text: (payload && payload.message) || 'Stake rejected',
+                color: '#ff5e6c', ts: Date.now()
+              });
+              BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+              break;
+            }
+          case 'guild_quest_result':
+            {
+              /* v2.3.1128: server-verified guild quest turn-in.  Gold
+                 and AP are already applied server-side (authoritative
+                 player_state echo); here we adopt the server's ladder
+                 index into the client-owned _guildProgress UI field and
+                 replay the completion visuals the old local mint drew
+                 (GuildPanel).  ADOPT, don't increment -- a re-sent
+                 result can't double-advance the ladder. */
+              if (!payload || !payload.skill) break;
+              var _gqR = S.rpg;
+              if (!_gqR) break;
+              if (!_gqR._guildProgress) _gqR._guildProgress = {};
+              _gqR._guildProgress[payload.skill] = (payload.index || 0) + 1;
+              var _gqLvl = (_gqR.lifeSkills && _gqR.lifeSkills[payload.skill] && _gqR.lifeSkills[payload.skill].level) || 1;
+              var _gqRank = getGuildRank(_gqLvl);
+              if (!_gqR._titles) _gqR._titles = [];
+              var _gqTitle = _gqRank.title + ' ' + payload.skill.replace(/([A-Z])/g, ' $1').trim();
+              if (!_gqR._titles.includes(_gqTitle)) _gqR._titles.push(_gqTitle);
+              if (_gqR._compStats) {
+                _gqR._compStats.totalGoldEarned += payload.gold || 0;
+                _gqR._compStats.questsCompleted++;
+              }
+              if (!S.stats._guildRanksEarned) S.stats._guildRanksEarned = 0;
+              S.stats._guildRanksEarned++;
+              if (_gqRank.rank >= 5) {
+                if (!S.stats._guildMasterCount) S.stats._guildMasterCount = 0;
+                S.stats._guildMasterCount++;
+              }
+              var _gqG = SKILL_GUILDS[payload.skill] || {};
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 40,
+                text: (_gqG.name || 'Guild') + ' quest complete!',
+                color: _gqG.color || '#f5c542', ts: Date.now()
+              });
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 25,
+                text: '+' + (payload.gold || 0) + 'G +' + (payload.ap || 0) + 'AP',
+                color: '#f5c542', ts: Date.now()
+              });
+              BT_AUDIO.collect();
+              setRpgState(_objectSpread({}, _gqR));
+              try {
+                localStorage.setItem('bt_rpg', JSON.stringify(_gqR));
+              } catch (e) {}
+              break;
+            }
+          case 'guild_quest_error':
+            {
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 30,
+                text: (payload && payload.message) || 'Turn-in rejected',
                 color: '#ff5e6c', ts: Date.now()
               });
               BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');

@@ -181,20 +181,24 @@ extended.
 
 Each entry: what, why, the shape to build, and dangers. Higher = sooner.
 
-### A. Arena sponsorship (PR-B2 — spec is ready)
-3× stakes on arena matches (GDD §44 "sponsorship"; the client's payout
-math is already 3×). Escrow stakes to `arena_stake:<tid>:<matchId>:<pid>`
-via `_escrowDebitGold`; pay 3× on the server-observed match result
-(`_arenaOnMatchResolved`), stake-to-competitor on loss; sponsor ≠
-participant; one stake per sponsor per match; oplog-checked sweep.
-~300 LOC. Danger: pays must key off the SERVER result, never the
-`arena_bet` relay messages the old UI broadcasts.
+### A. Arena sponsorship — SHIPPED v2.3.1128 (PR-B2)
+Built as specced: `_handleArenaSponsor` / `_arenaSettleStakes` /
+`_arenaStakeSweep` in gladiator.js, spec in `docs/specs/sponsorship.md`.
+Also fixed en route: PR10's `_arenaWire` only partially matched the old
+sanitizeTournament contract (status 'running' vs 'active', playerId vs
+id/name/level/color, no recentMatches/champion.id) so the whole
+spectator-betting UI rendered nothing — the wire now emits a SUPERSET
+of both shapes; keep it that way. Successor follow-ups: tournament-
+champion blind bets (pot-split/2× UIs) stay caps-gated off — they need
+a champion_stake pool settled in `_arenaCrown`; stakes are private
+(no spectator stake board yet).
 
-### B. Guild-quest verification
-Life-skill guild quests self-credit at `GuildPanel.jsx:246-247`. Reuse
-the PR5 declarative-objective pattern: put objectives in a server data
-table, verify at a `guild_quest_turn_in` handler, pay via `_creditPlayer`.
-Most signals are life-skill levels/counters the server already owns.
+### B. Guild-quest verification — SHIPPED v2.3.1128
+Built as specced: `server/src/guilds.js`, ladder in data.js
+(`GUILD_QUESTS`/`GUILD_SKILLS`), claims under `guild_claims:<pid>`,
+spec in `docs/specs/guild-quests.md`. Only LEVEL objectives exist;
+count-based guild work ("cook 50 meals") needs a server counter via
+the `_questKills` sole-writer pattern — never read client `_compStats`.
 
 ### C. Threat machine (red-skull PvP, GDD §19)
 Interim consent observer already handles pvp_threat/threat_response pairs
