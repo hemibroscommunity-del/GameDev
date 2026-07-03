@@ -63,6 +63,9 @@ extended.
    | `admin_log` | capped ring (100) of mutating admin ops | admin.md |
    | `cadence:<scope>:<subject>` | `{period, streak, ts}` lazy daily/weekly settle | cadence.md |
    | `jackpot:draw` | `{period, pool, entries}` weekly pool (escrowed) | cadence.md |
+   | `liveflags` | `{name: bool\|num}` live-ops flags (kill switches, xp_mult) | liveops.md |
+   | `motd` | `{text, ts}` sticky announcement, delivered on join | liveops.md |
+   | `metrics:<yyyymmdd>` | daily economy snapshot (ring of 30) | liveops.md |
 
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every

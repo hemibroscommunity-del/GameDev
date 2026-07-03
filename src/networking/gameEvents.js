@@ -515,6 +515,37 @@ export function processGameEvent(type, payload, S, deps) {
               }
               break;
             }
+          case 'server_announce':
+            {
+              /* v2.3.1150: operator announcement (PRIVILEGED -- only the
+                 worker can emit it; riding the un-privileged 'chat'
+                 relay would let any client impersonate the server).
+                 Sent as a broadcast from /api/admin/announce, and with
+                 payload.motd:true on join when a sticky MOTD is set.
+                 Pushed BOTH to the chat log (future mail/chat panel)
+                 and as an on-screen banner -- the chat log currently
+                 has no renderer (pre-existing gap), so the dmgNumbers
+                 banner is the visible surface (gear_locked precedent). */
+              var _annText = (payload && payload.text) || '';
+              if (!_annText) break;
+              S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [{
+                id: 'sys-' + Date.now(),
+                name: '',
+                text: '📢 ' + _annText,
+                ts: Date.now()
+              }]);
+              if (setChatLog) setChatLog(_toConsumableArray(S.chatLog));
+              S.dmgNumbers.push({
+                x: S.player.x,
+                y: S.player.y - 55,
+                text: '📢 ' + (_annText.length > 60 ? _annText.slice(0, 57) + '…' : _annText),
+                color: '#f5c542',
+                ts: Date.now(),
+                ttl: 5,
+              });
+              try { BT_AUDIO.beep(660, 0.08, 0.1, 'sine'); } catch (e) {}
+              break;
+            }
           case 'player_swing':
             {
               if (payload.id && S.others[payload.id]) {

@@ -78,6 +78,9 @@ import { adminMethods } from './admin.js';
 // v2.3.1149: time-cadence framework -- lazy daily/weekly settlement
 // under the no-alarms constraint (see cadence.js header).
 import { cadenceMethods } from './cadence.js';
+// v2.3.1150: live-ops rail -- flags/kill-switches, announcements/MOTD,
+// daily economy metrics (see liveops.js header).
+import { LIVEOPS, liveopsMethods } from './liveops.js';
 // v2.3.1132 (PR16): two-sided trade window -- both-stage-both-confirm
 // sessions on the validate-at-commit core (the gift handshake in
 // trade.js stays untouched for old clients; see trade2.js header).
@@ -241,6 +244,10 @@ const PRIVILEGED_EVENTS = new Set([
   // v2.3.1149: jackpot pool state is private; the draw result is a
   // server-only broadcast (forging it would announce fake winners).
   'jackpot_state', 'jackpot_result',
+  // v2.3.1150: operator announcements -- deliberately NOT riding the
+  // un-privileged 'chat' relay (any client could impersonate the
+  // server there); this type is forgeable only by the worker.
+  'server_announce',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
   // Combat resolution
@@ -3793,7 +3800,10 @@ export class GameRoom {
     const shard = this._rollShardForKill(zone);
     // v2.3.1141: weapon rides the pile; only rolled when someone can
     // actually claim it (the claim is recipient-gated below).
-    const weapon = (recipients && recipients.length > 0)
+    // v2.3.1150: disable_weapon_drops kill switch -- caps.weaponDrops
+    // stays true so clients do NOT fall back to legacy local minting;
+    // drops just stop rolling until the flag clears.
+    const weapon = (recipients && recipients.length > 0 && !this._flagOn('disable_weapon_drops'))
       ? this._rollWeaponDropForKill(zone, monster) : null;
     if (!skull && (!recipients || recipients.length === 0) && monster.gold <= 0 && !shard && !weapon) {
       // Nothing of value would drop -- skip the pile entirely.
@@ -4591,7 +4601,11 @@ export class GameRoom {
         // echoes it, so the progress UI updates on the same tick.
         this._creditQuestObjective(rid, 'kill', m.arch);
         const share = shares[rid] || 0;
-        const xpForRecipient = Math.round((m.xp || 0) * share);
+        // v2.3.1150: xp_mult live-ops flag -- the "2x weekend" lever.
+        // Clamped [1,4] at read; monster_kill's payload.xp stays base
+        // (client prediction is corrected by the player_state echo,
+        // rule 20) while combat_credit carries the multiplied truth.
+        const xpForRecipient = Math.round((m.xp || 0) * share * this._flagNum('xp_mult', 1, LIVEOPS.XP_MULT_MIN, LIVEOPS.XP_MULT_MAX));
         if (xpForRecipient <= 0) continue;
         const { leveled, levelsGained, newLevel } = this._addCombatXp(recipPs, xpForRecipient);
         // Level-up restores all three pools to max (mirrors the client's
@@ -5049,6 +5063,16 @@ export class GameRoom {
         await this._cadenceLoginReward(msg.id);
         await this._jackpotMaybeResolve();
         this._jackpotSend(msg.id, { playerId: msg.id });
+        // v2.3.1150: sticky MOTD delivery + the lazy daily economy
+        // snapshot (fire-and-forget; also runs from the tick slot so a
+        // room that stays occupied across midnight still records).
+        {
+          const _motd = await this.state.storage.get('motd');
+          if (_motd && _motd.text) {
+            try { ws.send(JSON.stringify({ type: 'server_announce', payload: { text: _motd.text, motd: true, ts: _motd.ts } })); } catch (e) {}
+          }
+          this._metricsMaybe(Date.now()).catch(() => {});
+        }
         // v2.3.1121: duel bookkeeping on (re)join -- clear a reconnect
         // grace window if this player dropped mid-duel, and kick the
         // rate-limited orphaned-wager sweep (fire-and-forget; refunds
@@ -5083,6 +5107,14 @@ export class GameRoom {
         const zoneMonsters = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneMonsters(joinZone) : [];
         const zoneNodes = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneNodes(joinZone) : [];
         const zoneLootForJoin = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._zoneLootForWire(joinZone) : [];
+        // v2.3.1150: warm the live-ops flag cache before anything gated
+        // can run, and let operator flags OVERRIDE the baked caps
+        // (spread last).  Empty flags = identity, so deploy-order
+        // safety (rule 19) is untouched.  WARNING: forcing a cap to
+        // false re-enables legacy client fallbacks for some systems --
+        // the disable_* server switches are the normal kill lever
+        // (docs/specs/liveops.md safety table).
+        const _liveFlags = await this._liveFlagsEnsure();
         ws.send(JSON.stringify({
           type: 'state_sync',
           // v2.3.1119: capability advertisement.  Clients gate their
@@ -5090,7 +5122,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, ..._liveFlags },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -5841,12 +5873,15 @@ export class GameRoom {
       // storage read per ~60s per DO lifetime (the _opPruneMaybe
       // pattern).  Joins and deposits also resolve lazily, so this
       // slot only matters for a room that stays occupied across a
-      // week boundary.
+      // week boundary.  v2.3.1150: the daily metrics snapshot rides
+      // the same slot (same reasoning: covers a room occupied across
+      // midnight with no joins).
       {
         const nowJp = Date.now();
         if (!this._lastJackpotCheck || nowJp - this._lastJackpotCheck > 60000) {
           this._lastJackpotCheck = nowJp;
           this._jackpotMaybeResolve(nowJp).catch(() => {});
+          this._metricsMaybe(nowJp).catch(() => {});
         }
       }
 
@@ -6043,3 +6078,5 @@ Object.assign(GameRoom.prototype, botfpMethods);
 Object.assign(GameRoom.prototype, adminMethods);
 // v2.3.1149: time-cadence framework (daily reward + jackpot) -- see cadence.js.
 Object.assign(GameRoom.prototype, cadenceMethods);
+// v2.3.1150: live-ops rail -- see liveops.js.
+Object.assign(GameRoom.prototype, liveopsMethods);

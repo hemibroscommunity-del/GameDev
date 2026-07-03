@@ -117,6 +117,10 @@ export const cadenceMethods = {
   },
 
   async _handleJackpotDeposit(session, payload) {
+    // v2.3.1150: live-ops kill switch -- deposits stop cold, nothing
+    // debited (the pool and existing entries are untouched and the
+    // draw still resolves on schedule).
+    if (this._flagOn && this._flagOn('disable_jackpot')) return;
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;

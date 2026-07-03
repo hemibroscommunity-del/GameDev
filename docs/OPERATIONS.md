@@ -28,7 +28,12 @@ Who's online, is the world ticking:
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/overview"
 ```
 
-The economy — total gold in the world, richest players, market escrow:
+The economy — total gold in the world, richest players, market escrow.
+Since v2.3.1150 this also shows `history` (the last week of daily
+snapshots), `delta` (how much total gold moved since yesterday), and
+`alert: true` if gold jumped more than 25% in a day — that's the
+signature of a duplication exploit, so if you ever see it, look at the
+`top10` list and the admin log next:
 ```
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/economy"
 ```
@@ -101,6 +106,58 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
 ```
 Restores are themselves safe: the current (broken) save is stashed as a
 `prerestore-` backup first, so you can always restore the restore.
+
+## Talking to your players (announcements)
+
+Send a message every online player sees instantly (a gold "📢" banner):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"text":"Server restarting in 2 minutes!"}' "https://WORKER/api/admin/announce"
+```
+Make it sticky (a message of the day — everyone also sees it when they
+log in, until you clear it):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"text":"Double XP weekend is ON!","sticky":true}' "https://WORKER/api/admin/announce"
+```
+Clear the sticky message:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/announce"
+```
+
+## Live switches (flags) — change the game without a deploy
+
+Flags take effect immediately for everyone, survive deploys, and are
+yours to flip on and off. See what's currently set:
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags"
+```
+
+**Run an XP event** (1 = normal, up to 4 = quadruple XP from monsters):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"xp_mult","value":2}' "https://WORKER/api/admin/flags"
+```
+
+**Turn a broken system off** while you investigate (players stay
+connected; only that feature stops). The switches that exist today:
+`disable_jackpot`, `disable_weapon_drops`, `disable_dungeons`,
+`disable_threats`:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"disable_dungeons","value":true}' "https://WORKER/api/admin/flags"
+```
+
+**Turn any flag back off** (this also ends an XP event):
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags?name=xp_mult"
+```
+
+One caution: flag names that match a *capability* name (like `jackpot`,
+`market`, `trade`, `weaponDrops`) also override what the server tells
+clients it supports — that's an emergency lever with side effects (old
+client fallbacks can wake up). Stick to the `disable_*` switches and
+`xp_mult` unless a PR tells you otherwise.
 
 ## Testing safely
 
