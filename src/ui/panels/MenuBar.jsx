@@ -229,6 +229,19 @@ export function MenuBar(props) {
           });
           return;
         }
+        /* v2.3.1130: server-validated capture.  The worker checks ITS
+           monster hp/range, consumes a basic_trap (they finally
+           matter -- buy them at the vendor), rolls server-side, and
+           removes the monster for everyone.  Outcome popups arrive
+           via pet_capture_result (gameEvents.js); the pet itself
+           rides the authoritative lifeSkills echo.  The local roll
+           below stays for old workers. */
+        if (S._serverCaps && S._serverCaps.pets && S._serverMonsters && S.channel && m.id) {
+          try {
+            S.channel.send({ type: 'broadcast', event: 'pet_capture', payload: { monsterId: m.id } });
+          } catch (e) {}
+          return;
+        }
         var hpPct = m.curHp / m.hp;
         if (hpPct > TRAP_HP_THRESHOLD) {
           S.dmgNumbers.push({
