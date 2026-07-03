@@ -532,8 +532,15 @@ export function updateArrows(S, deps) {
                     var _killGoldR = Math.ceil(_isRareR ? (m.gold || 2) * 10 : (m.gold || m.coins || 2));
                     var _shardH = rollMonsterShard(S.currentZone);
                     S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 15, y: m.y + (Math.random() - 0.5) * 15, coins: _killGoldR, xp: 0, skull: m.type, skullEmoji: '🦴', ts: Date.now(), shard: _shardH });
+                    /* v2.3.1141: server-minted drops (caps.weaponDrops)
+                       supersede this local mint -- legacy-worker fallback
+                       only, same as monsterCombat.js.  NOTE this path's
+                       generous linear table (3%+0.1%/lvl, 60/25/12/3
+                       rarity split) was never reconciled with the §4.6
+                       cubic the melee path uses; the server mint unifies
+                       on the cubic. */
                     var dropChance = Math.min(0.15, 0.03 + (m.level || 1) * 0.001);
-                    if (Math.random() < dropChance) {
+                    if (!(S._serverCaps && S._serverCaps.weaponDrops) && Math.random() < dropChance) {
                       var _zone7 = ZONES[S.currentZone];
                       var _zoneElem2 = _zone7 === null || _zone7 === void 0 ? void 0 : _zone7.element;
                       var dropRoll = Math.random();

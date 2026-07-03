@@ -198,5 +198,102 @@ room.eventBuffer.length = 0;
 await room.webSocketMessage(ws2, JSON.stringify({ type: 'harden_result', payload: { success: true, hardness: 5 } }));
 check('forged harden_result dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'harden_result').length === 0, room.eventBuffer.map((e) => e.type));
 
+// ── 10. v2.3.1141: server-minted weapon drops ──
+// This suite owns the drop tests because the drop mint is the second
+// server quality-roll site (after the forge).  Math.random = () => 0
+// forces the FULL rare chain: drop passes, tier roll 0 -> shift (zone
+// has an element), type -> greatsword, quality roll 0 -> godly.
+check('caps.weaponDrops advertised', sync && sync.caps && sync.caps.weaponDrops === true, sync && sync.caps);
+
+const wdMon = { id: 'wd-1', arch: 'fodder', level: 25, x: 100, y: 100, gold: 5, xp: 5 };
+Math.random = () => 0;
+const wdPile = room._spawnLootForKill('frost', wdMon, 'bp_hd_p', ['bp_hd_p'], { bp_hd_p: 1 });
+Math.random = realRandom;
+check('forced roll mints a weapon on the pile (shift/godly chain)',
+  !!wdPile && !!wdPile.weapon && wdPile.weapon.tier === 'shift' && wdPile.weapon.quality === 'godly'
+  && wdPile.weapon.hardness === 0 && wdPile.weapon.temper === 0 && wdPile.weapon.hardenBonus === null
+  && wdPile.weaponClaimed === false,
+  wdPile && wdPile.weapon);
+check('shift drop takes the zone element, name matches client convention',
+  wdPile.weapon.element1 === 'frost' && wdPile.weapon.element2 === null
+  && wdPile.weapon.name === 'Prismatic Great Sword' && wdPile.weapon.tierMult === 3.0,
+  wdPile.weapon);
+
+// Mystery reveal: the broadcastable serialization must carry presence
+// but NEVER the quality (or the raw blob).
+const wdWire = room._serializePile(wdPile);
+check('wire pile: hasWeapon/tier/type/name, NO quality, NO raw blob',
+  wdWire.hasWeapon === true && wdWire.weaponClaimed === false
+  && wdWire.weaponTier === 'shift' && wdWire.weaponType === 'greatsword'
+  && wdWire.weaponName === 'Prismatic Great Sword'
+  && wdWire.weapon === undefined && !JSON.stringify(wdWire).includes('godly'),
+  wdWire);
+
+// No-drop path: random 0.999 fails the cubic chance at L25; the pile
+// still spawns for its coins, weapon stays null.
+Math.random = () => 0.999;
+const wdNone = room._spawnLootForKill('frost', { id: 'wd-2', arch: 'fodder', level: 25, x: 0, y: 0, gold: 5 }, 'bp_hd_p', ['bp_hd_p'], { bp_hd_p: 1 });
+Math.random = realRandom;
+check('no-drop roll leaves pile.weapon null', !!wdNone && wdNone.weapon === null && room._serializePile(wdNone).hasWeapon === false);
+
+// Claim through the REAL loot_pickup handler: recipient in range
+// stashes the weapon; the private credit is the quality reveal.
+const psHd = room.playerState['bp_hd_p'];
+psHd.z = 'frost'; psHd.x = 100; psHd.y = 100; psHd.dead = false;
+psHd.weaponStash = [];
+room.eventBuffer.length = 0;
+ws.sent.length = 0;
+await room.webSocketMessage(ws, JSON.stringify({ type: 'loot_pickup', payload: { lootId: wdPile.lootId, zone: 'frost' } }));
+const wdCredit = msgsOfType(ws, 'loot_credit')[0];
+check('loot_credit reveals the weapon (quality included) + stashed flag',
+  wdCredit && wdCredit.payload.weapon && wdCredit.payload.weapon.quality === 'godly'
+  && wdCredit.payload.weaponStashed === true && wdCredit.payload.weaponSoldFor === null,
+  wdCredit && wdCredit.payload);
+check('weapon landed in the server-side stash', psHd.weaponStash.length === 1 && psHd.weaponStash[0].quality === 'godly');
+check('pile weapon claim flagged + broadcast carries weaponClaimedNow',
+  wdPile.weaponClaimed === true
+  && room.eventBuffer.some((e) => e.type === 'loot_claimed' && e.payload.weaponClaimedNow === true),
+  room.eventBuffer.map((e) => e.type));
+
+// Second claim can't double-take: the picker already claimed the pile
+// (single-claim gate) and the weapon flag is spent for everyone else.
+ws.sent.length = 0;
+await room.webSocketMessage(ws, JSON.stringify({ type: 'loot_pickup', payload: { lootId: wdPile.lootId, zone: 'frost' } }));
+check('re-claim rejected (single-claim gate holds for the weapon too)',
+  msgsOfType(ws, 'loot_credit').length === 0 && psHd.weaponStash.length === 1);
+
+// Non-recipient can't take a weapon pile.
+Math.random = () => 0;
+const wdPile2 = room._spawnLootForKill('frost', { id: 'wd-3', arch: 'fodder', level: 25, x: 100, y: 100, gold: 5 }, 'bp_hd_p', ['bp_hd_p'], { bp_hd_p: 1 });
+Math.random = realRandom;
+const psPeer = room.playerState['bp_hd_peer'];
+psPeer.z = 'frost'; psPeer.x = 100; psPeer.y = 100; psPeer.dead = false;
+ws2.sent.length = 0;
+await room.webSocketMessage(ws2, JSON.stringify({ type: 'loot_pickup', payload: { lootId: wdPile2.lootId, zone: 'frost' } }));
+check('non-recipient rejected (weapon stays on the pile)',
+  msgsOfType(ws2, 'loot_credit').length === 0
+  && msgsOfType(ws2, 'loot_pickup_rejected').length === 1
+  && wdPile2.weaponClaimed === false);
+
+// Stash at cap: the claim auto-sells for the server sell value instead
+// of silently destroying the weapon.
+psHd.weaponStash = Array.from({ length: room.WEAPON_STASH_CAP }, () => ({ type: 'sword', tierMult: 1 }));
+const coinsPreSell = psHd.coins;
+ws.sent.length = 0;
+await room.webSocketMessage(ws, JSON.stringify({ type: 'loot_pickup', payload: { lootId: wdPile2.lootId, zone: 'frost' } }));
+const wdCredit2 = msgsOfType(ws, 'loot_credit')[0];
+const expectedSell = room._weaponSellValue(wdCredit2.payload.weapon);
+check('stash-at-cap auto-sells (weaponSoldFor = server sell value)',
+  wdCredit2 && wdCredit2.payload.weaponStashed === false
+  && wdCredit2.payload.weaponSoldFor === expectedSell
+  && psHd.weaponStash.length === room.WEAPON_STASH_CAP
+  && psHd.coins === coinsPreSell + expectedSell + 5, // +5: the pile's coin share rides the same claim
+  { credit: wdCredit2 && wdCredit2.payload, coins: psHd.coins, coinsPreSell });
+
+// Join-bootstrap strict-strip still guards the ingest door.
+const wdStrict = room._sanitizeWeapon({ type: 'sword', tierMult: 3, quality: 'godly', hardness: 5, temper: 0 }, true);
+check('strict sanitize still strips quality on client blobs (drops are server-minted now)',
+  wdStrict.quality === undefined && wdStrict.hardness === undefined);
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

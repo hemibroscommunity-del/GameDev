@@ -238,9 +238,14 @@ ladder + temper pity + `floor(skill/5)` access gate + ledgers
 sanitizer learned the fields with a two-posture contract (clamp stored
 / strip client-supplied). NAME COLLISION: the client's legacy "Harden"
 button is the hardenBonus AFFIX system — distinct fields, never merge.
-Successor follow-ups: server-side weapon-drop migration unlocks
-drop-time quality + mystery reveals (§4.6b.ii); sell value deliberately
-ignores the new layers.
+Successor follow-ups: ~~server-side weapon-drop migration unlocks
+drop-time quality + mystery reveals (§4.6b.ii)~~ — SHIPPED v2.3.1141
+(`_rollWeaponDropForKill` rides the loot pile with its own claim flag;
+pile broadcast hides quality, the private `loot_credit` reveals it;
+legacy client mints stay as `!caps.weaponDrops` fallback; the
+projectiles path's divergent generous drop table was deliberately
+unified down to the §4.6 cubic). Sell value still deliberately ignores
+the new layers.
 
 ### F. Dungeon instancing — SHIPPED v2.3.1127 (folded instances)
 Built as recommended: `server/src/dungeon.js`, spec in

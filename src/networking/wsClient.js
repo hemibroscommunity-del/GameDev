@@ -17,7 +17,7 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1230,6 +1230,18 @@ export function setupWebSocket(ctx) {
           killerName: p.killerName || 'Player',
           ts: p.ts || Date.now(),
           inventoryClaimed: !!p.inventoryClaimed,
+          /* v2.3.1141: server-minted weapon drop riding the pile.
+             Presence + tier + name only -- quality is withheld until
+             the private loot_credit (§4.6b.ii mystery reveal).  These
+             drive the effectsRenderer aura/label add-on; deliberately
+             NOT `isWeapon` -- that flags the legacy client-mint loot
+             whose pickup path equips/stashes locally, while these
+             piles claim through the server loot_pickup flow. */
+          hasWeapon: !!p.hasWeapon && !p.weaponClaimed,
+          weaponTier: p.weaponTier || null,
+          weaponType: p.weaponType || null,
+          weaponName: p.weaponName || null,
+          weaponTierColor: (p.weaponTier && RARITY_TIERS[p.weaponTier] && RARITY_TIERS[p.weaponTier].color) || '#8890b8',
           /* Death-drop fields -- effectsRenderer renders aura/timer
              when isDeathDrop is set; expiry drives the urgency pulse.
              ownerOnlyUntil = wall-clock ms; after that the pile flips
@@ -1280,6 +1292,34 @@ export function setupWebSocket(ctx) {
              doesn't replicate it. */
           if (!R.skulls) R.skulls = {};
           R.skulls[payload.skull] = (R.skulls[payload.skull] || 0) + 1;
+        }
+        /* v2.3.1141: server-minted weapon drop credit.  THE quality
+           reveal moment (§4.6b.ii) -- the pile broadcast never carried
+           quality; this private payload does.  Popup only: the
+           authoritative stash/coins mutation rides the player_state
+           that follows on this same socket flush, so do NOT touch
+           R.weaponStash here. */
+        if (payload.weapon) {
+          var _wTier = payload.weapon.tier;
+          var _wColor = (RARITY_TIERS[_wTier] && RARITY_TIERS[_wTier].color) || '#8890b8';
+          var _wQual = payload.weapon.quality;
+          var _wQualTag = (_wQual && _wQual !== 'normal') ? ' [' + String(_wQual).toUpperCase() + ']' : '';
+          if (payload.weaponStashed) {
+            S.dmgNumbers.push({
+              x: S.player.x, y: S.player.y - 34,
+              text: 'STASHED: ' + (payload.weapon.name || 'Weapon') + _wQualTag,
+              color: (_wQual && _wQual !== 'normal') ? '#f5c542' : _wColor,
+              ts: Date.now() + 1,
+            });
+          } else if (payload.weaponSoldFor) {
+            S.dmgNumbers.push({
+              x: S.player.x, y: S.player.y - 34,
+              text: '+' + payload.weaponSoldFor + 'G (sold, stash full)',
+              color: '#f5c542',
+              ts: Date.now() + 1,
+            });
+          }
+          if (_wQual && _wQual !== 'normal') { try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {} }
         }
         /* Death-drop pickup: server bundles the dead player's whole
            general inventory under payload.items.  Authoritative R.inventory

@@ -104,13 +104,18 @@ with the server-side weapon-drop migration (successor item below).
 
 ## Successor notes
 
-- **Drop-time quality** requires moving monster weapon drops
-  server-side (they're 100% client-minted today) — then
-  `_rollWeaponQuality` applies at the drop mint and the strict-strip
-  posture for join blobs stays unchanged.
-- **Mystery reveals (§4.6b.ii)**: server pre-commits the grade at
-  drop, client renders "?" until reveal — needs the drop migration
-  first.
+- **Drop-time quality — SHIPPED v2.3.1141.** Monster weapon drops are
+  server-minted (`_rollWeaponDropForKill`, index.js) riding the loot
+  pile with their own claim flag; `_rollWeaponQuality` applies at the
+  drop mint; strict-strip for join blobs unchanged. The client mint
+  paths remain only as the legacy-worker fallback, gated on
+  `!caps.weaponDrops`.
+- **Mystery reveals (§4.6b.ii) — SHIPPED v2.3.1141.** The pile
+  broadcast (`_serializePile`) carries `hasWeapon`/tier/type/name but
+  NEVER quality; the picker's private `loot_credit` carries the full
+  blob — that private delivery IS the reveal. Client renders the pile
+  label as "name ?" until claimed. Fancier reveal art is a cosmetic
+  follow-up.
 - **Sell value deliberately unchanged**: `_weaponSellValue` ignores
   quality/hardness (no forge-lottery → vendor arbitrage). Revisit
   with marketplace pricing if elite listings need price floors.

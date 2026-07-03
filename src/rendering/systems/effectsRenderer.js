@@ -1849,8 +1849,10 @@ export class EffectsRenderer {
     kill(l._pixiCoinLabel);
     kill(l._pixiShardSprite);
     kill(l._pixiOwnerLabel);
+    kill(l._pixiWpnLabel);
     l._pixiSprite = l._pixiLabel = l._pixiTimer = l._pixiCount = l._pixiIcon = null;
     l._pixiCoinSprite = l._pixiCoinLabel = l._pixiShardSprite = l._pixiOwnerLabel = null;
+    l._pixiWpnLabel = null;
   }
 
   /** Renders a stroked "[killer]'s loot" label above an MP loot pile
@@ -2038,6 +2040,36 @@ export class EffectsRenderer {
         l._pixiCount.alpha = alpha;
         if (timeLeft <= 0) l._expired = true;
         continue;
+      }
+
+      /* v2.3.1141: server pile carrying an unclaimed weapon drop --
+         tier aura + "name ?" label rendered ALONGSIDE the normal
+         coin/skull visuals (no `continue`: unlike the legacy client-
+         mint branch below, these piles also carry coins/skull/shard).
+         Quality is unknown here by design -- it reveals in the picker's
+         private loot_credit (§4.6b.ii mystery), hence the "?". */
+      if (l.hasWeapon) {
+        const wColor = cssToHex(l.weaponTierColor || '#8890b8');
+        const wPulse = 0.3 + Math.sin(age * 4) * 0.15;
+        gfx.circle(l.x, l.y + bob, 14);
+        gfx.fill({ color: wColor, alpha: wPulse * alpha });
+        gfx.circle(l.x, l.y + bob, 12);
+        gfx.stroke({ color: wColor, width: 2, alpha });
+        if (!l._pixiWpnLabel || l._pixiWpnLabel.destroyed) {
+          l._pixiWpnLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
+          l._pixiWpnLabel.anchor.set(0.5, 0);
+          this.lootLayer.addChild(l._pixiWpnLabel);
+        }
+        const wStr = (l.weaponName || 'Weapon') + ' ?';
+        if (l._pixiWpnLabel.text !== wStr) l._pixiWpnLabel.text = wStr;
+        l._pixiWpnLabel.style.fill = l.weaponTierColor || '#8890b8';
+        l._pixiWpnLabel.x = l.x;
+        l._pixiWpnLabel.y = l.y + 38 + bob;
+        l._pixiWpnLabel.alpha = alpha;
+        l._pixiWpnLabel.visible = true;
+      } else if (l._pixiWpnLabel && !l._pixiWpnLabel.destroyed) {
+        /* Claimed (weaponClaimedNow broadcast) -- hide the label. */
+        l._pixiWpnLabel.visible = false;
       }
 
       if (l.isWeapon && l.weapon) {

@@ -32,7 +32,7 @@ import {
   ARCHETYPES, ZONES, FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS,
   QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES,
   AMULET_TIER_POWER,
-  MONSTER_HP_CURVE,
+  MONSTER_HP_CURVE, RARITY_TIERS,
 } from './data.js';
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
@@ -1468,8 +1468,10 @@ export class GameRoom {
   //   - strict (client-supplied join bootstrap): STRIP -- quality and
   //     hardness multiply the anti-cheat damage ceiling, so a forged
   //     "godly H5" blob from a fresh client would raise its own cap.
-  //     Client-minted weapons (monster drops) are Normal/H0 by
-  //     definition until the server-side drop migration ships.
+  //     v2.3.1141: drops are server-minted now, so every legit weapon
+  //     with quality was minted HERE (forge or drop) and persists via
+  //     _saveRpg -- a join blob carrying quality is by definition not
+  //     ours.  Strict stays strip.
   _sanitizeWeapon(w, strict) {
     if (!w || typeof w !== 'object') return null;
     const out = { ...w };
@@ -3607,10 +3609,76 @@ export class GameRoom {
     }
   }
 
+  // v2.3.1141: SERVER-MINTED WEAPON DROPS (closes the last client-
+  // authored economy input; unlocks drop-time quality §4.6b.ii).
+  // Weapon drops were effectively DORMANT in production: the client
+  // mint paths (monsterCombat.js / projectiles.js) only run inside
+  // kill blocks gated on !S._serverMonsters, and every live zone is
+  // server-managed -- they survived only as the legacy-worker
+  // fallback.  This restores the feature server-side on the §4.6
+  // cubic curve (the canonical one; the projectiles path had drifted
+  // to a far more generous linear table -- deliberately unified down).
+  // Rarity/element gating mirrors monsterCombat.js:2233-2262; the
+  // blob shape mirrors the forge mint (_handleForgeWeapon) exactly,
+  // including quality rolled ONCE here (hidden until pickup -- the
+  // broadcastable pile carries no quality field, see _serializePile).
+  // hardenBonus stays null: that field belongs to the client's legacy
+  // affix system (NAME COLLISION warning in hardening.js).
+  _rollWeaponDropForKill(zoneId, monster) {
+    const lvl = Math.max(1, monster.level || 1);
+    const lvlFactor = Math.pow(lvl / 100, 3); // cubic: L1≈0, L50=0.125, L100=1
+    const dropChance = 0.0005 + lvlFactor * 0.03; // L1: 0.05%, L100: ~3%
+    if (Math.random() >= dropChance) return null;
+    const zone = this._getZoneConfig(zoneId);
+    const zoneElem = (zone && zone.element) || null;
+    const secondaryElem = (zone && zone.secondary) || null;
+    const shiftChance = 0.0000002 + lvlFactor * 0.002;
+    const fusionChance = 0.000002 + lvlFactor * 0.02;
+    const elemChance = 0.0002 + lvlFactor * 0.25;
+    const tierRoll = Math.random();
+    let tier = 'common', e1 = null, e2 = null, isVolatile = false;
+    if (tierRoll < shiftChance && zoneElem) {
+      tier = 'shift'; e1 = zoneElem;
+    } else if (tierRoll < shiftChance + fusionChance && zoneElem) {
+      tier = 'fusion'; e1 = zoneElem;
+      e2 = secondaryElem || ['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind']
+        .filter((e) => e !== zoneElem)[Math.floor(Math.random() * 6)];
+      const volPairs = [['flame', 'water'], ['water', 'venom'], ['venom', 'wind'],
+        ['wind', 'stone'], ['stone', 'storm'], ['storm', 'frost'], ['frost', 'flame']];
+      isVolatile = volPairs.some(([a, b]) => (e1 === a && e2 === b) || (e1 === b && e2 === a));
+    } else if (tierRoll < shiftChance + fusionChance + elemChance && zoneElem) {
+      tier = 'elemental'; e1 = zoneElem;
+    }
+    const types = ['greatsword', 'sword', 'bow', 'staff'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    // Labels mirror WEAPON_TYPES[type].label in src/data/gameSystems.js.
+    const label = { greatsword: 'Great Sword', sword: 'Sword', bow: 'Bow', staff: 'Staff' }[type];
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    let name;
+    if (tier === 'common') name = label;
+    else if (tier === 'elemental') name = cap(e1) + ' ' + label;
+    else if (tier === 'fusion') name = cap(e1) + cap(e2) + ' ' + label;
+    else name = 'Prismatic ' + label;
+    return {
+      type,
+      tier,
+      tierMult: RARITY_TIERS[tier].mult,
+      element1: e1,
+      element2: e2,
+      name,
+      isVolatile,
+      reforgeBonus: null,
+      hardenBonus: null,
+      quality: this._rollWeaponQuality(),
+      hardness: 0,
+      temper: 0,
+    };
+  }
+
   // Pile shape (server-side, full):
-  //   { lootId, zone, x, y, coins, skull, shard, recipients,
-  //     shares: {pid: number}, killerName, ts, inventoryClaimed,
-  //     claimedBy: {pid: true} }
+  //   { lootId, zone, x, y, coins, skull, shard, weapon, weaponClaimed,
+  //     recipients, shares: {pid: number}, killerName, ts,
+  //     inventoryClaimed, claimedBy: {pid: true} }
   _spawnLootForKill(zone, monster, killerSessionId, recipients, shares) {
     const lootId = 'mk-' + monster.id;
     // Use the variant if set (e.g. ember fodder -> fireGoblin, sky
@@ -3620,7 +3688,11 @@ export class GameRoom {
     const skullSource = monster.variant || monster.arch;
     const skull = this._isRemnantSkullArch(skullSource) ? skullSource : null;
     const shard = this._rollShardForKill(zone);
-    if (!skull && (!recipients || recipients.length === 0) && monster.gold <= 0 && !shard) {
+    // v2.3.1141: weapon rides the pile; only rolled when someone can
+    // actually claim it (the claim is recipient-gated below).
+    const weapon = (recipients && recipients.length > 0)
+      ? this._rollWeaponDropForKill(zone, monster) : null;
+    if (!skull && (!recipients || recipients.length === 0) && monster.gold <= 0 && !shard && !weapon) {
       // Nothing of value would drop -- skip the pile entirely.
       return null;
     }
@@ -3640,6 +3712,10 @@ export class GameRoom {
       ts: Date.now(),
       inventoryClaimed: false,
       claimedBy: {},
+      // v2.3.1141: weapon has its OWN claim flag -- it must not consume
+      // (or be consumed by) the skull/shard inventoryClaimed slot.
+      weapon,
+      weaponClaimed: false,
     };
     if (!this.loot[zone]) this.loot[zone] = [];
     this.loot[zone].push(pile);
@@ -3663,6 +3739,15 @@ export class GameRoom {
       killerName: p.killerName,
       ts: p.ts,
       inventoryClaimed: p.inventoryClaimed,
+      // v2.3.1141: weapon PRESENCE rides the broadcast (render glow /
+      // late-join sync) but the quality NEVER does -- it was committed
+      // at mint and reveals only in the picker's private loot_credit.
+      // That withholding IS the §4.6b.ii mystery-reveal contract.
+      hasWeapon: !!p.weapon,
+      weaponClaimed: !!p.weaponClaimed,
+      weaponTier: p.weapon ? p.weapon.tier : null,
+      weaponType: p.weapon ? p.weapon.type : null,
+      weaponName: p.weapon ? p.weapon.name : null,
       // Death-drop fields (null for normal monster-kill piles).
       isDeathDrop: p.isDeathDrop || false,
       deathItems: p.deathItems || null,
@@ -3894,6 +3979,27 @@ export class GameRoom {
       shardForMe = pile.shard || null;
       pile.inventoryClaimed = true;
     }
+    // v2.3.1141: weapon claim -- first eligible picker takes it (own
+    // flag; independent of the skull/shard slot).  Stash if there's
+    // room, else auto-sell for coins (mirrors the legacy client
+    // behavior in groundLoot.js -- dropping value on the floor is
+    // worse than a forced sale).  Quality reveals HERE, in the private
+    // credit: the pile broadcast never carried it.
+    let weaponForMe = null;
+    let weaponStashed = false;
+    let weaponSoldFor = null;
+    if (pile.weapon && !pile.weaponClaimed) {
+      pile.weaponClaimed = true;
+      weaponForMe = pile.weapon;
+      if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
+      if (ps.weaponStash.length < this.WEAPON_STASH_CAP) {
+        ps.weaponStash.push(weaponForMe);
+        weaponStashed = true;
+      } else {
+        weaponSoldFor = this._weaponSellValue(weaponForMe);
+        ps.coins = (ps.coins || 0) + weaponSoldFor;
+      }
+    }
     pile.claimedBy[session.id] = true;
 
     // Apply the grant to server-tracked playerState (the authoritative
@@ -3931,6 +4037,10 @@ export class GameRoom {
             coins: coinsForMe,
             skull: skullForMe,
             shard: shardForMe,
+            // v2.3.1141: full blob incl. quality -- the private reveal.
+            weapon: weaponForMe,
+            weaponStashed,
+            weaponSoldFor,
           },
         }));
       } catch (e) {}
@@ -3942,7 +4052,7 @@ export class GameRoom {
     // if the client wants it).
     this.eventBuffer.push({
       type: 'loot_claimed',
-      payload: { lootId, zone, byPlayer: session.id, inventoryClaimedNow },
+      payload: { lootId, zone, byPlayer: session.id, inventoryClaimedNow, weaponClaimedNow: !!weaponForMe },
     });
 
     // If every recipient has now claimed, the pile is fully spent --
@@ -4833,7 +4943,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({

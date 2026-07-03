@@ -77,6 +77,11 @@ export function processGameEvent(type, payload, S, deps) {
                   _loCl.skull = null;
                   _loCl.shard = null;
                 }
+                /* v2.3.1141: weapon has its own claim flag; clear the
+                   glow/label on everyone's copy once someone takes it. */
+                if (payload.weaponClaimedNow) {
+                  _loCl.hasWeapon = false;
+                }
                 /* If WE are the one who claimed, the loot_credit case
                    (top-level) handles the local despawn -- nothing
                    else to do here for the picker. */

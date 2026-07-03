@@ -2241,7 +2241,14 @@ export function updateMonsterCombat(S, deps) {
                   /* Lv1: 0.05%, Lv50: 0.3%, Lv100: 3% */
                   var lvlFactor = Math.pow(mLvl / 100, 3); /* cubic — Lv50 = 0.125, Lv100 = 1.0 */
                   var dropChance = 0.0005 + lvlFactor * 0.03 + (isGrandSlam ? 0.005 : 0);
-                  if (Math.random() < dropChance) {
+                  /* v2.3.1141: weapon drops are SERVER-minted when the
+                     worker advertises caps.weaponDrops (they ride the
+                     loot pile with drop-time quality).  This local mint
+                     stays as the legacy-worker fallback only -- already
+                     dead against server-managed zones via the
+                     !S._serverMonsters kill gate; the caps check is
+                     belt-and-braces per the deploy-order convention. */
+                  if (!(S._serverCaps && S._serverCaps.weaponDrops) && Math.random() < dropChance) {
                     var _ZONES$S$currentZone4, _ZONES$S$currentZone5;
                     var _zoneElem = (_ZONES$S$currentZone4 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone4 === void 0 ? void 0 : _ZONES$S$currentZone4.element;
                     var secondaryElem = (_ZONES$S$currentZone5 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone5 === void 0 ? void 0 : _ZONES$S$currentZone5.secondary;

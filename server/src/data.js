@@ -52,16 +52,19 @@ export const ARCHETYPES = {
  * a mismatch visibly downgrades monsters client-side.  NOTE: no zone
  * entry gating exists yet (every spoke is walkable from town at L1);
  * MAP-REDESIGN lists gating as a follow-up. */
+/* v2.3.1141: `secondary` mirrors the client zone table's secondary
+ * element (fusion weapon drops pair primary+secondary; server-minted
+ * drops need it now that the drop roll is server-side). */
 export const ZONES = {
-      meadow:  { w:32, h:32, level:[1,10],  element:null,    lawless:true, spawns:[{arch:'fodder',count:10}] },
-      ember:   { w:32, h:32, level:[55,80], element:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },
-      mist:    { w:32, h:32, level:[22,40], element:'venom', lawless:true, spawns:[] },
-      verdant: { w:32, h:32, level:[22,40], element:null,    lawless:true, spawns:[] },
-      frost:   { w:32, h:32, level:[8,25],  element:'frost', lawless:true, spawns:[{arch:'snowman',count:4}] },
-      thunder: { w:32, h:32, level:[55,80], element:'storm', lawless:true, spawns:[{arch:'fodder',count:6}] },
-      hollows: { w:32, h:32, level:[38,58], element:'stone', lawless:true, spawns:[{arch:'brute',count:4}] },
-      sky:     { w:32, h:32, level:[38,58], element:'wind',  lawless:true, spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
-      tidal:   { w:32, h:32, level:[8,25],  element:'water', lawless:true, spawns:[{arch:'brute',count:3}] },
+      meadow:  { w:32, h:32, level:[1,10],  element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:10}] },
+      ember:   { w:32, h:32, level:[55,80], element:'flame', secondary:'stone', lawless:true, spawns:[{arch:'fodder',count:6}] },
+      mist:    { w:32, h:32, level:[22,40], element:'venom', secondary:'wind',  lawless:true, spawns:[] },
+      verdant: { w:32, h:32, level:[22,40], element:null,    secondary:null,    lawless:true, spawns:[] },
+      frost:   { w:32, h:32, level:[8,25],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:4}] },
+      thunder: { w:32, h:32, level:[55,80], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },
+      hollows: { w:32, h:32, level:[38,58], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:4}] },
+      sky:     { w:32, h:32, level:[38,58], element:'wind',  secondary:'frost', lawless:true, spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
+      tidal:   { w:32, h:32, level:[8,25],  element:'water', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:3}] },
     };
 
 export const FISH_TIERS = [
@@ -209,3 +212,15 @@ export const QUALITY_GRADES = {
  *   value = round((3 + 2.5 × basePower) × 10)/10 %  -> multiplier
  *   1 + value/100, gated on the weapon having element1. */
 export const AMULET_TIER_POWER = { simple: 1.0, ornate: 1.5, regal: 2.2, mythic: 3.0 };
+
+/* v2.3.1141: rarity tiers for server-minted weapon drops.  Mults only --
+ * labels/colors are client presentation (RARITY_TIERS there carries
+ * them).  These become the drop blob's tierMult, same slot the forge
+ * mint fills from BLACKSMITH_TIERS.
+ *   RARITY_TIERS <-> src/data/gameSystems.js RARITY_TIERS (mult values) */
+export const RARITY_TIERS = {
+  common:    { mult: 1.00 },
+  elemental: { mult: 1.50 },
+  fusion:    { mult: 2.25 },
+  shift:     { mult: 3.00 },
+};

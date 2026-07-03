@@ -9,10 +9,11 @@
  *
  * QUALITY (§4.6b): rolled ONCE at server mint, immutable.  Normal
  * 90.1% ×1.0 / Rare 9% ×1.2 / Elite 0.9% ×1.5 / Godly 1-in-400,000
- * ×3.0.  v1 rolls at the FORGE (the only server-side weapon mint);
- * client-side monster weapon drops are still client-minted and are
- * stripped of quality fields on ingest -- drop-time quality ships with
- * the server-side weapon-drop migration (successor note in the spec).
+ * ×3.0.  v1 rolled at the FORGE only; v2.3.1141 added the second mint
+ * site -- server-rolled monster weapon drops (_rollWeaponDropForKill,
+ * index.js), which roll quality at DROP time with the mystery reveal
+ * (§4.6b.ii: pile broadcast hides quality; the private loot_credit
+ * reveals it).  Join-time strict-strip still applies to client blobs.
  * At Hardness 0 / Normal the formula reduces EXACTLY to the live one
  * (tools/balance-sim.mjs asserts this equivalence at startup; keep the
  * structures matched so they can't drift).

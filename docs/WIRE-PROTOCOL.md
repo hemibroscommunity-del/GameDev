@@ -221,6 +221,18 @@ Summary of the wire-visible changes:
 | `harden_result` | §4.6c hardening roll (private; `harden_weapon` c→s case; forge mints now carry `quality`/`hardness`/`temper`) | hardening.md |
 | `trade2_state` / `trade2_invite` | Two-sided trade window (private; `trade2_open/set/confirm/cancel` c→s cases; gift trade relay unchanged) | trading.md addendum |
 
+**Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
+message types. The loot pile broadcast (`loot_drop`/`zone_loot`/
+`state_sync.loot` via `_serializePile`) gains `hasWeapon`,
+`weaponClaimed`, `weaponTier`, `weaponType`, `weaponName` — NEVER the
+quality (that's the §4.6b.ii mystery: quality is pre-committed at mint
+and revealed only in the picker's private `loot_credit`, which gains
+`weapon` (full blob), `weaponStashed`, `weaponSoldFor`). The
+`loot_claimed` fan-out gains `weaponClaimedNow`. Old clients ignore the
+new fields and still receive the weapon via the `player_state` stash
+echo; new clients keep the legacy client-mint fallback when
+`caps.weaponDrops` is absent.
+
 **Marketplace HTTP (worker routes `/api/market/*` to the GameRoom now;
 the standalone Marketplace DO is retired from routing):**
 - `POST /api/market/place` body gains `stashIndex` (sells escrow from the
