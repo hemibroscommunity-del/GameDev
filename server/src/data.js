@@ -180,3 +180,12 @@ export const QUALITY_GRADES = {
   elite:  { mult: 1.50 },
   godly:  { mult: 3.00 },
 };
+
+/* v2.3.1139 (item I): amulet elemDmg mirror for _computeAttackDamage.
+ *   AMULET_TIER_POWER <-> src/data/items.js AMULET_TIERS basePower
+ *   Only the FLAME gem grants elemDmg (AMULET_GEM_STATS) -- the other
+ *   gems' stats are applied at their own point-of-use client-side and
+ *   don't touch the authoritative damage roll.
+ *   value = round((3 + 2.5 × basePower) × 10)/10 %  -> multiplier
+ *   1 + value/100, gated on the weapon having element1. */
+export const AMULET_TIER_POWER = { simple: 1.0, ornate: 1.5, regal: 2.2, mythic: 3.0 };

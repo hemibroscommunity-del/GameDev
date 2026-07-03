@@ -24,12 +24,14 @@ export { Feedback } from './feedback.js';
 // collisions) -- see elemental.js header for what is and isn't ported.
 import {
   ELEMENT_STATUS, applyElementStatus, tickElementStatuses, resolveElementCollision,
+  elementMoveMult,
 } from './elemental.js';
 // v2.3.1115 (P4 slice 2): embedded data tables moved to data.js -- the
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES, FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS,
   QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES,
+  AMULET_TIER_POWER,
 } from './data.js';
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
@@ -621,6 +623,13 @@ export class GameRoom {
         // chase immediately, so the visual bounce is briefer but
         // monsters can re-engage and land hits between swings.
 
+        // v2.3.1139 (item I): CC finally reaches the REAL monsters.
+        // freeze/root -> full stop AND no attacks; slow -> x0.4 speed
+        // (attacks normal) -- the client's exact moveMult semantics
+        // (monsterCombat.js), which until now only slowed the visual
+        // while the authoritative monster kept chasing at full speed.
+        const ccMoveMult = elementMoveMult(m);
+
         // Find nearest player for aggro.  If the monster has a recent
         // sticky-aggro override (someone shot it with a bow, etc.),
         // prefer that target even if they're outside proximity range.
@@ -695,19 +704,21 @@ export class GameRoom {
           // worker stamps m._attackingUntil after firing a monster_attack
           // event so the body stops sliding during the swing/lunge sheet.
           const attackingNow = m._attackingUntil && now < m._attackingUntil;
-          if (attackDist > ATTACK_RANGE && !attackingNow) {
+          if (attackDist > ATTACK_RANGE && !attackingNow && ccMoveMult > 0) {
             const dx = nearest.x - m.x;
             const dy = nearest.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist > 0) {
-              m.x += (dx / dist) * m.spd;
-              m.y += (dy / dist) * m.spd;
+              m.x += (dx / dist) * m.spd * ccMoveMult;
+              m.y += (dy / dist) * m.spd * ccMoveMult;
               this._markMonsterDirty(zoneId, m.id);
             }
           }
 
-          // Attack player if in range
-          if (attackDist <= ATTACK_RANGE && now > m.atkCd) {
+          // Attack player if in range.  v2.3.1139: frozen/rooted
+          // monsters can't swing either (client gates the whole AI
+          // branch on moveMult > 0 -- mirror that here).
+          if (attackDist <= ATTACK_RANGE && now > m.atkCd && ccMoveMult > 0) {
             // Don't fire damage events while the player is blocking — the
             // client's monster_attack handler also computes block reduction,
             // but that path was producing inconsistent block resolution
@@ -788,6 +799,14 @@ export class GameRoom {
             const targetPs = this.playerState[nearest.id];
             const dmgResult = this._applyDamage(targetPs, m.dmg, false);
             const dmgTaken = dmgResult.dmgTaken;
+            // v2.3.1139 (item I): a hexer's landed hit curses the
+            // victim -- -30% outgoing damage for 4s, consumed by
+            // _computeAttackDamage (mirrors the client's
+            // S._cursedUntil, which only ever dimmed the DISPLAY
+            // number while the server rolled full damage).
+            if (targetPs && m.arch === 'hexer' && !dmgResult.dodged) {
+              targetPs._cursedUntil = now + 4000;
+            }
             // Don't credit lifesteal damage on a dodge -- nothing to
             // refund since no HP was taken.  But DO track during the
             // zone-entry grace window so the next kill produces a
@@ -855,11 +874,13 @@ export class GameRoom {
             (m.spawnX - m.x) * (m.spawnX - m.x) +
             (m.spawnY - m.y) * (m.spawnY - m.y)
           );
-          if (distSpawn > WANDER_LEASH) {
+          if (ccMoveMult === 0) {
+            // v2.3.1139: frozen/rooted -- no wander either.
+          } else if (distSpawn > WANDER_LEASH) {
             const dxL = m.spawnX - m.x;
             const dyL = m.spawnY - m.y;
-            m.x += (dxL / distSpawn) * m.spd;
-            m.y += (dyL / distSpawn) * m.spd;
+            m.x += (dxL / distSpawn) * m.spd * ccMoveMult;
+            m.y += (dyL / distSpawn) * m.spd * ccMoveMult;
             this._markMonsterDirty(zoneId, m.id);
             m._wanderTx = null;
             m._wanderTy = null;
@@ -895,8 +916,8 @@ export class GameRoom {
               m._wanderPausedUntil = now + WANDER_PAUSE_MIN_MS
                 + Math.random() * (WANDER_PAUSE_MAX_MS - WANDER_PAUSE_MIN_MS);
             } else {
-              m.x += (dxw / distw) * m.spd;
-              m.y += (dyw / distw) * m.spd;
+              m.x += (dxw / distw) * m.spd * ccMoveMult;
+              m.y += (dyw / distw) * m.spd * ccMoveMult;
               this._markMonsterDirty(zoneId, m.id);
             }
           }
@@ -4047,6 +4068,22 @@ export class GameRoom {
     // focus) at +0.008/pt, mirroring client calcCritMult.  The Ferocity term
     // (retired, pinned 0 since v2.3.910) is dropped.
     if (isCrit) base *= (1.5 + P * 0.001 + this._wpnCritDmgPts(ps, type) * 0.008);
+    // v2.3.1139 (item I): the two multipliers the v2.3.912 scope note
+    // deliberately omitted, now server-side (the client applies both
+    // locally and its numbers finally match the wire truth):
+    //   - amulet elemDmg: FLAME-gem amulets boost ELEMENTAL weapons by
+    //     1 + (3 + 2.5×tierPower)/100 (monsterCombat.js:76 verbatim;
+    //     the _maxDmgForAttacker comboBoost explicitly reserves
+    //     headroom for this).
+    //   - hexer curse: -30% outgoing damage for 4s after a hexer's
+    //     hit lands (ps._cursedUntil stamped in the monster-attack
+    //     path).
+    if (ps.amulet && ps.amulet.gem === 'flame' && w && w.element1) {
+      const tierPower = AMULET_TIER_POWER[ps.amulet.tier] || 1.0;
+      const elemDmgPct = Math.round((3 + 2.5 * tierPower) * 10) / 10;
+      base *= 1 + elemDmgPct / 100;
+    }
+    if (ps._cursedUntil && Date.now() < ps._cursedUntil) base *= 0.7;
     return { dmg: Math.max(1, Math.round(base)), isCrit };
   }
 
@@ -4157,6 +4194,33 @@ export class GameRoom {
             hpPct: Math.max(0, m.hp / m.maxHp),
           },
         });
+        // v2.3.1139 (item I): resonance-streak mana restore, finally
+        // REAL -- the client has always computed this locally
+        // (gameSystems.js §3.5/§5.7) but mana is server-authoritative,
+        // so the echo stomped it every flush.  Constants verbatim:
+        // 10s streak window, +10%/step capped +50%, restore
+        // 4% maxMana × restoration mult, throttled to once per 3s.
+        if (attackerPs) {
+          if (col.resonating) {
+            const streak = attackerPs._resonanceStreak || { count: 0, lastTs: 0 };
+            streak.count = (_now - streak.lastTs <= 10000) ? Math.min(streak.count + 1, 5) : 1;
+            streak.lastTs = _now;
+            attackerPs._resonanceStreak = streak;
+            if (!attackerPs._lastCollisionMana || _now - attackerPs._lastCollisionMana >= 3000) {
+              attackerPs._lastCollisionMana = _now;
+              const streakMult = 1 + Math.min(streak.count * 0.10, 0.50);
+              const restMult = 1 + (attackerPs.restoration || 0) * 0.0012;
+              const restore = Math.round(0.04 * (attackerPs.maxMana || 100) * restMult * streakMult);
+              if (restore > 0) {
+                attackerPs.mana = Math.min(attackerPs.maxMana || 100, (attackerPs.mana || 0) + restore);
+                this._saveRpg(session.id, attackerPs);
+                this._queuePlayerStateFlush(session.id);
+              }
+            }
+          } else if (attackerPs._resonanceStreak) {
+            attackerPs._resonanceStreak.count = 0; // non-resonating collision breaks the streak
+          }
+        }
       }
     }
 
