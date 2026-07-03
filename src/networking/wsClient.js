@@ -518,17 +518,36 @@ export function setupWebSocket(ctx) {
             }
           case 'join_rejected':
             {
+              /* v2.3.1144: the rejection REASON is load-bearing now.
+                 The fresh-identity mint below is the correct response
+                 ONLY to reason:'auth' (tampered localStorage / 31-bit
+                 id collision -- the v2.3.1116 behavior).  A 'frozen'
+                 rejection (operator freeze, docs/specs/admin.md) must
+                 NOT mint: that would silently abandon the frozen
+                 character and rejoin as a brand-new player --
+                 freeze-evasion by accident.  Unknown future reasons
+                 fail safe (no mint, no reconnect churn). */
+              var _rejReason = msg.reason || 'auth';
+              if (_rejReason === 'frozen') {
+                S._frozenByAdmin = true; /* suppress reconnect churn */
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 30,
+                  text: '🧊 Account frozen — contact the game owner',
+                  color: '#60a5fa', ts: Date.now(), ttl: 6,
+                });
+                console.error('[bt] join rejected: account frozen by the operator');
+                break;
+              }
               /* v2.3.1116: the worker refused our id -- the stored
-                 passphrase doesn't match its auth record (tampered
-                 localStorage, or a 31-bit id collision with an earlier
-                 registrant).  Mint a fresh identity ONCE and let the
-                 auto-reconnect (the server closes the socket after
-                 rejecting -> onclose -> scheduleReconnect) rejoin under
-                 it.  A second rejection means something is genuinely
-                 wrong -- stop churning identities and surface it. */
+                 passphrase doesn't match its auth record.  Mint a fresh
+                 identity ONCE and let the auto-reconnect (the server
+                 closes the socket after rejecting -> onclose ->
+                 scheduleReconnect) rejoin under it.  A second rejection
+                 means something is genuinely wrong -- stop churning
+                 identities and surface it. */
               try {
                 S._authRejects = (S._authRejects || 0) + 1;
-                if (S._authRejects <= 1 && S.myId && S.myId.indexOf('bp_') === 0) {
+                if (_rejReason === 'auth' && S._authRejects <= 1 && S.myId && S.myId.indexOf('bp_') === 0) {
                   var _newPf = generatePassphrase();
                   localStorage.setItem('bt_passphrase', _newPf);
                   /* The old character is unreachable under the new id --
@@ -536,7 +555,7 @@ export function setupWebSocket(ctx) {
                   localStorage.removeItem('bt_rpg');
                   S.myId = passphraseToId(_newPf);
                 } else {
-                  console.error('[bt] join rejected by server (auth) -- not retrying');
+                  console.error('[bt] join rejected by server (' + _rejReason + ') -- not retrying');
                 }
               } catch (e) {}
               break;
@@ -1475,6 +1494,14 @@ export function setupWebSocket(ctx) {
         /* v2.3.771: a LIVE page superseded by another login must not
            auto-reconnect (two windows would kick each other forever) --
            stop, tell the player, offer a manual take-over. */
+        /* v2.3.1144: an operator freeze (close 4004 / join_rejected
+           reason:'frozen') must not auto-reconnect either -- it would
+           hammer the join gate forever.  The banner was already shown
+           by the join_rejected handler. */
+        if (S._frozenByAdmin || (event && event.code === 4004)) {
+          S._realtimeStatus = 'frozen';
+          return;
+        }
         if (event && event.reason === 'superseded by reconnect') {
           S._realtimeStatus = 'superseded';
           try {

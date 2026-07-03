@@ -72,6 +72,9 @@ import { petMethods } from './pets.js';
 // ladder).  See hardening.js for the name-collision warning vs the
 // client's legacy hardenBonus affix.
 import { hardeningMethods } from './hardening.js';
+// v2.3.1144: operator toolkit -- owner-keyed admin API + daily rpg
+// snapshot ring (see admin.js header + docs/OPERATIONS.md).
+import { adminMethods } from './admin.js';
 // v2.3.1132 (PR16): two-sided trade window -- both-stage-both-confirm
 // sessions on the validate-at-commit core (the gift handshake in
 // trade.js stays untouched for old clients; see trade2.js header).
@@ -138,6 +141,15 @@ export default {
 
     if (url.pathname.startsWith('/api/feedback')) {
       return env.FEEDBACK.get(env.FEEDBACK.idFromName('global')).fetch(request);
+    }
+
+    // v2.3.1144: operator toolkit -- routes into the GameRoom that owns
+    // the blobs (same ?room= resolution as /ws and /api/market).  Auth
+    // happens INSIDE the DO against env.ADMIN_KEY; with no secret
+    // configured the surface 404s (fail closed).
+    if (url.pathname.startsWith('/api/admin')) {
+      const admRoom = url.searchParams.get('room') || 'brotown-1';
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(admRoom)).fetch(request);
     }
 
     if (url.pathname === '/health') {
@@ -4612,6 +4624,11 @@ export class GameRoom {
     if (url.pathname.startsWith('/api/arena')) {
       return this._arenaFetch(request);
     }
+    // v2.3.1144: operator toolkit (owner-keyed; fail-closed without the
+    // ADMIN_KEY secret -- see admin.js).
+    if (url.pathname.startsWith('/api/admin')) {
+      return this._adminFetch(request);
+    }
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 426 });
     }
@@ -4659,6 +4676,18 @@ export class GameRoom {
             this.sessions.delete(ws);
             return;
           }
+          // v2.3.1144: operator freeze gate.  Storage await keeps the
+          // input gate closed (rule 9).  reason:'frozen' is load-bearing
+          // on the client: 'auth' mints a fresh identity, 'frozen' must
+          // NOT (wsClient.js join_rejected handler) or freezing would
+          // just push the player onto a new character.
+          const _frozen = await this.state.storage.get('frozen:' + msg.id);
+          if (_frozen) {
+            try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'frozen' })); } catch {}
+            try { ws.close(4004, 'frozen'); } catch {}
+            this.sessions.delete(ws);
+            return;
+          }
         }
         // v2.3.702: EVICT any lingering session with the same player id.
         // A reconnect (worker-deploy bounce, iOS tab suspend/resume)
@@ -4701,6 +4730,11 @@ export class GameRoom {
            value. */
         {
           const stored = await this._loadRpg(msg.id);
+          // v2.3.1144: lazy daily snapshot of the PRE-join blob (the
+          // state the player last logged out with) -- the rollback
+          // parachute that never existed.  Throttled to one per ~20h
+          // inside; never blocks the join (see admin.js).
+          if (stored) await this._rpgSnapshotMaybe(msg.id, stored);
           if (stored) {
             this.playerState[msg.id].coins = stored.coins || 0;
             this.playerState[msg.id].inventory = stored.inventory || {};
@@ -5891,3 +5925,5 @@ Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.
 Object.assign(GameRoom.prototype, trade2Methods);
+// v2.3.1144: operator toolkit -- see admin.js.
+Object.assign(GameRoom.prototype, adminMethods);

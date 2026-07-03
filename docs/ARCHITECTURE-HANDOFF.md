@@ -55,6 +55,10 @@ extended.
    | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
    | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |
    | `harden_h5_log` | global H5-mint timestamps, 90-day window (INV-27) | hardening.md |
+   | `frozen:<pid>` | `{ts, note}` operator freeze — join gate | admin.md |
+   | `rpgsnap:<pid>:<yyyymmdd>` | daily rpg-blob snapshot (ring of 7) | admin.md |
+   | `rpgsnap_at:<pid>` | snapshot throttle timestamp (20h) | admin.md |
+   | `admin_log` | capped ring (100) of mutating admin ops | admin.md |
 
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every

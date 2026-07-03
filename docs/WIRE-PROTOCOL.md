@@ -207,7 +207,7 @@ Summary of the wire-visible changes:
 
 | Type | Purpose | Spec |
 |---|---|---|
-| `join_rejected` | Identity auth refusal (then close 4003) | identity.md |
+| `join_rejected` | Join refusal: `reason:'auth'` (close 4003 — client mints a fresh id once) or `reason:'frozen'` (v2.3.1144 operator freeze, close 4004 — client shows a banner, stops reconnecting, must NOT mint) | identity.md / admin.md |
 | `inbox_delivered` | Offline-mail delivery: `{entries: [{kind, payload, note, source}], queued}` | inbox-escrow.md |
 | `duel_end` | Server duel resolution: `{winner, loser, wager, how: kill\|death\|forfeit\|timeout}` | duels.md |
 | `gamble_result` | Server-rolled gamble outcome (private): `{won, wager, payout}` | gambling.md |
