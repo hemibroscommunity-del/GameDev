@@ -81,6 +81,9 @@ import { cadenceMethods } from './cadence.js';
 // v2.3.1150: live-ops rail -- flags/kill-switches, announcements/MOTD,
 // daily economy metrics (see liveops.js header).
 import { LIVEOPS, liveopsMethods } from './liveops.js';
+// v2.3.1152: save-format migration registry (run in _loadRpg; _saveRpg
+// stamps _v = RPG_SCHEMA_VERSION -- the one blessed rule-1 exception).
+import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
 // v2.3.1132 (PR16): two-sided trade window -- both-stage-both-confirm
 // sessions on the validate-at-commit core (the gift handshake in
 // trade.js stays untouched for old clients; see trade2.js header).
@@ -2526,9 +2529,12 @@ export class GameRoom {
   async _loadRpg(playerId) {
     try {
       const stored = await this.state.storage.get('rpg:' + playerId);
-      if (stored && this._healLifeSkills(stored)) {
-        // self-heal corrupted records in place (see _healLifeSkills), then
-        // persist so storage converges clean without a manual wipe.
+      // v2.3.1152: run-once migration registry replaces the every-load
+      // _healLifeSkills branch.  Migrate-and-reput: a clean current
+      // blob (_v === RPG_SCHEMA_VERSION) costs zero writes; a legacy
+      // or restored-snapshot blob converges in ONE re-put and never
+      // migrates again.  runRpgMigrations never throws (fail-open).
+      if (stored && runRpgMigrations(stored).changed) {
         try { await this.state.storage.put('rpg:' + playerId, stored); } catch (e) { /* best-effort */ }
       }
       return stored || null;
@@ -2846,21 +2852,12 @@ export class GameRoom {
   // v2.3.769: records bootstrapped from pre-fix clients carry lifeSkills
   // with ARRAYS object-spread into plain objects (pets: {0:..}) and null
   // into {} (activePet) -- the client-side merge bug that caused the
-  // multiplayer corruption storm.  Heal the stored shape: pets back to an
-  // array, empty-object activePet back to null.  Returns true if changed.
+  // multiplayer corruption storm.  v2.3.1152: body moved to the pure
+  // healLifeSkills in migrations.js (it's migration v1 AND the join
+  // bootstrap's boundary heal); this wrapper stays for call-site
+  // compatibility.
   _healLifeSkills(stored) {
-    const ls = stored && stored.lifeSkills;
-    if (!ls || typeof ls !== 'object') return false;
-    let changed = false;
-    if (ls.pets && !Array.isArray(ls.pets) && typeof ls.pets === 'object') {
-      ls.pets = Object.values(ls.pets);
-      changed = true;
-    }
-    if (ls.activePet && typeof ls.activePet === 'object' && Object.keys(ls.activePet).length === 0) {
-      ls.activePet = null;
-      changed = true;
-    }
-    return changed;
+    return healLifeSkills(stored);
   }
 
   // Prune expired buff entries from ps._buffs.  _buffActive treats
@@ -3020,6 +3017,12 @@ export class GameRoom {
         defenseSkill: ps.defenseSkill || { level: 0, xp: 0 },
         defenseUnspent: ps.defenseUnspent || 0,
         defenseSpec: ps.defenseSpec || {},
+        // v2.3.1152: schema stamp -- the ONE field allowed beyond the
+        // gameplay list (ARCHITECTURE-HANDOFF rule 1 exception).  The
+        // CONSTANT, never ps._v: a blob written by current code is
+        // current-shape by construction, so _loadRpg's migration pass
+        // skips it entirely.
+        _v: RPG_SCHEMA_VERSION,
       });
     } catch (e) {}
   }
@@ -4854,10 +4857,12 @@ export class GameRoom {
             this.playerState[msg.id].rangedWeapon = this._sanitizeWeapon(stored.rangedWeapon);
             this.playerState[msg.id].staffWeapon = this._sanitizeWeapon(stored.staffWeapon);
             this.playerState[msg.id].activeSlot = stored.activeSlot || 'melee';
-            // v2.3.249: Leather Armor removed from the game.  Strip
-            // any persisted leather armor on load so pre-existing saves
-            // don't keep echoing it back to the client.
-            this.playerState[msg.id].armor = (stored.armor && stored.armor.name === 'Leather Armor') ? null : (stored.armor || null);
+            // v2.3.249: Leather Armor removed from the game.
+            // v2.3.1152: the every-load strip moved to migration v2
+            // (migrations.js) -- `stored` arrived here through _loadRpg,
+            // so it is already migrated.  The bootstrap branch below
+            // KEEPS its strip (client payloads are unmigrated writers).
+            this.playerState[msg.id].armor = stored.armor || null;
             this.playerState[msg.id].shield = stored.shield || null;
             this.playerState[msg.id].amulet = stored.amulet || null;
             this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(stored.weaponStash);
@@ -4926,6 +4931,14 @@ export class GameRoom {
               (msg.data && typeof msg.data.rpgCoins === 'number') ? Math.floor(msg.data.rpgCoins) : 0));
             this.playerState[msg.id].inventory = _cappedInv;
             this.playerState[msg.id].lifeSkills = (msg.data && msg.data.rpgLifeSkills && typeof msg.data.rpgLifeSkills === 'object') ? { ...msg.data.rpgLifeSkills } : {};
+            // v2.3.1152: boundary heal.  Migration v1 fixes STORED
+            // blobs once, but a pre-v2.3.769 client can hand us a
+            // freshly re-corrupted lifeSkills payload right here --
+            // without this, the corruption gets saved into a blob
+            // that is already stamped past migration v1 and never
+            // heals.  healLifeSkills mutates in place; cheap no-op
+            // on clean payloads.
+            healLifeSkills(this.playerState[msg.id]);
             this.playerState[msg.id].level = Math.max(1, Math.min(BOOTSTRAP_LEVEL_CAP,
               (msg.data && typeof msg.data.rpgLevel === 'number') ? Math.floor(msg.data.rpgLevel) : 1));
             this.playerState[msg.id].xp = Math.max(0, Math.min(BOOTSTRAP_XP_CAP,
