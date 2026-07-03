@@ -321,6 +321,9 @@ no zone ENTRY gating yet — a fresh L1 player can walk into Ember Fields
 - index.js is ~5.4k lines — continue strangler-fig extraction (data.js,
   elemental.js, market/trade/duel are the pattern; tick loop is the
   riskiest slice, do it last with the smoke harness watching).
+  v2.3.1142: persistence/tick/lifeskills-economy suites now cover the
+  previously-untested core (rpg blob, monster AI ticks, forge/cook/
+  shop/harvest) — the extraction slices finally have a net.
 - Client has no test suite; the CI smoke harness (tools/qa/*.mjs) is the
   only automated client check — extend it when touching input/net code.
 

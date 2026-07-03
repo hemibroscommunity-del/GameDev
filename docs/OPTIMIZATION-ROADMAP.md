@@ -98,6 +98,15 @@ every slice. Do not start this before the P1 tests exist — refactoring an
 untested monolith is how the 2026-06-10 production incident class happens
 again.
 
+> **v2.3.1142 update:** the safety net for these exact slices now
+> exists — `persistence.test.mjs` (rpg blob roundtrip / fixed-field
+> rule / heal shapes), `tick.test.mjs` (monster AI, respawns,
+> transforms, nodes, loot expiry, player respawn), and
+> `lifeskills-economy.test.mjs` (forge/cook/shop/harvest with
+> untouched-state rejection checks). The tick-loop slice — flagged
+> riskiest — is now the best-covered part of the monolith. 21 suites /
+> ~490 assertions total.
+
 ## P5 — Small findings & opportunistic cleanups
 
 - **Event-buffer overflow drops events** (`server/src/index.js` ~4542):
