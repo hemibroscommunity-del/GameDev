@@ -26,12 +26,12 @@ import {
   QUEST_CHAINS, QUEST_STATUS, RARE_DROP_CHANCE, RARE_DROP_ITEMS, RARITY_TIERS,
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT,
   SWING_ARC, SWING_COOLDOWN, SWING_RANGE, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
-  ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, calcBlockReduction, calcCritChance,
-  calcCritMult, calcSpecialDmg, calcWeaponDmg, createDefaultCompStats, createDefaultLifeSkills,
+  ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
+  calcCritMult, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
-  getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
-  getShieldStats, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
-  rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, tickStatuses, updateZoneDimensions,
+  getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
+  getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
+  poiseStunMult, rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin,
   monsterBodyY,
 } from '@/data/index.js';
@@ -53,8 +53,10 @@ export function updateMonsterCombat(S, deps) {
         if (S.monsters && S.rpg) {
           var _R6$_amuletBonus, _R6$_amuletBonus2, _S$rpg9;
           var _R6 = S.rpg;
-          /* §2.6 Tag player with Influence for status duration scaling */
-          S.player._rpgInfluence = _R6.influence || 0;
+          /* v2.3.1136: tag player with the Attunement channel for status
+             duration scaling (replaces the retired Influence stamp — that
+             stat is pinned 0 since v2.3.910). */
+          S.player._rpgAttune = getAttunementPts(_R6);
           /* §4.4 Weapon Damage — uses new stat system.
              v2.3.213: fall back to a zero-damage "Unarmed" object when
              nothing is equipped so per-frame reads of .type/.tierMult
@@ -87,7 +89,11 @@ export function updateMonsterCombat(S, deps) {
              the retired generic Ferocity stat). */
           var _wCrit = getWeaponCritStat(_R6);
           var critChance = calcCritChance(_R6.power, _wCrit);
-          var critMult = calcCritMult(_R6.power, _wCrit);
+          /* v2.3.1133: crit MULT scales on the crit-DMG channel (Executioner /
+             Headshot / Arcane Focus), not the crit-CHANCE channel — the old
+             call passed _wCrit here, quietly drifting from the server which
+             used the retired Ferocity (0). */
+          var critMult = calcCritMult(_R6.power, getWeaponCritDmgStat(_R6));
           /* Baseline floor: at zero ferocity, calcCritChance returns 0%, which
              meant a brand-new player could never grand-slam. Floor at 8% so a
              grand slam is reachable from the first swing. Applied before the
@@ -529,7 +535,8 @@ export function updateMonsterCombat(S, deps) {
                         S.lastDamageTaken = Date.now();
                         S._hitFlash = Date.now();
                         if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: finalDmg } });
-                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + 250);
+                        /* v2.3.1137: Poise channel shortens the stagger */
+                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.round(250 * poiseStunMult(S.rpg)));
                       }
                     } else if (distToP < slamRange && dodged) {
                       S.dmgNumbers.push({
@@ -597,7 +604,8 @@ export function updateMonsterCombat(S, deps) {
                         S.lastDamageTaken = Date.now();
                         S._hitFlash = Date.now();
                         if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _finalDmg } });
-                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + 250);
+                        /* v2.3.1137: Poise channel shortens the stagger */
+                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.round(250 * poiseStunMult(S.rpg)));
                       }
                     }
                   }
@@ -940,7 +948,7 @@ export function updateMonsterCombat(S, deps) {
                       P.x += Math.cos(kbAngle) * 12;
                       P.y += Math.sin(kbAngle) * 12;
                       S.screenShake = Math.max(S.screenShake || 0, 6);
-                      S._playerStunUntil = Date.now() + 300; /* brief stagger */
+                      S._playerStunUntil = Date.now() + Math.round(300 * poiseStunMult(S.rpg)); /* brief stagger — v2.3.1137: Poise shortens it */
                     }
                     /* Swarm bleed DoT removed — at higher levels the
                        1%-of-maxHp tick (every 500 ms for 3 s) read as
@@ -1287,7 +1295,10 @@ export function updateMonsterCombat(S, deps) {
           /* Auto-attack: trigger swing/bow automatically */
           /* §4.5 Attack speed — base cooldown modified by amulet */
           var atkSpdAmulet = ((_S$rpg9 = S.rpg) === null || _S$rpg9 === void 0 || (_S$rpg9 = _S$rpg9._amuletBonus) === null || _S$rpg9 === void 0 ? void 0 : _S$rpg9.stat) === 'atkSpd' ? 1 + S.rpg._amuletBonus.value / 100 : 1.0;
-          var effectiveSwingCd = Math.max(200, Math.floor(SWING_COOLDOWN / atkSpdAmulet));
+          /* v2.3.1134: Tempo channel multiplies the cooldown AFTER the amulet
+             (both sources stack; the 200ms floor still backstops).  The server's
+             per-monster cadence floor assumes Tempo's -20% cap. */
+          var effectiveSwingCd = Math.max(200, Math.floor(SWING_COOLDOWN * swingCooldownMult(S.rpg) / atkSpdAmulet));
           /* Staff fires slower than bow — add the 300 ms penalty to the
              cooldown gate instead of pushing swingTimer into the future,
              which made every `Date.now() - swingTimer` reader negative
@@ -1343,7 +1354,14 @@ export function updateMonsterCombat(S, deps) {
                   life: isStaff ? 90 : 120,
                   maxLife: isStaff ? 90 : 120,
                   hitIds: new Set(),
-                  isStaff: isStaff
+                  isStaff: isStaff,
+                  /* v2.3.1135: Piercing/Longshot channels — finite pierce
+                     budget (extra targets past the first) + speed/flight
+                     multiplier.  Staff bolts have their own AoE identity
+                     (Detonation) and take neither. */
+                  pierceLeft: isStaff ? undefined : (bowPierceCount(S.rpg) || undefined),
+                  pierce: !isStaff && bowPierceCount(S.rpg) > 0,
+                  _rangeMult: isStaff ? 1 : bowRangeMult(S.rpg)
                 });
                 /* Broadcast projectile to other players */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
@@ -1423,7 +1441,10 @@ export function updateMonsterCombat(S, deps) {
             var _wildSwing = !!(_actWpn && (_actWpn.type === 'sword' || _actWpn.type === 'greatsword'));
             var _gsInner = S._specialAttack ? GS_INNER_RADIUS * 1.25 : GS_INNER_RADIUS;
             var _gsOuter = S._specialAttack ? GS_OUTER_RADIUS * 1.5  : GS_OUTER_RADIUS;
-            var _gsArc   = S._specialAttack ? Math.PI * 2 : GS_FORWARD_ARC;
+            /* v2.3.1134: Cleave widens the normal forward arc (specials are
+               already full-circle).  effectsRenderer adds the same bonus to
+               the aim preview — keep them in lockstep. */
+            var _gsArc   = S._specialAttack ? Math.PI * 2 : GS_FORWARD_ARC + cleaveArcBonus(S.rpg);
             var _maxRange = _wildSwing ? Math.max(_gsInner, _gsOuter) : _swingRange;
             /* Hit monsters */
             S.monsters.forEach(function (m) {
@@ -2534,7 +2555,12 @@ export function updateMonsterCombat(S, deps) {
                     angle: pvpAngle,
                     dmgBase: pDmg * specialMult2,
                     critChance: critChance,
-                    range: wpnType.range || SWING_RANGE,
+                    /* v2.3.1135: Longshot stretches PvE flight, but PvP
+                       reach is hard-capped at the server's 250px clamp
+                       (_resolvePvPAttack) — clamp here too so the claimed
+                       range matches what the worker will honor. */
+                    range: Math.min(250, Math.round((wpnType.range || SWING_RANGE)
+                      * (S.rpg && S.rpg.activeSlot === 'ranged' ? bowRangeMult(S.rpg) : 1))),
                     arc: wpnType.arc || SWING_ARC,
                     ts: Date.now(),
                     inDuel: !!S._inDuel

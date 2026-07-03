@@ -594,6 +594,15 @@ export function processGameEvent(type, payload, S, deps) {
                       x: hitM.x || hitM.renderX, y: (hitM.y || hitM.renderY) - 20,
                       text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888'
                     });
+                  } else if (payload.thorns) {
+                    /* v2.3.1137: Thorns reflect is SERVER-rolled with no
+                       local prediction (unlike swings), so our own thorns
+                       hits DO need the popup or the block just silently
+                       chips the monster's bar. */
+                    S.dmgNumbers.push({
+                      x: hitM.x || hitM.renderX, y: (hitM.y || hitM.renderY) - 20,
+                      text: '-' + payload.dmg + ' 🌵', color: '#a3e635', ts: Date.now()
+                    });
                   }
                   /* Hit particles for everyone */
                   for (var hp2 = 0; hp2 < 3; hp2++) {
@@ -979,6 +988,16 @@ export function processGameEvent(type, payload, S, deps) {
                 iconKey: 'heart',
                 ts: Date.now()
               });
+              /* v2.3.1137: Second Wind — the worker healed us right after
+                 this hit (defense channel, 10s cooldown); green popup.
+                 The authoritative hp arrives via player_state as usual. */
+              if (payload.secondWind > 0) {
+                S.dmgNumbers.push({
+                  x: S.player.x + 16, y: S.player.y - 38,
+                  text: '+' + payload.secondWind + ' Second Wind',
+                  color: '#4ade80', ts: Date.now() + 2
+                });
+              }
               for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
                 x: S.player.x, y: S.player.y,
                 vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
@@ -1408,6 +1427,15 @@ export function processGameEvent(type, payload, S, deps) {
                 color: payload.blocked ? '#607D8B' : '#ff5e6c',
                 ts: Date.now()
               });
+              /* v2.3.1137: Second Wind fires in PvP too (see server
+                 _applyDamage); mirror the green heal popup here. */
+              if (payload.secondWind > 0) {
+                S.dmgNumbers.push({
+                  x: S.player.x + 16, y: S.player.y - 38,
+                  text: '+' + payload.secondWind + ' Second Wind',
+                  color: '#4ade80', ts: Date.now() + 2
+                });
+              }
               if (payload.blocked) S.dmgNumbers.push({
                 x: S.player.x,
                 y: S.player.y - 35,

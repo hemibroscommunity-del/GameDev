@@ -8,11 +8,14 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { SWING_COOLDOWN, SPECIAL_ATK_MULT, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, monsterBodyY } from '@/data/index.js';
+import { SWING_COOLDOWN, SPECIAL_ATK_MULT, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, monsterBodyY, swingCooldownMult } from '@/data/index.js';
 import { addBuildUse } from '@/game/combatHelpers.js';
 
 export function swingAttack(S) {
-    if (!S.rpg || Date.now() - S.swingTimer < SWING_COOLDOWN) return;
+    /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
+       does, else tap-attackers get no benefit from the channel.  (The amulet
+       atkSpd bonus was never applied here — unchanged, out of scope.) */
+    if (!S.rpg || Date.now() - S.swingTimer < SWING_COOLDOWN * swingCooldownMult(S.rpg)) return;
     if (S._playerStunUntil && Date.now() < S._playerStunUntil) return;
     var slot = S.rpg.activeSlot || 'melee';
     /* Ranged/staff: let the auto-attack loop fire the projectile on the

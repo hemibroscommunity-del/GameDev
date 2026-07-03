@@ -3687,12 +3687,21 @@ export const WEAPON_CHANNELS = {
     { key: 'precision',   label: 'Precision',      role: 'crit',    active: true,
       blurb: 'Crit chance on top of Power.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
-    { key: 'executioner', label: 'Executioner',    role: 'critDmg', active: false,
-      blurb: '+crit damage multiplier.', derive: () => 'Soon' },
-    { key: 'tempo',       label: 'Tempo',          role: 'atkspd',  active: false,
-      blurb: '+attack speed.', derive: () => 'Soon' },
-    { key: 'cleave',      label: 'Cleave',         role: 'cleave',  active: false,
-      blurb: 'Wider arc — hit adjacent foes.', derive: () => 'Soon' },
+    /* v2.3.1133: crit-dmg channel live — +0.8% crit damage per point
+       (fed as the 2nd arg into calcCritMult, ×0.008).  99 pts = +79.2%. */
+    { key: 'executioner', label: 'Executioner',    role: 'critDmg', active: true, perPt: 0.8,
+      blurb: '+crit damage multiplier.',
+      derive: (v) => '+' + (v * 0.8).toFixed(1) + '% crit dmg' },
+    /* v2.3.1134: Tempo live — -0.25% swing cooldown per point, HARD CAP
+       -20% (reached at 80 pts; the derive shows the cap so points 81-99
+       aren't a silent trap).  Cleave live — +0.6° swing arc per point,
+       cap +45° on the 180° forward half-circle. */
+    { key: 'tempo',       label: 'Tempo',          role: 'atkspd',  active: true, perPt: 0.25,
+      blurb: '+attack speed (cap -20% cooldown at 80 pts).',
+      derive: (v) => '-' + Math.min(20, v * 0.25).toFixed(1) + '% swing cd' + (v * 0.25 >= 20 ? ' (max)' : '') },
+    { key: 'cleave',      label: 'Cleave',         role: 'cleave',  active: true, perPt: 0.6,
+      blurb: 'Wider swing arc — hit adjacent foes.',
+      derive: (v) => '+' + Math.min(45, v * 0.6).toFixed(0) + '° arc' + (v * 0.6 >= 45 ? ' (max)' : '') },
   ],
   bow: [
     { key: 'drawPower',    label: 'Draw Power',    role: 'damage',  active: true,  perPt: 1.0,
@@ -3701,12 +3710,20 @@ export const WEAPON_CHANNELS = {
     { key: 'marksmanship', label: 'Marksmanship',  role: 'crit',    active: true,
       blurb: 'Crit chance on top of Agility.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
-    { key: 'headshot',     label: 'Headshot',      role: 'critDmg', active: false,
-      blurb: '+crit damage multiplier.', derive: () => 'Soon' },
-    { key: 'piercing',     label: 'Piercing',      role: 'pierce',  active: false,
-      blurb: 'Arrows pass through targets.', derive: () => 'Soon' },
-    { key: 'longshot',     label: 'Longshot',      role: 'range',   active: false,
-      blurb: '+range and arrow speed.', derive: () => 'Soon' },
+    /* v2.3.1133: crit-dmg channel live — mirrors Executioner. */
+    { key: 'headshot',     label: 'Headshot',      role: 'critDmg', active: true, perPt: 0.8,
+      blurb: '+crit damage multiplier.',
+      derive: (v) => '+' + (v * 0.8).toFixed(1) + '% crit dmg' },
+    /* v2.3.1135: Piercing live — +1 pierce target per 25 points (cap 3 at
+       75); whole-number breakpoints keep the mental math simple.  Longshot
+       live — +0.5%/pt arrow speed AND max flight (cap +49.5%); the PvP
+       reach stays hard-clamped at the server's 250px cap. */
+    { key: 'piercing',     label: 'Piercing',      role: 'pierce',  active: true, perPt: 0,
+      blurb: 'Arrows pass through targets (+1 per 25 pts, max 3).',
+      derive: (v) => { var n = Math.min(3, Math.floor(v / 25)); return n > 0 ? '+' + n + ' pierce' + (n >= 3 ? ' (max)' : '') : 'next at 25 pts'; } },
+    { key: 'longshot',     label: 'Longshot',      role: 'range',   active: true, perPt: 0.5,
+      blurb: '+arrow speed and flight distance.',
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% range/speed' },
   ],
   staff: [
     { key: 'spellPower',  label: 'Spell Power',    role: 'damage',  active: true,  perPt: 1.0,
@@ -3715,12 +3732,23 @@ export const WEAPON_CHANNELS = {
     { key: 'overload',    label: 'Overload',       role: 'crit',    active: true,
       blurb: 'Crit chance for magic.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
-    { key: 'detonation',  label: 'Detonation',     role: 'aoe',     active: false,
-      blurb: '+AoE targets / cone.', derive: () => 'Soon' },
-    { key: 'attunement',  label: 'Attunement',     role: 'status',  active: false,
-      blurb: '+status & collision damage.', derive: () => 'Soon' },
-    { key: 'focus',       label: 'Focus',          role: 'variance', active: false,
-      blurb: 'Raise the low end of variance.', derive: () => 'Soon' },
+    /* v2.3.1136: Detonation live — +0.7%/pt staff bolt hit radius (cap
+       +69.3%), keyed to the elemental pipeline.  Attunement live —
+       +0.5%/pt status duration (cap +49.5%), the successor to the retired
+       Influence stat; blurb fixed (it scales DURATION, not damage). */
+    { key: 'detonation',  label: 'Detonation',     role: 'aoe',     active: true, perPt: 0.7,
+      blurb: '+bolt blast radius.',
+      derive: (v) => '+' + (v * 0.7).toFixed(1) + '% radius' },
+    { key: 'attunement',  label: 'Attunement',     role: 'status',  active: true, perPt: 0.5,
+      blurb: '+elemental status duration.',
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% status dur' },
+    /* v2.3.1133: converted from the never-shipped 'variance' role to the
+       crit-dmg role the build-skill spec's grid always intended ("Arcane
+       Focus (crit dmg)").  Key stays 'focus' — the server's stats_update
+       clamp and _saveRpg already know it, so no wire/storage change. */
+    { key: 'focus',       label: 'Arcane Focus',   role: 'critDmg', active: true, perPt: 0.8,
+      blurb: '+crit damage multiplier.',
+      derive: (v) => '+' + (v * 0.8).toFixed(1) + '% crit dmg' },
   ],
 };
 
@@ -3766,6 +3794,14 @@ export function weaponCritStatFor(rpg, weaponType) {
   return weaponChannelValueByRole(rpg, cat, 'crit');
 }
 
+/* v2.3.1133: crit-DAMAGE-channel point total by weapon type (Executioner /
+   Headshot / Arcane Focus) — parallel to weaponCritStatFor, fed as the 2nd
+   arg into calcCritMult (+0.8% per point). */
+export function weaponCritDmgStatFor(rpg, weaponType) {
+  var cat = WEAPON_CATEGORY[weaponType] || 'sword';
+  return weaponChannelValueByRole(rpg, cat, 'critDmg');
+}
+
 /* Flat base-damage bonus from the equipped category's damage channel. */
 export function getWeaponDamageBonus(rpg) {
   return weaponDamageBonusFor(rpg, (getActiveWeapon(rpg) || {}).type);
@@ -3776,6 +3812,62 @@ export function getWeaponDamageBonus(rpg) {
    Ferocity stat. */
 export function getWeaponCritStat(rpg) {
   return weaponChannelValueByRole(rpg, activeWeaponCategory(rpg), 'crit');
+}
+
+/* v2.3.1133: crit-dmg channel total for the equipped category — 2nd arg
+   of calcCritMult, the way getWeaponCritStat feeds calcCritChance. */
+export function getWeaponCritDmgStat(rpg) {
+  return weaponChannelValueByRole(rpg, activeWeaponCategory(rpg), 'critDmg');
+}
+
+/* v2.3.1134: Tempo — swing-cooldown multiplier from the equipped
+   category's atkspd channel.  -0.25%/pt, HARD CAP -20% (floor 0.80).
+   Reads by role so a future bow/staff cadence channel plugs in free.
+   SERVER NOTE: the worker's monster_damage cadence floor assumes this
+   cap (600 × 0.80 × lag headroom) — change the cap, change the floor. */
+export function swingCooldownMult(rpg) {
+  var pts = weaponChannelValueByRole(rpg, activeWeaponCategory(rpg), 'atkspd');
+  return Math.max(0.80, 1 - pts * 0.0025);
+}
+
+/* v2.3.1135: Piercing — extra monsters a bow arrow passes through.
+   +1 per 25 points, cap 3 (75+).  Special arrows keep their unlimited
+   pierce (pierceLeft stays undefined on them). */
+export function bowPierceCount(rpg) {
+  var pts = weaponChannelValueByRole(rpg, 'bow', 'pierce');
+  return Math.min(3, Math.floor(pts / 25));
+}
+
+/* v2.3.1135: Longshot — arrow speed + max-flight multiplier.  +0.5%/pt,
+   cap +49.5%.  PvP reach is clamped to the server's 250px cap at the
+   player_attack send site (and again server-side — belt and braces). */
+export function bowRangeMult(rpg) {
+  var pts = weaponChannelValueByRole(rpg, 'bow', 'range');
+  return 1 + Math.min(99, pts) * 0.005;
+}
+
+/* v2.3.1136: Detonation — staff bolt hit-radius multiplier.  +0.7%/pt,
+   cap +69.3%.  Applied to the per-archetype staff radii in projectiles
+   (the ×3 special-radius multiplier stacks on top, as before). */
+export function staffAoeMult(rpg) {
+  var pts = weaponChannelValueByRole(rpg, 'staff', 'aoe');
+  return 1 + Math.min(99, pts) * 0.007;
+}
+
+/* v2.3.1136: Attunement point total — stamped onto S.player._rpgAttune
+   (replacing the retired Influence stamp) so applyStatus scales status
+   duration at +0.5%/pt.  Global across weapons, like Influence was. */
+export function getAttunementPts(rpg) {
+  return weaponChannelValueByRole(rpg, 'staff', 'status');
+}
+
+/* v2.3.1134: Cleave — extra radians on the melee forward swing arc.
+   +0.6°/pt, cap +45° (on GS_FORWARD_ARC's 180°).  Shared by the hit test
+   (monsterCombat) AND the aim indicator (effectsRenderer) so the preview
+   keeps matching the damage — that pairing is a contract (v2.3.939). */
+export function cleaveArcBonus(rpg) {
+  var pts = weaponChannelValueByRole(rpg, 'sword', 'cleave');
+  return Math.min(45, pts * 0.6) * Math.PI / 180;
 }
 
 /* Award damage-proportional XP to the equipped category and resolve any
@@ -3874,12 +3966,26 @@ export const DEFENSE_CHANNELS = [
   { key: 'ironskin',  label: 'Iron Skin',   role: 'dmgreduce', active: true,  perPt: 0.5,
     blurb: '−0.5% damage taken from every hit.',
     derive: (v) => '−' + (v * 0.5).toFixed(1) + '% dmg taken' },
-  { key: 'thorns',    label: 'Thorns',      role: 'reflect',   active: false,
-    blurb: 'Reflect a share of blocked damage.', derive: () => 'Soon' },
-  { key: 'secondwind', label: 'Second Wind', role: 'regen',    active: false,
-    blurb: 'Heal a burst after surviving a hit.', derive: () => 'Soon' },
-  { key: 'poise',     label: 'Poise',       role: 'poise',     active: false,
-    blurb: 'Resist stagger / knockback.', derive: () => 'Soon' },
+  /* v2.3.1137: the last three defense channels go live (8th-grader math,
+     same as Bulwark/Iron Skin):
+       • Thorns — reflect 1%/pt of a blocked attack back at the monster
+         (50% cap).  SERVER-owned: the worker deals the reflect on its
+         block branch and pays kill credit through the shared pipeline.
+       • Second Wind — heal 1% maxHp/pt after SURVIVING an unblocked
+         hit (50% cap), 10s cooldown.  SERVER-owned via _applyDamage.
+         (Priced at 1%/pt, not 0.5: the sim's DF-02 gate showed 0.5
+         bought only +12% EHP vs Iron Skin's +33% yardstick.)
+       • Poise — −1%/pt stun/stagger duration (−50% cap).  CLIENT-owned:
+         stuns only ever gate the player's own input. */
+  { key: 'thorns',    label: 'Thorns',      role: 'reflect',   active: true, perPt: 1.0,
+    blurb: 'Reflect blocked damage back at the attacker.',
+    derive: (v) => 'reflect ' + Math.min(50, v) + '% on block' },
+  { key: 'secondwind', label: 'Second Wind', role: 'regen',    active: true, perPt: 1.0,
+    blurb: 'Heal after surviving a hit (10s cooldown).',
+    derive: (v) => 'heal ' + Math.min(50, v) + '% HP' },
+  { key: 'poise',     label: 'Poise',       role: 'poise',     active: true, perPt: 1.0,
+    blurb: 'Shrug off stagger from heavy hits.',
+    derive: (v) => '−' + Math.min(50, v) + '% stun time' },
 ];
 
 /* Spend point total for a defense channel key. */
@@ -3891,6 +3997,12 @@ export function getDefenseBlockBonus(rpg) { return getDefenseSpec(rpg, 'bulwark'
 /* Iron Skin flat damage-taken reduction as a 0..0.25 fraction. */
 export function getIronSkinReduction(rpg) {
   return Math.min(0.25, getDefenseSpec(rpg, 'ironskin') * 0.005);
+}
+/* v2.3.1137: Poise — multiplier on player stun/stagger durations.
+   −1%/pt, cap −50% (0.5 floor).  Client-owned: _playerStunUntil only
+   gates the local player's input, so there is nothing to mirror. */
+export function poiseStunMult(rpg) {
+  return 1 - Math.min(0.50, getDefenseSpec(rpg, 'poise') * 0.01);
 }
 
 /* Award defense-skill XP (already weighted by the caller) and resolve
@@ -4095,12 +4207,14 @@ export function applyStatus(target, statusId, source, now) {
   }
 
   /* New application */
-  /* §2.6 Influence — increases CC duration applied by player */
-  var influenceBonus = source !== null && source !== void 0 && source._rpgInfluence ? 1 + source._rpgInfluence * 0.003 : 1.0;
+  /* v2.3.1136: Attunement channel (+0.5%/pt) scales status duration —
+     the successor to the retired §2.6 Influence bonus (×0.003), per
+     BALANCE-PLAN §8 "leave the hooks reading the successor channels". */
+  var attuneBonus = source !== null && source !== void 0 && source._rpgAttune ? 1 + source._rpgAttune * 0.005 : 1.0;
   target.statuses[statusId] = {
     id: statusId,
-    remaining: def.dur * influenceBonus,
-    maxDur: (def.maxDur || def.dur) * influenceBonus,
+    remaining: def.dur * attuneBonus,
+    maxDur: (def.maxDur || def.dur) * attuneBonus,
     stacks: 1,
     source: source,
     appliedAt: now,
@@ -4860,11 +4974,15 @@ export function calcCritChance(power, ferocity) {
   var fCrit = Math.min(0.30, fer * 0.005);
   return Math.max(0, Math.min(1, pCrit + fCrit));
 }
-export function calcCritMult(power, ferocity) {
-  if (arguments.length < 2) { ferocity = power || 0; power = 0; }
+export function calcCritMult(power, critDmgPts) {
+  if (arguments.length < 2) { critDmgPts = 0; }
   /* Power: 1.5x at 0, +0.001 per pt (2.0x at 500).
-     Ferocity: +0.0008 per pt amp (additive). */
-  return 1.5 + (power || 0) * 0.001 + (ferocity || 0) * 0.0008;
+     v2.3.1133: the 2nd arg is now the weapon CRIT-DMG channel (Executioner /
+     Headshot / Arcane Focus) at +0.8% per point (99 pts = +79.2%), replacing
+     the retired Ferocity amp (+0.0008/pt, always 0 since v2.3.910).  The old
+     single-arg legacy call treated its arg as Ferocity — with Ferocity pinned
+     to 0 everywhere that path now safely ignores the arg. */
+  return 1.5 + (power || 0) * 0.001 + (critDmgPts || 0) * 0.008;
 }
 
 /* §2.3 Block.  v2.3.693: the first arg is now the Defense BULWARK channel
@@ -5041,14 +5159,16 @@ export function createDefaultRpg() {
 
 /* Recalculate derived stats from allocations */
 export function recalcDerived(rpg) {
-  /* v2.3.910: combat level is DERIVED — it is the sum of the five use-trained
-     build-skill levels (Melee/Bow/Magic/HP/Endurance = power/agility/mind/
-     vitality/endurance), clamped to LEVEL_CAP.  This replaces the old
+  /* v2.3.910: combat level is DERIVED — it is the sum of the use-trained
+     build-skill levels, clamped to LEVEL_CAP.  This replaces the old
      5-build-point gate; each build-skill level-up is exactly +1 combat level.
-     (Defense's contribution folds in once the server tracks defenseSkill.) */
+     v2.3.1138: Defense (the 6th skill) now counts too — the spec's Phase 2
+     follow-up, unblocked since the server started persisting defenseSkill
+     (v2.3.1021) and training went live (v2.3.1113). */
   rpg.level = Math.max(1, Math.min(LEVEL_CAP,
     (rpg.power || 0) + (rpg.vitality || 0) + (rpg.endurance || 0)
-    + (rpg.agility || 0) + (rpg.mind || 0)));
+    + (rpg.agility || 0) + (rpg.mind || 0)
+    + ((rpg.defenseSkill && rpg.defenseSkill.level) || 0)));
   rpg.maxHp = calcMaxHp(rpg.level, rpg.vitality);
   /* v2.3.227: armor contributes flat HP scaled by Vitality (1% per pt). */
   rpg.maxHp += getArmorHp(rpg.armor, rpg.vitality);

@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcCritMult, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat, weaponDamageBonusFor, weaponCritStatFor, buildSkillUnspent, STAT_TO_WEAPON_CAT, weaponEffBase } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcCritMult, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat, weaponCritDmgStatFor, weaponDamageBonusFor, weaponCritStatFor, buildSkillUnspent, STAT_TO_WEAPON_CAT, weaponEffBase } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
@@ -1004,10 +1004,12 @@ export const BottomDashboard = () => {
                     else                        { dmgMin = base * 0.75; dmgMax = base * 1.25; }
                     dmgMin = Math.round(dmgMin); dmgMax = Math.round(dmgMax);
                     dmgText = (dmgMin === dmgMax) ? String(dmgMin) : `${dmgMin}-${dmgMax}`;
-                    /* DPS folds in the crit channel: avg dmg / cooldown, scaled by
-                       expected crit (chance × extra crit multiplier). */
+                    /* DPS folds in the crit channels: avg dmg / cooldown, scaled by
+                       expected crit (chance × extra crit multiplier).
+                       v2.3.1133: the crit-dmg channel (Executioner/Headshot/Arcane
+                       Focus) now feeds the multiplier too. */
                     const critChance = calcCritChance(R.power || 0, weaponCritStatFor(R, (wpn && wpn.type)));
-                    const critMult = calcCritMult(R.power || 0, 0);
+                    const critMult = calcCritMult(R.power || 0, weaponCritDmgStatFor(R, (wpn && wpn.type)));
                     dpsText = ((dmgMin + dmgMax) / 2 / (cdMs / 1000) * (1 + critChance * (critMult - 1))).toFixed(1);
                   }
                   /* Equip slot list — order matches the user's wireframe.

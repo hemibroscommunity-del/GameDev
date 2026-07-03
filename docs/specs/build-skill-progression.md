@@ -1,6 +1,11 @@
 # Build-Skill Progression (combat level = Σ build skills)
 
-**Status:** Phase 1 shipped (v2.3.910). Phases 2–4 pending. Prototype — no live
+**Status:** Phase 1 shipped (v2.3.910).  The wired-channel slice shipped
+v2.3.1133–1138: ALL built grid channels are live (weapon 15/15, defense
+5/5 — see docs/BALANCE-PLAN.md §4 for shipped per-point values), and
+**Defense now counts toward combat level** (client `recalcDerived` +
+server `_recomputeMaxes`).  Still pending: dedicated HP/Endurance skills
+with their own 5-category grids (Phases 2/4 below).  Prototype — no live
 players, so there is no save migration or backwards-compat layer.
 
 ## The model
@@ -49,10 +54,10 @@ Implemented now; later phases wire the categories and the two dedicated skills.
 ## Known follow-ups (later phases)
 - **Two dedicated skills** `hpSkill` / `enduranceSkill` with their own 5
   categories; move Vitality/Endurance/Agility-dodge/move-speed effects into them.
-- **Wire the "Soon" categories** (crit-dmg, atk-speed, cleave, AoE, status,
-  pierce, range, thorns, second-wind, poise).
-- **Defense → combat level:** server must track `defenseSkill.level` to add it
-  to the sum.
+- ~~**Wire the "Soon" categories"**~~ — DONE v2.3.1133–1137 (crit-dmg,
+  atk-speed, cleave, AoE, status, pierce, range, thorns, second-wind, poise).
+- ~~**Defense → combat level**~~ — DONE v2.3.1138 (client + server sums
+  include `defenseSkill.level`; clamped [0,99], known-loose trust class).
 - **`GEAR_STAT_REQ` mismatch:** `sword` is keyed to `agility`, so after the
   relabel a sword's forge requirement reads "Bow". Pre-existing; align to the
   build-skill identity when categories are wired.

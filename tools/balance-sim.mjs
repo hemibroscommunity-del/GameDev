@@ -228,6 +228,77 @@ if (LEVEL >= 15) {
    full DPS comparison needs the lunge cooldown; see plan doc). */
 check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LUNGE_DAMAGE_MULT < 1.0, String(LUNGE_DAMAGE_MULT));
 
+/* ═══ channel pricing (v2.3.1133) ═══
+   %DPS bought by FULL investment in each wired grid channel, priced at a
+   fixed reference cell (L35 median-Power, mythril — the INV-03 mid-band
+   audit point) so the numbers don't swing with --level.  BALANCE-PLAN §4
+   budget rule: full investment in any category should buy comparable
+   marginal value; utility channels ~70% of a DPS point.
+   KNOWN (pre-existing): the live damage channel (+1 flat/pt, pre-tier)
+   towers over every percentage channel at all bands — the §4 parity rule
+   is only enforceable among the NEW channels, so the gates below check
+   (a) no new channel out-prices the damage channel, (b) every new channel
+   is felt (>+3% at full investment). */
+{
+  const REF_LEVEL = 35;
+  const refTier = BLACKSMITH_TIERS[tierForLevel(REF_LEVEL)];
+  const refPower = Math.round(6 + (REF_LEVEL - 1) * 1.05);
+  const dps = (w, { flat = 0, critPts = 0, critDmgPts = 0, cdMult = 1 }) => {
+    const critC = calcCritChance(refPower, critPts);
+    const critM = calcCritMult(refPower, critDmgPts);
+    const [vLo, vHi] = VARIANCE[w];
+    let sum = 0;
+    for (let i = 0; i < SAMPLES; i++) {
+      const v = vLo + Math.random() * (vHi - vLo);
+      let d = calcWeaponDmg(w, refPower, refTier.tierMult) + flat * refTier.tierMult * v;
+      if (Math.random() < critC) d *= critM;
+      sum += Math.max(1, Math.round(d));
+    }
+    return (sum / SAMPLES) / (SWING_SEC * cdMult);
+  };
+  console.log(`\n═══ channel pricing — %DPS at full investment (L${REF_LEVEL} median, ${tierForLevel(REF_LEVEL)}, sword) ═══`);
+  const base = dps('sword', {});
+  const pricePct = (opts) => (dps('sword', opts) / base - 1) * 100;
+  const report = (label, pct) => console.log(pad(label, 42) + (pct >= 0 ? '+' : '') + num(pct) + '% DPS');
+  const edgePct = pricePct({ flat: 99 });
+  report('edge 99 (damage, live v2.3.912)', edgePct);
+  report('precision 99 (crit chance, live v2.3.912)', pricePct({ critPts: 99 }));
+  const exePct = pricePct({ critDmgPts: 99 });
+  report('executioner 99 (crit dmg, v2.3.1133)', exePct);
+  const pairPct = pricePct({ critPts: 99, critDmgPts: 99 });
+  report('precision+executioner (priced together)', pairPct);
+  const tempoPct = pricePct({ cdMult: 0.80 });   // v2.3.1134: Tempo hard cap -20% cd
+  report('tempo 80 (atk speed at the -20% cap)', tempoPct);
+  const cleaveNote = 'utility: +45° arc at cap — multi-target uptime, not single-target DPS';
+  console.log(pad('cleave 75+ (arc, v2.3.1134)', 42) + cleaveNote);
+  check('CH-01', 'crit-dmg channel does not out-price the damage channel', exePct <= edgePct,
+    `executioner +${num(exePct)}% vs edge +${num(edgePct)}%`);
+  check('CH-02', 'crit-dmg full investment is felt (>3% DPS)', exePct > 3, `+${num(exePct)}%`);
+  check('CH-03', 'crit pair stays a sane multiplier (< x2 DPS)', pairPct < 100, `+${num(pairPct)}%`);
+  check('CH-04', 'tempo cap buys ~+25% DPS (cadence, not damage)', tempoPct > 20 && tempoPct < 30, `+${num(tempoPct)}%`);
+
+  /* ── defense channels (v2.3.1137) at the same reference cell ──
+     Iron Skin 50 = -25% taken = +33.3% EHP is the yardstick.  Second Wind
+     is priced as sustain vs a brute's sustained DPS (attack every 1.5s);
+     Thorns as reflected DPS vs the player's own melee DPS. */
+  const bruteDmg = Math.ceil(monsterStat(12, REF_LEVEL, 1.045, 1.025, 1.018) * ARCHETYPES.brute.dmgMult);
+  const MONSTER_CD_SEC = 1.5;
+  const incomingDPS = bruteDmg / MONSTER_CD_SEC;
+  const refMaxHp = calcMaxHp(REF_LEVEL, 0);           // median L35 build is all-Power
+  const swHealPS = (0.50 * refMaxHp) / 10;            // 50 pts (1%/pt), 10s cooldown
+  const swUplift = swHealPS >= incomingDPS ? Infinity : (1 / (1 - swHealPS / incomingDPS) - 1) * 100;
+  const ironUplift = (1 / 0.75 - 1) * 100;            // +33.3% EHP at 50 pts
+  const thornsDPS = (0.5 * bruteDmg) / MONSTER_CD_SEC; // 50 pts vs the same brute
+  console.log(pad('ironskin 50 (live v2.3.1113)', 42) + '+' + num(ironUplift) + '% EHP');
+  console.log(pad('secondwind 50 (v2.3.1137, vs brute)', 42) + (swUplift === Infinity ? 'out-sustains the brute' : '+' + num(swUplift) + '% EHP'));
+  console.log(pad('thorns 50 (v2.3.1137, vs brute)', 42) + num(thornsDPS) + ' reflected DPS (melee DPS ' + num(base) + ')');
+  check('DF-01', 'thorns reflect stays under active DPS x1.25 (INV ceiling)',
+    thornsDPS <= base * 1.25, `${num(thornsDPS)} vs cap ${num(base * 1.25)}`);
+  check('DF-02', 'second wind lands in the Iron Skin band (0.5x-2x of +33% EHP)',
+    swUplift !== Infinity && swUplift >= ironUplift * 0.5 && swUplift <= ironUplift * 2,
+    `+${num(swUplift)}% vs yardstick +${num(ironUplift)}%`);
+}
+
 /* Layer-budget report: ceiling of each loot layer at this cell. */
 console.log('\n═══ layer ceilings (median build, sword) ═══');
 const b0 = expectedDmg('sword', BUILDS[0], false);

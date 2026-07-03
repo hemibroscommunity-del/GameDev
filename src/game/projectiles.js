@@ -15,7 +15,7 @@ import {
   BT_AUDIO, COMBO_NEXT_DURATION_BONUS, ELEMENTS, QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
-  resolveCollision, rollPassiveDodge, spawnWeaponHitFX,
+  resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
   monsterBodyY, monsterBodyOffsetY, trainDefense, applyIronSkin,
 } from '@/data/index.js';
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
@@ -91,7 +91,10 @@ export function updateArrows(S, deps) {
               }
               return true;
             }
-            if (_released) a.dist += a.isStaff ? 5 : 8;
+            /* v2.3.1135: Longshot — bow arrows fly faster (same multiplier
+               scales the plant threshold below, so speed AND reach grow
+               together and flight TIME stays constant). */
+            if (_released) a.dist += a.isStaff ? 5 : 8 * (a._rangeMult || 1);
             a.life--;
             if (S._aiming || S.lockedTarget && S.lockedTarget.ref) a.ang = curAim;
             a._renderX = P.x + _ox + Math.cos(a.ang) * a.dist;
@@ -108,7 +111,7 @@ export function updateArrows(S, deps) {
                 _edge = a._renderX < S.camera.x + _em || a._renderX > S.camera.x + S._viewW - _em
                      || a._renderY < S.camera.y + _em || a._renderY > S.camera.y + S._viewH - _em;
               }
-              if (_edge || a.dist > 900) {
+              if (_edge || a.dist > 900 * (a._rangeMult || 1)) {
                 a.planting = true;
                 a._plantX = a._renderX;
                 a._plantStartY = a._renderY;
@@ -150,6 +153,9 @@ export function updateArrows(S, deps) {
               } else if (_archProj === 'mummy' || _archProj === 'skeleton') {
                 _hitR = a.isStaff ? 50 : 40;
               }
+              /* v2.3.1136: Detonation channel widens staff bolt blasts
+                 (+0.7%/pt, cap +69.3%) before the special multiplier. */
+              if (a.isStaff && S.rpg) _hitR *= staffAoeMult(S.rpg);
               /* v2.3.222: special arrow has 3x damage radius. */
               if (a.isSpecial) _hitR *= 3;
               /* v2.3.1111: hit-test against the RENDERED position when the
@@ -556,6 +562,15 @@ export function updateArrows(S, deps) {
                      the kill without a separate glyph. */
                 }
                 hit = true;
+                /* v2.3.1135: finite pierce budget (Piercing channel).
+                   pierceLeft = extra targets past the first; once the
+                   arrow has hit 1 + pierceLeft monsters, clear the pierce
+                   flag so the loop gate stops further hits this frame and
+                   the arrow dies below.  Special arrows have pierce:true
+                   with pierceLeft undefined — unlimited, unchanged. */
+                if (a.pierce && a.pierceLeft != null && a.hitIds.size >= 1 + a.pierceLeft) {
+                  a.pierce = false;
+                }
               }
             });
             /* Non-piercing arrows die on the first hit.  Piercing

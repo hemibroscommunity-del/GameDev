@@ -729,6 +729,33 @@ export class GameRoom {
                 this._saveRpg(nearest.id, blockerPs);
                 this._queuePlayerStateFlush(nearest.id);
               }
+              // v2.3.1137: THORNS — reflect 1%/pt of the monster's attack
+              // back at it on every successful block (cap 50% at the
+              // defenseSpec clamp).  Server-owned: the reflect is
+              // authoritative damage, credited like any hit so a thorns
+              // kill pays XP/loot/quests through the shared pipeline.
+              // slot 'thorns' denies melee lifesteal exactly like 'dot'
+              // (you didn't swing — nothing to refund).
+              const _thornsPts = (blockerPs && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
+              if (_thornsPts > 0 && m.hp > 0) {
+                const reflect = Math.min(Math.max(0, m.hp),
+                  Math.max(1, Math.round(m.dmg * Math.min(0.50, _thornsPts * 0.01))));
+                m.hp -= reflect;
+                if (!m.dmgByPlayer) m.dmgByPlayer = {};
+                m.dmgByPlayer[nearest.id] = (m.dmgByPlayer[nearest.id] || 0) + reflect;
+                this.eventBuffer.push({
+                  type: 'monster_hit',
+                  payload: {
+                    monsterId: m.id, zone: zoneId, dmg: reflect, isCrit: false,
+                    attackerId: nearest.id, thorns: true,
+                    hpPct: Math.max(0, m.hp / m.maxHp),
+                  },
+                });
+                this._markMonsterDirty(zoneId, m.id);
+                if (m.hp <= 0) {
+                  this._resolveMonsterKill(zoneId, m, nearest.id, blockerPs, 'thorns');
+                }
+              }
               // Still emit a monster_attack event so the client can show
               // the "Blocked!" popup + the stamina drain.  blocked: true
               // tells the client to skip the HP-damage path entirely;
@@ -777,6 +804,11 @@ export class GameRoom {
                 dmg: m.dmg,
                 dmgTaken,
                 dodged: dmgResult.dodged,
+                // v2.3.1137: Second Wind heal rides the attack event so the
+                // client pops the green number without a round-trip (the
+                // authoritative hp echo arrives via player_state anyway).
+                // undefined when 0 -- JSON.stringify drops it from the wire.
+                secondWind: dmgResult.secondWind || undefined,
                 zone: zoneId,
                 attackerX: m.x,
                 attackerY: m.y,
@@ -1373,6 +1405,22 @@ export class GameRoom {
     const K = { sword: 'precision', bow: 'marksmanship', staff: 'overload' };
     const cat = this._wpnCat(type);
     return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
+  }
+  // v2.3.1133: crit-DMG-channel point total (executioner / headshot / focus)
+  // — mirrors client weaponSpecs reads; feeds the crit multiplier at
+  // +0.008 per point (99 pts = +79.2%), replacing the retired Ferocity amp.
+  _wpnCritDmgPts(ps, type) {
+    const K = { sword: 'executioner', bow: 'headshot', staff: 'focus' };
+    const cat = this._wpnCat(type);
+    return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
+  }
+  // v2.3.1136: Attunement status-duration multiplier (+0.5%/pt, <=1.495).
+  // Successor to the retired Influence bonus; weaponSpecs is server-clamped
+  // [0,99] so a forged client can't exceed the cap.  Applies to statuses
+  // from ANY weapon's element (global, matching the Influence it replaces).
+  _attuneMult(ps) {
+    const pts = (ps && ps.weaponSpecs && ps.weaponSpecs.staff && ps.weaponSpecs.staff.attunement) || 0;
+    return 1 + Math.min(99, pts) * 0.005;
   }
 
   // v2.3.1104: weapon-blob sanitizer (P2 of docs/OPTIMIZATION-ROADMAP.md).
@@ -2996,7 +3044,28 @@ export class GameRoom {
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
     ps.hp = Math.max(0, ps.hp - dmgTaken);
     ps.lastDamageAt = Date.now();
-    return { dmgTaken, dodged: false };
+    // v2.3.1137: SECOND WIND — after SURVIVING an unblocked hit, heal
+    // 1% of maxHp per point (cap 50% at the [0,50] defenseSpec clamp)
+    // on a 10s internal cooldown.  1%/pt, not 0.5: the balance-sim DF-02
+    // gate prices 50 pts vs a band-brute at ~+27% EHP, inside Iron
+    // Skin's +33% yardstick band (0.5%/pt bought only +12%).  Never
+    // fires on the lethal hit (hp 0 routes to the death flow untouched).
+    // Applies to monster AND PvP damage — that's the channel's identity.
+    // _secondWindReadyAt is in-memory only (rule 11): a DO restart just
+    // re-arms it.
+    let secondWind = 0;
+    const _sw = (ps.defenseSpec && ps.defenseSpec.secondwind) || 0;
+    if (ps.hp > 0 && _sw > 0) {
+      const _nowSw = Date.now();
+      if (!ps._secondWindReadyAt || _nowSw >= ps._secondWindReadyAt) {
+        secondWind = Math.round((ps.maxHp || 100) * Math.min(0.50, _sw * 0.01));
+        if (secondWind > 0) {
+          ps.hp = Math.min(ps.maxHp, ps.hp + secondWind);
+          ps._secondWindReadyAt = _nowSw + 10000;
+        }
+      }
+    }
+    return { dmgTaken, dodged: false, secondWind };
   }
 
   // ═══ Melee lifesteal (per docs/specs/lifesteal-server.md) ═══
@@ -3102,13 +3171,18 @@ export class GameRoom {
 
   _recomputeMaxes(ps) {
     if (!ps) return;
-    // v2.3.910: combat level is DERIVED -- the sum of the five use-trained
-    // build-skill levels (power/vitality/endurance/agility/mind = Melee/HP/
-    // Endurance/Bow/Magic), clamped to 500.  Mirrors recalcDerived on the
+    // v2.3.910: combat level is DERIVED -- the sum of the use-trained
+    // build-skill levels, clamped to 500.  Mirrors recalcDerived on the
     // client and replaces the old 5-build-point gate.
+    // v2.3.1138: + defenseSkill.level (the 6th skill; spec Phase 2).
+    // Trust posture: defenseSkill is client-trained-but-clamped [0,99]
+    // (_sanitizeDefenseSkill), same known-loose class as weaponSkills --
+    // a forged claim buys <= +99 level (~ +247 maxHp).  Documented, not
+    // fixed here; tightens when training moves fully server-side.
     ps.level = Math.max(1, Math.min(500,
       (ps.power || 0) + (ps.vitality || 0) + (ps.endurance || 0)
-      + (ps.agility || 0) + (ps.mind || 0)));
+      + (ps.agility || 0) + (ps.mind || 0)
+      + ((ps.defenseSkill && ps.defenseSkill.level) || 0)));
     const lvl = ps.level;
     const oldMaxHp = ps.maxHp || 100;
     const oldMaxStam = ps.maxStamina || 100;
@@ -3897,8 +3971,11 @@ export class GameRoom {
   _maxDmgForAttacker(ps, isSpecial) {
     if (!ps) return 21; // baseline-10: 100 ÷ 4.8
     const maxWpn = this._maxWeaponDmg(ps, isSpecial);
-    // Phase 3: crit damage scales on Power AND Ferocity (Power first).
-    const critMult = 1.5 + (ps.power || 0) * 0.001 + (ps.ferocity || 0) * 0.0008;
+    // v2.3.1133: ceiling assumes a MAXED crit-dmg channel (+0.792 at 99 pts)
+    // instead of reading live points, so a fully-invested crit isn't rejected
+    // by the anti-cheat cap (same bug class v2.3.912 fixed for the damage
+    // channel).  Replaces the retired Ferocity term.
+    const critMult = 1.5 + (ps.power || 0) * 0.001 + 0.792;
     const comboBoost = 5; // covers combo + status amplifier + amulet elemDmg + lunge mult
     // SPECIAL_ATK_MULT = 2.0 applied client-side; double the cap on
     // special hits so they don't get rejected as too-high.
@@ -3962,11 +4039,14 @@ export class GameRoom {
     // v2.3.912: crit chance = Power baseline + the weapon CRIT channel
     // (precision/marksmanship/overload) at +0.5%/pt, capped +30% (linear,
     // mirrors calcCritChance).  Ferocity is retired; crit mult stays Power-based.
-    const P = ps.power || 0, F = ps.ferocity || 0;
+    const P = ps.power || 0;
     const critChance = Math.max(0, Math.min(1,
       40 * P / (P + 200) / 100 + Math.min(0.30, this._wpnCritPts(ps, type) * 0.005)));
     const isCrit = Math.random() < critChance;
-    if (isCrit) base *= (1.5 + P * 0.001 + F * 0.0008);
+    // v2.3.1133: crit mult gains the crit-DMG channel (executioner/headshot/
+    // focus) at +0.008/pt, mirroring client calcCritMult.  The Ferocity term
+    // (retired, pinned 0 since v2.3.910) is dropped.
+    if (isCrit) base *= (1.5 + P * 0.001 + this._wpnCritDmgPts(ps, type) * 0.008);
     return { dmg: Math.max(1, Math.round(base)), isCrit };
   }
 
@@ -3987,6 +4067,47 @@ export class GameRoom {
     // can't claim 99999 damage to one-shot tough monsters.
     const attackerPs = this.playerState[session.id];
     const isSpecial = !!payload.special;
+
+    // v2.3.1134: HIT-CADENCE FLOOR.  Until now damage-per-hit was capped
+    // but hit FREQUENCY was not -- a hacked client could spam
+    // monster_damage far faster than any weapon swings.  Now that Tempo
+    // makes cadence a build stat, give it a server backstop keyed per
+    // (player, monster) so Cleave/pierce fan-out (many monsters, one
+    // swing) can never false-positive.  Two classes:
+    //  - normal hits: min 335ms gap = 600ms swing x 0.80 (Tempo CAP, not
+    //    live points -- needs no client sync) x ~0.7 lag headroom (mobile
+    //    bunches sends).  Legit fastest today is ~450ms (Tempo cap +
+    //    mythic storm amulet 6.5%).
+    //  - specials: <=3 hits per 1200ms per monster.  The staff special is
+    //    a 3-bolt cone that can land all 3 on one target within ~100ms,
+    //    and the melee special bypasses the swing cooldown entirely
+    //    (playerActions.js resets swingTimer), so specials can't share
+    //    the normal floor.  Swipe itself has a 1500ms client cooldown.
+    // Excess hits are silently dropped (no reject event -- a cheater
+    // learns nothing, a laggy legit client just loses a ghost hit its
+    // next authoritative tick corrects).  In-memory only (rule 11).
+    if (attackerPs) {
+      const nowTs = Date.now();
+      if (!attackerPs._monHitCad) attackerPs._monHitCad = new Map();
+      let cad = attackerPs._monHitCad.get(monsterId);
+      if (!cad) { cad = { n: 0, s: [] }; attackerPs._monHitCad.set(monsterId, cad); }
+      if (isSpecial) {
+        cad.s = cad.s.filter(t => nowTs - t < 1200);
+        if (cad.s.length >= 3) return;
+        cad.s.push(nowTs);
+      } else {
+        if (nowTs - cad.n < 335) return;
+        cad.n = nowTs;
+      }
+      // Bound the map (fighting packs cycles monsters; oldest-in first-out).
+      if (attackerPs._monHitCad.size > 32) {
+        for (const k of attackerPs._monHitCad.keys()) {
+          if (attackerPs._monHitCad.size <= 24) break;
+          attackerPs._monHitCad.delete(k);
+        }
+      }
+    }
+
     // Server computes the actual damage from server-tracked stats +
     // weapon + the client's intent (slot/special).  _maxDmgForAttacker
     // stays as a cheap sanity clamp on our OWN roll (weapon-aware, slice
@@ -4015,7 +4136,8 @@ export class GameRoom {
     // different-element status already on the monster.
     if (m.hp > 0 && element && ELEMENT_STATUS[element] && attackerPs) {
       const _now = Date.now();
-      applyElementStatus(m, element, session.id, attackerPs.power || 0, _now);
+      applyElementStatus(m, element, session.id, attackerPs.power || 0, _now,
+        this._attuneMult(attackerPs));
       // Volatile mirrors _computeAttackDamage's slot resolution.
       const _eff = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
         ? slot : (attackerPs.activeSlot || 'melee');
@@ -5282,6 +5404,9 @@ export class GameRoom {
           isCrit: isCrit,
           blocked: blocked,
           dodged: dmgResult.dodged,
+          // v2.3.1137: Second Wind fires in PvP too (channel identity);
+          // undefined when 0 so the field stays off the wire.
+          secondWind: dmgResult.secondWind || undefined,
           ts: Date.now(),
           rewindTicks: rewindTicks,
         }

@@ -7,7 +7,7 @@ import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyl
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
@@ -1524,7 +1524,10 @@ export class EffectsRenderer {
           aimA = 0;
         }
         if (isMelee) {
-          const a0 = aimA - GS_FORWARD_ARC / 2, a1 = aimA + GS_FORWARD_ARC / 2;
+          /* v2.3.1134: Cleave widens the preview exactly like the hit test in
+             monsterCombat — preview-matches-damage is the v2.3.939 contract. */
+          const _cleaveArc = GS_FORWARD_ARC + cleaveArcBonus(S.rpg);
+          const a0 = aimA - _cleaveArc / 2, a1 = aimA + _cleaveArc / 2;
           const _c0 = Math.cos(a0), _s0 = Math.sin(a0), _c1 = Math.cos(a1), _s1 = Math.sin(a1);
           /* The exact hit-test union: forward half-disc rim (oR) joined to the
              360° core (iR) behind, via radial steps at the sides.  Parameterised

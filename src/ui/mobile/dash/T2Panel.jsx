@@ -37,9 +37,9 @@ function persist(R) {
 /* Per-weapon-CATEGORY build allocation.  Replaces the retired generic
    "Specs" (Ferocity/Elemental Mastery/…).  Each category levels its own
    skill by dealing damage with a weapon of that category; each level
-   grants +5 points spent into that category's channels.  Damage + crit
-   channels are live; the rest are flagged "Soon" until their combat
-   wiring ships. */
+   grants +1 point spent into that category's channels (was +5 before
+   v2.3.910's build-skill restructure).  Channels flagged "Soon" are
+   allocatable-but-inert until their combat wiring ships. */
 export const T2Panel = () => {
   const [, force] = useState(0);
   const [cat, setCat] = useState(null);
@@ -117,9 +117,10 @@ export const T2Panel = () => {
             Builds
           </div>
           <div style={{ fontSize: 11, color: COL.muted, marginTop: 2 }}>
+            {/* v2.3.1133: label caught up with v2.3.910's 1-pt-per-level change */}
             {isDef
-              ? 'Block & mitigate hits to level Defense. Each level = +5 points.'
-              : 'Deal damage to level a weapon. Each level = +5 points.'}
+              ? 'Block & mitigate hits to level Defense. Each level = +1 point.'
+              : 'Deal damage to level a weapon. Each level = +1 point.'}
           </div>
         </div>
       </div>

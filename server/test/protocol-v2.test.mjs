@@ -218,6 +218,16 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   ps.mind = 0;
   check('v2.3.912 specials are channel-free',
     Math.abs(room._maxWeaponDmg(ps, true) - capNoSpec) < 0.001, room._maxWeaponDmg(ps, true));
+
+  // v2.3.1133: crit-DMG channel keys resolve per category, and the
+  // stats_update clamp holds them to [0,99] like every other channel.
+  ps.weaponSpecs = { sword: { executioner: 40 }, bow: { headshot: 7 }, staff: { focus: 3 } };
+  check('v2.3.1133 _wpnCritDmgPts resolves executioner/headshot/focus',
+    room._wpnCritDmgPts(ps, 'greatsword') === 40 && room._wpnCritDmgPts(ps, 'bow') === 7
+    && room._wpnCritDmgPts(ps, 'staff') === 3, ps.weaponSpecs);
+  room._handleStatsUpdate(room.sessions.get(ws2), { weaponSpecs: { sword: { executioner: 150 } } });
+  check('v2.3.1133 stats_update clamps executioner 150 -> 99',
+    ps.weaponSpecs.sword.executioner === 99, ps.weaponSpecs.sword);
 }
 
 // ── v2.3.1021: weapon/defense SKILL-TRACK persistence (level/xp/points/specs) ──
@@ -242,6 +252,12 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
     ps.defenseSkill.level === 4 && ps.defenseSpec.bulwark === 5
     && ps.defenseSpec.ironskin === 50 && ps.defenseSpec.bogus === undefined,
     { defenseSkill: ps.defenseSkill, defenseSpec: ps.defenseSpec });
+
+  // v2.3.1138: Defense (the 6th build skill) counts toward combat level.
+  ps.power = 10; ps.vitality = 8; ps.endurance = 0; ps.agility = 4; ps.mind = 3; // sum 25
+  room._recomputeMaxes(ps);
+  check('v2.3.1138 combat level includes defenseSkill.level (25 + 4 = 29)',
+    ps.level === 29, ps.level);
 
   // player_state echoes the track (unregistered ws => full, non-delta payload).
   const ws3 = fakeWs('echo');

@@ -102,28 +102,45 @@ in seconds — tune there first.
 
 ## 4. The 6×5 grid — completion budget
 
-Live today: 2 of 5 channels per weapon category (damage +1/pt, crit
-+0.5%/pt), Bulwark (+1% block/pt). The other 15 channels are visible as
-"Soon" and allocatable-but-inert. Budget rule: **99 points invested in any
+**Status (v2.3.1133–1138): every BUILT channel is live.**  All 15 weapon
+channels and all 5 defense channels are wired client+server and priced in
+the sim's channel-pricing section (CH-01..04, DF-01..02 gates).  Only the
+HP/Endurance grids remain (spec Phases 2/4 — the skills themselves have
+no category grid yet).  Budget rule: **99 points invested in any
 category should buy comparable marginal value** (measured as %DPS for
 offense, %EHP for defense, with utility channels priced at ~70% of a DPS
 point since they also carry convenience).
 
-Proposed per-point values (validate each in the sim before shipping):
+Shipped per-point values (sim-validated; deltas from the proposal noted):
 
-| Category | Channel | Per point (cap 99) | Note |
+| Category | Channel | Per point | Status (v2.3.1138) |
 |---|---|---|---|
-| Melee | Executioner (crit dmg) | +0.8% crit damage | multiplies with Precision — price both together |
-| Melee | Tempo (atk speed) | -0.25% swing cooldown, cap -20% | touches the 600ms cadence: server must mirror |
-| Melee | Cleave (arc) | +0.6° arc, cap +45° | utility-priced |
-| Bow | Headshot / Piercing / Longshot | mirror melee trio (crit dmg / multi-hit / +range) | Longshot interacts with PvP 250px cap — clamp |
-| Staff | Detonation (AoE) | +0.7% collision radius | keyed to elemental pipeline (§6) |
-| Staff | Attunement (status) | +0.5% status duration | replaces retired Influence |
-| HP | Vigor | +2 maxHp | vs vitality's +10: channel is the cheaper secondary |
-| HP | Second Wind / Recovery / Lifeblood / Resilience | see spec Phases 2-3 | Resilience = -0.2% crit taken/pt |
-| Endurance | Stamina/Conditioning/Swiftness/Evasion/Reflexes | spec Phase 4 | Evasion stacks with agility dodge — SHARED 30% cap |
-| Defense | Iron Skin | -0.5%/pt damage taken, cap -25% | function exists, never invoked — activate |
-| Defense | Thorns / Toughness / Poise | spec + INV-09/INV-17 ceilings | thorns DPS ≤ best active ×1.25 |
+| Melee | Executioner (crit dmg) | +0.8% crit damage | **LIVE 1133** — client+server via calcCritMult 2nd arg |
+| Melee | Tempo (atk speed) | -0.25% swing cooldown, cap -20% | **LIVE 1134** — no cadence check existed; the worker gained a per-(player,monster) 335ms floor sized to the Tempo CAP |
+| Melee | Cleave (arc) | +0.6° arc, cap +45° | **LIVE 1134** — hit test + aim preview in lockstep |
+| Bow | Headshot (crit dmg) | +0.8% crit damage | **LIVE 1133** |
+| Bow | Piercing | +1 target / 25 pts, cap 3 | **LIVE 1135** — count-based, not %/pt (readable breakpoints) |
+| Bow | Longshot | +0.5%/pt speed+flight | **LIVE 1135** — PvP clamped to the 250px cap both sides |
+| Staff | Arcane Focus (crit dmg) | +0.8% crit damage | **LIVE 1133** — `focus` role converted variance→critDmg per the spec grid |
+| Staff | Detonation (AoE) | +0.7%/pt bolt radius | **LIVE 1136** — see INV-16 note below |
+| Staff | Attunement (status) | +0.5%/pt status duration | **LIVE 1136** — client hook + server applyElementStatus durMult (≤1.495 clamped) |
+| Defense | Thorns | reflect 1%/pt of blocked attack, cap 50% | **LIVE 1137** — server block branch; kills via shared pipeline, lifesteal denied (DF-01 gate) |
+| Defense | Second Wind | heal 1% maxHp/pt after surviving, cap 50%, 10s cd | **LIVE 1137** — REPRICED from 0.5%/pt: DF-02 gate showed +12% EHP vs Iron Skin's +33%; 1%/pt lands +27% |
+| Defense | Poise | -1%/pt stun duration, cap -50% | **LIVE 1137** — client-only (stuns gate local input only) |
+| HP | Vigor / Second Wind* / Recovery / Lifeblood / Resilience | see spec Phases 2-3 | grid not built (\*the shipped Second Wind lives under Defense per DEFENSE_CHANNELS) |
+| Endurance | Stamina/Conditioning/Swiftness/Evasion/Reflexes | spec Phase 4 | grid not built — Evasion must SHARE the 30% dodge cap |
+
+Sim findings worth knowing (channel-pricing section, L35/mythril cell):
+- The legacy damage channel (+1 flat/pt, pre-tier-mult) prices at **+725%
+  DPS** at full investment — an order of magnitude above every percentage
+  channel (crit pair +44%, Tempo +25%). The §4 parity rule is only
+  enforceable among the NEW channels (CH-01 gates them under edge, not at
+  parity). Rebalancing edge itself is a BF-1-adjacent decision for the
+  mid-band pass, not this slice.
+- INV-16's 3.2× burst cap is per-collision; Detonation multiplies target
+  COUNT, so per-cast total burst grows linearly with radius. If total
+  burst per cast is ever adopted as the cap's meaning, drop Detonation's
+  per-point value.
 
 Hard rule carried from the inventory: **shared caps for stacking sources**
 (dodge: agility + Evasion share the 30% cap; block: base + Bulwark share
@@ -206,13 +223,15 @@ pinned to 0, wiped by `migrateWeaponT2`, and consumed only as ×1.0 no-ops
 
 ## 10. Phase sequence (each its own PR, sim-verified before merge)
 
-1. **Defense loop revival** (§7) — smallest, unblocks the 6th skill.
-2. **Server elemental model** (§6 prerequisite; roadmap P2 item 4).
-3. **Quality grades** (§4.6b: server-rolled at loot time; mystery-reveal
-   UI deferred).
-4. **Hardening v1** (§5) — forge UI + server ladder + ledger.
-5. **Grid channels** — one category per PR, per-point values from §4,
-   sim-audited against the shared caps.
+1. ~~**Defense loop revival** (§7)~~ — DONE v2.3.1113.
+2. ~~**Server elemental model** (§6)~~ — DONE v2.3.1114.
+3. ~~**Quality grades**~~ — DONE v2.3.1131 (#193; server-rolled at mint,
+   mystery-reveal UI deferred).
+4. ~~**Hardening v1**~~ — DONE v2.3.1131 (#193; forge ladder + temper +
+   ledger).
+5. ~~**Grid channels**~~ — DONE v2.3.1133–1137 (all built channels live,
+   §4 table; Defense also counts toward combat level as of v2.3.1138).
+   Remaining grid work is the HP/Endurance categories (spec Phases 2/4).
 6. **Mid-band curve fix (BF-1)** then **zone-level unpinning** — the
    finale that turns the level dial back on with gates that pass.
 7. **T2 retirement cleanup** (§8) — anytime, orthogonal.

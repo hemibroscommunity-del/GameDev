@@ -46,25 +46,31 @@ export function lookupCollision(a, b) {
 }
 
 /* Apply an element's status to a monster.  Mirrors applyStatus in
- * gameSystems.js minus the retired influence bonus.  Stores a POWER
- * SNAPSHOT from the attacker at application time so DoT ticks are priced
- * off server-tracked stats, not a client claim. */
-export function applyElementStatus(m, element, sourceId, power, now) {
+ * gameSystems.js.  Stores a POWER SNAPSHOT from the attacker at
+ * application time so DoT ticks are priced off server-tracked stats, not
+ * a client claim.
+ * v2.3.1136: durMult -- the Attunement channel's duration bonus, the
+ * successor to the retired Influence bonus (BALANCE-PLAN §8).  The caller
+ * derives it from SERVER-clamped weaponSpecs so it's bounded (<=1.495)
+ * even for forged clients.  Scales the initial duration AND maxDur;
+ * refreshes cap at the instance's own scaled maxDur. */
+export function applyElementStatus(m, element, sourceId, power, now, durMult) {
   const statusId = ELEMENT_STATUS[element];
   const def = statusId && STATUS_DEFS[statusId];
   if (!def) return false;
+  const dm = durMult || 1;
   if (!m.statuses) m.statuses = {};
   const existing = m.statuses[statusId];
   if (existing) {
-    if (def.refresh > 0) existing.remaining = Math.min(existing.remaining + def.refresh, def.maxDur);
-    else existing.remaining = def.dur;
+    if (def.refresh > 0) existing.remaining = Math.min(existing.remaining + def.refresh, existing.maxDur || def.maxDur);
+    else existing.remaining = def.dur * dm;
     if (def.maxStacks && existing.stacks < def.maxStacks) existing.stacks++;
     existing.sourceId = sourceId;
     existing.power = power || 0;
     return true;
   }
   m.statuses[statusId] = {
-    id: statusId, element, remaining: def.dur, maxDur: def.maxDur || def.dur,
+    id: statusId, element, remaining: def.dur * dm, maxDur: (def.maxDur || def.dur) * dm,
     stacks: 1, sourceId, power: power || 0, appliedAt: now, lastTick: now,
   };
   return true;

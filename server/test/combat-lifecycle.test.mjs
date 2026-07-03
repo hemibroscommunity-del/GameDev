@@ -275,6 +275,9 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   // Frost hit on a burning monster detonates Steam (flame|frost):
   // base 40 + power*0.8 = 56 raw, x effectiveness vs the monster's own
   // element; burn is CONSUMED; damage capped at raw*3.2.
+  // v2.3.1134: clear the hit-cadence tracker -- in real play these two
+  // swings are >=450ms apart; the test fires them back-to-back.
+  if (psA._monHitCad) psA._monHitCad.clear();
   const hpBeforeCol = me.hp;
   room.eventBuffer.length = 0;
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: me.id, zone: 'meadow', element: 'frost', slot: 'melee' } }));
@@ -304,6 +307,152 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   } else {
     check('elemental: DoT kill flows through the shared kill pipeline', true, 'weapon roll killed at hp=1; kill path already covered');
   }
+}
+
+// ── 6g. v2.3.1137: defense channels — Second Wind + Thorns ──
+{
+  // Second Wind: 1%/pt of maxHp after surviving an unblocked hit,
+  // cap 50% (50 pts), 10s cooldown, never on the lethal hit.
+  const ps = { hp: 100, maxHp: 200, agility: 0, defenseSpec: { secondwind: 50 } };
+  const r1 = room._applyDamage(ps, 50, false);
+  check('secondwind: heals 50% of maxHp after surviving a hit',
+    r1.dmgTaken === 50 && r1.secondWind === 100 && ps.hp === 150, { r1, hp: ps.hp });
+  const r2 = room._applyDamage(ps, 50, false);
+  check('secondwind: 10s cooldown blocks back-to-back heals',
+    r2.secondWind === 0 && ps.hp === 100, { r2, hp: ps.hp });
+  ps._secondWindReadyAt = 0; ps.hp = 30;
+  const r3 = room._applyDamage(ps, 100, false);
+  check('secondwind: never fires on the lethal hit', ps.hp === 0 && r3.secondWind === 0, { r3, hp: ps.hp });
+
+  // Thorns: blocked attack reflects 1%/pt (cap 50%) through the REAL
+  // tick block branch; lethal reflect kills via the shared pipeline.
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false; psA.disconnected = false;
+  psA.blocking = true; psA.stamina = 100; psA.maxStamina = 100; psA.hp = 100; psA.maxHp = 100;
+  psA.defenseSpec = { thorns: 50 };
+  const tm = meadowMonsters[3];
+  tm.alive = true; tm.hp = 1000; tm.maxHp = 1000; tm.dmg = 40; tm.dmgByPlayer = {};
+  tm.statuses = undefined; tm.atkCd = 0; tm._attackingUntil = 0; tm._wanderPausedUntil = 0;
+  tm.x = 3000; tm.y = 3000; tm.spawnX = 3000; tm.spawnY = 3000;
+  psA.x = 3000; psA.y = 3000;
+  room.eventBuffer.length = 0;
+  room._tickMonsters();
+  const th = room.eventBuffer.find((e) => e.type === 'monster_hit' && e.payload.thorns);
+  check('thorns: blocked attack reflects 50% back at the monster',
+    !!th && th.payload.dmg === 20 && tm.hp === 980 && (tm.dmgByPlayer.pa || 0) === 20,
+    { th: th && th.payload, hp: tm.hp });
+
+  tm.hp = 5; tm.atkCd = 0; tm._attackingUntil = 0;
+  room.eventBuffer.length = 0;
+  room._tickMonsters();
+  const tk = room.eventBuffer.find((e) => e.type === 'monster_kill' && e.payload.monsterId === tm.id);
+  check('thorns: lethal reflect kills through the shared pipeline',
+    !!tk && tm.alive === false && tk.payload.recipients.includes('pa'),
+    tk && tk.payload);
+  psA.blocking = false; psA.defenseSpec = {};
+}
+
+// ── 6f. v2.3.1136: Attunement scales server status duration ──
+// +0.5%/pt from SERVER-clamped weaponSpecs.staff.attunement; 99 pts =
+// x1.495 on both remaining and maxDur.  Burn base dur = 4s.
+{
+  psA.z = 'meadow'; psA.dead = false; psA.weapon = { type: 'sword', tierMult: 1 };
+  psA.power = 20;
+  const ma = meadowMonsters[9];
+  ma.alive = true; ma.hp = ma.maxHp = 10000; ma.dmgByPlayer = {}; ma.statuses = undefined;
+  ma._wanderPausedUntil = Date.now() + 600000;
+
+  check('attune: _attuneMult caps at 1.495 even for an over-cap blob',
+    Math.abs(room._attuneMult({ weaponSpecs: { staff: { attunement: 500 } } }) - 1.495) < 1e-9,
+    room._attuneMult({ weaponSpecs: { staff: { attunement: 500 } } }));
+
+  // Baseline burn (no attunement): remaining == base 4s.
+  psA.weaponSpecs = {};
+  if (psA._monHitCad) psA._monHitCad.clear();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ma.id, zone: 'meadow', element: 'flame', slot: 'melee' } }));
+  const basePlain = ma.statuses && ma.statuses.burn && ma.statuses.burn.remaining;
+
+  // 99-pt attunement on a fresh application: x1.495.
+  ma.statuses = undefined;
+  psA.weaponSpecs = { staff: { attunement: 99 } };
+  if (psA._monHitCad) psA._monHitCad.clear();
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ma.id, zone: 'meadow', element: 'flame', slot: 'melee' } }));
+  const buffed = ma.statuses && ma.statuses.burn;
+  // burn def: dur 4, maxDur 6 — both scale by the multiplier.
+  check('attune: 99 pts scales burn duration x1.495',
+    !!buffed && Math.abs(buffed.remaining - basePlain * 1.495) < 1e-6
+    && Math.abs(buffed.maxDur - 6 * 1.495) < 1e-6,
+    { basePlain, remaining: buffed && buffed.remaining, maxDur: buffed && buffed.maxDur });
+  psA.weaponSpecs = {};
+}
+
+// ── 6e. v2.3.1134: hit-cadence floor in _handleMonsterDamage ──
+// Normal hits: min 335ms per (player, monster).  Specials: <=3 per 1200ms
+// per monster (staff cone).  Different monsters in the same tick all land
+// (Cleave / pierce fan-out safety).
+{
+  psA.z = 'meadow'; psA.dead = false; psA.weapon = { type: 'sword', tierMult: 1 };
+  psA.power = 0; psA.weaponSpecs = {};
+  if (psA._monHitCad) psA._monHitCad.clear();
+  const ca = meadowMonsters[7];
+  const cb = meadowMonsters[8];
+  ca.alive = true; ca.hp = ca.maxHp = 10000; ca.dmgByPlayer = {}; ca.statuses = undefined;
+  cb.alive = true; cb.hp = cb.maxHp = 10000; cb.dmgByPlayer = {}; cb.statuses = undefined;
+
+  // Same monster, two sends in the same tick: second dropped.
+  room.eventBuffer.length = 0;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ca.id, zone: 'meadow', slot: 'melee' } }));
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ca.id, zone: 'meadow', slot: 'melee' } }));
+  check('cadence: rapid same-monster second hit dropped',
+    room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === ca.id).length === 1,
+    room.eventBuffer.length);
+
+  // A different monster in the same tick still lands (fan-out safety).
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: cb.id, zone: 'meadow', slot: 'melee' } }));
+  check('cadence: same-tick hit on a DIFFERENT monster lands',
+    room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === cb.id).length === 1);
+
+  // A backdated last-hit stamp (>335ms ago) lets the next hit through.
+  psA._monHitCad.get(ca.id).n = Date.now() - 400;
+  room.eventBuffer.length = 0;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ca.id, zone: 'meadow', slot: 'melee' } }));
+  check('cadence: hit lands again after the 335ms floor elapses',
+    room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === ca.id).length === 1);
+
+  // Specials: 3 land (staff cone burst), the 4th in the window is dropped.
+  if (psA._monHitCad) psA._monHitCad.clear();
+  room.eventBuffer.length = 0;
+  for (let i = 0; i < 4; i++) {
+    await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ca.id, zone: 'meadow', slot: 'staff', special: true } }));
+  }
+  check('cadence: special burst allows 3 per monster, drops the 4th',
+    room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === ca.id).length === 3,
+    room.eventBuffer.length);
+}
+
+// ── 6d. v2.3.1133: crit-DMG channel reaches the authoritative crit roll ──
+// Executioner/Headshot/Arcane Focus feed the crit MULTIPLIER at +0.008/pt
+// (mirror of client calcCritMult); the anti-cheat ceiling assumes the
+// maxed channel so a fully-invested crit is never rejected.
+{
+  const ps = { power: 200, weapon: { type: 'sword', tierMult: 1 }, activeSlot: 'melee', weaponSpecs: {} };
+  const origRandom = Math.random;
+  Math.random = () => 0;   // variance floor (×0.75 sword) + guaranteed crit (P200 → 20%)
+  const plain = room._computeAttackDamage(ps, 'melee', false);
+  ps.weaponSpecs = { sword: { executioner: 99 } };
+  const boosted = room._computeAttackDamage(ps, 'melee', false);
+  // Max-variance, max-channel roll must stay under the anti-cheat ceiling.
+  ps.weaponSpecs = { sword: { edge: 99, executioner: 99 } };
+  Math.random = () => 0.999999;
+  const maxRoll = room._computeAttackDamage(ps, 'melee', false);
+  Math.random = origRandom;
+  check('critDmg: helper reads executioner points', room._wpnCritDmgPts(ps, 'sword') === 99);
+  check('critDmg: both rolls crit under a forced roll', plain.isCrit === true && boosted.isCrit === true);
+  // ratio = (1.5 + 0.2 + 99×0.008) / (1.5 + 0.2) = 2.492 / 1.7 ≈ 1.466
+  const ratio = boosted.dmg / plain.dmg;
+  check('critDmg: 99 executioner pts scale the crit ×2.492/×1.7', Math.abs(ratio - 2.492 / 1.7) < 0.02, ratio);
+  check('critDmg: maxed edge+executioner crit clears the anti-cheat ceiling',
+    maxRoll.dmg <= room._maxDmgForAttacker(ps, false),
+    { roll: maxRoll.dmg, cap: room._maxDmgForAttacker(ps, false) });
 }
 
 // ── 7. Event buffer cap on the tick broadcast ──
