@@ -224,7 +224,7 @@ pinned to 0, wiped by `migrateWeaponT2`, and consumed only as ×1.0 no-ops
 
 | Invariant | Meaning | Status today |
 |---|---|---|
-| INV-03 kill-time gates | §3 table | **FAIL mid-band** (BF-1) — dormant until zones unpin |
+| INV-03 kill-time gates | §3 table | **PASS all bands** (BF-1 fixed v2.3.1140, ramp 1.052; zones unpinned) |
 | INV-06 EHP spread 1.5-4.0× | build identity matters | exempt below L15 (stat pools too small); untested above |
 | INV-14 lunge < auto | mobility isn't a DPS upgrade | PASS (×0.6 per hit; full cadence check when Tempo ships) |
 | INV-26 stat budget | build-skill levels grant exactly their points | enforced by server stat clamp (level×10+20) |
@@ -242,8 +242,12 @@ pinned to 0, wiped by `migrateWeaponT2`, and consumed only as ×1.0 no-ops
 5. ~~**Grid channels**~~ — DONE v2.3.1133–1137 (all built channels live,
    §4 table; Defense also counts toward combat level as of v2.3.1138).
    Remaining grid work is the HP/Endurance categories (spec Phases 2/4).
-6. **Mid-band curve fix (BF-1)** then **zone-level unpinning** — the
-   finale that turns the level dial back on with gates that pass.
+6. ~~**Mid-band curve fix (BF-1)** then **zone-level unpinning**~~ —
+   DONE v2.3.1140 (§3 FIXED note; ramp 1.052 via `MONSTER_HP_CURVE`,
+   zone bands raised). Bands are static per-zone content — never scaled
+   to the character (owner directive, 2026-07-02). Remaining follow-up
+   lives in handoff item K: zone ENTRY gating (a fresh L1 player can
+   still walk into a L55-80 zone).
 7. **T2 retirement cleanup** (§8) — anytime, orthogonal.
 
 Every phase lands with a sim run in the PR description showing the gates
