@@ -127,6 +127,11 @@ extended.
     (server/src/index.js ~line 122). The default branch rebroadcasts
     unknown types; an unlisted server event is a forgery surface.
     (`player_respawned` is deliberately omitted — documented there.)
+    v2.3.1151: mechanically enforced by `test/wire-audit.test.mjs`
+    (emission-site extraction; the four legitimate relay-echo types
+    live in its allowlist — see docs/specs/conformance-audit.md).
+    Mirror-table drift (server/src/data.js vs client tables) is
+    likewise pinned by `test/mirror-audit.test.mjs`.
 14. **Handshake halves are validated per-sender-session.** An accept is
     honored only against a live challenge/offer recorded from the OTHER
     side's own connection (trades, duels, threat, clan invites). The

@@ -237,7 +237,9 @@ check('forged monster_transform dropped by deny-list',
 // LOCKSTEP: the client and server ZONES tables must agree on level
 // bands and spawn tables -- a mismatch desyncs damage prediction and
 // trips the client's level clamp.  This has burned the repo before;
-// now it's pinned by CI.
+// now it's pinned by CI.  (v2.3.1151: every OTHER mirrored table is
+// audited by test/mirror-audit.test.mjs; ZONES stays here because the
+// depth-lerp checks above already import both sides.)
 {
   let lockstep = true;
   const detail = {};
