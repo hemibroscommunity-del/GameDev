@@ -36,7 +36,8 @@ Everything that actually affects damage/survival in the shipped game:
 | Crit mult | `1.5 + power × 0.001` | calcCritMult |
 | Max HP | `100 + (level-1)×2.5 + vitality×10` | calcMaxHp |
 | Dodge | `min(agility × 0.0008, 30%)` | passive dodge |
-| Block | base 25% + Bulwark +1%/pt (cap 75%) — **currently unreachable, see §7** | calcBlockReduction |
+| Block | full negation while shielded (base 25%+shield figure is readout-only) | monsterCombat / _applyDamage |
+| Block stamina | 15/blocked hit + 5/tick hold, × Bulwark `(1 − pts × 0.01)` cap −50% — repriced v2.3.1153 | _blockStaminaMult |
 | Monster HP | `ceil(monsterStat(12.5, lvl) × archetype.hpMult)` | createMonster (client+server) |
 | Combat level | sum of the five T1 stats, cap 500 | recalcDerived |
 
@@ -138,6 +139,7 @@ Shipped per-point values (sim-validated; deltas from the proposal noted):
 | Defense | Thorns | reflect 1%/pt of blocked attack, cap 50% | **LIVE 1137** — server block branch; kills via shared pipeline, lifesteal denied (DF-01 gate) |
 | Defense | Second Wind | heal 1% maxHp/pt after surviving, cap 50%, 10s cd | **LIVE 1137** — REPRICED from 0.5%/pt: DF-02 gate showed +12% EHP vs Iron Skin's +33%; 1%/pt lands +27% |
 | Defense | Poise | -1%/pt stun duration, cap -50% | **LIVE 1137** — client-only (stuns gate local input only) |
+| Defense | Bulwark | -1%/pt block stamina cost (both sites), cap -50% | **REPURPOSED 1153** — block-% identity was unreachable under full-block-invuln (§7); now block *uptime*: 2× blocked hits per stamina bar at cap (sim gate DF-03) |
 | HP | Vigor / Second Wind* / Recovery / Lifeblood / Resilience | see spec Phases 2-3 | grid not built (\*the shipped Second Wind lives under Defense per DEFENSE_CHANNELS) |
 | Endurance | Stamina/Conditioning/Swiftness/Evasion/Reflexes | spec Phase 4 | grid not built — Evasion must SHARE the 30% dodge cap |
 
@@ -158,8 +160,10 @@ Sim findings worth knowing (channel-pricing section, L35/mythril cell):
   per-point value.
 
 Hard rule carried from the inventory: **shared caps for stacking sources**
-(dodge: agility + Evasion share the 30% cap; block: base + Bulwark share
-75%) so channel completion can't compound past the invariants.
+(dodge: agility + Evasion share the 30% cap) so channel completion can't
+compound past the invariants. (The block 75% shared cap retired with
+Bulwark's v2.3.1153 repurpose — blocks are full negation, so there is no
+block % left to stack.)
 
 ## 5. Hardening v1 (rare chase) — adopted spec
 
@@ -211,6 +215,15 @@ client's local-AI/projectile paths. The ±5 valid-threat gate is bypassed
 (attackerLevel null) while all monsters are pinned to level 1 — re-enable
 alongside BF-1 when zone levels unpin. Thorns/Second Wind/Poise remain
 "Soon" channels budgeted in §4.
+
+**v2.3.1153 addendum — Bulwark resolved.** Full block invuln stays (the
+owner's v2.3.232 directive, reaffirmed 2026-07-03), which permanently
+orphaned Bulwark's block-% identity. Repurposed as block stamina
+efficiency: −1%/pt on the per-blocked-hit cost (15) AND the shield-hold
+drain (5/tick), cap −50% — "block twice as many hits per stamina bar."
+Server-owned at both sites (`_blockStaminaMult`); the per-hit cost
+already rode the wire as `staminaDrain`, so old clients render the
+discount with no client deploy. Sim gate DF-03 prices it.
 
 ## 8. Formal retirement of the old T2 stats
 

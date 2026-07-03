@@ -301,6 +301,17 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   check('DF-02', 'second wind lands in the Iron Skin band (0.5x-2x of +33% EHP)',
     swUplift !== Infinity && swUplift >= ironUplift * 0.5 && swUplift <= ironUplift * 2,
     `+${num(swUplift)}% vs yardstick +${num(ironUplift)}%`);
+
+  /* ── Bulwark (v2.3.1153: block stamina efficiency, −1%/pt cap −50%) ──
+     Utility channel priced as block UPTIME, not EHP: blocked hits per
+     100-stamina bar at the server's per-hit cost max(1, round(15×mult)).
+     Full investment must buy exactly 2× uptime (15 -> 8/hit ≈ 2× with
+     the round; the hold-drain halves identically). */
+  const bwHits = (mult) => Math.floor(100 / Math.max(1, Math.round(15 * mult)));
+  const bwBase = bwHits(1.0), bw50 = bwHits(0.5);
+  console.log(pad('bulwark 50 (v2.3.1153, block stamina)', 42) + bwBase + ' -> ' + bw50 + ' blocked hits per stamina bar');
+  check('DF-03', 'bulwark 50 doubles blocked hits per stamina bar (2x uptime)',
+    bw50 >= bwBase * 2 && bw50 <= bwBase * 2.5, `${bwBase} -> ${bw50}`);
 }
 
 /* Layer-budget report: ceiling of each loot layer at this cell. */

@@ -157,7 +157,7 @@ const {
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
-  migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction,
+  migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction, getBlockStaminaMult,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
@@ -4229,9 +4229,11 @@ export var BroTown = function BroTown(_ref0) {
              runs the drain on its tick (5/tick at ~1.5 Hz ≈ 7.5/sec),
              so skip the local mutation -- player_state will sync the
              bar.  Local predict still helps the auto-release feel
-             responsive at 0, so we keep the <=0 release branch. */
+             responsive at 0, so we keep the <=0 release branch.
+             v2.3.1153: × Bulwark block-stamina efficiency, mirroring
+             the worker's _blockStaminaMult on this legacy path. */
           if (!S._serverMonsters) {
-            S.rpg.stamina = Math.max(0, (S.rpg.stamina || 0) - 0.167);
+            S.rpg.stamina = Math.max(0, (S.rpg.stamina || 0) - 0.167 * getBlockStaminaMult(S.rpg));
           }
           /* v2.3.1110: 100 -> 250 ms rolling window.  Every client-side
              block check gates on Date.now() < shieldEnd, and the window is
