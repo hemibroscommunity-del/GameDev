@@ -170,6 +170,11 @@ function addBuildProg(R, stat, amount) {
   while (R._buildProg[stat] >= thresh) {
     R._buildProg[stat] -= thresh;
     R[stat] = (R[stat] || 0) + 1;
+    /* v2.3.1154: HP/Endurance grids — a vitality/endurance level grants
+       +1 grid point (WEAPON_PTS_PER_LEVEL parity; the server backfills
+       pre-grid saves via the backfill-grid-points migration). */
+    if (stat === 'vitality') R.hpUnspent = (R.hpUnspent || 0) + 1;
+    else if (stat === 'endurance') R.enduranceUnspent = (R.enduranceUnspent || 0) + 1;
     /* A1 gate accumulator -- combat level-up is blocked until 5 of
        these have ticked since the last level. Counts crossings in any
        T1 stat, mirrors the per-level budget. */

@@ -176,5 +176,20 @@ const legacyBlob = () => ({
     c.weaponUnspent.sword === 99 && c.weaponSpecs.sword.edge === 0, c);
 }
 
+// ── 9. v4 backfill-grid-points: retroactive HP/Endurance grid pools
+// (v2.3.1154) — 1 point per stat level, minus already-spent ──
+{
+  const b = legacyBlob();
+  b.vitality = 25; b.endurance = 12;
+  b.hpSpec = { vigor: 5 };   // a half-migrated blob may already show spends
+  const r = runRpgMigrations(b);
+  check('v4 backfills pools to stat level minus spent',
+    r.failed === null && b.hpUnspent === 20 && b.enduranceUnspent === 12,
+    { hp: b.hpUnspent, en: b.enduranceUnspent });
+  b.hpUnspent = 3; // live pool must never reset to the formula value
+  const r2 = runRpgMigrations(b);
+  check('v4 idempotent: existing pools untouched on re-run', r2.changed === false && b.hpUnspent === 3, r2);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

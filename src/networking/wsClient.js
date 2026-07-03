@@ -17,7 +17,7 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -241,7 +241,13 @@ export function setupWebSocket(ctx) {
             rpgWeaponSpecs: (S.rpg && S.rpg.weaponSpecs) || {},
             rpgDefenseSkill: (S.rpg && S.rpg.defenseSkill) || { level: 0, xp: 0 },
             rpgDefenseUnspent: (S.rpg && typeof S.rpg.defenseUnspent === 'number') ? S.rpg.defenseUnspent : 0,
-            rpgDefenseSpec: (S.rpg && S.rpg.defenseSpec) || {}
+            rpgDefenseSpec: (S.rpg && S.rpg.defenseSpec) || {},
+            /* v2.3.1154: HP/Endurance grid track (first-connect seed;
+               stored copy wins on reconnect, mirroring the weapon track). */
+            rpgHpSpec: (S.rpg && S.rpg.hpSpec) || {},
+            rpgHpUnspent: (S.rpg && typeof S.rpg.hpUnspent === 'number') ? S.rpg.hpUnspent : undefined,
+            rpgEnduranceSpec: (S.rpg && S.rpg.enduranceSpec) || {},
+            rpgEnduranceUnspent: (S.rpg && typeof S.rpg.enduranceUnspent === 'number') ? S.rpg.enduranceUnspent : undefined
           }
         }));
         var welcomeMsg = {
@@ -577,6 +583,15 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
+              /* v2.3.1154: HP/Endurance grid deploy-order gate.  The
+                 pool multipliers only apply while THIS worker claims
+                 caps.hpEndGrids — otherwise its player_state echo would
+                 stomp a locally-boosted maxHp/maxStamina every flush.
+                 Re-derive immediately so the gate takes effect now. */
+              try {
+                setGridCapsEnabled(!!(msg.caps && msg.caps.hpEndGrids));
+                if (S.rpg) recalcDerived(S.rpg);
+              } catch (e) {}
               var others = {};
               for (var _i34 = 0, _Object$entries6 = Object.entries(msg.players); _i34 < _Object$entries6.length; _i34++) {
                 var _Object$entries6$_i = _slicedToArray(_Object$entries6[_i34], 2),
@@ -936,6 +951,11 @@ export function setupWebSocket(ctx) {
               if (msg.payload.defenseSkill && typeof msg.payload.defenseSkill === 'object') S.rpg.defenseSkill = msg.payload.defenseSkill;
               if (typeof msg.payload.defenseUnspent === 'number') S.rpg.defenseUnspent = msg.payload.defenseUnspent;
               if (msg.payload.defenseSpec && typeof msg.payload.defenseSpec === 'object') S.rpg.defenseSpec = msg.payload.defenseSpec;
+              /* v2.3.1154: HP/Endurance grid track — same adopt rules. */
+              if (msg.payload.hpSpec && typeof msg.payload.hpSpec === 'object') S.rpg.hpSpec = msg.payload.hpSpec;
+              if (typeof msg.payload.hpUnspent === 'number') S.rpg.hpUnspent = msg.payload.hpUnspent;
+              if (msg.payload.enduranceSpec && typeof msg.payload.enduranceSpec === 'object') S.rpg.enduranceSpec = msg.payload.enduranceSpec;
+              if (typeof msg.payload.enduranceUnspent === 'number') S.rpg.enduranceUnspent = msg.payload.enduranceUnspent;
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;

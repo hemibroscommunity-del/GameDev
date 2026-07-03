@@ -15,7 +15,7 @@ import {
   BT_AUDIO, COMBO_NEXT_DURATION_BONUS, ELEMENTS, QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
-  resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
+  getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
   monsterBodyY, monsterBodyOffsetY, trainDefense, applyIronSkin,
 } from '@/data/index.js';
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
@@ -665,8 +665,9 @@ export function updateSlimeProjectiles(S) {
               trainDefense(_R6P, proj.rawDmg, 0, proj.srcLevel || null, false);
               return false;
             }
-            /* v2.3.234 (Phase 4): Agility passive dodge on projectiles too. */
-            var _projDodge = rollPassiveDodge(_R6P.agility);
+            /* v2.3.234 (Phase 4): Agility passive dodge on projectiles too.
+               v2.3.1154: + Evasion channel pts, shared 30% cap. */
+            var _projDodge = rollPassiveDodge(_R6P.agility, getEvasionPts(_R6P));
             if (_projDodge) {
               S.dmgNumbers.push({
                 x: P.x, y: P.y - 18, text: 'Dodge!',

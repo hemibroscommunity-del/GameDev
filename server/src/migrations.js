@@ -40,7 +40,7 @@
  *   4. add a case to test/migrations.test.mjs with a real legacy blob.
  */
 
-export const RPG_SCHEMA_VERSION = 3;
+export const RPG_SCHEMA_VERSION = 4;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -115,6 +115,35 @@ export const MIGRATIONS = [
           blob.weaponUnspent[cat] = Math.min(999, (blob.weaponUnspent[cat] || 0) + pts);
         }
         spec[key] = 0;
+        changed = true;
+      }
+      return changed;
+    },
+  },
+  {
+    v: 4,
+    name: 'backfill-grid-points',
+    // v2.3.1154: the HP/Endurance channel grids ship AFTER vitality/
+    // endurance have been leveling for months, so existing characters
+    // get their grid points retroactively: 1 point per stat level
+    // (WEAPON_PTS_PER_LEVEL parity), minus any points a half-migrated
+    // blob already shows as spent.  Only fills ABSENT pools (typeof
+    // check) so it is idempotent and never resets a live pool to the
+    // formula value.  The join bootstrap runs the same computation on
+    // fresh client payloads (the boundary heal).
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      const clampPt = (v) => Math.max(0, Math.min(50, Math.floor(v || 0)));
+      const sum = (o, keys) => keys.reduce((a, k) => a + ((o && typeof o[k] === 'number') ? clampPt(o[k]) : 0), 0);
+      const HPK = ['vigor', 'recovery', 'lifeblood', 'resilience'];
+      const ENK = ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes'];
+      let changed = false;
+      if (typeof blob.hpUnspent !== 'number') {
+        blob.hpUnspent = Math.max(0, Math.floor(blob.vitality || 0) - sum(blob.hpSpec, HPK));
+        changed = true;
+      }
+      if (typeof blob.enduranceUnspent !== 'number') {
+        blob.enduranceUnspent = Math.max(0, Math.floor(blob.endurance || 0) - sum(blob.enduranceSpec, ENK));
         changed = true;
       }
       return changed;

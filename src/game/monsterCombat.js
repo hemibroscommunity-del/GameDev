@@ -31,7 +31,7 @@ import {
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
   getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
-  poiseStunMult, rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
+  getEvasionPts, poiseStunMult, rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin,
   monsterBodyY,
 } from '@/data/index.js';
@@ -764,7 +764,8 @@ export function updateMonsterCombat(S, deps) {
                   /* v2.3.234 (Phase 4): Agility passive dodge -- a roll
                      before the hit lands; on dodge, full negation +
                      a cyan popup so the player can see it happened. */
-                  var _passiveDodge = !shielded && rollPassiveDodge(_R6.agility);
+                  /* v2.3.1154: + Evasion channel pts, shared 30% cap. */
+                  var _passiveDodge = !shielded && rollPassiveDodge(_R6.agility, getEvasionPts(_R6));
                   if (_passiveDodge) {
                     S.dmgNumbers.push({
                       x: P.x, y: P.y - 18, text: 'Dodge!',
