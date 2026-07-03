@@ -11,8 +11,12 @@
  * Deliberately NOT ported (per docs/BALANCE-PLAN.md §6):
  * - elementalMastery multipliers (retired T2 stat, pinned 0 -> x1.0)
  * - influence CC-duration bonus (retired)
- * - resonance-streak MANA restore (player self-buff, stays client-side)
  * - all particles/popups/codex discovery (cosmetic)
+ * v2.3.1139 (item I) PORTED the rest: CC movement/attack effects
+ * (elementMoveMult below, consumed by _tickMonsters), the
+ * resonance-streak mana restore (collision `resonating` flag +
+ * _handleMonsterDamage), amulet elemDmg and the hexer curse in
+ * _computeAttackDamage.
  * Caps: collision damage is clamped to COLLISION_BURST_CAP x the raw
  * table value (GDD §22 INV-16 combo-burst ceiling 3.2x; the natural
  * multiplier product resonance(<=1.3) x volatile(1.3) x effectiveness
@@ -76,6 +80,19 @@ export function applyElementStatus(m, element, sourceId, power, now, durMult) {
   return true;
 }
 
+/* v2.3.1139 (item I): CC movement multiplier for the server AI.
+ * Mirrors the client's authoritative constants (monsterCombat.js
+ * moveMult block): freeze or root -> full stop (0), slow -> x0.4,
+ * else x1.  The client also gates ATTACKS on moveMult > 0 -- the
+ * caller (_tickMonsters) mirrors that.  No influence duration
+ * scaling (retired stat). */
+export function elementMoveMult(m) {
+  if (!m || !m.statuses) return 1;
+  if (m.statuses.freeze || m.statuses.root) return 0;
+  if (m.statuses.slow) return 0.4;
+  return 1;
+}
+
 /* Tick a monster's statuses.  dtSec since the last call; returns DoT
  * damage events [{dmg, sourceId, statusId}] for the caller to apply
  * through the normal damage/credit path.  Mirrors tickStatuses burn/root
@@ -120,9 +137,11 @@ export function resolveElementCollision(m, triggerElement, attackerPs, isVolatil
   const statValue = (attackerPs && attackerPs[collision.stat]) || 0;
   const raw = collision.base + statValue * collision.coeff;
   let dmg = raw;
+  let resonating = false;
   if (setup.maxDur > 0) {
     const windowSize = setup.maxDur * RESONANCE_WINDOW_RATIO;
     if (setup.remaining <= windowSize && windowSize > 0) {
+      resonating = true; // v2.3.1139: drives the streak/mana restore
       const depth = Math.max(0, Math.min(1, (windowSize - setup.remaining) / windowSize));
       dmg *= 1 + (RESONANCE_BONUS_BASE + depth * (RESONANCE_BONUS_PEAK - RESONANCE_BONUS_BASE));
     }
@@ -132,5 +151,5 @@ export function resolveElementCollision(m, triggerElement, attackerPs, isVolatil
   dmg = Math.min(dmg, raw * COLLISION_BURST_CAP);
   const consumed = setup.id;
   delete m.statuses[consumed];
-  return { id: collision.id, dmg: Math.round(dmg), setupElement: setup.element, consumed };
+  return { id: collision.id, dmg: Math.round(dmg), setupElement: setup.element, consumed, resonating };
 }

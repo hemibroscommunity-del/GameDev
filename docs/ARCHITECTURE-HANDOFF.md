@@ -276,11 +276,16 @@ spec addendum in trading.md. The gift handshake is untouched.
 Successor note: weapons still trade via marketplace escrow only —
 a weapon lane here needs escrow-at-stage, not validate-at-commit.
 
-### I. Elemental completion (BALANCE-PLAN §6 leftovers)
-Server-side: CC actually slowing server monsters (freeze/root/slow are
-client-visual), resonance-streak mana restore, amulet elemDmg into
-`_computeAttackDamage`, peer-visible status FX. INV-13/16 caps already
-enforced server-side.
+### I. Elemental completion — SHIPPED v2.3.1139
+Built: CC gates the real monster AI (freeze/root stop movement AND
+attacks, slow ×0.4 — `elementMoveMult`), resonance-streak mana restore
+settles server-side off the collision `resonating` flag, amulet
+elemDmg + hexer curse are in `_computeAttackDamage`. Spec:
+`docs/specs/elemental-completion.md`. Still open for successors:
+amulets are a client-crafted blob (forgery ceiling = legit mythic
++10.5%; a server amulet-forge handler is the real fix), peer-visible
+status FX are cosmetic and unported, shock/fracture/soak remain
+mechanically inert.
 
 ### J. Jackpot draw
 Deposits are trivial (`jackpot:pool` key + debit). The DRAW needs the
