@@ -55,6 +55,9 @@ import { arenaMethods } from './gladiator.js';
 // instances riding zone ids the ZONES table doesn't know (see
 // dungeon.js header for why that makes the whole combat stack free).
 import { dungeonMethods } from './dungeon.js';
+// v2.3.1128 (PR11): guild-quest verification -- server-checked
+// life-skill quest ladder, claims under guild_claims:<pid>.
+import { guildMethods } from './guilds.js';
 
 export default {
   async fetch(request, env) {
@@ -170,6 +173,10 @@ const PRIVILEGED_EVENTS = new Set([
   // v2.3.1127: dungeon instance lifecycle (server-spawned waves,
   // server-settled completion rewards -- see dungeon.js).
   'dungeon_started', 'dungeon_wave', 'dungeon_boss', 'dungeon_complete', 'dungeon_error',
+  // v2.3.1128: sponsorship stakes settle off SERVER-observed match
+  // results; guild quests verify against server-owned skill levels.
+  'arena_stake_placed', 'arena_stake_error', 'arena_stake_result',
+  'guild_quest_result', 'guild_quest_error',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -4542,6 +4549,7 @@ export class GameRoom {
         this._duelOnRejoin(msg.id);
         this._duelEscrowSweep();
         this._arenaEntrySweep(); // v2.3.1126: refund entries orphaned by a deploy
+        this._arenaStakeSweep(); // v2.3.1128: same contract for sponsorship stakes
         // v2.3.1125: authoritative clan tag -- the registry overrides
         // whatever the client stuffed in its cosmetics (msg.data is the
         // same object session.data / playerState spread / player_join
@@ -4564,7 +4572,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -4862,6 +4870,25 @@ export class GameRoom {
         // coins + applies effect (pool restore or inventory grant).
         if (session.id) {
           this._handleShopPurchase(session, msg.payload || msg);
+        }
+        break;
+
+      case 'arena_sponsor':
+        // v2.3.1128: spectator stakes on arena matches -- escrowed at
+        // placement, settled ONLY off the server-observed result in
+        // _arenaOnMatchResolved (the legacy arena_bet relay stays
+        // cosmetic; see gladiator.js).
+        if (session.id) {
+          await this._handleArenaSponsor(session, msg.payload || msg);
+        }
+        break;
+
+      case 'guild_quest_turn_in':
+        // v2.3.1128: guild-quest turn-in -- ladder + level check run
+        // against the server's own lifeSkills numbers (see guilds.js;
+        // GuildPanel's local mint stays as caps fallback).
+        if (session.id) {
+          await this._handleGuildTurnIn(session, msg.payload || msg);
         }
         break;
 
@@ -5409,3 +5436,5 @@ Object.assign(GameRoom.prototype, clanMethods);
 Object.assign(GameRoom.prototype, arenaMethods);
 // v2.3.1127 (PR12): instanced dungeons -- see dungeon.js.
 Object.assign(GameRoom.prototype, dungeonMethods);
+// v2.3.1128 (PR11): guild-quest verification -- see guilds.js.
+Object.assign(GameRoom.prototype, guildMethods);
