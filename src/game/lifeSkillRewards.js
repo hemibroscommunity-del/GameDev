@@ -380,7 +380,18 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
       /* v2.3.694: carry the flip taps ({t, frac}) so the server can re-verify
          both landed in the golden zone instead of trusting `kind`.  Old
          server tolerates the extra field; new server validates it. */
-      try { S.channel.send({ type: 'cook_request', payload: { fishKey: fishKey, kind: kind, taps: taps || [] } }); } catch (e) {}
+      var _cookPayload = { fishKey: fishKey, kind: kind, taps: taps || [] };
+      /* v2.3.1146: the flip GESTURE fingerprint (ExtractionSwipeLayer
+         computes it for cooking like every other skill, but it never rode
+         the wire — the tap mechanic the v2.3.694 `taps` field was built
+         for was replaced by the swipe-flip).  Caps-gated so old workers
+         never see the field; this call runs before succeedExtraction
+         nulls S._extraction, so the fp is still reachable here. */
+      if (S._serverCaps && S._serverCaps.botfp && S._extraction
+          && S._extraction.skill === 'cooking' && S._extraction.swipeFp) {
+        _cookPayload.swipeFp = S._extraction.swipeFp;
+      }
+      try { S.channel.send({ type: 'cook_request', payload: _cookPayload }); } catch (e) {}
       return;
     }
     /* Fallback: no channel (SP / dungeon offline). */

@@ -6,6 +6,18 @@ index.js` (deploys independently — every rule here must tolerate old clients
 that don't send the new fields). This doc is the implementation guide for the
 server-side detection; the client half is already live.
 
+> **STATUS (v2.3.1146, 2026-07-03):** the server half SHIPPED —
+> `server/src/botfp.js` + docs/specs/anticheat-botfp.md (the living spec
+> for what's live). Owner decision: FLAG-ONLY — the §5 ladder ships rungs
+> "evidence + shadow-flag" only; automatic throttling was declined, hard
+> action stays manual. Per-section status: §1 ADAPTED (cooking became a
+> swipe-flip; the flip's swipeFp rides cook_request, tapless-cook
+> REJECTION still deferred) · §2 entropy floor SHIPPED, STRICT_EXTRACTION
+> still deferred · §3 SHIPPED · §4 DEFERRED (needs client ack changes) ·
+> §5 SHIPPED flag-only incl. device correlation · §6 SHIPPED (270/h
+> gathering, 700/h cooking). The bottom "Server TODO" section is done:
+> T2 persistence shipped v2.3.1021, mitigation authority v2.3.1113.
+
 ## Threat model
 - **Casual cheats** — localStorage `bt_rpg` edits, claiming `kind:'cooked'`
   without playing. Already largely closed by `player_state` overwrite + the

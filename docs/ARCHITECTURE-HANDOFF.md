@@ -55,6 +55,8 @@ extended.
    | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
    | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |
    | `harden_h5_log` | global H5-mint timestamps, 90-day window (INV-27) | hardening.md |
+   | `botstat:<playerId>` | anti-bot evidence: counters, hour caps, replay-hash tail, shadow flags | anticheat-botfp.md |
+   | `device:<deviceId>` | identity list per device nonce (fleet correlation) | anticheat-botfp.md |
 
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every

@@ -79,6 +79,8 @@ import { trade2Methods } from './trade2.js';
 // v2.3.1143: account-login pre-flight -- read-only Login Key check so
 // the client can validate a typed key before switching identity.
 import { accountMethods } from './account.js';
+// v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.
+import { botfpMethods } from './botfp.js';
 
 export default {
   async fetch(request, env) {
@@ -127,6 +129,14 @@ export default {
 
     if (url.pathname.startsWith('/api/leaderboard')) {
       return env.LEADERBOARD.get(env.LEADERBOARD.idFromName('global')).fetch(request);
+    }
+
+    // v2.3.1146: anti-bot evidence surface lives in the GameRoom (the
+    // botstat:/device: records are in its storage).  ?room= escape hatch
+    // honored, same as /api/market.
+    if (url.pathname.startsWith('/api/botstat')) {
+      const botRoom = url.searchParams.get('room') || 'brotown-1';
+      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(botRoom)).fetch(request);
     }
 
     // v2.3.1126: the arena lives in the GameRoom now (matches are
@@ -2160,6 +2170,16 @@ export class GameRoom {
       if (ws) this._sendPlayerState(ws, session.id);
       return;
     }
+    // v2.3.1146: anti-bot hourly cap + flip-gesture replay/presence
+    // bookkeeping (botfp.js).  drop mirrors _cookRateOk's posture: the
+    // fish is NOT consumed (we return before the decrement) and
+    // player_state snaps the client's optimistic outcome back.
+    const bot = this._botfpOnCook(session, ps, payload);
+    if (bot.drop) {
+      const ws = this._wsBySessionId(session.id);
+      if (ws) this._sendPlayerState(ws, session.id);
+      return;
+    }
     if (!ps.inventory) ps.inventory = {};
     if ((ps.inventory[fishKey] || 0) <= 0) return;
     ps.inventory[fishKey] -= 1;
@@ -2287,14 +2307,20 @@ export class GameRoom {
     delete this.extractions[session.id];
 
     // swipeFp telemetry -- ring-buffered per session for offline
-    // anomaly review.  Not used for ban decisions per spec.
+    // anomaly review.  v2.3.1146: now retains the FULL fingerprint
+    // (tv/vc/h/n were captured by the client since v2.3.694 but dropped
+    // here); the scoring itself lives in _botfpOnStrike below.
     if (swipeFp && typeof swipeFp === 'object' && coercedAccuracy === 'good') {
       if (!session._swipeFps) session._swipeFps = [];
       const fp = {
         ts: now,
         nodeId: id,
         len: Number(swipeFp.len) || 0,
+        n: Number(swipeFp.n) || 0,
         ent: Number(swipeFp.ent) || 0,
+        tv: Number(swipeFp.tv) || 0,
+        vc: Number(swipeFp.vc) || 0,
+        h: swipeFp.h != null ? String(swipeFp.h) : null,
         dur: Number(swipeFp.dur) || 0,
         latency: openLatencyMs,
       };
@@ -2323,13 +2349,29 @@ export class GameRoom {
     // node delta broadcast is enough.
     if (coercedAccuracy === 'miss') return;
 
+    // v2.3.1146: behavioral anti-bot (botfp.js).  FLAG-ONLY per owner:
+    // scores/flags never change gameplay; the two exceptions are the
+    // forged-'perfect' entropy cap (bot.accuracy) and the §6 hourly cap
+    // (grant:false -- node stays consumed, grant withheld, player_state
+    // snaps the client's optimistic prediction back).  Counted on
+    // GRANTED harvests only, so the cap is resources/hour as specced.
+    const bot = this._botfpOnStrike(session, ps, {
+      swipeFp, accuracy: coercedAccuracy,
+      skill: this._harvestSkillName(n.nodeType), now,
+    });
+    if (!bot.grant) {
+      const wsCap = this._wsBySessionId(session.id);
+      if (wsCap) this._sendPlayerState(wsCap, session.id);
+      return;
+    }
+
     /* Apply the inventory grant server-side and persist.  Client used
        to do this in _applyFishingReward / _applyWoodReward /
        _applyMiningReward; now it just sends node_strike with the
        accuracy and waits for the player_state event we emit below.
        Slice 18: rate-limit 'perfect' claims so a cheater can't spam
        perfect-accuracy for the doubled yield + XP. */
-    const ratedAccuracy = this._ratedHarvestAccuracy(ps, accuracy);
+    const ratedAccuracy = this._ratedHarvestAccuracy(ps, bot.accuracy);
     const invKey = this._harvestInvKey(n.nodeType, n.tierLvl);
     const yieldQty = this._harvestYieldMult(ratedAccuracy, n.nodeType);
     if (!ps.inventory) ps.inventory = {};
@@ -4607,6 +4649,11 @@ export class GameRoom {
     if (url.pathname.startsWith('/api/account')) {
       return this._accountFetch(request);
     }
+    // v2.3.1146: anti-bot evidence read surface (owner-only; 404 unless
+    // env.ADMIN_KEY is configured AND presented -- see botfp.js).
+    if (url.pathname.startsWith('/api/botstat')) {
+      return this._botfpAdminFetch(request);
+    }
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 426 });
     }
@@ -4688,6 +4735,11 @@ export class GameRoom {
           ...msg.data
         };
         this.stateHistory[msg.id] = [];
+        // v2.3.1146: capture join.device (sent by clients since v2.3.694,
+        // never read until now) + hydrate the durable anti-bot summary so
+        // reconnect-cycling resets neither the hour caps nor the replay
+        // ring.  Await is input-gate-safe (rule 9).
+        await this._botfpOnJoin(session, msg);
         /* Load (or bootstrap) the player's server-authoritative
            coins + inventory.  Stored entry wins; if there's no
            record yet, fall back to the values the client sent in
@@ -4964,7 +5016,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -5632,6 +5684,7 @@ export class GameRoom {
       // would otherwise end the fight unconditionally.
       this._duelOnDisconnect(session.id);
       this._trade2OnDisconnect(session.id); // v2.3.1132: a dropped party cancels the window
+      this._botfpFlush(session); // v2.3.1146: final botstat: write so evidence survives the disconnect
       this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
       this.broadcastAll({ type: 'player_leave', id: session.id });
       this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
@@ -5888,3 +5941,5 @@ Object.assign(GameRoom.prototype, hardeningMethods);
 Object.assign(GameRoom.prototype, trade2Methods);
 // v2.3.1143: account-login pre-flight -- see account.js.
 Object.assign(GameRoom.prototype, accountMethods);
+// v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.
+Object.assign(GameRoom.prototype, botfpMethods);
