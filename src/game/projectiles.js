@@ -52,7 +52,7 @@ export function updateArrows(S, deps) {
             /* v2.3.213: fall back to inert object when unarmed so
                arrow tick doesn't crash on .type/.tierMult reads. */
             var activeWpn = (S.rpg && getActiveWeapon(S.rpg)) || { element1: null, element2: null };
-            var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg || {}, activeWpn.tierMult || 1) : 10;
+            var pDmg = S.rpg ? calcWeaponDmg(activeWpn.type || 'greatsword', S.rpg || {}, activeWpn.tierMult || 1, activeWpn) : 10;
             /* Derive element/type early so kill logic can use them */
             var projElem = a.element || (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1);
             var isStaffProj = (activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.type) === 'staff' || a.isSpecial && ((_S$rpg15 = S.rpg) === null || _S$rpg15 === void 0 ? void 0 : _S$rpg15.activeSlot) === 'staff';

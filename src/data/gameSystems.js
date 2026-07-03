@@ -4804,7 +4804,7 @@ export function getArmorHp(armor, vitality) {
    EQUIP_STAT_MAP.  Special attacks reading the wrong stat is what
    caused staff specials to land below the WeaponSwapBar's displayed
    range. */
-export function calcWeaponDmg(weaponType, statValOrRpg, tierMult) {
+export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
   var w = WEAPON_TYPES[weaponType];
   var statVal;
   var dmgChannel = 0;
@@ -4817,11 +4817,28 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult) {
   } else {
     statVal = statValOrRpg || 0;
   }
-  var base = (w.base + statVal * 0.1667 + dmgChannel) * tierMult; // baseline-10: 0.8 ÷ 4.8
+  var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667 + dmgChannel) * tierMult; // baseline-10: 0.8 ÷ 4.8
   /* Per-type variance: staff widest, melee mid, bow tightest. */
   if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.0);
   if (weaponType === 'bow')    return base * (0.6  + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);
+}
+
+/* v2.3.1131: §4.6b quality grades + §4.6c hardness — the two loot
+   layers on EFFECTIVE WEAPON BASE (BALANCE-PLAN §4.4 order: pre-stat,
+   pre-tierMult).  Mirrors server QUALITY_GRADES (data.js) and
+   HARDEN.BASE_BONUS (hardening.js).  Both fields are SERVER-rolled
+   (forge quality, harden_weapon ladder) and ride the weapon blob;
+   absent fields = legacy weapon = identity, so every call site that
+   doesn't pass the weapon computes exactly what it did before.
+   NOTE: `hardness` (numeric 0-5) is NOT the legacy `hardenBonus`
+   reforge affix — distinct systems, distinct fields. */
+export var QUALITY_MULTS = { normal: 1.00, rare: 1.20, elite: 1.50, godly: 3.00 };
+export function weaponEffBase(rawBase, wpn) {
+  if (!wpn) return rawBase;
+  var h = typeof wpn.hardness === 'number' ? Math.max(0, Math.min(5, wpn.hardness)) : 0;
+  var q = QUALITY_MULTS[wpn.quality] || 1;
+  return (rawBase + h * 1.0417) * q;
 }
 
 /* §2.1 Crit
@@ -4874,11 +4891,11 @@ export function calcMoveSpeed(agility) {
    anchor; Mind drives the linear scale.  Variance per weapon stays the
    same so staff specials still feel high-variance vs bow tight + sword
    medium. */
-export function calcSpecialDmg(weaponType, rpg, tierMult) {
+export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
   var w = WEAPON_TYPES[weaponType];
   if (!w) return 0;
   var mind = (rpg && rpg.mind) || 0;
-  var base = (w.base + mind * 0.1667) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8
+  var base = (weaponEffBase(w.base, wpn) + mind * 0.1667) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8
   if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.0);
   if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);

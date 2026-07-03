@@ -1883,6 +1883,47 @@ export function processGameEvent(type, payload, S, deps) {
               });
               break;
             }
+          case 'harden_result':
+            {
+              /* v2.3.1131: the §4.6c hardening roll came back (private).
+                 Gold already debited + weapon hardness/temper already
+                 mutated server-side -- the authoritative player_state
+                 echo carries both; this event drives the feedback. */
+              if (!payload) break;
+              if (payload.error) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 30,
+                  text: payload.message || 'Cannot harden',
+                  color: '#ff5e6c', ts: Date.now()
+                });
+                BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
+                break;
+              }
+              if (payload.success) {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 45,
+                  text: '⚒️ HARDENED! Now H' + payload.hardness + '/5',
+                  color: '#f5c542', ts: Date.now()
+                });
+                S.screenShake = 6;
+                BT_AUDIO.collect();
+                setTimeout(function () { return BT_AUDIO.beep(784, 0.12, 0.1, 'sine'); }, 120);
+              } else {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 45,
+                  text: 'Hardening failed! (-' + (payload.cost || 0) + 'G) → H' + payload.hardness,
+                  color: '#ff5e6c', ts: Date.now()
+                });
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 30,
+                  text: 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)',
+                  color: 'rgba(255,255,255,.5)', ts: Date.now()
+                });
+                BT_AUDIO.beep(180, 0.12, 0.18, 'sawtooth');
+              }
+              if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
+              break;
+            }
           case 'pet_capture_result':
             {
               /* v2.3.1130: server-rolled capture outcome (private).

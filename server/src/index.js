@@ -29,7 +29,7 @@ import {
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES, FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS,
-  QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS,
+  QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES,
 } from './data.js';
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
@@ -64,6 +64,11 @@ import { threatMethods } from './threat.js';
 // v2.3.1130 (PR14): server-validated pet capture -- trap consumption,
 // server monster HP/range checks, sanitized pet minting.
 import { petMethods } from './pets.js';
+// v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
+// loot layers (effective_base formula, forge quality roll, harden
+// ladder).  See hardening.js for the name-collision warning vs the
+// client's legacy hardenBonus affix.
+import { hardeningMethods } from './hardening.js';
 
 export default {
   async fetch(request, env) {
@@ -187,6 +192,8 @@ const PRIVILEGED_EVENTS = new Set([
   'threat_penalty', 'threat_expired', 'gear_locked',
   // v2.3.1130: pet-capture outcomes are server-rolled + private.
   'pet_capture_result',
+  // v2.3.1131: hardening rolls are server-side + private.
+  'harden_result',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -1376,18 +1383,44 @@ export class GameRoom {
   // fists base (6.25) in _weaponBase, and nulling them would destroy
   // legit items if the client ships a new type before this table learns
   // about it.
-  _sanitizeWeapon(w) {
+  // v2.3.1131: the sanitizer now KNOWS the quality/hardness/temper
+  // fields (BALANCE-PLAN's "sanitizers must learn the new fields"
+  // warning).  Two postures:
+  //   - default (stored blob / server-held stash): CLAMP -- quality to
+  //     the enum, hardness to [0,5], temper to [0,9999].  The server
+  //     wrote these; keep them.
+  //   - strict (client-supplied join bootstrap): STRIP -- quality and
+  //     hardness multiply the anti-cheat damage ceiling, so a forged
+  //     "godly H5" blob from a fresh client would raise its own cap.
+  //     Client-minted weapons (monster drops) are Normal/H0 by
+  //     definition until the server-side drop migration ships.
+  _sanitizeWeapon(w, strict) {
     if (!w || typeof w !== 'object') return null;
     const out = { ...w };
     out.tierMult = (typeof out.tierMult === 'number' && out.tierMult > 0)
       ? Math.min(8, out.tierMult) : 1;
+    if (strict) {
+      delete out.quality;
+      delete out.hardness;
+      delete out.temper;
+    } else {
+      if (out.quality !== undefined && !QUALITY_GRADES[out.quality]) delete out.quality;
+      if (out.hardness !== undefined) {
+        out.hardness = (typeof out.hardness === 'number' && out.hardness > 0)
+          ? Math.min(5, Math.floor(out.hardness)) : 0;
+      }
+      if (out.temper !== undefined) {
+        out.temper = (typeof out.temper === 'number' && out.temper > 0)
+          ? Math.min(9999, Math.floor(out.temper)) : 0;
+      }
+    }
     return out;
   }
 
-  _sanitizeWeaponList(arr) {
+  _sanitizeWeaponList(arr, strict) {
     if (!Array.isArray(arr)) return [];
     return arr.slice(0, this.WEAPON_STASH_CAP)
-      .map((w) => this._sanitizeWeapon(w))
+      .map((w) => this._sanitizeWeapon(w, strict))
       .filter(Boolean);
   }
 
@@ -1671,6 +1704,11 @@ export class GameRoom {
       gearBase: wantWw ? ('ww_' + tierKey) : tierKey,
       reforgeBonus: null,
       hardenBonus: null,
+      // v2.3.1131: §4.6b quality rolled ONCE at mint, immutable
+      // (90.1/9/0.9% + godly 1-in-400k); §4.6c hardness starts 0.
+      quality: this._rollWeaponQuality(),
+      hardness: 0,
+      temper: 0,
     };
 
     // Crafting XP -- mirrors client at the forge sites:
@@ -3840,7 +3878,11 @@ export class GameRoom {
       // _computeAttackDamage) so a channel-boosted hit isn't rejected by the
       // anti-cheat ceiling.
       const dmgChannel = isSpecial ? 0 : this._wpnDmgChannel(ps, w.type);
-      const base = (this._weaponBase(w.type) + statBonus + dmgChannel) * (w.tierMult || 1);
+      // v2.3.1131: §4.4 effective base -- (raw + hardness×1.0417) ×
+      // quality, BEFORE stat/channel/tierMult.  Identity for legacy
+      // weapons (H0/Normal); keeps godly/hardened hits from being
+      // rejected as cheats.
+      const base = (this._weaponEffBase(w.type, w) + statBonus + dmgChannel) * (w.tierMult || 1);
       if (base > max) max = base;
     }
     return max;
@@ -3897,7 +3939,11 @@ export class GameRoom {
     // build points raise authoritative damage.  Specials stay channel-free
     // (mirrors client calcSpecialDmg).
     const dmgChannel = isSpecial ? 0 : this._wpnDmgChannel(ps, type);
-    let base = (this._weaponBase(type) + stat * 0.1667 + dmgChannel) * tierMult; // 0.8 ÷ 4.8
+    // v2.3.1131: _weaponBase -> _weaponEffBase (quality × hardness
+    // layers, BALANCE-PLAN §4.4 order: pre-stat, pre-tier).  Reduces
+    // exactly to the old formula at Hardness 0 / Normal quality --
+    // tools/balance-sim.mjs asserts that equivalence.
+    let base = (this._weaponEffBase(type, w) + stat * 0.1667 + dmgChannel) * tierMult; // 0.8 ÷ 4.8
     // Per-type variance -- same rolls as the client.
     const v = type === 'staff' ? (0.5  + Math.random() * 1.0)
             : type === 'bow'   ? (0.6  + Math.random() * 0.2)
@@ -4446,9 +4492,13 @@ export class GameRoom {
             // sell value both multiply by tierMult -- the old "opaque
             // blobs are harmless" posture stopped being true.
             // Stash truncated to cap to prevent join-time inflation.
-            this.playerState[msg.id].weapon = this._sanitizeWeapon(msg.data && msg.data.rpgWeapon);
-            this.playerState[msg.id].rangedWeapon = this._sanitizeWeapon(msg.data && msg.data.rpgRangedWeapon);
-            this.playerState[msg.id].staffWeapon = this._sanitizeWeapon(msg.data && msg.data.rpgStaffWeapon);
+            // v2.3.1131: strict=true -- client-supplied blobs are
+            // STRIPPED of quality/hardness/temper (they multiply the
+            // anti-cheat damage ceiling; a forged godly would raise
+            // its own cap).  Stored-blob loads keep the default clamp.
+            this.playerState[msg.id].weapon = this._sanitizeWeapon(msg.data && msg.data.rpgWeapon, true);
+            this.playerState[msg.id].rangedWeapon = this._sanitizeWeapon(msg.data && msg.data.rpgRangedWeapon, true);
+            this.playerState[msg.id].staffWeapon = this._sanitizeWeapon(msg.data && msg.data.rpgStaffWeapon, true);
             this.playerState[msg.id].activeSlot = (msg.data && typeof msg.data.rpgActiveSlot === 'string') ? msg.data.rpgActiveSlot : 'melee';
             // v2.3.249: drop leather armor from the first-connect bootstrap too.
             {
@@ -4457,7 +4507,7 @@ export class GameRoom {
             }
             this.playerState[msg.id].shield = (msg.data && msg.data.rpgShield && typeof msg.data.rpgShield === 'object') ? { ...msg.data.rpgShield } : null;
             this.playerState[msg.id].amulet = (msg.data && msg.data.rpgAmulet && typeof msg.data.rpgAmulet === 'object') ? { ...msg.data.rpgAmulet } : null;
-            this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(msg.data && msg.data.rpgWeaponStash);
+            this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(msg.data && msg.data.rpgWeaponStash, true);
             // Quest state bootstrap (slice 17).  Trust shape but not
             // size -- a cheater could pass a 10000-entry _questKills
             // map to inflate storage.  Strip non-numeric values and
@@ -4590,7 +4640,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -4907,6 +4957,14 @@ export class GameRoom {
         // GuildPanel's local mint stays as caps fallback).
         if (session.id) {
           await this._handleGuildTurnIn(session, msg.payload || msg);
+        }
+        break;
+
+      case 'harden_weapon':
+        // v2.3.1131: the §4.6c Blacksmith lottery -- gold cost, odds
+        // ladder, temper pity bands, all server-rolled (hardening.js).
+        if (session.id) {
+          await this._handleHardenWeapon(session, msg.payload || msg);
         }
         break;
 
@@ -5477,3 +5535,5 @@ Object.assign(GameRoom.prototype, guildMethods);
 Object.assign(GameRoom.prototype, threatMethods);
 // v2.3.1130 (PR14): pet capture -- see pets.js.
 Object.assign(GameRoom.prototype, petMethods);
+// v2.3.1131 (PR15): quality + hardening -- see hardening.js.
+Object.assign(GameRoom.prototype, hardeningMethods);

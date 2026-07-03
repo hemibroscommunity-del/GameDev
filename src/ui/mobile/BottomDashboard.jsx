@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcCritMult, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat, weaponDamageBonusFor, weaponCritStatFor, buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcCritMult, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat, weaponDamageBonusFor, weaponCritStatFor, buildSkillUnspent, STAT_TO_WEAPON_CAT, weaponEffBase } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
@@ -997,7 +997,7 @@ export const BottomDashboard = () => {
                        damage-channel bonus, so spending build points actually
                        moves this readout and it equals what monsters take. */
                     const dmgBonus = weaponDamageBonusFor(R, (wpn && wpn.type));
-                    const base = (wType.base + statVal * 0.1667 + dmgBonus) * (wpn.tierMult || 1);
+                    const base = (weaponEffBase(wType.base, wpn) + statVal * 0.1667 + dmgBonus) * (wpn.tierMult || 1); /* v2.3.1131: quality/hardness layers */
                     let dmgMin, dmgMax, cdMs = SWING_COOLDOWN;
                     if (slot === 'ranged')      { dmgMin = base * 0.6;  dmgMax = base * 0.8;  }
                     else if (slot === 'staff')  { dmgMin = base * 0.5;  dmgMax = base * 1.5;  cdMs += 300; }

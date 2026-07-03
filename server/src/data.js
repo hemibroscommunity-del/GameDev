@@ -169,3 +169,14 @@ export const GUILD_QUESTS = [
   { checkLvl: 100, gold: 1200, ap: 400 },
   { checkLvl: 150, gold: 2000, ap: 750 },
 ];
+
+/* v2.3.1131: quality grades (BALANCE-PLAN §4.6b, adopted from GDD --
+ * the CANONICAL table).  Multiplies EFFECTIVE WEAPON BASE only
+ * (pre-stat, pre-tierMult); rolled ONCE at server mint, immutable.
+ *   QUALITY_GRADES <-> src/data/gameSystems.js QUALITY_MULTS  */
+export const QUALITY_GRADES = {
+  normal: { mult: 1.00 },
+  rare:   { mult: 1.20 },
+  elite:  { mult: 1.50 },
+  godly:  { mult: 3.00 },
+};
