@@ -3127,7 +3127,11 @@ export function spawnMonstersForZone(zone, levelMod) {
       var depthPct = Math.max(0, Math.min(1, y / H));
       var baseLvl = (zone.level[0] || 1) + lm;
       var maxLvl = (zone.level[1] || 10) + lm;
-      var lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)));
+      /* v2.3.1143: entrance ramp -- mirrors _spawnZoneMonsters in
+         server/src/index.js (shallowest 15% spawns up to -4 below the
+         band floor so zone entries aren't an instant wall). */
+      var ramp = depthPct < 0.15 ? Math.round((1 - depthPct / 0.15) * 4) : 0;
+      var lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)) - ramp);
       var m = createMonster('m-' + zone.id + '-' + idx, arch, lvl, x, y, zone.element);
       m.curHp = m.hp;
       m.type = arch;

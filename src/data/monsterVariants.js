@@ -207,6 +207,39 @@ export const MONSTER_VARIANTS = {
     liveScalePx: 96,
     spd: 0.5,
   },
+  /* ═══ v2.3.1143: verdant + mist reskins (the L22-40 zones spawned
+     NOTHING -- the mid-band content hole).  All four are TINTED reuses
+     of existing sheets: `tint` is a plain Pixi sprite tint consumed by
+     entityRenderer where it previously hard-reset 0xffffff.  Fodder
+     skins set useSlimeSheets so the renderer's slime branch (idle/
+     shoot/hit/death states) picks them up despite arch !== 'fodder'.
+     Deliberately NO incomingDmgScalar / xpMult / dmgMult: those are
+     client-prediction-only relics (the server rolls its own damage via
+     _computeAttackDamage and pays base-archetype XP) -- setting them
+     would only desync prediction from monster_hit truth.  Stats come
+     entirely from the base archetype + the zone's level band. */
+  mossSlime: {
+    baseArchetype: 'fodder',
+    useSlimeSheets: true,
+    tint: 0x55cc44, /* mossy green */
+  },
+  mireWisp: {
+    baseArchetype: 'fodder',
+    useSlimeSheets: true,
+    tint: 0x7a5fa8, /* toxic violet (mist = venom zone) */
+  },
+  thornShambler: {
+    baseArchetype: 'brute',
+    liveScalePx: 96,
+    spd: 0.5,        /* mirrored in server _variantSpeed */
+    tint: 0x4f9a3f,  /* moss-covered rockmonster */
+  },
+  bogLurker: {
+    baseArchetype: 'brute',
+    liveScalePx: 96,
+    spd: 0.5,        /* mirrored in server _variantSpeed */
+    tint: 0x5f7a5a,  /* murky fishman */
+  },
 };
 
 /* Per-zone overrides — when a monster of base archetype X spawns in
@@ -216,6 +249,9 @@ export const ZONE_VARIANT_MAP = {
   ember: { fodder: 'fireGoblin' },
   tidal: { brute: 'fishman' },
   hollows: { brute: 'rockmonster' },
+  /* v2.3.1143: keep in sync with server _variantForArchInZone. */
+  verdant: { fodder: 'mossSlime', brute: 'thornShambler' },
+  mist: { fodder: 'mireWisp', brute: 'bogLurker' },
   /* sky / Desert Winds: every server archetype remaps to 'mummy' so
      MP players see mummies regardless of whether the server seeds
      fodder or stalker/hexer/volatile/etc.  Server AI keeps running
@@ -275,7 +311,11 @@ export function applyZoneVariant(monster, zoneId) {
     const minLv = zone.level[0];
     const maxLv = zone.level[1];
     if (maxLv > 0 && monster.level > maxLv) monster.level = maxLv;
-    if (monster.level < minLv) monster.level = minLv;
+    /* v2.3.1143: floor clamp relaxed to minLv-4 -- the server's
+       entrance ramp legitimately spawns up to 4 levels below the band
+       floor in the shallowest 15% of a zone; clamping those back up
+       would desync the displayed level from the authoritative stats. */
+    if (monster.level < minLv - 4) monster.level = Math.max(1, minLv - 4);
   }
   const overrides = ZONE_VARIANT_MAP[zoneId];
   if (!overrides) return monster;

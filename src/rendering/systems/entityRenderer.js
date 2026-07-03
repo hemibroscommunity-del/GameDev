@@ -1691,7 +1691,11 @@ function createMonsterDisplay(monster) {
      bottom; that keeps shadows / damage numbers at the right place
      when the sprite is taller than the circle. */
   const archKey = monster.archetype || monster.type;
-  const isFodder = archKey === 'fodder';
+  /* v2.3.1143: useSlimeSheets variants (mossSlime/mireWisp -- tinted
+     slime reskins) ride the fodder sprite branch, so they count as
+     fodder for spriteBody creation + the _isFodder render dispatch. */
+  const isFodder = archKey === 'fodder'
+    || !!(MONSTER_VARIANTS[archKey] && MONSTER_VARIANTS[archKey].useSlimeSheets);
   const variantKey = MONSTER_VARIANTS[archKey] ? archKey : null;
   const isSnowman = archKey === 'snowman';
   const spriteBody = (isFodder || variantKey || isSnowman) ? new Sprite() : null;
@@ -2211,9 +2215,11 @@ export class EntityRenderer {
          in SP / dungeon mode where the worker doesn't model the zone. */
       if (!S._serverMonsters) maybeTransformMonster(m);
       const arch = m.archetype || m.type;
-      const isFodder = arch === 'fodder';
       const variantKey = MONSTER_VARIANTS[arch] ? arch : null;
       const variant = variantKey ? MONSTER_VARIANTS[variantKey] : null;
+      /* v2.3.1143: slime-sheet variants count as fodder here too (death
+         splat branch below keys on this local). */
+      const isFodder = arch === 'fodder' || !!(variant && variant.useSlimeSheets);
       const variantSprites = variantKey ? variantSpritesFor(variantKey) : null;
       const isSnowman = arch === 'snowman';
 
@@ -2276,7 +2282,7 @@ export class EntityRenderer {
             sb.scale.x = baseScale;
             sb.scale.y = baseScale;
             sb.y = display._size;
-            sb.tint = 0xffffff;
+            sb.tint = (variant && variant.tint) || 0xffffff; /* v2.3.1143 */
             sb.visible = true;
             display.x = m.x;
             display.y = m.y;
@@ -2316,7 +2322,7 @@ export class EntityRenderer {
             }
             sb.scale.x = 96 / 128;
             sb.scale.y = 96 / 128;
-            sb.tint = 0xffffff;
+            sb.tint = (variant && variant.tint) || 0xffffff; /* v2.3.1143 */
             sb.visible = true;
             display.x = m.x;
             display.y = m.y;
@@ -2641,7 +2647,9 @@ export class EntityRenderer {
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
           if (spriteBody.y !== size) spriteBody.y = size;
-          if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+          /* v2.3.1143: per-variant tint (reskins recolor shared sheets). */
+          const wantTintV = (variant && variant.tint) || 0xffffff;
+          if (spriteBody.tint !== wantTintV) spriteBody.tint = wantTintV;
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;
         } else {
@@ -2704,7 +2712,9 @@ export class EntityRenderer {
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
           if (spriteBody.y !== size) spriteBody.y = size; /* feet at the circle's bottom edge */
-          if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+          /* v2.3.1143: tinted slime reskins (mossSlime/mireWisp). */
+          const wantTintS = (variant && variant.tint) || 0xffffff;
+          if (spriteBody.tint !== wantTintS) spriteBody.tint = wantTintS;
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;
         } else {

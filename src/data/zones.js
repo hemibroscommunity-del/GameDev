@@ -63,9 +63,11 @@ export const ZONES = {
     element: 'venom', secondary: 'wind', level: [22, 40], music: 'mist', safe: false,
     palette: { ground: '#2a4a2a', path: '#5a6a45', accent: '#3a5a30' },
     /* v2.3.214: all 3 spawn archetypes (swarm/stalker/hexer) were
-       emoji-only; zone now spawns nothing until a sprite-backed
-       monster is added for Mistwood. */
-    spawns: [],
+       emoji-only; zone spawned nothing until sprite-backed monsters
+       existed.  v2.3.1143: populated with tinted reskins of existing
+       sheets (fodder->mireWisp violet slime, brute->bogLurker murky
+       fishman -- see ZONE_VARIANT_MAP).  Closes the L25-38 dead band. */
+    spawns: [{ arch: 'fodder', count: 6 }, { arch: 'brute', count: 4 }],
     atmosphere: { tint: 'rgba(30,90,30,0.05)', vignette: 'rgba(10,50,10,0.15)' },
     enemyEmoji: { fodder: '🍄', brute: '🌿', swarm: '🪲', hexer: '🧪', sentinel: '🪵' }
   },
@@ -76,7 +78,9 @@ export const ZONES = {
        walkable as a zone today. */
     element: null, secondary: null, level: [22, 40], music: 'meadow', safe: false,
     palette: { ground: '#3d7a2e', path: '#7a6a45', accent: '#6abf4f' },
-    spawns: [],
+    /* v2.3.1143: populated (was empty) -- tinted reskins: fodder->
+       mossSlime green slime, brute->thornShambler mossy rockmonster. */
+    spawns: [{ arch: 'fodder', count: 8 }, { arch: 'brute', count: 4 }],
     atmosphere: { tint: 'rgba(60,160,60,0.05)', vignette: 'rgba(20,80,20,0.12)' },
     enemyEmoji: {}
   },
@@ -117,12 +121,13 @@ export const ZONES = {
     element: 'wind', secondary: 'frost', level: [38, 58], music: 'sky', safe: false,
     /* v2.3.855: warm desert palette (replaces the old cool "Sky Reaches" blue-grey). */
     palette: { ground: '#c2a060', path: '#b08a4a', accent: '#9c6a38' },
-    /* fodder count is the seed for the mummy variant -- ZONE_VARIANT_MAP.sky
-       remaps every fodder spawn here to a mummy that transforms to a
-       skeleton at 50% HP (see monsterVariants.js).  Kept stalker/hexer/
-       volatile for variety; if you want pure mummies in Desert Winds,
-       drop the other entries. */
-    spawns: [{ arch: 'fodder', count: 6 }, { arch: 'stalker', count: 4 }, { arch: 'hexer', count: 3 }, { arch: 'volatile', count: 3 }],
+    /* Every spawn here remaps to mummy via ZONE_VARIANT_MAP.sky
+       (transforms to skeleton at 50% HP -- see monsterVariants.js).
+       v2.3.1143: dropped the legacy fodder×6 entry -- the SERVER table
+       never had it (live sky spawns 10 mummies, not 16), and the new
+       lockstep test in server/test/tick.test.mjs caught the mismatch.
+       Client mirrors the authoritative server table. */
+    spawns: [{ arch: 'stalker', count: 4 }, { arch: 'hexer', count: 3 }, { arch: 'volatile', count: 3 }],
     atmosphere: { tint: 'rgba(210,165,90,0.05)', vignette: 'rgba(150,100,40,0.08)' },
     enemyEmoji: { fodder: '🌬️', brute: '🦅', swarm: '🕊️', volatile: '🌪️', stalker: '🦉', hexer: '☁️', sentinel: '🗼' }
   },

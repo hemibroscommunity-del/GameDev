@@ -308,8 +308,13 @@ raised per MAP-REDESIGN in BOTH `server/src/data.js` and
 `src/data/zones.js` (lockstep rule: the client clamps server monster
 levels to its own band). The ±5 valid-threat gate on `trainDefense` is
 re-enabled at all six client call sites (§7's condition). Follow-ups:
-no zone ENTRY gating yet — a fresh L1 player can walk into Ember Fields
-(L55-80) and get two-shot; MAP-REDESIGN lists gating as the next step.
+~~no zone ENTRY gating yet~~ — v2.3.1143 shipped SOFT gating (first
+approach to a zone whose floor exceeds level+5 bounces with a warning;
+second approach passes), populated the empty [22,40] zones
+(verdant/mist — the L25-38 dead band), added a −4 entrance ramp in the
+shallowest 15% of every zone, re-enabled the tutorial banner, and added
+a CI lockstep test pinning both ZONES tables together (spec:
+docs/specs/zone-progression.md). Hard entry gating remains optional.
 
 ### L. Smaller known items
 - Cook minigame outcome (`kind`) still client-trusted (rate-limited only).

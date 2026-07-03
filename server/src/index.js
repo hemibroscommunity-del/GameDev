@@ -205,6 +205,10 @@ const PRIVILEGED_EVENTS = new Set([
   'trade2_state', 'trade2_invite',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
+  // v2.3.1143: server-emitted since the mummy->skeleton transform moved
+  // server-side (v2.3.856 era) but never deny-listed -- a client could
+  // forge cosmetic transforms on everyone's screen.  Closed.
+  'monster_transform',
   // World state fan-outs
   'loot_drop', 'loot_claimed', 'loot_despawn',
   'zone_monsters', 'zone_nodes', 'zone_loot', 'zone_state',
@@ -403,6 +407,11 @@ export class GameRoom {
         fodder: 'mummy', stalker: 'mummy', hexer: 'mummy',
         volatile: 'mummy', brute: 'mummy', swarm: 'mummy', sentinel: 'mummy',
       },
+      // v2.3.1143: verdant/mist populated -- tinted reskins of existing
+      // sheets (client MONSTER_VARIANTS carries the tint; stats stay
+      // 100% base-archetype).  Keep in sync with ZONE_VARIANT_MAP.
+      verdant: { fodder: 'mossSlime', brute: 'thornShambler' },
+      mist: { fodder: 'mireWisp', brute: 'bogLurker' },
     };
     const zm = MAP[zoneId];
     if (zm && zm[arch]) return zm[arch];
@@ -426,6 +435,16 @@ export class GameRoom {
       fireGoblin: 1.5,
       mummy: 0.4,
       skeleton: 1.4,
+      // v2.3.1143: the new verdant/mist reskins.  Fodder skins keep the
+      // fodder base 0.5; the brute skins run at 0.5 like the client's
+      // fishman/rockmonster cfg (NOTE: legacy tidal/hollows brutes have
+      // no entry here and move at brute base 0.35 -- a pre-existing
+      // client/server speed disagreement documented in the client cfg;
+      // left untouched to avoid changing shipped zones' feel).
+      mossSlime: 0.5,
+      mireWisp: 0.5,
+      thornShambler: 0.5,
+      bogLurker: 0.5,
     };
     return SPEEDS[variantKey];
   }
@@ -462,7 +481,14 @@ export class GameRoom {
         const depthPct = Math.max(0, Math.min(1, y / H));
         const baseLvl = zone.level[0] || 1;
         const maxLvl = zone.level[1] || 10;
-        const lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)));
+        // v2.3.1143: entrance ramp -- the shallowest 15% of a zone
+        // spawns up to 4 levels BELOW the band floor so walking into a
+        // mid/high band isn't an instant wall (hollows entry reads
+        // L34-38 instead of flat 38).  Mirrors spawnMonstersForZone in
+        // src/data/gameSystems.js; the client's applyZoneVariant level
+        // clamp was relaxed to minLv-4 to match.
+        const ramp = depthPct < 0.15 ? Math.round((1 - depthPct / 0.15) * 4) : 0;
+        const lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)) - ramp);
         const a = this._getArchetype(spawn.arch);
         // baseline-10 rescale: 60 ÷ 4.8; HP curve centralized v2.3.1140 (BF-1)
         const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);

@@ -29,6 +29,11 @@
  * convention) and the test player + target monster are teleported to
  * an isolated corner so the other spawns can't interfere. */
 import { GameRoom } from '../src/index.js';
+import { ZONES as SERVER_ZONES } from '../src/data.js';
+// v2.3.1143: the client zone table imports cleanly in node (pure data
+// ESM) -- the lockstep section at the bottom pins it against the
+// server's copy.
+import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 
 function makeState() {
   const store = new Map();
@@ -200,6 +205,54 @@ check('player respawn: inventory wiped again (defense-in-depth vs late ticks)',
   Object.keys(ps.inventory).length === 0);
 check('player respawn: player_respawned sent to the victim',
   msgsOfType(ws, 'player_respawned').length === 1 && msgsOfType(ws, 'player_respawned')[0].payload.zone === 'town');
+
+// ── 9. v2.3.1143: mid-band zone content + client/server lockstep ──
+// verdant/mist owned [22,40] but spawned NOTHING -- the L25-38 dead
+// band.  Pins: both zones spawn, levels stay inside band-floor-4
+// (entrance ramp) .. band-ceiling, and every spawn maps to one of the
+// new tinted variants.
+const EXPECTED_VARIANTS = {
+  verdant: ['mossSlime', 'thornShambler'],
+  mist: ['mireWisp', 'bogLurker'],
+};
+for (const zid of ['verdant', 'mist']) {
+  const zm = room._ensureZoneMonsters(zid);
+  const band = SERVER_ZONES[zid].level;
+  check(zid + ' spawns monsters (mid-band hole closed)', zm.length > 0, zm.length);
+  check(zid + ' levels within [floor-4, ceiling] (entrance ramp honored)',
+    zm.every((m) => m.level >= band[0] - 4 && m.level <= band[1]),
+    zm.map((m) => m.level));
+  check(zid + ' spawns map to the new variants',
+    zm.every((m) => EXPECTED_VARIANTS[zid].includes(m.variant)),
+    [...new Set(zm.map((m) => m.variant))]);
+  check(zid + ' variants have a server speed entry (client/server pace sync)',
+    zm.every((m) => typeof m.spd === 'number' && m.spd > 0), zm.map((m) => m.spd));
+}
+// monster_transform joined the deny-list (pre-existing forgery hole).
+room.eventBuffer.length = 0;
+await room.webSocketMessage(ws, JSON.stringify({ type: 'monster_transform', payload: { id: 'sm-sky-0', fromVariant: 'mummy', toVariant: 'skeleton' } }));
+check('forged monster_transform dropped by deny-list',
+  room.eventBuffer.filter((e) => e.type === 'monster_transform').length === 0);
+
+// LOCKSTEP: the client and server ZONES tables must agree on level
+// bands and spawn tables -- a mismatch desyncs damage prediction and
+// trips the client's level clamp.  This has burned the repo before;
+// now it's pinned by CI.
+{
+  let lockstep = true;
+  const detail = {};
+  for (const [zid, sz] of Object.entries(SERVER_ZONES)) {
+    const cz = CLIENT_ZONES[zid];
+    if (!cz) { lockstep = false; detail[zid] = 'missing on client'; continue; }
+    if (cz.level[0] !== sz.level[0] || cz.level[1] !== sz.level[1]) {
+      lockstep = false; detail[zid] = { server: sz.level, client: cz.level };
+    }
+    const sSpawns = JSON.stringify((sz.spawns || []).map((s) => [s.arch, s.count]));
+    const cSpawns = JSON.stringify((cz.spawns || []).map((s) => [s.arch, s.count]));
+    if (sSpawns !== cSpawns) { lockstep = false; detail[zid] = { serverSpawns: sSpawns, clientSpawns: cSpawns }; }
+  }
+  check('client/server ZONES lockstep (bands + spawns identical)', lockstep, detail);
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
