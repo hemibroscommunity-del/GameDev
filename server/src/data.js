@@ -27,6 +27,17 @@
  * (unchanged by BF-1; centralize them if they ever need tuning). */
 export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025 };
 
+/* v2.3.1153: damage-channel coefficient (edge/drawPower/spellPower),
+ * fraction per point.  Was a flat +1/pt added PRE-tierMult, which priced
+ * 99 pts at ~+725% DPS at the L35/mythril audit cell -- an order of
+ * magnitude above every %-channel (BALANCE-PLAN §4 outlier).  Now a
+ * tier-independent multiplier: dmg ×(1 + pts × this) = +49.5% at 99 pts,
+ * keeping the damage channel just above the crit pair (~+44%) so CH-01's
+ * "damage channel is the ceiling" semantics survive the reprice.
+ *   DAMAGE_CHANNEL_PCT <-> src/data/gameSystems.js DAMAGE_CHANNEL_PCT
+ *                          (and WEAPON_CHANNELS damage-role perPt/100) */
+export const DAMAGE_CHANNEL_PCT = 0.005;
+
 export const ARCHETYPES = {
       fodder:   { hpMult: 0.6, dmgMult: 0.8, spdMult: 1.0, emoji: '🟢', color: '#3dd497' },
       brute:    { hpMult: 1.5, dmgMult: 1.3, spdMult: 0.7, emoji: '🪨', color: '#6b6b6b' },

@@ -28,7 +28,7 @@ Everything that actually affects damage/survival in the shipped game:
 |---|---|---|
 | Weapon base | greatsword 10 · sword 6.67 · bow 7.29 · staff 8.54 | gameSystems.js WEAPON_TYPES |
 | Governing stat | `+ stat × 0.1667` (melee=power, bow=agility, staff=mind) | calcWeaponDmg |
-| Damage channel | `+ 1.0 × points` (edge/drawPower/spellPower), cap 99 | WEAPON_CHANNELS |
+| Damage channel | `× (1 + points × 0.005)` (edge/drawPower/spellPower), cap 99 — repriced v2.3.1153 (was `+1/pt` pre-tier) | WEAPON_CHANNELS / DAMAGE_CHANNEL_PCT |
 | Material tier | `× tierMult` — 1.00 → 7.84 over 20 tiers (geometric ×1.115) | BLACKSMITH_TIERS |
 | Variance | melee ×0.75-1.25 · bow ×0.6-0.8 · staff ×0.5-1.5 | calcWeaponDmg |
 | Special | ×2.0, scales on Mind, no channel bonus | calcSpecialDmg |
@@ -53,7 +53,8 @@ in their canonical positions:
 
 ```
 effective_base = (weapon_base + hardness × 1.0417) × quality_mult
-damage         = (effective_base + stat × 0.1667 + damage_channel)
+damage         = (effective_base + stat × 0.1667)
+                 × (1 + damage_channel_pts × 0.005)
                  × tierMult × variance [× 2.0 special] [× crit_mult]
 ```
 
@@ -72,7 +73,7 @@ damage         = (effective_base + stat × 0.1667 + damage_channel)
 | Material tier | ×7.84 (worldbreaker) | ×7.84 |
 | Quality grade | ×1.50 (elite, ~1/111 drops) | ×3.00 (godly, 1/400k) |
 | Hardness | ×~1.16 on base (H1, 80%) | ×1.78 on base (H5, 1/2.5M) |
-| Damage channel | +99 flat (full investment) | +99 |
+| Damage channel | ×1.495 (full investment, v2.3.1153) | ×1.495 |
 | Crit expectation | ~×1.1-1.3 | ×1.4 |
 
 ## 3. TTK audit — current status (sim findings)
@@ -141,12 +142,16 @@ Shipped per-point values (sim-validated; deltas from the proposal noted):
 | Endurance | Stamina/Conditioning/Swiftness/Evasion/Reflexes | spec Phase 4 | grid not built — Evasion must SHARE the 30% dodge cap |
 
 Sim findings worth knowing (channel-pricing section, L35/mythril cell):
-- The legacy damage channel (+1 flat/pt, pre-tier-mult) prices at **+725%
-  DPS** at full investment — an order of magnitude above every percentage
-  channel (crit pair +44%, Tempo +25%). The §4 parity rule is only
-  enforceable among the NEW channels (CH-01 gates them under edge, not at
-  parity). Rebalancing edge itself is a BF-1-adjacent decision for the
-  mid-band pass, not this slice.
+- **FIXED v2.3.1153:** the legacy damage channel (+1 flat/pt, pre-tier-mult)
+  priced at **+725% DPS** at full investment — an order of magnitude above
+  every percentage channel. Repriced to a tier-independent multiplier
+  `×(1 + pts × 0.005)` (DAMAGE_CHANNEL_PCT, mirrored client/server and
+  CI-audited): edge 99 now buys **+49.5%**, just above the crit pair's
+  +44%, so the damage channel stays the category ceiling without being a
+  monoculture. CH-01 became a two-sided parity band (edge within
+  0.9×–1.5× of the crit pair). Spent points were REFUNDED to
+  weaponUnspent by the `refund-damage-channels` migration (owner decision
+  2026-07-03: refund, not silent reprice).
 - INV-16's 3.2× burst cap is per-collision; Detonation multiplies target
   COUNT, so per-cast total burst grows linearly with radius. If total
   burst per cast is ever adopted as the cap's meaning, drop Detonation's

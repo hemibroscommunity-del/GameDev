@@ -152,5 +152,29 @@ const legacyBlob = () => ({
   check('healLifeSkills: missing lifeSkills is a no-op', healLifeSkills({}) === false && healLifeSkills(null) === false);
 }
 
+// ── 8. v3 refund-damage-channels (v2.3.1153 reprice; owner decision:
+// refund, not silent reprice) — spent edge/drawPower/spellPower points
+// move to weaponUnspent so players re-choose at the new price ──
+{
+  const b = legacyBlob();
+  b.weaponSpecs = { sword: { edge: 60, precision: 10 }, bow: { drawPower: 99 }, staff: { spellPower: 0, overload: 5 } };
+  b.weaponUnspent = { sword: 5 };
+  const r = runRpgMigrations(b);
+  check('v3 refunds damage-channel points into weaponUnspent (stacking on an existing pool)',
+    r.failed === null && b.weaponSpecs.sword.edge === 0 && b.weaponSpecs.bow.drawPower === 0
+    && b.weaponUnspent.sword === 65 && b.weaponUnspent.bow === 99,
+    { specs: b.weaponSpecs, unspent: b.weaponUnspent });
+  check('v3 leaves non-damage channels and zeroed channels untouched',
+    b.weaponSpecs.sword.precision === 10 && b.weaponSpecs.staff.overload === 5 && b.weaponSpecs.staff.spellPower === 0,
+    b.weaponSpecs);
+  const r2 = runRpgMigrations(b);
+  check('v3 idempotent: re-run refunds nothing more', r2.changed === false && b.weaponUnspent.sword === 65, r2);
+  // A corrupt blob can't refund more than a legit 99-pt spend.
+  const c = { weaponSpecs: { sword: { edge: 5000 } } };
+  runRpgMigrations(c);
+  check('v3 clamps a corrupt channel to the legit 99-pt refund',
+    c.weaponUnspent.sword === 99 && c.weaponSpecs.sword.edge === 0, c);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

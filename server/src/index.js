@@ -32,7 +32,7 @@ import {
   ARCHETYPES, ZONES, FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS,
   QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES,
   AMULET_TIER_POWER,
-  MONSTER_HP_CURVE, RARITY_TIERS,
+  MONSTER_HP_CURVE, RARITY_TIERS, DAMAGE_CHANNEL_PCT,
 } from './data.js';
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
@@ -1497,13 +1497,19 @@ export class GameRoom {
     const C = { greatsword: 'sword', sword: 'sword', bow: 'bow', staff: 'staff' };
     return C[type] || 'sword';
   }
-  // Flat base-damage bonus from the type's category damage channel
-  // (edge / drawPower / spellPower), perPt 1.0 — mirror gameSystems.js.
+  // Damage-channel POINT total for the type's category (edge / drawPower /
+  // spellPower) — mirror gameSystems.js weaponDamageBonusFor.
+  // v2.3.1153: was a flat +1/pt added PRE-tierMult, which priced 99 pts at
+  // ~+725% DPS mid-band (BALANCE-PLAN §4 outlier, ~10x every %-channel).
+  // Now returns raw points; _computeAttackDamage applies
+  // ×(1 + pts × DAMAGE_CHANNEL_PCT) — tier-independent +0.5%/pt, +49.5%
+  // at 99, just above the crit pair so the damage channel stays the
+  // category ceiling (CH-01).  Spent points were refunded to
+  // weaponUnspent by the refund-damage-channels migration.
   _wpnDmgChannel(ps, type) {
     const K = { sword: 'edge', bow: 'drawPower', staff: 'spellPower' };
     const cat = this._wpnCat(type);
-    const v = (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
-    return v * 1.0;
+    return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
   }
   // Crit-channel point total (precision / marksmanship / overload).
   _wpnCritPts(ps, type) {
@@ -4183,15 +4189,15 @@ export class GameRoom {
   // Process player damage to a monster
   // Weapon-aware damage cap.  Replaces the prior level-only cap
   // ((level+5)*100) with a tighter bound computed from the attacker's
-  // actual equipped weapon + power + ferocity (all server-tracked
+  // actual equipped weapon + governing stat (all server-tracked
   // since slices 12 / stat-validation).  Closes the "claim huge
   // damage to one-shot tough monsters" cheat with much less false-
   // positive headroom -- a level 1 player with a wood weapon can no
   // longer claim 600 dmg, only ~350.
   //
   // Formula mirrors calcWeaponDmg in src/data/gameSystems.js:
-  //   base = (WEAPON_TYPES[type].base + power * 0.8) * weapon.tierMult
-  // Multiplied by crit cap (1.75 + ferocity * 0.0008) and a generous
+  //   base = (effBase + stat × 0.1667) × 1.495 × weapon.tierMult
+  // then _maxDmgForAttacker multiplies the crit ceiling and a generous
   // 5x "combo + status + amulet + lunge" boost to cover the legit
   // upper bound without rejecting real hits.
   _maxWeaponDmg(ps, isSpecial) {
@@ -4203,16 +4209,19 @@ export class GameRoom {
     // still scales normal swings.  Coefficient baseline-10 rescaled
     // (0.8 ÷ 4.8 = 0.1667) so the cap tracks the new damage scale.
     const statBonus = isSpecial ? ((ps.mind || 0) * 0.1667) : ((ps.power || 0) * 0.1667);
+    // v2.3.1153: damage channel repriced flat +1/pt -> ×(1+pts×0.005).
+    // Ceiling assumes a MAXED channel (×1.495 at 99 pts) instead of
+    // reading live points -- the v2.3.1133 crit-ceiling pattern.  Much
+    // TIGHTER than the old flat term it replaces (+99 pre-tier was worth
+    // ~×8 mid-band), so this closes anti-cheat headroom, not opens it.
+    // Specials stay channel-free, matching _computeAttackDamage.
+    const channelCeil = isSpecial ? 1.0 : 1 + 99 * DAMAGE_CHANNEL_PCT;
     for (const w of candidates) {
-      // v2.3.912: include the damage channel (normal swings only, matching
-      // _computeAttackDamage) so a channel-boosted hit isn't rejected by the
-      // anti-cheat ceiling.
-      const dmgChannel = isSpecial ? 0 : this._wpnDmgChannel(ps, w.type);
       // v2.3.1131: §4.4 effective base -- (raw + hardness×1.0417) ×
       // quality, BEFORE stat/channel/tierMult.  Identity for legacy
       // weapons (H0/Normal); keeps godly/hardened hits from being
       // rejected as cheats.
-      const base = (this._weaponEffBase(w.type, w) + statBonus + dmgChannel) * (w.tierMult || 1);
+      const base = (this._weaponEffBase(w.type, w) + statBonus) * channelCeil * (w.tierMult || 1);
       if (base > max) max = base;
     }
     return max;
@@ -4271,12 +4280,16 @@ export class GameRoom {
     // v2.3.912: + weapon damage channel (edge/drawPower/spellPower) so spent
     // build points raise authoritative damage.  Specials stay channel-free
     // (mirrors client calcSpecialDmg).
-    const dmgChannel = isSpecial ? 0 : this._wpnDmgChannel(ps, type);
+    // v2.3.1153: repriced flat +1/pt -> ×(1 + pts × DAMAGE_CHANNEL_PCT).
+    // The flat term rode INSIDE the tierMult product, so 99 pts bought
+    // ~+725% DPS mid-band; the multiplier prices identically at every
+    // tier (+49.5% at 99 pts).  Mirrors client calcWeaponDmg.
+    const dmgPts = isSpecial ? 0 : this._wpnDmgChannel(ps, type);
     // v2.3.1131: _weaponBase -> _weaponEffBase (quality × hardness
     // layers, BALANCE-PLAN §4.4 order: pre-stat, pre-tier).  Reduces
     // exactly to the old formula at Hardness 0 / Normal quality --
     // tools/balance-sim.mjs asserts that equivalence.
-    let base = (this._weaponEffBase(type, w) + stat * 0.1667 + dmgChannel) * tierMult; // 0.8 ÷ 4.8
+    let base = (this._weaponEffBase(type, w) + stat * 0.1667) * (1 + dmgPts * DAMAGE_CHANNEL_PCT) * tierMult; // 0.8 ÷ 4.8
     // Per-type variance -- same rolls as the client.
     const v = type === 'staff' ? (0.5  + Math.random() * 1.0)
             : type === 'bow'   ? (0.6  + Math.random() * 0.2)

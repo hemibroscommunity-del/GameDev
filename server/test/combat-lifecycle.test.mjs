@@ -455,6 +455,40 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     { roll: maxRoll.dmg, cap: room._maxDmgForAttacker(ps, false) });
 }
 
+// ── 6e. v2.3.1153: damage channel repriced flat +1/pt -> ×(1+pts×0.005) ──
+// The flat term rode INSIDE the tierMult product (~+725% DPS at 99 pts
+// mid-band, the BALANCE-PLAN §4 outlier).  99 pts must now scale a fixed
+// roll by exactly ×1.495 regardless of tier, and the anti-cheat ceiling
+// must have TIGHTENED (maxed-channel ×1.495 replaces the old +99 pre-tier
+// flat term, which was worth far more once the tier multiplied it).
+{
+  const ps = { power: 200, weapon: { type: 'sword', tierMult: 3.24 }, activeSlot: 'melee', weaponSpecs: {} };
+  const origRandom = Math.random;
+  Math.random = () => 0.5;   // fixed mid variance; 0.5 > 20% crit chance -> no crit
+  const plain = room._computeAttackDamage(ps, 'melee', false);
+  ps.weaponSpecs = { sword: { edge: 99 } };
+  const priced = room._computeAttackDamage(ps, 'melee', false);
+  ps.weapon.tierMult = 1;
+  const pricedT1 = room._computeAttackDamage(ps, 'melee', false);
+  ps.weaponSpecs = {};
+  const plainT1 = room._computeAttackDamage(ps, 'melee', false);
+  ps.weapon.tierMult = 3.24;
+  Math.random = origRandom;
+  check('reprice: 99 edge pts multiply damage ×1.495', Math.abs(priced.dmg / plain.dmg - 1.495) < 0.02, priced.dmg / plain.dmg);
+  check('reprice: channel uplift is tier-independent (same ×1.495 at tier 1)',
+    Math.abs(pricedT1.dmg / plainT1.dmg - 1.495) < 0.02, pricedT1.dmg / plainT1.dmg);
+  // Ceiling regression guard: the old formula's weapon bound carried the
+  // flat +99 inside the tier product — (effBase + stat×0.1667 + 99) ×
+  // tierMult.  The new bound (maxed-channel ×1.495) must sit well under
+  // it, or the reprice silently re-opened anti-cheat headroom.
+  ps.weaponSpecs = { sword: { edge: 99 } };
+  const newBound = room._maxWeaponDmg(ps, false);
+  const oldBound = (room._weaponEffBase('sword', ps.weapon) + 200 * 0.1667 + 99) * 3.24;
+  check('reprice: anti-cheat weapon bound tightened vs the old flat formula',
+    newBound < oldBound * 0.5, { newBound, oldBound });
+  ps.weaponSpecs = {};
+}
+
 // ── 7. Event buffer cap on the tick broadcast ──
 {
   room.eventBuffer.length = 0;

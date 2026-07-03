@@ -3678,6 +3678,15 @@ export function weaponXpRequired(level) {
   return Math.ceil(280 * Math.pow(1.16, level || 0));
 }
 
+/* v2.3.1153: damage-channel coefficient, fraction per point — the
+   repriced edge/drawPower/spellPower multiplier (was flat +1/pt inside
+   the tierMult product, ~+725% DPS at 99 pts mid-band; now a tier-
+   independent ×(1 + pts × this), +49.5% at 99).  Mirrors server
+   data.js DAMAGE_CHANNEL_PCT — the mirror-audit suite compares them,
+   and ties the damage-role perPt below (0.5, percent per point) to
+   this constant so the panel readout can't drift from the formula. */
+export var DAMAGE_CHANNEL_PCT = 0.005;
+
 /* Per-category channel definitions.  `role` drives the combat wiring
    (damage/crit are LIVE this slice; the rest are `active:false` and shown
    as "Soon" in the UI so points are never wasted on inert channels).
@@ -3685,9 +3694,12 @@ export function weaponXpRequired(level) {
    `derive(v)` returns a short readout for the allocation panel. */
 export const WEAPON_CHANNELS = {
   sword: [
-    { key: 'edge',        label: 'Sharpened Edge', role: 'damage',  active: true,  perPt: 1.0,
-      blurb: '+base damage on every swing.',
-      derive: (v) => '+' + v + ' base dmg' },
+    /* v2.3.1153: repriced flat +1/pt -> +0.5%/pt multiplier (see
+       DAMAGE_CHANNEL_PCT above); spent points were refunded server-side
+       by the refund-damage-channels migration. */
+    { key: 'edge',        label: 'Sharpened Edge', role: 'damage',  active: true,  perPt: 0.5,
+      blurb: '+damage on every swing.',
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% damage' },
     { key: 'precision',   label: 'Precision',      role: 'crit',    active: true,
       blurb: 'Crit chance on top of Power.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
@@ -3708,9 +3720,10 @@ export const WEAPON_CHANNELS = {
       derive: (v) => '+' + Math.min(45, v * 0.6).toFixed(0) + '° arc' + (v * 0.6 >= 45 ? ' (max)' : '') },
   ],
   bow: [
-    { key: 'drawPower',    label: 'Draw Power',    role: 'damage',  active: true,  perPt: 1.0,
-      blurb: '+base damage per shot.',
-      derive: (v) => '+' + v + ' base dmg' },
+    /* v2.3.1153: repriced flat -> % (see DAMAGE_CHANNEL_PCT / edge). */
+    { key: 'drawPower',    label: 'Draw Power',    role: 'damage',  active: true,  perPt: 0.5,
+      blurb: '+damage per shot.',
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% damage' },
     { key: 'marksmanship', label: 'Marksmanship',  role: 'crit',    active: true,
       blurb: 'Crit chance on top of Agility.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
@@ -3730,9 +3743,10 @@ export const WEAPON_CHANNELS = {
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% range/speed' },
   ],
   staff: [
-    { key: 'spellPower',  label: 'Spell Power',    role: 'damage',  active: true,  perPt: 1.0,
-      blurb: '+base damage per cast.',
-      derive: (v) => '+' + v + ' base dmg' },
+    /* v2.3.1153: repriced flat -> % (see DAMAGE_CHANNEL_PCT / edge). */
+    { key: 'spellPower',  label: 'Spell Power',    role: 'damage',  active: true,  perPt: 0.5,
+      blurb: '+damage per cast.',
+      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% damage' },
     { key: 'overload',    label: 'Overload',       role: 'crit',    active: true,
       blurb: 'Crit chance for magic.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
@@ -3776,15 +3790,18 @@ function weaponChannelValueByRole(rpg, category, role) {
   return 0;
 }
 
-/* Flat base-damage bonus from a specific weapon type's CATEGORY damage
-   channel (used inside calcWeaponDmg so per-weapon readouts are accurate). */
+/* Damage-channel POINT total for a specific weapon type's CATEGORY
+   (used inside calcWeaponDmg so per-weapon readouts are accurate).
+   v2.3.1153: returns raw points, not pts×perPt — the reprice made the
+   channel multiplicative, so callers apply ×(1 + pts × DAMAGE_CHANNEL_PCT)
+   instead of adding a flat term.  Mirrors server _wpnDmgChannel. */
 export function weaponDamageBonusFor(rpg, weaponType) {
   var cat = WEAPON_CATEGORY[weaponType] || 'sword';
   var defs = WEAPON_CHANNELS[cat];
   if (!defs || !rpg || !rpg.weaponSpecs || !rpg.weaponSpecs[cat]) return 0;
   for (var i = 0; i < defs.length; i++) {
     if (defs[i].role === 'damage' && defs[i].active) {
-      return (rpg.weaponSpecs[cat][defs[i].key] || 0) * (defs[i].perPt || 0);
+      return rpg.weaponSpecs[cat][defs[i].key] || 0;
     }
   }
   return 0;
@@ -4941,13 +4958,17 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
   if (statValOrRpg && typeof statValOrRpg === 'object') {
     var statKey = EQUIP_STAT_MAP[weaponType] || 'power';
     statVal = statValOrRpg[statKey] || 0;
-    /* T2: add the matching CATEGORY's damage-channel bonus (resolved by
+    /* T2: the matching CATEGORY's damage-channel points (resolved by
        the passed weaponType so per-weapon readouts stay accurate). */
     dmgChannel = weaponDamageBonusFor(statValOrRpg, weaponType);
   } else {
     statVal = statValOrRpg || 0;
   }
-  var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667 + dmgChannel) * tierMult; // baseline-10: 0.8 ÷ 4.8
+  /* v2.3.1153: damage channel repriced flat +1/pt -> ×(1 + pts × 0.005).
+     The flat term rode inside the tierMult product (~+725% DPS at 99 pts
+     mid-band); the multiplier prices identically at every tier.  Mirrors
+     server _computeAttackDamage. */
+  var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667) * (1 + dmgChannel * DAMAGE_CHANNEL_PCT) * tierMult; // baseline-10: 0.8 ÷ 4.8
   /* Per-type variance: staff widest, melee mid, bow tightest. */
   if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.0);
   if (weaponType === 'bow')    return base * (0.6  + Math.random() * 0.2);
