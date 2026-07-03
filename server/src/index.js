@@ -32,6 +32,7 @@ import {
   ARCHETYPES, ZONES, FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS,
   QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES,
   AMULET_TIER_POWER,
+  MONSTER_HP_CURVE,
 } from './data.js';
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
@@ -369,8 +370,7 @@ export class GameRoom {
   // Zone spawn definitions (mirrors client src/data/zones.js).  w/h
   // match the client's 32x32-tile maps (1024x1024 world px) so
   // monsters spawn and roam inside the visible bounds — wider 50x40
-  // values were spawning monsters off the client's map.  Level
-  // ranges flattened to [1,10] across the board to match the client.
+  // values were spawning monsters off the client's map.
   _getZoneConfig(zoneId) {
     // Emoji-only archetypes (brute/swarm/sentinel/volatile/stalker/hexer
     // in zones without a sprite-backed variant) stripped per user
@@ -380,11 +380,11 @@ export class GameRoom {
     // brute in hollows -> rockmonster sprite, brute in tidal -> fishman
     // sprite (via client ZONE_VARIANT_MAP); sky remaps every archetype
     // to mummy so the existing stalker/hexer/volatile mix is preserved.
-    // v2.3.856: banded level ranges -- MUST stay in lockstep with the client
-    // table in src/data/zones.js (the server is authoritative for monster
-    // stats, so a mismatch desyncs client damage prediction from monster_hit).
-    // Synced to docs/MAP-REDESIGN.md: meadow 1-10; frost+tidal 8-25;
-    // verdant+mist 22-40; desert(sky)+hollows 38-58; thunder+ember 55-80.
+    // v2.3.1140: level bands UNPINNED (were flattened to [1,1] behind
+    // BF-1; see the ZONES table in data.js for the live bands + the
+    // client-lockstep rule -- the server is authoritative for monster
+    // stats, so a mismatch desyncs client damage prediction from
+    // monster_hit AND trips the client's applyZoneVariant level clamp).
 
     return ZONES[zoneId] || null;
   }
@@ -464,7 +464,8 @@ export class GameRoom {
         const maxLvl = zone.level[1] || 10;
         const lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)));
         const a = this._getArchetype(spawn.arch);
-        const baseHp = this._monsterStat(12.5, lvl, 1.065, 1.035, 1.025); // baseline-10 rescale: 60 ÷ 4.8
+        // baseline-10 rescale: 60 ÷ 4.8; HP curve centralized v2.3.1140 (BF-1)
+        const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
         const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
         const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
         const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);

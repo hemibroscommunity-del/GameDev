@@ -293,10 +293,18 @@ lazy pattern (rule 12): store `jackpot:draw {closesAt, entries}` and
 resolve on the first activity after closesAt; pay via `_creditPlayer`.
 The GamblePanel jackpot UI is currently a dead local stub.
 
-### K. Zone-level unpinning (BLOCKED)
-All zones are `level:[1,1]`. Unpinning is blocked on the BF-1 mid-band
-TTK sag (L35/L65 gates FAIL in `tools/balance-sim.mjs`). Fix the curve
-per BALANCE-PLAN, re-run the sim gates, then raise zone bands.
+### K. Zone-level unpinning — SHIPPED v2.3.1140
+BF-1 fixed by flattening the monster HP ramp 1.065 → **1.052** (BALANCE-
+PLAN's suggested ~1.055 still failed the L35 gate; the sim is the referee).
+The curve is now ONE exported object: `MONSTER_HP_CURVE` in
+`src/data/gameSystems.js`, mirrored in `server/src/data.js`, IMPORTED by
+`tools/balance-sim.mjs` (which had silently hardcoded a copy). Zone bands
+raised per MAP-REDESIGN in BOTH `server/src/data.js` and
+`src/data/zones.js` (lockstep rule: the client clamps server monster
+levels to its own band). The ±5 valid-threat gate on `trainDefense` is
+re-enabled at all six client call sites (§7's condition). Follow-ups:
+no zone ENTRY gating yet — a fresh L1 player can walk into Ember Fields
+(L55-80) and get two-shot; MAP-REDESIGN lists gating as the next step.
 
 ### L. Smaller known items
 - Cook minigame outcome (`kind`) still client-trusted (rate-limited only).

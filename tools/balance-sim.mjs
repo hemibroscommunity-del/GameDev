@@ -23,7 +23,7 @@
  */
 import {
   calcWeaponDmg, calcCritChance, calcCritMult, calcMaxHp,
-  monsterStat, ARCHETYPES, WEAPON_TYPES, BLACKSMITH_TIERS,
+  monsterStat, MONSTER_HP_CURVE, ARCHETYPES, WEAPON_TYPES, BLACKSMITH_TIERS,
   SPECIAL_ATK_MULT, LUNGE_DAMAGE_MULT, HP_PER_COMBAT_LEVEL,
 } from '../src/data/gameSystems.js';
 
@@ -118,7 +118,11 @@ function monster(archKey, lvl) {
   const a = ARCHETYPES[archKey];
   return {
     arch: archKey,
-    hp: Math.ceil(monsterStat(12.5, lvl, 1.065, 1.035, 1.025) * a.hpMult),
+    /* v2.3.1140: HP curve IMPORTED (was a hardcoded copy that violated the
+       "never copied" rule above and would have silently missed the BF-1
+       ramp change).  Dmg curve stays inline -- untuned since v2.3.1108;
+       centralize it the first time it needs to move. */
+    hp: Math.ceil(monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame) * a.hpMult),
     dmg: Math.ceil(monsterStat(12, lvl, 1.045, 1.025, 1.018) * a.dmgMult),
   };
 }
@@ -208,7 +212,7 @@ for (const [gl, lo, hi] of GATES) {
     sum += Math.max(1, Math.round(d));
   }
   const e = sum / SAMPLES;
-  const bruteHp = Math.ceil(monsterStat(12.5, gl, 1.065, 1.035, 1.025) * ARCHETYPES.brute.hpMult);
+  const bruteHp = Math.ceil(monsterStat(MONSTER_HP_CURVE.base, gl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame) * ARCHETYPES.brute.hpMult);
   const hits = Math.ceil(bruteHp / e);
   check('INV-03', `L${gl}/${tierForLevel(gl)} median vs brute in [${lo},${hi}] hits`,
     hits >= lo && hits <= hi, `got ${hits} hits (E[dmg]=${num(e)}, bruteHp=${bruteHp})`);

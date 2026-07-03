@@ -27,6 +27,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import { DUNGEONS } from '../src/dungeon.js';
+import { MONSTER_HP_CURVE } from '../src/data.js';
 
 function makeState() {
   const store = new Map();
@@ -163,7 +164,8 @@ room._tickDungeons(Date.now());
 const boss = room.monsters[zone].find((m) => m.id.endsWith('-boss'));
 check('boss spawned after final wave', !!boss && boss.alive && inst.bossSpawned === true, boss && boss.id);
 // Expected hp: fodder base at lvl cfg.monsterLevel+5, x mult 8, x 1.6 (two players inside)
-const baseHp = Math.ceil(room._monsterStat(12.5, cfg.monsterLevel + 5, 1.065, 1.035, 1.025) * 0.6);
+// v2.3.1140: HP curve imported (was a hardcoded copy of the pre-BF-1 ramp).
+const baseHp = Math.ceil(room._monsterStat(MONSTER_HP_CURVE.base, cfg.monsterLevel + 5, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame) * 0.6);
 const baseDmg = Math.ceil(room._monsterStat(12, cfg.monsterLevel + 5, 1.045, 1.025, 1.018) * 0.8);
 check('boss hp = base x mult x party scale 1.6', boss.hp === Math.ceil(baseHp * 8 * 1.6), { hp: boss.hp, expected: Math.ceil(baseHp * 8 * 1.6) });
 check('boss dmg = base x 1.5', boss.dmg === Math.ceil(baseDmg * 1.5), { dmg: boss.dmg, expected: Math.ceil(baseDmg * 1.5) });

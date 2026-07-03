@@ -14,6 +14,15 @@
  *   QUEST_REWARDS      <-> src/data/gameSystems.js QUEST_CHAINS rewards
  *   BLACKSMITH/WOODWORKING_TIERS <-> src/data/gameSystems.js            */
 
+/* v2.3.1140: BF-1 fix -- monster HP curve centralized + ramp flattened
+ * 1.065 -> 1.052 so mid-band kill times pass the §6.5 audit gates (HP
+ * compounded past linear player damage growth across L25-L80).
+ *   MONSTER_HP_CURVE <-> src/data/gameSystems.js MONSTER_HP_CURVE
+ * Consumed by _spawnZoneMonsters (index.js) and _dungeonMonster
+ * (dungeon.js).  Damage/XP/gold curves stay inline at those call sites
+ * (unchanged by BF-1; centralize them if they ever need tuning). */
+export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025 };
+
 export const ARCHETYPES = {
       fodder:   { hpMult: 0.6, dmgMult: 0.8, spdMult: 1.0, emoji: '🟢', color: '#3dd497' },
       brute:    { hpMult: 1.5, dmgMult: 1.3, spdMult: 0.7, emoji: '🪨', color: '#6b6b6b' },
@@ -32,16 +41,27 @@ export const ARCHETYPES = {
  * on any zone NOT in this table -- town and farm_home were never listed
  * here, so unconsented town PvP (with full death-pile drops) dies with
  * this flag.  Duels still work in town via the consent pair. */
+/* v2.3.1140: zone-level UNPINNING (BALANCE-PLAN §10 phase 6, handoff
+ * item K).  Bands per docs/MAP-REDESIGN.md §Bands -- each spoke owns a
+ * slice of 1-100; _spawnZoneMonsters lerps monster level from the low
+ * end (zone entry, north) to the high end (deep, south) by depthPct.
+ * Unblocked by the BF-1 HP-curve fix above (the L35/L65 kill-time
+ * gates that pinned everything to [1,1] now pass).  MUST stay in
+ * lockstep with src/data/zones.js -- the client clamps server-sent
+ * monster levels to ITS band (monsterVariants.js applyZoneVariant), so
+ * a mismatch visibly downgrades monsters client-side.  NOTE: no zone
+ * entry gating exists yet (every spoke is walkable from town at L1);
+ * MAP-REDESIGN lists gating as a follow-up. */
 export const ZONES = {
-      meadow:  { w:32, h:32, level:[1,1],  element:null,    lawless:true, spawns:[{arch:'fodder',count:10}] },
-      ember:   { w:32, h:32, level:[1,1],  element:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },
-      mist:    { w:32, h:32, level:[1,1],  element:'venom', lawless:true, spawns:[] },
-      verdant: { w:32, h:32, level:[1,1],  element:null,    lawless:true, spawns:[] },
-      frost:   { w:32, h:32, level:[1,1],  element:'frost', lawless:true, spawns:[{arch:'snowman',count:4}] },
-      thunder: { w:32, h:32, level:[1,1],  element:'storm', lawless:true, spawns:[{arch:'fodder',count:6}] },
-      hollows: { w:32, h:32, level:[1,1],  element:'stone', lawless:true, spawns:[{arch:'brute',count:4}] },
-      sky:     { w:32, h:32, level:[1,1],  element:'wind',  lawless:true, spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
-      tidal:   { w:32, h:32, level:[1,1],  element:'water', lawless:true, spawns:[{arch:'brute',count:3}] },
+      meadow:  { w:32, h:32, level:[1,10],  element:null,    lawless:true, spawns:[{arch:'fodder',count:10}] },
+      ember:   { w:32, h:32, level:[55,80], element:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },
+      mist:    { w:32, h:32, level:[22,40], element:'venom', lawless:true, spawns:[] },
+      verdant: { w:32, h:32, level:[22,40], element:null,    lawless:true, spawns:[] },
+      frost:   { w:32, h:32, level:[8,25],  element:'frost', lawless:true, spawns:[{arch:'snowman',count:4}] },
+      thunder: { w:32, h:32, level:[55,80], element:'storm', lawless:true, spawns:[{arch:'fodder',count:6}] },
+      hollows: { w:32, h:32, level:[38,58], element:'stone', lawless:true, spawns:[{arch:'brute',count:4}] },
+      sky:     { w:32, h:32, level:[38,58], element:'wind',  lawless:true, spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
+      tidal:   { w:32, h:32, level:[8,25],  element:'water', lawless:true, spawns:[{arch:'brute',count:3}] },
     };
 
 export const FISH_TIERS = [

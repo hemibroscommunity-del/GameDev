@@ -777,10 +777,12 @@ export function updateMonsterCombat(S, deps) {
                      mirrors it in _applyDamage for worker-driven damage. */
                   if (dmgTaken > 0) dmgTaken = applyIronSkin(_R6, dmgTaken);
                   /* v2.3.1113: defense-loop revival -- block trains at full
-                     rate, taken damage at quarter rate.  attackerLevel null
-                     skips the ±5 gate while all monsters are level 1 (see
-                     gameEvents note / BALANCE-PLAN BF-1). */
-                  var _defUpLoc = trainDefense(_R6, shielded ? rawDmg : 0, _passiveDodge ? 0 : dmgTaken, null, false);
+                     rate, taken damage at quarter rate.
+                     v2.3.1140: ±5 valid-threat gate re-enabled (real monster
+                     level passed) now that zone bands are unpinned -- the
+                     null bypass existed only because every monster was
+                     pinned to level 1 (BALANCE-PLAN §7/BF-1). */
+                  var _defUpLoc = trainDefense(_R6, shielded ? rawDmg : 0, _passiveDodge ? 0 : dmgTaken, m.level || null, false);
                   if (_defUpLoc) S.dmgNumbers.push({ x: P.x, y: P.y - 34,
                     text: '🛡️ Defense Lv ' + _defUpLoc.level, color: '#60a5fa', ts: Date.now() + 2 });
                   /* ═══ FODDER SLIMES — RANGED PROJECTILE ATTACK ═══
@@ -816,6 +818,9 @@ export function updateMonsterCombat(S, deps) {
                       speed: 4,
                       rawDmg: rawDmg,
                       ownerId: m.id,
+                      /* v2.3.1140: carry the shooter's level to impact so
+                         trainDefense can apply the ±5 valid-threat gate. */
+                      srcLevel: m.level || null,
                       life: 35,
                       ts: Date.now(),
                     });

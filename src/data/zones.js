@@ -25,22 +25,26 @@ export const ZONES = {
   },
   meadow: {
     id: 'meadow', name: 'Starting Meadow', w: 32, h: 32,
-    element: null, level: [1, 1], music: 'meadow', safe: false,
+    element: null, level: [1, 10], music: 'meadow', safe: false,
     palette: { ground: '#3d6b2e', path: '#7a6a45', accent: '#5a9a40' },
     spawns: [{ arch: 'fodder', count: 10 }]
   },
   ember: {
     id: 'ember', name: 'Ember Fields', w: 32, h: 32,
-    /* v2.3.856: banded level ranges, synced to docs/MAP-REDESIGN.md. Each
-       spoke owns a slice of 1-100 so players converge by level (50-player
-       density); the depthPct lerp in spawnMonstersForZone ramps monsters from
-       the low end (entry) to the high end (deep). Keep client + server
-       (server/src/index.js _getZoneConfig) in lockstep. Bands:
+    /* v2.3.1140: bands UNPINNED (were flattened to [1,1] behind BF-1 --
+       monster HP outran player damage mid-band; fixed by the flattened
+       MONSTER_HP_CURVE in gameSystems.js, sim-verified).  Bands per
+       docs/MAP-REDESIGN.md: each spoke owns a slice of 1-100 so players
+       converge by level (50-player density); the depthPct lerp ramps
+       monsters from the low end (entry) to the high end (deep).  Keep
+       in lockstep with server/src/data.js ZONES -- applyZoneVariant
+       clamps server-sent monster levels to THIS table, so a stale band
+       here visibly downgrades monsters. Bands:
        meadow 1-10 | frost+tidal 8-25 | verdant+mist 22-40 |
        desert(sky)+hollows 38-58 | thunder+ember 55-80 | shadow/radiant 81-100.
        NOTE: every spoke is reachable from town, so high bands still want entry
        gating (follow-up) or a newbie can walk into a high-level entrance. */
-    element: 'flame', secondary: 'stone', level: [1, 1], music: 'ember', safe: false,
+    element: 'flame', secondary: 'stone', level: [55, 80], music: 'ember', safe: false,
     palette: { ground: '#5a3a2a', path: '#8b6545', accent: '#a04020' },
     /* Variant: ember fodder renders as fireGoblin (see monsterVariants.js
        ZONE_VARIANT_MAP).  zones.js stays in base-archetype terms; the
@@ -56,7 +60,7 @@ export const ZONES = {
   mist: {
     id: 'mist', name: 'Mistwood', w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
-    element: 'venom', secondary: 'wind', level: [1, 1], music: 'mist', safe: false,
+    element: 'venom', secondary: 'wind', level: [22, 40], music: 'mist', safe: false,
     palette: { ground: '#2a4a2a', path: '#5a6a45', accent: '#3a5a30' },
     /* v2.3.214: all 3 spawn archetypes (swarm/stalker/hexer) were
        emoji-only; zone now spawns nothing until a sprite-backed
@@ -70,7 +74,7 @@ export const ZONES = {
     /* v2.3.856: new Flora spoke (band 2). element:null for now -- a real
        Flora element + sprite-backed monsters are a follow-up; reachable and
        walkable as a zone today. */
-    element: null, secondary: null, level: [1, 1], music: 'meadow', safe: false,
+    element: null, secondary: null, level: [22, 40], music: 'meadow', safe: false,
     palette: { ground: '#3d7a2e', path: '#7a6a45', accent: '#6abf4f' },
     spawns: [],
     atmosphere: { tint: 'rgba(60,160,60,0.05)', vignette: 'rgba(20,80,20,0.12)' },
@@ -79,7 +83,7 @@ export const ZONES = {
   frost: {
     id: 'frost', name: 'Frozen Shore', w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
-    element: 'frost', secondary: 'storm', level: [1, 1], music: 'frost', safe: false,
+    element: 'frost', secondary: 'storm', level: [8, 25], music: 'frost', safe: false,
     palette: { ground: '#5a6a7a', path: '#8a9aaa', accent: '#3a5a8a' },
     spawns: [{ arch: 'snowman', count: 4 }],
     atmosphere: { tint: 'rgba(140,180,220,0.06)', vignette: 'rgba(60,100,160,0.10)' },
@@ -88,7 +92,7 @@ export const ZONES = {
   thunder: {
     id: 'thunder', name: 'Thunder Peaks', w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
-    element: 'storm', secondary: 'flame', level: [1, 1], music: 'thunder', safe: false,
+    element: 'storm', secondary: 'flame', level: [55, 80], music: 'thunder', safe: false,
     palette: { ground: '#4a4a5a', path: '#6a6a7a', accent: '#7a5aaa' },
     /* v2.3.214: dropped volatile + stalker (emoji-only). Slime
        (fodder) still spawns in Thunder Peaks. */
@@ -99,7 +103,7 @@ export const ZONES = {
   hollows: {
     id: 'hollows', name: 'Deep Hollows', w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
-    element: 'stone', secondary: 'venom', level: [1, 1], music: 'hollows', safe: false,
+    element: 'stone', secondary: 'venom', level: [38, 58], music: 'hollows', safe: false,
     palette: { ground: '#3a3a3a', path: '#5a5a5a', accent: '#6a5a4a' },
     /* v2.3.214: dropped sentinel + swarm (emoji-only). brute is
        sprite-backed here via rockmonster variant. */
@@ -110,7 +114,7 @@ export const ZONES = {
   sky: {
     id: 'sky', name: 'Desert Winds', w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
-    element: 'wind', secondary: 'frost', level: [1, 1], music: 'sky', safe: false,
+    element: 'wind', secondary: 'frost', level: [38, 58], music: 'sky', safe: false,
     /* v2.3.855: warm desert palette (replaces the old cool "Sky Reaches" blue-grey). */
     palette: { ground: '#c2a060', path: '#b08a4a', accent: '#9c6a38' },
     /* fodder count is the seed for the mummy variant -- ZONE_VARIANT_MAP.sky
@@ -125,7 +129,7 @@ export const ZONES = {
   tidal: {
     id: 'tidal', name: 'Tidal Caves', w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
-    element: 'water', secondary: 'venom', level: [1, 1], music: 'tidal', safe: false,
+    element: 'water', secondary: 'venom', level: [8, 25], music: 'tidal', safe: false,
     palette: { ground: '#2a4a5a', path: '#4a6a7a', accent: '#2a6a9a' },
     /* v2.3.214: dropped swarm + hexer (emoji-only). brute is
        sprite-backed here via fishman variant. */
@@ -135,7 +139,7 @@ export const ZONES = {
   },
   shadow: {
     id: 'shadow', name: 'Shadow Sanctum', w: 40, h: 40,
-    element: 'dark', secondary: null, level: [1, 1], music: 'shadow', safe: false, endgame: true,
+    element: 'dark', secondary: null, level: [81, 90], music: 'shadow', safe: false, endgame: true,
     palette: { ground: '#1a1a2a', path: '#2a2a3a', accent: '#3a2a4a' },
     /* v2.3.214: all 3 spawn archetypes were emoji-only. */
     spawns: [],
@@ -144,7 +148,7 @@ export const ZONES = {
   },
   radiant: {
     id: 'radiant', name: 'Radiant Heights', w: 40, h: 40,
-    element: 'light', secondary: null, level: [1, 1], music: 'radiant', safe: false, endgame: true,
+    element: 'light', secondary: null, level: [81, 100], music: 'radiant', safe: false, endgame: true,
     palette: { ground: '#6a6a4a', path: '#aaa870', accent: '#ccc060' },
     /* v2.3.214: all 3 spawn archetypes were emoji-only here (raw
        brute has no sprite variant in radiant; swarm + volatile are

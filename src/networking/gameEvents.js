@@ -872,12 +872,11 @@ export function processGameEvent(type, payload, S, deps) {
                    called, so the 6th combat skill could not level and
                    Bulwark/Iron Skin points were unreachable.  Server-
                    confirmed block: prevented damage trains at full rate.
-                   attackerLevel passed as null (skip the ±5 valid-threat
-                   gate): all monsters are pinned to level 1 while combat
-                   level is the sum of build stats -- the gate would
-                   permanently stop training past level 6.  Re-enable it
-                   when zone levels unpin (docs/BALANCE-PLAN.md BF-1). */
-                var _defUpBlk = trainDefense(R2, payload.dmg || 5, 0, null, false);
+                   v2.3.1140: ±5 valid-threat gate re-enabled (atkSrc.level
+                   from the local snapshot) -- the null bypass existed only
+                   while every monster was pinned to level 1; zone bands
+                   are now unpinned (BALANCE-PLAN §7/BF-1). */
+                var _defUpBlk = trainDefense(R2, payload.dmg || 5, 0, atkSrc.level || null, false);
                 if (_defUpBlk) S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 34,
                   text: '🛡️ Defense Lv ' + _defUpBlk.level, color: '#60a5fa', ts: Date.now() + 2 });
                 break;
@@ -930,8 +929,9 @@ export function processGameEvent(type, payload, S, deps) {
                    match the user's hits-vs-blocks ratio for the
                    Endurance share of killXp. */
                 addBuildUse(R2, 'endurance', 3);
-                /* v2.3.1113: fallback block trains defense too. */
-                trainDefense(R2, mDmg, 0, null, false);
+                /* v2.3.1113: fallback block trains defense too.
+                   v2.3.1140: ±5 gate live (see block above). */
+                trainDefense(R2, mDmg, 0, atkSrc.level || null, false);
               }
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
@@ -947,7 +947,8 @@ export function processGameEvent(type, payload, S, deps) {
                  too -- the damage really landed; only HP echo is deferred
                  to player_state. */
               if (dmgTaken2 > 0) {
-                var _defUpTk = trainDefense(R2, 0, Math.ceil(dmgTaken2), null, false);
+                /* v2.3.1140: ±5 gate live (see block above). */
+                var _defUpTk = trainDefense(R2, 0, Math.ceil(dmgTaken2), atkSrc.level || null, false);
                 if (_defUpTk) S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 34,
                   text: '🛡️ Defense Lv ' + _defUpTk.level, color: '#60a5fa', ts: Date.now() + 2 });
               }

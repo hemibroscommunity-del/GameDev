@@ -40,7 +40,7 @@
  * Boss HP scales by cfg.bossMultiplier (server-clamped 2..8) and by
  * present player count 1.0/1.6/2.2/3.0 (GDD §55.7 party scaling). */
 
-import { ARCHETYPES } from './data.js';
+import { ARCHETYPES, MONSTER_HP_CURVE } from './data.js';
 
 export const DUNGEONS = {
   MAX_WAVES: 10,        // client caps at 10 by level; hard server ceiling
@@ -157,7 +157,9 @@ export const dungeonMethods = {
   // (_resolveMonsterKill honors it when stamping respawnAt).
   _dungeonMonster(inst, archKey, lvl, element, idSuffix) {
     const a = this._getArchetype(archKey);
-    const baseHp = this._monsterStat(12.5, lvl, 1.065, 1.035, 1.025);
+    // HP curve centralized v2.3.1140 (BF-1) -- keeps dungeon monsters on
+    // the same flattened ramp as world spawns.
+    const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
     const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
     const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
     const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);

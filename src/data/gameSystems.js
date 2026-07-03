@@ -4758,6 +4758,17 @@ export function discoverZone(zoneId) {
 }
 
 /* §6.1 Monster Scaling — tri-phase */
+/* v2.3.1140: BF-1 fix — monster HP compounded 1.065^level while player
+   damage grows linearly, so HP outran damage across L25-L80 (L35 and L65
+   INV-03 kill-time gates failed at 5 hits vs 2-3/3-4 targets).  Ramp
+   flattened 1.065 -> 1.052, sim-verified: all four §6.5 audit points pass
+   (tools/balance-sim.mjs --strict).  The curve now lives in this ONE
+   exported object -- consumed by createMonster below, MIRRORED in
+   server/src/data.js MONSTER_HP_CURVE (keep in sync), and IMPORTED by
+   tools/balance-sim.mjs (which previously hardcoded a copy that could
+   drift).  Damage/XP/gold curves are untouched (BF-1 is HP-only). */
+export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025 };
+
 export function monsterStat(base, level, rRamp, rPlateau, rEndgame) {
   if (level <= 30) return Math.ceil(base * Math.pow(rRamp, level - 1));
   var at30 = Math.ceil(base * Math.pow(rRamp, 29));
@@ -4847,7 +4858,8 @@ export const ARCHETYPES = {
 /* Spawn a monster instance from archetype + zone level */
 export function createMonster(id, archetype, level, x, y, element) {
   var a = ARCHETYPES[archetype];
-  var baseHp = monsterStat(12.5, level, 1.065, 1.035, 1.025); // baseline-10 rescale: 60 ÷ 4.8
+  // baseline-10 rescale: 60 ÷ 4.8; curve constants centralized v2.3.1140 (BF-1)
+  var baseHp = monsterStat(MONSTER_HP_CURVE.base, level, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
   var baseDmg = monsterStat(12, level, 1.045, 1.025, 1.018);
   var baseXp = monsterStat(10, level, 1.045, 1.025, 1.018);
   var baseGold = monsterStat(5, level, 1.035, 1.020, 1.015);

@@ -652,8 +652,10 @@ export function updateSlimeProjectiles(S) {
                   size: 1.5 + Math.random(),
                 });
               }
-              /* v2.3.1113: blocked projectile trains defense (full rate). */
-              trainDefense(_R6P, proj.rawDmg, 0, null, false);
+              /* v2.3.1113: blocked projectile trains defense (full rate).
+                 v2.3.1140: ±5 valid-threat gate live -- shooter level rides
+                 the projectile (srcLevel, set at spawn in monsterCombat.js). */
+              trainDefense(_R6P, proj.rawDmg, 0, proj.srcLevel || null, false);
               return false;
             }
             /* v2.3.234 (Phase 4): Agility passive dodge on projectiles too. */
@@ -666,9 +668,9 @@ export function updateSlimeProjectiles(S) {
               return false;
             }
             /* v2.3.1113: Iron Skin cut + quarter-rate defense XP on the
-               taken hit (see monsterCombat note re attackerLevel null). */
+               taken hit.  v2.3.1140: ±5 gate live via proj.srcLevel. */
             var _projDmg = applyIronSkin(_R6P, proj.rawDmg);
-            var _defUpPj = trainDefense(_R6P, 0, _projDmg, null, false);
+            var _defUpPj = trainDefense(_R6P, 0, _projDmg, proj.srcLevel || null, false);
             if (_defUpPj) S.dmgNumbers.push({ x: P.x, y: P.y - 34,
               text: '🛡️ Defense Lv ' + _defUpPj.level, color: '#60a5fa', ts: Date.now() + 2 });
             _R6P.hp -= _projDmg;

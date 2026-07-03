@@ -9,6 +9,7 @@
  *      zone_monsters + zone_nodes + zone_loot trio.
  */
 import { GameRoom } from '../src/index.js';
+import { ZONES } from '../src/data.js';
 
 const mockState = {
   storage: {
@@ -168,12 +169,16 @@ check('zone_state carries all three lists', zs.length === 1 && zs[0].zone === 'f
   && Array.isArray(zs[0].nodes) && zs[0].nodes.length > 0
   && Array.isArray(zs[0].loot));
 
-// Owner directive: ALL monsters are level 1 (zone level bands set to [1,1]).
-// Guards that the spawn lerp produces level 1 everywhere and nothing scales it.
+// v2.3.1140: zone bands UNPINNED (BF-1 fixed; BALANCE-PLAN §10 phase 6).
+// The old [1,1] pin -- and this test's "everything is level 1" guard --
+// existed only because mid-band kill times failed the sim gates.  Now
+// guards the real contract: the depth lerp keeps every spawn inside the
+// zone's declared band (frost is [8,25] per docs/MAP-REDESIGN.md).
+const frostBand = ZONES.frost.level;
 const frostLevels = zs[0].monsters.map((m) => m.level);
-check('all monsters spawn at level 1',
-  frostLevels.length > 0 && frostLevels.every((l) => l === 1),
-  frostLevels);
+check('monsters spawn within the zone level band',
+  frostLevels.length > 0 && frostLevels.every((l) => l >= frostBand[0] && l <= frostBand[1]),
+  { frostLevels, frostBand });
 
 // Safe-zone change: v2 should get one zone_state with empty lists.
 ws2.sent.length = 0;

@@ -100,6 +100,16 @@ Candidate fixes, in preference order: (a) flatten monsterStat's ramp from
 weapon-channel points faster in the mid band. The sim previews any of these
 in seconds — tune there first.
 
+> **FIXED v2.3.1140** via candidate (a), with one correction: ~1.055 was
+> not enough (L35 brute lands at 108 HP vs a 3-hit budget of ~103 — still
+> 4 hits). The shipped ramp is **1.052**; all four INV-03 gates pass with
+> margin, INV-06 passes at L15/35/65/100 (spread 1.67→2.73). The curve now
+> lives in one exported `MONSTER_HP_CURVE` object (src/data/gameSystems.js,
+> mirrored in server/src/data.js) and the sim IMPORTS it — the sim
+> previously hardcoded a copy, violating its own "never copied" rule.
+> Zone bands unpinned in the same PR; ±5 valid-threat gate on trainDefense
+> re-enabled (§7's unpinning condition met).
+
 ## 4. The 6×5 grid — completion budget
 
 **Status (v2.3.1133–1138): every BUILT channel is live.**  All 15 weapon
