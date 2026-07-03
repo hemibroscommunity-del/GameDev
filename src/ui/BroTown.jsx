@@ -30,6 +30,7 @@ import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 import { QuestPanel } from './panels/QuestPanel.jsx';
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
 import { TradePanel } from './panels/TradePanel.jsx';
+import { TradeWindowPanel } from './panels/TradeWindowPanel.jsx';
 import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
 import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
@@ -1003,6 +1004,11 @@ export var BroTown = function BroTown(_ref0) {
     _useState156 = _slicedToArray(_useState155, 2),
     threatOutgoing = _useState156[0],
     setThreatOutgoing = _useState156[1]; /* {targetId, ts, cooldownUntil} */
+  /* v2.3.1132: two-sided trade session snapshot (server truth from
+     trade2_state) or the incoming-invite stub ({invite:true, ...}). */
+  var _useStateTrade2 = useState(null),
+    trade2 = _useStateTrade2[0],
+    setTrade2 = _useStateTrade2[1];
   var _useState157 = useState(null),
     _useState158 = _slicedToArray(_useState157, 2),
     clanData = _useState158[0],
@@ -1612,6 +1618,7 @@ export var BroTown = function BroTown(_ref0) {
       setLevelUpMsg: setLevelUpMsg,
       setDuelRequest: setDuelRequest,
       setThreatIncoming: setThreatIncoming,
+      setTrade2: setTrade2,
       setIncomingTrade: setIncomingTrade,
       setArenaTournament: setArenaTournament,
       setArenaBets: setArenaBets,
@@ -6621,7 +6628,7 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), false && tutorialStep >= 0 && tutorialStep < 7 && /*#__PURE__*/React.createElement("div", {
+  }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), false && tutorialStep >= 0 && tutorialStep < 7 && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       bottom: 180,

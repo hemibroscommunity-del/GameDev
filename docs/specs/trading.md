@@ -71,3 +71,40 @@ skeleton is in the plan's Pillar C notes.
 `server/test/trade.test.mjs` (12 assertions, in `npm test`): exact
 single transfer + settled annotation, replay/forge drops, spent-goods
 reject, expiry, sanitization clamps, sender-disconnect reject.
+
+---
+
+# Addendum: Two-Sided Trade Window — v2.3.1132 (handoff item H)
+
+The gift flow above is unchanged (old clients keep working). The real
+trade window is a PARALLEL explicit command surface — deliberately not
+an extension of the gift handshake — implemented in
+`server/src/trade2.js` (session machine) + `TradeWindowPanel.jsx`
+(a pure renderer of server truth). Tests: `server/test/trade2.test.mjs`.
+
+## Wire surface
+
+| Direction | Type | Payload | Notes |
+|---|---|---|---|
+| c→s | `trade2_open` | `{target}` | Mutual-open: A opens toward B (B gets `trade2_invite`); B opening back goes live. One live session per player. |
+| c→s | `trade2_set` | `{offer: {itemKey: qty, _gold}}` | Replace YOUR side wholesale (gift sanitizer's shape). ANY change resets BOTH confirms — the anti-switch rule. |
+| c→s | `trade2_confirm` | — | Both confirmed → validate BOTH sides at commit, debit both synchronously, credit both via `_creditPlayer` (opIds `trade2:<id>:<pid>:…`). Shortfall cancels with no partial application. |
+| c→s | `trade2_cancel` | — | Either side; disconnect cancels too; idle sessions sweep after 5 min. |
+| s→c | `trade2_invite` | `{from, fromName}` | Private to the target. |
+| s→c | `trade2_state` | full session snapshot (+ `settled`/`reason` on terminal states) | Private to both on every change — the window renders only this. |
+
+`trade2_state`/`trade2_invite` in PRIVILEGED_EVENTS; caps flag
+`trade2` gates the InspectPlayerPanel Trade button (gift panel stays
+as the old-worker fallback). All four commands are client
+PRIORITY_EVENTS (no 33ms batch lag on window clicks).
+
+## Scope + successor notes
+
+- v1 trades inventory items + gold only. WEAPONS deliberately trade
+  through the marketplace's escrowed listings (opaque-blob custody +
+  stash-cap interactions are already solved there); adding a weapon
+  lane here means escrow-at-stage, not validate-at-commit.
+- Sessions are memory-only (nothing escrowed; a deploy voids open
+  windows harmlessly).
+- The atomicity argument: both debits run synchronously inside one
+  input-gated event BEFORE any credit; credits are opId-idempotent.

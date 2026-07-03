@@ -63,6 +63,7 @@ export function setupWebSocket(ctx) {
     setDuelRequest = ctx.setDuelRequest,
     setThreatIncoming = ctx.setThreatIncoming,
     setIncomingTrade = ctx.setIncomingTrade,
+    setTrade2 = ctx.setTrade2,
     setArenaTournament = ctx.setArenaTournament,
     setArenaBets = ctx.setArenaBets,
     pixiRef = ctx.pixiRef;
@@ -1413,6 +1414,7 @@ export function setupWebSocket(ctx) {
         setThreatIncoming: setThreatIncoming,
         setLevelUpMsg: setLevelUpMsg,
         setIncomingTrade: setIncomingTrade,
+        setTrade2: setTrade2,
         setArenaTournament: setArenaTournament,
         setArenaBets: setArenaBets,
         pixiRef: pixiRef,
@@ -1595,7 +1597,11 @@ export function setupWebSocket(ctx) {
      * Combat-critical actions (attacks, PvP, duels, trades) flush immediately.
      * Track calls pass through unchanged (already throttled to 2s).
      */
-    var PRIORITY_EVENTS = new Set(['pvp_confirmed', 'stunned', 'duel_accept', 'duel_decline', 'duel_wager_request', 'pvp_threat', 'threat_response', 'trade_offer', 'trade_accept', 'trade_reject', 'clan_war_kill', 'clan_war_end', 'clan_war_declare', 'clan_invite']);
+    var PRIORITY_EVENTS = new Set(['pvp_confirmed', 'stunned', 'duel_accept', 'duel_decline', 'duel_wager_request', 'pvp_threat', 'threat_response', 'trade_offer', 'trade_accept', 'trade_reject', 'clan_war_kill', 'clan_war_end', 'clan_war_declare', 'clan_invite',
+    /* v2.3.1132: two-sided trade commands -- the window is a
+       server-truth renderer, so a 33ms batch delay would make every
+       stage/confirm click feel laggy. */
+    'trade2_open', 'trade2_set', 'trade2_confirm', 'trade2_cancel']);
     var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
     var _inputBuffer = [];
     var _pendingMove = null;
