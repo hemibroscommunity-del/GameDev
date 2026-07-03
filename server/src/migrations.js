@@ -40,7 +40,7 @@
  *   4. add a case to test/migrations.test.mjs with a real legacy blob.
  */
 
-export const RPG_SCHEMA_VERSION = 2;
+export const RPG_SCHEMA_VERSION = 3;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -85,13 +85,48 @@ export const MIGRATIONS = [
       return false;
     },
   },
-  /* v3 (T2-stat cleanup) DELIBERATELY NOT SHIPPED: stripping the
+  {
+    v: 3,
+    name: 'refund-damage-channels',
+    // v2.3.1153: the damage channels (edge/drawPower/spellPower) were
+    // repriced from flat +1/pt pre-tierMult (~+725% DPS at 99 pts
+    // mid-band, the BALANCE-PLAN §4 outlier) to ×(1 + pts×0.005) —
+    // roughly an 85% value cut for invested builds.  Owner decision
+    // (2026-07-03): refund, don't silently reprice — points move back
+    // to weaponUnspent and players re-choose at the honest price.
+    // NOT a shape repair: a pre-fix client's join payload re-seeding
+    // channel points is a valid new-price spend, so the bootstrap
+    // ingest keeps no boundary heal for this (the refund is a
+    // courtesy, not a corruption fix).  Idempotent: second run finds
+    // the channel at 0 and does nothing.
+    run(blob) {
+      const K = { sword: 'edge', bow: 'drawPower', staff: 'spellPower' };
+      if (!blob || !blob.weaponSpecs || typeof blob.weaponSpecs !== 'object') return false;
+      let changed = false;
+      for (const [cat, key] of Object.entries(K)) {
+        const spec = blob.weaponSpecs[cat];
+        if (!spec || typeof spec[key] !== 'number' || spec[key] === 0) continue;
+        // Same [0,99] clamp as _sanitizeWeaponSpecs so a corrupt blob
+        // can't refund more than a legit spend (unspent pool cap 999
+        // mirrors _sanitizeWeaponUnspent).
+        const pts = Math.max(0, Math.min(99, Math.floor(spec[key])));
+        if (pts > 0) {
+          if (!blob.weaponUnspent || typeof blob.weaponUnspent !== 'object') blob.weaponUnspent = {};
+          blob.weaponUnspent[cat] = Math.min(999, (blob.weaponUnspent[cat] || 0) + pts);
+        }
+        spec[key] = 0;
+        changed = true;
+      }
+      return changed;
+    },
+  },
+  /* T2-stat cleanup DELIBERATELY NOT YET SHIPPED: stripping the
    * legacy T2 stat fields is not a mechanical blob edit — the join
    * handler's RAW_STATS fallback would re-inject them from the join
    * payload, stats_update still clamps-and-stores them, and the
    * restoration/influence formulas read them live.  The exact
    * coordinated edit list is documented in docs/specs/migrations.md
-   * (handoff item L); ship it as its own PR with all edits together. */
+   * (handoff item L); ship it as its own change with all edits together. */
 ];
 
 /* Run every migration newer than blob._v, in order.  Returns

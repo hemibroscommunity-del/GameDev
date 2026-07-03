@@ -26,6 +26,7 @@ import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
+  DAMAGE_CHANNEL_PCT, WEAPON_CHANNELS,
 } from '../../src/data/gameSystems.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
 import { AMULET_TIERS } from '../../src/data/items.js';
@@ -151,6 +152,24 @@ tierMirror('WOODWORKING', SRV.WOODWORKING_TIERS, WOODWORKING_TIERS);
 {
   const bad = Object.entries(SRV.RARITY_TIERS).filter(([k, v]) => !RARITY_TIERS[k] || RARITY_TIERS[k].mult !== v.mult).map(([k]) => k);
   check('RARITY_TIERS mults mirror (labels/colors are client-only presentation)', bad.length === 0, bad);
+}
+
+// ── 8b. v2.3.1153 damage-channel reprice: the server coefficient, the
+// client coefficient, and the allocation-panel perPt (percent per point)
+// must all describe the same multiplier, or the panel readout lies about
+// what the authoritative roll pays. ──
+{
+  check('DAMAGE_CHANNEL_PCT server <-> client', SRV.DAMAGE_CHANNEL_PCT === DAMAGE_CHANNEL_PCT,
+    { server: SRV.DAMAGE_CHANNEL_PCT, client: DAMAGE_CHANNEL_PCT });
+  const bad = [];
+  for (const [cat, defs] of Object.entries(WEAPON_CHANNELS)) {
+    for (const d of defs) {
+      if (d.role === 'damage' && Math.abs((d.perPt || 0) / 100 - DAMAGE_CHANNEL_PCT) > 1e-12) {
+        bad.push({ cat, key: d.key, perPt: d.perPt });
+      }
+    }
+  }
+  check('WEAPON_CHANNELS damage-role perPt/100 ties to DAMAGE_CHANNEL_PCT', bad.length === 0, bad);
 }
 
 // ── 9. Variant map: server _variantForArchInZone vs client

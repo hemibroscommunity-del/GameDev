@@ -25,6 +25,7 @@ import {
   calcWeaponDmg, calcCritChance, calcCritMult, calcMaxHp,
   monsterStat, MONSTER_HP_CURVE, ARCHETYPES, WEAPON_TYPES, BLACKSMITH_TIERS,
   SPECIAL_ATK_MULT, LUNGE_DAMAGE_MULT, HP_PER_COMBAT_LEVEL,
+  DAMAGE_CHANNEL_PCT,
 } from '../src/data/gameSystems.js';
 
 /* ── args ── */
@@ -232,29 +233,27 @@ if (LEVEL >= 15) {
    full DPS comparison needs the lunge cooldown; see plan doc). */
 check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LUNGE_DAMAGE_MULT < 1.0, String(LUNGE_DAMAGE_MULT));
 
-/* ═══ channel pricing (v2.3.1133) ═══
+/* ═══ channel pricing (v2.3.1133; repriced v2.3.1153) ═══
    %DPS bought by FULL investment in each wired grid channel, priced at a
    fixed reference cell (L35 median-Power, mythril — the INV-03 mid-band
    audit point) so the numbers don't swing with --level.  BALANCE-PLAN §4
    budget rule: full investment in any category should buy comparable
    marginal value; utility channels ~70% of a DPS point.
-   KNOWN (pre-existing): the live damage channel (+1 flat/pt, pre-tier)
-   towers over every percentage channel at all bands — the §4 parity rule
-   is only enforceable among the NEW channels, so the gates below check
-   (a) no new channel out-prices the damage channel, (b) every new channel
-   is felt (>+3% at full investment). */
+   v2.3.1153: the damage channel is now a percentage like everything else
+   (was +1 flat/pt pre-tier, ~+725% DPS here — the §4 outlier), so the §4
+   parity rule is finally enforceable across the WHOLE category: CH-01
+   became a two-sided band — the damage channel must price at 0.9x-1.5x
+   of the crit pair (still the ceiling, no longer a monoculture). */
 {
   const REF_LEVEL = 35;
   const refTier = BLACKSMITH_TIERS[tierForLevel(REF_LEVEL)];
   const refPower = Math.round(6 + (REF_LEVEL - 1) * 1.05);
-  const dps = (w, { flat = 0, critPts = 0, critDmgPts = 0, cdMult = 1 }) => {
+  const dps = (w, { dmgPts = 0, critPts = 0, critDmgPts = 0, cdMult = 1 }) => {
     const critC = calcCritChance(refPower, critPts);
     const critM = calcCritMult(refPower, critDmgPts);
-    const [vLo, vHi] = VARIANCE[w];
     let sum = 0;
     for (let i = 0; i < SAMPLES; i++) {
-      const v = vLo + Math.random() * (vHi - vLo);
-      let d = calcWeaponDmg(w, refPower, refTier.tierMult) + flat * refTier.tierMult * v;
+      let d = calcWeaponDmg(w, refPower, refTier.tierMult) * (1 + dmgPts * DAMAGE_CHANNEL_PCT);
       if (Math.random() < critC) d *= critM;
       sum += Math.max(1, Math.round(d));
     }
@@ -264,8 +263,8 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   const base = dps('sword', {});
   const pricePct = (opts) => (dps('sword', opts) / base - 1) * 100;
   const report = (label, pct) => console.log(pad(label, 42) + (pct >= 0 ? '+' : '') + num(pct) + '% DPS');
-  const edgePct = pricePct({ flat: 99 });
-  report('edge 99 (damage, live v2.3.912)', edgePct);
+  const edgePct = pricePct({ dmgPts: 99 });
+  report('edge 99 (damage, repriced v2.3.1153)', edgePct);
   report('precision 99 (crit chance, live v2.3.912)', pricePct({ critPts: 99 }));
   const exePct = pricePct({ critDmgPts: 99 });
   report('executioner 99 (crit dmg, v2.3.1133)', exePct);
@@ -275,8 +274,9 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   report('tempo 80 (atk speed at the -20% cap)', tempoPct);
   const cleaveNote = 'utility: +45° arc at cap — multi-target uptime, not single-target DPS';
   console.log(pad('cleave 75+ (arc, v2.3.1134)', 42) + cleaveNote);
-  check('CH-01', 'crit-dmg channel does not out-price the damage channel', exePct <= edgePct,
-    `executioner +${num(exePct)}% vs edge +${num(edgePct)}%`);
+  check('CH-01', 'damage channel prices in the parity band (0.9x-1.5x of the crit pair)',
+    edgePct >= pairPct * 0.9 && edgePct <= pairPct * 1.5,
+    `edge +${num(edgePct)}% vs pair +${num(pairPct)}% (band ${num(pairPct * 0.9)}..${num(pairPct * 1.5)})`);
   check('CH-02', 'crit-dmg full investment is felt (>3% DPS)', exePct > 3, `+${num(exePct)}%`);
   check('CH-03', 'crit pair stays a sane multiplier (< x2 DPS)', pairPct < 100, `+${num(pairPct)}%`);
   check('CH-04', 'tempo cap buys ~+25% DPS (cadence, not damage)', tempoPct > 20 && tempoPct < 30, `+${num(tempoPct)}%`);

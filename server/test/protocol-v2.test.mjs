@@ -211,18 +211,24 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   ps.rangedWeapon = null; ps.staffWeapon = null;
   ps.power = 0;
   ps.weaponSpecs = {};
-  const capNoSpec = room._maxWeaponDmg(ps, false);            // 6.67 + 0 + 0
   ps.weaponSpecs = { sword: { edge: 10, precision: 20 } };
-  check('v2.3.912 _wpnDmgChannel reads edge points (perPt 1.0)', room._wpnDmgChannel(ps, 'sword') === 10, room._wpnDmgChannel(ps, 'sword'));
+  check('v2.3.912 _wpnDmgChannel reads edge points (raw pts since the v2.3.1153 reprice)', room._wpnDmgChannel(ps, 'sword') === 10, room._wpnDmgChannel(ps, 'sword'));
   check('v2.3.912 _wpnCritPts reads precision points', room._wpnCritPts(ps, 'sword') === 20, room._wpnCritPts(ps, 'sword'));
   check('v2.3.912 greatsword shares the sword/melee category', room._wpnCat('greatsword') === 'sword', room._wpnCat('greatsword'));
-  const capWithSpec = room._maxWeaponDmg(ps, false);          // +10 from edge
-  check('v2.3.912 damage channel raises the weapon damage cap by +10',
-    Math.abs((capWithSpec - capNoSpec) - 10) < 0.001, [capNoSpec, capWithSpec]);
+  // v2.3.1153: the cap assumes a MAXED damage channel (×1.495) instead of
+  // reading live points (the v2.3.1133 crit-ceiling pattern), so it no
+  // longer moves with the spec — 6.67 × 1.495 with or without points.
+  const capNormal = room._maxWeaponDmg(ps, false);
+  check('v2.3.1153 normal-swing cap assumes the maxed damage channel (×1.495)',
+    Math.abs(capNormal - 6.67 * 1.495) < 0.001, capNormal);
+  ps.weaponSpecs = {};
+  check('v2.3.1153 cap is live-point independent (same bound with zero points)',
+    Math.abs(room._maxWeaponDmg(ps, false) - capNormal) < 0.001, room._maxWeaponDmg(ps, false));
+  ps.weaponSpecs = { sword: { edge: 10, precision: 20 } };
   // Specials ignore the damage channel (mirror client calcSpecialDmg).
   ps.mind = 0;
   check('v2.3.912 specials are channel-free',
-    Math.abs(room._maxWeaponDmg(ps, true) - capNoSpec) < 0.001, room._maxWeaponDmg(ps, true));
+    Math.abs(room._maxWeaponDmg(ps, true) - 6.67) < 0.001, room._maxWeaponDmg(ps, true));
 
   // v2.3.1133: crit-DMG channel keys resolve per category, and the
   // stats_update clamp holds them to [0,99] like every other channel.
