@@ -58,6 +58,9 @@ import { dungeonMethods } from './dungeon.js';
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
 // life-skill quest ladder, claims under guild_claims:<pid>.
 import { guildMethods } from './guilds.js';
+// v2.3.1129 (PR13): threat machine -- server countdown/cooldown,
+// ignore/expiry consent, Call Guards levy + storage-backed gear lock.
+import { threatMethods } from './threat.js';
 
 export default {
   async fetch(request, env) {
@@ -177,6 +180,8 @@ const PRIVILEGED_EVENTS = new Set([
   // results; guild quests verify against server-owned skill levels.
   'arena_stake_placed', 'arena_stake_error', 'arena_stake_result',
   'guild_quest_result', 'guild_quest_error',
+  // v2.3.1129: threat-machine emissions (guard fines, lock notices).
+  'threat_penalty', 'threat_expired', 'gear_locked',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -1592,6 +1597,9 @@ export class GameRoom {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
+    // v2.3.1129: forging mints INTO the active slot -- that's a gear
+    // change, so the guard lock covers it (see threat.js).
+    if (this._threatGearLocked(session.id, ps)) return;
     const { weaponType, tierKey, isWoodwork } = payload || {};
     if (weaponType !== 'greatsword' && weaponType !== 'sword' && weaponType !== 'bow' && weaponType !== 'staff') return;
     if (typeof tierKey !== 'string') return;
@@ -1680,6 +1688,8 @@ export class GameRoom {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
+    // v2.3.1129: guard gear lock (see threat.js).
+    if (this._threatGearLocked(session.id, ps)) return;
     const { slot } = payload || {};
     if (!this._isValidEquipSlot(slot)) return;
     const current = ps[slot];
@@ -1705,6 +1715,8 @@ export class GameRoom {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
+    // v2.3.1129: guard gear lock (see threat.js).
+    if (this._threatGearLocked(session.id, ps)) return;
     const { stashIdx, slot } = payload || {};
     if (!this._isValidEquipSlot(slot)) return;
     if (!Number.isInteger(stashIdx) || stashIdx < 0) return;
@@ -2348,31 +2360,12 @@ export class GameRoom {
    * it just ends duels -- no value at risk (wagers are PR6 + storage). */
   _pvpPairKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
 
-  _observePvpConsent(fromId, msg) {
-    // v2.3.1121: duel_request/duel_accept moved to the duel machine
-    // (duel.js _interceptDuel, which registers the consent pair itself).
-    // This observer now covers only the still-relayed THREAT handshake.
-    const t = msg.type;
-    if (t !== 'pvp_threat' && t !== 'threat_response') return;
-    const target = msg.payload && msg.payload.target;
-    if (!target || typeof target !== 'string' || target === fromId) return;
-    const now = Date.now();
-    if (!this._pvpChallenges) this._pvpChallenges = new Map(); // 'challenger>target' -> expiry
-    if (!this._pvpConsent) this._pvpConsent = new Map();       // pairKey -> expiry
-    if (t === 'pvp_threat') {
-      this._pvpChallenges.set(fromId + '>' + target, now + 120000); // 2 min to accept
-      return;
-    }
-    if (!(msg.payload && msg.payload.accepted)) return;
-    // Accepted threat_response: only valid against a live challenge
-    // from the OTHER side -- a unilateral "accept" with no matching
-    // threat consents to nothing.
-    const chal = this._pvpChallenges.get(target + '>' + fromId);
-    if (chal && chal > now) {
-      this._pvpChallenges.delete(target + '>' + fromId);
-      this._pvpConsent.set(this._pvpPairKey(fromId, target), now + 10 * 60 * 1000);
-    }
-  }
+  // v2.3.1129: _observePvpConsent removed -- the last handshake it
+  // covered (threats) moved to the threat machine (threat.js
+  // _interceptThreat), which registers the consent pair itself.  It
+  // was also dead in practice: it required payload.accepted, a field
+  // the client's ThreatIncomingPanel never sent (it sends
+  // action:'ignored'|'guards'), so threat consent was never granted.
 
   _pvpAllowed(attackerId, targetId, zone) {
     const zc = ZONES[zone];
@@ -3183,8 +3176,17 @@ export class GameRoom {
       const oldSig = ps.armor ? JSON.stringify(ps.armor) : 'null';
       const newSig = newArmor ? JSON.stringify(newArmor) : 'null';
       if (oldSig !== newSig) {
-        ps.armor = newArmor;
-        statsChanged = true;
+        // v2.3.1129: guard gear lock -- reject the swap; the
+        // player_state echo from the gate snaps the client's local
+        // armorStash mutation back (see the comment block above: the
+        // echo re-applying ps.armor is exactly the documented
+        // self-correction behavior).
+        if (this._threatGearLocked(session.id, ps)) {
+          // locked: keep the old armor
+        } else {
+          ps.armor = newArmor;
+          statsChanged = true;
+        }
       }
     }
     if (statsChanged) {
@@ -4550,6 +4552,14 @@ export class GameRoom {
         this._duelEscrowSweep();
         this._arenaEntrySweep(); // v2.3.1126: refund entries orphaned by a deploy
         this._arenaStakeSweep(); // v2.3.1128: same contract for sponsorship stakes
+        // v2.3.1129: load a surviving guard gear lock -- storage-backed
+        // so relogging can't shed the punishment (threat.js).
+        {
+          const _gl = await this.state.storage.get('gearlock:' + msg.id);
+          if (_gl && _gl > Date.now() && this.playerState[msg.id]) {
+            this.playerState[msg.id]._gearLockUntil = _gl;
+          }
+        }
         // v2.3.1125: authoritative clan tag -- the registry overrides
         // whatever the client stuffed in its cosmetics (msg.data is the
         // same object session.data / playerState spread / player_join
@@ -5064,12 +5074,15 @@ export class GameRoom {
           if (msg.type === 'clan_invite') {
             await this._observeClanInvite(session.id, msg);
           }
-          // v2.3.1116: the THREAT handshake is still client-relayed
-          // (red-skull machine deliberately deferred), but the gate in
-          // _resolvePvPAttack needs to know consent happened -- observe
-          // the relayed halves as they pass through.  (Duel consent
-          // moved to the machine above in v2.3.1121.)
-          this._observePvpConsent(session.id, msg);
+          // v2.3.1129: the threat handshake is a real machine now
+          // (threat.js) -- server countdown/cooldown, ignore/expiry
+          // consent, Call Guards levy + gear lock.  The intercept
+          // validates and annotates, or drops forged/expired/
+          // cooldown-blocked halves.  Null means "don't relay".
+          if (msg.type === 'pvp_threat' || msg.type === 'threat_response') {
+            msg = await this._interceptThreat(session.id, msg);
+            if (!msg) break;
+          }
           msg.from = session.id;
           this.eventBuffer.push(msg);
         }
@@ -5264,6 +5277,10 @@ export class GameRoom {
       // boss spawn, completion settlement, empty-instance sweep.
       this._tickDungeons(Date.now());
 
+      // v2.3.1129: unanswered threat countdowns expire as "ignored"
+      // (consent pair granted, both sides notified).
+      this._tickThreats(Date.now());
+
       // HP regen tick — every 30 server ticks (~670 ms at TICK_RATE=22).
       // Skip when no one needs healing to avoid wasted iteration.
       regenCounter++;
@@ -5438,3 +5455,5 @@ Object.assign(GameRoom.prototype, arenaMethods);
 Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1128 (PR11): guild-quest verification -- see guilds.js.
 Object.assign(GameRoom.prototype, guildMethods);
+// v2.3.1129 (PR13): threat machine -- see threat.js.
+Object.assign(GameRoom.prototype, threatMethods);

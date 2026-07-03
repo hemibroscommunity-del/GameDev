@@ -48,6 +48,11 @@ extended.
    | `mkt_order:<orderId>` | resting order w/ escrowed item | marketplace.md |
    | `mkt_hist:<indexKey>` | rolling last-50 executed prices | marketplace.md |
    | `duelEscrow:<duelId>` | `{a, b, wager, startedAt}` | duels.md |
+   | `clan:<clanId>` / `clan_by_player:<pid>` / `clan_war:<warId>` | clan registry + war snapshots | clans.md |
+   | `arena_entry:<tid>:<pid>` | escrowed 100g tournament entry | arena.md |
+   | `arena_stake:<tid>:<mid>:<pid>` | escrowed sponsorship stake | sponsorship.md |
+   | `guild_claims:<pid>` | `{skillKey: completedCount}` quest-ladder claims | guild-quests.md |
+   | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
 
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every
@@ -200,14 +205,17 @@ spec in `docs/specs/guild-quests.md`. Only LEVEL objectives exist;
 count-based guild work ("cook 50 meals") needs a server counter via
 the `_questKills` sole-writer pattern — never read client `_compStats`.
 
-### C. Threat machine (red-skull PvP, GDD §19)
-Interim consent observer already handles pvp_threat/threat_response pairs
-(index.js `_observePvpConsent` — threat only since v2.3.1121). Full
-machine: countdown = 2min + 2min/level-diff, Ignore (white-skull
-still-attackable state) vs Call Guards (10% gold levy via
-`_escrowDebitGold` + 30-min gear lock), 30-min threat cooldown. Build it
-like duel.js (own mixin, storage only for the levy). Danger: gear lock
-needs an equip-handler gate that doesn't exist yet.
+### C. Threat machine — SHIPPED v2.3.1129
+Built as specced: `server/src/threat.js`, spec in
+`docs/specs/threats.md`. The interim `_observePvpConsent` is removed
+(it was dead anyway — required `payload.accepted`, which the client
+never sent). Countdown 2min + 2min/level-above capped at 10min;
+ignore/expiry grant the consent pair; Call Guards = 10% coin sink +
+30-min gear lock under `gearlock:<pid>` (storage-backed — relog can't
+shed it) gating the four equip mutators (equip/unequip/armor-swap/
+forge). Successor follow-ups: red/white SKULL RENDERING still doesn't
+exist client-side (orphaned state anchors listed in the spec); guards
+fines evaporate — a bounty pool is the natural next step.
 
 ### D. Parties
 Do NOT build a party XP system — server kill credit is already GDD §7
