@@ -1809,7 +1809,11 @@ export function processGameEvent(type, payload, S, deps) {
                   fromName: payload.fromName,
                   fromLevel: payload.fromLevel,
                   ts: Date.now(),
-                  countdown: payload.countdown || 120,
+                  /* v2.3.1129: the panel does MILLISECOND math on this
+                     value.  Settlement-aware workers stamp the
+                     authoritative countdown in ms; the old default of
+                     `120` (seconds) rendered a ~0.12s bar. */
+                  countdown: payload.countdown || 120000,
                   responded: false
                 });
                 BT_AUDIO.beep(300, 0.1, 0.15, 'square');
@@ -1821,21 +1825,78 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'threat_response':
             {
+              /* v2.3.1129: read `action` -- the field the panel has
+                 ALWAYS sent.  The old `payload.accepted` branch was
+                 dead (nothing ever set it), so every response showed
+                 "They fled!".  Guard-fine details arrive separately
+                 via the private threat_penalty event. */
               if (payload.target === S.myId) {
-                if (payload.accepted) S.dmgNumbers.push({
+                if (payload.action === 'guards') S.dmgNumbers.push({
                   x: S.player.x,
                   y: S.player.y - 40,
-                  text: 'Threat accepted!',
-                  color: '#fbbf24',
+                  text: 'They called the guards!',
+                  color: '#ff5e6c',
                   ts: Date.now()
                 });else S.dmgNumbers.push({
                   x: S.player.x,
                   y: S.player.y - 40,
-                  text: 'They fled!',
-                  color: '#888',
+                  text: 'Threat ignored — they can fight back!',
+                  color: '#fbbf24',
                   ts: Date.now()
                 });
               }
+              break;
+            }
+          case 'threat_penalty':
+            {
+              /* v2.3.1129: private guard-fine notice to the threatener.
+                 The coins already moved server-side (authoritative
+                 player_state echo); this drives the feedback only. */
+              if (!payload) break;
+              if (payload.levy > 0) S.dmgNumbers.push({
+                x: S.player.x,
+                y: S.player.y - 55,
+                text: '-' + payload.levy + 'G guard fine!',
+                color: '#ff5e6c',
+                ts: Date.now()
+              });
+              S.dmgNumbers.push({
+                x: S.player.x,
+                y: S.player.y - 40,
+                text: 'Gear locked 30m by the guards!',
+                color: '#ff5e6c',
+                ts: Date.now()
+              });
+              BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
+              break;
+            }
+          case 'threat_expired':
+            {
+              /* v2.3.1129: an unanswered threat countdown ran out --
+                 the pair may fight (same as an ignore). */
+              S.dmgNumbers.push({
+                x: S.player.x,
+                y: S.player.y - 40,
+                text: 'Threat expired — fight is on!',
+                color: '#fbbf24',
+                ts: Date.now()
+              });
+              break;
+            }
+          case 'gear_locked':
+            {
+              /* v2.3.1129: an equip attempt was rejected by the guard
+                 gear lock; the player_state echo alongside snaps any
+                 local equip mutation back. */
+              var _glMin = payload && payload.until ? Math.max(1, Math.ceil((payload.until - Date.now()) / 60000)) : 30;
+              S.dmgNumbers.push({
+                x: S.player.x,
+                y: S.player.y - 40,
+                text: 'Gear locked by guards! (' + _glMin + 'm left)',
+                color: '#ff5e6c',
+                ts: Date.now()
+              });
+              BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               break;
             }
           case 'duel_wager_request':
