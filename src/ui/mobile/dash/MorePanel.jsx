@@ -14,6 +14,8 @@ const TILES = [
   { id: 'clan',        src: '/icons/ui/clan.webp',        label: 'Clan',     glyph: '🛡' },
   { id: 'guild',       src: '/icons/ui/guild.webp',       label: 'Guild',    glyph: '⚒' },
   { id: 'feedback',    src: '/icons/ui/feedback.webp',    label: 'Feedback', glyph: '💬' },
+  /* v2.3.1143: account panel -- Login Key display + device transfer. */
+  { id: 'account',     src: null,                        label: 'Account',  glyph: '🔑' },
   { id: 'settings',    src: '/icons/ui/settings.webp',    label: 'Settings', glyph: '⚙' },
   /* v2.3.225: opens the annotated controls tutorial via its bus
      instead of pushing a dashboard panel. */

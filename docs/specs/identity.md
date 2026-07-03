@@ -74,9 +74,12 @@ Client knobs:
   two tabs in one browser; two tabs on the same identity evict each
   other by design — the second tab shows the "Play here instead" bar).
 - The passphrase in `localStorage.bt_passphrase` IS the account
-  credential. A future "transfer to new device" UI just shows it and
-  accepts it (write it to localStorage, reload). Losing it = losing the
-  character; there is no server-side recovery by design (no PII).
+  credential. The "transfer to new device" UI shipped in v2.3.1143 as
+  the **Login Key** account panel — see `docs/specs/account-login.md`
+  (it pre-flight-validates the typed key server-side before switching,
+  instead of the blind write+reload this bullet originally sketched).
+  Losing it = losing the character; there is no server-side recovery by
+  design (no PII).
 - `MenuBar.jsx`'s reset path still removes `bt_passphrase`/`bt_rpg` —
   that is now "delete character", which is what an explicit reset means.
 

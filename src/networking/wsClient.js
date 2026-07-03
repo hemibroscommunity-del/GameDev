@@ -530,6 +530,16 @@ export function setupWebSocket(ctx) {
                 S._authRejects = (S._authRejects || 0) + 1;
                 if (S._authRejects <= 1 && S.myId && S.myId.indexOf('bp_') === 0) {
                   var _newPf = generatePassphrase();
+                  /* v2.3.1143: stash the phrase being destroyed -- this
+                     regen is the one place a valid credential can be
+                     irreversibly lost (e.g. a login attempt landing
+                     inside someone else's brute-force lockout window).
+                     The stash keeps it recoverable via the Account
+                     panel's key display / devtools. */
+                  try {
+                    var _oldPf = localStorage.getItem('bt_passphrase');
+                    if (_oldPf) localStorage.setItem('bt_passphrase_prev', _oldPf);
+                  } catch (e2) {}
                   localStorage.setItem('bt_passphrase', _newPf);
                   /* The old character is unreachable under the new id --
                      drop the stale cache so the rejoin starts clean. */

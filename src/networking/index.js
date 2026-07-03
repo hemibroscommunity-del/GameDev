@@ -46,6 +46,57 @@ export function getBtPassphrase() {
   return localStorage.getItem('bt_passphrase');
 }
 
+/* ═══ v2.3.1143: ACCOUNT LOGIN ("Login Key") ═══
+   The passphrase IS the account credential (see docs/specs/identity.md
+   and docs/specs/account-login.md).  These helpers power the transfer
+   UI: show your key on the old device, type it on the new one.  The
+   typed key MUST be validated by the server BEFORE it is written to
+   localStorage -- a wrong key would trip the join_rejected auto-regen
+   (destroying this device's current key), and an unregistered typo
+   would first-join-lock a brand-new character.  applyAccountLogin is
+   therefore only ever called after checkAccountLogin confirmed
+   exists:true and the player tapped Continue. */
+
+export function normalizeLoginKey(input) {
+  /* Keys are typed/pasted by hand ("Blaze Frost Nova Titan 42") but
+     passphraseToId is char-exact: lowercase and collapse whitespace/
+     underscore runs to the canonical '-' before checking OR storing. */
+  if (!input) return '';
+  return String(input).trim().toLowerCase().replace(/[\s_]+/g, '-');
+}
+
+export async function checkAccountLogin(phrase) {
+  /* Deploy-order safety: an old worker answers unknown paths with
+     HTTP 200 text/plain, so a status check proves nothing.  Require
+     parseable JSON with settled:true before trusting the answer; on
+     anything else report 'unavailable' and the UI refuses to switch. */
+  try {
+    const res = await fetch(BT_API_BASE + '/api/account/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phrase }),
+    });
+    const json = await res.json();
+    if (!json || json.settled !== true) return { ok: false, reason: 'unavailable' };
+    return json;
+  } catch (e) {
+    return { ok: false, reason: 'unavailable' };
+  }
+}
+
+export function applyAccountLogin(phrase) {
+  /* Only after checkAccountLogin returned exists:true + user confirm. */
+  try {
+    const prev = localStorage.getItem('bt_passphrase');
+    if (prev && prev !== phrase) localStorage.setItem('bt_passphrase_prev', prev);
+    localStorage.setItem('bt_passphrase', phrase);
+    /* Stale per-character caches; bt_device stays (per-device nonce). */
+    localStorage.removeItem('bt_rpg');
+    localStorage.removeItem('bt_stats');
+  } catch (e) {}
+  window.location.reload();
+}
+
 /* ═══ RPG SERVER SYNC ═══ */
 export function syncRpgToServer(rpg) {
   const pid = getBtPlayerId();
