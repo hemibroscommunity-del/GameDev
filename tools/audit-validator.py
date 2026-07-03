@@ -55,7 +55,7 @@ TIER_MIN, TIER_MAX, TIER_AT_MIN, TIER_AT_MAX = 1, 20, 1.0, 6.2
 
 # 6.1 Tri-Phase monster HP scaling (continuous, ceil()):
 MON_BASE_HP = 40             # 6.1 base
-R_RAMP, R_PLATEAU, R_ENDGAME = 1.065, 1.035, 1.025   # 6.1 HP rates
+R_RAMP, R_PLATEAU, R_ENDGAME = 1.052, 1.035, 1.025   # 6.1 HP rates (ramp: BF-1 fix v2.3.1140, sync MONSTER_HP_CURVE)
 RAMP_END, PLATEAU_END = 30, 65   # ramp L1-30, plateau L31-65, endgame L66-100
 MON_BASE_DMG = 8             # 6.1 base monster damage (separate axis from HP)
 
