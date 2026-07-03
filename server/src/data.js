@@ -10,7 +10,11 @@
  *   ZONES              <-> src/data/zones.js (level bands MUST match)
  *   FISH_TIERS         <-> src/data/lifeSkills.js FISHING_TIERS
  *   COOKING_RECIPES    <-> src/data/gameSystems.js (index order matters)
- *   SHOP_ITEMS         <-> client NPC vendor table (BroTown.jsx)
+ *   SHOP_ITEMS         <-> src/ui/panels/buildings/VendorPanel.jsx
+ *                          (v2.3.1147: pointer fixed -- the vendor table
+ *                          moved out of BroTown.jsx in the v2.3.882
+ *                          decomposition; test/mirror-audit.test.mjs
+ *                          extracts from that path, keep them together)
  *   QUEST_REWARDS      <-> src/data/gameSystems.js QUEST_CHAINS rewards
  *   BLACKSMITH/WOODWORKING_TIERS <-> src/data/gameSystems.js            */
 

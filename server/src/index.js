@@ -176,7 +176,9 @@ export default {
 // every client, so we MUST refuse to rebroadcast any of these from a
 // client -- otherwise a cheater can forge them and grief the room
 // (e.g. forge player_state { hp: 0 } to one-shot everyone).
-const PRIVILEGED_EVENTS = new Set([
+// v2.3.1147: exported so test/wire-audit.test.mjs can verify every
+// server-emitted type is registered here (rule 13's mechanical check).
+export const PRIVILEGED_EVENTS = new Set([
   // Pool / progression mirrors
   'player_state', 'player_died',
   // 'player_respawned' intentionally OMITTED: the client broadcasts it
