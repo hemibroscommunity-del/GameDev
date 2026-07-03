@@ -162,6 +162,42 @@ export function processGameEvent(type, payload, S, deps) {
               setRpgState(_objectSpread({}, _gR));
               break;
             }
+          case 'jackpot_state':
+            {
+              /* v2.3.1145: server-authoritative jackpot pool (private;
+                 sent on join and after a deposit).  Coins already moved
+                 server-side (player_state echo) -- this drives the
+                 GamblePanel pool display + the deposit popup. */
+              S._jackpotPool = payload.pool || 0;
+              S._jackpotTickets = payload.yourTickets || 0;
+              if (payload.deposited) {
+                S.dmgNumbers.push({
+                  x: S.player.x,
+                  y: S.player.y - 30,
+                  text: 'Deposited ' + payload.deposited + 'g to jackpot (' + (payload.yourTickets || 0) + ' 🎟️)',
+                  color: '#f5c542',
+                  ts: Date.now()
+                });
+              }
+              break;
+            }
+          case 'jackpot_result':
+            {
+              /* v2.3.1145: weekly draw settled (broadcast).  Winner's
+                 gold rides _creditPlayer (online delivery or inbox). */
+              S._jackpotPool = 0;
+              S._jackpotTickets = 0;
+              S.dmgNumbers.push({
+                x: S.player.x,
+                y: S.player.y - 44,
+                text: '🎰 ' + (payload.winnerName || 'Someone') + ' won the ' + (payload.amount || 0) + 'g jackpot!',
+                color: '#f5c542',
+                ts: Date.now(),
+                ttl: 5,
+              });
+              try { BT_AUDIO.collect(); } catch (e) {}
+              break;
+            }
           case 'dungeon_started':
             {
               /* v2.3.1127: the worker accepted our dungeon_start (config

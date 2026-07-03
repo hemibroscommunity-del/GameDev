@@ -64,6 +64,10 @@ const room = new GameRoom(state, mockEnv);
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id) {
   room.sessions.set(ws, baseSession());
+  // v2.3.1145: pre-settle today's daily login reward -- the grant test
+  // asserts exactly ONE inbox_delivered on join; the cadence reward
+  // would add a second.
+  await room.state.storage.put('cadence:login:' + id, { period: room._cadencePeriodDaily(), streak: 1, ts: Date.now() });
   await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, data: { x: -100000, y: -100000, z: 'town' } }));
 }
 const req = (method, path, body, key) => room.fetch(new Request('https://x' + path, {
