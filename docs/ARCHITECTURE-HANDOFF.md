@@ -35,7 +35,11 @@ extended.
 1. **Never add a field to the rpg blob.** `_saveRpg` (server/src/index.js)
    rewrites `rpg:<playerId>` from a fixed field list; any foreign field is
    silently dropped on the next save. New persistent state gets its own
-   storage key.
+   storage key. ONE blessed exception (v2.3.1148): `_v`, the save-format
+   schema stamp — `_saveRpg` writes the `RPG_SCHEMA_VERSION` constant and
+   `_loadRpg` runs `runRpgMigrations` against it (server/src/migrations.js,
+   spec docs/specs/migrations.md). Shape changes to the blob now ship as
+   registry migrations, not ad-hoc heal-on-load branches.
 2. **Storage-key registry** (all GameRoom DO storage; prefix + `:` + id,
    enumerable via `storage.list({prefix})`):
 
@@ -343,6 +347,11 @@ docs/specs/zone-progression.md). Hard entry gating remains optional.
 - Duel `awayId` is single-slot: both players disconnecting overwrites the
   first — self-healing in arena (shot-clock), cosmetic for social duels.
 - T2 retirement cleanup: drop the 5 retired stats from wire/save/clamps.
+  v2.3.1148: NOT shippable as a plain registry migration — the exact
+  coordinated edit list is in docs/specs/migrations.md §"Why v3 was not
+  shipped" (join RAW_STATS fallback re-injects from the join payload;
+  stats_update still clamps-and-stores; restoration/influence formulas
+  read the fields live). Ship all edits together as one PR.
 - index.js is ~5.4k lines — continue strangler-fig extraction (data.js,
   elemental.js, market/trade/duel are the pattern; tick loop is the
   riskiest slice, do it last with the smoke harness watching).
