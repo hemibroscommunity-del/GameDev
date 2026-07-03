@@ -299,6 +299,18 @@ export function InspectPlayerPanel(props) {
       background: '#3dd497'
     },
     onClick: function onClick() {
+      /* v2.3.1132: two-sided trade window when the worker supports it
+         (trade2_open handshake; both stage, both confirm, server swaps
+         atomically).  The one-directional gift panel stays for old
+         workers. */
+      var _St2 = stateRef.current;
+      if (_St2._serverCaps && _St2._serverCaps.trade2 && _St2.channel) {
+        try {
+          _St2.channel.send({ type: 'broadcast', event: 'trade2_open', payload: { target: inspectPlayer.id } });
+        } catch (e) {}
+        setInspectPlayer(null);
+        return;
+      }
       setTradeTarget({
         id: inspectPlayer.id,
         name: inspectPlayer.name

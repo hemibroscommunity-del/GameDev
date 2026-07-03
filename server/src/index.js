@@ -69,6 +69,10 @@ import { petMethods } from './pets.js';
 // ladder).  See hardening.js for the name-collision warning vs the
 // client's legacy hardenBonus affix.
 import { hardeningMethods } from './hardening.js';
+// v2.3.1132 (PR16): two-sided trade window -- both-stage-both-confirm
+// sessions on the validate-at-commit core (the gift handshake in
+// trade.js stays untouched for old clients; see trade2.js header).
+import { trade2Methods } from './trade2.js';
 
 export default {
   async fetch(request, env) {
@@ -194,6 +198,8 @@ const PRIVILEGED_EVENTS = new Set([
   'pet_capture_result',
   // v2.3.1131: hardening rolls are server-side + private.
   'harden_result',
+  // v2.3.1132: two-sided trade session echoes (server-truth renderer).
+  'trade2_state', 'trade2_invite',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // World state fan-outs
@@ -4640,7 +4646,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -4958,6 +4964,22 @@ export class GameRoom {
         if (session.id) {
           await this._handleGuildTurnIn(session, msg.payload || msg);
         }
+        break;
+
+      case 'trade2_open':
+        // v2.3.1132: two-sided trade window (trade2.js).  Mutual-open
+        // handshake; explicit cases so forged halves meet validation,
+        // never the rebroadcast branch.
+        if (session.id) this._handleTrade2Open(session, msg.payload || msg);
+        break;
+      case 'trade2_set':
+        if (session.id) this._handleTrade2Set(session, msg.payload || msg);
+        break;
+      case 'trade2_confirm':
+        if (session.id) await this._handleTrade2Confirm(session);
+        break;
+      case 'trade2_cancel':
+        if (session.id) this._handleTrade2Cancel(session);
         break;
 
       case 'harden_weapon':
@@ -5288,6 +5310,7 @@ export class GameRoom {
       // forfeits it -- so this runs BEFORE the consent clear, which
       // would otherwise end the fight unconditionally.
       this._duelOnDisconnect(session.id);
+      this._trade2OnDisconnect(session.id); // v2.3.1132: a dropped party cancels the window
       this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
       this.broadcastAll({ type: 'player_leave', id: session.id });
       this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
@@ -5356,6 +5379,9 @@ export class GameRoom {
       // v2.3.1129: unanswered threat countdowns expire as "ignored"
       // (consent pair granted, both sides notified).
       this._tickThreats(Date.now());
+
+      // v2.3.1132: expire idle two-sided trade sessions + invites.
+      this._tickTrades2(Date.now());
 
       // HP regen tick — every 30 server ticks (~670 ms at TICK_RATE=22).
       // Skip when no one needs healing to avoid wasted iteration.
@@ -5537,3 +5563,5 @@ Object.assign(GameRoom.prototype, threatMethods);
 Object.assign(GameRoom.prototype, petMethods);
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
 Object.assign(GameRoom.prototype, hardeningMethods);
+// v2.3.1132 (PR16): two-sided trade window -- see trade2.js.
+Object.assign(GameRoom.prototype, trade2Methods);

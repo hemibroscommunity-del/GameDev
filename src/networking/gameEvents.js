@@ -44,6 +44,7 @@ export function processGameEvent(type, payload, S, deps) {
     setThreatIncoming = deps.setThreatIncoming,
     setLevelUpMsg = deps.setLevelUpMsg,
     setIncomingTrade = deps.setIncomingTrade,
+    setTrade2 = deps.setTrade2,
     setArenaTournament = deps.setArenaTournament,
     setArenaBets = deps.setArenaBets,
     _buildServerPile = deps._buildServerPile;
@@ -1881,6 +1882,53 @@ export function processGameEvent(type, payload, S, deps) {
                 color: '#fbbf24',
                 ts: Date.now()
               });
+              break;
+            }
+          case 'trade2_invite':
+            {
+              /* v2.3.1132: someone opened a two-sided trade toward us.
+                 Park the invite stub; TradeWindowPanel renders the
+                 accept/decline card (accepting sends trade2_open back,
+                 which completes the mutual open server-side). */
+              if (!payload || !payload.from) break;
+              if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 40,
+                text: '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!',
+                color: '#3dd497', ts: Date.now()
+              });
+              BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+              break;
+            }
+          case 'trade2_state':
+            {
+              /* v2.3.1132: the server's session snapshot -- the window
+                 is a pure renderer of this.  Terminal states clear it;
+                 goods from a settled swap arrive via the authoritative
+                 player_state echo (coins + inventory adopted). */
+              if (!payload || !setTrade2) break;
+              if (payload.state === 'open' || payload.state === 'invited') {
+                setTrade2(payload);
+              } else if (payload.state === 'done') {
+                setTrade2(null);
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: 'Trade complete!', color: '#3dd497', ts: Date.now()
+                });
+                BT_AUDIO.collect();
+                if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
+              } else {
+                setTrade2(null);
+                var _t2Why = {
+                  'declined': 'Trade declined', 'disconnected': 'They disconnected',
+                  'expired': 'Trade expired', 'busy': 'They are already trading',
+                  'target-gone': 'Player unavailable', 'party-gone': 'Player unavailable',
+                }[payload.reason] || (payload.reason && payload.reason.indexOf('insufficient') === 0 ? 'Trade failed — items no longer available' : 'Trade cancelled');
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: _t2Why, color: '#ff5e6c', ts: Date.now()
+                });
+              }
               break;
             }
           case 'harden_result':

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node test/protocol-v2.test.mjs && node test/anticheat.test.mjs && node test/combat-lifecycle.test.mjs && node test/identity.test.mjs && node test/inbox.test.mjs && node test/market.test.mjs && node test/trade.test.mjs && node test/quests.test.mjs && node test/duel.test.mjs && node test/gamble.test.mjs && node test/clans.test.mjs && node test/arena.test.mjs && node test/dungeon.test.mjs && node test/sponsorship.test.mjs && node test/guilds.test.mjs && node test/threat.test.mjs && node test/pets.test.mjs && node test/hardening.test.mjs"
+    "test": "node test/protocol-v2.test.mjs && node test/anticheat.test.mjs && node test/combat-lifecycle.test.mjs && node test/identity.test.mjs && node test/inbox.test.mjs && node test/market.test.mjs && node test/trade.test.mjs && node test/quests.test.mjs && node test/duel.test.mjs && node test/gamble.test.mjs && node test/clans.test.mjs && node test/arena.test.mjs && node test/dungeon.test.mjs && node test/sponsorship.test.mjs && node test/guilds.test.mjs && node test/threat.test.mjs && node test/pets.test.mjs && node test/hardening.test.mjs && node test/trade2.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.96.0"

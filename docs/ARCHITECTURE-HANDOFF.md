@@ -268,10 +268,13 @@ client blob edits (sanitize-on-join covers them); the pet loot vacuum
 is echo-stomped theatre — route it through the real loot_pickup path
 to make pets economically real.
 
-### H. Two-sided trade window
-The current trade is a one-directional gift. Build a both-stage-both-
-confirm session on trade.js's validate-at-commit core (see trading.md
-"future UI" note). Don't extend the gift handshake.
+### H. Two-sided trade window — SHIPPED v2.3.1132
+Built as specced: `server/src/trade2.js` (mutual-open, anti-switch
+confirm resets, atomic both-debits-before-any-credit commit) +
+`TradeWindowPanel.jsx` (pure renderer of the trade2_state snapshot);
+spec addendum in trading.md. The gift handshake is untouched.
+Successor note: weapons still trade via marketplace escrow only —
+a weapon lane here needs escrow-at-stage, not validate-at-commit.
 
 ### I. Elemental completion (BALANCE-PLAN §6 leftovers)
 Server-side: CC actually slowing server monsters (freeze/root/slow are
