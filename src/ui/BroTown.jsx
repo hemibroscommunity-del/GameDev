@@ -3980,18 +3980,26 @@ export var BroTown = function BroTown(_ref0) {
             } catch (e) {}
           }
           if (S._tutorialStep === 5 && (((_S$rpg12 = S.rpg) === null || _S$rpg12 === void 0 ? void 0 : _S$rpg12.level) || 1) >= 3) {
-            /* Step 7→8: Reached level 3 */
-            setTutorialStep(7);
+            /* Step 5→6: Reached level 3.  v2.3.1147: was jumping
+               straight to 7, which skipped the step-6 "Tutorial
+               complete" message forever (the banner hides at >=7). */
+            setTutorialStep(6);
             try {
-              localStorage.setItem('bt_tutorial', '7');
+              localStorage.setItem('bt_tutorial', '6');
             } catch (e) {}
           }
           if (S._tutorialStep === 6) {
-            /* Tutorial complete */
-            setTutorialStep(10);
-            try {
-              localStorage.setItem('bt_tutorial', '10');
-            } catch (e) {}
+            /* Tutorial complete -- v2.3.1147: dwell ~6 s so the
+               completion message is actually readable (previously
+               advanced to 10 on the very next frame). */
+            if (!S._tutorialDoneAt) {
+              S._tutorialDoneAt = Date.now();
+            } else if (Date.now() - S._tutorialDoneAt > 6000) {
+              setTutorialStep(10);
+              try {
+                localStorage.setItem('bt_tutorial', '10');
+              } catch (e) {}
+            }
           }
         }
 
@@ -6628,7 +6636,9 @@ export var BroTown = function BroTown(_ref0) {
     onClick: function onClick() {
       return setBuildingPanel(null);
     }
-  }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), false && tutorialStep >= 0 && tutorialStep < 7 && /*#__PURE__*/React.createElement("div", {
+  }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
+   prototype era -- the step machine ran all along, only the display was
+   gated, so veterans' bt_tutorial already reads 7/10 and never see it) */ tutorialStep >= 0 && tutorialStep < 7 && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       bottom: 180,

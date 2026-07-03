@@ -63,9 +63,11 @@ export const ZONES = {
     element: 'venom', secondary: 'wind', level: [22, 40], music: 'mist', safe: false,
     palette: { ground: '#2a4a2a', path: '#5a6a45', accent: '#3a5a30' },
     /* v2.3.214: all 3 spawn archetypes (swarm/stalker/hexer) were
-       emoji-only; zone now spawns nothing until a sprite-backed
-       monster is added for Mistwood. */
-    spawns: [],
+       emoji-only; zone spawned nothing until sprite-backed monsters
+       existed.  v2.3.1147: populated with tinted reskins of existing
+       sheets (fodder->mireWisp violet slime, brute->bogLurker murky
+       fishman -- see ZONE_VARIANT_MAP).  Closes the L25-38 dead band. */
+    spawns: [{ arch: 'fodder', count: 6 }, { arch: 'brute', count: 4 }],
     atmosphere: { tint: 'rgba(30,90,30,0.05)', vignette: 'rgba(10,50,10,0.15)' },
     enemyEmoji: { fodder: '🍄', brute: '🌿', swarm: '🪲', hexer: '🧪', sentinel: '🪵' }
   },
@@ -76,7 +78,9 @@ export const ZONES = {
        walkable as a zone today. */
     element: null, secondary: null, level: [22, 40], music: 'meadow', safe: false,
     palette: { ground: '#3d7a2e', path: '#7a6a45', accent: '#6abf4f' },
-    spawns: [],
+    /* v2.3.1147: populated (was empty) -- tinted reskins: fodder->
+       mossSlime green slime, brute->thornShambler mossy rockmonster. */
+    spawns: [{ arch: 'fodder', count: 8 }, { arch: 'brute', count: 4 }],
     atmosphere: { tint: 'rgba(60,160,60,0.05)', vignette: 'rgba(20,80,20,0.12)' },
     enemyEmoji: {}
   },

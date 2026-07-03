@@ -117,6 +117,20 @@ export const VARIANT_SPRITES = {
        no attack/hit/death sheets, falls through to brute generic. */
     walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
   },
+  /* v2.3.1147: verdant/mist brute reskins -- SAME loaders as their
+     source variants (loaders cache internally, so the textures are
+     shared; the recolor is a per-sprite Pixi tint from
+     MONSTER_VARIANTS[key].tint applied in entityRenderer).  The two
+     fodder reskins (mossSlime/mireWisp) deliberately have NO entry
+     here: useSlimeSheets routes them through the slime state branch. */
+  thornShambler: {
+    load: loadRockmonsterSprites,
+    walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
+  },
+  bogLurker: {
+    load: loadFishmanSprites,
+    walk: { get: fhWalkFrame, has: fhHasWalk, count: fhWalkCount },
+  },
 };
 
 /* Boot helper — preload every registered variant's sprites in parallel.

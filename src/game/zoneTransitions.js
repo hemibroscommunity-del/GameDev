@@ -45,6 +45,40 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             }
           });
           if (bestExit) {
+            /* v2.3.1147: SOFT entry gating -- with zone bands live
+               (v2.3.1140) a fresh player can walk from the hub into a
+               L55-80 spoke and get two-shot.  First approach to a zone
+               whose band floor exceeds player level + 5 bounces them
+               back with a red warning; approaching the same exit again
+               within 10 s passes (informed consent, not a wall).  The
+               +5 threshold mirrors the ±5 valid-threat convention.
+               MAP-REDESIGN lists hard gating as a possible follow-up. */
+            var _gzone = ZONES[bestExit.zoneId];
+            var _gfloor = (_gzone && Array.isArray(_gzone.level)) ? _gzone.level[0] : 0;
+            var _plvl = (S.rpg && S.rpg.level) || 1;
+            if (_gfloor > _plvl + 5) {
+              if (!S._zoneWarnAt) S._zoneWarnAt = {};
+              var _warnedAt = S._zoneWarnAt[bestExit.zoneId] || 0;
+              if (Date.now() - _warnedAt > 10000) {
+                S._zoneWarnAt[bestExit.zoneId] = Date.now();
+                S.dmgNumbers.push({
+                  x: P.x, y: P.y - 30,
+                  text: '⚠️ ' + (_gzone.name || bestExit.zoneId) + ' is Lv ' + _gzone.level[0] + '–' + _gzone.level[1] + '! Walk in again to enter',
+                  color: '#ff5e6c', ts: Date.now(), ttl: 3,
+                });
+                try { BT_AUDIO.beep(220, 0.08, 0.08, 'square'); } catch (e) {}
+                /* Nudge back toward the hub center so the proximity
+                   trigger disarms; without this the exit re-fires every
+                   frame and the popup spams. */
+                var _hz = ZONES[S.currentZone];
+                var _cx = (_hz.w * TILE) / 2, _cy = (_hz.h * TILE) / 2;
+                var _ang = Math.atan2(_cy - P.y, _cx - P.x);
+                P.x += Math.cos(_ang) * TILE * 2;
+                P.y += Math.sin(_ang) * TILE * 2;
+                return;
+              }
+              /* Second approach within the window: fall through and enter. */
+            }
             /* Zone exits — open to all players (quest gate removed) */
             {
               S._enteredFromHub = S.currentZone; /* v2.3.859: which hub (town/worldview) to return to */

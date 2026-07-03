@@ -58,8 +58,15 @@ export const ARCHETYPES = {
 export const ZONES = {
       meadow:  { w:32, h:32, level:[1,10],  element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:10}] },
       ember:   { w:32, h:32, level:[55,80], element:'flame', secondary:'stone', lawless:true, spawns:[{arch:'fodder',count:6}] },
-      mist:    { w:32, h:32, level:[22,40], element:'venom', secondary:'wind',  lawless:true, spawns:[] },
-      verdant: { w:32, h:32, level:[22,40], element:null,    secondary:null,    lawless:true, spawns:[] },
+      /* v2.3.1147: verdant + mist populated -- they owned the [22,40]
+       * band but spawned NOTHING, leaving a no-content hole between
+       * frost/tidal (max 25) and hollows/sky (min 38) once zones
+       * unpinned.  New monsters are tinted reskins of existing sprite
+       * sheets (see client ZONE_VARIANT_MAP: verdant fodder->mossSlime,
+       * brute->thornShambler; mist fodder->mireWisp, brute->bogLurker).
+       * Base archetypes carry ALL the stats -- variants are visual. */
+      mist:    { w:32, h:32, level:[22,40], element:'venom', secondary:'wind',  lawless:true, spawns:[{arch:'fodder',count:6},{arch:'brute',count:4}] },
+      verdant: { w:32, h:32, level:[22,40], element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:8},{arch:'brute',count:4}] },
       frost:   { w:32, h:32, level:[8,25],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:4}] },
       thunder: { w:32, h:32, level:[55,80], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },
       hollows: { w:32, h:32, level:[38,58], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:4}] },
