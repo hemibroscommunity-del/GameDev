@@ -75,6 +75,9 @@ import { hardeningMethods } from './hardening.js';
 // v2.3.1148: operator toolkit -- owner-keyed admin API + daily rpg
 // snapshot ring (see admin.js header + docs/OPERATIONS.md).
 import { adminMethods } from './admin.js';
+// v2.3.1149: time-cadence framework -- lazy daily/weekly settlement
+// under the no-alarms constraint (see cadence.js header).
+import { cadenceMethods } from './cadence.js';
 // v2.3.1132 (PR16): two-sided trade window -- both-stage-both-confirm
 // sessions on the validate-at-commit core (the gift handshake in
 // trade.js stays untouched for old clients; see trade2.js header).
@@ -235,6 +238,9 @@ const PRIVILEGED_EVENTS = new Set([
   'pet_capture_result',
   // v2.3.1131: hardening rolls are server-side + private.
   'harden_result',
+  // v2.3.1149: jackpot pool state is private; the draw result is a
+  // server-only broadcast (forging it would announce fake winners).
+  'jackpot_state', 'jackpot_result',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
   // Combat resolution
@@ -5035,6 +5041,14 @@ export class GameRoom {
         // below, so the first snapshot the client renders already
         // includes the credits.
         await this._drainInbox(msg.id, ws);
+        // v2.3.1149: cadence hooks -- daily login reward (per-player
+        // lazy settlement) + the weekly jackpot's lazy draw resolution
+        // (rule 12: a week that ended in an empty room settles on the
+        // next join).  Both after the drain so the reward's own
+        // inbox_delivered arrives as its own line.
+        await this._cadenceLoginReward(msg.id);
+        await this._jackpotMaybeResolve();
+        this._jackpotSend(msg.id, { playerId: msg.id });
         // v2.3.1121: duel bookkeeping on (re)join -- clear a reconnect
         // grace window if this player dropped mid-duel, and kick the
         // rate-limited orphaned-wager sweep (fire-and-forget; refunds
@@ -5076,7 +5090,7 @@ export class GameRoom {
           // workers keep old behavior (deploy-order safety).  WS-flow
           // capabilities go here; HTTP flows use per-response flags
           // (marketplace settled:true, v2.3.1118).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true },
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({
@@ -5449,6 +5463,15 @@ export class GameRoom {
         }
         break;
 
+      case 'jackpot_deposit':
+        // v2.3.1149: weekly jackpot deposit -- escrow-at-placement into
+        // the jackpot:draw record; the old GamblePanel stub burned local
+        // coins into nothing (see cadence.js).
+        if (session.id) {
+          await this._handleJackpotDeposit(session, msg.payload || msg);
+        }
+        break;
+
       // v2.3.1125: clan commands -- registry + war referee live in
       // clans.js.  Explicit cases (not relays) so forged messages meet
       // validation instead of the rebroadcast branch.
@@ -5814,6 +5837,19 @@ export class GameRoom {
       // (consent pair granted, both sides notified).
       this._tickThreats(Date.now());
 
+      // v2.3.1149: global cadence settlement -- rate-limited to one
+      // storage read per ~60s per DO lifetime (the _opPruneMaybe
+      // pattern).  Joins and deposits also resolve lazily, so this
+      // slot only matters for a room that stays occupied across a
+      // week boundary.
+      {
+        const nowJp = Date.now();
+        if (!this._lastJackpotCheck || nowJp - this._lastJackpotCheck > 60000) {
+          this._lastJackpotCheck = nowJp;
+          this._jackpotMaybeResolve(nowJp).catch(() => {});
+        }
+      }
+
       // v2.3.1132: expire idle two-sided trade sessions + invites.
       this._tickTrades2(Date.now());
 
@@ -6005,3 +6041,5 @@ Object.assign(GameRoom.prototype, accountMethods);
 Object.assign(GameRoom.prototype, botfpMethods);
 // v2.3.1148: operator toolkit -- see admin.js.
 Object.assign(GameRoom.prototype, adminMethods);
+// v2.3.1149: time-cadence framework (daily reward + jackpot) -- see cadence.js.
+Object.assign(GameRoom.prototype, cadenceMethods);

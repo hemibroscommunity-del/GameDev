@@ -61,6 +61,8 @@ extended.
    | `rpgsnap:<pid>:<yyyymmdd>` | daily rpg-blob snapshot (ring of 7) | admin.md |
    | `rpgsnap_at:<pid>` | snapshot throttle timestamp (20h) | admin.md |
    | `admin_log` | capped ring (100) of mutating admin ops | admin.md |
+   | `cadence:<scope>:<subject>` | `{period, streak, ts}` lazy daily/weekly settle | cadence.md |
+   | `jackpot:draw` | `{period, pool, entries}` weekly pool (escrowed) | cadence.md |
 
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every
@@ -298,11 +300,17 @@ amulets are a client-crafted blob (forgery ceiling = legit mythic
 status FX are cosmetic and unported, shock/fracture/soak remain
 mechanically inert.
 
-### J. Jackpot draw
-Deposits are trivial (`jackpot:pool` key + debit). The DRAW needs the
-lazy pattern (rule 12): store `jackpot:draw {closesAt, entries}` and
-resolve on the first activity after closesAt; pay via `_creditPlayer`.
-The GamblePanel jackpot UI is currently a dead local stub.
+### J. Jackpot draw — SHIPPED v2.3.1149
+Built on the new time-cadence framework (`server/src/cadence.js`, spec
+`docs/specs/cadence.md`) — the reusable lazy daily/weekly primitive this
+item's "lazy pattern" note asked for. One `jackpot:draw {period, pool,
+entries}` record (single-key deviation from the sketch: atomic under the
+input gate), ISO-week periods, resolve on join/deposit/rate-limited
+tick, pay via `_creditPlayer` opId `jackpotwin:<period>` (double-resolve
+tested to converge). Ships with the second consumer: the daily login
+reward (streak-scaled, rides inbox_delivered — zero client code).
+Successor note: daily quests / weekend events are now one cadence scope
++ one settle call each.
 
 ### K. Zone-level unpinning — SHIPPED v2.3.1140
 BF-1 fixed by flattening the monster HP ramp 1.065 → **1.052** (BALANCE-

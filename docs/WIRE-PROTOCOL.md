@@ -221,6 +221,14 @@ Summary of the wire-visible changes:
 | `harden_result` | §4.6c hardening roll (private; `harden_weapon` c→s case; forge mints now carry `quality`/`hardness`/`temper`) | hardening.md |
 | `trade2_state` / `trade2_invite` | Two-sided trade window (private; `trade2_open/set/confirm/cancel` c→s cases; gift trade relay unchanged) | trading.md addendum |
 
+**Cadence + jackpot (v2.3.1149, caps.jackpot):** new c→s case
+`jackpot_deposit {amount}` (multiple of 50 in [50,5000]); new s→c types
+(both PRIVILEGED) `jackpot_state {pool, period, yourTickets, deposited?}`
+(private, on join + after deposit) and `jackpot_result {winnerId,
+winnerName, amount, period}` (broadcast on the lazy weekly draw). The
+daily login reward reuses `inbox_delivered` — no new types. GamblePanel
+deposits are caps-gated; the legacy local stub remains for old workers.
+
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/
 `state_sync.loot` via `_serializePile`) gains `hasWeapon`,

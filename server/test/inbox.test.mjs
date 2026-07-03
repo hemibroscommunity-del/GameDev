@@ -54,6 +54,10 @@ const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing
 
 async function join(ws, id, z = 'town') {
   room.sessions.set(ws, baseSession());
+  // v2.3.1149: pre-settle today's daily login reward -- this suite
+  // asserts EXACT join-time coins / inbox_delivered arithmetic, and the
+  // cadence reward (+25g via its own inbox_delivered) would skew it.
+  await room.state.storage.put('cadence:login:' + id, { period: room._cadencePeriodDaily(), streak: 1, ts: Date.now() });
   await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: 'T', phrase: 'p-' + id, data: { x: 100, y: 100, z } }));
 }
 

@@ -231,11 +231,31 @@ export function GamblePanel(props) {
       onClick: function onClick() {
         var R = stateRef.current.rpg;
         if (R.coins < amt) return;
+        /* v2.3.1149: SERVER-SETTLED jackpot (caps-gated per the
+           deploy-order convention).  The worker debits coins, grows
+           the real jackpot:draw pool, and replies jackpot_state (the
+           gameEvents handler shows the popup + updates the pool
+           display); the player_state echo is the coins tiebreaker --
+           no local mutation here.  Legacy stub below stays for old
+           workers only. */
+        if (stateRef.current._serverCaps && stateRef.current._serverCaps.jackpot) {
+          if (stateRef.current.channel) {
+            stateRef.current.channel.send({
+              type: 'broadcast',
+              event: 'jackpot_deposit',
+              payload: { amount: amt }
+            });
+            if (!R._compStats) R._compStats = createDefaultCompStats();
+            R._compStats.jackpotDeposited += amt; /* label-only tally */
+            BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
+          }
+          return;
+        }
         R.coins -= amt;
         if (!R._compStats) R._compStats = createDefaultCompStats();
         R._compStats.jackpotDeposited += amt;
         R._compStats.totalGoldSpent += amt;
-        /* In production this would be a Supabase RPC call to add to server pool */
+        /* Legacy local stub -- only reachable against pre-v2.3.1149 workers */
         stateRef.current._jackpotPool = (stateRef.current._jackpotPool || 0) + amt;
         stateRef.current.dmgNumbers.push({
           x: stateRef.current.player.x,

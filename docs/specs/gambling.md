@@ -42,10 +42,12 @@ from ever hitting them.
 
 ## Deliberately deferred (design notes in ARCHITECTURE-HANDOFF backlog)
 
-- **Weekly jackpot**: the panel UI is a dead local stub. Deposits are
-  trivial (`jackpot:pool` key) but the weekly DRAW needs the lazy
-  resolve-on-next-activity pattern (no alarms; tick stops when the room
-  empties). Own PR.
+- ~~**Weekly jackpot**~~ — SHIPPED v2.3.1149 on the cadence framework
+  (see docs/specs/cadence.md): server-settled `jackpot_deposit`,
+  escrow-at-placement `jackpot:draw` record, lazy ISO-week draw via the
+  `jackpotwin:<period>` opId, ticket-weighted single winner, offline
+  winners paid through the inbox. GamblePanel is caps-gated
+  (`caps.jackpot`); the local stub survives only against old workers.
 - **Commit-reveal fairness**: server-trust is proportionate at this
   scale; a `nonce` + published daily seed hash is the cheap upgrade if
   ever wanted.
