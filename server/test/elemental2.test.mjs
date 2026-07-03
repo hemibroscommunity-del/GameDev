@@ -89,6 +89,19 @@ for (const [m, dx] of [[mFrozen, 100], [mControl, -100], [mSlow, 160]]) {
   m.x = ps.x + dx; m.y = ps.y; m.spawnX = m.x; m.spawnY = m.y;
   m.alive = true; m.atkCd = 0; m._aggroOverrideTarget = null; m._aggroOverrideUntil = 0;
 }
+// v2.3.1148: FLAKE FIX -- park the OTHER meadow spawns in a far corner.
+// Their RANDOM positions landed within the v2.3.1110 pairwise
+// separation radius (22px, index.js "monster<->monster separation") of
+// a test monster ~25% of runs, and the shove (up to 11px/pair/tick,
+// which has no CC gate) moved the "frozen" monster and broke the
+// exact-step assertions below.  The trio itself sits 60-260px apart,
+// safely outside the radius.
+for (const m of meadow) {
+  if (m !== mFrozen && m !== mControl && m !== mSlow) {
+    m.x = m.spawnX = -50000; m.y = m.spawnY = -50000;
+    m._wanderPausedUntil = Date.now() + 600000;
+  }
+}
 applyElementStatus(mFrozen, 'frost', 'bp_el_p', 0, Date.now()); // freeze
 applyElementStatus(mSlow, 'wind', 'bp_el_p', 0, Date.now());    // slow
 const posF = { x: mFrozen.x, y: mFrozen.y };
