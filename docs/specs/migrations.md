@@ -109,6 +109,22 @@ The client's `createDefaultRpg` keeps the pinned zeros + `_t2Retired`
 one more release as the boundary heal (client payloads are unmigrated
 writers).
 
+## v6 + v7: the uniform T2 economy (v2.3.1156–1157)
+
+- **v6 `uniform-t2-caps`**: doubles points in the formerly-50-cap grids
+  (defense/HP/endurance — power-neutral, coefficients halved in the same
+  release) and refunds the materially-repriced weapon channels (crit
+  trio, tempo, cleave, piercing) to `weaponUnspent`. The doubling is not
+  re-run idempotent in isolation; re-runs are unreachable because the
+  mutation and the `_v` stamp land in ONE atomic put and post-migration
+  `_saveRpg` snapshots carry `_v ≥ 6` (analysis in the entry's comment).
+  Client twin: `migrateUniformT2` (gameSystems.js), gated on
+  `rpg._t2uniform` for the localStorage copy.
+- **v7 `uniform-t2-pools`**: recomputes every pool to the canonical
+  `max(0, min(200, 2 × level-or-stat) − Σspec)` at the doubled earn
+  rate. Idempotent (recompute converges); existing characters only
+  gain; forged specs with no recorded skill levels net zero points.
+
 ## Tests
 
 `server/test/migrations.test.mjs` (16 checks): pure-registry heal +

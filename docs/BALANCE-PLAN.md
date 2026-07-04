@@ -180,6 +180,45 @@ compound past the invariants. (The block 75% shared cap retired with
 Bulwark's v2.3.1153 repurpose — blocks are full negation, so there is no
 block % left to stack.)
 
+## 4b. The uniform T2 economy — **LIVE v2.3.1156–1157** (owner design 2026-07-04)
+
+Three rules replace the historical-accident caps:
+
+1. **One allocation max**: every channel caps at **100 points**, and every
+   cap-value lands at EXACTLY 100 — no silent traps (the old crit/tempo/
+   cleave/piercing caps bound at 60/80/75/75 pts). Rescales: crit trio
+   0.3%/pt, tempo −0.2%/pt, cleave 0.45°/pt, piercing 34/67/100;
+   formerly-50-cap grids halved per-point with points DOUBLED by
+   migration (power-neutral). Crit-dmg trio retuned 0.8 → **1.2%/pt**
+   by the UN-01 parity band (it underpriced once points became fungible).
+2. **Earning**: 2 points per skill level (level caps 99 → 100), **200
+   lifetime per skill**, 1200 earnable across all six.
+3. **THE COMBAT CEILING**: total ALLOCATED points across all 30 channels
+   ≤ **1000** (`_clampBuildTotal`, canonical grid order, enforced on
+   every ingest path; client meter + spend blocks mirror it). 30 × 100
+   = 3000 slots → a finished build completes exactly **one third** of
+   the grid. The 200-point gap between earnable and spendable is the
+   specialization squeeze.
+
+Balance is **equal value, sim-enforced — not identical numbers**: the
+sweep gates price every channel at full investment and CI-fail on drift:
+- **UN-01** DPS parity (synergy-aware marginal value, 0.75–1.25× of the
+  class median): edge +50%, precision-in-context +45%, executioner-in-
+  context +37%.
+- **UN-02** EHP parity (same band): ironskin +33%, secondwind +27%,
+  vigor +25%.
+- **UN-03** utility ~70% rule (tempo; thorns/bulwark keep their
+  dedicated DF-01/DF-03 gates — their value is block-uptime-conditional,
+  not clean %DPS).
+- **UN-04** trap-free: all 21 active channel families strictly gain
+  through point 100 (mechanical proof of rule 1).
+
+Migrations: v6 `uniform-t2-caps` (double 50-cap grids, refund repriced
+weapon channels), v7 `uniform-t2-pools` (pools recompute to the
+canonical `min(200, 2×level) − spent`; forged specs without recorded
+skill levels net zero — an anti-forgery property). Deploy-order:
+`caps.t2uniform` keeps old-worker sessions on legacy caps.
+
 ## 5. Hardening v1 (rare chase) — adopted spec
 
 GDD §4.6c verbatim, flagged for a future server-side PR:

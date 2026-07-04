@@ -3647,7 +3647,11 @@ export const WEAPON_CATEGORY_META = {
 /* Points granted per weapon-skill level, and the per-channel cap.
    v2.3.910: 5 -> 1.  Each build-skill level now grants exactly ONE Tier-2
    point (and +1 combat level), so the per-category choice is meaningful. */
-export const WEAPON_PTS_PER_LEVEL = 1;
+/* v2.3.1157: 1 -> 2 points per skill level — each skill earns up to
+   200 lifetime (level cap 100), 1200 earnable across all six, against
+   the 1000-point COMBAT_BUILD_CEILING below: the last 200 are the
+   specialization squeeze (you cannot fully develop everything). */
+export const WEAPON_PTS_PER_LEVEL = 2;
 /* v2.3.1156: ONE allocation cap for every T2 channel in the game (owner
    design 2026-07-04).  The old 99/50 split was historical accident, and
    several coefficients hid silent traps (crit capped at 60 pts, tempo at
@@ -3656,6 +3660,29 @@ export const WEAPON_PTS_PER_LEVEL = 1;
    (coefficients rescaled below; the sim's UN-04 gate proves it). */
 export const T2_CHANNEL_CAP = 100;
 export const WEAPON_CHANNEL_CAP = T2_CHANNEL_CAP;
+/* v2.3.1157: THE COMBAT CEILING — total allocated T2 points across all
+   six grids (30 channels × 100 = 3000 slots) cap at 1000: a finished
+   build completes exactly one third of the grid.  Server-enforced
+   (_clampBuildTotal, canonical grid order); the client blocks spends at
+   the line and shows the build meter from combatBuildTotal below. */
+export const COMBAT_BUILD_CEILING = 1000;
+export function combatBuildTotal(rpg) {
+  if (!rpg) return 0;
+  var total = 0;
+  var walk = function (spec, defs) {
+    if (!spec) return;
+    defs.forEach(function (ch) {
+      if (typeof spec[ch.key] === 'number') total += Math.max(0, Math.min(T2_CHANNEL_CAP, Math.floor(spec[ch.key])));
+    });
+  };
+  ['sword', 'bow', 'staff'].forEach(function (cat) {
+    walk(rpg.weaponSpecs && rpg.weaponSpecs[cat], WEAPON_CHANNELS[cat] || []);
+  });
+  walk(rpg.defenseSpec, DEFENSE_CHANNELS);
+  walk(rpg.hpSpec, HP_CHANNELS);
+  walk(rpg.enduranceSpec, ENDURANCE_CHANNELS);
+  return total;
+}
 /* v2.3.911: maps a dashboard build-skill stat key to its weapon-category
    point pool, so the dashboard can flash a skill that has unspent Tier-2
    points and open the Builds menu to the right tab. */
@@ -3715,11 +3742,13 @@ export const WEAPON_CHANNELS = {
     { key: 'precision',   label: 'Precision',      role: 'crit',    active: true,  perPt: 0.3,
       blurb: 'Crit chance on top of Power.',
       derive: (v) => '+' + (v * 0.3).toFixed(1) + '% crit' },
-    /* v2.3.1133: crit-dmg channel live — +0.8% crit damage per point
-       (fed as the 2nd arg into calcCritMult, ×0.008).  99 pts = +79.2%. */
-    { key: 'executioner', label: 'Executioner',    role: 'critDmg', active: true, perPt: 0.8,
+    /* v2.3.1133: crit-dmg channel live (2nd arg into calcCritMult).
+       v2.3.1157: 0.8 -> 1.2%/pt — the sim's UN-01 synergy-aware parity
+       band showed crit-dmg underpriced vs the damage channel once the
+       1000-pt fungible economy landed.  +120% crit dmg at the cap. */
+    { key: 'executioner', label: 'Executioner',    role: 'critDmg', active: true, perPt: 1.2,
       blurb: '+crit damage multiplier.',
-      derive: (v) => '+' + (v * 0.8).toFixed(1) + '% crit dmg' },
+      derive: (v) => '+' + (v * 1.2).toFixed(1) + '% crit dmg' },
     /* v2.3.1134: Tempo live — -0.25% swing cooldown per point, HARD CAP
        -20% (reached at 80 pts; the derive shows the cap so points 81-99
        aren't a silent trap).  Cleave live — +0.6° swing arc per point,
@@ -3743,9 +3772,9 @@ export const WEAPON_CHANNELS = {
       blurb: 'Crit chance on top of Agility.',
       derive: (v) => '+' + (v * 0.3).toFixed(1) + '% crit' },
     /* v2.3.1133: crit-dmg channel live — mirrors Executioner. */
-    { key: 'headshot',     label: 'Headshot',      role: 'critDmg', active: true, perPt: 0.8,
+    { key: 'headshot',     label: 'Headshot',      role: 'critDmg', active: true, perPt: 1.2,
       blurb: '+crit damage multiplier.',
-      derive: (v) => '+' + (v * 0.8).toFixed(1) + '% crit dmg' },
+      derive: (v) => '+' + (v * 1.2).toFixed(1) + '% crit dmg' },
     /* v2.3.1135: Piercing live — +1 pierce target per 25 points (cap 3 at
        75); whole-number breakpoints keep the mental math simple.  Longshot
        live — +0.5%/pt arrow speed AND max flight (cap +49.5%); the PvP
@@ -3782,9 +3811,9 @@ export const WEAPON_CHANNELS = {
        crit-dmg role the build-skill spec's grid always intended ("Arcane
        Focus (crit dmg)").  Key stays 'focus' — the server's stats_update
        clamp and _saveRpg already know it, so no wire/storage change. */
-    { key: 'focus',       label: 'Arcane Focus',   role: 'critDmg', active: true, perPt: 0.8,
+    { key: 'focus',       label: 'Arcane Focus',   role: 'critDmg', active: true, perPt: 1.2,
       blurb: '+crit damage multiplier.',
-      derive: (v) => '+' + (v * 0.8).toFixed(1) + '% crit dmg' },
+      derive: (v) => '+' + (v * 1.2).toFixed(1) + '% crit dmg' },
   ],
 };
 
@@ -4254,6 +4283,27 @@ export function migrateUniformT2(rpg) {
       if (spec[k]) spec[k] = 0;
     });
   });
+  /* v2.3.1157: pools recompute to the canonical earned − spent at the
+     doubled earn rate (2/level, 200 lifetime per skill) — the twin of
+     the server's uniform-t2-pools migration.  Every pre-fix character
+     only GAINS here (old rate was 1/level). */
+  var spent = function (spec, defs) {
+    return defs.reduce(function (a, ch) {
+      var v = spec && spec[ch.key];
+      return a + (typeof v === 'number' ? Math.max(0, Math.min(T2_CHANNEL_CAP, Math.floor(v))) : 0);
+    }, 0);
+  };
+  var pool = function (level, used) {
+    return Math.max(0, Math.min(200, 2 * Math.max(0, Math.floor(level || 0))) - used);
+  };
+  if (!rpg.weaponUnspent) rpg.weaponUnspent = {};
+  ['sword', 'bow', 'staff'].forEach(function (cat) {
+    var lvl = rpg.weaponSkills && rpg.weaponSkills[cat] && rpg.weaponSkills[cat].level;
+    rpg.weaponUnspent[cat] = pool(lvl, spent(rpg.weaponSpecs && rpg.weaponSpecs[cat], WEAPON_CHANNELS[cat] || []));
+  });
+  rpg.defenseUnspent = pool(rpg.defenseSkill && rpg.defenseSkill.level, spent(rpg.defenseSpec, DEFENSE_CHANNELS));
+  rpg.hpUnspent = pool(rpg.vitality, spent(rpg.hpSpec, HP_CHANNELS));
+  rpg.enduranceUnspent = pool(rpg.endurance, spent(rpg.enduranceSpec, ENDURANCE_CHANNELS));
   rpg._t2uniform = true;
   return rpg;
 }
@@ -5221,7 +5271,8 @@ export function calcCritMult(power, critDmgPts) {
      the retired Ferocity amp (+0.0008/pt, always 0 since v2.3.910).  The old
      single-arg legacy call treated its arg as Ferocity — with Ferocity pinned
      to 0 everywhere that path now safely ignores the arg. */
-  return 1.5 + (power || 0) * 0.001 + (critDmgPts || 0) * 0.008;
+  /* v2.3.1157: 0.8 -> 1.2%/pt (UN-01 parity retune; mirrors the server). */
+  return 1.5 + (power || 0) * 0.001 + (critDmgPts || 0) * 0.012;
 }
 
 /* §2.3 Block.  v2.3.1153: the Bulwark term is gone — Bulwark now buys

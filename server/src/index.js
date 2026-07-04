@@ -1525,8 +1525,9 @@ export class GameRoom {
     return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
   }
   // v2.3.1133: crit-DMG-channel point total (executioner / headshot / focus)
-  // — mirrors client weaponSpecs reads; feeds the crit multiplier at
-  // +0.008 per point (99 pts = +79.2%), replacing the retired Ferocity amp.
+  // — mirrors client weaponSpecs reads; feeds the crit multiplier
+  // (v2.3.1157: +1.2%/pt, +120% at the 100-pt cap — UN-01 parity retune),
+  // replacing the retired Ferocity amp.
   _wpnCritDmgPts(ps, type) {
     const K = { sword: 'executioner', bow: 'headshot', staff: 'focus' };
     const cat = this._wpnCat(type);
@@ -2930,6 +2931,46 @@ export class GameRoom {
   // the consumption sites, formerly-50-cap points doubled by the
   // uniform-t2-caps migration).
   static get T2_CHANNEL_CAP() { return 100; }
+  // v2.3.1157: THE COMBAT CEILING — total ALLOCATED T2 points across
+  // all six grids cap at 1000 (owner design 2026-07-04: 30 channels ×
+  // 100 = 3000 slots, so a finished build completes exactly one third
+  // of the grid — permanent specialization, no maxing everything).
+  // The cap binds ALLOCATION, not earning, which keeps it order-free
+  // and deterministic: _clampBuildTotal walks the grids in canonical
+  // order and truncates whatever crosses the line, same rule on every
+  // ingest path.  Earning is per-skill: 2 points per level, 200
+  // lifetime per skill (6 × 200 = 1200 earnable > 1000 spendable — the
+  // last 200 are the specialization squeeze).
+  static get COMBAT_BUILD_CEILING() { return 1000; }
+  static get _WEAPON_CHANNEL_KEYS() {
+    return {
+      sword: ['edge', 'precision', 'executioner', 'tempo', 'cleave'],
+      bow:   ['drawPower', 'marksmanship', 'headshot', 'piercing', 'longshot'],
+      staff: ['spellPower', 'overload', 'detonation', 'attunement', 'focus'],
+    };
+  }
+  _clampBuildTotal(ps) {
+    if (!ps) return 0;
+    let total = 0;
+    const walk = (spec, keys) => {
+      if (!spec || typeof spec !== 'object') return;
+      for (const k of keys) {
+        if (typeof spec[k] !== 'number') continue;
+        let v = spec[k];
+        if (total + v > GameRoom.COMBAT_BUILD_CEILING) {
+          v = Math.max(0, GameRoom.COMBAT_BUILD_CEILING - total);
+          spec[k] = v;
+        }
+        total += v;
+      }
+    };
+    const WCH = GameRoom._WEAPON_CHANNEL_KEYS;
+    for (const cat of GameRoom._WEAPON_SKILL_CATS) walk(ps.weaponSpecs && ps.weaponSpecs[cat], WCH[cat]);
+    walk(ps.defenseSpec, GameRoom._DEFENSE_CHANNEL_KEYS);
+    walk(ps.hpSpec, GameRoom._HP_CHANNEL_KEYS);
+    walk(ps.enduranceSpec, GameRoom._ENDURANCE_CHANNEL_KEYS);
+    return total;
+  }
   _sanitizeWeaponSkills(src) {
     const out = {};
     if (!src || typeof src !== 'object') return out;
@@ -3550,6 +3591,12 @@ export class GameRoom {
     }
     if (typeof payload.enduranceUnspent === 'number') {
       ps.enduranceUnspent = Math.max(0, Math.min(999, Math.floor(payload.enduranceUnspent)));
+    }
+    // v2.3.1157: the 1000-point combat ceiling — after every per-grid
+    // clamp above, truncate whatever pushes the TOTAL allocation past
+    // the line (canonical grid order; see _clampBuildTotal).
+    if (payload.weaponSpecs || payload.defenseSpec || payload.hpSpec || payload.enduranceSpec) {
+      this._clampBuildTotal(ps);
     }
     // Armor swap routes through stats_update (not equip_request) because
     // armor lives in a client-only armorStash and the popup mutates it
@@ -4368,8 +4415,9 @@ export class GameRoom {
     // v2.3.1133: ceiling assumes a MAXED crit-dmg channel instead of
     // reading live points, so a fully-invested crit isn't rejected by
     // the anti-cheat cap (same bug class v2.3.912 fixed for the damage
-    // channel).  v2.3.1156: +0.792 -> +0.80 at the 100-pt uniform cap.
-    const critMult = 1.5 + (ps.power || 0) * 0.001 + 0.80;
+    // channel).  v2.3.1157: +1.20 at the 100-pt cap × the 1.2%/pt
+    // UN-01 parity retune.
+    const critMult = 1.5 + (ps.power || 0) * 0.001 + 1.20;
     const comboBoost = 5; // covers combo + status amplifier + amulet elemDmg + lunge mult
     // SPECIAL_ATK_MULT = 2.0 applied client-side; double the cap on
     // special hits so they don't get rejected as too-high.
@@ -4446,9 +4494,12 @@ export class GameRoom {
       40 * P / (P + 200) / 100 + Math.min(0.30, this._wpnCritPts(ps, type) * 0.003)));
     const isCrit = Math.random() < critChance;
     // v2.3.1133: crit mult gains the crit-DMG channel (executioner/headshot/
-    // focus) at +0.008/pt, mirroring client calcCritMult.  The Ferocity term
-    // (retired, pinned 0 since v2.3.910) is dropped.
-    if (isCrit) base *= (1.5 + P * 0.001 + this._wpnCritDmgPts(ps, type) * 0.008);
+    // focus), mirroring client calcCritMult.  The Ferocity term (retired,
+    // pinned 0 since v2.3.910) is dropped.  v2.3.1157: 0.8 -> 1.2%/pt —
+    // the sim's UN-01 synergy-aware parity band showed crit-dmg
+    // underpriced vs the damage channel under the fungible 1000-pt
+    // economy (+120% at the 100-pt cap).
+    if (isCrit) base *= (1.5 + P * 0.001 + this._wpnCritDmgPts(ps, type) * 0.012);
     // v2.3.1139 (item I): the two multipliers the v2.3.912 scope note
     // deliberately omitted, now server-side (the client applies both
     // locally and its numbers finally match the wire truth):
@@ -5244,16 +5295,23 @@ export class GameRoom {
               _ps.enduranceSpec = (stored && stored.enduranceSpec && Object.keys(stored.enduranceSpec).length)
                 ? this._sanitizeEnduranceSpec(stored.enduranceSpec, _ps) : this._sanitizeEnduranceSpec(_md2.rpgEnduranceSpec, _ps);
               const _sumSpec = (o) => Object.values(o || {}).reduce((a, v) => a + (v || 0), 0);
+              // v2.3.1157: backfill at the doubled earn rate (2/level,
+              // 200 lifetime per skill) — mirror of the uniform-t2-pools
+              // migration formula.
               _ps.hpUnspent = (stored && typeof stored.hpUnspent === 'number')
                 ? Math.max(0, Math.min(999, Math.floor(stored.hpUnspent)))
                 : (typeof _md2.rpgHpUnspent === 'number')
                   ? Math.max(0, Math.min(999, Math.floor(_md2.rpgHpUnspent)))
-                  : Math.max(0, (_ps.vitality || 0) - _sumSpec(_ps.hpSpec));
+                  : Math.max(0, Math.min(200, 2 * (_ps.vitality || 0)) - _sumSpec(_ps.hpSpec));
               _ps.enduranceUnspent = (stored && typeof stored.enduranceUnspent === 'number')
                 ? Math.max(0, Math.min(999, Math.floor(stored.enduranceUnspent)))
                 : (typeof _md2.rpgEnduranceUnspent === 'number')
                   ? Math.max(0, Math.min(999, Math.floor(_md2.rpgEnduranceUnspent)))
-                  : Math.max(0, (_ps.endurance || 0) - _sumSpec(_ps.enduranceSpec));
+                  : Math.max(0, Math.min(200, 2 * (_ps.endurance || 0)) - _sumSpec(_ps.enduranceSpec));
+              // v2.3.1157: the 1000-point combat ceiling holds on the
+              // join path too (a forged payload could otherwise seed
+              // over-ceiling specs on first connect).
+              this._clampBuildTotal(_ps);
             }
             // Server-owned max values: compute from clamped raw stats
             // (v2.3.1154: and the grid specs ingested just above --
