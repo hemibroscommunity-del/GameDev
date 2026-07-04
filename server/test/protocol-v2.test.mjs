@@ -257,8 +257,14 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   check('stats_update stores weaponSkills (level clamped [0,100] per v2.3.1156, xp floored at 0)',
     ps.weaponSkills.sword.level === 7 && ps.weaponSkills.sword.xp === 123
     && ps.weaponSkills.bow.level === 100 && ps.weaponSkills.bow.xp === 0, ps.weaponSkills);
-  check('stats_update clamps weaponUnspent to [0,999]',
-    ps.weaponUnspent.sword === 3 && ps.weaponUnspent.bow === 999, ps.weaponUnspent);
+  // v2.3.1158: pools are DERIVED — when skill/spec fields arrive the
+  // handler recomputes canonical earned-minus-spent, so the forged
+  // bow: 99999 lands at 2×100 − 7 spent (headshot, set above) = 193
+  // and sword at max(0, 2×7 − 100 executioner spent) = 0.  The old
+  // [0,999] verbatim clamp only survives pool-only payloads.
+  check('stats_update derives weaponUnspent canonically (forged pool overridden)',
+    ps.weaponUnspent.sword === 0 && ps.weaponUnspent.bow === 193 && ps.weaponUnspent.staff === 0,
+    ps.weaponUnspent);
   check('stats_update stores defenseSkill, clamps defenseSpec to the uniform [0,100], drops unknown keys',
     ps.defenseSkill.level === 4 && ps.defenseSpec.bulwark === 5
     && ps.defenseSpec.ironskin === 100 && ps.defenseSpec.bogus === undefined,
@@ -276,8 +282,8 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   const echo = msgsOfType(ws3, 'player_state').pop();
   check('player_state echoes weapon/defense skill track',
     echo && echo.payload.weaponSkills && echo.payload.weaponSkills.sword.level === 7
-    && echo.payload.weaponUnspent.sword === 3 && echo.payload.defenseSkill.level === 4
-    && echo.payload.defenseUnspent === 2 && echo.payload.defenseSpec.bulwark === 5,
+    && echo.payload.weaponUnspent.sword === 0 && echo.payload.defenseSkill.level === 4
+    && echo.payload.defenseUnspent === 0 && echo.payload.defenseSpec.bulwark === 5,
     echo && Object.keys(echo.payload));
 
   // _saveRpg persists the track (capture the storage.put bundle).
@@ -288,8 +294,8 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   room.state.storage.put = origPut;
   check('_saveRpg persists the weapon/defense skill track',
     saved && saved.weaponSkills && saved.weaponSkills.sword.level === 7
-    && saved.weaponUnspent.sword === 3 && saved.defenseSkill.level === 4
-    && saved.defenseUnspent === 2 && saved.defenseSpec.bulwark === 5, saved && Object.keys(saved));
+    && saved.weaponUnspent.sword === 0 && saved.defenseSkill.level === 4
+    && saved.defenseUnspent === 0 && saved.defenseSpec.bulwark === 5, saved && Object.keys(saved));
 }
 
 // ── v2.3.1092: harvest-activity (ex) relay ──

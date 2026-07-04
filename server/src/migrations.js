@@ -64,6 +64,42 @@ export function healLifeSkills(blob) {
   return changed;
 }
 
+/* v2.3.1158: the canonical pool formula, extracted from migration v7 so
+ * the live stats_update path can apply it too.  One source of truth for
+ * "unspent = max(0, min(200, 2 × level-or-stat) − Σ spec)":
+ *   - migration v7 runs it once per stored blob at upgrade time;
+ *   - _handleStatsUpdate (index.js) re-runs it whenever a spec/skill
+ *     field arrives, so a mid-session truncation (grid budget clamp or
+ *     the 1000-point combat ceiling) credits the clipped points back to
+ *     the pools IMMEDIATELY instead of waiting for the next reconnect —
+ *     the "pools display stale after a clamped spend" playtest bug.
+ * Mutates blob's pool fields in place; returns true when any changed. */
+export function computeCanonicalPools(blob) {
+  if (!blob || typeof blob !== 'object') return false;
+  let changed = false;
+  const sum = (spec, keys) => keys.reduce((a, k) => a + ((spec && typeof spec[k] === 'number') ? Math.max(0, Math.min(100, Math.floor(spec[k]))) : 0), 0);
+  const pool = (level, spent) => Math.max(0, Math.min(200, 2 * Math.max(0, Math.floor(level || 0))) - spent);
+  const WCH = {
+    sword: ['edge', 'precision', 'executioner', 'tempo', 'cleave'],
+    bow:   ['drawPower', 'marksmanship', 'headshot', 'piercing', 'longshot'],
+    staff: ['spellPower', 'overload', 'detonation', 'attunement', 'focus'],
+  };
+  for (const cat of Object.keys(WCH)) {
+    const level = blob.weaponSkills && blob.weaponSkills[cat] && blob.weaponSkills[cat].level;
+    const next = pool(level, sum(blob.weaponSpecs && blob.weaponSpecs[cat], WCH[cat]));
+    if (!blob.weaponUnspent || typeof blob.weaponUnspent !== 'object') blob.weaponUnspent = {};
+    if (blob.weaponUnspent[cat] !== next) { blob.weaponUnspent[cat] = next; changed = true; }
+  }
+  const defNext = pool(blob.defenseSkill && blob.defenseSkill.level,
+    sum(blob.defenseSpec, ['bulwark', 'ironskin', 'thorns', 'secondwind', 'poise']));
+  if (blob.defenseUnspent !== defNext) { blob.defenseUnspent = defNext; changed = true; }
+  const hpNext = pool(blob.vitality, sum(blob.hpSpec, ['vigor', 'recovery', 'lifeblood', 'resilience']));
+  if (blob.hpUnspent !== hpNext) { blob.hpUnspent = hpNext; changed = true; }
+  const enNext = pool(blob.endurance, sum(blob.enduranceSpec, ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes']));
+  if (blob.enduranceUnspent !== enNext) { blob.enduranceUnspent = enNext; changed = true; }
+  return changed;
+}
+
 export const MIGRATIONS = [
   {
     v: 1,
@@ -240,31 +276,9 @@ export const MIGRATIONS = [
     // recomputed pool is at least as large as anything they could have
     // held.  (Spending stays bounded by the per-grid budget and the
     // 1000-point combat ceiling, both enforced live in index.js.)
-    run(blob) {
-      if (!blob || typeof blob !== 'object') return false;
-      let changed = false;
-      const sum = (spec, keys) => keys.reduce((a, k) => a + ((spec && typeof spec[k] === 'number') ? Math.max(0, Math.min(100, Math.floor(spec[k]))) : 0), 0);
-      const pool = (level, spent) => Math.max(0, Math.min(200, 2 * Math.max(0, Math.floor(level || 0))) - spent);
-      const WCH = {
-        sword: ['edge', 'precision', 'executioner', 'tempo', 'cleave'],
-        bow:   ['drawPower', 'marksmanship', 'headshot', 'piercing', 'longshot'],
-        staff: ['spellPower', 'overload', 'detonation', 'attunement', 'focus'],
-      };
-      for (const cat of Object.keys(WCH)) {
-        const level = blob.weaponSkills && blob.weaponSkills[cat] && blob.weaponSkills[cat].level;
-        const next = pool(level, sum(blob.weaponSpecs && blob.weaponSpecs[cat], WCH[cat]));
-        if (!blob.weaponUnspent || typeof blob.weaponUnspent !== 'object') blob.weaponUnspent = {};
-        if (blob.weaponUnspent[cat] !== next) { blob.weaponUnspent[cat] = next; changed = true; }
-      }
-      const defNext = pool(blob.defenseSkill && blob.defenseSkill.level,
-        sum(blob.defenseSpec, ['bulwark', 'ironskin', 'thorns', 'secondwind', 'poise']));
-      if (blob.defenseUnspent !== defNext) { blob.defenseUnspent = defNext; changed = true; }
-      const hpNext = pool(blob.vitality, sum(blob.hpSpec, ['vigor', 'recovery', 'lifeblood', 'resilience']));
-      if (blob.hpUnspent !== hpNext) { blob.hpUnspent = hpNext; changed = true; }
-      const enNext = pool(blob.endurance, sum(blob.enduranceSpec, ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes']));
-      if (blob.enduranceUnspent !== enNext) { blob.enduranceUnspent = enNext; changed = true; }
-      return changed;
-    },
+    // v2.3.1158: formula extracted to computeCanonicalPools (above) so
+    // the live stats_update path shares it; this entry just delegates.
+    run: computeCanonicalPools,
   },
 ];
 
