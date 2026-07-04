@@ -838,7 +838,7 @@ export class GameRoom {
               const _thornsPts = (blockerPs && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
               if (_thornsPts > 0 && m.hp > 0) {
                 const reflect = Math.min(Math.max(0, m.hp),
-                  Math.max(1, Math.round(m.dmg * Math.min(0.50, _thornsPts * 0.01))));
+                  Math.max(1, Math.round(m.dmg * Math.min(0.50, _thornsPts * 0.005)))); // v2.3.1156: 0.5%/pt (cap raise)
                 m.hp -= reflect;
                 if (!m.dmgByPlayer) m.dmgByPlayer = {};
                 m.dmgByPlayer[nearest.id] = (m.dmgByPlayer[nearest.id] || 0) + reflect;
@@ -1537,8 +1537,9 @@ export class GameRoom {
   // [0,99] so a forged client can't exceed the cap.  Applies to statuses
   // from ANY weapon's element (global, matching the Influence it replaces).
   _attuneMult(ps) {
+    // v2.3.1156: clamp 99 -> 100 with the uniform cap (ceiling 1.50).
     const pts = (ps && ps.weaponSpecs && ps.weaponSpecs.staff && ps.weaponSpecs.staff.attunement) || 0;
-    return 1 + Math.min(99, pts) * 0.005;
+    return 1 + Math.min(100, pts) * 0.005;
   }
   // v2.3.1153: BULWARK repurposed — block stamina efficiency, −1%/pt on
   // both block stamina costs (per-blocked-hit AND shield-hold drain),
@@ -1549,8 +1550,10 @@ export class GameRoom {
   // your shield twice as long, block twice as many hits."  defenseSpec
   // is client-trained but server-clamped, so the discount is bounded.
   _blockStaminaMult(ps) {
+    // v2.3.1156: 0.5%/pt (halved with the 50 -> 100 cap raise; the
+    // −50% cap value is unchanged).
     const pts = (ps && ps.defenseSpec && ps.defenseSpec.bulwark) || 0;
-    return 1 - Math.min(0.50, Math.min(50, pts) * 0.01);
+    return 1 - Math.min(0.50, Math.min(100, pts) * 0.005);
   }
 
   // v2.3.1104: weapon-blob sanitizer (P2 of docs/OPTIMIZATION-ROADMAP.md).
@@ -2921,6 +2924,12 @@ export class GameRoom {
   // don't crit), reflexes waits for server-owned dodge-roll timing.
   static get _HP_CHANNEL_KEYS() { return ['vigor', 'recovery', 'lifeblood', 'resilience']; }
   static get _ENDURANCE_CHANNEL_KEYS() { return ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes']; }
+  // v2.3.1156: level clamps 99 -> 100 and every channel clamp -> the
+  // uniform 100 cap (owner design: one allocation max everywhere, every
+  // cap-value landing at exactly 100 points; coefficients rescaled at
+  // the consumption sites, formerly-50-cap points doubled by the
+  // uniform-t2-caps migration).
+  static get T2_CHANNEL_CAP() { return 100; }
   _sanitizeWeaponSkills(src) {
     const out = {};
     if (!src || typeof src !== 'object') return out;
@@ -2928,7 +2937,7 @@ export class GameRoom {
       const s = src[cat];
       if (!s || typeof s !== 'object') continue;
       out[cat] = {
-        level: Math.max(0, Math.min(99, Math.floor(Number(s.level) || 0))),
+        level: Math.max(0, Math.min(100, Math.floor(Number(s.level) || 0))),
         xp: Math.max(0, Math.min(1e8, Number(s.xp) || 0)),
       };
     }
@@ -2945,7 +2954,7 @@ export class GameRoom {
   _sanitizeDefenseSkill(src) {
     if (!src || typeof src !== 'object') return { level: 0, xp: 0 };
     return {
-      level: Math.max(0, Math.min(99, Math.floor(Number(src.level) || 0))),
+      level: Math.max(0, Math.min(100, Math.floor(Number(src.level) || 0))),
       xp: Math.max(0, Math.min(1e8, Number(src.xp) || 0)),
     };
   }
@@ -2953,7 +2962,7 @@ export class GameRoom {
     const out = {};
     if (!src || typeof src !== 'object') return out;
     for (const k of GameRoom._DEFENSE_CHANNEL_KEYS) {
-      if (typeof src[k] === 'number') out[k] = Math.max(0, Math.min(50, Math.floor(src[k])));
+      if (typeof src[k] === 'number') out[k] = Math.max(0, Math.min(GameRoom.T2_CHANNEL_CAP, Math.floor(src[k])));
     }
     return out;
   }
@@ -2970,18 +2979,21 @@ export class GameRoom {
     let sum = 0;
     for (const k of keys) {
       if (typeof src[k] !== 'number') continue;
-      let v = Math.max(0, Math.min(50, Math.floor(src[k])));
+      let v = Math.max(0, Math.min(GameRoom.T2_CHANNEL_CAP, Math.floor(src[k])));
       if (sum + v > cap) v = Math.max(0, cap - sum);
       out[k] = v;
       sum += v;
     }
     return out;
   }
+  // v2.3.1156: grid budget doubled in lockstep with the point-doubling
+  // migration (coefficients halved, so 2 pts now buy what 1 did) and
+  // capped at the per-skill 200 lifetime pool of the uniform economy.
   _sanitizeHpSpec(src, ps) {
-    return this._sanitizeGridSpec(src, GameRoom._HP_CHANNEL_KEYS, ps ? (ps.vitality || 0) : undefined);
+    return this._sanitizeGridSpec(src, GameRoom._HP_CHANNEL_KEYS, ps ? Math.min(200, 2 * (ps.vitality || 0)) : undefined);
   }
   _sanitizeEnduranceSpec(src, ps) {
-    return this._sanitizeGridSpec(src, GameRoom._ENDURANCE_CHANNEL_KEYS, ps ? (ps.endurance || 0) : undefined);
+    return this._sanitizeGridSpec(src, GameRoom._ENDURANCE_CHANNEL_KEYS, ps ? Math.min(200, 2 * (ps.endurance || 0)) : undefined);
   }
   // Grid channel multipliers, mirrored in src/data/gameSystems.js.
   // Vigor +0.5%/pt maxHp (cap +25%); Recovery +1%/pt on DISCRETE heals
@@ -2992,23 +3004,25 @@ export class GameRoom {
   // +0.2%/pt dodge SHARING the 30% cap with agility (BALANCE-PLAN §4
   // shared-caps hard rule); Lifeblood on-kill heal 0.5%/pt maxHp (cap
   // 25%).
+  // v2.3.1156: all grid coefficients halved with the 50 -> 100 cap
+  // raise — cap values unchanged, stored points doubled by migration.
   _vigorMult(ps) {
-    return 1 + Math.min(0.25, ((ps && ps.hpSpec && ps.hpSpec.vigor) || 0) * 0.005);
+    return 1 + Math.min(0.25, ((ps && ps.hpSpec && ps.hpSpec.vigor) || 0) * 0.0025);
   }
   _recoveryMult(ps) {
-    return 1 + Math.min(0.50, ((ps && ps.hpSpec && ps.hpSpec.recovery) || 0) * 0.01);
+    return 1 + Math.min(0.50, ((ps && ps.hpSpec && ps.hpSpec.recovery) || 0) * 0.005);
   }
   _staminaGridMult(ps) {
-    return 1 + Math.min(0.50, ((ps && ps.enduranceSpec && ps.enduranceSpec.stamina) || 0) * 0.01);
+    return 1 + Math.min(0.50, ((ps && ps.enduranceSpec && ps.enduranceSpec.stamina) || 0) * 0.005);
   }
   _conditioningMult(ps) {
-    return 1 + Math.min(0.50, ((ps && ps.enduranceSpec && ps.enduranceSpec.conditioning) || 0) * 0.01);
+    return 1 + Math.min(0.50, ((ps && ps.enduranceSpec && ps.enduranceSpec.conditioning) || 0) * 0.005);
   }
   _evasionDodge(ps) {
-    return ((ps && ps.enduranceSpec && ps.enduranceSpec.evasion) || 0) * 0.002;
+    return ((ps && ps.enduranceSpec && ps.enduranceSpec.evasion) || 0) * 0.001;
   }
   _lifebloodFrac(ps) {
-    return Math.min(0.25, ((ps && ps.hpSpec && ps.hpSpec.lifeblood) || 0) * 0.005);
+    return Math.min(0.25, ((ps && ps.hpSpec && ps.hpSpec.lifeblood) || 0) * 0.0025);
   }
   // Mirror of the WCH clamp in _handleStatsUpdate, factored out so the join /
   // migration paths apply the SAME [0,99] channel clamp (weaponSpecs feeds the
@@ -3026,7 +3040,7 @@ export class GameRoom {
       if (!s || typeof s !== 'object') continue;
       out[cat] = {};
       for (const k of WCH[cat]) {
-        if (typeof s[k] === 'number') out[cat][k] = Math.max(0, Math.min(99, Math.floor(s[k])));
+        if (typeof s[k] === 'number') out[cat][k] = Math.max(0, Math.min(GameRoom.T2_CHANNEL_CAP, Math.floor(s[k])));
       }
     }
     return out;
@@ -3258,7 +3272,7 @@ export class GameRoom {
     // min() — the BALANCE-PLAN §4 shared-cap hard rule: stacking dodge
     // sources share the one 30% cap so channel completion can't
     // compound past INV-06.  Mirrors client passiveDodgeChance.
-    const dodgePct = Math.min((ps.agility || 0) * 0.0008 + this._evasionDodge(ps), 0.30);
+    const dodgePct = Math.min((ps.agility || 0) * 0.0008 + this._evasionDodge(ps), 0.30); // v2.3.1156: evasion now 0.1%/pt inside the same shared cap
     if (Math.random() < dodgePct) {
       ps.lastDamageAt = Date.now();
       return { dmgTaken: 0, dodged: true };
@@ -3277,7 +3291,7 @@ export class GameRoom {
     // channel existed since v2.3.1021 but was never consumed anywhere.
     const _ironskin = (ps.defenseSpec && ps.defenseSpec.ironskin) || 0;
     if (_ironskin > 0) {
-      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.25, _ironskin * 0.005))));
+      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.25, _ironskin * 0.0025)))); // v2.3.1156: 0.25%/pt (cap raise)
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
@@ -3299,7 +3313,7 @@ export class GameRoom {
       if (!ps._secondWindReadyAt || _nowSw >= ps._secondWindReadyAt) {
         // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap
         // +50%) — Second Wind is Recovery's flagship synergy.
-        secondWind = Math.round((ps.maxHp || 100) * Math.min(0.50, _sw * 0.01) * this._recoveryMult(ps));
+        secondWind = Math.round((ps.maxHp || 100) * Math.min(0.50, _sw * 0.005) * this._recoveryMult(ps)); // v2.3.1156: 0.5%/pt (cap raise)
         if (secondWind > 0) {
           ps.hp = Math.min(ps.maxHp, ps.hp + secondWind);
           ps._secondWindReadyAt = _nowSw + 10000;
@@ -3485,7 +3499,7 @@ export class GameRoom {
         if (!ps.weaponSpecs[cat]) ps.weaponSpecs[cat] = {};
         for (const k of WCH[cat]) {
           if (typeof src[k] === 'number') {
-            const c = Math.max(0, Math.min(99, Math.floor(src[k])));
+            const c = Math.max(0, Math.min(GameRoom.T2_CHANNEL_CAP, Math.floor(src[k]))); // v2.3.1156: 99 -> 100
             if (ps.weaponSpecs[cat][k] !== c) { ps.weaponSpecs[cat][k] = c; statsChanged = true; }
           }
         }
@@ -4336,7 +4350,7 @@ export class GameRoom {
     // TIGHTER than the old flat term it replaces (+99 pre-tier was worth
     // ~×8 mid-band), so this closes anti-cheat headroom, not opens it.
     // Specials stay channel-free, matching _computeAttackDamage.
-    const channelCeil = isSpecial ? 1.0 : 1 + 99 * DAMAGE_CHANNEL_PCT;
+    const channelCeil = isSpecial ? 1.0 : 1 + 100 * DAMAGE_CHANNEL_PCT; // v2.3.1156: cap 99 -> 100
     for (const w of candidates) {
       // v2.3.1131: §4.4 effective base -- (raw + hardness×1.0417) ×
       // quality, BEFORE stat/channel/tierMult.  Identity for legacy
@@ -4351,11 +4365,11 @@ export class GameRoom {
   _maxDmgForAttacker(ps, isSpecial) {
     if (!ps) return 21; // baseline-10: 100 ÷ 4.8
     const maxWpn = this._maxWeaponDmg(ps, isSpecial);
-    // v2.3.1133: ceiling assumes a MAXED crit-dmg channel (+0.792 at 99 pts)
-    // instead of reading live points, so a fully-invested crit isn't rejected
-    // by the anti-cheat cap (same bug class v2.3.912 fixed for the damage
-    // channel).  Replaces the retired Ferocity term.
-    const critMult = 1.5 + (ps.power || 0) * 0.001 + 0.792;
+    // v2.3.1133: ceiling assumes a MAXED crit-dmg channel instead of
+    // reading live points, so a fully-invested crit isn't rejected by
+    // the anti-cheat cap (same bug class v2.3.912 fixed for the damage
+    // channel).  v2.3.1156: +0.792 -> +0.80 at the 100-pt uniform cap.
+    const critMult = 1.5 + (ps.power || 0) * 0.001 + 0.80;
     const comboBoost = 5; // covers combo + status amplifier + amulet elemDmg + lunge mult
     // SPECIAL_ATK_MULT = 2.0 applied client-side; double the cap on
     // special hits so they don't get rejected as too-high.
@@ -4423,9 +4437,13 @@ export class GameRoom {
     // v2.3.912: crit chance = Power baseline + the weapon CRIT channel
     // (precision/marksmanship/overload) at +0.5%/pt, capped +30% (linear,
     // mirrors calcCritChance).  Ferocity is retired; crit mult stays Power-based.
+    // v2.3.1156: crit channel 0.5 -> 0.3%/pt so the +30% cap lands at
+    // exactly the 100-pt channel cap (was a silent trap at 60 pts).
+    // Mirrors client calcCritChance; spent points refunded by the
+    // uniform-t2-caps migration.
     const P = ps.power || 0;
     const critChance = Math.max(0, Math.min(1,
-      40 * P / (P + 200) / 100 + Math.min(0.30, this._wpnCritPts(ps, type) * 0.005)));
+      40 * P / (P + 200) / 100 + Math.min(0.30, this._wpnCritPts(ps, type) * 0.003)));
     const isCrit = Math.random() < critChance;
     // v2.3.1133: crit mult gains the crit-DMG channel (executioner/headshot/
     // focus) at +0.008/pt, mirroring client calcCritMult.  The Ferocity term
@@ -5324,7 +5342,11 @@ export class GameRoom {
           // as "Soon" instead of computing pools the worker's
           // player_state echo would stomp every flush (deploy-order
           // safety, the v2.3.1119 caps pattern).
-          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, ..._liveFlags },
+          // v2.3.1156: t2uniform -- the client gates its 100-pt caps and
+          // the build meter on this flag (an old worker clamps weapon
+          // specs at 99 / defense+grid specs at 50, so spending past the
+          // legacy caps against it would truncate on echo).
+          caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, ..._liveFlags },
           players: this.getAllPlayerData(),
           playerCount: this.getPlayerCount(),
           monsters: zoneMonsters.map(m => ({

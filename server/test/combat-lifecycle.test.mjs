@@ -130,7 +130,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   ps._buffs = {};
 
   // v2.3.1113: Iron Skin defense channel -- -0.5%/pt, cap -25%.
-  ps.hp = 100; ps.defenseSpec = { ironskin: 50 };
+  ps.hp = 100; ps.defenseSpec = { ironskin: 100 }; // v2.3.1156: cap moved to 100 (0.25%/pt)
   const ironed = room._applyDamage(ps, 100, false);
   check('applyDamage: Iron Skin 50pts cuts 25%', ironed.dmgTaken === 75 && ps.hp === 25, ironed);
   ps.defenseSpec = { ironskin: 999 };   // over-cap spec (legacy blob) still capped at 25%
@@ -218,11 +218,11 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     psA.stamina === 0 && psA.blocking === false, { stamina: psA.stamina, blocking: psA.blocking });
 
   // v2.3.1153: Bulwark block-stamina efficiency also discounts the
-  // shield-HOLD drain (5/tick -> 3 at 50 pts; floored at 1 so holding
-  // a shield is never free).
-  psA.blocking = true; psA.stamina = 100; psA.defenseSpec = { bulwark: 50 };
+  // shield-HOLD drain (v2.3.1156: 0.5%/pt — 5/tick -> 3 at the 100-pt
+  // cap; floored at 1 so holding a shield is never free).
+  psA.blocking = true; psA.stamina = 100; psA.defenseSpec = { bulwark: 100 };
   room._tickPlayerRegen();
-  check('bulwark: 50 pts discount the shield-hold drain (5 -> 3/tick)',
+  check('bulwark: 100 pts (cap) discount the shield-hold drain (5 -> 3/tick)',
     psA.stamina === 97, psA.stamina);
   check('bulwark: helper mult floors at -50%', Math.abs(room._blockStaminaMult(psA) - 0.5) < 1e-9
     && Math.abs(room._blockStaminaMult({ defenseSpec: { bulwark: 999 } }) - 0.5) < 1e-9,
@@ -325,7 +325,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 {
   // Second Wind: 1%/pt of maxHp after surviving an unblocked hit,
   // cap 50% (50 pts), 10s cooldown, never on the lethal hit.
-  const ps = { hp: 100, maxHp: 200, agility: 0, defenseSpec: { secondwind: 50 } };
+  const ps = { hp: 100, maxHp: 200, agility: 0, defenseSpec: { secondwind: 100 } }; // v2.3.1156: cap 100 (0.5%/pt)
   const r1 = room._applyDamage(ps, 50, false);
   check('secondwind: heals 50% of maxHp after surviving a hit',
     r1.dmgTaken === 50 && r1.secondWind === 100 && ps.hp === 150, { r1, hp: ps.hp });
@@ -340,7 +340,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   // tick block branch; lethal reflect kills via the shared pipeline.
   psA.z = 'meadow'; psA.dead = false; psA.dying = false; psA.disconnected = false;
   psA.blocking = true; psA.stamina = 100; psA.maxStamina = 100; psA.hp = 100; psA.maxHp = 100;
-  psA.defenseSpec = { thorns: 50 };
+  psA.defenseSpec = { thorns: 100 }; // v2.3.1156: cap 100 (0.5%/pt)
   const tm = meadowMonsters[3];
   tm.alive = true; tm.hp = 1000; tm.maxHp = 1000; tm.dmg = 40; tm.dmgByPlayer = {};
   tm.statuses = undefined; tm.atkCd = 0; tm._attackingUntil = 0; tm._wanderPausedUntil = 0;
@@ -373,8 +373,8 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   ma.alive = true; ma.hp = ma.maxHp = 10000; ma.dmgByPlayer = {}; ma.statuses = undefined;
   ma._wanderPausedUntil = Date.now() + 600000;
 
-  check('attune: _attuneMult caps at 1.495 even for an over-cap blob',
-    Math.abs(room._attuneMult({ weaponSpecs: { staff: { attunement: 500 } } }) - 1.495) < 1e-9,
+  check('attune: _attuneMult caps at 1.50 even for an over-cap blob (v2.3.1156: 100-pt cap)',
+    Math.abs(room._attuneMult({ weaponSpecs: { staff: { attunement: 500 } } }) - 1.50) < 1e-9,
     room._attuneMult({ weaponSpecs: { staff: { attunement: 500 } } }));
 
   // Baseline burn (no attunement): remaining == base 4s.

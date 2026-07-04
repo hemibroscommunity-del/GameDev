@@ -3648,7 +3648,14 @@ export const WEAPON_CATEGORY_META = {
    v2.3.910: 5 -> 1.  Each build-skill level now grants exactly ONE Tier-2
    point (and +1 combat level), so the per-category choice is meaningful. */
 export const WEAPON_PTS_PER_LEVEL = 1;
-export const WEAPON_CHANNEL_CAP = 99;
+/* v2.3.1156: ONE allocation cap for every T2 channel in the game (owner
+   design 2026-07-04).  The old 99/50 split was historical accident, and
+   several coefficients hid silent traps (crit capped at 60 pts, tempo at
+   80, cleave at 75 — points past those bought nothing).  Now every
+   channel caps at 100 AND every cap-value lands at exactly 100 points
+   (coefficients rescaled below; the sim's UN-04 gate proves it). */
+export const T2_CHANNEL_CAP = 100;
+export const WEAPON_CHANNEL_CAP = T2_CHANNEL_CAP;
 /* v2.3.911: maps a dashboard build-skill stat key to its weapon-category
    point pool, so the dashboard can flash a skill that has unspent Tier-2
    points and open the Builds menu to the right tab. */
@@ -3670,7 +3677,7 @@ export function buildSkillUnspent(rpg, statKey) {
    weapon of the category adds this much XP to that category's skill.  1.0
    keeps "xp == damage dealt"; tune here without touching combat code. */
 export const WEAPON_XP_PER_DMG = 1.0;
-export const WEAPON_LEVEL_CAP = 99;
+export const WEAPON_LEVEL_CAP = 100; /* v2.3.1156: 99 -> 100 (uniform round caps) */
 
 /* XP to go from `level` to `level+1`.  Gentle geometric curve so the first
    few levels land within a handful of fights and later levels stretch out;
@@ -3702,9 +3709,12 @@ export const WEAPON_CHANNELS = {
     { key: 'edge',        label: 'Sharpened Edge', role: 'damage',  active: true,  perPt: 0.5,
       blurb: '+damage on every swing.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% damage' },
-    { key: 'precision',   label: 'Precision',      role: 'crit',    active: true,
+    /* v2.3.1156: crit channels repriced 0.5 -> 0.3%/pt so the +30% cap
+       lands at exactly 100 points (was a silent trap at 60).  Points
+       were refunded by the uniform-t2-caps migration. */
+    { key: 'precision',   label: 'Precision',      role: 'crit',    active: true,  perPt: 0.3,
       blurb: 'Crit chance on top of Power.',
-      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
+      derive: (v) => '+' + (v * 0.3).toFixed(1) + '% crit' },
     /* v2.3.1133: crit-dmg channel live — +0.8% crit damage per point
        (fed as the 2nd arg into calcCritMult, ×0.008).  99 pts = +79.2%. */
     { key: 'executioner', label: 'Executioner',    role: 'critDmg', active: true, perPt: 0.8,
@@ -3714,21 +3724,24 @@ export const WEAPON_CHANNELS = {
        -20% (reached at 80 pts; the derive shows the cap so points 81-99
        aren't a silent trap).  Cleave live — +0.6° swing arc per point,
        cap +45° on the 180° forward half-circle. */
-    { key: 'tempo',       label: 'Tempo',          role: 'atkspd',  active: true, perPt: 0.25,
-      blurb: '+attack speed (cap -20% cooldown at 80 pts).',
-      derive: (v) => '-' + Math.min(20, v * 0.25).toFixed(1) + '% swing cd' + (v * 0.25 >= 20 ? ' (max)' : '') },
-    { key: 'cleave',      label: 'Cleave',         role: 'cleave',  active: true, perPt: 0.6,
+    /* v2.3.1156: tempo 0.25 -> 0.2%/pt and cleave 0.6 -> 0.45°/pt so
+       their caps land at exactly 100 points (traps were at 80/75). */
+    { key: 'tempo',       label: 'Tempo',          role: 'atkspd',  active: true, perPt: 0.2,
+      blurb: '+attack speed (cap -20% cooldown).',
+      derive: (v) => '-' + Math.min(20, v * 0.2).toFixed(1) + '% swing cd' + (v >= 100 ? ' (max)' : '') },
+    { key: 'cleave',      label: 'Cleave',         role: 'cleave',  active: true, perPt: 0.45,
       blurb: 'Wider swing arc — hit adjacent foes.',
-      derive: (v) => '+' + Math.min(45, v * 0.6).toFixed(0) + '° arc' + (v * 0.6 >= 45 ? ' (max)' : '') },
+      derive: (v) => '+' + Math.min(45, v * 0.45).toFixed(0) + '° arc' + (v >= 100 ? ' (max)' : '') },
   ],
   bow: [
     /* v2.3.1153: repriced flat -> % (see DAMAGE_CHANNEL_PCT / edge). */
     { key: 'drawPower',    label: 'Draw Power',    role: 'damage',  active: true,  perPt: 0.5,
       blurb: '+damage per shot.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% damage' },
-    { key: 'marksmanship', label: 'Marksmanship',  role: 'crit',    active: true,
+    /* v2.3.1156: repriced 0.3%/pt — see Precision. */
+    { key: 'marksmanship', label: 'Marksmanship',  role: 'crit',    active: true,  perPt: 0.3,
       blurb: 'Crit chance on top of Agility.',
-      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
+      derive: (v) => '+' + (v * 0.3).toFixed(1) + '% crit' },
     /* v2.3.1133: crit-dmg channel live — mirrors Executioner. */
     { key: 'headshot',     label: 'Headshot',      role: 'critDmg', active: true, perPt: 0.8,
       blurb: '+crit damage multiplier.',
@@ -3737,9 +3750,11 @@ export const WEAPON_CHANNELS = {
        75); whole-number breakpoints keep the mental math simple.  Longshot
        live — +0.5%/pt arrow speed AND max flight (cap +49.5%); the PvP
        reach stays hard-clamped at the server's 250px cap. */
+    /* v2.3.1156: breakpoints 25/50/75 -> 34/67/100 so the 3rd pierce
+       lands at exactly the 100-pt cap (points 76-99 were a trap). */
     { key: 'piercing',     label: 'Piercing',      role: 'pierce',  active: true, perPt: 0,
-      blurb: 'Arrows pass through targets (+1 per 25 pts, max 3).',
-      derive: (v) => { var n = Math.min(3, Math.floor(v / 25)); return n > 0 ? '+' + n + ' pierce' + (n >= 3 ? ' (max)' : '') : 'next at 25 pts'; } },
+      blurb: 'Arrows pass through targets (+1 at 34/67/100 pts).',
+      derive: (v) => { var n = Math.min(3, Math.floor((v * 3) / 100)); return n > 0 ? '+' + n + ' pierce' + (n >= 3 ? ' (max)' : '') : 'next at 34 pts'; } },
     { key: 'longshot',     label: 'Longshot',      role: 'range',   active: true, perPt: 0.5,
       blurb: '+arrow speed and flight distance.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% range/speed' },
@@ -3749,9 +3764,10 @@ export const WEAPON_CHANNELS = {
     { key: 'spellPower',  label: 'Spell Power',    role: 'damage',  active: true,  perPt: 0.5,
       blurb: '+damage per cast.',
       derive: (v) => '+' + (v * 0.5).toFixed(1) + '% damage' },
-    { key: 'overload',    label: 'Overload',       role: 'crit',    active: true,
+    /* v2.3.1156: repriced 0.3%/pt — see Precision. */
+    { key: 'overload',    label: 'Overload',       role: 'crit',    active: true,  perPt: 0.3,
       blurb: 'Crit chance for magic.',
-      derive: (v) => '+' + (v * 0.5).toFixed(1) + '% crit' },
+      derive: (v) => '+' + (v * 0.3).toFixed(1) + '% crit' },
     /* v2.3.1136: Detonation live — +0.7%/pt staff bolt hit radius (cap
        +69.3%), keyed to the elemental pipeline.  Attunement live —
        +0.5%/pt status duration (cap +49.5%), the successor to the retired
@@ -3844,37 +3860,42 @@ export function getWeaponCritDmgStat(rpg) {
 }
 
 /* v2.3.1134: Tempo — swing-cooldown multiplier from the equipped
-   category's atkspd channel.  -0.25%/pt, HARD CAP -20% (floor 0.80).
-   Reads by role so a future bow/staff cadence channel plugs in free.
-   SERVER NOTE: the worker's monster_damage cadence floor assumes this
-   cap (600 × 0.80 × lag headroom) — change the cap, change the floor. */
+   category's atkspd channel.  v2.3.1156: -0.2%/pt so the -20% HARD CAP
+   (floor 0.80) lands at exactly the 100-pt channel cap (was a trap at
+   80 pts).  Reads by role so a future bow/staff cadence channel plugs
+   in free.  SERVER NOTE: the worker's monster_damage cadence floor
+   assumes this cap (600 × 0.80 × lag headroom) — the CAP is unchanged,
+   so the floor stands. */
 export function swingCooldownMult(rpg) {
   var pts = weaponChannelValueByRole(rpg, activeWeaponCategory(rpg), 'atkspd');
-  return Math.max(0.80, 1 - pts * 0.0025);
+  return Math.max(0.80, 1 - pts * 0.002);
 }
 
 /* v2.3.1135: Piercing — extra monsters a bow arrow passes through.
-   +1 per 25 points, cap 3 (75+).  Special arrows keep their unlimited
+   v2.3.1156: breakpoints 34/67/100 (was /25, trap past 75) so the 3rd
+   pierce lands at the 100-pt cap.  Special arrows keep their unlimited
    pierce (pierceLeft stays undefined on them). */
 export function bowPierceCount(rpg) {
   var pts = weaponChannelValueByRole(rpg, 'bow', 'pierce');
-  return Math.min(3, Math.floor(pts / 25));
+  return Math.min(3, Math.floor((pts * 3) / 100));
 }
 
 /* v2.3.1135: Longshot — arrow speed + max-flight multiplier.  +0.5%/pt,
-   cap +49.5%.  PvP reach is clamped to the server's 250px cap at the
-   player_attack send site (and again server-side — belt and braces). */
+   cap +50% at the 100-pt channel cap (v2.3.1156).  PvP reach is clamped
+   to the server's 250px cap at the player_attack send site (and again
+   server-side — belt and braces). */
 export function bowRangeMult(rpg) {
   var pts = weaponChannelValueByRole(rpg, 'bow', 'range');
-  return 1 + Math.min(99, pts) * 0.005;
+  return 1 + Math.min(100, pts) * 0.005;
 }
 
 /* v2.3.1136: Detonation — staff bolt hit-radius multiplier.  +0.7%/pt,
-   cap +69.3%.  Applied to the per-archetype staff radii in projectiles
-   (the ×3 special-radius multiplier stacks on top, as before). */
+   cap +70% at the 100-pt channel cap (v2.3.1156).  Applied to the
+   per-archetype staff radii in projectiles (the ×3 special-radius
+   multiplier stacks on top, as before). */
 export function staffAoeMult(rpg) {
   var pts = weaponChannelValueByRole(rpg, 'staff', 'aoe');
-  return 1 + Math.min(99, pts) * 0.007;
+  return 1 + Math.min(100, pts) * 0.007;
 }
 
 /* v2.3.1136: Attunement point total — stamped onto S.player._rpgAttune
@@ -3889,8 +3910,9 @@ export function getAttunementPts(rpg) {
    (monsterCombat) AND the aim indicator (effectsRenderer) so the preview
    keeps matching the damage — that pairing is a contract (v2.3.939). */
 export function cleaveArcBonus(rpg) {
+  /* v2.3.1156: 0.45°/pt — the +45° cap lands at exactly 100 points. */
   var pts = weaponChannelValueByRole(rpg, 'sword', 'cleave');
-  return Math.min(45, pts * 0.6) * Math.PI / 180;
+  return Math.min(45, pts * 0.45) * Math.PI / 180;
 }
 
 /* Award damage-proportional XP to the equipped category and resolve any
@@ -3972,9 +3994,12 @@ export function migrateWeaponT2(rpg) {
    Thorns / Second Wind / Poise ship as "Soon" so points are never wasted.
    Monsters have NO defense stat — player damage stays raw; these channels are
    purely the PLAYER's mitigation. ═══════════════════════════════════════ */
-export const DEFENSE_PTS_PER_LEVEL = WEAPON_PTS_PER_LEVEL;   // 5
-export const DEFENSE_CHANNEL_CAP = 50;                       // both active channels max here
-export const DEFENSE_LEVEL_CAP = WEAPON_LEVEL_CAP;           // 99
+export const DEFENSE_PTS_PER_LEVEL = WEAPON_PTS_PER_LEVEL;
+/* v2.3.1156: 50 -> the uniform 100 cap; every per-point coefficient
+   below HALVED so cap-values are identical (power-neutral — stored
+   points were doubled by the uniform-t2-caps migration). */
+export const DEFENSE_CHANNEL_CAP = T2_CHANNEL_CAP;
+export const DEFENSE_LEVEL_CAP = WEAPON_LEVEL_CAP;           // 100
 /* XP weighting at the damage-taken sites: a blocked/mitigated hit trains at
    full rate; an unblocked hit trains at a quarter (so active blocking is the
    fast path and you can't AFK-tank your way up).  The caller multiplies the
@@ -3990,12 +4015,14 @@ export const DEFENSE_CHANNELS = [
      which left the channel inert.  SERVER-owned at both cost sites
      (_blockStaminaMult; the per-hit cost rides the wire as staminaDrain);
      the legacy local-drain path mirrors via getBlockStaminaMult. */
-  { key: 'bulwark',   label: 'Bulwark',     role: 'blockstam', active: true,  perPt: 1.0,
+  /* v2.3.1156: coefficients halved with the 50 -> 100 cap raise (cap
+     values unchanged; stored points doubled by migration). */
+  { key: 'bulwark',   label: 'Bulwark',     role: 'blockstam', active: true,  perPt: 0.5,
     blurb: 'Blocking costs less stamina — hold your shield longer.',
-    derive: (v) => '−' + Math.min(50, v) + '% block stamina cost' },
-  { key: 'ironskin',  label: 'Iron Skin',   role: 'dmgreduce', active: true,  perPt: 0.5,
-    blurb: '−0.5% damage taken from every hit.',
-    derive: (v) => '−' + (v * 0.5).toFixed(1) + '% dmg taken' },
+    derive: (v) => '−' + Math.min(50, v * 0.5).toFixed(1) + '% block stamina cost' },
+  { key: 'ironskin',  label: 'Iron Skin',   role: 'dmgreduce', active: true,  perPt: 0.25,
+    blurb: '−0.25% damage taken from every hit.',
+    derive: (v) => '−' + (v * 0.25).toFixed(1) + '% dmg taken' },
   /* v2.3.1137: the last three defense channels go live (8th-grader math,
      same as Bulwark/Iron Skin):
        • Thorns — reflect 1%/pt of a blocked attack back at the monster
@@ -4007,15 +4034,15 @@ export const DEFENSE_CHANNELS = [
          bought only +12% EHP vs Iron Skin's +33% yardstick.)
        • Poise — −1%/pt stun/stagger duration (−50% cap).  CLIENT-owned:
          stuns only ever gate the player's own input. */
-  { key: 'thorns',    label: 'Thorns',      role: 'reflect',   active: true, perPt: 1.0,
+  { key: 'thorns',    label: 'Thorns',      role: 'reflect',   active: true, perPt: 0.5,
     blurb: 'Reflect blocked damage back at the attacker.',
-    derive: (v) => 'reflect ' + Math.min(50, v) + '% on block' },
-  { key: 'secondwind', label: 'Second Wind', role: 'regen',    active: true, perPt: 1.0,
+    derive: (v) => 'reflect ' + Math.min(50, v * 0.5).toFixed(1) + '% on block' },
+  { key: 'secondwind', label: 'Second Wind', role: 'regen',    active: true, perPt: 0.5,
     blurb: 'Heal after surviving a hit (10s cooldown).',
-    derive: (v) => 'heal ' + Math.min(50, v) + '% HP' },
-  { key: 'poise',     label: 'Poise',       role: 'poise',     active: true, perPt: 1.0,
+    derive: (v) => 'heal ' + Math.min(50, v * 0.5).toFixed(1) + '% HP' },
+  { key: 'poise',     label: 'Poise',       role: 'poise',     active: true, perPt: 0.5,
     blurb: 'Shrug off stagger from heavy hits.',
-    derive: (v) => '−' + Math.min(50, v) + '% stun time' },
+    derive: (v) => '−' + Math.min(50, v * 0.5).toFixed(1) + '% stun time' },
 ];
 
 /* Spend point total for a defense channel key. */
@@ -4030,17 +4057,20 @@ export function getDefenseBlockBonus() { return 0; }
    −50%).  Mirror of server _blockStaminaMult; used by the legacy local
    shield-drain path (BroTown rAF loop) for prediction. */
 export function getBlockStaminaMult(rpg) {
-  return 1 - Math.min(0.50, getDefenseSpec(rpg, 'bulwark') * 0.01);
+  /* v2.3.1156: 0.5%/pt (halved with the cap raise; cap stays −50%). */
+  return 1 - Math.min(0.50, getDefenseSpec(rpg, 'bulwark') * 0.005);
 }
-/* Iron Skin flat damage-taken reduction as a 0..0.25 fraction. */
+/* Iron Skin flat damage-taken reduction as a 0..0.25 fraction.
+   v2.3.1156: 0.25%/pt (halved with the cap raise). */
 export function getIronSkinReduction(rpg) {
-  return Math.min(0.25, getDefenseSpec(rpg, 'ironskin') * 0.005);
+  return Math.min(0.25, getDefenseSpec(rpg, 'ironskin') * 0.0025);
 }
 /* v2.3.1137: Poise — multiplier on player stun/stagger durations.
    −1%/pt, cap −50% (0.5 floor).  Client-owned: _playerStunUntil only
    gates the local player's input, so there is nothing to mirror. */
 export function poiseStunMult(rpg) {
-  return 1 - Math.min(0.50, getDefenseSpec(rpg, 'poise') * 0.01);
+  /* v2.3.1156: 0.5%/pt (halved with the cap raise; cap stays −50%). */
+  return 1 - Math.min(0.50, getDefenseSpec(rpg, 'poise') * 0.005);
 }
 
 /* Award defense-skill XP (already weighted by the caller) and resolve
@@ -4121,34 +4151,36 @@ export function migrateDefenseT2(rpg) {
    ~276 -> ~304 px/s).  resilience/reflexes ship "Soon": resilience has
    nothing to consume (monsters don't crit), reflexes waits for
    server-owned dodge-roll timing. */
-export const GRID_CHANNEL_CAP = 50;
+/* v2.3.1156: 50 -> the uniform 100 cap; coefficients halved so
+   cap-values are identical (points doubled by migration). */
+export const GRID_CHANNEL_CAP = T2_CHANNEL_CAP;
 export const HP_CHANNELS = [
-  { key: 'vigor',      label: 'Vigor',      role: 'maxhp',    active: true,  perPt: 0.5,
+  { key: 'vigor',      label: 'Vigor',      role: 'maxhp',    active: true,  perPt: 0.25,
     blurb: 'A deeper health pool — scales armor HP too.',
-    derive: (v) => '+' + Math.min(25, v * 0.5).toFixed(1) + '% max HP' },
-  { key: 'recovery',   label: 'Recovery',   role: 'healboost', active: true, perPt: 1.0,
+    derive: (v) => '+' + Math.min(25, v * 0.25).toFixed(1) + '% max HP' },
+  { key: 'recovery',   label: 'Recovery',   role: 'healboost', active: true, perPt: 0.5,
     blurb: 'Food, Second Wind and other heals restore more.',
-    derive: (v) => '+' + Math.min(50, v) + '% healing received' },
-  { key: 'lifeblood',  label: 'Lifeblood',  role: 'killheal', active: true,  perPt: 0.5,
+    derive: (v) => '+' + Math.min(50, v * 0.5).toFixed(1) + '% healing received' },
+  { key: 'lifeblood',  label: 'Lifeblood',  role: 'killheal', active: true,  perPt: 0.25,
     blurb: 'Every killing blow restores health.',
-    derive: (v) => 'heal ' + Math.min(25, v * 0.5).toFixed(1) + '% HP on kill' },
+    derive: (v) => 'heal ' + Math.min(25, v * 0.25).toFixed(1) + '% HP on kill' },
   { key: 'resilience', label: 'Resilience', role: 'resilience', active: false, perPt: 0,
     blurb: 'Shrug off the nastiest hits.',
     derive: (v) => String(v) },
 ];
 export const ENDURANCE_CHANNELS = [
-  { key: 'stamina',      label: 'Deep Lungs',   role: 'maxstam',   active: true,  perPt: 1.0,
+  { key: 'stamina',      label: 'Deep Lungs',   role: 'maxstam',   active: true,  perPt: 0.5,
     blurb: 'A bigger stamina pool.',
-    derive: (v) => '+' + Math.min(50, v) + '% max stamina' },
-  { key: 'conditioning', label: 'Conditioning', role: 'stamregen', active: true,  perPt: 1.0,
+    derive: (v) => '+' + Math.min(50, v * 0.5).toFixed(1) + '% max stamina' },
+  { key: 'conditioning', label: 'Conditioning', role: 'stamregen', active: true,  perPt: 0.5,
     blurb: 'Stamina comes back faster.',
-    derive: (v) => '+' + Math.min(50, v) + '% stamina regen' },
-  { key: 'swiftness',    label: 'Swiftness',    role: 'movespd',   active: true,  perPt: 0.2,
+    derive: (v) => '+' + Math.min(50, v * 0.5).toFixed(1) + '% stamina regen' },
+  { key: 'swiftness',    label: 'Swiftness',    role: 'movespd',   active: true,  perPt: 0.1,
     blurb: 'Move faster everywhere.',
-    derive: (v) => '+' + Math.min(10, v * 0.2).toFixed(1) + '% move speed' },
-  { key: 'evasion',      label: 'Evasion',      role: 'dodge',     active: true,  perPt: 0.2,
+    derive: (v) => '+' + Math.min(10, v * 0.1).toFixed(1) + '% move speed' },
+  { key: 'evasion',      label: 'Evasion',      role: 'dodge',     active: true,  perPt: 0.1,
     blurb: 'Dodge more hits — shares the 30% cap with Agility.',
-    derive: (v) => '+' + (v * 0.2).toFixed(1) + '% dodge (30% cap)' },
+    derive: (v) => '+' + (v * 0.1).toFixed(1) + '% dodge (30% cap)' },
   { key: 'reflexes',     label: 'Reflexes',     role: 'reflexes',  active: false, perPt: 0,
     blurb: 'Longer dodge-roll invulnerability.',
     derive: (v) => String(v) },
@@ -4187,6 +4219,45 @@ export function migrateGrids(rpg) {
   return rpg;
 }
 
+/* v2.3.1156: one-time LOCAL-save migration for the uniform-cap reprice
+   (twin of the server's uniform-t2-caps registry migration — the client
+   blob lives in localStorage and never passes through the server
+   registry).  Gated on the _t2uniform flag so it runs exactly once:
+   - doubles the formerly-50-cap grids (defense/HP/endurance) — power-
+     neutral, since every coefficient halved;
+   - refunds the materially-repriced weapon channels (crit trio, tempo,
+     cleave, piercing) into weaponUnspent, matching the server refund
+     so the echo and the local blob agree. */
+export function migrateUniformT2(rpg) {
+  if (!rpg || rpg._t2uniform) return rpg;
+  var dbl = function (spec, defs) {
+    if (!spec) return;
+    defs.forEach(function (ch) {
+      if (typeof spec[ch.key] === 'number' && spec[ch.key] > 0) {
+        spec[ch.key] = Math.min(T2_CHANNEL_CAP, Math.floor(spec[ch.key]) * 2);
+      }
+    });
+  };
+  dbl(rpg.defenseSpec, DEFENSE_CHANNELS);
+  dbl(rpg.hpSpec, HP_CHANNELS);
+  dbl(rpg.enduranceSpec, ENDURANCE_CHANNELS);
+  var REFUND = { sword: ['precision', 'tempo', 'cleave'], bow: ['marksmanship', 'piercing'], staff: ['overload'] };
+  Object.keys(REFUND).forEach(function (cat) {
+    var spec = rpg.weaponSpecs && rpg.weaponSpecs[cat];
+    if (!spec) return;
+    REFUND[cat].forEach(function (k) {
+      var pts = (typeof spec[k] === 'number') ? Math.max(0, Math.min(T2_CHANNEL_CAP, Math.floor(spec[k]))) : 0;
+      if (pts > 0) {
+        if (!rpg.weaponUnspent) rpg.weaponUnspent = {};
+        rpg.weaponUnspent[cat] = Math.min(999, (rpg.weaponUnspent[cat] || 0) + pts);
+      }
+      if (spec[k]) spec[k] = 0;
+    });
+  });
+  rpg._t2uniform = true;
+  return rpg;
+}
+
 /* Deploy-order gate (the v2.3.1119 caps pattern): recalcDerived applies
    the grid pool multipliers only while the connected worker advertises
    caps.hpEndGrids — an old worker's player_state echo would stomp a
@@ -4197,21 +4268,23 @@ var _gridCapsEnabled = true;
 export function setGridCapsEnabled(on) { _gridCapsEnabled = !!on; }
 export function isGridCapsEnabled() { return _gridCapsEnabled; }
 
-/* Grid channel multipliers — mirror the server helpers in index.js. */
+/* Grid channel multipliers — mirror the server helpers in index.js.
+   v2.3.1156: coefficients halved with the 50 -> 100 cap raise (cap
+   values unchanged). */
 export function getVigorMult(rpg) {
-  return 1 + Math.min(0.25, ((rpg && rpg.hpSpec && rpg.hpSpec.vigor) || 0) * 0.005);
+  return 1 + Math.min(0.25, ((rpg && rpg.hpSpec && rpg.hpSpec.vigor) || 0) * 0.0025);
 }
 export function getRecoveryMult(rpg) {
-  return 1 + Math.min(0.50, ((rpg && rpg.hpSpec && rpg.hpSpec.recovery) || 0) * 0.01);
+  return 1 + Math.min(0.50, ((rpg && rpg.hpSpec && rpg.hpSpec.recovery) || 0) * 0.005);
 }
 export function getStaminaGridMult(rpg) {
-  return 1 + Math.min(0.50, ((rpg && rpg.enduranceSpec && rpg.enduranceSpec.stamina) || 0) * 0.01);
+  return 1 + Math.min(0.50, ((rpg && rpg.enduranceSpec && rpg.enduranceSpec.stamina) || 0) * 0.005);
 }
 export function getConditioningMult(rpg) {
-  return 1 + Math.min(0.50, ((rpg && rpg.enduranceSpec && rpg.enduranceSpec.conditioning) || 0) * 0.01);
+  return 1 + Math.min(0.50, ((rpg && rpg.enduranceSpec && rpg.enduranceSpec.conditioning) || 0) * 0.005);
 }
 export function getSwiftnessMult(rpg) {
-  return 1 + Math.min(0.10, ((rpg && rpg.enduranceSpec && rpg.enduranceSpec.swiftness) || 0) * 0.002);
+  return 1 + Math.min(0.10, ((rpg && rpg.enduranceSpec && rpg.enduranceSpec.swiftness) || 0) * 0.001);
 }
 export function getEvasionPts(rpg) {
   return (rpg && rpg.enduranceSpec && rpg.enduranceSpec.evasion) || 0;
@@ -5132,10 +5205,12 @@ export function calcCritChance(power, ferocity) {
   var fer = ferocity || 0;
   /* Power baseline: 40 * P / (P + 200).  0->0%, P100->13.3%, P500->28.6%. */
   var pCrit = 40 * pow / (pow + 200) / 100;
-  /* v2.3.912: the 2nd arg is now the weapon CRIT channel (Precision/etc.) and
-     scales linearly at +0.5% per point, hard-capped at +30%, so each point is
-     clearly felt (was the soft 30*F/(F+250) curve).  Ferocity is retired. */
-  var fCrit = Math.min(0.30, fer * 0.005);
+  /* v2.3.912: the 2nd arg is now the weapon CRIT channel (Precision/etc.),
+     linear and hard-capped at +30% (was the soft 30*F/(F+250) curve).
+     v2.3.1156: 0.5 -> 0.3%/pt so the cap lands at exactly the 100-pt
+     channel cap (points 61-99 were a silent trap).  Mirrors the server's
+     _computeAttackDamage crit line. */
+  var fCrit = Math.min(0.30, fer * 0.003);
   return Math.max(0, Math.min(1, pCrit + fCrit));
 }
 export function calcCritMult(power, critDmgPts) {
@@ -5172,7 +5247,8 @@ export function calcBlockReduction(_legacyBulwark, shield) {
    still clears the worker's 500 px/s anti-teleport bound (~304 px/s
    max legit).  Legacy single-arg calls are unchanged. */
 export function calcMoveSpeed(agility, swiftnessPts) {
-  return 5.0 * (1 + Math.min(agility * 0.0012, 0.60)) * (1 + Math.min(0.10, (swiftnessPts || 0) * 0.002));
+  /* v2.3.1156: swiftness 0.1%/pt (halved with the cap raise). */
+  return 5.0 * (1 + Math.min(agility * 0.0012, 0.60)) * (1 + Math.min(0.10, (swiftnessPts || 0) * 0.001));
 }
 
 /* v2.3.234 (Phase 4): all special attacks scale with Mind regardless of
@@ -5198,7 +5274,9 @@ export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
    the shared 30% cap — the BALANCE-PLAN §4 hard rule for stacking
    sources.  Mirrors the server's _applyDamage dodge line. */
 export function passiveDodgeChance(agility, evasionPts) {
-  return Math.min((agility || 0) * 0.0008 + (evasionPts || 0) * 0.002, 0.30);
+  /* v2.3.1156: evasion 0.1%/pt (halved with the cap raise; +10% at the
+     100-pt cap, still INSIDE the shared 30% cap with agility). */
+  return Math.min((agility || 0) * 0.0008 + (evasionPts || 0) * 0.001, 0.30);
 }
 export function rollPassiveDodge(agility, evasionPts) {
   return Math.random() < passiveDodgeChance(agility, evasionPts);

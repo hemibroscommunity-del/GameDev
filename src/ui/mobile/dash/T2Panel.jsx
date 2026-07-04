@@ -99,6 +99,11 @@ export const T2Panel = () => {
   /* v2.3.1154: grid spending is caps-gated (see GRID_TABS comment).
      Offline / pre-worker sessions stay live (legacy client-local play). */
   const gridsLive = !S.channel || !!(S._serverCaps && S._serverCaps.hpEndGrids);
+  /* v2.3.1156: uniform 100-pt caps are ALSO caps-gated — an old worker
+     clamps weapon specs at 99 and defense/grid specs at 50, so spending
+     past the legacy caps against it would be truncated on echo. */
+  const t2uniform = !S.channel || !!(S._serverCaps && S._serverCaps.t2uniform);
+  const LEGACY_WEAPON_CAP = 99, LEGACY_GRID_CAP = 50;
 
   /* Source the selected tab's skill / spec / pool / channels from the
      Defense fields, a grid tab, or the weapon maps. */
@@ -110,7 +115,9 @@ export const T2Panel = () => {
   const channels = gridTab
     ? (gridsLive ? gridTab.channels : gridTab.channels.map((ch) => ({ ...ch, active: false })))
     : isDef ? DEFENSE_CHANNELS : (WEAPON_CHANNELS[activeCat] || []);
-  const channelCap = gridTab ? GRID_CHANNEL_CAP : isDef ? DEFENSE_CHANNEL_CAP : WEAPON_CHANNEL_CAP;
+  const channelCap = t2uniform
+    ? (gridTab ? GRID_CHANNEL_CAP : isDef ? DEFENSE_CHANNEL_CAP : WEAPON_CHANNEL_CAP)
+    : (gridTab || isDef ? LEGACY_GRID_CAP : LEGACY_WEAPON_CAP);
   /* Grid tabs level via the STAT's own training curve (addBuildProg
      threshold); weapon/defense tabs keep their damage-driven curve. */
   const need = gridTab
