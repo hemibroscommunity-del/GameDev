@@ -43,6 +43,19 @@ export function updateGroundLootPickup(S, deps) {
                feet" (user said the area felt 15 px too low). */
             var _pickupOriginY = P.y - 15;
             var lDist = Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(_pickupOriginY - loot.y, 2));
+            /* v2.3.1161: anchor = the pile's TRUE (server) position,
+               stamped before magnetism ever mutates loot.x/y.  The pull
+               below used to re-anchor on the pulled position each frame,
+               so a slowly-walking player could drag a pile arbitrarily
+               far from where the server thinks it is — then the pickup
+               request (validated server-side against the ORIGINAL spot)
+               came back "out of range" with the loot visibly at their
+               feet (the snowman playtest report).  Magnetism is now
+               render-only: it engages by anchor distance, so the visual
+               pile can never stray farther than the magnet range from
+               the position the server validates. */
+            if (loot._sx === undefined) { loot._sx = loot.x; loot._sy = loot.y; }
+            var sDist = Math.sqrt(Math.pow(P.x - loot._sx, 2) + Math.pow(_pickupOriginY - loot._sy, 2));
 
             /* v2.3.254: skip magnetism only for the variants with the
                same-frame splat-vacuum risk (raw slime fodder + fireGoblin).
@@ -74,7 +87,11 @@ export function updateGroundLootPickup(S, deps) {
                other loot pulled in — the coin-pickup bug.  Let them magnetize too,
                just gated behind a 220ms delay so the splat finishes first. */
             var _magnetReady = !_isFodder || (Date.now() - (loot.ts || 0) > 220);
-            if (_magnetReady && _amPileRecipient && !loot._collected && lDist < magnetRange && lDist > 20) {
+            /* v2.3.1161: gate on the ANCHOR distance (see above) so the
+               pull can't compound frame-over-frame into an unbounded
+               drag; lDist still bounds the inner edge so the pile stops
+               crawling once it visually reaches the player. */
+            if (_magnetReady && _amPileRecipient && !loot._collected && sDist < magnetRange && lDist > 20) {
               var pullStrength = (1 - lDist / magnetRange) * 3;
               var pullAngle = Math.atan2(P.y - loot.y, P.x - loot.x);
               loot.x += Math.cos(pullAngle) * pullStrength;

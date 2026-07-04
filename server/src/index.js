@@ -369,7 +369,7 @@ export class GameRoom {
     // may grab it; pile despawns entirely at DEATH_PILE_TOTAL_MS.
     this.DEATH_PILE_OWNER_MS = 60000;
     this.DEATH_PILE_TOTAL_MS = 120000;
-    this.LOOT_PICKUP_RANGE = 90; // px; was 30 -> 60 -> 90.  The client magnetises a pile toward the player from up to 50 px away (groundLoot.js) and fires the pickup once the *pulled* pile is within 20 px, so the player's true distance to the ORIGINAL drop can approach the magnet range; 60 still rejected those (esp. large monsters like the snowman, where the player attacks/stands further from the drop center) as "out of range".  90 covers the magnet range + movement lag.
+    this.LOOT_PICKUP_RANGE = 160; // px; was 30 -> 60 -> 90 -> 160 (v2.3.1161, the snowman "out of range" playtest report).  The legit "loot is at my feet" geometry stacks: the pile spawns at the MONSTER's center (a large sprite puts that ~40-60 px from where the killer stands), client magnetism pulls the pile visually up to 50 px toward the player (render-only + server-anchored since v2.3.1161, groundLoot.js), and the server's view of the player position lags the client's move throttle by up to ~50 px mid-walk.  Sum ~150 px; 160 accepts it with margin while staying far under cross-screen theft range.
     // v2.3.846: node_strike proximity gate.  Separate from LOOT_PICKUP_RANGE
     // because the gather STANCE can sit further from the node than a loot
     // pickup: fishing seats the player ~67 px up-right of the pond so the rod

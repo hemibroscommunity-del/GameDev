@@ -196,7 +196,7 @@ const psB = room.playerState.pb;
   psA.z = 'meadow'; psA.dead = false; psA.disconnected = false;
   psB.z = 'meadow'; psB.dead = false; psB.disconnected = false;
 
-  // Out of range (LOOT_PICKUP_RANGE = 90 px).
+  // Out of range (LOOT_PICKUP_RANGE = 160 px since v2.3.1161).
   psA.x = pile.x + 200; psA.y = pile.y;
   wsA.sent.length = 0;
   room._handleLootPickup(room.sessions.get(wsA), { lootId: pile.lootId, zone: 'meadow' });
@@ -246,6 +246,30 @@ const psB = room.playerState.pb;
   const creditB = msgsOfType(wsB, 'loot_credit')[0];
   check('loot: second recipient gets 30% coins, no skull', (psB.coins || 0) - coinsBeforeB === 30
     && creditB && creditB.payload.coins === 30 && !creditB.payload.skull, creditB && creditB.payload);
+
+  // v2.3.1161 range boundary: piles spawn at the MONSTER's center, so a
+  // big-sprite kill (snowman) + client magnetism + move-throttle lag
+  // legitimately stacks ~150 px between the server's player position
+  // and the pile.  150 must be accepted; past 160 stays rejected.
+  const pile2 = {
+    lootId: 'test-pile-range', zone: 'meadow', x: 2000, y: 2000,
+    coins: 10, skull: null, shard: null,
+    recipients: ['pa'], shares: { pa: 1 },
+    killerName: 'Attacker', ts: Date.now(), inventoryClaimed: false, claimedBy: {},
+  };
+  room.loot.meadow.push(pile2);
+  psA.x = pile2.x + 150; psA.y = pile2.y;
+  wsA.sent.length = 0;
+  room._handleLootPickup(room.sessions.get(wsA), { lootId: pile2.lootId, zone: 'meadow' });
+  check('loot: pickup accepted at 150 px (big-monster + magnetism + lag geometry)',
+    msgsOfType(wsA, 'loot_credit').length === 1 && rejectedReasons(wsA).length === 0,
+    rejectedReasons(wsA));
+  const pile3 = { ...pile2, lootId: 'test-pile-range2', claimedBy: {} };
+  room.loot.meadow.push(pile3);
+  psA.x = pile3.x + 170;
+  wsA.sent.length = 0;
+  room._handleLootPickup(room.sessions.get(wsA), { lootId: pile3.lootId, zone: 'meadow' });
+  check('loot: pickup rejected past 160 px', rejectedReasons(wsA).includes('out-of-range'), rejectedReasons(wsA));
 }
 
 // ── 6. v2.3.1104 weapon-blob sanitation (roadmap P2) ──
