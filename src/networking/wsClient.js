@@ -1777,6 +1777,14 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.1159: the loadout menu now mirrors unequips to the worker
+           (the handler predates this but no client path ever sent it, so
+           the shim had no passthrough — a locally-unequipped weapon kept
+           swinging server-side). */
+        if (msg.type === 'unequip_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'sell_weapon') {
           ws.send(JSON.stringify(msg));
           return;

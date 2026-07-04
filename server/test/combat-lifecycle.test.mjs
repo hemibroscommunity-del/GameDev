@@ -519,5 +519,53 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     evTick && evTick.events.length);
 }
 
+// ── 8. v2.3.1159: unequip_request + active-slot repair ──
+// The loadout menu now mirrors unequips to the worker.  Assert the
+// server contract end to end: weapon moves to stash, the dangling
+// activeSlot pointer is repaired to melee, and the damage roll falls
+// back to fists instead of the phantom bow (the live playtest bug).
+{
+  const sessA = room.sessions.get(wsA);
+  psA.dead = false; psA.dying = false;
+  psA.weapon = null;
+  psA.rangedWeapon = { type: 'bow', tierMult: 2, name: 'test bow' };
+  psA.weaponStash = [];
+  psA.activeSlot = 'ranged';
+  room._handleUnequipRequest(sessA, { slot: 'rangedWeapon' });
+  check('unequip: rangedWeapon nulled + moved to stash',
+    psA.rangedWeapon === null && psA.weaponStash.length === 1
+    && psA.weaponStash[0].name === 'test bow',
+    { slot: psA.rangedWeapon, stash: psA.weaponStash });
+  check('unequip: dangling activeSlot repaired to melee',
+    psA.activeSlot === 'melee', psA.activeSlot);
+  // Damage resolution after the unequip: activeSlot melee + empty
+  // weapon slot = the fists fallback (greatsword-type base, tierMult 1),
+  // NOT the stashed bow's tierMult 2 / agility scaling.
+  psA.power = 0; psA.agility = 200; psA.weaponSpecs = {};
+  const rolls = [];
+  for (let i = 0; i < 12; i++) rolls.push(room._computeAttackDamage(psA, undefined, false).dmg);
+  const fistMax = Math.ceil(room._weaponEffBase('greatsword', null) * 1.25 * 2); // variance top + crit headroom
+  check('unequip: damage roll uses the fists fallback, not the stashed bow',
+    rolls.every((d) => d <= fistMax), { rolls, fistMax });
+  // Unequipping the MELEE slot needs no repair: empty melee IS fists.
+  psA.weapon = { type: 'sword', tierMult: 1 };
+  room._handleUnequipRequest(sessA, { slot: 'weapon' });
+  check('unequip: melee slot unequips without touching activeSlot',
+    psA.weapon === null && psA.activeSlot === 'melee', psA.activeSlot);
+  // Staff slot unequip while active repairs too.
+  psA.staffWeapon = { type: 'staff', tierMult: 1 };
+  psA.activeSlot = 'staff';
+  room._handleUnequipRequest(sessA, { slot: 'staffWeapon' });
+  check('unequip: staff slot repair to melee',
+    psA.staffWeapon === null && psA.activeSlot === 'melee', psA.activeSlot);
+  // Non-active slot unequip must NOT touch activeSlot.
+  psA.rangedWeapon = { type: 'bow', tierMult: 1 };
+  psA.weapon = { type: 'sword', tierMult: 1 };
+  psA.activeSlot = 'melee';
+  room._handleUnequipRequest(sessA, { slot: 'rangedWeapon' });
+  check('unequip: non-active slot leaves activeSlot alone',
+    psA.rangedWeapon === null && psA.activeSlot === 'melee', psA.activeSlot);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

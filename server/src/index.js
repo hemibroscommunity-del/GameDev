@@ -1934,6 +1934,19 @@ export class GameRoom {
       ps.weaponStash.push(current);
     }
     ps[slot] = null;
+    // v2.3.1159: active-slot repair.  Unequipping the weapon the
+    // activeSlot points at used to leave the pointer dangling — the
+    // live playtest bug where a player unequips their bow yet the
+    // character keeps swinging it: _computeAttackDamage resolved the
+    // empty slot's weapon as null and fell back to a default type
+    // while ps.activeSlot stayed 'ranged'.  Reset to 'melee' (the
+    // fists fallback) so server damage resolution and the client's
+    // in-hand display agree.  'weapon' needs no repair: an empty
+    // melee slot IS the fists fallback.
+    if ((slot === 'rangedWeapon' && ps.activeSlot === 'ranged')
+        || (slot === 'staffWeapon' && ps.activeSlot === 'staff')) {
+      ps.activeSlot = 'melee';
+    }
     // Recompute pool maxes when armor changes -- per the T1/T2 stat
     // redesign spec, armor folds into maxHp via _armorHp.  Cheap call;
     // covers future armor-affecting equipment too.
