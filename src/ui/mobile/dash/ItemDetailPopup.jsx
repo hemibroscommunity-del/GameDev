@@ -779,11 +779,7 @@ export const ItemDetailPopup = () => {
           endurance: R.endurance || 0,
           agility: R.agility || 0,
           mind: R.mind || 0,
-          ferocity: R.ferocity || 0,
-          elementalMastery: R.elementalMastery || 0,
-          fortification: R.fortification || 0,
-          restoration: R.restoration || 0,
-          influence: R.influence || 0,
+          /* v2.3.1155: the five retired T2 stats are off the wire. */
         }});
       } catch (e) {}
     }

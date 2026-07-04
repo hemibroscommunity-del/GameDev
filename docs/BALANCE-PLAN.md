@@ -240,18 +240,22 @@ Server-owned at both sites (`_blockStaminaMult`); the per-hit cost
 already rode the wire as `staminaDrain`, so old clients render the
 discount with no client deploy. Sim gate DF-03 prices it.
 
-## 8. Formal retirement of the old T2 stats
+## 8. Formal retirement of the old T2 stats — **DONE v2.3.1155**
 
-ferocity / elementalMastery / fortification / restoration / influence are
-pinned to 0, wiped by `migrateWeaponT2`, and consumed only as ×1.0 no-ops
-(fortification: consumed nowhere). Cleanup checklist (one small PR):
-- drop the five keys from the join bootstrap, stats_update clamps
-  (`server/src/index.js`), player_state echo, and `_saveRpg` blob;
-- drop from client wire serialization (`src/networking/index.js:65-67`);
-- keep `_t2Retired` migration so legacy saves stay clean;
-- remove the ×0 formula hooks (emMult, restMult, influence CC) or leave
-  them reading the successor channels;
-- GDD §2 marked superseded by the 6×5 grid (doc note only).
+ferocity / elementalMastery / fortification / restoration / influence
+are deleted from the save (`strip-retired-t2` migration v5), the wire
+(join payload, stats_update — the server now IGNORES the keys old
+clients still send), `_saveRpg`, `_isValidStat`, and every formula:
+- `restoration`'s heal/regen role → the HP/Endurance grids' Recovery +
+  Conditioning channels (v2.3.1154);
+- `influence`'s vendor discount → retired outright (owner decision
+  2026-07-03; it had been ×1.0 for every live player since v2.3.910);
+- the Stat Screen's "TIER 2 — TECHNIQUE" block removed; legacy def/lck
+  aliases pinned to literal 0.
+The full coordinated edit list (why this could never ship as a plain
+blob migration) is recorded in `docs/specs/migrations.md`. Client
+`createDefaultRpg` keeps pinned zeros + `_t2Retired` one more release
+as the boundary heal.
 
 ## 9. Adopted invariants and current status
 

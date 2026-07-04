@@ -1377,11 +1377,13 @@ export class GameRoom {
   // those needs server-tracked stat VALUES (with T1 mutations also
   // server-mediated); a bigger slice -- this one just enforces the
   // T2 spend gate.
+  // v2.3.1155: T1-only — the five retired T2 stats (ferocity /
+  // elementalMastery / fortification / restoration / influence) are no
+  // longer allocatable (BALANCE-PLAN §8; pinned 0 for every live player
+  // since v2.3.910, deleted from the save/wire this slice).
   _isValidStat(stat) {
     return stat === 'power' || stat === 'vitality' || stat === 'endurance'
-        || stat === 'agility' || stat === 'mind' || stat === 'ferocity'
-        || stat === 'elementalMastery' || stat === 'fortification'
-        || stat === 'restoration' || stat === 'influence';
+        || stat === 'agility' || stat === 'mind';
   }
 
   _handleStatAllocate(session, payload) {
@@ -2112,8 +2114,8 @@ export class GameRoom {
   //
   // Client sends shop_purchase { itemId } when the player clicks Buy
   // on the NPC vendor.  Server mirrors the 5-item table (see client at
-  // BroTown.jsx ~17905), validates ps.coins >= discounted cost (where
-  // discount = min(0.20, ps.influence * 0.002) per §2.6), deducts coins,
+  // BroTown.jsx ~17905), validates ps.coins >= cost (v2.3.1155: the §2.6
+  // influence discount retired with the stat), deducts coins,
   // applies the effect to the appropriate playerState field, persists,
   // and emits player_state.
   //
@@ -2174,9 +2176,12 @@ export class GameRoom {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
-    // §2.6 Influence discount — 0.2% per point, max 20%.
-    const discount = Math.min(0.20, (ps.influence || 0) * 0.002);
-    const finalCost = Math.max(1, Math.floor(item.cost * (1 - discount)));
+    // v2.3.1155: the §2.6 Influence discount is RETIRED with the stat
+    // (owner decision 2026-07-03: delete outright, don't freeze).  Its
+    // live value has been 0 for every player since v2.3.910, so removal
+    // changes no observable price; a future reputation system can add
+    // its own discount hook.
+    const finalCost = Math.max(1, Math.floor(item.cost));
     if ((ps.coins || 0) < finalCost) return;
     ps.coins -= finalCost;
     // Apply effect.  Pool restores clamp to max; trap grants inventory;
@@ -3054,11 +3059,9 @@ export class GameRoom {
         endurance: ps.endurance || 0,
         agility: ps.agility || 0,
         mind: ps.mind || 0,
-        ferocity: ps.ferocity || 0,
-        elementalMastery: ps.elementalMastery || 0,
-        fortification: ps.fortification || 0,
-        restoration: ps.restoration || 0,
-        influence: ps.influence || 0,
+        // v2.3.1155: the five retired T2 stats are GONE from the save
+        // (the strip-retired-t2 migration cleans stored blobs).  Their
+        // successors live on the channel grids (BALANCE-PLAN §8).
         // Active food buff timers (endsAt timestamps).  Persisted so
         // they survive reconnect.  Expired entries get pruned lazily
         // by _buffActive checks; no need to clean on save.
@@ -3447,26 +3450,18 @@ export class GameRoom {
     const lvl = ps.level || 1;
     // Raw stats: accept client value, clamp to bounds.  T1 stats use
     // the per-level cap (max(20, level*10+20)) since they grow via
-    // use-training.  T2 stats are allocated from the unspentT2 pool
-    // and per the T1/T2 stat redesign spec are capped at 99 regardless
-    // of level.  Server computes its own pool maxes from these and
+    // use-training.  Server computes its own pool maxes from these and
     // ignores any maxHp / maxStamina / maxMana the client tries to push.
+    // v2.3.1155: the retired T2 stats are IGNORED, not rejected — old
+    // clients keep sending the five keys in every stats_update, and
+    // dropping the message would break their T1 syncs too.  They are
+    // simply never stored (the strip-retired-t2 migration cleaned the
+    // blobs; nothing re-injects them).
     const T1_STATS = ['power', 'vitality', 'endurance', 'agility', 'mind'];
-    const T2_STATS = ['ferocity', 'elementalMastery', 'fortification', 'restoration', 'influence'];
-    const T2_CAP = 99;
     let statsChanged = false;
     for (const s of T1_STATS) {
       if (typeof payload[s] === 'number') {
         const clamped = this._clampStat(payload[s], lvl);
-        if (ps[s] !== clamped) {
-          ps[s] = clamped;
-          statsChanged = true;
-        }
-      }
-    }
-    for (const s of T2_STATS) {
-      if (typeof payload[s] === 'number') {
-        const clamped = Math.max(0, Math.min(T2_CAP, Math.floor(payload[s])));
         if (ps[s] !== clamped) {
           ps[s] = clamped;
           statsChanged = true;
@@ -3823,26 +3818,27 @@ export class GameRoom {
           }
         } else if (ps.stamina < ps.maxStamina) {
           const stAmuletMult = 1 + (ps.amuletStaminaRegen || 0) / 100;
-          const stRestMult = 1 + (ps.restoration || 0) * 0.001;
           // Phase 2 of the T1/T2 spec: Endurance multiplies stamina regen.
           const stEndMult = 1 + (ps.endurance || 0) * 0.002;
-          // v2.3.1154: × Endurance-grid Conditioning (+1%/pt, cap +50%).
-          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stRestMult * stEndMult * this._conditioningMult(ps)));
+          // v2.3.1154: × Endurance-grid Conditioning (+1%/pt, cap +50%)
+          // — the successor to the retired restoration mult, deleted
+          // v2.3.1155 (it was ×1.0 for every live player since v2.3.910).
+          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult * this._conditioningMult(ps)));
           const beforeSt = ps.stamina;
           ps.stamina = Math.min(ps.maxStamina, ps.stamina + stHeal);
           if (ps.stamina !== beforeSt) changed = true;
         }
       }
 
-      // Mana.  manaBuff (1.3x regen mult) layered on top of restoration.
-      // Phase 4b of the T1/T2 spec: Mind also multiplies mana regen.
+      // Mana.  manaBuff (1.3x regen mult); Phase 4b of the T1/T2 spec:
+      // Mind also multiplies mana regen.  (v2.3.1155: the restoration
+      // mult deleted with the stat — ×1.0 for every live player.)
       const manaBuffActive = this._buffActive(ps, 'mana');
       if (typeof ps.maxMana === 'number' && typeof ps.mana === 'number' && ps.mana < ps.maxMana) {
-        const restMult = 1 + (ps.restoration || 0) * 0.001;
         const buffMult = manaBuffActive ? 1.3 : 1.0;
         const mindMult = 1 + (ps.mind || 0) * 0.001;
         const rate = oocMana ? 0.018 : 0.007;
-        const manaHeal = Math.max(1, Math.ceil(ps.maxMana * rate * restMult * buffMult * mindMult));
+        const manaHeal = Math.max(1, Math.ceil(ps.maxMana * rate * buffMult * mindMult));
         const beforeMn = ps.mana;
         ps.mana = Math.min(ps.maxMana, ps.mana + manaHeal);
         if (ps.mana !== beforeMn) changed = true;
@@ -4576,8 +4572,9 @@ export class GameRoom {
             if (!attackerPs._lastCollisionMana || _now - attackerPs._lastCollisionMana >= 3000) {
               attackerPs._lastCollisionMana = _now;
               const streakMult = 1 + Math.min(streak.count * 0.10, 0.50);
-              const restMult = 1 + (attackerPs.restoration || 0) * 0.0012;
-              const restore = Math.round(0.04 * (attackerPs.maxMana || 100) * restMult * streakMult);
+              // v2.3.1155: restoration mult deleted with the stat (×1.0
+              // for every live player; client mirror deleted in lockstep).
+              const restore = Math.round(0.04 * (attackerPs.maxMana || 100) * streakMult);
               if (restore > 0) {
                 attackerPs.mana = Math.min(attackerPs.maxMana || 100, (attackerPs.mana || 0) + restore);
                 this._saveRpg(session.id, attackerPs);
@@ -5199,8 +5196,11 @@ export class GameRoom {
           {
             const _ps = this.playerState[msg.id];
             const _lvl = _ps.level || 1;
-            const RAW_STATS = ['power', 'vitality', 'endurance', 'agility', 'mind',
-              'ferocity', 'elementalMastery', 'fortification', 'restoration', 'influence'];
+            // v2.3.1155: T1 only.  The five retired T2 stats are gone
+            // from this fallback — this line was the re-injection path
+            // migrations.md warned about (a spoofed rpgFerocity in the
+            // join payload used to persist forever).
+            const RAW_STATS = ['power', 'vitality', 'endurance', 'agility', 'mind'];
             const _storedHasStats = stored && typeof stored.vitality === 'number';
             for (const s of RAW_STATS) {
               if (_storedHasStats && typeof stored[s] === 'number') {

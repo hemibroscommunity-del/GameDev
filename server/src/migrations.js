@@ -40,7 +40,7 @@
  *   4. add a case to test/migrations.test.mjs with a real legacy blob.
  */
 
-export const RPG_SCHEMA_VERSION = 4;
+export const RPG_SCHEMA_VERSION = 5;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -149,13 +149,29 @@ export const MIGRATIONS = [
       return changed;
     },
   },
-  /* T2-stat cleanup DELIBERATELY NOT YET SHIPPED: stripping the
-   * legacy T2 stat fields is not a mechanical blob edit — the join
-   * handler's RAW_STATS fallback would re-inject them from the join
-   * payload, stats_update still clamps-and-stores them, and the
-   * restoration/influence formulas read them live.  The exact
-   * coordinated edit list is documented in docs/specs/migrations.md
-   * (handoff item L); ship it as its own change with all edits together. */
+  {
+    v: 5,
+    name: 'strip-retired-t2',
+    // v2.3.1155: the T2-stat cleanup, shipped AS the coordinated change
+    // migrations.md §"Why v3 was not shipped" demanded — this entry
+    // lands in the SAME version as the deletion of every unmigrated
+    // writer: the join RAW_STATS fallback (T1-only now), the
+    // stats_update T2 clamp (ignores the keys), the _saveRpg field
+    // list, and the last live formula reads (restoration -> the HP/
+    // Endurance grids' Recovery/Conditioning; influence's vendor
+    // discount retired outright, owner decision 2026-07-03).  All five
+    // have been pinned 0 for every live player since v2.3.910, so this
+    // deletes plumbing, not balance.  A partial ship of this list
+    // re-injects client-controlled values on reconnect — never split.
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      let changed = false;
+      for (const k of ['ferocity', 'elementalMastery', 'fortification', 'restoration', 'influence']) {
+        if (k in blob) { delete blob[k]; changed = true; }
+      }
+      return changed;
+    },
+  },
 ];
 
 /* Run every migration newer than blob._v, in order.  Returns

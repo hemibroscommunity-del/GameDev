@@ -95,20 +95,27 @@ const ps = room.playerState['bp_cd_a'];
   check('same-day settle is silent (no double pay)', ps.coins === coinsAfterJoin);
 }
 // Simulated day walk: reset the record, then drive with injected nows.
-await room._cadenceSet('login', 'bp_cd_a', { period: room._cadencePeriodDaily(T0), streak: 1 });
+// v2.3.1155: the walk anchors to W0 in the PAST, not T0 — the join
+// above settles the REAL day, and once the wall clock reached T0+1day
+// (2026-07-04) the simulated day-2 credit collided with the join's
+// idempotency opId (daily:<id>:<period>) and silently paid nothing.
+// Fixed future-ish timestamps the clock can catch up to are a time
+// bomb in an opId-deduped system; past ones never collide.
+const W0 = Date.UTC(2026, 0, 5, 12, 0, 0); // Mon 2026-01-05 noon UTC
+await room._cadenceSet('login', 'bp_cd_a', { period: room._cadencePeriodDaily(W0), streak: 1 });
 ps.coins = 0;
-await room._cadenceLoginReward('bp_cd_a', T0 + DAY); // contiguous day 2
+await room._cadenceLoginReward('bp_cd_a', W0 + DAY); // contiguous day 2
 check('contiguous day pays base + one streak step', ps.coins === CADENCE.DAILY_BASE_GOLD + CADENCE.DAILY_STREAK_GOLD, ps.coins);
 check('streak advanced to 2', (await room._cadenceGet('login', 'bp_cd_a')).streak === 2);
 // Jump the record to a deep streak and verify the cap.
-await room._cadenceSet('login', 'bp_cd_a', { period: room._cadencePeriodDaily(T0 + 20 * DAY), streak: 42 });
+await room._cadenceSet('login', 'bp_cd_a', { period: room._cadencePeriodDaily(W0 + 20 * DAY), streak: 42 });
 ps.coins = 0;
-await room._cadenceLoginReward('bp_cd_a', T0 + 21 * DAY);
+await room._cadenceLoginReward('bp_cd_a', W0 + 21 * DAY);
 check('streak reward caps at DAILY_STREAK_CAP',
   ps.coins === CADENCE.DAILY_BASE_GOLD + CADENCE.DAILY_STREAK_GOLD * (CADENCE.DAILY_STREAK_CAP - 1), ps.coins);
 // Gap: last settle 21d in, next login 25d in -> reset to day 1.
 ps.coins = 0;
-await room._cadenceLoginReward('bp_cd_a', T0 + 25 * DAY);
+await room._cadenceLoginReward('bp_cd_a', W0 + 25 * DAY);
 check('a missed day resets the streak to 1', ps.coins === CADENCE.DAILY_BASE_GOLD
   && (await room._cadenceGet('login', 'bp_cd_a')).streak === 1, ps.coins);
 

@@ -1657,9 +1657,9 @@ export var BroTown = function BroTown(_ref0) {
       rpgState.maxHp || 100, rpgState.maxStamina || 100, rpgState.maxMana || 100,
       def, amuletHpRegen, amuletStaminaRegen,
       rpgState.power || 0, rpgState.vitality || 0, rpgState.endurance || 0,
-      rpgState.agility || 0, rpgState.mind || 0, rpgState.ferocity || 0,
-      rpgState.elementalMastery || 0, rpgState.fortification || 0,
-      rpgState.restoration || 0, rpgState.influence || 0,
+      rpgState.agility || 0, rpgState.mind || 0,
+      /* v2.3.1155: the five retired T2 stats left the signature with
+         the wire fields below. */
       /* v2.3.236: include armor in the dedupe so armor swaps trigger
          a fresh stats_update -- otherwise the worker's view of armor
          goes stale and its echoed player_state silently re-equips. */
@@ -1716,11 +1716,8 @@ export var BroTown = function BroTown(_ref0) {
           endurance: rpgState.endurance || 0,
           agility: rpgState.agility || 0,
           mind: rpgState.mind || 0,
-          ferocity: rpgState.ferocity || 0,
-          elementalMastery: rpgState.elementalMastery || 0,
-          fortification: rpgState.fortification || 0,
-          restoration: rpgState.restoration || 0,
-          influence: rpgState.influence || 0,
+          /* v2.3.1155: the five retired T2 stats are off the wire —
+             the worker ignores the keys either way. */
           /* v2.3.912: per-weapon-category build channels.  The worker clamps
              each value to [0,99] and applies the damage + crit channels in its
              authoritative damage roll, so spent build points speed up real
@@ -2101,12 +2098,13 @@ export var BroTown = function BroTown(_ref0) {
       S.rpg.mana = S.rpg.mana || S.rpg.maxMana;
       S.respawnTimer = Date.now();
 
-      /* Legacy compat properties — some UI/render code still reads these */
+      /* Legacy compat properties — some UI/render code still reads these.
+         v2.3.1155: def/lck aliased retired stats (always 0) — literal now. */
       S.rpg.str = S.rpg.power;
-      S.rpg.def = S.rpg.fortification;
+      S.rpg.def = 0;
       S.rpg.vit = S.rpg.vitality;
       S.rpg.spd = S.rpg.agility;
-      S.rpg.lck = S.rpg.ferocity;
+      S.rpg.lck = 0;
       S.rpg.unspentPts = S.rpg.unspentT1 + S.rpg.unspentT2;
       setRpgState(_objectSpread({}, S.rpg));
       try {
@@ -2143,12 +2141,13 @@ export var BroTown = function BroTown(_ref0) {
                   S.rpg.coins = sr.coins || 0;
                 }
                 recalcDerived(S.rpg);
-                /* Update legacy compat */
+                /* Update legacy compat (v2.3.1155: def/lck literal 0 —
+                   they aliased the retired fortification/ferocity) */
                 S.rpg.str = S.rpg.power;
-                S.rpg.def = S.rpg.fortification;
+                S.rpg.def = 0;
                 S.rpg.vit = S.rpg.vitality;
                 S.rpg.spd = S.rpg.agility;
-                S.rpg.lck = S.rpg.ferocity;
+                S.rpg.lck = 0;
                 S.rpg.unspentPts = S.rpg.unspentT1 + S.rpg.unspentT2;
                 setRpgState(_objectSpread({}, S.rpg));
                 try {
@@ -3826,21 +3825,22 @@ export var BroTown = function BroTown(_ref0) {
              0.2% per point up to 2x at E=500, on top of Restoration. */
           if (_R7.stamina < _R7.maxStamina && !S._serverMonsters) {
             var _R7$_amuletBonus;
-            var stRestMult = 1 + (_R7.restoration || 0) * 0.001;
+            /* v2.3.1155: restoration mult deleted with the stat (was
+               ×1.0 for every live player since v2.3.910). */
             var stEndMult = 1 + (_R7.endurance || 0) * 0.002;
             var stAmuletMult = ((_R7$_amuletBonus = _R7._amuletBonus) === null || _R7$_amuletBonus === void 0 ? void 0 : _R7$_amuletBonus.stat) === 'staminaRegen' ? 1 + _R7._amuletBonus.value / 100 : 1;
             /* v2.3.1154: × Conditioning (Endurance grid) -- mirrors the
                worker's regen tick. */
-            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stRestMult * stEndMult * regenMult * stAmuletMult * getConditioningMult(_R7));
+            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stEndMult * regenMult * stAmuletMult * getConditioningMult(_R7));
           }
-          /* Mana regen — §3.4: OOC 2.5%/s after 2s × Restoration × Mind.
+          /* Mana regen — §3.4: OOC 2.5%/s after 2s × Mind.
              v2.3.234 (Phase 4): Mind speeds up the recharge alongside
-             governing mana pool size + special-attack damage. */
+             governing mana pool size + special-attack damage.
+             v2.3.1155: restoration mult deleted with the stat. */
           if (_R7.mana < _R7.maxMana && Date.now() - S.lastDamageTaken > 2000 && !S._serverMonsters) {
-            var mRestMult = 1 + (_R7.restoration || 0) * 0.001;
             var mMindMult = 1 + (_R7.mind || 0) * 0.001;
             var manaRegenMult = hasManaBuff ? 1.3 : 1.0;
-            _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mRestMult * mMindMult * manaRegenMult);
+            _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mMindMult * manaRegenMult);
           }
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */

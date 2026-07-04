@@ -116,12 +116,13 @@ export function VendorPanel(props) {
       onClick: function onClick() {
         var R = stateRef.current.rpg;
         var S = stateRef.current;
-        /* §2.6 Influence discount — 0.2% per point, max 20% */
-        var discount = Math.min(0.20, (R.influence || 0) * 0.002);
-        var finalCost = Math.max(1, Math.floor(item.cost * (1 - discount)));
+        /* v2.3.1155: the §2.6 Influence discount retired with the stat
+           (always 0 for live players since v2.3.910) — server mirror
+           deleted in lockstep. */
+        var finalCost = Math.max(1, Math.floor(item.cost));
         if (R.coins < finalCost) return;
         /* Server-authoritative shop in MP: worker mirrors the 5-item
-           table, validates coins + influence discount, applies effect
+           table, validates coins, applies effect
            (pool restore / inventory grant), emits player_state.  Local
            mutation stays as snappy visual prediction; server's view
            overwrites on the next player_state. */

@@ -77,30 +77,37 @@ theirs.**
 4. Add a case to `test/migrations.test.mjs` with a real legacy blob
    (the suite's put-counting mock proves one-re-put convergence).
 
-## Why v3 (T2-stat cleanup) was NOT shipped
+## The T2-stat cleanup (shipped v2.3.1155 as migration v5)
 
-Handoff item L wants the five retired T2 stats (`ferocity`,
+Handoff item L wanted the five retired T2 stats (`ferocity`,
 `elementalMastery`, `fortification`, `restoration`, `influence`)
-dropped from wire/save/clamps. That is **not a mechanical blob edit** —
-a delete-the-fields migration alone would silently regress because the
-fields are still live in three places. The coordinated edit list, for
-whoever ships it as its own PR:
+dropped from wire/save/clamps. That was **not a mechanical blob edit** —
+a delete-the-fields migration alone would have silently regressed
+because the fields were live in three places. The coordinated edit list
+(kept here as the record of what shipped together, v2.3.1155 —
+`strip-retired-t2`):
 
 1. **Join RAW_STATS fallback** (index.js join handler): reconnects fall
    back to the join payload for stats the stored blob lacks — deleting
-   the fields from the blob makes every reconnect re-inject them from
-   the (client-controlled) payload. The fallback must stop accepting
-   the five retired keys in the same commit.
-2. **`_handleStatsUpdate` T2 clamp**: still validates-and-stores the
-   retired stats; must stop storing them or the next save re-adds them.
-3. **`_saveRpg` fixed list**: remove the five fields (the registry
-   migration then strips them from stored blobs).
-4. **Two live formulas**: `restoration` (heal scaling) and `influence`
-   (vendor/economy scaling) are read by current formulas — decide their
-   replacement inputs BEFORE deleting the data they read.
+   the fields from the blob would make every reconnect re-inject them
+   from the (client-controlled) payload. SHIPPED: the fallback is
+   T1-only in the same commit as the migration.
+2. **`_handleStatsUpdate` T2 clamp**: SHIPPED — the retired keys are
+   now IGNORED (never stored, never rejected; old clients keep sending
+   them and their T1 syncs must still land).
+3. **`_saveRpg` fixed list**: SHIPPED — the five fields removed; the
+   v5 registry migration strips stored blobs.
+4. **Two live formulas**: SHIPPED — `restoration`'s heal/regen role is
+   succeeded by the HP/Endurance grids' Recovery + Conditioning
+   channels (v2.3.1154); `influence`'s vendor discount was retired
+   outright (owner decision 2026-07-03 — its live value had been 0 for
+   every player since v2.3.910, so removal changed no observable
+   price). Client mirrors (regen/mana/collision-restore, vendor panel)
+   deleted in lockstep.
 
-Only after 1–3 land together (plus the formula decision in 4) does the
-actual migration entry become the trivial part.
+The client's `createDefaultRpg` keeps the pinned zeros + `_t2Retired`
+one more release as the boundary heal (client payloads are unmigrated
+writers).
 
 ## Tests
 
