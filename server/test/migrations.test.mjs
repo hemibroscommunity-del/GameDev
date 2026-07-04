@@ -191,5 +191,33 @@ const legacyBlob = () => ({
   check('v4 idempotent: existing pools untouched on re-run', r2.changed === false && b.hpUnspent === 3, r2);
 }
 
+// ── 10. v5 strip-retired-t2 + the coordinated writer deletions
+// (v2.3.1155) — the whole point of shipping the migrations.md edit
+// list together: NOTHING can re-inject the five retired stats ──
+{
+  const b = legacyBlob();
+  b.ferocity = 12; b.elementalMastery = 4; b.fortification = 9; b.restoration = 3; b.influence = 50;
+  const r = runRpgMigrations(b);
+  check('v5 strips the five retired fields from stored blobs',
+    r.failed === null && !('ferocity' in b) && !('elementalMastery' in b) && !('fortification' in b)
+    && !('restoration' in b) && !('influence' in b), Object.keys(b).filter((k) => /fero|elem|fort|resto|influ/.test(k)));
+  const r2 = runRpgMigrations(b);
+  check('v5 idempotent', r2.changed === false, r2);
+
+  // A spoofed join payload can no longer re-inject (the RAW_STATS
+  // fallback is T1-only) — the exact hole migrations.md warned about.
+  const wsT = fakeWs('t2r');
+  await join(wsT, 'bp_mig_t2', { rpgFerocity: 999, rpgInfluence: 50, rpgVitality: 5 });
+  const psT = room.playerState['bp_mig_t2'];
+  check('join payload no longer re-injects retired stats (T1 still lands)',
+    psT.ferocity === undefined && psT.influence === undefined && psT.vitality === 5,
+    { f: psT.ferocity, i: psT.influence, v: psT.vitality });
+  await room._saveRpg('bp_mig_t2', psT);
+  const savedT = state._store.get('rpg:bp_mig_t2');
+  check('_saveRpg fixed field list no longer carries the retired stats',
+    !('ferocity' in savedT) && !('influence' in savedT) && !('restoration' in savedT),
+    Object.keys(savedT).filter((k) => /fero|influ|resto/.test(k)));
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

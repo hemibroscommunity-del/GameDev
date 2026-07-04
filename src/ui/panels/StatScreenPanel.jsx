@@ -171,92 +171,11 @@ export function StatScreenPanel(props) {
         BT_AUDIO.beep(R._statLocks[key] ? 500 : 700, 0.05, 0.08, 'sine');
       }
     }, (rpgState._statLocks && rpgState._statLocks[key]) ? '🔒' : '🔓'));
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#5b52ff',
-      marginBottom: 3,
-      marginTop: 8
-    }
-  }, "TIER 2 \u2014 TECHNIQUE ", rpgState.unspentT2 > 0 ? "(".concat(rpgState.unspentT2, " pts)") : '', " ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.3)'
-    }
-  }, "respecable")), [['Ferocity', 'ferocity', '🔥', 'Crit chance & dmg', '#ff5e6c'], ['Elem Mastery', 'elementalMastery', '✨', 'Status & collision dmg', '#00d4b8'], ['Fortification', 'fortification', '🏰', 'Block & Thorns', '#60a5fa'], ['Restoration', 'restoration', '💚', 'Regen & healing', '#3dd497'], ['Influence', 'influence', '👁️', 'CC duration & debuffs', '#a78bfa']].map(function (_ref82) {
-    var _ref83 = _slicedToArray(_ref82, 5),
-      label = _ref83[0],
-      key = _ref83[1],
-      icon = _ref83[2],
-      desc = _ref83[3],
-      col = _ref83[4];
-    return /*#__PURE__*/React.createElement("div", {
-      key: key,
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 4,
-        marginBottom: 3
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: 75,
-        fontSize: 9,
-        fontWeight: 700,
-        color: col
-      }
-    }, icon, " ", label, " ", /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#fff'
-      }
-    }, rpgState[key] || 0)), /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1,
-        height: 5,
-        background: 'rgba(255,255,255,.08)',
-        borderRadius: 3,
-        overflow: 'hidden'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: Math.min(100, (rpgState[key] || 0) / 4) + '%',
-        height: '100%',
-        background: col,
-        borderRadius: 3,
-        transition: 'width .2s'
-      }
-    })), rpgState.unspentT2 > 0 && /*#__PURE__*/React.createElement("button", {
-      style: {
-        width: 18,
-        height: 18,
-        borderRadius: 4,
-        background: col,
-        border: 'none',
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: 900,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        lineHeight: 1
-      },
-      onClick: function onClick() {
-        var S = stateRef.current;
-        var R = S.rpg;
-        if (!R.unspentT2 || R.unspentT2 <= 0) return;
-        if (!confirm('Spend 1 Tier 2 point on ' + label + '? (' + R.unspentT2 + ' remaining)')) return;
-        /* Server-validated allocation: send the request, let the worker
-           validate ps.unspentT2 + apply, then mirror via stat_allocated
-           event.  No local mutation here so a modified client can't
-           bypass the unspentT2 gate. */
-        if (S.channel) {
-          try { S.channel.send({ type: 'stat_allocate', payload: { stat: key } }); } catch (e) {}
-        }
-        BT_AUDIO.beep(700, 0.06, 0.1, 'sine');
-      }
-    }, "+"));
+  /* v2.3.1155: the "TIER 2 \u2014 TECHNIQUE" block (Ferocity / Elem Mastery /
+     Fortification / Restoration / Influence) is GONE \u2014 the five generic
+     stats were pinned 0 since v2.3.910 and are now deleted from the
+     save/wire (stat_allocate rejects them server-side).  Their successors
+     are the channel grids on the Builds panel. */
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 7,

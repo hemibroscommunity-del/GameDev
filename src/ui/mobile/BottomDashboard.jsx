@@ -904,8 +904,8 @@ export const BottomDashboard = () => {
                           <span style={rowVal}>{critPct}%</span>
                         </div>
                         <div
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Block reduction — 25% base + Fortification (${R.fortification || 0}) and shield bonus.  Capped at 75%.`); }}
-                          title="Block reduction from Fortification + shield"
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Block — a raised shield fully negates hits.  The % shows base 25% + shield gear bonus.  Bulwark (Defense grid) cuts block stamina costs.`); }}
+                          title="Block: full negation while shielded"
                           style={rowStyle}>
                           <span style={rowLabel}>Block</span>
                           <span style={rowVal}>{blockPct}%</span>

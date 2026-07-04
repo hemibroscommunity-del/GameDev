@@ -198,7 +198,9 @@ export function setupWebSocket(ctx) {
               var _ab2 = (S.rpg && S.rpg._amuletBonus) || null;
               return (_ab2 && _ab2.stat === 'staminaRegen') ? (_ab2.value || 0) : 0;
             })(),
-            rpgRestoration: (S.rpg && typeof S.rpg.restoration === 'number') ? S.rpg.restoration : 0,
+            /* v2.3.1155: rpgRestoration (and the other four retired T2
+               seeds below) are off the join payload — the server's
+               RAW_STATS fallback is T1-only now. */
             /* Stamina + mana pools — slice 1b bootstrap. */
             rpgStamina: (S.rpg && typeof S.rpg.stamina === 'number') ? S.rpg.stamina : 100,
             rpgMaxStamina: (S.rpg && typeof S.rpg.maxStamina === 'number') ? S.rpg.maxStamina : 100,
@@ -212,9 +214,6 @@ export function setupWebSocket(ctx) {
             rpgEndurance: (S.rpg && typeof S.rpg.endurance === 'number') ? S.rpg.endurance : 0,
             rpgAgility: (S.rpg && typeof S.rpg.agility === 'number') ? S.rpg.agility : 0,
             rpgMind: (S.rpg && typeof S.rpg.mind === 'number') ? S.rpg.mind : 0,
-            rpgFerocity: (S.rpg && typeof S.rpg.ferocity === 'number') ? S.rpg.ferocity : 0,
-            rpgElementalMastery: (S.rpg && typeof S.rpg.elementalMastery === 'number') ? S.rpg.elementalMastery : 0,
-            rpgFortification: (S.rpg && typeof S.rpg.fortification === 'number') ? S.rpg.fortification : 0,
             /* Equipment slots bootstrap (slice 12).  Worker stores
                these as opaque objects; stash truncated to cap server-
                side. */
@@ -1120,10 +1119,12 @@ export function setupWebSocket(ctx) {
               var Rsa = S.rpg;
               Rsa[sa.stat] = (Rsa[sa.stat] || 0) + 1;
               Rsa.str = Rsa.power;
-              Rsa.def = Rsa.fortification;
+              /* v2.3.1155: def/lck aliased the retired fortification/
+                 ferocity — pinned 0 for every live player, now literal. */
+              Rsa.def = 0;
               Rsa.vit = Rsa.vitality;
               Rsa.spd = Rsa.agility;
-              Rsa.lck = Rsa.ferocity;
+              Rsa.lck = 0;
               if (typeof sa.newUnspentT2 === 'number') {
                 Rsa.unspentT2 = sa.newUnspentT2;
               }

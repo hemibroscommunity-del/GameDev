@@ -148,9 +148,16 @@ const psB = room.playerState.pb;
     psA.maxHp !== 99999 && psA.maxHp === room._calcMaxHp(psA.level, psA.vitality),
     { maxHp: psA.maxHp, before: maxHpBefore });
 
-  room._handleStatsUpdate(room.sessions.get(wsA), { ferocity: 99999, restoration: -5 });
-  check('stats_update: T2 stat caps at 99', psA.ferocity === 99, psA.ferocity);
-  check('stats_update: negative stat floors at 0', psA.restoration === 0, psA.restoration);
+  // v2.3.1155: the retired T2 keys are IGNORED (never stored) — old
+  // clients still send them in every stats_update, and the message's
+  // T1 fields must keep landing.  (An earlier section pins
+  // psA.ferocity = 0 directly; the claim here is the spoofed value
+  // never lands, not that the property was never created.)
+  const feroBefore = psA.ferocity;
+  room._handleStatsUpdate(room.sessions.get(wsA), { ferocity: 99999, restoration: -5, power: 3 });
+  check('stats_update: retired T2 keys ignored, never stored',
+    psA.ferocity === feroBefore && psA.restoration === undefined, { f: psA.ferocity, r: psA.restoration });
+  check('stats_update: T1 fields in the same message still land', psA.power === 3, psA.power);
 
   // Armor: tierMult clamps to 8, Leather Armor rejected outright.
   room._handleStatsUpdate(room.sessions.get(wsA), { armor: { name: 'Forged Blob', tierMult: 999 } });

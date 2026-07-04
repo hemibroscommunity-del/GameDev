@@ -175,15 +175,18 @@ check('recipe: missing one ingredient consumes NOTHING (dry-run rule)', econSnap
 
 // ── 5. shop_purchase ──
 const TRAP = SHOP_ITEMS.basicTrap;
-ps.coins = 100; ps.influence = 0; ps.inventory = {};
+ps.coins = 100; ps.inventory = {};
 await send(ws, 'shop_purchase', { itemId: 'basicTrap' });
 check('shop: exact debit + trap in inventory',
   ps.coins === 100 - TRAP.cost && ps.inventory.basic_trap === 1, { coins: ps.coins, inv: ps.inventory });
-ps.coins = 100; ps.influence = 50; // 50 * 0.2% = 10% discount
+// v2.3.1155: the influence discount retired with the stat — even a blob
+// carrying a stale influence value pays full price.
+ps.coins = 100; ps.influence = 50;
 await send(ws, 'shop_purchase', { itemId: 'basicTrap' });
-check('shop: influence discount applied (0.2%/pt)',
-  ps.coins === 100 - Math.max(1, Math.floor(TRAP.cost * 0.9)), { coins: ps.coins });
-ps.coins = 3; ps.influence = 0;
+check('shop: retired influence discount no longer applies (full price)',
+  ps.coins === 100 - TRAP.cost, { coins: ps.coins });
+delete ps.influence;
+ps.coins = 3;
 const preShop = econSnap(ps);
 await send(ws, 'shop_purchase', { itemId: 'basicTrap' });
 check('shop: insufficient coins is a clean no-op', econSnap(ps) === preShop);

@@ -113,9 +113,8 @@ export function syncRpgToServer(rpg) {
       stamina: rpg.stamina, maxStamina: rpg.maxStamina,
       mana: rpg.mana, maxMana: rpg.maxMana,
       power: rpg.power, vitality: rpg.vitality, endurance: rpg.endurance,
-      agility: rpg.agility, mind: rpg.mind, ferocity: rpg.ferocity,
-      elementalMastery: rpg.elementalMastery, fortification: rpg.fortification,
-      restoration: rpg.restoration, influence: rpg.influence,
+      agility: rpg.agility, mind: rpg.mind,
+      /* v2.3.1155: the five retired T2 stats are off the wire. */
       unspentT1: rpg.unspentT1, unspentT2: rpg.unspentT2,
       weapon: rpg.weapon, rangedWeapon: rpg.rangedWeapon,
       activeSlot: rpg.activeSlot, armor: rpg.armor,

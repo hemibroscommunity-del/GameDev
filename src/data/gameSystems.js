@@ -1945,58 +1945,58 @@ export const MASKS = [{
 /* Character appearance subtly changes based on stat allocation */
 export function getStatVisuals(rpg) {
   if (!rpg) return {};
+  /* v2.3.1155: T1-only scoring — the retired T2 terms (ferocity /
+     elementalMastery / fortification / restoration / influence) were
+     ×0 for every live player since v2.3.910; the healer/leader
+     archetypes now key off vitality/mind spreads instead of dead
+     stats so they remain reachable. */
   var power = rpg.power || 0,
     vit = rpg.vitality || 0,
     end = rpg.endurance || 0;
   var agi = rpg.agility || 0,
     mind = rpg.mind || 0;
-  var fer = rpg.ferocity || 0,
-    em = rpg.elementalMastery || 0;
-  var fort = rpg.fortification || 0,
-    rest = rpg.restoration || 0,
-    inf = rpg.influence || 0;
-  var total = power + vit + end + agi + mind + fer + em + fort + rest + inf;
+  var total = power + vit + end + agi + mind;
   if (total < 10) return {}; /* no visible changes below 10 total */
 
   /* Find dominant stat archetype */
   var archetypes = [{
     key: 'berserker',
-    score: power * 2 + fer * 3,
+    score: power * 2,
     color: '#dc2626',
     glow: 'rgba(220,38,38,.15)',
     scale: 1.08,
     desc: 'bulkier arms'
   }, {
     key: 'tank',
-    score: vit * 2 + fort * 3 + end,
+    score: vit * 2 + end,
     color: '#607D8B',
     glow: 'rgba(96,125,139,.12)',
     scale: 1.12,
     desc: 'wider torso'
   }, {
     key: 'mage',
-    score: mind * 2 + em * 3,
+    score: mind * 2,
     color: '#9333ea',
     glow: 'rgba(147,51,234,.15)',
     scale: 0.95,
     desc: 'arcane aura'
   }, {
     key: 'rogue',
-    score: agi * 3 + fer,
+    score: agi * 3,
     color: '#22c55e',
     glow: 'rgba(34,197,94,.1)',
     scale: 0.92,
     desc: 'sleeker frame'
   }, {
     key: 'healer',
-    score: rest * 3 + mind,
+    score: vit + mind,
     color: '#38bdf8',
     glow: 'rgba(56,189,248,.12)',
     scale: 1.0,
     desc: 'gentle glow'
   }, {
     key: 'leader',
-    score: inf * 3 + mind,
+    score: mind + agi,
     color: '#f5c542',
     glow: 'rgba(245,197,66,.1)',
     scale: 1.0,
@@ -4815,13 +4815,13 @@ export function resolveCollision(target, triggerElement, source, rpg, now) {
     rs.count = 0;
   }
 
-  /* §3.5 Mana restore */
+  /* §3.5 Mana restore.  v2.3.1155: restoration mult deleted with the
+     stat (×1.0 for every live player; server mirror deleted in lockstep). */
   var manaRestored = 0;
   if (rpg && now - (source._lastCollisionMana || 0) >= 3000) {
     source._lastCollisionMana = now;
     var baseRestore = 0.04 * rpg.maxMana;
-    var restMult = 1 + (rpg.restoration || 0) * 0.0012;
-    manaRestored = Math.round(baseRestore * restMult * streakMult);
+    manaRestored = Math.round(baseRestore * streakMult);
     rpg.mana = Math.min(rpg.maxMana, (rpg.mana || 0) + manaRestored);
   }
   return {
@@ -5254,9 +5254,11 @@ export function createDefaultRpg() {
        undefined default to 0 via `|| 0` in the gate; their first new
        build point materialises the field. */
     _buildPointsThisLvl: 0,
-    /* Tier 2 — RETIRED generic specs.  Kept at 0 (still read defensively
-       in a few combat sites) but no longer allocatable.  Progression now
-       lives in the per-weapon-category build below. */
+    /* Tier 2 — RETIRED generic specs (v2.3.1155: every live read is now
+       deleted client+server; the save/wire dropped the fields).  The
+       pinned zeros + _t2Retired stay ONE more release as the boundary
+       heal for pre-fix saves per docs/specs/migrations.md — client
+       payloads are unmigrated writers. */
     ferocity: 0,
     elementalMastery: 0,
     fortification: 0,
