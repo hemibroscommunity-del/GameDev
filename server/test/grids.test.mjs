@@ -99,7 +99,14 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
     ps.hpSpec.vigor === 50 && ps.hpSpec.recovery === 10 && ps.hpSpec.lifeblood === 0
     && ps.enduranceSpec.stamina === 40 && ps.enduranceSpec.conditioning === 20 && ps.enduranceSpec.evasion === 0,
     { hp: ps.hpSpec, en: ps.enduranceSpec });
-  check('stats_update: unspent pools clamp [0,999]', ps.hpUnspent === 6 && ps.enduranceUnspent === 999,
+  // v2.3.1158: pools are DERIVED now — whenever a spec arrives the
+  // handler recomputes canonical earned-minus-spent, overriding the
+  // client-reported values (6 and 99999 both land at 60 earned − 60
+  // spent = 0).  This is also the truncation consistency fix: the
+  // budget-clipped points above are reflected in the pools the same
+  // tick instead of waiting for the next reconnect's v7 migration.
+  check('stats_update: pools recomputed canonically, client-reported values overridden',
+    ps.hpUnspent === 0 && ps.enduranceUnspent === 0,
     { hp: ps.hpUnspent, en: ps.enduranceUnspent });
   check('stats_update: vigor recomputed maxHp the same tick (statsChanged)',
     ps.maxHp > hpBefore, { before: hpBefore, after: ps.maxHp });
@@ -259,6 +266,31 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   const modest = { defenseSpec: { ironskin: 100 }, hpSpec: { vigor: 40 } };
   check('build ceiling: under-1000 allocations untouched',
     room._clampBuildTotal(modest) === 140 && modest.defenseSpec.ironskin === 100 && modest.hpSpec.vigor === 40, modest);
+}
+
+// ── 11. v2.3.1158: mutation gate — no echo / no put on a no-op ──
+{
+  // Prime a known canonical state (hpUnspent 35 IS the canonical
+  // 60 earned − 25 spent, so the re-send below is a true no-op).
+  const payload = { vitality: 30, hpSpec: { vigor: 20, recovery: 5 }, hpUnspent: 35 };
+  room._handleStatsUpdate(session, payload);
+  const origPut = state.storage.put;
+  let puts = 0;
+  state.storage.put = async (k, v) => { puts++; return origPut(k, v); };
+  const echoes = () => ws.sent.filter((m) => m.type === 'player_state').length;
+  const echoesBefore = echoes();
+  room._handleStatsUpdate(session, JSON.parse(JSON.stringify(payload)));
+  check('mutation gate: identical re-send -> no player_state echo',
+    echoes() === echoesBefore, { before: echoesBefore, after: echoes() });
+  check('mutation gate: identical re-send -> no storage put', puts === 0, { puts });
+  // A real change still persists + echoes.
+  room._handleStatsUpdate(session, { hpSpec: { vigor: 21, recovery: 5 } });
+  check('mutation gate: real change still echoes + persists',
+    echoes() === echoesBefore + 1 && puts > 0, { echoes: echoes(), puts });
+  state.storage.put = origPut;
+  check('mutation gate: pool canonical after the spend (earned − 26 spent)',
+    ps.hpUnspent === Math.min(200, 2 * ps.vitality) - 26,
+    { hpUnspent: ps.hpUnspent, vit: ps.vitality });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

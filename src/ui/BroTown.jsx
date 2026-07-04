@@ -1654,7 +1654,14 @@ export var BroTown = function BroTown(_ref0) {
     var amuletHpRegen = (amuBon && amuBon.stat === 'hpRegen') ? (amuBon.value || 0) : 0;
     var amuletStaminaRegen = (amuBon && amuBon.stat === 'staminaRegen') ? (amuBon.value || 0) : 0;
     var _sig = [
-      rpgState.maxHp || 100, rpgState.maxStamina || 100, rpgState.maxMana || 100,
+      /* v2.3.1158: maxHp/maxStamina/maxMana are OUT of the dedupe
+         signature (they stay in the payload for old-worker compat).
+         The worker ignores and recomputes them, then echoes ITS values
+         back — so any coefficient skew between client and worker made
+         the signature flip on every recalcDerived, re-emitting
+         stats_update in a loop (the "coins flashing" storm when a
+         cached pre-1156 client met the 1156 worker).  Locally-derived
+         values the server overwrites must never re-trigger this effect. */
       def, amuletHpRegen, amuletStaminaRegen,
       rpgState.power || 0, rpgState.vitality || 0, rpgState.endurance || 0,
       rpgState.agility || 0, rpgState.mind || 0,

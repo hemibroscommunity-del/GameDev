@@ -83,7 +83,7 @@ import { cadenceMethods } from './cadence.js';
 import { LIVEOPS, liveopsMethods } from './liveops.js';
 // v2.3.1152: save-format migration registry (run in _loadRpg; _saveRpg
 // stamps _v = RPG_SCHEMA_VERSION -- the one blessed rule-1 exception).
-import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
+import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills, computeCanonicalPools } from './migrations.js';
 // v2.3.1132 (PR16): two-sided trade window -- both-stage-both-confirm
 // sessions on the validate-at-commit core (the gift handshake in
 // trade.js stays untouched for old clients; see trade2.js header).
@@ -3503,6 +3503,21 @@ export class GameRoom {
     const ps = this.playerState[session.id];
     if (!ps) return;
     const lvl = ps.level || 1;
+    // v2.3.1158: mutation gate.  This handler used to _saveRpg AND echo
+    // player_state unconditionally, so a client re-sending identical
+    // stats (or a stale pre-1156 client disagreeing about derived
+    // values) turned every stats_update into a storage put + a full
+    // echo — the amplification behind the live "coins flashing / panels
+    // thrashing" playtest report.  Snapshot every field this handler
+    // can store; persist + echo at the tail ONLY when one changed.
+    const relevantSig = () => JSON.stringify([
+      ps.power, ps.vitality, ps.endurance, ps.agility, ps.mind,
+      ps.weaponSpecs, ps.weaponSkills, ps.weaponUnspent,
+      ps.defenseSkill, ps.defenseUnspent, ps.defenseSpec,
+      ps.hpSpec, ps.hpUnspent, ps.enduranceSpec, ps.enduranceUnspent,
+      ps.armor, ps.def, ps.amuletHpRegen, ps.amuletStaminaRegen,
+    ]);
+    const preSig = relevantSig();
     // Raw stats: accept client value, clamp to bounds.  T1 stats use
     // the per-level cap (max(20, level*10+20)) since they grow via
     // use-training.  Server computes its own pool maxes from these and
@@ -3595,8 +3610,21 @@ export class GameRoom {
     // v2.3.1157: the 1000-point combat ceiling — after every per-grid
     // clamp above, truncate whatever pushes the TOTAL allocation past
     // the line (canonical grid order; see _clampBuildTotal).
+    // v2.3.1158: whenever any spec/skill input arrived, recompute every
+    // unspent pool to the canonical earned-minus-spent (the migration-v7
+    // formula, shared via computeCanonicalPools).  Before this, points
+    // truncated by the grid-budget clamp or the ceiling above simply
+    // VANISHED until the next reconnect re-ran v7 — mid-session the
+    // client displayed pools the server no longer agreed with (the
+    // "points aren't updating" playtest report).  This also makes the
+    // client-reported *Unspent stores above advisory: pools are derived
+    // state, and the server derives them.
     if (payload.weaponSpecs || payload.defenseSpec || payload.hpSpec || payload.enduranceSpec) {
       this._clampBuildTotal(ps);
+    }
+    if (payload.weaponSpecs || payload.weaponSkills || payload.defenseSpec || payload.defenseSkill
+        || payload.hpSpec || payload.enduranceSpec || statsChanged) {
+      computeCanonicalPools(ps);
     }
     // Armor swap routes through stats_update (not equip_request) because
     // armor lives in a client-only armorStash and the popup mutates it
@@ -3668,10 +3696,16 @@ export class GameRoom {
     if (typeof payload.amuletStaminaRegen === 'number') {
       ps.amuletStaminaRegen = Math.max(0, Math.min(100, payload.amuletStaminaRegen));
     }
-    // Persist (raw stats + pool values get carried via _saveRpg).
-    this._saveRpg(session.id, ps);
-    const ws = this._wsBySessionId(session.id);
-    if (ws) this._sendPlayerState(ws, session.id);
+    // v2.3.1158: persist + echo ONLY on real mutation (see preSig at the
+    // top).  A no-op stats_update — identical re-send, stale-client
+    // disagreement about server-derived values — gets silence, not a
+    // full player_state echo, so client/server skew can no longer
+    // self-amplify into a visible sync storm.
+    if (statsChanged || relevantSig() !== preSig) {
+      this._saveRpg(session.id, ps);
+      const ws = this._wsBySessionId(session.id);
+      if (ws) this._sendPlayerState(ws, session.id);
+    }
   }
 
   // ═══ Ability cost gating (server-authoritative stamina / mana) ═══
