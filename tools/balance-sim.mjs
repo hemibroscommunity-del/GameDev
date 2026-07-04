@@ -195,8 +195,9 @@ const ehps = BUILDS.map((b) => {
 });
 {
   const tank = BUILDS[2]; // 60% vit / 30% pwr / 10% end
-  const vigorPts = Math.min(50, tank.vitality);
-  const evasionPts = Math.min(50, tank.endurance);
+  // v2.3.1156: grid budget is min(200, 2 × stat), channels cap at 100.
+  const vigorPts = Math.min(100, 2 * tank.vitality);
+  const evasionPts = Math.min(100, 2 * tank.endurance);
   const gHp = Math.floor(calcMaxHp(LEVEL, tank.vitality) * getVigorMult({ hpSpec: { vigor: vigorPts } }));
   const gDodge = passiveDodgeChance(tank.agility, evasionPts);
   const gEhp = gHp / (1 - gDodge);
@@ -331,16 +332,17 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
      Vigor is EHP priced against the Iron Skin yardstick; Evasion proves
      the shared 30% dodge cap (the §4 hard rule) — the whole point of the
      gate is that channel completion CANNOT push past agility's cap. */
-  const vigorUplift = (getVigorMult({ hpSpec: { vigor: 50 } }) - 1) * 100; // +25% maxHp == +25% EHP
-  console.log(pad('vigor 50 (v2.3.1154, HP grid)', 42) + '+' + num(vigorUplift) + '% EHP');
+  /* v2.3.1156: full investment is now the uniform 100-pt cap. */
+  const vigorUplift = (getVigorMult({ hpSpec: { vigor: 100 } }) - 1) * 100; // +25% maxHp == +25% EHP
+  console.log(pad('vigor 100 (v2.3.1156, HP grid)', 42) + '+' + num(vigorUplift) + '% EHP');
   check('HP-01', 'vigor lands in the Iron Skin band (0.5x-2x of +33% EHP)',
     vigorUplift >= ironUplift * 0.5 && vigorUplift <= ironUplift * 2,
     `+${num(vigorUplift)}% vs yardstick +${num(ironUplift)}%`);
   const capAgi = 375; // 375 × 0.0008 = 30% — at the cap from agility alone
   const dodgeAtCap = passiveDodgeChance(capAgi, 0);
-  const dodgeStacked = passiveDodgeChance(capAgi, 50);
-  const dodgeEvOnly = passiveDodgeChance(0, 50);
-  console.log(pad('evasion 50 (v2.3.1154, Endurance grid)', 42) + '+' + num(dodgeEvOnly * 100) + '% dodge alone; ' + num(dodgeStacked * 100) + '% stacked on capped agility');
+  const dodgeStacked = passiveDodgeChance(capAgi, 100);
+  const dodgeEvOnly = passiveDodgeChance(0, 100);
+  console.log(pad('evasion 100 (v2.3.1156, Endurance grid)', 42) + '+' + num(dodgeEvOnly * 100) + '% dodge alone; ' + num(dodgeStacked * 100) + '% stacked on capped agility');
   check('EN-01', 'evasion SHARES the 30% dodge cap with agility (no stacking past it)',
     dodgeAtCap === 0.30 && dodgeStacked === 0.30 && Math.abs(dodgeEvOnly - 0.10) < 1e-9,
     `capped ${num(dodgeAtCap * 100)}%, stacked ${num(dodgeStacked * 100)}%, alone ${num(dodgeEvOnly * 100)}%`);

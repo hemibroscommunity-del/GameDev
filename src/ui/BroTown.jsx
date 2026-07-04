@@ -158,7 +158,7 @@ const {
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
   migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction, getBlockStaminaMult,
-  migrateGrids, getConditioningMult,
+  migrateGrids, getConditioningMult, migrateUniformT2,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
@@ -1990,6 +1990,7 @@ export var BroTown = function BroTown(_ref0) {
       migrateWeaponT2(S.rpg);
       migrateDefenseT2(S.rpg);   /* v2.3.693: backfill the Defense T2 category */
       migrateGrids(S.rpg);       /* v2.3.1154: backfill the HP/Endurance grids */
+      migrateUniformT2(S.rpg);   /* v2.3.1156: one-time uniform-cap reprice (double 50-cap grids, refund repriced weapon channels) */
       /* v2.3.910: combat level is now derived (sum of build-skill levels), set
          by recalcDerived above.  Seed _lastShownLevel to the current level so
          the on-kill level-up VFX fires only for levels gained from here on, not

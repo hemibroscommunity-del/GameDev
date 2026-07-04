@@ -160,15 +160,18 @@ const legacyBlob = () => ({
   b.weaponSpecs = { sword: { edge: 60, precision: 10 }, bow: { drawPower: 99 }, staff: { spellPower: 0, overload: 5 } };
   b.weaponUnspent = { sword: 5 };
   const r = runRpgMigrations(b);
-  check('v3 refunds damage-channel points into weaponUnspent (stacking on an existing pool)',
+  // Full chain: v3 refunds the damage channels (edge 60, drawPower 99),
+  // then v6 (uniform-t2-caps) refunds the repriced crit channels too
+  // (precision 10, overload 5) — sword pool = 5 + 60 + 10 = 75.
+  check('v3+v6 refund damage + repriced channels into weaponUnspent (stacking on an existing pool)',
     r.failed === null && b.weaponSpecs.sword.edge === 0 && b.weaponSpecs.bow.drawPower === 0
-    && b.weaponUnspent.sword === 65 && b.weaponUnspent.bow === 99,
+    && b.weaponSpecs.sword.precision === 0 && b.weaponSpecs.staff.overload === 0
+    && b.weaponUnspent.sword === 75 && b.weaponUnspent.bow === 99 && b.weaponUnspent.staff === 5,
     { specs: b.weaponSpecs, unspent: b.weaponUnspent });
-  check('v3 leaves non-damage channels and zeroed channels untouched',
-    b.weaponSpecs.sword.precision === 10 && b.weaponSpecs.staff.overload === 5 && b.weaponSpecs.staff.spellPower === 0,
-    b.weaponSpecs);
+  check('chain leaves zeroed channels untouched',
+    b.weaponSpecs.staff.spellPower === 0, b.weaponSpecs);
   const r2 = runRpgMigrations(b);
-  check('v3 idempotent: re-run refunds nothing more', r2.changed === false && b.weaponUnspent.sword === 65, r2);
+  check('v3+v6 idempotent: re-run refunds nothing more', r2.changed === false && b.weaponUnspent.sword === 75, r2);
   // A corrupt blob can't refund more than a legit 99-pt spend.
   const c = { weaponSpecs: { sword: { edge: 5000 } } };
   runRpgMigrations(c);
@@ -217,6 +220,39 @@ const legacyBlob = () => ({
   check('_saveRpg fixed field list no longer carries the retired stats',
     !('ferocity' in savedT) && !('influence' in savedT) && !('restoration' in savedT),
     Object.keys(savedT).filter((k) => /fero|influ|resto/.test(k)));
+}
+
+// ── 11. v6 uniform-t2-caps (v2.3.1156): 50-cap grid points DOUBLE
+// (power-neutral — coefficients halved) and repriced weapon channels
+// refund; the atomic-put registry makes a re-run unreachable, and the
+// _v stamp proves it here ──
+{
+  const b = legacyBlob();
+  b.defenseSpec = { bulwark: 30, ironskin: 50 };
+  b.hpSpec = { vigor: 25 };
+  b.enduranceSpec = { evasion: 50, swiftness: 10 };
+  b.weaponSpecs = { sword: { tempo: 40, executioner: 20 }, bow: { piercing: 75 } };
+  const r = runRpgMigrations(b);
+  check('v6 doubles formerly-50-cap grid points (clamped to the new 100)',
+    r.failed === null && b.defenseSpec.bulwark === 60 && b.defenseSpec.ironskin === 100
+    && b.hpSpec.vigor === 50 && b.enduranceSpec.evasion === 100 && b.enduranceSpec.swiftness === 20,
+    { def: b.defenseSpec, hp: b.hpSpec, en: b.enduranceSpec });
+  check('v6 refunds repriced weapon channels, leaves unchanged-value ones alone',
+    b.weaponSpecs.sword.tempo === 0 && b.weaponSpecs.bow.piercing === 0
+    && b.weaponUnspent.sword === 40 && b.weaponUnspent.bow === 75
+    && b.weaponSpecs.sword.executioner === 20,
+    { specs: b.weaponSpecs, unspent: b.weaponUnspent });
+  check('v6 stamped: a migrated blob never re-doubles', b._v === RPG_SCHEMA_VERSION
+    && runRpgMigrations(b).changed === false && b.defenseSpec.bulwark === 60, b._v);
+  // Power-neutrality proof: doubled points × halved coefficient = the
+  // exact pre-migration multiplier (ironskin 50 pts × 0.5%/pt == 100 pts
+  // × 0.25%/pt == −25%).
+  check('v6 is power-neutral (ironskin -25% before == after)',
+    Math.abs((1 - Math.min(0.25, b.defenseSpec.ironskin * 0.0025)) - 0.75) < 1e-9, b.defenseSpec.ironskin);
+  const empty = { _v: 5 };
+  const rEmpty = runRpgMigrations(empty);
+  check('v6 mutates nothing on a blob with no specs (stamp-only pass)',
+    rEmpty.failed === null && !('defenseSpec' in empty) && !('weaponUnspent' in empty) && empty._v === RPG_SCHEMA_VERSION, empty);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

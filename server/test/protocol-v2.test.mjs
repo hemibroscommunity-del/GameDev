@@ -219,8 +219,8 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   // reading live points (the v2.3.1133 crit-ceiling pattern), so it no
   // longer moves with the spec — 6.67 × 1.495 with or without points.
   const capNormal = room._maxWeaponDmg(ps, false);
-  check('v2.3.1153 normal-swing cap assumes the maxed damage channel (×1.495)',
-    Math.abs(capNormal - 6.67 * 1.495) < 0.001, capNormal);
+  check('v2.3.1153 normal-swing cap assumes the maxed damage channel (×1.5 at the v2.3.1156 100-pt cap)',
+    Math.abs(capNormal - 6.67 * 1.5) < 0.001, capNormal);
   ps.weaponSpecs = {};
   check('v2.3.1153 cap is live-point independent (same bound with zero points)',
     Math.abs(room._maxWeaponDmg(ps, false) - capNormal) < 0.001, room._maxWeaponDmg(ps, false));
@@ -237,8 +237,8 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
     room._wpnCritDmgPts(ps, 'greatsword') === 40 && room._wpnCritDmgPts(ps, 'bow') === 7
     && room._wpnCritDmgPts(ps, 'staff') === 3, ps.weaponSpecs);
   room._handleStatsUpdate(room.sessions.get(ws2), { weaponSpecs: { sword: { executioner: 150 } } });
-  check('v2.3.1133 stats_update clamps executioner 150 -> 99',
-    ps.weaponSpecs.sword.executioner === 99, ps.weaponSpecs.sword);
+  check('v2.3.1133 stats_update clamps executioner 150 -> 100 (v2.3.1156 uniform cap)',
+    ps.weaponSpecs.sword.executioner === 100, ps.weaponSpecs.sword);
 }
 
 // ── v2.3.1021: weapon/defense SKILL-TRACK persistence (level/xp/points/specs) ──
@@ -254,14 +254,14 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
     defenseUnspent: 2,
     defenseSpec: { bulwark: 5, ironskin: 9999, bogus: 7 },
   });
-  check('stats_update stores weaponSkills (level clamped [0,99], xp floored at 0)',
+  check('stats_update stores weaponSkills (level clamped [0,100] per v2.3.1156, xp floored at 0)',
     ps.weaponSkills.sword.level === 7 && ps.weaponSkills.sword.xp === 123
-    && ps.weaponSkills.bow.level === 99 && ps.weaponSkills.bow.xp === 0, ps.weaponSkills);
+    && ps.weaponSkills.bow.level === 100 && ps.weaponSkills.bow.xp === 0, ps.weaponSkills);
   check('stats_update clamps weaponUnspent to [0,999]',
     ps.weaponUnspent.sword === 3 && ps.weaponUnspent.bow === 999, ps.weaponUnspent);
-  check('stats_update stores defenseSkill, clamps defenseSpec [0,50], drops unknown keys',
+  check('stats_update stores defenseSkill, clamps defenseSpec to the uniform [0,100], drops unknown keys',
     ps.defenseSkill.level === 4 && ps.defenseSpec.bulwark === 5
-    && ps.defenseSpec.ironskin === 50 && ps.defenseSpec.bogus === undefined,
+    && ps.defenseSpec.ironskin === 100 && ps.defenseSpec.bogus === undefined,
     { defenseSkill: ps.defenseSkill, defenseSpec: ps.defenseSpec });
 
   // v2.3.1138: Defense (the 6th build skill) counts toward combat level.

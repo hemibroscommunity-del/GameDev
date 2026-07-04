@@ -40,7 +40,7 @@
  *   4. add a case to test/migrations.test.mjs with a real legacy blob.
  */
 
-export const RPG_SCHEMA_VERSION = 5;
+export const RPG_SCHEMA_VERSION = 6;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -168,6 +168,60 @@ export const MIGRATIONS = [
       let changed = false;
       for (const k of ['ferocity', 'elementalMastery', 'fortification', 'restoration', 'influence']) {
         if (k in blob) { delete blob[k]; changed = true; }
+      }
+      return changed;
+    },
+  },
+  {
+    v: 6,
+    name: 'uniform-t2-caps',
+    // v2.3.1156: every T2 channel now caps at 100 (owner design
+    // 2026-07-04 — one allocation max, every cap-value landing at
+    // exactly 100 points).  Two rebalances land with it:
+    //   - the formerly-50-cap grids (defense/HP/endurance) halved their
+    //     per-point coefficients, so stored points are DOUBLED here —
+    //     exactly power-neutral for every player;
+    //   - the materially-repriced weapon channels (crit trio 0.5->0.3%/pt,
+    //     tempo, cleave, piercing breakpoints) are REFUNDED to
+    //     weaponUnspent, the v3 refund-damage-channels pattern.
+    // RE-RUN SAFETY: the doubling is not re-run idempotent in isolation,
+    // but re-runs are unreachable under the registry's machinery — the
+    // mutation and the _v stamp land in ONE atomic storage put
+    // (runRpgMigrations stamps in-memory; _loadRpg re-puts once), and
+    // post-migration _saveRpg snapshots carry _v >= 6, so even the
+    // admin-restore path can only replay this on a genuinely pre-v6
+    // blob.  The client twin (migrateUniformT2 in gameSystems.js) gates
+    // on the rpg._t2uniform flag for its localStorage copy.
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      let changed = false;
+      const CAP = 100;
+      const dbl = (spec, keys) => {
+        if (!spec || typeof spec !== 'object') return;
+        for (const k of keys) {
+          if (typeof spec[k] === 'number' && spec[k] > 0) {
+            spec[k] = Math.min(CAP, Math.floor(spec[k]) * 2);
+            changed = true;
+          }
+        }
+      };
+      dbl(blob.defenseSpec, ['bulwark', 'ironskin', 'thorns', 'secondwind', 'poise']);
+      dbl(blob.hpSpec, ['vigor', 'recovery', 'lifeblood', 'resilience']);
+      dbl(blob.enduranceSpec, ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes']);
+      const REFUND = { sword: ['precision', 'tempo', 'cleave'], bow: ['marksmanship', 'piercing'], staff: ['overload'] };
+      for (const [cat, keys] of Object.entries(REFUND)) {
+        const spec = blob.weaponSpecs && blob.weaponSpecs[cat];
+        if (!spec) continue;
+        for (const k of keys) {
+          if (typeof spec[k] !== 'number' || spec[k] === 0) continue;
+          const pts = Math.max(0, Math.min(CAP, Math.floor(spec[k])));
+          if (pts > 0) {
+            if (!blob.weaponUnspent || typeof blob.weaponUnspent !== 'object') blob.weaponUnspent = {};
+            blob.weaponUnspent[cat] = Math.min(999, (blob.weaponUnspent[cat] || 0) + pts);
+          }
+          spec[k] = 0;
+          changed = true;
+        }
       }
       return changed;
     },
