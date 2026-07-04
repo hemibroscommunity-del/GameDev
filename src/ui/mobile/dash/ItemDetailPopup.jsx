@@ -365,11 +365,27 @@ export const ItemDetailPopup = () => {
           sub: [base, dr ? 'DMG ' + dr.dmgText + ' · DPS ' + dr.dps : null].filter(Boolean).join(' · '),
           iconSrc: weaponThumb(w), glyph: '⚔️', on,
           toggle: () => {
-            if (on) { R2.weaponStash.push(w); R2[prop] = null; }
+            if (on) {
+              R2.weaponStash.push(w); R2[prop] = null;
+              /* v2.3.1159: server-sync + active-slot repair (see
+                 syncWeaponSlot).  Emptying the ranged/staff slot drops
+                 the hand back to melee/fists on BOTH sides so the
+                 character isn't left swinging a phantom weapon. */
+              syncWeaponSlot({ type: 'unequip_request', payload: { slot: prop } });
+              if (active !== 'melee') {
+                R2.activeSlot = 'melee';
+                syncWeaponSlot({ type: 'set_active_slot', payload: { slot: 'melee' } });
+              }
+            }
             else {
               const i = R2.weaponStash.indexOf(w); if (i >= 0) R2.weaponStash.splice(i, 1);
               if (R2[prop]) R2.weaponStash.push(R2[prop]);
               R2[prop] = w; R2.activeSlot = active;
+              /* v2.3.1159: pre-splice stash index, InventoryPanel's
+                 equip_request convention — the worker swaps its own
+                 stash entry and the player_state echo reconciles any
+                 order drift. */
+              if (i >= 0) syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: i, slot: prop } });
             }
             persist(R2); refresh();
           },
@@ -706,6 +722,13 @@ export const ItemDetailPopup = () => {
     if (!R.weaponStash) R.weaponStash = [];
     R.weaponStash.push(cur);
     R[slotProp] = null;
+    /* v2.3.1159: server-sync + active-slot repair (see syncWeaponSlot). */
+    syncWeaponSlot({ type: 'unequip_request', payload: { slot: slotProp } });
+    if ((slotProp === 'rangedWeapon' && R.activeSlot === 'ranged')
+        || (slotProp === 'staffWeapon' && R.activeSlot === 'staff')) {
+      R.activeSlot = 'melee';
+      syncWeaponSlot({ type: 'set_active_slot', payload: { slot: 'melee' } });
+    }
     persist(R);
     itemDetailBus.close();
   };
@@ -736,6 +759,11 @@ export const ItemDetailPopup = () => {
     R.activeSlot = slot === 'rangedWeapon' ? 'ranged'
                  : slot === 'staffWeapon'  ? 'staff'
                  :                            'melee';
+    /* v2.3.1159: server-sync — pre-splice index, InventoryPanel
+       convention; the slot activation must reach the worker too or its
+       _computeAttackDamage keeps resolving the previous slot. */
+    if (idx >= 0) syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: idx, slot } });
+    syncWeaponSlot({ type: 'set_active_slot', payload: { slot: R.activeSlot } });
     persist(R);
     itemDetailBus.close();
   };
@@ -966,4 +994,20 @@ export const ItemDetailPopup = () => {
 
 function persist(R) {
   try { if (typeof window !== 'undefined') localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
+}
+
+/* v2.3.1159: mirror weapon equip/unequip/slot changes to the worker.
+   Every path in this popup used to mutate only S.rpg + localStorage —
+   the server's ps.weapon/rangedWeapon/staffWeapon never heard about it,
+   so an unequipped bow kept swinging server-side (_computeAttackDamage
+   resolves from the SERVER slots) and the next player_state echo
+   re-equipped it locally.  Local mutation stays as prediction (the
+   InventoryPanel equip convention); the worker echo is authoritative.
+   Gate on _serverMonsters like InventoryPanel — offline/legacy solo
+   rendering has no worker to sync. */
+function syncWeaponSlot(msg) {
+  const S = getState();
+  if (S && S._serverMonsters && S.channel) {
+    try { S.channel.send(msg); } catch (e) {}
+  }
 }
