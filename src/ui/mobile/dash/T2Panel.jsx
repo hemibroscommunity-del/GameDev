@@ -15,6 +15,8 @@ import {
   HP_CHANNELS,
   ENDURANCE_CHANNELS,
   GRID_CHANNEL_CAP,
+  combatBuildTotal,
+  COMBAT_BUILD_CEILING,
 } from '../../../data/gameSystems.js';
 
 /* v2.3.911: lets the dashboard open this panel jumped to a specific tab.
@@ -104,6 +106,11 @@ export const T2Panel = () => {
      past the legacy caps against it would be truncated on echo. */
   const t2uniform = !S.channel || !!(S._serverCaps && S._serverCaps.t2uniform);
   const LEGACY_WEAPON_CAP = 99, LEGACY_GRID_CAP = 50;
+  /* v2.3.1157: the 1000-point combat ceiling — total allocation across
+     all six grids.  Server enforces (_clampBuildTotal); the panel shows
+     the meter and refuses spends at the line. */
+  const buildTotal = combatBuildTotal(R);
+  const atCeiling = t2uniform && buildTotal >= COMBAT_BUILD_CEILING;
 
   /* Source the selected tab's skill / spec / pool / channels from the
      Defense fields, a grid tab, or the weapon maps. */
@@ -131,6 +138,7 @@ export const T2Panel = () => {
      after the player confirms. */
   const addPoint = (key, active) => {
     if (!active) return;
+    if (atCeiling) return; /* v2.3.1157: build complete at 1000 */
     if (unspent <= 0) return;
     if ((catSpecs[key] || 0) >= channelCap) return;
     const ch = channels.find((c) => c.key === key);
@@ -159,8 +167,15 @@ export const T2Panel = () => {
         marginBottom: 8,
       }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.02em' }}>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.02em', display: 'flex', alignItems: 'baseline', gap: 8 }}>
             Builds
+            {/* v2.3.1157: the combat build meter — a character finishes
+                at 1000 allocated points (1/3 of the 3000-slot grid). */}
+            {t2uniform && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: atCeiling ? COL.gold : COL.muted }}>
+                {buildTotal}/{COMBAT_BUILD_CEILING}{atCeiling ? ' · complete' : ''}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 11, color: COL.muted, marginTop: 2 }}>
             {/* v2.3.1133: label caught up with v2.3.910's 1-pt-per-level change */}

@@ -459,9 +459,10 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   Math.random = origRandom;
   check('critDmg: helper reads executioner points', room._wpnCritDmgPts(ps, 'sword') === 99);
   check('critDmg: both rolls crit under a forced roll', plain.isCrit === true && boosted.isCrit === true);
-  // ratio = (1.5 + 0.2 + 99×0.008) / (1.5 + 0.2) = 2.492 / 1.7 ≈ 1.466
+  // v2.3.1157 (UN-01 parity retune, 1.2%/pt):
+  // ratio = (1.5 + 0.2 + 99×0.012) / (1.5 + 0.2) = 2.888 / 1.7 ≈ 1.699
   const ratio = boosted.dmg / plain.dmg;
-  check('critDmg: 99 executioner pts scale the crit ×2.492/×1.7', Math.abs(ratio - 2.492 / 1.7) < 0.02, ratio);
+  check('critDmg: 99 executioner pts scale the crit ×2.888/×1.7', Math.abs(ratio - 2.888 / 1.7) < 0.02, ratio);
   check('critDmg: maxed edge+executioner crit clears the anti-cheat ceiling',
     maxRoll.dmg <= room._maxDmgForAttacker(ps, false),
     { roll: maxRoll.dmg, cap: room._maxDmgForAttacker(ps, false) });

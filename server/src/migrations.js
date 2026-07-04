@@ -40,7 +40,7 @@
  *   4. add a case to test/migrations.test.mjs with a real legacy blob.
  */
 
-export const RPG_SCHEMA_VERSION = 6;
+export const RPG_SCHEMA_VERSION = 7;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -223,6 +223,46 @@ export const MIGRATIONS = [
           changed = true;
         }
       }
+      return changed;
+    },
+  },
+  {
+    v: 7,
+    name: 'uniform-t2-pools',
+    // v2.3.1157: the 1000-point economy doubles the earn rate to 2
+    // points per skill level (200 lifetime per skill), so every pool is
+    // RECOMPUTED to the canonical earned-minus-spent at the new rate:
+    //   unspent = max(0, min(200, 2 × level-or-stat) − Σ spec)
+    // This runs AFTER v6 (doubled grid points, refunded weapon
+    // channels), so "spent" is already on the new scale.  Idempotent by
+    // construction — the recompute converges on re-run.  Existing
+    // characters only ever GAIN here: the old rate was 1/level, so the
+    // recomputed pool is at least as large as anything they could have
+    // held.  (Spending stays bounded by the per-grid budget and the
+    // 1000-point combat ceiling, both enforced live in index.js.)
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      let changed = false;
+      const sum = (spec, keys) => keys.reduce((a, k) => a + ((spec && typeof spec[k] === 'number') ? Math.max(0, Math.min(100, Math.floor(spec[k]))) : 0), 0);
+      const pool = (level, spent) => Math.max(0, Math.min(200, 2 * Math.max(0, Math.floor(level || 0))) - spent);
+      const WCH = {
+        sword: ['edge', 'precision', 'executioner', 'tempo', 'cleave'],
+        bow:   ['drawPower', 'marksmanship', 'headshot', 'piercing', 'longshot'],
+        staff: ['spellPower', 'overload', 'detonation', 'attunement', 'focus'],
+      };
+      for (const cat of Object.keys(WCH)) {
+        const level = blob.weaponSkills && blob.weaponSkills[cat] && blob.weaponSkills[cat].level;
+        const next = pool(level, sum(blob.weaponSpecs && blob.weaponSpecs[cat], WCH[cat]));
+        if (!blob.weaponUnspent || typeof blob.weaponUnspent !== 'object') blob.weaponUnspent = {};
+        if (blob.weaponUnspent[cat] !== next) { blob.weaponUnspent[cat] = next; changed = true; }
+      }
+      const defNext = pool(blob.defenseSkill && blob.defenseSkill.level,
+        sum(blob.defenseSpec, ['bulwark', 'ironskin', 'thorns', 'secondwind', 'poise']));
+      if (blob.defenseUnspent !== defNext) { blob.defenseUnspent = defNext; changed = true; }
+      const hpNext = pool(blob.vitality, sum(blob.hpSpec, ['vigor', 'recovery', 'lifeblood', 'resilience']));
+      if (blob.hpUnspent !== hpNext) { blob.hpUnspent = hpNext; changed = true; }
+      const enNext = pool(blob.endurance, sum(blob.enduranceSpec, ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes']));
+      if (blob.enduranceUnspent !== enNext) { blob.enduranceUnspent = enNext; changed = true; }
       return changed;
     },
   },

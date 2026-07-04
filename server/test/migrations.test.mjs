@@ -158,25 +158,30 @@ const legacyBlob = () => ({
 {
   const b = legacyBlob();
   b.weaponSpecs = { sword: { edge: 60, precision: 10 }, bow: { drawPower: 99 }, staff: { spellPower: 0, overload: 5 } };
+  b.weaponSkills = { sword: { level: 75, xp: 0 }, bow: { level: 99, xp: 0 }, staff: { level: 5, xp: 0 } };
   b.weaponUnspent = { sword: 5 };
   const r = runRpgMigrations(b);
   // Full chain: v3 refunds the damage channels (edge 60, drawPower 99),
-  // then v6 (uniform-t2-caps) refunds the repriced crit channels too
-  // (precision 10, overload 5) — sword pool = 5 + 60 + 10 = 75.
-  check('v3+v6 refund damage + repriced channels into weaponUnspent (stacking on an existing pool)',
+  // v6 (uniform-t2-caps) refunds the repriced crit channels (precision,
+  // overload), then v7 (uniform-t2-pools) RECOMPUTES every pool to the
+  // canonical earned-minus-spent at the doubled rate: sword = min(200,
+  // 2x75) - 0 = 150; bow = 198; staff = 10.
+  check('v3+v6+v7: repriced channels zeroed, pools recomputed to 2x-level canonical',
     r.failed === null && b.weaponSpecs.sword.edge === 0 && b.weaponSpecs.bow.drawPower === 0
     && b.weaponSpecs.sword.precision === 0 && b.weaponSpecs.staff.overload === 0
-    && b.weaponUnspent.sword === 75 && b.weaponUnspent.bow === 99 && b.weaponUnspent.staff === 5,
+    && b.weaponUnspent.sword === 150 && b.weaponUnspent.bow === 198 && b.weaponUnspent.staff === 10,
     { specs: b.weaponSpecs, unspent: b.weaponUnspent });
   check('chain leaves zeroed channels untouched',
     b.weaponSpecs.staff.spellPower === 0, b.weaponSpecs);
   const r2 = runRpgMigrations(b);
-  check('v3+v6 idempotent: re-run refunds nothing more', r2.changed === false && b.weaponUnspent.sword === 75, r2);
-  // A corrupt blob can't refund more than a legit 99-pt spend.
+  check('v3+v6+v7 idempotent: re-run changes nothing', r2.changed === false && b.weaponUnspent.sword === 150, r2);
+  // A corrupt blob (specs without any recorded skill levels) can't mint
+  // points: v3/v6 zero the forged channels, v7's canonical recompute
+  // leaves the pools at earned = 0.
   const c = { weaponSpecs: { sword: { edge: 5000 } } };
   runRpgMigrations(c);
-  check('v3 clamps a corrupt channel to the legit 99-pt refund',
-    c.weaponUnspent.sword === 99 && c.weaponSpecs.sword.edge === 0, c);
+  check('forged specs without skill levels net ZERO points after the chain',
+    c.weaponUnspent.sword === 0 && c.weaponSpecs.sword.edge === 0, c);
 }
 
 // ── 9. v4 backfill-grid-points: retroactive HP/Endurance grid pools
@@ -186,12 +191,13 @@ const legacyBlob = () => ({
   b.vitality = 25; b.endurance = 12;
   b.hpSpec = { vigor: 5 };   // a half-migrated blob may already show spends
   const r = runRpgMigrations(b);
-  check('v4 backfills pools to stat level minus spent',
-    r.failed === null && b.hpUnspent === 20 && b.enduranceUnspent === 12,
-    { hp: b.hpUnspent, en: b.enduranceUnspent });
-  b.hpUnspent = 3; // live pool must never reset to the formula value
+  // Chain-final: v6 doubles vigor 5 -> 10, v7 recomputes the pools at
+  // the doubled earn rate — hp = min(200, 2x25) - 10 = 40; en = 24.
+  check('v4+v6+v7 backfill pools to the 2x-stat canonical minus doubled spends',
+    r.failed === null && b.hpSpec.vigor === 10 && b.hpUnspent === 40 && b.enduranceUnspent === 24,
+    { vigor: b.hpSpec.vigor, hp: b.hpUnspent, en: b.enduranceUnspent });
   const r2 = runRpgMigrations(b);
-  check('v4 idempotent: existing pools untouched on re-run', r2.changed === false && b.hpUnspent === 3, r2);
+  check('v4+v6+v7 idempotent: re-run changes nothing', r2.changed === false && b.hpUnspent === 40, r2);
 }
 
 // ── 10. v5 strip-retired-t2 + the coordinated writer deletions
@@ -229,19 +235,26 @@ const legacyBlob = () => ({
 {
   const b = legacyBlob();
   b.defenseSpec = { bulwark: 30, ironskin: 50 };
+  b.defenseSkill = { level: 90, xp: 0 };
   b.hpSpec = { vigor: 25 };
   b.enduranceSpec = { evasion: 50, swiftness: 10 };
   b.weaponSpecs = { sword: { tempo: 40, executioner: 20 }, bow: { piercing: 75 } };
+  b.weaponSkills = { sword: { level: 30, xp: 0 }, bow: { level: 40, xp: 0 } };
   const r = runRpgMigrations(b);
   check('v6 doubles formerly-50-cap grid points (clamped to the new 100)',
     r.failed === null && b.defenseSpec.bulwark === 60 && b.defenseSpec.ironskin === 100
     && b.hpSpec.vigor === 50 && b.enduranceSpec.evasion === 100 && b.enduranceSpec.swiftness === 20,
     { def: b.defenseSpec, hp: b.hpSpec, en: b.enduranceSpec });
-  check('v6 refunds repriced weapon channels, leaves unchanged-value ones alone',
+  // v6 refunds tempo/piercing; v7 then recomputes canonically:
+  // sword = min(200, 2x30) - 20 (executioner kept) = 40;
+  // bow = min(200, 2x40) - 0 = 80; defense = min(200, 2x90) - doubled
+  // spend (60 + 100) = 20.
+  check('v6 refunds repriced weapon channels, v7 recomputes pools (executioner kept)',
     b.weaponSpecs.sword.tempo === 0 && b.weaponSpecs.bow.piercing === 0
-    && b.weaponUnspent.sword === 40 && b.weaponUnspent.bow === 75
+    && b.weaponUnspent.sword === 40 && b.weaponUnspent.bow === 80
+    && b.defenseUnspent === 20
     && b.weaponSpecs.sword.executioner === 20,
-    { specs: b.weaponSpecs, unspent: b.weaponUnspent });
+    { specs: b.weaponSpecs, unspent: b.weaponUnspent, def: b.defenseUnspent });
   check('v6 stamped: a migrated blob never re-doubles', b._v === RPG_SCHEMA_VERSION
     && runRpgMigrations(b).changed === false && b.defenseSpec.bulwark === 60, b._v);
   // Power-neutrality proof: doubled points × halved coefficient = the
@@ -251,8 +264,9 @@ const legacyBlob = () => ({
     Math.abs((1 - Math.min(0.25, b.defenseSpec.ironskin * 0.0025)) - 0.75) < 1e-9, b.defenseSpec.ironskin);
   const empty = { _v: 5 };
   const rEmpty = runRpgMigrations(empty);
-  check('v6 mutates nothing on a blob with no specs (stamp-only pass)',
-    rEmpty.failed === null && !('defenseSpec' in empty) && !('weaponUnspent' in empty) && empty._v === RPG_SCHEMA_VERSION, empty);
+  check('v6 creates no specs on an empty blob; v7 zero-initializes the pools',
+    rEmpty.failed === null && !('defenseSpec' in empty) && empty.weaponUnspent.sword === 0
+    && empty.defenseUnspent === 0 && empty.hpUnspent === 0 && empty._v === RPG_SCHEMA_VERSION, empty);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

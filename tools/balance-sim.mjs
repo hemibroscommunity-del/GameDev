@@ -26,6 +26,10 @@ import {
   monsterStat, MONSTER_HP_CURVE, ARCHETYPES, WEAPON_TYPES, BLACKSMITH_TIERS,
   SPECIAL_ATK_MULT, LUNGE_DAMAGE_MULT, HP_PER_COMBAT_LEVEL,
   DAMAGE_CHANNEL_PCT, passiveDodgeChance, getVigorMult,
+  swingCooldownMult, cleaveArcBonus, bowPierceCount, bowRangeMult, staffAoeMult,
+  getIronSkinReduction, getBlockStaminaMult, poiseStunMult,
+  getRecoveryMult, getConditioningMult, getStaminaGridMult, getSwiftnessMult,
+  COMBAT_BUILD_CEILING, T2_CHANNEL_CAP,
 } from '../src/data/gameSystems.js';
 
 /* ── args ── */
@@ -278,20 +282,30 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   const base = dps('sword', {});
   const pricePct = (opts) => (dps('sword', opts) / base - 1) * 100;
   const report = (label, pct) => console.log(pad(label, 42) + (pct >= 0 ? '+' : '') + num(pct) + '% DPS');
-  const edgePct = pricePct({ dmgPts: 99 });
-  report('edge 99 (damage, repriced v2.3.1153)', edgePct);
-  report('precision 99 (crit chance, live v2.3.912)', pricePct({ critPts: 99 }));
-  const exePct = pricePct({ critDmgPts: 99 });
-  report('executioner 99 (crit dmg, v2.3.1133)', exePct);
-  const pairPct = pricePct({ critPts: 99, critDmgPts: 99 });
-  report('precision+executioner (priced together)', pairPct);
-  const tempoPct = pricePct({ cdMult: 0.80 });   // v2.3.1134: Tempo hard cap -20% cd
-  report('tempo 80 (atk speed at the -20% cap)', tempoPct);
-  const cleaveNote = 'utility: +45° arc at cap — multi-target uptime, not single-target DPS';
-  console.log(pad('cleave 75+ (arc, v2.3.1134)', 42) + cleaveNote);
-  check('CH-01', 'damage channel prices in the parity band (0.9x-1.5x of the crit pair)',
-    edgePct >= pairPct * 0.9 && edgePct <= pairPct * 1.5,
-    `edge +${num(edgePct)}% vs pair +${num(pairPct)}% (band ${num(pairPct * 0.9)}..${num(pairPct * 1.5)})`);
+  /* v2.3.1157: full investment = the uniform 100-pt cap everywhere.
+     The old CH-01 (edge vs the pair as whole BUILDS) is superseded by
+     UN-01 below, which prices channels SYNERGY-AWARE — each channel's
+     marginal value measured in its best-case context (crit chance with
+     crit-dmg maxed and vice versa), because under the fungible 1000-pt
+     economy players shop per-point across all 30 channels. */
+  const dmg100 = pricePct({ dmgPts: 100 });
+  report('edge 100 (damage)', dmg100);
+  const exePct = pricePct({ critDmgPts: 100 });
+  report('executioner 100 alone (crit dmg)', exePct);
+  const pairPct = pricePct({ critPts: 100, critDmgPts: 100 });
+  report('precision+executioner 100+100 (the pair)', pairPct);
+  const dpsBoth = dps('sword', { critPts: 100, critDmgPts: 100 });
+  const ccCtx = (dpsBoth / dps('sword', { critDmgPts: 100 }) - 1) * 100;
+  const cdCtx = (dpsBoth / dps('sword', { critPts: 100 }) - 1) * 100;
+  report('precision 100 in-context (marginal)', ccCtx);
+  report('executioner 100 in-context (marginal)', cdCtx);
+  const tempoPct = pricePct({ cdMult: 0.80 });   // Tempo cap -20% cd (lands at 100 pts since v2.3.1156)
+  report('tempo 100 (atk speed at the -20% cap)', tempoPct);
+  const dpsVals = [dmg100, ccCtx, cdCtx];
+  const dpsMedian = dpsVals.slice().sort((a, b) => a - b)[1];
+  check('UN-01', 'every DPS channel prices in the parity band (0.75x-1.25x of the class median, synergy-aware)',
+    dpsVals.every((v) => v >= dpsMedian * 0.75 && v <= dpsMedian * 1.25),
+    `[${dpsVals.map((v) => num(v)).join(', ')}] vs median ${num(dpsMedian)} (band ${num(dpsMedian * 0.75)}..${num(dpsMedian * 1.25)})`);
   check('CH-02', 'crit-dmg full investment is felt (>3% DPS)', exePct > 3, `+${num(exePct)}%`);
   check('CH-03', 'crit pair stays a sane multiplier (< x2 DPS)', pairPct < 100, `+${num(pairPct)}%`);
   check('CH-04', 'tempo cap buys ~+25% DPS (cadence, not damage)', tempoPct > 20 && tempoPct < 30, `+${num(tempoPct)}%`);
@@ -346,6 +360,60 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   check('EN-01', 'evasion SHARES the 30% dodge cap with agility (no stacking past it)',
     dodgeAtCap === 0.30 && dodgeStacked === 0.30 && Math.abs(dodgeEvOnly - 0.10) < 1e-9,
     `capped ${num(dodgeAtCap * 100)}%, stacked ${num(dodgeStacked * 100)}%, alone ${num(dodgeEvOnly * 100)}%`);
+
+  /* ═══ v2.3.1157: the uniform-economy sweep gates (UN-02..04) ═══
+     30 channels × 100-pt caps, 1000-pt allocation ceiling.  UN-01 (DPS
+     parity) is above with the pricing rows. */
+  console.log(`\n═══ uniform T2 economy — 6 skills × 5 channels × ${T2_CHANNEL_CAP} = 3000 slots; ceiling ${COMBAT_BUILD_CEILING} (${num(COMBAT_BUILD_CEILING / 3000 * 100, 0)}%); earn 2/level → 200/skill ═══`);
+  const ehpVals = [ironUplift, vigorUplift, swUplift];
+  const ehpMedian = ehpVals.slice().sort((a, b) => a - b)[1];
+  check('UN-02', 'every EHP channel prices in the parity band (0.75x-1.25x of the class median)',
+    ehpVals.every((v) => v >= ehpMedian * 0.75 && v <= ehpMedian * 1.25),
+    `[${ehpVals.map((v) => num(v)).join(', ')}] vs median ${num(ehpMedian)}`);
+  /* UN-03 covers the %DPS-priceable utility (tempo).  Thorns and
+     bulwark deliberately live under their own dedicated gates instead
+     (DF-01 reflect ceiling, DF-03 block uptime) — their value isn't a
+     clean %DPS unit (both are conditional on block uptime), so folding
+     them into this band would compare apples to stamina bars. */
+  const utilVals = { tempo: tempoPct };
+  check('UN-03', 'utility channels price at 0.3x-0.85x of a DPS point (the ~70% rule, banded)',
+    Object.values(utilVals).every((v) => v >= dpsMedian * 0.3 && v <= dpsMedian * 0.85),
+    `${JSON.stringify(utilVals)} vs DPS median ${num(dpsMedian)}`);
+  /* UN-04 — TRAP-FREE: every active channel's value function strictly
+     increases through the 100th point.  This is the mechanical proof of
+     the "every cap lands at exactly 100 points" rule; a coefficient
+     change that reintroduces a silent trap fails here.  Server-owned
+     channels whose helpers aren't importable use the same formula
+     inline (SYNC: server/src/index.js thorns/secondwind/lifeblood). */
+  {
+    const mkW = (cat, key, p) => ({ weapon: { type: cat === 'bow' ? 'bow' : cat === 'staff' ? 'staff' : 'sword' }, activeSlot: 'melee', weaponSpecs: { [cat]: { [key]: p } } });
+    const PROBES = [
+      ['edge/drawPower/spellPower', (p) => p * DAMAGE_CHANNEL_PCT],
+      ['precision/marksmanship/overload', (p) => calcCritChance(0, p)],
+      ['executioner/headshot/focus', (p) => calcCritMult(0, p)],
+      ['tempo', (p) => -swingCooldownMult(mkW('sword', 'tempo', p))],
+      ['cleave', (p) => cleaveArcBonus({ weaponSpecs: { sword: { cleave: p } } })],
+      ['piercing', (p) => bowPierceCount({ weaponSpecs: { bow: { piercing: p } } })],
+      ['longshot', (p) => bowRangeMult({ weaponSpecs: { bow: { longshot: p } } })],
+      ['detonation', (p) => staffAoeMult({ weaponSpecs: { staff: { detonation: p } } })],
+      ['attunement', (p) => 1 + Math.min(100, p) * 0.005],
+      ['bulwark', (p) => 1 - getBlockStaminaMult({ defenseSpec: { bulwark: p } })],
+      ['ironskin', (p) => getIronSkinReduction({ defenseSpec: { ironskin: p } })],
+      ['thorns', (p) => Math.min(0.5, p * 0.005)],
+      ['secondwind', (p) => Math.min(0.5, p * 0.005)],
+      ['poise', (p) => 1 - poiseStunMult({ defenseSpec: { poise: p } })],
+      ['vigor', (p) => getVigorMult({ hpSpec: { vigor: p } })],
+      ['recovery', (p) => getRecoveryMult({ hpSpec: { recovery: p } })],
+      ['lifeblood', (p) => Math.min(0.25, p * 0.0025)],
+      ['stamina', (p) => getStaminaGridMult({ enduranceSpec: { stamina: p } })],
+      ['conditioning', (p) => getConditioningMult({ enduranceSpec: { conditioning: p } })],
+      ['swiftness', (p) => getSwiftnessMult({ enduranceSpec: { swiftness: p } })],
+      ['evasion', (p) => passiveDodgeChance(0, p)],
+    ];
+    const traps = PROBES.filter(([, f]) => !(f(100) > f(99))).map(([name]) => name);
+    check('UN-04', `trap-free: all ${PROBES.length} active channel families strictly gain through point 100`,
+      traps.length === 0, `traps: ${traps.join(', ')}`);
+  }
 }
 
 /* Layer-budget report: ceiling of each loot layer at this cell. */

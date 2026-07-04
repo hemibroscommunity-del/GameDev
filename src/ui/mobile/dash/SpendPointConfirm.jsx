@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
-import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP, GRID_CHANNEL_CAP } from '../../../data/gameSystems.js';
+import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP, GRID_CHANNEL_CAP, combatBuildTotal, COMBAT_BUILD_CEILING } from '../../../data/gameSystems.js';
 
 /* v2.3.911: confirmation window for spending a build-skill Tier-2 point.
    Shows the channel's current effect vs the effect after +1 (via the
@@ -27,6 +27,13 @@ export const SpendPointConfirm = () => {
   const onConfirm = () => {
     const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
     const R = S && S.rpg;
+    /* v2.3.1157: the 1000-point combat ceiling — re-checked here like
+       the pool/cap guards, in case state moved while the dialog was
+       open.  The server's _clampBuildTotal is the authority. */
+    if (R && combatBuildTotal(R) >= COMBAT_BUILD_CEILING) {
+      spendConfirmBus.close();
+      return;
+    }
     if (R) {
       if (t.gridSpecKey) {
         /* v2.3.1154: HP/Endurance grid spend — the panel passes the rpg

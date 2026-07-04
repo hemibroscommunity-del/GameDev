@@ -223,11 +223,42 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   room2.sessions.set(ws2, baseSession());
   await room2.webSocketMessage(ws2, JSON.stringify({ type: 'join', id: 'bp_gr_a', name: 'T', phrase: 'p-bp_gr_a', data: { x: -100000, y: -100000, z: 'town' } }));
   const ps2 = room2.playerState['bp_gr_a'];
-  check('join backfill: absent pools backfill to stat level minus spent',
-    ps2.hpUnspent === Math.max(0, (ps2.vitality || 0)) && ps2.enduranceUnspent === Math.max(0, (ps2.endurance || 0)),
+  check('join backfill: absent pools backfill to min(200, 2x stat) minus spent (v2.3.1157 earn rate)',
+    ps2.hpUnspent === Math.min(200, 2 * (ps2.vitality || 0)) && ps2.enduranceUnspent === Math.min(200, 2 * (ps2.endurance || 0)),
     { hpUnspent: ps2.hpUnspent, vit: ps2.vitality, enUnspent: ps2.enduranceUnspent, end: ps2.endurance });
   check('join backfill: specs default empty-sanitized objects',
     typeof ps2.hpSpec === 'object' && typeof ps2.enduranceSpec === 'object', { hp: ps2.hpSpec, en: ps2.enduranceSpec });
+}
+
+// ── 10. v2.3.1157: the 1000-point combat ceiling ──
+{
+  const all100 = (keys) => Object.fromEntries(keys.map((k) => [k, 100]));
+  const forged = {
+    weaponSpecs: {
+      sword: all100(['edge', 'precision', 'executioner', 'tempo', 'cleave']),
+      bow: all100(['drawPower', 'marksmanship', 'headshot', 'piercing', 'longshot']),
+      staff: all100(['spellPower', 'overload', 'detonation', 'attunement', 'focus']),
+    },
+    defenseSpec: all100(['bulwark', 'ironskin', 'thorns', 'secondwind', 'poise']),
+    hpSpec: all100(['vigor', 'recovery', 'lifeblood', 'resilience']),
+    enduranceSpec: all100(['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes']),
+  };
+  const total = room._clampBuildTotal(forged);
+  const sumAll = [
+    ...Object.values(forged.weaponSpecs.sword), ...Object.values(forged.weaponSpecs.bow),
+    ...Object.values(forged.weaponSpecs.staff), ...Object.values(forged.defenseSpec),
+    ...Object.values(forged.hpSpec), ...Object.values(forged.enduranceSpec),
+  ].reduce((a, v) => a + v, 0);
+  check('build ceiling: 2900 forged points truncate to exactly 1000', total === 1000 && sumAll === 1000, { total, sumAll });
+  check('build ceiling: truncation follows canonical grid order (sword+bow keep, staff onward zeroed)',
+    forged.weaponSpecs.sword.edge === 100 && forged.weaponSpecs.bow.longshot === 100
+    && forged.weaponSpecs.staff.spellPower === 0 && forged.defenseSpec.bulwark === 0
+    && forged.hpSpec.vigor === 0 && forged.enduranceSpec.stamina === 0,
+    forged.weaponSpecs.staff);
+  // Under-ceiling builds pass through untouched.
+  const modest = { defenseSpec: { ironskin: 100 }, hpSpec: { vigor: 40 } };
+  check('build ceiling: under-1000 allocations untouched',
+    room._clampBuildTotal(modest) === 140 && modest.defenseSpec.ironskin === 100 && modest.hpSpec.vigor === 40, modest);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
