@@ -61,11 +61,27 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               var _warnedAt = S._zoneWarnAt[bestExit.zoneId] || 0;
               if (Date.now() - _warnedAt > 10000) {
                 S._zoneWarnAt[bestExit.zoneId] = Date.now();
-                S.dmgNumbers.push({
-                  x: P.x, y: P.y - 30,
-                  text: '⚠️ ' + (_gzone.name || bestExit.zoneId) + ' is Lv ' + _gzone.level[0] + '–' + _gzone.level[1] + '! Walk in again to enter',
-                  color: '#ff5e6c', ts: Date.now(), ttl: 3,
-                });
+                /* v2.3.1160: screen-space banner instead of a world-space
+                   damage number — the world-view camera scales dmgNumbers
+                   with the terrain, so the warning rendered unreadably
+                   tiny there ("tiny font" playtest report).  Unreachable
+                   with today's flat [1,2] demo bands (floor is never >
+                   level+5), but the gate must stay readable if bands ever
+                   rise again.  Fallback keeps the old popup for safety. */
+                if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
+                  window._setLevelUpMsg({
+                    kind: 'warning',
+                    text: (_gzone.name || bestExit.zoneId) + ' is Lv ' + _gzone.level[0] + '–' + _gzone.level[1],
+                    sub: 'Walk in again to enter',
+                    ts: Date.now(),
+                  });
+                } else {
+                  S.dmgNumbers.push({
+                    x: P.x, y: P.y - 30,
+                    text: '⚠️ ' + (_gzone.name || bestExit.zoneId) + ' is Lv ' + _gzone.level[0] + '–' + _gzone.level[1] + '! Walk in again to enter',
+                    color: '#ff5e6c', ts: Date.now(), ttl: 3,
+                  });
+                }
                 try { BT_AUDIO.beep(220, 0.08, 0.08, 'square'); } catch (e) {}
                 /* Nudge back toward the hub center so the proximity
                    trigger disarms; without this the exit re-fires every

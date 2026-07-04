@@ -6741,7 +6741,14 @@ export var BroTown = function BroTown(_ref0) {
       width: 220,
       height: 220,
       borderRadius: '50%',
-      background: 'radial-gradient(circle, rgba(245,197,66,.35) 0%, transparent 70%)',
+      /* v2.3.1160: banner is kind-aware — 'warning' renders the red
+         zone-gate warning (screen-space, readable on iPhone) instead of
+         the gold level-up celebration.  zoneTransitions.js used to push
+         the warning as a world-space damage number, which the world-view
+         camera scaled down to unreadable ("tiny font" playtest report). */
+      background: levelUpMsg.kind === 'warning'
+        ? 'radial-gradient(circle, rgba(255,94,108,.30) 0%, transparent 70%)'
+        : 'radial-gradient(circle, rgba(245,197,66,.35) 0%, transparent 70%)',
       opacity: Math.max(0, 1 - (Date.now() - levelUpMsg.ts) / 3500)
     }
   }), /*#__PURE__*/React.createElement("div", {
@@ -6755,11 +6762,13 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 40,
       fontWeight: 900,
       fontFamily: 'Source Sans 3,sans-serif',
-      color: '#f5c542',
-      textShadow: '0 0 30px rgba(245,197,66,.8), 0 0 60px rgba(245,197,66,.4), 0 2px 4px rgba(0,0,0,.6)',
+      color: levelUpMsg.kind === 'warning' ? '#ff5e6c' : '#f5c542',
+      textShadow: levelUpMsg.kind === 'warning'
+        ? '0 0 30px rgba(255,94,108,.8), 0 0 60px rgba(255,94,108,.4), 0 2px 4px rgba(0,0,0,.6)'
+        : '0 0 30px rgba(245,197,66,.8), 0 0 60px rgba(245,197,66,.4), 0 2px 4px rgba(0,0,0,.6)',
       letterSpacing: '.15em'
     }
-  }, "LEVEL UP!"), /*#__PURE__*/React.createElement("div", {
+  }, levelUpMsg.kind === 'warning' ? "⚠️ DANGER" : "LEVEL UP!"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 20,
       fontWeight: 700,
@@ -6767,13 +6776,13 @@ export var BroTown = function BroTown(_ref0) {
       textShadow: '0 2px 8px rgba(0,0,0,.7)',
       marginTop: 6
     }
-  }, "Level ", levelUpMsg.level), /*#__PURE__*/React.createElement("div", {
+  }, levelUpMsg.kind === 'warning' ? levelUpMsg.text : "Level " + levelUpMsg.level), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: 'rgba(255,255,255,.6)',
       marginTop: 4
     }
-  }, "+5 Capacity \xB7 +5 Technique"))), rpgState && /*#__PURE__*/React.createElement("div", {
+  }, levelUpMsg.kind === 'warning' ? (levelUpMsg.sub || '') : "+5 Capacity \xB7 +5 Technique"))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 44,
