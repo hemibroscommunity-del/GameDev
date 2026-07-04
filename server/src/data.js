@@ -70,9 +70,16 @@ export const ARCHETYPES = {
 /* v2.3.1141: `secondary` mirrors the client zone table's secondary
  * element (fusion weapon drops pair primary+secondary; server-minted
  * drops need it now that the drop roll is server-side). */
+/* v2.3.1160: every band flattened to [1,2] — OWNER DIRECTIVE
+ * (2026-07-04 playtest): "All zones at initial depth should be level 1
+ * or 2. I have not made more depth zones yet since the game is still a
+ * demo."  The MAP-REDESIGN 1-100 spoke bands (kept as comments per
+ * zone) put ~L20 snowmen at the frost entrance because the world-view
+ * exit spawns the player at the DEEP end of the depth lerp.  Restore
+ * the per-zone bands only when depth content actually ships. */
 export const ZONES = {
-      meadow:  { w:32, h:32, level:[1,10],  element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:10}] },
-      ember:   { w:32, h:32, level:[55,80], element:'flame', secondary:'stone', lawless:true, spawns:[{arch:'fodder',count:6}] },
+      meadow:  { w:32, h:32, level:[1,2],  element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:10}] },       /* band: [1,10] */
+      ember:   { w:32, h:32, level:[1,2], element:'flame', secondary:'stone', lawless:true, spawns:[{arch:'fodder',count:6}] },          /* band: [55,80] */
       /* v2.3.1147: verdant + mist populated -- they owned the [22,40]
        * band but spawned NOTHING, leaving a no-content hole between
        * frost/tidal (max 25) and hollows/sky (min 38) once zones
@@ -80,13 +87,13 @@ export const ZONES = {
        * sheets (see client ZONE_VARIANT_MAP: verdant fodder->mossSlime,
        * brute->thornShambler; mist fodder->mireWisp, brute->bogLurker).
        * Base archetypes carry ALL the stats -- variants are visual. */
-      mist:    { w:32, h:32, level:[22,40], element:'venom', secondary:'wind',  lawless:true, spawns:[{arch:'fodder',count:6},{arch:'brute',count:4}] },
-      verdant: { w:32, h:32, level:[22,40], element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:8},{arch:'brute',count:4}] },
-      frost:   { w:32, h:32, level:[8,25],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:4}] },
-      thunder: { w:32, h:32, level:[55,80], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },
-      hollows: { w:32, h:32, level:[38,58], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:4}] },
-      sky:     { w:32, h:32, level:[38,58], element:'wind',  secondary:'frost', lawless:true, spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] },
-      tidal:   { w:32, h:32, level:[8,25],  element:'water', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:3}] },
+      mist:    { w:32, h:32, level:[1,2], element:'venom', secondary:'wind',  lawless:true, spawns:[{arch:'fodder',count:6},{arch:'brute',count:4}] },  /* band: [22,40] */
+      verdant: { w:32, h:32, level:[1,2], element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:8},{arch:'brute',count:4}] }, /* band: [22,40] */
+      frost:   { w:32, h:32, level:[1,2],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:4}] },        /* band: [8,25] */
+      thunder: { w:32, h:32, level:[1,2], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },          /* band: [55,80] */
+      hollows: { w:32, h:32, level:[1,2], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:4}] },           /* band: [38,58] */
+      sky:     { w:32, h:32, level:[1,2], element:'wind',  secondary:'frost', lawless:true, spawns:[{arch:'stalker',count:4},{arch:'hexer',count:3},{arch:'volatile',count:3}] }, /* band: [38,58] */
+      tidal:   { w:32, h:32, level:[1,2],  element:'water', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:3}] },          /* band: [8,25] */
     };
 
 export const FISH_TIERS = [

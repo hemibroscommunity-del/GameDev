@@ -112,16 +112,23 @@ const room = new GameRoom(mockState, {});
 }
 
 // Spawn levels stay inside the band.
+// v2.3.1160: every wilderness band is [1,2] — OWNER DIRECTIVE
+// (2026-07-04): entry-depth zones stay L1-2 while the game is a demo.
+// These assertions pin the directive so a band can't silently rise.
 {
   const spawned = room._spawnZoneMonsters('frost');
   const band = SERVER_ZONES.frost.level;
-  check('spawn bounds: frost monsters spawn within [8,25]',
+  check('spawn bounds: frost monsters spawn within [1,2]',
     spawned.length > 0 && spawned.every((m) => m.level >= band[0] && m.level <= band[1]),
     spawned.map((m) => m.level));
   const meadow = room._spawnZoneMonsters('meadow');
-  check('spawn bounds: meadow monsters spawn within [1,10]',
-    meadow.length > 0 && meadow.every((m) => m.level >= 1 && m.level <= 10),
+  check('spawn bounds: meadow monsters spawn within [1,2]',
+    meadow.length > 0 && meadow.every((m) => m.level >= 1 && m.level <= 2),
     meadow.map((m) => m.level));
+  const flat = Object.entries(SERVER_ZONES).every(([, z]) =>
+    Array.isArray(z.level) && z.level[0] === 1 && z.level[1] === 2);
+  check('demo directive: every server zone band is exactly [1,2]', flat,
+    Object.fromEntries(Object.entries(SERVER_ZONES).map(([k, z]) => [k, z.level])));
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
