@@ -95,6 +95,8 @@ import { accountMethods } from './account.js';
 import { botfpMethods } from './botfp.js';
 // v2.3.1162 (P4 decomposition): quest accept/credit/turn-in -- see quests.js.
 import { questMethods } from './quests.js';
+// v2.3.1164 (P4 decomposition): server-settled Gamble Hall roll -- see gamble.js.
+import { gambleMethods } from './gamble.js';
 
 export default {
   async fetch(request, env) {
@@ -2034,44 +2036,10 @@ export class GameRoom {
     return SHOP_ITEMS[itemId] || null;
   }
 
-  /* ═══ v2.3.1124: SERVER-SETTLED GAMBLING (Wave 2 PR8; spec in
-   * docs/specs/gambling.md) ═══
-   *
-   * The Gamble Hall roll used to be the PLAYER'S OWN Math.random() with
-   * a local 2x self-credit (GamblePanel.jsx) -- phantom today, but a
-   * solo infinite-gold faucet the moment any settlement trusted it.
-   * The server rolls and settles in ONE mutation on live state: no
-   * escrow, no opId, no crash window (ARCHITECTURE-HANDOFF rule 8) --
-   * a resent request is legitimately a new roll, bounded by the rate
-   * limit.  Constants mirror src/data/items.js GAMBLE_* (keep in sync).
-   * ps._lastGambleAt is deliberately NOT in the _saveRpg field list, so
-   * the rate-limit window is in-memory only (a deploy reset loses
-   * nothing).  Invalid requests are ignored silently -- the panel's own
-   * client gates keep legitimate players from ever sending them. */
-  _handleGambleRequest(session, payload) {
-    if (!session || !session.id) return;
-    const ps = this.playerState[session.id];
-    if (!ps || ps.dying || ps.dead || ps.disconnected) return;
-    const wager = Math.floor(Number(payload && payload.wager));
-    if (!Number.isFinite(wager) || wager < 10 || wager > 10000) return;
-    const now = Date.now();
-    if (ps._lastGambleAt && now - ps._lastGambleAt < 2000) return;
-    if ((ps.coins || 0) < wager) return;
-    ps._lastGambleAt = now;
-    const won = Math.random() < 0.40; // GAMBLE_WIN_CHANCE mirror
-    ps.coins += won ? wager : -wager;
-    this._saveRpg(session.id, ps);
-    this._queuePlayerStateFlush(session.id);
-    const ws = this._wsBySessionId(session.id);
-    if (ws) {
-      try {
-        ws.send(JSON.stringify({
-          type: 'gamble_result',
-          payload: { won, wager, payout: won ? wager * 2 : 0 },
-        }));
-      } catch (e) { /* echo carries the coins either way */ }
-    }
-  }
+  // ═══ Gamble Hall ═══ moved to gamble.js (v2.3.1164, P4
+  // decomposition) -- the v2.3.1124 server-settled roll lives in
+  // gambleMethods, mixed into this prototype below.  jackpot_deposit
+  // stays in cadence.js.
 
   _handleShopPurchase(session, payload) {
     if (!session || !session.id) return;
@@ -6300,3 +6268,5 @@ Object.assign(GameRoom.prototype, cadenceMethods);
 Object.assign(GameRoom.prototype, liveopsMethods);
 // v2.3.1162 (P4 decomposition): quests -- see quests.js.
 Object.assign(GameRoom.prototype, questMethods);
+// v2.3.1164 (P4 decomposition): Gamble Hall -- see gamble.js.
+Object.assign(GameRoom.prototype, gambleMethods);
