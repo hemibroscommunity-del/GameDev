@@ -293,5 +293,34 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
     { hpUnspent: ps.hpUnspent, vit: ps.vitality });
 }
 
+// ── stat_allocate + build_point_earned (v2.3.1170: first wire-level
+// coverage, added with the grids.js extraction) ──
+{
+  ws.sent.length = 0;
+  ps.unspentT2 = 2;
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'stat_allocate', payload: { stat: 'power' } }));
+  const alloc = ws.sent.find((m) => m.type === 'stat_allocated');
+  check('stat_allocate: decrements unspentT2 and echoes stat_allocated',
+    ps.unspentT2 === 1 && alloc && alloc.payload.stat === 'power' && alloc.payload.newUnspentT2 === 1,
+    { unspent: ps.unspentT2, alloc });
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'stat_allocate', payload: { stat: 'ferocity' } }));
+  check('stat_allocate: retired T2 stat rejected (v2.3.1155 list)', ps.unspentT2 === 1, ps.unspentT2);
+  ps.unspentT2 = 0;
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'stat_allocate', payload: { stat: 'mind' } }));
+  check('stat_allocate: zero unspentT2 is a clean no-op', ps.unspentT2 === 0, ps.unspentT2);
+
+  // build_point_earned: derived level comes from the stat sum, so a
+  // stat bump + the event recomputes maxes and tops pools on the gain.
+  ps.power = 10; ps.vitality = 10; ps.endurance = 10; ps.agility = 10; ps.mind = 10;
+  ps.defenseSkill = { level: 0, xp: 0 };
+  room._recomputeMaxes(ps);
+  ps.hp = 1; ps.stamina = 1; ps.mana = 1;
+  ps.vitality += 1; // the "stat went up on the client" the event signals
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'build_point_earned' }));
+  check('build_point_earned: derived level rises with the stat sum and pools refill',
+    ps.level === 51 && ps.hp === ps.maxHp && ps.stamina === ps.maxStamina && ps.mana === ps.maxMana,
+    { level: ps.level, hp: ps.hp, maxHp: ps.maxHp });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
