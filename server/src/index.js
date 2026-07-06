@@ -6156,12 +6156,12 @@ export class GameRoom {
         this.dirtyPlayers.clear();
       }
 
-      // Batched game events (capped)
+      // Batched game events (capped).  v2.3.1163: overflow used to be
+      // dropped (slice-then-wipe threw away everything past the cap);
+      // splice keeps the remainder queued so a burst tick delays
+      // events instead of losing them (handoff item L).
       if (hasEvents) {
-        delta.events = this.eventBuffer.length <= this.EVENTS_PER_TICK_CAP
-          ? this.eventBuffer
-          : this.eventBuffer.slice(0, this.EVENTS_PER_TICK_CAP);
-        this.eventBuffer = [];
+        delta.events = this.eventBuffer.splice(0, this.EVENTS_PER_TICK_CAP);
       }
 
       // Monster + node deltas are protocol-versioned: v1 sessions get
