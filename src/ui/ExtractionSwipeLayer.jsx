@@ -149,22 +149,33 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(n => n.id === ex.nodeId) : null);
 
     const cueScreenPos = (S, ex) => {
-      const node = nodeOf(S, ex);
-      if (!node || !S.camera) return null;
+      if (!S.camera) return null;
+      /* v2.3.1123: world->CSS conversion is screenX = (worldX - camera.x) * worldScale.
+         This gesture layer compared RAW world px to the touch's CSS px and dropped
+         the worldScale factor -- on mobile the renderer shows 1.25x more world than
+         CSS px (worldScale ~0.8), so the reel/gather cue landed ~20% off from where
+         the icon actually renders.  The onPointerDown SWIPE_START_RADIUS check then
+         rejected the touch and the gesture never started (fishing reel "not
+         registering", no meter fill).  Mirrors BroTown's v2.3.1111 tap fix + the
+         published S._worldScaleX/Y (pixiRenderer). Canvas is full-screen at the
+         viewport origin, so no rect offset is needed. */
+      const sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
       /* Fishing centers the reel gesture on the CHARACTER (the rod's reel is
          at the hands), matching the cue render in effectsRenderer — the user
-         circles their finger over the player to reel.  A node-centered angle
-         would be measured around a point up to ~100px away and fail to
-         accumulate when the finger circles over the player instead. */
+         circles their finger over the player to reel.  Resolved BEFORE the node
+         lookup: fishing only needs the player, and requiring the fish node here
+         meant a depleted/absent node returned null and bailed the gesture. */
       if (ex.skill === 'fishing' && S.player) {
-        return { x: S.player.x - S.camera.x, y: (S.player.y - 24) - S.camera.y };
+        return { x: (S.player.x - S.camera.x) * sx, y: (S.player.y - 24 - S.camera.y) * sy };
       }
+      const node = nodeOf(S, ex);
+      if (!node) return null;
       /* v2.3.853: cooking centers the swipe-up over the campfire/pan. */
       if (ex.skill === 'cooking') {
-        return { x: node.x - S.camera.x, y: (node.y - 40) - S.camera.y };
+        return { x: (node.x - S.camera.x) * sx, y: (node.y - 40 - S.camera.y) * sy };
       }
       const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-      return { x: node.x - S.camera.x, y: (node.y - yOff) - S.camera.y };
+      return { x: (node.x - S.camera.x) * sx, y: (node.y - yOff - S.camera.y) * sy };
     };
 
     const onPointerDown = (e) => {

@@ -403,6 +403,10 @@ const REGION_ROWS = {
   head: [0, Math.round(256 * BODY_NECK_FRAC)],
   torso: [Math.round(256 * BODY_NECK_FRAC), Math.round(256 * BODY_WAIST_FRAC)],
   legs: [Math.round(256 * BODY_WAIST_FRAC), 256],
+  /* v2.3.1123: fish head overlay reaches a touch LOWER than the normal head
+     band (down through the chin + a sliver of neck) so the fishing chest
+     plate's collar can't clip the jaw when the head is lifted above it. */
+  fishhead: [0, Math.round(256 * 0.35)],
 };
 const _regionTexCache = new WeakMap();
 function _bodyRegionTex(bodyTex, region) {
@@ -1217,10 +1221,10 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
 function _placeFishHead(display, sb, bodyTex) {
   const hd = display._bodyHead;
   if (!hd || !sb || !bodyTex) return;
-  const t = _bodyRegionTex(bodyTex, 'head');
+  const t = _bodyRegionTex(bodyTex, 'fishhead');
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
-  const [r0, r1] = REGION_ROWS.head;
+  const [r0, r1] = REGION_ROWS.fishhead;
   hd.scale.x = sb.scale.x; hd.scale.y = sb.scale.y;
   hd.x = sb.x;
   hd.y = sb.y + ((r0 + r1) / 2 - 128) * sb.scale.y / DISPLAY_DS;   // head band centre in the body's transform
