@@ -30,7 +30,7 @@ import {
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES, FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS,
-  QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES,
+  BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES,
   AMULET_TIER_POWER,
   MONSTER_HP_CURVE, RARITY_TIERS, DAMAGE_CHANNEL_PCT,
 } from './data.js';
@@ -93,6 +93,8 @@ import { trade2Methods } from './trade2.js';
 import { accountMethods } from './account.js';
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.
 import { botfpMethods } from './botfp.js';
+// v2.3.1162 (P4 decomposition): quest accept/credit/turn-in -- see quests.js.
+import { questMethods } from './quests.js';
 
 export default {
   async fetch(request, env) {
@@ -1661,131 +1663,10 @@ export class GameRoom {
         || slot === 'armor' || slot === 'shield' || slot === 'amulet';
   }
 
-  // ═══ Quests (accept + turn-in with reward validation) ═══
-  //
-  // Mirrors the 25-quest QUEST_CHAINS table in src/data/gameSystems.js
-  // for reward amounts + chain progression.  The QUEST COMPLETION
-  // CRITERIA (kill counts, item collection, NPC interactions) still
-  // run client-side -- mirroring them all would require porting the
-  // full quest.check predicate for every quest, plus tracking every
-  // mutation that feeds those predicates (loot pickup keys, monster
-  // kills, item drops, etc.).  Out of scope for this slice.
-  //
-  // What this slice closes:
-  //   - quest_turn_in spam for free rewards (server checks state
-  //     transitions: must be 'active' before turning in).
-  //   - Cheater claiming a higher-tier quest's reward by forging
-  //     the questId (server uses its own reward table lookup).
-  //   - Accepting a quest the player isn't supposed to have yet
-  //     (chain order: must be 'available' before active).
-  //
-  // What still depends on client trust:
-  //   - The "quest is actually completed" claim.  Cheater can
-  //     accept a quest, immediately turn it in (without doing the
-  //     work), and get the reward.  Closing this needs server-
-  //     tracked kill counts / inventory acquisition flags / NPC
-  //     dialog state -- a separate, bigger slice.
-  _QUEST_REWARDS_DATA() {
-    return QUEST_REWARDS;
-  }
-
-  // (this.QUEST_AP_REWARD set in constructor; mirrors QUEST_AP_REWARD
-  // in src/data/items.js -- 5 AP per quest.)
-  _handleQuestAccept(session, payload) {
-    if (!session || !session.id) return;
-    const ps = this.playerState[session.id];
-    if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
-    const { questId } = payload || {};
-    if (typeof questId !== 'string') return;
-    const reward = this._QUEST_REWARDS_DATA()[questId];
-    if (!reward) return; // unknown quest
-    if (!ps._quests) ps._quests = {};
-    const cur = ps._quests[questId];
-    // Allow accepting from 'available' (chain entry granted) or
-    // from missing (first quest in chain).  Reject if already
-    // active / turnedIn.
-    if (cur === 'active' || cur === 'turnedIn') return;
-    ps._quests[questId] = 'active';
-    this._saveRpg(session.id, ps);
-    const ws = this._wsBySessionId(session.id);
-    if (ws) this._sendPlayerState(ws, session.id);
-  }
-
-  // v2.3.1120: increment quest progress counters for every active quest
-  // whose declarative objective (data.js QUEST_REWARDS) matches this
-  // signal.  kind: 'kill' (arch = monster archetype) | 'gather'.
-  // The server is the SOLE writer of _questKills now (client increment
-  // sites are gated off by caps.questTrack), so the wholesale
-  // player_state echo/adopt of the map is safe.
-  _creditQuestObjective(playerId, kind, arch) {
-    const ps = this.playerState[playerId];
-    if (!ps || !ps._quests) return;
-    const table = this._QUEST_REWARDS_DATA();
-    let changed = false;
-    for (const [qid, status] of Object.entries(ps._quests)) {
-      if (status !== 'active') continue;
-      const obj = table[qid] && table[qid].objective;
-      if (!obj || obj.type !== kind) continue;
-      if (kind === 'kill' && obj.arch && obj.arch !== arch) continue;
-      if (!ps._questKills) ps._questKills = {};
-      ps._questKills[qid] = Math.min(99999, (ps._questKills[qid] || 0) + 1);
-      changed = true;
-    }
-    if (changed) this._queuePlayerStateFlush(playerId);
-  }
-
-  _handleQuestTurnIn(session, payload) {
-    if (!session || !session.id) return;
-    const ps = this.playerState[session.id];
-    if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
-    const { questId } = payload || {};
-    if (typeof questId !== 'string') return;
-    const reward = this._QUEST_REWARDS_DATA()[questId];
-    if (!reward) return;
-    if (!ps._quests) ps._quests = {};
-    // Must be 'active' to turn in.  This is the spam-defeat:
-    // a cheater can't reclaim the reward by spamming the event,
-    // and can't claim a quest they never accepted.
-    if (ps._quests[questId] !== 'active') return;
-    // v2.3.1120: verify the declarative objective before paying.  The
-    // old handler validated only the state transition and trusted the
-    // completion claim (free gold/XP/AP on request).  Quests without
-    // an objective stay client-trusted -- see data.js QUEST_REWARDS
-    // header for the whitelist rationale.
-    const _obj = reward.objective;
-    if (_obj) {
-      if (_obj.type === 'kill' || _obj.type === 'gather') {
-        if (((ps._questKills && ps._questKills[questId]) || 0) < (_obj.count || 1)) return;
-      } else if (_obj.type === 'collect') {
-        if (((ps.inventory && ps.inventory[_obj.invKey]) || 0) < (_obj.count || 1)) return;
-      } else if (_obj.type === 'flag') {
-        if (!(ps._questFlags && ps._questFlags[_obj.flag])) return;
-      }
-    }
-    ps._quests[questId] = 'turnedIn';
-    ps.coins = (ps.coins || 0) + (reward.gold || 0);
-    // XP via _addCombatXp so level-up logic runs (including
-    // pool restores via _recomputeMaxes inside).
-    if (reward.xp > 0) {
-      const { leveled } = this._addCombatXp(ps, reward.xp);
-      if (leveled) {
-        this._recomputeMaxes(ps);
-        if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
-        if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
-        if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
-      }
-    }
-    ps.achievementPoints = (ps.achievementPoints || 0) + this.QUEST_AP_REWARD;
-    // Unlock next quest in chain.
-    if (reward.next && !ps._quests[reward.next]) {
-      ps._quests[reward.next] = 'available';
-    }
-    this._saveRpg(session.id, ps);
-    const ws = this._wsBySessionId(session.id);
-    if (ws) this._sendPlayerState(ws, session.id);
-  }
+  // ═══ Quests ═══ moved to quests.js (v2.3.1162, P4 decomposition) --
+  // accept / objective-credit / turn-in live in questMethods, mixed
+  // into this prototype below.  Trust model unchanged; see the
+  // quests.js header.
 
   // ═══ Weapon crafting (blacksmith + woodworker) ═══
   //
@@ -6417,3 +6298,5 @@ Object.assign(GameRoom.prototype, adminMethods);
 Object.assign(GameRoom.prototype, cadenceMethods);
 // v2.3.1150: live-ops rail -- see liveops.js.
 Object.assign(GameRoom.prototype, liveopsMethods);
+// v2.3.1162 (P4 decomposition): quests -- see quests.js.
+Object.assign(GameRoom.prototype, questMethods);
