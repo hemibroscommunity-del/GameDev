@@ -14,6 +14,9 @@
  *   3.  cook_request: consumes exactly one raw fish; 'cooked' mints
  *       cooked_<fish> + 8 cooking XP, 'burnt' mints burnt_dust; the
  *       20/min rate limit drops the request WITHOUT consuming.
+ *   3a. cook physics floor (v2.3.1167): consecutive cooks below the
+ *       minigame's own open-window minimum are dropped without
+ *       consuming; a full-window gap cooks normally.
  *   3b. eat_request (v2.3.1166): consumes exactly one cooked fish and
  *       heals by the tier amount; raw fish inedible; consume-at-full-HP
  *       anti-race posture; zero-held is a clean no-op.
@@ -145,6 +148,7 @@ await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
 check('cook: consumes ONE raw fish, mints cooked_<fish>, +8 cooking XP',
   ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 1 && ps.lifeSkills.cooking.xp === 8,
   ps.inventory);
+ps._lastCookAt = Date.now() - 60000; // v2.3.1167: clear the physics floor
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'burnt' });
 check('cook: burnt outcome mints burnt_dust, no XP',
   ps.inventory.fish_minnow === undefined && ps.inventory.burnt_dust === 1 && ps.lifeSkills.cooking.xp === 8,
@@ -153,11 +157,41 @@ check('cook: burnt outcome mints burnt_dust, no XP',
 // consuming (the fish stockpile conversion throttle, v2.3.1104).
 ps.inventory = { fish_minnow: 1 };
 ps._cookHistory = Array.from({ length: 20 }, () => Date.now());
+ps._lastCookAt = Date.now() - 60000;
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
 check('cook: rate limit drops the request without consuming the fish',
   ps.inventory.fish_minnow === 1 && (ps.inventory.cooked_fish_minnow || 0) === 0,
   ps.inventory);
 ps._cookHistory = [];
+
+// ── 3a. cook physics floor (v2.3.1167): a cook can't complete faster
+// than the minigame's own open window ──
+ps.inventory = { fish_minnow: 3 };
+ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
+ps._cookHistory = [];
+ps._lastCookAt = 0;
+await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
+check('floor: first cook lands normally', ps.inventory.fish_minnow === 2, ps.inventory);
+// Immediate follow-up: humanly impossible (window is >= ~1.7s even at
+// max skill) -> dropped WITHOUT consuming, no XP.
+await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
+check('floor: instant second cook is dropped without consuming',
+  ps.inventory.fish_minnow === 2 && ps.inventory.cooked_fish_minnow === 1
+  && ps.lifeSkills.cooking.xp === 8,
+  { inv: ps.inventory, xp: ps.lifeSkills.cooking.xp });
+// A sub-floor gap (1s < the ~3.4s lvl-1 window) still fails even with
+// an empty rate-limit history.
+ps._cookHistory = [];
+ps._lastCookAt = Date.now() - 1000;
+await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
+check('floor: 1s-gap cook is dropped (below the lvl-1 minnow window)',
+  ps.inventory.fish_minnow === 2, ps.inventory);
+// Backdated past the window -> accepted.
+ps._cookHistory = [];
+ps._lastCookAt = Date.now() - 10000;
+await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
+check('floor: full-window gap cooks normally',
+  ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 2, ps.inventory);
 
 // ── 3b. eat_request (v2.3.1166: first direct coverage, added with the
 // cooking.js extraction) ──

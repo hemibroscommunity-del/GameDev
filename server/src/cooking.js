@@ -41,6 +41,15 @@ export const cookingMethods = {
     return Math.ceil(15 + tier.lvl * 8);
   },
 
+  // v2.3.1167: fish tier level for the cook physics floor -- same
+  // species substring match as _fishHealAmount.  Unmapped keys count
+  // as tier 1 (the permissive default; the floor still applies).
+  _fishTierLvl(fishKey) {
+    const species = String(fishKey).replace(/^(cooked_)?fish_/, '').toLowerCase();
+    const tier = FISH_TIERS.find((t) => species.includes(t.name));
+    return tier ? tier.lvl : 1;
+  },
+
   _handleEatRequest(session, payload) {
     if (!session || !session.id) return;
     const { invKey } = payload || {};
@@ -275,8 +284,21 @@ export const cookingMethods = {
   // Then persists + emits player_state so the client overwrites its
   // inventory + lifeSkills with the authoritative values.
   //
-  // Trusts the client on `kind` (the minigame outcome).  Closing that
-  // fully needs server-side minigame validation -- separate slice.
+  // Trust posture on `kind` (v2.3.1167, spec in docs/specs/cooking.md):
+  // the minigame outcome is PLAYER TIMING, not a skill roll -- the fish
+  // cooks iff the flip-swipe lands inside the open window (BroTown.jsx
+  // extraction tick; 'burnt' fires when the window closes unflipped).
+  // A server-side dice roll would therefore burn fish for players who
+  // flipped correctly -- worse than the cheat it closes.  What the
+  // server CAN verify without a client handshake is PHYSICS: no cook
+  // can complete faster than the minigame's own open delay, which the
+  // server already computes for harvest validation
+  // (_computeOpenDelayBase, same skill-vs-tier curve as the client's
+  // computeOpenDelay).  _handleCookRequest enforces that floor between
+  // consecutive cooks; sub-window claims are dropped WITHOUT consuming
+  // and snapped by player_state.  Full outcome validation (server
+  // observes the flip timing itself) needs a cook-start handshake --
+  // future caps.cookSim slice.
   //
   // v2.3.1104: rate-limited (P2 of docs/OPTIMIZATION-ROADMAP.md), same
   // posture as the Slice-18 harvest limit: the server can't simulate
@@ -317,8 +339,28 @@ export const cookingMethods = {
       if (ws) this._sendPlayerState(ws, session.id);
       return;
     }
+    // v2.3.1167: physics floor -- a legit cook can't complete faster
+    // than the minigame's own open delay (skill-vs-tier curve, minus
+    // the client's jitter band).  Bursts inside the 20/min budget used
+    // to convert instantly; now each cook must be a full window apart.
+    // Dropped WITHOUT consuming (same snap-back posture as the rate
+    // limit).  ps._lastCookAt is in-memory only (like _lastGambleAt --
+    // NOT persisted; _cookHistory rides the rpg blob and still binds
+    // at 20/min across reconnects, so cycling the WS to reset the
+    // floor's anchor buys at most one instant cook per reconnect).
+    const nowCk = Date.now();
+    const cookLvl = (ps.lifeSkills && ps.lifeSkills.cooking && ps.lifeSkills.cooking.level) || 1;
+    const cookFloor = Math.ceil(
+      this._computeOpenDelayBase(cookLvl, this._fishTierLvl(fishKey)) * (1 - this.EXTRACT_JITTER),
+    );
+    if (ps._lastCookAt && (nowCk - ps._lastCookAt) < cookFloor) {
+      const ws = this._wsBySessionId(session.id);
+      if (ws) this._sendPlayerState(ws, session.id);
+      return;
+    }
     if (!ps.inventory) ps.inventory = {};
     if ((ps.inventory[fishKey] || 0) <= 0) return;
+    ps._lastCookAt = nowCk;
     ps.inventory[fishKey] -= 1;
     if (ps.inventory[fishKey] <= 0) delete ps.inventory[fishKey];
     if (kind === 'cooked') {

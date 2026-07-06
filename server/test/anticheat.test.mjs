@@ -308,12 +308,17 @@ const psB = room.playerState.pb;
 // The pan-minigame outcome is client-trusted; the server bounds the
 // CADENCE so a script can't convert a fish stockpile + farm cooking XP
 // at inhuman speed.  Excess requests drop without consuming the fish.
+// v2.3.1167: each iteration backdates _lastCookAt so the physics floor
+// (which would otherwise drop everything after the first instant
+// request -- covered in lifeskills-economy §3a) doesn't mask the
+// 20/min limit under test here.
 {
   const ps = room.playerState.pz;
   ps.inventory = { fish_minnow: 30 };
   ps._cookHistory = [];
   const wsZ = [...room.sessions.entries()].find(([, s]) => s.id === 'pz')[0];
   for (let i = 0; i < 25; i++) {
+    ps._lastCookAt = 0; // isolate the rate limit from the v2.3.1167 floor
     await room.webSocketMessage(wsZ, JSON.stringify({ type: 'cook_request', payload: { fishKey: 'fish_minnow', kind: 'cooked' } }));
   }
   check('cook: only 20 requests per minute consume fish', ps.inventory.fish_minnow === 10, ps.inventory.fish_minnow);
