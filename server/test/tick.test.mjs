@@ -271,5 +271,36 @@ check('forged monster_transform dropped by deny-list',
   check('client/server ZONES lockstep (bands + spawns identical)', lockstep, detail);
 }
 
+// ── 10. v2.3.1163: event-buffer overflow keeps the remainder ──
+// A burst past EVENTS_PER_TICK_CAP used to be dropped (slice + wipe);
+// now the flush splices, so the overflow is delayed one tick instead
+// of lost.  This is the one section that actually starts
+// startTickLoop (the flush lives inline in the interval closure);
+// the loop is stopped immediately after the window.
+{
+  const state2 = makeState();
+  const room2 = new GameRoom(state2, mockEnv);
+  const ws2 = fakeWs('ovf');
+  room2.sessions.set(ws2, baseSession());
+  await room2.webSocketMessage(ws2, JSON.stringify({ type: 'join', id: 'bp_tk_ovf', name: 'T', phrase: 'p-ovf', data: { x: -100000, y: -100000, z: 'town' } }));
+  ws2.sent.length = 0;
+  room2.eventBuffer.length = 0;
+  const N = room2.EVENTS_PER_TICK_CAP + 1; // 501
+  for (let i = 0; i < N; i++) room2.eventBuffer.push({ type: 'qa_overflow', payload: { i } });
+  room2.startTickLoop();
+  await new Promise((r) => setTimeout(r, room2.TICK_RATE * 6));
+  clearInterval(room2.tickInterval);
+  // World-sim noise (monster events) can ride the same ticks; count
+  // only the qa_overflow markers per tick message.
+  const perTick = ws2.sent
+    .filter((m) => m.type === 'tick' && Array.isArray(m.events))
+    .map((m) => m.events.filter((e) => e.type === 'qa_overflow').length)
+    .filter((n) => n > 0);
+  const total = perTick.reduce((a, b) => a + b, 0);
+  check('overflow: all 501 events delivered (none dropped)', total === N, { total, perTick });
+  check('overflow: first flush honors the 500 cap', perTick[0] === room2.EVENTS_PER_TICK_CAP, perTick);
+  check('overflow: remainder arrives on a later tick', perTick.length >= 2 && perTick[perTick.length - 1] >= 1, perTick);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
