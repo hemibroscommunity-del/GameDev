@@ -30,7 +30,6 @@ import {
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES,
   AMULET_TIER_POWER,
   MONSTER_HP_CURVE, RARITY_TIERS, DAMAGE_CHANNEL_PCT,
 } from './data.js';
@@ -104,6 +103,8 @@ import { inboxMethods } from './inbox.js';
 import { cookingMethods } from './cooking.js';
 // v2.3.1168 (P4 decomposition): gather nodes + harvest + extraction validation -- see gathering.js.
 import { gatheringMethods } from './gathering.js';
+// v2.3.1169 (P4 decomposition): equipment store (sanitizers/sell/forge/equip) -- see gear.js.
+import { gearMethods } from './gear.js';
 
 export default {
   async fetch(request, env) {
@@ -1217,39 +1218,11 @@ export class GameRoom {
   // decomposition) -- _fishHealAmount + _handleEatRequest live in
   // cookingMethods, mixed into this prototype below.
 
-  // ═══ Equipment store (opaque blobs + equip_request) ═══
-  //
-  // Slots tracked on playerState:
-  //   weapon         -- active melee weapon
-  //   rangedWeapon   -- active ranged weapon (bow / crossbow)
-  //   staffWeapon    -- active staff weapon
-  //   activeSlot     -- 'melee' | 'ranged' | 'staff' (which is "in hand")
-  //   armor          -- equipped armor
-  //   shield         -- equipped shield (with off-hand)
-  //   amulet         -- equipped amulet
-  //   weaponStash    -- array of stored weapons (max WEAPON_STASH_MAX = 8)
-  //
-  // This slice stores equipment as opaque objects the client provided.
-  // v2.3.1104: no longer fully opaque -- weapon blobs pass through
-  // _sanitizeWeapon (tierMult clamp) at every entry point (first-connect
-  // bootstrap, stored-record load), because server-computed damage
-  // (v2.3.912) and sell value both multiply by tierMult.  Sales are
-  // paid from the server-tracked stash entry, never a client-supplied
-  // object.
-  //
-  // Mirror of WEAPON_TYPES base damage values from
-  // src/data/gameSystems.js.  Used for sell-value math and (later)
-  // server-computed weapon damage.  Keep in sync if new weapon types
-  // ship to the client.
-  _weaponBase(type) {
-    // Baseline-10 rescale (÷4.8): greatsword 48->10 (stays hardest).
-    // Mirrors WEAPON_TYPES base in src/data/gameSystems.js (the client
-    // mirror divides the same table).  Shared by _computeAttackDamage,
-    // the _maxWeaponDmg cap, and _weaponSellValue -- sell values scale
-    // down 4.8x in lockstep with the client (coins are NOT rescaled).
-    const T = { greatsword: 10, sword: 6.67, bow: 7.29, staff: 8.54 };
-    return T[type] || 6.25;          // fists fallback (was 30)
-  }
+  // ═══ Equipment store ═══ moved to gear.js (v2.3.1169, P4
+  // decomposition) -- slots doc + _weaponBase live in gearMethods,
+  // mixed into this prototype below.  The weapon build-CHANNEL
+  // helpers below STAY here: they are combat-damage inputs owned
+  // by the combat region.
 
   // v2.3.912: weapon build-CHANNEL resolution (mirrors WEAPON_CHANNELS in
   // src/data/gameSystems.js).  Only the damage + crit channels are live.  The
@@ -1312,323 +1285,20 @@ export class GameRoom {
     return 1 - Math.min(0.50, Math.min(100, pts) * 0.005);
   }
 
-  // v2.3.1104: weapon-blob sanitizer (P2 of docs/OPTIMIZATION-ROADMAP.md).
-  // Weapon objects enter server state from the client on first-connect
-  // bootstrap (and legacy stored blobs predate any validation).  Since
-  // v2.3.912 the server's own damage roll multiplies by tierMult, so a
-  // forged { tierMult: 9999 } blob inflates AUTHORITATIVE damage and
-  // sell value -- the old "opaque blobs are harmless" comment stopped
-  // being true when server-computed damage shipped.
-  //
-  // Clamp tierMult to [0, 8] (max legit forge tier is worldbreaker at
-  // 7.84; mirrors the armor clamp in _handleStatsUpdate).  Deliberately
-  // does NOT reject unknown weapon types: they already fall back to the
-  // fists base (6.25) in _weaponBase, and nulling them would destroy
-  // legit items if the client ships a new type before this table learns
-  // about it.
-  // v2.3.1131: the sanitizer now KNOWS the quality/hardness/temper
-  // fields (BALANCE-PLAN's "sanitizers must learn the new fields"
-  // warning).  Two postures:
-  //   - default (stored blob / server-held stash): CLAMP -- quality to
-  //     the enum, hardness to [0,5], temper to [0,9999].  The server
-  //     wrote these; keep them.
-  //   - strict (client-supplied join bootstrap): STRIP -- quality and
-  //     hardness multiply the anti-cheat damage ceiling, so a forged
-  //     "godly H5" blob from a fresh client would raise its own cap.
-  //     v2.3.1141: drops are server-minted now, so every legit weapon
-  //     with quality was minted HERE (forge or drop) and persists via
-  //     _saveRpg -- a join blob carrying quality is by definition not
-  //     ours.  Strict stays strip.
-  _sanitizeWeapon(w, strict) {
-    if (!w || typeof w !== 'object') return null;
-    const out = { ...w };
-    out.tierMult = (typeof out.tierMult === 'number' && out.tierMult > 0)
-      ? Math.min(8, out.tierMult) : 1;
-    if (strict) {
-      delete out.quality;
-      delete out.hardness;
-      delete out.temper;
-    } else {
-      if (out.quality !== undefined && !QUALITY_GRADES[out.quality]) delete out.quality;
-      if (out.hardness !== undefined) {
-        out.hardness = (typeof out.hardness === 'number' && out.hardness > 0)
-          ? Math.min(5, Math.floor(out.hardness)) : 0;
-      }
-      if (out.temper !== undefined) {
-        out.temper = (typeof out.temper === 'number' && out.temper > 0)
-          ? Math.min(9999, Math.floor(out.temper)) : 0;
-      }
-    }
-    return out;
-  }
-
-  _sanitizeWeaponList(arr, strict) {
-    if (!Array.isArray(arr)) return [];
-    return arr.slice(0, this.WEAPON_STASH_CAP)
-      .map((w) => this._sanitizeWeapon(w, strict))
-      .filter(Boolean);
-  }
-
-  // Sell value mirrors the client at BroTown.jsx ~26613:
-  //   ceil((tierMult || 1) * (WEAPON_TYPES[type].base || 30) * 0.5)
-  // v2.3.1104: tierMult bounded via _sanitizeWeapon at every entry
-  // point; clamp again here so a stale stored blob can't overpay.
-  _weaponSellValue(weapon) {
-    if (!weapon) return 0;
-    const tierMult = (typeof weapon.tierMult === 'number' && weapon.tierMult > 0)
-      ? Math.min(8, weapon.tierMult) : 1;
-    const base = this._weaponBase(weapon.type);
-    return Math.max(1, Math.ceil(tierMult * base * 0.5));
-  }
-
-  _handleSellWeapon(session, payload) {
-    if (!session || !session.id) return;
-    const ps = this.playerState[session.id];
-    if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
-    const { stashIdx } = payload || {};
-    if (!Number.isInteger(stashIdx) || stashIdx < 0) return;
-    if (!Array.isArray(ps.weaponStash) || stashIdx >= ps.weaponStash.length) return;
-    const weapon = ps.weaponStash[stashIdx];
-    if (!weapon) return;
-    const sellVal = this._weaponSellValue(weapon);
-    ps.weaponStash.splice(stashIdx, 1);
-    ps.coins = (ps.coins || 0) + sellVal;
-    this._saveRpg(session.id, ps);
-    const ws = this._wsBySessionId(session.id);
-    if (ws) this._sendPlayerState(ws, session.id);
-  }
-
-  // equip_request swaps a stash entry with an active equipment slot.
-  // Server validates stashIdx is in range + slot name is known.
-  // (WEAPON_STASH_CAP set in constructor; mirrors WEAPON_STASH_MAX
-  // in src/data/gameSystems.js.)
-  _isValidEquipSlot(slot) {
-    return slot === 'weapon' || slot === 'rangedWeapon' || slot === 'staffWeapon'
-        || slot === 'armor' || slot === 'shield' || slot === 'amulet';
-  }
+  // ═══ Weapon sanitizers + sell ═══ moved to gear.js (v2.3.1169,
+  // P4 decomposition) -- _sanitizeWeapon/_sanitizeWeaponList,
+  // _weaponSellValue/_handleSellWeapon, and _isValidEquipSlot live
+  // in gearMethods, mixed into this prototype below.
 
   // ═══ Quests ═══ moved to quests.js (v2.3.1162, P4 decomposition) --
   // accept / objective-credit / turn-in live in questMethods, mixed
   // into this prototype below.  Trust model unchanged; see the
   // quests.js header.
 
-  // ═══ Weapon crafting (blacksmith + woodworker) ═══
-  //
-  // Mirrors BLACKSMITH_TIERS + WOODWORKING_TIERS from src/data/
-  // gameSystems.js (20 tiers each).  Only the fields the worker
-  // needs are mirrored (minLvl / tierMult / statReq / *Cost +
-  // wood resource key for ww).  Display fields (label / color /
-  // desc) stay client-only since the worker doesn't render UI.
-  //
-  // Client sends forge_weapon { weaponType, tierKey, isWoodwork }.
-  // Server validates:
-  //   - tierKey exists in the matching tier table
-  //   - ps.lifeSkills.[blacksmithing|woodworking].level >= minLvl
-  //   - ps[required stat] >= statReq (per EQUIP_STAT_MAP)
-  //   - ps.inventory has required ore/wood
-  //   - ps.coins >= goldCost
-  // Then consumes ingredients + coins, mints the new weapon
-  // (matches the client weapon shape exactly), swaps old active
-  // weapon to stash (rejected if stash full), applies crafting XP,
-  // and emits player_state.  Closes the "forge max-tier weapon for
-  // free" cheat: a cheater bypassing the local resource consume
-  // still gets stomped because the worker re-validates + applies.
-  _BLACKSMITH_TIERS_DATA() {
-    // 20 tiers from BLACKSMITH_TIERS.  Keep in sync if the client
-    // ships new tiers (greatsword/sword forge use these via
-    // gearBase = tier key).
-    return BLACKSMITH_TIERS;
-  }
-
-  _WOODWORKING_TIERS_DATA() {
-    return WOODWORKING_TIERS;
-  }
-
-  // EQUIP_STAT_MAP mirror.  Used for the forge statReq gate.
-  _equipStatFor(weaponType) {
-    if (weaponType === 'greatsword') return 'power';
-    if (weaponType === 'sword') return 'agility';
-    if (weaponType === 'bow') return 'agility';
-    if (weaponType === 'staff') return 'mind';
-    return 'power';
-  }
-
-  _handleForgeWeapon(session, payload) {
-    if (!session || !session.id) return;
-    const ps = this.playerState[session.id];
-    if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
-    // v2.3.1129: forging mints INTO the active slot -- that's a gear
-    // change, so the guard lock covers it (see threat.js).
-    if (this._threatGearLocked(session.id, ps)) return;
-    const { weaponType, tierKey, isWoodwork } = payload || {};
-    if (weaponType !== 'greatsword' && weaponType !== 'sword' && weaponType !== 'bow' && weaponType !== 'staff') return;
-    if (typeof tierKey !== 'string') return;
-
-    // Validate woodwork-vs-blacksmith match with weapon type.
-    // Blacksmith forges melee (greatsword/sword); woodworking
-    // forges ranged (bow/staff).  Reject mismatches.
-    const wantWw = (weaponType === 'bow' || weaponType === 'staff');
-    if (wantWw !== !!isWoodwork) return;
-
-    const table = wantWw ? this._WOODWORKING_TIERS_DATA() : this._BLACKSMITH_TIERS_DATA();
-    const tier = table[tierKey];
-    if (!tier) return;
-
-    // Skill level gate
-    const skillName = wantWw ? 'woodworking' : 'blacksmithing';
-    const skillLvl = (ps.lifeSkills && ps.lifeSkills[skillName] && ps.lifeSkills[skillName].level) || 1;
-    if (skillLvl < tier.minLvl) return;
-
-    // Stat gate (per EQUIP_STAT_MAP)
-    const reqStat = this._equipStatFor(weaponType);
-    if ((ps[reqStat] || 0) < (tier.statReq || 0)) return;
-
-    // Coin + resource validation.
-    if ((ps.coins || 0) < tier.goldCost) return;
-    if (!ps.inventory) ps.inventory = {};
-    const resourceKey = wantWw ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
-    const have = ps.inventory[resourceKey] || 0;
-    const cost = wantWw ? tier.woodCost : tier.oreCost;
-    if (have < cost) return;
-
-    // Active slot for the new weapon (matches client logic).
-    const slot = (weaponType === 'bow') ? 'rangedWeapon'
-               : (weaponType === 'staff') ? 'staffWeapon'
-               : 'weapon';
-
-    // Stash full check -- if existing active weapon would need to
-    // be stashed but stash is full, reject (matches client where
-    // stash.push silently no-ops at cap).  Future: auto-sell oldest.
-    const current = ps[slot];
-    if (current) {
-      if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return;
-    }
-
-    // Apply: consume resources, mint new weapon, swap old to stash.
-    ps.inventory[resourceKey] -= cost;
-    if (ps.inventory[resourceKey] <= 0) delete ps.inventory[resourceKey];
-    ps.coins -= tier.goldCost;
-
-    if (current) {
-      ps.weaponStash.push(current);
-    }
-    ps[slot] = {
-      type: weaponType,
-      tier: 'common',
-      tierMult: tier.tierMult,
-      element1: null,
-      element2: null,
-      isVolatile: false,
-      // Name is built client-side from display label; server stores
-      // gearBase so the client can reconstruct.
-      name: tierKey + ' ' + weaponType,
-      gearBase: wantWw ? ('ww_' + tierKey) : tierKey,
-      reforgeBonus: null,
-      hardenBonus: null,
-      // v2.3.1131: §4.6b quality rolled ONCE at mint, immutable
-      // (90.1/9/0.9% + godly 1-in-400k); §4.6c hardness starts 0.
-      quality: this._rollWeaponQuality(),
-      hardness: 0,
-      temper: 0,
-    };
-
-    // Crafting XP -- mirrors client at the forge sites:
-    //   blacksmithing: tier.minLvl * 5
-    //   woodworking:   tier.minLvl * 5  (same formula)
-    this._addLifeSkillXp(ps, skillName, (tier.minLvl || 1) * 5);
-
-    this._saveRpg(session.id, ps);
-    const ws = this._wsBySessionId(session.id);
-    if (ws) this._sendPlayerState(ws, session.id);
-  }
-
-  // Unequip an active equipment slot.  Weapons move to stash (if
-  // room); armor/shield/amulet simply null out since they don't have
-  // a stash today.  Closes the cheat where a client unequips locally
-  // and gets "lost" gear that server still thinks is equipped --
-  // future damage/def math would diverge from client view otherwise.
-  _handleUnequipRequest(session, payload) {
-    if (!session || !session.id) return;
-    const ps = this.playerState[session.id];
-    if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
-    // v2.3.1129: guard gear lock (see threat.js).
-    if (this._threatGearLocked(session.id, ps)) return;
-    const { slot } = payload || {};
-    if (!this._isValidEquipSlot(slot)) return;
-    const current = ps[slot];
-    if (!current) return;
-    // Weapons go to stash; armor/shield/amulet just null out.
-    if (slot === 'weapon' || slot === 'rangedWeapon' || slot === 'staffWeapon') {
-      if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-      if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return; // stash full -- reject
-      ps.weaponStash.push(current);
-    }
-    ps[slot] = null;
-    // v2.3.1159: active-slot repair.  Unequipping the weapon the
-    // activeSlot points at used to leave the pointer dangling — the
-    // live playtest bug where a player unequips their bow yet the
-    // character keeps swinging it: _computeAttackDamage resolved the
-    // empty slot's weapon as null and fell back to a default type
-    // while ps.activeSlot stayed 'ranged'.  Reset to 'melee' (the
-    // fists fallback) so server damage resolution and the client's
-    // in-hand display agree.  'weapon' needs no repair: an empty
-    // melee slot IS the fists fallback.
-    if ((slot === 'rangedWeapon' && ps.activeSlot === 'ranged')
-        || (slot === 'staffWeapon' && ps.activeSlot === 'staff')) {
-      ps.activeSlot = 'melee';
-    }
-    // Recompute pool maxes when armor changes -- per the T1/T2 stat
-    // redesign spec, armor folds into maxHp via _armorHp.  Cheap call;
-    // covers future armor-affecting equipment too.
-    if (slot === 'armor') this._recomputeMaxes(ps);
-    this._saveRpg(session.id, ps);
-    const ws = this._wsBySessionId(session.id);
-    if (ws) this._sendPlayerState(ws, session.id);
-  }
-
-  _handleEquipRequest(session, payload) {
-    if (!session || !session.id) return;
-    const ps = this.playerState[session.id];
-    if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
-    // v2.3.1129: guard gear lock (see threat.js).
-    if (this._threatGearLocked(session.id, ps)) return;
-    const { stashIdx, slot } = payload || {};
-    if (!this._isValidEquipSlot(slot)) return;
-    if (!Number.isInteger(stashIdx) || stashIdx < 0) return;
-    if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
-    if (stashIdx >= ps.weaponStash.length) return;
-    // Swap stash entry with current active slot.  If active slot
-    // empty, the stash item moves in and the stash entry becomes
-    // null (which we then splice out so stash stays compact).
-    const stashItem = ps.weaponStash[stashIdx];
-    // Guard against a stash entry that is null/undefined (could
-    // happen from a corrupted stored blob from before the
-    // splice-on-empty logic existed).  Without this, a cheater
-    // could equip a "null" stash entry to wipe the active slot.
-    if (!stashItem) return;
-    const activeItem = ps[slot] || null;
-    ps[slot] = stashItem;
-    if (activeItem) {
-      ps.weaponStash[stashIdx] = activeItem;
-    } else {
-      ps.weaponStash.splice(stashIdx, 1);
-    }
-    // Sanity cap so stash can't grow past the client-side limit even
-    // if a cheater somehow inflates it via prior bootstrap.
-    if (ps.weaponStash.length > this.WEAPON_STASH_CAP) {
-      ps.weaponStash.length = this.WEAPON_STASH_CAP;
-    }
-    // Armor swap changes maxHp via _armorHp; recompute pool maxes.
-    if (slot === 'armor') this._recomputeMaxes(ps);
-    this._saveRpg(session.id, ps);
-    const ws = this._wsBySessionId(session.id);
-    if (ws) this._sendPlayerState(ws, session.id);
-  }
+  // ═══ Weapon crafting + equip/unequip ═══ moved to gear.js
+  // (v2.3.1169, P4 decomposition) -- forge_weapon, equip_request,
+  // unequip_request, and set_active_slot live in gearMethods,
+  // mixed into this prototype below.
 
   // ═══ Cooking recipes / NPC shop / pan-minigame cook ═══ moved to
   // cooking.js (v2.3.1166, P4 decomposition) -- cook_recipe,
@@ -4799,25 +4469,13 @@ export class GameRoom {
         }
         break;
 
-      case 'set_active_slot': {
-        // Persist the player's chosen weapon slot.  Without this, any
-        // subsequent player_state (loot / kill / credit event) would
-        // carry the worker's stale activeSlot and revert the client's
-        // local cycle.  No broadcast back -- the client already updated
-        // locally, and the next server-driven player_state will carry
-        // the now-fresh persisted value.
+      case 'set_active_slot':
+        // Persist the player's chosen weapon slot -- see gear.js
+        // _handleSetActiveSlot (v2.3.1169: hoisted, byte-identical).
         if (session.id) {
-          const ps = this.playerState[session.id];
-          if (ps) {
-            const slot = msg.payload && msg.payload.slot;
-            if (slot === 'melee' || slot === 'ranged' || slot === 'staff') {
-              ps.activeSlot = slot;
-              this._saveRpg(session.id, ps);
-            }
-          }
+          this._handleSetActiveSlot(session, msg.payload || msg);
         }
         break;
-      }
 
       case 'forge_weapon':
         // Blacksmith / woodworker forge.  Server validates resource +
@@ -5321,3 +4979,5 @@ Object.assign(GameRoom.prototype, inboxMethods);
 Object.assign(GameRoom.prototype, cookingMethods);
 // v2.3.1168 (P4 decomposition): gathering -- see gathering.js.
 Object.assign(GameRoom.prototype, gatheringMethods);
+// v2.3.1169 (P4 decomposition): gear -- see gear.js.
+Object.assign(GameRoom.prototype, gearMethods);

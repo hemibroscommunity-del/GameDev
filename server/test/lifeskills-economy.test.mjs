@@ -11,6 +11,8 @@
  *       stat gate, insufficient ore, insufficient gold, stash full
  *       with a current weapon, woodwork/weapon-type mismatch, threat
  *       gear lock.
+ *   2b. sell_weapon (v2.3.1169): pays the server-computed value,
+ *       removes the stash entry; out-of-range/negative idx no-ops.
  *   3.  cook_request: consumes exactly one raw fish; 'cooked' mints
  *       cooked_<fish> + 8 cooking XP, 'burnt' mints burnt_dust; the
  *       20/min rate limit drops the request WITHOUT consuming.
@@ -139,6 +141,23 @@ await rejectCase('stash full with a current weapon equipped', () => {
 await rejectCase('woodwork/weapon-type mismatch (bow via blacksmith)', () => {}, { weaponType: 'bow', tierKey: 'iron', isWoodwork: false });
 await rejectCase('threat gear lock', () => { ps._gearLockUntil = Date.now() + 60000; });
 ps._gearLockUntil = 0;
+
+// ── 2b. sell_weapon (v2.3.1169: first wire-level coverage, added with
+// the gear.js extraction; the tierMult sell-value clamp is covered
+// direct-call in anticheat §6) ──
+ps.coins = 100;
+ps.weaponStash = [{ type: 'sword', tierMult: 2 }, { type: 'bow', tierMult: 1 }];
+const expectedSell = room._weaponSellValue(ps.weaponStash[0]);
+await send(ws, 'sell_weapon', { stashIdx: 0 });
+check('sell: pays the server-computed value and removes the stash entry',
+  ps.coins === 100 + expectedSell && ps.weaponStash.length === 1
+  && ps.weaponStash[0].type === 'bow',
+  { coins: ps.coins, expectedSell, stash: ps.weaponStash });
+const preSell = econSnap(ps);
+await send(ws, 'sell_weapon', { stashIdx: 5 });
+check('sell: out-of-range stashIdx is a clean no-op', econSnap(ps) === preSell);
+await send(ws, 'sell_weapon', { stashIdx: -1 });
+check('sell: negative stashIdx is a clean no-op', econSnap(ps) === preSell);
 
 // ── 3. cook_request ──
 ps.inventory = { fish_minnow: 2 };
