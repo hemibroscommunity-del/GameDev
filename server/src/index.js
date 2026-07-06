@@ -1089,18 +1089,26 @@ export class GameRoom {
     return [1, 6]; // eligible tier .lvl values for depth=shallow
   }
 
-  // Per-zone node count + type split.  Entry-level resource extraction
-  // is zone-specialized -- one resource type per zone so each life-skill
-  // has its own home base.  Other zones get no nodes until specific
-  // resources are designed for them.
-  //   - meadow:  fishing holes
-  //   - hollows: ore veins (the rock zone)
-  //   - frost:   trees (the snowy zone -- client renders these as pines)
+  // Per-zone node count + type split.  Each gameplay zone gets its OWN
+  // resource specialization (its "home base") PLUS fishing holes, so an
+  // angler can fish anywhere (owner request 2026-07-06: "add fishing spots
+  // to each zone").  Ore/trees stay pinned to their home zones; fishing is
+  // universal because water can plausibly sit in any biome.
+  //   - hollows: ore veins (the rock zone)   -- + fishing
+  //   - frost:   trees (client renders pines) -- + fishing
+  //   - all others (meadow / ember / mist / verdant / thunder / sky /
+  //     tidal): fishing holes only
   _getZoneNodeConfig(zoneId) {
     const ZONE_NODES = {
       meadow:  { treeCt: 0, fishCt: 6, oreCt: 0 },
-      hollows: { treeCt: 0, fishCt: 0, oreCt: 6 },
-      frost:   { treeCt: 6, fishCt: 0, oreCt: 0 },
+      ember:   { treeCt: 0, fishCt: 6, oreCt: 0 },
+      mist:    { treeCt: 0, fishCt: 6, oreCt: 0 },
+      verdant: { treeCt: 0, fishCt: 6, oreCt: 0 },
+      frost:   { treeCt: 6, fishCt: 6, oreCt: 0 },
+      thunder: { treeCt: 0, fishCt: 6, oreCt: 0 },
+      hollows: { treeCt: 0, fishCt: 6, oreCt: 6 },
+      sky:     { treeCt: 0, fishCt: 6, oreCt: 0 },
+      tidal:   { treeCt: 0, fishCt: 6, oreCt: 0 },
     };
     return ZONE_NODES[zoneId] || { treeCt: 0, fishCt: 0, oreCt: 0 };
   }

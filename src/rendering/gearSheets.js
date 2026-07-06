@@ -27,7 +27,12 @@ const FRAME_H = 256;
    and shirt/tshirt -- the loot-pickup freeze pose now shows the recoloured
    shirt + equipped plate instead of the bare body (owner-drawn art). */
 /* v2.3.1054: pickup greaves rescaled +25% (owner) -- bump to refetch the PNG. */
-const GEAR_VERSION = '2.3.1058';
+/* v2.3.1123: + fish-south sheets for chest/steelplate, legs/steelgreaves, and
+   shirt/tshirt -- the fishing pose now shows the equipped plate/greaves and the
+   recoloured shirt (paper-doll, mirrors the cook stand-in). Each is a 4096x128
+   32-frame strip aligned to fish-south.png; the armor tracks the body's per-
+   frame lean, the shirt is a grayscale tint base with a 1px outline. */
+const GEAR_VERSION = '2.3.1123';
 
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};
