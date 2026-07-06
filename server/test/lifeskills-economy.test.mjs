@@ -14,6 +14,9 @@
  *   3.  cook_request: consumes exactly one raw fish; 'cooked' mints
  *       cooked_<fish> + 8 cooking XP, 'burnt' mints burnt_dust; the
  *       20/min rate limit drops the request WITHOUT consuming.
+ *   3b. eat_request (v2.3.1166): consumes exactly one cooked fish and
+ *       heals by the tier amount; raw fish inedible; consume-at-full-HP
+ *       anti-race posture; zero-held is a clean no-op.
  *   4.  cook_recipe: dry-run-then-consume (a failed recipe consumes
  *       nothing), buff timer set on ps._buffs, tier*25 cooking XP.
  *   5.  shop_purchase: exact debit, trap lands in inventory,
@@ -155,6 +158,27 @@ check('cook: rate limit drops the request without consuming the fish',
   ps.inventory.fish_minnow === 1 && (ps.inventory.cooked_fish_minnow || 0) === 0,
   ps.inventory);
 ps._cookHistory = [];
+
+// ── 3b. eat_request (v2.3.1166: first direct coverage, added with the
+// cooking.js extraction) ──
+ps.inventory = { cooked_fish_minnow: 2, fish_minnow: 1 };
+ps.maxHp = 100; ps.hp = 50;
+ps.hpSpec = {}; // no Recovery grid points -> 1.0 heal multiplier
+await send(ws, 'eat_request', { invKey: 'cooked_fish_minnow' });
+const minnowHeal = room._fishHealAmount('cooked_fish_minnow');
+check('eat: consumes one cooked fish and heals by the tier amount',
+  ps.inventory.cooked_fish_minnow === 1 && ps.hp === Math.min(100, 50 + minnowHeal),
+  { hp: ps.hp, heal: minnowHeal, inv: ps.inventory });
+await send(ws, 'eat_request', { invKey: 'fish_minnow' });
+check('eat: RAW fish is not edible (inventory untouched)',
+  ps.inventory.fish_minnow === 1, ps.inventory);
+ps.hp = ps.maxHp;
+await send(ws, 'eat_request', { invKey: 'cooked_fish_minnow' });
+check('eat: at full HP the fish is still consumed (anti-race posture)',
+  ps.inventory.cooked_fish_minnow === undefined && ps.hp === ps.maxHp, ps.inventory);
+await send(ws, 'eat_request', { invKey: 'cooked_fish_minnow' });
+check('eat: eating with zero held is a clean no-op',
+  ps.inventory.cooked_fish_minnow === undefined && ps.hp === ps.maxHp, ps.inventory);
 
 // ── 4. cook_recipe (dry-run-then-consume) ──
 const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> regen buff
