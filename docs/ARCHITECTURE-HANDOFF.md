@@ -6,6 +6,12 @@ work — human or model. It exists because the conventions below are
 load-bearing: each one closes a specific incident class, and code that
 ignores one usually looks correct while destroying player value later.
 
+Status refreshed 2026-07-07 (v2.3.1175), after the P4 GameRoom
+decomposition (v2.3.1162–1175) finished: the rules in Part 1 stand
+unchanged; Part 2 item L and rule 22 were brought up to date. The
+server module map lives in `docs/OPTIMIZATION-ROADMAP.md` §P4 — that
+is the one place it's maintained.
+
 Companion docs: `docs/specs/*.md` (one per shipped system, each with its
 wire surface and attach points), `docs/WIRE-PROTOCOL.md` (message
 reference), `docs/BALANCE-PLAN.md` (combat/economy numbers + phase plan),
@@ -180,7 +186,14 @@ extended.
     `Object.assign(GameRoom.prototype, …)` at the bottom of index.js,
     hook via named integration points (default-branch intercepts, death
     hooks like `_duelOnDeath`, join hooks, `_tick*` calls). Keeps a
-    future room re-shard mechanical.
+    future room re-shard mechanical. As of v2.3.1162–1175 (P4) the
+    WHOLE GameRoom works this way — index.js (~2.6k lines) keeps only
+    the router switch, monster spawn/AI, loot piles, death/respawn/
+    regen, PvP consent bookkeeping, and the weapon channel helpers;
+    everything else is a mixin (module map: OPTIMIZATION-ROADMAP §P4).
+    Extraction discipline if you move more: byte-identical hoist,
+    one slice per commit, all suites green per slice, tombstone
+    comment at the old site.
 23. **Do not rename or repurpose behavior-frozen files.**
     `server/src/arena.js` / `marketplace.js` keep exporting their DO
     classes for the wrangler bindings even though they're retired from
@@ -349,11 +362,15 @@ shallowest 15% of every zone, re-enabled the tutorial banner, and added
 a CI lockstep test pinning both ZONES tables together (spec:
 docs/specs/zone-progression.md). Hard entry gating remains optional.
 
-### L. Smaller known items
-- Cook minigame outcome (`kind`) still client-trusted (rate-limited
-  only; v2.3.1167 added a physics floor on burst timing, not on kind).
-- ~~Event buffer drops events past 500/tick~~ — FIXED v2.3.1163
-  (splice keeps the remainder queued in tick.js).
+### L. Smaller known items (statuses refreshed 2026-07-07)
+- ~~Cook minigame outcome (`kind`) client-trusted~~ — resolved as a
+  DOCUMENTED trust posture, not a gap: the outcome is player timing,
+  not a skill roll, so it stays client-reported; v2.3.1167 added a
+  physics floor (sub-window `cook_request` bursts dropped) on top of
+  the v2.3.1104 rate limit. See docs/specs/cooking.md.
+- ~~Event buffer drops events past 500/tick~~ — FIXED v2.3.1163:
+  overflow is spliced and delayed to the next tick, not dropped
+  (tick.js; pinned by test/tick.test.mjs §10).
 - ~~Duplicate `case 'arena_bet'` in gameEvents~~ — RESOLVED v2.3.1176,
   but NOT by un-shadowing. The FIRST case was the dead one (keyed on
   `bettorId`, which only one send site carries; fed an unread
@@ -375,18 +392,15 @@ docs/specs/zone-progression.md). Hard entry gating remains optional.
   worse than cosmetic for social duels: both players dropping and
   only the second rejoining erased the first's clock, leaving the
   duel 'active' forever and blocking both from any new duel.
-- T2 retirement cleanup: drop the 5 retired stats from wire/save/clamps.
-  v2.3.1152: NOT shippable as a plain registry migration — the exact
-  coordinated edit list is in docs/specs/migrations.md §"Why v3 was not
-  shipped" (join RAW_STATS fallback re-injects from the join payload;
-  stats_update still clamps-and-stores; restoration/influence formulas
-  read the fields live). Ship all edits together as one PR.
-- index.js is ~5.4k lines — continue strangler-fig extraction (data.js,
-  elemental.js, market/trade/duel are the pattern; tick loop is the
-  riskiest slice, do it last with the smoke harness watching).
-  v2.3.1142: persistence/tick/lifeskills-economy suites now cover the
-  previously-untested core (rpg blob, monster AI ticks, forge/cook/
-  shop/harvest) — the extraction slices finally have a net.
+- ~~T2 retirement cleanup~~ — SHIPPED v2.3.1155 as the coordinated
+  whole-PR edit that migrations.md §"Why v3 was not shipped" called
+  for (with the v2.3.1156 uniform caps + v2.3.1157 1000-point ceiling
+  landing right behind it).
+- ~~index.js is ~5.4k lines — continue strangler-fig extraction~~ —
+  DONE v2.3.1162–1191: the decomposition is complete, including the
+  do-last tick-loop slice (v2.3.1174) and the combat/damage core
+  (v2.3.1191). index.js is ~2.6k lines; module map in
+  OPTIMIZATION-ROADMAP §P4.
 - Client has no test suite; the CI smoke harness (tools/qa/*.mjs) is the
   only automated client check — extend it when touching input/net code.
 
