@@ -584,7 +584,16 @@ export const joinMethods = {
       // v2.3.1192 worker advertises amuletForge but silently denies
       // the unknown cut op, which would break cutting for new clients
       // against it (deploy-order safety, rule 19).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, ..._liveFlags },
+      // v2.3.1209: gemExtract -- the client sends amulet_forge_request
+      // {op:'extract'} for the two ForgePanel Extract buttons only when
+      // the worker owns extraction settlement (amulet.js).  A NARROW
+      // flag, NOT folded into amuletForge or gems: a v2.3.1192/1198
+      // worker advertises those but denies the unknown extract op, which
+      // would strip the client's gear locally and stomp it right back on
+      // the echo (the caps.gems lesson, TRAPS #9).  Absent, the legacy
+      // client-local Extract path stays (broken settlement, no
+      // regression -- echo-stomped as before).
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

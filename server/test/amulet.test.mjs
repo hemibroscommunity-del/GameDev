@@ -38,6 +38,18 @@
  *       a pre-slice stored record max-merges the claim ONCE
  *       (gemsCaptured stamp); reconnect claims are ignored forever
  *       after.  caps.gems advertised (deploy-order gate).
+ *
+ * v2.3.1209 (extraction, the successor slice §4's Residuals named):
+ * ForgePanel's two Extract buttons move server-side (op:'extract').
+ *   13. extract: strips the four equipped gearBase slots
+ *       (weapon/rangedWeapon/staffWeapon elements, shield gem) and
+ *       stash weapons by index, credits polished gems, charges
+ *       ceil(25*tierMult), rebuilds the display name (blacksmith +
+ *       multi-word woodworking + weapon-type labels); the AMULET is
+ *       rejected (its extract button is dead code -- gearBase filter);
+ *       denies on insufficient coins (no partial spend), nothing
+ *       socketed, unknown/OOB target, dead; gear lock blocks equipped
+ *       extraction but not stash; caps.gemExtract advertised.
  */
 import { GameRoom } from '../src/index.js';
 import { AMULET_FORGE_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_MONSTER_DROP, GEM_RAW_MONSTER_DROP, GEM_CUT_TIERS } from '../src/data.js';
@@ -386,6 +398,132 @@ check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held le
   // cut op.
   const sync = wsg.sent.find((m) => m.type === 'state_sync');
   check('state_sync advertises caps.gems', sync && sync.caps && sync.caps.gems === true, sync && sync.caps);
+}
+
+// ── 13. v2.3.1209 gem EXTRACTION (op:'extract'): server-settled strip
+// of the gear blob + polished-gem credit, mirroring ForgePanel's two
+// Extract buttons.  Fresh identity so the earlier sections' churn on
+// bp_am_p can't leak in. ──
+{
+  const wsx = fakeWs('x');
+  await join(wsx, 'bp_ext_p', {});
+  const px = room.playerState['bp_ext_p'];
+  px.lifeSkills = px.lifeSkills || {};
+  px.lifeSkills.gems = {};
+
+  // caps advertisement (deploy-order gate, rule 19) -- narrow flag
+  {
+    const sync = wsx.sent.find((m) => m.type === 'state_sync');
+    check('state_sync advertises caps.gemExtract', sync && sync.caps && sync.caps.gemExtract === true, sync && sync.caps);
+  }
+
+  // The amulet is deliberately NOT an extract target: its Extract button
+  // never renders (ForgePanel's list filters on s.item.gearBase, which
+  // amulets lack -- dead code), so per the dormant-content rule the op
+  // rejects target:'amulet' like any unknown target (asserted below).
+
+  // --- melee weapon: both elements out, tier->common, name rebuilt,
+  //     cost = ceil(25 * tierMult) ---
+  px.coins = 100;
+  px.weapon = { type: 'greatsword', gearBase: 'iron', tier: 'fusion', tierMult: 2.25, element1: 'flame', element2: 'storm', isVolatile: true, name: 'FlameStorm Great Sword' };
+  wsx.sent.length = 0;
+  await forge(wsx, { op: 'extract', target: 'weapon' });
+  check('extract weapon: both elements credited, tier reset, name rebuilt, ceil(25*2.25)=57 charged',
+    px.weapon.element1 === null && px.weapon.element2 === null
+    && px.weapon.tier === 'common' && px.weapon.isVolatile === false
+    && px.weapon.name === 'Iron Great Sword'
+    && px.lifeSkills.gems.polished_flame === 1 && px.lifeSkills.gems.polished_storm === 1
+    && px.coins === 43,
+    { weapon: px.weapon, gems: px.lifeSkills.gems, coins: px.coins });
+  check('extract echoes player_state', !!lastPlayerState(wsx), null);
+  {
+    const before = JSON.stringify({ w: px.weapon, g: px.lifeSkills.gems, c: px.coins });
+    await forge(wsx, { op: 'extract', target: 'weapon' }); // stripped now
+    check('extract on an element-less weapon is a silent no-op', JSON.stringify({ w: px.weapon, g: px.lifeSkills.gems, c: px.coins }) === before, before);
+  }
+
+  // --- ranged/staff slots are extractable too (all four gearBase slots) ---
+  px.coins = 100;
+  px.rangedWeapon = { type: 'bow', gearBase: 'copper', tier: 'elemental', tierMult: 1.12, element1: 'wind', element2: null, isVolatile: false, name: 'Wind Bow' };
+  await forge(wsx, { op: 'extract', target: 'rangedWeapon' });
+  // ceil(25*1.12)=29 (25*1.12 floats to 28.0000000000000004) -- the
+  // client computes the identical Math.ceil, so the coin gate matches.
+  check('extract rangedWeapon slot strips + credits (ceil(25*1.12)=29)',
+    px.rangedWeapon.element1 === null && px.rangedWeapon.name === 'Copper Bow'
+    && px.lifeSkills.gems.polished_wind === 1 && px.coins === 71,
+    { ranged: px.rangedWeapon, coins: px.coins });
+
+  // --- woodworking weapon: the multi-word label table is exercised ---
+  px.coins = 100;
+  px.staffWeapon = { type: 'staff', gearBase: 'ww_crystalwood', tier: 'elemental', tierMult: 1, element1: 'frost', element2: null, isVolatile: false, name: 'Frost Staff' };
+  await forge(wsx, { op: 'extract', target: 'staffWeapon' });
+  check('extract woodworking staff rebuilds the multi-word tier label',
+    px.staffWeapon.name === 'Crystal Wood Staff' && px.lifeSkills.gems.polished_frost === 1 && px.coins === 75,
+    { name: px.staffWeapon.name, coins: px.coins });
+
+  // --- shield extraction: single gem, blacksmith label, flat 25g (no tierMult) ---
+  px.coins = 100;
+  px.shield = { gearBase: 'steel', gem: 'venom', name: 'Venom Shield' };
+  await forge(wsx, { op: 'extract', target: 'shield' });
+  check('extract shield: gem removed + blacksmith name rebuilt + polished credited + flat 25g',
+    px.shield.gem === null && px.shield.name === 'Steel Shield' && px.lifeSkills.gems.polished_venom === 1 && px.coins === 75,
+    { shield: px.shield, coins: px.coins });
+
+  // --- insufficient coins: no partial spend (gear + gems untouched) ---
+  px.coins = 10;
+  px.shield = { gearBase: 'steel', gem: 'water', name: 'Water Shield' };
+  const gemsBefore = JSON.stringify(px.lifeSkills.gems);
+  await forge(wsx, { op: 'extract', target: 'shield' }); // 25 > 10
+  check('extract denied on insufficient coins leaves gear + gems untouched',
+    px.shield.gem === 'water' && px.coins === 10 && JSON.stringify(px.lifeSkills.gems) === gemsBefore,
+    { shield: px.shield, coins: px.coins });
+
+  // --- stash extraction by index; out-of-range / non-integer deny ---
+  px.coins = 100;
+  px.weaponStash = [
+    { type: 'sword', gearBase: 'iron', tier: 'elemental', tierMult: 1, element1: 'dark', element2: null, isVolatile: false, name: 'Dark Sword' },
+  ];
+  await forge(wsx, { op: 'extract', target: 'stash', stashIdx: 5 }); // OOB
+  check('extract stash out-of-range index denies', px.weaponStash[0].element1 === 'dark' && px.coins === 100, { stash: px.weaponStash, coins: px.coins });
+  await forge(wsx, { op: 'extract', target: 'stash', stashIdx: '0' }); // non-integer
+  check('extract stash non-integer index denies', px.weaponStash[0].element1 === 'dark' && px.coins === 100, { stash: px.weaponStash });
+  await forge(wsx, { op: 'extract', target: 'stash', stashIdx: 0 });
+  check('extract stash strips the indexed weapon + credits + charges',
+    px.weaponStash[0].element1 === null && px.weaponStash[0].tier === 'common'
+    && px.weaponStash[0].name === 'Iron Sword' && px.lifeSkills.gems.polished_dark === 1 && px.coins === 75,
+    { stash: px.weaponStash, gems: px.lifeSkills.gems, coins: px.coins });
+
+  // --- unknown / dormant-amulet target denies ---
+  {
+    const c = px.coins;
+    px.amulet = { tier: 'mythic', gem: 'flame', name: 'Mythic Flame Amulet' };
+    await forge(wsx, { op: 'extract', target: 'amulet' }); // dead flow, not supported
+    await forge(wsx, { op: 'extract', target: 'trousers' });
+    await forge(wsx, { op: 'extract' });
+    check('extract with amulet/unknown/absent target denies silently',
+      px.coins === c && px.amulet.gem === 'flame', { coins: px.coins, amulet: px.amulet });
+  }
+
+  // --- gear lock blocks EQUIPPED extraction but not stash (stash isn't worn) ---
+  px.coins = 100;
+  px.shield = { gearBase: 'steel', gem: 'light', name: 'Light Shield' };
+  px.weaponStash = [{ type: 'staff', gearBase: 'iron', tier: 'elemental', tierMult: 1, element1: 'stone', element2: null, isVolatile: false, name: 'Stone Staff' }];
+  px._gearLockUntil = Date.now() + 60000;
+  await forge(wsx, { op: 'extract', target: 'shield' });
+  check('gear lock blocks equipped extraction', px.shield.gem === 'light' && px.coins === 100, { shield: px.shield, coins: px.coins });
+  await forge(wsx, { op: 'extract', target: 'stash', stashIdx: 0 });
+  check('gear lock does NOT block stash extraction (not equipped gear)',
+    px.weaponStash[0].element1 === null && px.lifeSkills.gems.polished_stone === 1,
+    { stash: px.weaponStash, gems: px.lifeSkills.gems });
+  px._gearLockUntil = 0;
+
+  // --- dead players cannot extract ---
+  px.coins = 100;
+  px.shield = { gearBase: 'steel', gem: 'wind', name: 'Wind Shield' };
+  px.dead = true;
+  await forge(wsx, { op: 'extract', target: 'shield' });
+  check('dead player cannot extract', px.shield.gem === 'wind' && px.coins === 100, { shield: px.shield, coins: px.coins });
+  px.dead = false;
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

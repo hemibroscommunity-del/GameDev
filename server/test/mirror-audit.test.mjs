@@ -27,10 +27,10 @@ import {
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
   DAMAGE_CHANNEL_PCT, WEAPON_CHANNELS,
-  GEM_CUT_TIERS,
+  GEM_CUT_TIERS, WEAPON_TYPES,
 } from '../../src/data/gameSystems.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
-import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES } from '../../src/data/items.js';
+import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -178,6 +178,32 @@ tierMirror('GEM_CUT', SRV.GEM_CUT_TIERS, GEM_CUT_TIERS);
 check('GEM_RAW_MONSTER_DROP <-> GEM_DROP_RATES.monsterKill (server rolls the kill drop now)',
   SRV.GEM_RAW_MONSTER_DROP === GEM_DROP_RATES.monsterKill,
   { server: SRV.GEM_RAW_MONSTER_DROP, client: GEM_DROP_RATES.monsterKill });
+
+// ── 8e. v2.3.1209 server gem EXTRACTION (amulet.js op:'extract'): the
+// cost constant and the display-name label tables.  The client
+// wholesale-replaces the gear blob (name included) from the extraction
+// echo, so a drifted label would flip the weapon/shield/amulet name on
+// every extract; a drifted cost would reject spends the button
+// previewed.  The label tables are a compact server-side mirror of the
+// client tier/weapon .label fields (only the extraction name rebuild
+// needs them server-side). ──
+check('GEM_EXTRACT_BASE_COST server <-> client (the extract coin gate)',
+  SRV.GEM_EXTRACT_BASE_COST === GEM_EXTRACT_BASE_COST,
+  { server: SRV.GEM_EXTRACT_BASE_COST, client: GEM_EXTRACT_BASE_COST });
+function labelMirror(name, srvLabels, cliTable) {
+  const bad = [];
+  const sk = Object.keys(srvLabels), ck = Object.keys(cliTable);
+  if (JSON.stringify(sk) !== JSON.stringify(ck)) bad.push({ keyOrder: { server: sk, client: ck } });
+  for (const k of sk) {
+    if (!cliTable[k] || srvLabels[k] !== cliTable[k].label) {
+      bad.push({ key: k, server: srvLabels[k], client: cliTable[k] && cliTable[k].label });
+    }
+  }
+  check(name + ' extraction labels mirror the client .label (name rebuild parity)', bad.length === 0, bad.slice(0, 5));
+}
+labelMirror('BLACKSMITH', SRV.BLACKSMITH_TIER_LABELS, BLACKSMITH_TIERS);
+labelMirror('WOODWORKING', SRV.WOODWORKING_TIER_LABELS, WOODWORKING_TIERS);
+labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 
 // ── 8b. v2.3.1153 damage-channel reprice: the server coefficient, the
 // client coefficient, and the allocation-panel perPt (percent per point)

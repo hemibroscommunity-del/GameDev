@@ -871,6 +871,17 @@ export function ForgePanel(props) {
         var _R$amulet, _R$shield;
         var R = stateRef.current.rpg;
         if (R.coins < extractCost) return;
+        /* v2.3.1209: server-settled gem extraction under caps.gemExtract
+           (server/src/amulet.js, op:'extract').  This send is the real
+           mutation; the local strip below stays as prediction (the
+           player_state echo overwrites, rule-20 style).  Old workers
+           without the cap keep the legacy local-only path. */
+        {
+          var _Sex = stateRef.current;
+          if (_Sex._serverCaps && _Sex._serverCaps.gemExtract && _Sex.channel) {
+            try { _Sex.channel.send({ type: 'amulet_forge_request', payload: { op: 'extract', target: s.key } }); } catch (e) {}
+          }
+        }
         R.coins -= extractCost;
         if (!R.lifeSkills.gems) R.lifeSkills.gems = {};
         if (s.key === 'amulet' && (_R$amulet = R.amulet) !== null && _R$amulet !== void 0 && _R$amulet.gem) {
@@ -1020,6 +1031,16 @@ export function ForgePanel(props) {
         var R = stateRef.current.rpg;
         var cost = gemExtractCost(sw);
         if (R.coins < cost) return;
+        /* v2.3.1209: server-settled stash-weapon extraction under
+           caps.gemExtract (op:'extract', target:'stash', stashIdx=si).
+           The local strip below stays as prediction; old workers keep
+           the legacy local-only path. */
+        {
+          var _Sst = stateRef.current;
+          if (_Sst._serverCaps && _Sst._serverCaps.gemExtract && _Sst.channel) {
+            try { _Sst.channel.send({ type: 'amulet_forge_request', payload: { op: 'extract', target: 'stash', stashIdx: si } }); } catch (e) {}
+          }
+        }
         R.coins -= cost;
         if (!R.lifeSkills.gems) R.lifeSkills.gems = {};
         if (sw.element1) {

@@ -294,6 +294,48 @@ export const GEM_CUT_TIERS = {
 };
 export const GEM_RAW_MONSTER_DROP = 0.05;
 
+/* v2.3.1209 (amulet-forge successor slice A): server-settled gem
+ * EXTRACTION (amulet.js _handleAmuletForge op:'extract').  ForgePanel's
+ * two Extract buttons (equipped weapon/shield/amulet + weapon stash)
+ * were the last client-local gem mutations: the client stripped the
+ * SERVER-held gear blob and self-credited polished gems, and the next
+ * player_state echo stomped both back (broken settlement, no
+ * regression -- amulet-forge.md "Residuals").  Now the worker owns it:
+ * validate the blob from server state, charge coins, mint polished
+ * gems, strip the blob, rebuild the display name from the tables
+ * below.  Gated by a NARROW caps.gemExtract flag (NOT caps.amuletForge
+ * -- an old worker advertises amuletForge but denies the unknown
+ * extract op, which would break extraction against it: the caps.gems
+ * lesson, TRAPS #9).
+ *   GEM_EXTRACT_BASE_COST <-> src/data/items.js GEM_EXTRACT_BASE_COST
+ *     (cost = ceil(base * tierMult), mirror-audit §8e)
+ * The label tables mirror the client tier/weapon .label fields (used
+ * only to rebuild the post-extraction display name so the echo matches
+ * the client's optimistic prediction -- a compact side table rather
+ * than bloating BLACKSMITH_TIERS/WOODWORKING_TIERS; §8e pins them). */
+export const GEM_EXTRACT_BASE_COST = 25;
+export const BLACKSMITH_TIER_LABELS = {
+  wood: 'Wood', copper: 'Copper', iron: 'Iron', steel: 'Steel',
+  titanium: 'Titanium', obsidian: 'Obsidian', mythril: 'Mythril',
+  diamond: 'Diamond', abyssal: 'Abyssal', dragonbone: 'Dragonbone',
+  shadowsteel: 'Shadowsteel', bloodstone: 'Bloodstone', runestone: 'Runestone',
+  sunstone: 'Sunstone', demonite: 'Demonite', spiritforge: 'Spiritforge',
+  starforged: 'Starforged', celestial: 'Celestial', antimatter: 'Antimatter',
+  worldbreaker: 'Worldbreaker',
+};
+export const WOODWORKING_TIER_LABELS = {
+  wood: 'Wood', softwood: 'Softwood', hardwood: 'Hardwood', pine: 'Pine',
+  maple: 'Maple', ironbark: 'Ironbark', crystalwood: 'Crystal Wood',
+  elder: 'Elder Wood', spiritwood: 'Spirit Wood', dragonwood: 'Dragonwood',
+  shadowthorn: 'Shadowthorn', bloodoak: 'Bloodoak', runewood: 'Runewood',
+  sunbark: 'Sunbark', demonwood: 'Demonwood', ghostwood: 'Ghostwood',
+  starwood: 'Starwood', worldtree: 'Worldtree', voidtimber: 'Void Timber',
+  worldbreaker: 'Worldbreaker',
+};
+export const WEAPON_TYPE_LABELS = {
+  greatsword: 'Great Sword', sword: 'Sword', bow: 'Bow', staff: 'Staff',
+};
+
 /* v2.3.1141: rarity tiers for server-minted weapon drops.  Mults only --
  * labels/colors are client presentation (RARITY_TIERS there carries
  * them).  These become the drop blob's tierMult, same slot the forge
