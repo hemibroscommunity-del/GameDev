@@ -1,5 +1,5 @@
 import React from 'react';
-import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcDisplayDps, calcWeaponDmg, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getFishHealAmount, getShieldBonus } from '@/data/index.js';
+import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getShieldBonus } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -72,7 +72,12 @@ export function InventoryPanel(props) {
     var wt = WEAPON_TYPES[wpn.type];
     var rt = RARITY_TIERS[wpn.tier];
     var isActive = rpgState.activeSlot === slot || slot === 'melee' && rpgState.activeSlot !== 'ranged';
-    var dmg = Math.round(calcWeaponDmg(wpn.type, rpgState || {}, wpn.tierMult, wpn));
+    /* v2.3.1207: deterministic DMG range via the shared display helper
+       — this was a single RANDOM calcWeaponDmg roll (a different number
+       every render) off the STALE rpgState snapshot.  Live state via
+       stateRef, the v2.3.1206 stash-compare convention below. */
+    var dmgRange = calcDisplayDmgRange((stateRef.current && stateRef.current.rpg) || rpgState || {}, wpn);
+    var dmg = dmgRange ? dmgRange.text : 0;
     return /*#__PURE__*/React.createElement("div", {
       key: slot,
       style: {
@@ -428,7 +433,12 @@ export function InventoryPanel(props) {
         key = _ref163[0],
         qty = _ref163[1];
       var fishName = key.replace('cooked_', '').replace(/_/g, ' ');
-      var healAmt = getFishHealAmount(key);
+      /* v2.3.1207: calcDisplayHeal — folds the HP-grid Recovery mult the
+         way the server's _handleEatRequest does, so the button label,
+         the optimistic heal, and the popup all match the authoritative
+         heal in the player_state echo.  Live rpg via stateRef (Recovery
+         points can be spent without a setRpgState). */
+      var healAmt = calcDisplayHeal((stateRef.current && stateRef.current.rpg) || rpgState, key);
       var atFull = rpgState.hp >= rpgState.maxHp;
       return /*#__PURE__*/React.createElement("button", {
         key: key,
@@ -498,8 +508,14 @@ export function InventoryPanel(props) {
        next unrelated setRpgState.  stateRef.current.rpg is the same live
        object the game loop reads. */
     var liveRpg = (stateRef.current && stateRef.current.rpg) || rpgState || {};
-    var stashDmg = Math.round(calcWeaponDmg(sw.type, liveRpg, sw.tierMult, sw));
-    var curDmg = current ? Math.round(calcWeaponDmg(current.type, liveRpg, current.tierMult, current)) : 0;
+    /* v2.3.1207: deterministic band midpoints from the shared display
+       helper — these were single RANDOM calcWeaponDmg rolls, so the
+       compare (and its ▲/▼ diff) jittered between renders and could
+       flip sign on identical weapons. */
+    var stashRange = calcDisplayDmgRange(liveRpg, sw);
+    var curRange = current ? calcDisplayDmgRange(liveRpg, current) : null;
+    var stashDmg = stashRange ? Math.round((stashRange.min + stashRange.max) / 2) : 0;
+    var curDmg = curRange ? Math.round((curRange.min + curRange.max) / 2) : 0;
     var dmgDiff = stashDmg - curDmg;
     var stashSpd = (swt === null || swt === void 0 ? void 0 : swt.speed) || 1;
     var curSpd = current ? ((_WEAPON_TYPES$current = WEAPON_TYPES[current.type]) === null || _WEAPON_TYPES$current === void 0 ? void 0 : _WEAPON_TYPES$current.speed) || 1 : 1;

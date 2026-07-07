@@ -22,39 +22,60 @@ import { ControlsTutorial } from './mobile/ControlsTutorial.jsx';
 import { advanceMastery, earnCertification } from '../game/mastery.js';
 import { debugBus } from '../debug/debugBus.js';
 import { BuildBadge } from './BuildBadge.jsx';
-import { BT_AUDIO } from '../data/gameSystems.js';
+/* v2.3.1207: derived-stat helpers for buildSelfProfile's tier2 tiles —
+   the same call pairs the dashboard readouts use. */
+import { BT_AUDIO, calcCritChance, calcCritMult, getWeaponCritStat, getWeaponCritDmgStat, passiveDodgeChance, getEvasionPts } from '../data/gameSystems.js';
 
 const NFT_CSV_URL = 'https://raw.githubusercontent.com/hemibroscommunity-del/Hemi-Bros-catalogue/main/Hemi%20Bro%20spreadsheet-CleanDataWithImages.csv';
 
-// Best-effort mapping from live game state into the inspect-card profile shape.
-// Falls back to mock fields where the live state doesn't yet expose them.
+// Mapping from live game state into the inspect-card profile shape.
+// v2.3.1207: no more mock fallbacks for game DATA.  This read
+// `s.rpgState` — a key that never existed on the game state (it is
+// S.rpg, see BroTown's stateRef) — so every `?? fallback` below fired
+// and the SELF card showed generateMockProfile's RANDOM stats, random
+// tier2 tiles, a fake "Iron Greatsword", and a fake quest line as the
+// player's own.  Now: real rpg blob, real derived stats via the shared
+// helpers (same call pairs as the dashboard readouts), and absent
+// fields render empty instead of mock ("never render mock numbers").
 const buildSelfProfile = (s) => {
   const p = s.player || {};
-  const rpg = s.rpgState || {};
+  const rpg = s.rpg || s.rpgState || {};
   const ls = rpg.lifeSkills || {};
   const lvl = (k) => (ls[k]?.level) ?? 0;
-  const fallback = generateMockProfile({ name: p.name || 'You' });
   return {
-    name: p.name || fallback.name,
-    level: rpg.level || p.level || fallback.level,
-    archetype: p.archetype || fallback.archetype,
-    pole: p.pole || rpg.pole || fallback.pole,
+    name: p.name || 'You',
+    level: rpg.level || p.level || 1,
+    archetype: p.archetype || null, /* IdentityBand shows 'Wanderer' */
+    pole: p.pole || rpg.pole || null, /* IdentityBand shows 'unaligned' */
     clanTag: s._clanData?.tag || null,
-    questLine: s.activeQuest?.text || fallback.questLine,
-    recentJourneyLine: s.journey?.recent || fallback.recentJourneyLine,
+    questLine: s.activeQuest?.text || null,
+    recentJourneyLine: s.journey?.recent || null,
     logo: p.logo || null,
     stats: {
-      power:     rpg.power     ?? fallback.stats.power,
-      vitality:  rpg.vitality  ?? fallback.stats.vitality,
-      endurance: rpg.endurance ?? fallback.stats.endurance,
-      agility:   rpg.agility   ?? fallback.stats.agility,
-      mind:      rpg.mind      ?? fallback.stats.mind,
+      power:     rpg.power     ?? 0,
+      vitality:  rpg.vitality  ?? 0,
+      endurance: rpg.endurance ?? 0,
+      agility:   rpg.agility   ?? 0,
+      mind:      rpg.mind      ?? 0,
     },
-    tier2: fallback.tier2,
+    /* Real derived stats for the expanded combat tiles (InspectCard
+       tier2Label): crit via the ACTIVE weapon's channel getters — the
+       dashboard/DPS-helper call pair — pools from the recalc/echo
+       product, dodge via the shared-cap helper. */
+    tier2: {
+      crit: {
+        chance: calcCritChance(rpg.power || 0, getWeaponCritStat(rpg)),
+        mult:   calcCritMult(rpg.power || 0, getWeaponCritDmgStat(rpg)),
+      },
+      maxHp:      rpg.maxHp || 0,
+      maxStamina: rpg.maxStamina || 0,
+      dodge:      passiveDodgeChance(rpg.agility || 0, getEvasionPts(rpg)),
+      maxMana:    rpg.maxMana || 0,
+    },
     vows: rpg.vows || [],
-    weapon: rpg.weapon || fallback.weapon,
-    armor:  rpg.armor  || fallback.armor,
-    pet:    rpg.pet    || fallback.pet,
+    weapon: rpg.weapon || null,
+    armor:  rpg.armor  || null,
+    pet:    rpg.pet    || null,
     skills: {
       cooking: lvl('cooking'), fishing: lvl('fishing'), farming: lvl('farming'),
       blacksmithing: lvl('blacksmithing'), gemCutting: lvl('gemCutting'),
@@ -69,7 +90,7 @@ const buildSelfProfile = (s) => {
       apexKills: p.apexKills || 0,
       ascendant: !!p.ascendant,
     },
-    journey: s.journey || fallback.journey,
+    journey: s.journey || { count: 0, folklore: null, entries: [] },
   };
 };
 

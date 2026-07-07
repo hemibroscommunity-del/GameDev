@@ -2689,7 +2689,19 @@ export function getWeaponCritDmgStat(rpg) {
    assumes this cap (600 × 0.80 × lag headroom) — the CAP is unchanged,
    so the floor stands. */
 export function swingCooldownMult(rpg) {
-  var pts = weaponChannelValueByRole(rpg, activeWeaponCategory(rpg), 'atkspd');
+  var wpn = rpg && getActiveWeapon(rpg);
+  return swingCooldownMultFor(rpg, wpn && wpn.type);
+}
+/* v2.3.1207: per-type twin (the weaponDamageBonusFor convention) so
+   display previews price the PREVIEWED weapon's own Tempo — a stash
+   sword reads sword Tempo even while a bow is active.  Same formula +
+   -20% cap as the combat gates (playerActions.js tap gate,
+   monsterCombat.js auto-attack); swingCooldownMult above delegates
+   here, so the cadence and the display can never drift apart.  Only
+   the sword category has an atkspd channel today — bow/staff resolve
+   to 0 pts (mult 1), identical to before. */
+export function swingCooldownMultFor(rpg, weaponType) {
+  var pts = weaponChannelValueByRole(rpg, WEAPON_CATEGORY[weaponType] || 'sword', 'atkspd');
   return Math.max(0.80, 1 - pts * 0.002);
 }
 
@@ -4079,12 +4091,20 @@ export function calcCritMult(power, critDmgPts) {
      base   = (weaponEffBase + stat×0.1667) × (1 + dmgPts×0.005) × tierMult
      range  = per-type variance band (bow 0.6-0.8, staff 0.5-1.5,
               melee 0.75-1.25 — mirrors calcWeaponDmg)
-     period = SWING_COOLDOWN (+300ms staff cast penalty)
+     period = SWING_COOLDOWN × Tempo mult (+300ms staff cast penalty,
+              added AFTER the mult — matches monsterCombat's
+              `effectiveSwingCd + _staffCdExtra`)
      DPS    = avg(range)/period × (1 + critChance×(critMult−1))
 
    Everything keys off wpn.type (stat via EQUIP_STAT_MAP, channels via
    the type's WEAPON_CATEGORY), so a stash bow previews with AGI + bow
    channels even while a sword is equipped.
+
+   v2.3.1207: Tempo (atkspd channel) IS folded into the period now —
+   swingCooldownMultFor, the exact mult (incl. the -20% cap) that both
+   client swing gates apply (playerActions.js:18 tap, monsterCombat.js
+   auto-attack).  It genuinely scales sustained cadence, so leaving it
+   out made Tempo points invisible in every DPS readout.
 
    DELIBERATE exclusions — this is the SUSTAINED BASELINE, matching the
    loadout readout's long-standing semantics; transient/contextual
@@ -4093,9 +4113,11 @@ export function calcCritMult(power, critDmgPts) {
        loadout number;
      - amulet elemDmg (FLAME-gem % on elemental weapons) and the hexer
        curse (-30% for 4s) — situational combat modifiers;
-     - Tempo's cooldown reduction is likewise not folded in here (the
-       inline dashboard math never applied swingCooldownMult; keep the
-       displayed numbers stable — fold it in on both sides or neither).
+     - the amulet atkSpd mult (rpg._amuletBonus) — it only rides the
+       auto-attack loop (monsterCombat.js:1159); the manual tap gate
+       never applied it (playerActions.js v2.3.1134 note), so it is
+       not a uniform cadence layer.  Fold it here only if/when both
+       swing gates apply it.
    The authoritative per-hit roll is server/src/combat.js
    _computeAttackDamage; this is only its expected-value mirror for UI.
 
@@ -4110,7 +4132,10 @@ export function calcDisplayDmgRange(rpg, wpn) {
   var dmgPts = weaponDamageBonusFor(rpg, wpn.type);
   var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667)
            * (1 + dmgPts * DAMAGE_CHANNEL_PCT) * (wpn.tierMult || 1);
-  var dmgMin, dmgMax, cdMs = SWING_COOLDOWN;
+  /* v2.3.1207: Tempo folds into the period (see header); the staff's
+     +300ms cast penalty is added AFTER the mult, unscaled, matching
+     the auto-attack gate. */
+  var dmgMin, dmgMax, cdMs = SWING_COOLDOWN * swingCooldownMultFor(rpg, wpn.type);
   if (wpn.type === 'bow')        { dmgMin = base * 0.6;  dmgMax = base * 0.8;  }
   else if (wpn.type === 'staff') { dmgMin = base * 0.5;  dmgMax = base * 1.5;  cdMs += 300; }
   else                           { dmgMin = base * 0.75; dmgMax = base * 1.25; }
@@ -4131,6 +4156,28 @@ export function calcDisplayDps(rpg, wpn) {
   var critChance = calcCritChance((rpg && rpg.power) || 0, weaponCritStatFor(rpg, wpn.type));
   var critMult = calcCritMult((rpg && rpg.power) || 0, weaponCritDmgStatFor(rpg, wpn.type));
   return (r.min + r.max) / 2 / (r.cdMs / 1000) * (1 + critChance * (critMult - 1));
+}
+
+/* v2.3.1207: ONE display heal formula for every fish readout — the
+   expected-value mirror of server/src/cooking.js _handleEatRequest:
+     heal = ceil(fishHealAmount × HP-grid Recovery mult)
+   Raw getFishHealAmount displays under-promised by up to 50% for
+   Recovery builds (the server folds _recoveryMult, v2.3.1154; no
+   display did).  Works for raw fish_* keys too (pre-cook preview —
+   both key shapes resolve the same tier).  The player_state echo
+   after eat_request is the truth; this is prediction/labeling only. */
+export function calcDisplayHeal(rpg, invKey) {
+  return Math.ceil(getFishHealAmount(invKey) * getRecoveryMult(rpg));
+}
+
+/* v2.3.1207: display twin of the server maxHp pool line
+   (grids.js _recalcMaxes): Vigor multiplies the WHOLE pool INCLUDING
+   armor HP, so an armor card's "+X Max HP" must carry the vigor mult
+   or it under-reports for Vigor builds by up to 25%.  (A ±1 drift vs
+   the exact pool delta is possible from the server's single outer
+   floor; this is a preview — the recalc/echo product is the truth.) */
+export function calcDisplayArmorHp(rpg, armor) {
+  return Math.floor(getArmorHp(armor, (rpg && rpg.vitality) || 0) * getVigorMult(rpg));
 }
 
 /* §2.3 Block.  v2.3.1153: the Bulwark term is gone — Bulwark now buys

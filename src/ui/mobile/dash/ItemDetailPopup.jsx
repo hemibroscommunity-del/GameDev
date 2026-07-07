@@ -16,10 +16,10 @@ import {
   WEAPON_TYPES,
   calcDisplayDmgRange,
   calcDisplayDps,
+  calcDisplayHeal,
+  calcDisplayArmorHp,
   BLACKSMITH_TIERS,
   WOODWORKING_TIERS,
-  getFishHealAmount,
-  getArmorHp,
   recalcDerived,
 } from '../../../data/gameSystems.js';
 
@@ -84,7 +84,11 @@ function resolveTarget(target) {
     const isBurnt = /^burnt_/.test(key);
     const isLog = /^wood_/.test(key);
     let info = null;
-    if (isCookedFish) info = '+' + getFishHealAmount(key) + ' HP when eaten';
+    /* v2.3.1207: calcDisplayHeal (getFishHealAmount × HP-grid Recovery,
+       ceil'd) — the server's _handleEatRequest math, so the promised
+       number matches the heal the player_state echo delivers. */
+    const SR = getState();
+    if (isCookedFish) info = '+' + calcDisplayHeal(SR && SR.rpg, key) + ' HP when eaten';
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
     else if (isLog) info = 'Light a campfire to cook at';
@@ -166,10 +170,12 @@ function resolveTarget(target) {
   if (target.kind === 'armor') {
     const ar = target.armor;
     if (!ar) return null;
-    /* v2.3.228: HP contribution at the player's current Vitality. */
+    /* v2.3.228: HP contribution at the player's current Vitality.
+       v2.3.1207: × HP-grid Vigor (calcDisplayArmorHp) — the server
+       multiplies the WHOLE pool including armor HP (grids.js), so the
+       raw getArmorHp figure under-reported for Vigor builds. */
     const S = getState();
-    const vit = (S && S.rpg && S.rpg.vitality) || 0;
-    const hp = getArmorHp(ar, vit);
+    const hp = calcDisplayArmorHp(S && S.rpg, ar);
     return {
       lockKey: 'armor',
       thumb: null,
@@ -183,9 +189,9 @@ function resolveTarget(target) {
   if (target.kind === 'stashArmor') {
     const ar = target.armor;
     if (!ar) return null;
+    /* v2.3.1207: × Vigor, same as the equipped-armor card above. */
     const S = getState();
-    const vit = (S && S.rpg && S.rpg.vitality) || 0;
-    const hp = getArmorHp(ar, vit);
+    const hp = calcDisplayArmorHp(S && S.rpg, ar);
     return {
       lockKey: 'stashArmor_' + (target.index || 0),
       thumb: null,

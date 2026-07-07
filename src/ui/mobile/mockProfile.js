@@ -49,13 +49,13 @@ export const generateMockProfile = (overrides = {}) => {
     recentJourneyLine: pick(JOURNEY_LINES),
     logo: null,
     stats,
-    tier2: {
-      ferocity: { crit: 0.18, mult: 1.6 },
-      fortification: stats.vitality * 6,
-      stamina: stats.endurance * 4,
-      evasion: stats.agility * 0.005,
-      focus: stats.mind * 2,
-    },
+    /* v2.3.1207: mock tier2 removed — GameApp's buildSelfProfile used to
+       copy it into the SELF card, so the expanded combat tiles showed
+       these random numbers as the player's real derived stats.  The
+       self card now computes tier2 from the live rpg via the shared
+       helpers; this debug-only generator ('card mock' / pre-join
+       fallback) simply omits it so the tiles render nothing rather
+       than fake numbers (InspectCard tier2Label returns null). */
     vows: Math.random() < 0.5
       ? [{ stat: pick(['power','vitality','agility']), days: ri(7, 90),
            partner: Math.random() < 0.7 ? pick(NAMES) : null }]

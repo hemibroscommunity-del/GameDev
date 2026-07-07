@@ -1,5 +1,5 @@
 import React from 'react';
-import { BT_AUDIO, calcBlockReduction, calcCritChance, calcCritMult, calcMoveSpeed, calcWeaponDmg, getActiveWeapon, getDefenseBlockBonus, getWeaponCritDmgStat, getWeaponCritStat, xpRequired } from '@/data/index.js';
+import { BT_AUDIO, calcBlockReduction, calcCritChance, calcCritMult, calcDisplayDmgRange, calcMoveSpeed, getActiveWeapon, getDefenseBlockBonus, getWeaponCritDmgStat, getWeaponCritStat, xpRequired } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 /* === StatScreenPanel — character stats / allocation === */
@@ -14,6 +14,11 @@ export function StatScreenPanel(props) {
     stateRef = props.stateRef,
     setRpgState = props.setRpgState,
     setShowStatScreen = props.setShowStatScreen;
+  /* v2.3.1207: live rpg for the derived-stats footer's DMG readout --
+     rpgState is a React snapshot that lags in-place S.rpg mutations
+     (the v2.3.1206 InventoryPanel convention). */
+  var liveRpg = (stateRef.current && stateRef.current.rpg) || rpgState || {};
+  var _dmgRange = calcDisplayDmgRange(liveRpg, getActiveWeapon(liveRpg));
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
@@ -183,5 +188,9 @@ export function StatScreenPanel(props) {
       marginTop: 8,
       lineHeight: 1.6
     }
-  }, "DMG: ", Math.round(calcWeaponDmg(getActiveWeapon(rpgState).type, rpgState || {}, getActiveWeapon(rpgState).tierMult)), ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, getWeaponCritStat(rpgState)) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, getWeaponCritDmgStat(rpgState)).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(getDefenseBlockBonus(rpgState), rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0, (rpgState.enduranceSpec || {}).swiftness || 0).toFixed(1), "u/s")));
+  }, "DMG: ", /* v2.3.1207: deterministic range via the shared display
+     helper -- was a single RANDOM calcWeaponDmg roll off the stale
+     rpgState snapshot that also OMITTED the 4th wpn arg, so quality/
+     hardness (and the damage/crit channels) never moved this readout. */
+  _dmgRange ? _dmgRange.text : 0, ' · ', "Crit: ", (calcCritChance(rpgState.power || 0, getWeaponCritStat(rpgState)) * 100).toFixed(1), "% (\xD7", calcCritMult(rpgState.power || 0, getWeaponCritDmgStat(rpgState)).toFixed(2), ")", ' · ', "Block: ", (calcBlockReduction(getDefenseBlockBonus(rpgState), rpgState.shield) * 100).toFixed(0), "%", ' · ', "Speed: ", calcMoveSpeed(rpgState.agility || 0, (rpgState.enduranceSpec || {}).swiftness || 0).toFixed(1), "u/s")));
 }

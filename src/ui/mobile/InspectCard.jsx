@@ -179,13 +179,19 @@ const StackedBar = ({ stats }) => {
   );
 };
 
+/* v2.3.1207: real derived stats (shape built by GameApp's
+   buildSelfProfile from the shared combat helpers).  The old shape
+   (ferocity/fortification/stamina/evasion/focus) only ever came from
+   generateMockProfile, so the expanded tiles showed RANDOM numbers as
+   the player's stats.  Tiles without a real value render nothing —
+   never mock numbers. */
 const tier2Label = (s, k) => {
   const t2 = s.tier2 || {};
-  if (k === 'power' && t2.ferocity)     return `${Math.round(t2.ferocity.crit * 100)}% / x${t2.ferocity.mult}`;
-  if (k === 'vitality' && t2.fortification) return `+${t2.fortification} HP`;
-  if (k === 'endurance' && t2.stamina)  return `+${t2.stamina} stam`;
-  if (k === 'agility' && t2.evasion)    return `${Math.round(t2.evasion * 100)}% eva`;
-  if (k === 'mind' && t2.focus)         return `${t2.focus} focus`;
+  if (k === 'power' && t2.crit)           return `${Math.round((t2.crit.chance || 0) * 100)}% / x${(t2.crit.mult || 1).toFixed(2)}`;
+  if (k === 'vitality' && t2.maxHp)       return `${t2.maxHp} HP`;
+  if (k === 'endurance' && t2.maxStamina) return `${t2.maxStamina} stam`;
+  if (k === 'agility' && t2.dodge != null) return `${Math.round(t2.dodge * 100)}% eva`;
+  if (k === 'mind' && t2.maxMana)         return `${t2.maxMana} MP`;
   return null;
 };
 
