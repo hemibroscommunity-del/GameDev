@@ -8,9 +8,12 @@ ignores one usually looks correct while destroying player value later.
 
 Status refreshed 2026-07-07 (v2.3.1191), after the P4 GameRoom
 decomposition (v2.3.1162–1175) finished: the rules in Part 1 stand
-unchanged; Part 2 item L and rule 22 were brought up to date. The
-server module map lives in `docs/OPTIMIZATION-ROADMAP.md` §P4 — that
-is the one place it's maintained.
+unchanged. Later the same day, v2.3.1208 rewrote Part 2 as
+**successor backlog v2** — the v1 items A–L all shipped and are kept
+as a letter-frozen "Shipped" list, because `docs/TRAPS.md` and the
+spec docs cite them by letter. The server module map lives in
+`docs/OPTIMIZATION-ROADMAP.md` §P4 — that is the one place it's
+maintained.
 
 Companion docs: `docs/specs/*.md` (one per shipped system, each with its
 wire surface and attach points), `docs/WIRE-PROTOCOL.md` (message
@@ -217,217 +220,179 @@ extended.
 
 ---
 
-## Part 2 — Successor backlog (prioritized, with design notes)
+## Part 2 — Successor backlog v2 (2026-07-07)
 
-Each entry: what, why, the shape to build, and dangers. Higher = sooner.
+Rewritten v2.3.1208. The 2026-07-07 push moved main v2.3.1174 →
+v2.3.1207 in 22 merged PRs (#215–#238): the economy is now fully
+server-authoritative (amulet forge v2.3.1192, gem income v2.3.1198,
+pet loot v2.3.1200, market crash-window closed v2.3.1181–84, HTTP
+economy auth v2.3.1177–80), dungeons fight back (boss abilities
+v2.3.1194 + enrage v2.3.1199), parties (v2.3.1185) and threat skulls
+(v2.3.1193) shipped, the client was de-monolithed (gameSystems split,
+pushDmgPopup, eslint debt zeroed — v2.3.1186–90), displays conform to
+server math (`calcDisplayDps`/`calcDisplayHeal` in
+`src/data/gameSystems.js`, pinned by the 33-assertion
+`server/test/display-dps.test.mjs`), and session tooling exists
+(SessionStart auto-brief, precheck gate, `/repo-review`,
+`docs/TRAPS.md`, caps/opId conformance audits). Server deploys on any
+merge to main touching `server/**`; client via Pages.
 
-### A. Arena sponsorship — SHIPPED v2.3.1128 (PR-B2)
-Built as specced: `_handleArenaSponsor` / `_arenaSettleStakes` /
-`_arenaStakeSweep` in gladiator.js, spec in `docs/specs/sponsorship.md`.
-Also fixed en route: PR10's `_arenaWire` only partially matched the old
-sanitizeTournament contract (status 'running' vs 'active', playerId vs
-id/name/level/color, no recentMatches/champion.id) so the whole
-spectator-betting UI rendered nothing — the wire now emits a SUPERSET
-of both shapes; keep it that way. Successor follow-ups: tournament-
-champion blind bets (pot-split/2× UIs) stay caps-gated off — they need
-a champion_stake pool settled in `_arenaCrown`; stakes are private
-(no spectator stake board yet).
+Each entry: what, why, the shape to build, and dangers. Higher =
+sooner. The shipped v1 backlog is collapsed at the end of this part —
+its letters are frozen (TRAPS.md and the specs cite them).
 
-### B. Guild-quest verification — SHIPPED v2.3.1128
-Built as specced: `server/src/guilds.js`, ladder in data.js
-(`GUILD_QUESTS`/`GUILD_SKILLS`), claims under `guild_claims:<pid>`,
-spec in `docs/specs/guild-quests.md`. Only LEVEL objectives exist;
-count-based guild work ("cook 50 meals") needs a server counter via
-the `_questKills` sole-writer pattern — never read client `_compStats`.
+### A. Gem-socket + gem-extraction settlement
+The last client-local gem mutations. amulet-forge.md's "Residuals"
+section names both as the successor slice: ForgePanel "Extract Gem"
+income (pulls a weapon's elements / a shield's gem back out as
+polished gems — and mutates the server-held gear blob, so it's a real
+settlement, not just a ledger echo) and the EnchantPanel shield/weapon
+gem-slot consumes. Shape: `gem_cut_request` is the template —
+validate/consume/mint from SERVER state, its own narrow caps flag
+(the caps.gems lesson, TRAPS #9), one-time clamped join capture if
+any client-held state remains. Dangers: the shield and weapon paths
+differ (elements vs a single gem — check both consume sites);
+extraction refunds must be opId-idempotent (rule 5).
 
-### C. Threat machine — SHIPPED v2.3.1129
-Built as specced: `server/src/threat.js`, spec in
-`docs/specs/threats.md`. The interim `_observePvpConsent` is removed
-(it was dead anyway — required `payload.accepted`, which the client
-never sent). Countdown 2min + 2min/level-above capped at 10min;
-ignore/expiry grant the consent pair; Call Guards = 10% coin sink +
-30-min gear lock under `gearlock:<pid>` (storage-backed — relog can't
-shed it) gating the four equip mutators (equip/unequip/armor-swap/
-forge). Skull rendering SHIPPED v2.3.1193 (client-only, no wire
-change: `S._threatMarks` + the formerly orphaned `S._pvpSkull*`
-anchors, written in gameEvents.js from the relayed handshake, drive a
-tinted 💀 per player display in entityRenderer on the party-marker
-change-cache budget — red while the countdown runs, white for the
-10-min fight window after ignore/expiry, cleared by guards; see the
-spec's "Skull rendering" section). Successor follow-ups: guards fines
-evaporate — a bounty pool is the natural next step.
+### B. Spectator stake board
+Old item A's residue: sponsorship stakes are private — spectators see
+nothing. Shape: a server-owned feed (a PRIVILEGED event or a
+state_sync section), display-only client, caps-gated. Danger:
+TRAPS #1 — do NOT revive the legacy `arena_bet` relay for this; its
+consumers were proven unsafe in #220's adversarial review.
 
-### D. Parties — SHIPPED v2.3.1185
-Built as specced: `server/src/party.js` (roster + invite handshake on
-the duel/trade2 pattern, memory-only per rule 11), spec in
-`docs/specs/party.md`, HUD in `src/ui/panels/PartyHUD.jsx` (NOT the
-tavern's PartyPanel — that name was taken by the arena-betting UI).
-The §7 share math is untouched, per this item's original danger note.
-Ghost-HUD contract: clients clear party state on every state_sync;
-the join path re-sends the roster AFTER state_sync (ordering pinned by
-a test). Successor follow-ups: same-zone member arrows / map markers,
-leader-initiated group dungeon entry, party chat (NOTE: a chat relay
-must be its own explicit switch case with sender validation — the
-default rebroadcast branch is deny-listed territory, rule 13), and the
-original "optional later" contribution-role weighting (re-run the §7
-predicates if attempted).
+### C. Threat bounty pool
+Old item C's residue (threats.md "Attach points"): Call-Guards fines
+evaporate — a dead sink. Shape: escrow-at-placement (rule 7) into a
+`bounty:<pid>` storage key — register it in the rule-2 table — paid
+via `_creditPlayer` with a stamped opId on the threatener's death;
+orphan sweep per rules 5–6. Danger: payer ≠ payee — a self-kill (or a
+fed clanmate) must not farm the pot.
 
-### E. Hardening v1 + quality grades — SHIPPED v2.3.1131
-Built per the adopted BALANCE-PLAN numbers: `server/src/hardening.js`,
-spec in `docs/specs/hardening.md`. Quality rolls at the FORGE only
-(the sole server weapon mint — monster weapon drops are still
-client-minted, so join-ingested client blobs are STRIPPED of the new
-fields; a forged godly would raise its own damage ceiling). Hardening
-ladder + temper pity + `floor(skill/5)` access gate + ledgers
-(`harden_ledger:<pid>`, global `harden_h5_log` INV-27 window). The
-sanitizer learned the fields with a two-posture contract (clamp stored
-/ strip client-supplied). NAME COLLISION: the client's legacy "Harden"
-button is the hardenBonus AFFIX system — distinct fields, never merge.
-Successor follow-ups: ~~server-side weapon-drop migration unlocks
-drop-time quality + mystery reveals (§4.6b.ii)~~ — SHIPPED v2.3.1141
-(`_rollWeaponDropForKill` rides the loot pile with its own claim flag;
-pile broadcast hides quality, the private `loot_credit` reveals it;
-legacy client mints stay as `!caps.weaponDrops` fallback; the
-projectiles path's divergent generous drop table was deliberately
-unified down to the §4.6 cubic). Sell value still deliberately ignores
-the new layers.
+### D. Party follow-ups
+party.md "Successor follow-ups": same-zone member arrows / map
+markers (the vitals echo already carries `zone`; x/y could ride it);
+leader-initiated group dungeon entry; party chat. Chat MUST be its
+own validated relay case with sender validation (rule 13) — the
+default rebroadcast branch is deny-listed territory; this note lives
+HERE, not in party.md. Danger: do not touch the §7 share math
+(TRAPS #3; party.md's danger note stands).
 
-### F. Dungeon instancing — SHIPPED v2.3.1127 (folded instances)
-Built as recommended: `server/src/dungeon.js`, spec in
-`docs/specs/dungeons.md`. Instance = zone id `dungeon:<id>` riding the
-unmodified combat stack (`_activeZones` ticks it, zone_state delivers
-waves, `_resolveMonsterKill` pays kills; one-line `noRespawn` guard was
-the only core change). Client registers a synthetic `ZONES[zone]` entry
-while inside (deleted on every exit path) — that was the unknown-zone
-audit's answer. Successor follow-ups: ~~boss ABILITIES are not ported
-(server bosses are stat-scaled chase-and-swing only — slam/charge/
-summon live in dead client AI)~~ — SHIPPED v2.3.1194
-(`_dungeonTickBossAbilities` rides `_tickDungeons`, no `_tickMonsters`
-fork; telegraphs via the display-only `dungeon_boss_ability` event,
-damage via the normal `monster_attack`/`_applyDamage` rails with a
-≤50%-maxHp no-oneshot clamp; summons capped at 4 with halved rewards —
-see dungeons.md); runs are memory-only (deploy mid-run
-evaporates it, exit tile always works); loot piles die with the
-instance sweep.
+### E. Trade2 weapon lane
+Weapons still trade via marketplace escrow only (trading.md
+addendum). Shape: escrow-at-STAGE, not validate-at-commit — the
+weapon leaves the stash into the stage, with a refund path on
+cancel/disconnect, and the WEAPON_STASH_CAP partial-drain rule
+(rule 3) applies on every return leg. Danger: the stage survives
+neither a deploy nor a disconnect unless escrowed — stage records
+must be storage-backed (rule 11).
 
-### G. Pet capture validation — SHIPPED v2.3.1130
-Built (and the exploration found it worse than this note assumed:
-traps were NEVER consumed, and the captured monster only died on the
-capturer's screen). `server/src/pets.js`, spec in `docs/specs/pets.md`:
-pet_capture validates the SERVER's monster hp/range + consumes one
-basic_trap per attempt + rolls server-side + removes the monster for
-everyone; join-time `_sanitizePets` + one-time legacy adoption; the
-lifeSkills-echo "stomp" is now the intended authoritative flow under
-caps.pets. Successor follow-ups: pet evolution/enchant are still
-client blob edits (sanitize-on-join covers them). The pet loot vacuum
-follow-up SHIPPED v2.3.1200: the vacuum rides the real `loot_pickup`
-path now (`{viaPet:true}`, wider PETS.VACUUM_RANGE measured from the
-OWNER's position — the server tracks no pet position) under
-caps.petLoot; same handler + same claimedBy flags as a manual grab, so
-no double credit; the client's self-credit vacuum stays as the
-old-worker fallback. Spec: docs/specs/pets.md.
+### F. Promote the report-only CI trio
+qa-gear-smoke, qa-party-smoke, qa-combat-predict run
+`continue-on-error` in `.github/workflows/client-ci.yml`; the
+promotion criteria live as comments on those steps (~10 consecutive
+green runs — including the built-in retry — then delete that
+harness's `continue-on-error` line). Check the Actions history per
+harness; promote individually. Danger: a flaky BLOCKING check is
+worse than none — if one still flakes, tune it first (v2.3.1196b,
+commit 4d31448f, is the tuning pattern).
 
-### H. Two-sided trade window — SHIPPED v2.3.1132
-Built as specced: `server/src/trade2.js` (mutual-open, anti-switch
-confirm resets, atomic both-debits-before-any-credit commit) +
-`TradeWindowPanel.jsx` (pure renderer of the trade2_state snapshot);
-spec addendum in trading.md. The gift handshake is untouched.
-Successor note: weapons still trade via marketplace escrow only —
-a weapon lane here needs escrow-at-stage, not validate-at-commit.
+### G. PNG → WebP conversion
+325 PNGs, ~20MB under `public/`. Needs a machine with `cwebp` — the
+sandbox has no lossless WebP encoder (`tools/webp_convert.mjs` drives
+canvas, whose WebP is lossy and would corrupt the recolor-keyed
+player/gear sheets). `find public -name '*.png' -exec sh -c
+'cwebp -lossless "$1" -o "${1%.png}.webp"' _ {} \;`, then delete the
+.png twins in a follow-up once verified; `loadWebpOrPng`
+(`src/rendering/webpImage.js`) already prefers .webp per-file.
+Danger: sprites/player + sprites/gear MUST be `-lossless` — the tint
+pipeline (playerSkins.js brightness-ratio retint) reads exact RGB.
 
-### I. Elemental completion — SHIPPED v2.3.1139
-Built: CC gates the real monster AI (freeze/root stop movement AND
-attacks, slow ×0.4 — `elementMoveMult`), resonance-streak mana restore
-settles server-side off the collision `resonating` flag, amulet
-elemDmg + hexer curse are in `_computeAttackDamage`. Spec:
-`docs/specs/elemental-completion.md`. Follow-ups: ~~amulets are a
-client-crafted blob (forgery ceiling = legit mythic +10.5%; a server
-amulet-forge handler is the real fix)~~ — SHIPPED v2.3.1192
-(`server/src/amulet.js` + the server-owned goldNuggets/goldBars
-ledger and server-rolled kill nuggets, `caps.amuletForge`; spec
-`docs/specs/amulet-forge.md`). ~~The polished-gem economy
-(drops/polishing) is still client-local~~ — SHIPPED v2.3.1198
-(server-rolled kill gems + server-settled Gem Cutter cuts +
-one-time clamped join capture, `caps.gems`; same spec, "Gem income"
-section). Residuals documented there: ForgePanel gem-EXTRACTION
-income and the shield/weapon gem-slot consumes are still
-client-local lifeSkills.gems edits (echo-stomped, pre-existing),
-and the first-connect amulet bootstrap stays as the legacy
-migration path (fresh-identity one-time ceiling).
-Still open: peer-visible status FX are cosmetic and unported,
-shock/fracture/soak remain mechanically inert.
+### H. Proto-WARN triage
+precheck's proto-safety check WARNs on 17 plain-`{}` sites across 8
+server files (`node tools/dev/precheck.mjs <root-commit>` lists them
+all — the default origin/main base only scans changed files). The
+v2.3.1202 join gate (join.js) protects client-id keys at the source;
+triage each WARN once — `Object.create(null)` where keys are external
+strings, or a comment on why it's safe — until the sweep is quiet.
+Danger: don't blanket-convert monster/zone-keyed maps
+(server-generated keys are safe; churn without benefit).
 
-### J. Jackpot draw — SHIPPED v2.3.1149
-Built on the new time-cadence framework (`server/src/cadence.js`, spec
-`docs/specs/cadence.md`) — the reusable lazy daily/weekly primitive this
-item's "lazy pattern" note asked for. One `jackpot:draw {period, pool,
-entries}` record (single-key deviation from the sketch: atomic under the
-input gate), ISO-week periods, resolve on join/deposit/rate-limited
-tick, pay via `_creditPlayer` opId `jackpotwin:<period>` (double-resolve
-tested to converge). Ships with the second consumer: the daily login
-reward (streak-scaled, rides inbox_delivered — zero client code).
-Successor note: daily quests / weekend events are now one cadence scope
-+ one settle call each.
+### I. Boss ability extensions
+Shape: per-archetype kits in `BOSS_ABILITIES`
+(`server/src/dungeon.js`), telegraph variety, maybe standard-zone
+minibosses. Dangers: the MAX_HIT_PCT no-oneshot clamp stays
+authoritative over EVERYTHING (enrage already respects it); one new
+wire event type max — new `ability` kinds on the existing
+`dungeon_boss_ability` event are the cheap extension point (the
+enrage precedent: it reused the PRIVILEGED type instead of minting a
+new one).
 
-### K. Zone-level unpinning — SHIPPED v2.3.1140
-BF-1 fixed by flattening the monster HP ramp 1.065 → **1.052** (BALANCE-
-PLAN's suggested ~1.055 still failed the L35 gate; the sim is the referee).
-The curve is now ONE exported object: `MONSTER_HP_CURVE` in
-`src/data/gameSystems.js`, mirrored in `server/src/data.js`, IMPORTED by
-`tools/balance-sim.mjs` (which had silently hardcoded a copy). Zone bands
-raised per MAP-REDESIGN in BOTH `server/src/data.js` and
-`src/data/zones.js` (lockstep rule: the client clamps server monster
-levels to its own band). The ±5 valid-threat gate on `trainDefense` is
-re-enabled at all six client call sites (§7's condition). Follow-ups:
-~~no zone ENTRY gating yet~~ — v2.3.1147 shipped SOFT gating (first
-approach to a zone whose floor exceeds level+5 bounces with a warning;
-second approach passes), populated the empty [22,40] zones
-(verdant/mist — the L25-38 dead band), added a −4 entrance ramp in the
-shallowest 15% of every zone, re-enabled the tutorial banner, and added
-a CI lockstep test pinning both ZONES tables together (spec:
-docs/specs/zone-progression.md). Hard entry gating remains optional.
+### J. Hard zone entry gating + collectibles — owner calls
+Soft gating shipped v2.3.1147 (zone-progression.md); hard gating
+remains optional. Collectibles are dormant content — confirm with the
+owner before building on either (CLAUDE.md doc-trust note).
 
-### L. Smaller known items (statuses refreshed 2026-07-07)
-- ~~Cook minigame outcome (`kind`) client-trusted~~ — resolved as a
-  DOCUMENTED trust posture, not a gap: the outcome is player timing,
-  not a skill roll, so it stays client-reported; v2.3.1167 added a
-  physics floor (sub-window `cook_request` bursts dropped) on top of
-  the v2.3.1104 rate limit. See docs/specs/cooking.md.
-- ~~Event buffer drops events past 500/tick~~ — FIXED v2.3.1163:
-  overflow is spliced and delayed to the next tick, not dropped
-  (tick.js; pinned by test/tick.test.mjs §10).
-- ~~Duplicate `case 'arena_bet'` in gameEvents~~ — RESOLVED v2.3.1176,
-  but NOT by un-shadowing. The FIRST case was the dead one (keyed on
-  `bettorId`, which only one send site carries; fed an unread
-  `S._remoteBets`) and it shadowed the setArenaBets handler — but
-  reviving that handler is unsafe: the arenaBets consumers in
-  PartyPanel predate remote delivery (Active Bets crashes on
-  bettorId-shaped bets, 'Your Bets' has no ownership filter, the
-  sender's own tick echo double-counts, and the `!caps.sponsor`
-  legacy pot-split mint would count forged remote amounts into
-  `S.rpg.coins`). The relay is now ONE explicitly-ignoring case;
-  `no-duplicate-case` is enabled in the correctness lint so the
-  shadowing class can't recur. A real spectator stake board is item
-  A's caps-gated follow-up (server-owned, validated feed).
-- ~~Duel `awayId` single-slot~~ — FIXED v2.3.1175: `duel.away` is now
-  a per-player map of forfeit deadlines (null-prototype — ids are
-  client strings, `'__proto__'` must not no-op the clock), built by
-  the `_makeDuel` factory that owns the duel-record shape for both
-  social duels and arena matches (duels.md). The single slot was
-  worse than cosmetic for social duels: both players dropping and
-  only the second rejoining erased the first's clock, leaving the
-  duel 'active' forever and blocking both from any new duel.
-- ~~T2 retirement cleanup~~ — SHIPPED v2.3.1155 as the coordinated
-  whole-PR edit that migrations.md §"Why v3 was not shipped" called
-  for (with the v2.3.1156 uniform caps + v2.3.1157 1000-point ceiling
-  landing right behind it).
-- ~~index.js is ~5.4k lines — continue strangler-fig extraction~~ —
-  DONE v2.3.1162–1191: the decomposition is complete, including the
-  do-last tick-loop slice (v2.3.1174) and the combat/damage core
-  (v2.3.1191). index.js is ~2.6k lines; module map in
-  OPTIMIZATION-ROADMAP §P4.
-- Client has no test suite; the CI smoke harness (tools/qa/*.mjs) is the
-  only automated client check — extend it when touching input/net code.
+### K. Arena economics check-in
+The house faucet is deliberate: CHAMPION_REWARD 2000g vs ≤800g of
+entries (gladiator.js economics note; STAKE_MULT carries the same
+posture). `metrics:<yyyymmdd>` snapshots (liveops.md) give the owner
+the data; when they decide, it's a one-constant change.
+
+### L. index.js residue
+~2.7k lines: the router switch, monster spawn/AI, loot piles,
+death/respawn/regen, PvP consent bookkeeping, weapon channel helpers.
+Only extract if a clean seam appears — the P4 mixin pattern (rule 22)
+is the template; don't force it.
+
+### M. Client test growth
+Extend `server/test/display-dps.test.mjs` whenever a new display
+formula ships (the conformance pattern: the client prints what the
+server settles). Use the qa-gear-sheet contact boards during the art
+blitz; wire qa-combat-predict learnings back into the harness.
+
+### N. Consumables caps flag (low)
+v2.3.1207's mobile eat fix gates `eat_request` on connection presence
+— `if (S._serverMonsters && S.channel)` in BroTown.jsx's eatBus
+handler — not on a caps flag. Consider an explicit `caps.consume` for
+strict deploy-order symmetry (rule 19). Danger: the current gate is
+adequate (local heal is prediction, the echo is the tiebreaker,
+rule 20) — this is symmetry polish, not a hole.
+
+### Shipped (v1 backlog — letters frozen, cited elsewhere)
+TRAPS.md and the spec docs cite these as "handoff item X"; the full
+design notes live in each item's spec.
+
+- **A. Arena sponsorship** — v2.3.1128 (sponsorship.md; `_arenaWire`
+  emits a SUPERSET of both tournament shapes — keep it that way).
+  Residue → v2 item B.
+- **B. Guild-quest verification** — v2.3.1128 (guild-quests.md;
+  count-based objectives still need a server counter).
+- **C. Threat machine** — v2.3.1129; skull rendering v2.3.1193
+  (threats.md). Residue → v2 item C.
+- **D. Parties** — v2.3.1185 (party.md). Residue → v2 item D.
+- **E. Hardening v1 + quality grades** — v2.3.1131; server weapon
+  drops v2.3.1141 (hardening.md).
+- **F. Dungeon instancing** — v2.3.1127; boss abilities v2.3.1194,
+  enrage v2.3.1199 (dungeons.md). Residue → v2 item I.
+- **G. Pet capture validation** — v2.3.1130; pet loot vacuum
+  v2.3.1200 (pets.md).
+- **H. Two-sided trade window** — v2.3.1132 (trading.md addendum).
+  Residue → v2 item E.
+- **I. Elemental completion** — v2.3.1139; amulet forge v2.3.1192;
+  gem income v2.3.1198 (elemental-completion.md, amulet-forge.md).
+  Residue → v2 item A; status FX still cosmetic/unported.
+- **J. Jackpot draw + cadence framework** — v2.3.1149 (cadence.md;
+  daily quests / weekend events are one cadence scope each).
+- **K. Zone-level unpinning** — v2.3.1140; soft entry gating
+  v2.3.1147 (zone-progression.md). Residue → v2 item J.
+- **L. Smaller items** — all resolved by v2.3.1191: cook outcome =
+  documented trust posture (cooking.md), event-buffer overflow
+  delayed not dropped v2.3.1163, duplicate arena_bet case removed
+  v2.3.1176 (the full story now lives in TRAPS #1), duel away map
+  v2.3.1175 (duels.md), T2 retirement v2.3.1155, P4 decomposition
+  v2.3.1162–1191. Remaining line item — "client has no unit suite" —
+  graduated to v2 items F and M.
 
 ### GDD contradictions (resolved: code is truth)
 - AP "deleted" in GDD §27.3 but still awarded by §42/§43 and by code —
@@ -443,6 +408,23 @@ docs/specs/zone-progression.md). Hard entry gating remains optional.
 
 ## Part 3 — How to work here (process)
 
+- Sessions start with the auto-brief: a SessionStart hook runs
+  `tools/dev/session-brief.mjs` (version high-water, next free
+  `v2.3.N` tag, in-flight `claude/*` branches). Claim ONE tag above
+  high-water and check the branch list for your topic before building
+  — on 2026-07-07 five parallel sessions claimed one tag and two
+  built the same feature.
+- Run `node tools/dev/precheck.mjs` before EVERY push. The sandbox
+  blocks npm install, so it is the only local gate (syntax, dup
+  switch cases, tag collisions, storage-key registry, proto-safety,
+  server suite). It PARSES the rule-2 registry table above — breaking
+  that table's format fails the gate.
+- Before merging a risky diff, run `/repo-review`
+  (`.claude/commands/repo-review.md` — adversarial multi-angle
+  protocol). When a fix feels obviously right, check `docs/TRAPS.md`
+  first — it is the registry of plausible-but-wrong moves, each one
+  attempted by a competent session. Details on all of the tooling:
+  `docs/DEV-TOOLS.md`.
 - One system per PR; each PR independently valuable; extend the test
   suite and write/update the spec doc in the same PR.
 - The owner is new to coding: PR bodies in plain language, no terminal
