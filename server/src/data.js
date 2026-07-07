@@ -242,6 +242,14 @@ export const QUALITY_GRADES = {
  *   1 + value/100, gated on the weapon having element1. */
 export const AMULET_TIER_POWER = { simple: 1.0, ornate: 1.5, regal: 2.2, mythic: 3.0 };
 
+/* v2.3.1178: valid amulet gems (mirror of src/data/items.js
+ * AMULET_GEM_STATS keys) -- the join sanitizer whitelists ps.amulet.gem
+ * against this so a forged blob can't smuggle an unknown gem that a
+ * future _computeAttackDamage branch might read.  Only 'flame' affects
+ * authoritative damage today; the rest keep legit non-flame amulets
+ * intact through the sanitize pass. */
+export const AMULET_GEMS = new Set(['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind', 'dark', 'light']);
+
 /* v2.3.1141: rarity tiers for server-minted weapon drops.  Mults only --
  * labels/colors are client presentation (RARITY_TIERS there carries
  * them).  These become the drop blob's tierMult, same slot the forge

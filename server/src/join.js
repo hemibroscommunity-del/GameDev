@@ -184,7 +184,10 @@ export const joinMethods = {
         // KEEPS its strip (client payloads are unmigrated writers).
         this.playerState[msg.id].armor = stored.armor || null;
         this.playerState[msg.id].shield = stored.shield || null;
-        this.playerState[msg.id].amulet = stored.amulet || null;
+        // v2.3.1178: amulet gem/tier feed the authoritative damage roll
+        // (_computeAttackDamage) -- whitelist even the stored blob, so a
+        // pre-slice forged amulet heals on this reconnect (gear.js).
+        this.playerState[msg.id].amulet = this._sanitizeAmulet(stored.amulet);
         this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(stored.weaponStash);
         this.playerState[msg.id]._quests = (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {};
         this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
@@ -297,7 +300,9 @@ export const joinMethods = {
           this.playerState[msg.id].armor = (_bootArmor && _bootArmor.name === 'Leather Armor') ? null : (_bootArmor ? { ..._bootArmor } : null);
         }
         this.playerState[msg.id].shield = (msg.data && msg.data.rpgShield && typeof msg.data.rpgShield === 'object') ? { ...msg.data.rpgShield } : null;
-        this.playerState[msg.id].amulet = (msg.data && msg.data.rpgAmulet && typeof msg.data.rpgAmulet === 'object') ? { ...msg.data.rpgAmulet } : null;
+        // v2.3.1178: whitelist the client-supplied amulet (gem/tier feed
+        // the authoritative damage roll -- gear.js _sanitizeAmulet).
+        this.playerState[msg.id].amulet = this._sanitizeAmulet(msg.data && msg.data.rpgAmulet);
         this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(msg.data && msg.data.rpgWeaponStash, true);
         // Quest state bootstrap (slice 17).  Trust shape but not
         // size -- a cheater could pass a 10000-entry _questKills

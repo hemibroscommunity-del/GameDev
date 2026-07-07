@@ -25,12 +25,17 @@ resonance bonus).
 - **elementalMastery** multipliers: retired stat, pinned 0 → ×1.0.
 - **influence** CC-duration bonus: retired.
 - All particles, popups, codex discovery, `reveal` visuals: cosmetic.
-- **Amulets themselves are still a client-crafted blob** (`ps.amulet`
-  ingested at join without a gem/tier whitelist). The elemDmg mirror
-  validates gem === 'flame' and unknown tiers default to the SIMPLE
-  power, so the forgery ceiling is the legitimate mythic +10.5% — but
-  a server-side amulet-forge handler is the real fix (successor item,
-  same pattern as forge_weapon).
+- **Amulets themselves are still a client-crafted blob** (`ps.amulet`,
+  no server forge). v2.3.1178: the join load path now whitelists the
+  blob via `_sanitizeAmulet` (gear.js) at BOTH sites (stored + bootstrap
+  — a stored record was itself an unvalidated bootstrap before this
+  slice, so the pass heals legacy forgeries on reconnect): `tier` must
+  be a known `AMULET_TIERS` key or the whole amulet is dropped, `gem`
+  must be one of the nine elements or is nulled, and only the legit
+  `{tier, gem, name}` shape survives (extra fields stripped). The
+  residual forgery ceiling is a legit mythic flame amulet (+10.5%) —
+  a server-side amulet-forge handler is still the real fix (successor
+  item, same pattern as forge_weapon). Tested in elemental2.test.mjs.
 
 ## Notes for successors
 

@@ -19,7 +19,7 @@
  * BLACKSMITH_TIERS / WOODWORKING_TIERS / QUALITY_GRADES mirrors move
  * with their only consumers (mirror-audit still pins them). */
 
-import { BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES } from './data.js';
+import { BLACKSMITH_TIERS, WOODWORKING_TIERS, QUALITY_GRADES, AMULET_TIER_POWER, AMULET_GEMS } from './data.js';
 
 export const gearMethods = {
   // ═══ Equipment store (opaque blobs + equip_request) ═══
@@ -111,6 +111,35 @@ export const gearMethods = {
     return arr.slice(0, this.WEAPON_STASH_CAP)
       .map((w) => this._sanitizeWeapon(w, strict))
       .filter(Boolean);
+  },
+
+  // v2.3.1178: amulet-blob sanitizer.  Amulets are a client-crafted
+  // blob (there is no server amulet forge -- see
+  // docs/specs/elemental-completion.md), so ps.amulet arrives at join
+  // wholly untrusted from BOTH the bootstrap payload and a stored
+  // record (which was itself an unvalidated bootstrap before this
+  // slice).  Since v2.3.1139 _computeAttackDamage reads amulet.gem +
+  // amulet.tier into the AUTHORITATIVE damage roll (AMULET_TIER_POWER),
+  // so a forged blob was a free damage boost.  Whitelist strictly:
+  //   - tier MUST be a known AMULET_TIERS key; an unknown tier means we
+  //     can't trust the blob -> drop the whole amulet (a forged
+  //     'godtier' can't ride the `|| 1.0` fallback while keeping the
+  //     rest of the object).
+  //   - gem must be one of the nine real elements, else nulled (no
+  //     elemDmg bonus; the amulet stays equipped cosmetically).
+  //   - keep only the legit {tier, gem, name} shape (name bounded);
+  //     strip every other client-supplied field.
+  // Applied at both join load sites, so a legacy forged amulet heals on
+  // the next reconnect (the v2.3.1104 weapon heal-on-load posture).
+  // The residual forgery ceiling is a legit mythic flame amulet
+  // (+10.5%) -- accepted until a server amulet-forge handler exists.
+  _sanitizeAmulet(a) {
+    if (!a || typeof a !== 'object') return null;
+    if (!AMULET_TIER_POWER[a.tier]) return null;
+    const gem = (typeof a.gem === 'string' && AMULET_GEMS.has(a.gem)) ? a.gem : null;
+    const out = { tier: a.tier, gem };
+    if (typeof a.name === 'string') out.name = a.name.slice(0, 40);
+    return out;
   },
 
   // Sell value mirrors the client at BroTown.jsx ~26613:
