@@ -539,11 +539,6 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
-/** Back-compat wrapper (skin only). */
-export function getSkinnedFrame(skinId, pose, dir, frameIdx) {
-  return getBodyFrame(skinId, 'default', 'default', pose, dir, frameIdx);
-}
-
 /* v2.3.1116: loot-pickup HEAD overlay, RECOLORED.  pickup-<dir>-head.png holds
    the head pixels per frame (transparent elsewhere); entityRenderer draws it
    ABOVE the gear so an armoured player's deep-crouch head isn't clipped to a

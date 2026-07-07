@@ -21,7 +21,7 @@ import {
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';

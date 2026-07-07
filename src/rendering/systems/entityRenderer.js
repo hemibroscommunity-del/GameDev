@@ -16,7 +16,7 @@ import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVaria
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
-import { TRAIT_CATEGORIES, resolveBodyAnchor } from '../traitCategories.js';
+import {  } from '../traitCategories.js';
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';

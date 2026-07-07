@@ -7,13 +7,18 @@ import { Application, Container } from 'pixi.js';
 
 /**
  * Layer names in render order (back to front).
+ * v2.3.1176: buildScene used to re-declare these two lists inline while
+ * this export sat unused -- two copies of the same 15 names is a silent
+ * drift hazard, so the world/screen splits are now THE definition and
+ * LAYER_NAMES derives from them.
  */
-export const LAYER_NAMES = [
+const WORLD_LAYER_NAMES = [
   'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
   'gatherNodes', 'telegraphs', 'entities', 'player',
   'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
-  'atmosphere', 'screenFX', 'hud',
 ];
+const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
+export const LAYER_NAMES = [...WORLD_LAYER_NAMES, ...SCREEN_LAYER_NAMES];
 
 /** Build the scene graph (containers + layers) on a successfully initialized app. */
 function buildScene(app) {
@@ -38,14 +43,7 @@ function buildScene(app) {
   app.stage.addChild(screenContainer);
 
   const layers = {};
-  const worldLayers = [
-    'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
-    'gatherNodes', 'telegraphs', 'entities', 'player',
-    'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
-  ];
-  const screenLayers = ['atmosphere', 'screenFX', 'hud'];
-
-  for (const name of worldLayers) {
+  for (const name of WORLD_LAYER_NAMES) {
     const layer = new Container();
     layer.label = name;
     worldContainer.addChild(layer);

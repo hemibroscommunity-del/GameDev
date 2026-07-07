@@ -75,23 +75,21 @@ import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
-import { initPixiRenderer, preloadPlayerAssets, prewarmBaseSheets } from '@/rendering/pixiRenderer.js';
-import { preloadAllTiledMaps, getWalkability, TILED_ZONE_MAPS, loadWalkabilityMaps, IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
+import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
+import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
 import * as DATA from '@/data/index.js';
-import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, getDeviceNonce } from '@/networking/index.js';
+import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
 import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants, setPants, getShoes, setShoes } from '@/rendering/playerSkins.js';
-import { drawCharacterPortrait, prewarmPortraitDirs } from '@/rendering/characterPortrait.js';
-import { HAIR_COLOR_CATALOG, getHairColor, setHairColor, hairColorTarget } from '@/rendering/traits/hairColorCatalog.js';
-import { HAT_COLOR_CATALOG, getHatColor, setHatColor, hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
-import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor, facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
+import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
+import { HAT_COLOR_CATALOG, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
+import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
-import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor, shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
-import { getEquip, setEquip, onEquipChange, reconcileGearStash } from '@/rendering/gearCatalog.js';
-import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
+import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
+import { getEquip, setEquip, reconcileGearStash } from '@/rendering/gearCatalog.js';
 import { wireGearWornSync } from '@/game/gearWornSync.js';
 import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
 import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/game/characterCreatorEffects.js';
@@ -100,11 +98,9 @@ import { wireSpriteSheets } from '@/game/spriteSheets.js';
 import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
-import { BUILD_LABELS, BUILD_ICONS, peerDmgKey, enqueuePeerDamage, releasePeerDamage, addBuildProg, addBuildUse, distributeKillXpToBuild, isAttackInShieldArc, trackMonsterDamage, applyMeleeLifesteal } from '@/game/combatHelpers.js';
+import { releasePeerDamage, addBuildProg } from '@/game/combatHelpers.js';
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
-import { sendChatMessage, handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
-/* v2.3.782: quest accept/turn-in transitions extracted behavior-frozen (REBUILD-PLAN Phase 3). */
-import { acceptQuest, turnInQuest } from '@/game/quests.js';
+import { sendChatMessage } from '@/game/chat.js';
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
@@ -137,8 +133,8 @@ import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl } from '
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
-import { applyZoneVariant, baseArchetypeOf, isFodderLike, incomingDmgScalarFor, usesClientSideMovement, isRemnantSkull, xpMultFor, MONSTER_VARIANTS, maybeTransformMonster } from '@/data/monsterVariants.js';
-import { rollMonsterShard, rollHarvestShard, shardByKey } from '@/data/shards.js';
+import { MONSTER_VARIANTS } from '@/data/monsterVariants.js';
+import { shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {

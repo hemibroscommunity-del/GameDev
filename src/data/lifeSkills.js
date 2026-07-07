@@ -1,6 +1,6 @@
 import { TILE } from './constants.js';
 import { ZONES } from './zones.js';
-import { ELEMENT_FLAVOR, flavorName, flavorSpotName } from './elements.js';
+import { flavorName, flavorSpotName } from './elements.js';
 
 /* ═══ LIFE SKILLS — §18 ═══ */
 export const LIFE_SKILL_XP = (level) => Math.ceil(500 * Math.pow(1.08, level - 1));

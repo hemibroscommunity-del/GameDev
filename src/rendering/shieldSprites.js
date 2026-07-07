@@ -54,7 +54,3 @@ export function getShieldFrame(angle) {
   const tex = SHEETS[view] && SHEETS[view].tex;
   return tex ? { tex, mirror } : null;
 }
-
-export function hasShieldSprites() {
-  return !!SHEETS.front.tex;
-}

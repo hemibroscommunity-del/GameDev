@@ -49,13 +49,3 @@ export const rowStyle = {
   padding: '4px 6px',
   borderRadius: 4,
 };
-
-export const emptyMsg = (text) => ({
-  text,
-  style: {
-    color: COL.muted,
-    textAlign: 'center',
-    fontSize: 15,
-    paddingTop: 18,
-  },
-});

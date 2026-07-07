@@ -17,7 +17,7 @@ import { rollMonsterShard } from '@/data/shards.js';
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, isAttackInShieldArc } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 

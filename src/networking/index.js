@@ -197,10 +197,7 @@ export function wsrvUrl(url, size) {
   return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=${size}&h=${size}&fit=cover&output=png`;
 }
 
-/* ═══ WebSocket connection factory ═══ */
-export function createWebSocket(room = 'brotown') {
-  const url = WS_BASE + '/ws?room=' + room;
-  return new WebSocket(url);
-}
-
+/* v2.3.1176: createWebSocket factory removed -- zero importers, and it was
+   stale (no lobby resolution, no encodeURIComponent, default room 'brotown'
+   vs production 'brotown-1').  wsClient.js owns the live connection path. */
 export { WS_BASE };
