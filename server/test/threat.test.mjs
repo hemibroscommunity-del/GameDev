@@ -19,6 +19,17 @@
  *   6. The lock survives a rejoin (storage-backed -- reload can't shed
  *      the punishment).
  *   7. Forged threat_penalty / gear_locked are not rebroadcast.
+ *
+ * v2.3.1211 (item C, threat bounty pool): the Call-Guards fine escrows
+ * onto the threatener's head instead of evaporating, paid to whoever
+ * kills them.  Checks:
+ *   8. Guards escrows the fine into bounty:<pid> (accumulating across
+ *      repeat calls); a legit server-observed PvP kill pays the killer
+ *      the pool + clears it; self / non-PvP / consensual-duel /
+ *      same-clan kills pay nobody and leave the bounty in place; the
+ *      _handlePlayerDeath choke point routes the payout; a re-fired
+ *      death can't double-pay; the join-path sweep deletes stale
+ *      bounties but spares fresh ones.
  */
 import { GameRoom } from '../src/index.js';
 import { THREAT } from '../src/threat.js';
@@ -170,6 +181,91 @@ room.eventBuffer.length = 0;
 await room.webSocketMessage(wss.x, JSON.stringify({ type: 'threat_penalty', payload: { levy: 99999 } }));
 await room.webSocketMessage(wss.x, JSON.stringify({ type: 'gear_locked', payload: { until: 0 } }));
 check('forged threat_penalty / gear_locked dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'threat_penalty' || e.type === 'gear_locked').length === 0, room.eventBuffer.map((e) => e.type));
+
+// ── 8. v2.3.1211 threat bounty pool (item C): the guard fine escrows
+// onto the threatener's head and pays their killer ──
+{
+  for (const n of ['grf', 'hunt', 'tgt']) {
+    wss[n] = fakeWs(n);
+    await join(wss[n], P(n));
+    room.playerState[P(n)].coins = 1000;
+  }
+  const G = P('grf'), H = P('hunt'), TG = P('tgt');
+  const guardFine = async () => { // grf threatens tgt, tgt calls guards
+    room.playerState[G]._threatCdUntil = 0;
+    await threat(wss.grf, TG);
+    await respond(wss.tgt, G, 'guards');
+  };
+
+  await guardFine(); // 1000 -> fined 100
+  let b = state._store.get('bounty:' + G);
+  check('call guards escrows the fine into a bounty on the threatener',
+    b && b.amount === 100 && room.playerState[G].coins === 900, { bounty: b, coins: room.playerState[G].coins });
+
+  await guardFine(); // 900 -> fined 90, accumulates
+  b = state._store.get('bounty:' + G);
+  check('repeat guard-calls accumulate the same head\'s bounty', b && b.amount === 190, b);
+
+  // non-PvP death (monster) pays nobody and keeps the bounty on the head
+  await room._bountyOnDeath(G, 'monster:m1');
+  check('a non-PvP death pays nobody + leaves the bounty', (state._store.get('bounty:' + G) || {}).amount === 190);
+
+  // self-attributed cause can't claim
+  await room._bountyOnDeath(G, 'pvp:' + G);
+  check('a self kill cannot claim the bounty', !!state._store.get('bounty:' + G));
+
+  // same-clan kill can't farm the pot (record persists)
+  room._clans = room._clans || new Map();
+  room._clanByPlayer = room._clanByPlayer || new Map();
+  room._clans.set('cl1', { id: 'cl1' });
+  room._clanByPlayer.set(G, 'cl1');
+  room._clanByPlayer.set(H, 'cl1');
+  const hStart = room.playerState[H].coins;
+  await room._bountyOnDeath(G, 'pvp:' + H);
+  check('a same-clan kill cannot farm the bounty (persists, no pay)',
+    !!state._store.get('bounty:' + G) && room.playerState[H].coins === hStart, { bounty: state._store.get('bounty:' + G), h: room.playerState[H].coins });
+
+  // consensual duel kill excluded (stub _duelFor to report an active duel)
+  const _origDuelFor = room._duelFor;
+  room._clanByPlayer.delete(H); // not clanmates now
+  room._duelFor = (id) => (id === H ? { a: H, b: G } : null);
+  await room._bountyOnDeath(G, 'pvp:' + H);
+  check('a consensual duel kill does not claim the bounty',
+    !!state._store.get('bounty:' + G) && room.playerState[H].coins === hStart, room.playerState[H].coins);
+  room._duelFor = _origDuelFor;
+
+  // legit non-clan open-world PvP kill: pays the killer + clears the record
+  await room._bountyOnDeath(G, 'pvp:' + H);
+  check('a legit PvP kill pays the killer the pooled bounty + clears it',
+    room.playerState[H].coins === hStart + 190 && !state._store.get('bounty:' + G), { h: room.playerState[H].coins, bounty: state._store.get('bounty:' + G) });
+
+  // a re-fired death can't double-pay (record gone; opId stamp also guards)
+  await room._bountyOnDeath(G, 'pvp:' + H);
+  check('a re-fired death cannot double-pay', room.playerState[H].coins === hStart + 190);
+
+  // integration: the real _handlePlayerDeath choke point routes the payout
+  await guardFine(); // fresh bounty (810 -> 81)
+  const bInt = state._store.get('bounty:' + G).amount;
+  const hBefore = room.playerState[H].coins;
+  room.playerState[G].dying = false; room.playerState[G].dead = false;
+  room._handlePlayerDeath(room.playerState[G], G, 'pvp:' + H);
+  await new Promise((r) => setTimeout(r, 20)); // fire-and-forget hook
+  check('_handlePlayerDeath routes a PvP kill to the bounty payout',
+    room.playerState[H].coins === hBefore + bInt && !state._store.get('bounty:' + G), { h: room.playerState[H].coins, paid: bInt });
+
+  // sweep: a fresh bounty survives; a stale one is deleted
+  room.playerState[G].dying = false; room.playerState[G].dead = false; // died in the integration step above
+  await guardFine(); // fresh bounty on G
+  room._lastBountySweep = 0;
+  await room._bountySweep();
+  check('the sweep leaves a fresh bounty alone', !!state._store.get('bounty:' + G));
+  const bs = state._store.get('bounty:' + G);
+  bs.ts = Date.now() - THREAT.BOUNTY_STALE_MS - 1000;
+  state._store.set('bounty:' + G, bs);
+  room._lastBountySweep = 0;
+  await room._bountySweep();
+  check('the orphan sweep deletes a stale bounty', !state._store.get('bounty:' + G));
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

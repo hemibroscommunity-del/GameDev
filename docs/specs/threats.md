@@ -121,11 +121,35 @@ Implementation:
   deploys/reconnects just let them age out, matching the server's
   in-memory pending-threat table.
 
-## Attach points for successors
+## Bounty board — SHIPPED v2.3.1211
 
-- **Bounty board**: guards fines currently evaporate (sink). A bounty
-  pool per griefer (paid to whoever kills them) would reuse
-  `_creditPlayer` + an oplog-stamped claim.
+Guards fines no longer evaporate: `_interceptThreat`'s `action==='guards'`
+branch escrows the levy into `bounty:<threatenerId>` (accumulating
+across repeat Call-Guards on the same head; registry table, rule 2)
+instead of pure-sinking it.
+
+- **Payout**: `_bountyOnDeath(victimId, cause)` is hung off the
+  `_handlePlayerDeath` choke point (index.js), beside `_warOnDeath`, so
+  it is fed ONLY by the server's own PvP resolution (`cause` =
+  `'pvp:<killerId>'`) — the killer can't be forged. It pays the killer
+  the pooled amount via `_creditPlayer` (offline-safe mail, opId
+  `bountypay:<victim>:<ts>` — a double-fired death can't double-pay)
+  and deletes the record.
+- **Anti-farm** (the `_warOnDeath` posture): a self kill can't happen
+  (`combat.js` skips self-targets; asserted anyway), a monster /
+  environment death never carries `pvp:` (pays nobody, bounty stays on
+  the head), a consensual **duel** kill is excluded (the easiest
+  collusion channel), and a **same-clan** kill can't collect. Every
+  excluded case LEAVES the bounty in place for a legit hunter.
+- **Sweep**: `_bountySweep` (join-path, 5-min rate-limited, the
+  `_arenaStakeSweep` pattern) deletes bounties gone quiet past
+  `THREAT.BOUNTY_STALE_MS` (3 days) — unclaimable, so the gold
+  evaporates exactly like the pre-bounty sink (no refund path: a fine
+  isn't a returnable escrow).
+- **No caps flag**: server-only (no client path), matching the threat
+  machine's deliberate no-caps posture.
+
+## Attach points for successors
 - The countdown/cooldown/consent constants mirror
   `PVP_THREAT_BASE_COUNTDOWN` / `PVP_THREAT_COOLDOWN` /
   `PVP_THREAT_CONSENT_MS` (gameSystems.js, §19 block) — keep in sync
