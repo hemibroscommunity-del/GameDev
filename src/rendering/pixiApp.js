@@ -50,7 +50,7 @@ function buildScene(app) {
     layers[name] = layer;
   }
 
-  for (const name of screenLayers) {
+  for (const name of SCREEN_LAYER_NAMES) {
     const layer = new Container();
     layer.label = name;
     screenContainer.addChild(layer);
