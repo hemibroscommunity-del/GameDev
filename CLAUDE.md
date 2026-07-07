@@ -58,7 +58,10 @@ dup switch cases, tag collisions, storage-key registry, server suite).
 Maps keyed by client-supplied ids must be `Object.create(null)` or
 `Map` — plain `{}` silently no-ops on `'__proto__'` (fixed 3× in one
 day: duel.away v2.3.1175, party meta v2.3.1185, amulet tiers
-v2.3.1192). Details: `docs/DEV-TOOLS.md`.
+v2.3.1192). Details: `docs/DEV-TOOLS.md`. Before review or any "fix"
+of old behavior: run `/repo-review` (adversarial multi-angle protocol,
+`.claude/commands/repo-review.md`) and check `docs/TRAPS.md` — the
+registry of plausible-but-wrong moves (v2.3.1204).
 
 ## Deployment (important)
 
