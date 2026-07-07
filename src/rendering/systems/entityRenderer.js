@@ -3676,7 +3676,13 @@ export class EntityRenderer {
         }
       }
 
-      const nextName = other.name || 'Anon';
+      /* v2.3.1175: party members get a marker on the nameplate — the
+         cheapest possible in-world indicator (rides the existing
+         _lastName change-cache; no new display objects).  S._party is
+         the last party_state snapshot (gameEvents.js). */
+      const _inParty = S._party && S._party.members
+        && S._party.members.some((m) => m.id === id);
+      const nextName = (_inParty ? '🎉 ' : '') + (other.name || 'Anon');
       if (display._lastName !== nextName) {
         display._lastName = nextName;
         display._nameText.text = nextName;

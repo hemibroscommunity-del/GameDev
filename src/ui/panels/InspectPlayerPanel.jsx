@@ -424,7 +424,40 @@ export function InspectPlayerPanel(props) {
       });
       setInspectPlayer(null);
     }
-  }, "\uD83C\uDFF0 Invite to [", clanData.tag, "]"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83C\uDFF0 Invite to [", clanData.tag, "]"), (function () {
+    /* v2.3.1175: party invite (handoff item D).  Server validates
+       everything (leader-only, MAX_SIZE, no poaching) and answers
+       privately with party_error, so this button just fires the half
+       and closes.  caps.party gates it so an old worker \u2014 which would
+       relay the unknown type to the whole room \u2014 never sees it. */
+    var _Spty = stateRef.current;
+    if (!(_Spty._serverCaps && _Spty._serverCaps.party)) return null;
+    return /*#__PURE__*/React.createElement("button", {
+      style: {
+        width: '100%',
+        marginTop: 6,
+        padding: '6px',
+        borderRadius: 6,
+        border: '1px solid rgba(61,212,151,.3)',
+        background: 'rgba(61,212,151,.1)',
+        color: '#3dd497',
+        fontSize: 9,
+        fontWeight: 700,
+        cursor: 'pointer'
+      },
+      onClick: function onClick() {
+        var S = stateRef.current;
+        if (S.channel) S.channel.send({
+          type: 'broadcast',
+          event: 'party_invite',
+          payload: {
+            target: inspectPlayer.id
+          }
+        });
+        setInspectPlayer(null);
+      }
+    }, "\uD83C\uDF89 Invite to party");
+  })(), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 4,

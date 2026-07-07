@@ -94,6 +94,10 @@ export const tickMethods = {
       // v2.3.1132: expire idle two-sided trade sessions + invites.
       this._tickTrades2(Date.now());
 
+      // v2.3.1175: expire party invites + drop members whose 2-min
+      // away window lapsed (party.js).
+      this._tickParties(Date.now());
+
       // HP regen tick — every 30 server ticks (~670 ms at TICK_RATE=22).
       // Skip when no one needs healing to avoid wasted iteration.
       regenCounter++;

@@ -2032,6 +2032,71 @@ export function processGameEvent(type, payload, S, deps) {
               }
               break;
             }
+          case 'party_invited':
+            {
+              /* v2.3.1175: someone invited us to a party.  Park the
+                 invite stub; PartyRosterPanel renders the accept/
+                 decline card (the server already verified we're not
+                 in a party, so the stub can't stomp a live roster). */
+              if (!payload || !payload.from) break;
+              if (deps.setParty) deps.setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', size: payload.size || 1, ts: Date.now() });
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 40,
+                text: '🎉 ' + (payload.fromName || 'Someone') + ' invited you to a party!',
+                color: '#3dd497', ts: Date.now()
+              });
+              BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+              break;
+            }
+          case 'party_state':
+            {
+              /* v2.3.1175: the server's roster snapshot -- the party
+                 frame is a pure renderer of this (trade2_state
+                 posture).  'invited' is only an ack toast: replacing
+                 state on it would blow away a leader's live roster
+                 when they invite a third member.  Terminal states
+                 clear the frame with a reason toast. */
+              if (!payload) break;
+              if (payload.state === 'active') {
+                S._party = payload;
+                if (deps.setParty) deps.setParty(payload);
+              } else if (payload.state === 'invited') {
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: 'Party invite sent', color: '#3dd497', ts: Date.now()
+                });
+              } else {
+                S._party = null;
+                if (deps.setParty) deps.setParty(null);
+                var _ptyWhy = {
+                  'left': 'You left the party', 'kicked': 'You were removed from the party',
+                  'timeout': 'Removed from party (disconnected too long)',
+                  'disbanded': 'Party disbanded',
+                }[payload.state] || 'Party ended';
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: _ptyWhy, color: '#fbbf24', ts: Date.now()
+                });
+              }
+              break;
+            }
+          case 'party_error':
+            {
+              /* v2.3.1175: private feedback on a party action (the
+                 clan_error posture -- toast only, nothing to mutate). */
+              if (!payload) break;
+              var _ptyErr = {
+                'declined': 'Party invite declined', 'busy': 'You are already in a party',
+                'target-busy': 'They are already in a party', 'full': 'Party is full',
+                'not-leader': 'Only the leader can invite', 'expired': 'Party invite expired',
+                'target-gone': 'Player unavailable',
+              }[payload.code] || 'Party action failed';
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 40,
+                text: _ptyErr, color: '#ff5e6c', ts: Date.now()
+              });
+              break;
+            }
           case 'harden_result':
             {
               /* v2.3.1131: the §4.6c hardening roll came back (private).

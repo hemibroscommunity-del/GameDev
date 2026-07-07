@@ -447,6 +447,10 @@ export const joinMethods = {
     // land via the inbox path above on the NEXT join).
     this._duelOnRejoin(msg.id);
     this._duelEscrowSweep();
+    // v2.3.1175: clear a party member's away window on reconnect; the
+    // roster re-echo doubles as the fresh client's party UI recovery
+    // (parties are memory-only, so there is nothing else to load).
+    this._partyOnRejoin(msg.id);
     this._arenaEntrySweep(); // v2.3.1126: refund entries orphaned by a deploy
     this._arenaStakeSweep(); // v2.3.1128: same contract for sponsorship stakes
     // v2.3.1129: load a surviving guard gear lock -- storage-backed
@@ -500,7 +504,9 @@ export const joinMethods = {
       // the build meter on this flag (an old worker clamps weapon
       // specs at 99 / defense+grid specs at 50, so spending past the
       // legacy caps against it would truncate on echo).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, ..._liveFlags },
+      // v2.3.1175: party -- gates the client's invite button + roster
+      // frame so an old worker simply shows no party UI at all.
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, party: true, ..._liveFlags },
       players: this.getAllPlayerData(),
       playerCount: this.getPlayerCount(),
       monsters: zoneMonsters.map(m => ({

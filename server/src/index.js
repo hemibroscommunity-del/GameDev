@@ -86,6 +86,10 @@ import { LIVEOPS, liveopsMethods } from './liveops.js';
 // sessions on the validate-at-commit core (the gift handshake in
 // trade.js stays untouched for old clients; see trade2.js header).
 import { trade2Methods } from './trade2.js';
+// v2.3.1175: party roster (handoff backlog item D) -- invite/accept
+// handshake + server-truth member snapshots; deliberately NO XP-share
+// changes (§7 damage-contribution already pays co-op).  See party.js.
+import { partyMethods } from './party.js';
 // v2.3.1143: account-login pre-flight -- read-only Login Key check so
 // the client can validate a typed key before switching identity.
 import { accountMethods } from './account.js';
@@ -276,6 +280,11 @@ export const PRIVILEGED_EVENTS = new Set([
   'server_announce',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
+  // v2.3.1175: party roster echoes -- party_state drives the member
+  // frame (a forged one could fake "X joined your party" or clear a
+  // real roster), party_invited drives the accept popup, party_error
+  // is private feedback.  All three are server-emitted only.
+  'party_state', 'party_invited', 'party_error',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
@@ -2914,6 +2923,26 @@ export class GameRoom {
         if (session.id) this._handleTrade2Cancel(session);
         break;
 
+      case 'party_invite':
+        // v2.3.1175: party roster (party.js).  Explicit cases so
+        // forged halves meet validation, never the rebroadcast branch
+        // (rule 15 posture -- an unmatched accept is answered
+        // privately and dropped).
+        if (session.id) this._handlePartyInvite(session, msg.payload || msg);
+        break;
+      case 'party_accept':
+        if (session.id) this._handlePartyAccept(session, msg.payload || msg);
+        break;
+      case 'party_decline':
+        if (session.id) this._handlePartyDecline(session, msg.payload || msg);
+        break;
+      case 'party_leave':
+        if (session.id) this._handlePartyLeave(session);
+        break;
+      case 'party_kick':
+        if (session.id) this._handlePartyKick(session, msg.payload || msg);
+        break;
+
       case 'harden_weapon':
         // v2.3.1131: the §4.6c Blacksmith lottery -- gold cost, odds
         // ladder, temper pity bands, all server-rolled (hardening.js).
@@ -3243,6 +3272,10 @@ export class GameRoom {
       // would otherwise end the fight unconditionally.
       this._duelOnDisconnect(session.id);
       this._trade2OnDisconnect(session.id); // v2.3.1132: a dropped party cancels the window
+      // v2.3.1175: party members get a 2-min away window (iOS tab
+      // suspends are routine) before _tickParties drops them; the
+      // roster echo shows them as away meanwhile.
+      this._partyOnDisconnect(session.id);
       this._botfpFlush(session); // v2.3.1146: final botstat: write so evidence survives the disconnect
       this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
       this.broadcastAll({ type: 'player_leave', id: session.id });
@@ -3302,6 +3335,8 @@ Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, hardeningMethods);
 // v2.3.1132 (PR16): two-sided trade window -- see trade2.js.
 Object.assign(GameRoom.prototype, trade2Methods);
+// v2.3.1175: party roster -- see party.js.
+Object.assign(GameRoom.prototype, partyMethods);
 // v2.3.1143: account-login pre-flight -- see account.js.
 Object.assign(GameRoom.prototype, accountMethods);
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.

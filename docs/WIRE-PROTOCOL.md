@@ -220,6 +220,7 @@ Summary of the wire-visible changes:
 | `pet_capture_result` | Server-rolled pet capture (private; `pet_capture` c→s case; consumes a basic_trap) | pets.md |
 | `harden_result` | §4.6c hardening roll (private; `harden_weapon` c→s case; forge mints now carry `quality`/`hardness`/`temper`) | hardening.md |
 | `trade2_state` / `trade2_invite` | Two-sided trade window (private; `trade2_open/set/confirm/cancel` c→s cases; gift trade relay unchanged) | trading.md addendum |
+| `party_state` / `party_invited` / `party_error` | Party roster (private; `party_invite/accept/decline/leave/kick` c→s cases; caps.party; NO XP-share changes — §7 damage-contribution already pays co-op) | party.md |
 
 **Cadence + jackpot (v2.3.1149, caps.jackpot):** new c→s case
 `jackpot_deposit {amount}` (multiple of 50 in [50,5000]); new s→c types

@@ -64,6 +64,7 @@ export function setupWebSocket(ctx) {
     setThreatIncoming = ctx.setThreatIncoming,
     setIncomingTrade = ctx.setIncomingTrade,
     setTrade2 = ctx.setTrade2,
+    setParty = ctx.setParty,
     setArenaTournament = ctx.setArenaTournament,
     setArenaBets = ctx.setArenaBets,
     pixiRef = ctx.pixiRef;
@@ -1505,6 +1506,7 @@ export function setupWebSocket(ctx) {
         setLevelUpMsg: setLevelUpMsg,
         setIncomingTrade: setIncomingTrade,
         setTrade2: setTrade2,
+        setParty: setParty,
         setArenaTournament: setArenaTournament,
         setArenaBets: setArenaBets,
         pixiRef: pixiRef,
@@ -1699,7 +1701,10 @@ export function setupWebSocket(ctx) {
     /* v2.3.1132: two-sided trade commands -- the window is a
        server-truth renderer, so a 33ms batch delay would make every
        stage/confirm click feel laggy. */
-    'trade2_open', 'trade2_set', 'trade2_confirm', 'trade2_cancel']);
+    'trade2_open', 'trade2_set', 'trade2_confirm', 'trade2_cancel',
+    /* v2.3.1175: party handshake -- same reasoning; an invite that
+       arrives a batch-window late feels broken on the popup. */
+    'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick']);
     var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
     var _inputBuffer = [];
     var _pendingMove = null;

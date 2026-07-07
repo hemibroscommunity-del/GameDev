@@ -239,13 +239,20 @@ forge). Successor follow-ups: red/white SKULL RENDERING still doesn't
 exist client-side (orphaned state anchors listed in the spec); guards
 fines evaporate — a bounty pool is the natural next step.
 
-### D. Parties
-Do NOT build a party XP system — server kill credit is already GDD §7
-damage-contribution (index.js xpRecipients/shares) and works co-op today.
-A party system is UI + a roster: invite/accept handshake (duel pattern),
-`party:<id>` in memory (worthless on deploy), member list echoed in caps
-or a privileged event. Optional later: contribution-role weighting.
-Danger: don't touch the share math without re-running the §7 predicates.
+### D. Parties — SHIPPED v2.3.1175
+Built as specced: `server/src/party.js`, spec in `docs/specs/party.md`.
+Roster-only, exactly per the design note — the §7 share math was NOT
+touched (no re-run needed). Invite/accept handshake (per-sender-session
+halves, rule 14), in-memory `_parties` map (deploy dissolves them —
+nothing escrowed), `party_state`/`party_invited`/`party_error`
+privileged echoes, `caps.party`, MAX_SIZE 4 (the §55.7 scaling ceiling),
+2-min away grace on disconnect (the duel-grace lesson). Client:
+`PartyRosterPanel.jsx` (server-truth renderer; NOT the arena's
+buildings/PartyPanel — that name was already taken), invite button in
+InspectPlayerPanel, 🎉 nameplate marker. Successor follow-ups: party
+chat needs its own explicit-case relay (never the open `chat` relay);
+contribution-role weighting remains the "optional later" — it would be
+the first §7 touch, so re-run the predicates if attempted.
 
 ### E. Hardening v1 + quality grades — SHIPPED v2.3.1131
 Built per the adopted BALANCE-PLAN numbers: `server/src/hardening.js`,
