@@ -239,7 +239,7 @@ export const arenaMethods = {
     const duelId = crypto.randomUUID();
     this._duels.set(duelId, {
       id: duelId, a: m.a, b: m.b, wager: 0, startedAt: Date.now(), status: 'active',
-      graceUntil: 0, awayId: null,
+      away: {}, // v2.3.1175: per-player grace map (was awayId/graceUntil single slot)
       expiresAt: m.deadline, arenaMatch: { tid: t.id, matchId: m.id },
     });
     if (!this._pvpConsent) this._pvpConsent = new Map();

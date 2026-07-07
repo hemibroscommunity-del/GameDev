@@ -13,7 +13,10 @@
  *   5. Death to a MONSTER mid-duel resolves the pot to the opponent but
  *      is NOT protected (pile + wipe apply).
  *   6. Disconnect grace: rejoin inside 15s keeps the duel; grace expiry
- *      forfeits the pot to the opponent.
+ *      forfeits the pot to the opponent.  6b/6c (v2.3.1175): BOTH
+ *      players away at once — each owns an independent grace clock,
+ *      rejoin clears only the rejoiner's slot, and when both expire
+ *      the earliest disconnect forfeits.
  *   7. Stale-escrow sweep refunds both after a "deploy wipe", but never
  *      refunds on top of an already-paid pot.
  *   8. Zero-wager duels create no escrow and resolve cleanly.
@@ -124,16 +127,51 @@ await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));
 await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 10));
 const duel6 = room._duelFor('bp_duel_a');
 room._duelOnDisconnect('bp_duel_b');
-check('disconnect arms the grace window', duel6.awayId === 'bp_duel_b' && duel6.graceUntil > Date.now());
+check('disconnect arms the grace window', duel6.away['bp_duel_b'] > Date.now(), duel6.away);
 room._duelOnRejoin('bp_duel_b');
-check('rejoin inside grace keeps the duel', duel6.awayId === null && room._duelFor('bp_duel_a') === duel6);
+check('rejoin inside grace keeps the duel', !duel6.away['bp_duel_b'] && room._duelFor('bp_duel_a') === duel6);
 room._duelOnDisconnect('bp_duel_b');
-duel6.graceUntil = Date.now() - 1;
+duel6.away['bp_duel_b'] = Date.now() - 1;
 const coinsA6 = psA.coins;
 room.eventBuffer.length = 0;
 room._tickDuels(Date.now());
 await new Promise((r) => setTimeout(r, 20));
 check('grace expiry forfeits to the opponent', psA.coins === coinsA6 + 20 && room.eventBuffer.some((e) => e.type === 'duel_end' && e.payload.how === 'forfeit'), { coins: psA.coins });
+
+// ── 6b. both players disconnect (v2.3.1175: per-player away map) ──
+// The old single awayId/graceUntil slot let the second disconnect
+// clobber the first player's forfeit clock, and the first player's
+// rejoin no longer matched (awayId held the other id) so their consent
+// pair was never re-registered.
+psB.coins = 100;
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));
+await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 10));
+const duel6b = room._duelFor('bp_duel_a');
+room._duelOnDisconnect('bp_duel_a');
+const aGrace = duel6b.away['bp_duel_a'];
+room._duelOnDisconnect('bp_duel_b');
+check('second disconnect does not clobber the first grace clock', duel6b.away['bp_duel_a'] === aGrace && duel6b.away['bp_duel_b'] > Date.now(), duel6b.away);
+if (room._pvpConsent) room._pvpConsent.delete(room._pvpPairKey('bp_duel_a', 'bp_duel_b')); // simulate webSocketClose's consent clear
+room._duelOnRejoin('bp_duel_a');
+check('rejoin clears only own slot and re-registers consent', !duel6b.away['bp_duel_a'] && duel6b.away['bp_duel_b'] > 0 && room._pvpAllowed('bp_duel_a', 'bp_duel_b', 'town') === true, duel6b.away);
+duel6b.away['bp_duel_b'] = Date.now() - 1;
+const coinsA6b = psA.coins;
+room.eventBuffer.length = 0;
+room._tickDuels(Date.now());
+await new Promise((r) => setTimeout(r, 20));
+check('remaining away player forfeits after own grace', psA.coins === coinsA6b + 20 && room.eventBuffer.some((e) => e.type === 'duel_end' && e.payload.loser === 'bp_duel_b' && e.payload.how === 'forfeit'), { coins: psA.coins, buf: room.eventBuffer.map((e) => e.type) });
+
+// ── 6c. both graces expired: earliest disconnect forfeits ──
+psB.coins = 100;
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));
+await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 10));
+const duel6c = room._duelFor('bp_duel_a');
+duel6c.away = { 'bp_duel_a': Date.now() - 100, 'bp_duel_b': Date.now() - 50 };
+const coinsB6c = psB.coins;
+room.eventBuffer.length = 0;
+room._tickDuels(Date.now());
+await new Promise((r) => setTimeout(r, 20));
+check('double-away: earliest expiry loses, opponent takes the pot', psB.coins === coinsB6c + 20 && room.eventBuffer.some((e) => e.type === 'duel_end' && e.payload.loser === 'bp_duel_a' && e.payload.how === 'forfeit'), { coins: psB.coins, buf: room.eventBuffer.map((e) => e.type) });
 
 // ── 7. stale-escrow sweep ──
 // Simulate a deploy: escrow record persisted, in-memory duel map gone.

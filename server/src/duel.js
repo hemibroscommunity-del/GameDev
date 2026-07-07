@@ -99,7 +99,7 @@ export const duelMethods = {
       }
       await this.state.storage.put('duelEscrow:' + duelId, { a, b, wager, startedAt: now });
     }
-    this._duels.set(duelId, { id: duelId, a, b, wager, startedAt: now, status: 'active', graceUntil: 0, awayId: null });
+    this._duels.set(duelId, { id: duelId, a, b, wager, startedAt: now, status: 'active', away: {} });
     // Register the damage-gate pair (the PR1 _pvpAllowed mechanism).
     if (!this._pvpConsent) this._pvpConsent = new Map();
     this._pvpConsent.set(this._pvpPairKey(a, b), now + DUEL.CONSENT_MS);
@@ -147,15 +147,20 @@ export const duelMethods = {
   _duelOnDisconnect(playerId) {
     const duel = this._duelFor(playerId);
     if (!duel) return;
-    duel.graceUntil = Date.now() + DUEL.GRACE_MS;
-    duel.awayId = playerId;
+    // v2.3.1175: per-player away map (handoff item L).  The old single
+    // awayId/graceUntil slot meant a second disconnect OVERWROTE the
+    // first: player A's forfeit clock silently reset, and A's rejoin
+    // no longer matched (awayId held B), so A came back without the
+    // consent pair re-registered -- the resumed duel's hits were gated
+    // off.  Each player now owns their own grace entry.
+    if (!duel.away) duel.away = {};
+    duel.away[playerId] = Date.now() + DUEL.GRACE_MS;
   },
 
   _duelOnRejoin(playerId) {
     const duel = this._duelFor(playerId);
-    if (duel && duel.awayId === playerId) {
-      duel.graceUntil = 0;
-      duel.awayId = null;
+    if (duel && duel.away && duel.away[playerId]) {
+      delete duel.away[playerId];
       // Re-register the damage-gate pair: webSocketClose's consent
       // clear removed it when this player dropped, and without it the
       // resumed duel's hits would all be gated off in safe zones.
@@ -174,10 +179,19 @@ export const duelMethods = {
     }
     if (this._duels) {
       for (const d of [...this._duels.values()]) {
-        if (d.status === 'active' && d.awayId && d.graceUntil && now > d.graceUntil) {
-          const winner = d.a === d.awayId ? d.b : d.a;
-          this._resolveDuel(d, winner, d.awayId, 'forfeit');
-          continue;
+        // v2.3.1175: forfeit whichever away player's grace expired
+        // first (both can be away at once now).  The winner may also
+        // be offline -- _creditPlayer parks the pot in their inbox.
+        if (d.status === 'active' && d.away) {
+          const expired = Object.entries(d.away)
+            .filter(([, t]) => now > t)
+            .sort((x, y) => x[1] - y[1]);
+          if (expired.length) {
+            const loser = expired[0][0];
+            const winner = d.a === loser ? d.b : d.a;
+            this._resolveDuel(d, winner, loser, 'forfeit');
+            continue;
+          }
         }
         // v2.3.1126: optional shot-clock.  Before this, a duel where
         // nobody died stayed 'active' FOREVER -- the consent pair
