@@ -6,6 +6,7 @@ import {
   WEAPON_CATEGORY_META,
   WEAPON_CHANNELS,
   WEAPON_CHANNEL_CAP,
+  WEAPON_LEVEL_CAP,
   weaponXpRequired,
   xpRequired,
   activeWeaponCategory,
@@ -241,7 +242,8 @@ export const T2Panel = () => {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, color: COL.muted, marginBottom: 3 }}>
             {(gridTab || (isDef ? DEF_META : (WEAPON_CATEGORY_META[activeCat] || {}))).label} skill · Lv {sk.level || 0}
-            {(sk.level || 0) >= 99 ? ' (Max)' : ` · ${Math.round(xpPct)}% to next`}
+            {/* v2.3.1207: cap is WEAPON_LEVEL_CAP (100 since v2.3.1156) — the stale 99 literal showed "(Max)" one level early. */}
+            {(sk.level || 0) >= WEAPON_LEVEL_CAP ? ' (Max)' : ` · ${Math.round(xpPct)}% to next`}
           </div>
           <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ width: xpPct + '%', height: '100%', background: 'rgba(91,82,255,0.85)', transition: 'width .15s linear' }} />

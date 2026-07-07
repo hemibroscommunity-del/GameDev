@@ -23,7 +23,10 @@ const state = {
 //   recentJourneyLine: '"You walk lightly for a stranger." — Reed',
 //   logo: null,                    // optional cosmetic mark URL
 //   stats: { power: 30, vitality: 45, endurance: 28, agility: 18, mind: 12 },
-//   tier2: { ferocity: { crit: 0.18, mult: 1.6 }, fortification: 240, ... },
+//   tier2: { crit: { chance: 0.18, mult: 1.6 }, maxHp: 240, maxStamina: 130,
+//            dodge: 0.06, maxMana: 110 },  // v2.3.1207: REAL derived stats
+//            // (buildSelfProfile) — the old ferocity/fortification shape
+//            // came only from generateMockProfile (random numbers).
 //   vows: [],                      // [{ stat: 'power', days: 46, partner: 'Mason' }]
 //   weapon: <item>,
 //   armor:  <item>,

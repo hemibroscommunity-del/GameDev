@@ -516,10 +516,13 @@ export const BottomDashboard = () => {
   // Use the canonical xpRequired curve so the dashboard's bar agrees
   // with the game-loop level-up threshold.
   const xpNeeded = xpRequired(level);
-  // Use-trained build threshold (v2.3.113: 5x slower; must mirror
-  // BroTown.jsx's threshold formula so the progress fill matches the
-  // actual level-up trigger).
-  const buildThresh = Math.max(200, Math.floor(xpNeeded));
+  /* v2.3.1207: `buildThresh` (xpRequired(combat level)) removed — the
+     build-cell progress strips now divide by the STAT'S OWN threshold,
+     xpRequired(R[stat]), computed per cell below.  Since v2.3.910 the
+     real level-up trigger (combatHelpers addBuildProg) keys the cost to
+     the stat's level, and combat level became the SUM of the stats — so
+     dividing by xpRequired(level) made every strip read near-zero at
+     mid game.  (T2Panel's grid tabs already used the per-stat curve.) */
 
   // Gold readout — moved from the bag panel into the top-right HUD so
   // the inventory grid has full vertical room.  Use the same fallback
@@ -1262,13 +1265,29 @@ export const BottomDashboard = () => {
                     const prog = isDef
                       ? 0   /* DEF progress strip wired with the skill in v2.3.693 */
                       : ((R._buildProg && R._buildProg[s.key]) || 0);
-                    const pct = Math.max(0, Math.min(100, (prog / buildThresh) * 100));
+                    /* v2.3.1207: divide by the STAT'S OWN threshold — the
+                       exact formula the level-up trigger uses
+                       (combatHelpers addBuildProg, v2.3.910), and what
+                       T2Panel's grid tabs already show.  Was
+                       xpRequired(combat level), i.e. the stat SUM. */
+                    const statThresh = Math.max(200, Math.floor(xpRequired(val)));
+                    const pct = Math.max(0, Math.min(100, (prog / statThresh) * 100));
                     let bonusTxt = '';
-                    if (s.key === 'vitality')       bonusTxt = `${calcMaxHp(R.level || 1, val)} HP`;
+                    /* v2.3.1207: vitality reads R.maxHp (the recalc/echo
+                       product — includes armor HP + the Vigor mult) like
+                       the endurance sibling, instead of re-deriving a
+                       raw calcMaxHp that omitted both.  The dmg lines
+                       print the REAL stat coefficient: each point adds
+                       0.1667 to weapon base damage (calcDisplayDmgRange
+                       / server _computeAttackDamage) — the 0.8 was the
+                       retired pre-v2.3.912 rate, already fixed in the
+                       loadout copy but missed here and in the
+                       combatHelpers level-up floater. */
+                    if (s.key === 'vitality')       bonusTxt = `${R.maxHp || calcMaxHp(R.level || 1, val)} HP`;
                     else if (s.key === 'endurance') bonusTxt = `${R.maxStamina || calcMaxStam(val)} STA`;
-                    else if (s.key === 'power')     bonusTxt = `+${Math.round(val * 0.8)} melee dmg`;
-                    else if (s.key === 'agility')   bonusTxt = `+${Math.round(val * 0.8)} bow dmg`;
-                    else if (s.key === 'mind')      bonusTxt = `+${Math.round(val * 0.8)} magic dmg`;
+                    else if (s.key === 'power')     bonusTxt = `+${(val * 0.1667).toFixed(1)} melee base dmg`;
+                    else if (s.key === 'agility')   bonusTxt = `+${(val * 0.1667).toFixed(1)} bow base dmg`;
+                    else if (s.key === 'mind')      bonusTxt = `+${(val * 0.1667).toFixed(1)} magic base dmg`;
                     else if (s.key === 'defense')   bonusTxt = `Lv ${val} — block + damage cut`;
                     const tipFull = `${s.label} ${val} → ${bonusTxt}. ${s.tip}`;
                     /* v2.3.911: unspent Tier-2 points for this build skill.

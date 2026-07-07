@@ -121,7 +121,12 @@ function pushStatIncreaseNotice(R, stat, beforeMax) {
   if      (stat === 'vitality')  benefit = '+' + Math.max(0, (R.maxHp      || 0) - (beforeMax.hp   || 0)) + ' HP';
   else if (stat === 'mind')      benefit = '+' + Math.max(0, (R.maxMana    || 0) - (beforeMax.mp   || 0)) + ' mana';
   else if (stat === 'endurance') benefit = '+' + Math.max(0, (R.maxStamina || 0) - (beforeMax.stam || 0)) + ' stamina';
-  else if (stat === 'power')     benefit = '+0.8 base damage';
+  /* v2.3.1207: 0.8 was the retired pre-v2.3.912 stat rate — the real
+     coefficient is 0.1667 base dmg per point (calcDisplayDmgRange /
+     the server's _computeAttackDamage stat term).  The loadout copy of
+     this drift was fixed in v2.3.912; this floater (and the dashboard
+     build-cell tooltip, fixed alongside) was missed. */
+  else if (stat === 'power')     benefit = '+0.17 base damage';
   else if (stat === 'agility')   benefit = 'speed +0.12%';
   /* Small in-world floater (silver as of v2.3.153 -- matches the
      banner color so the two pieces of feedback read as the same

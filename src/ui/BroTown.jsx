@@ -68,7 +68,7 @@ import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
    import reads the CURRENT value, where the globalThis copy was frozen
    at boot; the only reader is the NPC wander clamp, dormant while
    NPC_DATA is empty. */
-import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H } from '@/data/index.js';
+import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
@@ -78,12 +78,13 @@ import { pushHudPopup } from './XpFlyOverlay.jsx';
    when cooking became the swipe-to-flip campfire extraction. The map had
    no remaining consumer. */
 
-/* Per-cooked-food heal amount when the player taps the tile to eat.
-   Default to COOKED_HEAL_DEFAULT for any cooked_fish_* not listed. */
-const COOKED_HEAL_DEFAULT = 30;
-const COOKED_HEAL_BY_KEY = {
-  cooked_fish_clownfish: 50,
-};
+/* v2.3.1207: COOKED_HEAL_BY_KEY / COOKED_HEAL_DEFAULT removed — the
+   mobile eat path's private 30/50-HP table matched neither
+   getFishHealAmount nor the server's recovery-folded heal, and the
+   path never sent eat_request, so the worker's next player_state echo
+   stomped the fake self-heal.  The eatBus handler now mirrors the
+   CookPanel/InventoryPanel eat path (calcDisplayHeal prediction +
+   eat_request). */
 import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
@@ -4868,9 +4869,19 @@ export var BroTown = function BroTown(_ref0) {
   }, []);
 
   /* Eat a cooked fish from the bag — consume 1 of the cooked_fish_* key
-     and heal +30 HP (clamped to maxHp).  No-op if HP is already full
-     (so the player doesn't burn food to no effect — reads as "you're
-     not hungry"). */
+     and heal (clamped to maxHp).  No-op if HP is already full (so the
+     player doesn't burn food to no effect — reads as "you're not
+     hungry").
+     v2.3.1207: legacy remnant rewired to the server eat path.  This
+     handler used to self-heal from a private COOKED_HEAL_BY_KEY table
+     (30/50 HP — wrong per-fish AND missing the HP-grid Recovery mult)
+     and never sent eat_request, so the worker's _handleEatRequest never
+     ran and the next player_state echo reverted the heal + restored the
+     item.  Now: local heal is an optimistic PREDICTION via
+     calcDisplayHeal (the server formula's display twin; rule 20 — the
+     echo is the truth) and eat_request makes the worker validate,
+     consume, and heal authoritatively — same shape as the
+     CookPanel/InventoryPanel eat handlers. */
   useEffect(function () {
     return eatBus.subscribe(function () {
       var key = eatBus.consume();
@@ -4884,12 +4895,15 @@ export var BroTown = function BroTown(_ref0) {
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'HP full', '#8890b8');
         return;
       }
-      var HEAL = COOKED_HEAL_BY_KEY[key] != null ? COOKED_HEAL_BY_KEY[key] : COOKED_HEAL_DEFAULT;
+      var HEAL = calcDisplayHeal(R, key);
       var before = R.hp || 0;
       R.hp = Math.min(maxHp, before + HEAL);
       var actual = R.hp - before;
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
+      if (S._serverMonsters && S.channel) {
+        try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
+      }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + actual + ' HP', '#3dd497');
       pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate cooked fish', '#f5c542');
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}

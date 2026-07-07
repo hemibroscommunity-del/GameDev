@@ -1,5 +1,5 @@
 import React from 'react';
-import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, createDefaultCompStats, getCookingSweetSpot, getFishHealAmount, getFishTierLevel } from '@/data/index.js';
+import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, calcDisplayHeal, createDefaultCompStats, getCookingSweetSpot, getFishTierLevel } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -197,7 +197,13 @@ export function CookPanel(props) {
         key = _ref100[0],
         qty = _ref100[1];
       var fishName = key.replace('fish_', '').replace(/_/g, ' ');
-      var healAmt = getFishHealAmount(key);
+      /* v2.3.1207: calcDisplayHeal — folds the HP-grid Recovery mult
+         the way the server's _handleEatRequest does, so every "Heals X
+         HP" label (raw preview, minigame banner, cooked list) and the
+         optimistic eat prediction match the authoritative heal in the
+         player_state echo.  Live rpg via stateRef (Recovery points can
+         be spent without a setRpgState). */
+      var healAmt = calcDisplayHeal((stateRef.current && stateRef.current.rpg) || rpgState, key);
       var tierLvl = getFishTierLevel(key);
       var cookLvl = ((_rpgState$lifeSkills15 = rpgState.lifeSkills) === null || _rpgState$lifeSkills15 === void 0 || (_rpgState$lifeSkills15 = _rpgState$lifeSkills15.cooking) === null || _rpgState$lifeSkills15 === void 0 ? void 0 : _rpgState$lifeSkills15.level) || 1;
       var spot = getCookingSweetSpot(cookLvl, tierLvl);
@@ -291,7 +297,9 @@ export function CookPanel(props) {
         key = _ref104[0],
         qty = _ref104[1];
       var fishName = key.replace('cooked_', '').replace(/_/g, ' ');
-      var healAmt = getFishHealAmount(key);
+      /* v2.3.1207: recovery-folded display heal — see the raw-fish list
+         note above. */
+      var healAmt = calcDisplayHeal((stateRef.current && stateRef.current.rpg) || rpgState, key);
       var atFull = rpgState.hp >= rpgState.maxHp;
       return /*#__PURE__*/React.createElement("div", {
         key: key,

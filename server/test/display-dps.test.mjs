@@ -1,4 +1,4 @@
-/* Display DMG/DPS helper conformance (v2.3.1206).
+/* Display DMG/DPS/heal helper conformance (v2.3.1206, ext. v2.3.1207).
  *
  * calcDisplayDmgRange/calcDisplayDps (src/data/gameSystems.js) are the
  * ONE display formula behind the dashboard loadout readout, the item
@@ -7,9 +7,17 @@
  * allocations, so spending crit-channel points moved combat (and the
  * dashboard) but not the other readouts — the reported bug.  This
  * suite pins the property that regressed: EVERY relevant input
- * (crit channel, crit-dmg channel, damage channel, quality, hardness)
- * must strictly move the number, plus an exact hand-computed fixture
- * and a rot-guard on the exports.
+ * (crit channel, crit-dmg channel, damage channel, quality, hardness,
+ * and — since v2.3.1207 — the Tempo atk-spd channel) must strictly
+ * move the number, plus an exact hand-computed fixture, determinism
+ * (single-roll displays regressed to random jitter twice), and a
+ * rot-guard on the exports.
+ *
+ * v2.3.1207 also pins the two sibling display twins of server math:
+ *   calcDisplayHeal    — cooking.js _handleEatRequest's
+ *                        ceil(fishHeal × Recovery mult)
+ *   calcDisplayArmorHp — grids.js's Vigor-multiplied armor HP pool
+ *                        contribution
  *
  * Zero-dep plain-node import of the client module — the mirror-audit
  * and tick suites established that every client data module loads
@@ -17,7 +25,8 @@
  * server/src/combat.js _computeAttackDamage; these helpers are its
  * expected-value mirror for UI only. */
 import {
-  calcDisplayDmgRange, calcDisplayDps,
+  calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, calcDisplayArmorHp,
+  getFishHealAmount, getArmorHp,
   WEAPON_CHANNELS, WEAPON_CATEGORY, SWING_COOLDOWN,
 } from '../../src/data/gameSystems.js';
 
@@ -164,6 +173,79 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const d = calcDisplayDps(rpg, wpn);
   check('fixture: DPS matches hand math exactly',
     Math.abs(d - expDps) < 1e-9, { got: d, exp: expDps });
+}
+
+// ── 6. v2.3.1207: Tempo (atk-spd channel) folds into the period —
+// points strictly increase DPS, damage range untouched, and the
+// -20% hard cap lands exactly at the 100-pt channel cap.  Only the
+// sword category has an atkspd channel today. ──
+{
+  const cat = WEAPON_CATEGORY[SWORD.type];
+  const key = chKey(cat, 'atkspd');
+  check('atkspd channel key resolves for sword', !!key, cat);
+  const at = (pts) => {
+    const rpg = makeRpg();
+    rpg.weaponSpecs[cat][key] = pts;
+    return { dps: calcDisplayDps(rpg, SWORD), r: calcDisplayDmgRange(rpg, SWORD) };
+  };
+  const a0 = at(0), a50 = at(50), a100 = at(100);
+  check('tempo points strictly increase DPS (0 < 50 < 100 pts)',
+    a0.dps < a50.dps && a50.dps < a100.dps, { d0: a0.dps, d50: a50.dps, d100: a100.dps });
+  check('tempo moves the PERIOD only — damage range unchanged',
+    a0.r.min === a100.r.min && a0.r.max === a100.r.max, { r0: a0.r, r100: a100.r });
+  check('tempo cap: 100 pts = exactly -20% period',
+    Math.abs(a100.r.cdMs - SWING_COOLDOWN * 0.8) < 1e-9, a100.r.cdMs);
+}
+
+// ── 7. v2.3.1207: determinism — the range/DPS helpers are pure
+// expected values.  Two of the adopting sites (InventoryPanel equipped
+// list, StatScreenPanel footer) used to print single RANDOM
+// calcWeaponDmg rolls that changed every render. ──
+{
+  const rpg = makeRpg();
+  rpg.weaponSpecs.sword[chKey('sword', 'damage')] = 30;
+  const r1 = calcDisplayDmgRange(rpg, SWORD);
+  const r2 = calcDisplayDmgRange(rpg, SWORD);
+  check('calcDisplayDmgRange is deterministic (two calls identical)',
+    r1.min === r2.min && r1.max === r2.max && r1.text === r2.text && r1.cdMs === r2.cdMs,
+    { r1, r2 });
+  const d1 = calcDisplayDps(rpg, SWORD);
+  const d2 = calcDisplayDps(rpg, SWORD);
+  check('calcDisplayDps is deterministic (two calls identical)', d1 === d2, { d1, d2 });
+}
+
+// ── 8. v2.3.1207: calcDisplayHeal mirrors cooking.js _handleEatRequest
+// — ceil(fishHealAmount × Recovery mult), 0 pts = raw table value,
+// 100 pts = ×1.5 (the +50% cap), ceil'd. ──
+{
+  const KEY = 'cooked_fish_clownfish';
+  const raw = getFishHealAmount(KEY);
+  check('heal fixture is a real tiered fish (raw > default 20)', raw > 20, raw);
+  const at = (pts) => calcDisplayHeal({ hpSpec: { recovery: pts } }, KEY);
+  check('calcDisplayHeal: 0 recovery pts = raw table value', at(0) === raw, { got: at(0), raw });
+  check('calcDisplayHeal: 100 recovery pts = ceil(raw × 1.5)',
+    at(100) === Math.ceil(raw * 1.5), { got: at(100), exp: Math.ceil(raw * 1.5) });
+  const h0 = at(0), h50 = at(50), h100 = at(100);
+  check('recovery points monotonically increase the displayed heal',
+    h0 < h50 && h50 < h100, { h0, h50, h100 });
+  check('calcDisplayHeal degrades on a null rpg (mult 1)',
+    calcDisplayHeal(null, KEY) === raw, calcDisplayHeal(null, KEY));
+}
+
+// ── 9. v2.3.1207: calcDisplayArmorHp mirrors the server's maxHp pool
+// line (grids.js): Vigor multiplies armor HP too — 0 pts = raw
+// getArmorHp, 100 pts = ×1.25 (the +25% cap), floored. ──
+{
+  const armor = { tierMult: 2.0 };
+  const vit = 40;
+  const raw = getArmorHp(armor, vit);
+  const at = (pts) => calcDisplayArmorHp({ vitality: vit, hpSpec: { vigor: pts } }, armor);
+  check('calcDisplayArmorHp: 0 vigor pts = raw getArmorHp', at(0) === raw, { got: at(0), raw });
+  check('calcDisplayArmorHp: 100 vigor pts = floor(raw × 1.25)',
+    at(100) === Math.floor(raw * 1.25), { got: at(100), exp: Math.floor(raw * 1.25) });
+  check('calcDisplayArmorHp degrades on null rpg/armor',
+    calcDisplayArmorHp(null, armor) === getArmorHp(armor, 0)
+    && calcDisplayArmorHp({ vitality: vit }, null) === 0);
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL PASS');
