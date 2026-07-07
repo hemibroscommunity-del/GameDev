@@ -15,7 +15,22 @@ gate (the prerequisite safety fix for the PR6 duel machine).
 2. **Every join**: the client sends `{ id, phrase }` in the `join`
    message (`src/networking/wsClient.js`). The phrase rides the wss
    connection only — it is never broadcast.
-3. **Server verify** (`_verifyJoinAuth`, `server/src/index.js`), BEFORE
+3. **Magic-id gate** (v2.3.1202, `_handleJoin`, `server/src/join.js`):
+   a join id that is exactly `__proto__`, `constructor`, or `prototype`
+   is rejected outright (`join_rejected` reason `auth` + close `4003`)
+   BEFORE the auth verify below, so a magic id can never mint an
+   `auth:<id>` storage record either. The join id keys plain-object maps
+   across the room (`playerState`, `stateHistory`, `extractions`,
+   per-monster `dmgByPlayer`) and `__proto__` would write through
+   `Object.prototype` — the bug family fixed three times downstream
+   (duel.away v2.3.1175, party meta v2.3.1185, amulet tiers v2.3.1192).
+   Those four maps are also `Object.create(null)` as of v2.3.1202
+   (defense-in-depth); the gate protects the plain-object maps nobody
+   audited yet. No real client generates these names (`bp_` ids /
+   legacy randoms), so `reason: 'auth'` — which makes the client
+   regenerate its passphrase once — is the correct client behavior.
+   Legacy phraseless joins on ordinary ids are unaffected.
+4. **Server verify** (`_verifyJoinAuth`, `server/src/index.js`), BEFORE
    the same-id session eviction:
    - `auth:<id>` storage record exists → the phrase must SHA-256-match
      (`btv1|<phrase>` domain-separated). Mismatch or missing phrase →
@@ -27,7 +42,7 @@ gate (the prerequisite safety fix for the PR6 duel machine).
      this is the deploy-order safety property.
    - Brute-force lockout: 5 failed verifies on an id → 60s lockout
      (in-memory, per-GameRoom).
-4. **Client `join_rejected` handler**: regenerates the passphrase ONCE
+5. **Client `join_rejected` handler**: regenerates the passphrase ONCE
    (also self-heals the rare 31-bit id collision) and lets the normal
    reconnect rejoin under the new identity; a second rejection stops and
    logs.
@@ -85,8 +100,11 @@ Client knobs:
 
 ## Tests
 
-`server/test/identity.test.mjs` (20 assertions, in `npm test`):
+`server/test/identity.test.mjs` (in `npm test`):
 registration, wrong-phrase reject without eviction, bare-id replay
 reject, correct-phrase reconnect + eviction, legacy phraseless join,
+magic-id gate (v2.3.1202: `__proto__`/`constructor`/`prototype` each
+rejected with reason `auth`, no auth record, no playerState key, no
+`Object.prototype` pollution; a normal join still works after),
 lockout + expiry, town gate, forged-accept rejection, duel handshake,
 lawless zone, death-clears-consent.

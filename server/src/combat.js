@@ -399,7 +399,7 @@ export const combatMethods = {
     // Track per-player damage contribution for the kill-time share.
     // dmgByPlayer is created lazily so existing monster snapshots
     // without it stay compatible.
-    if (!m.dmgByPlayer) m.dmgByPlayer = {};
+    if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
     m.dmgByPlayer[session.id] = (m.dmgByPlayer[session.id] || 0) + actualDmg;
 
     // v2.3.1114: SERVER-AUTHORITATIVE ELEMENTAL.  The wire already carried
@@ -725,7 +725,7 @@ export const combatMethods = {
       }
 
       // Clear contribution tracking for the next life of this monster.
-      m.dmgByPlayer = {};
+      m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
   },
 
   // §16.12 — Attacker-favored rollback PvP resolution
