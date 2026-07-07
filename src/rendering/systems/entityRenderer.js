@@ -6,6 +6,14 @@ import { Assets, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Textur
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
+/* v2.3.1177: status-id -> element lookup, built once at import time.
+   _updateMonsters used to run Object.values(ELEMENTS).find(...) per
+   status per monster per FRAME -- an array + closure allocation and a
+   linear scan on the 60fps hot path whenever any DoT was ticking. */
+const STATUS_TO_ELEMENT = new Map();
+for (const el of Object.values(ELEMENTS || {})) {
+  if (el && el.status) STATUS_TO_ELEMENT.set(el.status, el);
+}
 import { lookupCollision } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
@@ -16,7 +24,6 @@ import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVaria
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
-import {  } from '../traitCategories.js';
 import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear } from '../traits/headwearCatalog.js';
 import { getFacialHair } from '../traits/facialHairCatalog.js';
@@ -3029,7 +3036,7 @@ export class EntityRenderer {
           for (const statusId of statusKeys) {
             const statusData = statuses[statusId];
             if (!statusData) continue;
-            const elemForStatus = Object.values(ELEMENTS || {}).find(e => e?.status === statusId);
+            const elemForStatus = STATUS_TO_ELEMENT.get(statusId); /* v2.3.1177 */
             const sColor = elemForStatus ? cssColorToHex(elemForStatus.color) : 0xffffff;
             const ratio = 0.25;
             const winSize = (statusData.maxDur || 0) * ratio;
