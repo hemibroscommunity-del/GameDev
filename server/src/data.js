@@ -242,7 +242,7 @@ export const QUALITY_GRADES = {
  *   1 + value/100, gated on the weapon having element1. */
 export const AMULET_TIER_POWER = { simple: 1.0, ornate: 1.5, regal: 2.2, mythic: 3.0 };
 
-/* v2.3.1178: valid amulet gems (mirror of src/data/items.js
+/* v2.3.1180: valid amulet gems (mirror of src/data/items.js
  * AMULET_GEM_STATS keys) -- the join sanitizer whitelists ps.amulet.gem
  * against this so a forged blob can't smuggle an unknown gem that a
  * future _computeAttackDamage branch might read.  Only 'flame' affects

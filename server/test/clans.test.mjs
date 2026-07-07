@@ -179,7 +179,7 @@ check('kicked player tag cleared', !sessionOf('bp_cl_carol').data.clanTag);
 await room._handleClanLeave(sessionOf('bp_cl_alice'));
 check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._store.has('clan:' + redClan.id));
 
-// ── 5. v2.3.1177: ended-war snapshot retention ──
+// ── 5. v2.3.1179: ended-war snapshot retention ──
 // clan_war:<id> keys were written on declare/kill/resolve and never
 // deleted -- one orphan per war ever declared.  The registry load now
 // sweeps ended wars older than CLANS.WAR_RETENTION (48h, the oplog

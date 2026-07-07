@@ -33,7 +33,7 @@ export const SNAPSHOT = {
   INTERVAL_MS: 20 * 3600 * 1000, // one snapshot per ~day (20h so a
                                  // daily-ish login cadence never skips)
   KEEP: 7,                       // ring size per player, PER KEY CLASS
-                                 // (v2.3.1177: daily + prerestore rings
+                                 // (v2.3.1179: daily + prerestore rings
                                  // prune separately -- one shared cap
                                  // let prerestore keys, which sort
                                  // after the yyyymmdd keys, evict the
@@ -72,7 +72,7 @@ export const adminMethods = {
       const ymd = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
       await this.state.storage.put('rpgsnap:' + playerId + ':' + ymd, storedBlob);
       await this.state.storage.put('rpgsnap_at:' + playerId, now);
-      // Prune the ring.  v2.3.1177: the two key classes prune
+      // Prune the ring.  v2.3.1179: the two key classes prune
       // SEPARATELY.  The old single sorted list was wrong: 'prerestore-'
       // sorts lexically AFTER every yyyymmdd digit key ('p' > '9'), so
       // once any prerestore snapshot existed the excess-slice evicted

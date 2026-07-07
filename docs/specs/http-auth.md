@@ -1,4 +1,4 @@
-# HTTP economy-endpoint auth (session tokens) — v2.3.1176
+# HTTP economy-endpoint auth (session tokens) — v2.3.1178
 
 ## The hole this closes
 

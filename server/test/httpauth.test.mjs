@@ -1,4 +1,4 @@
-/* HTTP economy-endpoint auth test (v2.3.1176; spec in
+/* HTTP economy-endpoint auth test (v2.3.1178; spec in
  * docs/specs/http-auth.md).  Player ids are public (player_join /
  * track broadcasts), so the old "is that playerId online" gate on the
  * market/arena HTTP surfaces authenticated nothing: a forged

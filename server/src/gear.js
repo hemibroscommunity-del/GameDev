@@ -113,7 +113,7 @@ export const gearMethods = {
       .filter(Boolean);
   },
 
-  // v2.3.1178: amulet-blob sanitizer.  Amulets are a client-crafted
+  // v2.3.1180: amulet-blob sanitizer.  Amulets are a client-crafted
   // blob (there is no server amulet forge -- see
   // docs/specs/elemental-completion.md), so ps.amulet arrives at join
   // wholly untrusted from BOTH the bootstrap payload and a stored

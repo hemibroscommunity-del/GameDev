@@ -202,7 +202,7 @@ Summary of the wire-visible changes:
   and run legacy client-side credit paths ONLY when the server hasn't
   claimed the job. HTTP responses use `settled: true` for the same
   purpose. This is the deploy-order safety mechanism; preserve it.
-- v2.3.1176 (http-auth.md): `join` gains an optional `httpAuth: true`
+- v2.3.1178 (http-auth.md): `join` gains an optional `httpAuth: true`
   declaration and `state_sync` gains `httpToken` (private per-session
   token, plus `caps.httpAuth`). The client sends the token as the
   `x-bt-auth` header on the mutating economy endpoints (market

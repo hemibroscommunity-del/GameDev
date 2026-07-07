@@ -114,7 +114,7 @@ import { persistenceMethods } from './persistence.js';
 import { joinMethods } from './join.js';
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
 import { tickMethods } from './tick.js';
-// v2.3.1176: per-session tokens for the mutating HTTP economy
+// v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
 
@@ -164,7 +164,7 @@ export default {
     }
 
     if (url.pathname.startsWith('/api/leaderboard')) {
-      // v2.3.1176: the public route is READ-ONLY.  POST /update trusted
+      // v2.3.1178: the public route is READ-ONLY.  POST /update trusted
       // a client-supplied playerId + rpgData blob (a free leaderboard-
       // row forge); no client has posted it since the GameRoom started
       // reporting server-side (reportToLeaderboard on track/join, via
@@ -2763,7 +2763,7 @@ export class GameRoom {
         // body; the awaits keep the input gate closed exactly as
         // before -- rule 9).
         await this._handleJoin(session, ws, msg);
-        // v2.3.1175: the v2.3.1173 hoist dropped this break, so every
+        // v2.3.1177: the v2.3.1173 hoist dropped this break, so every
         // join fell through into case 'move'.  Benign only because
         // _handleMove early-returns on non-numeric top-level msg.x/y --
         // a crafted join carrying numeric x/y rode the first-move
@@ -3347,7 +3347,7 @@ Object.assign(GameRoom.prototype, gridMethods);
 Object.assign(GameRoom.prototype, movementMethods);
 // v2.3.1172 (P4 decomposition): persistence core -- see persistence.js.
 Object.assign(GameRoom.prototype, persistenceMethods);
-// v2.3.1176: HTTP economy-endpoint session tokens -- see httpauth.js.
+// v2.3.1178: HTTP economy-endpoint session tokens -- see httpauth.js.
 Object.assign(GameRoom.prototype, httpAuthMethods);
 // v2.3.1173 (P4 decomposition): join bootstrap -- see join.js.
 Object.assign(GameRoom.prototype, joinMethods);

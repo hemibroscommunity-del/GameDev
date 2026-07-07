@@ -26,7 +26,7 @@ resonance bonus).
 - **influence** CC-duration bonus: retired.
 - All particles, popups, codex discovery, `reveal` visuals: cosmetic.
 - **Amulets themselves are still a client-crafted blob** (`ps.amulet`,
-  no server forge). v2.3.1178: the join load path now whitelists the
+  no server forge). v2.3.1180: the join load path now whitelists the
   blob via `_sanitizeAmulet` (gear.js) at BOTH sites (stored + bootstrap
   — a stored record was itself an unvalidated bootstrap before this
   slice, so the pass heals legacy forgeries on reconnect): `tier` must

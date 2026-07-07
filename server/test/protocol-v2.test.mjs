@@ -324,7 +324,7 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   check('move clears harvest activity', room.playerState.p1.ex === null, room.playerState.p1.ex);
 }
 
-// ── v2.3.1175: join must NOT fall through into the move handler ──
+// ── v2.3.1177: join must NOT fall through into the move handler ──
 // The v2.3.1173 hoist dropped the break after case 'join'; every join
 // then ran _handleMove on the same message.  A crafted join carrying
 // numeric TOP-LEVEL x/y (the move message's fields) rode the

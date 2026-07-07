@@ -103,7 +103,7 @@ export function PartyPanel(props) {
             _context8.n = 3;
             return fetch(BT_API_BASE + '/api/arena/join', {
               method: 'POST',
-              /* v2.3.1176: session token — the worker rejects economy
+              /* v2.3.1178: session token — the worker rejects economy
                  calls whose playerId isn't backed by the caller's own
                  state_sync token (forged entry-fee debit fix). Absent
                  against old workers (no token in state_sync). */
@@ -227,7 +227,7 @@ export function PartyPanel(props) {
             _context9.n = 2;
             return fetch(BT_API_BASE + '/api/arena/leave', {
               method: 'POST',
-              /* v2.3.1176: session token (see /join above). */
+              /* v2.3.1178: session token (see /join above). */
               headers: (function () {
                 var _h = { 'Content-Type': 'application/json' };
                 if (S._httpToken) _h['x-bt-auth'] = S._httpToken;

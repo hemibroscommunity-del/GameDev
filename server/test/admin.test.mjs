@@ -199,7 +199,7 @@ state._store.set('rpg:bp_adm_rich', { coins: 5000, level: 40 });
   check('restore rejects a snapKey for a different player', rBad.status === 400);
 }
 
-// ── 8b. v2.3.1177: the prune distinguishes the two snapshot key classes ──
+// ── 8b. v2.3.1179: the prune distinguishes the two snapshot key classes ──
 // 'prerestore-' sorts lexically AFTER every yyyymmdd key ('p' > '9'),
 // so the old single sorted-list prune evicted the OLDEST REAL DAILY
 // snapshots first and prerestore copies lived forever.  Each class now

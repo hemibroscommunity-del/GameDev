@@ -1,4 +1,4 @@
-/* ═══ v2.3.1176: HTTP ECONOMY-ENDPOINT AUTH (session tokens; spec in
+/* ═══ v2.3.1178: HTTP ECONOMY-ENDPOINT AUTH (session tokens; spec in
  * docs/specs/http-auth.md) ═══
  *
  * The GameRoom's HTTP surfaces that MUTATE player value -- market

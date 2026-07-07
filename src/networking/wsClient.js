@@ -140,7 +140,7 @@ export function setupWebSocket(ctx) {
              keep sending full v1 payloads, which this client still
              handles (the v1 cases below stay in place). */
           protocolVersion: 2,
-          /* v2.3.1176: declare we attach the per-session state_sync
+          /* v2.3.1178: declare we attach the per-session state_sync
              token (x-bt-auth header) to mutating economy POSTs, so the
              worker ENFORCES it for this session. Old workers ignore
              the field. */
@@ -587,7 +587,7 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
-              /* v2.3.1176: this session's private token for the
+              /* v2.3.1178: this session's private token for the
                  mutating HTTP economy endpoints (market place/cancel,
                  arena join/leave). Sent as the x-bt-auth header by
                  those call sites; absent against old workers, in which

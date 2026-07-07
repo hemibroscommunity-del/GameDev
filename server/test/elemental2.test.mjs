@@ -201,7 +201,7 @@ check('non-flame gem gives no elemDmg boost', dDark === dNo, { dNo, dDark });
 check('forged gem/tier gives no boost', dForged === dNo, { dNo, dForged });
 check('no element1 -> no boost', dNoElem === dNo, { dNo, dNoElem });
 
-// ── 5b. v2.3.1178: join-path amulet sanitizer (_sanitizeAmulet) ──
+// ── 5b. v2.3.1180: join-path amulet sanitizer (_sanitizeAmulet) ──
 // Amulets are a client-crafted blob (no server forge), so ps.amulet is
 // ingested wholly untrusted at join.  _computeAttackDamage reads gem +
 // tier, so the join load path whitelists them.

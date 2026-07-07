@@ -390,7 +390,7 @@ export function ExchangePanel(props) {
             _context0.n = 6;
             return fetch(BT_API_BASE + '/api/market/place?room=' + _mktRoom(), {
               method: 'POST',
-              /* v2.3.1176: session token — the worker rejects mutating
+              /* v2.3.1178: session token — the worker rejects mutating
                  economy calls whose playerId isn't backed by the
                  caller's own state_sync token (item-theft fix). Absent
                  against old workers (no token in state_sync). */
@@ -797,7 +797,7 @@ export function ExchangePanel(props) {
                 _context1.n = 1;
                 return fetch(BT_API_BASE + '/api/market/cancel?id=' + o.id + '&playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom(), {
                   method: 'DELETE',
-                  /* v2.3.1176: session token (see /place above). */
+                  /* v2.3.1178: session token (see /place above). */
                   headers: S._httpToken ? { 'x-bt-auth': S._httpToken } : undefined
                 });
               case 1:

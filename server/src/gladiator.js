@@ -71,7 +71,7 @@ export const arenaMethods = {
       this._arenaLazyTick(Date.now());
       if (request.method === 'POST' && path.startsWith('/join')) {
         const body = await request.json();
-        // v2.3.1176: playerId is public, so a forged join could debit
+        // v2.3.1178: playerId is public, so a forged join could debit
         // any online player's 100g entry fee.  The request must carry
         // the claimed player's own session token (httpauth.js; legacy
         // clients ride the enforcement grace window there).
@@ -83,7 +83,7 @@ export const arenaMethods = {
       }
       if (request.method === 'POST' && path.startsWith('/leave')) {
         const body = await request.json();
-        // v2.3.1176: same gate -- a forged leave dequeues a victim
+        // v2.3.1178: same gate -- a forged leave dequeues a victim
         // (refund lands with the victim; the dequeue is griefing).
         if (!this._httpAuthCheck(body && body.playerId, request)) {
           return new Response(JSON.stringify({ ok: false, settled: true, error: 'Not authorized' }), { status: 403, headers: H });
