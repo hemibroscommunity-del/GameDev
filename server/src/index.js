@@ -2752,6 +2752,12 @@ export class GameRoom {
         // body; the awaits keep the input gate closed exactly as
         // before -- rule 9).
         await this._handleJoin(session, ws, msg);
+        // v2.3.1175: the v2.3.1173 hoist dropped this break, so every
+        // join fell through into case 'move'.  Benign only because
+        // _handleMove early-returns on non-numeric top-level msg.x/y --
+        // a crafted join carrying numeric x/y rode the first-move
+        // bypass and stamped an arbitrary position.
+        break;
 
       case 'move':
         // Hottest path -- anti-teleport cap, position/facing merge,
