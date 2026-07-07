@@ -4068,6 +4068,71 @@ export function calcCritMult(power, critDmgPts) {
   return 1.5 + (power || 0) * 0.001 + (critDmgPts || 0) * 0.012;
 }
 
+/* v2.3.1206: ONE display DMG/DPS formula for every readout.
+   Three hand-rolled copies of this math existed (BottomDashboard
+   loadout, ItemDetailPopup weaponDmgRange, InventoryPanel stash
+   compare) and only the dashboard's folded in the stat driver, the
+   damage channel AND the crit channels — so spending crit-channel
+   points visibly moved one readout and not the others (the reported
+   bug).  These two helpers are that dashboard math, extracted verbatim:
+
+     base   = (weaponEffBase + stat×0.1667) × (1 + dmgPts×0.005) × tierMult
+     range  = per-type variance band (bow 0.6-0.8, staff 0.5-1.5,
+              melee 0.75-1.25 — mirrors calcWeaponDmg)
+     period = SWING_COOLDOWN (+300ms staff cast penalty)
+     DPS    = avg(range)/period × (1 + critChance×(critMult−1))
+
+   Everything keys off wpn.type (stat via EQUIP_STAT_MAP, channels via
+   the type's WEAPON_CATEGORY), so a stash bow previews with AGI + bow
+   channels even while a sword is equipped.
+
+   DELIBERATE exclusions — this is the SUSTAINED BASELINE, matching the
+   loadout readout's long-standing semantics; transient/contextual
+   layers are left out on purpose:
+     - timed buffs (cooked-food/potion style) — too volatile to be a
+       loadout number;
+     - amulet elemDmg (FLAME-gem % on elemental weapons) and the hexer
+       curse (-30% for 4s) — situational combat modifiers;
+     - Tempo's cooldown reduction is likewise not folded in here (the
+       inline dashboard math never applied swingCooldownMult; keep the
+       displayed numbers stable — fold it in on both sides or neither).
+   The authoritative per-hit roll is server/src/combat.js
+   _computeAttackDamage; this is only its expected-value mirror for UI.
+
+   Returns null / 0 for a missing or unknown weapon. */
+export function calcDisplayDmgRange(rpg, wpn) {
+  var w = wpn && WEAPON_TYPES[wpn.type];
+  if (!w) return null;
+  var statKey = EQUIP_STAT_MAP[wpn.type] || 'power';
+  var statVal = (rpg && rpg[statKey]) || 0;
+  /* Raw damage-channel POINTS for the weapon's category (edge /
+     drawPower / spellPower) — ×(1 + pts × DAMAGE_CHANNEL_PCT). */
+  var dmgPts = weaponDamageBonusFor(rpg, wpn.type);
+  var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667)
+           * (1 + dmgPts * DAMAGE_CHANNEL_PCT) * (wpn.tierMult || 1);
+  var dmgMin, dmgMax, cdMs = SWING_COOLDOWN;
+  if (wpn.type === 'bow')        { dmgMin = base * 0.6;  dmgMax = base * 0.8;  }
+  else if (wpn.type === 'staff') { dmgMin = base * 0.5;  dmgMax = base * 1.5;  cdMs += 300; }
+  else                           { dmgMin = base * 0.75; dmgMax = base * 1.25; }
+  dmgMin = Math.round(dmgMin); dmgMax = Math.round(dmgMax);
+  return {
+    min: dmgMin,
+    max: dmgMax,
+    text: (dmgMin === dmgMax) ? String(dmgMin) : (dmgMin + '-' + dmgMax),
+    cdMs: cdMs,
+  };
+}
+export function calcDisplayDps(rpg, wpn) {
+  var r = calcDisplayDmgRange(rpg, wpn);
+  if (!r) return 0;
+  /* Crit fold: chance × extra multiplier, both resolved for THIS
+     weapon's category channels (Precision/Executioner etc.) on top of
+     the Power baseline — same call pair as the loadout readout. */
+  var critChance = calcCritChance((rpg && rpg.power) || 0, weaponCritStatFor(rpg, wpn.type));
+  var critMult = calcCritMult((rpg && rpg.power) || 0, weaponCritDmgStatFor(rpg, wpn.type));
+  return (r.min + r.max) / 2 / (r.cdMs / 1000) * (1 + critChance * (critMult - 1));
+}
+
 /* §2.3 Block.  v2.3.1153: the Bulwark term is gone — Bulwark now buys
    block STAMINA efficiency (getBlockStaminaMult), not block %, because
    blocks have been full negation since v2.3.232 and a block-% channel

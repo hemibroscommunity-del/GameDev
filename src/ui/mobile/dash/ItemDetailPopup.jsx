@@ -14,7 +14,8 @@ import { GEAR_CATALOG, getEquip, setEquip } from '../../../rendering/gearCatalog
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import {
   WEAPON_TYPES,
-  SWING_COOLDOWN,
+  calcDisplayDmgRange,
+  calcDisplayDps,
   BLACKSMITH_TIERS,
   WOODWORKING_TIERS,
   getFishHealAmount,
@@ -22,20 +23,18 @@ import {
   recalcDerived,
 } from '../../../data/gameSystems.js';
 
-/* Stat-free damage range + DPS for a weapon. */
-function weaponDmgRange(wpn) {
-  if (!wpn || !wpn.type) return null;
-  const wType = WEAPON_TYPES[wpn.type];
-  if (!wType) return null;
-  const base = wType.base * (wpn.tierMult || 1);
-  let dmgMin, dmgMax, cdMs = SWING_COOLDOWN;
-  if (wpn.type === 'bow')        { dmgMin = base * 0.6;  dmgMax = base * 0.8; }
-  else if (wpn.type === 'staff') { dmgMin = base * 0.5;  dmgMax = base * 1.5; cdMs += 300; }
-  else                           { dmgMin = base * 0.75; dmgMax = base * 1.25; }
-  dmgMin = Math.round(dmgMin); dmgMax = Math.round(dmgMax);
-  const dmgText = dmgMin === dmgMax ? String(dmgMin) : `${dmgMin}-${dmgMax}`;
-  const dps = ((dmgMin + dmgMax) / 2 / (cdMs / 1000)).toFixed(1);
-  return { dmgText, dps };
+/* Damage range + DPS for a weapon.
+   v2.3.1206: was a "stat-free" local copy (wType.base × tierMult only) —
+   it read NO allocations, so spending crit/damage-channel points moved
+   the dashboard readout but not this popup (the reported bug), and it
+   also ignored quality/hardness.  Now delegates to the shared
+   calcDisplayDmgRange/calcDisplayDps (gameSystems.js), the dashboard's
+   exact math, with the caller's live S.rpg threaded in.  A null rpg
+   degrades gracefully (stat 0, channels 0, crit fold 1×). */
+function weaponDmgRange(rpg, wpn) {
+  const range = calcDisplayDmgRange(rpg, wpn);
+  if (!range) return null;
+  return { dmgText: range.text, dps: calcDisplayDps(rpg, wpn).toFixed(1) };
 }
 
 function tierLabel(wpn) {
@@ -103,7 +102,10 @@ function resolveTarget(target) {
   if (target.kind === 'weapon') {
     const wpn = target.wpn;
     if (!wpn) return null;
-    const range = weaponDmgRange(wpn);
+    /* v2.3.1206: live S.rpg (same source the armor branch reads) so the
+       range reflects the player's stats + channel allocations. */
+    const SW = getState();
+    const range = weaponDmgRange(SW && SW.rpg, wpn);
     const lockKey = target.slot === 'ranged' ? 'rangedWeapon'
                   : target.slot === 'staff'  ? 'staffWeapon'
                   : 'weapon';
@@ -133,7 +135,11 @@ function resolveTarget(target) {
   if (target.kind === 'stashWeapon') {
     const wpn = target.wpn;
     if (!wpn) return null;
-    const range = weaponDmgRange(wpn);
+    /* v2.3.1206: live S.rpg — stash previews price the STASHED weapon's
+       own category channels (a stash bow reads AGI + bow channels even
+       while a sword is equipped), so compares are apples-to-apples. */
+    const SW = getState();
+    const range = weaponDmgRange(SW && SW.rpg, wpn);
     return {
       lockKey: 'stashWeapon_' + (target.index || 0),
       thumb: weaponThumb(wpn),
@@ -357,7 +363,7 @@ export const ItemDetailPopup = () => {
       const types = active === 'ranged' ? ['bow'] : active === 'staff' ? ['staff'] : ['sword', 'greatsword'];
       if (!R2.weaponStash) R2.weaponStash = [];
       const mkRow = (w, on) => {
-        const dr = weaponDmgRange(w);
+        const dr = weaponDmgRange(R2, w); /* v2.3.1206: R2 = live S.rpg */
         const base = [tierLabel(w), (WEAPON_TYPES[w.type] && WEAPON_TYPES[w.type].label) || w.type].filter(Boolean).join(' ');
         return {
           key: 'w' + (w.name || w.type || '') + R2.weaponStash.indexOf(w) + (on ? 'E' : ''),

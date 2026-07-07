@@ -1,5 +1,5 @@
 import React from 'react';
-import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcWeaponDmg, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getFishHealAmount, getShieldBonus } from '@/data/index.js';
+import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcDisplayDps, calcWeaponDmg, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getFishHealAmount, getShieldBonus } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -491,14 +491,26 @@ export function InventoryPanel(props) {
     var srt = RARITY_TIERS[sw.tier];
     var isRanged = (swt === null || swt === void 0 ? void 0 : swt.type) === 'ranged';
     var current = isRanged ? rpgState.rangedWeapon : rpgState.weapon;
-    var stashDmg = Math.round(calcWeaponDmg(sw.type, rpgState || {}, sw.tierMult, sw));
-    var curDmg = current ? Math.round(calcWeaponDmg(current.type, rpgState || {}, current.tierMult, current)) : 0;
+    /* v2.3.1206: read LIVE state for the compare numbers — rpgState is a
+       React snapshot that lags in-place S.rpg mutations (SpendPointConfirm
+       deliberately skips setRpgState; documented pattern, do not "fix"),
+       so a fresh channel spend moved combat but not this panel until the
+       next unrelated setRpgState.  stateRef.current.rpg is the same live
+       object the game loop reads. */
+    var liveRpg = (stateRef.current && stateRef.current.rpg) || rpgState || {};
+    var stashDmg = Math.round(calcWeaponDmg(sw.type, liveRpg, sw.tierMult, sw));
+    var curDmg = current ? Math.round(calcWeaponDmg(current.type, liveRpg, current.tierMult, current)) : 0;
     var dmgDiff = stashDmg - curDmg;
     var stashSpd = (swt === null || swt === void 0 ? void 0 : swt.speed) || 1;
     var curSpd = current ? ((_WEAPON_TYPES$current = WEAPON_TYPES[current.type]) === null || _WEAPON_TYPES$current === void 0 ? void 0 : _WEAPON_TYPES$current.speed) || 1 : 1;
     var spdDiff = stashSpd - curSpd;
-    var stashDps = Math.round(stashDmg * stashSpd);
-    var curDps = Math.round(curDmg * curSpd);
+    /* v2.3.1206: DPS via the shared calcDisplayDps (the dashboard's
+       formula: real attack period + crit-channel fold) instead of
+       dmg × the coarse WEAPON_TYPES.speed scalar, which ignored crit
+       entirely — crit-channel points now move BOTH sides of the stash
+       compare.  SPD keeps the legacy scalar as a feel label. */
+    var stashDps = Math.round(calcDisplayDps(liveRpg, sw));
+    var curDps = current ? Math.round(calcDisplayDps(liveRpg, current)) : 0;
     var dpsDiff = stashDps - curDps;
     return /*#__PURE__*/React.createElement("div", {
       key: si,
