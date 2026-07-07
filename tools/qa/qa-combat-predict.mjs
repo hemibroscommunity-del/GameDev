@@ -31,17 +31,28 @@
  * :8787 (QA_WS_URL=ws://127.0.0.1:8787).  Exits non-zero on any failed
  * check (run-all.mjs fail-fast compatible).
  *
- * NOT wired into client-ci.yml yet: authored in a sandbox where npm is
- * policy-blocked (no vite build / playwright install), so it has not
- * had a stabilization run.  Run locally via
- *   node tools/qa/qa-combat-predict.mjs
- * a few times first; promote to CI next to qa-facing once it holds.
+ * CI status (v2.3.1196): wired into client-ci.yml next to qa-facing but
+ * REPORT-ONLY (continue-on-error) — still no stabilization run (npm is
+ * policy-blocked in the authoring sandboxes, so no vite build /
+ * wrangler).  v2.3.1196 also fixed the known flake sources statically:
+ * the peer sampler now filters by floater COLOR (the monster's
+ * counterattack pushes '-N' popups over A — #ff5e6c, no iconKey —
+ * inside the old 160px radius, inflating peerSum) and the prediction
+ * band gained small-sample crit-skew margin.  v2.3.1196b (first real-CI
+ * run): the WASD walker stranded bot A mid-route — walkTo now detects
+ * stalls and finishes travel by ghost-hop (see its comment), dumping a
+ * trajectory on timeout so failures diagnose themselves.  Promotion
+ * criteria: flip it blocking once it holds green (incl. the one
+ * workflow retry) for ~10 consecutive CI runs.
  */
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 
 const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
-const EXE = process.env.QA_CHROME || (existsSync(SHELL) ? SHELL : undefined);
+/* v2.3.1196: same fallback order as qa-gear-smoke — QA_CHROME > /tmp
+   shell > sandbox-preinstalled chromium > playwright-managed (CI). */
+const PWCHROME = '/opt/pw-browsers/chromium';
+const EXE = process.env.QA_CHROME || (existsSync(SHELL) ? SHELL : (existsSync(PWCHROME) ? PWCHROME : undefined));
 const URL = 'http://localhost:4173/';
 const VIEW = { width: 844, height: 390 };
 
@@ -85,10 +96,29 @@ const snap = (page) => page.evaluate(() => {
 
 /* Drive with WASD toward a world-space target until arrival or zone
  * change.  Short bursts + re-read each loop so zone warps (which
- * teleport the player) are picked up immediately. */
-async function walkTo(page, tx, ty, { zoneExpect = null, timeoutMs = 45000, arriveDist = 24 } = {}) {
+ * teleport the player) are picked up immediately.
+ *
+ * v2.3.1196b (first real-CI run): the pure-WASD walker stranded bot A
+ * mid-route (stuck at a fixed position, zone never advanced) —
+ * collision/terrain isn't line-of-sight walkable, and travel is SETUP
+ * here, not the thing under test.  The walker now watches its own
+ * progress and, once stuck (~2.5 s without movement) or past half its
+ * budget, switches to GHOST-HOP: direct S.player writes toward the
+ * target (qa-camera's precedent).  Hops are ≤56 px per ~250 ms —
+ * comfortably inside the server's anti-teleport budget (movement.js:
+ * 500 px/s sustained + 80 px burst per move event), so the server keeps
+ * accepting positions and the downstream combat range checks stay
+ * valid.  Hub exit warps still fire naturally (handleZoneTransitions
+ * is proximity-based off S.player every frame) and building entry
+ * needs an explicit button press, so hopping across rects is inert.
+ * On timeout, a sampled trajectory is dumped so a CI failure diagnoses
+ * itself. */
+async function walkTo(page, tx, ty, { zoneExpect = null, timeoutMs = 45000, arriveDist = 24, label = '' } = {}) {
   const t0 = Date.now();
   const held = new Set();
+  const trail = [];
+  let ghost = false;
+  let lastPos = null, lastProgressAt = Date.now();
   const setKeys = async (want) => {
     for (const k of [...held]) if (!want.has(k)) { await page.keyboard.up(k); held.delete(k); }
     for (const k of want) if (!held.has(k)) { await page.keyboard.down(k); held.add(k); }
@@ -96,9 +126,31 @@ async function walkTo(page, tx, ty, { zoneExpect = null, timeoutMs = 45000, arri
   try {
     while (Date.now() - t0 < timeoutMs) {
       const s = await snap(page);
+      trail.push({ t: Date.now() - t0, x: Math.round(s.x), y: Math.round(s.y), z: s.zone, g: ghost ? 1 : 0 });
       if (zoneExpect && s.zone === zoneExpect) return s;
       const dx = tx - s.x, dy = ty - s.y;
       if (!zoneExpect && Math.hypot(dx, dy) < arriveDist) return s;
+      if (!lastPos || Math.hypot(s.x - lastPos.x, s.y - lastPos.y) > 12) {
+        lastPos = { x: s.x, y: s.y };
+        lastProgressAt = Date.now();
+      }
+      if (!ghost && (Date.now() - lastProgressAt > 2500 || Date.now() - t0 > timeoutMs / 2)) {
+        ghost = true;
+        await setKeys(new Set());
+        console.log(`walkTo${label ? ' [' + label + ']' : ''}: slow/stuck at (${Math.round(s.x)},${Math.round(s.y)}) zone=${s.zone} — engaging ghost-hop`);
+      }
+      if (ghost) {
+        await page.evaluate(({ tx, ty }) => {
+          const P = window._gameState.current.player;
+          const hdx = tx - P.x, hdy = ty - P.y;
+          const d = Math.hypot(hdx, hdy) || 1;
+          const step = Math.min(56, d);
+          P.x += (hdx / d) * step; P.y += (hdy / d) * step;
+          P.vx = 0; P.vy = 0;
+        }, { tx, ty });
+        await sleep(250);
+        continue;
+      }
       const want = new Set();
       if (Math.abs(dx) > 12) want.add(dx > 0 ? 'd' : 'a');
       if (Math.abs(dy) > 12) want.add(dy > 0 ? 's' : 'w');
@@ -106,6 +158,9 @@ async function walkTo(page, tx, ty, { zoneExpect = null, timeoutMs = 45000, arri
       await setKeys(want);
       await sleep(220);
     }
+    /* self-diagnosing failure: every ~5th trail sample + the last few */
+    const sampled = trail.filter((_, i) => i % 5 === 0 || i >= trail.length - 6);
+    console.log(`walkTo${label ? ' [' + label + ']' : ''} TIMEOUT`, JSON.stringify({ target: [tx, ty], zoneExpect, trail: sampled }));
     return null;
   } finally {
     await setKeys(new Set());
@@ -120,10 +175,10 @@ const B = await startSession('PredBotB');
 
 /* ── travel: town → worldview → ember, both sessions ── */
 for (const [label, page] of [['A', A], ['B', B]]) {
-  const s1 = await walkTo(page, px(24), px(44), { zoneExpect: 'worldview' });
+  const s1 = await walkTo(page, px(24), px(44), { zoneExpect: 'worldview', label: label + '→worldview' });
   check(label + ' reached worldview', !!s1, await snap(page));
   if (!s1) { await browser.close(); process.exit(1); }
-  const s2 = await walkTo(page, px(27), px(9), { zoneExpect: 'ember' });
+  const s2 = await walkTo(page, px(27), px(9), { zoneExpect: 'ember', label: label + '→ember' });
   check(label + ' reached ember', !!s2, await snap(page));
   if (!s2) { await browser.close(); process.exit(1); }
 }
@@ -162,7 +217,7 @@ function startSampler(page, kind, near) {
   const loop = (async () => {
     while (!stop) {
       const rows = await page.evaluate(() => (window._gameState.current.dmgNumbers || [])
-        .map((d) => ({ x: d.x, y: d.y, text: String(d.text), ts: d.ts, iconKey: d.iconKey || null }))).catch(() => []);
+        .map((d) => ({ x: d.x, y: d.y, text: String(d.text), ts: d.ts, iconKey: d.iconKey || null, color: d.color || null }))).catch(() => []);
       for (const d of rows) {
         const key = d.ts + '|' + d.text + '|' + Math.round(d.x) + '|' + Math.round(d.y);
         if (seen.has(key)) continue;
@@ -170,9 +225,16 @@ function startSampler(page, kind, near) {
         if (kind === 'own' && d.iconKey === 'sword' && /^(ZAP )?\d+$/.test(d.text)) {
           out.push({ ...d, dmg: parseInt(d.text.replace(/\D+/g, ''), 10) });
         } else if (kind === 'peer' && /^-\d+$/.test(d.text) && d.iconKey === null
+                   && (d.color === '#ff8888' || d.color === '#fbbf24')
                    && Math.hypot(d.x - near.x, d.y - near.y) < 160) {
           /* iconKey null excludes B's OWN damage-taken popups (those
-             carry iconKey 'heart'); peer-queue floaters carry none. */
+             carry iconKey 'heart'); peer-queue floaters carry none.
+             v2.3.1196 stabilization: ALSO filter by the peer-queue
+             colors (#ff8888 hit / #fbbf24 crit, gameEvents monster_hit)
+             — when the monster fights back, B floats '-N' over A too
+             (monster_attack remote-hit feedback, #ff5e6c), and A stands
+             within swing range of the target, i.e. inside this radius;
+             those inflated peerSum past the ±1/hit tolerance. */
           out.push({ ...d, dmg: parseInt(d.text.slice(1), 10) });
         }
       }
@@ -237,8 +299,13 @@ check('A and B agree on the target HP (same authoritative hpPct)',
 check('B\'s peer floaters sum to the HP drop (±1 per hit rounding)',
   peerSampler.out.length > 0 && Math.abs(peerSum - dropA) <= Math.max(2, peerSampler.out.length),
   { peerSum, dropA, floaters: peerSampler.out.length });
-check('prediction within sanity band of server total (0.35x–3x)',
-  predicted > 0 && dropA > 0 && predicted / dropA >= 0.35 && predicted / dropA <= 3.0,
+/* v2.3.1196: band widened 0.35–3.0 → 0.30–3.5.  With as few as 3 hits,
+   both sides rolling crits + variance independently can legitimately
+   graze 3.0 (all-crit high rolls on one side vs crit-less low rolls on
+   the other); the band exists to catch a formula RESCALE landing on one
+   side only (4x+ / 0.25x-), and this margin keeps roll noise out of it. */
+check('prediction within sanity band of server total (0.30x–3.5x)',
+  predicted > 0 && dropA > 0 && predicted / dropA >= 0.30 && predicted / dropA <= 3.5,
   { predicted, serverDrop: dropA, ratio: dropA ? +(predicted / dropA).toFixed(2) : null });
 
 await browser.close();

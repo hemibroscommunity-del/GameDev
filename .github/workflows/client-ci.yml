@@ -12,6 +12,12 @@
 # for ~1 min, and fails on: never joined, any uncaught page error, or a
 # captured crash log.  This is the only client<->worker integration gate,
 # so server/** changes trigger this workflow as well.
+#
+# v2.3.1196: three more harnesses run after the blocking pair, REPORT-ONLY
+# (continue-on-error) until they prove stable — combat-prediction
+# reconciliation (qa-combat-predict), armored-sprite rendering
+# (qa-gear-smoke, cover for the armor-art work), and the party HUD
+# (qa-party-smoke).  Promotion criteria are on the steps below.
 name: Client CI
 on:
   pull_request:
@@ -22,6 +28,9 @@ on:
       - 'vite.config.js'
       - 'tools/qa/qa-smoke.mjs'
       - 'tools/qa/qa-facing.mjs'
+      - 'tools/qa/qa-combat-predict.mjs'
+      - 'tools/qa/qa-gear-smoke.mjs'
+      - 'tools/qa/qa-party-smoke.mjs'
       - 'server/**'
       - '.github/workflows/client-ci.yml'
 jobs:
@@ -86,11 +95,47 @@ jobs:
         run: |
           node tools/qa/qa-facing.mjs > qa-facing.json \
             || { echo "first attempt failed, retrying"; node tools/qa/qa-facing.mjs > qa-facing.json; }
+      # ── v2.3.1196: candidate gates, REPORT-ONLY while they earn trust ──
+      # Same retry-once pattern as the blocking harnesses above, but
+      # continue-on-error: a flaky BLOCKING check trains everyone to
+      # ignore red, which is worse than no check.  None of the three has
+      # had a real stabilization run yet (authored where npm is
+      # policy-blocked, so no local build/worker was possible).
+      # PROMOTION CRITERIA: once a step holds green — including its one
+      # retry — for ~10 consecutive CI runs, delete its
+      # `continue-on-error: true` line to make it blocking.  If one keeps
+      # flaking, fix or loosen the specific failing check (headers of
+      # each harness say which checks are the likely offenders) rather
+      # than leaving it report-only forever.
+      - name: Combat-prediction reconciliation (two sessions; v2.3.1196, report-only)
+        continue-on-error: true
+        env:
+          QA_WS_URL: ws://127.0.0.1:8787
+        run: |
+          node tools/qa/qa-combat-predict.mjs > qa-combat-predict.json \
+            || { echo "first attempt failed, retrying"; node tools/qa/qa-combat-predict.mjs > qa-combat-predict.json; }
+      - name: Gear rendering smoke (armored sprites; v2.3.1196, report-only)
+        continue-on-error: true
+        env:
+          QA_WS_URL: ws://127.0.0.1:8787
+        run: |
+          node tools/qa/qa-gear-smoke.mjs > qa-gear-smoke.json \
+            || { echo "first attempt failed, retrying"; node tools/qa/qa-gear-smoke.mjs > qa-gear-smoke.json; }
+      - name: Party HUD smoke (two sessions; v2.3.1196, report-only)
+        continue-on-error: true
+        env:
+          QA_WS_URL: ws://127.0.0.1:8787
+        run: |
+          node tools/qa/qa-party-smoke.mjs > qa-party-smoke.json \
+            || { echo "first attempt failed, retrying"; node tools/qa/qa-party-smoke.mjs > qa-party-smoke.json; }
       - name: Show smoke output
         if: always()
         run: |
           cat qa-smoke.json || true
           cat qa-facing.json || true
+          cat qa-combat-predict.json || true
+          cat qa-gear-smoke.json || true
+          cat qa-party-smoke.json || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -98,6 +143,9 @@ jobs:
           path: |
             qa-smoke.json
             qa-facing.json
+            qa-combat-predict.json
+            qa-gear-smoke.json
+            qa-party-smoke.json
             /tmp/qa-login.png
             wrangler.log
             preview.log
