@@ -237,11 +237,12 @@ export const arenaMethods = {
     if ((this._duelFor && (this._duelFor(m.a) || this._duelFor(m.b)))) return; // busy: lazy tick retries
     if (!this._duels) this._duels = new Map();
     const duelId = crypto.randomUUID();
-    this._duels.set(duelId, {
-      id: duelId, a: m.a, b: m.b, wager: 0, startedAt: Date.now(), status: 'active',
-      graceUntil: 0, awayId: null,
+    // v2.3.1175: _makeDuel (duel.js) owns the duel-record shape --
+    // this literal used to hand-copy the field list and drift.
+    this._duels.set(duelId, this._makeDuel({
+      id: duelId, a: m.a, b: m.b, wager: 0, startedAt: Date.now(),
       expiresAt: m.deadline, arenaMatch: { tid: t.id, matchId: m.id },
-    });
+    }));
     if (!this._pvpConsent) this._pvpConsent = new Map();
     this._pvpConsent.set(this._pvpPairKey(m.a, m.b), m.deadline + 30000);
     psA._arenaMatch = m.id; psB._arenaMatch = m.id; // healing gates key off this

@@ -1240,14 +1240,6 @@ export function processGameEvent(type, payload, S, deps) {
               break;
             }
           /* mkt_order removed — marketplace uses server API now */
-          case 'arena_bet':
-            {
-              /* Track remote bets for pot calculation */
-              if (payload.bettorId === S.myId) break;
-              if (!S._remoteBets) S._remoteBets = [];
-              S._remoteBets.push(payload);
-              break;
-            }
           case 'clan_invite':
             {
               /* v2.3.1125: incoming invites used to have NO handler --
@@ -1384,14 +1376,26 @@ export function processGameEvent(type, payload, S, deps) {
               break;
             }
           case 'arena_bet':
-            {
-              /* Receive spectator bet from another player */
-              if (payload.playerId === S.myId) break;
-              setArenaBets(function (prev) {
-                return [].concat(_toConsumableArray(prev), [payload]);
-              });
-              break;
-            }
+            /* v2.3.1176: relayed spectator bets are deliberately
+               IGNORED.  History: this switch carried TWO 'arena_bet'
+               cases; the first (dead code -- it keyed on bettorId,
+               which only one of the send sites carries, and fed an
+               unread S._remoteBets array) shadowed this one, so no
+               remote bet ever reached the UI.  Un-shadowing the old
+               setArenaBets handler here was tried and is UNSAFE: the
+               arenaBets consumers in PartyPanel predate remote
+               delivery -- the Active Bets renderer crashes on
+               bettorId-shaped bets (b.playerId.slice of undefined),
+               'Your Bets' filters by tournament only (others' bets
+               would render as yours), the sender's own server echo
+               isn't filtered (double-count), and on legacy workers
+               (!caps.sponsor) the local pot-split mint would count
+               forged remote amounts straight into S.rpg.coins.  Real
+               stakes settle server-side via arena_sponsor
+               (docs/specs/sponsorship.md); a spectator stake board
+               needs a server-owned validated feed (handoff item A).
+               Until then this relay is display-noise: drop it. */
+            break;
           case 'stunned':
             {
               if (payload.target === S.myId) S._stunEnd = Date.now() + (payload.duration || 2000);

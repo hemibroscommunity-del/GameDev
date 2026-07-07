@@ -145,7 +145,8 @@ room._warOnDeath('bp_cl_dave', 'pvp:bp_cl_alice'); // victim not clanned
 check('non-clan victims never score', war.challenger.score === 1);
 // duel exclusion: put alice+bob in an active duel, then a war-zone kill
 room._duels = room._duels || new Map();
-room._duels.set('d1', { id: 'd1', a: 'bp_cl_alice', b: 'bp_cl_bob', wager: 0, status: 'active', startedAt: Date.now(), graceUntil: 0, awayId: null });
+// v2.3.1175: away replaced graceUntil/awayId (per-player forfeit clocks)
+room._duels.set('d1', { id: 'd1', a: 'bp_cl_alice', b: 'bp_cl_bob', wager: 0, status: 'active', startedAt: Date.now(), away: {} });
 room._warOnDeath('bp_cl_bob', 'pvp:bp_cl_alice');
 check('duel kills never score the war', war.challenger.score === 1);
 room._duels.delete('d1');

@@ -19,6 +19,11 @@ escrow that survives worker deploys.
   loss." A clean duel kill (cause `pvp:<opponent>`) now skips both.
 - **Disconnect ≠ instant forfeit.** iOS tab suspends and deploy bounces
   are routine; a 15s reconnect grace runs before the pot forfeits.
+  v2.3.1175: the grace clock is **per player** (`duel.away = {pid:
+  deadline}`) — previously a single `awayId` slot, so if both players
+  dropped, the second disconnect overwrote the first and a lone rejoin
+  left the duel stuck 'active' forever, blocking both from new duels
+  (handoff item L). Both clocks expired = the first leaver forfeits.
 
 Dying to a **monster** mid-duel still resolves the duel (opponent takes
 the pot — no suiciding out of a losing wager) but is a normal death.
@@ -61,8 +66,10 @@ PR1 interim observer — deliberately deferred.
 
 ## Tests
 
-`server/test/duel.test.mjs` (21 assertions, in `npm test`): handshake +
+`server/test/duel.test.mjs` (25 assertions, in `npm test`): handshake +
 escrow + gate registration, wager-inflation immunity, forged-accept
 drop, poor-accepter refund, clean-kill pot/no-pile/no-wipe, monster-
-death forfeit with normal death, reconnect grace + forfeit, orphan
+death forfeit with normal death, reconnect grace + forfeit (including
+both-away independent clocks, first-leaver-loses, and a `'__proto__'`
+join id still arming a clock on the null-prototype away map), orphan
 refund + settled-pot protection, zero-wager path.

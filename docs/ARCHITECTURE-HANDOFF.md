@@ -343,11 +343,31 @@ a CI lockstep test pinning both ZONES tables together (spec:
 docs/specs/zone-progression.md). Hard entry gating remains optional.
 
 ### L. Smaller known items
-- Cook minigame outcome (`kind`) still client-trusted (rate-limited only).
-- Event buffer drops events past 500/tick — keep the remainder instead.
-- Duplicate `case 'arena_bet'` in gameEvents (second unreachable).
-- Duel `awayId` is single-slot: both players disconnecting overwrites the
-  first — self-healing in arena (shot-clock), cosmetic for social duels.
+- Cook minigame outcome (`kind`) still client-trusted (rate-limited
+  only; v2.3.1167 added a physics floor on burst timing, not on kind).
+- ~~Event buffer drops events past 500/tick~~ — FIXED v2.3.1163
+  (splice keeps the remainder queued in tick.js).
+- ~~Duplicate `case 'arena_bet'` in gameEvents~~ — RESOLVED v2.3.1176,
+  but NOT by un-shadowing. The FIRST case was the dead one (keyed on
+  `bettorId`, which only one send site carries; fed an unread
+  `S._remoteBets`) and it shadowed the setArenaBets handler — but
+  reviving that handler is unsafe: the arenaBets consumers in
+  PartyPanel predate remote delivery (Active Bets crashes on
+  bettorId-shaped bets, 'Your Bets' has no ownership filter, the
+  sender's own tick echo double-counts, and the `!caps.sponsor`
+  legacy pot-split mint would count forged remote amounts into
+  `S.rpg.coins`). The relay is now ONE explicitly-ignoring case;
+  `no-duplicate-case` is enabled in the correctness lint so the
+  shadowing class can't recur. A real spectator stake board is item
+  A's caps-gated follow-up (server-owned, validated feed).
+- ~~Duel `awayId` single-slot~~ — FIXED v2.3.1175: `duel.away` is now
+  a per-player map of forfeit deadlines (null-prototype — ids are
+  client strings, `'__proto__'` must not no-op the clock), built by
+  the `_makeDuel` factory that owns the duel-record shape for both
+  social duels and arena matches (duels.md). The single slot was
+  worse than cosmetic for social duels: both players dropping and
+  only the second rejoining erased the first's clock, leaving the
+  duel 'active' forever and blocking both from any new duel.
 - T2 retirement cleanup: drop the 5 retired stats from wire/save/clamps.
   v2.3.1152: NOT shippable as a plain registry migration — the exact
   coordinated edit list is in docs/specs/migrations.md §"Why v3 was not
