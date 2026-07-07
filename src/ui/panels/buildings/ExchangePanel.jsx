@@ -390,9 +390,15 @@ export function ExchangePanel(props) {
             _context0.n = 6;
             return fetch(BT_API_BASE + '/api/market/place?room=' + _mktRoom(), {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
+              /* v2.3.1178: session token — the worker rejects mutating
+                 economy calls whose playerId isn't backed by the
+                 caller's own state_sync token (item-theft fix). Absent
+                 against old workers (no token in state_sync). */
+              headers: (function () {
+                var _h = { 'Content-Type': 'application/json' };
+                if (S._httpToken) _h['x-bt-auth'] = S._httpToken;
+                return _h;
+              })(),
               body: JSON.stringify({
                 type: mktMode,
                 category: mktCategory,
@@ -790,7 +796,9 @@ export function ExchangePanel(props) {
                 _context1.p = 0;
                 _context1.n = 1;
                 return fetch(BT_API_BASE + '/api/market/cancel?id=' + o.id + '&playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom(), {
-                  method: 'DELETE'
+                  method: 'DELETE',
+                  /* v2.3.1178: session token (see /place above). */
+                  headers: S._httpToken ? { 'x-bt-auth': S._httpToken } : undefined
                 });
               case 1:
                 res = _context1.v;

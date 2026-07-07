@@ -32,9 +32,12 @@
 export const SNAPSHOT = {
   INTERVAL_MS: 20 * 3600 * 1000, // one snapshot per ~day (20h so a
                                  // daily-ish login cadence never skips)
-  KEEP: 7,                       // ring size per player (prerestore
-                                 // copies count toward the cap so a
-                                 // restore loop can't grow unbounded)
+  KEEP: 7,                       // ring size per player, PER KEY CLASS
+                                 // (v2.3.1179: daily + prerestore rings
+                                 // prune separately -- one shared cap
+                                 // let prerestore keys, which sort
+                                 // after the yyyymmdd keys, evict the
+                                 // real daily snapshots first)
 };
 
 export const adminMethods = {
@@ -69,15 +72,21 @@ export const adminMethods = {
       const ymd = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
       await this.state.storage.put('rpgsnap:' + playerId + ':' + ymd, storedBlob);
       await this.state.storage.put('rpgsnap_at:' + playerId, now);
-      // Prune the ring.  Keys sort lexicographically; timestamps in the
-      // entries decide age (prerestore keys carry Date.now() suffixes
-      // that don't sort against yyyymmdd, so sort by write order via
-      // the listed map -- DO list() returns key order, which is fine:
-      // we only need "delete some when over cap", not perfect LRU).
+      // Prune the ring.  v2.3.1179: the two key classes prune
+      // SEPARATELY.  The old single sorted list was wrong: 'prerestore-'
+      // sorts lexically AFTER every yyyymmdd digit key ('p' > '9'), so
+      // once any prerestore snapshot existed the excess-slice evicted
+      // the OLDEST REAL DAILY SNAPSHOTS first and the prerestore keys
+      // lived forever -- exactly inverted from the rollback-parachute
+      // intent.  Within each class, lexical sort IS age order (fixed-
+      // width yyyymmdd; fixed-width ms timestamps until year 2286).
       const snaps = await this.state.storage.list({ prefix: 'rpgsnap:' + playerId + ':' });
-      if (snaps.size > SNAPSHOT.KEEP) {
-        const keys = [...snaps.keys()].sort();
-        const excess = keys.slice(0, snaps.size - SNAPSHOT.KEEP);
+      const _isPre = (k) => k.includes(':prerestore-');
+      for (const cls of [
+        [...snaps.keys()].filter((k) => !_isPre(k)).sort(),
+        [...snaps.keys()].filter(_isPre).sort(),
+      ]) {
+        const excess = cls.length > SNAPSHOT.KEEP ? cls.slice(0, cls.length - SNAPSHOT.KEEP) : [];
         for (const k of excess) await this.state.storage.delete(k);
       }
     } catch (e) { /* snapshots must never block a join */ }

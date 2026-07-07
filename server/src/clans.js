@@ -43,6 +43,12 @@ export const CLANS = {
   INVITE_TTL: 120000,
   WAR_DURATION: 1800000,      // 30 min (GDD §42)
   WAR_REWARDS: { winner: { gold: 500 }, loser: { gold: 50 } }, // client CLAN_WAR_REWARDS mirror (gold only)
+  // v2.3.1179: ended-war snapshot retention.  clan_war:<id> was written
+  // on declare/kill/resolve but never deleted -- one orphan key per war
+  // ever declared.  48h after endTime mirrors the oplog prune window
+  // (inbox.js): long enough for any crash-retry of the reward loop to
+  // find its opId stamps, then gone.
+  WAR_RETENTION: 172800000,
 };
 
 export const clanMethods = {
@@ -61,8 +67,17 @@ export const clanMethods = {
       }
     }
     const warEntries = await this.state.storage.list({ prefix: 'clan_war:' });
-    for (const [, w] of warEntries) {
+    const _now = Date.now();
+    for (const [k, w] of warEntries) {
       if (w && w.id && w.status === 'active') this._clanWars.set(w.id, w);
+      // v2.3.1179: bounded retention for ended-war snapshots (see
+      // CLANS.WAR_RETENTION).  Runs on the once-per-wake registry
+      // load, the same lazy slot that resolves overdue wars (rule 12)
+      // -- also drains the pre-retention backlog of orphans.
+      // Fire-and-forget: a missed delete retries next wake.
+      else if (!w || (w.endTime || 0) <= _now - CLANS.WAR_RETENTION) {
+        this.state.storage.delete(k);
+      }
     }
     await this._clanWarsLazyResolve();
   },

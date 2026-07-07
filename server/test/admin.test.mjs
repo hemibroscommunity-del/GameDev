@@ -199,6 +199,27 @@ state._store.set('rpg:bp_adm_rich', { coins: 5000, level: 40 });
   check('restore rejects a snapKey for a different player', rBad.status === 400);
 }
 
+// ── 8b. v2.3.1179: the prune distinguishes the two snapshot key classes ──
+// 'prerestore-' sorts lexically AFTER every yyyymmdd key ('p' > '9'),
+// so the old single sorted-list prune evicted the OLDEST REAL DAILY
+// snapshots first and prerestore copies lived forever.  Each class now
+// prunes to KEEP independently.
+{
+  const pid = 'bp_adm_prune';
+  for (let i = 0; i < 9; i++) state._store.set('rpgsnap:' + pid + ':2026010' + i, { coins: i });
+  for (let i = 0; i < 9; i++) state._store.set('rpgsnap:' + pid + ':prerestore-170000000000' + i, { coins: i });
+  await room._rpgSnapshotMaybe(pid, { coins: 999 }); // no throttle marker yet -> snapshots + prunes
+  const keys = [...state._store.keys()].filter((k) => k.startsWith('rpgsnap:' + pid + ':'));
+  const daily = keys.filter((k) => !k.includes(':prerestore-'));
+  const pre = keys.filter((k) => k.includes(':prerestore-'));
+  check('daily ring prunes to KEEP despite prerestore keys present', daily.length === SNAPSHOT.KEEP, daily);
+  check('today\'s snapshot survives the prune (old code evicted dailies first)',
+    daily.some((k) => state._store.get(k).coins === 999), daily);
+  check('prerestore ring prunes separately to KEEP', pre.length === SNAPSHOT.KEEP, pre);
+  check('prerestore eviction is oldest-first', !pre.includes('rpgsnap:' + pid + ':prerestore-1700000000000')
+    && pre.includes('rpgsnap:' + pid + ':prerestore-1700000000008'), pre);
+}
+
 // ── 9. player inspection + admin log ──
 {
   const { status, body } = await jbody(await req('GET', '/api/admin/player?id=bp_adm_a'));

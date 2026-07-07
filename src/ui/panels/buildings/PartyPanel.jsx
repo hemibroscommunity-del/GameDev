@@ -103,9 +103,15 @@ export function PartyPanel(props) {
             _context8.n = 3;
             return fetch(BT_API_BASE + '/api/arena/join', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
+              /* v2.3.1178: session token — the worker rejects economy
+                 calls whose playerId isn't backed by the caller's own
+                 state_sync token (forged entry-fee debit fix). Absent
+                 against old workers (no token in state_sync). */
+              headers: (function () {
+                var _h = { 'Content-Type': 'application/json' };
+                if (S._httpToken) _h['x-bt-auth'] = S._httpToken;
+                return _h;
+              })(),
               body: JSON.stringify({
                 playerId: S.myId,
                 name: S.myName,
@@ -221,9 +227,12 @@ export function PartyPanel(props) {
             _context9.n = 2;
             return fetch(BT_API_BASE + '/api/arena/leave', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
+              /* v2.3.1178: session token (see /join above). */
+              headers: (function () {
+                var _h = { 'Content-Type': 'application/json' };
+                if (S._httpToken) _h['x-bt-auth'] = S._httpToken;
+                return _h;
+              })(),
               body: JSON.stringify({
                 playerId: S.myId
               })

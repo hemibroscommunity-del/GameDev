@@ -17,7 +17,9 @@ are scored by the server's own PvP death resolution.
 
 **Registry** (`server/src/clans.js`, GameRoom mixin; storage keys
 `clan:<id>`, `clan_by_player:<pid>`, `clan_war:<id>` — registered in
-ARCHITECTURE-HANDOFF):
+ARCHITECTURE-HANDOFF; v2.3.1179: ended `clan_war:` snapshots are swept
+48 h after `endTime` on the registry load — they were never deleted
+before, one orphan key per war ever declared):
 
 - `clan_create {name, tag, color1, color2, logo}` — server validates
   (name 3-16, tag 1-4 alnum uppercased, unique tag AND name, not already

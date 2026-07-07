@@ -140,6 +140,11 @@ export function setupWebSocket(ctx) {
              keep sending full v1 payloads, which this client still
              handles (the v1 cases below stay in place). */
           protocolVersion: 2,
+          /* v2.3.1178: declare we attach the per-session state_sync
+             token (x-bt-auth header) to mutating economy POSTs, so the
+             worker ENFORCES it for this session. Old workers ignore
+             the field. */
+          httpAuth: true,
           data: {
             x: S.player.x,
             y: S.player.y,
@@ -582,6 +587,12 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
+              /* v2.3.1178: this session's private token for the
+                 mutating HTTP economy endpoints (market place/cancel,
+                 arena join/leave). Sent as the x-bt-auth header by
+                 those call sites; absent against old workers, in which
+                 case no header is attached. */
+              S._httpToken = (typeof msg.httpToken === 'string') ? msg.httpToken : null;
               /* v2.3.1154: HP/Endurance grid deploy-order gate.  The
                  pool multipliers only apply while THIS worker claims
                  caps.hpEndGrids — otherwise its player_state echo would

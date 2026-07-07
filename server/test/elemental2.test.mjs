@@ -201,6 +201,39 @@ check('non-flame gem gives no elemDmg boost', dDark === dNo, { dNo, dDark });
 check('forged gem/tier gives no boost', dForged === dNo, { dNo, dForged });
 check('no element1 -> no boost', dNoElem === dNo, { dNo, dNoElem });
 
+// ── 5b. v2.3.1180: join-path amulet sanitizer (_sanitizeAmulet) ──
+// Amulets are a client-crafted blob (no server forge), so ps.amulet is
+// ingested wholly untrusted at join.  _computeAttackDamage reads gem +
+// tier, so the join load path whitelists them.
+{
+  const legit = room._sanitizeAmulet({ tier: 'mythic', gem: 'flame', name: 'Mythic Flame Amulet' });
+  check('sanitize keeps a legit {tier,gem,name}', legit && legit.tier === 'mythic' && legit.gem === 'flame' && legit.name === 'Mythic Flame Amulet', legit);
+  // Forged tier beyond the legit ladder -> the whole amulet is dropped
+  // (can't ride the AMULET_TIER_POWER `|| 1.0` fallback with the rest of
+  // the blob intact).
+  check('forged high-tier amulet is clamped to null', room._sanitizeAmulet({ tier: 'godtier', gem: 'flame' }) === null, room._sanitizeAmulet({ tier: 'godtier', gem: 'flame' }));
+  // Forged gem -> nulled, tier retained (amulet stays equipped, no boost).
+  const badGem = room._sanitizeAmulet({ tier: 'mythic', gem: 'nuclear' });
+  check('forged gem nulled, valid tier kept', badGem && badGem.tier === 'mythic' && badGem.gem === null, badGem);
+  // Smuggled extra fields (a raw elemDmg / tierMult) are stripped.
+  const extra = room._sanitizeAmulet({ tier: 'simple', gem: 'flame', elemDmg: 9999, tierMult: 99, hardness: 5 });
+  check('extra client fields stripped from amulet', extra && extra.tier === 'simple' && extra.gem === 'flame' && !('elemDmg' in extra) && !('tierMult' in extra) && !('hardness' in extra), extra);
+  // A forged mythic-flame amulet is bounded to the LEGIT ceiling (the
+  // accepted residual per elemental-completion.md) -- it survives
+  // sanitize but grants only the same +10.5% a crafted one would.
+  ps.weapon.element1 = 'frost';
+  Math.random = () => 0.5;
+  ps.amulet = null; const dClean = room._computeAttackDamage(ps, 'melee', false).dmg;
+  ps.amulet = room._sanitizeAmulet({ tier: 'mythic', gem: 'flame', foo: 'bar' });
+  const dSanitized = room._computeAttackDamage(ps, 'melee', false).dmg;
+  Math.random = realRandom;
+  check('sanitized forged mythic flame == legit +10.5% ceiling', Math.abs(dSanitized - Math.round(dClean * 1.105)) <= 1, { dClean, dSanitized });
+  // Long name bounded; non-objects -> null.
+  check('amulet name bounded to 40 chars', room._sanitizeAmulet({ tier: 'simple', name: 'x'.repeat(200) }).name.length === 40);
+  check('non-object amulet -> null', room._sanitizeAmulet('forged') === null && room._sanitizeAmulet(null) === null);
+  ps.amulet = null;
+}
+
 // ── 6. curse ──
 Math.random = () => 0.5;
 ps.amulet = null;

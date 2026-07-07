@@ -324,5 +324,28 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   check('move clears harvest activity', room.playerState.p1.ex === null, room.playerState.p1.ex);
 }
 
+// ── v2.3.1177: join must NOT fall through into the move handler ──
+// The v2.3.1173 hoist dropped the break after case 'join'; every join
+// then ran _handleMove on the same message.  A crafted join carrying
+// numeric TOP-LEVEL x/y (the move message's fields) rode the
+// first-move bypass (no lastMoveAt yet) and stamped an arbitrary
+// position past the anti-teleport cap.
+{
+  const wsJ = fakeWs('join-fallthrough');
+  room.sessions.set(wsJ, baseSession());
+  await room.webSocketMessage(wsJ, JSON.stringify({
+    type: 'join', id: 'p_jft', name: 'JF',
+    x: 123456, y: 654321, // move-shaped payload smuggled on the join
+    data: { x: -100000, y: -100000, z: 'meadow' },
+  }));
+  const psJ = room.playerState.p_jft;
+  check('join does not fall through into move (position from data only)',
+    psJ && psJ.x === -100000 && psJ.y === -100000, psJ && { x: psJ.x, y: psJ.y });
+  check('join leaves no move-handler residue (lastMoveAt unset)',
+    psJ && typeof psJ.lastMoveAt !== 'number', psJ && psJ.lastMoveAt);
+  room.sessions.delete(wsJ);
+  delete room.playerState.p_jft;
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

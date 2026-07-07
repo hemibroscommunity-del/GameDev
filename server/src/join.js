@@ -124,6 +124,11 @@ export const joinMethods = {
     // on v1 full payloads.
     session.protocolVersion = msg.protocolVersion === 2 ? 2 : 1;
     session.lastPlayerStateSent = {};
+    // v2.3.1178: mint this session's HTTP economy-endpoint token
+    // (delivered in state_sync below; validated by _httpAuthCheck --
+    // see httpauth.js).  After the eviction loop above so exactly one
+    // live token exists per player id.
+    this._httpAuthMint(session, msg);
     this.playerState[msg.id] = {
       x: 0, y: 0, d: 'down', z: 'town', vx: 0, vy: 0,
       dodging: false, blocking: false, dead: false, disconnected: false,
@@ -179,7 +184,10 @@ export const joinMethods = {
         // KEEPS its strip (client payloads are unmigrated writers).
         this.playerState[msg.id].armor = stored.armor || null;
         this.playerState[msg.id].shield = stored.shield || null;
-        this.playerState[msg.id].amulet = stored.amulet || null;
+        // v2.3.1180: amulet gem/tier feed the authoritative damage roll
+        // (_computeAttackDamage) -- whitelist even the stored blob, so a
+        // pre-slice forged amulet heals on this reconnect (gear.js).
+        this.playerState[msg.id].amulet = this._sanitizeAmulet(stored.amulet);
         this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(stored.weaponStash);
         this.playerState[msg.id]._quests = (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {};
         this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
@@ -292,7 +300,9 @@ export const joinMethods = {
           this.playerState[msg.id].armor = (_bootArmor && _bootArmor.name === 'Leather Armor') ? null : (_bootArmor ? { ..._bootArmor } : null);
         }
         this.playerState[msg.id].shield = (msg.data && msg.data.rpgShield && typeof msg.data.rpgShield === 'object') ? { ...msg.data.rpgShield } : null;
-        this.playerState[msg.id].amulet = (msg.data && msg.data.rpgAmulet && typeof msg.data.rpgAmulet === 'object') ? { ...msg.data.rpgAmulet } : null;
+        // v2.3.1180: whitelist the client-supplied amulet (gem/tier feed
+        // the authoritative damage roll -- gear.js _sanitizeAmulet).
+        this.playerState[msg.id].amulet = this._sanitizeAmulet(msg.data && msg.data.rpgAmulet);
         this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(msg.data && msg.data.rpgWeaponStash, true);
         // Quest state bootstrap (slice 17).  Trust shape but not
         // size -- a cheater could pass a 10000-entry _questKills
@@ -500,7 +510,14 @@ export const joinMethods = {
       // the build meter on this flag (an old worker clamps weapon
       // specs at 99 / defense+grid specs at 50, so spending past the
       // legacy caps against it would truncate on echo).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, ..._liveFlags },
+      // v2.3.1178: httpAuth -- the client attaches httpToken (below) to
+      // mutating economy POSTs (market place/cancel, arena join/leave)
+      // as the x-bt-auth header.  Old clients ignore both fields and
+      // ride the enforcement grace window (httpauth.js).
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, ..._liveFlags },
+      // v2.3.1178: this session's private economy-endpoint token.
+      // state_sync goes to the joining socket ONLY -- never broadcast.
+      httpToken: session.httpToken,
       players: this.getAllPlayerData(),
       playerCount: this.getPlayerCount(),
       monsters: zoneMonsters.map(m => ({
