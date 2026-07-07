@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcCritMult, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, SWING_COOLDOWN, getActiveWeapon, getWeaponCritStat, weaponCritDmgStatFor, weaponDamageBonusFor, weaponCritStatFor, buildSkillUnspent, STAT_TO_WEAPON_CAT, weaponEffBase, DAMAGE_CHANNEL_PCT } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, getActiveWeapon, getWeaponCritStat, buildSkillUnspent, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
@@ -991,32 +991,20 @@ export const BottomDashboard = () => {
                                      : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.webp?v=2.3.173'
                                      : isWoodSword     ? '/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070' /* v2.3.1070: mini steel-sword icon, not bamboo */
                                      :                    '/sprites/weapons/swords/Sword1.webp?v=2.3.173';
+                  /* v2.3.1206: inline math (v2.3.912 stat driver +
+                     v2.3.1131 quality/hardness + v2.3.1133 crit-channel
+                     fold) extracted VERBATIM into gameSystems'
+                     calcDisplayDmgRange/calcDisplayDps so the popup +
+                     inventory readouts share it — this readout was the
+                     one correct copy; the helpers key stat/variance off
+                     wpn.type instead of activeSlot, identical whenever
+                     the slot holds its own weapon type (guaranteed by
+                     the v2.3.1159 slot repair). Numbers must not move. */
                   let dmgText = '0', dpsText = '0.0';
                   if (wType) {
-                    const statVal = (slot === 'ranged') ? (R.agility || 0)
-                                  : (slot === 'staff')  ? (R.mind || 0)
-                                  : (R.power || 0);
-                    /* v2.3.912: match the real combat formula (calcWeaponDmg):
-                       stat coefficient 0.1667 (was a stale 0.8) PLUS the weapon
-                       damage-channel bonus, so spending build points actually
-                       moves this readout and it equals what monsters take.
-                       v2.3.1153: channel repriced flat -> ×(1 + pts×0.005);
-                       weaponDamageBonusFor now returns raw points. */
-                    const dmgPts = weaponDamageBonusFor(R, (wpn && wpn.type));
-                    const base = (weaponEffBase(wType.base, wpn) + statVal * 0.1667) * (1 + dmgPts * DAMAGE_CHANNEL_PCT) * (wpn.tierMult || 1); /* v2.3.1131: quality/hardness layers */
-                    let dmgMin, dmgMax, cdMs = SWING_COOLDOWN;
-                    if (slot === 'ranged')      { dmgMin = base * 0.6;  dmgMax = base * 0.8;  }
-                    else if (slot === 'staff')  { dmgMin = base * 0.5;  dmgMax = base * 1.5;  cdMs += 300; }
-                    else                        { dmgMin = base * 0.75; dmgMax = base * 1.25; }
-                    dmgMin = Math.round(dmgMin); dmgMax = Math.round(dmgMax);
-                    dmgText = (dmgMin === dmgMax) ? String(dmgMin) : `${dmgMin}-${dmgMax}`;
-                    /* DPS folds in the crit channels: avg dmg / cooldown, scaled by
-                       expected crit (chance × extra crit multiplier).
-                       v2.3.1133: the crit-dmg channel (Executioner/Headshot/Arcane
-                       Focus) now feeds the multiplier too. */
-                    const critChance = calcCritChance(R.power || 0, weaponCritStatFor(R, (wpn && wpn.type)));
-                    const critMult = calcCritMult(R.power || 0, weaponCritDmgStatFor(R, (wpn && wpn.type)));
-                    dpsText = ((dmgMin + dmgMax) / 2 / (cdMs / 1000) * (1 + critChance * (critMult - 1))).toFixed(1);
+                    const range = calcDisplayDmgRange(R, wpn);
+                    dmgText = range.text;
+                    dpsText = calcDisplayDps(R, wpn).toFixed(1);
                   }
                   /* Equip slot list — order matches the user's wireframe.
                      v2.3.127 reorder: Row 1 reads Shield · Amulet · Weapon
