@@ -124,6 +124,11 @@ export const joinMethods = {
     // on v1 full payloads.
     session.protocolVersion = msg.protocolVersion === 2 ? 2 : 1;
     session.lastPlayerStateSent = {};
+    // v2.3.1176: mint this session's HTTP economy-endpoint token
+    // (delivered in state_sync below; validated by _httpAuthCheck --
+    // see httpauth.js).  After the eviction loop above so exactly one
+    // live token exists per player id.
+    this._httpAuthMint(session, msg);
     this.playerState[msg.id] = {
       x: 0, y: 0, d: 'down', z: 'town', vx: 0, vy: 0,
       dodging: false, blocking: false, dead: false, disconnected: false,
@@ -500,7 +505,14 @@ export const joinMethods = {
       // the build meter on this flag (an old worker clamps weapon
       // specs at 99 / defense+grid specs at 50, so spending past the
       // legacy caps against it would truncate on echo).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, ..._liveFlags },
+      // v2.3.1176: httpAuth -- the client attaches httpToken (below) to
+      // mutating economy POSTs (market place/cancel, arena join/leave)
+      // as the x-bt-auth header.  Old clients ignore both fields and
+      // ride the enforcement grace window (httpauth.js).
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, ..._liveFlags },
+      // v2.3.1176: this session's private economy-endpoint token.
+      // state_sync goes to the joining socket ONLY -- never broadcast.
+      httpToken: session.httpToken,
       players: this.getAllPlayerData(),
       playerCount: this.getPlayerCount(),
       monsters: zoneMonsters.map(m => ({

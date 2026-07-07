@@ -109,10 +109,25 @@ export const marketMethods = {
       }
       if (request.method === 'POST' && path.startsWith('/place')) {
         const body = await request.json();
+        // v2.3.1176: playerId is public (broadcast in player_join /
+        // track), so "is that player online" was never authentication
+        // -- a forged place could escrow a VICTIM's stash weapon out
+        // at 1g (live item theft).  The request must now carry the
+        // claimed player's own session token (httpauth.js; legacy
+        // clients ride the enforcement grace window there).
+        if (!this._httpAuthCheck(body && body.playerId, request)) {
+          return new Response(JSON.stringify({ ok: false, settled: true, error: 'Not authorized' }), { status: 403, headers: H });
+        }
         const result = await this._mktPlaceOrder(body);
         return new Response(JSON.stringify(result), { headers: H });
       }
       if (request.method === 'DELETE' && path.startsWith('/cancel')) {
+        // v2.3.1176: same token gate -- a forged cancel could delist a
+        // victim's orders (refund lands with the victim, but the
+        // delisting itself is griefing).
+        if (!this._httpAuthCheck(url.searchParams.get('playerId'), request)) {
+          return new Response(JSON.stringify({ ok: false, settled: true, error: 'Not authorized' }), { status: 403, headers: H });
+        }
         const result = await this._mktCancelOrder(url.searchParams.get('id'), url.searchParams.get('playerId'));
         return new Response(JSON.stringify(result), { headers: H });
       }

@@ -114,6 +114,9 @@ import { persistenceMethods } from './persistence.js';
 import { joinMethods } from './join.js';
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
 import { tickMethods } from './tick.js';
+// v2.3.1176: per-session tokens for the mutating HTTP economy
+// endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
+import { httpAuthMethods } from './httpauth.js';
 
 export default {
   async fetch(request, env) {
@@ -161,6 +164,14 @@ export default {
     }
 
     if (url.pathname.startsWith('/api/leaderboard')) {
+      // v2.3.1176: the public route is READ-ONLY.  POST /update trusted
+      // a client-supplied playerId + rpgData blob (a free leaderboard-
+      // row forge); no client has posted it since the GameRoom started
+      // reporting server-side (reportToLeaderboard on track/join, via
+      // the DO binding -- which bypasses this router and keeps working).
+      if (request.method !== 'GET') {
+        return new Response(JSON.stringify({ ok: false, error: 'Read-only' }), { status: 405, headers: corsHeaders });
+      }
       return env.LEADERBOARD.get(env.LEADERBOARD.idFromName('global')).fetch(request);
     }
 
@@ -3336,6 +3347,8 @@ Object.assign(GameRoom.prototype, gridMethods);
 Object.assign(GameRoom.prototype, movementMethods);
 // v2.3.1172 (P4 decomposition): persistence core -- see persistence.js.
 Object.assign(GameRoom.prototype, persistenceMethods);
+// v2.3.1176: HTTP economy-endpoint session tokens -- see httpauth.js.
+Object.assign(GameRoom.prototype, httpAuthMethods);
 // v2.3.1173 (P4 decomposition): join bootstrap -- see join.js.
 Object.assign(GameRoom.prototype, joinMethods);
 // v2.3.1174 (P4 decomposition): tick loop -- see tick.js.
