@@ -1007,7 +1007,7 @@ export var BroTown = function BroTown(_ref0) {
   var _useStateTrade2 = useState(null),
     trade2 = _useStateTrade2[0],
     setTrade2 = _useStateTrade2[1];
-  /* v2.3.1175: party roster snapshot (server truth from party_state)
+  /* v2.3.1185: party roster snapshot (server truth from party_state)
      or the incoming-invite stub ({invite:true, ...}) — see PartyHUD. */
   var _useStateParty = useState(null),
     party = _useStateParty[0],

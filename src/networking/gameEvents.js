@@ -2041,7 +2041,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'party_invited':
             {
-              /* v2.3.1175: someone invited us to a party.  Park the
+              /* v2.3.1185: someone invited us to a party.  Park the
                  invite stub; PartyHUD renders the accept/decline card
                  (accepting sends party_accept, validated against the
                  inviter's own recorded invite server-side). */
@@ -2057,7 +2057,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'party_state':
             {
-              /* v2.3.1175: the server's roster snapshot -- the party
+              /* v2.3.1185: the server's roster snapshot -- the party
                  HUD is a pure renderer of this (same posture as
                  trade2_state).  Re-echoed every ~2s while partied so
                  member HP/zone stay live cross-zone; terminal
@@ -2065,8 +2065,13 @@ export function processGameEvent(type, payload, S, deps) {
               if (!payload || !setParty) break;
               if (payload.state === 'open' && payload.members) {
                 setParty(payload);
+                /* v2.3.1185: mirror for the renderer's nameplate party
+                   marker (entityRenderer reads S._party per frame --
+                   grafted from the competing party build, PR #221). */
+                S._party = payload;
               } else {
                 setParty(null);
+                S._party = null;
                 var _ptyWhy = {
                   'left': 'You left the party', 'kicked': 'Kicked from the party',
                   'disbanded': 'Party disbanded', 'offline': 'Removed from party (offline)',
@@ -2080,7 +2085,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'party_error':
             {
-              /* v2.3.1175: private invite-flow notices (declines and
+              /* v2.3.1185: private invite-flow notices (declines and
                  validation misses).  Display only. */
               if (!payload) break;
               var _ptyErr = {
@@ -2089,6 +2094,7 @@ export function processGameEvent(type, payload, S, deps) {
                 'target-gone': 'Player unavailable',
                 'busy': 'You are already in a party',
                 'full': 'Party is full',
+                'expired': 'Party invite expired', /* v2.3.1185 */
               }[payload.reason] || 'Party action failed';
               S.dmgNumbers.push({
                 x: S.player.x, y: S.player.y - 40,

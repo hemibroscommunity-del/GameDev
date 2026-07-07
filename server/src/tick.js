@@ -94,7 +94,7 @@ export const tickMethods = {
       // v2.3.1132: expire idle two-sided trade sessions + invites.
       this._tickTrades2(Date.now());
 
-      // v2.3.1175: party housekeeping -- expire invites, sweep members
+      // v2.3.1185: party housekeeping -- expire invites, sweep members
       // past the offline grace, re-echo rosters at the vitals cadence
       // (cross-zone HP bars).  Cheap map walks; rooms rarely hold more
       // than a handful of parties.

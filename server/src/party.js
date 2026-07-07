@@ -1,4 +1,4 @@
-/* ═══ v2.3.1175: PARTY ROSTER (handoff backlog item D; spec in
+/* ═══ v2.3.1185: PARTY ROSTER (handoff backlog item D; spec in
  * docs/specs/party.md) ═══
  *
  * The co-op layer already works without a roster: kill credit is
@@ -130,9 +130,16 @@ export const partyMethods = {
     if (!this._partyInvites) return; // forged accept with no invite ever recorded
     const ts = this._partyInvites.get(inviter + '>' + accepterId);
     this._partyInvites.delete(inviter + '>' + accepterId);
-    // Forged / replayed / expired accepts are DROPPED (rule 15 posture:
-    // there is no relay half here, so silence is the whole answer).
-    if (!ts || Date.now() - ts > PARTY.INVITE_TTL) return;
+    // Forged / replayed accepts are DROPPED (rule 15 posture: there is
+    // no relay half here, so silence is the whole answer — and no
+    // oracle for forgers).  v2.3.1185: an EXPIRED invite is different:
+    // the accepter genuinely tapped Join on a card that aged out, so
+    // dead air reads as a broken button — answer privately (grafted
+    // from the competing party build in PR #221).
+    if (!ts) return;
+    if (Date.now() - ts > PARTY.INVITE_TTL) {
+      return this._partySend(accepterId, 'party_error', { reason: 'expired' });
+    }
     const ps = this.playerState[accepterId];
     const inviterPs = this.playerState[inviter];
     if (!ps) return;
@@ -156,10 +163,15 @@ export const partyMethods = {
         id: crypto.randomUUID(),
         leader: inviter,
         members: [inviter],
-        meta: { [inviter]: { name: this._partyNameOf(inviter), level: inviterPs.level || 1, maxHp: inviterPs.maxHp || 100 } },
+        // v2.3.1185: null-prototype — meta is keyed by client-supplied
+        // player ids, and on a plain {} an id like '__proto__' hits the
+        // inherited accessor instead of storing (the duel.away lesson,
+        // v2.3.1175).
+        meta: Object.create(null),
         ts: Date.now(),
         lastVitals: 0,
       };
+      p.meta[inviter] = { name: this._partyNameOf(inviter), level: inviterPs.level || 1, maxHp: inviterPs.maxHp || 100 };
       this._parties.set(p.id, p);
       this._partyByPlayer.set(inviter, p);
     }
@@ -175,7 +187,6 @@ export const partyMethods = {
     // Only a real pending invite produces a decline notice — otherwise
     // this would be a free "X declined" popup-spam surface.
     if (!this._partyInvites.delete(inviter + '>' + session.id)) return;
-    const ps = this.playerState[session.id];
     this._partySend(inviter, 'party_error', { reason: 'declined', name: this._partyNameOf(session.id) });
   },
 

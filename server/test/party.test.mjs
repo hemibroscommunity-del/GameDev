@@ -1,4 +1,4 @@
-/* Party roster test (v2.3.1175, handoff backlog item D).  Memory-only
+/* Party roster test (v2.3.1185, handoff backlog item D).  Memory-only
  * roster on the duel/trade2 handshake pattern: invite recorded
  * per-sender-session, accept validated against it, every change echoed
  * as a privileged party_state snapshot, tick re-echo for cross-zone
@@ -110,8 +110,13 @@ await cmd(wss.d, 'party_accept', { target: P('e') }); // no invite ever sent
 check('forged accept (no live invite) is dropped', room._parties.size === partiesBefore && !room._partyOf(P('d')));
 await cmd(wss.e, 'party_invite', { target: P('d') });
 room._partyInvites.set(P('e') + '>' + P('d'), Date.now() - PARTY.INVITE_TTL - 1000);
+wss.d.sent.length = 0;
 await cmd(wss.d, 'party_accept', { target: P('e') });
 check('expired invite is dropped', !room._partyOf(P('d')) && !room._partyOf(P('e')));
+// v2.3.1185: expired (unlike forged) answers privately -- the accepter
+// really tapped Join on an aged-out card; dead air reads as a broken
+// button.  Forged accepts stay silent (no oracle).
+check("expired invite answers 'expired' privately", lastErr(wss.d) && lastErr(wss.d).reason === 'expired', lastErr(wss.d));
 await cmd(wss.a, 'party_invite', { target: P('d') });
 await cmd(wss.d, 'party_accept', { target: P('a') }); // joins A's party (4/4 now)
 wss.d.sent.length = 0;

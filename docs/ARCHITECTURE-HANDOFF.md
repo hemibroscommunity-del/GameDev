@@ -239,7 +239,7 @@ forge). Successor follow-ups: red/white SKULL RENDERING still doesn't
 exist client-side (orphaned state anchors listed in the spec); guards
 fines evaporate — a bounty pool is the natural next step.
 
-### D. Parties — SHIPPED v2.3.1175
+### D. Parties — SHIPPED v2.3.1185
 Built as specced: `server/src/party.js` (roster + invite handshake on
 the duel/trade2 pattern, memory-only per rule 11), spec in
 `docs/specs/party.md`, HUD in `src/ui/panels/PartyHUD.jsx` (NOT the
@@ -248,9 +248,11 @@ The §7 share math is untouched, per this item's original danger note.
 Ghost-HUD contract: clients clear party state on every state_sync;
 the join path re-sends the roster AFTER state_sync (ordering pinned by
 a test). Successor follow-ups: same-zone member arrows / map markers,
-leader-initiated group dungeon entry, party chat, and the original
-"optional later" contribution-role weighting (re-run the §7 predicates
-if attempted).
+leader-initiated group dungeon entry, party chat (NOTE: a chat relay
+must be its own explicit switch case with sender validation — the
+default rebroadcast branch is deny-listed territory, rule 13), and the
+original "optional later" contribution-role weighting (re-run the §7
+predicates if attempted).
 
 ### E. Hardening v1 + quality grades — SHIPPED v2.3.1131
 Built per the adopted BALANCE-PLAN numbers: `server/src/hardening.js`,

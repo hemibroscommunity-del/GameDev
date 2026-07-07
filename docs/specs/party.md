@@ -1,6 +1,6 @@
 # Parties — server-authoritative roster + cross-zone vitals HUD
 
-Shipped v2.3.1175 (handoff backlog item D). Server: `server/src/party.js`
+Shipped v2.3.1185 (handoff backlog item D). Server: `server/src/party.js`
 (mixin, `partyMethods`). Client: `src/ui/panels/PartyHUD.jsx` (pure
 renderer), invite button in `InspectPlayerPanel.jsx`, dispatcher cases in
 `src/networking/gameEvents.js`. Tests: `server/test/party.test.mjs`.

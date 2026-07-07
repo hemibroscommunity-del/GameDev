@@ -389,7 +389,7 @@ export function InspectPlayerPanel(props) {
       BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
       setInspectPlayer(null);
     }
-  }, "\uD83D\uDC80 Threat")), /* v2.3.1175: party invite -- caps-gated (an old worker would
+  }, "\uD83D\uDC80 Threat")), /* v2.3.1185: party invite -- caps-gated (an old worker would
      rebroadcast party_invite as an unknown type instead of validating
      it).  Server answers with party_invited to the target and
      party_state echoes once they accept (see PartyHUD.jsx). */

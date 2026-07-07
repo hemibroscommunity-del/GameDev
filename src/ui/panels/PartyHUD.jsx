@@ -1,7 +1,7 @@
 import React from 'react';
 import { ZONES } from '@/data/index.js';
 
-/* === PartyHUD — the party roster overlay (v2.3.1175, handoff item D) ===
+/* === PartyHUD — the party roster overlay (v2.3.1185, handoff item D) ===
 
    Pure renderer of server truth: the `party` prop is either the last
    party_state snapshot ({id, leader, members:[...]}) or the
@@ -144,6 +144,6 @@ export function PartyHUD(props) {
       }
     })), (m.away || zoneName) && /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 7, color: 'rgba(255,255,255,.45)', marginTop: 1 }
-    }, m.away ? 'away…' : '📍 ' + zoneName));
+    }, m.away ? 'away — reconnecting…' : '📍 ' + zoneName));
   }));
 }
