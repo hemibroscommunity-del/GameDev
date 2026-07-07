@@ -403,10 +403,6 @@ const REGION_ROWS = {
   head: [0, Math.round(256 * BODY_NECK_FRAC)],
   torso: [Math.round(256 * BODY_NECK_FRAC), Math.round(256 * BODY_WAIST_FRAC)],
   legs: [Math.round(256 * BODY_WAIST_FRAC), 256],
-  /* v2.3.1123: fish head overlay reaches a touch LOWER than the normal head
-     band (down through the chin + a sliver of neck) so the fishing chest
-     plate's collar can't clip the jaw when the head is lifted above it. */
-  fishhead: [0, Math.round(256 * 0.35)],
 };
 const _regionTexCache = new WeakMap();
 function _bodyRegionTex(bodyTex, region) {
@@ -1211,23 +1207,58 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
   hd.tint = 0xffffff;
   hd.visible = true;
 }
-/* v2.3.1123: FISH-pose head overlay.  The fishing chest plate's collar/pauldrons
-   reach up near the head, and gear draws ABOVE the body, so an armoured angler's
-   head sat BEHIND the plate.  Reuse the _bodyHead region sprite (the same lift-
-   above-gear path pickup uses) to redraw the body's HEAD band on top of the gear.
-   The band comes from the RAW body frame (full head; it also carries the rod tip,
-   which belongs on top too).  Mirrors the head branch of _placeBodyRegions, so it
-   tracks the same DISPLAY_DS scaling.  Only called when a chest plate is worn. */
+/* v2.3.1123: FISH-pose "top" overlay = the head band + the whole fishing rod,
+   baked into a full-frame texture (transparent elsewhere) so BOTH lift above the
+   chest plate.  Gear draws above the body, so an armoured angler had the head hidden
+   behind the plate AND the rod chopped where it crosses the torso (only the head-
+   level rod tip showed).  The head band (top 35%) is kept as-is; below it, only the
+   rod's magenta pixels are kept -- the bare torso/arms stay erased so the plate shows
+   through.  Cached per body frame (uid). */
+const _fishTopCache = new Map();
+function _fishTopFrame(bodyTex) {
+  if (!bodyTex) return null;
+  let bres; try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { return null; }
+  if (!bres) return null;
+  const key = (bodyTex.uid != null ? bodyTex.uid : '') + '|fishtop';
+  const hit = _fishTopCache.get(key);
+  if (hit) { _fishTopCache.delete(key); _fishTopCache.set(key, hit); return hit; }
+  try {
+    const bf = bodyTex.frame;
+    const W = Math.max(1, Math.round(bf.width)), H = Math.max(1, Math.round(bf.height));
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, W, H);
+    const img = ctx.getImageData(0, 0, W, H); const d = img.data;
+    const headBot = Math.round(H * 0.35);   // keep the whole head band as-is
+    for (let y = headBot + 1; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const o = (y * W + x) * 4;
+        const r = d[o], g = d[o + 1], b = d[o + 2], a = d[o + 3];
+        /* below the head band, keep ONLY the rod (magenta: high R, low G, B>G) */
+        const isRod = a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
+        if (!isRod) d[o + 3] = 0;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    const tex = new Texture({ source: Texture.from(cv).source });
+    _fishTopCache.set(key, tex);
+    if (_fishTopCache.size > 64) { const oldest = _fishTopCache.keys().next().value; const ot = _fishTopCache.get(oldest); _fishTopCache.delete(oldest); try { ot.destroy(true); } catch (e) {} }
+    return tex;
+  } catch (e) { return null; }
+}
+/* Place the head+rod overlay on the (reused) _bodyHead sprite at the body's exact
+   transform (full-frame, anchor 0.5/0.5 -- same as _placePickupHead).  Lifted above
+   the gear by _orderTraitsAndWeapon.  Only called when a chest plate is worn. */
 function _placeFishHead(display, sb, bodyTex) {
   const hd = display._bodyHead;
   if (!hd || !sb || !bodyTex) return;
-  const t = _bodyRegionTex(bodyTex, 'fishhead');
+  const t = _fishTopFrame(bodyTex);
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
-  const [r0, r1] = REGION_ROWS.fishhead;
-  hd.scale.x = sb.scale.x; hd.scale.y = sb.scale.y;
-  hd.x = sb.x;
-  hd.y = sb.y + ((r0 + r1) / 2 - 128) * sb.scale.y / DISPLAY_DS;   // head band centre in the body's transform
+  hd.x = sb.x; hd.y = sb.y;
+  const _fw = (t.frame && t.frame.width) || 256;
+  const _fh = (t.frame && t.frame.height) || 256;
+  hd.scale.x = sb.scale.x * (256 / _fw) / DISPLAY_DS; hd.scale.y = sb.scale.y * (256 / _fh) / DISPLAY_DS;
   hd.tint = 0xffffff;
   hd.visible = true;
 }
