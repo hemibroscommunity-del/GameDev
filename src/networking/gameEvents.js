@@ -1242,10 +1242,18 @@ export function processGameEvent(type, payload, S, deps) {
           /* mkt_order removed — marketplace uses server API now */
           case 'arena_bet':
             {
-              /* Track remote bets for pot calculation */
-              if (payload.bettorId === S.myId) break;
-              if (!S._remoteBets) S._remoteBets = [];
-              S._remoteBets.push(payload);
+              /* v2.3.1176: merged duplicate case labels (handoff item L).
+                 This first slot used to park bets in S._remoteBets,
+                 which nothing reads; the real display handler further
+                 down the switch was unreachable (duplicate case).
+                 Remote bets now reach the arenaBets state the panel
+                 renders.  Sender id lives in playerId on two of the
+                 three PartyPanel bet senders and bettorId on the
+                 spectator-betting one -- self-guard on both. */
+              if ((payload.playerId || payload.bettorId) === S.myId) break;
+              setArenaBets(function (prev) {
+                return [].concat(_toConsumableArray(prev), [payload]);
+              });
               break;
             }
           case 'clan_invite':
@@ -1383,15 +1391,9 @@ export function processGameEvent(type, payload, S, deps) {
               }, 10000); /* clear after 10s */
               break;
             }
-          case 'arena_bet':
-            {
-              /* Receive spectator bet from another player */
-              if (payload.playerId === S.myId) break;
-              setArenaBets(function (prev) {
-                return [].concat(_toConsumableArray(prev), [payload]);
-              });
-              break;
-            }
+          /* v2.3.1176: duplicate 'arena_bet' case removed -- its body
+             (the spectator-bet display handler) moved up to the first,
+             reachable case label. */
           case 'stunned':
             {
               if (payload.target === S.myId) S._stunEnd = Date.now() + (payload.duration || 2000);
