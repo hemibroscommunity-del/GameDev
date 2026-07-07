@@ -250,6 +250,26 @@ export const AMULET_TIER_POWER = { simple: 1.0, ornate: 1.5, regal: 2.2, mythic:
  * intact through the sanitize pass. */
 export const AMULET_GEMS = new Set(['flame', 'frost', 'water', 'venom', 'storm', 'stone', 'wind', 'dark', 'light']);
 
+/* v2.3.1192 (item I follow-up): server amulet forge (amulet.js) -- the
+ * forge mint tables.  Until this slice amulets were a client-crafted
+ * blob and the residual forgery ceiling was a free legit-shaped mythic
+ * (+10.5% elemDmg); now the worker validates + consumes + mints.
+ *   AMULET_FORGE_TIERS <-> src/data/items.js AMULET_TIERS
+ *     (minLvl / label / bars / goldCost -- basePower stays in
+ *      AMULET_TIER_POWER above; mirror-audit pins both tables)
+ *   NUGGETS_PER_BAR    <-> src/data/items.js NUGGETS_PER_BAR
+ *   GOLD_NUGGET_MONSTER_DROP <-> src/data/items.js
+ *     GOLD_NUGGET_DROP.monsterKill (the .lifeSkill rate has NO live
+ *     client roll site -- dead data, deliberately not mirrored). */
+export const AMULET_FORGE_TIERS = {
+  simple: { minLvl: 1,  label: 'Simple', bars: 1,  goldCost: 50 },
+  ornate: { minLvl: 15, label: 'Ornate', bars: 3,  goldCost: 200 },
+  regal:  { minLvl: 35, label: 'Regal',  bars: 6,  goldCost: 500 },
+  mythic: { minLvl: 60, label: 'Mythic', bars: 10, goldCost: 1200 },
+};
+export const NUGGETS_PER_BAR = 5;
+export const GOLD_NUGGET_MONSTER_DROP = 0.0001;
+
 /* v2.3.1141: rarity tiers for server-minted weapon drops.  Mults only --
  * labels/colors are client presentation (RARITY_TIERS there carries
  * them).  These become the drop blob's tierMult, same slot the forge

@@ -279,6 +279,20 @@ export function EnchantPanel(props) {
         var sk = R.lifeSkills;
         if (!sk.gems) sk.gems = {};
         if ((sk.gems[polKey] || 0) < 1) return;
+        /* v2.3.1192: server-authoritative gem slot (amulet_forge_request
+           op 'gem', server/src/amulet.js) -- the worker consumes one
+           polished gem from ITS lifeSkills.gems copy and sets
+           ps.amulet.gem, which is what feeds the authoritative flame
+           elemDmg roll (_computeAttackDamage) and what survives
+           reconnect.  Local mutation below stays as prediction; old
+           workers without caps.amuletForge keep the legacy local-only
+           slot. */
+        {
+          var _Sag = stateRef.current;
+          if (_Sag._serverCaps && _Sag._serverCaps.amuletForge && _Sag.channel) {
+            try { _Sag.channel.send({ type: 'amulet_forge_request', payload: { op: 'gem', gem: elem } }); } catch (e) {}
+          }
+        }
         sk.gems[polKey]--;
         R.amulet.gem = elem;
         R.amulet.name = (((_AMULET_TIERS$R$amule = AMULET_TIERS[R.amulet.tier]) === null || _AMULET_TIERS$R$amule === void 0 ? void 0 : _AMULET_TIERS$R$amule.label) || 'Simple') + ' ' + elem.charAt(0).toUpperCase() + elem.slice(1) + ' Amulet';

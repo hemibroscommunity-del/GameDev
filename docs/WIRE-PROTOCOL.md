@@ -164,6 +164,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `build_point_earned` | T1 build-point tick for the server-side BP level gate (v2.3.154, `docs/specs/build-points-gate-server.md`) | ~3961 |
 | `set_active_slot` | Switch weapon slot (melee/ranged/staff) | ~3971 |
 | `forge_weapon` | Blacksmithing forge | ~3991 |
+| `amulet_forge_request` | v2.3.1192 server amulet forge — `{op:'smelt'\|'craft'\|'gem', ...}` under `caps.amuletForge`; echo is `player_state` only (see `docs/specs/amulet-forge.md`) | amulet.js |
 | `quest_accept` / `quest_turn_in` | Quest lifecycle | ~4000 / ~4009 |
 
 ## Peer-relayed broadcast events (client ↔ client)

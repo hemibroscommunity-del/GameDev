@@ -189,6 +189,18 @@ export const joinMethods = {
         // pre-slice forged amulet heals on this reconnect (gear.js).
         this.playerState[msg.id].amulet = this._sanitizeAmulet(stored.amulet);
         this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(stored.weaponStash);
+        // v2.3.1192 (amulet forge): gold nugget/bar ledger.  Stored
+        // wins; a record that predates the server ledger falls back to
+        // the join payload ONCE (clamped -- the v2.3.1021 weaponSkills
+        // capture posture) so legit legacy hoards migrate instead of
+        // zeroing.  After that first save the typeof check always hits
+        // the stored branch and the claim is ignored forever.
+        this.playerState[msg.id].goldNuggets = (typeof stored.goldNuggets === 'number')
+          ? Math.max(0, Math.floor(stored.goldNuggets))
+          : this._amuletClampNuggets(msg.data && msg.data.rpgGoldNuggets);
+        this.playerState[msg.id].goldBars = (typeof stored.goldBars === 'number')
+          ? Math.max(0, Math.floor(stored.goldBars))
+          : this._amuletClampBars(msg.data && msg.data.rpgGoldBars);
         this.playerState[msg.id]._quests = (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {};
         this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
         this.playerState[msg.id]._questKills = (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {};
@@ -303,6 +315,11 @@ export const joinMethods = {
         // v2.3.1180: whitelist the client-supplied amulet (gem/tier feed
         // the authoritative damage roll -- gear.js _sanitizeAmulet).
         this.playerState[msg.id].amulet = this._sanitizeAmulet(msg.data && msg.data.rpgAmulet);
+        // v2.3.1192 (amulet forge): first-connect capture of the
+        // previously client-local nugget/bar ledger, clamped (amulet.js
+        // bootstrap caps -- same rationale as BOOTSTRAP_COINS_CAP).
+        this.playerState[msg.id].goldNuggets = this._amuletClampNuggets(msg.data && msg.data.rpgGoldNuggets);
+        this.playerState[msg.id].goldBars = this._amuletClampBars(msg.data && msg.data.rpgGoldBars);
         this.playerState[msg.id].weaponStash = this._sanitizeWeaponList(msg.data && msg.data.rpgWeaponStash, true);
         // Quest state bootstrap (slice 17).  Trust shape but not
         // size -- a cheater could pass a 10000-entry _questKills
@@ -517,7 +534,11 @@ export const joinMethods = {
       // v2.3.1185: party -- the client shows its party-invite surface
       // only when the worker owns the roster (old workers would
       // rebroadcast party_* commands as unknown types).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, ..._liveFlags },
+      // v2.3.1192: amuletForge -- the client sends amulet_forge_request
+      // (smelt/craft/gem) and suppresses its local gold-nugget kill
+      // roll only when the worker owns the amulet mint + nugget ledger
+      // (amulet.js); old workers keep the legacy client-local flows.
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

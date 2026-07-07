@@ -29,7 +29,7 @@ import {
   DAMAGE_CHANNEL_PCT, WEAPON_CHANNELS,
 } from '../../src/data/gameSystems.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
-import { AMULET_TIERS } from '../../src/data/items.js';
+import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP } from '../../src/data/items.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -153,6 +153,18 @@ tierMirror('WOODWORKING', SRV.WOODWORKING_TIERS, WOODWORKING_TIERS);
   const bad = Object.entries(SRV.RARITY_TIERS).filter(([k, v]) => !RARITY_TIERS[k] || RARITY_TIERS[k].mult !== v.mult).map(([k]) => k);
   check('RARITY_TIERS mults mirror (labels/colors are client-only presentation)', bad.length === 0, bad);
 }
+
+// ── 8c. v2.3.1192 server amulet forge: the mint tables (amulet.js) vs
+// the client's AMULET_TIERS / NUGGETS_PER_BAR / GOLD_NUGGET_DROP.  A
+// drifted cost table would let the forge charge a different price than
+// the client previews (or deny crafts the client thinks it can afford). ──
+tierMirror('AMULET_FORGE', SRV.AMULET_FORGE_TIERS, AMULET_TIERS);
+check('NUGGETS_PER_BAR mirror (the smelt op consumes the server constant)',
+  SRV.NUGGETS_PER_BAR === NUGGETS_PER_BAR,
+  { server: SRV.NUGGETS_PER_BAR, client: NUGGETS_PER_BAR });
+check('GOLD_NUGGET_MONSTER_DROP <-> GOLD_NUGGET_DROP.monsterKill (server rolls the kill drop now)',
+  SRV.GOLD_NUGGET_MONSTER_DROP === GOLD_NUGGET_DROP.monsterKill,
+  { server: SRV.GOLD_NUGGET_MONSTER_DROP, client: GOLD_NUGGET_DROP.monsterKill });
 
 // ── 8b. v2.3.1153 damage-channel reprice: the server coefficient, the
 // client coefficient, and the allocation-panel perPt (percent per point)

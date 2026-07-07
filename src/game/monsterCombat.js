@@ -2123,7 +2123,15 @@ export function updateMonsterCombat(S, deps) {
                   }
 
                   /* ═══ GOLD NUGGET DROP — rare from monster kills ═══ */
-                  if (Math.random() < GOLD_NUGGET_DROP.monsterKill) {
+                  /* v2.3.1192: server-rolled under caps.amuletForge (the
+                     worker owns the nugget ledger now -- server/src/
+                     amulet.js rolls in _resolveMonsterKill and the
+                     player_state goldNuggets echo fires the popup in
+                     wsClient.js).  The local roll stays as the
+                     legacy-worker fallback only, else kills would
+                     double-award (same shape as the weaponDrops gate
+                     above). */
+                  if (!(S._serverCaps && S._serverCaps.amuletForge) && Math.random() < GOLD_NUGGET_DROP.monsterKill) {
                     _R6.goldNuggets = (_R6.goldNuggets || 0) + 1;
                     pushDmgPopup(S, m.x, m.y - 75, 'Gold Nugget!', '#f5c542');
                     BT_AUDIO.beep(1000, 0.08, 0.1, 'sine');

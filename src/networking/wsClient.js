@@ -231,6 +231,12 @@ export function setupWebSocket(ctx) {
             rpgArmor: (S.rpg && S.rpg.armor) || null,
             rpgShield: (S.rpg && S.rpg.shield) || null,
             rpgAmulet: (S.rpg && S.rpg.amulet) || null,
+            /* v2.3.1192 (amulet forge): nugget/bar ledger seed.  The
+               worker owns these now (server/src/amulet.js); it captures
+               this claim ONCE (clamped) for records that predate the
+               server ledger, then the stored copy wins forever. */
+            rpgGoldNuggets: (S.rpg && typeof S.rpg.goldNuggets === 'number') ? S.rpg.goldNuggets : 0,
+            rpgGoldBars: (S.rpg && typeof S.rpg.goldBars === 'number') ? S.rpg.goldBars : 0,
             rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash : [],
             /* Quest state bootstrap (slice 17). */
             rpgQuests: (S.rpg && S.rpg._quests) || {},
@@ -808,6 +814,25 @@ export function setupWebSocket(ctx) {
               if (!msg.payload || !S.rpg) break;
               if (typeof msg.payload.coins === 'number') {
                 S.rpg.coins = msg.payload.coins;
+              }
+              /* v2.3.1192 (amulet forge): nugget/bar ledger -- the
+                 worker owns these now (server/src/amulet.js validates
+                 + consumes smelt/craft server-side, and rolls the
+                 monster-kill nugget drop).  Adopt present-gated like
+                 the other server-owned scalars; an increase in
+                 goldNuggets is the server-rolled drop landing, so fire
+                 the legacy "Gold Nugget!" popup here (the local roll in
+                 monsterCombat.js is gated off under caps.amuletForge
+                 and no private credit event exists for this). */
+              if (typeof msg.payload.goldNuggets === 'number') {
+                if (S.player && msg.payload.goldNuggets > (S.rpg.goldNuggets || 0)) {
+                  pushDmgPopup(S, S.player.x, S.player.y - 40, 'Gold Nugget!', '#f5c542');
+                  try { BT_AUDIO.beep(1000, 0.08, 0.1, 'sine'); } catch (e) {}
+                }
+                S.rpg.goldNuggets = msg.payload.goldNuggets;
+              }
+              if (typeof msg.payload.goldBars === 'number') {
+                S.rpg.goldBars = msg.payload.goldBars;
               }
               if (msg.payload.inventory && typeof msg.payload.inventory === 'object') {
                 S.rpg.inventory = _objectSpread({}, msg.payload.inventory);

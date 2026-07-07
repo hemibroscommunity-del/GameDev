@@ -336,11 +336,18 @@ Built: CC gates the real monster AI (freeze/root stop movement AND
 attacks, slow ×0.4 — `elementMoveMult`), resonance-streak mana restore
 settles server-side off the collision `resonating` flag, amulet
 elemDmg + hexer curse are in `_computeAttackDamage`. Spec:
-`docs/specs/elemental-completion.md`. Still open for successors:
-amulets are a client-crafted blob (forgery ceiling = legit mythic
-+10.5%; a server amulet-forge handler is the real fix), peer-visible
-status FX are cosmetic and unported, shock/fracture/soak remain
-mechanically inert.
+`docs/specs/elemental-completion.md`. Follow-ups: ~~amulets are a
+client-crafted blob (forgery ceiling = legit mythic +10.5%; a server
+amulet-forge handler is the real fix)~~ — SHIPPED v2.3.1192
+(`server/src/amulet.js` + the server-owned goldNuggets/goldBars
+ledger and server-rolled kill nuggets, `caps.amuletForge`; spec
+`docs/specs/amulet-forge.md`). Residuals documented there: the
+polished-gem economy (drops/polishing) is still client-local inside
+the opaque lifeSkills.gems map — migrating gem income server-side is
+the natural next slice — and the first-connect amulet bootstrap stays
+as the legacy migration path (fresh-identity one-time ceiling).
+Still open: peer-visible status FX are cosmetic and unported,
+shock/fracture/soak remain mechanically inert.
 
 ### J. Jackpot draw — SHIPPED v2.3.1149
 Built on the new time-cadence framework (`server/src/cadence.js`, spec
