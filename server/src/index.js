@@ -118,6 +118,9 @@ import { httpAuthMethods } from './httpauth.js';
 import { partyMethods } from './party.js';
 // v2.3.1191 (P4 decomposition): the combat/damage core -- see combat.js.
 import { combatMethods } from './combat.js';
+// v2.3.1192: server amulet forge (handoff item I follow-up) -- smelt/
+// craft/gem ops + the server-owned nugget/bar ledger -- see amulet.js.
+import { amuletMethods } from './amulet.js';
 
 export default {
   async fetch(request, env) {
@@ -2431,6 +2434,18 @@ export class GameRoom {
         }
         break;
 
+      case 'amulet_forge_request':
+        // v2.3.1192: server-authoritative amulet forge -- smelt
+        // (nuggets->bar), craft (bars+gold->amulet mint), gem
+        // (polished gem->amulet.gem).  Validates + consumes from
+        // SERVER state, echoes player_state; see amulet.js.  The
+        // explicit case also keeps the message out of the default
+        // rebroadcast branch.
+        if (session.id) {
+          this._handleAmuletForge(session, msg.payload || msg);
+        }
+        break;
+
       case 'quest_accept':
         // Player accepted a quest from the NPC dialog.  Server
         // validates the questId + current state, transitions to
@@ -2623,3 +2638,5 @@ Object.assign(GameRoom.prototype, tickMethods);
 Object.assign(GameRoom.prototype, partyMethods);
 // v2.3.1191 (P4 decomposition): combat/damage core -- see combat.js.
 Object.assign(GameRoom.prototype, combatMethods);
+// v2.3.1192: server amulet forge (handoff item I follow-up) -- see amulet.js.
+Object.assign(GameRoom.prototype, amuletMethods);

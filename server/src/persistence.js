@@ -72,6 +72,13 @@ export const persistenceMethods = {
         coins: ps.coins || 0,
         inventory: ps.inventory || {},
         lifeSkills: ps.lifeSkills || {},
+        // v2.3.1192 (amulet forge): the gold nugget/bar ledger -- the
+        // forge ingredients, server-owned now (amulet.js).  Client-local
+        // before this slice; join.js one-time-captures legacy counts.
+        // Absent field on an old record deliberately reads as "not
+        // captured yet" (typeof check in join.js), so no migration.
+        goldNuggets: Math.max(0, Math.floor(ps.goldNuggets || 0)),
+        goldBars: Math.max(0, Math.floor(ps.goldBars || 0)),
         level: ps.level || 1,
         xp: ps.xp || 0,
         unspentT2: ps.unspentT2 || 0,
@@ -175,6 +182,13 @@ export const persistenceMethods = {
           coins: ps.coins || 0,
           inventory: ps.inventory || {},
           lifeSkills: ps.lifeSkills || {},
+          // v2.3.1192 (amulet forge): nugget/bar ledger echo.  Old
+          // clients ignore the unknown fields (deploy-order safe); new
+          // clients adopt them present-gated in wsClient.js and use the
+          // goldNuggets increase to fire the nugget-drop popup the
+          // server no longer needs a private event for.
+          goldNuggets: Math.max(0, Math.floor(ps.goldNuggets || 0)),
+          goldBars: Math.max(0, Math.floor(ps.goldBars || 0)),
           level: ps.level || 1,
           xp: ps.xp || 0,
           unspentT2: ps.unspentT2 || 0,

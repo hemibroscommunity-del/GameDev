@@ -633,6 +633,13 @@ export const combatMethods = {
           if (typeof recipPs.maxStamina === 'number') recipPs.stamina = recipPs.maxStamina;
           if (typeof recipPs.maxMana === 'number') recipPs.mana = recipPs.maxMana;
         }
+        // v2.3.1192 (amulet forge): gold-nugget drop roll, server-rolled
+        // now that nuggets are the server-owned forge ingredient
+        // (amulet.js).  Killer-only, mirroring the client's legacy roll
+        // site (monsterCombat.js "GOLD NUGGET DROP", now gated off under
+        // caps.amuletForge).  Rides this recipient's _saveRpg +
+        // player_state flush below.
+        if (rid === killerId) this._amuletNuggetOnKill(recipPs);
         this._saveRpg(rid, recipPs);
         const recipWs = this._wsBySessionId(rid);
         if (recipWs) {

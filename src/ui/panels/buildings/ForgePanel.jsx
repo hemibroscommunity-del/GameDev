@@ -428,6 +428,18 @@ export function ForgePanel(props) {
     onClick: function onClick() {
       var R = stateRef.current.rpg;
       if ((R.goldNuggets || 0) < NUGGETS_PER_BAR) return;
+      /* v2.3.1192: server-authoritative amulet forge -- the worker owns
+         the nugget/bar ledger under caps.amuletForge (server/src/
+         amulet.js); this send is the real mutation and the local
+         -=/+= below stays as prediction (the player_state echo
+         overwrites, rule-20 style).  Old workers without the cap keep
+         the legacy local-only path. */
+      {
+        var _Sas = stateRef.current;
+        if (_Sas._serverCaps && _Sas._serverCaps.amuletForge && _Sas.channel) {
+          try { _Sas.channel.send({ type: 'amulet_forge_request', payload: { op: 'smelt' } }); } catch (e) {}
+        }
+      }
       R.goldNuggets -= NUGGETS_PER_BAR;
       R.goldBars = (R.goldBars || 0) + 1;
       pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Smelted Gold Bar!', '#f5c542');
@@ -505,6 +517,20 @@ export function ForgePanel(props) {
       onClick: function onClick() {
         if (!canCraft || !hasBars || !hasGold) return;
         var R = stateRef.current.rpg;
+        /* v2.3.1192: server-authoritative amulet craft (mirrors the
+           forge_weapon shape above) -- the worker re-validates
+           blacksmithing level + bars + gold from ITS OWN state,
+           consumes, and mints ps.amulet (server/src/amulet.js).  The
+           local mutation below stays as snappy prediction; the
+           player_state echo carries the authoritative amulet + coins
+           + goldBars.  Old workers without caps.amuletForge keep the
+           legacy local-only craft. */
+        {
+          var _Sac = stateRef.current;
+          if (_Sac._serverCaps && _Sac._serverCaps.amuletForge && _Sac.channel) {
+            try { _Sac.channel.send({ type: 'amulet_forge_request', payload: { op: 'craft', tierKey: key } }); } catch (e) {}
+          }
+        }
         R.goldBars -= at.bars;
         R.coins -= at.goldCost;
         R.amulet = {
