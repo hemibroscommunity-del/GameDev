@@ -18,7 +18,7 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
-import { handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
+import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent } from '@/game/chat.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
@@ -136,6 +136,13 @@ export function processGameEvent(type, payload, S, deps) {
             {
               /* v2.3.767: body moved to src/game/chat.js (Phase 2). */
               handleEmoteEvent(payload, S);
+              break;
+            }
+          case 'party_chat':
+            {
+              /* v2.3.1212: server-validated party-only chat (item D
+                 follow-up). Body in chat.js beside the room-chat path. */
+              handlePartyChatEvent(payload, S, { setChatLog: setChatLog, setUnreadChats: setUnreadChats });
               break;
             }
           case 'gamble_result':

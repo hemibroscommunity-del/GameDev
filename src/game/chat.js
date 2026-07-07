@@ -19,6 +19,44 @@ import { _toConsumableArray } from '@/lib/babelHelpers.js';
    deps = { setChatLog } */
 export function sendChatMessage(S, text, deps) {
   var setChatLog = deps.setChatLog;
+  /* v2.3.1212: party chat -- "/p <msg>" routes the line to party
+     members only (server-validated relay, party.js), reusing this chat
+     log tagged with a shield + party color.  If you're not in a party,
+     it's a local-only hint (nothing sent). */
+  var _pm = /^\/p\s+([\s\S]+)/i.exec(text);
+  if (_pm) {
+    var _ptext = _pm[1].trim();
+    if (!_ptext) return;
+    var _sysHint = function (msg) {
+      S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+        id: '_sys', name: '🛡 Party', text: msg, color: '#8a8f98', ts: Date.now(), party: true
+      }]);
+      setChatLog(_toConsumableArray(S.chatLog));
+    };
+    /* Deploy-order gate (rule 19 / TRAPS #9): send party_chat ONLY to a
+       worker that owns the validated case.  An older worker (parties but
+       no party_chat handler) would fall through to the room-wide
+       rebroadcast and LEAK the line to everyone -- so if the cap is
+       absent, keep the message local and say so, never send it. */
+    if (!(S._serverCaps && S._serverCaps.partyChat)) {
+      _sysHint('Party chat needs a server update — not sent.');
+      return;
+    }
+    var _inParty = !!(S._party && Array.isArray(S._party.members) && S._party.members.length > 0);
+    if (!_inParty) {
+      _sysHint("You're not in a party.");
+      return;
+    }
+    if (S.channel) S.channel.send({ type: 'broadcast', event: 'party_chat', payload: { text: _ptext } });
+    BT_AUDIO.chatSend();
+    if (S.stats) S.stats.msgsSent++;
+    S.chatBubbles[S.myId] = { text: _ptext, ts: Date.now() };
+    S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+      id: S.myId, name: '🛡 ' + S.myName, text: _ptext, color: '#3dd497', ts: Date.now(), party: true
+    }]);
+    setChatLog(_toConsumableArray(S.chatLog));
+    return;
+  }
   if (S.channel) S.channel.send({
     type: 'broadcast',
     event: 'chat',
@@ -78,6 +116,40 @@ export function handleChatEvent(payload, S, deps) {
   if (!isMuted) setUnreadChats(function (prev) {
     return prev + 1;
   });
+}
+
+/* v2.3.1212: incoming party chat ('party_chat', server-relayed to party
+   members only; the sender is stamped server-side so it can't be forged).
+   Renders in the shared chat log tagged with a shield + party color,
+   honoring the same block/mute lists as room chat.  Own messages were
+   already echoed optimistically by sendChatMessage, so drop from===myId.
+   deps = { setChatLog, setUnreadChats } */
+export function handlePartyChatEvent(payload, S, deps) {
+  var setChatLog = deps.setChatLog,
+    setUnreadChats = deps.setUnreadChats;
+  if (!payload || !payload.from || payload.from === S.myId) return;
+  try {
+    var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
+    if (bl.includes(payload.from)) return;
+  } catch (e) {}
+  var isMuted = false;
+  try {
+    var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
+    isMuted = ml.includes(payload.from);
+  } catch (e) {}
+  if (!isMuted) S.chatBubbles[payload.from] = { text: payload.text, ts: Date.now() };
+  BT_AUDIO.chatReceive();
+  S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+    id: payload.from,
+    name: '🛡 ' + (payload.fromName || 'Bro'),
+    text: isMuted ? '[muted]' : payload.text,
+    color: '#3dd497',
+    ts: Date.now(),
+    party: true,
+    muted: isMuted
+  }]);
+  setChatLog(_toConsumableArray(S.chatLog));
+  if (!isMuted && setUnreadChats) setUnreadChats(function (prev) { return prev + 1; });
 }
 
 /* Incoming peer emote ('emote' broadcast event): overhead emoji + two-tone

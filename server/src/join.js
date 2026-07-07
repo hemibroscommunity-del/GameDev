@@ -594,7 +594,7 @@ export const joinMethods = {
       // the echo (the caps.gems lesson, TRAPS #9).  Absent, the legacy
       // client-local Extract path stays (broken settlement, no
       // regression -- echo-stomped as before).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, ..._liveFlags },
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

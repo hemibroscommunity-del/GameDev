@@ -46,7 +46,8 @@ export const PARTY = {
   MAX_SIZE: 4,             // matches dungeon.js PARTY_HP_SCALE's 4-slot table
   INVITE_TTL: 60000,       // 1 min to accept an invite
   VITALS_MS: 2000,         // roster re-echo cadence (live HP/zone)
-  OFFLINE_GRACE_MS: 120000 // 'away' window before a dropped member is removed
+  OFFLINE_GRACE_MS: 120000,// 'away' window before a dropped member is removed
+  CHAT_MAX: 200            // v2.3.1212: party-chat line length clamp
 };
 
 export const partyMethods = {
@@ -95,6 +96,42 @@ export const partyMethods = {
   _partyBroadcast(p, extra) {
     const wire = Object.assign(this._partyWire(p), extra || {});
     for (const pid of p.members) this._partySend(pid, 'party_state', wire);
+  },
+
+  /* v2.3.1212 (item D follow-up): party chat -- a party-scoped chat
+   * relay.  Per the handoff note it is its OWN validated case (rule 13),
+   * NOT the default room-wide rebroadcast: the sender must be in a party
+   * and the line is delivered ONLY to that party's members, stamped with
+   * the SERVER's own identity for the sender (from = session.id, name
+   * from server state) so the origin can't be forged.  Text is length-
+   * clamped and control-stripped; the client renders it as plain text
+   * (no markup), so there is no injection surface.  party_chat is
+   * PRIVILEGED (index.js) -- a client can't inject the server-shaped
+   * event.  No storage (chat is ephemeral, rule 11).  Deploy-order: the
+   * client gates the /p send on its OWN narrow caps.partyChat (rule 19 /
+   * TRAPS #9), NOT caps.party -- a worker with parties (v2.3.1185) but
+   * no party_chat case (<=v2.3.1211) would fall through to the room-wide
+   * rebroadcast and LEAK the line, so an un-upgraded worker must never
+   * receive a party_chat send. */
+  _handlePartyChat(session, payload) {
+    if (!session || !session.id) return;
+    const p = this._partyOf(session.id);
+    if (!p) return; // not in a party -> deny by default (nothing to relay)
+    let text = payload && payload.text;
+    if (typeof text !== 'string') return;
+    // Strip control chars, clamp length, trim.  The order matters: clamp
+    // the RAW length first so a padded string can't smuggle a long line.
+    text = text.slice(0, PARTY.CHAT_MAX).replace(/[\x00-\x1f\x7f]/g, " ").trim();
+    if (!text) return;
+    const wire = {
+      from: session.id, // server-known identity -- unforgeable sender
+      fromName: this._partyNameOf(session.id),
+      text,
+      ts: Date.now(),
+    };
+    // Deliver to every online member (the sender's own client already
+    // echoed optimistically and drops from === myId, mirroring room chat).
+    for (const pid of p.members) this._partySend(pid, 'party_chat', wire);
   },
 
   _handlePartyInvite(session, payload) {

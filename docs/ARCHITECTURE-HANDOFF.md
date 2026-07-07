@@ -282,13 +282,15 @@ deletes bounties gone stale past `THREAT.BOUNTY_STALE_MS`. No caps flag
 (server-only, the threat-machine posture).
 
 ### D. Party follow-ups
-party.md "Successor follow-ups": same-zone member arrows / map
-markers (the vitals echo already carries `zone`; x/y could ride it);
-leader-initiated group dungeon entry; party chat. Chat MUST be its
-own validated relay case with sender validation (rule 13) — the
-default rebroadcast branch is deny-listed territory; this note lives
-HERE, not in party.md. Danger: do not touch the §7 share math
-(TRAPS #3; party.md's danger note stands).
+**Party chat SHIPPED v2.3.1212** (`_handlePartyChat`, party.js;
+party.md "Party chat") — its own validated `party_chat` case (rule 13,
+NOT the room rebroadcast), server-stamped unforgeable sender, delivered
+to party members only, `/p <msg>` client route. Remaining follow-ups:
+same-zone member arrows / map markers (the vitals echo already carries
+`zone`; x/y could ride it — the client already reads `S._party` per
+frame in the renderer); leader-initiated group dungeon entry (a
+`dungeon_start` that teleports members in together). Danger: do not
+touch the §7 share math (TRAPS #3; party.md's danger note stands).
 
 ### E. Trade2 weapon lane
 Weapons still trade via marketplace escrow only (trading.md
