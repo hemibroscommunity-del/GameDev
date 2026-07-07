@@ -64,6 +64,7 @@ export function setupWebSocket(ctx) {
     setThreatIncoming = ctx.setThreatIncoming,
     setIncomingTrade = ctx.setIncomingTrade,
     setTrade2 = ctx.setTrade2,
+    setParty = ctx.setParty,
     setArenaTournament = ctx.setArenaTournament,
     setArenaBets = ctx.setArenaBets,
     pixiRef = ctx.pixiRef;
@@ -602,6 +603,12 @@ export function setupWebSocket(ctx) {
                  those call sites; absent against old workers, in which
                  case no header is attached. */
               S._httpToken = (typeof msg.httpToken === 'string') ? msg.httpToken : null;
+              /* v2.3.1185: rosters are worker-memory only, so a deploy
+                 (or room hop) may have wiped ours -- clear the party
+                 HUD on every fresh sync.  The join path re-sends
+                 party_state right after state_sync when the roster
+                 survived, so a real party pops straight back. */
+              try { if (setParty) setParty(null); S._party = null; } catch (e) {}
               /* v2.3.1154: HP/Endurance grid deploy-order gate.  The
                  pool multipliers only apply while THIS worker claims
                  caps.hpEndGrids — otherwise its player_state echo would
@@ -1533,6 +1540,7 @@ export function setupWebSocket(ctx) {
         setLevelUpMsg: setLevelUpMsg,
         setIncomingTrade: setIncomingTrade,
         setTrade2: setTrade2,
+        setParty: setParty,
         setArenaTournament: setArenaTournament,
         setArenaBets: setArenaBets,
         pixiRef: pixiRef,
@@ -1736,7 +1744,10 @@ export function setupWebSocket(ctx) {
     /* v2.3.1132: two-sided trade commands -- the window is a
        server-truth renderer, so a 33ms batch delay would make every
        stage/confirm click feel laggy. */
-    'trade2_open', 'trade2_set', 'trade2_confirm', 'trade2_cancel']);
+    'trade2_open', 'trade2_set', 'trade2_confirm', 'trade2_cancel',
+    /* v2.3.1185: party commands -- same server-truth-renderer posture
+       as trade2; invite/accept clicks should not sit in a batch. */
+    'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick']);
     var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
     var _inputBuffer = [];
     var _pendingMove = null;

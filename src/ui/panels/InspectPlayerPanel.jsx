@@ -389,7 +389,42 @@ export function InspectPlayerPanel(props) {
       BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
       setInspectPlayer(null);
     }
-  }, "\uD83D\uDC80 Threat")), clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && /*#__PURE__*/React.createElement("button", {
+  }, "\uD83D\uDC80 Threat")), /* v2.3.1185: party invite -- caps-gated (an old worker would
+     rebroadcast party_invite as an unknown type instead of validating
+     it).  Server answers with party_invited to the target and
+     party_state echoes once they accept (see PartyHUD.jsx). */
+  stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.party && /*#__PURE__*/React.createElement("button", {
+    style: {
+      width: '100%',
+      marginTop: 6,
+      padding: '6px',
+      borderRadius: 6,
+      border: '1px solid rgba(251,191,36,.3)',
+      background: 'rgba(251,191,36,.1)',
+      color: '#fbbf24',
+      fontSize: 9,
+      fontWeight: 700,
+      cursor: 'pointer'
+    },
+    onClick: function onClick() {
+      var S = stateRef.current;
+      if (S.channel) S.channel.send({
+        type: 'broadcast',
+        event: 'party_invite',
+        payload: {
+          target: inspectPlayer.id
+        }
+      });
+      S.dmgNumbers.push({
+        x: S.player.x,
+        y: S.player.y - 30,
+        text: 'Party invite sent',
+        color: '#fbbf24',
+        ts: Date.now()
+      });
+      setInspectPlayer(null);
+    }
+  }, "\uD83C\uDF9F\uFE0F Invite to Party"), clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && /*#__PURE__*/React.createElement("button", {
     style: {
       width: '100%',
       marginTop: 6,
