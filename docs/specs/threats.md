@@ -1,4 +1,4 @@
-# Threat Machine (red-skull PvP) — v2.3.1129
+# Threat Machine (red-skull PvP) — v2.3.1129 (skull rendering v2.3.1193)
 
 GDD §19 posture: a player THREATENS another in a safe zone; the target
 gets a countdown and chooses **Ignore** (both may fight) or **Call
@@ -81,17 +81,52 @@ documents.
   / `gear_locked` handlers (popups only — coins move via the echo).
 - Panels unchanged: their payloads were always correct.
 
+## Skull rendering — SHIPPED v2.3.1193
+
+Pure client display fed by the relayed handshake; no wire or server
+changes (old workers' blind relays render identically, minus the
+authoritative countdown). What renders when:
+
+- **Red 💀** over the threatener, on EVERY client in the room (the
+  relay is room-wide, matching the panel copy "red 💀 above their
+  head"), for the length of the server-stamped countdown.
+- **White 💀** over the threatener for the 10-min fight window after
+  an **ignore** or an unanswered **expiry** (expiry == ignore is the
+  server's own `_tickThreats` semantics).
+- **Call Guards** clears the skull immediately (no consent granted).
+- The **local player** gets the same skull over their own head while
+  their outgoing threat runs (red) / during the fight window (white) —
+  the "am I flagged?" indicator, drawn even though the local nameplate
+  is hidden.
+
+Implementation:
+
+- **State** (`gameEvents.js`): `S._threatMarks[pid] = {type, until}`,
+  written by the `pvp_threat` / `threat_response` / `threat_expired`
+  handlers for every receiver. The formerly orphaned
+  `S._pvpSkullType` / `S._pvpSkullUntil` anchors are now READ (local
+  player's own skull): InspectPlayerPanel's optimistic base-countdown
+  write is replaced by the authoritative relay echo; `threat_penalty`
+  clears them; ignore/expiry whitens them. `S.rpg._threatState`
+  (`{target, ts, type, expires}`) mirrors the same truth as a record
+  of MY outgoing threat.
+- **Render** (`entityRenderer.js`): one 💀 `Text` per player display
+  (created once with the display, tinted `0xff5e6c` red / white),
+  driven by a `_lastSkull` change-cache above the nameplate — the
+  v2.3.1185 party-marker budget: no per-frame allocations or display
+  objects. `threatSkullPhase()` self-whitens a lapsed red mark for
+  the consent window, so bystanders — who never receive the private
+  `threat_expired` — still see the fight-window skull.
+- Marks are in-memory and time-bounded (≤10-min window) — worker
+  deploys/reconnects just let them age out, matching the server's
+  in-memory pending-threat table.
+
 ## Attach points for successors
 
-- **Skull rendering does not exist.** `S._pvpSkullType` /
-  `S._pvpSkullUntil` are written (InspectPlayerPanel.jsx:367-368) and
-  read nowhere; `S.rpg._threatState` (BroTown.jsx:2058-2059) is an
-  orphaned stub. Red skull over an active threatener / white skull
-  over an ignored one is pure client rendering fed by the relayed
-  messages — no server work needed.
 - **Bounty board**: guards fines currently evaporate (sink). A bounty
   pool per griefer (paid to whoever kills them) would reuse
   `_creditPlayer` + an oplog-stamped claim.
-- The countdown/cooldown constants mirror
-  `PVP_THREAT_BASE_COUNTDOWN` / `PVP_THREAT_COOLDOWN`
-  (gameSystems.js:6849-6854) — keep in sync.
+- The countdown/cooldown/consent constants mirror
+  `PVP_THREAT_BASE_COUNTDOWN` / `PVP_THREAT_COOLDOWN` /
+  `PVP_THREAT_CONSENT_MS` (gameSystems.js, §19 block) — keep in sync
+  with `THREAT` in `server/src/threat.js`.

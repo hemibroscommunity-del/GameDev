@@ -365,6 +365,12 @@ export function InspectPlayerPanel(props) {
           fromLevel: ((_S$rpg26 = S.rpg) === null || _S$rpg26 === void 0 ? void 0 : _S$rpg26.level) || 1
         }
       });
+      /* v2.3.1193: no longer orphaned — entityRenderer draws my own red
+         skull from these anchors.  This write is OPTIMISTIC (base
+         countdown, instant feedback); the relayed pvp_threat echo
+         replaces it with the server's authoritative level-scaled
+         countdown, or — if the server drops the threat (cooldown/
+         forged) — nothing arrives and the base window just ages out. */
       S._pvpSkullType = 'red';
       S._pvpSkullUntil = Date.now() + PVP_THREAT_BASE_COUNTDOWN;
       S._pvpThreatCdUntil = Date.now() + PVP_THREAT_COOLDOWN;

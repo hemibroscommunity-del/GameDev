@@ -14,7 +14,7 @@ const STATUS_TO_ELEMENT = new Map();
 for (const el of Object.values(ELEMENTS || {})) {
   if (el && el.status) STATUS_TO_ELEMENT.set(el.status, el);
 }
-import { lookupCollision } from '@/data/gameSystems.js';
+import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
@@ -41,6 +41,24 @@ import { getEquip, onEquipChange } from '../gearCatalog.js';
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
+
+/* v2.3.1193: threat-skull phase (docs/specs/threats.md, "Skull
+   rendering").  'red' while the threat countdown runs, 'white' for the
+   consent window after it lapses (the server treats expiry as an
+   ignore — _tickThreats) or after an explicit ignore, null once
+   everything has aged out.  Pure time math, cheap enough for the
+   per-player frame loop; feeds a change-cache so display writes only
+   happen when the phase flips. */
+function threatSkullPhase(type, until, now) {
+  if (!type || !until) return null;
+  if (now < until) return type;
+  if (type === 'red' && now < until + PVP_THREAT_CONSENT_MS) return 'white';
+  return null;
+}
+/* Red matches the threat UI accent (#ff5e6c).  The 💀 glyph is
+   near-white in every platform emoji set, so a multiplicative tint
+   yields the red variant without a second texture. */
+const SKULL_RED_TINT = 0xff5e6c;
 
 /* Above-player HUD bar textures (v2.3.107).  Three pill-shaped PNGs
    the DOM dashboard also uses -- reuse the same `?v=` cache key so
@@ -2041,6 +2059,18 @@ function createPlayerDisplay() {
   nameText.y = -38;
   container.addChild(nameText);
 
+  /* v2.3.1193: the local player's own threat skull (red = my threat
+     countdown is running, white = ignored/expired fight window).  One
+     Text created here, then driven by a _lastSkull change-cache in
+     _updatePlayer — never rebuilt per frame.  Rendered even though the
+     local nameplate is hidden: this is the "am I flagged?" indicator
+     the ThreatIncomingPanel copy promises. */
+  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 13 } });
+  skullText.anchor.set(0.5, 1);
+  skullText.visible = false;
+  skullText.y = -52;
+  container.addChild(skullText);
+
   /* Combat-bar HUD anchored above the head (v2.3.107).  Each bar
      is a pill-shaped Sprite using the same /icons/ui/bar-*.webp
      artwork the bottom dashboard's XP bar uses, so the in-world
@@ -2135,6 +2165,8 @@ function createPlayerDisplay() {
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
   container._nameText = nameText;
+  container._skullText = skullText; /* v2.3.1193: threat skull */
+  container._lastSkull = null;
   container._hudHpRing = hudHpRing;
   container._hudHpText = hudHpText;
   container._hudHpMaxText = hudHpMaxText;
@@ -2251,6 +2283,17 @@ function createOtherPlayerDisplay() {
   nameText.y = -34;
   container.addChild(nameText);
 
+  /* v2.3.1193: threat skull above the nameplate (red = active threat
+     countdown, white = ignored/expired fight window — see
+     docs/specs/threats.md "Skull rendering").  One Text per display,
+     driven by a change-cache in _updateOtherPlayers; never rebuilt per
+     frame (the v2.3.1185 party-marker budget). */
+  const skullText = new Text({ text: '\u{1F480}', style: { fontSize: 13 } });
+  skullText.anchor.set(0.5, 1);
+  skullText.visible = false;
+  skullText.y = -58;
+  container.addChild(skullText);
+
   container._body = body;
   container._spriteBody = spriteBody;
   container._shirtSprite = shirtSprite;
@@ -2265,6 +2308,8 @@ function createOtherPlayerDisplay() {
   container._weaponGfx = weaponGfx;
   container._weaponSprite = weaponSprite;
   container._nameText = nameText;
+  container._skullText = skullText; /* v2.3.1193: threat skull */
+  container._lastSkull = null;
   /* Animation cache mirrors the local player display. */
   container._animPose = null;
   container._animDir = null;
@@ -3697,6 +3742,21 @@ export class EntityRenderer {
       /* Raised from -24 to -42 so the name floats above the head
          instead of sitting over the sprite's face. */
       display._nameText.y = -42 + bobY;
+
+      /* v2.3.1193: threat skull above the nameplate — same change-cache
+         pattern as the party marker.  S._threatMarks is written by
+         gameEvents.js from the relayed threat handshake; the phase
+         helper self-whitens a lapsed red mark (expiry == ignore) so
+         bystanders — who never receive the private threat_expired —
+         still see the fight-window skull. */
+      const _tm = S._threatMarks ? S._threatMarks[id] : null;
+      const _skullPhase = _tm ? threatSkullPhase(_tm.type, _tm.until, now) : null;
+      if (display._lastSkull !== _skullPhase) {
+        display._lastSkull = _skullPhase;
+        display._skullText.visible = !!_skullPhase;
+        if (_skullPhase) display._skullText.tint = _skullPhase === 'red' ? SKULL_RED_TINT : 0xffffff;
+      }
+      if (_skullPhase) display._skullText.y = -58 + bobY;
     }
 
     for (const [id, display] of this.otherPlayerDisplays) {
@@ -5166,6 +5226,22 @@ export class EntityRenderer {
        (BottomDashboard.jsx).  Hide the above-head plate so it doesn't
        sit redundantly on top of the new HP heart. */
     if (display._nameText.visible) display._nameText.visible = false;
+
+    /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
+       S._pvpSkullType / S._pvpSkullUntil anchors (InspectPlayerPanel
+       writes them optimistically at threat-issue; gameEvents.js
+       replaces them with the authoritative relay echo, whitens on
+       ignore/expiry, clears on guards).  Sits above the combo badge
+       (comboText rides at nameText.y - 12 = -40 + bobY). */
+    if (display._skullText) {
+      const _selfSkull = threatSkullPhase(S._pvpSkullType, S._pvpSkullUntil, now);
+      if (display._lastSkull !== _selfSkull) {
+        display._lastSkull = _selfSkull;
+        display._skullText.visible = !!_selfSkull;
+        if (_selfSkull) display._skullText.tint = _selfSkull === 'red' ? SKULL_RED_TINT : 0xffffff;
+      }
+      if (_selfSkull) display._skullText.y = -52 + bobY;
+    }
 
     // Death / invuln
     if (S.rpg && S.rpg.hp <= 0) {
