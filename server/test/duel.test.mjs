@@ -13,7 +13,9 @@
  *   5. Death to a MONSTER mid-duel resolves the pot to the opponent but
  *      is NOT protected (pile + wipe apply).
  *   6. Disconnect grace: rejoin inside 15s keeps the duel; grace expiry
- *      forfeits the pot to the opponent.
+ *      forfeits the pot to the opponent.  v2.3.1175: both players away
+ *      hold independent clocks (one rejoin can't erase the other's
+ *      forfeit timer); both expired -> the first leaver loses.
  *   7. Stale-escrow sweep refunds both after a "deploy wipe", but never
  *      refunds on top of an already-paid pot.
  *   8. Zero-wager duels create no escrow and resolve cleanly.
@@ -124,16 +126,42 @@ await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));
 await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 10));
 const duel6 = room._duelFor('bp_duel_a');
 room._duelOnDisconnect('bp_duel_b');
-check('disconnect arms the grace window', duel6.awayId === 'bp_duel_b' && duel6.graceUntil > Date.now());
+check('disconnect arms the grace window', duel6.away['bp_duel_b'] > Date.now());
 room._duelOnRejoin('bp_duel_b');
-check('rejoin inside grace keeps the duel', duel6.awayId === null && room._duelFor('bp_duel_a') === duel6);
+check('rejoin inside grace keeps the duel', duel6.away['bp_duel_b'] === undefined && room._duelFor('bp_duel_a') === duel6);
+// v2.3.1175: both players away tracks BOTH clocks (the old single-slot
+// awayId let the second disconnect overwrite the first).
 room._duelOnDisconnect('bp_duel_b');
-duel6.graceUntil = Date.now() - 1;
+room._duelOnDisconnect('bp_duel_a');
+check('both disconnects hold independent clocks', duel6.away['bp_duel_a'] > Date.now() && duel6.away['bp_duel_b'] > Date.now(), duel6.away);
+room._duelOnRejoin('bp_duel_a');
+check('one rejoin leaves the other clock armed', duel6.away['bp_duel_a'] === undefined && duel6.away['bp_duel_b'] > Date.now(), duel6.away);
+duel6.away['bp_duel_b'] = Date.now() - 1;
 const coinsA6 = psA.coins;
 room.eventBuffer.length = 0;
 room._tickDuels(Date.now());
 await new Promise((r) => setTimeout(r, 20));
 check('grace expiry forfeits to the opponent', psA.coins === coinsA6 + 20 && room.eventBuffer.some((e) => e.type === 'duel_end' && e.payload.how === 'forfeit'), { coins: psA.coins });
+
+// ── 6b. both clocks expired: the earlier deadline (first leaver) loses ──
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));
+await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 10));
+const duel6b = room._duelFor('bp_duel_a');
+duel6b.away = { bp_duel_a: Date.now() - 5000, bp_duel_b: Date.now() - 1 }; // A left first
+room.eventBuffer.length = 0;
+room._tickDuels(Date.now());
+await new Promise((r) => setTimeout(r, 20));
+check('double-away forfeit goes against the first leaver', room.eventBuffer.some((e) => e.type === 'duel_end' && e.payload.how === 'forfeit' && e.payload.loser === 'bp_duel_a' && e.payload.winner === 'bp_duel_b'), room.eventBuffer.map((e) => e.payload));
+
+// ── 6c. hostile join id: '__proto__' still gets a working forfeit clock ──
+// away is null-prototype (see _makeDuel) -- on a plain {} this
+// assignment would silently no-op via the inherited accessor, the
+// clock would never arm, and the duel would stick forever.
+room._duels.set('dproto', room._makeDuel({ id: 'dproto', a: '__proto__', b: 'bp_duel_a', wager: 0, startedAt: Date.now() }));
+room._duelOnDisconnect('__proto__');
+const dproto = room._duels.get('dproto');
+check('null-proto away map arms a clock for a __proto__ id', typeof dproto.away['__proto__'] === 'number' && Object.keys(dproto.away).length === 1, Object.keys(dproto.away));
+room._duels.delete('dproto');
 
 // ── 7. stale-escrow sweep ──
 // Simulate a deploy: escrow record persisted, in-memory duel map gone.
