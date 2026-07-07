@@ -343,20 +343,30 @@ a CI lockstep test pinning both ZONES tables together (spec:
 docs/specs/zone-progression.md). Hard entry gating remains optional.
 
 ### L. Smaller known items
-- Cook minigame outcome (`kind`) still client-trusted (rate-limited only).
-- Event buffer drops events past 500/tick — keep the remainder instead.
-- Duplicate `case 'arena_bet'` in gameEvents (second unreachable).
-- Duel `awayId` is single-slot: both players disconnecting overwrites the
-  first — self-healing in arena (shot-clock), cosmetic for social duels.
+- Cook minigame outcome (`kind`) still client-trusted. v2.3.1167 added
+  the physics floor (no cook faster than the open-delay curve) on top of
+  the v2.3.1104 rate limit; full outcome validation needs the cook-start
+  handshake (`caps.cookSim`) sketched in docs/specs/cooking.md.
+- ~~Event buffer drops events past 500/tick~~ — FIXED v2.3.1163
+  (tick.js splices the cap and keeps the remainder queued).
+- ~~Duplicate `case 'arena_bet'` in gameEvents (second unreachable)~~ —
+  FIXED v2.3.1176 (merged; the reachable slot had been parking bets in
+  a dead `S._remoteBets` list while the display handler never ran).
+- ~~Duel `awayId` is single-slot~~ — FIXED v2.3.1175 (`duel.away`
+  per-player grace map; second disconnect no longer resets the first's
+  forfeit clock, rejoin clears only its own slot, earliest expiry
+  forfeits when both lapse).
 - T2 retirement cleanup: drop the 5 retired stats from wire/save/clamps.
   v2.3.1152: NOT shippable as a plain registry migration — the exact
   coordinated edit list is in docs/specs/migrations.md §"Why v3 was not
   shipped" (join RAW_STATS fallback re-injects from the join payload;
   stats_update still clamps-and-stores; restoration/influence formulas
   read the fields live). Ship all edits together as one PR.
-- index.js is ~5.4k lines — continue strangler-fig extraction (data.js,
-  elemental.js, market/trade/duel are the pattern; tick loop is the
-  riskiest slice, do it last with the smoke harness watching).
+- ~~index.js is ~5.4k lines — continue strangler-fig extraction~~ —
+  the P4 decomposition ran through v2.3.1174 (movement, persistence,
+  join bootstrap, tick loop as the final slice); index.js is ~3.3k
+  lines of routing + combat core now. Extract further only when a
+  subsystem grows, not for its own sake.
   v2.3.1142: persistence/tick/lifeskills-economy suites now cover the
   previously-untested core (rpg blob, monster AI ticks, forge/cook/
   shop/harvest) — the extraction slices finally have a net.
