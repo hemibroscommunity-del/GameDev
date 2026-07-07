@@ -39,6 +39,9 @@ export default [
       'no-undef': 'error',            // undeclared / out-of-scope references
       'no-dupe-keys': 'error',        // duplicate object keys (silent clobber)
       'no-dupe-args': 'error',
+      'no-duplicate-case': 'error',   // v2.3.1176: a shadowing duplicate case in the
+                                      // gameEvents switch silently ate arena_bet events
+
       'no-unreachable': 'error',
       'no-self-assign': 'error',
       'use-isnan': 'error',
