@@ -1,6 +1,9 @@
 import React from 'react';
 import { ZONES } from '@/data/index.js';
 import { _slicedToArray } from '@/lib/babelHelpers.js';
+/* v2.3.1205: z registry — war banners are player-facing war state and
+   must never stack under dashboard chrome (see src/ui/zLayers.js). */
+import { Z_ABOVE_DASH_PROMPT } from '../zLayers.js';
 
 /* === War banners — the clan-war HUD banners === */
 /* v2.3.893: extracted verbatim from the two clan-war banner IIFEs in
@@ -30,7 +33,7 @@ export function ActiveWarBanner(props) {
         top: 44,
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 22,
+        zIndex: Z_ABOVE_DASH_PROMPT /* v2.3.1205: was 22 */,
         display: 'flex',
         alignItems: 'center',
         gap: 0,
@@ -137,7 +140,9 @@ export function EndedWarBanner(props) {
       style: {
         position: 'absolute',
         inset: 0,
-        zIndex: 28,
+        /* v2.3.1205: was 28 — the full-screen war-result overlay ended
+           under the dashboard band (z 30); registry z lifts it clear. */
+        zIndex: Z_ABOVE_DASH_PROMPT,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
