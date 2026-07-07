@@ -323,7 +323,10 @@ export class GameRoom {
     this.state = state;
     this.env = env;
     this.sessions = new Map();
-    this.playerState = {};
+    // v2.3.1202: keyed by CLIENT-CHOSEN join ids -- Object.create(null)
+    // so a magic id ('__proto__') can't write through Object.prototype
+    // (defense-in-depth behind the join-id gate in join.js).
+    this.playerState = Object.create(null);
     this.dirtyPlayers = new Set();
     this.eventBuffer = [];
     this.tickInterval = null;
@@ -344,7 +347,7 @@ export class GameRoom {
     this.pendingPlayerStateFlush = new Set();
 
     // §16.12 — PvP Lag Compensation
-    this.stateHistory = {};
+    this.stateHistory = Object.create(null); // v2.3.1202: client-id-keyed (see playerState)
     this.LAGCOMP_BUFFER_TICKS = 14; // 300ms of history at 45Hz
     this.LAGCOMP_RTT_CAP = 300;
     this.LAGCOMP_RTT_ALPHA = 0.3;
@@ -404,7 +407,7 @@ export class GameRoom {
     this.SWIPE_FP_CAP_PER_SESSION = 100;    // ring-buffer the fp samples for offline analysis
     this.LATENCY_CAP_PER_SESSION = 200;     // ring-buffer the open->swipe latencies for stats
     // sessionId -> { nodeId, zone, skill, startedAt, skillLevel, nodeTier, openDelayBase }
-    this.extractions = {};
+    this.extractions = Object.create(null); // v2.3.1202: client-id-keyed (see playerState)
 
     // Server-authoritative ground loot.  Worker owns the canonical pile
     // list per zone; clients render from broadcasts and send pickup
@@ -897,7 +900,7 @@ export class GameRoom {
                 const reflect = Math.min(Math.max(0, m.hp),
                   Math.max(1, Math.round(m.dmg * Math.min(0.50, _thornsPts * 0.005)))); // v2.3.1156: 0.5%/pt (cap raise)
                 m.hp -= reflect;
-                if (!m.dmgByPlayer) m.dmgByPlayer = {};
+                if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
                 m.dmgByPlayer[nearest.id] = (m.dmgByPlayer[nearest.id] || 0) + reflect;
                 this.eventBuffer.push({
                   type: 'monster_hit',
@@ -1082,7 +1085,7 @@ export class GameRoom {
           const dotDmg = Math.min(ev.dmg, Math.max(0, m.hp));
           if (dotDmg <= 0) continue;
           m.hp -= dotDmg;
-          if (!m.dmgByPlayer) m.dmgByPlayer = {};
+          if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
           m.dmgByPlayer[ev.sourceId] = (m.dmgByPlayer[ev.sourceId] || 0) + dotDmg;
           this._markMonsterDirty(zoneId, m.id);
           this.eventBuffer.push({

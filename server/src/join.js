@@ -64,6 +64,28 @@ export const joinMethods = {
   },
 
   async _handleJoin(session, ws, msg) {
+    // v2.3.1202: prototype-pollution join-id gate.  session.id below is
+    // CLIENT-CHOSEN, and it keys plain-object maps all over the room
+    // (playerState, stateHistory, extractions, per-monster dmgByPlayer).
+    // A join id of '__proto__' writes through Object.prototype and
+    // corrupts the root player map -- the same bug family already fixed
+    // three times downstream (duel.away v2.3.1175, party meta
+    // v2.3.1185, amulet tiers v2.3.1192).  Kill it at the SOURCE: the
+    // three magic own-property names are rejected outright, BEFORE the
+    // auth gate so a magic id can never mint an 'auth:' storage record
+    // either.  Legit ids are 'bp_<hash>' or legacy randoms -- no real
+    // client ever generates these names, so reason:'auth' (which makes
+    // the client regenerate its passphrase once) is the right answer.
+    // Legacy phraseless joins on OTHER ids stay allowed (handoff rule
+    // 21).  The maps themselves are Object.create(null) as of this
+    // version too (defense-in-depth), but new plain-object maps keep
+    // appearing -- the gate is what protects the ones nobody audited.
+    if (msg.id === '__proto__' || msg.id === 'constructor' || msg.id === 'prototype') {
+      try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
+      try { ws.close(4003, 'auth'); } catch {}
+      this.sessions.delete(ws);
+      return;
+    }
     // v2.3.1116: identity auth gate.  Runs BEFORE the eviction loop
     // below on purpose -- player ids are broadcast to the whole room
     // (player_join / state_sync), so before this gate existed anyone

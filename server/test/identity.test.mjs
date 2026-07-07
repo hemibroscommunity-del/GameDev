@@ -91,6 +91,35 @@ await join(wsL, 'r4nd0m1d', undefined);
 check('legacy no-phrase join on fresh id accepted', msgsOfType(wsL, 'state_sync').length === 1);
 check('legacy join stamps no auth record', !state._store.has('auth:r4nd0m1d'));
 
+// ── 5b. v2.3.1202: prototype-pollution join-id gate ──
+// session.id is client-chosen and keys plain-object maps (playerState,
+// stateHistory, extractions, dmgByPlayer).  The three magic
+// own-property names must be rejected via the join_rejected/'auth'
+// path BEFORE the auth gate, so a magic id never mints an auth:
+// storage record or a playerState key.  Legacy phraseless joins on
+// other ids stay allowed (section 5 above; re-checked after).
+for (const magic of ['__proto__', 'constructor', 'prototype']) {
+  const wsM = fakeWs('magic-' + magic);
+  await join(wsM, magic, 'evil-evil-evil-evil-1');
+  const rej = msgsOfType(wsM, 'join_rejected');
+  check(`magic id '${magic}' join rejected with reason auth`,
+    rej.length === 1 && rej[0].reason === 'auth' && wsM.closed?.code === 4003, wsM.sent);
+  check(`magic id '${magic}' creates no auth record (gate runs BEFORE the auth stamp)`,
+    !state._store.has('auth:' + magic));
+  check(`magic id '${magic}' creates no playerState key`,
+    !Object.keys(room.playerState).includes(magic));
+  check(`magic id '${magic}' session removed`, !room.sessions.has(wsM));
+}
+check('magic-id joins did not pollute Object.prototype', ({}).x === undefined && Object.keys({}).length === 0);
+// A normal join still works after the gate (the gate must not
+// over-match ordinary ids -- including a phraseless legacy one).
+{
+  const wsN = fakeWs('normal-after-magic');
+  await join(wsN, 'bp_gatecheck', 'quiet-river-stone-fox-9');
+  check('normal join still accepted after magic-id rejections', msgsOfType(wsN, 'state_sync').length === 1);
+  check('normal join still creates playerState', !!room.playerState['bp_gatecheck']);
+}
+
 // ── 6. brute-force lockout ──
 const wsB = fakeWs('bob');
 await join(wsB, 'bp_bob', 'karma-lunar-mango-nexus-3');
