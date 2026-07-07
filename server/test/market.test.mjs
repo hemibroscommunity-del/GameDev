@@ -22,6 +22,10 @@
  *  11. v2.3.1176: HTTP surface (GameRoom.fetch -> _marketFetch) --
  *      place/cancel carry the `settled: true` deploy-order flag the
  *      client gates its legacy self-credit path on; /orders read shape.
+ *  12. v2.3.1178: settlement crash windows converge -- credits land
+ *      before the record delete (maker-keyed settle stamps), refunds
+ *      never pay over a stamped settlement, and the index rebuild
+ *      deletes (never re-lists) stamped leftovers.
  */
 import { GameRoom } from '../src/index.js';
 
@@ -227,6 +231,54 @@ const cxlRes = await mreq('DELETE', '/api/market/cancel?id=' + placeBody.order.i
 const cxlBody = await cxlRes.json();
 check('HTTP cancel: ok + settled flag', cxlRes.status === 200 && cxlBody.ok === true && cxlBody.settled === true, cxlBody);
 check('HTTP cancel refunded the weapon live', httpP.weaponStash.some((w) => w.name === 'Http Axe'), httpP.weaponStash);
+
+// ── 12. v2.3.1178: settlement crash windows converge ──
+// The match/cancel/sweep paths used to delete the escrow record BEFORE
+// crediting -- a deploy landing in between destroyed both sides' escrow
+// with nothing left for any sweep to repair (the settle stamps were
+// also keyed on the taker's never-persisted UUID, so no retry could
+// ever find them).  Now: credit first with stamps keyed on the
+// PERSISTED maker id, delete last, and the index rebuild converges
+// leftovers -- stamp seen means delete, never re-list, never refund
+// on top (rule 6; _duelEscrowSweep is the reference shape).
+const wsC = fakeWs('crashSeller'); const wsD = fakeWs('crashBuyer');
+await join(wsC, 'bp_mkt_cs'); await join(wsD, 'bp_mkt_cb');
+const csP = room.playerState['bp_mkt_cs'];
+const cbP = room.playerState['bp_mkt_cb'];
+csP.weaponStash = [wpn('Crash Spear')]; csP.coins = 0; cbP.coins = 500;
+const restCS = await room._mktPlaceOrder(ORD({ playerId: 'bp_mkt_cs', stashIndex: 0, subtype: 'spear', tierKey: 'gold', tierLabel: 'Gold', price: 100 }));
+// Simulated deploy: the record delete never commits.
+const realDel = state.storage.delete;
+state.storage.delete = async (k) => { if (k === 'mkt_order:' + restCS.order.id) throw new Error('simulated crash'); return realDel(k); };
+let matchThrew = false;
+try {
+  await room._mktPlaceOrder(ORD({ type: 'buy', playerId: 'bp_mkt_cb', subtype: 'spear', tierKey: 'gold', tierLabel: 'Gold', price: 100 }));
+} catch (e) { matchThrew = true; }
+state.storage.delete = realDel;
+check('crash sim: both credits landed before the lost delete', matchThrew && csP.coins === 100 && cbP.weaponStash.some((w) => w.name === 'Crash Spear'), { matchThrew, coins: csP.coins, stash: cbP.weaponStash });
+check('settle stamps keyed on the persisted maker id', state._store.has('oplog:settle:' + restCS.order.id + ':item') && state._store.has('oplog:settle:' + restCS.order.id + ':gold'));
+check('crash leftover record survives (delete was lost)', state._store.has('mkt_order:' + restCS.order.id));
+
+// Rule 6: a refund retry over the stamped payout must pay nothing.
+const cbCoinsBefore = cbP.coins; const csStashBefore = csP.weaponStash.length;
+await room._mktRefund(restCS.order, 'sweep retry');
+check('refund over a stamped settlement is a no-op', cbP.coins === cbCoinsBefore && csP.weaponStash.length === csStashBefore, { coins: cbP.coins, stash: csP.weaponStash });
+
+// A restarted room's rebuild converges the settled leftover to a
+// delete instead of re-listing it (re-listing would let the same
+// escrowed weapon match or refund a second time).
+const room3 = new GameRoom(state, mockEnv);
+await room3._mktEnsureIndex();
+check('rebuild converges the settled leftover to a delete', !state._store.has('mkt_order:' + restCS.order.id) && !room3._mktOrderCounts.get('bp_mkt_cs'), { store: state._store.has('mkt_order:' + restCS.order.id) });
+
+// Same convergence for the cancel/expiry side: a record whose
+// refund:<id> stamp exists (crash between refund and delete) is
+// deleted on rebuild, not re-listed.
+state._store.set('mkt_order:ghost1', { id: 'ghost1', type: 'buy', category: 'weapon', subtype: 'spear', tierKey: 'gold', price: 10, playerId: 'bp_mkt_cb', playerName: 'T', ts: Date.now(), expires: Date.now() + 9999999 });
+state._store.set('oplog:refund:ghost1', Date.now());
+const room4 = new GameRoom(state, mockEnv);
+await room4._mktEnsureIndex();
+check('rebuild converges a refund-stamped leftover to a delete', !state._store.has('mkt_order:ghost1') && !room4._mktOrderCounts.get('bp_mkt_cb'));
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
