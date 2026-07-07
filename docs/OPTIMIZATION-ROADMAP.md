@@ -5,7 +5,7 @@ where work pays off most. Written for the repo owner in plain language;
 file/line references are for whoever implements each item. Line numbers
 drift as code changes — treat them as "near here", not exact.
 
-**Status as of v2.3.1175: P1–P4 have ALL shipped.** The server test
+**Status as of v2.3.1191: P1–P4 have ALL shipped.** The server test
 safety net exists (33 zero-dependency suites, 850+ assertions), the
 trust gaps are closed or deliberately documented, the client smoke test
 gates every PR, and the server decomposition is COMPLETE —
@@ -29,7 +29,7 @@ roadmap is the P5 small-findings list, partially burned down below.
   per-tick storage writes (`server/src/tick.js` since v2.3.1174).
   Estimated well under the tick budget at current player counts.
 - **Server-computed damage.** `_computeAttackDamage`
-  (`server/src/combat.js` since v2.3.1175) rolls player→monster damage
+  (`server/src/combat.js` since v2.3.1191) rolls player→monster damage
   from server-tracked stats; the client only sends intent (slot +
   special). The old "client claims 99999 damage" cheat is closed.
 
@@ -37,7 +37,7 @@ roadmap is the P5 small-findings list, partially burned down below.
 
 Landed as planned (anticheat + combat-lifecycle suites alongside
 protocol-v2), then grew with every system PR per handoff rule 24. As of
-v2.3.1175 `cd server && npm test` runs **33 suites / 850+ assertions**
+v2.3.1191 `cd server && npm test` runs **33 suites / 850+ assertions**
 against a mocked DO storage — including the v2.3.1142 core net
 (persistence / tick / lifeskills-economy) that was written specifically
 so the P4 extraction slices had coverage, and the v2.3.1151 conformance

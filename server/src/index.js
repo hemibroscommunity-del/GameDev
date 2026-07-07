@@ -116,7 +116,7 @@ import { httpAuthMethods } from './httpauth.js';
 // v2.3.1185: party roster (handoff item D) -- invite/accept handshake +
 // cross-zone vitals HUD; memory-only, no combat/XP changes -- see party.js.
 import { partyMethods } from './party.js';
-// v2.3.1175 (P4 decomposition): the combat/damage core -- see combat.js.
+// v2.3.1191 (P4 decomposition): the combat/damage core -- see combat.js.
 import { combatMethods } from './combat.js';
 
 export default {
@@ -1341,7 +1341,7 @@ export class GameRoom {
   // persistenceMethods, mixed into this prototype below.
 
   // ═══ HP store + damage application ═══ moved to combat.js
-  // (v2.3.1175, P4 decomposition) -- _applyDamage and the melee-
+  // (v2.3.1191, P4 decomposition) -- _applyDamage and the melee-
   // lifesteal pair (_trackMonsterDamage / _applyMeleeLifesteal)
   // live in combatMethods, mixed into this prototype below.
 
@@ -2045,7 +2045,7 @@ export class GameRoom {
   }
 
   // ═══ Attack roll + monster damage + kill resolution ═══ moved
-  // to combat.js (v2.3.1175, P4 decomposition) -- _maxWeaponDmg/
+  // to combat.js (v2.3.1191, P4 decomposition) -- _maxWeaponDmg/
   // _maxDmgForAttacker (anti-cheat ceilings), _computeAttackDamage
   // (the authoritative roll), _handleMonsterDamage, and
   // _resolveMonsterKill live in combatMethods, mixed into this
@@ -2507,7 +2507,7 @@ export class GameRoom {
     }
   }
 
-  // ═══ _resolvePvPAttack ═══ moved to combat.js (v2.3.1175, P4
+  // ═══ _resolvePvPAttack ═══ moved to combat.js (v2.3.1191, P4
   // decomposition) -- the §16.12 lag-comp rollback PvP resolution
   // lives in combatMethods, mixed into this prototype below.
 
@@ -2621,5 +2621,5 @@ Object.assign(GameRoom.prototype, joinMethods);
 Object.assign(GameRoom.prototype, tickMethods);
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);
-// v2.3.1175 (P4 decomposition): combat/damage core -- see combat.js.
+// v2.3.1191 (P4 decomposition): combat/damage core -- see combat.js.
 Object.assign(GameRoom.prototype, combatMethods);

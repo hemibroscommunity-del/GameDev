@@ -6,7 +6,7 @@ work — human or model. It exists because the conventions below are
 load-bearing: each one closes a specific incident class, and code that
 ignores one usually looks correct while destroying player value later.
 
-Status refreshed 2026-07-07 (v2.3.1175), after the P4 GameRoom
+Status refreshed 2026-07-07 (v2.3.1191), after the P4 GameRoom
 decomposition (v2.3.1162–1175) finished: the rules in Part 1 stand
 unchanged; Part 2 item L and rule 22 were brought up to date. The
 server module map lives in `docs/OPTIMIZATION-ROADMAP.md` §P4 — that
