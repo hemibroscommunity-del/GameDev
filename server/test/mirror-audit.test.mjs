@@ -27,9 +27,10 @@ import {
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
   DAMAGE_CHANNEL_PCT, WEAPON_CHANNELS,
+  GEM_CUT_TIERS,
 } from '../../src/data/gameSystems.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
-import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP } from '../../src/data/items.js';
+import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES } from '../../src/data/items.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -165,6 +166,18 @@ check('NUGGETS_PER_BAR mirror (the smelt op consumes the server constant)',
 check('GOLD_NUGGET_MONSTER_DROP <-> GOLD_NUGGET_DROP.monsterKill (server rolls the kill drop now)',
   SRV.GOLD_NUGGET_MONSTER_DROP === GOLD_NUGGET_DROP.monsterKill,
   { server: SRV.GOLD_NUGGET_MONSTER_DROP, client: GOLD_NUGGET_DROP.monsterKill });
+
+// ── 8d. v2.3.1198 server gem income (amulet.js successor slice): the
+// cut-success ladder and the kill drop rate vs the client tables.  A
+// drifted ladder would make the Gem Cutter's success preview lie about
+// what the server-rolled cut actually pays.  The client's
+// GEM_DROP_RATES.woodcutting/fishing/mining are DEAD DATA (no roll
+// site ever read them, back to the original index.html) -- deliberately
+// not mirrored, the GOLD_NUGGET_DROP.lifeSkill precedent above. ──
+tierMirror('GEM_CUT', SRV.GEM_CUT_TIERS, GEM_CUT_TIERS);
+check('GEM_RAW_MONSTER_DROP <-> GEM_DROP_RATES.monsterKill (server rolls the kill drop now)',
+  SRV.GEM_RAW_MONSTER_DROP === GEM_DROP_RATES.monsterKill,
+  { server: SRV.GEM_RAW_MONSTER_DROP, client: GEM_DROP_RATES.monsterKill });
 
 // ── 8b. v2.3.1153 damage-channel reprice: the server coefficient, the
 // client coefficient, and the allocation-panel perPt (percent per point)

@@ -22,9 +22,25 @@
  *   7. caps.amuletForge advertised in state_sync (deploy-order gate for
  *      the client's sends + its legacy local nugget roll).
  *   8. _amuletNuggetOnKill: increments exactly on a sub-rate roll.
+ *
+ * v2.3.1198 (gem income, the successor slice this file's §4 pointed
+ * at): the polished-gem economy moves server-side so the gem op stops
+ * denying legitimately mined+cut gems.  Added checks:
+ *   9.  _gemRawOnKill: zone-element raw gem exactly on a sub-rate roll;
+ *       element-less zones never pay.
+ *   10. gem_cut_request: consumes a server-held raw gem, rolls success
+ *       from the SERVER gemCutting level (GEM_CUT_TIERS ladder), mints
+ *       the polished gem + gemCutting XP, answers with the private
+ *       gem_cut_result; denies silently on no-raw / unknown gem / dead.
+ *   11. End-to-end: a server-cut polished gem is accepted by the
+ *       amulet gem op (the deny-by-default hole this slice closes).
+ *   12. Join adoption: first-connect gems claim is whitelisted+clamped;
+ *       a pre-slice stored record max-merges the claim ONCE
+ *       (gemsCaptured stamp); reconnect claims are ignored forever
+ *       after.  caps.gems advertised (deploy-order gate).
  */
 import { GameRoom } from '../src/index.js';
-import { AMULET_FORGE_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_MONSTER_DROP } from '../src/data.js';
+import { AMULET_FORGE_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_MONSTER_DROP, GEM_RAW_MONSTER_DROP, GEM_CUT_TIERS } from '../src/data.js';
 
 function makeState() {
   const store = new Map();
@@ -228,6 +244,148 @@ ps.dead = false;
   Math.random = realRandom;
   check('_amuletNuggetOnKill pays exactly on a sub-rate roll', target.goldNuggets === 1, target);
   check('mint table sanity: 4 tiers, mythic costs 10 bars/1200g', Object.keys(AMULET_FORGE_TIERS).length === 4 && AMULET_FORGE_TIERS.mythic.bars === 10 && AMULET_FORGE_TIERS.mythic.goldCost === 1200, AMULET_FORGE_TIERS);
+}
+
+/* ═══ v2.3.1198: gem income (successor slice) ═══ */
+const cut = (wsx, payload) =>
+  room.webSocketMessage(wsx, JSON.stringify({ type: 'gem_cut_request', payload }));
+const lastCutResult = (wsx) => [...wsx.sent].reverse().find((m) => m.type === 'gem_cut_result');
+
+// ── 9. raw-gem kill roll (zone element, killer-only call site) ──
+{
+  const target = { lifeSkills: {} };
+  Math.random = () => GEM_RAW_MONSTER_DROP / 2; // under the rate -> hit
+  room._gemRawOnKill(target, 'ember'); // ember element = flame
+  Math.random = () => GEM_RAW_MONSTER_DROP * 2; // over the rate -> miss
+  room._gemRawOnKill(target, 'ember');
+  Math.random = () => 0; // would always hit...
+  room._gemRawOnKill(target, 'meadow'); // ...but meadow has no element
+  room._gemRawOnKill(target, 'dungeon:crypt-1'); // ...and instances have no zone config
+  Math.random = realRandom;
+  check('_gemRawOnKill pays raw_<zone element> exactly on a sub-rate roll',
+    target.lifeSkills.gems && target.lifeSkills.gems.raw_flame === 1
+    && Object.keys(target.lifeSkills.gems).length === 1,
+    target.lifeSkills.gems);
+}
+
+// ── 10. gem_cut_request: server-held raw consume + server-rolled cut ──
+// Fresh socket + identity: §6's reconnect evicted the original ws
+// session, so sends on it would silently drop (v2.3.702 eviction).
+const wsc = fakeWs('cutter');
+await join(wsc, 'bp_gem_cutter', {});
+const psc = room.playerState['bp_gem_cutter'];
+psc.lifeSkills.gems = { raw_flame: 2 };
+psc.lifeSkills.gemCutting = { level: 1, xp: 0 };
+wsc.sent.length = 0;
+Math.random = () => 0.59; // level 1 -> rough 0.6 rate: 0.59 succeeds
+await cut(wsc, { gem: 'flame' });
+Math.random = realRandom;
+check('cut consumes the raw gem and mints the polished gem on a success roll',
+  psc.lifeSkills.gems.raw_flame === 1 && psc.lifeSkills.gems.polished_flame === 1,
+  psc.lifeSkills.gems);
+check('cut grants gemCutting XP 15 (client parity)', psc.lifeSkills.gemCutting.xp === 15, psc.lifeSkills.gemCutting);
+{
+  const res = lastCutResult(wsc);
+  check('cut answers with the private gem_cut_result (success:true)',
+    res && res.payload.gem === 'flame' && res.payload.success === true, res && res.payload);
+  const echo = lastPlayerState(wsc);
+  check('cut echoes player_state with the new gems map',
+    echo && echo.payload.lifeSkills && echo.payload.lifeSkills.gems
+    && echo.payload.lifeSkills.gems.polished_flame === 1,
+    echo && echo.payload.lifeSkills && echo.payload.lifeSkills.gems);
+}
+wsc.sent.length = 0;
+Math.random = () => 0.61; // level 1 -> rough 0.6 rate: 0.61 shatters
+await cut(wsc, { gem: 'flame' });
+Math.random = realRandom;
+check('a failed roll consumes the raw gem WITHOUT minting (shatter, raw key deleted at zero)',
+  !('raw_flame' in psc.lifeSkills.gems) && psc.lifeSkills.gems.polished_flame === 1,
+  psc.lifeSkills.gems);
+check('shatter still grants the XP (client parity: 15 either way)', psc.lifeSkills.gemCutting.xp === 30, psc.lifeSkills.gemCutting);
+{
+  const res = lastCutResult(wsc);
+  check('shatter answers gem_cut_result success:false', res && res.payload.success === false, res && res.payload);
+}
+// success ladder reads the SERVER-held skill level
+psc.lifeSkills.gems = { raw_frost: 1 };
+psc.lifeSkills.gemCutting.level = 60; // perfect cut: 0.98
+Math.random = () => 0.9; // fails rough (0.6) but succeeds perfect (0.98)
+await cut(wsc, { gem: 'frost' });
+Math.random = realRandom;
+check('cut success rate follows the GEM_CUT_TIERS ladder from the SERVER-held level',
+  psc.lifeSkills.gems.polished_frost === 1 && GEM_CUT_TIERS.perfect.successRate === 0.98,
+  psc.lifeSkills.gems);
+// denial gates -- silent, state untouched
+{
+  const gemsBefore = JSON.stringify(psc.lifeSkills.gems);
+  await cut(wsc, { gem: 'frost' }); // no raw_frost held
+  await cut(wsc, { gem: 'nuclear' }); // not one of the nine
+  await cut(wsc, { gem: '__proto__' }); // prototype key can't be a gem
+  await cut(wsc, {}); // missing field
+  check('cut denies silently on no-raw / unknown gem / prototype key / missing field',
+    JSON.stringify(psc.lifeSkills.gems) === gemsBefore, psc.lifeSkills.gems);
+  psc.lifeSkills.gems.raw_flame = 1;
+  psc.dead = true;
+  await cut(wsc, { gem: 'flame' });
+  check('dead players cannot cut', psc.lifeSkills.gems.raw_flame === 1, psc.lifeSkills.gems);
+  psc.dead = false;
+}
+
+// ── 11. end-to-end: a server-cut gem satisfies the amulet gem op ──
+{
+  psc.lifeSkills.gems = { raw_venom: 1 };
+  psc.lifeSkills.gemCutting = { level: 60, xp: 0 };
+  Math.random = () => 0.5;
+  await cut(wsc, { gem: 'venom' });
+  Math.random = realRandom;
+  psc.amulet = { tier: 'mythic', gem: null, name: 'Mythic Gold Amulet' };
+  await forge(wsc, { op: 'gem', gem: 'venom' });
+  check('the amulet gem op accepts a gem earned through the server cut (the hole this slice closes)',
+    psc.amulet.gem === 'venom' && !('polished_venom' in psc.lifeSkills.gems),
+    { amulet: psc.amulet, gems: psc.lifeSkills.gems });
+}
+
+// ── 12. join adoption: whitelist + clamp + one-time capture ──
+{
+  const wsg = fakeWs('g1');
+  await join(wsg, 'bp_gem_p', {
+    rpgLifeSkills: { gems: {
+      raw_flame: 3, polished_frost: 999999, // legit-shaped, huge value clamps
+      raw_bogus: 5, coins_hack: 12, polished_nuclear: 7, // junk keys drop
+      raw_storm: -4, polished_wind: 'NaNny', // non-positive / NaN drop
+    } },
+  });
+  const psg = room.playerState['bp_gem_p'];
+  check('first connect whitelists + clamps the claimed gems map',
+    psg.lifeSkills.gems.raw_flame === 3 && psg.lifeSkills.gems.polished_frost === 200
+    && Object.keys(psg.lifeSkills.gems).length === 2,
+    psg.lifeSkills.gems);
+  check('first connect stamps gemsCaptured into the stored record',
+    psg.gemsCaptured === true && state._store.get('rpg:bp_gem_p').gemsCaptured === true,
+    state._store.get('rpg:bp_gem_p').gemsCaptured);
+  // reconnect: stored wins, a fatter claim is ignored
+  const wsg2 = fakeWs('g2');
+  await join(wsg2, 'bp_gem_p', { rpgLifeSkills: { gems: { raw_flame: 200, polished_light: 200 } } });
+  const psg2 = room.playerState['bp_gem_p'];
+  check('reconnect ignores the gems claim (stored wins, gemsCaptured stamped)',
+    psg2.lifeSkills.gems.raw_flame === 3 && !psg2.lifeSkills.gems.polished_light,
+    psg2.lifeSkills.gems);
+  // pre-slice stored record (no stamp) max-merges the claim ONCE --
+  // max, not add: the stored map already holds what the original
+  // bootstrap captured, adding would double-count it.
+  const rec = state._store.get('rpg:bp_gem_p');
+  delete rec.gemsCaptured; // simulate a record written before v2.3.1198
+  const wsg3 = fakeWs('g3');
+  await join(wsg3, 'bp_gem_p', { rpgLifeSkills: { gems: { raw_flame: 2, polished_water: 4 } } });
+  const psg3 = room.playerState['bp_gem_p'];
+  check('pre-slice stored record max-merges the claim once (server-earned counts never shrink)',
+    psg3.lifeSkills.gems.raw_flame === 3 && psg3.lifeSkills.gems.polished_water === 4,
+    psg3.lifeSkills.gems);
+  // caps advertisement (deploy-order gate, rule 19) -- narrow flag, NOT
+  // amuletForge: a v2.3.1192 worker advertises amuletForge but has no
+  // cut op.
+  const sync = wsg.sent.find((m) => m.type === 'state_sync');
+  check('state_sync advertises caps.gems', sync && sync.caps && sync.caps.gems === true, sync && sync.caps);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

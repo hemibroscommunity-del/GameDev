@@ -98,6 +98,30 @@ export function GemcutPanel(props) {
         var R = stateRef.current.rpg;
         var sk = R.lifeSkills;
         if (!sk.gems) sk.gems = {};
+        /* v2.3.1198: server-settled gem cutting (gem_cut_request,
+           server/src/amulet.js _handleGemCut) -- the worker consumes
+           one raw gem from ITS lifeSkills.gems copy and rolls success
+           from ITS gemCutting level, which is what makes the polished
+           gem consumable at the server amulet forge (the v2.3.1192
+           gem op's deny-by-default consume).  Only the raw-gem
+           consume stays as local prediction here; the outcome popups
+           wait for the private gem_cut_result event (server-owned
+           RNG, unpredictable locally) and the authoritative counts +
+           XP ride the player_state echo.  Old workers without
+           caps.gems keep the legacy local-only roll below. */
+        {
+          var _Sgc = stateRef.current;
+          if (_Sgc._serverCaps && _Sgc._serverCaps.gems && _Sgc.channel) {
+            try { _Sgc.channel.send({ type: 'gem_cut_request', payload: { gem: elem } }); } catch (e) {}
+            sk.gems[rawKey] = (sk.gems[rawKey] || 1) - 1;
+            if (sk.gems[rawKey] <= 0) delete sk.gems[rawKey];
+            setRpgState(_objectSpread({}, R));
+            try {
+              localStorage.setItem('bt_rpg', JSON.stringify(R));
+            } catch (e) {}
+            return;
+          }
+        }
         sk.gems[rawKey] = (sk.gems[rawKey] || 1) - 1;
         if (sk.gems[rawKey] <= 0) delete sk.gems[rawKey];
         /* Roll for success */

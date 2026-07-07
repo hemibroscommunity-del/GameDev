@@ -640,6 +640,13 @@ export const combatMethods = {
         // caps.amuletForge).  Rides this recipient's _saveRpg +
         // player_state flush below.
         if (rid === killerId) this._amuletNuggetOnKill(recipPs);
+        // v2.3.1198 (gem income): raw-gem drop roll, server-rolled now
+        // that gems feed the server-settled Gem Cutter + amulet gem op
+        // (amulet.js).  Killer-only, zone-element only, mirroring the
+        // client's legacy roll site (monsterCombat.js "GEM DROP FROM
+        // MONSTER KILL", now gated off under caps.gems).  Rides the
+        // same _saveRpg + player_state flush as the nugget roll above.
+        if (rid === killerId) this._gemRawOnKill(recipPs, zone);
         this._saveRpg(rid, recipPs);
         const recipWs = this._wsBySessionId(rid);
         if (recipWs) {

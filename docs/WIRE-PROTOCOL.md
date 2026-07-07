@@ -165,6 +165,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `set_active_slot` | Switch weapon slot (melee/ranged/staff) | ~3971 |
 | `forge_weapon` | Blacksmithing forge | ~3991 |
 | `amulet_forge_request` | v2.3.1192 server amulet forge — `{op:'smelt'\|'craft'\|'gem', ...}` under `caps.amuletForge`; echo is `player_state` only (see `docs/specs/amulet-forge.md`) | amulet.js |
+| `gem_cut_request` | v2.3.1198 server gem cutting — `{gem}` under `caps.gems`; answers private `gem_cut_result` + `player_state` echo (see `docs/specs/amulet-forge.md` "Gem income") | amulet.js |
 | `quest_accept` / `quest_turn_in` | Quest lifecycle | ~4000 / ~4009 |
 
 ## Peer-relayed broadcast events (client ↔ client)
