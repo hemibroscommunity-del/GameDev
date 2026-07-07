@@ -299,9 +299,14 @@ unmodified combat stack (`_activeZones` ticks it, zone_state delivers
 waves, `_resolveMonsterKill` pays kills; one-line `noRespawn` guard was
 the only core change). Client registers a synthetic `ZONES[zone]` entry
 while inside (deleted on every exit path) — that was the unknown-zone
-audit's answer. Successor follow-ups: boss ABILITIES are not ported
+audit's answer. Successor follow-ups: ~~boss ABILITIES are not ported
 (server bosses are stat-scaled chase-and-swing only — slam/charge/
-summon live in dead client AI); runs are memory-only (deploy mid-run
+summon live in dead client AI)~~ — SHIPPED v2.3.1194
+(`_dungeonTickBossAbilities` rides `_tickDungeons`, no `_tickMonsters`
+fork; telegraphs via the display-only `dungeon_boss_ability` event,
+damage via the normal `monster_attack`/`_applyDamage` rails with a
+≤50%-maxHp no-oneshot clamp; summons capped at 4 with halved rewards —
+see dungeons.md); runs are memory-only (deploy mid-run
 evaporates it, exit tile always works); loot piles die with the
 instance sweep.
 

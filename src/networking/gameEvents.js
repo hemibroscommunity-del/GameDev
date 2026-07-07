@@ -342,6 +342,50 @@ export function processGameEvent(type, payload, S, deps) {
               BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               break;
             }
+          case 'dungeon_boss_ability':
+            {
+              /* v2.3.1194: server-scripted boss ability notice
+                 (handoff item F follow-up -- the slam/charge/summon/
+                 sweep kit moved from the dead local boss AI into
+                 dungeon.js).  DISPLAY-ONLY on purpose: warning popup at
+                 telegraph, ring/shake/beep at execute, mirroring the
+                 legacy monsterCombat.js visuals.  All damage arrives
+                 via the authoritative monster_attack + player_state
+                 events; never mutate HP or monsters here. */
+              if (!payload || payload.zone !== S._serverDungeon) break;
+              var _dbaLabels = { slam: 'SLAM!', charge: 'CHARGE!', summon: 'Summon!', sweep: 'SWEEP!' };
+              var _dbaColors = { slam: '#f5c542', charge: '#ea580c', summon: '#9333ea', sweep: '#a855f7' };
+              var _dbaLabel = _dbaLabels[payload.ability];
+              if (!_dbaLabel) break; /* whitelist -- never render arbitrary wire strings */
+              var _dbaX = typeof payload.x === 'number' ? payload.x : S.player.x;
+              var _dbaY = typeof payload.y === 'number' ? payload.y : S.player.y;
+              if (payload.phase === 'telegraph') {
+                /* Legacy telegraph read: amber "<ABILITY>!" over the boss. */
+                pushDmgPopup(S, _dbaX, _dbaY - 40, _dbaLabel, '#fbbf24');
+                BT_AUDIO.beep(400, 0.08, 0.1, 'sine');
+                break;
+              }
+              /* Execute visuals per ability (legacy colors/shake). */
+              pushDmgPopup(S, _dbaX, _dbaY - 30, _dbaLabel, _dbaColors[payload.ability]);
+              if (payload.ability === 'slam' || payload.ability === 'sweep') {
+                if (!S._impactRings) S._impactRings = [];
+                S._impactRings.push({
+                  x: _dbaX, y: _dbaY, ts: Date.now(),
+                  color: _dbaColors[payload.ability],
+                  maxR: payload.range || 80,
+                  duration: payload.ability === 'slam' ? 400 : 300
+                });
+                S.screenShake = payload.ability === 'slam' ? 10 : 6;
+                BT_AUDIO.beep(payload.ability === 'slam' ? 80 : 150, 0.2, 0.25, payload.ability === 'slam' ? 'sawtooth' : 'square');
+              } else if (payload.ability === 'charge') {
+                BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
+              } else {
+                /* summon -- the fresh minions arrive via the zone_state
+                   re-push that precedes this event. */
+                BT_AUDIO.beep(300, 0.1, 0.15, 'square');
+              }
+              break;
+            }
           case 'arena_stake_placed':
             {
               /* v2.3.1128: the worker escrowed our sponsorship stake

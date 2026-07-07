@@ -56,6 +56,47 @@ export const DUNGEONS = {
   VALID_ELEMENTS: ['flame', 'venom', 'frost', 'storm', 'stone', 'wind', 'water'],
 };
 
+/* v2.3.1194: BOSS ABILITY SCRIPT (handoff item F follow-up).  Server
+ * bosses were stat-scaled chase-and-swing only; the slam/charge/summon/
+ * sweep kit lived in DEAD client AI (monsterCombat.js boss phase
+ * cycling + the dungeonWaves.js unlock gates -- unreachable under
+ * S._serverDungeon).  Ported here as a per-boss script riding
+ * _tickDungeons, per the spec's attach-point note ("keep it in
+ * dungeon.js; don't fork _tickMonsters").
+ *
+ * Numbers are the legacy client values (code is truth) with two
+ * deliberate conservative deviations:
+ *   - MAX_HIT_PCT: one ability hit never exceeds half the victim's max
+ *     HP -- the no-oneshot guard (BALANCE-PLAN has no boss table; this
+ *     invariant stands in for one).
+ *   - SUMMON.MAX_ALIVE + REWARD_MULT: legacy minions were UNCAPPED and
+ *     paid full swarm XP/gold at 30% HP -- an add-farming faucet once
+ *     the server owns the credit.  Capped at 4 live minions and the
+ *     rewards halved.
+ * NOT ported: the invulnerable-except-recovery phase armor (it would
+ * touch every damage path and §7 kill-credit surfaces for no ask) and
+ * 'enrage' (standard depth dungeons only -- dormant since v2.3.54). */
+export const BOSS_ABILITIES = {
+  FIRST_CAST_MS: 3000,    // legacy: _nextAbility = spawn + 3000
+  COOLDOWN_MS: 4000,      // legacy: _abilityInterval on the custom-dungeon path
+  TELEGRAPH_MS: 1000,     // legacy telegraph phase; client renders the warning
+  SUMMON_UNLOCK_LVL: 20,  // legacy: cfg.monsterLevel >= 20 adds summon
+  SWEEP_UNLOCK_LVL: 40,   // legacy: cfg.monsterLevel >= 40 adds sweep
+  MAX_HIT_PCT: 0.5,       // no-oneshot guard: one ability hit <= 50% of victim maxHp
+  SLAM:   { RANGE: 80, DMG_MULT: 1.5 },   // legacy slamRange / m.dmg x1.5
+  SWEEP:  { RANGE: 70, DMG_MULT: 1.2 },   // legacy sweepRange / m.dmg x1.2
+  // Legacy charge: spd x6 per 60fps FRAME for 600ms; the server ticks
+  // at 45Hz, so x8/tick approximates the same px/sec lunge.
+  CHARGE: { DURATION_MS: 600, SPEED_MULT: 8, HIT_RANGE: 45, DMG_MULT: 1.5 },
+  SUMMON: {
+    COUNT_MIN: 2, COUNT_MAX: 3, // legacy: 2 + rand(0..1)
+    LEVEL_DELTA: 5,             // legacy: minion level = boss level - 5
+    HP_MULT: 0.3,               // legacy: 30%-HP swarm adds
+    MAX_ALIVE: 4,               // live-minion cap (legacy: uncapped)
+    REWARD_MULT: 0.5,           // XP/gold haircut vs a real swarm (faucet guard)
+  },
+};
+
 function clampInt(v, lo, hi, dflt) {
   const n = Math.floor(Number(v));
   if (!Number.isFinite(n)) return dflt;
@@ -223,8 +264,248 @@ export const dungeonMethods = {
     m.x = Math.floor(inst.cfg.width / 2) * this.TILE;
     m.y = Math.floor(inst.cfg.height / 3) * this.TILE;
     m.spawnX = m.x; m.spawnY = m.y;
+    // v2.3.1194: ability script state.  Kit + unlock gates are the
+    // legacy custom-dungeon values (dungeonWaves.js) verbatim.  All
+    // underscore fields -- every wire mapping (zone snapshot, tick
+    // delta, _dungeonPushZoneState) copies explicit fields, so none of
+    // this leaks to clients.
+    m._dungeonBoss = true;
+    m._abilities = ['slam', 'charge'];
+    if (inst.cfg.monsterLevel >= BOSS_ABILITIES.SUMMON_UNLOCK_LVL) m._abilities.push('summon');
+    if (inst.cfg.monsterLevel >= BOSS_ABILITIES.SWEEP_UNLOCK_LVL) m._abilities.push('sweep');
+    m._abilityPattern = 0;   // fixed rotation cursor (legacy _attackPattern)
+    m._abilityPhase = null;  // null | 'telegraph'
+    m._pendingAbility = null;
+    m._phaseUntil = 0;
+    m._nextAbilityAt = Date.now() + BOSS_ABILITIES.FIRST_CAST_MS;
     list.push(m);
     inst.bossSpawned = true;
+    this._markMonsterDirty(inst.zone, m.id);
+  },
+
+  // v2.3.1194: private notice to everyone inside -- the client handler
+  // is DISPLAY-ONLY (popup / impact ring / shake); all damage arrives
+  // via the authoritative monster_attack + player_state paths below.
+  _dungeonBossAbilityEvent(zone, players, m, ability, phase, extra) {
+    const payload = {
+      zone, monsterId: m.id, ability, phase,
+      x: Math.round(m.x), y: Math.round(m.y), ...extra,
+    };
+    for (const pid of players) {
+      this._dungeonSend(pid, { type: 'dungeon_boss_ability', payload });
+    }
+  },
+
+  // v2.3.1194: one ability hit vs one player.  Mirrors the basic-attack
+  // sequence in _tickMonsters (block short-circuit, _applyDamage,
+  // lifesteal damage tracking, monster_attack emission, save/flush,
+  // death check) so abilities ride the exact same authoritative-damage
+  // rails.  Deliberately NO thorns reflect on a blocked ability -- the
+  // reflect surface stays pinned to the basic swing (one reflect per
+  // MONSTER_ATTACK_CD); an AoE that also triggered it would multiply
+  // thorns output per cast.
+  _dungeonBossHitPlayer(inst, m, pid, dmgMult) {
+    const ps = this.playerState[pid];
+    if (!ps || ps.dead || ps.dying) return;
+    const zone = inst.zone;
+    if (ps.blocking) {
+      // Block = full negation (v2.3.1110 omni rule), same stamina cost
+      // as a blocked basic attack; staminaDrain rides the wire so the
+      // client's floating number matches the server-side cost.
+      const staminaCost = Math.max(1, Math.round(15 * this._blockStaminaMult(ps)));
+      if (typeof ps.stamina === 'number') {
+        ps.stamina = Math.max(0, ps.stamina - staminaCost);
+        this._saveRpg(pid, ps);
+        this._queuePlayerStateFlush(pid);
+      }
+      this.eventBuffer.push({
+        type: 'monster_attack',
+        payload: {
+          monsterId: m.id, targetId: pid, dmg: m.dmg, dmgTaken: 0,
+          blocked: true, staminaDrain: staminaCost,
+          zone, attackerX: m.x, attackerY: m.y,
+        },
+      });
+      return;
+    }
+    // No-oneshot clamp BEFORE _applyDamage so dodge/Iron Skin/Second
+    // Wind all see the already-conservative number.
+    const raw = Math.min(
+      Math.ceil(m.dmg * dmgMult),
+      Math.max(1, Math.floor((ps.maxHp || 100) * BOSS_ABILITIES.MAX_HIT_PCT))
+    );
+    const res = this._applyDamage(ps, raw, false);
+    if (!res.dodged) {
+      const trackAmt = res.graced ? (res.dmgIntent || 0) : res.dmgTaken;
+      this._trackMonsterDamage(ps, m.id, trackAmt);
+    }
+    this.eventBuffer.push({
+      type: 'monster_attack',
+      payload: {
+        monsterId: m.id, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
+        dodged: res.dodged, secondWind: res.secondWind || undefined,
+        zone, attackerX: m.x, attackerY: m.y,
+      },
+    });
+    this._saveRpg(pid, ps);
+    this._queuePlayerStateFlush(pid);
+    if (ps.hp <= 0 && !ps.dying) {
+      this._handlePlayerDeath(ps, pid, 'monster:' + m.id);
+    }
+  },
+
+  // v2.3.1194: summon execution.  Minions ride the normal
+  // _dungeonMonster pipeline (noRespawn, §7 contribution, kill quests)
+  // with the legacy 30% HP cut, PLUS the cap + reward haircut the
+  // legacy client never had (see BOSS_ABILITIES header).  Returns the
+  // number actually spawned so the caller knows whether a zone_state
+  // re-push is needed.
+  _dungeonBossSummon(inst, m) {
+    const list = this.monsters[inst.zone];
+    if (!list) return 0;
+    const aliveMinions = list.filter((x) => x._bossMinion && x.alive).length;
+    const headroom = BOSS_ABILITIES.SUMMON.MAX_ALIVE - aliveMinions;
+    if (headroom <= 0) return 0;
+    const want = BOSS_ABILITIES.SUMMON.COUNT_MIN + Math.floor(
+      Math.random() * (BOSS_ABILITIES.SUMMON.COUNT_MAX - BOSS_ABILITIES.SUMMON.COUNT_MIN + 1));
+    const n = Math.min(want, headroom);
+    if (inst._minionSeq === undefined) inst._minionSeq = 0;
+    for (let i = 0; i < n; i++) {
+      const lvl = Math.max(1, m.level - BOSS_ABILITIES.SUMMON.LEVEL_DELTA);
+      const mn = this._dungeonMonster(inst, 'swarm', lvl, m.element, 'minion-' + (inst._minionSeq++));
+      mn._bossMinion = true;
+      mn.hp = Math.max(1, Math.ceil(mn.hp * BOSS_ABILITIES.SUMMON.HP_MULT));
+      mn.maxHp = mn.hp;
+      mn.xp = Math.max(1, Math.ceil(mn.xp * BOSS_ABILITIES.SUMMON.REWARD_MULT));
+      mn.gold = Math.max(0, Math.ceil(mn.gold * BOSS_ABILITIES.SUMMON.REWARD_MULT));
+      // Near-boss placement clamped inside the arena (legacy parity:
+      // +-40/+-30 px scatter, min 2 tiles off the walls).
+      mn.x = Math.max(this.TILE * 2, Math.min(m.x + (Math.random() - 0.5) * 80, (inst.cfg.width - 2) * this.TILE));
+      mn.y = Math.max(this.TILE * 2, Math.min(m.y + (Math.random() - 0.5) * 60, (inst.cfg.height - 2) * this.TILE));
+      mn.spawnX = mn.x; mn.spawnY = mn.y;
+      list.push(mn);
+      this._markMonsterDirty(inst.zone, mn.id);
+    }
+    return n;
+  },
+
+  // v2.3.1194: the per-tick ability driver.  Cycle per cast:
+  //   ready (cooldown elapsed) -> telegraph (1s wind-up, movement +
+  //   basic swing suppressed via the existing _attackingUntil/atkCd
+  //   fields _tickMonsters already honors -- no core-AI fork) ->
+  //   execute -> cooldown.
+  // Charge is the one ability with a duration: its movement runs here
+  // (never in _tickMonsters) and ends on first contact or timeout.
+  _dungeonTickBossAbilities(inst, players, now) {
+    const list = this.monsters[inst.zone];
+    if (!list) return;
+    const m = list.find((x) => x._dungeonBoss && x.alive);
+    if (!m) return;
+    const B = BOSS_ABILITIES;
+
+    // ── Charge in flight ──
+    if (m._chargeUntil) {
+      if (now < m._chargeUntil) {
+        // Keep _tickMonsters' chase step out of the lunge (it honors
+        // _attackingUntil as a movement freeze).
+        m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
+        m.x += Math.cos(m._chargeAngle) * m._chargeSpeed;
+        m.y += Math.sin(m._chargeAngle) * m._chargeSpeed;
+        // Never lunge out of the arena.
+        m.x = Math.max(this.TILE, Math.min(m.x, (inst.cfg.width - 1) * this.TILE));
+        m.y = Math.max(this.TILE, Math.min(m.y, (inst.cfg.height - 1) * this.TILE));
+        this._markMonsterDirty(inst.zone, m.id);
+        for (const pid of players) {
+          const ps = this.playerState[pid];
+          if (!ps || ps.dead || ps.dying) continue;
+          const dx = ps.x - m.x, dy = ps.y - m.y;
+          if (dx * dx + dy * dy < B.CHARGE.HIT_RANGE * B.CHARGE.HIT_RANGE) {
+            this._dungeonBossHitPlayer(inst, m, pid, B.CHARGE.DMG_MULT);
+            m._chargeUntil = 0; // stop charging on hit (legacy parity)
+            break;
+          }
+        }
+        return; // no new casts mid-lunge
+      }
+      m._chargeUntil = 0;
+    }
+
+    // ── Telegraph running / resolving ──
+    if (m._abilityPhase === 'telegraph') {
+      if (now < m._phaseUntil) {
+        m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
+        return; // still winding up -- the client is rendering the warning
+      }
+      const ability = m._pendingAbility;
+      m._abilityPhase = null;
+      m._pendingAbility = null;
+      m._nextAbilityAt = now + B.COOLDOWN_MS;
+      const extra = {};
+      if (ability === 'slam' || ability === 'sweep') {
+        const cfgA = ability === 'slam' ? B.SLAM : B.SWEEP;
+        extra.range = cfgA.RANGE;
+        for (const pid of players) {
+          const ps = this.playerState[pid];
+          if (!ps || ps.dead || ps.dying) continue;
+          const dx = ps.x - m.x, dy = ps.y - m.y;
+          if (dx * dx + dy * dy < cfgA.RANGE * cfgA.RANGE) {
+            this._dungeonBossHitPlayer(inst, m, pid, cfgA.DMG_MULT);
+          }
+        }
+      } else if (ability === 'charge') {
+        // Aim at the nearest live player at execute time (legacy aimed
+        // at ITS player -- single-player AI; nearest is the MP analog).
+        let tgt = null, best = Infinity;
+        for (const pid of players) {
+          const ps = this.playerState[pid];
+          if (!ps || ps.dead || ps.dying) continue;
+          const d2 = (ps.x - m.x) * (ps.x - m.x) + (ps.y - m.y) * (ps.y - m.y);
+          if (d2 < best) { best = d2; tgt = ps; }
+        }
+        if (tgt) {
+          m._chargeUntil = now + B.CHARGE.DURATION_MS;
+          m._chargeAngle = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+          m._chargeSpeed = m.spd * B.CHARGE.SPEED_MULT;
+        }
+      } else if (ability === 'summon') {
+        const n = this._dungeonBossSummon(inst, m);
+        extra.count = n;
+        // Fresh entities need the full-snapshot path on BOTH protocols
+        // (per-tick deltas only update entities the client already
+        // knows) -- same reason wave spawns re-push.
+        if (n > 0) this._dungeonPushZoneState(inst.zone);
+      }
+      this._dungeonBossAbilityEvent(inst.zone, players, m, ability, 'execute', extra);
+      return;
+    }
+
+    // ── Ready: pick the next ability in the fixed rotation ──
+    if (now < m._nextAbilityAt) return;
+    let ability = null;
+    for (let i = 0; i < m._abilities.length; i++) {
+      const cand = m._abilities[m._abilityPattern % m._abilities.length];
+      m._abilityPattern++;
+      if (cand === 'summon') {
+        // At the minion cap, skip to the next ability instead of
+        // burning the cast on a no-op.
+        const aliveMinions = list.filter((x) => x._bossMinion && x.alive).length;
+        if (aliveMinions >= B.SUMMON.MAX_ALIVE) continue;
+      }
+      ability = cand;
+      break;
+    }
+    if (!ability) { m._nextAbilityAt = now + B.COOLDOWN_MS; return; }
+    m._abilityPhase = 'telegraph';
+    m._pendingAbility = ability;
+    m._phaseUntil = now + B.TELEGRAPH_MS;
+    // Plant the boss for the wind-up and hold its basic swing through
+    // the execute -- both via fields _tickMonsters already honors.
+    m._attackingUntil = Math.max(m._attackingUntil || 0, now + B.TELEGRAPH_MS);
+    m.atkCd = Math.max(m.atkCd || 0, now + B.TELEGRAPH_MS + 500);
+    const extra = { ms: B.TELEGRAPH_MS };
+    if (ability === 'slam') extra.range = B.SLAM.RANGE;
+    if (ability === 'sweep') extra.range = B.SWEEP.RANGE;
+    this._dungeonBossAbilityEvent(inst.zone, players, m, ability, 'telegraph', extra);
     this._markMonsterDirty(inst.zone, m.id);
   },
 
@@ -314,6 +595,9 @@ export const dungeonMethods = {
       inst.emptySince = 0;
       const list = this.monsters[inst.zone];
       if (!list || list.length === 0) continue;
+      // v2.3.1194: boss ability script (telegraph/execute/charge/summon)
+      // runs while the boss lives; wave logic below is untouched.
+      if (inst.bossSpawned) this._dungeonTickBossAbilities(inst, players, now);
       if (!list.every((m) => !m.alive)) continue;
       // Wave cleared.
       if (inst.wave < inst.cfg.waves) {
