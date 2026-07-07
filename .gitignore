@@ -22,3 +22,6 @@ assets-archive/
 
 # Shirt-preview dev artifacts (tools/preview_shirt_frames.py output)
 tools/_*.png
+
+# Gear-art contact sheets (tools/qa/qa-gear-sheet.mjs output — v2.3.1195)
+tools/qa/out/

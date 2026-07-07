@@ -18,8 +18,13 @@ import { fileURLToPath } from 'node:url';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const filters = process.argv.slice(2);
+/* v2.3.1195: qa-gear-sheet.mjs is a human-review contact-sheet generator
+   (docs/ART-QA.md), not a pass/fail harness — excluded from the suite unless
+   explicitly named in a filter term. */
+const NOT_A_GATE = ['qa-gear-sheet.mjs'];
 const scripts = readdirSync(dir)
   .filter((f) => f.startsWith('qa-') && f.endsWith('.mjs'))
+  .filter((f) => !NOT_A_GATE.includes(f) || filters.some((t) => f.includes(t)))
   .filter((f) => !filters.length || filters.some((t) => f.includes(t)))
   .sort();
 

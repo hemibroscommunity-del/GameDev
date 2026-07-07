@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src",
-    "qa": "node tools/qa/run-all.mjs"
+    "qa": "node tools/qa/run-all.mjs",
+    "qa:gear-sheet": "node tools/qa/qa-gear-sheet.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.6.6",
