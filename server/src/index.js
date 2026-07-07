@@ -61,7 +61,9 @@ import { guildMethods } from './guilds.js';
 import { threatMethods } from './threat.js';
 // v2.3.1130 (PR14): server-validated pet capture -- trap consumption,
 // server monster HP/range checks, sanitized pet minting.
-import { petMethods } from './pets.js';
+// v2.3.1200: PETS config also imported directly -- _handleLootPickup
+// reads PETS.VACUUM_RANGE for the pet loot vacuum (viaPet pickups).
+import { petMethods, PETS } from './pets.js';
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
 // loot layers (effective_base formula, forge quality roll, harden
 // ladder).  See hardening.js for the name-collision warning vs the
@@ -1877,6 +1879,20 @@ export class GameRoom {
     if (!session || !session.id) return;  // no session = no way to tell them
     const { lootId, zone } = payload || {};
     if (!lootId || !zone) return reject('bad-payload');
+    /* v2.3.1200: pet loot vacuum rides THIS handler.  The client's
+       §18.1 auto-loot used to self-credit coins/shards that the next
+       player_state echo stomped (pure theatre -- the pets.md "attach
+       points" note).  A vacuum pickup is now the same loot_pickup
+       request with payload.viaPet=true, so it meets every gate here
+       (pile exists, per-player claimedBy flags, recipient list, death-
+       drop windows) and every grant/despawn line below IDENTICALLY to
+       a manual grab -- double credit with a manual pickup is impossible
+       because both paths share one claimedBy map.  Only two deltas:
+       the sender must have a server-known active pet, and the range
+       gate widens to PETS.VACUUM_RANGE (still measured from the
+       OWNER's position -- the server does not track pet position; see
+       the constant's comment in pets.js for the geometry). */
+    const viaPet = !!(payload && payload.viaPet);
     const list = this.loot[zone];
     if (!list) return reject('no-loot-zone');
     const pile = list.find((p) => p.lootId === lootId);
@@ -1906,11 +1922,20 @@ export class GameRoom {
     if (ps.z !== zone) return reject('wrong-zone', { psZ: ps.z });
     if (ps.dead) return reject('dead');
     if (ps.disconnected) return reject('disconnected');
+    // v2.3.1200: a viaPet pickup requires a server-known active pet --
+    // the wider vacuum radius is the pet's feature, not a free upgrade
+    // any client can flip on with a payload flag.
+    if (viaPet) {
+      const petList = (ps.lifeSkills && Array.isArray(ps.lifeSkills.pets)) ? ps.lifeSkills.pets : [];
+      const petIdx = ps.lifeSkills ? ps.lifeSkills.activePet : null;
+      if (typeof petIdx !== 'number' || !petList[petIdx]) return reject('no-pet');
+    }
     const dx = ps.x - pile.x;
     const dy = ps.y - pile.y;
     const distSq = dx * dx + dy * dy;
-    const rangeSq = this.LOOT_PICKUP_RANGE * this.LOOT_PICKUP_RANGE;
-    if (distSq > rangeSq) return reject('out-of-range', { dist: Math.round(Math.sqrt(distSq)), max: this.LOOT_PICKUP_RANGE });
+    const range = viaPet ? PETS.VACUUM_RANGE : this.LOOT_PICKUP_RANGE;
+    const rangeSq = range * range;
+    if (distSq > rangeSq) return reject('out-of-range', { dist: Math.round(Math.sqrt(distSq)), max: range });
 
     // Death-drop pickup: first picker grabs everything, pile despawns.
     // Separate code path from monster-kill loot since there are no
@@ -1941,6 +1966,9 @@ export class GameRoom {
               shard: null,
               items: itemsForMe,
               isDeathDrop: true,
+              // v2.3.1200: echo the pet-vacuum origin so the client can
+              // render the pickup at the pet instead of the player.
+              viaPet,
             },
           }));
         } catch (e) {}
@@ -2030,6 +2058,9 @@ export class GameRoom {
             weapon: weaponForMe,
             weaponStashed,
             weaponSoldFor,
+            // v2.3.1200: echo the pet-vacuum origin so the client can
+            // render the pickup at the pet + count the pet-loot quest.
+            viaPet,
           },
         }));
       } catch (e) {}
@@ -2198,6 +2229,9 @@ export class GameRoom {
         // Client requests to pick up a loot pile.  Server validates
         // (range, recipient, single-claim) and emits a private
         // loot_credit back to the picker with their authorized share.
+        // v2.3.1200: payload.viaPet = the pet loot vacuum -- same
+        // handler, same claim flags, wider range gated on a
+        // server-known active pet (caps.petLoot on the client side).
         if (session.id) {
           this._handleLootPickup(session, msg.payload || msg);
         }

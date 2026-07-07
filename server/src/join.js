@@ -538,7 +538,13 @@ export const joinMethods = {
       // (smelt/craft/gem) and suppresses its local gold-nugget kill
       // roll only when the worker owns the amulet mint + nugget ledger
       // (amulet.js); old workers keep the legacy client-local flows.
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, ..._liveFlags },
+      // v2.3.1200: petLoot -- the client routes the pet loot vacuum
+      // through loot_pickup {viaPet:true} only when the worker
+      // understands the flag (an old worker would reject the wider
+      // vacuum range as out-of-range and the pile would sit unlootable
+      // by the pet); absent, the legacy client-side self-credit vacuum
+      // stays (harmless theatre -- the echo stomps it, as ever).
+caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, petLoot: true, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

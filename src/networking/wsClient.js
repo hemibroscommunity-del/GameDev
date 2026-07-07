@@ -1349,6 +1349,20 @@ export function setupWebSocket(ctx) {
            suppression all kick in for MP loot too. Without this, the
            freeze only fired for single-player loot. */
         S._lootFreezeUntil = Date.now() + 500;
+        /* v2.3.1200: pet-vacuum credits (loot_pickup {viaPet:true},
+           gated on caps.petLoot).  Skip the pickup freeze — the PET
+           grabbed it, the player never stopped walking — and keep the
+           legacy vacuum's petLootCount quest tally + at-the-pet popup
+           so the pet quest line and the "pet fetched it" feel survive
+           the move to server credit. */
+        if (payload.viaPet) {
+          S._lootFreezeUntil = 0;
+          if (!R._questFlags) R._questFlags = {};
+          R._questFlags.petLootCount = (R._questFlags.petLootCount || 0) + 1;
+          if (typeof S._petX === 'number' && typeof S._petY === 'number') {
+            pushDmgPopup(S, S._petX, S._petY - 15, 'PET +' + (payload.coins || 0) + ' G', '#f5c542');
+          }
+        }
         if (payload.coins && payload.coins > 0) {
           if (R._compStats) R._compStats.totalGoldEarned = (R._compStats.totalGoldEarned || 0) + payload.coins;
           pushHudPopup(S, { target: 'goldIcon', text: '+' + payload.coins + ' G', color: '#f5c542' });

@@ -22,11 +22,16 @@
  * per-key merge adopts it, which turns the old "echo stomps my pets"
  * bug into the intended flow.
  *
- * Pets are cosmetic + client-side economy only (their loot-vacuum
+ * Pets were cosmetic + client-side economy only (their loot-vacuum
  * coins were always stomped by the echo), so the join-time adoption
  * below is deliberately forgiving: when the server has no pets on
  * record and the client brought some, adopt a SANITIZED copy (cap 6,
- * whitelisted fields).  Forgery ceiling: six cosmetic pets.
+ * whitelisted fields).  Forgery ceiling: six cosmetic pets -- since
+ * v2.3.1200 an active pet also widens the owner's loot-pickup radius
+ * to PETS.VACUUM_RANGE (the vacuum is economically real now; see
+ * _handleLootPickup in index.js), which is the deliberate feature,
+ * not a leak: the wider radius only reaches piles the player is
+ * already a recipient of.
  *
  * Validation order matters: every rejection happens BEFORE the trap
  * is consumed -- only a real roll spends it. */
@@ -46,6 +51,17 @@ export const PETS = {
   ESCAPE_XP: 5,
   CAPTURE_XP_BASE: 15,
   CAPTURE_XP_PER_LVL: 2,
+  /* v2.3.1200: pet loot vacuum range (px), measured from the OWNER's
+   * server-known position -- the server does NOT track pet position
+   * (the client's S._petX/_petY follow-orbit is pure cosmetics), so
+   * the owner's spot + a modestly larger radius stands in for the pet.
+   * Geometry: LOOT_PICKUP_RANGE (160) already absorbs the pile-spawn
+   * offset + render magnetism + move-throttle lag stack measured from
+   * the client's 20 px manual trigger; the pet's trigger point sits up
+   * to ~130 px from the player instead (<=50 px follow orbit +
+   * PET_LOOT_RADIUS 80 in src/data/gameSystems.js), so +80 keeps the
+   * same slack without opening cross-screen theft. */
+  VACUUM_RANGE: 240,
 };
 
 const PET_NAMES = ['Nibbles', 'Chompy', 'Sparky', 'Dusty', 'Wispy', 'Bubbles', 'Frosty', 'Ember', 'Shade', 'Glimmer', 'Mossy', 'Rocky', 'Zippy', 'Gloop', 'Rumble'];
