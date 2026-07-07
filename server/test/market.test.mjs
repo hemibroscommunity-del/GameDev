@@ -15,14 +15,14 @@
  *   7. Self-orders never match and never enter price history.
  *   8. Price history records executions; /history returns avg + last.
  *   9. MAX_ORDERS_PER_PLAYER enforced.
- *  10. v2.3.1176: DO restart rebuilds the book + order counts from
+ *  10. v2.3.1182: DO restart rebuilds the book + order counts from
  *      mkt_order: keys; escrow survives, cancel on the rebuilt room
  *      refunds, and the shared oplog blocks a cross-instance double
  *      refund.
- *  11. v2.3.1176: HTTP surface (GameRoom.fetch -> _marketFetch) --
+ *  11. v2.3.1182: HTTP surface (GameRoom.fetch -> _marketFetch) --
  *      place/cancel carry the `settled: true` deploy-order flag the
  *      client gates its legacy self-credit path on; /orders read shape.
- *  12. v2.3.1178: settlement crash windows converge -- credits land
+ *  12. v2.3.1184: settlement crash windows converge -- credits land
  *      before the record delete (maker-keyed settle stamps), refunds
  *      never pay over a stamped settlement, and the index rebuild
  *      deletes (never re-lists) stamped leftovers.
@@ -150,7 +150,7 @@ room._mktOrderCounts.set('bp_mkt_buyer', 10);
 const capped = await room._mktPlaceOrder(ORD({ type: 'buy', playerId: 'bp_mkt_buyer', price: 10 }));
 check('order cap enforced', capped.ok === false && capped.error === 'Max 10 orders', capped);
 
-// ── 10. v2.3.1176: order-book rebuild after DO restart ──
+// ── 10. v2.3.1182: order-book rebuild after DO restart ──
 // _mktEnsureIndex rebuilds the in-memory book + _mktOrderCounts from
 // the persisted mkt_order: keys on DO wake.  Resting orders are the
 // ONLY copy of escrowed player property, and every check above runs
@@ -200,7 +200,7 @@ r2seller.weaponStash = [];
 await room._mktRefund(restSell.order, 'order cancelled');
 check('cross-instance refund retry blocked by shared oplog', r2seller.weaponStash.length === 0 && state._store.get('inbox:bp_mkt_r2s').length === 1, { stash: r2seller.weaponStash, inbox: state._store.get('inbox:bp_mkt_r2s') });
 
-// ── 11. v2.3.1176: HTTP surface + the `settled` deploy-order flag ──
+// ── 11. v2.3.1182: HTTP surface + the `settled` deploy-order flag ──
 // GameRoom.fetch routes /api/market/* into _marketFetch.  The client's
 // legacy ExchangePanel self-credit path is gated on !data.settled: if
 // a mutating response ever ships without settled === true, old clients
@@ -232,7 +232,7 @@ const cxlBody = await cxlRes.json();
 check('HTTP cancel: ok + settled flag', cxlRes.status === 200 && cxlBody.ok === true && cxlBody.settled === true, cxlBody);
 check('HTTP cancel refunded the weapon live', httpP.weaponStash.some((w) => w.name === 'Http Axe'), httpP.weaponStash);
 
-// ── 12. v2.3.1178: settlement crash windows converge ──
+// ── 12. v2.3.1184: settlement crash windows converge ──
 // The match/cancel/sweep paths used to delete the escrow record BEFORE
 // crediting -- a deploy landing in between destroyed both sides' escrow
 // with nothing left for any sweep to repair (the settle stamps were

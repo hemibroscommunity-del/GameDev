@@ -668,7 +668,7 @@ export class GameRoom {
     const now = Date.now();
     const activeZones = this._activeZones();
 
-    // v2.3.1177: one pass over playerState per tick, not one per active
+    // v2.3.1183: one pass over playerState per tick, not one per active
     // zone -- and slim {id,x,y,blocking} records instead of spreading
     // the full ~50-field state (inventory, quest maps, ...) per player
     // per zone at 45 Hz.  The AI below reads exactly these four fields

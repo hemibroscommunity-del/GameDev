@@ -6,7 +6,7 @@ import { Assets, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Textur
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
-/* v2.3.1177: status-id -> element lookup, built once at import time.
+/* v2.3.1183: status-id -> element lookup, built once at import time.
    _updateMonsters used to run Object.values(ELEMENTS).find(...) per
    status per monster per FRAME -- an array + closure allocation and a
    linear scan on the 60fps hot path whenever any DoT was ticking. */
@@ -3036,7 +3036,7 @@ export class EntityRenderer {
           for (const statusId of statusKeys) {
             const statusData = statuses[statusId];
             if (!statusData) continue;
-            const elemForStatus = STATUS_TO_ELEMENT.get(statusId); /* v2.3.1177 */
+            const elemForStatus = STATUS_TO_ELEMENT.get(statusId); /* v2.3.1183 */
             const sColor = elemForStatus ? cssColorToHex(elemForStatus.color) : 0xffffff;
             const ratio = 0.25;
             const winSize = (statusData.maxDur || 0) * ratio;

@@ -336,7 +336,7 @@ const psB = room.playerState.pb;
     saved && saved._cookHistory && saved._cookHistory.length);
 }
 
-// ── 8. v2.3.1176 first-connect bootstrap NUMERIC caps ──
+// ── 8. v2.3.1182 first-connect bootstrap NUMERIC caps ──
 // Section 6 covers the weapon half of the bootstrap; this covers the
 // numeric half (join.js BOOTSTRAP_* caps).  A localStorage tamper
 // before the first ever connect is the one moment the server trusts

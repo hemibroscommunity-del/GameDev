@@ -12,11 +12,11 @@
  *      mutates live state; duplicate opId converges ({ok, dup}).
  *   6. Offline escrow take mutates the stored blob directly.
  *   7. Inbox soft cap: gold/item entries merge losslessly at 200.
- *   8. (v2.3.1176) Drain remainder path: a join drains what fits (gold)
+ *   8. (v2.3.1182) Drain remainder path: a join drains what fits (gold)
  *      but writes the rejected weapon BACK to inbox:<id> and reports it
  *      in inbox_delivered.queued; a later join with stash room delivers
  *      it and deletes the key.
- *   9. (v2.3.1176) _opPruneMaybe: deletes >48h and junk-valued oplog
+ *   9. (v2.3.1182) _opPruneMaybe: deletes >48h and junk-valued oplog
  *      keys, keeps fresh ones, and rate-limits to one sweep per hour.
  */
 import { GameRoom } from '../src/index.js';
@@ -137,7 +137,7 @@ const carolBox = state._store.get('inbox:bp_inbox_carol');
 const carolGold = carolBox.reduce((s, e) => s + (e.kind === 'gold' ? e.payload.amount : 0), 0);
 check('at cap, gold merges instead of growing', carolBox.length === 200 && carolGold === 250, { len: carolBox.length, gold: carolGold });
 
-// ── 8. v2.3.1176: drain remainder path (inbox.js _drainInbox) ──
+// ── 8. v2.3.1182: drain remainder path (inbox.js _drainInbox) ──
 // Section 4 covers the ONLINE credit parking at a full stash; this
 // covers the JOIN-TIME drain partition: deliverable entries apply, the
 // rejected weapon must be written back to storage (not dropped with the
@@ -179,7 +179,7 @@ check('fully drained inbox key deleted', !state._store.has('inbox:bp_inbox_dave'
 const inbD3 = msgsOfType(wsD3, 'inbox_delivered');
 check('second drain reports queued === 0', inbD3.length === 1 && inbD3[0].payload.queued === 0 && inbD3[0].payload.entries[0].kind === 'weapon', inbD3);
 
-// ── 9. v2.3.1176: _opPruneMaybe (48h expiry + junk cleanup + hourly rate limit) ──
+// ── 9. v2.3.1182: _opPruneMaybe (48h expiry + junk cleanup + hourly rate limit) ──
 // Both failure directions are silent (best-effort catch), so assert
 // each explicitly: expired and junk-valued keys go, fresh keys stay,
 // and a second sweep inside the hour is a no-op.

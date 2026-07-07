@@ -221,7 +221,7 @@ export function updateZoneMechanics(S, ptx, pty) {
               if (!S._lastDrownTick || Date.now() - S._lastDrownTick > 1000) {
                 S._lastDrownTick = Date.now();
                 S.rpg.hp -= DIVE_DAMAGE_RATE;
-                /* v2.3.1175: floor at 1 HP when the worker owns monsters.
+                /* v2.3.1181: floor at 1 HP when the worker owns monsters.
                    Drowning is client-local damage the server never sees, so
                    a drowning death here fired NO death flow: the BroTown
                    catch-all is gated on !S._serverMonsters and the server

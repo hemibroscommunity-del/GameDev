@@ -12,7 +12,7 @@
  * DO's input gates -- no opId journal needed on the placement path.
  * Settlement CREDITS go through the PR2 primitives (_creditPlayer),
  * which handle online/offline delivery and idempotency uniformly.
- * v2.3.1178: settlement/refund order is credit-first, delete-last
+ * v2.3.1184: settlement/refund order is credit-first, delete-last
  * with maker-keyed settle stamps -- the original delete-first order
  * left a deploy-shaped window that destroyed escrow unrecoverably
  * (see the comments at the match/cancel/sweep sites).
@@ -52,7 +52,7 @@ export const marketMethods = {
     const entries = await this.state.storage.list({ prefix: 'mkt_order:' });
     for (const [k, o] of entries) {
       if (!o || !o.id) continue;
-      // v2.3.1178: converge crash leftovers instead of re-listing them.
+      // v2.3.1184: converge crash leftovers instead of re-listing them.
       // Settlement and refund now credit BEFORE deleting the record
       // (rule 6 ordering, _duelEscrowSweep shape) -- so a crash between
       // the credit and the delete leaves a record whose payout is
@@ -242,7 +242,7 @@ export const marketMethods = {
       // Taker-buy price improvement (bid > resting ask) refunds the
       // difference -- the buyer escrowed their own bid above.
       //
-      // v2.3.1178: credit FIRST, delete the escrow record LAST (rule 6
+      // v2.3.1184: credit FIRST, delete the escrow record LAST (rule 6
       // ordering; _resolveDuel/_duelEscrowSweep are the reference).
       // This used to delete 'mkt_order:<maker.id>' before any credit
       // was stamped, so a deploy landing in between destroyed BOTH
@@ -274,7 +274,7 @@ export const marketMethods = {
     if (!order) return { ok: false, error: 'Not found' };
     if (order.playerId !== playerId) return { ok: false, error: 'Not yours' };
     this._mktRemoveFromIndex(order);
-    // v2.3.1178: refund BEFORE delete (rule 6 ordering) -- the old
+    // v2.3.1184: refund BEFORE delete (rule 6 ordering) -- the old
     // delete-first order meant a deploy between the two destroyed the
     // escrow with no surviving record for anything to retry against.
     // The refund opId makes the credit idempotent; the converse crash
@@ -291,7 +291,7 @@ export const marketMethods = {
   // -- under escrow that would be item destruction, so expiry and
   // cancel both land here.
   async _mktRefund(order, why) {
-    // v2.3.1178: rule 6 -- never refund over a stamped payout.  A
+    // v2.3.1184: rule 6 -- never refund over a stamped payout.  A
     // record that survived a crash after its match settled (credit
     // stamped, delete lost) must not ALSO refund its escrow.
     if ((await this._opSeen('settle:' + order.id + ':item')) ||
@@ -315,7 +315,7 @@ export const marketMethods = {
     }
     for (const o of expired) {
       this._mktRemoveFromIndex(o);
-      // v2.3.1178: refund before delete, same as cancel.
+      // v2.3.1184: refund before delete, same as cancel.
       await this._mktRefund(o, 'listing expired');
       await this.state.storage.delete('mkt_order:' + o.id);
     }

@@ -7,7 +7,7 @@ import { Application, Container } from 'pixi.js';
 
 /**
  * Layer names in render order (back to front).
- * v2.3.1176: buildScene used to re-declare these two lists inline while
+ * v2.3.1182: buildScene used to re-declare these two lists inline while
  * this export sat unused -- two copies of the same 15 names is a silent
  * drift hazard, so the world/screen splits are now THE definition and
  * LAYER_NAMES derives from them.

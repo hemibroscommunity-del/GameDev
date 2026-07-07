@@ -19,7 +19,7 @@
  *   9. Entry sweep refunds orphans but never a paid-pot tournament.
  *  10. [post-wiring] healing gates: town regen / eat / healFish denied
  *      for ps._arenaMatch players.  (Skipped under __ARENA_PREMIX.)
- *  11. v2.3.1176: forged POST /api/arena/result is refused with
+ *  11. v2.3.1182: forged POST /api/arena/result is refused with
  *      ok:false + settled:true (so capable clients read it as an
  *      authoritative denial, not an old worker's 404) and moves no
  *      coins or bracket state.
@@ -114,7 +114,7 @@ check('healing-gate flags set', room.playerState[P('a')]._arenaMatch === m1.id &
 check('arena_match_start sent to both', msgsOfType(wss.a, 'arena_match_start').length === 1 && msgsOfType(wss.b, 'arena_match_start').length === 1);
 
 // ── 11. forged POST /result is refused ──
-// v2.3.1176: pins the v2.3.1126 hole-closure.  The old endpoint
+// v2.3.1182: pins the v2.3.1126 hole-closure.  The old endpoint
 // trusted a client-claimed {winnerId} and paid the pot; the handler
 // now hard-rejects with settled:true.  Nothing else in the suite
 // exercises the route, so a refactor of _arenaFetch could drop the

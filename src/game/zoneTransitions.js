@@ -269,7 +269,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1175: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
               /* §5.5 Restore death-scattered items if returning to death zone */
               if (S._deathDrops) {
                 var zoneDrops = S._deathDrops.filter(function (d) {
@@ -365,7 +365,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             S.hitParticles = [];
             S.deathExplosions = [];
             S.arrows = [];
-            S.slimeProjectiles = []; /* v2.3.1175: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+            S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
             S._zoneWipe = Date.now();
             S._ambientParticles = [];
             /* Snap camera to player — keep them centered, no edge clamp. */
@@ -416,7 +416,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1175: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
               S._ambientParticles = [];
               S._zoneWipe = Date.now();
               var lvlRange = dc.lvlRange || [1, 10];
@@ -496,7 +496,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1175: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
               P.x = dMX * TILE;
               P.y = (dH - 3) * TILE;
 
@@ -568,7 +568,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             S.hitParticles = [];
             S.deathExplosions = [];
             S.arrows = [];
-            S.slimeProjectiles = []; /* v2.3.1175: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+            S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
             S._ambientParticles = [];
             /* Spawn south of the dungeon entrance — the entrance sits at
                (MX, 2) and the path runs along column MX down to the
