@@ -347,7 +347,13 @@ export function updateMonsterCombat(S, deps) {
               }
               var chDx = P.x - m.x,
                 chDy = P.y - m.y;
-              var chDist = Math.sqrt(chDx * chDx + chDy * chDy);
+              /* v2.3.1175: || 1 guards the hexer retreat divide -- every
+                 other branch gates on chDist > N before dividing, but the
+                 retreat band includes chDist === 0 (knockback landing the
+                 player exactly on the monster), and 0/0 = NaN corrupted
+                 m.x/m.y permanently (invisible, unkillable monster). Same
+                 idiom as the _moveDist guard below. */
+              var chDist = Math.sqrt(chDx * chDx + chDy * chDy) || 1;
 
               /* Archetype-specific movement behavior */
               if (arch === 'stalker') {
@@ -1237,6 +1243,7 @@ export function updateMonsterCombat(S, deps) {
                       S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
                       S.hitParticles = [];
                       S.arrows = [];
+                      S.slimeProjectiles = []; /* v2.3.1175: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
                       S._ambientParticles = [];
                       /* Server learns dead=false + new zone via this move;
                          other clients clear our _isDead via the broadcast. */
