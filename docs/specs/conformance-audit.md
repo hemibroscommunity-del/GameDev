@@ -1,12 +1,14 @@
-# Conformance audit rail (v2.3.1151)
+# Conformance audit rail (v2.3.1151; +2 audits v2.3.1203)
 
-Two test-only suites that turn the codebase's two memory-enforced
-conventions into CI-enforced walls. The only product change in this PR is
-`export`ing `PRIVILEGED_EVENTS` from `server/src/index.js` so the audit
-can import it.
+Test-only suites that turn the codebase's memory-enforced conventions
+into CI-enforced walls. v2.3.1151 shipped the wire + mirror audits (the
+only product change was `export`ing `PRIVILEGED_EVENTS` from
+`server/src/index.js` so the audit can import it); v2.3.1203 added the
+caps and opId audits on the same pattern.
 
-Both suites failed-loudly-verified at ship time (a planted canary
-emission / a perturbed vendor price each produced exactly one FAIL).
+All suites failed-loudly-verified at ship time (a planted canary
+emission / a perturbed vendor price / a fake advertised caps flag / an
+opId-less `_creditPlayer` call each produced exactly one FAIL).
 
 ## 1. Wire audit — `server/test/wire-audit.test.mjs`
 
@@ -99,3 +101,75 @@ fail and forces its deletion instead of letting it rot:
 to mirror-audit comparing the server's load-bearing fields, and if the
 client side is inline JSX rather than a data module, extract by regex
 with a non-zero floor check (the VendorPanel pattern).
+
+## 3. Caps audit — `server/test/caps-audit.test.mjs` (v2.3.1203)
+
+**The rule it enforces (handoff rule 19 / deploy-order safety):** every
+capability flag the server advertises in the join.js `state_sync`
+`caps: {...}` literal must be gated on client-side via `_serverCaps`,
+and every client `_serverCaps` gate must read a flag the server
+actually advertises. An advertised-but-unread flag is a gate that gates
+nothing (and misleads the next legacy-path cleanup); a
+read-but-unadvertised flag leaves its feature stuck on the legacy path
+against every worker.
+
+**How it extracts:**
+
+- Server side: the `name: true` pairs on the single-line `caps: {`
+  literal in `server/src/join.js`. The trailing `..._liveFlags` spread
+  is **runtime** operator live-ops state (docs/specs/liveops.md) and
+  deliberately out of static-audit scope.
+- Client side: `_serverCaps.<flag>` / `_serverCaps?.<flag>` /
+  `_serverCaps['flag']` reads across `src/**/*.{js,jsx}`. The lone
+  write site (`S._serverCaps = msg.caps` in wsClient.js) has no member
+  access, so extraction skips it naturally.
+
+**Asserts:** ≥20 advertised flags and ≥30 client gate sites (the
+regex-rot floors; 21 flags / 39 sites at ship time); every advertised
+flag referenced or allowlisted; every referenced flag advertised; no
+stale allowlist entries; no allowlist entry that has grown a real gate.
+
+**CAPS_ALLOWLIST:**
+
+| Flag | Why |
+|---|---|
+| `httpAuth` | handshake negotiation field, not a feature gate — the client SENDS `httpAuth: true` in join (wsClient.js) rather than reading it from caps |
+
+**When it fails on your PR:** you added a caps flag without a client
+gate (add the `_serverCaps.<flag>` check the flag exists for), or a
+client gate on a flag the server never advertises (add it to the
+join.js caps literal with a version-tagged WHY comment).
+
+## 4. opId audit — `server/test/opid-audit.test.mjs` (v2.3.1203)
+
+**The rule it enforces (handoff opId idempotency):** every
+`_creditPlayer` call must carry a DETERMINISTIC opId — a single-quoted
+namespace literal prefix derived from the operation's own ids
+(`'duelpot:' + duel.id`), so a DO-restart or lazy-resolve retry
+converges as `'dup'` instead of paying twice. A random or missing opId
+tests green and double-pays in production on the first retry.
+
+**How it extracts:** every `this._creditPlayer(` call site in
+`server/src/*.js` (the definition in inbox.js has no `this.` and is
+skipped naturally; tests live outside src/). Each site is judged on a
+short forward window (the entry object spans lines in cadence.js /
+clans.js), truncated at the next call site so back-to-back credits
+can't lend each other an opId. The first `opId:` must match
+`opId:\s*'[a-z0-9_]+:` — a quoted literal opening with a namespace and
+colon, optionally concatenated with ids.
+
+**Asserts:** ≥20 call sites (rot floor; 24 at ship time); every site
+carries a literal-prefix opId or its file is allowlisted; no stale
+allowlist entries (each excused file still contains a non-literal
+site).
+
+**OPID_ALLOWLIST:**
+
+| File | Why |
+|---|---|
+| `admin.js` | operator-supplied opId from the admin HTTP request, logged in `admin_log` — the operator (or the `admin:<uuid>` fallback echoed back for retry) owns determinism, not a source literal |
+
+**When it fails on your PR:** your new credit path lacks a
+deterministic opId. Build one from the operation's own stable ids
+(order id, duel id, period key) with a fresh namespace prefix — never
+`crypto.randomUUID()` and never a timestamp.
