@@ -19,6 +19,10 @@
  *   9. Entry sweep refunds orphans but never a paid-pot tournament.
  *  10. [post-wiring] healing gates: town regen / eat / healFish denied
  *      for ps._arenaMatch players.  (Skipped under __ARENA_PREMIX.)
+ *  11. v2.3.1176: forged POST /api/arena/result is refused with
+ *      ok:false + settled:true (so capable clients read it as an
+ *      authoritative denial, not an old worker's 404) and moves no
+ *      coins or bracket state.
  */
 import { GameRoom } from '../src/index.js';
 
@@ -108,6 +112,24 @@ check('match activated as an arenaMatch duel with shot-clock', m1.active && duel
 check('consent pair registered for the pairing', room._pvpAllowed(P('a'), P('b'), 'town') === true);
 check('healing-gate flags set', room.playerState[P('a')]._arenaMatch === m1.id && room.playerState[P('b')]._arenaMatch === m1.id);
 check('arena_match_start sent to both', msgsOfType(wss.a, 'arena_match_start').length === 1 && msgsOfType(wss.b, 'arena_match_start').length === 1);
+
+// ── 11. forged POST /result is refused ──
+// v2.3.1176: pins the v2.3.1126 hole-closure.  The old endpoint
+// trusted a client-claimed {winnerId} and paid the pot; the handler
+// now hard-rejects with settled:true.  Nothing else in the suite
+// exercises the route, so a refactor of _arenaFetch could drop the
+// four rejection lines (the request would fall through to the 404
+// branch, whose body has ok:false but NO settled flag) without any
+// failure -- these checks make that regression loud.  b (the eventual
+// loser of match 1) claims the win mid-match through the real
+// GameRoom.fetch routing path (index.js /api/arena -> _arenaFetch).
+const coinsB11 = room.playerState[P('b')].coins;
+const res11 = await room.fetch(new Request('https://x/api/arena/result', { method: 'POST', body: JSON.stringify({ winnerId: P('b'), tournamentId: tid2 }) }));
+const body11 = await res11.json();
+check('forged /result refused', body11.ok === false, body11);
+check('refusal carries settled:true (authoritative denial, not a 404)', body11.settled === true, body11);
+check('claimed winner not paid by the forgery', room.playerState[P('b')].coins === coinsB11, room.playerState[P('b')].coins);
+check('bracket/champion state untouched by the forgery', m1.winner === null && m1.active === true && t2.champion === null && t2.status === 'running', { winner: m1.winner, active: m1.active, champion: t2.champion, status: t2.status });
 
 // ── 10. healing gates (post-wiring only) ──
 if (!PREMIX) {
