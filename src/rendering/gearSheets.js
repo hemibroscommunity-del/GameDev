@@ -14,7 +14,7 @@
  */
 
 import { Rectangle, Texture } from 'pixi.js';
-import { GEAR_SLOTS, getEquip } from './gearCatalog.js';
+import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled gear sheets to the 256px frame */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
@@ -102,7 +102,7 @@ export function prewarmGear(slot, item) {
   }
 }
 
-/** Preload EVERY (pose, dir) sheet for the currently-equipped gear so the
+/** Preload EVERY (pose, dir) sheet for EVERY catalog gear item so the
  *  armoured figure never falls back to the bare body when the player first
  *  turns/jogs in a fresh direction (the gear sheets were previously lazy-
  *  loaded on first use, which read as an armour->unarmoured flicker).
@@ -114,12 +114,19 @@ export function preloadGear() {
   const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
   const tasks = [];
   for (const slot of GEAR_SLOTS) {
-    const item = getEquip(slot);
-    if (!item || item === 'none') continue;
-    for (const pose of POSES) {
-      for (const dir of DIRS) {
-        const key = slot + '/' + item + '/' + pose + '/' + dir;
-        if (_sheets[key] === undefined) tasks.push(buildSheet(key, slot, item, pose, dir));
+    /* v2.3.1197: preload EVERY catalog item per slot, not just the currently
+       equipped one. Equipping owned armour after spawn used to fetch+slice the
+       sheet on the main thread (the equip stutter / armour flicker). The gear
+       catalog is tiny (one armour set), so this adds little to the loading
+       screen and matches what preloadCombatGear() already does for swings. */
+    for (const c of (GEAR_CATALOG[slot] || [])) {
+      const item = c && c.id;
+      if (!item || item === 'none') continue;
+      for (const pose of POSES) {
+        for (const dir of DIRS) {
+          const key = slot + '/' + item + '/' + pose + '/' + dir;
+          if (_sheets[key] === undefined) tasks.push(buildSheet(key, slot, item, pose, dir));
+        }
       }
     }
   }
