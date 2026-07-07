@@ -31,17 +31,26 @@
  * :8787 (QA_WS_URL=ws://127.0.0.1:8787).  Exits non-zero on any failed
  * check (run-all.mjs fail-fast compatible).
  *
- * NOT wired into client-ci.yml yet: authored in a sandbox where npm is
- * policy-blocked (no vite build / playwright install), so it has not
- * had a stabilization run.  Run locally via
- *   node tools/qa/qa-combat-predict.mjs
- * a few times first; promote to CI next to qa-facing once it holds.
+ * CI status (v2.3.1196): wired into client-ci.yml next to qa-facing but
+ * REPORT-ONLY (continue-on-error) — still no stabilization run (npm is
+ * policy-blocked in the authoring sandboxes, so no vite build /
+ * wrangler).  v2.3.1196 also fixed the known flake sources statically:
+ * the peer sampler now filters by floater COLOR (the monster's
+ * counterattack pushes '-N' popups over A — #ff5e6c, no iconKey —
+ * inside the old 160px radius, inflating peerSum) and the prediction
+ * band gained small-sample crit-skew margin.  Promotion criteria: flip
+ * it blocking once it holds green (incl. the one workflow retry) for
+ * ~10 consecutive CI runs; if it flakes, suspect the walk route (town →
+ * worldview → ember) before the reconciliation math.
  */
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 
 const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
-const EXE = process.env.QA_CHROME || (existsSync(SHELL) ? SHELL : undefined);
+/* v2.3.1196: same fallback order as qa-gear-smoke — QA_CHROME > /tmp
+   shell > sandbox-preinstalled chromium > playwright-managed (CI). */
+const PWCHROME = '/opt/pw-browsers/chromium';
+const EXE = process.env.QA_CHROME || (existsSync(SHELL) ? SHELL : (existsSync(PWCHROME) ? PWCHROME : undefined));
 const URL = 'http://localhost:4173/';
 const VIEW = { width: 844, height: 390 };
 
@@ -162,7 +171,7 @@ function startSampler(page, kind, near) {
   const loop = (async () => {
     while (!stop) {
       const rows = await page.evaluate(() => (window._gameState.current.dmgNumbers || [])
-        .map((d) => ({ x: d.x, y: d.y, text: String(d.text), ts: d.ts, iconKey: d.iconKey || null }))).catch(() => []);
+        .map((d) => ({ x: d.x, y: d.y, text: String(d.text), ts: d.ts, iconKey: d.iconKey || null, color: d.color || null }))).catch(() => []);
       for (const d of rows) {
         const key = d.ts + '|' + d.text + '|' + Math.round(d.x) + '|' + Math.round(d.y);
         if (seen.has(key)) continue;
@@ -170,9 +179,16 @@ function startSampler(page, kind, near) {
         if (kind === 'own' && d.iconKey === 'sword' && /^(ZAP )?\d+$/.test(d.text)) {
           out.push({ ...d, dmg: parseInt(d.text.replace(/\D+/g, ''), 10) });
         } else if (kind === 'peer' && /^-\d+$/.test(d.text) && d.iconKey === null
+                   && (d.color === '#ff8888' || d.color === '#fbbf24')
                    && Math.hypot(d.x - near.x, d.y - near.y) < 160) {
           /* iconKey null excludes B's OWN damage-taken popups (those
-             carry iconKey 'heart'); peer-queue floaters carry none. */
+             carry iconKey 'heart'); peer-queue floaters carry none.
+             v2.3.1196 stabilization: ALSO filter by the peer-queue
+             colors (#ff8888 hit / #fbbf24 crit, gameEvents monster_hit)
+             — when the monster fights back, B floats '-N' over A too
+             (monster_attack remote-hit feedback, #ff5e6c), and A stands
+             within swing range of the target, i.e. inside this radius;
+             those inflated peerSum past the ±1/hit tolerance. */
           out.push({ ...d, dmg: parseInt(d.text.slice(1), 10) });
         }
       }
@@ -237,8 +253,13 @@ check('A and B agree on the target HP (same authoritative hpPct)',
 check('B\'s peer floaters sum to the HP drop (±1 per hit rounding)',
   peerSampler.out.length > 0 && Math.abs(peerSum - dropA) <= Math.max(2, peerSampler.out.length),
   { peerSum, dropA, floaters: peerSampler.out.length });
-check('prediction within sanity band of server total (0.35x–3x)',
-  predicted > 0 && dropA > 0 && predicted / dropA >= 0.35 && predicted / dropA <= 3.0,
+/* v2.3.1196: band widened 0.35–3.0 → 0.30–3.5.  With as few as 3 hits,
+   both sides rolling crits + variance independently can legitimately
+   graze 3.0 (all-crit high rolls on one side vs crit-less low rolls on
+   the other); the band exists to catch a formula RESCALE landing on one
+   side only (4x+ / 0.25x-), and this margin keeps roll noise out of it. */
+check('prediction within sanity band of server total (0.30x–3.5x)',
+  predicted > 0 && dropA > 0 && predicted / dropA >= 0.30 && predicted / dropA <= 3.5,
   { predicted, serverDrop: dropA, ratio: dropA ? +(predicted / dropA).toFixed(2) : null });
 
 await browser.close();
