@@ -45,6 +45,21 @@ remnant to migrate server-side, not a mode to preserve.
 The server previously lived in a separate `brotown-server` repo, now
 archived. Do not push there or build patches against it.
 
+## AI session protocol (v2.3.1201)
+
+Parallel AI sessions build this repo and used to collide — on
+2026-07-07 five sessions claimed one version tag and two built the same
+feature. A SessionStart hook now runs `tools/dev/session-brief.mjs`
+(version high-water, next free `v2.3.N` tag, in-flight `claude/*`
+branches): claim ONE tag above high-water, check the branch list for
+your topic first. Run `node tools/dev/precheck.mjs` before EVERY push —
+the sandbox blocks npm install, so it is your only local gate (syntax,
+dup switch cases, tag collisions, storage-key registry, server suite).
+Maps keyed by client-supplied ids must be `Object.create(null)` or
+`Map` — plain `{}` silently no-ops on `'__proto__'` (fixed 3× in one
+day: duel.away v2.3.1175, party meta v2.3.1185, amulet tiers
+v2.3.1192). Details: `docs/DEV-TOOLS.md`.
+
 ## Deployment (important)
 
 - **Client:** Cloudflare Pages builds `main` automatically →
