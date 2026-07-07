@@ -10,7 +10,11 @@ gdd-*.md
 creative-reference-*.md
 architecture.md
 development-playbook-*.md
-.claude/
+# v2.3.1201: .claude/ stays local (worktrees, session state) EXCEPT the
+# project settings file — the SessionStart hook that briefs every AI
+# session lives there and must ship with the repo.
+.claude/*
+!.claude/settings.json
 
 # Python bytecode cache
 __pycache__/
