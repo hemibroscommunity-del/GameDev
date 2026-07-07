@@ -1,6 +1,7 @@
 import React from 'react';
 import { BT_AUDIO } from '@/data/index.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === DuelRequestPanel — the incoming duel-request modal === */
 /* v2.3.891: extracted verbatim from the duelRequest JSX subtree in
    BroTown.jsx (the incoming PvP duel-challenge popup: accept or
@@ -88,13 +89,7 @@ export function DuelRequestPanel(props) {
         startTime: Date.now()
       };
       setDuelRequest(null);
-      S2.dmgNumbers.push({
-        x: S2.player.x,
-        y: S2.player.y - 40,
-        text: 'DUEL!',
-        color: '#a78bfa',
-        ts: Date.now()
-      });
+      pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'DUEL!', '#a78bfa');
       BT_AUDIO.beep(300, 0.15, 0.2, 'sawtooth');
     }
   }, "Accept", duelRequest.wager > 0 ? ' (' + duelRequest.wager + 'g)' : ''), /*#__PURE__*/React.createElement("button", {

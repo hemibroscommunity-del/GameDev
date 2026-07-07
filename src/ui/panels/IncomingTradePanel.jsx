@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === IncomingTradePanel — the incomingTrade modal === */
 /* v2.3.885: extracted verbatim from the incomingTrade && rpgState JSX
    subtree in BroTown.jsx (the inbound trade-request popup: review the
@@ -140,13 +141,7 @@ export function IncomingTradePanel(props) {
           offer: incomingTrade.offer
         }
       });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Trade accepted!',
-        color: '#3dd497',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade accepted!', '#3dd497');
       BT_AUDIO.collect();
       setIncomingTrade(null);
     }

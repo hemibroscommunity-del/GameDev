@@ -1,6 +1,8 @@
 import { TILE } from './constants.js';
 import { ZONES } from './zones.js';
 import { flavorName, flavorSpotName } from './elements.js';
+/* v2.3.1189: was an eslint-grandfathered global (globalThis-resolved). */
+import { ZONE_RESOURCES } from './items.js';
 
 /* ═══ LIFE SKILLS — §18 ═══ */
 export const LIFE_SKILL_XP = (level) => Math.ceil(500 * Math.pow(1.08, level - 1));

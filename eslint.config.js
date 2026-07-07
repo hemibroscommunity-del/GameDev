@@ -11,14 +11,16 @@
  */
 import globals from 'globals';
 
-/* LEGACY DEBT REGISTER: the per-file `globals` blocks at the bottom
- * grandfather identifiers that the legacy monoliths reference WITHOUT a
- * binding -- each one is a latent ReferenceError in a rarely-executed path
- * (artifacts of extracting gameLoop/wsClient from BroTown).  They are listed
- * per file so (a) NEW undefined references still fail the lint everywhere,
- * and (b) the burn-down list is explicit.  Fix = import the symbol where it
- * lives (see the triage table in the v2.3.765 commit message) and delete the
- * entry here. */
+/* LEGACY DEBT REGISTER — RETIRED (v2.3.1189).  The per-file `globals`
+ * blocks that used to sit at the bottom grandfathered identifiers the
+ * legacy monoliths referenced without a binding.  All 35 entries were
+ * burned down in the FINAL PLAN v2 session-3 cleanup: 21 of BroTown's
+ * 27 had no remaining references (panel extractions removed the code),
+ * a scope scan proved every `R` use is locally declared, and the 13
+ * genuinely-referenced symbols got explicit imports (gameSystems 7,
+ * lifeSkills 1, BroTown 5).  Every file now lints with ZERO
+ * grandfathered globals — keep it that way: fix = import the symbol
+ * where it lives, never re-add a globals entry. */
 export default [
   {
     files: ['src/**/*.{js,jsx}'],
@@ -48,68 +50,8 @@ export default [
       'valid-typeof': 'error',
     },
   },
-  {
-    /* LEGACY DEBT (7 known latent ReferenceErrors -- see commit). */
-    files: ['src/data/gameSystems.js'],
-    languageOptions: {
-      globals: {
-        DEPTH_TIERS: 'readonly',
-        FISHING_TIERS: 'readonly',
-        ZONE_RESOURCES: 'readonly',
-        getAmuletBonus: 'readonly',
-        getShieldBonus: 'readonly',
-        getShieldStats: 'readonly',
-        skillXpRequired: 'readonly',
-      },
-    },
-  },
-  {
-    /* LEGACY DEBT (1 known latent ReferenceErrors -- see commit). */
-    files: ['src/data/lifeSkills.js'],
-    languageOptions: {
-      globals: {
-        ZONE_RESOURCES: 'readonly',
-      },
-    },
-  },
-  /* v2.3.784: the src/game/gameLoop.js and src/networking/wsClient.js
-     LEGACY DEBT blocks were removed: gameLoop.js (dead duplicate) was
-     deleted in REBUILD-PLAN Phase 1, and wsClient.js was replaced in
-     Phase 5 by the live connection lifecycle with every dependency
-     imported explicitly -- zero grandfathered globals. */
-  {
-    /* LEGACY DEBT (27 known latent ReferenceErrors -- see commit). */
-    files: ['src/ui/BroTown.jsx'],
-    languageOptions: {
-      globals: {
-        ARENA_CHAMPION_REWARD: 'readonly',
-        CLAN_WAR_REWARDS: 'readonly',
-        CLAN_WAR_ZONES: 'readonly',
-        DIVE_TREASURE_CHANCE: 'readonly',
-        EFFECTIVENESS: 'readonly',
-        EQUIP_STAT_MAP: 'readonly',
-        FARM_BED_TILE: 'readonly',
-        LIFE_SKILL_XP: 'readonly',
-        MAX_PET_SLOTS: 'readonly',
-        PET_LOOT_RADIUS: 'readonly',
-        PVP_THREAT_BASE_COUNTDOWN: 'readonly',
-        PVP_THREAT_COOLDOWN: 'readonly',
-        PVP_THREAT_DURATION: 'readonly',
-        R: 'readonly',
-        SHIELD_EQUIP_STAT: 'readonly',
-        TOWN_H: 'readonly',
-        TOWN_W: 'readonly',
-        TRAP_HP_THRESHOLD: 'readonly',
-        arch: 'readonly',
-        canEquipItem: 'readonly',
-        createClanWar: 'readonly',
-        enchantPet: 'readonly',
-        evolvePet: 'readonly',
-        getCookingSweetSpot: 'readonly',
-        getEquipReqLabel: 'readonly',
-        getFishHealAmount: 'readonly',
-        getFishTierLevel: 'readonly',
-      },
-    },
-  },
+  /* v2.3.784: gameLoop.js / wsClient.js LEGACY DEBT blocks removed
+     (Phase 1 deletion / Phase 5 rewrite with explicit imports).
+     v2.3.1189: gameSystems.js (7), lifeSkills.js (1), and BroTown.jsx
+     (27) blocks removed — the register is empty. */
 ];

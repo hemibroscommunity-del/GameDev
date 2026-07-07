@@ -15,6 +15,7 @@
 import { ZONES, TILE, ELEMENTS, DEPTH_CONFIG, BT_AUDIO, createMonster, createDefaultCompStats, updateZoneDimensions, generateZoneMap, spawnMonstersForZone, spawnGatherNodes } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 export function updateDungeonWaves(S, deps) {
   /* v2.3.1127: server-authoritative dungeon instances.  When the run
      lives on the worker (S._serverDungeon set by the dungeon_started
@@ -63,37 +64,19 @@ export function updateDungeonWaves(S, deps) {
                   boss._nextAbility = Date.now() + 3000;
                   boss._abilityInterval = 4000;
                   S.monsters = [boss];
-                  S.dmgNumbers.push({
-                    x: P.x,
-                    y: P.y - 50,
-                    text: 'BOSS FIGHT!',
-                    color: '#ff5e6c',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, P.x, P.y - 50, 'BOSS FIGHT!', '#ff5e6c');
                   BT_AUDIO.beep(100, 0.25, 0.3, 'sawtooth');
                   S.screenShake = 8;
                 } else {
                   /* No boss — dungeon complete */
                   S._dungeonComplete = true;
-                  S.dmgNumbers.push({
-                    x: P.x,
-                    y: P.y - 50,
-                    text: 'DUNGEON CLEARED!',
-                    color: '#f5c542',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, P.x, P.y - 50, 'DUNGEON CLEARED!', '#f5c542');
                   var bonusGold = 20 * cfg.waves;
                   var bonusXp = 50 * cfg.waves;
                   S.rpg.coins += bonusGold;
                   S.rpg.xp += bonusXp;
                   if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += bonusGold;
-                  S.dmgNumbers.push({
-                    x: P.x,
-                    y: P.y - 35,
-                    text: '+' + bonusGold + 'G +' + bonusXp + 'XP',
-                    color: '#f5c542',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, P.x, P.y - 35, '+' + bonusGold + 'G +' + bonusXp + 'XP', '#f5c542');
                   BT_AUDIO.levelUp();
                   S.screenShake = 6;
                   setTimeout(function () {
@@ -152,20 +135,8 @@ export function updateDungeonWaves(S, deps) {
                 _boss._nextAbility = Date.now() + 3000;
                 _boss._abilityInterval = Math.max(3000, 6000 - depthIdx * 800);
                 S.monsters = [_boss];
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 50,
-                  text: 'BOSS FIGHT!',
-                  color: '#ff5e6c',
-                  ts: Date.now()
-                });
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 35,
-                  text: 'Dodge attacks to expose weakness!',
-                  color: '#fbbf24',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, P.x, P.y - 50, 'BOSS FIGHT!', '#ff5e6c');
+                pushDmgPopup(S, P.x, P.y - 35, 'Dodge attacks to expose weakness!', '#fbbf24');
                 BT_AUDIO.beep(100, 0.25, 0.3, 'sawtooth');
                 setTimeout(function () {
                   return BT_AUDIO.beep(80, 0.3, 0.35, 'sawtooth');
@@ -182,20 +153,8 @@ export function updateDungeonWaves(S, deps) {
                 var _bonusXp = 80 * ((_cfg === null || _cfg === void 0 ? void 0 : _cfg.waves) || 3) + ((_cfg === null || _cfg === void 0 ? void 0 : _cfg.monsterLevel) || 1) * 5;
                 S.rpg.coins += _bonusGold;
                 S.rpg.xp += _bonusXp;
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 60,
-                  text: 'DUNGEON CLEARED!',
-                  color: '#f5c542',
-                  ts: Date.now()
-                });
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 45,
-                  text: '+' + _bonusGold + 'G +' + _bonusXp + 'XP',
-                  color: '#f5c542',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, P.x, P.y - 60, 'DUNGEON CLEARED!', '#f5c542');
+                pushDmgPopup(S, P.x, P.y - 45, '+' + _bonusGold + 'G +' + _bonusXp + 'XP', '#f5c542');
                 if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
                 S.rpg._compStats.dungeonsCleared++;
                 S.rpg._compStats.totalGoldEarned += _bonusGold;
@@ -245,36 +204,12 @@ export function updateDungeonWaves(S, deps) {
                 S.rpg.coins += _bonusGold2;
                 S.rpg.xp += _bonusXp2;
                 if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += _bonusGold2;
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 60,
-                  text: 'DUNGEON CLEARED!',
-                  color: '#f5c542',
-                  ts: Date.now()
-                });
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 45,
-                  text: '+' + _bonusGold2 + 'G +' + _bonusXp2 + 'XP',
-                  color: '#f5c542',
-                  ts: Date.now()
-                });
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 30,
-                  text: _nextDepth3.toUpperCase() + ' depth unlocked!',
-                  color: '#a855f7',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, P.x, P.y - 60, 'DUNGEON CLEARED!', '#f5c542');
+                pushDmgPopup(S, P.x, P.y - 45, '+' + _bonusGold2 + 'G +' + _bonusXp2 + 'XP', '#f5c542');
+                pushDmgPopup(S, P.x, P.y - 30, _nextDepth3.toUpperCase() + ' depth unlocked!', '#a855f7');
                 /* ═══ SHADOW/RADIANT CONVERGENCE — clearing core unlocks endgame zones ═══ */
                 if (_nextDepth3 === 'core' || S._dungeonDepth === 'core') {
-                  S.dmgNumbers.push({
-                    x: P.x,
-                    y: P.y - 15,
-                    text: 'Shadow & Radiant zones revealed!',
-                    color: '#F1C40F',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, P.x, P.y - 15, 'Shadow & Radiant zones revealed!', '#F1C40F');
                   if (!S.rpg._questFlags) S.rpg._questFlags = {};
                   S.rpg._questFlags.endgameUnlocked = true;
                 }
@@ -310,20 +245,8 @@ export function updateDungeonWaves(S, deps) {
                   st.player.y = (zn.h - 3) * TILE;
                   st._zoneWipe = Date.now();
                   var lvlRange = dc.lvlRange || [1, 10];
-                  st.dmgNumbers.push({
-                    x: st.player.x,
-                    y: st.player.y - 40,
-                    text: zn.name + ' - ' + _nextDepth3.toUpperCase(),
-                    color: ((_ELEMENTS$zn$element2 = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element2 === void 0 ? void 0 : _ELEMENTS$zn$element2.color) || '#fff',
-                    ts: Date.now()
-                  });
-                  st.dmgNumbers.push({
-                    x: st.player.x,
-                    y: st.player.y - 25,
-                    text: 'Lv ' + lvlRange[0] + '-' + lvlRange[1],
-                    color: 'rgba(255,255,255,.5)',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(st, st.player.x, st.player.y - 40, zn.name + ' - ' + _nextDepth3.toUpperCase(), ((_ELEMENTS$zn$element2 = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element2 === void 0 ? void 0 : _ELEMENTS$zn$element2.color) || '#fff');
+                  pushDmgPopup(st, st.player.x, st.player.y - 25, 'Lv ' + lvlRange[0] + '-' + lvlRange[1], 'rgba(255,255,255,.5)');
                 }, 3000);
               } /* end standard dungeon completion */
             } else if (S._dungeonWave < S._dungeonMaxWaves) {
@@ -371,13 +294,7 @@ export function updateDungeonWaves(S, deps) {
                   S.monsters.push(_m3);
                 }
               }
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: 'Wave ' + (S._dungeonWave + 1) + '/' + S._dungeonMaxWaves,
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, P.x, P.y - 40, 'Wave ' + (S._dungeonWave + 1) + '/' + S._dungeonMaxWaves, '#ff5e6c');
               BT_AUDIO.beep(300, 0.1, 0.15, 'sawtooth');
               S.screenShake = 4;
             }

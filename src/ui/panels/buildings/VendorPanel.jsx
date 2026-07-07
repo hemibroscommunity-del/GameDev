@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === VendorPanel — buildingPanel === 'shop' sub-panel === */
 /* v2.3.882: extracted verbatim from the buildingPanel === 'shop'
    clause in BroTown.jsx (the in-building Vendor view: basic supplies
@@ -148,13 +149,7 @@ export function VendorPanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
         BT_AUDIO.collect();
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: item.icon + ' Used!',
-          color: '#3dd497',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, item.icon + ' Used!', '#3dd497');
       }
     }, item.cost, "g"));
   }));

@@ -21,7 +21,7 @@ import {
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
@@ -182,7 +182,7 @@ export function updateArrows(S, deps) {
                       m.statuses[statusId].remaining *= _extMulR;
                       m.statuses[statusId].maxDur = Math.max(m.statuses[statusId].maxDur || 0, m.statuses[statusId].remaining);
                       S.combo.nextExtended = false;
-                      S.dmgNumbers.push({ x: m.x, y: m.y - 28, text: 'ext', color: '#f5c542', ts: Date.now() });
+                      pushDmgPopup(S, m.x, m.y - 28, 'ext', '#f5c542');
                     }
                   }
                 }
@@ -191,7 +191,7 @@ export function updateArrows(S, deps) {
                   arrowCollision = resolveCollision(m, arrowElem, S.player, S.rpg, Date.now());
                 }
                 if (m._invulnerable) {
-                  S.dmgNumbers.push({ x: m.x, y: m.y - 20, text: 'IMMUNE', color: '#888', ts: Date.now() });
+                  pushDmgPopup(S, m.x, m.y - 20, 'IMMUNE', '#888');
                   a.hit = true;
                   return;
                 }
@@ -239,7 +239,7 @@ export function updateArrows(S, deps) {
                 if (S.rpg) {
                   var _wlR = awardWeaponXp(S.rpg, _arrowDmg);
                   if (_wlR) {
-                    S.dmgNumbers.push({ x: m.x, y: m.y - 44, text: _wlR.cat.toUpperCase() + ' Lv ' + _wlR.level + ' · +' + _wlR.points + 'pt', color: '#5b52ff', ts: Date.now() });
+                    pushDmgPopup(S, m.x, m.y - 44, _wlR.cat.toUpperCase() + ' Lv ' + _wlR.level + ' · +' + _wlR.points + 'pt', '#5b52ff');
                     try { BT_AUDIO.levelUp(); } catch (e) {}
                   }
                 }
@@ -270,7 +270,7 @@ export function updateArrows(S, deps) {
                   /* §5.7 Resonance — bright readout + ring on resonance-timed projectile collisions. */
                   var _arPrefix = arrowCollision.resonating ? '🎯💥' : '💥';
                   var _arColor = arrowCollision.resonating ? '#fffbb0' : elemCol;
-                  S.dmgNumbers.push({ x: m.x + 8, y: m.y - 30, text: _arPrefix + arrowCollision.damage + ' ' + coll.name, color: _arColor, ts: Date.now() });
+                  pushDmgPopup(S, m.x + 8, m.y - 30, _arPrefix + arrowCollision.damage + ' ' + coll.name, _arColor);
                   if (arrowCollision.resonating) {
                     var _arRingR = 28 + arrowCollision.resonanceDepth * 14;
                     for (var _arrp = 0; _arrp < 24; _arrp++) {
@@ -287,7 +287,7 @@ export function updateArrows(S, deps) {
                     }
                   }
                   if (arrowCollision.manaRestored > 0) {
-                    S.dmgNumbers.push({ x: P.x, y: P.y - 45, text: '+' + arrowCollision.manaRestored + ' MP', color: '#3b82f6', ts: Date.now() });
+                    pushDmgPopup(S, P.x, P.y - 45, '+' + arrowCollision.manaRestored + ' MP', '#3b82f6');
                   }
                   BT_AUDIO.collisionSound(arrowCollision.setupElement, arrowCollision.triggerElement, arrowCollision.manaRestored);
                   for (var cp = 0; cp < 12; cp++) {
@@ -297,7 +297,7 @@ export function updateArrows(S, deps) {
                   BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
                   var isNew = discoverCollision(coll.id);
                   if (isNew) {
-                    S.dmgNumbers.push({ x: P.x, y: P.y - 60, text: 'NEW: ' + coll.name + '!', color: '#f5c542', ts: Date.now() });
+                    pushDmgPopup(S, P.x, P.y - 60, 'NEW: ' + coll.name + '!', '#f5c542');
                     BT_AUDIO.collect();
                   }
                 }
@@ -418,7 +418,7 @@ export function updateArrows(S, deps) {
                 /* Cap display at the HP that was actually removed so the kill
                    blow doesn't show an inflated overkill number. */
                 var _displayDmg = Math.min(a.dmg, _hpBefore);
-                S.dmgNumbers.push({ x: m.x, y: m.y - 10, text: _displayDmg + '', color: '#ff9', iconKey: a.isStaff ? 'spell' : 'arrow', special: !!a.isSpecial, ts: Date.now() });
+                pushDmgPopup(S, m.x, m.y - 10, _displayDmg + '', '#ff9', { iconKey: a.isStaff ? 'spell' : 'arrow', special: !!a.isSpecial });
                 if (m.curHp <= 0) {
                   /* In server-mode the network monster_killed event is
                      authoritative for XP/T1 distribution — only clamp
@@ -559,7 +559,7 @@ export function updateArrows(S, deps) {
                       var tierMult = RARITY_TIERS[dropTier].mult;
                       if (dropTier === 'common') dropName = WEAPON_TYPES[dropType].label; else if (dropTier === 'elemental') dropName = dropE1.charAt(0).toUpperCase() + dropE1.slice(1) + ' ' + WEAPON_TYPES[dropType].label; else if (dropTier === 'fusion') dropName = dropE1.charAt(0).toUpperCase() + dropE1.slice(1) + (dropE2.charAt(0).toUpperCase() + dropE2.slice(1)) + ' ' + WEAPON_TYPES[dropType].label; else dropName = 'Prismatic ' + WEAPON_TYPES[dropType].label;
                       S.groundLoot.push({ x: m.x + (Math.random() - 0.5) * 20, y: m.y + (Math.random() - 0.5) * 20, ts: Date.now(), isWeapon: true, weapon: { type: dropType, tier: dropTier, tierMult: tierMult, element1: dropE1, element2: dropE2, name: dropName, isVolatile: dropVolatile }, tierColor: RARITY_TIERS[dropTier].color });
-                      S.dmgNumbers.push({ x: m.x, y: m.y - 40, text: dropName + '!', color: RARITY_TIERS[dropTier].color, ts: Date.now() });
+                      pushDmgPopup(S, m.x, m.y - 40, dropName + '!', RARITY_TIERS[dropTier].color);
                     }
                     setRpgState(_objectSpread({}, _R9));
                     try { localStorage.setItem('bt_rpg', JSON.stringify(_R9)); } catch (e) {}
@@ -634,12 +634,7 @@ export function updateSlimeProjectiles(S) {
             var pShielded = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
             if (pShielded) {
               try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
-              S.dmgNumbers.push({
-                x: P.x, y: P.y - 20,
-                text: 'BLOCK',
-                color: '#60a5fa',
-                ts: Date.now(),
-              });
+              pushDmgPopup(S, P.x, P.y - 20, 'BLOCK', '#60a5fa');
               S.screenShake = Math.max(S.screenShake || 0, 3);
               S._blockFlash = Date.now();
               if (!S._impactRings) S._impactRings = [];
@@ -669,18 +664,14 @@ export function updateSlimeProjectiles(S) {
                v2.3.1154: + Evasion channel pts, shared 30% cap. */
             var _projDodge = rollPassiveDodge(_R6P.agility, getEvasionPts(_R6P));
             if (_projDodge) {
-              S.dmgNumbers.push({
-                x: P.x, y: P.y - 18, text: 'Dodge!',
-                color: '#00d4ff', ts: Date.now(),
-              });
+              pushDmgPopup(S, P.x, P.y - 18, 'Dodge!', '#00d4ff');
               return false;
             }
             /* v2.3.1113: Iron Skin cut + quarter-rate defense XP on the
                taken hit.  v2.3.1140: ±5 gate live via proj.srcLevel. */
             var _projDmg = applyIronSkin(_R6P, proj.rawDmg);
             var _defUpPj = trainDefense(_R6P, 0, _projDmg, proj.srcLevel || null, false);
-            if (_defUpPj) S.dmgNumbers.push({ x: P.x, y: P.y - 34,
-              text: '🛡️ Defense Lv ' + _defUpPj.level, color: '#60a5fa', ts: Date.now() + 2 });
+            if (_defUpPj) pushDmgPopup(S, P.x, P.y - 34, '🛡️ Defense Lv ' + _defUpPj.level, '#60a5fa', { ts: Date.now() + 2 });
             _R6P.hp -= _projDmg;
             trackMonsterDamage(S, proj.ownerId, _projDmg);
             if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: _projDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
@@ -689,12 +680,7 @@ export function updateSlimeProjectiles(S) {
             S._hitFlash = Date.now();
             if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _projDmg } });
             if (_R6P.hp > 0) addBuildUse(_R6P, 'vitality', _projDmg);
-            S.dmgNumbers.push({
-              x: P.x, y: P.y - 20,
-              text: '-' + _projDmg,
-              color: '#fff',
-              ts: Date.now(),
-            });
+            pushDmgPopup(S, P.x, P.y - 20, '-' + _projDmg, '#fff');
             S.screenShake = Math.max(S.screenShake || 0, 4);
             for (var _hp = 0; _hp < 6; _hp++) {
               var _hpA = Math.random() * Math.PI * 2;

@@ -24,6 +24,7 @@
 import { ZONES, BT_AUDIO, SNOWBALL_DMG_BASE, SNOWBALL_STUN_MS, SNOWMAN_DURATION, SNOWMAN_AGGRO_RADIUS, SLED_DURATION, TIDE_CYCLE_MS, DIVE_MAX_AIR, DIVE_AIR_DRAIN, DIVE_AIR_REFILL, DIVE_DAMAGE_RATE, DIVE_TREASURE_CHANCE, TORCH_DURATION } from '@/data/index.js';
 import { _createForOfIteratorHelper } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 export function updateZoneMechanics(S, ptx, pty) {
   var P = S.player;
   var R; /* see header — dormant-code guard, intentionally undefined */
@@ -50,25 +51,13 @@ export function updateZoneMechanics(S, ptx, pty) {
                   if (d < 20) {
                     var _R4;
                     if (_m._invulnerable) {
-                      S.dmgNumbers.push({
-                        x: _m.x,
-                        y: _m.y - 20,
-                        text: 'IMMUNE',
-                        color: '#888',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, _m.x, _m.y - 20, 'IMMUNE', '#888');
                       return false;
                     }
                     var dmg = SNOWBALL_DMG_BASE + (((_R4 = R) === null || _R4 === void 0 ? void 0 : _R4.power) || 0) * 0.3;
                     _m.curHp -= dmg;
                     _m._stunUntil = Date.now() + SNOWBALL_STUN_MS;
-                    S.dmgNumbers.push({
-                      x: _m.x,
-                      y: _m.y - 20,
-                      text: String(Math.round(dmg)),
-                      color: '#a0d8f0',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, _m.x, _m.y - 20, String(Math.round(dmg)), '#a0d8f0');
                     S.hitParticles.push({
                       x: sb.x,
                       y: sb.y,
@@ -106,13 +95,7 @@ export function updateZoneMechanics(S, ptx, pty) {
           S._snowmen = S._snowmen.filter(function (sm) {
             if (Date.now() - sm.ts > SNOWMAN_DURATION) return false;
             if (sm.hp <= 0) {
-              S.dmgNumbers.push({
-                x: sm.x,
-                y: sm.y - 20,
-                text: 'Melted!',
-                color: '#a0d8f0',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, sm.x, sm.y - 20, 'Melted!', '#a0d8f0');
               for (var sp = 0; sp < 10; sp++) S.hitParticles.push({
                 x: sm.x,
                 y: sm.y,
@@ -163,13 +146,7 @@ export function updateZoneMechanics(S, ptx, pty) {
                   m._sledHit = true;
                   var sledDmg = Math.ceil(20 + (((_R5 = R) === null || _R5 === void 0 ? void 0 : _R5.power) || 0) * 0.5);
                   m.curHp -= sledDmg;
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 20,
-                    text: 'SLED ' + sledDmg,
-                    color: '#60a5fa',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, m.x, m.y - 20, 'SLED ' + sledDmg, '#60a5fa');
                   S.screenShake = 3;
                   BT_AUDIO.beep(300, 0.08, 0.1, 'triangle');
                 }
@@ -187,13 +164,7 @@ export function updateZoneMechanics(S, ptx, pty) {
             });
           } else {
             S._sled = null;
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 30,
-              text: 'Sled stopped',
-              color: '#a0d8f0',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, P.x, P.y - 30, 'Sled stopped', '#a0d8f0');
             /* Clear sled hit flags */
             if (S.monsters) S.monsters.forEach(function (m) {
               m._sledHit = false;
@@ -232,22 +203,10 @@ export function updateZoneMechanics(S, ptx, pty) {
                    Client-local zones keep the real death (catch-all runs). */
                 if (S._serverMonsters && S.rpg.hp < 1) S.rpg.hp = 1;
                 if (window.__dmgLog) try { console.log('[dmg] drowning', DIVE_DAMAGE_RATE); } catch (e) {}
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 20,
-                  text: '-' + DIVE_DAMAGE_RATE + ' (drowning!)',
-                  color: '#3498DB',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, P.x, P.y - 20, '-' + DIVE_DAMAGE_RATE + ' (drowning!)', '#3498DB');
                 if (S.rpg.hp <= 0) {
                   S.rpg.hp = 0;
-                  S.dmgNumbers.push({
-                    x: P.x,
-                    y: P.y - 40,
-                    text: 'Drowned!',
-                    color: '#ff5e6c',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, P.x, P.y - 40, 'Drowned!', '#ff5e6c');
                 }
               }
             }
@@ -257,13 +216,7 @@ export function updateZoneMechanics(S, ptx, pty) {
               var treasureGold = 10 + Math.floor(Math.random() * 40);
               S.rpg.coins += treasureGold;
               if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += treasureGold;
-              S.dmgNumbers.push({
-                x: P.x + Math.random() * 30 - 15,
-                y: P.y - 30,
-                text: '+' + treasureGold + 'G treasure!',
-                color: '#f5c542',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, P.x + Math.random() * 30 - 15, P.y - 30, '+' + treasureGold + 'G treasure!', '#f5c542');
               BT_AUDIO.collect();
               if (!S.stats._diveTreasures) S.stats._diveTreasures = 0;
               S.stats._diveTreasures++;
@@ -292,13 +245,7 @@ export function updateZoneMechanics(S, ptx, pty) {
         /* ── DEEP HOLLOWS: Torch timer ── */
         if (S._torch && Date.now() - S._torch.started > TORCH_DURATION) {
           S._torch = null;
-          S.dmgNumbers.push({
-            x: P.x,
-            y: P.y - 30,
-            text: 'Torch burned out!',
-            color: '#ea580c',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, P.x, P.y - 30, 'Torch burned out!', '#ea580c');
           BT_AUDIO.beep(200, 0.08, 0.1, 'triangle');
         }
 

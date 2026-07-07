@@ -2,6 +2,7 @@ import React from 'react';
 import { AMULET_GEM_STATS, AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, ELEMENTS, RARITY_TIERS, SHIELD_GEM_STATS, WEAPON_TYPES, WOODWORKING_TIERS, addLifeSkillXp, getAmuletBonus, getShieldBonus, recalcDerived } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
 /* v2.3.874: extracted verbatim from the buildingPanel === 'enchant' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -155,13 +156,7 @@ export function EnchantPanel(props) {
         title: blockedVolatile ? 'Volatile combo requires Fusion-Compatible gear base' : '',
         onClick: function onClick() {
           if (blockedVolatile) {
-            stateRef.current.dmgNumbers.push({
-              x: stateRef.current.player.x,
-              y: stateRef.current.player.y - 30,
-              text: 'Needs Fusion-Compatible gear!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Needs Fusion-Compatible gear!', '#ff5e6c');
             return;
           }
           var R = stateRef.current.rpg;
@@ -193,20 +188,8 @@ export function EnchantPanel(props) {
           if (!R._questFlags) R._questFlags = {};
           R._questFlags.enchantedWeapon = true;
           R._questFlags.slottedGem = true;
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: elem + ' enchanted!',
-            color: edef.color,
-            ts: Date.now()
-          });
-          if (leveled) stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 50,
-            text: 'Enchanting Lv' + sk.enchanting.level + '!',
-            color: '#f5c542',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, elem + ' enchanted!', edef.color);
+          if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Enchanting Lv' + sk.enchanting.level + '!', '#f5c542');
           BT_AUDIO.collect();
           setRpgState(_objectSpread({}, R));
           try {
@@ -302,13 +285,7 @@ export function EnchantPanel(props) {
         if (!R._questFlags) R._questFlags = {};
         R._questFlags.slottedGem = true;
         addLifeSkillXp(sk, 'enchanting', 20);
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: gemStat.label + ' +' + previewVal + gemStat.unit,
-          color: edef.color,
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, gemStat.label + ' +' + previewVal + gemStat.unit, edef.color);
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {
@@ -403,13 +380,7 @@ export function EnchantPanel(props) {
         R.shield.name = (((_BLACKSMITH_TIERS$R$s = BLACKSMITH_TIERS[R.shield.gearBase]) === null || _BLACKSMITH_TIERS$R$s === void 0 ? void 0 : _BLACKSMITH_TIERS$R$s.label) || 'Basic') + ' ' + elem.charAt(0).toUpperCase() + elem.slice(1) + ' Shield';
         recalcDerived(R);
         addLifeSkillXp(sk, 'enchanting', 20);
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: gemStat.label + ' +' + previewVal + gemStat.unit,
-          color: edef.color,
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, gemStat.label + ' +' + previewVal + gemStat.unit, edef.color);
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {

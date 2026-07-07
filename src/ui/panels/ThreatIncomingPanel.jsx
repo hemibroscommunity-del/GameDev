@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === ThreatIncomingPanel — the PvP threat / call-guards modal === */
 /* v2.3.891: extracted verbatim from the threatIncoming JSX subtree in
    BroTown.jsx (the incoming-PvP-threat popup: ignore -> become
@@ -113,13 +114,7 @@ export function ThreatIncomingPanel(props) {
       setThreatIncoming(_objectSpread(_objectSpread({}, threatIncoming), {}, {
         responded: true
       }));
-      S2.dmgNumbers.push({
-        x: S2.player.x,
-        y: S2.player.y - 30,
-        text: 'Threat ignored. They can still be attacked.',
-        color: '#8890b8',
-        ts: Date.now()
-      });
+      pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Threat ignored. They can still be attacked.', '#8890b8');
     }
   }, "\uD83D\uDEB6 Ignore"), /*#__PURE__*/React.createElement("button", {
     style: {
@@ -148,13 +143,7 @@ export function ThreatIncomingPanel(props) {
       setThreatIncoming(_objectSpread(_objectSpread({}, threatIncoming), {}, {
         responded: true
       }));
-      S2.dmgNumbers.push({
-        x: S2.player.x,
-        y: S2.player.y - 30,
-        text: 'Guards dispatched!',
-        color: '#3dd497',
-        ts: Date.now()
-      });
+      pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Guards dispatched!', '#3dd497');
       BT_AUDIO.beep(500, 0.1, 0.12, 'sine');
     }
   }, "\u2694\uFE0F Call Guards")), /*#__PURE__*/React.createElement("div", {

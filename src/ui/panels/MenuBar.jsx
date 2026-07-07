@@ -3,6 +3,7 @@ import { BT_AUDIO, MAX_PET_SLOTS, TRAP_HP_THRESHOLD, addLifeSkillXp, createPet, 
 import { btRpc, getBtPassphrase, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === MenuBar — the bottom action / menu button bar === */
 /* v2.3.894: extracted verbatim from the scrollable HUD button-bar div in
    BroTown.jsx's render (the horizontal-scroll row of buttons that open
@@ -209,24 +210,12 @@ export function MenuBar(props) {
         var S = stateRef.current;
         var R = S.rpg;
         if (!R || !S.lockedTarget || S.lockedTarget.type !== 'monster') {
-          S.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 30,
-            text: 'Lock a weak monster first!',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lock a weak monster first!', '#ff5e6c');
           return;
         }
         var m = S.lockedTarget.ref;
         if (!m.alive) {
-          S.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 30,
-            text: 'Target is dead!',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Target is dead!', '#ff5e6c');
           return;
         }
         /* v2.3.1130: server-validated capture.  The worker checks ITS
@@ -244,25 +233,13 @@ export function MenuBar(props) {
         }
         var hpPct = m.curHp / m.hp;
         if (hpPct > TRAP_HP_THRESHOLD) {
-          S.dmgNumbers.push({
-            x: m.x,
-            y: m.y - 25,
-            text: 'Too healthy! (<20% HP)',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, m.x, m.y - 25, 'Too healthy! (<20% HP)', '#ff5e6c');
           return;
         }
         var sk = R.lifeSkills;
         if (!sk.pets) sk.pets = [];
         if (sk.pets.length >= MAX_PET_SLOTS) {
-          S.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 30,
-            text: 'Pet slots full! (' + MAX_PET_SLOTS + ')',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pet slots full! (' + MAX_PET_SLOTS + ')', '#ff5e6c');
           return;
         }
         var trapLvl = ((_sk$trapping = sk.trapping) === null || _sk$trapping === void 0 ? void 0 : _sk$trapping.level) || 1;
@@ -273,13 +250,7 @@ export function MenuBar(props) {
         var levelPenalty = Math.max(0, (m.level || 1) - R.level) * 0.05;
         var chance = Math.max(0.1, Math.min(0.95, baseChance - levelPenalty));
         if (Math.random() > chance) {
-          S.dmgNumbers.push({
-            x: m.x,
-            y: m.y - 25,
-            text: 'Escaped!',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, m.x, m.y - 25, 'Escaped!', '#ff5e6c');
           addLifeSkillXp(sk, 'trapping', 5);
           BT_AUDIO.beep(200, 0.08, 0.12, 'square');
           return;
@@ -290,27 +261,9 @@ export function MenuBar(props) {
         m.alive = false;
         m.respawnAt = Date.now() + 60000;
         var leveled = addLifeSkillXp(sk, 'trapping', 15 + (m.level || 1) * 2);
-        S.dmgNumbers.push({
-          x: m.x,
-          y: m.y - 20,
-          text: 'Captured ' + pet.name + '!',
-          color: '#3dd497',
-          ts: Date.now()
-        });
-        S.dmgNumbers.push({
-          x: m.x,
-          y: m.y - 35,
-          text: pet.emoji + ' ' + pet.archetype + ' Lv' + (m.level || 1),
-          color: pet.color,
-          ts: Date.now()
-        });
-        if (leveled) S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 50,
-          text: 'Trapping Lv' + sk.trapping.level + '!',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, m.x, m.y - 20, 'Captured ' + pet.name + '!', '#3dd497');
+        pushDmgPopup(S, m.x, m.y - 35, pet.emoji + ' ' + pet.archetype + ' Lv' + (m.level || 1), pet.color);
+        if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Trapping Lv' + sk.trapping.level + '!', '#f5c542');
         S.lockedTarget = null;
         BT_AUDIO.collect();
         setTimeout(function () {

@@ -9,6 +9,7 @@
 import { BT_AUDIO, BUILDINGS, hasUnlock, QUEST_CHAINS } from '@/data/index.js';
 import { _typeof } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 export function sendEmote(S, emoji, deps) {
   var setShowEmotes = deps.setShowEmotes;
     BT_AUDIO.emote();
@@ -60,13 +61,7 @@ export function enterBuilding(S, deps) {
         return q.unlocks === requiredUnlock;
       });
       var msg = gateQuest ? 'Complete "' + gateQuest.title + '" (' + gateQuest.npc + ') to unlock this!' : 'Locked! Complete quests to unlock.';
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: msg,
-        color: '#f5c542',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, msg, '#f5c542');
       BT_AUDIO.beep(200, 0.08, 0.1, 'triangle');
       return;
     }

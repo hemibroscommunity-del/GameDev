@@ -9,7 +9,7 @@
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
 import { SWING_COOLDOWN, SPECIAL_ATK_MULT, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, monsterBodyY, swingCooldownMult } from '@/data/index.js';
-import { addBuildUse } from '@/game/combatHelpers.js';
+import { addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
 
 export function swingAttack(S) {
     /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
@@ -55,13 +55,7 @@ export function specialAttack(S) {
     /* During tutorial step 4, make swipe free so player can learn */
     var isTutorialSwipe = (S._tutorialStep || 0) === 4;
     if (!isTutorialSwipe && (R.mana || 0) < manaCost) {
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'No mana!',
-        color: '#3498DB',
-        ts: now
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'No mana!', '#3498DB', { ts: now });
       return;
     }
     if (!isTutorialSwipe) {

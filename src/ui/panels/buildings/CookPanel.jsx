@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO, COOKING_RECIPES, addLifeSkillXp, createDefaultCompStats, getCookingSweetSpot, getFishHealAmount, getFishTierLevel } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === CookPanel — buildingPanel === 'cook' sub-panel === */
 /* v2.3.879: extracted verbatim from the buildingPanel === 'cook'
    clause in BroTown.jsx (the cooking station: pick a fish, hit the
@@ -136,20 +137,8 @@ export function CookPanel(props) {
           R._questFlags.cookedRecipe = true;
           if (!R._compStats) R._compStats = createDefaultCompStats();
           R._compStats.cookSuccess++;
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Cooked ' + cookMinigame.fishName + '!',
-            color: '#3dd497',
-            ts: Date.now()
-          });
-          if (leveled) stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 45,
-            text: 'Cooking Lv' + sk.cooking.level + '!',
-            color: '#f5c542',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Cooked ' + cookMinigame.fishName + '!', '#3dd497');
+          if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 45, 'Cooking Lv' + sk.cooking.level + '!', '#f5c542');
           BT_AUDIO.collect();
           setCookMinigame(_objectSpread(_objectSpread({}, cookMinigame), {}, {
             result: 'success'
@@ -159,13 +148,7 @@ export function CookPanel(props) {
           addLifeSkillXp(sk, 'cooking', 1);
           if (!R._compStats) R._compStats = createDefaultCompStats();
           R._compStats.cookBurns++;
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Burnt! Fish wasted.',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Burnt! Fish wasted.', '#ff5e6c');
           BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
           setCookMinigame(_objectSpread(_objectSpread({}, cookMinigame), {}, {
             result: 'burnt'
@@ -377,13 +360,7 @@ export function CookPanel(props) {
           try {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: '+' + healed + ' HP',
-            color: '#3dd497',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + healed + ' HP', '#3dd497');
           BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         }
       }, "Eat"));
@@ -528,20 +505,8 @@ export function CookPanel(props) {
         var leveled = addLifeSkillXp(sk, 'cooking', recipe.tier * 25);
         if (!R._questFlags) R._questFlags = {};
         R._questFlags.cookedRecipe = true;
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: recipe.name + '!',
-          color: '#ea580c',
-          ts: Date.now()
-        });
-        if (leveled) S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 50,
-          text: 'Cooking Lv' + sk.cooking.level + '!',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, recipe.name + '!', '#ea580c');
+        if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Cooking Lv' + sk.cooking.level + '!', '#f5c542');
         setRpgState(_objectSpread({}, R));
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(R));

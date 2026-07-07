@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO, ELEMENTS, GEM_CUT_TIERS, ZONE_RESOURCES, addLifeSkillXp } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === GemcutPanel — buildingPanel === 'gemcut' sub-panel === */
 /* v2.3.875: extracted verbatim from the buildingPanel === 'gemcut' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -102,32 +103,14 @@ export function GemcutPanel(props) {
         /* Roll for success */
         if (Math.random() < successRate) {
           sk.gems[polKey] = (sk.gems[polKey] || 0) + 1;
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Polished ' + gemName + '!',
-            color: gemCol,
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Polished ' + gemName + '!', gemCol);
           BT_AUDIO.collect();
         } else {
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Gem shattered!',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Gem shattered!', '#ff5e6c');
           BT_AUDIO.beep(200, 0.06, 0.1, 'square');
         }
         var leveled = addLifeSkillXp(sk, 'gemCutting', 15);
-        if (leveled) stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 50,
-          text: 'Gem Cutting Lv' + sk.gemCutting.level + '!',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Gem Cutting Lv' + sk.gemCutting.level + '!', '#f5c542');
         setRpgState(_objectSpread({}, R));
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(R));

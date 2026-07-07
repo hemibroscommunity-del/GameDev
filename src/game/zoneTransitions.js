@@ -23,6 +23,7 @@ import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, DEPTH_CONFIG, BT_AU
 import { perfTracker } from '@/debug/perfTracker.js';
 import { _typeof } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
         /* v2.3.387: town exits are PROXIMITY zones on the painted
@@ -76,11 +77,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                     ts: Date.now(),
                   });
                 } else {
-                  S.dmgNumbers.push({
-                    x: P.x, y: P.y - 30,
-                    text: '⚠️ ' + (_gzone.name || bestExit.zoneId) + ' is Lv ' + _gzone.level[0] + '–' + _gzone.level[1] + '! Walk in again to enter',
-                    color: '#ff5e6c', ts: Date.now(), ttl: 3,
-                  });
+                  pushDmgPopup(S, P.x, P.y - 30, '⚠️ ' + (_gzone.name || bestExit.zoneId) + ' is Lv ' + _gzone.level[0] + '–' + _gzone.level[1] + '! Walk in again to enter', '#ff5e6c', { ttl: 3 });
                 }
                 try { BT_AUDIO.beep(220, 0.08, 0.08, 'square'); } catch (e) {}
                 /* Nudge back toward the hub center so the proximity
@@ -257,13 +254,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 carvePath(mapW-3, 1, 0, 1, 4); carvePath(mapW-3, 1, -1, 0, 4);
                 carvePath(2, mapH-3, 0, -1, 4); carvePath(2, mapH-3, 1, 0, 4);
               }
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: newZone.name,
-                color: newZone.element ? ELEMENTS[newZone.element].color : '#fff',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, P.x, P.y - 40, newZone.name, newZone.element ? ELEMENTS[newZone.element].color : '#fff');
               S.npcs = null;
               S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
               S.hitParticles = [];
@@ -353,13 +344,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             }
             S._enteredFromDir = null;
             S._enteredFromExit = null;
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 40,
-              text: _retHub === 'worldview' ? 'World View' : 'Town',
-              color: '#5b52ff',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, P.x, P.y - 40, _retHub === 'worldview' ? 'World View' : 'Town', '#5b52ff');
             S.npcs = null;
             S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
@@ -393,13 +378,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             var isCleared = (_S$rpg6 = S.rpg) === null || _S$rpg6 === void 0 || (_S$rpg6 = _S$rpg6.lifeSkills) === null || _S$rpg6 === void 0 || (_S$rpg6 = _S$rpg6.dungeonClears) === null || _S$rpg6 === void 0 ? void 0 : _S$rpg6[clearKey];
             if (currentIdx >= depthOrder.length - 1 && isCleared) {
               /* Core is cleared — zone fully done */
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 30,
-                text: 'Zone fully cleared!',
-                color: '#3dd497',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, P.x, P.y - 30, 'Zone fully cleared!', '#3dd497');
             } else if (isCleared) {
               var _ELEMENTS$zn$element;
               /* Current depth already cleared — warp to next depth zone (skip dungeon) */
@@ -420,20 +399,8 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S._ambientParticles = [];
               S._zoneWipe = Date.now();
               var lvlRange = dc.lvlRange || [1, 10];
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: zn.name + ' - ' + nextDepth.toUpperCase(),
-                color: ((_ELEMENTS$zn$element = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element === void 0 ? void 0 : _ELEMENTS$zn$element.color) || '#fff',
-                ts: Date.now()
-              });
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 25,
-                text: 'Lv ' + lvlRange[0] + '-' + lvlRange[1],
-                color: 'rgba(255,255,255,.5)',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, P.x, P.y - 40, zn.name + ' - ' + nextDepth.toUpperCase(), ((_ELEMENTS$zn$element = ELEMENTS[zn.element]) === null || _ELEMENTS$zn$element === void 0 ? void 0 : _ELEMENTS$zn$element.color) || '#fff');
+              pushDmgPopup(S, P.x, P.y - 25, 'Lv ' + lvlRange[0] + '-' + lvlRange[1], 'rgba(255,255,255,.5)');
               BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
             } else {
               /* Current depth NOT cleared — enter dungeon fight! */
@@ -514,13 +481,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 m.type = _arch;
                 S.monsters.push(m);
               }
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: 'DUNGEON: Wave 1/' + S._dungeonMaxWaves,
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, P.x, P.y - 40, 'DUNGEON: Wave 1/' + S._dungeonMaxWaves, '#ff5e6c');
               BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
               setTimeout(function () {
                 return BT_AUDIO.beep(150, 0.2, 0.25, 'sawtooth');
@@ -579,13 +540,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             P.x = (Math.floor(_zn.w / 2) - 5) * TILE;
             P.y = TILE * 8;
             S._zoneWipe = Date.now();
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 30,
-              text: 'Exited dungeon',
-              color: '#3dd497',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, P.x, P.y - 30, 'Exited dungeon', '#3dd497');
             BT_AUDIO.beep(500, 0.05, 0.06, 'sine');
           }
         }

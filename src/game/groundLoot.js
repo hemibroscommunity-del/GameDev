@@ -16,6 +16,7 @@ import { syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 export function updateGroundLootPickup(S, deps) {
   var P = S.player;
   var pixiRef = deps.pixiRef,
@@ -172,13 +173,7 @@ export function updateGroundLootPickup(S, deps) {
                     }
                   }
                   if (isRanged) S.rpg.rangedWeapon = drop;else S.rpg.weapon = drop;
-                  S.dmgNumbers.push({
-                    x: loot.x,
-                    y: loot.y - 20,
-                    text: 'EQUIPPED: ' + drop.name,
-                    color: loot.tierColor || '#fff',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, loot.x, loot.y - 20, 'EQUIPPED: ' + drop.name, loot.tierColor || '#fff');
                   BT_AUDIO.collect();
                   if (drop.tier === 'fusion' || drop.tier === 'shift') {
                     BT_AUDIO.beep(523, 0.1, 0.08, 'sine');
@@ -194,25 +189,13 @@ export function updateGroundLootPickup(S, deps) {
                   if (!S.rpg.weaponStash) S.rpg.weaponStash = [];
                   if (S.rpg.weaponStash.length < WEAPON_STASH_MAX) {
                     S.rpg.weaponStash.push(drop);
-                    S.dmgNumbers.push({
-                      x: loot.x,
-                      y: loot.y - 20,
-                      text: 'STASHED: ' + drop.name,
-                      color: '#8890b8',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, loot.x, loot.y - 20, 'STASHED: ' + drop.name, '#8890b8');
                   } else {
                     /* Stash full — auto-sell */
                     var sellValue = Math.ceil(dropPower * 0.5);
                     S.rpg.coins += sellValue;
                     if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += sellValue;
-                    S.dmgNumbers.push({
-                      x: loot.x,
-                      y: loot.y - 20,
-                      text: '+' + sellValue + 'G (sold)',
-                      color: '#f5c542',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, loot.x, loot.y - 20, '+' + sellValue + 'G (sold)', '#f5c542');
                   }
                   BT_AUDIO.beep(400, 0.05, 0.08, 'sine');
                 }
@@ -237,13 +220,7 @@ export function updateGroundLootPickup(S, deps) {
                   S.rpg.inventory[item.key] = (S.rpg.inventory[item.key] || 0) + item.qty;
                   recoveredCount += item.qty;
                 });
-                S.dmgNumbers.push({
-                  x: loot.x,
-                  y: loot.y - 20,
-                  text: 'RECOVERED ' + recoveredCount + ' items!',
-                  color: '#3dd497',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, loot.x, loot.y - 20, 'RECOVERED ' + recoveredCount + ' items!', '#3dd497');
                 if (!S.rpg._questFlags) S.rpg._questFlags = {};
                 S.rpg._questFlags.recoveredDeathDrop = true;
                 BT_AUDIO.collect();
@@ -288,12 +265,7 @@ export function updateGroundLootPickup(S, deps) {
               if (loot.shard && S.rpg.inventory) {
                 S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
                 var _pickedShard = shardByKey(loot.shard);
-                S.dmgNumbers.push({
-                  x: loot.x + 12, y: loot.y - 22,
-                  text: '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'),
-                  color: (_pickedShard && _pickedShard.color) || '#cce6ff',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, loot.x + 12, loot.y - 22, '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'), (_pickedShard && _pickedShard.color) || '#cce6ff');
               }
               if (loot.skull) {
                 if (!S.rpg.skulls) S.rpg.skulls = {};
@@ -348,20 +320,8 @@ export function updateGroundLootPickup(S, deps) {
                   });
                 }
                 /* Rising level text */
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 50,
-                  text: 'LEVEL ' + S.rpg.level + '!',
-                  color: '#f5c542',
-                  ts: Date.now()
-                });
-                S.dmgNumbers.push({
-                  x: P.x,
-                  y: P.y - 35,
-                  text: 'HP/MANA RESTORED',
-                  color: '#3dd497',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, P.x, P.y - 50, 'LEVEL ' + S.rpg.level + '!', '#f5c542');
+                pushDmgPopup(S, P.x, P.y - 35, 'HP/MANA RESTORED', '#3dd497');
                 /* Ascending chime */
                 BT_AUDIO.beep(523, 0.1, 0.08, 'sine');
                 setTimeout(function () {

@@ -3,6 +3,7 @@ import { ARENA_BET_MAX, ARENA_BET_MIN, ARENA_CHAMPION_REWARD, ARENA_ENTRY_FEE, A
 import { BT_API_BASE } from '@/networking/index.js';
 import { _asyncToGenerator, _objectSpread, _regenerator, _toConsumableArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === PartyPanel — buildingPanel === 'party' sub-panel === */
 /* v2.3.881: extracted verbatim from the buildingPanel === 'party'
    clause in BroTown.jsx (the Arena: live tournament bracket, betting
@@ -83,13 +84,7 @@ export function PartyPanel(props) {
               _context8.n = 1;
               break;
             }
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Need ' + ARENA_ENTRY_FEE + 'G!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + ARENA_ENTRY_FEE + 'G!', '#ff5e6c');
             return _context8.a(2);
           case 1:
             /* v2.3.1126: arena-capable workers escrow the entry fee
@@ -130,13 +125,7 @@ export function PartyPanel(props) {
               break;
             }
             if (!(S._serverCaps && S._serverCaps.arena)) R.coins += ARENA_ENTRY_FEE;
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: data.error || 'Failed',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || 'Failed', '#ff5e6c');
             return _context8.a(2);
           case 5:
             setArenaStatus({
@@ -146,13 +135,7 @@ export function PartyPanel(props) {
               queueSize: data.queueSize || 1
             });
             if (data.started && data.tournament) setArenaTournament(data.tournament);
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Entered arena queue!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Entered arena queue!', '#ff5e6c');
             BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
             _context8.n = 7;
             break;
@@ -160,13 +143,7 @@ export function PartyPanel(props) {
             _context8.p = 6;
             _t7 = _context8.v;
             if (!(S._serverCaps && S._serverCaps.arena)) R.coins += ARENA_ENTRY_FEE;
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Server error',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error', '#ff5e6c');
           case 7:
             setRpgState(_objectSpread({}, R));
             try {
@@ -243,13 +220,7 @@ export function PartyPanel(props) {
               ok: true,
               status: 'none'
             });
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Left arena queue (+' + ARENA_ENTRY_FEE + 'G)',
-              color: 'rgba(255,255,255,.5)',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Left arena queue (+' + ARENA_ENTRY_FEE + 'G)', 'rgba(255,255,255,.5)');
             setRpgState(_objectSpread({}, S.rpg));
             try {
               localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
@@ -667,13 +638,7 @@ export function PartyPanel(props) {
       var targetName = ((_arenaTournament$play3 = arenaTournament.players.find(function (p) {
         return p.id === arenaBetTarget;
       })) === null || _arenaTournament$play3 === void 0 ? void 0 : _arenaTournament$play3.name) || '???';
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Bet ' + arenaBetAmount + 'G on ' + targetName + '!',
-        color: '#f5c542',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + targetName + '!', '#f5c542');
       BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
       setRpgState(_objectSpread({}, R));
       try {
@@ -836,13 +801,7 @@ export function PartyPanel(props) {
       if (arenaBets.find(function (b) {
         return b.tournamentId === arenaTournament.id && b.playerId === S.myId;
       })) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Already bet on this tournament!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Already bet on this tournament!', '#ff5e6c');
         return;
       }
       R.coins -= arenaBetAmount;
@@ -869,13 +828,7 @@ export function PartyPanel(props) {
       });
       if (!S.stats._betsMade) S.stats._betsMade = 0;
       S.stats._betsMade++;
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName + '!',
-        color: '#f5c542',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName + '!', '#f5c542');
       BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
       setRpgState(_objectSpread({}, R));
       try {
@@ -951,22 +904,10 @@ export function PartyPanel(props) {
         if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += payout;
         if (!S.stats._betsWon) S.stats._betsWon = 0;
         S.stats._betsWon++;
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 60,
-          text: 'Bet WON! +' + payout + 'G',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 60, 'Bet WON! +' + payout + 'G', '#f5c542');
         BT_AUDIO.collect();
       } else {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 60,
-          text: 'Bet lost (-' + bet.amount + 'G)',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 60, 'Bet lost (-' + bet.amount + 'G)', '#ff5e6c');
       }
     });
     if (myBets.length > 0) {
@@ -1075,36 +1016,18 @@ export function PartyPanel(props) {
       var S = stateRef.current,
         R = S.rpg;
       if (!R || !arenaBetTarget) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Pick a player!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pick a player!', '#ff5e6c');
         return;
       }
       if (R.coins < arenaBetAmount) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Not enough gold!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#ff5e6c');
         return;
       }
       /* Check if already bet on this tournament */
       if (arenaBets.find(function (b) {
         return b.tournamentId === arenaTournament.id && b.playerId === S.myId;
       })) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Already placed a bet!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Already placed a bet!', '#ff5e6c');
         return;
       }
       R.coins -= arenaBetAmount;
@@ -1131,13 +1054,7 @@ export function PartyPanel(props) {
       /* Track stats */
       if (!S.stats._betsMade) S.stats._betsMade = 0;
       S.stats._betsMade++;
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName,
-        color: '#f5c542',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName, '#f5c542');
       BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
       setRpgState(_objectSpread({}, R));
       try {
@@ -1197,26 +1114,14 @@ export function PartyPanel(props) {
         if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += payout;
         if (!S.stats._betsWon) S.stats._betsWon = 0;
         S.stats._betsWon++;
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 60,
-          text: 'BET WON! +' + payout + 'G',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 60, 'BET WON! +' + payout + 'G', '#f5c542');
         BT_AUDIO.levelUp();
         setRpgState(_objectSpread({}, S.rpg));
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
         } catch (_unused38) {}
       } else if (myBet) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 60,
-          text: 'Bet lost (-' + myBet.amount + 'G)',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 60, 'Bet lost (-' + myBet.amount + 'G)', '#ff5e6c');
       }
     }
     return null;
@@ -1358,15 +1263,7 @@ export function PartyPanel(props) {
         });
         if (!S2.stats._betsMade) S2.stats._betsMade = 0;
         S2.stats._betsMade++;
-        S2.dmgNumbers.push({
-          x: S2.player.x,
-          y: S2.player.y - 30,
-          text: 'Bet ' + arenaBetAmount + 'G on ' + ((_remaining$find2 = remaining.find(function (p) {
-            return p.id === arenaBetTarget;
-          })) === null || _remaining$find2 === void 0 ? void 0 : _remaining$find2.name),
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + ((_remaining$find2 = remaining.find(function (p) { return p.id === arenaBetTarget; })) === null || _remaining$find2 === void 0 ? void 0 : _remaining$find2.name), '#f5c542');
         BT_AUDIO.beep(600, 0.05, 0.08, 'sine');
         setRpgState(_objectSpread({}, R));
         try {
@@ -1408,22 +1305,10 @@ export function PartyPanel(props) {
             if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += payout;
             if (!S.stats._betsWon) S.stats._betsWon = 0;
             S.stats._betsWon++;
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 50,
-              text: 'BET WON! +' + payout + 'G',
-              color: '#3dd497',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 50, 'BET WON! +' + payout + 'G', '#3dd497');
             BT_AUDIO.collect();
           } else {
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 50,
-              text: 'Bet lost (-' + lastBet.amount + 'G)',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 50, 'Bet lost (-' + lastBet.amount + 'G)', '#ff5e6c');
           }
           setRpgState(_objectSpread({}, S.rpg));
           try {
@@ -1613,23 +1498,11 @@ export function PartyPanel(props) {
         if (!R || !arenaBetTarget) return;
         var amt = Math.min(arenaBetAmount, R.coins, ARENA_BET_MAX);
         if (amt < ARENA_BET_MIN) {
-          stateRef.current.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 30,
-            text: 'Min bet ' + ARENA_BET_MIN + 'G',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Min bet ' + ARENA_BET_MIN + 'G', '#ff5e6c');
           return;
         }
         if (R.coins < amt) {
-          stateRef.current.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 30,
-            text: 'Not enough gold!',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Not enough gold!', '#ff5e6c');
           return;
         }
         R.coins -= amt;
@@ -1658,13 +1531,7 @@ export function PartyPanel(props) {
           event: 'arena_bet',
           payload: bet
         });
-        stateRef.current.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Bet ' + amt + 'G on ' + bet.targetName,
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Bet ' + amt + 'G on ' + bet.targetName, '#f5c542');
         BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         setRpgState(_objectSpread({}, R));
         try {

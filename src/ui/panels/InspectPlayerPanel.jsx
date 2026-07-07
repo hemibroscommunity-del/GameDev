@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO, PVP_THREAT_BASE_COUNTDOWN, PVP_THREAT_COOLDOWN, REPUTATION, ZONES } from '@/data/index.js';
 import { _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === InspectPlayerPanel — the inspectPlayer modal === */
 /* v2.3.887: extracted verbatim from the inspectPlayer JSX subtree in
    BroTown.jsx (the player-inspect / social-actions popup: view another
@@ -337,13 +338,7 @@ export function InspectPlayerPanel(props) {
           wager: 0
         }
       });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Duel sent',
-        color: '#a78bfa',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
       setInspectPlayer(null);
     }
   }, "\u2694\uFE0F Duel"), /*#__PURE__*/React.createElement("button", {
@@ -356,13 +351,7 @@ export function InspectPlayerPanel(props) {
       var _S$rpg26;
       var S = stateRef.current;
       if (S._pvpThreatCdUntil && Date.now() < S._pvpThreatCdUntil) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Threat on cooldown',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat on cooldown', '#ff5e6c');
         setInspectPlayer(null);
         return;
       }
@@ -379,13 +368,7 @@ export function InspectPlayerPanel(props) {
       S._pvpSkullType = 'red';
       S._pvpSkullUntil = Date.now() + PVP_THREAT_BASE_COUNTDOWN;
       S._pvpThreatCdUntil = Date.now() + PVP_THREAT_COOLDOWN;
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Threat issued!',
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat issued!', '#ff5e6c');
       BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
       setInspectPlayer(null);
     }
@@ -415,13 +398,7 @@ export function InspectPlayerPanel(props) {
           target: inspectPlayer.id
         }
       });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Party invite sent',
-        color: '#fbbf24',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
       setInspectPlayer(null);
     }
   }, "\uD83C\uDF9F\uFE0F Invite to Party"), clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && /*#__PURE__*/React.createElement("button", {
@@ -450,13 +427,7 @@ export function InspectPlayerPanel(props) {
           clanTag: clanData.tag
         }
       });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Clan invite sent',
-        color: '#a78bfa',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Clan invite sent', '#a78bfa');
       setInspectPlayer(null);
     }
   }, "\uD83C\uDFF0 Invite to [", clanData.tag, "]"), /*#__PURE__*/React.createElement("div", {
@@ -490,13 +461,7 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_friends', JSON.stringify(updated));
           } catch (e) {}
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Removed friend',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Removed friend', '#ff5e6c');
         } else {
           var _updated = [].concat(_toConsumableArray(friendsList), [{
             id: inspectPlayer.id,
@@ -508,13 +473,7 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_friends', JSON.stringify(_updated));
           } catch (e) {}
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Added friend!',
-            color: '#3dd497',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Added friend!', '#3dd497');
           BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
         }
       }
@@ -542,26 +501,14 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_muted', JSON.stringify(updated));
           } catch (e) {}
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Unmuted',
-            color: '#f5c542',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unmuted', '#f5c542');
         } else {
           var _updated2 = [].concat(_toConsumableArray(mutedList), [inspectPlayer.id]);
           setMutedList(_updated2);
           try {
             localStorage.setItem('bt_muted', JSON.stringify(_updated2));
           } catch (e) {}
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Muted',
-            color: '#f5c542',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Muted', '#f5c542');
         }
       }
     }, isMuted ? '🔇 Muted' : '🔇 Mute');
@@ -590,22 +537,10 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_blocked', JSON.stringify(updated));
           } catch (e) {}
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Unblocked',
-            color: '#3dd497',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unblocked', '#3dd497');
         } else {
           if (isLawless) {
-            stateRef.current.dmgNumbers.push({
-              x: stateRef.current.player.x,
-              y: stateRef.current.player.y - 30,
-              text: 'Can\'t block in lawless zone!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Can\'t block in lawless zone!', '#ff5e6c');
             return;
           }
           var _updated3 = [].concat(_toConsumableArray(blockedList), [inspectPlayer.id]);
@@ -613,13 +548,7 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_blocked', JSON.stringify(_updated3));
           } catch (e) {}
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Blocked - no interactions',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked - no interactions', '#ff5e6c');
         }
       }
     }, isBlocked ? '🚫 Blocked' : '🚫 Block');

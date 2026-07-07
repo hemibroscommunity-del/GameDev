@@ -3,6 +3,7 @@ import { BLACKSMITH_TIERS, BT_AUDIO, ELEMENTS, MKT_CATEGORIES, MKT_TIERS, MKT_WO
 import { BT_API_BASE } from '@/networking/index.js';
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === ExchangePanel — buildingPanel === 'exchange' sub-panel === */
 /* v2.3.876: extracted verbatim from the buildingPanel === 'exchange'
    clause in BroTown.jsx (the player marketplace: buy/sell orders,
@@ -354,13 +355,7 @@ export function ExchangePanel(props) {
               _context0.n = 2;
               break;
             }
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Not enough gold!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#ff5e6c');
             return _context0.a(2);
           case 2:
             _context0.n = 4;
@@ -374,13 +369,7 @@ export function ExchangePanel(props) {
               _context0.n = 4;
               break;
             }
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Select an item first!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Select an item first!', '#ff5e6c');
             return _context0.a(2);
           case 4:
             sellItem = mktMode === 'sell' ? R.weaponStash[mktSellItem] : null;
@@ -427,13 +416,7 @@ export function ExchangePanel(props) {
               _context0.n = 8;
               break;
             }
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: data.error || 'Failed!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || 'Failed!', '#ff5e6c');
             return _context0.a(2);
           case 8:
             /* v2.3.1118: settlement is SERVER-SIDE when the worker sends
@@ -482,22 +465,10 @@ export function ExchangePanel(props) {
             if (mktMode === 'sell' && mktSellItem !== null) setMktSellItem(null);
             if (data.matched) {
               execPrice = data.execPrice;
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 30,
-                text: (mktMode === 'buy' ? 'Bought for ' : 'Sold for ') + execPrice + 'G!',
-                color: '#3dd497',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 30, (mktMode === 'buy' ? 'Bought for ' : 'Sold for ') + execPrice + 'G!', '#3dd497');
               BT_AUDIO.collect();
             } else {
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 30,
-                text: mktMode === 'buy' ? 'Buy order placed!' : 'Listed for sale!',
-                color: '#5b52ff',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 30, mktMode === 'buy' ? 'Buy order placed!' : 'Listed for sale!', '#5b52ff');
               BT_AUDIO.beep(500, 0.05, 0.08, 'sine');
             }
             /* Refresh order book from server */
@@ -522,13 +493,7 @@ export function ExchangePanel(props) {
           case 14:
             _context0.p = 14;
             _t0 = _context0.v;
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Server error!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error!', '#ff5e6c');
           case 15:
             return _context0.a(2);
         }
@@ -825,13 +790,7 @@ export function ExchangePanel(props) {
                       localStorage.setItem('bt_rpg', JSON.stringify(R2));
                     } catch (e) {}
                   }
-                  S.dmgNumbers.push({
-                    x: S.player.x,
-                    y: S.player.y - 30,
-                    text: 'Order cancelled',
-                    color: 'rgba(255,255,255,.5)',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, 'Order cancelled', 'rgba(255,255,255,.5)');
                   /* Refresh */
                   S._mktLastRefresh = null;
                   fetch(BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom()).then(function (r) {
@@ -845,13 +804,7 @@ export function ExchangePanel(props) {
               case 3:
                 _context1.p = 3;
                 _t1 = _context1.v;
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 30,
-                  text: 'Cancel failed',
-                  color: '#ff5e6c',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Cancel failed', '#ff5e6c');
               case 4:
                 return _context1.a(2);
             }

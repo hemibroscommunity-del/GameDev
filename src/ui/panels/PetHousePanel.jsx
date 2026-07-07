@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO, ELEMENTS, MAX_PET_SLOTS, PET_EVOLUTION_TIERS, enchantPet, evolvePet } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* ═══ PetHousePanel — pet slots, evolve, enchant ═══ */
 /* v2.3.861: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged. 10
@@ -328,13 +329,7 @@ export function PetHousePanel(props) {
         }
         setPetEvolve1(null);
         setPetEvolve2(null);
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 40,
-          text: evolved.name + ' evolved!',
-          color: '#ea580c',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, evolved.name + ' evolved!', '#ea580c');
         BT_AUDIO.levelUp();
         setRpgState(_objectSpread({}, R));
         try {
@@ -444,24 +439,12 @@ export function PetHousePanel(props) {
             var p = R.lifeSkills.pets[pi];
             if (!p) return;
             if (R.coins < 50) {
-              stateRef.current.dmgNumbers.push({
-                x: stateRef.current.player.x,
-                y: stateRef.current.player.y - 30,
-                text: 'Need 50G!',
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need 50G!', '#ff5e6c');
               return;
             }
             R.coins -= 50;
             enchantPet(p, key);
-            stateRef.current.dmgNumbers.push({
-              x: stateRef.current.player.x,
-              y: stateRef.current.player.y - 30,
-              text: key + ' enchanted!',
-              color: el.color,
-              ts: Date.now()
-            });
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, key + ' enchanted!', el.color);
             BT_AUDIO.collect();
             setRpgState(_objectSpread({}, R));
             try {

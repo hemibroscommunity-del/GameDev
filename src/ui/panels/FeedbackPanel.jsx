@@ -3,6 +3,7 @@ import { BT_AUDIO, FEEDBACK_CATEGORIES, FEEDBACK_TOPICS } from '@/data/index.js'
 import { BT_API_BASE } from '@/networking/index.js';
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* ═══ FeedbackPanel — submit + browse community feedback tickets ═══ */
 /* v2.3.858: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged,
@@ -543,13 +544,7 @@ export function FeedbackPanel(props) {
               _context7.n = 1;
               break;
             }
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Write something first!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Write something first!', '#ff5e6c');
             return _context7.a(2);
           case 1:
             _context7.p = 1;
@@ -577,22 +572,10 @@ export function FeedbackPanel(props) {
               _context7.n = 4;
               break;
             }
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: d.error || 'Failed',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, d.error || 'Failed', '#ff5e6c');
             return _context7.a(2);
           case 4:
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Feedback submitted!',
-              color: '#5b52ff',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Feedback submitted!', '#5b52ff');
             BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
             setFeedbackText('');
             setFeedbackTab('browse');
@@ -602,13 +585,7 @@ export function FeedbackPanel(props) {
           case 5:
             _context7.p = 5;
             _t6 = _context7.v;
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Server error',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error', '#ff5e6c');
           case 6:
             return _context7.a(2);
         }
