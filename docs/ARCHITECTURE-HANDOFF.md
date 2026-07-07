@@ -241,18 +241,24 @@ Each entry: what, why, the shape to build, and dangers. Higher =
 sooner. The shipped v1 backlog is collapsed at the end of this part —
 its letters are frozen (TRAPS.md and the specs cite them).
 
-### A. Gem-socket + gem-extraction settlement
-The last client-local gem mutations. amulet-forge.md's "Residuals"
-section names both as the successor slice: ForgePanel "Extract Gem"
-income (pulls a weapon's elements / a shield's gem back out as
-polished gems — and mutates the server-held gear blob, so it's a real
-settlement, not just a ledger echo) and the EnchantPanel shield/weapon
-gem-slot consumes. Shape: `gem_cut_request` is the template —
-validate/consume/mint from SERVER state, its own narrow caps flag
-(the caps.gems lesson, TRAPS #9), one-time clamped join capture if
-any client-held state remains. Dangers: the shield and weapon paths
-differ (elements vs a single gem — check both consume sites);
-extraction refunds must be opId-idempotent (rule 5).
+### A. Gem-slot consume settlement
+Gem EXTRACTION shipped v2.3.1209 (amulet.js `op:'extract'`,
+`caps.gemExtract`): ForgePanel's two Extract buttons — the four
+equipped gearBase slots (weapon/rangedWeapon/staffWeapon/shield) and
+stash weapons — now strip the SERVER blob, credit polished gems, and
+charge coins server-side, name-rebuilt from mirror-pinned label tables
+(amulet-forge.md "Gem extraction"). The amulet extract button is dead
+code (gearBase filter), so it's excluded per the dormant-content rule. What
+remains is the **EnchantPanel shield/weapon gem-SLOT consume**: still a
+client-local `lifeSkills.gems` edit, echo-restored. Blocked, not just
+unbuilt — non-flame gem bonuses are client-side point-of-use effects
+(v2.3.1139 posture), so the server has nothing authoritative to
+validate at the slot yet; it migrates ALONGSIDE the slots' stat
+migration (fold the gem consume into that slice, on the
+`op:'extract'`/gem-op template — validate/consume from SERVER state,
+gate on a narrow caps flag). Danger: the shield and weapon slot paths
+differ (elements vs a single gem — check both consume sites); the
+amulet gem slot is already server-settled (the v2.3.1192 gem op).
 
 ### B. Spectator stake board
 Old item A's residue: sponsorship stakes are private — spectators see

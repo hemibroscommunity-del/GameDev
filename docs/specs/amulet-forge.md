@@ -155,21 +155,42 @@ server-held raw gem, which is the spam bound — no rate limit needed.
 Gem-cut XP (15/cut, success or shatter) is a literal at the client call
 site — no constant to mirror; the server carries it as `GEM_CUT_XP`.
 
+### Gem extraction (v2.3.1209, the successor slice §4's Residuals named)
+
+ForgePanel's two Extract buttons — equipped weapon/shield/amulet, and
+weapon-stash weapons — were the last client-local gem mutations: the
+client stripped the SERVER-held gear blob and self-credited polished
+gems, and since the `player_state` echo carries all four blobs
+(weapon/shield/amulet/weaponStash, persistence.js) it stomped both the
+strip and the credit right back — a broken settlement, no regression.
+Now the worker owns it, on the forge pattern (validate from server
+state, charge, mint, `_saveRpg`, echo).
+
+| Direction | Message | Payload | Behavior |
+|---|---|---|---|
+| C→S | `amulet_forge_request` | `{op:'extract', target}` | `target` ∈ the four gearBase-bearing equipped slots (`weapon`/`rangedWeapon`/`staffWeapon` elements, `shield` gem) or `stash` (a `weaponStash` entry by `stashIdx`); gates: alive, something socketed (shield `.gem`, weapon `element1`/`element2`), `coins ≥ ceil(GEM_EXTRACT_BASE_COST × (item.tierMult‖1))`; equipped targets also gear-lock (threat.js). Mints one `polished_<elem>` per real element, strips the blob (weapons reset `tier→common`, clear `isVolatile`), rebuilds the display name from the label mirrors. Denies silently. The **amulet is NOT a target**: its Extract button never renders (the list filters on `s.item.gearBase`, which amulets lack — dead code, per the trust-posture note below), so no server support is built for the dormant flow. |
+| S→C | `player_state` | `coins`, `lifeSkills.gems`, the stripped `weapon`/`rangedWeapon`/`staffWeapon`/`shield`/`weaponStash` | the only echo — **no new server-emitted event type**, `PRIVILEGED_EVENTS` untouched |
+| S→C | `state_sync` | `caps.gemExtract: true` | deploy-order gate (rule 19). Narrow flag, NOT reused: a v2.3.1192/1198 worker advertises `amuletForge`/`gems` but denies the unknown `extract` op, which would strip the client's gear locally and echo-restore it (the caps.gems lesson, TRAPS #9). |
+
+Cost parity note: ForgePanel calls `gemExtractCost(item)` with NO
+tier-table args, so its live cost is `ceil(base × (item.tierMult‖1))`
+(the BLACKSMITH/WOODWORKING fallbacks in that fn are always undefined
+at those call sites — an amulet, with no `tierMult`, pays the flat
+base). `_gemExtractCost` mirrors that exactly so the coin gate matches
+the button the player tapped. Data mirrors (pinned by mirror-audit
+§8e): `GEM_EXTRACT_BASE_COST`, and the `BLACKSMITH_TIER_LABELS` /
+`WOODWORKING_TIER_LABELS` / `WEAPON_TYPE_LABELS` name-rebuild tables
+(compact server side tables mirroring the client tier/weapon `.label`
+fields — the client wholesale-replaces the blob name from the echo, so
+a drifted label would flip every extracted item's name).
+
 ### Residuals (still client-side, documented)
 
-- **Gem EXTRACTION income** (ForgePanel "Extract Gem": pulls a weapon's
-  elements / a shield's gem back out as polished gems for coins) is
-  still a client-local `lifeSkills.gems` edit — the server never sees
-  it, and the `player_state` echo stomps it, exactly as it did before
-  this slice (no regression; extraction also mutates the server-held
-  gear blob, so migrating it is its own slice — add an
-  `amulet_forge_request`-style op that strips the SERVER's blob and
-  credits the gems).
 - **Shield/weapon gem-slot consumption** (EnchantPanel non-amulet
-  slots) likewise: client-local consume, echo restores the gem.
-  Non-flame gem bonuses are client-side point-of-use effects
-  (v2.3.1139 posture), so the server has nothing to validate yet;
-  migrate alongside the slots' stat migration.
+  slots): client-local consume, echo restores the gem. Non-flame gem
+  bonuses are client-side point-of-use effects (v2.3.1139 posture), so
+  the server has nothing to validate yet; migrate alongside the slots'
+  stat migration.
 
 ## Trust posture / deliberately still client-side
 
