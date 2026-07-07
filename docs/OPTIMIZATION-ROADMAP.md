@@ -116,7 +116,7 @@ again.
   `monster_hit`/`monster_kill` notifications. Cheap fix: keep the
   remainder in the buffer (`this.eventBuffer = this.eventBuffer.slice(CAP)`).
 - ~~Duplicate `case 'arena_bet'` in the message switch~~ — fixed
-  v2.3.1176 (handlers merged, `no-duplicate-case` lint added).
+  v2.3.1187 (handlers merged, `no-duplicate-case` lint added).
 - **Dead code**: old pre-Phase-5 `src/networking/wsClient.js`, disabled
   tile-10 dungeon entrance, zeroed collectibles. Quests/collectibles are
   dormant by design — owner decision needed before removing or reviving.

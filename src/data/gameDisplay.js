@@ -1,5 +1,5 @@
 /* ═══ GAME DISPLAY — presentation-only tables & renderers ═══ */
-/* v2.3.1175: split out of gameSystems.js (FINAL PLAN v2 session 3).
+/* v2.3.1186: split out of gameSystems.js (FINAL PLAN v2 session 3).
    Everything here is pure presentation: audio engine, achievements,
    cosmetic masks, tile colors, zone-map generation, emote/NPC/label
    tables.  The point of the split is to SHRINK the mirror-audit drift

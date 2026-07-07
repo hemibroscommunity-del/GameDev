@@ -1693,11 +1693,7 @@ export function processGameEvent(type, payload, S, deps) {
                  inviter's own recorded invite server-side). */
               if (!payload || !payload.from) break;
               if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: Date.now() });
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 40,
-                text: '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!',
-                color: '#fbbf24', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 40, '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!', '#fbbf24');
               BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
               break;
             }
@@ -1722,10 +1718,7 @@ export function processGameEvent(type, payload, S, deps) {
                   'left': 'You left the party', 'kicked': 'Kicked from the party',
                   'disbanded': 'Party disbanded', 'offline': 'Removed from party (offline)',
                 }[payload.reason] || 'Party ended';
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 40,
-                  text: _ptyWhy, color: '#fbbf24', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, _ptyWhy, '#fbbf24');
               }
               break;
             }
@@ -1742,10 +1735,7 @@ export function processGameEvent(type, payload, S, deps) {
                 'full': 'Party is full',
                 'expired': 'Party invite expired', /* v2.3.1185 */
               }[payload.reason] || 'Party action failed';
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 40,
-                text: _ptyErr, color: '#ff5e6c', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 40, _ptyErr, '#ff5e6c');
               break;
             }
           case 'harden_result':

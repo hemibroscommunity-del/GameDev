@@ -264,7 +264,7 @@ the standalone Marketplace DO is retired from routing):**
 ## Known quirks (documented, deliberately not "fixed" here)
 
 - ~~Duplicate `case 'arena_bet'` in `_processGameEvent`~~ — FIXED
-  v2.3.1176: merged into one handler in `gameEvents.js` (the second,
+  v2.3.1187: merged into one handler in `gameEvents.js` (the second,
   unreachable label was the spectator-bet UI feed — remote bets now
   reach `setArenaBets`); eslint `no-duplicate-case` guards recurrence.
 - **`player_respawned` handled twice**: in the main switch (~2619,

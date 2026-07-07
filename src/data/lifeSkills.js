@@ -1,7 +1,7 @@
 import { TILE } from './constants.js';
 import { ZONES } from './zones.js';
 import { flavorName, flavorSpotName } from './elements.js';
-/* v2.3.1178: was an eslint-grandfathered global (globalThis-resolved). */
+/* v2.3.1189: was an eslint-grandfathered global (globalThis-resolved). */
 import { ZONE_RESOURCES } from './items.js';
 
 /* ═══ LIFE SKILLS — §18 ═══ */

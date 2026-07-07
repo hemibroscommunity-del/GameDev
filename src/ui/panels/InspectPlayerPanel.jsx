@@ -398,13 +398,7 @@ export function InspectPlayerPanel(props) {
           target: inspectPlayer.id
         }
       });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Party invite sent',
-        color: '#fbbf24',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
       setInspectPlayer(null);
     }
   }, "\uD83C\uDF9F\uFE0F Invite to Party"), clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && /*#__PURE__*/React.createElement("button", {

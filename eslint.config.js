@@ -11,7 +11,7 @@
  */
 import globals from 'globals';
 
-/* LEGACY DEBT REGISTER — RETIRED (v2.3.1178).  The per-file `globals`
+/* LEGACY DEBT REGISTER — RETIRED (v2.3.1189).  The per-file `globals`
  * blocks that used to sit at the bottom grandfathered identifiers the
  * legacy monoliths referenced without a binding.  All 35 entries were
  * burned down in the FINAL PLAN v2 session-3 cleanup: 21 of BroTown's
@@ -52,6 +52,6 @@ export default [
   },
   /* v2.3.784: gameLoop.js / wsClient.js LEGACY DEBT blocks removed
      (Phase 1 deletion / Phase 5 rewrite with explicit imports).
-     v2.3.1178: gameSystems.js (7), lifeSkills.js (1), and BroTown.jsx
+     v2.3.1189: gameSystems.js (7), lifeSkills.js (1), and BroTown.jsx
      (27) blocks removed — the register is empty. */
 ];

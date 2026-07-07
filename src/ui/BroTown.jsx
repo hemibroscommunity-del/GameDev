@@ -57,7 +57,7 @@ import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
 import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
-/* v2.3.1178: LEGACY DEBT burn-down — these five resolved only via the
+/* v2.3.1189: LEGACY DEBT burn-down — these five resolved only via the
    Object.assign(globalThis, DATA) below (eslint grandfathered them).
    Explicit imports close the latent ReferenceError window between
    module eval and the globalThis assignment.  Note TOWN_W/TOWN_H are

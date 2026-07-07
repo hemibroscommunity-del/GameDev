@@ -1,4 +1,4 @@
-/* ═══ QA: two-session combat-prediction reconciliation (v2.3.1179) ═══
+/* ═══ QA: two-session combat-prediction reconciliation (v2.3.1190) ═══
  *
  * The biggest untested desync class: the LOCAL damage popup is a client
  * prediction (calcWeaponDmg roll in monsterCombat.js — server-computed

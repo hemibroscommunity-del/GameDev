@@ -279,7 +279,7 @@ function distributeKillXpToBuild(R, killXp) {
   R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
 }
 
-/* v2.3.1177: the ONE way to spawn a floating damage/notice popup.  The
+/* v2.3.1188: the ONE way to spawn a floating damage/notice popup.  The
    ~417 hand-rolled `S.dmgNumbers.push({x,y,text,color,ts})` literals
    across ~39 files all collapse onto this.  `extra` merges over the
    defaults, so the handful of non-default sites (ttl, iconKey/special,
