@@ -67,6 +67,7 @@ extended.
    | `guild_claims:<pid>` | `{skillKey: completedCount}` quest-ladder claims | guild-quests.md |
    | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
    | `bounty:<pid>` | `{amount, by, ts}` escrowed Call-Guards fine on this head, paid to the killer | threats.md |
+   | `trade2wpn:<pid>:<seq>` | `{pid, sid, seq, weapon, ts}` weapon escrowed into a live trade window | trading.md |
    | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |
    | `harden_h5_log` | global H5-mint timestamps, 90-day window (INV-27) | hardening.md |
    | `botstat:<playerId>` | anti-bot evidence: counters, hour caps, replay-hash tail, shadow flags | anticheat-botfp.md |
@@ -292,14 +293,15 @@ frame in the renderer); leader-initiated group dungeon entry (a
 `dungeon_start` that teleports members in together). Danger: do not
 touch the §7 share math (TRAPS #3; party.md's danger note stands).
 
-### E. Trade2 weapon lane
-Weapons still trade via marketplace escrow only (trading.md
-addendum). Shape: escrow-at-STAGE, not validate-at-commit — the
-weapon leaves the stash into the stage, with a refund path on
-cancel/disconnect, and the WEAPON_STASH_CAP partial-drain rule
-(rule 3) applies on every return leg. Danger: the stage survives
-neither a deploy nor a disconnect unless escrowed — stage records
-must be storage-backed (rule 11).
+### E. Trade2 weapon lane — SHIPPED v2.3.1213
+Weapons trade in the two-sided window now (trading.md addendum "Weapon
+lane"): escrow-at-STAGE (`trade2_stage_weapon` → storage-backed
+`trade2wpn:<pid>:<seq>`, registered above), commit delivers to the
+other side, and cancel/disconnect/idle/deploy all refund — every leg
+`_creditPlayer(kind:'weapon')` (stash or inbox if full, rule 3),
+opId-idempotent, sweep checks the deliver stamp before refunding
+(rule 6). Gated on its own narrow `caps.trade2Weapons` (rule 19 /
+TRAPS #9). The item/gold path stays memory-only validate-at-commit.
 
 ### F. Promote the report-only CI trio
 qa-gear-smoke, qa-party-smoke, qa-combat-predict run

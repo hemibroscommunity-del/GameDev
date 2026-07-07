@@ -112,6 +112,17 @@ export function TradeWindowPanel(props) {
   const theyConfirmed = !!trade2.confirmed[otherId];
   const inv = (rpgState && rpgState.inventory) || {};
   const coins = (rpgState && rpgState.coins) || 0;
+  /* v2.3.1213: weapon lane (item E). Weapons are escrowed server-side at
+     stage (they leave the stash) and swap on commit — so they ride a
+     separate `trade2.weapons` snapshot, not the `offers` map, and the
+     picker is gated on caps.trade2Weapons (an old worker never sees the
+     stage command). Both-confirm resets on any stage/unstage. */
+  const weaponLane = !!(S && S._serverCaps && S._serverCaps.trade2Weapons);
+  const myWpn = (trade2.weapons && trade2.weapons[myId]) || [];
+  const otherWpn = (trade2.weapons && trade2.weapons[otherId]) || [];
+  const stash = (rpgState && rpgState.weaponStash) || [];
+  const T2_WPN_MAX = 4;
+  const wpnName = (w) => (w && w.weapon && w.weapon.name) || 'Weapon';
 
   const pushStage = (next) => {
     setStage(next);
@@ -137,14 +148,28 @@ export function TradeWindowPanel(props) {
           {otherName} offers {theyConfirmed ? '· ✅ CONFIRMED' : ''}
         </div>
         <div style={{ borderRadius: 6, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)', padding: '2px 6px', marginBottom: 8 }}>
-          <OfferChips offer={trade2.offers[otherId]} empty="Nothing staged yet" />
+          <OfferChips offer={trade2.offers[otherId]} empty={otherWpn.length ? '' : 'Nothing staged yet'} />
+          {otherWpn.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: '0 0 4px' }}>
+              {otherWpn.map((w) => (
+                <span key={w.seq} style={{ fontSize: 9, padding: '2px 5px', borderRadius: 4, background: 'rgba(167,139,250,.12)', border: '1px solid rgba(167,139,250,.3)', color: '#a78bfa' }}>⚔️ {wpnName(w)}</span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ fontSize: 9, fontWeight: 700, color: iConfirmed ? '#3dd497' : 'rgba(255,255,255,.4)', marginBottom: 2 }}>
           You offer {iConfirmed ? '· ✅ CONFIRMED' : '· tap items to stage'}
         </div>
         <div style={{ borderRadius: 6, background: 'rgba(61,212,151,.04)', border: '1px solid rgba(61,212,151,.15)', padding: '2px 6px', marginBottom: 6 }}>
-          <OfferChips offer={stage} empty="Nothing staged — tap items below" />
+          <OfferChips offer={stage} empty={myWpn.length ? '' : 'Nothing staged — tap items below'} />
+          {myWpn.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: '0 0 4px' }}>
+              {myWpn.map((w) => (
+                <span key={w.seq} onClick={() => send('trade2_unstage_weapon', { seq: w.seq })} title="Remove from trade" style={{ fontSize: 9, padding: '2px 5px', borderRadius: 4, background: 'rgba(167,139,250,.12)', border: '1px solid rgba(167,139,250,.3)', color: '#a78bfa', cursor: 'pointer' }}>⚔️ {wpnName(w)} ✕</span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4, marginBottom: 6, maxHeight: 120, overflowY: 'auto' }}>
@@ -164,6 +189,30 @@ export function TradeWindowPanel(props) {
             </button>
           ))}
         </div>
+
+        {weaponLane && stash.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 8, fontWeight: 700, color: 'rgba(255,255,255,.4)', marginBottom: 3 }}>
+              Your weapons (tap to add) {myWpn.length >= T2_WPN_MAX ? '· max ' + T2_WPN_MAX : ''}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 88, overflowY: 'auto' }}>
+              {stash.map((w, i) => (
+                <button
+                  key={i}
+                  disabled={myWpn.length >= T2_WPN_MAX}
+                  onClick={() => { if (myWpn.length < T2_WPN_MAX) send('trade2_stage_weapon', { stashIdx: i, expectName: w.name }); }}
+                  style={{
+                    padding: '3px 6px', borderRadius: 5, fontSize: 9,
+                    cursor: myWpn.length >= T2_WPN_MAX ? 'not-allowed' : 'pointer',
+                    border: '1px solid rgba(167,139,250,.3)',
+                    background: 'rgba(167,139,250,.08)',
+                    color: myWpn.length >= T2_WPN_MAX ? 'rgba(255,255,255,.25)' : '#a78bfa',
+                  }}
+                >⚔️ {w.name || 'Weapon'}</button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
           <span style={{ fontSize: 9, fontWeight: 700, color: '#f5c542' }}>💰 Gold:</span>

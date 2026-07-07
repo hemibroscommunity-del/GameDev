@@ -2337,6 +2337,15 @@ export class GameRoom {
       case 'trade2_cancel':
         if (session.id) this._handleTrade2Cancel(session);
         break;
+      case 'trade2_stage_weapon':
+        // v2.3.1213: weapon lane -- escrow a stash weapon into the live
+        // window (trade2.js).  Explicit case; gated client-side on
+        // caps.trade2Weapons so an old worker never receives it.
+        if (session.id) await this._handleTrade2StageWeapon(session, msg.payload || msg);
+        break;
+      case 'trade2_unstage_weapon':
+        if (session.id) await this._handleTrade2UnstageWeapon(session, msg.payload || msg);
+        break;
 
       case 'party_invite':
         // v2.3.1185: party roster (party.js).  Explicit cases so forged
