@@ -18,13 +18,24 @@
  * Fast by design: both bots stay at the town spawn (party_invite targets
  * by player id — no proximity or same-zone requirement).
  *
+ * v2.3.1196b (first real-CI run): 'B renders the invite card' failed
+ * with no way to tell WHERE the invite died.  Hardened + made
+ * self-diagnosing: (a) both pages carry an init-script WebSocket tap
+ * that records every party-related frame in/out (window.__qaPartyLog —
+ * independent of debugBus, whose wsFrames only capture while the
+ * overlay is open); (b) the invite waits for MUTUAL presence in
+ * S.others first (join registers players server-side, but presence
+ * proves the whole broadcast pipeline is live); (c) the invite is
+ * re-sent once if no card appears (a re-invite just refreshes the
+ * server's 'from>to' TTL entry — party.js); (d) on failure, both
+ * sessions dump caps, S._party, the party frame log, and a body-text
+ * slice, so the next CI run pinpoints wire-vs-DOM by itself.
+ *
  * Prereqs (same as qa-facing.mjs): built client at :4173, worker at
  * :8787 (QA_WS_URL=ws://127.0.0.1:8787).  Exits non-zero on any failed
  * check (run-all.mjs fail-fast compatible).
  *
- * CI status: wired into client-ci.yml as REPORT-ONLY (continue-on-error)
- * — authored in a sandbox where npm is policy-blocked (no vite build /
- * wrangler), so it has had no stabilization run against the real client.
+ * CI status: wired into client-ci.yml as REPORT-ONLY (continue-on-error).
  * Promotion criteria: flip it blocking once it holds green (incl. the
  * one workflow retry) for ~10 consecutive CI runs.
  */
@@ -55,6 +66,32 @@ async function startSession(label) {
   if (process.env.QA_WS_URL) {
     await page.addInitScript(`window.BROTOWN_WS_URL = ${JSON.stringify(process.env.QA_WS_URL)};`);
   }
+  /* v2.3.1196b: tap every WebSocket for party frames (both directions)
+     BEFORE any page script runs.  debugBus wraps the constructor too,
+     but its wsFrames only record while the overlay is visible; this log
+     is always on and scoped to party traffic (bounded ring). */
+  await page.addInitScript(() => {
+    window.__qaPartyLog = [];
+    const push = (tag, data) => {
+      try {
+        if (typeof data === 'string' && data.includes('party')) {
+          window.__qaPartyLog.push(tag + ' ' + data.slice(0, 240));
+          if (window.__qaPartyLog.length > 50) window.__qaPartyLog.shift();
+        }
+      } catch (e) { /* never break the pipe */ }
+    };
+    const Native = window.WebSocket;
+    const Wrapped = function (url, protocols) {
+      const ws = protocols ? new Native(url, protocols) : new Native(url);
+      ws.addEventListener('message', (evt) => push('IN', evt.data));
+      const origSend = ws.send.bind(ws);
+      ws.send = (data) => { push('OUT', data); return origSend(data); };
+      return ws;
+    };
+    Wrapped.prototype = Native.prototype;
+    for (const k of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) Wrapped[k] = Native[k];
+    window.WebSocket = Wrapped;
+  });
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await sleep(6000);
   const input = page.locator('input').first();
@@ -81,6 +118,14 @@ async function pollUntil(fn, timeoutMs, intervalMs = 250) {
   return v;
 }
 
+/* failure forensics: everything needed to tell wire-vs-DOM apart */
+const partyDiag = (page) => page.evaluate(() => ({
+  caps: window._gameState?.current?._serverCaps || null,
+  party: window._gameState?.current?._party || null,
+  wsPartyFrames: (window.__qaPartyLog || []).slice(-14),
+  bodyText: document.body.innerText.replace(/\n+/g, ' | ').slice(0, 260),
+})).catch((e) => ({ diagErr: String(e).slice(0, 120) }));
+
 const A = await startSession('PartyBotA');
 const B = await startSession('PartyBotB');
 const aId = await A.evaluate(() => window._gameState.current.myId);
@@ -92,15 +137,35 @@ const caps = await A.evaluate(() => window._gameState.current._serverCaps || nul
 check('server advertises caps.party', !!(caps && caps.party), caps);
 if (!(caps && caps.party)) { await browser.close(); process.exit(1); }
 
-/* ── 2. A invites B (same wire shape as InspectPlayerPanel's button) ── */
-await A.evaluate((target) => {
+/* ── mutual presence before inviting: proves both players are fully
+      registered + broadcasting server-side (v2.3.1196b) ── */
+const mutual = await pollUntil(async () => {
+  const bSeesA = await B.evaluate((id) => !!window._gameState.current.others[id], aId).catch(() => false);
+  const aSeesB = await A.evaluate((id) => !!window._gameState.current.others[id], bId).catch(() => false);
+  return bSeesA && aSeesB;
+}, 20000);
+check('sessions see each other in others', !!mutual,
+  { A: await partyDiag(A), B: await partyDiag(B) });
+
+/* ── 2. A invites B (same wire shape as InspectPlayerPanel's button);
+      one re-send if the card doesn't show (a re-invite just refreshes
+      the server's 'from>to' TTL entry) ── */
+const sendInvite = () => A.evaluate((target) => {
   const S = window._gameState.current;
   S.channel.send({ type: 'broadcast', event: 'party_invite', payload: { target } });
 }, bId);
+const cardVisible = () => B.locator('text=Party Invite').first().isVisible().catch(() => false);
 
-const inviteCard = await pollUntil(
-  () => B.locator('text=Party Invite').first().isVisible().catch(() => false), 12000);
-check('B renders the invite card', !!inviteCard);
+await sendInvite();
+let inviteCard = await pollUntil(cardVisible, 8000);
+if (!inviteCard) {
+  console.log('no invite card after 8s — re-sending invite once; diag:',
+    JSON.stringify({ A: await partyDiag(A), B: await partyDiag(B) }));
+  await sendInvite();
+  inviteCard = await pollUntil(cardVisible, 8000);
+}
+check('B renders the invite card', !!inviteCard,
+  { A: await partyDiag(A), B: await partyDiag(B) });
 if (!inviteCard) { await browser.close(); process.exit(1); }
 
 /* ── 3. B accepts via the card's Join button (the real HUD path) ── */
@@ -122,14 +187,14 @@ for (const [label, page] of [['A', A], ['B', B]]) {
     const p = await partyOn(page);
     return p && p.size === 2 ? p : null;
   }, 15000);
-  check(label + ' holds party_state with 2 members', !!roster, await partyOn(page));
+  check(label + ' holds party_state with 2 members', !!roster, await partyDiag(page));
   if (roster) {
     check(label + ' sees A as leader', roster.leader === aId, roster);
     check(label + ' roster carries both names + live vitals',
       roster.names.includes('PartyBotA') && roster.names.includes('PartyBotB') && roster.vitalsOk, roster);
   }
   const dom = await pollUntil(() => rosterInDom(page), 8000);
-  check(label + ' renders the PARTY 2/4 HUD strip', !!dom);
+  check(label + ' renders the PARTY 2/4 HUD strip', !!dom, await partyDiag(page));
 }
 
 /* ── 4. A leaves via the strip's Leave button → disband on both
@@ -141,8 +206,7 @@ for (const [label, page] of [['A', A], ['B', B]]) {
     const dom = await rosterInDom(page);
     return !p && !dom;
   }, 10000);
-  check(label + ' party dissolved (state + HUD gone)', !!gone,
-    { party: await partyOn(page), domStrip: await rosterInDom(page) });
+  check(label + ' party dissolved (state + HUD gone)', !!gone, await partyDiag(page));
 }
 
 await browser.close();
