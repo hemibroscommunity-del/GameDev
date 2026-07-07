@@ -33,7 +33,11 @@ Routing: `/api/admin/*` → the GameRoom DO, honoring `?room=` (default
 On every join where a stored blob exists, `_rpgSnapshotMaybe` snapshots the
 PRE-join blob (the state the player last logged out with) to
 `rpgsnap:<pid>:<yyyymmdd>` — throttled to one per 20 h via `rpgsnap_at:<pid>`,
-ring pruned to 7 per player (prerestore copies count toward the cap). Cost:
+ring pruned to 7 per player. v2.3.1177: the daily and `prerestore-` key
+classes prune to 7 **separately** — the original shared cap sorted both
+classes together, and since `'p'` sorts after every digit the excess-slice
+evicted the oldest REAL daily snapshots first while prerestore copies lived
+forever (inverting the rollback-parachute intent). Cost:
 one get + two puts + one small list per player per day. Snapshots never block
 a join (best-effort try/catch).
 

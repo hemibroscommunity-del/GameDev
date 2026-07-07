@@ -21,6 +21,7 @@
  *      no-op.
  */
 import { GameRoom } from '../src/index.js';
+import { CLANS } from '../src/clans.js';
 
 function makeState() {
   const store = new Map();
@@ -177,6 +178,24 @@ check('leader kick removes the member', redClan.members.length === 1 && !room._c
 check('kicked player tag cleared', !sessionOf('bp_cl_carol').data.clanTag);
 await room._handleClanLeave(sessionOf('bp_cl_alice'));
 check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._store.has('clan:' + redClan.id));
+
+// ── 5. v2.3.1177: ended-war snapshot retention ──
+// clan_war:<id> keys were written on declare/kill/resolve and never
+// deleted -- one orphan per war ever declared.  The registry load now
+// sweeps ended wars older than CLANS.WAR_RETENTION (48h, the oplog
+// prune posture); a just-ended war stays inside the window so its
+// reward opId stamps remain checkable on a crash-retry.
+{
+  const recentWars = [...state._store.keys()].filter((k) => k.startsWith('clan_war:'));
+  check('just-ended war snapshot persists inside the retention window', recentWars.length === 1, recentWars);
+  state._store.set('clan_war:ancient', { id: 'ancient', status: 'ended', endTime: Date.now() - CLANS.WAR_RETENTION - 1000 });
+  room._clans = null; // drop the wake cache -> next ensure reloads + sweeps
+  await room._clansEnsure();
+  await new Promise((r) => setTimeout(r, 10)); // fire-and-forget deletes settle
+  check('ancient ended war swept on registry load', !state._store.has('clan_war:ancient'));
+  const kept = [...state._store.keys()].filter((k) => k.startsWith('clan_war:'));
+  check('recent ended war retained by the sweep', kept.length === 1, kept);
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
