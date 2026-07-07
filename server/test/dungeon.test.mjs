@@ -39,6 +39,19 @@
  *   18. Summon: 2-3 halved-reward noRespawn minions + zone_state
  *       re-push (zone_monsters for v1); at MAX_ALIVE the rotation
  *       skips summon; forged dungeon_boss_ability is deny-listed.
+ * v2.3.1199 enrage soft timer (clean redesign of the unported legacy
+ * depth-dungeon enrage -- see BOSS_ABILITIES.ENRAGE):
+ *   19. Arming: the combat clock starts at the boss's FIRST damage
+ *       taken, never at spawn; calm until AFTER_MS elapses.
+ *   20. Ramp math: +DMG_STEP of the SPAWN dmg per STEP_MS (never
+ *       compounding), capped at DMG_CAP; each stack emits the
+ *       existing dungeon_boss_ability type with kind 'enrage'
+ *       (no new PRIVILEGED event); silent past the cap.
+ *   21. Ability cooldowns shorten by COOLDOWN_MULT while enraged
+ *       (the un-enraged cooldown is pinned by check 15).
+ *   22. The v2.3.1194 MAX_HIT_PCT no-oneshot clamp stays
+ *       authoritative -- enrage inflates dmg BEFORE it, never past it.
+ *   23. ENRAGE.ENABLED=false disarms the whole timer (owner knob).
  */
 import { GameRoom } from '../src/index.js';
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
@@ -380,6 +393,101 @@ check('no minions past the cap', room.monsters[zoneB].filter((m) => m._bossMinio
 room.eventBuffer.length = 0;
 await room.webSocketMessage(wsC, JSON.stringify({ type: 'dungeon_boss_ability', payload: { zone: zoneB, ability: 'slam', phase: 'execute' } }));
 check('forged dungeon_boss_ability dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'dungeon_boss_ability').length === 0, room.eventBuffer.map((e) => e.type));
+
+/* ═══ v2.3.1199: enrage soft timer (anti-stall; clean redesign of the
+   legacy depth-dungeon enrage that v2.3.1194 deliberately left
+   unported) ═══ */
+const E = BOSS_ABILITIES.ENRAGE;
+
+// ── 19. arming: combat clock starts at first damage, not spawn ──
+room._dungeonCleanup(instB);
+await move(wsA, 'town');
+wsA.sent.length = 0;
+await start(wsA, { waves: 1, hasBoss: true, monsterLevel: 5, bossArchetype: 'brute', bossMultiplier: 2, monsters: [{ archetype: 'fodder', count: 1 }] });
+const zoneE = msgsOfType(wsA, 'dungeon_started')[0].payload.zone;
+await move(wsA, zoneE);
+killAll(zoneE);
+const tE = Date.now();
+room._tickDungeons(tE); // spawns the boss
+const bossE = room.monsters[zoneE].find((m) => m._dungeonBoss);
+bossE._nextAbilityAt = Infinity; // freeze the cast machine -- enrage ticks independently of it
+psA.x = bossE.x + 500; psA.y = bossE.y; // out of every AoE
+wsA.sent.length = 0;
+room._tickDungeons(tE + E.AFTER_MS + E.STEP_MS); // way past AFTER_MS, boss untouched
+check('full-HP boss never enrages (clock arms on first damage, not spawn)',
+  !bossE._combatSince && !bossE._enrageStacks && msgsOfType(wsA, 'dungeon_boss_ability').length === 0,
+  { since: bossE._combatSince, stacks: bossE._enrageStacks });
+bossE.hp -= 1; // first damage taken
+const tHit = tE + E.AFTER_MS + E.STEP_MS + 1000;
+room._tickDungeons(tHit);
+check('combat clock stamped on the first-damage tick', bossE._combatSince === tHit, bossE._combatSince - tHit);
+room._tickDungeons(tHit + E.AFTER_MS - 1000);
+check('still calm just before AFTER_MS', !bossE._enrageStacks, bossE._enrageStacks);
+
+// ── 20. ramp math + cap ──
+const dmg0 = bossE.dmg;
+wsA.sent.length = 0;
+room._tickDungeons(tHit + E.AFTER_MS + 10);
+check('enrage arms at stack 1 (+DMG_STEP dmg off the spawn value)',
+  bossE._enrageStacks === 1 && bossE.dmg === Math.ceil(dmg0 * (1 + E.DMG_STEP)),
+  { stacks: bossE._enrageStacks, dmg: bossE.dmg, dmg0 });
+const enrEvts = msgsOfType(wsA, 'dungeon_boss_ability');
+check('enrage rides the EXISTING dungeon_boss_ability type (kind enrage, no new PRIVILEGED event)',
+  enrEvts.length === 1 && enrEvts[0].payload.ability === 'enrage' && enrEvts[0].payload.phase === 'execute'
+    && enrEvts[0].payload.stacks === 1 && enrEvts[0].payload.pct === 10 && enrEvts[0].payload.zone === zoneE,
+  enrEvts.map((e) => e.payload));
+room._tickDungeons(tHit + E.AFTER_MS + 2 * E.STEP_MS + 10);
+check('+DMG_STEP per STEP_MS, never compounding',
+  bossE._enrageStacks === 3 && bossE.dmg === Math.ceil(dmg0 * (1 + Math.min(E.DMG_CAP, 3 * E.DMG_STEP))),
+  { stacks: bossE._enrageStacks, dmg: bossE.dmg });
+wsA.sent.length = 0;
+room._tickDungeons(tHit + E.AFTER_MS + 50 * E.STEP_MS);
+check('ramp capped at DMG_CAP (+50%)',
+  bossE._enrageStacks === Math.round(E.DMG_CAP / E.DMG_STEP) && bossE.dmg === Math.ceil(dmg0 * (1 + E.DMG_CAP)),
+  { stacks: bossE._enrageStacks, dmg: bossE.dmg });
+room._tickDungeons(tHit + E.AFTER_MS + 51 * E.STEP_MS);
+check('no event spam past the cap', msgsOfType(wsA, 'dungeon_boss_ability').length === 1, msgsOfType(wsA, 'dungeon_boss_ability').length);
+
+// ── 21. cooldown shortening while enraged ──
+// (the un-enraged COOLDOWN_MS re-arm is pinned by check 15 above)
+psA.hp = 500; psA.maxHp = 500; psA.blocking = false; psA.agility = 0; psA._zoneEntryGraceUntil = 0;
+bossE._abilityPattern = 0; bossE._nextAbilityAt = 0; bossE._chargeUntil = 0;
+const tCd = tHit + E.AFTER_MS + 60 * E.STEP_MS;
+room._tickDungeons(tCd); // telegraph slam (psA parked out of range)
+const tCdExec = tCd + BOSS_ABILITIES.TELEGRAPH_MS + 10;
+room._tickDungeons(tCdExec); // execute -> cooldown re-armed
+const shortCd = Math.round(BOSS_ABILITIES.COOLDOWN_MS * E.COOLDOWN_MULT);
+check('enraged ability cooldown shortened by COOLDOWN_MULT',
+  bossE._nextAbilityAt === tCdExec + shortCd && shortCd < BOSS_ABILITIES.COOLDOWN_MS,
+  { got: bossE._nextAbilityAt - tCdExec, want: shortCd });
+
+// ── 22. the v2.3.1194 no-oneshot clamp survives enrage ──
+psA.x = bossE.x; psA.y = bossE.y; psA.hp = 500;
+bossE.dmg = 99999; // enraged AND absurd -- MAX_HIT_PCT must still cap the hit
+bossE._abilityPattern = 0; bossE._nextAbilityAt = 0;
+const tCl = tCd + 60000;
+room._tickDungeons(tCl); // telegraph slam
+room.eventBuffer.length = 0;
+room._tickDungeons(tCl + BOSS_ABILITIES.TELEGRAPH_MS + 10); // execute
+const clampAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === bossE.id);
+check('MAX_HIT_PCT clamp still authoritative under enrage (250 = 50% of 500)',
+  clampAtk.length === 1 && clampAtk[0].payload.dmgTaken === 250 && psA.hp === 250,
+  { hp: psA.hp, atk: clampAtk.map((a) => a.payload) });
+
+// ── 23. owner kill switch ──
+BOSS_ABILITIES.ENRAGE.ENABLED = false;
+delete bossE._combatSince;
+bossE._enrageStacks = 0;
+delete bossE._enrageBaseDmg;
+bossE._nextAbilityAt = Infinity; bossE._abilityPhase = null; bossE._pendingAbility = null;
+bossE.hp = bossE.maxHp - 10; // damaged -- would arm the clock if enabled
+const tOff = tCl + 120000;
+room._tickDungeons(tOff);
+room._tickDungeons(tOff + E.AFTER_MS + E.STEP_MS);
+check('ENRAGE.ENABLED=false disarms the whole timer (owner tuning knob)',
+  !bossE._combatSince && !bossE._enrageStacks, { since: bossE._combatSince, stacks: bossE._enrageStacks });
+BOSS_ABILITIES.ENRAGE.ENABLED = true;
+room._dungeonCleanup(room._dungeons.get(zoneE.slice('dungeon:'.length)));
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

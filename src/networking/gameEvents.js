@@ -351,10 +351,12 @@ export function processGameEvent(type, payload, S, deps) {
                  telegraph, ring/shake/beep at execute, mirroring the
                  legacy monsterCombat.js visuals.  All damage arrives
                  via the authoritative monster_attack + player_state
-                 events; never mutate HP or monsters here. */
+                 events; never mutate HP or monsters here (v2.3.1199:
+                 sole exception is the cosmetic color tint on enrage --
+                 display state only, never hp/alive/dmg). */
               if (!payload || payload.zone !== S._serverDungeon) break;
-              var _dbaLabels = { slam: 'SLAM!', charge: 'CHARGE!', summon: 'Summon!', sweep: 'SWEEP!' };
-              var _dbaColors = { slam: '#f5c542', charge: '#ea580c', summon: '#9333ea', sweep: '#a855f7' };
+              var _dbaLabels = { slam: 'SLAM!', charge: 'CHARGE!', summon: 'Summon!', sweep: 'SWEEP!', enrage: 'ENRAGED!' };
+              var _dbaColors = { slam: '#f5c542', charge: '#ea580c', summon: '#9333ea', sweep: '#a855f7', enrage: '#ff2020' };
               var _dbaLabel = _dbaLabels[payload.ability];
               if (!_dbaLabel) break; /* whitelist -- never render arbitrary wire strings */
               var _dbaX = typeof payload.x === 'number' ? payload.x : S.player.x;
@@ -379,6 +381,22 @@ export function processGameEvent(type, payload, S, deps) {
                 BT_AUDIO.beep(payload.ability === 'slam' ? 80 : 150, 0.2, 0.25, payload.ability === 'slam' ? 'sawtooth' : 'square');
               } else if (payload.ability === 'charge') {
                 BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
+              } else if (payload.ability === 'enrage') {
+                /* v2.3.1199: soft anti-stall timer armed / ramped
+                   server-side (BOSS_ABILITIES.ENRAGE).  Legacy enrage
+                   visuals (monsterCombat.js: red popup + shake + low
+                   sawtooth) plus a cosmetic red tint on the boss
+                   sprite.  Best-effort tint: a full zone re-push (or
+                   any v1 dirty-list resend) restores the server color,
+                   but the event repeats every ramp step so it comes
+                   back; the popup is the primary signal. */
+                var _dbaBoss = (S.monsters || []).find(function (mm) { return mm && mm.id === payload.monsterId; });
+                if (_dbaBoss) _dbaBoss.color = '#ff2020';
+                if (payload.stacks > 1) {
+                  pushDmgPopup(S, _dbaX, _dbaY - 45, '+' + (payload.pct || 0) + '% DMG', '#ff2020');
+                }
+                S.screenShake = 6;
+                BT_AUDIO.beep(120, 0.2, 0.3, 'sawtooth');
               } else {
                 /* summon -- the fresh minions arrive via the zone_state
                    re-push that precedes this event. */

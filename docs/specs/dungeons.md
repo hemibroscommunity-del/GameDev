@@ -1,4 +1,4 @@
-# Instanced Dungeons (server-authoritative) — v2.3.1127 (boss abilities v2.3.1194)
+# Instanced Dungeons (server-authoritative) — v2.3.1127 (boss abilities v2.3.1194, enrage v2.3.1199)
 
 The Dungeon Workshop's custom runs, moved server-side. Before this the
 entire dungeon was client theatre: the client built the arena, spawned
@@ -51,7 +51,7 @@ arena) always works and returns the player to their previous zone.
 | s→c | `dungeon_boss` | `{zone}` | Private to players inside. Boss spawned. |
 | s→c | `dungeon_complete` | `{zone, gold, xp, boss}` | Private to each paid player. Coins already settled (player_state echo is authoritative); event drives the win UI + 3s return home. |
 | s→c | `dungeon_error` | `{code, message}` | Codes: `not-now`, `already-running`, `room-full`. |
-| s→c | `dungeon_boss_ability` | `{zone, monsterId, ability, phase, x, y, range?, ms?, count?}` | v2.3.1194. Private to players inside, both protocols. `phase` is `telegraph` (wind-up warning, `ms` = duration) or `execute`. Client handler is **display-only** (popup / impact ring / shake); the damage itself rides the normal `monster_attack` + `player_state` events. |
+| s→c | `dungeon_boss_ability` | `{zone, monsterId, ability, phase, x, y, range?, ms?, count?, stacks?, pct?}` | v2.3.1194. Private to players inside, both protocols. `phase` is `telegraph` (wind-up warning, `ms` = duration) or `execute`. Client handler is **display-only** (popup / impact ring / shake); the damage itself rides the normal `monster_attack` + `player_state` events. v2.3.1199 adds ability kind `enrage` (phase `execute` only, `stacks`/`pct` extras) — same event type, **no new `PRIVILEGED_EVENTS` entry**. |
 
 All six server-emitted types are in `PRIVILEGED_EVENTS`.
 Capability flag: `state_sync.caps.dungeon` — the client's
@@ -138,10 +138,52 @@ in `dungeon.js`.
     add-farming faucet once the server owns the credit).
   - **Not ported**: the legacy invulnerable-except-recovery phase armor
     (touches every damage path + §7 surfaces for no ask) and `enrage`
-    (standard depth dungeons only — dormant since v2.3.54).
+    (standard depth dungeons only — dormant since v2.3.54). v2.3.1199:
+    enrage has since shipped as a **redesign**, not a port — see the
+    next section.
 - Minions count toward the all-dead check like any instance monster:
   the boss wave completes only when boss AND minions are down (legacy
   parity).
+
+## Enrage soft timer (v2.3.1199)
+
+A soft anti-stall timer for dungeon bosses — `_dungeonTickEnrage`,
+riding `_dungeonTickBossAbilities` (independent of the cast state
+machine, so it keeps counting through telegraphs and charges).
+Constants live in `BOSS_ABILITIES.ENRAGE` in `dungeon.js`.
+
+This is a **clean redesign** of the legacy client enrage that
+v2.3.1194 deliberately did not port. The legacy version was **dormant
+standard-depth-dungeon content** (depth ≥ 3 unlock, dead since
+v2.3.54): a one-shot rage at 30% boss HP that multiplied `dmg × 1.5`
+and `spd × 1.4` — a burst punish, not an anti-stall. The redesign is
+time-based, gradual, capped, and **NOT a hard wipe**:
+
+- **Arming**: the combat clock starts at the **first damage the boss
+  takes** (`hp < maxHp` observed by the tick — never at spawn; a boss
+  nobody engages never enrages). After `AFTER_MS` (2 min) in combat
+  the timer arms at stack 1.
+- **Damage ramp**: `+DMG_STEP` (10%) of the boss's **spawn** damage per
+  `STEP_MS` (30s) enraged, capped at `DMG_CAP` (+50%). Each stack
+  rewrites `m.dmg` from the stashed spawn value (`_enrageBaseDmg` —
+  never compounds), so the ramp applies to basic swings AND every
+  ability (they all multiply `m.dmg`), and rides the normal monster
+  wire paths on both protocols (v2 tick deltas / v1 dirty lists).
+- **Cooldown pressure**: ability cooldowns shorten by `COOLDOWN_MULT`
+  (0.6 → 4000ms casts become 2400ms) while any enrage stack is active
+  (`_dungeonBossCooldownMs`).
+- **The v2.3.1194 no-oneshot clamp stays authoritative**: enrage
+  inflates `m.dmg` *before* the `MAX_HIT_PCT` clamp in
+  `_dungeonBossHitPlayer`, never around it — an enraged ability hit is
+  still capped at ≤50% of the victim's `maxHp`. (Basic swings were
+  never clamped; the +50% ceiling bounds them.)
+- **Wire**: each stack increase emits the existing
+  `dungeon_boss_ability` event with kind `enrage`, phase `execute`,
+  and `{stacks, pct}` extras — reusing the v2.3.1194 PRIVILEGED type
+  instead of minting a new one. No `telegraph` phase for enrage.
+- **Owner tuning**: every knob is in `BOSS_ABILITIES.ENRAGE`
+  (`AFTER_MS`, `STEP_MS`, `DMG_STEP`, `DMG_CAP`, `COOLDOWN_MULT`);
+  flip `ENABLED: false` to turn the whole timer off.
 
 ## Client integration
 
@@ -161,7 +203,13 @@ in `dungeon.js`.
 - `gameEvents.js` `dungeon_boss_ability` (v2.3.1194): display-only —
   amber ability popup at telegraph; ring/shake/beep at execute
   (mirrors the legacy `monsterCombat.js` visuals). Ability names are
-  whitelisted client-side; never mutates HP or monsters.
+  whitelisted client-side; never mutates HP or monsters. v2.3.1199:
+  the `enrage` kind extends this case — red "ENRAGED!" popup (+`pct`%
+  DMG on later stacks), shake, low sawtooth beep, and a **cosmetic**
+  red color tint on the boss sprite (the one allowed monster mutation
+  — display state only, never hp/alive/dmg; best-effort, since a full
+  zone re-push restores the server color, but the event repeats every
+  ramp step).
 - Exit paths all delete the synthetic entry + clear `_serverDungeon`:
   tile-9 abandon (`zoneTransitions.js` — restores the pre-dungeon zone
   BEFORE the legacy regen reads `S.currentZone`), death respawn

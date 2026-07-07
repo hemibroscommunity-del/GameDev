@@ -75,7 +75,10 @@ export const DUNGEONS = {
  *     rewards halved.
  * NOT ported: the invulnerable-except-recovery phase armor (it would
  * touch every damage path and §7 kill-credit surfaces for no ask) and
- * 'enrage' (standard depth dungeons only -- dormant since v2.3.54). */
+ * 'enrage' (standard depth dungeons only -- dormant since v2.3.54).
+ * v2.3.1199: enrage has since shipped as a clean REDESIGN (the ENRAGE
+ * block below + _dungeonTickEnrage), not a port of the legacy
+ * 30%-HP rage. */
 export const BOSS_ABILITIES = {
   FIRST_CAST_MS: 3000,    // legacy: _nextAbility = spawn + 3000
   COOLDOWN_MS: 4000,      // legacy: _abilityInterval on the custom-dungeon path
@@ -94,6 +97,25 @@ export const BOSS_ABILITIES = {
     HP_MULT: 0.3,               // legacy: 30%-HP swarm adds
     MAX_ALIVE: 4,               // live-minion cap (legacy: uncapped)
     REWARD_MULT: 0.5,           // XP/gold haircut vs a real swarm (faucet guard)
+  },
+  /* v2.3.1199: ENRAGE -- soft anti-stall timer, a clean REDESIGN of
+   * the legacy depth-dungeon enrage that v2.3.1194 deliberately did
+   * not port (the legacy version was a one-shot 30%-HP rage on
+   * dormant standard-depth content, dead since v2.3.54).  NOT a hard
+   * wipe: after AFTER_MS of the boss being in combat (clock starts at
+   * the first damage it takes) its damage ramps DMG_STEP per STEP_MS
+   * up to DMG_CAP, and ability cooldowns shorten by COOLDOWN_MULT.
+   * The v2.3.1194 MAX_HIT_PCT no-oneshot clamp stays authoritative:
+   * enrage inflates m.dmg BEFORE the clamp, never around it.  Owner
+   * tuning knobs live here; flip ENABLED to false to turn the whole
+   * timer off. */
+  ENRAGE: {
+    ENABLED: true,
+    AFTER_MS: 120000,    // 2 min in combat before the timer arms
+    STEP_MS: 30000,      // one ramp step per 30s enraged
+    DMG_STEP: 0.10,      // +10% of the boss's spawn dmg per step
+    DMG_CAP: 0.50,       // ramp ceiling: +50% total
+    COOLDOWN_MULT: 0.6,  // 4000ms ability cooldowns become 2400ms
   },
 };
 
@@ -389,6 +411,48 @@ export const dungeonMethods = {
     return n;
   },
 
+  // v2.3.1199: the ENRAGE soft timer (config + rationale on the
+  // BOSS_ABILITIES.ENRAGE block).  Runs every ability tick, fully
+  // independent of the cast state machine, so the ramp keeps counting
+  // through telegraphs and charges.  The combat clock arms on the
+  // FIRST DAMAGE the boss takes (hp < maxHp observed by the 45Hz
+  // tick), not on spawn -- a boss nobody engages never enrages.  Each
+  // stack rewrites m.dmg from the stashed spawn value (_enrageBaseDmg;
+  // never compounds) so the ramp applies to basic swings AND every
+  // ability (they all multiply m.dmg), and each stack emits the
+  // existing dungeon_boss_ability event with kind 'enrage' -- reusing
+  // the PRIVILEGED type instead of minting a new one (rule 13 surface
+  // stays fixed); the client case is display-only (tint/popup).
+  _dungeonTickEnrage(inst, players, m, now) {
+    const E = BOSS_ABILITIES.ENRAGE;
+    if (!E.ENABLED) return;
+    if (!m._combatSince) {
+      if (m.hp < m.maxHp) m._combatSince = now;
+      return;
+    }
+    const enragedFor = now - m._combatSince - E.AFTER_MS;
+    if (enragedFor < 0) return;
+    const maxStacks = Math.round(E.DMG_CAP / E.DMG_STEP);
+    const stacks = Math.min(maxStacks, 1 + Math.floor(enragedFor / E.STEP_MS));
+    if (stacks <= (m._enrageStacks || 0)) return;
+    if (m._enrageBaseDmg === undefined) m._enrageBaseDmg = m.dmg;
+    m._enrageStacks = stacks;
+    const pct = Math.min(E.DMG_CAP, stacks * E.DMG_STEP);
+    m.dmg = Math.ceil(m._enrageBaseDmg * (1 + pct));
+    this._markMonsterDirty(inst.zone, m.id);
+    this._dungeonBossAbilityEvent(inst.zone, players, m, 'enrage', 'execute', {
+      stacks, pct: Math.round(pct * 100),
+    });
+  },
+
+  // v2.3.1199: enraged bosses also cycle abilities faster -- the soft
+  // timer's second pressure lever alongside the damage ramp.
+  _dungeonBossCooldownMs(m) {
+    const B = BOSS_ABILITIES;
+    if (!m._enrageStacks) return B.COOLDOWN_MS;
+    return Math.max(1000, Math.round(B.COOLDOWN_MS * B.ENRAGE.COOLDOWN_MULT));
+  },
+
   // v2.3.1194: the per-tick ability driver.  Cycle per cast:
   //   ready (cooldown elapsed) -> telegraph (1s wind-up, movement +
   //   basic swing suppressed via the existing _attackingUntil/atkCd
@@ -402,6 +466,10 @@ export const dungeonMethods = {
     const m = list.find((x) => x._dungeonBoss && x.alive);
     if (!m) return;
     const B = BOSS_ABILITIES;
+
+    // v2.3.1199: enrage soft timer ticks BEFORE the cast machine's
+    // early returns so the ramp keeps counting mid-charge/telegraph.
+    this._dungeonTickEnrage(inst, players, m, now);
 
     // ── Charge in flight ──
     if (m._chargeUntil) {
@@ -439,7 +507,8 @@ export const dungeonMethods = {
       const ability = m._pendingAbility;
       m._abilityPhase = null;
       m._pendingAbility = null;
-      m._nextAbilityAt = now + B.COOLDOWN_MS;
+      // v2.3.1199: cooldown shortens while enraged.
+      m._nextAbilityAt = now + this._dungeonBossCooldownMs(m);
       const extra = {};
       if (ability === 'slam' || ability === 'sweep') {
         const cfgA = ability === 'slam' ? B.SLAM : B.SWEEP;
@@ -494,7 +563,7 @@ export const dungeonMethods = {
       ability = cand;
       break;
     }
-    if (!ability) { m._nextAbilityAt = now + B.COOLDOWN_MS; return; }
+    if (!ability) { m._nextAbilityAt = now + this._dungeonBossCooldownMs(m); return; }
     m._abilityPhase = 'telegraph';
     m._pendingAbility = ability;
     m._phaseUntil = now + B.TELEGRAPH_MS;
