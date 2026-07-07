@@ -319,9 +319,13 @@ basic_trap per attempt + rolls server-side + removes the monster for
 everyone; join-time `_sanitizePets` + one-time legacy adoption; the
 lifeSkills-echo "stomp" is now the intended authoritative flow under
 caps.pets. Successor follow-ups: pet evolution/enchant are still
-client blob edits (sanitize-on-join covers them); the pet loot vacuum
-is echo-stomped theatre — route it through the real loot_pickup path
-to make pets economically real.
+client blob edits (sanitize-on-join covers them). The pet loot vacuum
+follow-up SHIPPED v2.3.1200: the vacuum rides the real `loot_pickup`
+path now (`{viaPet:true}`, wider PETS.VACUUM_RANGE measured from the
+OWNER's position — the server tracks no pet position) under
+caps.petLoot; same handler + same claimedBy flags as a manual grab, so
+no double credit; the client's self-credit vacuum stays as the
+old-worker fallback. Spec: docs/specs/pets.md.
 
 ### H. Two-sided trade window — SHIPPED v2.3.1132
 Built as specced: `server/src/trade2.js` (mutual-open, anti-switch

@@ -3566,7 +3566,45 @@ export var BroTown = function BroTown(_ref0) {
               S.groundLoot = S.groundLoot.filter(function (loot) {
                 var ld = Math.sqrt(Math.pow(S._petX - loot.x, 2) + Math.pow(S._petY - loot.y, 2));
                 if (ld < PET_LOOT_RADIUS && Date.now() > (loot.ts || 0) + 500) {
-                  /* Pet picks up the loot! */
+                  /* v2.3.1200: server-authoritative vacuum.  The self-
+                     credit below was pure theatre for worker-owned
+                     piles — the player_state echo stomped every coin
+                     the pet "collected".  When the worker advertises
+                     caps.petLoot, request the pickup through the SAME
+                     loot_pickup path as a manual grab (viaPet widens
+                     the server's range gate to the pet vacuum radius);
+                     the loot_credit reply grants + despawns.  Gated on
+                     the cap per deploy-order rules: an old worker
+                     would out-of-range-reject the wide pickup, so
+                     against one the legacy self-credit path below
+                     stays (harmless — stomped, as ever). */
+                  if (loot._serverLoot && loot.lootId && S._serverCaps && S._serverCaps.petLoot) {
+                    if (loot._collected) return true; /* credit landed; despawn timer runs */
+                    /* Recipient gate mirrors groundLoot.js — don't spam
+                       the worker with not-recipient rejections for
+                       piles the pet could never claim. */
+                    var _petFFA = loot.isDeathDrop && loot.ownerOnlyUntil && Date.now() > loot.ownerOnlyUntil;
+                    if (!_petFFA && loot.recipients && !loot.recipients.includes(S.myId)) return true;
+                    /* Shares _pickupPending with the manual walk-over
+                       path (groundLoot.js) so pet + player never
+                       double-send for one pile; same 5 s watchdog
+                       clears a lost request. */
+                    if (loot._pickupPending && loot._pickupSentAt && Date.now() - loot._pickupSentAt > 5000) {
+                      loot._pickupPending = false;
+                    }
+                    if (!loot._pickupPending) {
+                      loot._pickupPending = true;
+                      loot._pickupSentAt = Date.now();
+                      if (S.channel) {
+                        try { S.channel.send({ type: 'loot_pickup', payload: { lootId: loot.lootId, zone: S.currentZone, viaPet: true } }); } catch (e) {}
+                      }
+                    }
+                    return true; /* keep pile until the loot_credit despawns it */
+                  }
+                  /* Pet picks up the loot! (v2.3.1200: this local
+                     self-credit path now only runs for client-local
+                     piles or against old workers without caps.petLoot
+                     — the deploy-order fallback.) */
                   if (loot.isWeapon && loot.weapon) {
                     var _WEAPON_TYPES$drop$ty, _WEAPON_TYPES;
                     /* Weapon drop — equip if better, stash otherwise */

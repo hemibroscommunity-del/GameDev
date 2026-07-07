@@ -18,6 +18,15 @@
  *      bad archetype -> fodder, level clamped); a non-empty
  *      server-held list wins over the client's.
  *   8. Forged pet_capture_result is not rebroadcast (deny-list).
+ *   9. Pet loot vacuum (v2.3.1200): caps.petLoot advertised; a
+ *      loot_pickup {viaPet:true} credits through the REAL pickup path
+ *      (share applied to ps.coins, private loot_credit with
+ *      viaPet:true) at vacuum range where a manual pickup is rejected
+ *      out-of-range; claimedBy is shared so a manual pickup after a
+ *      vacuum claim is 'already-claimed' (no double credit); beyond
+ *      VACUUM_RANGE the vacuum is rejected out-of-range; viaPet
+ *      without a server-known active pet is rejected 'no-pet';
+ *      recipient gate still applies to vacuum pickups.
  */
 import { GameRoom } from '../src/index.js';
 import { PETS } from '../src/pets.js';
@@ -164,6 +173,82 @@ check('non-empty server list wins over client on rejoin', room.playerState['bp_p
 room.eventBuffer.length = 0;
 await room.webSocketMessage(ws2, JSON.stringify({ type: 'pet_capture_result', payload: { captured: true, pet: { name: 'Hax' } } }));
 check('forged pet_capture_result dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'pet_capture_result').length === 0, room.eventBuffer.map((e) => e.type));
+
+// ── 9. pet loot vacuum (v2.3.1200): server-credited through the REAL
+// loot_pickup path.  Hand-crafted monster-kill pile (the anticheat
+// suite's pattern); range measured from the OWNER's position since the
+// server tracks no pet position (see PETS.VACUUM_RANGE in pets.js). ──
+function mkPile(id, x, y, coins, recipients, shares) {
+  const pile = {
+    lootId: id, zone: 'meadow', x, y, coins,
+    skull: null, shard: null, recipients, shares,
+    killerName: 'T', ts: Date.now(), inventoryClaimed: false, claimedBy: {},
+    weapon: null, weaponClaimed: false,
+  };
+  if (!room.loot.meadow) room.loot.meadow = [];
+  room.loot.meadow.push(pile);
+  return pile;
+}
+const pickup = (w, lootId, viaPet) => room.webSocketMessage(w, JSON.stringify({
+  type: 'loot_pickup',
+  payload: viaPet ? { lootId, zone: 'meadow', viaPet: true } : { lootId, zone: 'meadow' },
+}));
+const lastCredit = (w) => { const r = msgsOfType(w, 'loot_credit'); return r[r.length - 1] && r[r.length - 1].payload; };
+const lastReject = (w) => { const r = msgsOfType(w, 'loot_pickup_rejected'); return r[r.length - 1] && r[r.length - 1].payload; };
+
+check('state_sync advertises caps.petLoot', sync && sync.caps && sync.caps.petLoot === true, sync && sync.caps);
+
+// ps (bp_pet_p) has 2 pets, activePet=0 from the captures above.
+ps.z = 'meadow'; ps.dead = false; ps.disconnected = false;
+ps.x = 500; ps.y = 500;
+const ps2v = room.playerState['bp_pet_new'];
+ps2v.z = 'meadow'; ps2v.dead = false; ps2v.disconnected = false;
+
+// Pile at 200 px: beyond LOOT_PICKUP_RANGE (160), inside VACUUM_RANGE (240).
+const pileA = mkPile('vac-a', 700, 500, 100, ['bp_pet_p', 'bp_pet_new'], { bp_pet_p: 0.6, bp_pet_new: 0.4 });
+let coinsBefore = ps.coins;
+ws.sent.length = 0;
+await pickup(ws, 'vac-a', false);
+check('manual pickup at 200px rejected out-of-range (control)', lastReject(ws) && lastReject(ws).reason === 'out-of-range' && ps.coins === coinsBefore, lastReject(ws));
+await pickup(ws, 'vac-a', true);
+const credA = lastCredit(ws);
+check('vacuum pickup at 200px credits through the real path', credA && credA.coins === 60 && credA.viaPet === true && ps.coins === coinsBefore + 60, { cred: credA, coins: ps.coins });
+check('vacuum claim sets the shared claimedBy flag; pile stays for the other recipient', pileA.claimedBy['bp_pet_p'] === true && room.loot.meadow.find((p) => p.lootId === 'vac-a'), pileA.claimedBy);
+
+// Manual grab AFTER the vacuum claim: same claimedBy map -> no double credit.
+ps.x = pileA.x; ps.y = pileA.y;
+coinsBefore = ps.coins;
+ws.sent.length = 0;
+await pickup(ws, 'vac-a', false);
+check('manual pickup after vacuum claim is already-claimed (no double credit)', lastReject(ws) && lastReject(ws).reason === 'already-claimed' && ps.coins === coinsBefore, lastReject(ws));
+
+// viaPet without a server-known active pet -> no-pet, no wider range.
+// NOTE: ws2's session was evicted by the ws3 same-id rejoin in section
+// 7 (v2.3.702 eviction), so bp_pet_new's live socket is ws3.
+ps2v.x = 700; ps2v.y = 700; // 200 px from the pile
+const savedActive = ps2v.lifeSkills.activePet;
+ps2v.lifeSkills.activePet = null;
+const coins2Before = ps2v.coins || 0;
+ws3.sent.length = 0;
+await pickup(ws3, 'vac-a', true);
+check('vacuum without an active pet rejected no-pet', lastReject(ws3) && lastReject(ws3).reason === 'no-pet' && (ps2v.coins || 0) === coins2Before, lastReject(ws3));
+ps2v.lifeSkills.activePet = savedActive;
+await pickup(ws3, 'vac-a', true);
+check('second recipient vacuums their share; fully-claimed pile despawns', lastCredit(ws3) && lastCredit(ws3).coins === 40 && (ps2v.coins || 0) === coins2Before + 40 && !room.loot.meadow.find((p) => p.lootId === 'vac-a'), { cred: lastCredit(ws3), coins: ps2v.coins });
+
+// Range validation: beyond VACUUM_RANGE the pet reaches nothing.
+mkPile('vac-far', 500 + PETS.VACUUM_RANGE + 60, 500, 50, ['bp_pet_p'], { bp_pet_p: 1 });
+ps.x = 500; ps.y = 500;
+coinsBefore = ps.coins;
+ws.sent.length = 0;
+await pickup(ws, 'vac-far', true);
+check('vacuum beyond VACUUM_RANGE rejected out-of-range', lastReject(ws) && lastReject(ws).reason === 'out-of-range' && lastReject(ws).max === PETS.VACUUM_RANGE && ps.coins === coinsBefore, lastReject(ws));
+
+// Recipient gate still applies to vacuum pickups.
+mkPile('vac-other', 520, 500, 50, ['bp_pet_new'], { bp_pet_new: 1 });
+ws.sent.length = 0;
+await pickup(ws, 'vac-other', true);
+check('vacuum on someone else\'s pile rejected not-recipient', lastReject(ws) && lastReject(ws).reason === 'not-recipient' && ps.coins === coinsBefore, lastReject(ws));
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

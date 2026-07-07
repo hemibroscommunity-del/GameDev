@@ -263,6 +263,17 @@ the standalone Marketplace DO is retired from routing):**
 **Quest counters:** `player_state._questKills` is server-authored
 (quests.md); client increment sites are gated on `caps.questTrack`.
 
+**Pet loot vacuum (v2.3.1200, caps.petLoot):** no new message types.
+The existing c→s `loot_pickup` gains an optional `viaPet: true` flag —
+same handler, same claim flags, but the range gate widens to
+`PETS.VACUUM_RANGE` (measured from the OWNER's server-known position;
+the server tracks no pet position) and requires a server-known active
+pet (new `loot_pickup_rejected` reason `no-pet`). The private
+`loot_credit` echoes `viaPet` back for pet-side rendering + the
+petLootCount quest tally. Client vacuum requests are gated on
+`caps.petLoot`; absent it, the legacy self-credit vacuum stays (old
+workers would out-of-range-reject the wide pickup).
+
 ## Known quirks (documented, deliberately not "fixed" here)
 
 - ~~Duplicate `case 'arena_bet'` in `_processGameEvent`~~ — FIXED
