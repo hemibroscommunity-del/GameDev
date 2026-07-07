@@ -58,7 +58,10 @@ input{font-family:inherit}
   align-items:center;z-index:25;
   padding-top:max(6px,env(safe-area-inset-top));
   touch-action:auto;-webkit-touch-callout:default;-webkit-user-select:text;user-select:text}
-.bt-emote-bar{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);z-index:20;
+/* v2.3.1205: was bottom:80px / z-index:20 — inside + under the opaque
+   28vh dashboard band, so the emote picker never showed (see
+   src/ui/zLayers.js for the ladder + rules). */
+.bt-emote-bar{position:absolute;bottom:calc(var(--dash-h) + 12px);left:50%;transform:translateX(-50%);z-index:34;
   display:flex;gap:6px;padding:5px 10px;background:rgba(0,0,0,.55);border-radius:12px;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   -webkit-touch-callout:none;touch-action:manipulation;border:1px solid rgba(255,255,255,.1)}

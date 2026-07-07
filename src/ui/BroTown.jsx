@@ -43,6 +43,9 @@ import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
 import { ChatPanel } from './panels/ChatPanel.jsx';
 import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
+/* v2.3.1205: named z-index registry — see src/ui/zLayers.js for the
+   observed ladder + the tutorial-banner-under-dashboard incident. */
+import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
 import { MenuBar } from './panels/MenuBar.jsx';
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
 import { ForgePanel } from './panels/buildings/ForgePanel.jsx';
@@ -6604,10 +6607,14 @@ export var BroTown = function BroTown(_ref0) {
    gated, so veterans' bt_tutorial already reads 7/10 and never see it) */ tutorialStep >= 0 && tutorialStep < 7 && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      bottom: 180,
+      /* v2.3.1205: was bottom:180 / zIndex:20 — INSIDE the opaque
+         dashboard band (28vh ≈ 225px on iPhone) and BELOW it (z 30),
+         so new players never saw the tutorial (2026-07-07 owner
+         report).  Offset off the band + registry z per zLayers.js. */
+      bottom: 'calc(var(--dash-h) + 16px)',
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: 20,
+      zIndex: Z_ABOVE_DASH_PROMPT,
       textAlign: 'center',
       maxWidth: 280
     }
@@ -6649,7 +6656,7 @@ export var BroTown = function BroTown(_ref0) {
       letterSpacing: '.03em',
       paddingRight: 16
     }
-  }, tutorialStep === 0 && '👋 Welcome! Use the LEFT STICK to move around.', tutorialStep === 1 && '💨 Nice! Now SWIPE the screen to dodge roll!', tutorialStep === 2 && '⚔️ Great dodge! Hold the RIGHT STICK to attack enemies.', tutorialStep === 3 && '💀 First kill! Head to the edge of town to explore the wild.', tutorialStep === 4 && '🗺️ Explore! Walk to the edge of town to enter a combat zone.', tutorialStep === 5 && '⚡ Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.', tutorialStep === 6 && '🎉 Tutorial complete! The world is yours. Discover all 36 collisions!'), /*#__PURE__*/React.createElement("div", {
+  }, tutorialStep === 0 && '👋 Welcome! Use the LEFT STICK to move around.', tutorialStep === 1 && '💨 Nice! Now SWIPE the screen to dodge roll!', tutorialStep === 2 && '⚔️ Great dodge! Hold the RIGHT STICK to attack enemies.', tutorialStep === 3 && '💀 First kill! Head to the edge of town to explore the wild.', tutorialStep === 4 && '🗺️ Explore! Walk to the edge of town to enter a combat zone.', tutorialStep === 5 && '⚡ Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.', tutorialStep === 6 && '🎉 Tutorial complete! The world is yours — explore every zone!' /* v2.3.1205: was "Discover all 36 collisions!" — prototype-era copy; there are no "collisions" and ZONES has never had 36 entries */), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
       color: 'rgba(255,255,255,.3)',
@@ -6938,10 +6945,13 @@ export var BroTown = function BroTown(_ref0) {
   }(), showPlayerList && /*#__PURE__*/React.createElement(PlayerListPanel, { playerList: playerList, setInspectPlayer: setInspectPlayer, setShowPlayerList: setShowPlayerList }), inspectPlayer && /*#__PURE__*/React.createElement(InspectPlayerPanel, { stateRef: stateRef, inspectPlayer: inspectPlayer, blockedList: blockedList, clanData: clanData, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setInspectPlayer: setInspectPlayer, setMutedList: setMutedList, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer, setTradeTarget: setTradeTarget }), false && ((_stateRef$current40 = stateRef.current) === null || _stateRef$current40 === void 0 ? void 0 : _stateRef$current40.currentZone) === 'frost' && rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      bottom: 130,
+      /* v2.3.1205: was bottom:130 / zIndex:19 — inside + under the
+         opaque 28vh dashboard band, so these zone-action buttons were
+         unreachable on iPhone.  See src/ui/zLayers.js. */
+      bottom: 'calc(var(--dash-h) + 12px)',
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: 19,
+      zIndex: Z_ABOVE_DASH_PROMPT,
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
@@ -7058,10 +7068,13 @@ export var BroTown = function BroTown(_ref0) {
   }, "\uD83D\uDEF7 Sled (", SLED_WOOD_COST, "w)")), ((_stateRef$current42 = stateRef.current) === null || _stateRef$current42 === void 0 ? void 0 : _stateRef$current42.currentZone) === 'tidal' && rpgState && hasUnlock(rpgState, 'zone_mechanics') && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      bottom: 130,
+      /* v2.3.1205: was bottom:130 / zIndex:19 — inside + under the
+         opaque 28vh dashboard band, so these zone-action buttons were
+         unreachable on iPhone.  See src/ui/zLayers.js. */
+      bottom: 'calc(var(--dash-h) + 12px)',
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: 19,
+      zIndex: Z_ABOVE_DASH_PROMPT,
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
@@ -7132,10 +7145,13 @@ export var BroTown = function BroTown(_ref0) {
   }, "\uD83D\uDEA3 Raft ready")), ((_stateRef$current46 = stateRef.current) === null || _stateRef$current46 === void 0 ? void 0 : _stateRef$current46.currentZone) === 'hollows' && rpgState && hasUnlock(rpgState, 'zone_mechanics') && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      bottom: 130,
+      /* v2.3.1205: was bottom:130 / zIndex:19 — inside + under the
+         opaque 28vh dashboard band, so these zone-action buttons were
+         unreachable on iPhone.  See src/ui/zLayers.js. */
+      bottom: 'calc(var(--dash-h) + 12px)',
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: 19,
+      zIndex: Z_ABOVE_DASH_PROMPT,
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
@@ -7209,10 +7225,13 @@ export var BroTown = function BroTown(_ref0) {
   }, "\uD83D\uDD0A Echo! 2\xD7 aggro")), false && ((_stateRef$current49 = stateRef.current) === null || _stateRef$current49 === void 0 ? void 0 : _stateRef$current49.currentZone) === 'frost' && rpgState && hasUnlock(rpgState, 'zone_mechanics') && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      bottom: 125,
+      /* v2.3.1205: was bottom:125 / zIndex:19 — inside + under the
+         opaque 28vh dashboard band, so these zone-action buttons were
+         unreachable on iPhone.  See src/ui/zLayers.js. */
+      bottom: 'calc(var(--dash-h) + 12px)',
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: 19,
+      zIndex: Z_ABOVE_DASH_PROMPT,
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
@@ -7359,10 +7378,13 @@ export var BroTown = function BroTown(_ref0) {
   }, "\uD83D\uDEF7")), ((_stateRef$current50 = stateRef.current) === null || _stateRef$current50 === void 0 ? void 0 : _stateRef$current50.currentZone) === 'tidal' && rpgState && hasUnlock(rpgState, 'zone_mechanics') && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      bottom: 125,
+      /* v2.3.1205: was bottom:125 / zIndex:19 — inside + under the
+         opaque 28vh dashboard band, so these zone-action buttons were
+         unreachable on iPhone.  See src/ui/zLayers.js. */
+      bottom: 'calc(var(--dash-h) + 12px)',
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: 19,
+      zIndex: Z_ABOVE_DASH_PROMPT,
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
@@ -7433,10 +7455,13 @@ export var BroTown = function BroTown(_ref0) {
   }, stateRef.current._raft ? '🚣 Raft Ready' : '🪵 Build Raft (' + RAFT_WOOD_COST + ' wood)')), ((_stateRef$current51 = stateRef.current) === null || _stateRef$current51 === void 0 ? void 0 : _stateRef$current51.currentZone) === 'hollows' && rpgState && hasUnlock(rpgState, 'zone_mechanics') && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      bottom: 125,
+      /* v2.3.1205: was bottom:125 / zIndex:19 — inside + under the
+         opaque 28vh dashboard band, so these zone-action buttons were
+         unreachable on iPhone.  See src/ui/zLayers.js. */
+      bottom: 'calc(var(--dash-h) + 12px)',
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: 19,
+      zIndex: Z_ABOVE_DASH_PROMPT,
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
@@ -8096,10 +8121,14 @@ export var BroTown = function BroTown(_ref0) {
     return (_React2 = React).createElement.apply(_React2, ['div', {
       style: {
         position: 'absolute',
-        bottom: 145,
+        /* v2.3.1205: was bottom:145 / zIndex:18 — inside + under the
+           opaque 28vh dashboard band (see src/ui/zLayers.js).  +32
+           keeps its original 15-20px stack above the zone-action bars
+           (now at +12). */
+        bottom: 'calc(var(--dash-h) + 32px)',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 18,
+        zIndex: Z_ABOVE_DASH_PROMPT,
         display: 'flex',
         gap: 4,
         padding: '4px 8px',
@@ -8122,10 +8151,16 @@ export var BroTown = function BroTown(_ref0) {
     return React.createElement('div', {
       style: {
         position: 'absolute',
-        bottom: 210,
+        /* v2.3.1205: was bottom:210 / zIndex:18 — inside + under the
+           28vh dashboard band on iPhone (≈225px+), which hid the
+           ENDGAME PORTAL button entirely on mobile.  +92 preserves its
+           original ~80px stack above the zone bars; centered, so it
+           clears the corner joysticks at calc(var(--dash-h) + 70px).
+           See src/ui/zLayers.js. */
+        bottom: 'calc(var(--dash-h) + 92px)',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 18,
+        zIndex: Z_ABOVE_DASH_PROMPT,
         display: 'flex',
         gap: 8
       }

@@ -258,7 +258,9 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
   );
 };
 
-const IconButton = ({ glyph, label, active, onClick, node }) => {
+/* v2.3.1205: `tut` = optional data-tut anchor id so the live-DOM
+   ControlsTutorial can getBoundingClientRect() the real button. */
+const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
   const src = ICON_SRC[glyph];
   // Use onPointerUp instead of onClick so iOS fires it even when
   // another finger is mid-drag on a joystick.  stopPropagation
@@ -268,6 +270,7 @@ const IconButton = ({ glyph, label, active, onClick, node }) => {
   return (
     <button
       onPointerUp={fire}
+      data-tut={tut}
       style={{
         flex: 1,
         display: 'flex',
@@ -778,7 +781,10 @@ export const BottomDashboard = () => {
                   Playtime).  v2.3.126: portrait migrated to the top-right
                   HUD; this column narrowed (flex 0.85) so Loadout
                   (flex 1.35) gets the slack. */}
-              <div style={{
+              {/* v2.3.1205: data-tut anchors on the three columns — the
+                  live-DOM ControlsTutorial measures these instead of the
+                  retired frozen screenshot. */}
+              <div data-tut="dash-bag" style={{
                 /* v2.3.1057: all three columns (Bag / Loadout / Build) are
                    now equal width (flex 1 each) so the quick-bag squares,
                    the loadout slots, and the build cells all line up at the
@@ -948,7 +954,7 @@ export const BottomDashboard = () => {
                   floating WeaponSwapBar was unmounted in v2.3.125).
                   v2.3.1057: flex 1.35 -> 1 so Bag / Loadout / Build are all
                   equal width. */}
-              <div style={{
+              <div data-tut="dash-loadout" style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
@@ -1222,7 +1228,7 @@ export const BottomDashboard = () => {
                   share one column as a 3-sub-col x 5-row grid.  Build
                   occupies sub-col 1; Life Skills fills sub-cols 2 and 3
                   (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
-              <div ref={buildColRef} style={{
+              <div ref={buildColRef} data-tut="dash-build" style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
@@ -1417,7 +1423,7 @@ export const BottomDashboard = () => {
                 over-head chat bubble (ChatBubble.jsx): tap to open, tap again
                 to close.  No chat PNG asset, so the glyph is the speech-bubble
                 SVG inherited from ChatLauncher. */}
-            <IconButton label="Chat"
+            <IconButton label="Chat" tut="dash-chat"
               onClick={() => chatBubbleBus.toggle()}
               node={(
                 <svg width="34" height="34" viewBox="0 0 24 24" fill="none"
@@ -1426,7 +1432,7 @@ export const BottomDashboard = () => {
                   <path d="M21 12a8 8 0 0 1-12 6.93L4 20l1.07-5A8 8 0 1 1 21 12z" />
                 </svg>
               )} />
-            <IconButton glyph="more"      label="More"
+            <IconButton glyph="more"      label="More" tut="dash-more"
               onClick={() => dashboardPanelBus.toggle('more')} />
           </div>
         </>
