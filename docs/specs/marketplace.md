@@ -28,6 +28,17 @@ same player state the room already owns:
   exactly once. (The old sweep *deleted* sell orders without refunding.)
 - Placement requires being connected to the room (`Not in game`
   otherwise) — escrow always mutates live playerState.
+- **Crash ordering (v2.3.1184)** — every settlement path is
+  credit-first, delete-last (rule 6; `_duelEscrowSweep` shape): match
+  stamps `settle:<makerId>:item|:gold|:diff` on the *persisted* maker
+  record before deleting it (item leg first — it's the irreplaceable
+  half); cancel/expiry refund before deleting. `_mktRefund` never pays
+  over a stamped settlement, and `_mktEnsureIndex` converges crash
+  leftovers: a record whose settle/refund stamp exists is deleted on
+  rebuild, never re-listed. Before this, a deploy landing between the
+  record delete and the credits destroyed both sides' escrow
+  unrecoverably (and the old taker-UUID opIds were underivable from
+  any surviving record, so no sweep could ever have been written).
 
 Owner decisions encoded: 24h listings (GDD §39 said both 1h and 48h),
 bounty boards deferred, self-trades excluded (matcher skips same-player

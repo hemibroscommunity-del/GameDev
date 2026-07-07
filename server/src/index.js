@@ -668,17 +668,25 @@ export class GameRoom {
     const now = Date.now();
     const activeZones = this._activeZones();
 
+    // v2.3.1183: one pass over playerState per tick, not one per active
+    // zone -- and slim {id,x,y,blocking} records instead of spreading
+    // the full ~50-field state (inventory, quest maps, ...) per player
+    // per zone at 45 Hz.  The AI below reads exactly these four fields
+    // (all its mutations go through this.playerState[nearest.id]), so
+    // behavior is unchanged; the copies were read-only.
+    const playersByZone = new Map();
+    for (const [id, ps] of Object.entries(this.playerState)) {
+      if (ps.dead || ps.disconnected || !ps.z) continue;
+      let arr = playersByZone.get(ps.z);
+      if (!arr) playersByZone.set(ps.z, arr = []);
+      arr.push({ id, x: ps.x, y: ps.y, blocking: ps.blocking });
+    }
+
     for (const zoneId of activeZones) {
       const monsters = this._ensureZoneMonsters(zoneId);
       if (!monsters || monsters.length === 0) continue;
 
-      // Get players in this zone
-      const playersInZone = [];
-      for (const [id, ps] of Object.entries(this.playerState)) {
-        if (ps.z === zoneId && !ps.dead && !ps.disconnected) {
-          playersInZone.push({ id, ...ps });
-        }
-      }
+      const playersInZone = playersByZone.get(zoneId) || [];
 
       for (const m of monsters) {
         // Respawn check

@@ -336,5 +336,93 @@ const psB = room.playerState.pb;
     saved && saved._cookHistory && saved._cookHistory.length);
 }
 
+// ── 8. v2.3.1182 first-connect bootstrap NUMERIC caps ──
+// Section 6 covers the weapon half of the bootstrap; this covers the
+// numeric half (join.js BOOTSTRAP_* caps).  A localStorage tamper
+// before the first ever connect is the one moment the server trusts
+// client numbers — without these clamps the forged values would
+// persist forever in DO storage.  Fresh ids so _loadRpg misses and
+// the bootstrap branch (not stored-wins) runs.
+//
+// Coins and level are asserted on the FIRST persisted rpg blob (the
+// bootstrap _saveRpg), captured with the section-7 put-intercept
+// trick, because the join tail legitimately mutates the live values
+// afterwards: _cadenceLoginReward credits the daily gold on every
+// first-join-of-a-day (the mock storage has no cadence record), and
+// _recomputeMaxes re-derives ps.level from the stat sum (v2.3.910).
+// The captured blob is exactly what a cap regression would persist.
+{
+  // Forged join: every numeric field oversized, inventory 200 keys of
+  // quantity 9999 (caps: 100 keys, 50 per item).
+  const bigInv = {};
+  for (let i = 0; i < 200; i++) bigInv['item_' + i] = 9999;
+  const wsN = fakeWs('numeric-forger');
+  room.sessions.set(wsN, baseSession());
+  let bootN = null; // first rpg:pn write = the bootstrap save
+  const origPutN = room.state.storage.put;
+  room.state.storage.put = async (k, v) => { if (k === 'rpg:pn' && !bootN) bootN = v; };
+  await room.webSocketMessage(wsN, JSON.stringify({
+    type: 'join', id: 'pn', name: 'NumForger', protocolVersion: 2, data: {
+      x: -100000, y: -100000, z: 'meadow',
+      rpgCoins: 999999,
+      rpgLevel: 9999,
+      rpgXp: 9e9,
+      rpgUnspentT2: 999,
+      rpgBuildPointsThisLvl: 99,
+      rpgInventory: bigInv,
+    },
+  }));
+  room.state.storage.put = origPutN;
+  const psN = room.playerState.pn;
+  check('bootstrap: coins clamp to BOOTSTRAP_COINS_CAP (2000)', bootN && bootN.coins === 2000, bootN && bootN.coins);
+  check('bootstrap: level clamps to BOOTSTRAP_LEVEL_CAP (500)', bootN && bootN.level === 500, bootN && bootN.level);
+  check('bootstrap: xp clamps to BOOTSTRAP_XP_CAP (50000)', bootN && bootN.xp === 50000, bootN && bootN.xp);
+  check('bootstrap: unspentT2 clamps to BOOTSTRAP_UT2_CAP (75)', bootN && bootN.unspentT2 === 75, bootN && bootN.unspentT2);
+  check('bootstrap: buildPointsThisLvl clamps to 4 (build_point_earned flurry max)',
+    bootN && bootN.buildPointsThisLvl === 4, bootN && bootN.buildPointsThisLvl);
+  // xp / unspentT2 / buildPointsThisLvl / inventory aren't touched by
+  // the join tail — assert the LIVE state too, so a regression that
+  // re-injects the raw payload after the bootstrap save also fails.
+  check('bootstrap: live xp/unspentT2/buildPoints hold the clamped values',
+    psN.xp === 50000 && psN.unspentT2 === 75 && psN.buildPointsThisLvl === 4,
+    { xp: psN.xp, ut2: psN.unspentT2, bp: psN.buildPointsThisLvl });
+  const invKeys = Object.keys(psN.inventory || {});
+  check('bootstrap: inventory truncated to 100 keys', invKeys.length === 100, invKeys.length);
+  check('bootstrap: every inventory quantity clamped to 50 per item',
+    invKeys.length > 0 && invKeys.every((k) => psN.inventory[k] === 50),
+    invKeys.slice(0, 3).map((k) => psN.inventory[k]));
+
+  // Garbage join: negative / non-number values must floor to the sane
+  // defaults, never go below zero or store junk.  JSON can't carry
+  // NaN — JSON.stringify turns it into null — so the wire-realistic
+  // forgery for "not a number" is null / a string, both of which fail
+  // the typeof === 'number' guard in join.js and take the default.
+  const wsG = fakeWs('garbage-forger');
+  room.sessions.set(wsG, baseSession());
+  let bootG = null;
+  const origPutG = room.state.storage.put;
+  room.state.storage.put = async (k, v) => { if (k === 'rpg:pg' && !bootG) bootG = v; };
+  await room.webSocketMessage(wsG, JSON.stringify({
+    type: 'join', id: 'pg', name: 'GarbageForger', protocolVersion: 2, data: {
+      x: -100000, y: -100000, z: 'meadow',
+      rpgCoins: -500,
+      rpgLevel: null,            // what a client-side NaN becomes on the wire
+      rpgXp: -12345,
+      rpgUnspentT2: '999',       // fails the typeof === 'number' guard
+      rpgBuildPointsThisLvl: -3,
+      rpgInventory: { potion: -5, rock: 'lots', fish: 0 },
+    },
+  }));
+  room.state.storage.put = origPutG;
+  const psG = room.playerState.pg;
+  check('bootstrap: negative coins floor to 0', bootG && bootG.coins === 0, bootG && bootG.coins);
+  check('bootstrap: null (wire NaN) level defaults to 1', bootG && bootG.level === 1, bootG && bootG.level);
+  check('bootstrap: negative xp floors to 0', psG.xp === 0, psG.xp);
+  check('bootstrap: string unspentT2 defaults to 0', psG.unspentT2 === 0, psG.unspentT2);
+  check('bootstrap: negative buildPointsThisLvl floors to 0', psG.buildPointsThisLvl === 0, psG.buildPointsThisLvl);
+  check('bootstrap: non-finite / non-positive inventory quantities dropped',
+    psG.inventory && Object.keys(psG.inventory).length === 0, psG.inventory);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

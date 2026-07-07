@@ -221,6 +221,16 @@ export function updateZoneMechanics(S, ptx, pty) {
               if (!S._lastDrownTick || Date.now() - S._lastDrownTick > 1000) {
                 S._lastDrownTick = Date.now();
                 S.rpg.hp -= DIVE_DAMAGE_RATE;
+                /* v2.3.1181: floor at 1 HP when the worker owns monsters.
+                   Drowning is client-local damage the server never sees, so
+                   a drowning death here fired NO death flow: the BroTown
+                   catch-all is gated on !S._serverMonsters and the server
+                   never emits player_died (its HP view never changed) --
+                   the player sat input-locked at 0 HP until a full reload.
+                   The server can't own a death it can't see, so drowning
+                   pins you at 1 HP instead of killing you in server zones.
+                   Client-local zones keep the real death (catch-all runs). */
+                if (S._serverMonsters && S.rpg.hp < 1) S.rpg.hp = 1;
                 if (window.__dmgLog) try { console.log('[dmg] drowning', DIVE_DAMAGE_RATE); } catch (e) {}
                 S.dmgNumbers.push({
                   x: P.x,

@@ -17,7 +17,7 @@ import { rollMonsterShard } from '@/data/shards.js';
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, isAttackInShieldArc } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
@@ -259,6 +259,7 @@ export function processGameEvent(type, payload, S, deps) {
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
+              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
               S.player.x = _ddMX * TILE;
               S.player.y = (_ddH - 3) * TILE;
               S._zoneWipe = Date.now();
@@ -354,6 +355,7 @@ export function processGameEvent(type, payload, S, deps) {
                 S.hitParticles = [];
                 S.deathExplosions = [];
                 S.arrows = [];
+                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
                 S.player.x = Math.floor(_fz.w / 2) * TILE;
                 S.player.y = (_fz.h - 4) * TILE;
                 S._zoneWipe = Date.now();

@@ -12,6 +12,12 @@
  *      mutates live state; duplicate opId converges ({ok, dup}).
  *   6. Offline escrow take mutates the stored blob directly.
  *   7. Inbox soft cap: gold/item entries merge losslessly at 200.
+ *   8. (v2.3.1182) Drain remainder path: a join drains what fits (gold)
+ *      but writes the rejected weapon BACK to inbox:<id> and reports it
+ *      in inbox_delivered.queued; a later join with stash room delivers
+ *      it and deletes the key.
+ *   9. (v2.3.1182) _opPruneMaybe: deletes >48h and junk-valued oplog
+ *      keys, keeps fresh ones, and rate-limits to one sweep per hour.
  */
 import { GameRoom } from '../src/index.js';
 
@@ -130,6 +136,69 @@ await room._inboxAppend('bp_inbox_carol', { opId: 'test:c:extra', kind: 'gold', 
 const carolBox = state._store.get('inbox:bp_inbox_carol');
 const carolGold = carolBox.reduce((s, e) => s + (e.kind === 'gold' ? e.payload.amount : 0), 0);
 check('at cap, gold merges instead of growing', carolBox.length === 200 && carolGold === 250, { len: carolBox.length, gold: carolGold });
+
+// ── 8. v2.3.1182: drain remainder path (inbox.js _drainInbox) ──
+// Section 4 covers the ONLINE credit parking at a full stash; this
+// covers the JOIN-TIME drain partition: deliverable entries apply, the
+// rejected weapon must be written back to storage (not dropped with the
+// delete branch) and surface as inbox_delivered.queued.
+const wsD = fakeWs('dave');
+await join(wsD, 'bp_inbox_dave');
+const psD = room.playerState['bp_inbox_dave'];
+psD.weaponStash = [];
+for (let i = 0; i < room.WEAPON_STASH_CAP; i++) psD.weaponStash.push(wpn('dave' + i));
+const daveCoins0 = psD.coins || 0;
+room._saveRpg('bp_inbox_dave', psD);
+await new Promise((r) => setTimeout(r, 10)); // fire-and-forget save settles
+room.sessions.delete(wsD);
+delete room.playerState['bp_inbox_dave'];
+// Mail him gold (always deliverable) plus a weapon (stash is full).
+await room._inboxAppend('bp_inbox_dave', { opId: 'test:dr:g', source: 'test', kind: 'gold', payload: { amount: 33 } });
+await room._inboxAppend('bp_inbox_dave', { opId: 'test:dr:w', source: 'test', kind: 'weapon', payload: { weapon: wpn('mailed') } });
+const wsD2 = fakeWs('dave2');
+await join(wsD2, 'bp_inbox_dave');
+const psD2 = room.playerState['bp_inbox_dave'];
+check('partial drain applies the gold', psD2.coins === daveCoins0 + 33, { coins: psD2.coins, expected: daveCoins0 + 33 });
+check('partial drain leaves the full stash untouched', psD2.weaponStash.length === room.WEAPON_STASH_CAP, psD2.weaponStash.length);
+const daveBox = state._store.get('inbox:bp_inbox_dave');
+check('rejected weapon written back to the inbox key', Array.isArray(daveBox) && daveBox.length === 1 && daveBox[0].kind === 'weapon' && daveBox[0].payload.weapon.name === 'Sword mailed', daveBox);
+const inbD2 = msgsOfType(wsD2, 'inbox_delivered');
+check('inbox_delivered reports queued === 1', inbD2.length === 1 && inbD2[0].payload.queued === 1 && inbD2[0].payload.entries.length === 1 && inbD2[0].payload.entries[0].kind === 'gold', inbD2);
+// Free a slot and rejoin: the queued weapon must now deliver and the
+// key must be deleted (drain's delete branch, not the write-back).
+psD2.weaponStash.pop();
+room._saveRpg('bp_inbox_dave', psD2);
+await new Promise((r) => setTimeout(r, 10));
+room.sessions.delete(wsD2);
+delete room.playerState['bp_inbox_dave'];
+const wsD3 = fakeWs('dave3');
+await join(wsD3, 'bp_inbox_dave');
+const psD3 = room.playerState['bp_inbox_dave'];
+check('queued weapon delivers once a slot frees', psD3.weaponStash.length === room.WEAPON_STASH_CAP && psD3.weaponStash.some((w) => w.name === 'Sword mailed'), psD3.weaponStash.map((w) => w.name));
+check('fully drained inbox key deleted', !state._store.has('inbox:bp_inbox_dave'));
+const inbD3 = msgsOfType(wsD3, 'inbox_delivered');
+check('second drain reports queued === 0', inbD3.length === 1 && inbD3[0].payload.queued === 0 && inbD3[0].payload.entries[0].kind === 'weapon', inbD3);
+
+// ── 9. v2.3.1182: _opPruneMaybe (48h expiry + junk cleanup + hourly rate limit) ──
+// Both failure directions are silent (best-effort catch), so assert
+// each explicitly: expired and junk-valued keys go, fresh keys stay,
+// and a second sweep inside the hour is a no-op.
+await room.state.storage.put('oplog:old', Date.now() - 49 * 3600000);
+await room.state.storage.put('oplog:fresh', Date.now());
+await room.state.storage.put('oplog:junk', 'not-a-timestamp');
+await room._opStamp('test:prune:live');
+room._lastOpPrune = 0; // reset the once-per-hour anchor (joins above already swept)
+await room._opPruneMaybe();
+check('prune deletes 49h-old oplog entry', !state._store.has('oplog:old'));
+check('prune deletes junk-valued oplog entry', !state._store.has('oplog:junk'));
+check('prune keeps fresh oplog entry', state._store.has('oplog:fresh'));
+check('stamped opId survives the prune and is still seen', (await room._opSeen('test:prune:live')) === true);
+// Rate limit: re-seed an expired key and sweep again immediately -- it
+// must SURVIVE because the hourly anchor was just set.
+await room.state.storage.put('oplog:old', Date.now() - 49 * 3600000);
+await room._opPruneMaybe();
+check('second sweep inside the hour is rate-limited (expired key survives)', state._store.has('oplog:old'));
+await room.state.storage.delete('oplog:old'); // don't leak into later checks
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

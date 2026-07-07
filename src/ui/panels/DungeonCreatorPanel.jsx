@@ -927,6 +927,7 @@ export function DungeonCreatorPanel(props) {
       S.hitParticles = [];
       S.deathExplosions = [];
       S.arrows = [];
+      S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
       P.x = dMX * TILE;
       P.y = (dH - 3) * TILE;
       S._zoneWipe = Date.now();

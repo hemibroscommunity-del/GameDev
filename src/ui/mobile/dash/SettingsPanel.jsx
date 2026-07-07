@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { COL, panelStyle, getState } from './common.js';
+import React, { useState } from 'react';
+import { COL, panelStyle } from './common.js';
 
 const Toggle = ({ label, value, onChange }) => (
   <div style={{

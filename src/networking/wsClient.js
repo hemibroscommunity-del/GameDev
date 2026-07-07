@@ -575,6 +575,15 @@ export function setupWebSocket(ctx) {
                   localStorage.removeItem('bt_rpg');
                   S.myId = passphraseToId(_newPf);
                 } else {
+                  /* v2.3.1181: actually stop.  This branch logged "not
+                     retrying" but nothing suppressed the reconnect: the
+                     server closes with 4003 after rejecting, onclose only
+                     special-cased frozen/4004, so scheduleReconnect looped
+                     join->reject->close every 1-10s forever -- and each
+                     attempt burned the server's 5-fails/60s per-id auth
+                     budget, which could lock out the player's own Account-
+                     panel login.  Flag it fatal like 'frozen' does. */
+                  S._joinRejectedFatal = true;
                   console.error('[bt] join rejected by server (' + _rejReason + ') -- not retrying');
                 }
               } catch (e) {}
@@ -1428,6 +1437,14 @@ export function setupWebSocket(ctx) {
            and re-spawn if the local zone-change code skipped its
            spawn while the previous flag was still true. */
         if (!msg.monsters) return;
+        /* v2.3.1181: same stale-zone guard the nodes/loot appliers got in
+           v2.3.136 -- this one was missed.  A server push stamped for a
+           zone we already left (e.g. the dungeon wave re-push racing a
+           local exit) wholesale-replaced S.monsters with the WRONG zone's
+           list; the inverse race (stale empty zone_state after entering a
+           combat zone) flipped _serverMonsters off and spawned client-local
+           duplicates.  No-zone payloads (old workers) still apply. */
+        if (msg.zone && msg.zone !== S.currentZone) return;
         if (msg.monsters.length > 0) {
           S._serverMonsters = true;
           S.monsters = msg.monsters.map(function(m) {
@@ -1542,6 +1559,15 @@ export function setupWebSocket(ctx) {
            by the join_rejected handler. */
         if (S._frozenByAdmin || (event && event.code === 4004)) {
           S._realtimeStatus = 'frozen';
+          return;
+        }
+        /* v2.3.1181: fatal join rejection (repeat auth fail / unknown
+           future reason) -- the join_rejected handler said "not retrying"
+           but this guard is what makes that true.  Without it the client
+           looped join->reject->close(4003)->reconnect forever, burning
+           the server's per-id auth-fail budget. */
+        if (S._joinRejectedFatal) {
+          S._realtimeStatus = 'rejected';
           return;
         }
         if (event && event.reason === 'superseded by reconnect') {
