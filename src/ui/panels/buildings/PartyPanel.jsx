@@ -460,7 +460,36 @@ export function PartyPanel(props) {
         color: '#f5c542'
       }
     }, "\u2694\uFE0F Fighting"));
-  })), arenaTournament.status === 'complete' && arenaTournament.champion && /*#__PURE__*/React.createElement("div", {
+  })), function () {
+    /* v2.3.1210: spectator stake board -- server-summed totals per open
+       match (arena_stake_board, gameEvents.js).  Display only; shows
+       where the sponsorship money is without leaking who staked what.
+       Reads the state slice the privileged event writes; re-renders on
+       the arena panel's 3s poll. */
+    var _board = (stateRef.current && stateRef.current._arenaStakeBoard) || [];
+    if (!_board.length) return null;
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 8, fontWeight: 700, color: 'rgba(255,255,255,.4)', marginTop: 4, marginBottom: 2 }
+    }, "\uD83D\uDCB0 Spectator Stakes"), _board.map(function (b) {
+      var _pot = (b.aTotal || 0) + (b.bTotal || 0);
+      return /*#__PURE__*/React.createElement("div", {
+        key: b.matchId,
+        style: { display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 4, background: 'rgba(245,197,66,.05)', border: '1px solid rgba(245,197,66,.15)', marginBottom: 2, fontSize: 8 }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: { color: '#5b52ff', fontWeight: 700 }
+      }, b.aName || '?'), /*#__PURE__*/React.createElement("span", {
+        style: { color: '#f5c542', fontWeight: 800 }
+      }, (b.aTotal || 0) + 'G', b.aBackers ? ' \xB7' + b.aBackers : ''), /*#__PURE__*/React.createElement("span", {
+        style: { color: 'rgba(255,255,255,.2)' }
+      }, "vs"), /*#__PURE__*/React.createElement("span", {
+        style: { color: '#ff5e6c', fontWeight: 700 }
+      }, b.bName || '?'), /*#__PURE__*/React.createElement("span", {
+        style: { color: '#f5c542', fontWeight: 800 }
+      }, (b.bTotal || 0) + 'G', b.bBackers ? ' \xB7' + b.bBackers : ''), /*#__PURE__*/React.createElement("span", {
+        style: { marginLeft: 'auto', fontSize: 7, color: 'rgba(255,255,255,.35)' }
+      }, _pot + 'G pot'));
+    }));
+  }(), arenaTournament.status === 'complete' && arenaTournament.champion && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 12,
       borderRadius: 8,

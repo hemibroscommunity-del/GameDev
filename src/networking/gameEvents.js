@@ -438,6 +438,19 @@ export function processGameEvent(type, payload, S, deps) {
               BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               break;
             }
+          case 'arena_stake_board':
+            {
+              /* v2.3.1210: server-summed spectator stake board (display
+                 only -- PRIVILEGED, so it can't be forged; the worker
+                 recomputes it from the escrow ledger on each
+                 placement/settlement).  Stored on the state object and
+                 read by PartyPanel's arena view (which re-renders on its
+                 3s poll) -- no self-mint, no coin touch.  This is NOT
+                 the legacy arena_bet relay (TRAPS #1); it's a distinct
+                 privileged type carrying only per-competitor sums. */
+              S._arenaStakeBoard = (payload && Array.isArray(payload.board)) ? payload.board : [];
+              break;
+            }
           case 'guild_quest_result':
             {
               /* v2.3.1128: server-verified guild quest turn-in.  Gold
@@ -1616,6 +1629,10 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'arena_tournament_complete':
             {
+              /* v2.3.1210: the tournament is over -- clear the spectator
+                 stake board so a stale board doesn't linger into the
+                 gap before the next tournament. */
+              S._arenaStakeBoard = [];
               var _champ = payload.champion || {};
               if (_champ.playerId === S.myId && S.rpg) {
                 /* Gold arrives via _creditPlayer (player_state echo /

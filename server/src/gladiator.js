@@ -322,6 +322,8 @@ export const arenaMethods = {
         ws.send(JSON.stringify({ type: 'arena_stake_placed', payload: { matchId: m.id, targetId, targetName: targetId === m.a ? m.aName : m.bName, amount } }));
       } catch (e) {}
     }
+    // v2.3.1210: refresh the spectator board now this stake landed.
+    await this._arenaBroadcastStakeBoard();
   },
 
   /* Stake settlement for one resolved match.  Fire-and-forget from
@@ -347,7 +349,62 @@ export const arenaMethods = {
           } catch (e) {}
         }
       }
+      // v2.3.1210: this match's stakes are settled + deleted and its
+      // winner is set, so the recomputed board drops it -- refresh it.
+      await this._arenaBroadcastStakeBoard();
     } catch (e) { /* sweep repairs */ }
+  },
+
+  /* v2.3.1210: spectator stake board (sponsorship.md "Attach points").
+   * Stakes were private -- only the sponsor saw their own placement +
+   * result.  This broadcasts a SERVER-SUMMED, display-only board so
+   * spectators see where the money is: per OPEN match, the total staked
+   * on each competitor and the backer count.  Individual sponsor ids
+   * and amounts are never leaked -- only the per-competitor sum + a
+   * head count.  Computed fresh from the arena_stake: records on each
+   * placement/settlement (a storage list only on those rare mutations,
+   * NEVER per-poll), so the board can't drift from the escrow ledger.
+   * Broadcast through the event buffer like arena_match_result and
+   * registered in PRIVILEGED_EVENTS (index.js) so a client can't forge
+   * it.  This is a BRAND-NEW privileged type keyed only off
+   * server-observed stakes -- it does NOT revive the unsafe legacy
+   * arena_bet relay (docs/TRAPS.md #1). */
+  async _arenaBroadcastStakeBoard() {
+    const t = this._arena;
+    if (!t || t.status !== 'running') return;
+    let recs;
+    try {
+      recs = await this.state.storage.list({ prefix: 'arena_stake:' + t.id + ':' });
+    } catch (e) { return; }
+    // Sum per match -> per competitor.  targetId is a client-supplied
+    // player id, so the inner tally is a null-proto map (rule 4).
+    const sums = Object.create(null); // matchId -> { targetId -> {total, backers} }
+    for (const rec of recs.values()) {
+      if (!rec || rec.tid !== t.id || !rec.matchId) continue;
+      let mm = sums[rec.matchId];
+      if (!mm) { mm = Object.create(null); sums[rec.matchId] = mm; }
+      let cell = mm[rec.targetId];
+      if (!cell) { cell = { total: 0, backers: 0 }; mm[rec.targetId] = cell; }
+      cell.total += (Number(rec.amount) || 0);
+      cell.backers += 1;
+    }
+    // Board over OPEN matches only (a resolved match has a winner set
+    // and its stake records are already deleted -- it drops off).
+    const board = [];
+    for (const m of t.matches) {
+      if (m.winner) continue;
+      const mm = sums[m.id];
+      if (!mm) continue;
+      const a = mm[m.a] || { total: 0, backers: 0 };
+      const b = mm[m.b] || { total: 0, backers: 0 };
+      if (a.total <= 0 && b.total <= 0) continue;
+      board.push({
+        matchId: m.id, round: m.round,
+        aId: m.a, aName: m.aName, aTotal: a.total, aBackers: a.backers,
+        bId: m.b, bName: m.bName, bTotal: b.total, bBackers: b.backers,
+      });
+    }
+    this.eventBuffer.push({ type: 'arena_stake_board', payload: { tid: t.id, board } });
   },
 
   /* Called from _resolveDuel when the duel carries an arenaMatch tag --
