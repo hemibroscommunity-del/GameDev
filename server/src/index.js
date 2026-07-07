@@ -117,6 +117,9 @@ import { tickMethods } from './tick.js';
 // v2.3.1178: per-session tokens for the mutating HTTP economy
 // endpoints (market place/cancel, arena join/leave) -- see httpauth.js.
 import { httpAuthMethods } from './httpauth.js';
+// v2.3.1175: party roster (handoff item D) -- invite/accept handshake +
+// cross-zone vitals HUD; memory-only, no combat/XP changes -- see party.js.
+import { partyMethods } from './party.js';
 
 export default {
   async fetch(request, env) {
@@ -287,6 +290,10 @@ export const PRIVILEGED_EVENTS = new Set([
   'server_announce',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
+  // v2.3.1175: party roster echoes (server-truth HUD renderer) + the
+  // private invite/error notices.  Forging party_state would paint fake
+  // rosters; forging party_invited is popup-spam surface.
+  'party_state', 'party_invited', 'party_error',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
@@ -2939,6 +2946,25 @@ export class GameRoom {
         if (session.id) this._handleTrade2Cancel(session);
         break;
 
+      case 'party_invite':
+        // v2.3.1175: party roster (party.js).  Explicit cases so forged
+        // halves meet validation, never the rebroadcast branch.  All
+        // synchronous -- a party holds no escrowed value, no storage.
+        if (session.id) this._handlePartyInvite(session, msg.payload || msg);
+        break;
+      case 'party_accept':
+        if (session.id) this._handlePartyAccept(session, msg.payload || msg);
+        break;
+      case 'party_decline':
+        if (session.id) this._handlePartyDecline(session, msg.payload || msg);
+        break;
+      case 'party_leave':
+        if (session.id) this._handlePartyLeave(session);
+        break;
+      case 'party_kick':
+        if (session.id) this._handlePartyKick(session, msg.payload || msg);
+        break;
+
       case 'harden_weapon':
         // v2.3.1131: the §4.6c Blacksmith lottery -- gold cost, odds
         // ladder, temper pity bands, all server-rolled (hardening.js).
@@ -3268,6 +3294,7 @@ export class GameRoom {
       // would otherwise end the fight unconditionally.
       this._duelOnDisconnect(session.id);
       this._trade2OnDisconnect(session.id); // v2.3.1132: a dropped party cancels the window
+      this._partyOnDisconnect(session.id); // v2.3.1175: mark 'away' (grace), don't remove -- reconnects are routine
       this._botfpFlush(session); // v2.3.1146: final botstat: write so evidence survives the disconnect
       this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
       this.broadcastAll({ type: 'player_leave', id: session.id });
@@ -3361,3 +3388,5 @@ Object.assign(GameRoom.prototype, httpAuthMethods);
 Object.assign(GameRoom.prototype, joinMethods);
 // v2.3.1174 (P4 decomposition): tick loop -- see tick.js.
 Object.assign(GameRoom.prototype, tickMethods);
+// v2.3.1175: party roster mixin (handoff item D).
+Object.assign(GameRoom.prototype, partyMethods);

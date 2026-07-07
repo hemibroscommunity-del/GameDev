@@ -239,13 +239,18 @@ forge). Successor follow-ups: red/white SKULL RENDERING still doesn't
 exist client-side (orphaned state anchors listed in the spec); guards
 fines evaporate — a bounty pool is the natural next step.
 
-### D. Parties
-Do NOT build a party XP system — server kill credit is already GDD §7
-damage-contribution (index.js xpRecipients/shares) and works co-op today.
-A party system is UI + a roster: invite/accept handshake (duel pattern),
-`party:<id>` in memory (worthless on deploy), member list echoed in caps
-or a privileged event. Optional later: contribution-role weighting.
-Danger: don't touch the share math without re-running the §7 predicates.
+### D. Parties — SHIPPED v2.3.1175
+Built as specced: `server/src/party.js` (roster + invite handshake on
+the duel/trade2 pattern, memory-only per rule 11), spec in
+`docs/specs/party.md`, HUD in `src/ui/panels/PartyHUD.jsx` (NOT the
+tavern's PartyPanel — that name was taken by the arena-betting UI).
+The §7 share math is untouched, per this item's original danger note.
+Ghost-HUD contract: clients clear party state on every state_sync;
+the join path re-sends the roster AFTER state_sync (ordering pinned by
+a test). Successor follow-ups: same-zone member arrows / map markers,
+leader-initiated group dungeon entry, party chat, and the original
+"optional later" contribution-role weighting (re-run the §7 predicates
+if attempted).
 
 ### E. Hardening v1 + quality grades — SHIPPED v2.3.1131
 Built per the adopted BALANCE-PLAN numbers: `server/src/hardening.js`,

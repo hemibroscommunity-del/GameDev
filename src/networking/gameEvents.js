@@ -45,6 +45,7 @@ export function processGameEvent(type, payload, S, deps) {
     setLevelUpMsg = deps.setLevelUpMsg,
     setIncomingTrade = deps.setIncomingTrade,
     setTrade2 = deps.setTrade2,
+    setParty = deps.setParty,
     setArenaTournament = deps.setArenaTournament,
     setArenaBets = deps.setArenaBets,
     _buildServerPile = deps._buildServerPile;
@@ -2036,6 +2037,63 @@ export function processGameEvent(type, payload, S, deps) {
                   text: _t2Why, color: '#ff5e6c', ts: Date.now()
                 });
               }
+              break;
+            }
+          case 'party_invited':
+            {
+              /* v2.3.1175: someone invited us to a party.  Park the
+                 invite stub; PartyHUD renders the accept/decline card
+                 (accepting sends party_accept, validated against the
+                 inviter's own recorded invite server-side). */
+              if (!payload || !payload.from) break;
+              if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: Date.now() });
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 40,
+                text: '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!',
+                color: '#fbbf24', ts: Date.now()
+              });
+              BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+              break;
+            }
+          case 'party_state':
+            {
+              /* v2.3.1175: the server's roster snapshot -- the party
+                 HUD is a pure renderer of this (same posture as
+                 trade2_state).  Re-echoed every ~2s while partied so
+                 member HP/zone stay live cross-zone; terminal
+                 {state:'none'} clears it. */
+              if (!payload || !setParty) break;
+              if (payload.state === 'open' && payload.members) {
+                setParty(payload);
+              } else {
+                setParty(null);
+                var _ptyWhy = {
+                  'left': 'You left the party', 'kicked': 'Kicked from the party',
+                  'disbanded': 'Party disbanded', 'offline': 'Removed from party (offline)',
+                }[payload.reason] || 'Party ended';
+                S.dmgNumbers.push({
+                  x: S.player.x, y: S.player.y - 40,
+                  text: _ptyWhy, color: '#fbbf24', ts: Date.now()
+                });
+              }
+              break;
+            }
+          case 'party_error':
+            {
+              /* v2.3.1175: private invite-flow notices (declines and
+                 validation misses).  Display only. */
+              if (!payload) break;
+              var _ptyErr = {
+                'declined': (payload.name || 'They') + ' declined the party',
+                'target-busy': (payload.name || 'They') + ' is already in a party',
+                'target-gone': 'Player unavailable',
+                'busy': 'You are already in a party',
+                'full': 'Party is full',
+              }[payload.reason] || 'Party action failed';
+              S.dmgNumbers.push({
+                x: S.player.x, y: S.player.y - 40,
+                text: _ptyErr, color: '#ff5e6c', ts: Date.now()
+              });
               break;
             }
           case 'harden_result':

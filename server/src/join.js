@@ -514,10 +514,14 @@ export const joinMethods = {
       // mutating economy POSTs (market place/cancel, arena join/leave)
       // as the x-bt-auth header.  Old clients ignore both fields and
       // ride the enforcement grace window (httpauth.js).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, ..._liveFlags },
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,
+      // v2.3.1175: party -- the client shows its party-invite surface
+      // only when the worker owns the roster (old workers would
+      // rebroadcast party_* commands as unknown types).
+      
       players: this.getAllPlayerData(),
       playerCount: this.getPlayerCount(),
       monsters: zoneMonsters.map(m => ({
@@ -539,6 +543,12 @@ export const joinMethods = {
        client just sent on the first connect, and matches the
        stored value on subsequent connects. */
     this._sendPlayerState(ws, msg.id);
+    // v2.3.1175: party roster re-send -- MUST stay after the state_sync
+    // send above: clients clear their party HUD on every state_sync
+    // (deploys wipe the in-memory roster; stale HUDs must not survive a
+    // reconnect), so this echo is what restores a roster that DID
+    // survive.  Also clears this member's 'away' grace flag.
+    this._partyOnRejoin(msg.id);
     this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() });
     this.reportToLeaderboard(session);
   },
