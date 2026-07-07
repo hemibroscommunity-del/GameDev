@@ -288,6 +288,9 @@ export const PRIVILEGED_EVENTS = new Set([
   'pet_capture_result',
   // v2.3.1131: hardening rolls are server-side + private.
   'harden_result',
+  // v2.3.1198: gem-cut outcomes are server-rolled + private (amulet.js
+  // _handleGemCut); forging one is fake-popup grief surface.
+  'gem_cut_result',
   // v2.3.1149: jackpot pool state is private; the draw result is a
   // server-only broadcast (forging it would announce fake winners).
   'jackpot_state', 'jackpot_result',
@@ -2481,6 +2484,17 @@ export class GameRoom {
         // rebroadcast branch.
         if (session.id) {
           this._handleAmuletForge(session, msg.payload || msg);
+        }
+        break;
+
+      case 'gem_cut_request':
+        // v2.3.1198: server-settled gem cutting (Gem Cutter building).
+        // Consumes a server-held raw gem, rolls success from the
+        // server-held gemCutting level, mints the polished gem the
+        // amulet forge's gem op consumes; outcome rides the private
+        // gem_cut_result event.  See amulet.js _handleGemCut.
+        if (session.id) {
+          this._handleGemCut(session, msg.payload || msg);
         }
         break;
 

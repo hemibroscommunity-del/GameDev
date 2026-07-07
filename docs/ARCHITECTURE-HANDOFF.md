@@ -345,11 +345,15 @@ client-crafted blob (forgery ceiling = legit mythic +10.5%; a server
 amulet-forge handler is the real fix)~~ — SHIPPED v2.3.1192
 (`server/src/amulet.js` + the server-owned goldNuggets/goldBars
 ledger and server-rolled kill nuggets, `caps.amuletForge`; spec
-`docs/specs/amulet-forge.md`). Residuals documented there: the
-polished-gem economy (drops/polishing) is still client-local inside
-the opaque lifeSkills.gems map — migrating gem income server-side is
-the natural next slice — and the first-connect amulet bootstrap stays
-as the legacy migration path (fresh-identity one-time ceiling).
+`docs/specs/amulet-forge.md`). ~~The polished-gem economy
+(drops/polishing) is still client-local~~ — SHIPPED v2.3.1198
+(server-rolled kill gems + server-settled Gem Cutter cuts +
+one-time clamped join capture, `caps.gems`; same spec, "Gem income"
+section). Residuals documented there: ForgePanel gem-EXTRACTION
+income and the shield/weapon gem-slot consumes are still
+client-local lifeSkills.gems edits (echo-stomped, pre-existing),
+and the first-connect amulet bootstrap stays as the legacy
+migration path (fresh-identity one-time ceiling).
 Still open: peer-visible status FX are cosmetic and unported,
 shock/fracture/soak remain mechanically inert.
 

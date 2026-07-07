@@ -270,6 +270,30 @@ export const AMULET_FORGE_TIERS = {
 export const NUGGETS_PER_BAR = 5;
 export const GOLD_NUGGET_MONSTER_DROP = 0.0001;
 
+/* v2.3.1198 (amulet-forge successor slice): polished-gem income tables
+ * (amulet.js _gemRawOnKill / _handleGemCut).  The gem economy was the
+ * amulet gem op's documented deny-by-default hole -- the server's
+ * lifeSkills.gems map was whatever the join bootstrap captured, so a
+ * legitimately mined+cut gem was denied at the amulet slot.  Now the
+ * worker rolls the kill drop and settles the Gem Cutter's cut.
+ *   GEM_CUT_TIERS <-> src/data/gameSystems.js GEM_CUT_TIERS
+ *     (minLvl / successRate -- label is client presentation; the cut
+ *      op resolves the rate from the SERVER-held gemCutting level)
+ *   GEM_RAW_MONSTER_DROP <-> src/data/items.js
+ *     GEM_DROP_RATES.monsterKill (the woodcutting/fishing/mining rates
+ *     are DEAD DATA -- no roll site has ever read them, all the way
+ *     back to the original index.html; deliberately not mirrored, the
+ *     GOLD_NUGGET_DROP.lifeSkill precedent).
+ * Valid gem keys are raw_/polished_ + AMULET_GEMS above (the nine
+ * ELEMENTS -- one shared element registry on both sides). */
+export const GEM_CUT_TIERS = {
+  rough:    { minLvl: 1,  successRate: 0.6 },
+  fine:     { minLvl: 15, successRate: 0.75 },
+  flawless: { minLvl: 35, successRate: 0.90 },
+  perfect:  { minLvl: 60, successRate: 0.98 },
+};
+export const GEM_RAW_MONSTER_DROP = 0.05;
+
 /* v2.3.1141: rarity tiers for server-minted weapon drops.  Mults only --
  * labels/colors are client presentation (RARITY_TIERS there carries
  * them).  These become the drop blob's tierMult, same slot the forge

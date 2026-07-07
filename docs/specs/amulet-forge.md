@@ -1,5 +1,9 @@
 # Server Amulet Forge — v2.3.1192 (handoff item I follow-up)
 
+> **v2.3.1198 addendum:** the polished-gem economy this spec's trust
+> posture flagged as "deliberately still client-side" is now migrated —
+> see the "Gem income (v2.3.1198)" section below.
+
 Amulets were the last client-crafted equipment blob.  The v2.3.1180
 join sanitizer (`_sanitizeAmulet`, gear.js) bounded the SHAPE, but with
 no server mint the residual forgery ceiling was a free legit mythic
@@ -86,17 +90,94 @@ own-property check; pinned by a test.  NOTE for successors:
 numeric costs so the damage is bounded differently, but it deserves the
 same guard in its own slice.
 
+## Gem income (v2.3.1198, the successor slice)
+
+The v2.3.1192 gem op consumed from a `lifeSkills.gems` map the server
+only ever saw at the join bootstrap, so a legitimately-earned gem was
+denied at the amulet slot (deny-by-default, documented below).  This
+slice moves gem INCOME server-side on the same adoption pattern.
+
+What the exploration found (code is truth): the live income flows were
+(a) the monster-kill raw-gem roll (5%, zone element only —
+`monsterCombat.js`) and (b) GemcutPanel cutting (raw → polished,
+success rate from the `GEM_CUT_TIERS` ladder by gemCutting level).
+The "35%/harvest" rates this spec originally cited
+(`GEM_DROP_RATES.woodcutting/fishing/mining`) are **dead data** — no
+roll site has ever read them, all the way back to the original
+`index.html`; deliberately not mirrored (the `GOLD_NUGGET_DROP.lifeSkill`
+precedent).  Cutting is NOT a timing minigame (one tap + pure RNG), so
+it did not adopt the cook posture (client-reported outcome +
+rate-limit): the server rolls it outright, and every attempt consumes a
+server-held raw gem, which is the spam bound — no rate limit needed.
+
+### Wire surface (additions)
+
+| Direction | Message | Payload | Behavior |
+|---|---|---|---|
+| C→S | `gem_cut_request` | `{gem}` | gates: alive, `gem` ∈ `AMULET_GEMS`, one server-held `raw_<gem>`; consumes it, rolls success from the SERVER-held gemCutting level (`GEM_CUT_TIERS` mirror), mints `polished_<gem>` on success, gemCutting XP 15 either way (client parity).  No gear mutation → no gear lock.  Denies silently. |
+| S→C | `gem_cut_result` | `{gem, success, leveled, newLevel}` | private outcome feedback (the `harvest_credit` precedent: server-owned RNG the client can't predict) — **new server-emitted type, added to `PRIVILEGED_EVENTS`**, pinned by wire-audit |
+| S→C | `player_state` | `lifeSkills.gems` | the authoritative counts; a `raw_<elem>` INCREASE is the server-rolled kill drop landing (client fires the "Raw X Gem!" popup off it — the goldNuggets-popup pattern) |
+| S→C | `state_sync` | `caps.gems: true` | deploy-order gate (rule 19).  Narrow flag, deliberately NOT `caps.amuletForge`: a v2.3.1192 worker advertises amuletForge but silently denies the unknown cut request, which would break cutting for a new client against it. |
+
+### Income + adoption
+
+- **Kill drop**: `_gemRawOnKill` rides `_resolveMonsterKill`
+  (combat.js) beside the nugget roll — killer-only, zone-element only,
+  client rate (`GEM_RAW_MONSTER_DROP` = 0.05).  Dungeon instances have
+  no zone config → no roll (instances pay via their own tables).  The
+  client's legacy roll (monsterCombat.js) is gated on `!caps.gems`.
+- **Cutting**: GemcutPanel sends `gem_cut_request` under `caps.gems`;
+  the raw-gem consume stays as local prediction, but the success roll,
+  popups and XP wait for `gem_cut_result` + the `player_state` echo.
+  Old workers: legacy local-only cut unchanged.
+- **Persistence**: gems already live inside the `lifeSkills` blob field
+  (no new storage key).  ONE new `_saveRpg` fixed-list field,
+  `gemsCaptured` (the sanctioned extension amulet.js used for
+  nuggets/bars): the one-time-capture stamp, server-internal,
+  deliberately not echoed in `player_state`.
+- **Join adoption** (`_gemsAdoptOnJoin`, called for both join
+  branches): always whitelist+clamp whatever gems map the server holds
+  (keys = `raw_`/`polished_` × the nine `AMULET_GEMS`; values 1..200
+  per key — the first-connect bootstrap used to ingest gems UNCLAMPED
+  inside the wholesale lifeSkills capture).  If the stored record has
+  no `gemsCaptured` stamp, the client's claimed counts are folded in
+  ONCE, per-key **max-merge** (max, not add — the stored map already
+  contains what the original bootstrap captured; adding would
+  double-count).  Stored wins forever after.
+
+### Data mirrors (pinned by mirror-audit §8d)
+
+| Server | Client |
+|---|---|
+| `GEM_CUT_TIERS` (minLvl/successRate) | `src/data/gameSystems.js GEM_CUT_TIERS` |
+| `GEM_RAW_MONSTER_DROP` | `src/data/items.js GEM_DROP_RATES.monsterKill` |
+
+Gem-cut XP (15/cut, success or shatter) is a literal at the client call
+site — no constant to mirror; the server carries it as `GEM_CUT_XP`.
+
+### Residuals (still client-side, documented)
+
+- **Gem EXTRACTION income** (ForgePanel "Extract Gem": pulls a weapon's
+  elements / a shield's gem back out as polished gems for coins) is
+  still a client-local `lifeSkills.gems` edit — the server never sees
+  it, and the `player_state` echo stomps it, exactly as it did before
+  this slice (no regression; extraction also mutates the server-held
+  gear blob, so migrating it is its own slice — add an
+  `amulet_forge_request`-style op that strips the SERVER's blob and
+  credits the gems).
+- **Shield/weapon gem-slot consumption** (EnchantPanel non-amulet
+  slots) likewise: client-local consume, echo restores the gem.
+  Non-flame gem bonuses are client-side point-of-use effects
+  (v2.3.1139 posture), so the server has nothing to validate yet;
+  migrate alongside the slots' stat migration.
+
 ## Trust posture / deliberately still client-side
 
-- **Polished-gem economy**: raw gem drops (client-rolled at 35%/harvest
-  and on kills into `lifeSkills.gems`) and GemcutPanel polishing are
-  still client-local mutations of the opaque `lifeSkills` blob.  The
-  server's `gems` map is whatever the join bootstrap captured, so the
-  `gem` op's deny-by-default consume can deny a legitimately-polished
-  gem the server never saw.  Accepted: the alternative (trust the
-  claim) re-opens a free-gem forge.  Migrating gem income server-side
-  is the natural successor slice — it would also fix the pre-existing
-  lifeSkills-echo stomp of client-earned gems.
+- **Polished-gem economy**: ~~raw gem drops and GemcutPanel polishing
+  are still client-local mutations of the opaque `lifeSkills` blob~~ —
+  MIGRATED v2.3.1198, see "Gem income" above.  The `gem` op's
+  deny-by-default consume stands, and now sees legitimately-earned
+  gems.
 - **First-connect amulet bootstrap** (`_sanitizeAmulet` ingestion of
   `rpgAmulet`) stays as the legacy-player migration path.  Residual: a
   FRESH identity can still bootstrap a legit-shaped amulet once, for

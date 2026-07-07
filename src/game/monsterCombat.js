@@ -2110,8 +2110,16 @@ export function updateMonsterCombat(S, deps) {
                   }
 
                   /* ═══ GEM DROP FROM MONSTER KILL — less efficient than life skills ═══ */
+                  /* v2.3.1198: server-rolled under caps.gems (the worker
+                     owns gem income now -- server/src/amulet.js
+                     _gemRawOnKill rolls in _resolveMonsterKill and the
+                     player_state lifeSkills.gems echo fires the popup in
+                     wsClient.js).  The local roll stays as the
+                     legacy-worker fallback only, else kills would
+                     double-award (same shape as the v2.3.1192 nugget
+                     gate below). */
                   var killZoneElem = (_ZONES$S$currentZone6 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone6 === void 0 ? void 0 : _ZONES$S$currentZone6.element;
-                  if (killZoneElem && Math.random() < GEM_DROP_RATES.monsterKill) {
+                  if (!(S._serverCaps && S._serverCaps.gems) && killZoneElem && Math.random() < GEM_DROP_RATES.monsterKill) {
                     var _ZONE_RESOURCES$killZ, _ZONE_RESOURCES$killZ2;
                     if (!_R6.lifeSkills) _R6.lifeSkills = createDefaultLifeSkills();
                     if (!_R6.lifeSkills.gems) _R6.lifeSkills.gems = {};

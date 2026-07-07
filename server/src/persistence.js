@@ -79,6 +79,12 @@ export const persistenceMethods = {
         // captured yet" (typeof check in join.js), so no migration.
         goldNuggets: Math.max(0, Math.floor(ps.goldNuggets || 0)),
         goldBars: Math.max(0, Math.floor(ps.goldBars || 0)),
+        // v2.3.1198 (gem income): one-time-capture stamp for the
+        // previously client-local gems map (which itself lives inside
+        // lifeSkills above).  Absent on a pre-slice record = "claim not
+        // captured yet" (_gemsAdoptOnJoin, amulet.js); server-internal,
+        // deliberately NOT echoed in _sendPlayerState below.
+        gemsCaptured: !!ps.gemsCaptured,
         level: ps.level || 1,
         xp: ps.xp || 0,
         unspentT2: ps.unspentT2 || 0,

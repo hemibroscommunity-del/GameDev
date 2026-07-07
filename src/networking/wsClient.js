@@ -17,7 +17,7 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -844,6 +844,30 @@ export function setupWebSocket(ctx) {
                    Server owns woodcutting / fishing / mining today; the
                    non-XP-bearing maps stay client-side until their own
                    migrations land. */
+                /* v2.3.1198 (gem income): under caps.gems the worker
+                   owns lifeSkills.gems (kill drops rolled in
+                   _gemRawOnKill, cuts settled in _handleGemCut) -- a
+                   raw_<elem> INCREASE in the echo is the server-rolled
+                   kill drop landing, so fire the legacy "Raw X Gem!"
+                   popup here (monsterCombat's local roll is gated off;
+                   no private credit event exists for this -- the
+                   v2.3.1192 goldNuggets-popup pattern, including its
+                   accepted one-time popup on a migration join where
+                   the server captured more than localStorage holds). */
+                if (S._serverCaps && S._serverCaps.gems && S.player
+                  && msg.payload.lifeSkills.gems && typeof msg.payload.lifeSkills.gems === 'object') {
+                  var _oldGems = (S.rpg.lifeSkills && S.rpg.lifeSkills.gems) || {};
+                  var _newGems = msg.payload.lifeSkills.gems;
+                  Object.keys(_newGems).forEach(function (_gk) {
+                    if (_gk.indexOf('raw_') !== 0) return;
+                    if ((_newGems[_gk] || 0) <= (_oldGems[_gk] || 0)) return;
+                    var _gElem = _gk.slice(4);
+                    var _gRes = ZONE_RESOURCES[_gElem];
+                    pushDmgPopup(S, S.player.x, S.player.y - 65,
+                      'Raw ' + ((_gRes && _gRes.gem) || _gElem + ' Gem') + '!',
+                      (_gRes && _gRes.gemColor) || '#fff');
+                  });
+                }
                 if (!S.rpg.lifeSkills) S.rpg.lifeSkills = {};
                 Object.keys(msg.payload.lifeSkills).forEach(function (k) {
                   /* v2.3.767: preserve the VALUE SHAPE.  _objectSpread({},v)
@@ -1105,6 +1129,31 @@ export function setupWebSocket(ctx) {
                 var _sklLabel = hc.skillName.charAt(0).toUpperCase() + hc.skillName.slice(1);
                 pushDmgPopup(S, S.player.x, S.player.y - 50, _sklEmoji + ' ' + _sklLabel + ' Level ' + (hc.newLevel || '?') + '!', '#f5c542');
                 try { BT_AUDIO.collect(); } catch (e) {}
+              }
+              break;
+            }
+          case 'gem_cut_result':
+            {
+              /* v2.3.1198: server's outcome for a gem_cut_request the
+                 client just sent (GemcutPanel under caps.gems).  The
+                 cut roll is server-owned RNG (harvest_credit's shard
+                 precedent) so the Polished!/shattered popups wait for
+                 this event; the authoritative gems map + gemCutting XP
+                 ride the player_state echo the worker sends alongside. */
+              if (!msg.payload || !S.rpg || !S.player) break;
+              var gcr = msg.payload;
+              var _gcRes = ZONE_RESOURCES[gcr.gem];
+              var _gcName = (_gcRes && _gcRes.gem) || (gcr.gem + ' Gem');
+              var _gcCol = (_gcRes && _gcRes.gemColor) || '#fff';
+              if (gcr.success) {
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Polished ' + _gcName + '!', _gcCol);
+                try { BT_AUDIO.collect(); } catch (e) {}
+              } else {
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Gem shattered!', '#ff5e6c');
+                try { BT_AUDIO.beep(200, 0.06, 0.1, 'square'); } catch (e) {}
+              }
+              if (gcr.leveled) {
+                pushDmgPopup(S, S.player.x, S.player.y - 50, 'Gem Cutting Lv' + (gcr.newLevel || '?') + '!', '#f5c542');
               }
               break;
             }

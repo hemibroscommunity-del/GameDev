@@ -372,6 +372,17 @@ export const joinMethods = {
         }
         await this._saveRpg(msg.id, this.playerState[msg.id]);
       }
+      // v2.3.1198 (gem income): adopt the previously client-local gem
+      // economy.  Heals/clamps whatever gems map landed above (stored
+      // blob, or the wholesale lifeSkills bootstrap capture -- which
+      // used to ingest gems UNCLAMPED) and, when the stored record
+      // predates the slice (no gemsCaptured stamp), max-merges the
+      // client's claimed counts ONCE so legit mined+cut hoards migrate
+      // instead of being deny-by-default'd at the amulet gem op
+      // forever.  Stamp persists via the _saveRpg at the end of the
+      // stats block below; stored wins on every later reconnect.
+      this._gemsAdoptOnJoin(this.playerState[msg.id], stored,
+        (msg.data && msg.data.rpgLifeSkills) || null);
       // Session-only equipment-derived values.  Always read from join
       // — recomputed client-side on every recalcDerived.
       this.playerState[msg.id].def = (msg.data && typeof msg.data.rpgDef === 'number') ? Math.max(0, msg.data.rpgDef) : 0;
@@ -544,7 +555,14 @@ export const joinMethods = {
       // vacuum range as out-of-range and the pile would sit unlootable
       // by the pet); absent, the legacy client-side self-credit vacuum
       // stays (harmless theatre -- the echo stomps it, as ever).
-caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, petLoot: true, ..._liveFlags },
+      // v2.3.1198: gems -- the client sends gem_cut_request and
+      // suppresses its local raw-gem kill roll + local cut roll only
+      // when the worker owns gem income (amulet.js _gemRawOnKill /
+      // _handleGemCut).  Deliberately NOT folded into amuletForge: a
+      // v2.3.1192 worker advertises amuletForge but silently denies
+      // the unknown cut op, which would break cutting for new clients
+      // against it (deploy-order safety, rule 19).
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,
