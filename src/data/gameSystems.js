@@ -10,7 +10,13 @@ import { ZONES } from './zones.js';
 import { ELEMENTS } from './elements.js';
 import { TOWN_BUILDINGS } from './buildings.js';
 import { TOWN_EXITS } from './effects.js';
-import { AMULET_TIERS, SALVAGE_RETURN_RATE } from './items.js';
+/* v2.3.1178: DEPTH_TIERS…skillXpRequired were eslint-grandfathered
+   globals (resolved via BroTown's Object.assign(globalThis, DATA) at
+   runtime — latent ReferenceErrors under plain node / before boot).
+   Now imported from where they live; the eslint LEGACY DEBT block for
+   this file is gone. */
+import { AMULET_TIERS, SALVAGE_RETURN_RATE, DEPTH_TIERS, ZONE_RESOURCES, getAmuletBonus, getShieldBonus, getShieldStats, skillXpRequired } from './items.js';
+import { FISHING_TIERS } from './lifeSkills.js';
 import { applyZoneVariant } from './monsterVariants.js';
 
 /* v2.3.1175: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,

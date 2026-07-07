@@ -56,7 +56,16 @@ import { CookPanel } from './panels/buildings/CookPanel.jsx';
 import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
 import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
 import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
-import { MINE_SPOT_R, WORLD_ZOOM } from '@/data/constants.js';
+import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
+/* v2.3.1178: LEGACY DEBT burn-down — these five resolved only via the
+   Object.assign(globalThis, DATA) below (eslint grandfathered them).
+   Explicit imports close the latent ReferenceError window between
+   module eval and the globalThis assignment.  Note TOWN_W/TOWN_H are
+   live `let` bindings (updateZoneDimensions reassigns them) — the
+   import reads the CURRENT value, where the globalThis copy was frozen
+   at boot; the only reader is the NPC wander clamp, dormant while
+   NPC_DATA is empty. */
+import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
