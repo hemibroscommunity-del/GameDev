@@ -24,9 +24,24 @@
  *   11. Empty instances are swept after EMPTY_SWEEP_MS.
  *   12. Room-wide instance cap; dead players can't start; forged
  *       dungeon_started is not rebroadcast (deny-list).
+ * v2.3.1194 boss abilities (handoff item F follow-up):
+ *   13. Kit unlock gates by cfg.monsterLevel (5 -> slam+charge;
+ *       45 -> +summon+sweep); first cast delayed FIRST_CAST_MS.
+ *   14. Telegraph: dungeon_boss_ability phase 'telegraph' to players
+ *       inside (v1 AND v2), phase stamped, basic swing suppressed, no
+ *       re-telegraph mid-wind-up.
+ *   15. Slam execute: damage rides monster_attack via _applyDamage,
+ *       clamped to MAX_HIT_PCT of the victim's maxHp (no-oneshot),
+ *       cooldown re-armed.
+ *   16. Blocked ability: full negation + the standard stamina cost.
+ *   17. Charge: armed at execute toward the nearest player, lunges on
+ *       subsequent ticks, contact damage stops the lunge.
+ *   18. Summon: 2-3 halved-reward noRespawn minions + zone_state
+ *       re-push (zone_monsters for v1); at MAX_ALIVE the rotation
+ *       skips summon; forged dungeon_boss_ability is deny-listed.
  */
 import { GameRoom } from '../src/index.js';
-import { DUNGEONS } from '../src/dungeon.js';
+import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
 import { MONSTER_HP_CURVE } from '../src/data.js';
 
 function makeState() {
@@ -238,6 +253,133 @@ psA.dying = false;
 room.eventBuffer.length = 0;
 await room.webSocketMessage(wsC, JSON.stringify({ type: 'dungeon_started', payload: { zone: 'dungeon:forged', cfg: {} } }));
 check('forged dungeon_started dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'dungeon_started').length === 0, room.eventBuffer.map((e) => e.type));
+
+/* ═══ v2.3.1194: boss abilities (handoff item F follow-up) ═══ */
+
+// ── 13. kit unlock gates ──
+psA.level = 45;
+wsA.sent.length = 0;
+await start(wsA, { waves: 1, hasBoss: true, monsterLevel: 5, monsters: [{ archetype: 'fodder', count: 1 }] });
+const zoneL = msgsOfType(wsA, 'dungeon_started')[0].payload.zone;
+await move(wsA, zoneL);
+killAll(zoneL);
+room._tickDungeons(Date.now());
+const bossL = room.monsters[zoneL].find((m) => m._dungeonBoss);
+check('level-5 boss kit is slam+charge only', !!bossL && bossL._abilities.join(',') === 'slam,charge', bossL && bossL._abilities);
+room._dungeonCleanup(room._dungeons.get(zoneL.slice('dungeon:'.length)));
+await move(wsA, 'town');
+
+wsA.sent.length = 0;
+await start(wsA, { waves: 1, hasBoss: true, monsterLevel: 45, bossArchetype: 'brute', bossMultiplier: 2, monsters: [{ archetype: 'fodder', count: 1 }] });
+const zoneB = msgsOfType(wsA, 'dungeon_started')[0].payload.zone;
+const instB = room._dungeons.get(zoneB.slice('dungeon:'.length));
+await move(wsA, zoneB);
+killAll(zoneB);
+const tSpawn = Date.now();
+room._tickDungeons(tSpawn);
+const bossB = room.monsters[zoneB].find((m) => m._dungeonBoss);
+check('level-45 boss kit unlocks summon+sweep', !!bossB && bossB._abilities.join(',') === 'slam,charge,summon,sweep', bossB && bossB._abilities);
+check('first cast delayed FIRST_CAST_MS after spawn', bossB._nextAbilityAt >= tSpawn + BOSS_ABILITIES.FIRST_CAST_MS - 50, bossB._nextAbilityAt - tSpawn);
+
+// A v1 session inside the same instance: ability notices + summon
+// re-push must keep working on the legacy protocol (rule 21).
+const wsV1 = fakeWs('v1');
+room.sessions.set(wsV1, baseSession());
+await room.webSocketMessage(wsV1, JSON.stringify({ type: 'join', id: 'bp_dg_v1', name: 'V1', phrase: 'p-v1', data: { x: 0, y: 0, z: 'town' } }));
+await room.webSocketMessage(wsV1, JSON.stringify({ type: 'move', x: 100, y: 100, z: zoneB }));
+const psV1 = room.playerState['bp_dg_v1'];
+psV1.hp = 500; psV1.maxHp = 500; psV1._zoneEntryGraceUntil = 0;
+psV1.x = 100; psV1.y = 100; // far from the boss -- spectator for the AoE checks
+
+// ── 14. telegraph emission + wind-up ──
+psA.hp = 500; psA.maxHp = 500; psA.agility = 0;
+psA.blocking = false; psA._zoneEntryGraceUntil = 0;
+psA.x = bossB.x; psA.y = bossB.y; // in slam range
+bossB._nextAbilityAt = 0;
+wsA.sent.length = 0; wsV1.sent.length = 0;
+const t0 = Date.now();
+room._tickDungeons(t0);
+let tele = msgsOfType(wsA, 'dungeon_boss_ability');
+check('telegraph emitted (slam first in rotation)', tele.length === 1 && tele[0].payload.phase === 'telegraph' && tele[0].payload.ability === 'slam' && tele[0].payload.zone === zoneB, tele.map((e) => e.payload));
+check('telegraph reaches the v1 session too', msgsOfType(wsV1, 'dungeon_boss_ability').length === 1);
+check('telegraph stamps phase + suppresses the basic swing', bossB._abilityPhase === 'telegraph' && bossB.atkCd >= t0 + BOSS_ABILITIES.TELEGRAPH_MS, { phase: bossB._abilityPhase });
+room._tickDungeons(t0 + 10);
+check('no re-telegraph mid-wind-up', msgsOfType(wsA, 'dungeon_boss_ability').length === 1);
+
+// ── 15. slam execute: clamp + cooldown ──
+bossB.dmg = 99999; // force the no-oneshot clamp (50% of 500 = 250)
+room.eventBuffer.length = 0;
+wsA.sent.length = 0;
+const tExec = t0 + BOSS_ABILITIES.TELEGRAPH_MS + 10;
+room._tickDungeons(tExec);
+const execEvt = msgsOfType(wsA, 'dungeon_boss_ability');
+check('execute event carries phase+range', execEvt.length === 1 && execEvt[0].payload.phase === 'execute' && execEvt[0].payload.ability === 'slam' && execEvt[0].payload.range === BOSS_ABILITIES.SLAM.RANGE, execEvt.map((e) => e.payload));
+const slamAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === bossB.id);
+check('slam damage rides monster_attack, clamped to 50% maxHp', slamAtk.length === 1 && slamAtk[0].payload.dmgTaken === 250 && psA.hp === 250, { hp: psA.hp, atk: slamAtk.map((a) => a.payload) });
+check('out-of-range player untouched by the AoE', psV1.hp === 500, psV1.hp);
+check('cooldown re-armed after execute', bossB._abilityPhase === null && bossB._nextAbilityAt >= tExec + BOSS_ABILITIES.COOLDOWN_MS - 5, bossB._nextAbilityAt - tExec);
+
+// ── 16. blocked ability: full negation + stamina cost ──
+psA.blocking = true; psA.stamina = 100; psA.hp = 500;
+bossB._abilityPattern = 0; bossB._nextAbilityAt = 0; bossB.dmg = 40;
+const t1 = tExec + 5000;
+room._tickDungeons(t1); // telegraph slam
+room.eventBuffer.length = 0;
+room._tickDungeons(t1 + BOSS_ABILITIES.TELEGRAPH_MS + 10); // execute
+const blk = room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === bossB.id);
+check('blocked slam: zero damage + standard stamina drain', blk.length === 1 && blk[0].payload.blocked === true && blk[0].payload.dmgTaken === 0 && psA.hp === 500 && psA.stamina === 85, { stamina: psA.stamina, blk: blk.map((b) => b.payload) });
+psA.blocking = false;
+
+// ── 17. charge: lunge + contact damage ──
+psA.x = bossB.x + 100; psA.y = bossB.y;
+bossB._abilityPattern = 1; bossB._nextAbilityAt = 0; // rotation slot 1 = charge
+const t2 = t1 + 10000;
+wsA.sent.length = 0;
+room._tickDungeons(t2); // telegraph charge
+check('charge telegraphed', msgsOfType(wsA, 'dungeon_boss_ability')[0].payload.ability === 'charge');
+const t3 = t2 + BOSS_ABILITIES.TELEGRAPH_MS + 10;
+room._tickDungeons(t3); // execute -> lunge armed
+check('charge armed toward the nearest player', bossB._chargeUntil === t3 + BOSS_ABILITIES.CHARGE.DURATION_MS && bossB._chargeSpeed === bossB.spd * BOSS_ABILITIES.CHARGE.SPEED_MULT && Math.abs(bossB._chargeAngle) < 0.01, { until: bossB._chargeUntil, ang: bossB._chargeAngle });
+const hpBeforeCharge = psA.hp;
+const bossX0 = bossB.x;
+let tc = t3;
+for (let i = 0; i < 26 && bossB._chargeUntil; i++) { tc += 22; room._tickDungeons(tc); } // 45Hz ticks
+check('charge lunged the boss and landed contact damage', bossB.x > bossX0 + 20 && psA.hp < hpBeforeCharge && bossB._chargeUntil === 0, { moved: Math.round(bossB.x - bossX0), hp: psA.hp, before: hpBeforeCharge });
+
+// ── 18. summon: minions, re-push, cap ──
+bossB._abilityPattern = 2; bossB._nextAbilityAt = 0; // rotation slot 2 = summon
+const t4 = tc + 10000;
+room._tickDungeons(t4); // telegraph summon
+wsA.sent.length = 0; wsV1.sent.length = 0;
+room._tickDungeons(t4 + BOSS_ABILITIES.TELEGRAPH_MS + 10); // execute
+const minions = room.monsters[zoneB].filter((m) => m._bossMinion);
+check('summon spawned 2-3 minions at boss level -5, noRespawn', minions.length >= BOSS_ABILITIES.SUMMON.COUNT_MIN && minions.length <= BOSS_ABILITIES.SUMMON.COUNT_MAX && minions.every((mn) => mn.alive && mn.noRespawn === true && mn.level === bossB.level - BOSS_ABILITIES.SUMMON.LEVEL_DELTA), minions.map((mn) => mn.level));
+const ctl = room._dungeonMonster(instB, 'swarm', bossB.level - BOSS_ABILITIES.SUMMON.LEVEL_DELTA, null, 'ctl');
+check('minion rewards halved vs a real swarm (faucet guard)', minions.every((mn) => mn.xp === Math.max(1, Math.ceil(ctl.xp * BOSS_ABILITIES.SUMMON.REWARD_MULT)) && mn.maxHp === Math.max(1, Math.ceil(ctl.hp * BOSS_ABILITIES.SUMMON.HP_MULT))), { minion: minions[0] && { xp: minions[0].xp, hp: minions[0].maxHp }, ctl: { xp: ctl.xp, hp: ctl.hp } });
+const sumExec = msgsOfType(wsA, 'dungeon_boss_ability').filter((e) => e.payload.phase === 'execute');
+check('summon execute carries the spawn count', sumExec.length === 1 && sumExec[0].payload.count === minions.length, sumExec.map((e) => e.payload));
+check('summon re-pushed zone_state to v2 with the adds', msgsOfType(wsA, 'zone_state').length === 1 && msgsOfType(wsA, 'zone_state')[0].monsters.some((mm) => mm.id.includes('minion')), msgsOfType(wsA, 'zone_state').length);
+check('v1 session got the re-push as zone_monsters', msgsOfType(wsV1, 'zone_monsters').length === 1 && msgsOfType(wsV1, 'zone_state').length === 0, wsV1.sent.map((m) => m.type));
+
+// cap: pad live minions to MAX_ALIVE, force the summon slot -- the
+// rotation must skip to sweep and spawn nothing.
+while (room.monsters[zoneB].filter((m) => m._bossMinion && m.alive).length < BOSS_ABILITIES.SUMMON.MAX_ALIVE) {
+  room.monsters[zoneB].push({ id: 'pad-' + Math.random(), _bossMinion: true, alive: true, hp: 1, maxHp: 1, x: 0, y: 0 });
+}
+bossB._abilityPattern = 2; bossB._nextAbilityAt = 0;
+wsA.sent.length = 0;
+const t5 = t4 + 10000;
+room._tickDungeons(t5);
+const teleCap = msgsOfType(wsA, 'dungeon_boss_ability');
+check('at the minion cap the rotation skips summon (sweep next)', teleCap.length === 1 && teleCap[0].payload.ability === 'sweep', teleCap.map((e) => e.payload));
+const minionCountAtCap = room.monsters[zoneB].filter((m) => m._bossMinion).length;
+room._tickDungeons(t5 + BOSS_ABILITIES.TELEGRAPH_MS + 10); // sweep executes
+check('no minions past the cap', room.monsters[zoneB].filter((m) => m._bossMinion).length === minionCountAtCap, room.monsters[zoneB].filter((m) => m._bossMinion).length);
+
+// forged ability event is deny-listed (rule 13)
+room.eventBuffer.length = 0;
+await room.webSocketMessage(wsC, JSON.stringify({ type: 'dungeon_boss_ability', payload: { zone: zoneB, ability: 'slam', phase: 'execute' } }));
+check('forged dungeon_boss_ability dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'dungeon_boss_ability').length === 0, room.eventBuffer.map((e) => e.type));
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

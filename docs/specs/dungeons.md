@@ -1,4 +1,4 @@
-# Instanced Dungeons (server-authoritative) — v2.3.1127
+# Instanced Dungeons (server-authoritative) — v2.3.1127 (boss abilities v2.3.1194)
 
 The Dungeon Workshop's custom runs, moved server-side. Before this the
 entire dungeon was client theatre: the client built the arena, spawned
@@ -51,8 +51,9 @@ arena) always works and returns the player to their previous zone.
 | s→c | `dungeon_boss` | `{zone}` | Private to players inside. Boss spawned. |
 | s→c | `dungeon_complete` | `{zone, gold, xp, boss}` | Private to each paid player. Coins already settled (player_state echo is authoritative); event drives the win UI + 3s return home. |
 | s→c | `dungeon_error` | `{code, message}` | Codes: `not-now`, `already-running`, `room-full`. |
+| s→c | `dungeon_boss_ability` | `{zone, monsterId, ability, phase, x, y, range?, ms?, count?}` | v2.3.1194. Private to players inside, both protocols. `phase` is `telegraph` (wind-up warning, `ms` = duration) or `execute`. Client handler is **display-only** (popup / impact ring / shake); the damage itself rides the normal `monster_attack` + `player_state` events. |
 
-All five server-emitted types are in `PRIVILEGED_EVENTS`.
+All six server-emitted types are in `PRIVILEGED_EVENTS`.
 Capability flag: `state_sync.caps.dungeon` — the client's
 `launchDungeon` gates on it and falls back to the legacy local spawn
 against old workers (deploy-order safety; delete the fallback once the
@@ -97,6 +98,51 @@ worth the same XP/gold as world monsters of their level.
   Cleanup deletes `monsters/loot/nodes[zone]` + dirty-set entries —
   **loot piles die with the instance**.
 
+## Boss abilities (v2.3.1194)
+
+The slam/charge/summon/sweep kit from the DEAD client boss AI
+(`monsterCombat.js` phase cycling + `dungeonWaves.js` unlock gates —
+unreachable under `S._serverDungeon`), ported server-side as
+`_dungeonTickBossAbilities`, a per-boss script riding `_tickDungeons`
+(the attach-point note below asked for exactly this shape — no fork of
+`_tickMonsters`). Constants live in the `BOSS_ABILITIES` config object
+in `dungeon.js`.
+
+- **Kit / unlock gates** (legacy custom-dungeon values): every boss has
+  `slam` + `charge`; `cfg.monsterLevel ≥ 20` adds `summon`; `≥ 40` adds
+  `sweep`. Abilities fire in a fixed rotation, first cast 3s after
+  spawn, then one cast per 4s cooldown.
+- **Cast cycle**: ready → 1s telegraph (`dungeon_boss_ability` phase
+  `telegraph`; boss plants and holds its basic swing via the existing
+  `_attackingUntil` / `atkCd` fields `_tickMonsters` already honors) →
+  execute (phase `execute`) → cooldown.
+- **Damage rails**: every ability hit goes through the same sequence as
+  a basic monster attack — block short-circuit (full negation + the
+  standard stamina cost), `_applyDamage` (grace / dodge / Iron Skin /
+  Second Wind), lifesteal damage tracking, a `monster_attack` wire
+  event, death check. §7 kill-credit math is untouched.
+- **Abilities**: `slam` = 80px AoE at `dmg × 1.5`; `sweep` = 70px AoE at
+  `dmg × 1.2`; `charge` = 600ms lunge at the nearest player
+  (`spd × 8`/tick ≈ the legacy ×6/frame at 60fps), contact within 45px
+  deals `dmg × 1.5` and stops the lunge, clamped inside the arena;
+  `summon` = 2–3 `swarm` minions at boss level −5 with 30% HP near the
+  boss, delivered by a full `zone_state`/`zone_monsters` re-push (fresh
+  entities need the snapshot path on both protocols).
+- **Conservative deviations from legacy** (deliberate; legacy numbers
+  otherwise kept verbatim — code is truth):
+  - **No-oneshot guard**: one ability hit is clamped to ≤50% of the
+    victim's `maxHp` (`MAX_HIT_PCT`) before `_applyDamage`.
+  - **Summon cap + reward haircut**: live minions capped at 4 (the
+    rotation skips `summon` at cap; legacy was uncapped) and minion
+    XP/gold halved (legacy paid full swarm rewards at 30% HP — an
+    add-farming faucet once the server owns the credit).
+  - **Not ported**: the legacy invulnerable-except-recovery phase armor
+    (touches every damage path + §7 surfaces for no ask) and `enrage`
+    (standard depth dungeons only — dormant since v2.3.54).
+- Minions count toward the all-dead check like any instance monster:
+  the boss wave completes only when boss AND minions are down (legacy
+  parity).
+
 ## Client integration
 
 - `DungeonCreatorPanel.jsx` `launchDungeon`: caps-gated send of
@@ -112,6 +158,10 @@ worth the same XP/gold as world monsters of their level.
   farm_home return.
 - `dungeonWaves.js` `updateDungeonWaves`: early-return when
   `S._serverDungeon` (server owns progression).
+- `gameEvents.js` `dungeon_boss_ability` (v2.3.1194): display-only —
+  amber ability popup at telegraph; ring/shake/beep at execute
+  (mirrors the legacy `monsterCombat.js` visuals). Ability names are
+  whitelisted client-side; never mutates HP or monsters.
 - Exit paths all delete the synthetic entry + clear `_serverDungeon`:
   tile-9 abandon (`zoneTransitions.js` — restores the pre-dungeon zone
   BEFORE the legacy regen reads `S.currentZone`), death respawn
@@ -119,11 +169,13 @@ worth the same XP/gold as world monsters of their level.
 
 ## Attach points for successors
 
-- **Boss abilities**: server bosses are stat-scaled chase-and-swing.
-  The client's slam/charge/summon/sweep AI (`dungeonWaves.js` legacy
-  path, `_bossAbilities`) is dead under server mode — porting it means
-  teaching the server monster tick a per-monster ability script
-  (keep it in `dungeon.js`; don't fork `_tickMonsters`).
+- ~~**Boss abilities**: server bosses are stat-scaled chase-and-swing~~
+  — SHIPPED v2.3.1194 as `_dungeonTickBossAbilities` (see the Boss
+  abilities section above). Remaining follow-ups: the legacy
+  invulnerable/EXPOSED phase armor if the owner ever wants it (needs a
+  wire flag + `_handleMonsterDamage` gate), and boss-size/glow
+  rendering (the server sends no `_bossSize`; the client shows the
+  normal sprite with the 🐉 emoji).
 - **Standard (depth) dungeons**: still dormant client-side (entry
   disabled since v2.3.54). If revived, reuse this instance machinery —
   config from `DEPTH_CONFIG` instead of the Workshop.

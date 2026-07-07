@@ -269,6 +269,10 @@ export const PRIVILEGED_EVENTS = new Set([
   // v2.3.1127: dungeon instance lifecycle (server-spawned waves,
   // server-settled completion rewards -- see dungeon.js).
   'dungeon_started', 'dungeon_wave', 'dungeon_boss', 'dungeon_complete', 'dungeon_error',
+  // v2.3.1194: boss ability telegraphs/executions are server-scripted
+  // (dungeon.js _dungeonTickBossAbilities); the client handler is
+  // display-only, but a forged one would paint fake warnings/rings.
+  'dungeon_boss_ability',
   // v2.3.1128: sponsorship stakes settle off SERVER-observed match
   // results; guild quests verify against server-owned skill levels.
   'arena_stake_placed', 'arena_stake_error', 'arena_stake_result',
