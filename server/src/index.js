@@ -281,6 +281,7 @@ export const PRIVILEGED_EVENTS = new Set([
   // v2.3.1128: sponsorship stakes settle off SERVER-observed match
   // results; guild quests verify against server-owned skill levels.
   'arena_stake_placed', 'arena_stake_error', 'arena_stake_result',
+  'arena_stake_board', // v2.3.1210: server-summed spectator stake board (display-only)
   'guild_quest_result', 'guild_quest_error',
   // v2.3.1129: threat-machine emissions (guard fines, lock notices).
   'threat_penalty', 'threat_expired', 'gear_locked',

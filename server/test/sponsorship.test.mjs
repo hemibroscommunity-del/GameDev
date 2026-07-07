@@ -19,6 +19,14 @@
  *      UI actually reads (status 'active', players id/name, champion.id,
  *      recentMatches winnerId) -- the PR10 shape mismatch regression.
  *   9. Forged arena_stake_result is not rebroadcast (deny-list).
+ *
+ * v2.3.1210 (spectator stake board): stakes were private; a privileged
+ * server-summed board now lets spectators see the action.  Checks:
+ *   10. Placement broadcasts a server-summed board (two sponsors on one
+ *       competitor sum + count 2 backers, no per-sponsor identity
+ *       leaked); a second staked match adds a row; a resolved match
+ *       drops off after settlement while open matches remain; a forged
+ *       arena_stake_board is dropped by the PRIVILEGED deny-list.
  */
 import { GameRoom } from '../src/index.js';
 import { ARENA } from '../src/gladiator.js';
@@ -161,6 +169,68 @@ check('sweep never refunds over a stamped payout', room.playerState[P('d')].coin
 room.eventBuffer.length = 0;
 await room.webSocketMessage(wss.d, JSON.stringify({ type: 'arena_stake_result', payload: { won: true, payout: 99999 } }));
 check('forged arena_stake_result dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'arena_stake_result').length === 0, room.eventBuffer.map((e) => e.type));
+
+// ── 10. v2.3.1210 spectator stake board (server-summed, display-only) ──
+{
+  const lastBoard = () => [...room.eventBuffer].reverse().find((e) => e.type === 'arena_stake_board');
+  // Fresh 4-player bracket so resolving ONE round-1 match leaves the
+  // tournament RUNNING (a 2-player final would complete and the board
+  // rebroadcast is suppressed once status flips to 'complete').
+  for (const n of ['e', 'f', 'g', 'h']) {
+    wss[n] = fakeWs(n);
+    await join(wss[n], P(n), n.toUpperCase());
+    room.playerState[P(n)].coins = 2000;
+    await room._arenaJoin(P(n), n.toUpperCase());
+  }
+  room._arena.gatherDeadline = Date.now() - 1;
+  room._arenaLazyTick(Date.now());
+  await new Promise((r) => setTimeout(r, 20));
+  const t2 = room._arena;
+  const m1 = t2.matches[0], m2 = t2.matches[1];
+  check('4-bracket has two open round-1 matches', t2.status === 'running' && m1 && m2 && m1.id !== m2.id && !m1.winner && !m2.winner, t2 && t2.matches.length);
+
+  // c and d both back the SAME competitor in m1 (they're not in t2, so
+  // eligible) -> the board must SUM them and count 2 backers.
+  room.eventBuffer.length = 0;
+  await sponsor(wss.c, { matchId: m1.id, targetId: m1.a, amount: 100 });
+  await sponsor(wss.d, { matchId: m1.id, targetId: m1.a, amount: 250 });
+  {
+    const bd = lastBoard();
+    const row = bd && bd.payload.board.find((r) => r.matchId === m1.id);
+    check('placement broadcasts a server-summed board row',
+      row && row.aId === m1.a && row.aTotal === 350 && row.aBackers === 2 && row.bTotal === 0 && row.bBackers === 0,
+      bd && bd.payload.board);
+    check('board rows leak no individual sponsor identity/amount',
+      row && !('sponsorId' in row) && !('sponsors' in row), row);
+  }
+
+  // A backs m2 (a is not in t2) -> the board carries a SECOND row.
+  await sponsor(wss.a, { matchId: m2.id, targetId: m2.a, amount: 500 });
+  check('a second staked match adds a second board row',
+    (() => { const bd = lastBoard(); return bd && bd.payload.board.length === 2 && bd.payload.board.some((r) => r.matchId === m2.id && r.aTotal === 500); })(),
+    lastBoard() && lastBoard().payload.board);
+
+  // Resolve m1 (server-observed) -> its stakes settle + records delete +
+  // winner set, so the recomputed board DROPS m1 and keeps m2.  The
+  // tournament stays running (m2 still open).
+  room.eventBuffer.length = 0;
+  const duel1 = room._duelFor(m1.a);
+  room._resolveDuel(duel1, m1.a, m1.b, 'kill');
+  await new Promise((r) => setTimeout(r, 30));
+  {
+    const bd = lastBoard();
+    const r1 = bd && bd.payload.board.find((r) => r.matchId === m1.id);
+    const r2 = bd && bd.payload.board.find((r) => r.matchId === m2.id);
+    check('settled match drops off the board; the open match remains',
+      bd && !r1 && r2 && r2.aTotal === 500, bd && bd.payload.board);
+  }
+
+  // Deny-list: a forged arena_stake_board from a client is not rebroadcast.
+  room.eventBuffer.length = 0;
+  await room.webSocketMessage(wss.d, JSON.stringify({ type: 'arena_stake_board', payload: { tid: t2.id, board: [{ matchId: m2.id, aId: m2.a, aTotal: 999999, aBackers: 1 }] } }));
+  check('forged arena_stake_board dropped by PRIVILEGED deny-list',
+    room.eventBuffer.filter((e) => e.type === 'arena_stake_board').length === 0, room.eventBuffer.map((e) => e.type));
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
