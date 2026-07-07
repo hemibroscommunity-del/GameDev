@@ -15,6 +15,9 @@ development-playbook-*.md
 # session lives there and must ship with the repo.
 .claude/*
 !.claude/settings.json
+# v2.3.1204: the shared review protocol (/repo-review) ships with the
+# repo too — same carve-out pattern as settings.json.
+!.claude/commands/
 
 # Python bytecode cache
 __pycache__/
